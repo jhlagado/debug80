@@ -3,7 +3,7 @@
   "displayName": "Z80 Debugger",
   "description": "Debug Adapter for Z80 programs (asm80 + HEX/LST)",
   "version": "0.0.1",
-  "publisher": "jhlagdo",
+  "publisher": "jhlagado",
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
@@ -15,7 +15,10 @@
   "categories": [
     "Debuggers"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:debug80.createProject",
+    "onDebugResolve:z80"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
