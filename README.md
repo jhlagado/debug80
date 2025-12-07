@@ -1,6 +1,6 @@
-# Debug80 (Z80 debugger with HEX/LST)
+# Debug80 (Z80 debugger with HEX/LST + asm80)
 
-Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, supports address breakpoints via the listing, stepping/continue, and exposes registers. TinyCPU support has been removed. “Debug80” is the debugger name used in the examples below.
+Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports address breakpoints via the listing, stepping/continue, and exposes registers. TinyCPU support has been removed. “Debug80” is the debugger name used in the examples below.
 
 ## Prerequisites
 
@@ -36,21 +36,18 @@ Fields per target:
 - `sourceFile`: root asm file to assemble
 - `outputDir`: where artifacts go
 - `artifactBase`: basename for artifacts
+- `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).
 - `hex`, `listing`: optional explicit paths (override defaults)
 - `entry`: optional entry point override
 - You can define multiple targets (e.g., `app`, `unit`, `integration`) and set `defaultTarget`.
 
 ## Z80 workflow
 
-1) Add `.debug80.json` as above.
-2) Use “Debug Z80 (asm80, project config)” or “Debug Z80 (z80asm, project config)” launch configs; they read `debug80.json`. PreLaunch tasks emit HEX/LST into `outputDir`.
+1) Add `.debug80.json` as above (defaults to `targets.app` with `src/main.asm` if you use the init command).
+2) Start debugging with “Debug Z80 (project config)”; the adapter reads `debug80.json`, runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
 3) Set breakpoints in the generated `.lst`; they map to instruction addresses.
 4) Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
 
-Task/launch config reference:
-- `.vscode/tasks.json` includes `asm80: build z80` and `z80asm: build z80`.
-- `.vscode/launch.json` has “Debug Z80 (asm80)”, “Debug Z80 (z80asm)”, and they can read `.debug80.json`.
-
 Notes:
 - HALT stops execution; Continue again to terminate.
-- Listing/HEX are required; ensure the preLaunch task has run or exists already.
+- Listing/HEX are required; ensure asm80 completes successfully or provide existing artifacts.

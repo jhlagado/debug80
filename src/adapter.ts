@@ -13,12 +13,14 @@ import {
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as cp from 'child_process';
 import { parseIntelHex, parseListing, ListingInfo } from './z80-loaders';
 import {
   createZ80Runtime,
   Z80Runtime,
   RunResult as Z80RunResult,
 } from './z80-runtime';
+import { ensureDirExists, inferDefaultTarget } from './config-utils';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -31,6 +33,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stopOnEntry?: boolean;
   projectConfig?: string;
   target?: string;
+  assemble?: boolean;
 }
 
 const THREAD_ID = 1;
@@ -67,7 +70,13 @@ export class Z80DebugSession extends DebugSession {
     response: DebugProtocol.LaunchResponse,
     args: LaunchRequestArguments
   ): void {
-    this.stopOnEntry = args.stopOnEntry !== false;
+    void this.handleLaunchRequest(response, args);
+  }
+
+  private async handleLaunchRequest(
+    response: DebugProtocol.LaunchResponse,
+    args: LaunchRequestArguments
+  ): Promise<void> {
     this.haltNotified = false;
     this.breakpoints.clear();
     this.runtime = undefined;
@@ -76,10 +85,37 @@ export class Z80DebugSession extends DebugSession {
 
     try {
       const merged = this.populateFromConfig(args);
-      const { hexPath, listingPath } = this.resolveArtifacts(merged);
+      this.stopOnEntry = merged.stopOnEntry !== false;
+
+      if (
+        (merged.asm === undefined || merged.asm === '') &&
+        (merged.hex === undefined || merged.hex === '') &&
+        (merged.listing === undefined || merged.listing === '')
+      ) {
+        const created = await this.promptForConfigCreation(args);
+        if (created) {
+          this.sendErrorResponse(
+            response,
+            1,
+            'Debug80: Created debug80.json. Set up your default target and re-run.'
+          );
+          return;
+        }
+        this.sendErrorResponse(
+          response,
+          1,
+          'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
+        );
+        return;
+      }
+
+      const baseDir = this.resolveBaseDir(merged);
+      const { hexPath, listingPath, asmPath } = this.resolveArtifacts(merged, baseDir);
+
+      this.assembleIfRequested(merged, asmPath, hexPath, listingPath);
 
       if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
-        const created = this.offerInitConfig();
+        const created = await this.promptForConfigCreation(args);
         if (created) {
           this.sendErrorResponse(
             response,
@@ -88,7 +124,11 @@ export class Z80DebugSession extends DebugSession {
           );
           return;
         }
-        this.sendErrorResponse(response, 1, `Z80 artifacts not found. Expected HEX at "${hexPath}" and LST at "${listingPath}".`);
+        this.sendErrorResponse(
+          response,
+          1,
+          `Z80 artifacts not found. Expected HEX at "${hexPath}" and LST at "${listingPath}".`
+        );
         return;
       }
 
@@ -100,7 +140,7 @@ export class Z80DebugSession extends DebugSession {
       this.listingPath = listingPath;
       this.sourceFile = listingPath;
 
-      this.runtime = createZ80Runtime(program, args.entry);
+      this.runtime = createZ80Runtime(program, merged.entry);
 
       this.sendResponse(response);
 
@@ -424,32 +464,73 @@ export class Z80DebugSession extends DebugSession {
         ...cfg,
         ...targetCfg,
         ...args,
-        asm:
-          args.asm ??
-          args.sourceFile ??
-          targetCfg?.asm ??
-          targetCfg?.sourceFile ??
-          targetCfg?.source ??
-          cfg.asm ??
-          cfg.sourceFile ??
-          cfg.source,
-        sourceFile:
-          args.sourceFile ??
-          args.asm ??
-          targetCfg?.sourceFile ??
-          targetCfg?.asm ??
-          targetCfg?.source ??
-          cfg.sourceFile ??
-          cfg.asm ??
-          cfg.source,
-        hex: args.hex ?? targetCfg?.hex ?? cfg.hex,
-        listing: args.listing ?? targetCfg?.listing ?? cfg.listing,
-        outputDir: args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir,
-        artifactBase: args.artifactBase ?? targetCfg?.artifactBase ?? cfg.artifactBase,
-        entry: args.entry ?? targetCfg?.entry ?? cfg.entry,
-        stopOnEntry: args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry,
-        target: targetName ?? args.target,
       };
+
+      const asmResolved =
+        args.asm ??
+        args.sourceFile ??
+        targetCfg?.asm ??
+        targetCfg?.sourceFile ??
+        targetCfg?.source ??
+        cfg.asm ??
+        cfg.sourceFile ??
+        cfg.source;
+      if (asmResolved !== undefined) {
+        merged.asm = asmResolved;
+      }
+
+      const sourceResolved =
+        args.sourceFile ??
+        args.asm ??
+        targetCfg?.sourceFile ??
+        targetCfg?.asm ??
+        targetCfg?.source ??
+        cfg.sourceFile ??
+        cfg.asm ??
+        cfg.source;
+      if (sourceResolved !== undefined) {
+        merged.sourceFile = sourceResolved;
+      }
+
+      const hexResolved = args.hex ?? targetCfg?.hex ?? cfg.hex;
+      if (hexResolved !== undefined) {
+        merged.hex = hexResolved;
+      }
+
+      const listingResolved = args.listing ?? targetCfg?.listing ?? cfg.listing;
+      if (listingResolved !== undefined) {
+        merged.listing = listingResolved;
+      }
+
+      const outputDirResolved = args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir;
+      if (outputDirResolved !== undefined) {
+        merged.outputDir = outputDirResolved;
+      }
+
+      const artifactResolved = args.artifactBase ?? targetCfg?.artifactBase ?? cfg.artifactBase;
+      if (artifactResolved !== undefined) {
+        merged.artifactBase = artifactResolved;
+      }
+
+      const entryResolved = args.entry ?? targetCfg?.entry ?? cfg.entry;
+      if (entryResolved !== undefined) {
+        merged.entry = entryResolved;
+      }
+
+      const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
+      if (stopOnEntryResolved !== undefined) {
+        merged.stopOnEntry = stopOnEntryResolved;
+      }
+
+      const assembleResolved = args.assemble ?? targetCfg?.assemble ?? cfg.assemble;
+      if (assembleResolved !== undefined) {
+        merged.assemble = assembleResolved;
+      }
+
+      const targetResolved = targetName ?? args.target;
+      if (targetResolved !== undefined) {
+        merged.target = targetResolved;
+      }
 
       return merged;
     } catch {
@@ -457,16 +538,211 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private offerInitConfig(): boolean {
+  private async promptForConfigCreation(args: LaunchRequestArguments): Promise<boolean> {
+    const startDir =
+      args.asm !== undefined && args.asm !== ''
+        ? path.dirname(args.asm)
+        : args.sourceFile !== undefined && args.sourceFile !== ''
+        ? path.dirname(args.sourceFile)
+        : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? startDir;
+    const configPath = path.join(workspaceRoot, 'debug80.json');
+    if (fs.existsSync(configPath)) {
+      return false;
+    }
+
+    const inferred = inferDefaultTarget(workspaceRoot);
+    const choice = await vscode.window.showInformationMessage(
+      inferred.found
+        ? `Debug80: Create debug80.json targeting ${inferred.sourceFile}?`
+        : `Debug80: Create debug80.json targeting ${inferred.sourceFile}? (file not found yet)`,
+      { modal: true },
+      'Create',
+      'Cancel'
+    );
+    if (choice !== 'Create') {
+      return false;
+    }
+
+    ensureDirExists(path.join(workspaceRoot, path.dirname(inferred.sourceFile)));
+    ensureDirExists(path.join(workspaceRoot, inferred.outputDir));
+
+    const config = {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: inferred.sourceFile,
+          outputDir: inferred.outputDir,
+          artifactBase: inferred.artifactBase,
+          entry: 0,
+        },
+      },
+    };
+
     try {
-      void vscode.commands.executeCommand('debug80.initProject');
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      void vscode.window.showInformationMessage(
+        `Debug80: Created debug80.json targeting ${inferred.sourceFile}.`
+      );
       return true;
-    } catch {
+    } catch (err) {
+      void vscode.window.showErrorMessage(
+        `Debug80: Failed to create debug80.json: ${String(err)}`
+      );
       return false;
     }
   }
 
-  private resolveArtifacts(args: LaunchRequestArguments): { hexPath: string; listingPath: string } {
+  private assembleIfRequested(
+    args: LaunchRequestArguments,
+    asmPath: string | undefined,
+    hexPath: string,
+    listingPath: string
+  ): void {
+    if (asmPath === undefined || asmPath === '' || args.assemble === false) {
+      return;
+    }
+
+    const asmDir = path.dirname(asmPath);
+    const outDir = path.dirname(hexPath);
+    if (!fs.existsSync(outDir)) {
+      fs.mkdirSync(outDir, { recursive: true });
+    }
+
+    const command = this.findAsm80Binary(asmDir) ?? 'asm80';
+    const outArg = path.relative(asmDir, hexPath);
+    const result = cp.spawnSync(
+      command,
+      ['-m', 'Z80', '-t', 'hex', '-o', outArg, path.basename(asmPath)],
+      {
+        cwd: asmDir,
+        encoding: 'utf-8',
+      }
+    );
+
+    if (result.error) {
+      const enoent = (result.error as NodeJS.ErrnoException)?.code === 'ENOENT';
+      const message = enoent
+        ? 'asm80 not found. Install it with "npm install -D asm80" or ensure it is on PATH.'
+        : `asm80 failed to start: ${result.error.message ?? String(result.error)}`;
+      throw new Error(message);
+    }
+
+    if (result.status !== 0) {
+      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+      const suffix = output.length > 0 ? `: ${output}` : '';
+      throw new Error(`asm80 exited with code ${result.status}${suffix}`);
+    }
+
+    const producedListing = path.join(
+      path.dirname(hexPath),
+      `${path.basename(hexPath, path.extname(hexPath))}.lst`
+    );
+    if (listingPath !== producedListing && fs.existsSync(producedListing)) {
+      const listingDir = path.dirname(listingPath);
+      if (!fs.existsSync(listingDir)) {
+        fs.mkdirSync(listingDir, { recursive: true });
+      }
+      fs.copyFileSync(producedListing, listingPath);
+    }
+  }
+
+  private findAsm80Binary(startDir: string): string | undefined {
+    const candidates =
+      process.platform === 'win32'
+        ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80']
+        : ['asm80'];
+
+    for (let dir = startDir; ; ) {
+      const binDir = path.join(dir, 'node_modules', '.bin');
+      for (const name of candidates) {
+        const candidate = path.join(binDir, name);
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      }
+
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+
+    const bundled = this.resolveBundledAsm80();
+    if (bundled !== undefined) {
+      return bundled;
+    }
+
+    return undefined;
+  }
+
+  private resolveBundledAsm80(): string | undefined {
+    const tryResolve = (id: string): string | undefined => {
+      try {
+        return require.resolve(id);
+      } catch {
+        return undefined;
+      }
+    };
+
+    const direct = tryResolve('asm80/bin/asm80') ?? tryResolve('asm80/bin/asm80.js');
+    if (direct !== undefined) {
+      return direct;
+    }
+
+    const pkg = tryResolve('asm80/package.json');
+    if (pkg !== undefined) {
+      const root = path.dirname(pkg);
+      const bin = path.join(root, 'bin', 'asm80');
+      if (fs.existsSync(bin)) {
+        return bin;
+      }
+      const binJs = `${bin}.js`;
+      if (fs.existsSync(binJs)) {
+        return binJs;
+      }
+    }
+
+    return undefined;
+  }
+
+  private resolveBaseDir(args: LaunchRequestArguments): string {
+    const configDir =
+      args.projectConfig !== undefined && args.projectConfig !== '' && path.isAbsolute(args.projectConfig)
+        ? path.dirname(args.projectConfig)
+        : undefined;
+    if (configDir !== undefined) {
+      return configDir;
+    }
+    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    return workspace ?? process.cwd();
+  }
+
+  private resolveAsmPath(asm: string | undefined, baseDir: string): string | undefined {
+    if (asm === undefined || asm === '') {
+      return undefined;
+    }
+    if (path.isAbsolute(asm)) {
+      return asm;
+    }
+    return path.resolve(baseDir, asm);
+  }
+
+  private resolveRelative(p: string, baseDir: string): string {
+    if (path.isAbsolute(p)) {
+      return p;
+    }
+    return path.resolve(baseDir, p);
+  }
+
+  private resolveArtifacts(
+    args: LaunchRequestArguments,
+    baseDir: string
+  ): { hexPath: string; listingPath: string; asmPath?: string | undefined } {
+    const asmPath = this.resolveAsmPath(args.asm, baseDir);
+
     let hexPath = args.hex;
     let listingPath = args.listing;
 
@@ -474,11 +750,12 @@ export class Z80DebugSession extends DebugSession {
     const listingMissing = listingPath === undefined || listingPath === '';
 
     if (hexMissing || listingMissing) {
-      if (args.asm === undefined || args.asm === '') {
+      if (asmPath === undefined || asmPath === '') {
         throw new Error('Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.');
       }
-      const artifactBase = args.artifactBase ?? path.basename(args.asm, path.extname(args.asm));
-      const outDir = args.outputDir ?? path.dirname(args.asm);
+      const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
+      const outDirRaw = args.outputDir ?? path.dirname(asmPath);
+      const outDir = this.resolveRelative(outDirRaw, baseDir);
       hexPath = path.join(outDir, `${artifactBase}.hex`);
       listingPath = path.join(outDir, `${artifactBase}.lst`);
     }
@@ -492,7 +769,10 @@ export class Z80DebugSession extends DebugSession {
       throw new Error('Z80 runtime requires resolvable HEX and LST paths.');
     }
 
-    return { hexPath, listingPath };
+    const hexAbs = this.resolveRelative(hexPath, baseDir);
+    const listingAbs = this.resolveRelative(listingPath, baseDir);
+
+    return { hexPath: hexAbs, listingPath: listingAbs, asmPath };
   }
 }
 
