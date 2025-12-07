@@ -73,4 +73,14 @@ describe('Z80 utilities', () => {
     assert.equal(result.reason, 'breakpoint');
     assert.equal(runtime.getPC(), 0x0002);
   });
+
+  it('executes call/ret and updates registers correctly', () => {
+    const hex = ':090000003E01CD0600763CC976F4\n:00000001FF'; // LD A,1; CALL 0006; HALT; INC A; RET; HALT
+    const program = parseIntelHex(hex);
+    const runtime = createZ80Runtime(program);
+
+    const result = runtime.runUntilStop(new Set<number>());
+    assert.equal(result.reason, 'halt');
+    assert.equal(runtime.getRegisters().a, 0x02);
+  });
 });
