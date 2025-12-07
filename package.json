@@ -17,14 +17,14 @@
   ],
   "activationEvents": [
     "onDebug",
-    "onCommand:debug80.initProject"
+    "onCommand:debug80.createProject"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "debug80.initProject",
-        "title": "Debug80: Initialize Project Config"
+        "command": "debug80.createProject",
+        "title": "Debug80: Create Project (config + launch)"
       }
     ],
     "debuggers": [

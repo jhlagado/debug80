@@ -43,8 +43,8 @@ Fields per target:
 
 ## Z80 workflow
 
-1) Add `.debug80.json` as above (defaults to `targets.app` with `src/main.asm` if you use the init command).
-2) Start debugging with “Debug Z80 (project config)”; the adapter reads `debug80.json`, runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
+1) Run “Debug80: Create Project (config + launch)” to scaffold `debug80.json` (defaults to `targets.app` with `src/main.asm`) and `.vscode/launch.json`.
+2) Start debugging with the generated debug80 launch; the adapter reads `debug80.json`, runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
 3) Set breakpoints in the generated `.lst`; they map to instruction addresses.
 4) Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
 

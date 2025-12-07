@@ -20,7 +20,6 @@ import {
   Z80Runtime,
   RunResult as Z80RunResult,
 } from './z80-runtime';
-import { ensureDirExists, inferDefaultTarget } from './config-utils';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -538,60 +537,9 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private async promptForConfigCreation(args: LaunchRequestArguments): Promise<boolean> {
-    const startDir =
-      args.asm !== undefined && args.asm !== ''
-        ? path.dirname(args.asm)
-        : args.sourceFile !== undefined && args.sourceFile !== ''
-        ? path.dirname(args.sourceFile)
-        : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
-
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? startDir;
-    const configPath = path.join(workspaceRoot, 'debug80.json');
-    if (fs.existsSync(configPath)) {
-      return false;
-    }
-
-    const inferred = inferDefaultTarget(workspaceRoot);
-    const choice = await vscode.window.showInformationMessage(
-      inferred.found
-        ? `Debug80: Create debug80.json targeting ${inferred.sourceFile}?`
-        : `Debug80: Create debug80.json targeting ${inferred.sourceFile}? (file not found yet)`,
-      { modal: true },
-      'Create',
-      'Cancel'
-    );
-    if (choice !== 'Create') {
-      return false;
-    }
-
-    ensureDirExists(path.join(workspaceRoot, path.dirname(inferred.sourceFile)));
-    ensureDirExists(path.join(workspaceRoot, inferred.outputDir));
-
-    const config = {
-      defaultTarget: 'app',
-      targets: {
-        app: {
-          sourceFile: inferred.sourceFile,
-          outputDir: inferred.outputDir,
-          artifactBase: inferred.artifactBase,
-          entry: 0,
-        },
-      },
-    };
-
-    try {
-      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-      void vscode.window.showInformationMessage(
-        `Debug80: Created debug80.json targeting ${inferred.sourceFile}.`
-      );
-      return true;
-    } catch (err) {
-      void vscode.window.showErrorMessage(
-        `Debug80: Failed to create debug80.json: ${String(err)}`
-      );
-      return false;
-    }
+  private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
+    const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
+    return Boolean(created);
   }
 
   private assembleIfRequested(
