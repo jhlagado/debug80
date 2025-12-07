@@ -15,10 +15,7 @@
   "categories": [
     "Debuggers"
   ],
-  "activationEvents": [
-    "onDebug",
-    "onCommand:debug80.createProject"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

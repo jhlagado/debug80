@@ -1,9 +1,3 @@
-// @ts-nocheck
-/* eslint-disable max-lines */
-/* eslint-disable no-lonely-if */
-/* eslint-disable no-param-reassign */
-/* eslint-disable camelcase */
-
 import {
   cycle_counts_cb,
   cycle_counts_dd,
@@ -12,10 +6,26 @@ import {
   parity_bits,
 } from './z80-constants';
 
+type OpcodeHandler = () => void;
+type OpcodeTable = OpcodeHandler[];
+const noop: OpcodeHandler = (): void => {
+  // intentionally empty
+};
+type ByteOpHandler = (value: number) => number;
+type ByteOpVoid = (value: number) => void;
+const noopByteOp: ByteOpHandler = (value: number): number => value;
+const noopVoidOp: ByteOpVoid = (_value: number): void => {
+  // intentionally empty
+};
+const getByteOp = (ops: ByteOpHandler[], index: number): ByteOpHandler =>
+  ops[index] ?? noopByteOp;
+const getVoidOp = (ops: ByteOpVoid[], index: number): ByteOpVoid =>
+  ops[index] ?? noopVoidOp;
+
 export interface Callbacks {
-  mem_read: (addr: number) => any;
-  mem_write: (addr: number, value: number) => any;
-  io_read: (port: number) => any;
+  mem_read: (addr: number) => number;
+  mem_write: (addr: number, value: number) => void;
+  io_read: (port: number) => number;
   io_write: (port: number, value: number) => void;
 }
 
@@ -71,7 +81,7 @@ export interface Cpu {
 
 export type Flags = Cpu['flags'];
 
-const setFlagsRegister = (cpu: Cpu, operand: number) => {
+const setFlagsRegister = (cpu: Cpu, operand: number): void => {
   // We need to set the F register, probably for a POP AF,
   //  so break out the given value into our separate flags.
   cpu.flags.S = (operand & 0x80) >>> 7;
@@ -92,7 +102,7 @@ export const setSZXYFlags = (cpu: Cpu, value: number): void => {
   cpu.flags.X = (next & 0x08) >>> 3;
 };
 
-const pushWord = (cpu: Cpu, cb: Callbacks, operand: number) => {
+const pushWord = (cpu: Cpu, cb: Callbacks, operand: number): void => {
   // Pretty obvious what this function does; given a 16-bit value,
   //  decrement the stack pointer, write the high byte to the new
   //  stack pointer location, then repeat for the low byte.
@@ -107,8 +117,8 @@ const pushWord = (cpu: Cpu, cb: Callbacks, operand: number) => {
 //
 // What begins here are just general utility functions, used variously.
 // ////////////////////////////////////////////////////////////////////////////
-const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
-  const get_signed_offset_byte = (value: number) => {
+const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number): void => {
+  const get_signed_offset_byte = (value: number): number => {
     // This function requires some explanation.
     // We just use JavaScript Number variables for our registers,
     //  not like a typed array or anything.
@@ -132,7 +142,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     return value;
   };
 
-  const get_flags_register = () => {
+  const get_flags_register = (): number => {
     // We need the whole F register for some reason.
     //  probably a PUSH AF instruction,
     //  so make the F register out of our separate flags.
@@ -148,7 +158,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     );
   };
 
-  const get_flags_prime = () => {
+  const get_flags_prime = (): number => {
     // This is the same as the above for the F' register.
     return (
       (cpu.flags_prime.S << 7) |
@@ -162,7 +172,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     );
   };
 
-  const set_flags_prime = (operand: number) => {
+  const set_flags_prime = (operand: number): void => {
     // Again, this is the same as the above for F'.
     cpu.flags_prime.S = (operand & 0x80) >>> 7;
     cpu.flags_prime.Z = (operand & 0x40) >>> 6;
@@ -174,7 +184,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags_prime.C = operand & 0x01;
   };
 
-  const update_xy_flags = (result: number) => {
+  const update_xy_flags = (result: number): void => {
     // Most of the time, the undocumented flags
     //  (sometimes called X and Y, or 3 and 5),
     //  take their values from the corresponding bits
@@ -185,7 +195,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.X = (result & 0x08) >>> 3;
   };
 
-  const pop_word = () => {
+  const pop_word = (): number => {
     // Again, not complicated; read a byte off the top of the stack,
     //  increment the stack pointer, rinse and repeat.
     let retval = cb.mem_read(cpu.sp) & 0xff;
@@ -201,7 +211,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   //  utility function that handles all variations of that instruction.
   // Those utility functions begin here.
   // ////////////////////////////////////////////////////////////////////////////
-  const do_conditional_absolute_jump = (condition: boolean) => {
+  const do_conditional_absolute_jump = (condition: boolean): void => {
     // This function implements the JP [condition],nn instructions.
     if (condition) {
       // We're taking this jump, so write the new PC,
@@ -219,7 +229,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
 
-  const do_conditional_relative_jump = (condition: boolean) => {
+  const do_conditional_relative_jump = (condition: boolean): void => {
     // This function implements the JR [condition],n instructions.
     if (condition) {
       // We need a few more cycles to actually take the jump.
@@ -234,7 +244,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
 
-  const do_conditional_call = (condition: boolean) => {
+  const do_conditional_call = (condition: boolean): void => {
     // This function is the CALL [condition],nn instructions.
     // If you've seen the previous functions, you know this drill.
     if (condition) {
@@ -249,20 +259,20 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
 
-  const do_conditional_return = (condition: boolean) => {
+  const do_conditional_return = (condition: boolean): void => {
     if (condition) {
       cpu.cycle_counter += 6;
       cpu.pc = (pop_word() - 1) & 0xffff;
     }
   };
 
-  const do_reset = (address: number) => {
+  const do_reset = (address: number): void => {
     // The RST [address] instructions go through here.
     pushWord(cpu, cb, (cpu.pc + 1) & 0xffff);
     cpu.pc = (address - 1) & 0xffff;
   };
 
-  const do_add = (operand: number) => {
+  const do_add = (operand: number): void => {
     // This is the ADD A, [operand] instructions.
     // We'll do the literal addition, which includes any overflow,
     //  so that we can more easily figure out whether we had
@@ -287,7 +297,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
 
-  const do_adc = (operand: number) => {
+  const do_adc = (operand: number): void => {
     const result = cpu.a + operand + cpu.flags.C;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
@@ -305,7 +315,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
 
-  const do_sub = (operand: number) => {
+  const do_sub = (operand: number): void => {
     const result = cpu.a - operand;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
@@ -322,7 +332,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
 
-  const do_sbc = (operand: number) => {
+  const do_sbc = (operand: number): void => {
     const result = cpu.a - operand - cpu.flags.C;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
@@ -340,7 +350,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
 
-  const do_cp = (operand: number) => {
+  const do_cp = (operand: number): void => {
     // A compare instruction is just a subtraction that doesn't save the value,
     //  so we implement it as... a subtraction that doesn't save the value.
     const temp = cpu.a;
@@ -351,41 +361,41 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(operand);
   };
 
-  const do_and = (operand: number) => {
+  const do_and = (operand: number): void => {
     // The logic instructions are all pretty straightforward.
     cpu.a &= operand & 0xff;
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
     cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 1;
-    cpu.flags.P = parity_bits[cpu.a];
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
-  const do_or = (operand: number) => {
+  const do_or = (operand: number): void => {
     cpu.a = (operand | cpu.a) & 0xff;
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
     cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = parity_bits[cpu.a];
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
-  const do_xor = (operand: number) => {
+  const do_xor = (operand: number): void => {
     cpu.a = (operand ^ cpu.a) & 0xff;
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
     cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = parity_bits[cpu.a];
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
-  const do_inc = (operand: number) => {
+  const do_inc = (operand: number): number => {
     let result = operand + 1;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
@@ -401,7 +411,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     return result;
   };
 
-  const do_dec = (operand: number) => {
+  const do_dec = (operand: number): number => {
     let result = operand - 1;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
@@ -416,7 +426,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     return result;
   };
 
-  const do_hl_add = (operand: number) => {
+  const do_hl_add = (operand: number): void => {
     // The HL arithmetic instructions are the same as the A ones,
     //  just with twice as many bits happening.
     const hl = cpu.l | (cpu.h << 8);
@@ -432,7 +442,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.h);
   };
 
-  const do_hl_adc = (operand: number) => {
+  const do_hl_adc = (operand: number): void => {
     operand += cpu.flags.C;
     const hl = cpu.l | (cpu.h << 8);
     const result = hl + operand;
@@ -454,7 +464,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.h);
   };
 
-  const do_hl_sbc = (operand: number) => {
+  const do_hl_sbc = (operand: number): void => {
     operand += cpu.flags.C;
     const hl = cpu.l | (cpu.h << 8);
     const result = hl - operand;
@@ -476,20 +486,20 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.h);
   };
 
-  const do_in = (port: number) => {
-    const result = cb.io_read(port);
+  const do_in = (port: number): number => {
+    const result = cb.io_read(port) & 0xff;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
-    cpu.flags.Z = result ? 0 : 1;
+    cpu.flags.Z = result === 0 ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = parity_bits[result] ? 1 : 0;
+    cpu.flags.P = (parity_bits[result] ?? 0) === 1 ? 1 : 0;
     cpu.flags.N = 0;
     update_xy_flags(result);
 
     return result;
   };
 
-  const do_neg = () => {
+  const do_neg = (): void => {
     // This instruction is defined to not alter the register if it === 0x80.
     if (cpu.a !== 0x80) {
       // This is a signed operation, so convert A to a signed value.
@@ -507,7 +517,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
 
-  const do_ldi = () => {
+  const do_ldi = (): void => {
     // Copy the value that we're supposed to copy.
     const read_value = cb.mem_read(cpu.l | (cpu.h << 8));
     cb.mem_write(cpu.e | (cpu.d << 8), read_value);
@@ -530,7 +540,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.X = ((cpu.a + read_value) & 0x08) >>> 3;
   };
 
-  const do_cpi = () => {
+  const do_cpi = (): void => {
     const temp_carry = cpu.flags.C;
     const read_value = cb.mem_read(cpu.l | (cpu.h << 8));
     do_cp(read_value);
@@ -548,7 +558,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = result ? 1 : 0;
   };
 
-  const do_ini = () => {
+  const do_ini = (): void => {
     cpu.b = do_dec(cpu.b);
 
     cb.mem_write(cpu.l | (cpu.h << 8), cb.io_read((cpu.b << 8) | cpu.c));
@@ -560,7 +570,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.N = 1;
   };
 
-  const do_outi = () => {
+  const do_outi = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cb.mem_read(cpu.l | (cpu.h << 8)));
 
     const result = (cpu.l | (cpu.h << 8)) + 1;
@@ -571,7 +581,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.N = 1;
   };
 
-  const do_ldd = () => {
+  const do_ldd = (): void => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -593,7 +603,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.X = ((cpu.a + read_value) & 0x08) >>> 3;
   };
 
-  const do_cpd = () => {
+  const do_cpd = (): void => {
     const temp_carry = cpu.flags.C;
     const read_value = cb.mem_read(cpu.l | (cpu.h << 8));
     do_cp(read_value);
@@ -611,7 +621,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = result ? 1 : 0;
   };
 
-  const do_ind = () => {
+  const do_ind = (): void => {
     cpu.b = do_dec(cpu.b);
 
     cb.mem_write(cpu.l | (cpu.h << 8), cb.io_read((cpu.b << 8) | cpu.c));
@@ -623,7 +633,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.N = 1;
   };
 
-  const do_outd = () => {
+  const do_outd = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cb.mem_read(cpu.l | (cpu.h << 8)));
 
     const result = (cpu.l | (cpu.h << 8)) - 1;
@@ -634,7 +644,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.N = 1;
   };
 
-  const do_rlc = (operand: number) => {
+  const do_rlc = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -642,14 +652,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand << 1) | cpu.flags.C) & 0xff;
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_rrc = (operand: number) => {
+  const do_rrc = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -657,14 +667,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand >>> 1) & 0x7f) | (cpu.flags.C << 7);
 
     cpu.flags.Z = !(operand & 0xff) ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand & 0xff;
   };
 
-  const do_rl = (operand: number) => {
+  const do_rl = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -673,14 +683,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand << 1) | temp) & 0xff;
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_rr = (operand: number) => {
+  const do_rr = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -689,14 +699,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand >>> 1) & 0x7f) | (temp << 7);
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_sla = (operand: number) => {
+  const do_sla = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -704,14 +714,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = (operand << 1) & 0xff;
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_sra = (operand: number) => {
+  const do_sra = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -719,14 +729,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand >>> 1) & 0x7f) | (operand & 0x80);
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_sll = (operand: number) => {
+  const do_sll = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -734,14 +744,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = ((operand << 1) & 0xff) | 1;
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = operand & 0x80 ? 1 : 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_srl = (operand: number) => {
+  const do_srl = (operand: number): number => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
 
@@ -749,14 +759,14 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     operand = (operand >>> 1) & 0x7f;
 
     cpu.flags.Z = !operand ? 1 : 0;
-    cpu.flags.P = parity_bits[operand];
+    cpu.flags.P = parity_bits[operand] ?? 0;
     cpu.flags.S = 0;
     update_xy_flags(operand);
 
     return operand;
   };
 
-  const do_ix_add = (operand: number) => {
+  const do_ix_add = (operand: number): void => {
     cpu.flags.N = 0;
 
     const result = cpu.ix + operand;
@@ -774,24 +784,24 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   // The undocumented instructions here are those that deal with only one byte
   //  of the two-byte IX register; the bytes are designed IXH and IXL here.
   // ////////////////////////////////////////////////////////////////////////////
-  const dd_instructions: (() => void)[] = [];
+  const dd_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
   // 0x09 : ADD IX, BC
-  dd_instructions[0x09] = () => {
+  dd_instructions[0x09] = (): void => {
     do_ix_add(cpu.c | (cpu.b << 8));
   };
   // 0x19 : ADD IX, DE
-  dd_instructions[0x19] = () => {
+  dd_instructions[0x19] = (): void => {
     do_ix_add(cpu.e | (cpu.d << 8));
   };
   // 0x21 : LD IX, nn
-  dd_instructions[0x21] = () => {
+  dd_instructions[0x21] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.ix = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.ix |= cb.mem_read(cpu.pc) << 8;
   };
   // 0x22 : LD (nn), IX
-  dd_instructions[0x22] = () => {
+  dd_instructions[0x22] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -801,28 +811,28 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, (cpu.ix >>> 8) & 0xff);
   };
   // 0x23 : INC IX
-  dd_instructions[0x23] = () => {
+  dd_instructions[0x23] = (): void => {
     cpu.ix = (cpu.ix + 1) & 0xffff;
   };
   // 0x24 : INC IXH (Undocumented)
-  dd_instructions[0x24] = () => {
+  dd_instructions[0x24] = (): void => {
     cpu.ix = (do_inc(cpu.ix >>> 8) << 8) | (cpu.ix & 0xff);
   };
   // 0x25 : DEC IXH (Undocumented)
-  dd_instructions[0x25] = () => {
+  dd_instructions[0x25] = (): void => {
     cpu.ix = (do_dec(cpu.ix >>> 8) << 8) | (cpu.ix & 0xff);
   };
   // 0x26 : LD IXH, n (Undocumented)
-  dd_instructions[0x26] = () => {
+  dd_instructions[0x26] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.ix = (cb.mem_read(cpu.pc) << 8) | (cpu.ix & 0xff);
   };
   // 0x29 : ADD IX, IX
-  dd_instructions[0x29] = () => {
+  dd_instructions[0x29] = (): void => {
     do_ix_add(cpu.ix);
   };
   // 0x2a : LD IX, (nn)
-  dd_instructions[0x2a] = () => {
+  dd_instructions[0x2a] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -832,341 +842,341 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.ix |= cb.mem_read((address + 1) & 0xffff) << 8;
   };
   // 0x2b : DEC IX
-  dd_instructions[0x2b] = () => {
+  dd_instructions[0x2b] = (): void => {
     cpu.ix = (cpu.ix - 1) & 0xffff;
   };
   // 0x2c : INC IXL (Undocumented)
-  dd_instructions[0x2c] = () => {
+  dd_instructions[0x2c] = (): void => {
     cpu.ix = do_inc(cpu.ix & 0xff) | (cpu.ix & 0xff00);
   };
   // 0x2d : DEC IXL (Undocumented)
-  dd_instructions[0x2d] = () => {
+  dd_instructions[0x2d] = (): void => {
     cpu.ix = do_dec(cpu.ix & 0xff) | (cpu.ix & 0xff00);
   };
   // 0x2e : LD IXL, n (Undocumented)
-  dd_instructions[0x2e] = () => {
+  dd_instructions[0x2e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.ix = (cb.mem_read(cpu.pc) & 0xff) | (cpu.ix & 0xff00);
   };
   // 0x34 : INC (IX+n)
-  dd_instructions[0x34] = () => {
+  dd_instructions[0x34] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     const value = cb.mem_read((offset + cpu.ix) & 0xffff);
     cb.mem_write((offset + cpu.ix) & 0xffff, do_inc(value));
   };
   // 0x35 : DEC (IX+n)
-  dd_instructions[0x35] = () => {
+  dd_instructions[0x35] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     const value = cb.mem_read((offset + cpu.ix) & 0xffff);
     cb.mem_write((offset + cpu.ix) & 0xffff, do_dec(value));
   };
   // 0x36 : LD (IX+n), n
-  dd_instructions[0x36] = () => {
+  dd_instructions[0x36] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cb.mem_write((cpu.ix + offset) & 0xffff, cb.mem_read(cpu.pc));
   };
   // 0x39 : ADD IX, SP
-  dd_instructions[0x39] = () => {
+  dd_instructions[0x39] = (): void => {
     do_ix_add(cpu.sp);
   };
   // 0x44 : LD B, IXH (Undocumented)
-  dd_instructions[0x44] = () => {
+  dd_instructions[0x44] = (): void => {
     cpu.b = (cpu.ix >>> 8) & 0xff;
   };
   // 0x45 : LD B, IXL (Undocumented)
-  dd_instructions[0x45] = () => {
+  dd_instructions[0x45] = (): void => {
     cpu.b = cpu.ix & 0xff;
   };
   // 0x46 : LD B, (IX+n)
-  dd_instructions[0x46] = () => {
+  dd_instructions[0x46] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.b = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x4c : LD C, IXH (Undocumented)
-  dd_instructions[0x4c] = () => {
+  dd_instructions[0x4c] = (): void => {
     cpu.c = (cpu.ix >>> 8) & 0xff;
   };
   // 0x4d : LD C, IXL (Undocumented)
-  dd_instructions[0x4d] = () => {
+  dd_instructions[0x4d] = (): void => {
     cpu.c = cpu.ix & 0xff;
   };
   // 0x4e : LD C, (IX+n)
-  dd_instructions[0x4e] = () => {
+  dd_instructions[0x4e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.c = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x54 : LD D, IXH (Undocumented)
-  dd_instructions[0x54] = () => {
+  dd_instructions[0x54] = (): void => {
     cpu.d = (cpu.ix >>> 8) & 0xff;
   };
   // 0x55 : LD D, IXL (Undocumented)
-  dd_instructions[0x55] = () => {
+  dd_instructions[0x55] = (): void => {
     cpu.d = cpu.ix & 0xff;
   };
   // 0x56 : LD D, (IX+n)
-  dd_instructions[0x56] = () => {
+  dd_instructions[0x56] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.d = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x5c : LD E, IXH (Undocumented)
-  dd_instructions[0x5c] = () => {
+  dd_instructions[0x5c] = (): void => {
     cpu.e = (cpu.ix >>> 8) & 0xff;
   };
   // 0x5d : LD E, IXL (Undocumented)
-  dd_instructions[0x5d] = () => {
+  dd_instructions[0x5d] = (): void => {
     cpu.e = cpu.ix & 0xff;
   };
   // 0x5e : LD E, (IX+n)
-  dd_instructions[0x5e] = () => {
+  dd_instructions[0x5e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.e = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x60 : LD IXH, B (Undocumented)
-  dd_instructions[0x60] = () => {
+  dd_instructions[0x60] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | (cpu.b << 8);
   };
   // 0x61 : LD IXH, C (Undocumented)
-  dd_instructions[0x61] = () => {
+  dd_instructions[0x61] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | (cpu.c << 8);
   };
   // 0x62 : LD IXH, D (Undocumented)
-  dd_instructions[0x62] = () => {
+  dd_instructions[0x62] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | (cpu.d << 8);
   };
   // 0x63 : LD IXH, E (Undocumented)
-  dd_instructions[0x63] = () => {
+  dd_instructions[0x63] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | (cpu.e << 8);
   };
   // 0x64 : LD IXH, IXH (Undocumented)
-  dd_instructions[0x64] = () => {
+  dd_instructions[0x64] = (): void => {
     // No-op.
   };
   // 0x65 : LD IXH, IXL (Undocumented)
-  dd_instructions[0x65] = () => {
+  dd_instructions[0x65] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | ((cpu.ix & 0xff) << 8);
   };
   // 0x66 : LD H, (IX+n)
-  dd_instructions[0x66] = () => {
+  dd_instructions[0x66] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.h = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x67 : LD IXH, A (Undocumented)
-  dd_instructions[0x67] = () => {
+  dd_instructions[0x67] = (): void => {
     cpu.ix = (cpu.ix & 0xff) | (cpu.a << 8);
   };
   // 0x68 : LD IXL, B (Undocumented)
-  dd_instructions[0x68] = () => {
+  dd_instructions[0x68] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.b;
   };
   // 0x69 : LD IXL, C (Undocumented)
-  dd_instructions[0x69] = () => {
+  dd_instructions[0x69] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.c;
   };
   // 0x6a : LD IXL, D (Undocumented)
-  dd_instructions[0x6a] = () => {
+  dd_instructions[0x6a] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.d;
   };
   // 0x6b : LD IXL, E (Undocumented)
-  dd_instructions[0x6b] = () => {
+  dd_instructions[0x6b] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.e;
   };
   // 0x6c : LD IXL, IXH (Undocumented)
-  dd_instructions[0x6c] = () => {
+  dd_instructions[0x6c] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | (cpu.ix >>> 8);
   };
   // 0x6d : LD IXL, IXL (Undocumented)
-  dd_instructions[0x6d] = () => {
+  dd_instructions[0x6d] = (): void => {
     // No-op.
   };
   // 0x6e : LD L, (IX+n)
-  dd_instructions[0x6e] = () => {
+  dd_instructions[0x6e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.l = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x6f : LD IXL, A (Undocumented)
-  dd_instructions[0x6f] = () => {
+  dd_instructions[0x6f] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.a;
   };
   // 0x70 : LD (IX+n), B
-  dd_instructions[0x70] = () => {
+  dd_instructions[0x70] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.b);
   };
   // 0x71 : LD (IX+n), C
-  dd_instructions[0x71] = () => {
+  dd_instructions[0x71] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.c);
   };
   // 0x72 : LD (IX+n), D
-  dd_instructions[0x72] = () => {
+  dd_instructions[0x72] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.d);
   };
   // 0x73 : LD (IX+n), E
-  dd_instructions[0x73] = () => {
+  dd_instructions[0x73] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.e);
   };
   // 0x74 : LD (IX+n), H
-  dd_instructions[0x74] = () => {
+  dd_instructions[0x74] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.h);
   };
   // 0x75 : LD (IX+n), L
-  dd_instructions[0x75] = () => {
+  dd_instructions[0x75] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.l);
   };
   // 0x77 : LD (IX+n), A
-  dd_instructions[0x77] = () => {
+  dd_instructions[0x77] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cb.mem_write((cpu.ix + offset) & 0xffff, cpu.a);
   };
   // 0x7c : LD A, IXH (Undocumented)
-  dd_instructions[0x7c] = () => {
+  dd_instructions[0x7c] = (): void => {
     cpu.a = (cpu.ix >>> 8) & 0xff;
   };
   // 0x7d : LD A, IXL (Undocumented)
-  dd_instructions[0x7d] = () => {
+  dd_instructions[0x7d] = (): void => {
     cpu.a = cpu.ix & 0xff;
   };
   // 0x7e : LD A, (IX+n)
-  dd_instructions[0x7e] = () => {
+  dd_instructions[0x7e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.a = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
   // 0x84 : ADD A, IXH (Undocumented)
-  dd_instructions[0x84] = () => {
+  dd_instructions[0x84] = (): void => {
     do_add((cpu.ix >>> 8) & 0xff);
   };
   // 0x85 : ADD A, IXL (Undocumented)
-  dd_instructions[0x85] = () => {
+  dd_instructions[0x85] = (): void => {
     do_add(cpu.ix & 0xff);
   };
   // 0x86 : ADD A, (IX+n)
-  dd_instructions[0x86] = () => {
+  dd_instructions[0x86] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_add(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0x8c : ADC A, IXH (Undocumented)
-  dd_instructions[0x8c] = () => {
+  dd_instructions[0x8c] = (): void => {
     do_adc((cpu.ix >>> 8) & 0xff);
   };
   // 0x8d : ADC A, IXL (Undocumented)
-  dd_instructions[0x8d] = () => {
+  dd_instructions[0x8d] = (): void => {
     do_adc(cpu.ix & 0xff);
   };
   // 0x8e : ADC A, (IX+n)
-  dd_instructions[0x8e] = () => {
+  dd_instructions[0x8e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_adc(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0x94 : SUB IXH (Undocumented)
-  dd_instructions[0x94] = () => {
+  dd_instructions[0x94] = (): void => {
     do_sub((cpu.ix >>> 8) & 0xff);
   };
   // 0x95 : SUB IXL (Undocumented)
-  dd_instructions[0x95] = () => {
+  dd_instructions[0x95] = (): void => {
     do_sub(cpu.ix & 0xff);
   };
   // 0x96 : SUB A, (IX+n)
-  dd_instructions[0x96] = () => {
+  dd_instructions[0x96] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_sub(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0x9c : SBC IXH (Undocumented)
-  dd_instructions[0x9c] = () => {
+  dd_instructions[0x9c] = (): void => {
     do_sbc((cpu.ix >>> 8) & 0xff);
   };
   // 0x9d : SBC IXL (Undocumented)
-  dd_instructions[0x9d] = () => {
+  dd_instructions[0x9d] = (): void => {
     do_sbc(cpu.ix & 0xff);
   };
   // 0x9e : SBC A, (IX+n)
-  dd_instructions[0x9e] = () => {
+  dd_instructions[0x9e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_sbc(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0xa4 : AND IXH (Undocumented)
-  dd_instructions[0xa4] = () => {
+  dd_instructions[0xa4] = (): void => {
     do_and((cpu.ix >>> 8) & 0xff);
   };
   // 0xa5 : AND IXL (Undocumented)
-  dd_instructions[0xa5] = () => {
+  dd_instructions[0xa5] = (): void => {
     do_and(cpu.ix & 0xff);
   };
   // 0xa6 : AND A, (IX+n)
-  dd_instructions[0xa6] = () => {
+  dd_instructions[0xa6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_and(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0xac : XOR IXH (Undocumented)
-  dd_instructions[0xac] = () => {
+  dd_instructions[0xac] = (): void => {
     do_xor((cpu.ix >>> 8) & 0xff);
   };
   // 0xad : XOR IXL (Undocumented)
-  dd_instructions[0xad] = () => {
+  dd_instructions[0xad] = (): void => {
     do_xor(cpu.ix & 0xff);
   };
   // 0xae : XOR A, (IX+n)
-  dd_instructions[0xae] = () => {
+  dd_instructions[0xae] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_xor(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0xb4 : OR IXH (Undocumented)
-  dd_instructions[0xb4] = () => {
+  dd_instructions[0xb4] = (): void => {
     do_or((cpu.ix >>> 8) & 0xff);
   };
   // 0xb5 : OR IXL (Undocumented)
-  dd_instructions[0xb5] = () => {
+  dd_instructions[0xb5] = (): void => {
     do_or(cpu.ix & 0xff);
   };
   // 0xb6 : OR A, (IX+n)
-  dd_instructions[0xb6] = () => {
+  dd_instructions[0xb6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_or(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0xbc : CP IXH (Undocumented)
-  dd_instructions[0xbc] = () => {
+  dd_instructions[0xbc] = (): void => {
     do_cp((cpu.ix >>> 8) & 0xff);
   };
   // 0xbd : CP IXL (Undocumented)
-  dd_instructions[0xbd] = () => {
+  dd_instructions[0xbd] = (): void => {
     do_cp(cpu.ix & 0xff);
   };
   // 0xbe : CP A, (IX+n)
-  dd_instructions[0xbe] = () => {
+  dd_instructions[0xbe] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_cp(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
   // 0xcb : CB Prefix (IX bit instructions)
-  dd_instructions[0xcb] = () => {
+  dd_instructions[0xcb] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1177,7 +1187,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     //  by decoding the opcode directly, rather than using a table.
     if (opcode1 < 0x40) {
       // Shift and rotate instructions.
-      const ddcb_functions = [
+      const ddcb_functions: ByteOpHandler[] = [
         do_rlc,
         do_rrc,
         do_rl,
@@ -1190,7 +1200,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
 
       // Most of the opcodes in this range are not valid,
       //  so we map this opcode onto one of the ones that is.
-      const func = ddcb_functions[(opcode1 & 0x38) >>> 3];
+      const func = getByteOp(ddcb_functions, (opcode1 & 0x38) >>> 3);
       value = func(cb.mem_read((cpu.ix + offset) & 0xffff));
 
       cb.mem_write((cpu.ix + offset) & 0xffff, value);
@@ -1224,24 +1234,32 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     // This implements the undocumented shift, RES, and SET opcodes,
     //  which write their result to memory and also to an 8080 register.
     if (value !== undefined) {
-      if ((opcode1 & 0x07) === 0) cpu.b = value;
-      else if ((opcode1 & 0x07) === 1) cpu.c = value;
-      else if ((opcode1 & 0x07) === 2) cpu.d = value;
-      else if ((opcode1 & 0x07) === 3) cpu.e = value;
-      else if ((opcode1 & 0x07) === 4) cpu.h = value;
-      else if ((opcode1 & 0x07) === 5) cpu.l = value;
-      // 6 is the documented opcode, which doesn't set a register.
-      else if ((opcode1 & 0x07) === 7) cpu.a = value;
+      if ((opcode1 & 0x07) === 0) {
+        cpu.b = value;
+      } else if ((opcode1 & 0x07) === 1) {
+        cpu.c = value;
+      } else if ((opcode1 & 0x07) === 2) {
+        cpu.d = value;
+      } else if ((opcode1 & 0x07) === 3) {
+        cpu.e = value;
+      } else if ((opcode1 & 0x07) === 4) {
+        cpu.h = value;
+      } else if ((opcode1 & 0x07) === 5) {
+        cpu.l = value;
+      } else if ((opcode1 & 0x07) === 7) {
+        // 6 is the documented opcode, which doesn't set a register.
+        cpu.a = value;
+      }
     }
 
-    cpu.cycle_counter += cycle_counts_cb[opcode1] + 8;
+    cpu.cycle_counter += (cycle_counts_cb[opcode1] ?? 0) + 8;
   };
   // 0xe1 : POP IX
-  dd_instructions[0xe1] = () => {
+  dd_instructions[0xe1] = (): void => {
     cpu.ix = pop_word();
   };
   // 0xe3 : EX (SP), IX
-  dd_instructions[0xe3] = () => {
+  dd_instructions[0xe3] = (): void => {
     const temp = cpu.ix;
     cpu.ix = cb.mem_read(cpu.sp);
     cpu.ix |= cb.mem_read((cpu.sp + 1) & 0xffff) << 8;
@@ -1249,15 +1267,15 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((cpu.sp + 1) & 0xffff, (temp >>> 8) & 0xff);
   };
   // 0xe5 : PUSH IX
-  dd_instructions[0xe5] = () => {
+  dd_instructions[0xe5] = (): void => {
     pushWord(cpu, cb, cpu.ix);
   };
   // 0xe9 : JP (IX)
-  dd_instructions[0xe9] = () => {
+  dd_instructions[0xe9] = (): void => {
     cpu.pc = (cpu.ix - 1) & 0xffff;
   };
   // 0xf9 : LD SP, IX
-  dd_instructions[0xf9] = () => {
+  dd_instructions[0xf9] = (): void => {
     cpu.sp = cpu.ix;
   };
 
@@ -1266,21 +1284,21 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   //  there are not very many valid ED-prefixed opcodes in the Z80,
   //  and many of the ones that are valid are not documented.
   // ////////////////////////////////////////////////////////////////////////////
-  const ed_instructions: any[] = [];
+  const ed_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
   // 0x40 : IN B, (C)
-  ed_instructions[0x40] = () => {
+  ed_instructions[0x40] = (): void => {
     cpu.b = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x41 : OUT (C), B
-  ed_instructions[0x41] = () => {
+  ed_instructions[0x41] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.b);
   };
   // 0x42 : SBC HL, BC
-  ed_instructions[0x42] = () => {
+  ed_instructions[0x42] = (): void => {
     do_hl_sbc(cpu.c | (cpu.b << 8));
   };
   // 0x43 : LD (nn), BC
-  ed_instructions[0x43] = () => {
+  ed_instructions[0x43] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1290,34 +1308,34 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, cpu.b);
   };
   // 0x44 : NEG
-  ed_instructions[0x44] = () => do_neg;
+  ed_instructions[0x44] = (): void => { do_neg(); };
   // 0x45 : RETN
-  ed_instructions[0x45] = () => {
+  ed_instructions[0x45] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x46 : IM 0
-  ed_instructions[0x46] = () => {
+  ed_instructions[0x46] = (): void => {
     cpu.imode = 0;
   };
   // 0x47 : LD I, A
-  ed_instructions[0x47] = () => {
+  ed_instructions[0x47] = (): void => {
     cpu.i = cpu.a;
   };
   // 0x48 : IN C, (C)
-  ed_instructions[0x48] = () => {
+  ed_instructions[0x48] = (): void => {
     cpu.c = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x49 : OUT (C), C
-  ed_instructions[0x49] = () => {
+  ed_instructions[0x49] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.c);
   };
   // 0x4a : ADC HL, BC
-  ed_instructions[0x4a] = () => {
+  ed_instructions[0x4a] = (): void => {
     do_hl_adc(cpu.c | (cpu.b << 8));
   };
   // 0x4b : LD BC, (nn)
-  ed_instructions[0x4b] = () => {
+  ed_instructions[0x4b] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1327,33 +1345,33 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.b = cb.mem_read((address + 1) & 0xffff);
   };
   // 0x4c : NEG (Undocumented)
-  ed_instructions[0x4c] = () => do_neg;
+  ed_instructions[0x4c] = (): void => { do_neg(); };
   // 0x4d : RETI
-  ed_instructions[0x4d] = () => {
+  ed_instructions[0x4d] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
   };
   // 0x4e : IM 0 (Undocumented)
-  ed_instructions[0x4e] = () => {
+  ed_instructions[0x4e] = (): void => {
     cpu.imode = 0;
   };
   // 0x4f : LD R, A
-  ed_instructions[0x4f] = () => {
+  ed_instructions[0x4f] = (): void => {
     cpu.r = cpu.a;
   };
   // 0x50 : IN D, (C)
-  ed_instructions[0x50] = () => {
+  ed_instructions[0x50] = (): void => {
     cpu.d = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x51 : OUT (C), D
-  ed_instructions[0x51] = () => {
+  ed_instructions[0x51] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.d);
   };
   // 0x52 : SBC HL, DE
-  ed_instructions[0x52] = () => {
+  ed_instructions[0x52] = (): void => {
     do_hl_sbc(cpu.e | (cpu.d << 8));
   };
   // 0x53 : LD (nn), DE
-  ed_instructions[0x53] = () => {
+  ed_instructions[0x53] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1363,18 +1381,18 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, cpu.d);
   };
   // 0x54 : NEG (Undocumented)
-  ed_instructions[0x54] = () => do_neg;
+  ed_instructions[0x54] = (): void => { do_neg(); };
   // 0x55 : RETN
-  ed_instructions[0x55] = () => {
+  ed_instructions[0x55] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x56 : IM 1
-  ed_instructions[0x56] = () => {
+  ed_instructions[0x56] = (): void => {
     cpu.imode = 1;
   };
   // 0x57 : LD A, I
-  ed_instructions[0x57] = () => {
+  ed_instructions[0x57] = (): void => {
     cpu.a = cpu.i;
     cpu.flags.S = cpu.i & 0x80 ? 1 : 0;
     cpu.flags.Z = cpu.i ? 0 : 1;
@@ -1383,19 +1401,19 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.N = 0;
   };
   // 0x58 : IN E, (C)
-  ed_instructions[0x58] = () => {
+  ed_instructions[0x58] = (): void => {
     cpu.e = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x59 : OUT (C), E
-  ed_instructions[0x59] = () => {
+  ed_instructions[0x59] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.e);
   };
   // 0x5a : ADC HL, DE
-  ed_instructions[0x5a] = () => {
+  ed_instructions[0x5a] = (): void => {
     do_hl_adc(cpu.e | (cpu.d << 8));
   };
   // 0x5b : LD DE, (nn)
-  ed_instructions[0x5b] = () => {
+  ed_instructions[0x5b] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1405,35 +1423,35 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.d = cb.mem_read((address + 1) & 0xffff);
   };
   // 0x5c : NEG (Undocumented)
-  ed_instructions[0x5c] = () => do_neg;
+  ed_instructions[0x5c] = (): void => { do_neg(); };
   // 0x5d : RETN
-  ed_instructions[0x5d] = () => {
+  ed_instructions[0x5d] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x5e : IM 2
-  ed_instructions[0x5e] = () => {
+  ed_instructions[0x5e] = (): void => {
     cpu.imode = 2;
   };
   // 0x5f : LD A, R
-  ed_instructions[0x5f] = () => {
+  ed_instructions[0x5f] = (): void => {
     cpu.a = cpu.r;
     cpu.flags.P = cpu.iff2;
   };
   // 0x60 : IN H, (C)
-  ed_instructions[0x60] = () => {
+  ed_instructions[0x60] = (): void => {
     cpu.h = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x61 : OUT (C), H
-  ed_instructions[0x61] = () => {
+  ed_instructions[0x61] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.h);
   };
   // 0x62 : SBC HL, HL
-  ed_instructions[0x62] = () => {
+  ed_instructions[0x62] = (): void => {
     do_hl_sbc(cpu.l | (cpu.h << 8));
   };
   // 0x63 : LD (nn), HL (Undocumented)
-  ed_instructions[0x63] = () => {
+  ed_instructions[0x63] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1443,18 +1461,18 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, cpu.h);
   };
   // 0x64 : NEG (Undocumented)
-  ed_instructions[0x64] = () => do_neg;
+  ed_instructions[0x64] = (): void => { do_neg(); };
   // 0x65 : RETN
-  ed_instructions[0x65] = () => {
+  ed_instructions[0x65] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x66 : IM 0
-  ed_instructions[0x66] = () => {
+  ed_instructions[0x66] = (): void => {
     cpu.imode = 0;
   };
   // 0x67 : RRD
-  ed_instructions[0x67] = () => {
+  ed_instructions[0x67] = (): void => {
     let hl_value = cb.mem_read(cpu.l | (cpu.h << 8));
     const temp1 = hl_value & 0x0f;
     const temp2 = cpu.a & 0x0f;
@@ -1463,26 +1481,26 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write(cpu.l | (cpu.h << 8), hl_value);
 
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a ? 0 : 1;
+    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = parity_bits[cpu.a] ? 1 : 0;
+    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
     cpu.flags.N = 0;
     update_xy_flags(cpu.a);
   };
   // 0x68 : IN L, (C)
-  ed_instructions[0x68] = () => {
+  ed_instructions[0x68] = (): void => {
     cpu.l = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x69 : OUT (C), L
-  ed_instructions[0x69] = () => {
+  ed_instructions[0x69] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.l);
   };
   // 0x6a : ADC HL, HL
-  ed_instructions[0x6a] = () => {
+  ed_instructions[0x6a] = (): void => {
     do_hl_adc(cpu.l | (cpu.h << 8));
   };
   // 0x6b : LD HL, (nn) (Undocumented)
-  ed_instructions[0x6b] = () => {
+  ed_instructions[0x6b] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1492,18 +1510,18 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.h = cb.mem_read((address + 1) & 0xffff);
   };
   // 0x6c : NEG (Undocumented)
-  ed_instructions[0x6c] = () => do_neg;
+  ed_instructions[0x6c] = (): void => { do_neg(); };
   // 0x6d : RETN
-  ed_instructions[0x6d] = () => {
+  ed_instructions[0x6d] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x6e : IM 0 (Undocumented)
-  ed_instructions[0x6e] = () => {
+  ed_instructions[0x6e] = (): void => {
     cpu.imode = 0;
   };
   // 0x6f : RLD
-  ed_instructions[0x6f] = () => {
+  ed_instructions[0x6f] = (): void => {
     let hl_value = cb.mem_read(cpu.l | (cpu.h << 8));
     const temp1 = hl_value & 0xf0;
     const temp2 = cpu.a & 0x0f;
@@ -1512,26 +1530,26 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write(cpu.l | (cpu.h << 8), hl_value);
 
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a ? 0 : 1;
+    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = parity_bits[cpu.a] ? 1 : 0;
+    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
     cpu.flags.N = 0;
     update_xy_flags(cpu.a);
   };
   // 0x70 : IN (C) (Undocumented)
-  ed_instructions[0x70] = () => {
+  ed_instructions[0x70] = (): void => {
     do_in((cpu.b << 8) | cpu.c);
   };
   // 0x71 : OUT (C), 0 (Undocumented)
-  ed_instructions[0x71] = () => {
+  ed_instructions[0x71] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, 0);
   };
   // 0x72 : SBC HL, SP
-  ed_instructions[0x72] = () => {
+  ed_instructions[0x72] = (): void => {
     do_hl_sbc(cpu.sp);
   };
   // 0x73 : LD (nn), SP
-  ed_instructions[0x73] = () => {
+  ed_instructions[0x73] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1541,30 +1559,30 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, (cpu.sp >>> 8) & 0xff);
   };
   // 0x74 : NEG (Undocumented)
-  ed_instructions[0x74] = () => do_neg;
+  ed_instructions[0x74] = (): void => { do_neg(); };
   // 0x75 : RETN
-  ed_instructions[0x75] = () => {
+  ed_instructions[0x75] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x76 : IM 1
-  ed_instructions[0x76] = () => {
+  ed_instructions[0x76] = (): void => {
     cpu.imode = 1;
   };
   // 0x78 : IN A, (C)
-  ed_instructions[0x78] = () => {
+  ed_instructions[0x78] = (): void => {
     cpu.a = do_in((cpu.b << 8) | cpu.c);
   };
   // 0x79 : OUT (C), A
-  ed_instructions[0x79] = () => {
+  ed_instructions[0x79] = (): void => {
     cb.io_write((cpu.b << 8) | cpu.c, cpu.a);
   };
   // 0x7a : ADC HL, SP
-  ed_instructions[0x7a] = () => {
+  ed_instructions[0x7a] = (): void => {
     do_hl_adc(cpu.sp);
   };
   // 0x7b : LD SP, (nn)
-  ed_instructions[0x7b] = () => {
+  ed_instructions[0x7b] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1574,50 +1592,50 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.sp |= cb.mem_read((address + 1) & 0xffff) << 8;
   };
   // 0x7c : NEG (Undocumented)
-  ed_instructions[0x7c] = () => do_neg;
+  ed_instructions[0x7c] = (): void => { do_neg(); };
   // 0x7d : RETN
-  ed_instructions[0x7d] = () => {
+  ed_instructions[0x7d] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
     cpu.iff1 = cpu.iff2;
   };
   // 0x7e : IM 2
-  ed_instructions[0x7e] = () => {
+  ed_instructions[0x7e] = (): void => {
     cpu.imode = 2;
   };
   // 0xa0 : LDI
-  ed_instructions[0xa0] = () => {
+  ed_instructions[0xa0] = (): void => {
     do_ldi();
   };
   // 0xa1 : CPI
-  ed_instructions[0xa1] = () => {
+  ed_instructions[0xa1] = (): void => {
     do_cpi();
   };
   // 0xa2 : INI
-  ed_instructions[0xa2] = () => {
+  ed_instructions[0xa2] = (): void => {
     do_ini();
   };
   // 0xa3 : OUTI
-  ed_instructions[0xa3] = () => {
+  ed_instructions[0xa3] = (): void => {
     do_outi();
   };
   // 0xa8 : LDD
-  ed_instructions[0xa8] = () => {
+  ed_instructions[0xa8] = (): void => {
     do_ldd();
   };
   // 0xa9 : CPD
-  ed_instructions[0xa9] = () => {
+  ed_instructions[0xa9] = (): void => {
     do_cpd();
   };
   // 0xaa : IND
-  ed_instructions[0xaa] = () => {
+  ed_instructions[0xaa] = (): void => {
     do_ind();
   };
   // 0xab : OUTD
-  ed_instructions[0xab] = () => {
+  ed_instructions[0xab] = (): void => {
     do_outd();
   };
   // 0xb0 : LDIR
-  ed_instructions[0xb0] = () => {
+  ed_instructions[0xb0] = (): void => {
     do_ldi();
     if (cpu.b || cpu.c) {
       cpu.cycle_counter += 5;
@@ -1625,7 +1643,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xb1 : CPIR
-  ed_instructions[0xb1] = () => {
+  ed_instructions[0xb1] = (): void => {
     do_cpi();
     if (!cpu.flags.Z && (cpu.b || cpu.c)) {
       cpu.cycle_counter += 5;
@@ -1633,7 +1651,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xb2 : INIR
-  ed_instructions[0xb2] = () => {
+  ed_instructions[0xb2] = (): void => {
     do_ini();
     if (cpu.b) {
       cpu.cycle_counter += 5;
@@ -1641,7 +1659,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xb3 : OTIR
-  ed_instructions[0xb3] = () => {
+  ed_instructions[0xb3] = (): void => {
     do_outi();
     if (cpu.b) {
       cpu.cycle_counter += 5;
@@ -1649,7 +1667,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xb8 : LDDR
-  ed_instructions[0xb8] = () => {
+  ed_instructions[0xb8] = (): void => {
     do_ldd();
     if (cpu.b || cpu.c) {
       cpu.cycle_counter += 5;
@@ -1657,7 +1675,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xb9 : CPDR
-  ed_instructions[0xb9] = () => {
+  ed_instructions[0xb9] = (): void => {
     do_cpd();
     if (!cpu.flags.Z && (cpu.b || cpu.c)) {
       cpu.cycle_counter += 5;
@@ -1665,7 +1683,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xba : INDR
-  ed_instructions[0xba] = () => {
+  ed_instructions[0xba] = (): void => {
     do_ind();
     if (cpu.b) {
       cpu.cycle_counter += 5;
@@ -1673,7 +1691,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     }
   };
   // 0xbb : OTDR
-  ed_instructions[0xbb] = () => {
+  ed_instructions[0xbb] = (): void => {
     do_outd();
     if (cpu.b) {
       cpu.cycle_counter += 5;
@@ -1687,45 +1705,45 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   //  register loads and the accumulator ALU instructions, in other words).
   // Similar tables for the ED and DD/FD prefixes follow this one.
   // ////////////////////////////////////////////////////////////////////////////
-  const instructions: any[] = [];
+  const instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
 
   // 0x00 : NOP
-  instructions[0x00] = () => {
+  instructions[0x00] = (): void => {
     // do nothing
   };
   // 0x01 : LD BC, nn
-  instructions[0x01] = () => {
+  instructions[0x01] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.c = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.b = cb.mem_read(cpu.pc);
   };
   // 0x02 : LD (BC), A
-  instructions[0x02] = () => {
+  instructions[0x02] = (): void => {
     cb.mem_write(cpu.c | (cpu.b << 8), cpu.a);
   };
   // 0x03 : INC BC
-  instructions[0x03] = () => {
+  instructions[0x03] = (): void => {
     let result = cpu.c | (cpu.b << 8);
     result += 1;
     cpu.c = result & 0xff;
     cpu.b = (result & 0xff00) >>> 8;
   };
   // 0x04 : INC B
-  instructions[0x04] = () => {
+  instructions[0x04] = (): void => {
     cpu.b = do_inc(cpu.b);
   };
   // 0x05 : DEC B
-  instructions[0x05] = () => {
+  instructions[0x05] = (): void => {
     cpu.b = do_dec(cpu.b);
   };
   // 0x06 : LD B, n
-  instructions[0x06] = () => {
+  instructions[0x06] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.b = cb.mem_read(cpu.pc);
   };
   // 0x07 : RLCA
-  instructions[0x07] = () => {
+  instructions[0x07] = (): void => {
     // This instruction is implemented as a special case of the
     //  more general Z80-specific RLC instruction.
     // Specifially, RLCA is a version of RLC A that affects fewer flags.
@@ -1739,7 +1757,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = temp_p;
   };
   // 0x08 : EX AF, AF'
-  instructions[0x08] = () => {
+  instructions[0x08] = (): void => {
     let temp = cpu.a;
     cpu.a = cpu.a_prime;
     cpu.a_prime = temp;
@@ -1749,35 +1767,35 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     set_flags_prime(temp);
   };
   // 0x09 : ADD HL, BC
-  instructions[0x09] = () => {
+  instructions[0x09] = (): void => {
     do_hl_add(cpu.c | (cpu.b << 8));
   };
   // 0x0a : LD A, (BC)
-  instructions[0x0a] = () => {
+  instructions[0x0a] = (): void => {
     cpu.a = cb.mem_read(cpu.c | (cpu.b << 8));
   };
   // 0x0b : DEC BC
-  instructions[0x0b] = () => {
+  instructions[0x0b] = (): void => {
     let result = cpu.c | (cpu.b << 8);
     result -= 1;
     cpu.c = result & 0xff;
     cpu.b = (result & 0xff00) >>> 8;
   };
   // 0x0c : INC C
-  instructions[0x0c] = () => {
+  instructions[0x0c] = (): void => {
     cpu.c = do_inc(cpu.c);
   };
   // 0x0d : DEC C
-  instructions[0x0d] = () => {
+  instructions[0x0d] = (): void => {
     cpu.c = do_dec(cpu.c);
   };
   // 0x0e : LD C, n
-  instructions[0x0e] = () => {
+  instructions[0x0e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.c = cb.mem_read(cpu.pc);
   };
   // 0x0f : RRCA
-  instructions[0x0f] = () => {
+  instructions[0x0f] = (): void => {
     const temp_s = cpu.flags.S;
     const temp_z = cpu.flags.Z;
     const temp_p = cpu.flags.P;
@@ -1787,43 +1805,43 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = temp_p;
   };
   // 0x10 : DJNZ nn
-  instructions[0x10] = () => {
+  instructions[0x10] = (): void => {
     cpu.b = (cpu.b - 1) & 0xff;
     do_conditional_relative_jump(cpu.b !== 0);
   };
   // 0x11 : LD DE, nn
-  instructions[0x11] = () => {
+  instructions[0x11] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.e = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.d = cb.mem_read(cpu.pc);
   };
   // 0x12 : LD (DE), A
-  instructions[0x12] = () => {
+  instructions[0x12] = (): void => {
     cb.mem_write(cpu.e | (cpu.d << 8), cpu.a);
   };
   // 0x13 : INC DE
-  instructions[0x13] = () => {
+  instructions[0x13] = (): void => {
     let result = cpu.e | (cpu.d << 8);
     result += 1;
     cpu.e = result & 0xff;
     cpu.d = (result & 0xff00) >>> 8;
   };
   // 0x14 : INC D
-  instructions[0x14] = () => {
+  instructions[0x14] = (): void => {
     cpu.d = do_inc(cpu.d);
   };
   // 0x15 : DEC D
-  instructions[0x15] = () => {
+  instructions[0x15] = (): void => {
     cpu.d = do_dec(cpu.d);
   };
   // 0x16 : LD D, n
-  instructions[0x16] = () => {
+  instructions[0x16] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.d = cb.mem_read(cpu.pc);
   };
   // 0x17 : RLA
-  instructions[0x17] = () => {
+  instructions[0x17] = (): void => {
     const temp_s = cpu.flags.S;
     const temp_z = cpu.flags.Z;
     const temp_p = cpu.flags.P;
@@ -1833,40 +1851,40 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = temp_p;
   };
   // 0x18 : JR n
-  instructions[0x18] = () => {
+  instructions[0x18] = (): void => {
     const offset = get_signed_offset_byte(cb.mem_read((cpu.pc + 1) & 0xffff));
     cpu.pc = (cpu.pc + offset + 1) & 0xffff;
   };
   // 0x19 : ADD HL, DE
-  instructions[0x19] = () => {
+  instructions[0x19] = (): void => {
     do_hl_add(cpu.e | (cpu.d << 8));
   };
   // 0x1a : LD A, (DE)
-  instructions[0x1a] = () => {
+  instructions[0x1a] = (): void => {
     cpu.a = cb.mem_read(cpu.e | (cpu.d << 8));
   };
   // 0x1b : DEC DE
-  instructions[0x1b] = () => {
+  instructions[0x1b] = (): void => {
     let result = cpu.e | (cpu.d << 8);
     result -= 1;
     cpu.e = result & 0xff;
     cpu.d = (result & 0xff00) >>> 8;
   };
   // 0x1c : INC E
-  instructions[0x1c] = () => {
+  instructions[0x1c] = (): void => {
     cpu.e = do_inc(cpu.e);
   };
   // 0x1d : DEC E
-  instructions[0x1d] = () => {
+  instructions[0x1d] = (): void => {
     cpu.e = do_dec(cpu.e);
   };
   // 0x1e : LD E, n
-  instructions[0x1e] = () => {
+  instructions[0x1e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.e = cb.mem_read(cpu.pc);
   };
   // 0x1f : RRA
-  instructions[0x1f] = () => {
+  instructions[0x1f] = (): void => {
     const temp_s = cpu.flags.S;
     const temp_z = cpu.flags.Z;
     const temp_p = cpu.flags.P;
@@ -1876,18 +1894,18 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.flags.P = temp_p;
   };
   // 0x20 : JR NZ, n
-  instructions[0x20] = () => {
+  instructions[0x20] = (): void => {
     do_conditional_relative_jump(!cpu.flags.Z);
   };
   // 0x21 : LD HL, nn
-  instructions[0x21] = () => {
+  instructions[0x21] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.l = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.h = cb.mem_read(cpu.pc);
   };
   // 0x22 : LD (nn), HL
-  instructions[0x22] = () => {
+  instructions[0x22] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1897,40 +1915,48 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write((address + 1) & 0xffff, cpu.h);
   };
   // 0x23 : INC HL
-  instructions[0x23] = () => {
+  instructions[0x23] = (): void => {
     let result = cpu.l | (cpu.h << 8);
     result += 1;
     cpu.l = result & 0xff;
     cpu.h = (result & 0xff00) >>> 8;
   };
   // 0x24 : INC H
-  instructions[0x24] = () => {
+  instructions[0x24] = (): void => {
     cpu.h = do_inc(cpu.h);
   };
   // 0x25 : DEC H
-  instructions[0x25] = () => {
+  instructions[0x25] = (): void => {
     cpu.h = do_dec(cpu.h);
   };
   // 0x26 : LD H, n
-  instructions[0x26] = () => {
+  instructions[0x26] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.h = cb.mem_read(cpu.pc);
   };
   // 0x27 : DAA
-  instructions[0x27] = () => {
+  instructions[0x27] = (): void => {
     let temp = cpu.a;
     if (!cpu.flags.N) {
-      if (cpu.flags.H || (cpu.a & 0x0f) > 9) temp += 0x06;
-      if (cpu.flags.C || cpu.a > 0x99) temp += 0x60;
+      if (cpu.flags.H || (cpu.a & 0x0f) > 9) {
+        temp += 0x06;
+      }
+      if (cpu.flags.C || cpu.a > 0x99) {
+        temp += 0x60;
+      }
     } else {
-      if (cpu.flags.H || (cpu.a & 0x0f) > 9) temp -= 0x06;
-      if (cpu.flags.C || cpu.a > 0x99) temp -= 0x60;
+      if (cpu.flags.H || (cpu.a & 0x0f) > 9) {
+        temp -= 0x06;
+      }
+      if (cpu.flags.C || cpu.a > 0x99) {
+        temp -= 0x60;
+      }
     }
 
     cpu.flags.S = temp & 0x80 ? 1 : 0;
     cpu.flags.Z = !(temp & 0xff) ? 1 : 0;
     cpu.flags.H = (cpu.a & 0x10) ^ (temp & 0x10) ? 1 : 0;
-    cpu.flags.P = parity_bits[temp & 0xff];
+    cpu.flags.P = parity_bits[temp & 0xff] ?? 0;
     // DAA never clears the carry flag if it was already set,
     //  but it is able to set the carry flag if it was clear.
     // Don't ask me, I don't know.
@@ -1942,15 +1968,15 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     update_xy_flags(cpu.a);
   };
   // 0x28 : JR Z, n
-  instructions[0x28] = () => {
+  instructions[0x28] = (): void => {
     do_conditional_relative_jump(!!cpu.flags.Z);
   };
   // 0x29 : ADD HL, HL
-  instructions[0x29] = () => {
+  instructions[0x29] = (): void => {
     do_hl_add(cpu.l | (cpu.h << 8));
   };
   // 0x2a : LD HL, (nn)
-  instructions[0x2a] = () => {
+  instructions[0x2a] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -1960,45 +1986,45 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.h = cb.mem_read((address + 1) & 0xffff);
   };
   // 0x2b : DEC HL
-  instructions[0x2b] = () => {
+  instructions[0x2b] = (): void => {
     let result = cpu.l | (cpu.h << 8);
     result -= 1;
     cpu.l = result & 0xff;
     cpu.h = (result & 0xff00) >>> 8;
   };
   // 0x2c : INC L
-  instructions[0x2c] = () => {
+  instructions[0x2c] = (): void => {
     cpu.l = do_inc(cpu.l);
   };
   // 0x2d : DEC L
-  instructions[0x2d] = () => {
+  instructions[0x2d] = (): void => {
     cpu.l = do_dec(cpu.l);
   };
   // 0x2e : LD L, n
-  instructions[0x2e] = () => {
+  instructions[0x2e] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.l = cb.mem_read(cpu.pc);
   };
   // 0x2f : CPL
-  instructions[0x2f] = () => {
+  instructions[0x2f] = (): void => {
     cpu.a = ~cpu.a & 0xff;
     cpu.flags.N = 1;
     cpu.flags.H = 1;
     update_xy_flags(cpu.a);
   };
   // 0x30 : JR NC, n
-  instructions[0x30] = () => {
+  instructions[0x30] = (): void => {
     do_conditional_relative_jump(!cpu.flags.C);
   };
   // 0x31 : LD SP, nn
-  instructions[0x31] = () => {
+  instructions[0x31] = (): void => {
     cpu.sp =
       cb.mem_read((cpu.pc + 1) & 0xffff) |
       (cb.mem_read((cpu.pc + 2) & 0xffff) << 8);
     cpu.pc = (cpu.pc + 2) & 0xffff;
   };
   // 0x32 : LD (nn), A
-  instructions[0x32] = () => {
+  instructions[0x32] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -2007,41 +2033,41 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cb.mem_write(address, cpu.a);
   };
   // 0x33 : INC SP
-  instructions[0x33] = () => {
+  instructions[0x33] = (): void => {
     cpu.sp = (cpu.sp + 1) & 0xffff;
   };
   // 0x34 : INC (HL)
-  instructions[0x34] = () => {
+  instructions[0x34] = (): void => {
     const address = cpu.l | (cpu.h << 8);
     cb.mem_write(address, do_inc(cb.mem_read(address)));
   };
   // 0x35 : DEC (HL)
-  instructions[0x35] = () => {
+  instructions[0x35] = (): void => {
     const address = cpu.l | (cpu.h << 8);
     cb.mem_write(address, do_dec(cb.mem_read(address)));
   };
   // 0x36 : LD (HL), n
-  instructions[0x36] = () => {
+  instructions[0x36] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cb.mem_write(cpu.l | (cpu.h << 8), cb.mem_read(cpu.pc));
   };
   // 0x37 : SCF
-  instructions[0x37] = () => {
+  instructions[0x37] = (): void => {
     cpu.flags.N = 0;
     cpu.flags.H = 0;
     cpu.flags.C = 1;
     update_xy_flags(cpu.a);
   };
   // 0x38 : JR C, n
-  instructions[0x38] = () => {
+  instructions[0x38] = (): void => {
     do_conditional_relative_jump(!!cpu.flags.C);
   };
   // 0x39 : ADD HL, SP
-  instructions[0x39] = () => {
+  instructions[0x39] = (): void => {
     do_hl_add(cpu.sp);
   };
   // 0x3a : LD A, (nn)
-  instructions[0x3a] = () => {
+  instructions[0x3a] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     let address = cb.mem_read(cpu.pc);
     cpu.pc = (cpu.pc + 1) & 0xffff;
@@ -2050,81 +2076,81 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.a = cb.mem_read(address);
   };
   // 0x3b : DEC SP
-  instructions[0x3b] = () => {
+  instructions[0x3b] = (): void => {
     cpu.sp = (cpu.sp - 1) & 0xffff;
   };
   // 0x3c : INC A
-  instructions[0x3c] = () => {
+  instructions[0x3c] = (): void => {
     cpu.a = do_inc(cpu.a);
   };
   // 0x3d : DEC A
-  instructions[0x3d] = () => {
+  instructions[0x3d] = (): void => {
     cpu.a = do_dec(cpu.a);
   };
   // 0x3e : LD A, n
-  instructions[0x3e] = () => {
+  instructions[0x3e] = (): void => {
     cpu.a = cb.mem_read((cpu.pc + 1) & 0xffff);
     cpu.pc = (cpu.pc + 1) & 0xffff;
   };
   // 0x3f : CCF
-  instructions[0x3f] = () => {
+  instructions[0x3f] = (): void => {
     cpu.flags.N = 0;
     cpu.flags.H = cpu.flags.C;
     cpu.flags.C = cpu.flags.C ? 0 : 1;
     update_xy_flags(cpu.a);
   };
   // 0xc0 : RET NZ
-  instructions[0xc0] = () => {
+  instructions[0xc0] = (): void => {
     do_conditional_return(!cpu.flags.Z);
   };
   // 0xc1 : POP BC
-  instructions[0xc1] = () => {
+  instructions[0xc1] = (): void => {
     const result = pop_word();
     cpu.c = result & 0xff;
     cpu.b = (result & 0xff00) >>> 8;
   };
   // 0xc2 : JP NZ, nn
-  instructions[0xc2] = () => {
+  instructions[0xc2] = (): void => {
     do_conditional_absolute_jump(!cpu.flags.Z);
   };
   // 0xc3 : JP nn
-  instructions[0xc3] = () => {
+  instructions[0xc3] = (): void => {
     cpu.pc =
       cb.mem_read((cpu.pc + 1) & 0xffff) |
       (cb.mem_read((cpu.pc + 2) & 0xffff) << 8);
     cpu.pc = (cpu.pc - 1) & 0xffff;
   };
   // 0xc4 : CALL NZ, nn
-  instructions[0xc4] = () => {
+  instructions[0xc4] = (): void => {
     do_conditional_call(!cpu.flags.Z);
   };
   // 0xc5 : PUSH BC
-  instructions[0xc5] = () => {
+  instructions[0xc5] = (): void => {
     pushWord(cpu, cb, cpu.c | (cpu.b << 8));
   };
   // 0xc6 : ADD A, n
-  instructions[0xc6] = () => {
+  instructions[0xc6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_add(cb.mem_read(cpu.pc));
   };
   // 0xc7 : RST 00h
-  instructions[0xc7] = () => {
+  instructions[0xc7] = (): void => {
     do_reset(0x00);
   };
   // 0xc8 : RET Z
-  instructions[0xc8] = () => {
+  instructions[0xc8] = (): void => {
     do_conditional_return(!!cpu.flags.Z);
   };
   // 0xc9 : RET
-  instructions[0xc9] = () => {
+  instructions[0xc9] = (): void => {
     cpu.pc = (pop_word() - 1) & 0xffff;
   };
   // 0xca : JP Z, nn
-  instructions[0xca] = () => {
+  instructions[0xca] = (): void => {
     do_conditional_absolute_jump(!!cpu.flags.Z);
   };
   // 0xcb : CB Prefix
-  instructions[0xcb] = () => {
+  instructions[0xcb] = (): void => {
     // R is incremented at the start of the second instruction cycle,
     //  before the instruction actually runs.
     // The high bit of R is not affected by this increment,
@@ -2140,7 +2166,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
 
     if (opcode1 < 0x40) {
       // Shift/rotate instructions
-      const op_array = [
+      const op_array: ByteOpHandler[] = [
         do_rlc,
         do_rrc,
         do_rl,
@@ -2150,38 +2176,49 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
         do_sll,
         do_srl,
       ];
+      const rotate = getByteOp(op_array, bit_number);
 
-      if (reg_code === 0) cpu.b = op_array[bit_number](cpu.b);
-      else if (reg_code === 1) cpu.c = op_array[bit_number](cpu.c);
-      else if (reg_code === 2) cpu.d = op_array[bit_number](cpu.d);
-      else if (reg_code === 3) cpu.e = op_array[bit_number](cpu.e);
-      else if (reg_code === 4) cpu.h = op_array[bit_number](cpu.h);
-      else if (reg_code === 5) cpu.l = op_array[bit_number](cpu.l);
-      else if (reg_code === 6) {
+      if (reg_code === 0) {
+        cpu.b = rotate(cpu.b);
+      } else if (reg_code === 1) {
+        cpu.c = rotate(cpu.c);
+      } else if (reg_code === 2) {
+        cpu.d = rotate(cpu.d);
+      } else if (reg_code === 3) {
+        cpu.e = rotate(cpu.e);
+      } else if (reg_code === 4) {
+        cpu.h = rotate(cpu.h);
+      } else if (reg_code === 5) {
+        cpu.l = rotate(cpu.l);
+      } else if (reg_code === 6) {
         cb.mem_write(
           cpu.l | (cpu.h << 8),
-          op_array[bit_number](cb.mem_read(cpu.l | (cpu.h << 8)))
+          rotate(cb.mem_read(cpu.l | (cpu.h << 8)))
         );
-      } else if (reg_code === 7) cpu.a = op_array[bit_number](cpu.a);
+      } else if (reg_code === 7) {
+        cpu.a = rotate(cpu.a);
+      }
     } else if (opcode1 < 0x80) {
       // BIT instructions
-      if (reg_code === 0) cpu.flags.Z = !(cpu.b & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 1)
+      if (reg_code === 0) {
+        cpu.flags.Z = !(cpu.b & (1 << bit_number)) ? 1 : 0;
+      } else if (reg_code === 1) {
         cpu.flags.Z = !(cpu.c & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 2)
+      } else if (reg_code === 2) {
         cpu.flags.Z = !(cpu.d & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 3)
+      } else if (reg_code === 3) {
         cpu.flags.Z = !(cpu.e & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 4)
+      } else if (reg_code === 4) {
         cpu.flags.Z = !(cpu.h & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 5)
+      } else if (reg_code === 5) {
         cpu.flags.Z = !(cpu.l & (1 << bit_number)) ? 1 : 0;
-      else if (reg_code === 6) {
+      } else if (reg_code === 6) {
         cpu.flags.Z = !(cb.mem_read(cpu.l | (cpu.h << 8)) & (1 << bit_number))
           ? 1
           : 0;
-      } else if (reg_code === 7)
+      } else if (reg_code === 7) {
         cpu.flags.Z = !(cpu.a & (1 << bit_number)) ? 1 : 0;
+      }
 
       cpu.flags.N = 0;
       cpu.flags.H = 1;
@@ -2197,42 +2234,58 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
       cpu.flags.X = bit_number === 3 && !cpu.flags.Z ? 1 : 0;
     } else if (opcode1 < 0xc0) {
       // RES instructions
-      if (reg_code === 0) cpu.b &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 1) cpu.c &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 2) cpu.d &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 3) cpu.e &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 4) cpu.h &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 5) cpu.l &= 0xff & ~(1 << bit_number);
-      else if (reg_code === 6) {
+      if (reg_code === 0) {
+        cpu.b &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 1) {
+        cpu.c &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 2) {
+        cpu.d &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 3) {
+        cpu.e &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 4) {
+        cpu.h &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 5) {
+        cpu.l &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 6) {
         cb.mem_write(
           cpu.l | (cpu.h << 8),
           cb.mem_read(cpu.l | (cpu.h << 8)) & ~(1 << bit_number)
         );
-      } else if (reg_code === 7) cpu.a &= 0xff & ~(1 << bit_number);
+      } else if (reg_code === 7) {
+        cpu.a &= 0xff & ~(1 << bit_number);
+      }
     } else {
       // SET instructions
-      if (reg_code === 0) cpu.b |= 1 << bit_number;
-      else if (reg_code === 1) cpu.c |= 1 << bit_number;
-      else if (reg_code === 2) cpu.d |= 1 << bit_number;
-      else if (reg_code === 3) cpu.e |= 1 << bit_number;
-      else if (reg_code === 4) cpu.h |= 1 << bit_number;
-      else if (reg_code === 5) cpu.l |= 1 << bit_number;
-      else if (reg_code === 6) {
+      if (reg_code === 0) {
+        cpu.b |= 1 << bit_number;
+      } else if (reg_code === 1) {
+        cpu.c |= 1 << bit_number;
+      } else if (reg_code === 2) {
+        cpu.d |= 1 << bit_number;
+      } else if (reg_code === 3) {
+        cpu.e |= 1 << bit_number;
+      } else if (reg_code === 4) {
+        cpu.h |= 1 << bit_number;
+      } else if (reg_code === 5) {
+        cpu.l |= 1 << bit_number;
+      } else if (reg_code === 6) {
         cb.mem_write(
           cpu.l | (cpu.h << 8),
           cb.mem_read(cpu.l | (cpu.h << 8)) | (1 << bit_number)
         );
-      } else if (reg_code === 7) cpu.a |= 1 << bit_number;
+      } else if (reg_code === 7) {
+        cpu.a |= 1 << bit_number;
+      }
     }
 
-    cpu.cycle_counter += cycle_counts_cb[opcode1];
+    cpu.cycle_counter += cycle_counts_cb[opcode1] ?? 0;
   };
   // 0xcc : CALL Z, nn
-  instructions[0xcc] = () => {
+  instructions[0xcc] = (): void => {
     do_conditional_call(!!cpu.flags.Z);
   };
   // 0xcd : CALL nn
-  instructions[0xcd] = () => {
+  instructions[0xcd] = (): void => {
     pushWord(cpu, cb, (cpu.pc + 3) & 0xffff);
     cpu.pc =
       cb.mem_read((cpu.pc + 1) & 0xffff) |
@@ -2240,56 +2293,56 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.pc = (cpu.pc - 1) & 0xffff;
   };
   // 0xce : ADC A, n
-  instructions[0xce] = () => {
+  instructions[0xce] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_adc(cb.mem_read(cpu.pc));
   };
   // 0xcf : RST 08h
-  instructions[0xcf] = () => {
+  instructions[0xcf] = (): void => {
     do_reset(0x08);
   };
   // 0xd0 : RET NC
-  instructions[0xd0] = () => {
+  instructions[0xd0] = (): void => {
     do_conditional_return(!cpu.flags.C);
   };
   // 0xd1 : POP DE
-  instructions[0xd1] = () => {
+  instructions[0xd1] = (): void => {
     const result = pop_word();
     cpu.e = result & 0xff;
     cpu.d = (result & 0xff00) >>> 8;
   };
   // 0xd2 : JP NC, nn
-  instructions[0xd2] = () => {
+  instructions[0xd2] = (): void => {
     do_conditional_absolute_jump(!cpu.flags.C);
   };
   // 0xd3 : OUT (n), A
-  instructions[0xd3] = () => {
+  instructions[0xd3] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cb.io_write((cpu.a << 8) | cb.mem_read(cpu.pc), cpu.a);
   };
   // 0xd4 : CALL NC, nn
-  instructions[0xd4] = () => {
+  instructions[0xd4] = (): void => {
     do_conditional_call(!cpu.flags.C);
   };
   // 0xd5 : PUSH DE
-  instructions[0xd5] = () => {
+  instructions[0xd5] = (): void => {
     pushWord(cpu, cb, cpu.e | (cpu.d << 8));
   };
   // 0xd6 : SUB n
-  instructions[0xd6] = () => {
+  instructions[0xd6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_sub(cb.mem_read(cpu.pc));
   };
   // 0xd7 : RST 10h
-  instructions[0xd7] = () => {
+  instructions[0xd7] = (): void => {
     do_reset(0x10);
   };
   // 0xd8 : RET C
-  instructions[0xd8] = () => {
+  instructions[0xd8] = (): void => {
     do_conditional_return(!!cpu.flags.C);
   };
   // 0xd9 : EXX
-  instructions[0xd9] = () => {
+  instructions[0xd9] = (): void => {
     let temp = cpu.b;
     cpu.b = cpu.b_prime;
     cpu.b_prime = temp;
@@ -2310,20 +2363,20 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.l_prime = temp;
   };
   // 0xda : JP C, nn
-  instructions[0xda] = () => {
+  instructions[0xda] = (): void => {
     do_conditional_absolute_jump(!!cpu.flags.C);
   };
   // 0xdb : IN A, (n)
-  instructions[0xdb] = () => {
+  instructions[0xdb] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     cpu.a = cb.io_read((cpu.a << 8) | cb.mem_read(cpu.pc));
   };
   // 0xdc : CALL C, nn
-  instructions[0xdc] = () => {
+  instructions[0xdc] = (): void => {
     do_conditional_call(!!cpu.flags.C);
   };
   // 0xdd : DD Prefix (IX instructions)
-  instructions[0xdd] = () => {
+  instructions[0xdd] = (): void => {
     // R is incremented at the start of the second instruction cycle,
     //  before the instruction actually runs.
     // The high bit of R is not affected by this increment,
@@ -2332,48 +2385,37 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
 
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const opcode1 = cb.mem_read(cpu.pc);
-    const func = dd_instructions[opcode1];
+    const func = dd_instructions[opcode1] ?? noop;
 
-    if (func) {
-      // func = func.bind(this);
-      func();
-      cpu.cycle_counter += cycle_counts_dd[opcode1];
-    } else {
-      // Apparently if a DD opcode doesn't exist,
-      //  it gets treated as an unprefixed opcode.
-      // What we'll do to handle that is just back up the
-      //  program counter, so that this byte gets decoded
-      //  as a normal instruction.
-      cpu.pc = (cpu.pc - 1) & 0xffff;
-      // And we'll add in the cycle count for a NOP.
-      cpu.cycle_counter += cycle_counts[0];
-    }
+    func();
+    const ddCycles = (cycle_counts_dd[opcode1] ?? cycle_counts[0]) ?? 0;
+    cpu.cycle_counter += ddCycles;
   };
   // 0xde : SBC n
-  instructions[0xde] = () => {
+  instructions[0xde] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_sbc(cb.mem_read(cpu.pc));
   };
   // 0xdf : RST 18h
-  instructions[0xdf] = () => {
+  instructions[0xdf] = (): void => {
     do_reset(0x18);
   };
   // 0xe0 : RET PO
-  instructions[0xe0] = () => {
+  instructions[0xe0] = (): void => {
     do_conditional_return(!cpu.flags.P);
   };
   // 0xe1 : POP HL
-  instructions[0xe1] = () => {
+  instructions[0xe1] = (): void => {
     const result = pop_word();
     cpu.l = result & 0xff;
     cpu.h = (result & 0xff00) >>> 8;
   };
   // 0xe2 : JP PO, (nn)
-  instructions[0xe2] = () => {
+  instructions[0xe2] = (): void => {
     do_conditional_absolute_jump(!cpu.flags.P);
   };
   // 0xe3 : EX (SP), HL
-  instructions[0xe3] = () => {
+  instructions[0xe3] = (): void => {
     let temp = cb.mem_read(cpu.sp);
     cb.mem_write(cpu.sp, cpu.l);
     cpu.l = temp;
@@ -2382,37 +2424,37 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.h = temp;
   };
   // 0xe4 : CALL PO, nn
-  instructions[0xe4] = () => {
+  instructions[0xe4] = (): void => {
     do_conditional_call(!cpu.flags.P);
   };
   // 0xe5 : PUSH HL
-  instructions[0xe5] = () => {
+  instructions[0xe5] = (): void => {
     pushWord(cpu, cb, cpu.l | (cpu.h << 8));
   };
   // 0xe6 : AND n
-  instructions[0xe6] = () => {
+  instructions[0xe6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_and(cb.mem_read(cpu.pc));
   };
   // 0xe7 : RST 20h
-  instructions[0xe7] = () => {
+  instructions[0xe7] = (): void => {
     do_reset(0x20);
   };
   // 0xe8 : RET PE
-  instructions[0xe8] = () => {
+  instructions[0xe8] = (): void => {
     do_conditional_return(!!cpu.flags.P);
   };
   // 0xe9 : JP (HL)
-  instructions[0xe9] = () => {
+  instructions[0xe9] = (): void => {
     cpu.pc = cpu.l | (cpu.h << 8);
     cpu.pc = (cpu.pc - 1) & 0xffff;
   };
   // 0xea : JP PE, nn
-  instructions[0xea] = () => {
+  instructions[0xea] = (): void => {
     do_conditional_absolute_jump(!!cpu.flags.P);
   };
   // 0xeb : EX DE, HL
-  instructions[0xeb] = () => {
+  instructions[0xeb] = (): void => {
     let temp = cpu.d;
     cpu.d = cpu.h;
     cpu.h = temp;
@@ -2421,11 +2463,11 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     cpu.l = temp;
   };
   // 0xec : CALL PE, nn
-  instructions[0xec] = () => {
+  instructions[0xec] = (): void => {
     do_conditional_call(!!cpu.flags.P);
   };
   // 0xed : ED Prefix
-  instructions[0xed] = () => {
+  instructions[0xed] = (): void => {
     // R is incremented at the start of the second instruction cycle,
     //  before the instruction actually runs.
     // The high bit of R is not affected by this increment,
@@ -2434,85 +2476,80 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
 
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const opcode1 = cb.mem_read(cpu.pc);
-    const func = ed_instructions[opcode1];
+    const func = ed_instructions[opcode1] ?? noop;
 
-    if (func) {
-      // func = func.bind(this);
-      func();
-      cpu.cycle_counter += cycle_counts_ed[opcode1];
-    } else {
-      // If the opcode didn't exist, the whole thing is a two-byte NOP.
-      cpu.cycle_counter += cycle_counts[0];
-    }
+    func();
+    const edCycles = (cycle_counts_ed[opcode1] ?? cycle_counts[0]) ?? 0;
+    cpu.cycle_counter += edCycles;
   };
   // 0xee : XOR n
-  instructions[0xee] = () => {
+  instructions[0xee] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_xor(cb.mem_read(cpu.pc));
   };
   // 0xef : RST 28h
-  instructions[0xef] = () => {
+  instructions[0xef] = (): void => {
     do_reset(0x28);
   };
   // 0xf0 : RET P
-  instructions[0xf0] = () => {
+  instructions[0xf0] = (): void => {
     do_conditional_return(!cpu.flags.S);
   };
   // 0xf1 : POP AF
-  instructions[0xf1] = () => {
+  instructions[0xf1] = (): void => {
     const result = pop_word();
     setFlagsRegister(cpu, result & 0xff);
     cpu.a = (result & 0xff00) >>> 8;
   };
   // 0xf2 : JP P, nn
-  instructions[0xf2] = () => {
+  instructions[0xf2] = (): void => {
     do_conditional_absolute_jump(!cpu.flags.S);
   };
   // 0xf3 : DI
-  instructions[0xf3] = () => {
+  instructions[0xf3] = (): void => {
     // DI doesn't actually take effect until after the next instruction.
     cpu.do_delayed_di = true;
   };
   // 0xf4 : CALL P, nn
-  instructions[0xf4] = () => {
+  instructions[0xf4] = (): void => {
     do_conditional_call(!cpu.flags.S);
   };
   // 0xf5 : PUSH AF
-  instructions[0xf5] = () => {
+  instructions[0xf5] = (): void => {
     pushWord(cpu, cb, get_flags_register() | (cpu.a << 8));
   };
   // 0xf6 : OR n
-  instructions[0xf6] = () => {
+  instructions[0xf6] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_or(cb.mem_read(cpu.pc));
   };
   // 0xf7 : RST 30h
-  instructions[0xf7] = () => {
+  instructions[0xf7] = (): void => {
     do_reset(0x30);
   };
   // 0xf8 : RET M
-  instructions[0xf8] = () => {
+  instructions[0xf8] = (): void => {
     do_conditional_return(!!cpu.flags.S);
   };
   // 0xf9 : LD SP, HL
-  instructions[0xf9] = () => {
+  instructions[0xf9] = (): void => {
     cpu.sp = cpu.l | (cpu.h << 8);
   };
   // 0xfa : JP M, nn
-  instructions[0xfa] = () => {
+  instructions[0xfa] = (): void => {
     do_conditional_absolute_jump(!!cpu.flags.S);
   };
   // 0xfb : EI
-  instructions[0xfb] = () => {
+  instructions[0xfb] = (): void => {
     // EI doesn't actually take effect until after the next instruction.
     cpu.do_delayed_ei = true;
   };
   // 0xfc : CALL M, nn
-  instructions[0xfc] = () => {
+  instructions[0xfc] = (): void => {
     do_conditional_call(!!cpu.flags.S);
   };
   // 0xfd : FD Prefix (IY instructions)
-  instructions[0xfd] = () => {
+  instructions[0xfd] = (): void => {
     // R is incremented at the start of the second instruction cycle,
     //  before the instruction actually runs.
     // The high bit of R is not affected by this increment,
@@ -2521,38 +2558,24 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
 
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const opcode1 = cb.mem_read(cpu.pc);
-    const func = dd_instructions[opcode1];
+    const func = dd_instructions[opcode1] ?? noop;
 
-    if (func) {
-      // Rather than copy and paste all the IX instructions into IY instructions,
-      //  what we'll do is sneakily copy IY into IX, run the IX instruction,
-      //  and then copy the result into IY and restore the old IX.
-      const temp = cpu.ix;
-      cpu.ix = cpu.iy;
-      // func = func.bind(this);
-      func();
-      cpu.iy = cpu.ix;
-      cpu.ix = temp;
+    const temp = cpu.ix;
+    cpu.ix = cpu.iy;
+    func();
+    cpu.iy = cpu.ix;
+    cpu.ix = temp;
 
-      cpu.cycle_counter += cycle_counts_dd[opcode1];
-    } else {
-      // Apparently if an FD opcode doesn't exist,
-      //  it gets treated as an unprefixed opcode.
-      // What we'll do to handle that is just back up the
-      //  program counter, so that this byte gets decoded
-      //  as a normal instruction.
-      cpu.pc = (cpu.pc - 1) & 0xffff;
-      // And we'll add in the cycle count for a NOP.
-      cpu.cycle_counter += cycle_counts[0];
-    }
+    const fdCycles = (cycle_counts_dd[opcode1] ?? cycle_counts[0]) ?? 0;
+    cpu.cycle_counter += fdCycles;
   };
   // 0xfe : CP n
-  instructions[0xfe] = () => {
+  instructions[0xfe] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     do_cp(cb.mem_read(cpu.pc));
   };
   // 0xff : RST 38h
-  instructions[0xff] = () => {
+  instructions[0xff] = (): void => {
     do_reset(0x38);
   };
 
@@ -2561,7 +2584,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   //  instead of going into the instruction array for them.
   // This function gets the operand for all of these instructions.
   // eslint-disable-next-line no-shadow
-  const get_operand = (opcode: number) => {
+  const get_operand = (opcode: number): number => {
     return (opcode & 0x07) === 0
       ? cpu.b
       : (opcode & 0x07) === 1
@@ -2588,21 +2611,29 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
     // Get the operand and assign it to the correct destination.
     const operand = get_operand(opcode);
 
-    if ((opcode & 0x38) >>> 3 === 0) cpu.b = operand;
-    else if ((opcode & 0x38) >>> 3 === 1) cpu.c = operand;
-    else if ((opcode & 0x38) >>> 3 === 2) cpu.d = operand;
-    else if ((opcode & 0x38) >>> 3 === 3) cpu.e = operand;
-    else if ((opcode & 0x38) >>> 3 === 4) cpu.h = operand;
-    else if ((opcode & 0x38) >>> 3 === 5) cpu.l = operand;
-    else if ((opcode & 0x38) >>> 3 === 6) {
+    if ((opcode & 0x38) >>> 3 === 0) {
+      cpu.b = operand;
+    } else if ((opcode & 0x38) >>> 3 === 1) {
+      cpu.c = operand;
+    } else if ((opcode & 0x38) >>> 3 === 2) {
+      cpu.d = operand;
+    } else if ((opcode & 0x38) >>> 3 === 3) {
+      cpu.e = operand;
+    } else if ((opcode & 0x38) >>> 3 === 4) {
+      cpu.h = operand;
+    } else if ((opcode & 0x38) >>> 3 === 5) {
+      cpu.l = operand;
+    } else if ((opcode & 0x38) >>> 3 === 6) {
       cb.mem_write(cpu.l | (cpu.h << 8), operand);
-    } else if ((opcode & 0x38) >>> 3 === 7) cpu.a = operand;
+    } else if ((opcode & 0x38) >>> 3 === 7) {
+      cpu.a = operand;
+    }
   } else if (opcode >= 0x80 && opcode < 0xc0) {
     // These are the 8-bit register ALU instructions.
     // We'll get the operand and then use this "jump table"
     //  to call the correct utility function for the instruction.
     const operand = get_operand(opcode);
-    const op_array = [
+    const op_array: ByteOpVoid[] = [
       do_add,
       do_adc,
       do_sub,
@@ -2613,11 +2644,12 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
       do_cp,
     ];
 
-    op_array[(opcode & 0x38) >>> 3](operand);
+    const alu = getVoidOp(op_array, (opcode & 0x38) >>> 3);
+    alu(operand);
   } else {
     // This is one of the less formulaic instructions;
     //  we'll get the specific function for it from our array.
-    const func = instructions[opcode];
+    const func = instructions[opcode] ?? noop;
     func();
   }
 
@@ -2625,7 +2657,7 @@ const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number) => {
   //  the base instruction took.
   // If this was a prefixed instruction, then
   //  the prefix handler has added its extra cycles already.
-  cpu.cycle_counter += cycle_counts[opcode];
+  cpu.cycle_counter += cycle_counts[opcode] ?? 0;
 };
 
 export function init(): Cpu {
@@ -2702,7 +2734,7 @@ export function init(): Cpu {
 //
 // @brief Re-initialize the processor as if a reset or power on had occured
 // ////////////////////////////////////////////////////////////////////////////
-export const reset = (cpu: Cpu) => {
+export const reset = (cpu: Cpu): void => {
   // These registers are the ones that have predictable states
   //  immediately following a power-on or a reset.
   // The others are left alone, because their states are unpredictable.
@@ -2732,7 +2764,7 @@ export const reset = (cpu: Cpu) => {
 //          plus any time that went into handling interrupts that fired
 //          while this instruction was executing
 // ////////////////////////////////////////////////////////////////////////////
-export const execute = (cpu: Cpu, cb: Callbacks) => {
+export const execute = (cpu: Cpu, cb: Callbacks): number => {
   if (!cpu.halted) {
     // If the previous instruction was a DI or an EI,
     //  we'll need to disable or enable interrupts
@@ -2791,7 +2823,7 @@ export const interrupt = (
   cb: Callbacks,
   non_maskable: boolean,
   data: number
-) => {
+): void => {
   if (non_maskable) {
     // The high bit of R is not affected by this increment,
     //  it can only be changed using the LD R, A instruction.
