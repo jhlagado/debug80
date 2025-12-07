@@ -1,0 +1,1 @@
+START                           = $0000 ; addr, local, , , , examples/echo.asm:5

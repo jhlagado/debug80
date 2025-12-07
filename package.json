@@ -1,0 +1,127 @@
+{
+  "name": "z80-debugger",
+  "displayName": "Z80 Debugger",
+  "description": "Debug Adapter for Z80 programs (asm80 + HEX/LST)",
+  "version": "0.0.1",
+  "publisher": "jhlagdo",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://example.com/your/repo.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Debuggers"
+  ],
+  "activationEvents": [
+    "onDebug",
+    "onCommand:debug80.initProject"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "debug80.initProject",
+        "title": "Debug80: Initialize Project Config"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "z80",
+        "label": "Z80 Debug",
+        "languages": [],
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "asm": {
+                "type": "string",
+                "description": "Root asm file to assemble with asm80"
+              },
+              "outputDir": {
+                "type": "string",
+                "description": "Directory for generated hex/lst artifacts (defaults to asm directory)"
+              },
+              "artifactBase": {
+                "type": "string",
+                "description": "Base filename for generated hex/lst (defaults to asm basename)"
+              },
+              "hex": {
+                "type": "string",
+                "description": "Path to a Z80 Intel HEX file (optional if asm is provided)"
+              },
+              "listing": {
+                "type": "string",
+                "description": "Path to a Z80 .lst listing file for source mapping (optional if asm is provided)"
+              },
+              "entry": {
+                "type": "number",
+                "description": "Override entry point (defaults to start of HEX data)"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on the first instruction",
+                "default": true
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "z80",
+            "request": "launch",
+            "name": "Debug Z80 (asm80)",
+            "asm": "${file}",
+            "outputDir": "${workspaceFolder}/build",
+            "hex": "${workspaceFolder}/build/${fileBasenameNoExtension}.hex",
+            "listing": "${workspaceFolder}/build/${fileBasenameNoExtension}.lst",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Z80: Launch (HEX + LST)",
+            "description": "Launch and debug a Z80 program from HEX/LST (asm80-generated)",
+            "body": {
+              "type": "z80",
+              "request": "launch",
+              "name": "Debug Z80 (HEX + LST)",
+              "asm": "^\"\\${file}\"",
+              "outputDir": "^\"\\${workspaceFolder}/build\"",
+              "hex": "^\"\\${workspaceFolder}/build/\\${fileBasenameNoExtension}.hex\"",
+              "listing": "^\"\\${workspaceFolder}/build/\\${fileBasenameNoExtension}.lst\"",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "pretest": "yarn build",
+    "test": "node --test out/**/*.test.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "typescript": "5.3.3"
+  },
+  "dependencies": {
+    "@vscode/debugadapter": "^1.64.0",
+    "@vscode/debugprotocol": "^1.64.0"
+  }
+}

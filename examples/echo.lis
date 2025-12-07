@@ -1,0 +1,9 @@
+examples/echo.asm:
+     1                          ; Minimal Z80 echo-like stub for testing: LD A,05h ; ADD A,03h ; HALT
+     2                          
+     3                                  ORG     0000h
+     4                          
+     5  0000  3e05              START:  LD      A,05h   ; load 5 into A
+     6  0002  c603                      ADD     A,03h   ; add 3 => A = 8
+     7  0004  76                        HALT            ; stop
+     8                          

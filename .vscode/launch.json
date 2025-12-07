@@ -1,0 +1,79 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ],
+            "preLaunchTask": "yarn: build"
+        },
+        {
+            "name": "Extension Tests",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionTestsPath=${workspaceFolder}/out/test"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ],
+            "preLaunchTask": "yarn: build"
+        },
+        {
+            "name": "Debug Z80 (asm80)",
+            "type": "z80",
+            "request": "launch",
+            "asm": "${file}",
+            "outputDir": "${workspaceFolder}/build",
+            "hex": "${workspaceFolder}/build/${fileBasenameNoExtension}.hex",
+            "listing": "${workspaceFolder}/build/${fileBasenameNoExtension}.lst",
+            "stopOnEntry": true,
+            "preLaunchTask": "asm80: build z80"
+        },
+        {
+            "name": "Debug Z80 (asm80, project config)",
+            "type": "z80",
+            "request": "launch",
+            "projectConfig": "${workspaceFolder}/debug80.json",
+            "stopOnEntry": true,
+            "preLaunchTask": "asm80: build z80"
+        },
+        {
+            "name": "Debug Z80 (z80asm)",
+            "type": "z80",
+            "request": "launch",
+            "asm": "${file}",
+            "outputDir": "${workspaceFolder}/build",
+            "hex": "${workspaceFolder}/build/${fileBasenameNoExtension}.hex",
+            "listing": "${workspaceFolder}/build/${fileBasenameNoExtension}.lst",
+            "stopOnEntry": true,
+            "preLaunchTask": "z80asm: build z80"
+        },
+        {
+            "name": "Debug Z80 (z80asm, project config)",
+            "type": "z80",
+            "request": "launch",
+            "projectConfig": "${workspaceFolder}/debug80.json",
+            "stopOnEntry": true,
+            "preLaunchTask": "z80asm: build z80"
+        },
+        {
+            "name": "Debug Z80 (wla-dx)",
+            "type": "z80",
+            "request": "launch",
+            "asm": "${file}",
+            "outputDir": "${workspaceFolder}/build",
+            "hex": "${workspaceFolder}/build/${fileBasenameNoExtension}.hex",
+            "listing": "${workspaceFolder}/build/${fileBasenameNoExtension}.lst",
+            "stopOnEntry": true,
+            "preLaunchTask": "wla-dx: build z80"
+        }
+    ]
+}

@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "tinycpu",
+            "request": "launch",
+            "name": "Debug TinyCPU",
+            "program": "${workspaceFolder}/simple.tiny",
+            "stopOnEntry": true
+        }
+    ]
+}

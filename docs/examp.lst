@@ -1,0 +1,308 @@
+0000                             ; Top-level include keeping the familiar structure.
+0000                          .ENGINE   mycomputer   
+0000                             ; TEC-1G layout and service codes
+0000                ROMSTART:   EQU   $0000   ; system layer 0x0000–0x07FF
+0000                APPSTART:   EQU   $0900   ; user program entry
+0000                STACK_TOP:   EQU   $FF00   ; set a comfortable stack high in RAM
+0000                INPUT_LEN:   EQU   64   ; default line buffer length
+0000                             ; Service selector values (C) for RST 10H
+0000                SVC_PUTC:   EQU   $16   ; A = char
+0000                SVC_GETC:   EQU   $17   ; returns A = char
+0000                SVC_PUTS:   EQU   $2D   ; HL = 0-terminated string
+0000                SVC_CLR:   EQU   $0B   ; clear display
+0000                             ; ASCII helpers
+0000                CR:       EQU   $0D   
+0000                LF:       EQU   $0A   
+0000                ESC:      EQU   $1B   
+0000                             ; 6850 ACIA (as in mycomputer.emu)
+0000                CONTROL:   EQU   $80   ; write
+0000                STATUS:   EQU   $80   ; read
+0000                TDR:      EQU   $81   ; write
+0000                RDR:      EQU   $81   ; read
+0000                DIV_64:   EQU   $02   
+0000                DIV_16:   EQU   $01   
+0000                F8N1:     EQU   $14   ; 8 data, no parity, 1 stop
+0000                F8N2:     EQU   $10   ; 8 data, no parity, 2 stop
+0000                RTSLID:   EQU   $00   ; RTS low, TX IRQ disabled
+0000                MRESET:   EQU   $03   
+0000                             ; System layer for TEC-1G: RST 10H services backed by a 6850 ACIA.
+0000                             ; Address space 0x0000–0x07FF.
+0000                          .ORG   ROMSTART   
+0000   C3 39 00               JP   RESET   
+0003                             ; Unused RST $08 placeholder (could be used later)
+0008                          .ORG   ROMSTART+$08   
+0008   C9                     RET      
+0009                             ; RST $10 dispatcher: C selects the service.
+0010                          .ORG   ROMSTART+$10   
+0010                RST10H:      
+0010   F5                     PUSH   AF   ; preserve caller's A (may hold char)
+0011   79                     LD   A,C   
+0012   FE 16                  CP   SVC_PUTC   
+0014   28 0E                  JR   Z,DO_PUTC   
+0016   FE 17                  CP   SVC_GETC   
+0018   28 0E                  JR   Z,DO_GETC   
+001A   FE 2D                  CP   SVC_PUTS   
+001C   28 0E                  JR   Z,DO_PUTS   
+001E   FE 0B                  CP   SVC_CLR   
+0020   28 0F                  JR   Z,DO_CLR   
+0022   F1                     POP   AF   
+0023   C9                     RET      ; unknown service: no-op
+0024                DO_PUTC:      
+0024   F1                     POP   AF   ; restore caller's A for transmit
+0025   C3 48 00               JP   ACIA_TX   
+0028                DO_GETC:      
+0028   F1                     POP   AF   ; discard saved A
+0029   C3 53 00               JP   ACIA_RX   ; returns char in A
+002C                DO_PUTS:      
+002C   F1                     POP   AF   ; discard saved A
+002D   CD 5C 00               CALL   PUTSTR_RAW   ; HL points to 0-terminated string
+0030   C9                     RET      
+0031                DO_CLR:      
+0031   F1                     POP   AF   ; discard saved A
+0032   21 65 00               LD   HL,CLEAR_SEQ   
+0035   CD 5C 00               CALL   PUTSTR_RAW   
+0038   C9                     RET      
+0039                             ; -------------------------------------------------------------------
+0039                             ; Reset/init: set stack, init ACIA, jump to app at APPSTART.
+0039                             ; -------------------------------------------------------------------
+0039                RESET:       
+0039   F3                     DI      
+003A   31 00 FF               LD   SP,STACK_TOP   
+003D   CD 43 00               CALL   acia_init   
+0040   C3 00 09               JP   APPSTART   
+0043                             ; -------------------------------------------------------------------
+0043                             ; ACIA helpers
+0043                             ; -------------------------------------------------------------------
+0043                ACIA_INIT:      
+0043   3E 15                  LD   A,F8N1+DIV_16   ; 0x15: 8N1, divide-by-16, RTS low
+0045   D3 80                  OUT   (CONTROL),A   
+0047   C9                     RET      
+0048                ACIA_TX:      
+0048   F5                     PUSH   AF   
+0049                TX_WAIT:      
+0049   DB 80                  IN   A,(STATUS)   
+004B   CB 4F                  BIT   1,A   ; TDRE
+004D   28 FA                  JR   Z,tx_wait   
+004F   F1                     POP   AF   
+0050   D3 81                  OUT   (TDR),A   
+0052   C9                     RET      
+0053                ACIA_RX:      
+0053                RX_WAIT:      
+0053   DB 80                  IN   A,(STATUS)   
+0055   CB 47                  BIT   0,A   ; RDRF
+0057   28 FA                  JR   Z,rx_wait   
+0059   DB 81                  IN   A,(RDR)   
+005B   C9                     RET      
+005C                PUTSTR_RAW:      
+005C   7E           PS_LOOP:   LD   A,(HL)   
+005D   B7                     OR   A   
+005E   C8                     RET   Z   
+005F   CD 48 00               CALL   acia_tx   
+0062   23                     INC   HL   
+0063   18 F7                  JR   ps_loop   
+0065                             ; ANSI clear + home
+0065                CLEAR_SEQ:      
+0065   1B 5B 32 4A 1B 5B 48 00 DB   ESC,"[2J",ESC,"[H",0   
+006D                             ; Board-agnostic TEC-1G service macros (short, readable prefix).
+006D                             ; Expects SVC_* constants to be defined in constants.asm.
+006D                .macro SYS_PUT,
+006D                             ; 
+006D                 LD      C,SVC_PUTC
+006D                 RST     $10
+006D                .endm
+006D                 
+006D                .macro SYS_GET,
+006D                             ; 
+006D                 LD      C,SVC_GETC
+006D                 RST     $10
+006D                .endm
+006D                 
+006D                .macro SYS_PUTS,
+006D                             ; 
+006D                 LD      C,SVC_PUTS
+006D                 RST     $10
+006D                .endm
+006D                 
+006D                .macro SYS_CLR,
+006D                             ; 
+006D                 LD      C,SVC_CLR
+006D                 RST     $10
+006D                .endm
+006D                 
+006D                             ; APPLICATION BLOCK FOR TEC-1G (ECHO DEMO).
+006D                             ; LOADS AT APPSTART (0X0900) AND USES RST 10H SERVICES.
+0900                          .ORG   APPSTART   
+0900                             ; USES THE SERVICE MACROS FROM API.ASM
+0900                START:       
+0900   31 00 FF               LD   SP,STACK_TOP   
+0903                             ; SYS_CLR
+0903   21 4D 09               LD   HL,MSG_READY   
+0906                          ;*Macro unroll:  SYS_PUTS
+0906   0E 2D                  LD   C,SVC_PUTS   
+0908   D7                     RST   $10   
+0909                MAIN_LOOP:      
+0909   21 61 09               LD   HL,PROMPT   
+090C                          ;*Macro unroll:  SYS_PUTS
+090C   0E 2D                  LD   C,SVC_PUTS   
+090E   D7                     RST   $10   
+090F   21 70 09               LD   HL,INPUT_BUF   
+0912   06 3F                  LD   B,INPUT_LEN-1   
+0914   CD 28 09               CALL   READ_LINE   
+0917   21 64 09               LD   HL,MSG_ECHO   
+091A                          ;*Macro unroll:  SYS_PUTS
+091A   0E 2D                  LD   C,SVC_PUTS   
+091C   D7                     RST   $10   
+091D   21 70 09               LD   HL,INPUT_BUF   
+0920                          ;*Macro unroll:  SYS_PUTS
+0920   0E 2D                  LD   C,SVC_PUTS   
+0922   D7                     RST   $10   
+0923   CD 42 09               CALL   CRLF   
+0926   18 E1                  JR   MAIN_LOOP   
+0928                             ; READ_LINE: HL=BUFFER, B=MAXLEN (EXCLUDING TERMINATOR)
+0928                             ; BLOCKS ON INPUT, STOPS ON CR/LF, ZERO-TERMINATES.
+0928                READ_LINE:      
+0928   1E 00                  LD   E,0   ; COUNT
+092A                RL_NEXT:      
+092A                          ;*Macro unroll:  SYS_GET
+092A   0E 17                  LD   C,SVC_GETC   
+092C   D7                     RST   $10   
+092D                          ;*Macro unroll:  SYS_PUT
+092D   0E 16                  LD   C,SVC_PUTC   
+092F   D7                     RST   $10   
+0930   FE 0D                  CP   CR   
+0932   28 0B                  JR   Z,RL_DONE   
+0934   FE 0A                  CP   LF   
+0936   28 F2                  JR   Z,RL_NEXT   
+0938   77                     LD   (HL),A   
+0939   23                     INC   HL   
+093A   1C                     INC   E   
+093B   7B                     LD   A,E   
+093C   B8                     CP   B   
+093D   20 EB                  JR   NZ,RL_NEXT   
+093F                RL_DONE:      
+093F   36 00                  LD   (HL),0   
+0941   C9                     RET      
+0942                CRLF:        
+0942   3E 0D                  LD   A,CR   
+0944                          ;*Macro unroll:  SYS_PUT
+0944   0E 16                  LD   C,SVC_PUTC   
+0946   D7                     RST   $10   
+0947   3E 0A                  LD   A,LF   
+0949                          ;*Macro unroll:  SYS_PUT
+0949   0E 16                  LD   C,SVC_PUTC   
+094B   D7                     RST   $10   
+094C   C9                     RET      
+094D                             ; -------------------------------------------------------------------
+094D                             ; DATA
+094D                             ; -------------------------------------------------------------------
+094D   54 45 43 2D 31 47 20 45 43 48 4F 20 52 45 41 44 59 0D 0A 00 MSG_READY:   DB   "TEC-1G ECHO READY",CR,LF,0   
+0961   3E 20 00     PROMPT:   DB   "> ",0   
+0964   59 4F 55 20 54 59 50 45 44 3A 20 00 MSG_ECHO:   DB   "YOU TYPED: ",0   
+0970                INPUT_BUF:   DS   INPUT_LEN   
+
+
+ROMSTART:           0000 DEFINED AT LINE 2 IN constants.asm
+                    > USED AT LINE 4 IN system.asm
+                    > USED AT LINE 9 IN system.asm
+                    > USED AT LINE 13 IN system.asm
+APPSTART:           0900 DEFINED AT LINE 3 IN constants.asm
+                    > USED AT LINE 55 IN system.asm
+                    > USED AT LINE 4 IN MAIN.asm
+STACK_TOP:          FF00 DEFINED AT LINE 5 IN constants.asm
+                    > USED AT LINE 53 IN system.asm
+                    > USED AT LINE 9 IN MAIN.asm
+INPUT_LEN:          0040 DEFINED AT LINE 6 IN constants.asm
+                    > USED AT LINE 20 IN MAIN.asm
+                    > USED AT LINE 66 IN MAIN.asm
+SVC_PUTC:           0016 DEFINED AT LINE 9 IN constants.asm
+                    > USED AT LINE 17 IN system.asm
+                    > USED AT LINE 5
+                    > USED AT LINE 5
+                    > USED AT LINE 5
+SVC_GETC:           0017 DEFINED AT LINE 10 IN constants.asm
+                    > USED AT LINE 19 IN system.asm
+                    > USED AT LINE 10
+SVC_PUTS:           002D DEFINED AT LINE 11 IN constants.asm
+                    > USED AT LINE 21 IN system.asm
+                    > USED AT LINE 15
+                    > USED AT LINE 15
+                    > USED AT LINE 15
+                    > USED AT LINE 15
+SVC_CLR:            000B DEFINED AT LINE 12 IN constants.asm
+                    > USED AT LINE 23 IN system.asm
+CR:                 000D DEFINED AT LINE 15 IN constants.asm
+                    > USED AT LINE 37 IN MAIN.asm
+                    > USED AT LINE 52 IN MAIN.asm
+                    > USED AT LINE 62 IN MAIN.asm
+LF:                 000A DEFINED AT LINE 16 IN constants.asm
+                    > USED AT LINE 39 IN MAIN.asm
+                    > USED AT LINE 54 IN MAIN.asm
+ESC:                001B DEFINED AT LINE 17 IN constants.asm
+                    > USED AT LINE 94 IN system.asm
+CONTROL:            0080 DEFINED AT LINE 20 IN constants.asm
+                    > USED AT LINE 63 IN system.asm
+STATUS:             0080 DEFINED AT LINE 21 IN constants.asm
+                    > USED AT LINE 69 IN system.asm
+                    > USED AT LINE 78 IN system.asm
+TDR:                0081 DEFINED AT LINE 22 IN constants.asm
+                    > USED AT LINE 73 IN system.asm
+RDR:                0081 DEFINED AT LINE 23 IN constants.asm
+                    > USED AT LINE 81 IN system.asm
+DIV_64:             0002 DEFINED AT LINE 25 IN constants.asm
+DIV_16:             0001 DEFINED AT LINE 26 IN constants.asm
+                    > USED AT LINE 62 IN system.asm
+F8N1:               0014 DEFINED AT LINE 27 IN constants.asm
+                    > USED AT LINE 62 IN system.asm
+F8N2:               0010 DEFINED AT LINE 28 IN constants.asm
+RTSLID:             0000 DEFINED AT LINE 29 IN constants.asm
+MRESET:             0003 DEFINED AT LINE 30 IN constants.asm
+RST10H:             0010 DEFINED AT LINE 14 IN system.asm
+DO_PUTC:            0024 DEFINED AT LINE 28 IN system.asm
+                    > USED AT LINE 18 IN system.asm
+DO_GETC:            0028 DEFINED AT LINE 32 IN system.asm
+                    > USED AT LINE 20 IN system.asm
+DO_PUTS:            002C DEFINED AT LINE 36 IN system.asm
+                    > USED AT LINE 22 IN system.asm
+DO_CLR:             0031 DEFINED AT LINE 41 IN system.asm
+                    > USED AT LINE 24 IN system.asm
+RESET:              0039 DEFINED AT LINE 51 IN system.asm
+                    > USED AT LINE 6 IN system.asm
+ACIA_INIT:          0043 DEFINED AT LINE 61 IN system.asm
+                    > USED AT LINE 54 IN system.asm
+ACIA_TX:            0048 DEFINED AT LINE 66 IN system.asm
+                    > USED AT LINE 30 IN system.asm
+                    > USED AT LINE 88 IN system.asm
+TX_WAIT:            0049 DEFINED AT LINE 68 IN system.asm
+                    > USED AT LINE 71 IN system.asm
+ACIA_RX:            0053 DEFINED AT LINE 76 IN system.asm
+                    > USED AT LINE 34 IN system.asm
+RX_WAIT:            0053 DEFINED AT LINE 77 IN system.asm
+                    > USED AT LINE 80 IN system.asm
+PUTSTR_RAW:         005C DEFINED AT LINE 84 IN system.asm
+                    > USED AT LINE 38 IN system.asm
+                    > USED AT LINE 44 IN system.asm
+PS_LOOP:            005C DEFINED AT LINE 85 IN system.asm
+                    > USED AT LINE 90 IN system.asm
+CLEAR_SEQ:          0065 DEFINED AT LINE 93 IN system.asm
+                    > USED AT LINE 43 IN system.asm
+START:              0900 DEFINED AT LINE 8 IN MAIN.asm
+MAIN_LOOP:          0909 DEFINED AT LINE 15 IN MAIN.asm
+                    > USED AT LINE 28 IN MAIN.asm
+READ_LINE:          0928 DEFINED AT LINE 32 IN MAIN.asm
+                    > USED AT LINE 21 IN MAIN.asm
+RL_NEXT:            092A DEFINED AT LINE 34 IN MAIN.asm
+                    > USED AT LINE 40 IN MAIN.asm
+                    > USED AT LINE 46 IN MAIN.asm
+RL_DONE:            093F DEFINED AT LINE 47 IN MAIN.asm
+                    > USED AT LINE 38 IN MAIN.asm
+CRLF:               0942 DEFINED AT LINE 51 IN MAIN.asm
+                    > USED AT LINE 27 IN MAIN.asm
+MSG_READY:          094D DEFINED AT LINE 62 IN MAIN.asm
+                    > USED AT LINE 12 IN MAIN.asm
+PROMPT:             0961 DEFINED AT LINE 63 IN MAIN.asm
+                    > USED AT LINE 16 IN MAIN.asm
+MSG_ECHO:           0964 DEFINED AT LINE 64 IN MAIN.asm
+                    > USED AT LINE 23 IN MAIN.asm
+INPUT_BUF:          0970 DEFINED AT LINE 66 IN MAIN.asm
+                    > USED AT LINE 19 IN MAIN.asm
+                    > USED AT LINE 25 IN MAIN.asm

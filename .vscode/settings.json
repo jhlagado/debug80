@@ -1,0 +1,7 @@
+{
+  // Use the workspace TypeScript for type-aware ESLint runs (aligns with tsconfig and @typescript-eslint support).
+  "typescript.tsdk": "./node_modules/typescript/lib",
+  // Ensure ESLint picks up the workspace when resolving configs.
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "eslint.packageManager": "yarn"
+}

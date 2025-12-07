@@ -1,0 +1,11 @@
+{
+  "defaultTarget": "app",
+  "targets": {
+    "app": {
+      "sourceFile": "examples/echo.asm",
+      "outputDir": "build",
+      "artifactBase": "echo",
+      "entry": 0
+    }
+  }
+}
