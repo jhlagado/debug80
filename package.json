@@ -16,7 +16,6 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onCommand:debug80.createProject",
     "onDebugResolve:z80"
   ],
   "main": "./out/extension.js",
