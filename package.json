@@ -1,5 +1,5 @@
 {
-  "name": "z80-debugger",
+  "name": "debug80",
   "displayName": "Z80 Debugger",
   "description": "Debug Adapter for Z80 programs (asm80 + HEX/LST)",
   "version": "0.0.1",
