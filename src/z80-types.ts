@@ -5,6 +5,13 @@ export interface Callbacks {
   io_write: (port: number, value: number) => void;
 }
 
+export interface HardwareContext {
+  memory: Uint8Array;
+  ioRead: (port: number) => number;
+  ioWrite: (port: number, value: number) => void;
+  cpu?: Cpu;
+}
+
 export interface Cpu {
   b: number;
   a: number;
@@ -35,6 +42,7 @@ export interface Cpu {
   do_delayed_di: boolean;
   do_delayed_ei: boolean;
   cycle_counter: number;
+  hardware?: HardwareContext;
 }
 
 export type Flags = {
