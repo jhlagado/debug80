@@ -384,13 +384,15 @@ export class Z80DebugSession extends DebugSession {
     }
     configCandidates.push('debug80.json');
     configCandidates.push('.debug80.json');
+    configCandidates.push(path.join('.vscode', 'debug80.json'));
 
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const startDir =
       args.asm !== undefined && args.asm !== ''
         ? path.dirname(args.asm)
         : args.sourceFile !== undefined && args.sourceFile !== ''
         ? path.dirname(args.sourceFile)
-        : process.cwd();
+        : workspaceRoot ?? process.cwd();
 
     const dirsToCheck: string[] = [];
     for (let dir = startDir; ; ) {

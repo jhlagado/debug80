@@ -18,7 +18,7 @@ yarn test
 
 ## Project config (recommended)
 
-Add a `debug80.json` at the repo root so F5 doesn’t depend on the active editor. Example:
+Add a `debug80.json` at the repo root so F5 doesn’t depend on the active editor (`.vscode/debug80.json` is also supported). Example:
 ```json
 {
   "defaultTarget": "app",
