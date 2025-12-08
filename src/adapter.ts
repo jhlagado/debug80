@@ -659,14 +659,24 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private resolveBaseDir(args: LaunchRequestArguments): string {
-    const configDir =
-      args.projectConfig !== undefined && args.projectConfig !== '' && path.isAbsolute(args.projectConfig)
-        ? path.dirname(args.projectConfig)
-        : undefined;
-    if (configDir !== undefined) {
-      return configDir;
-    }
     const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+    // If a projectConfig is provided, use the workspace root when the config lives inside it
+    // (including .vscode), otherwise fall back to the config directory.
+    if (args.projectConfig !== undefined && args.projectConfig !== '') {
+      const cfgPath = path.isAbsolute(args.projectConfig)
+        ? args.projectConfig
+        : workspace !== undefined
+        ? path.join(workspace, args.projectConfig)
+        : args.projectConfig;
+
+      if (workspace !== undefined && cfgPath.startsWith(workspace)) {
+        return workspace;
+      }
+
+      return path.dirname(cfgPath);
+    }
+
     return workspace ?? process.cwd();
   }
 

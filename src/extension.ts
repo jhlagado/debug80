@@ -30,8 +30,9 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   }
 
   const workspaceRoot = folder.uri.fsPath;
-  const configPath = path.join(workspaceRoot, 'debug80.json');
-  const launchPath = path.join(workspaceRoot, '.vscode', 'launch.json');
+  const vscodeDir = path.join(workspaceRoot, '.vscode');
+  const configPath = path.join(vscodeDir, 'debug80.json');
+  const launchPath = path.join(vscodeDir, 'launch.json');
   const configExists = fs.existsSync(configPath);
 
   const inferred = inferDefaultTarget(workspaceRoot);
@@ -40,8 +41,8 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   if (!configExists) {
     const choice = await vscode.window.showInformationMessage(
       inferred.found
-        ? `Debug80: Create debug80.json targeting ${inferred.sourceFile}?`
-        : `Debug80: Create debug80.json targeting ${inferred.sourceFile}? (file not found yet)`,
+        ? `Debug80: Create .vscode/debug80.json targeting ${inferred.sourceFile}?`
+        : `Debug80: Create .vscode/debug80.json targeting ${inferred.sourceFile}? (file not found yet)`,
       { modal: true },
       'Create'
     );
@@ -54,8 +55,9 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
 
   ensureDirExists(path.join(workspaceRoot, path.dirname(inferred.sourceFile)));
   ensureDirExists(path.join(workspaceRoot, inferred.outputDir));
+  ensureDirExists(vscodeDir);
   if (includeLaunch) {
-    ensureDirExists(path.join(workspaceRoot, '.vscode'));
+    ensureDirExists(vscodeDir);
   }
 
   let created = false;
@@ -76,15 +78,17 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
     try {
       fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
       void vscode.window.showInformationMessage(
-        `Debug80: Created debug80.json targeting ${inferred.sourceFile}.`
+        `Debug80: Created .vscode/debug80.json targeting ${inferred.sourceFile}.`
       );
       created = true;
     } catch (err) {
-      void vscode.window.showErrorMessage(`Debug80: Failed to write debug80.json: ${String(err)}`);
+      void vscode.window.showErrorMessage(
+        `Debug80: Failed to write .vscode/debug80.json: ${String(err)}`
+      );
       return false;
     }
   } else if (!includeLaunch) {
-    void vscode.window.showInformationMessage('Debug80: debug80.json already exists.');
+    void vscode.window.showInformationMessage('.vscode/debug80.json already exists.');
   }
 
   if (includeLaunch) {
@@ -96,7 +100,7 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
             name: 'Debug (debug80)',
             type: 'z80',
             request: 'launch',
-            projectConfig: '${workspaceFolder}/debug80.json',
+            projectConfig: '${workspaceFolder}/.vscode/debug80.json',
             target: 'app',
             stopOnEntry: true,
           },
