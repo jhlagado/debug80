@@ -18,6 +18,9 @@
   "activationEvents": [
     "onDebugResolve:z80"
   ],
+  "extensionPack": [
+    "imanolea.z80-asm"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

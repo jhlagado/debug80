@@ -1,63 +1,16 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "yarn: build",
-            "type": "shell",
-            "command": "yarn",
-            "args": [
-                "build"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "label": "yarn: watch",
-            "type": "shell",
-            "command": "yarn",
-            "args": [
-                "watch"
-            ],
-            "group": "build",
-            "problemMatcher": [
-                "$tsc-watch"
-            ],
-            "isBackground": true
-        },
-        {
-            "label": "yarn: lint",
-            "type": "shell",
-            "command": "yarn",
-            "args": [
-                "lint"
-            ],
-            "group": "test",
-            "problemMatcher": [
-                "$eslint-stylish"
-            ]
-        },
-        {
-            "label": "asm80: build z80",
-            "type": "shell",
-            "command": "cd ${fileDirname} && if [ \"${fileExtname}\" != \".asm\" ]; then echo \"Open an .asm file before running this task.\" && exit 1; fi && mkdir -p ${workspaceFolder}/build && npx asm80 -m Z80 ${fileBasename} && mv ${fileBasenameNoExtension}.hex ${workspaceFolder}/build/${fileBasenameNoExtension}.hex && mv ${fileBasenameNoExtension}.lst ${workspaceFolder}/build/${fileBasenameNoExtension}.lst",
-            "problemMatcher": []
-        },
-        {
-            "label": "z80asm: build z80",
-            "type": "shell",
-            "command": "set -euo pipefail; if [ \"${fileExtname}\" != \".asm\" ]; then echo \"Open an .asm file before running this task.\" && exit 1; fi; Z80ASM=\"$HOME/z88dk/bin/z80asm\"; SRC=\"${file}\"; BASE=${fileBasenameNoExtension}; OUT=${workspaceFolder}/build; mkdir -p \"$OUT\"; BIN=\"$OUT/${BASE}.bin\"; LST=\"$OUT/${BASE}.lst\"; MAP=\"$OUT/${BASE}.map\"; HEX=\"$OUT/${BASE}.hex\"; rm -f \"$BIN\" \"$LST\" \"$MAP\" \"$HEX\"; \"$Z80ASM\" -b -O=\"$OUT\" -o=\"$BASE.bin\" -l -m -s \"$SRC\"; if [ ! -f \"$BIN\" ]; then echo \"z80asm did not produce a bin\"; exit 1; fi; mv \"$OUT/examples/${BASE}.lis\" \"$LST\" 2>/dev/null || true; mv \"$OUT/examples/${BASE}.map\" \"$MAP\" 2>/dev/null || true; mv \"$OUT/examples/${BASE}.sym\" \"$OUT/${BASE}.sym\" 2>/dev/null || true; rm -rf \"$OUT/examples\" 2>/dev/null || true; node -e 'const fs=require(\"fs\"); const bin=process.argv[1]; const hex=process.argv[2]; const data=fs.readFileSync(bin); const lines=[]; for(let offset=0; offset<data.length; offset+=16){const chunk=data.subarray(offset, offset+16); const count=chunk.length; const addr=offset; const checksum=(- (count + (addr>>8) + (addr & 0xff) + chunk.reduce((a,b)=>a+b,0))) & 0xff; const hexBytes=Array.from(chunk, b=>b.toString(16).padStart(2,\"0\")).join(\"\").toUpperCase(); lines.push(`:${count.toString(16).padStart(2,\"0\").toUpperCase()}${addr.toString(16).padStart(4,\"0\").toUpperCase()}00${hexBytes}${checksum.toString(16).padStart(2,\"0\").toUpperCase()}`);} lines.push(\":00000001FF\"); fs.writeFileSync(hex, lines.join(\"\\n\"));' \"$BIN\" \"$HEX\"; ls -l \"$BIN\" \"$LST\" \"$MAP\" \"$HEX\"",
-            "problemMatcher": []
-        },
-        {
-            "label": "wla-dx: build z80",
-            "type": "shell",
-            "command": "set -euo pipefail; if [ \"${fileExtname}\" != \".asm\" ]; then echo \"Open an .asm file before running this task.\" && exit 1; fi; SRC=\"${file}\"; BASE=${fileBasenameNoExtension}; OUT=${workspaceFolder}/build; mkdir -p \"$OUT\"; cd \"$OUT\"; rm -f \"$BASE.o\" \"$BASE.bin\" \"$BASE.link\"; echo \"[objects]\\n$BASE.o\" > \"$BASE.link\"; wla-z80 -o \"$BASE.o\" \"$SRC\" || { echo \"wla-z80 failed\"; exit 1; }; if [ ! -f \"$BASE.o\" ]; then echo \"Object not produced. Check WLA syntax (requires MEMORYMAP/ROMBANKS/.SECTION).\"; exit 1; fi; wlalink -d -v -i -S \"$BASE.link\" \"$BASE.bin\" || { echo \"wlalink failed\"; exit 1; }; if [ ! -f \"$BASE.bin\" ]; then echo \"Binary not produced by wlalink.\"; exit 1; fi; ls -l \"$BASE.o\" \"$BASE.bin\";",
-            "problemMatcher": []
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "yarn: build",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    }
+  ]
 }
