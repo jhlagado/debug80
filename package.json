@@ -35,6 +35,14 @@
           "launch": {
             "required": [],
             "properties": {
+              "projectConfig": {
+                "type": "string",
+                "description": "Path to debug80 project config (defaults to ${workspaceFolder}/.vscode/debug80.json)"
+              },
+              "target": {
+                "type": "string",
+                "description": "Target name from the project config (defaults to defaultTarget)"
+              },
               "asm": {
                 "type": "string",
                 "description": "Root asm file to assemble with asm80"
@@ -77,7 +85,7 @@
             "type": "z80",
             "request": "launch",
             "name": "Debug Z80 (project config)",
-            "projectConfig": "${workspaceFolder}/debug80.json",
+            "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
             "stopOnEntry": true
           }
         ],
@@ -89,7 +97,7 @@
               "type": "z80",
               "request": "launch",
               "name": "Debug Z80 (project config target)",
-              "projectConfig": "^\"\\${workspaceFolder}/debug80.json\"",
+              "projectConfig": "^\"\\${workspaceFolder}/.vscode/debug80.json\"",
               "target": "app",
               "stopOnEntry": true
             }
