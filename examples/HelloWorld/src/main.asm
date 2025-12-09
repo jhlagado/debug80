@@ -12,8 +12,9 @@ READLOOP:
         LD      HL,BUF
         LD      B,32           ; buffer length including terminator
         CALL    term_gets
-        CP      0x0A           ; term_gets leaves last char read in A (newline if empty)
-        JR      Z,DONE         ; empty line -> exit
+        LD      A,(BUF)        ; treat control/empty as termination
+        CP      0x20
+        JR      C,DONE         ; empty or control -> exit
 
         LD      HL,BUF
         CALL    term_puts
@@ -22,7 +23,10 @@ READLOOP:
 
         JR      READLOOP
 
-DONE:   HALT
+DONE:   LD      HL,DONE_MSG
+        CALL    term_puts
+        HALT
 
 MSG:    DEFB    "HELLO, DEBUG80!",0x0A,0
+DONE_MSG: DEFB  "Done.",0x0A,0
 BUF:    DS      32,0

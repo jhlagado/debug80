@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (debug80)",
+      "type": "z80",
+      "request": "launch",
+      "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
+      "target": "app",
+      "stopOnEntry": true
+    }
+  ]
+}
