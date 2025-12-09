@@ -280,9 +280,8 @@ function getTerminalHtml(initial: string): string {
     });
     function sendInput() {
       const text = input.value;
-      if (text.length === 0) return;
       const payload = text + "\\n";
-      out.textContent += payload;
+      out.textContent += text.length === 0 ? "\\n" : text;
       window.scrollTo(0, document.body.scrollHeight);
       vscode.postMessage({ type: 'input', text: payload });
       input.value = '';
