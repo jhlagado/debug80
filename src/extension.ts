@@ -61,6 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
         openTerminalPanel(session);
+        clearTerminal();
       }
     })
   );
@@ -231,9 +232,23 @@ function openTerminalPanel(session?: vscode.DebugSession): void {
 }
 
 function appendTerminalOutput(text: string): void {
-  terminalBuffer += text;
+  const { remaining, shouldClear } = stripAndDetectClear(text);
+  if (shouldClear) {
+    clearTerminal();
+  }
+  if (remaining.length === 0) {
+    return;
+  }
+  terminalBuffer += remaining;
   if (terminalPanel !== undefined) {
-    terminalPanel.webview.postMessage({ type: 'output', text });
+    terminalPanel.webview.postMessage({ type: 'output', text: remaining });
+  }
+}
+
+function clearTerminal(): void {
+  terminalBuffer = '';
+  if (terminalPanel !== undefined) {
+    terminalPanel.webview.postMessage({ type: 'clear' });
   }
 }
 
@@ -254,6 +269,10 @@ function getTerminalHtml(initial: string): string {
     const send = document.getElementById('send');
     window.addEventListener('message', event => {
       const msg = event.data;
+      if (msg.type === 'clear') {
+        out.textContent = '';
+        return;
+      }
       if (msg.type === 'output' && typeof msg.text === 'string') {
         out.textContent += msg.text;
         window.scrollTo(0, document.body.scrollHeight);
@@ -279,4 +298,17 @@ function getTerminalHtml(initial: string): string {
   </script>
 </body>
 </html>`;
+}
+
+function stripAndDetectClear(text: string): { remaining: string; shouldClear: boolean } {
+  let remaining = text;
+  let shouldClear = false;
+
+  const CLEAR_SEQ = /\u001b\[2J/; // ESC[2J clear screen (VT100)
+  if (CLEAR_SEQ.test(remaining)) {
+    shouldClear = true;
+    remaining = remaining.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '');
+  }
+
+  return { remaining, shouldClear };
 }
