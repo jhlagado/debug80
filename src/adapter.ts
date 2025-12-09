@@ -300,38 +300,62 @@ export class Z80DebugSession extends DebugSession {
         (regs.flags.P << 2) |
         (regs.flags.N << 1) |
         regs.flags.C;
+      const flagBytePrime =
+        (regs.flags_prime.S << 7) |
+        (regs.flags_prime.Z << 6) |
+        (regs.flags_prime.Y << 5) |
+        (regs.flags_prime.H << 4) |
+        (regs.flags_prime.X << 3) |
+        (regs.flags_prime.P << 2) |
+        (regs.flags_prime.N << 1) |
+        regs.flags_prime.C;
+
+      const fmt16 = (v: number) => `0x${v.toString(16).padStart(4, '0')}`;
+      const fmt8 = (v: number) => `0x${v.toString(16).padStart(2, '0')}`;
+      const flagsStr = (f: { S: number; Z: number; Y: number; H: number; X: number; P: number; N: number; C: number }) => {
+        const letters: [keyof typeof f, string][] = [
+          ['S', 's'],
+          ['Z', 'z'],
+          ['Y', 'y'],
+          ['H', 'h'],
+          ['X', 'x'],
+          ['P', 'p'],
+          ['N', 'n'],
+          ['C', 'c'],
+        ];
+        return letters.map(([k, ch]) => (f[k] ? ch.toUpperCase() : ch)).join('');
+      };
+
+      const af = ((regs.a & 0xff) << 8) | (flagByte & 0xff);
+      const bc = ((regs.b & 0xff) << 8) | (regs.c & 0xff);
+      const de = ((regs.d & 0xff) << 8) | (regs.e & 0xff);
+      const hl = ((regs.h & 0xff) << 8) | (regs.l & 0xff);
+      const afp = ((regs.a_prime & 0xff) << 8) | (flagBytePrime & 0xff);
+      const bcp = ((regs.b_prime & 0xff) << 8) | (regs.c_prime & 0xff);
+      const dep = ((regs.d_prime & 0xff) << 8) | (regs.e_prime & 0xff);
+      const hlp = ((regs.h_prime & 0xff) << 8) | (regs.l_prime & 0xff);
+
       response.body = {
         variables: [
-          {
-            name: 'pc',
-            value: `0x${this.runtime.getPC().toString(16).padStart(4, '0')}`,
-            variablesReference: 0,
-          },
-          {
-            name: 'sp',
-            value: `0x${regs.sp.toString(16).padStart(4, '0')}`,
-            variablesReference: 0,
-          },
-          { name: 'a', value: `0x${regs.a.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'f', value: `0x${flagByte.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'b', value: `0x${regs.b.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'c', value: `0x${regs.c.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'd', value: `0x${regs.d.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'e', value: `0x${regs.e.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'h', value: `0x${regs.h.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'l', value: `0x${regs.l.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          {
-            name: 'ix',
-            value: `0x${regs.ix.toString(16).padStart(4, '0')}`,
-            variablesReference: 0,
-          },
-          {
-            name: 'iy',
-            value: `0x${regs.iy.toString(16).padStart(4, '0')}`,
-            variablesReference: 0,
-          },
-          { name: 'i', value: `0x${regs.i.toString(16).padStart(2, '0')}`, variablesReference: 0 },
-          { name: 'r', value: `0x${regs.r.toString(16).padStart(2, '0')}`, variablesReference: 0 },
+          { name: 'Flags', value: flagsStr(regs.flags), variablesReference: 0 },
+          { name: 'PC', value: fmt16(this.runtime.getPC()), variablesReference: 0 },
+          { name: 'SP', value: fmt16(regs.sp), variablesReference: 0 },
+
+          { name: 'AF', value: fmt16(af), variablesReference: 0 },
+          { name: 'BC', value: fmt16(bc), variablesReference: 0 },
+          { name: 'DE', value: fmt16(de), variablesReference: 0 },
+          { name: 'HL', value: fmt16(hl), variablesReference: 0 },
+
+          { name: "AF'", value: fmt16(afp), variablesReference: 0 },
+          { name: "BC'", value: fmt16(bcp), variablesReference: 0 },
+          { name: "DE'", value: fmt16(dep), variablesReference: 0 },
+          { name: "HL'", value: fmt16(hlp), variablesReference: 0 },
+
+          { name: 'IX', value: fmt16(regs.ix), variablesReference: 0 },
+          { name: 'IY', value: fmt16(regs.iy), variablesReference: 0 },
+
+          { name: 'I', value: fmt8(regs.i), variablesReference: 0 },
+          { name: 'R', value: fmt8(regs.r), variablesReference: 0 },
         ],
       };
     } else {
