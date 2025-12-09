@@ -1,0 +1,40 @@
+{
+  "name": "Z80 Listing",
+  "scopeName": "source.z80.lst",
+  "fileTypes": [
+    "lst"
+  ],
+  "patterns": [
+    {
+      "name": "comment.line.semicolon.z80-lst",
+      "match": ";.*$"
+    },
+    {
+      "name": "string.quoted.double.z80-lst",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.z80-lst",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "constant.numeric.address.z80-lst",
+      "match": "^\\s*[0-9A-Fa-f]{4}\\b"
+    },
+    {
+      "name": "constant.numeric.hexbyte.z80-lst",
+      "match": "\\b[0-9A-Fa-f]{2}\\b"
+    },
+    {
+      "name": "entity.name.label.z80-lst",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*:"
+    },
+    {
+      "name": "keyword.instruction.z80-lst",
+      "match": "\\b(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SRA|SRL|SUB|XOR|EQU|ORG|DB|DS)\\b"
+    }
+  ]
+}

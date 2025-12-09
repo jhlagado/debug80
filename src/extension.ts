@@ -15,6 +15,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory)
   );
 
+  openTerminalPanel(); // create panel early
+
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.createProject', async () => {
       return scaffoldProject(true);
@@ -35,8 +37,9 @@ export function activate(context: vscode.ExtensionContext): void {
       if (input === undefined) {
         return;
       }
+      const payload = input.endsWith('\n') ? input : `${input}\n`;
       try {
-        await session.customRequest('debug80/terminalInput', { text: input });
+        await session.customRequest('debug80/terminalInput', { text: payload });
       } catch (err) {
         void vscode.window.showErrorMessage(`Debug80: Failed to send input: ${String(err)}`);
       }
@@ -47,10 +50,26 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTerminal', async () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
+        openTerminalPanel();
         return;
       }
       openTerminalPanel(session);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidStartDebugSession((session) => {
+      if (session.type === 'z80') {
+        openTerminalPanel(session);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidTerminateDebugSession((session) => {
+      if (terminalSession?.id === session.id) {
+        terminalSession = undefined;
+      }
     })
   );
 
@@ -176,7 +195,7 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   return created;
 }
 
-function openTerminalPanel(session: vscode.DebugSession): void {
+function openTerminalPanel(session?: vscode.DebugSession): void {
   if (terminalPanel === undefined) {
     terminalPanel = vscode.window.createWebviewPanel(
       'debug80Terminal',
@@ -204,7 +223,10 @@ function openTerminalPanel(session: vscode.DebugSession): void {
       }
     });
   }
-  terminalSession = session;
+  if (session !== undefined) {
+    terminalSession = session;
+  }
+  terminalPanel.reveal(vscode.ViewColumn.Two, false);
   terminalPanel.webview.html = getTerminalHtml(terminalBuffer);
 }
 
@@ -240,8 +262,12 @@ function getTerminalHtml(initial: string): string {
     function sendInput() {
       const text = input.value;
       if (text.length === 0) return;
-      vscode.postMessage({ type: 'input', text });
+      const payload = text + "\\n";
+      out.textContent += payload;
+      window.scrollTo(0, document.body.scrollHeight);
+      vscode.postMessage({ type: 'input', text: payload });
       input.value = '';
+      input.focus();
     }
     send.addEventListener('click', sendInput);
     input.addEventListener('keydown', e => {
@@ -249,6 +275,7 @@ function getTerminalHtml(initial: string): string {
         sendInput();
       }
     });
+    input.focus();
   </script>
 </body>
 </html>`;

@@ -25,6 +25,26 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "z80-lst",
+        "aliases": ["Z80 Listing"],
+        "extensions": [".lst"],
+        "configuration": "./out/null-language.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "z80-lst",
+        "scopeName": "source.z80.lst",
+        "path": "./syntaxes/z80-lst.tmLanguage.json"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "z80-lst"
+      }
+    ],
     "commands": [
       {
         "command": "debug80.createProject",

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles } from '@vscode/debugadapter';
+import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles, BreakpointEvent } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -58,6 +58,7 @@ export class Z80DebugSession extends DebugSession {
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
+  private pendingBreakpoints: DebugProtocol.SourceBreakpoint[] = [];
 
   public constructor() {
     super();
@@ -154,6 +155,12 @@ export class Z80DebugSession extends DebugSession {
 
       const ioHandlers = this.buildIoHandlers(merged);
       this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
+      if (this.listing !== undefined) {
+        const applied = this.applyBreakpoints(this.pendingBreakpoints);
+        for (const bp of applied) {
+          this.sendEvent(new BreakpointEvent('changed', bp));
+        }
+      }
 
       this.sendResponse(response);
 
@@ -169,23 +176,10 @@ export class Z80DebugSession extends DebugSession {
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments
   ): void {
-    this.breakpoints.clear();
-    const verified: DebugProtocol.Breakpoint[] = [];
+    this.pendingBreakpoints = args.breakpoints ?? [];
 
-    if (args.breakpoints !== undefined && this.runtime !== undefined) {
-      for (const bp of args.breakpoints) {
-        const address = this.listing?.lineToAddress.get(bp.line);
-        const valid = address !== undefined && args.source?.path === this.listingPath;
-        if (valid && address !== undefined) {
-          this.breakpoints.add(address);
-        }
-        verified.push({
-          verified: Boolean(valid),
-          line: bp.line,
-        });
-      }
-    }
-
+    const verified =
+      this.listing !== undefined ? this.applyBreakpoints(this.pendingBreakpoints) : this.pendingBreakpoints.map((bp) => ({ line: bp.line, verified: false }));
     response.body = { breakpoints: verified };
     this.sendResponse(response);
   }
@@ -721,6 +715,37 @@ export class Z80DebugSession extends DebugSession {
     }
 
     return undefined;
+  }
+
+  private applyBreakpoints(bps: DebugProtocol.SourceBreakpoint[]): DebugProtocol.Breakpoint[] {
+    const listing = this.listing;
+    const listingPath = this.listingPath;
+    const verified: DebugProtocol.Breakpoint[] = [];
+
+    if (listing === undefined || listingPath === undefined) {
+      for (const bp of bps) {
+        verified.push({ line: bp.line, verified: false });
+      }
+      return verified;
+    }
+
+    this.breakpoints.clear();
+    for (const bp of bps) {
+      const line = bp.line ?? 0;
+      const address =
+        listing.lineToAddress.get(line) ??
+        listing.lineToAddress.get(line + 1); // tolerate 0-based incoming lines
+      const ok = address !== undefined;
+      if (ok && address !== undefined) {
+        this.breakpoints.add(address);
+      }
+      verified.push({
+        line: bp.line,
+        verified: ok,
+      });
+    }
+
+    return verified;
   }
 
   private resolveBundledAsm80(): string | undefined {
