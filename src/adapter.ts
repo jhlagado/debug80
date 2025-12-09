@@ -1,24 +1,15 @@
 import * as vscode from 'vscode';
-import {
-  DebugSession,
-  InitializedEvent,
-  StoppedEvent,
-  TerminatedEvent,
-  Thread,
-  StackFrame,
-  Scope,
-  Source,
-  Handles,
-} from '@vscode/debugadapter';
+import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
+import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo } from './z80-loaders';
 import {
   createZ80Runtime,
   Z80Runtime,
-  RunResult as Z80RunResult,
+  IoHandlers,
 } from './z80-runtime';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
@@ -33,6 +24,26 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   projectConfig?: string;
   target?: string;
   assemble?: boolean;
+  terminal?: TerminalConfig;
+}
+
+interface TerminalConfig {
+  txPort?: number;
+  rxPort?: number;
+  statusPort?: number;
+  interrupt?: boolean;
+}
+
+interface TerminalState {
+  config: TerminalConfigNormalized;
+  input: number[];
+}
+
+interface TerminalConfigNormalized {
+  txPort: number;
+  rxPort: number;
+  statusPort: number;
+  interrupt: boolean;
 }
 
 const THREAD_ID = 1;
@@ -46,6 +57,7 @@ export class Z80DebugSession extends DebugSession {
   private haltNotified = false;
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
+  private terminalState: TerminalState | undefined;
 
   public constructor() {
     super();
@@ -81,6 +93,7 @@ export class Z80DebugSession extends DebugSession {
     this.runtime = undefined;
     this.listing = undefined;
     this.listingPath = undefined;
+    this.terminalState = undefined;
 
     try {
       const merged = this.populateFromConfig(args);
@@ -139,7 +152,8 @@ export class Z80DebugSession extends DebugSession {
       this.listingPath = listingPath;
       this.sourceFile = listingPath;
 
-      this.runtime = createZ80Runtime(program, merged.entry);
+      const ioHandlers = this.buildIoHandlers(merged);
+      this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
 
       this.sendResponse(response);
 
@@ -339,7 +353,29 @@ export class Z80DebugSession extends DebugSession {
   ): void {
     this.runtime = undefined;
     this.haltNotified = false;
+    this.terminalState = undefined;
     this.sendResponse(response);
+  }
+
+  protected customRequest(
+    command: string,
+    response: DebugProtocol.Response,
+    args: unknown
+  ): void {
+    if (command === 'debug80/terminalInput') {
+      if (this.terminalState === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
+        return;
+      }
+      const payload = args as { text?: unknown };
+      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
+      this.terminalState.input.push(...bytes);
+      this.sendResponse(response);
+      return;
+    }
+
+    super.customRequest(command, response, args);
   }
 
   private continueExecution(response: DebugProtocol.Response): void {
@@ -353,17 +389,7 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private runUntilStop(): void {
-    if (this.runtime === undefined) {
-      return;
-    }
-
-    const result: Z80RunResult = this.runtime.runUntilStop(this.breakpoints);
-    if (result.reason === 'breakpoint') {
-      this.haltNotified = false;
-      this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
-      return;
-    }
-    this.handleHaltStop();
+    void this.runUntilStopAsync();
   }
 
   private handleHaltStop(): void {
@@ -374,6 +400,32 @@ export class Z80DebugSession extends DebugSession {
     }
 
     this.sendEvent(new TerminatedEvent());
+  }
+
+  private async runUntilStopAsync(): Promise<void> {
+    if (this.runtime === undefined) {
+      return;
+    }
+    const CHUNK = 500;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      for (let i = 0; i < CHUNK; i += 1) {
+        if (this.runtime === undefined) {
+          return;
+        }
+        if (this.breakpoints.has(this.runtime.getPC())) {
+          this.haltNotified = false;
+          this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+          return;
+        }
+        const result = this.runtime.step();
+        if (result.halted) {
+          this.handleHaltStop();
+          return;
+        }
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+    }
   }
 
   private populateFromConfig(args: LaunchRequestArguments): LaunchRequestArguments {
@@ -596,6 +648,49 @@ export class Z80DebugSession extends DebugSession {
       }
       fs.copyFileSync(producedListing, listingPath);
     }
+  }
+
+  private buildIoHandlers(args: LaunchRequestArguments): IoHandlers | undefined {
+    const cfg = args.terminal;
+    if (cfg === undefined) {
+      return undefined;
+    }
+    const config: TerminalConfigNormalized = {
+      txPort: cfg.txPort ?? 0,
+      rxPort: cfg.rxPort ?? 1,
+      statusPort: cfg.statusPort ?? 2,
+      interrupt: cfg.interrupt ?? false,
+    };
+    this.terminalState = { config, input: [] };
+    const ioHandlers: IoHandlers = {
+      read: (port: number): number => {
+        const p = port & 0xff;
+        const term = this.terminalState;
+        if (term !== undefined) {
+          if (p === term.config.rxPort) {
+            const value = term.input.shift();
+            return value ?? 0;
+          }
+          if (p === term.config.statusPort) {
+            const rxAvail = term.input.length > 0 ? 1 : 0;
+            const txReady = 0b10;
+            return rxAvail | txReady;
+          }
+        }
+        return 0;
+      },
+      write: (port: number, value: number): void => {
+        const p = port & 0xff;
+        const term = this.terminalState;
+        if (term !== undefined && p === term.config.txPort) {
+          const byte = value & 0xff;
+          const ch = String.fromCharCode(byte);
+          this.sendEvent(new DapEvent('debug80/terminalOutput', { text: ch }));
+        }
+      },
+    };
+
+    return ioHandlers;
   }
 
   private findAsm80Binary(startDir: string): string | undefined {

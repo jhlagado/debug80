@@ -16,7 +16,9 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onDebugResolve:z80"
+    "onDebugResolve:z80",
+    "onCommand:debug80.terminalInput",
+    "onCommand:debug80.openTerminal"
   ],
   "extensionPack": [
     "imanolea.z80-asm"
@@ -27,6 +29,14 @@
       {
         "command": "debug80.createProject",
         "title": "Debug80: Create Project (config + launch)"
+      },
+      {
+        "command": "debug80.terminalInput",
+        "title": "Debug80: Send Terminal Input"
+      },
+      {
+        "command": "debug80.openTerminal",
+        "title": "Debug80: Show Terminal Panel"
       }
     ],
     "debuggers": [
@@ -79,6 +89,29 @@
                 "type": "boolean",
                 "description": "Run asm80 before launch when asm is provided",
                 "default": true
+              },
+              "terminal": {
+                "type": "object",
+                "description": "Optional terminal device port mapping",
+                "properties": {
+                  "txPort": {
+                    "type": "number",
+                    "description": "OUT port for transmit bytes"
+                  },
+                  "rxPort": {
+                    "type": "number",
+                    "description": "IN port for receive bytes"
+                  },
+                  "statusPort": {
+                    "type": "number",
+                    "description": "IN port for status bits (bit0 RX avail, bit1 TX ready)"
+                  },
+                  "interrupt": {
+                    "type": "boolean",
+                    "description": "Future: raise interrupt on RX available",
+                    "default": false
+                  }
+                }
               }
             }
           }

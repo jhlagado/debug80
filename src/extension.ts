@@ -4,6 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from './config-utils';
 
+let terminalPanel: vscode.WebviewPanel | undefined;
+let terminalBuffer = '';
+let terminalSession: vscode.DebugSession | undefined;
+
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
 
@@ -14,6 +18,50 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.createProject', async () => {
       return scaffoldProject(true);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.terminalInput', async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session || session.type !== 'z80') {
+        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
+        return;
+      }
+      const input = await vscode.window.showInputBox({
+        prompt: 'Enter text to send to the target terminal',
+        placeHolder: 'text',
+      });
+      if (input === undefined) {
+        return;
+      }
+      try {
+        await session.customRequest('debug80/terminalInput', { text: input });
+      } catch (err) {
+        void vscode.window.showErrorMessage(`Debug80: Failed to send input: ${String(err)}`);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openTerminal', async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session || session.type !== 'z80') {
+        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
+        return;
+      }
+      openTerminalPanel(session);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((evt) => {
+      if (evt.session.type !== 'z80' || evt.event !== 'debug80/terminalOutput') {
+        return;
+      }
+      const text = (evt.body as { text?: string } | undefined)?.text ?? '';
+      openTerminalPanel(evt.session);
+      appendTerminalOutput(text);
     })
   );
 }
@@ -126,4 +174,82 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   }
 
   return created;
+}
+
+function openTerminalPanel(session: vscode.DebugSession): void {
+  if (terminalPanel === undefined) {
+    terminalPanel = vscode.window.createWebviewPanel(
+      'debug80Terminal',
+      'Debug80 Terminal',
+      vscode.ViewColumn.Two,
+      { enableScripts: true, retainContextWhenHidden: true }
+    );
+    terminalPanel.onDidDispose(() => {
+      terminalPanel = undefined;
+      terminalSession = undefined;
+      terminalBuffer = '';
+    });
+    terminalPanel.webview.onDidReceiveMessage(async (msg: { type?: string; text?: string }) => {
+      if (msg.type === 'input' && typeof msg.text === 'string') {
+        const targetSession = terminalSession ?? vscode.debug.activeDebugSession;
+        if (targetSession?.type === 'z80') {
+          try {
+            // Log to extension host console for verification
+            console.log(`[debug80] terminal input -> "${msg.text}"`);
+            await targetSession.customRequest('debug80/terminalInput', { text: msg.text });
+          } catch {
+            // ignore
+          }
+        }
+      }
+    });
+  }
+  terminalSession = session;
+  terminalPanel.webview.html = getTerminalHtml(terminalBuffer);
+}
+
+function appendTerminalOutput(text: string): void {
+  terminalBuffer += text;
+  if (terminalPanel !== undefined) {
+    terminalPanel.webview.postMessage({ type: 'output', text });
+  }
+}
+
+function getTerminalHtml(initial: string): string {
+  const escaped = initial.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<!DOCTYPE html>
+<html lang="en">
+<body style="font-family: monospace; padding: 8px;">
+  <pre id="out" style="white-space: pre-wrap; word-break: break-word;">${escaped}</pre>
+  <div style="margin-top:8px;">
+    <input id="input" type="text" style="width:80%;" placeholder="Type and press Enter"/>
+    <button id="send">Send</button>
+  </div>
+  <script>
+    const vscode = acquireVsCodeApi();
+    const out = document.getElementById('out');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+    window.addEventListener('message', event => {
+      const msg = event.data;
+      if (msg.type === 'output' && typeof msg.text === 'string') {
+        out.textContent += msg.text;
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    });
+    function sendInput() {
+      const text = input.value;
+      if (text.length === 0) return;
+      vscode.postMessage({ type: 'input', text });
+      input.value = '';
+    }
+    send.addEventListener('click', sendInput);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        sendInput();
+      }
+    });
+  </script>
+</body>
+</html>`;
 }
