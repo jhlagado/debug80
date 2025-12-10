@@ -9,7 +9,7 @@ START:  LD      HL,MSG
         SYS_PUTS
 
 READLOOP:
-        LD      HL,BUF
+        LDX      HL,BUF
         LD      B,32           ; buffer length including terminator
         CALL    readLn
         LD      A,(BUF)        ; treat control/empty as termination

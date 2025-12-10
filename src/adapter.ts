@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles, BreakpointEvent } from '@vscode/debugadapter';
+import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles, BreakpointEvent, OutputEvent } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -169,7 +169,13 @@ export class Z80DebugSession extends DebugSession {
         this.sendEvent(new StoppedEvent('entry', THREAD_ID));
       }
     } catch (err) {
-      this.sendErrorResponse(response, 1, `Failed to load program: ${String(err)}`);
+      const detail = `Failed to load program: ${String(err)}`;
+      this.sendEvent(new OutputEvent(`${detail}\n`, 'console'));
+      const short =
+        detail.toLowerCase().includes('asm80') || detail.toLowerCase().includes('failed')
+          ? 'Failed to load program (see Debug Console for asm80 output).'
+          : detail;
+      this.sendErrorResponse(response, 1, short);
     }
   }
 
@@ -656,10 +662,17 @@ export class Z80DebugSession extends DebugSession {
       const message = enoent
         ? 'asm80 not found. Install it with "npm install -D asm80" or ensure it is on PATH.'
         : `asm80 failed to start: ${result.error.message ?? String(result.error)}`;
+      this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
       throw new Error(message);
     }
 
     if (result.status !== 0) {
+      if (result.stdout) {
+        this.sendEvent(new OutputEvent(`asm80 stdout:\n${result.stdout}\n`, 'console'));
+      }
+      if (result.stderr) {
+        this.sendEvent(new OutputEvent(`asm80 stderr:\n${result.stderr}\n`, 'console'));
+      }
       const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
       const suffix = output.length > 0 ? `: ${output}` : '';
       throw new Error(`asm80 exited with code ${result.status}${suffix}`);
