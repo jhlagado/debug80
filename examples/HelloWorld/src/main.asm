@@ -11,7 +11,7 @@ START:  LD      HL,MSG
 READLOOP:
         LD      HL,BUF
         LD      B,32           ; buffer length including terminator
-        CALL    gets
+        CALL    readLn
         LD      A,(BUF)        ; treat control/empty as termination
         CP      0x20
         JR      C,DONE         ; empty or control -> exit
@@ -26,25 +26,25 @@ DONE:   LD      HL,DONE_MSG
         SYS_PUTS
         HALT
 
-; gets: HL buffer, B = buffer length (including terminator)
+; readLn: HL buffer, B = buffer length (including terminator)
 ; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
 ; zero-terminates. Returns with A holding last read (newline).
-gets:
+readLn:
         DEC     B               ; reserve space for terminator
         LD      A,B
         OR      A
         RET     Z               ; no room
-tg_loop:
+rl_loop:
         ; CALL    term_getc
         SYS_GETC
         CP      0x0D            ; ignore CR
-        JR      Z,tg_loop
+        JR      Z,rl_loop
         CP      0x0A
-        JR      Z,tg_done
+        JR      Z,rl_done
         LD      (HL),A
         INC     HL
-        DJNZ    tg_loop
-tg_done:
+        DJNZ    rl_loop
+rl_done:
         LD      (HL),0
         RET
 
