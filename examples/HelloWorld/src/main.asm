@@ -11,22 +11,42 @@ START:  LD      HL,MSG
 READLOOP:
         LD      HL,BUF
         LD      B,32           ; buffer length including terminator
-        CALL    term_gets
+        CALL    gets
         LD      A,(BUF)        ; treat control/empty as termination
         CP      0x20
         JR      C,DONE         ; empty or control -> exit
 
         LD      HL,BUF
-        ; CALL    term_puts
         SYS_PUTS
         LD      A,0x0A
-        ; CALL    term_putc
         SYS_PUTC
         JR      READLOOP
 
 DONE:   LD      HL,DONE_MSG
-        CALL    term_puts
+        SYS_PUTS
         HALT
+
+; gets: HL buffer, B = buffer length (including terminator)
+; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
+; zero-terminates. Returns with A holding last read (newline).
+gets:
+        DEC     B               ; reserve space for terminator
+        LD      A,B
+        OR      A
+        RET     Z               ; no room
+tg_loop:
+        ; CALL    term_getc
+        SYS_GETC
+        CP      0x0D            ; ignore CR
+        JR      Z,tg_loop
+        CP      0x0A
+        JR      Z,tg_done
+        LD      (HL),A
+        INC     HL
+        DJNZ    tg_loop
+tg_done:
+        LD      (HL),0
+        RET
 
 MSG:    DEFB    "HELLO, DEBUG80!",0x0A,0
 DONE_MSG: DEFB  "Done.",0x0A,0

@@ -96,28 +96,6 @@ svc_clr:
         POP     HL
         RET
 
-
-; gets: HL buffer, B = buffer length (including terminator)
-; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
-; zero-terminates. Returns with A holding last read (newline).
-term_gets:
-        DEC     B               ; reserve space for terminator
-        LD      A,B
-        OR      A
-        RET     Z               ; no room
-tg_loop:
-        CALL    term_getc
-        CP      0x0D            ; ignore CR
-        JR      Z,tg_loop
-        CP      0x0A
-        JR      Z,tg_done
-        LD      (HL),A
-        INC     HL
-        DJNZ    tg_loop
-tg_done:
-        LD      (HL),0
-        RET
-
 ; ANSI clear + home
 clear_seq:
         .db     ESC,"[2J",ESC,"[H",0
