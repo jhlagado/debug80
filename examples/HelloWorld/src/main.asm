@@ -17,10 +17,11 @@ READLOOP:
         JR      C,DONE         ; empty or control -> exit
 
         LD      HL,BUF
-        CALL    term_puts
+        ; CALL    term_puts
+        SYS_PUTS
         LD      A,0x0A
-        CALL    term_putc
-
+        ; CALL    term_putc
+        SYS_PUTC
         JR      READLOOP
 
 DONE:   LD      HL,DONE_MSG

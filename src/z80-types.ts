@@ -9,6 +9,7 @@ export interface HardwareContext {
   memory: Uint8Array;
   ioRead: (port: number) => number;
   ioWrite: (port: number, value: number) => void;
+  ioTick?: () => unknown;
   cpu?: Cpu;
 }
 

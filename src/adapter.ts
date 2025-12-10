@@ -37,6 +37,7 @@ interface TerminalConfig {
 interface TerminalState {
   config: TerminalConfigNormalized;
   input: number[];
+  breakRequested?: boolean;
 }
 
 interface TerminalConfigNormalized {
@@ -392,6 +393,15 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/terminalBreak') {
+      if (this.terminalState === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
+        return;
+      }
+      this.terminalState.breakRequested = true;
+      this.sendResponse(response);
+      return;
+    }
 
     super.customRequest(command, response, args);
   }
@@ -705,6 +715,14 @@ export class Z80DebugSession extends DebugSession {
           const ch = String.fromCharCode(byte);
           this.sendEvent(new DapEvent('debug80/terminalOutput', { text: ch }));
         }
+      },
+      tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
+        const term = this.terminalState;
+        if (term !== undefined && term.breakRequested) {
+          term.breakRequested = false;
+          return { interrupt: { nonMaskable: false, data: 0x38 } };
+        }
+        return undefined;
       },
     };
 

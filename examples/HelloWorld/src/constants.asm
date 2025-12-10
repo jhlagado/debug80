@@ -10,10 +10,9 @@ TERM_RX_PORT    EQU 1
 TERM_STATUS     EQU 2          ; bit0 = RX available, bit1 = TX ready
 
 ; Service selector values (passed in C) for RST 10H
-SVC_PUTCHAR EQU $10            ; A = char
-SVC_GETCHAR EQU $11            ; returns A = char
-SVC_PUTSTR  EQU $12            ; HL = 0-terminated string
-SVC_CLEAR   EQU $13            ; clear screen
+SVC_PUTCHAR EQU 22             ; A = char
+SVC_GETCHAR EQU 23             ; returns A = char
+SVC_PUTSTR  EQU 45             ; HL = ptr to 0-terminated string
 
 ; ASCII helpers
 CR          EQU $0D

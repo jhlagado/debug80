@@ -1,5 +1,5 @@
 import { HexProgram } from './z80-loaders';
-import { Cpu, execute, initCpu, resetCpu } from './z80-cpu';
+import { Cpu, execute, initCpu, resetCpu, interrupt as triggerInterrupt } from './z80-cpu';
 import { HardwareContext } from './z80-types';
 
 export interface Z80Runtime {
@@ -22,9 +22,18 @@ export interface RunResult {
 export interface IoHandlers {
   read?: (port: number) => number;
   write?: (port: number, value: number) => void;
+  tick?: () => TickResult | void;
 }
 
 type Z80RuntimeImpl = Z80Runtime & { cpu: Cpu; hardware: HardwareContext };
+
+interface TickResult {
+  interrupt?: {
+    nonMaskable?: boolean;
+    data?: number;
+  };
+  stop?: boolean;
+}
 
 export function createZ80Runtime(
   program: HexProgram,
@@ -40,6 +49,7 @@ export function createZ80Runtime(
       ((_port: number, _value: number): void => {
         /* noop */
       }),
+    tick: ioHandlers?.tick ?? (() => undefined),
   };
 
   const hardware: HardwareContext = {
@@ -48,6 +58,7 @@ export function createZ80Runtime(
     ioWrite: (port: number, value: number): void => {
       io.write(port & 0xffff, value & 0xff);
     },
+    ioTick: (): TickResult | void => io.tick(),
   };
   cpu.hardware = hardware;
   hardware.cpu = cpu;
@@ -97,6 +108,26 @@ function stepRuntime(this: Z80RuntimeImpl): RunResult {
       hardware.ioWrite(port & 0xffff, value & 0xff);
     },
   });
+
+  const tickResult = (hardware.ioTick ? (hardware.ioTick() as TickResult | void) : undefined) as
+    | TickResult
+    | undefined;
+  if (tickResult?.interrupt !== undefined) {
+    const irq = tickResult.interrupt;
+    triggerInterrupt(cpu, {
+      mem_read: (addr: number) => hardware.memory[addr & 0xffff] ?? 0,
+      mem_write: (addr: number, value: number) => {
+        hardware.memory[addr & 0xffff] = value & 0xff;
+      },
+      io_read: (port: number) => hardware.ioRead(port & 0xffff),
+      io_write: (port: number, value: number) => {
+        hardware.ioWrite(port & 0xffff, value & 0xff);
+      },
+    }, irq.nonMaskable === true, irq.data ?? 0);
+  }
+  if (tickResult?.stop) {
+    return { halted: false, pc: cpu.pc, reason: 'breakpoint' };
+  }
 
   if (cpu.pc >= hardware.memory.length || cpu.halted) {
     cpu.halted = true;

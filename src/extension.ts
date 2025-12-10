@@ -222,6 +222,16 @@ function openTerminalPanel(session?: vscode.DebugSession): void {
           }
         }
       }
+      if (msg.type === 'break') {
+        const targetSession = terminalSession ?? vscode.debug.activeDebugSession;
+        if (targetSession?.type === 'z80') {
+          try {
+            await targetSession.customRequest('debug80/terminalBreak', {});
+          } catch {
+            /* ignore */
+          }
+        }
+      }
     });
   }
   if (session !== undefined) {
@@ -291,6 +301,8 @@ function getTerminalHtml(initial: string): string {
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         sendInput();
+      } else if (e.key === 'c' && e.ctrlKey) {
+        vscode.postMessage({ type: 'break' });
       }
     });
     input.focus();

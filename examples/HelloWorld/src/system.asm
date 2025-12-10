@@ -10,55 +10,75 @@
         .org ROMSTART+$08
         RET
 
-        ; RST $10 dispatcher: C selects the service.
+        ; RST $10 dispatches to a trampoline to leave vectors free
         .org ROMSTART+$10
-RST10H:
-        LD      A,C
+        JP      SERVICE
+
+; RST 38H handler (IM 1) for Ctrl-C
+        .org $0038
+RST38H:
+        DI
+        PUSH    AF
+        PUSH    BC
+        PUSH    DE
+        PUSH    HL
+        PUSH    IX
+        PUSH    IY
+
+        LD      HL,msg_ctrlc
+        CALL    term_puts
+
+        POP     IY
+        POP     IX
+        POP     HL
+        POP     DE
+        POP     BC
+        POP     AF
+        EI
+        RETI
+
+; -------------------------------------------------------------------
+; Reset/init: set stack, jump to app at APPSTART.
+; -------------------------------------------------------------------
+
+        .org $0100
+RESET:
+        LD      SP,STACK_TOP
+        IM      1
+        EI
+        JP      APPSTART
+
+SERVICE:
+        EX      AF,AF'          ; save callers AF
+        LD      A,C             ; selector in A for compare
         CP      SVC_PUTCHAR
         JR      Z,svc_putc
         CP      SVC_GETCHAR
         JR      Z,svc_getc
         CP      SVC_PUTSTR
         JR      Z,svc_puts
-        CP      SVC_CLEAR
-        JR      Z,svc_clr
+        EX      AF,AF'          ; restore on unknown
         RET                     ; unknown service: no-op
 
 svc_putc:
-        JP      term_putc       ; A already holds the char
-
-svc_getc:
-        JP      term_getc       ; returns char in A
-
-svc_puts:
-        JP      term_puts       ; HL points to 0-terminated string
-
-svc_clr:
-        PUSH    HL
-        LD      HL,clear_seq
-        CALL    term_puts
-        POP     HL
-        RET
-
-; -------------------------------------------------------------------
-; Reset/init: set stack, jump to app at APPSTART.
-; -------------------------------------------------------------------
-
-RESET:
-        LD      SP,STACK_TOP
-        JP      APPSTART
-
-; -------------------------------------------------------------------
-; Terminal helpers on ports 0/1/2
-; -------------------------------------------------------------------
-
-        .org $0100
-
+        EX      AF,AF'          ; restore original A
 ; A -> transmit
 term_putc:
         OUT     (TERM_TX_PORT),A
         RET
 
+svc_getc:
+        EX      AF,AF'          ; restore original A
+; Blocking getc: waits until RX available, returns char in A
+term_getc:
+        IN      A,(TERM_STATUS)
+        AND     1
+        JR      Z,term_getc
+        IN      A,(TERM_RX_PORT)
+        RET
+
+svc_puts:
+        EX      AF,AF'          ; restore original A
 ; HL -> zero-terminated string, prints until 0
 term_puts:
         LD      A,(HL)
@@ -68,13 +88,14 @@ term_puts:
         INC     HL
         JR      term_puts
 
-; Blocking getc: waits until RX available, returns char in A
-term_getc:
-        IN      A,(TERM_STATUS)
-        AND     1
-        JR      Z,term_getc
-        IN      A,(TERM_RX_PORT)
+svc_clr:
+        EX      AF,AF'          ; restore original A
+        PUSH    HL
+        LD      HL,clear_seq
+        CALL    term_puts
+        POP     HL
         RET
+
 
 ; gets: HL buffer, B = buffer length (including terminator)
 ; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
@@ -100,3 +121,6 @@ tg_done:
 ; ANSI clear + home
 clear_seq:
         .db     ESC,"[2J",ESC,"[H",0
+
+msg_ctrlc:
+        .db     "Ctrl-C pressed",0x0A,0
