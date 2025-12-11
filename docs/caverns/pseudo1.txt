@@ -82,7 +82,7 @@ GAME_START:
     ROOM_POWDER_MAG = 51
     ROOM_EAST_RIVERBANK = 52
     ROOM_WOODEN_BRIDGE = 53
-    ROOM_RIVER_CONDUIT = 54
+ROOM_RIVER_CONDUIT = 54
 
     REM Exit codes
     EXIT_NONE = 0
@@ -103,6 +103,7 @@ GAME_START:
 
     DIM MOVEMENT_TABLE(ROOM_MAX,3)  REM byte-sized entries: room exit destination
     DIM OBJECT_LOCATION(24)
+    DIM ROOM_DESC1(ROOM_MAX), ROOM_DESC2(ROOM_MAX)
 
     GENERAL_FLAG_J = 0
     HOSTILE_CREATURE_INDEX = 0
@@ -128,6 +129,12 @@ GAME_START:
         FOR OFFSET_INDEX = 0 TO 3
             READ MOVEMENT_TABLE(ROOM_INDEX, OFFSET_INDEX)
         NEXT OFFSET_INDEX
+    NEXT ROOM_INDEX
+
+    REM Load room descriptions (primary and optional second line)
+    RESTORE ROOM_DESCRIPTION_DATA
+    FOR ROOM_INDEX = 1 TO ROOM_MAX
+        READ ROOM_DESC1(ROOM_INDEX), ROOM_DESC2(ROOM_INDEX)
     NEXT ROOM_INDEX
 
     GOSUB UPDATE_DYNAMIC_EXITS_SUB
@@ -156,169 +163,12 @@ DESCRIBE_CURRENT_LOCATION:
 
 PRINT_ROOM_DESCRIPTION:
 
-    IF PLAYER_LOCATION = ROOM_DARK_ROOM THEN
-        PRINT "You are standing in a darkened room. There is a door to the     north."
+    IF ROOM_DESC1(PLAYER_LOCATION) <> "" THEN
+        PRINT ROOM_DESC1(PLAYER_LOCATION)
     END IF
 
-    IF PLAYER_LOCATION = ROOM_FOREST_CLEARING THEN
-        PRINT "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_DARK_FOREST THEN
-        PRINT "You are deep in a dark forest. In the distance you can see a    mighty river."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CLOVER_FIELD THEN
-        PRINT "You are standing in a field of four-leafed clovers. There is a  small hut to the north."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_MUSHROOM_ROCK THEN
-        PRINT "You are standing on a rock in the middle of a mighty oak forest.Surrounding you are thousands of poisonous mushrooms."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CLIFF_FACE THEN
-        PRINT "You are on a cliff face over looking the river."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_RIVER_CLIFF THEN
-        PRINT "The forest has opened up at this point. You are standing on a   cliff overlooking a wide glacial river. A small foot-beaten pathleads south."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_RIVER_BANK THEN
-        PRINT "You are standing at the rocky edge of the mighty river Gioll.   The path forks east and west."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CRATER_EDGE THEN
-        PRINT "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the    Gioll pours into it."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_RIVER_OUTCROP THEN
-        PRINT "The path to the east stops here. You are on a rocky outcrop,    projected about 15 feet above the river. In the distance,       a tiny bridge spans the river."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_MT_YMIR_SLOPE THEN
-        PRINT "You are on the lower slopes of Mt. Ymir. The forest stretches   far away and to the west. Arctic winds blow fiercely, it's very cold!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR THEN
-        PRINT "You stand on a rocky precipice high above the river, Gioll;     Mt. Ymir stands to the north. A flimsy string bridge spans the  mighty river."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_BRIDGE_MID THEN
-        PRINT "You have made your way half way across the creaking bridge.     It sways violently from side to side. It's going to collapse anysecond!!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR THEN
-        PRINT "You are on the southern edge of the mighty river, before        the string bridge."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING THEN
-        PRINT "You are in a clearing in the forest. An ancient basalt rock      formation towers above you. To your south is the entrance of a  VERY interesting cave..."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CAVE_ENTRY THEN
-        PRINT "You are just inside the cave. Sunlight pours into the cave      lighting a path to the east and another to the south. I don't   mind saying I'm a bit scared!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_DEAD_END_INSCRIPTION THEN
-        PRINT "This passage appears to be a dead end. On a wall before you is  carved `Find the Sacred Key of Thialfi'."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_TREASURE_ROOM THEN
-        PRINT "You are in the legendary treasure room of the black elves of    Svartalfheim. Every red-blooded Viking has dreamed of entering  this sacred room."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_OAK_DOOR THEN
-        PRINT "You can see a small oak door to the east. It has been locked    from the inside."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_WIND_CORRIDOR THEN
-        PRINT "You are standing in an east-west corridor. You can feel a faint breeze coming from the east."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_TORTURE_CHAMBER THEN
-        PRINT "You are standing in what appears to have once been a torture    chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,"
-        PRINT "coagulated blood stains on the walls and mangled bits of bone onthe floor make me think that a number of would be adventurers   croaked it here!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_NORTH_SOUTH_TUNNEL THEN
-        PRINT "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow   crack in the eastern wall."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_ROUND_ROOM THEN
-        PRINT "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of "
-        PRINT "the floor. Note: This is one of the hidden chambers of the      infamous pagan sect, the monks of Loki. Norse folk believe them to be gods."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_LEDGE_OVER_RIVER THEN
-        PRINT "You are standing on a narrow ledge, high above a subterranean   river. There is an exit to the east. "
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_TEMPLE_BALCONY THEN
-        PRINT "You are on a balcony, overlooking a huge cavern which has been  converted into a pagan temple. Note: this temple has been       dedicated to Loki, the god of"
-        PRINT "fire, who came to live in Svartalfheim after he had been        banished to exile by Odin. Since then he has been waiting       for the `End Of All Things'."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_BAT_CAVE THEN
-        PRINT "You are in the central cave of a giant bat colony. Above you    hundreds of giant bats hang from the ceiling and the floor is   covered in centuries of "
-        PRINT "giant bat droppings. Careful where you step! Incidentally, the  smell is indescribable."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_TEMPLE THEN
-        PRINT "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock   itself!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CRYPT THEN
-        PRINT "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word "
-        PRINT "starting with 'G---' and another ending with '---X'' Note: The   monks of Loki must have liked silly puzzles.  Putrefaction and decay fills the air here."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_TINY_CELL THEN
-        PRINT "You are in a tiny cell. The western wall has now firmly closed  again. There is a ventilator shaft on the eastern wall."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_LEDGE_WATERFALL_IN THEN
-        PRINT "You are on another ledge high above a subterranean river. The   water flows in through a hole in the cavern roof, to the north."
-    END IF
-
-    IF PLAYER_LOCATION > ROOM_LEDGE_WATERFALL_IN AND PLAYER_LOCATION < ROOM_WATERFALL_BASE THEN
-        PRINT "Somehow you have gotten into the complex drainage system of thisentire cavern network!!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_WATERFALL_BASE THEN
-        PRINT "You are standing near an enormous waterfall which brings water  down from the surface, from the river Gioll."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_STONE_STAIRCASE THEN
-        PRINT "You are standing before a stone staircase which leads           southwards."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CASTLE_LEDGE THEN
-        PRINT "You are on a narrow and crumbling ledge. On the other side of   the river you can see a magic castle. (Don't ask me why it's    magic...I just know it is)"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_DRAWBRIDGE THEN
-        PRINT "You are by the drawbridge which has just lowered itself....by   magic!!"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_CASTLE_COURTYARD THEN
-        PRINT "You are in the courtyard of the magic castle. WOW! This castle  is really something! On the wall is inscribed 'hzb tzozi'.      A secret escape tunnel leads south"
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_POWDER_MAG THEN
-        PRINT "You are in the powder magazine of this really super castle."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_WOODEN_BRIDGE THEN
-        PRINT "You stand before a small wooden bridge which crosses the river."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_EAST_RIVERBANK THEN
-        PRINT "You are on the eastern side of the river. A small tunnel leads  east into the cliff face."
-    END IF
-
-    IF PLAYER_LOCATION = ROOM_RIVER_CONDUIT THEN
-        PRINT "You are in a conduit draining into the river. The water comes upto your knees and is freezing cold. A narrow service path leads south."
+    IF ROOM_DESC2(PLAYER_LOCATION) <> "" THEN
+        PRINT ROOM_DESC2(PLAYER_LOCATION)
     END IF
 
     IF PLAYER_LOCATION = ROOM_DARK_CAVERN_A OR PLAYER_LOCATION = ROOM_DARK_CAVERN_B OR PLAYER_LOCATION = ROOM_DARK_CAVERN_C OR PLAYER_LOCATION > ROOM_TEMPLE_BALCONY AND PLAYER_LOCATION < ROOM_DARK_CAVERN_G OR PLAYER_LOCATION = ROOM_DARK_CAVERN_H OR PLAYER_LOCATION = ROOM_DARK_CAVERN_I OR PLAYER_LOCATION = ROOM_DARK_CAVERN_J OR PLAYER_LOCATION = ROOM_DARK_CAVERN_K OR PLAYER_LOCATION = ROOM_WOODEN_BRIDGE THEN
@@ -845,7 +695,7 @@ SWORD_KILLS_TARGET:
     END IF
 
     IF HOSTILE_CREATURE_INDEX <> 4 THEN
-        PRINT "Suddenly a black cloud descends and the corpse vaporizes into   nothing."
+        PRINT "Suddenly a black cloud descends and the corpse vaporizes into nothing."
     END IF
 
     HOSTILE_CREATURE_INDEX = 0
@@ -889,7 +739,7 @@ USE_ROPE:
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
 
-    PRINT "You descend the rope, but it drops 10 feet short of the floor.  You jump the rest of the way."
+    PRINT "You descend the rope, but it drops 10 feet short of the floor. You jump the rest of the way."
     RESHOW_FLAG = 0
     OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
     PLAYER_LOCATION = ROOM_TEMPLE
@@ -987,7 +837,7 @@ ENCOUNTER_WIZARD_LABEL:
 
 ENCOUNTER_DRAGON_LABEL:
 
-    PRINT "Before the entrance of the cave lies an enormous, green,        sleeping dragon. Realizing your presence, its eyes flicker open"
+    PRINT "Before the entrance of the cave lies an enormous, green, sleeping dragon. Realizing your presence, its eyes flicker open"
     PRINT "and it leaps up, breathing jets fire at you."
     GOTO LIST_ROOM_OBJECTS_AND_CREATURES
 
@@ -995,7 +845,7 @@ ENCOUNTER_DRAGON_LABEL:
 
 ENCOUNTER_DWARF_LABEL:
 
-    PRINT "From around the corner trots an old and gnarled drawf carrying  a lantern. `My job is to protect these stone steps!' he says andlunges at you with his dagger."
+    PRINT "From around the corner trots an old and gnarled drawf carrying a lantern. `My job is to protect these stone steps!' he says andlunges at you with his dagger."
     GOTO LIST_ROOM_OBJECTS_AND_CREATURES
 
 
@@ -1080,11 +930,13 @@ MOVEMENT_TABLE_DATA:
     DATA 0,ROOM_WOODEN_BRIDGE,ROOM_DRAIN_A,0
 
 
+REM NOTE: article handling (a/an) and leading/trailing spaces in strings to be normalized later via an article routine
 MONSTER_DESCRIPTION_DATA:
     DATA "n evil"," wizard "," fiery"," demon ","n axe wielding"," troll "," fire breathing"," dragon "," giant"," bat "
     DATA "n old and gnarled"," dwarf "
 
 
+REM NOTE: article handling (a/an) and trimming leading/trailing padding spaces to be addressed later
 OBJECT_NAME_DATA:
     DATA " gold"," coin "," useful looking"," compass "," home made"," bomb "," blood red"," ruby "," sparkling"," diamond "
     DATA " moon-like"," pearl ","n interesting"," stone "," diamond studded"," ring "," magic"," pendant "," most holy"," grail "," mirror like"," shield "
@@ -1094,6 +946,63 @@ OBJECT_NAME_DATA:
 
 OBJECT_LOCATION_DATA:
     DATA 36,19,10,14,17,47,8,1,51,45,22,46,54,19,19,19,19,0,34,7,18,15,24,38
+
+
+ROOM_DESCRIPTION_DATA:
+    DATA "You are standing in a darkened room. There is a door to the north.",""
+    DATA "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door.",""
+    DATA "You are deep in a dark forest. In the distance you can see a mighty river.",""
+    DATA "You are standing in a field of four-leafed clovers. There is a small hut to the north.",""
+    DATA "The forest has opened up at this point. You are standing on a cliff overlooking a wide glacial river. A small foot-beaten path leads south.",""
+    DATA "You are standing at the rocky edge of the mighty river Gioll. The path forks east and west.",""
+    DATA "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the Gioll pours into it.",""
+    DATA "The path to the east stops here. You are on a rocky outcrop, projected about 15 feet above the river. In the distance, a tiny bridge spans the river.",""
+    DATA "You are on the lower slopes of Mt. Ymir. The forest stretches far away and to the west. Arctic winds blow fiercely, it's very cold!",""
+    DATA "You stand on a rocky precipice high above the river, Gioll; Mt. Ymir stands to the north. A flimsy string bridge spans the mighty river.",""
+    DATA "You have made your way half way across the creaking bridge. It sways violently from side to side. It's going to collapse any second!!",""
+    DATA "You are on the southern edge of the mighty river, before the string bridge.",""
+    DATA "You are standing on a rock in the middle of a mighty oak forest. Surrounding you are thousands of poisonous mushrooms.",""
+    DATA "You are in a clearing in the forest. An ancient basalt rock formation towers above you. To your south is the entrance of a VERY interesting cave...",""
+    DATA "You are on a cliff face over looking the river.",""
+    DATA "You are just inside the cave. Sunlight pours into the cave lighting a path to the east and another to the south. I don't mind saying I'm a bit scared!",""
+    DATA "This passage appears to be a dead end. On a wall before you is carved `Find the Sacred Key of Thialfi'.",""
+    DATA "",""
+    DATA "You are in the legendary treasure room of the black elves of Svartalfheim. Every red-blooded Viking has dreamed of entering this sacred room.",""
+    DATA "You can see a small oak door to the east. It has been locked from the inside.",""
+    DATA "",""
+    DATA "You are standing in an east-west corridor. You can feel a faint breeze coming from the east.",""
+    DATA "You are standing in what appears to have once been a torture chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,","coagulated blood stains on the walls and mangled bits of bone on the floor make me think that a number of would be adventurers croaked it here!"
+    DATA "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow crack in the eastern wall.",""
+    DATA "",""
+    DATA "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of ","the floor. Note: This is one of the hidden chambers of the infamous pagan sect, the monks of Loki. Norse folk believe them to be gods."
+    DATA "You are standing on a narrow ledge, high above a subterranean river. There is an exit to the east.",""
+    DATA "You are on a balcony, overlooking a huge cavern which has been converted into a pagan temple. Note: this temple has been dedicated to Loki, the god of","fire, who came to live in Svartalfheim after he had been banished to exile by Odin. Since then he has been waiting for the `End Of All Things'."
+    DATA "",""
+    DATA "",""
+    DATA "",""
+    DATA "",""
+    DATA "You are in the central cave of a giant bat colony. Above you hundreds of giant bats hang from the ceiling and the floor is covered in centuries of ","giant bat droppings. Careful where you step! Incidentally, the smell is indescribable."
+    DATA "",""
+    DATA "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock itself!",""
+    DATA "",""
+    DATA "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word ","starting with 'G---' and another ending with '---X'' Note: The monks of Loki must have liked silly puzzles. Putrefaction and decay fills the air here."
+    DATA "You are in a tiny cell. The western wall has now firmly closed again. There is a ventilator shaft on the eastern wall.",""
+    DATA "",""
+    DATA "You are on another ledge high above a subterranean river. The water flows in through a hole in the cavern roof, to the north.",""
+    DATA "",""
+    DATA "",""
+    DATA "",""
+    DATA "",""
+    DATA "You are standing near an enormous waterfall which brings water down from the surface, from the river Gioll.",""
+    DATA "",""
+    DATA "You are standing before a stone staircase which leads southwards.",""
+    DATA "You are on a narrow and crumbling ledge. On the other side of the river you can see a magic castle. (Don't ask me why it's magic...I just know it is)",""
+    DATA "You are by the drawbridge which has just lowered itself....by magic!!",""
+    DATA "You are in the courtyard of the magic castle. WOW! This castle is really something! On the wall is inscribed 'hzb tzozi'. A secret escape tunnel leads south",""
+    DATA "You are in the powder magazine of this really super castle.",""
+    DATA "You are on the eastern side of the river. A small tunnel leads east into the cliff face.",""
+    DATA "You stand before a small wooden bridge which crosses the river.",""
+    DATA "You are in a conduit draining into the river. The water comes up to your knees and is freezing cold. A narrow service path leads south.",""
 
 
 DIRECTION_WORD_DATA:
