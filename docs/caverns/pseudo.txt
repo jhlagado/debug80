@@ -1,17 +1,3 @@
-Here’s the **complete** rewrite in your fictional BASIC dialect:
-
-* No line numbers
-* Labels of the form `LABEL_NAME:`
-* GOTO / GOSUB target labels, not numbers
-* All original variables renamed to longer, uppercase descriptive names
-* Still fundamentally BASIC-flavoured (IF…THEN, FOR/NEXT, INPUT, DATA, RESTORE, etc.)
-* Z80 / USR machinery removed
-
-I’ve stayed as close as possible to the original logic and flow; this is essentially a structural transliteration, not a redesign.
-
----
-
-```basic
 REM ---------------------------------------------------------
 REM  CAVERNS – Fictional BASIC Dialect Version
 REM  Based on MicroWorld BASIC game by John Hardy (c) 1983
@@ -524,8 +510,16 @@ MONSTER_ATTACK:
 
 HANDLE_VERB_OR_MOVEMENT:
 
-    REM First check for movement (north/south/etc.)
+    REM First route generic verbs via the pattern table (take/put/unlock/jump/etc.)
+    RESTORE VERB_PATTERN_DATA
+    FOR VERB_PATTERN_INDEX = 1 TO 16
+        READ VERB_PATTERN$
+        IF INSTR(INPUT_COMMAND$, VERB_PATTERN$) > 0 THEN
+            GOTO ROUTE_BY_VERB_PATTERN
+        END IF
+    NEXT VERB_PATTERN_INDEX
 
+    REM Then check for movement (north/south/etc.)
     RESTORE DIRECTION_WORD_DATA
 
     FOR DIRECTION_INDEX = 0 TO 3
@@ -593,7 +587,6 @@ HANDLE_NON_MOVEMENT_COMMAND:
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
 
-    REM If no object matched
     IF CURRENT_OBJECT_INDEX < 1 THEN
         PRINT "eh?"
         GOTO DESCRIBE_CURRENT_LOCATION
@@ -829,21 +822,6 @@ PRINT_OBJECT_DESCRIPTION_SUB:
 
 
 
-HANDLE_UNKNOWN_VERB_OR_SYNTAX:
-
-    RESTORE VERB_PATTERN_DATA
-
-    FOR VERB_PATTERN_INDEX = 1 TO 16
-        READ VERB_PATTERN$
-        IF INSTR(INPUT_COMMAND$, VERB_PATTERN$) > 0 THEN
-            GOTO ROUTE_BY_VERB_PATTERN
-        END IF
-    NEXT VERB_PATTERN_INDEX
-
-    GOTO HANDLE_NON_MOVEMENT_COMMAND
-
-
-
 ROUTE_BY_VERB_PATTERN:
 
     IF VERB_PATTERN_INDEX = 1 THEN GOTO HANDLE_GET_COMMAND
@@ -947,12 +925,12 @@ REM ---------------------------------------------------------
 
 MOVEMENT_TABLE_DATA:
     DATA 2,0,0,0,0,0,3,4,2,5,5,0,2,5,0,9,0,6,3,4,5,0,7,8,0,0,128,6,0,0,6,0,0,10,4,0,9
-    DATA H,4,0,10,12,128,128,H,13,13,0,12,12,14,12,15,16,0,13,0,14,0,0,14,18,0,17,0
-    DATA 0,16,0,16,0,23,0,0,0,20,0,21,23,0,T,0,24,0,20,0,23,21,16,22,0,18,18,21,26,0
+    DATA BRIDGE_CONDITION,4,0,10,12,128,128,BRIDGE_CONDITION,13,13,0,12,12,14,12,15,16,0,13,0,14,0,0,14,18,0,17,0
+    DATA 0,16,0,16,0,23,0,0,0,20,0,21,23,0,TELEPORT_DESTINATION,0,24,0,20,0,23,21,16,22,0,18,18,21,26,0
     DATA 18,0,27,24,0,24,27,29,25,18,0,0,28,0,0,27,0,0,33,0,26,29,31,0,0,32,0,0,0
-    DATA 33,30,0,0,0,31,34,0,0,0,0,33,0,0,0,0,39,0,35,40,0,35,0,E,W,0,0,G,0,36,38,0
+    DATA 33,30,0,0,0,31,34,0,0,0,0,33,0,0,0,0,39,0,35,40,0,35,0,SECRET_EXIT_LOCATION,WATER_EXIT_LOCATION,0,0,GATE_DESTINATION,0,36,38,0
     DATA 45,48,36,128,46,43,54,42,46,43,41,43,46,38,42,44,47,47,0,47,0,40,0,128
-    DATA 47,0,47,47,0,45,46,0,40,128,0,D,0,0,48,50,0,52,49,51,0,0,50,0,50,0,53,50
+    DATA 47,0,47,47,0,45,46,0,40,128,0,DRAWBRIDGE_STATE,0,0,48,50,0,52,49,51,0,0,50,0,50,0,53,50
     DATA 54,0,0,52,0,53,41,0
 
 
@@ -988,9 +966,3 @@ MONSTER_AND_OBJECT_DESCRIPTION_DATA:
     DATA " moon-like"," pearl ","n interesting"," stone "," diamond studded"," ring "," magic"," pendant "," most holy"," grail "," mirror like"," shield "
     DATA " nondescript black"," box ","n old an rusty"," key "," double bladed"," sword "," small"," candle "," thin and tatty"," rope "," red house"," brick "," rusty ventilation"
     DATA " grill "
-```
-
-If you want, next we can:
-
-* sanity-walk a few specific flows (e.g. bat encounter, `galar`, bomb, key, rope) to check I didn’t mis-wire any label, or
-* re-target this into a modern language (e.g. Python) while preserving room graph and verb table.
