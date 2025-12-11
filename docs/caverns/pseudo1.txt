@@ -28,13 +28,69 @@ GAME_START:
     ROOM_MAX = 54
     DIR_NORTH = 0: DIR_SOUTH = 1: DIR_WEST = 2: DIR_EAST = 3
 
+    REM Room ID constants (1..54)
+    ROOM_DARK_ROOM = 1
+    ROOM_FOREST_CLEARING = 2
+    ROOM_DARK_FOREST = 3
+    ROOM_CLOVER_FIELD = 4
+    ROOM_RIVER_CLIFF = 5
+    ROOM_RIVER_BANK = 6
+    ROOM_CRATER_EDGE = 7
+    ROOM_RIVER_OUTCROP = 8
+    ROOM_MT_YMIR_SLOPE = 9
+    ROOM_BRIDGE_NORTH_ANCHOR = 10
+    ROOM_BRIDGE_MID = 11
+    ROOM_BRIDGE_SOUTH_ANCHOR = 12
+    ROOM_MUSHROOM_ROCK = 13
+    ROOM_CAVE_ENTRANCE_CLEARING = 14
+    ROOM_CLIFF_FACE = 15
+    ROOM_CAVE_ENTRY = 16
+    ROOM_DEAD_END_INSCRIPTION = 17
+    ROOM_DARK_CAVERN_A = 18
+    ROOM_TREASURE_ROOM = 19
+    ROOM_OAK_DOOR = 20
+    ROOM_DARK_CAVERN_B = 21
+    ROOM_WIND_CORRIDOR = 22
+    ROOM_TORTURE_CHAMBER = 23
+    ROOM_NORTH_SOUTH_TUNNEL = 24
+    ROOM_DARK_CAVERN_C = 25
+    ROOM_ROUND_ROOM = 26
+    ROOM_LEDGE_OVER_RIVER = 27
+    ROOM_TEMPLE_BALCONY = 28
+    ROOM_DARK_CAVERN_D = 29
+    ROOM_DARK_CAVERN_E = 30
+    ROOM_DARK_CAVERN_F = 31
+    ROOM_DARK_CAVERN_G = 32
+    ROOM_BAT_CAVE = 33
+    ROOM_DARK_CAVERN_H = 34
+    ROOM_TEMPLE = 35
+    ROOM_DARK_CAVERN_I = 36
+    ROOM_CRYPT = 37
+    ROOM_TINY_CELL = 38
+    ROOM_DARK_CAVERN_J = 39
+    ROOM_LEDGE_WATERFALL_IN = 40
+    ROOM_DRAIN_A = 41
+    ROOM_DRAIN_B = 42
+    ROOM_DRAIN_C = 43
+    ROOM_DRAIN_D = 44
+    ROOM_WATERFALL_BASE = 45
+    ROOM_DARK_CAVERN_K = 46
+    ROOM_STONE_STAIRCASE = 47
+    ROOM_CASTLE_LEDGE = 48
+    ROOM_DRAWBRIDGE = 49
+    ROOM_CASTLE_COURTYARD = 50
+    ROOM_POWDER_MAG = 51
+    ROOM_EAST_RIVERBANK = 52
+    ROOM_WOODEN_BRIDGE = 53
+    ROOM_RIVER_CONDUIT = 54
+
     DIM MOVEMENT_TABLE(ROOM_MAX,3)  REM byte-sized entries: room exit destination
     DIM OBJECT_LOCATION(24)
 
     GENERAL_FLAG_J = 0
     HOSTILE_CREATURE_INDEX = 0
     RESHOW_FLAG = 0
-    PLAYER_LOCATION = 1
+    PLAYER_LOCATION = ROOM_DARK_ROOM
     CANDLE_IS_LIT_FLAG = 1
 
     FEAR_COUNTER = 0
@@ -72,7 +128,7 @@ DESCRIBE_CURRENT_LOCATION:
     END IF
 
     REM Darkness logic
-    IF PLAYER_LOCATION < 18 OR CANDLE_IS_LIT_FLAG = 1 AND (OBJECT_LOCATION(21) = PLAYER_LOCATION OR OBJECT_LOCATION(21) = -1) THEN
+    IF PLAYER_LOCATION < ROOM_DARK_CAVERN_A OR CANDLE_IS_LIT_FLAG = 1 AND (OBJECT_LOCATION(21) = PLAYER_LOCATION OR OBJECT_LOCATION(21) = -1) THEN
         GOTO PRINT_ROOM_DESCRIPTION
     END IF
 
@@ -83,184 +139,184 @@ DESCRIBE_CURRENT_LOCATION:
 
 PRINT_ROOM_DESCRIPTION:
 
-    IF PLAYER_LOCATION = 1 THEN
+    IF PLAYER_LOCATION = ROOM_DARK_ROOM THEN
         PRINT "You are standing in a darkened room. There is a door to the     north."
     END IF
 
-    IF PLAYER_LOCATION = 2 THEN
+    IF PLAYER_LOCATION = ROOM_FOREST_CLEARING THEN
         PRINT "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door."
     END IF
 
-    IF PLAYER_LOCATION = 3 THEN
+    IF PLAYER_LOCATION = ROOM_DARK_FOREST THEN
         PRINT "You are deep in a dark forest. In the distance you can see a    mighty river."
     END IF
 
-    IF PLAYER_LOCATION = 4 THEN
+    IF PLAYER_LOCATION = ROOM_CLOVER_FIELD THEN
         PRINT "You are standing in a field of four-leafed clovers. There is a  small hut to the north."
     END IF
 
-    IF PLAYER_LOCATION = 13 THEN
+    IF PLAYER_LOCATION = ROOM_MUSHROOM_ROCK THEN
         PRINT "You are standing on a rock in the middle of a mighty oak forest.Surrounding you are thousands of poisonous mushrooms."
     END IF
 
-    IF PLAYER_LOCATION = 15 THEN
+    IF PLAYER_LOCATION = ROOM_CLIFF_FACE THEN
         PRINT "You are on a cliff face over looking the river."
     END IF
 
-    IF PLAYER_LOCATION = 5 THEN
+    IF PLAYER_LOCATION = ROOM_RIVER_CLIFF THEN
         PRINT "The forest has opened up at this point. You are standing on a   cliff overlooking a wide glacial river. A small foot-beaten pathleads south."
     END IF
 
-    IF PLAYER_LOCATION = 6 THEN
+    IF PLAYER_LOCATION = ROOM_RIVER_BANK THEN
         PRINT "You are standing at the rocky edge of the mighty river Gioll.   The path forks east and west."
     END IF
 
-    IF PLAYER_LOCATION = 7 THEN
+    IF PLAYER_LOCATION = ROOM_CRATER_EDGE THEN
         PRINT "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the    Gioll pours into it."
     END IF
 
-    IF PLAYER_LOCATION = 8 THEN
+    IF PLAYER_LOCATION = ROOM_RIVER_OUTCROP THEN
         PRINT "The path to the east stops here. You are on a rocky outcrop,    projected about 15 feet above the river. In the distance,       a tiny bridge spans the river."
     END IF
 
-    IF PLAYER_LOCATION = 9 THEN
+    IF PLAYER_LOCATION = ROOM_MT_YMIR_SLOPE THEN
         PRINT "You are on the lower slopes of Mt. Ymir. The forest stretches   far away and to the west. Arctic winds blow fiercely, it's very cold!"
     END IF
 
-    IF PLAYER_LOCATION = 10 THEN
+    IF PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR THEN
         PRINT "You stand on a rocky precipice high above the river, Gioll;     Mt. Ymir stands to the north. A flimsy string bridge spans the  mighty river."
     END IF
 
-    IF PLAYER_LOCATION = 11 THEN
+    IF PLAYER_LOCATION = ROOM_BRIDGE_MID THEN
         PRINT "You have made your way half way across the creaking bridge.     It sways violently from side to side. It's going to collapse anysecond!!"
     END IF
 
-    IF PLAYER_LOCATION = 12 THEN
+    IF PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR THEN
         PRINT "You are on the southern edge of the mighty river, before        the string bridge."
     END IF
 
-    IF PLAYER_LOCATION = 14 THEN
+    IF PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING THEN
         PRINT "You are in a clearing in the forest. An ancient basalt rock      formation towers above you. To your south is the entrance of a  VERY interesting cave..."
     END IF
 
-    IF PLAYER_LOCATION = 16 THEN
+    IF PLAYER_LOCATION = ROOM_CAVE_ENTRY THEN
         PRINT "You are just inside the cave. Sunlight pours into the cave      lighting a path to the east and another to the south. I don't   mind saying I'm a bit scared!"
     END IF
 
-    IF PLAYER_LOCATION = 17 THEN
+    IF PLAYER_LOCATION = ROOM_DEAD_END_INSCRIPTION THEN
         PRINT "This passage appears to be a dead end. On a wall before you is  carved `Find the Sacred Key of Thialfi'."
     END IF
 
-    IF PLAYER_LOCATION = 19 THEN
+    IF PLAYER_LOCATION = ROOM_TREASURE_ROOM THEN
         PRINT "You are in the legendary treasure room of the black elves of    Svartalfheim. Every red-blooded Viking has dreamed of entering  this sacred room."
     END IF
 
-    IF PLAYER_LOCATION = 20 THEN
+    IF PLAYER_LOCATION = ROOM_OAK_DOOR THEN
         PRINT "You can see a small oak door to the east. It has been locked    from the inside."
     END IF
 
-    IF PLAYER_LOCATION = 22 THEN
+    IF PLAYER_LOCATION = ROOM_WIND_CORRIDOR THEN
         PRINT "You are standing in an east-west corridor. You can feel a faint breeze coming from the east."
     END IF
 
-    IF PLAYER_LOCATION = 23 THEN
+    IF PLAYER_LOCATION = ROOM_TORTURE_CHAMBER THEN
         PRINT "You are standing in what appears to have once been a torture    chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,"
         PRINT "coagulated blood stains on the walls and mangled bits of bone onthe floor make me think that a number of would be adventurers   croaked it here!"
     END IF
 
-    IF PLAYER_LOCATION = 24 THEN
+    IF PLAYER_LOCATION = ROOM_NORTH_SOUTH_TUNNEL THEN
         PRINT "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow   crack in the eastern wall."
     END IF
 
-    IF PLAYER_LOCATION = 26 THEN
+    IF PLAYER_LOCATION = ROOM_ROUND_ROOM THEN
         PRINT "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of "
         PRINT "the floor. Note: This is one of the hidden chambers of the      infamous pagan sect, the monks of Loki. Norse folk believe them to be gods."
     END IF
 
-    IF PLAYER_LOCATION = 27 THEN
+    IF PLAYER_LOCATION = ROOM_LEDGE_OVER_RIVER THEN
         PRINT "You are standing on a narrow ledge, high above a subterranean   river. There is an exit to the east. "
     END IF
 
-    IF PLAYER_LOCATION = 28 THEN
+    IF PLAYER_LOCATION = ROOM_TEMPLE_BALCONY THEN
         PRINT "You are on a balcony, overlooking a huge cavern which has been  converted into a pagan temple. Note: this temple has been       dedicated to Loki, the god of"
         PRINT "fire, who came to live in Svartalfheim after he had been        banished to exile by Odin. Since then he has been waiting       for the `End Of All Things'."
     END IF
 
-    IF PLAYER_LOCATION = 33 THEN
+    IF PLAYER_LOCATION = ROOM_BAT_CAVE THEN
         PRINT "You are in the central cave of a giant bat colony. Above you    hundreds of giant bats hang from the ceiling and the floor is   covered in centuries of "
         PRINT "giant bat droppings. Careful where you step! Incidentally, the  smell is indescribable."
     END IF
 
-    IF PLAYER_LOCATION = 35 THEN
+    IF PLAYER_LOCATION = ROOM_TEMPLE THEN
         PRINT "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock   itself!"
     END IF
 
-    IF PLAYER_LOCATION = 37 THEN
+    IF PLAYER_LOCATION = ROOM_CRYPT THEN
         PRINT "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word "
         PRINT "starting with 'G---' and another ending with '---X'' Note: The   monks of Loki must have liked silly puzzles.  Putrefaction and decay fills the air here."
     END IF
 
-    IF PLAYER_LOCATION = 38 THEN
+    IF PLAYER_LOCATION = ROOM_TINY_CELL THEN
         PRINT "You are in a tiny cell. The western wall has now firmly closed  again. There is a ventilator shaft on the eastern wall."
     END IF
 
-    IF PLAYER_LOCATION = 40 THEN
+    IF PLAYER_LOCATION = ROOM_LEDGE_WATERFALL_IN THEN
         PRINT "You are on another ledge high above a subterranean river. The   water flows in through a hole in the cavern roof, to the north."
     END IF
 
-    IF PLAYER_LOCATION > 40 AND PLAYER_LOCATION < 45 THEN
+    IF PLAYER_LOCATION > ROOM_LEDGE_WATERFALL_IN AND PLAYER_LOCATION < ROOM_WATERFALL_BASE THEN
         PRINT "Somehow you have gotten into the complex drainage system of thisentire cavern network!!"
     END IF
 
-    IF PLAYER_LOCATION = 45 THEN
+    IF PLAYER_LOCATION = ROOM_WATERFALL_BASE THEN
         PRINT "You are standing near an enormous waterfall which brings water  down from the surface, from the river Gioll."
     END IF
 
-    IF PLAYER_LOCATION = 47 THEN
+    IF PLAYER_LOCATION = ROOM_STONE_STAIRCASE THEN
         PRINT "You are standing before a stone staircase which leads           southwards."
     END IF
 
-    IF PLAYER_LOCATION = 48 THEN
+    IF PLAYER_LOCATION = ROOM_CASTLE_LEDGE THEN
         PRINT "You are on a narrow and crumbling ledge. On the other side of   the river you can see a magic castle. (Don't ask me why it's    magic...I just know it is)"
     END IF
 
-    IF PLAYER_LOCATION = 49 THEN
+    IF PLAYER_LOCATION = ROOM_DRAWBRIDGE THEN
         PRINT "You are by the drawbridge which has just lowered itself....by   magic!!"
     END IF
 
-    IF PLAYER_LOCATION = 50 THEN
+    IF PLAYER_LOCATION = ROOM_CASTLE_COURTYARD THEN
         PRINT "You are in the courtyard of the magic castle. WOW! This castle  is really something! On the wall is inscribed 'hzb tzozi'.      A secret escape tunnel leads south"
     END IF
 
-    IF PLAYER_LOCATION = 51 THEN
+    IF PLAYER_LOCATION = ROOM_POWDER_MAG THEN
         PRINT "You are in the powder magazine of this really super castle."
     END IF
 
-    IF PLAYER_LOCATION = 53 THEN
+    IF PLAYER_LOCATION = ROOM_WOODEN_BRIDGE THEN
         PRINT "You stand before a small wooden bridge which crosses the river."
     END IF
 
-    IF PLAYER_LOCATION = 52 THEN
+    IF PLAYER_LOCATION = ROOM_EAST_RIVERBANK THEN
         PRINT "You are on the eastern side of the river. A small tunnel leads  east into the cliff face."
     END IF
 
-    IF PLAYER_LOCATION = 54 THEN
+    IF PLAYER_LOCATION = ROOM_RIVER_CONDUIT THEN
         PRINT "You are in a conduit draining into the river. The water comes upto your knees and is freezing cold. A narrow service path leads south."
     END IF
 
-    IF PLAYER_LOCATION = 18 OR PLAYER_LOCATION = 21 OR PLAYER_LOCATION = 25 OR PLAYER_LOCATION > 28 AND PLAYER_LOCATION < 32 OR PLAYER_LOCATION = 34 OR PLAYER_LOCATION = 36 OR PLAYER_LOCATION = 39 OR PLAYER_LOCATION = 46 OR PLAYER_LOCATION = 53 THEN
+    IF PLAYER_LOCATION = ROOM_DARK_CAVERN_A OR PLAYER_LOCATION = ROOM_DARK_CAVERN_B OR PLAYER_LOCATION = ROOM_DARK_CAVERN_C OR PLAYER_LOCATION > ROOM_TEMPLE_BALCONY AND PLAYER_LOCATION < ROOM_DARK_CAVERN_G OR PLAYER_LOCATION = ROOM_DARK_CAVERN_H OR PLAYER_LOCATION = ROOM_DARK_CAVERN_I OR PLAYER_LOCATION = ROOM_DARK_CAVERN_J OR PLAYER_LOCATION = ROOM_DARK_CAVERN_K OR PLAYER_LOCATION = ROOM_WOODEN_BRIDGE THEN
         PRINT "You are deep in a dark cavern."
     END IF
 
-    IF (PLAYER_LOCATION = 10 OR PLAYER_LOCATION = 12) AND BRIDGE_CONDITION = 128 THEN
+    IF (PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR OR PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR) AND BRIDGE_CONDITION = 128 THEN
         PRINT "Two of the ropes have snapped under your weight. It's totally unfit to cross again."
     END IF
 
-    IF PLAYER_LOCATION = 14 AND OBJECT_LOCATION(4) = 0 THEN
+    IF PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING AND OBJECT_LOCATION(4) = 0 THEN
         PRINT "You can also see the bloody corpse of an enormous dragon."
     END IF
 
-    IF PLAYER_LOCATION = 48 AND DRAWBRIDGE_STATE = 49 THEN
+    IF PLAYER_LOCATION = ROOM_CASTLE_LEDGE AND DRAWBRIDGE_STATE = 49 THEN
         PRINT " A mighty golden drawbridge spans the waters."
     END IF
 
@@ -373,22 +429,22 @@ PARSE_COMMAND_ENTRY:
     END IF
 
     REM Bridge condition when halfway
-    IF PLAYER_LOCATION = 11 THEN
+    IF PLAYER_LOCATION = ROOM_BRIDGE_MID THEN
         BRIDGE_CONDITION = 128
         GOSUB UPDATE_DYNAMIC_EXITS_SUB
     END IF
 
     REM Hut flag
-    IF PLAYER_LOCATION = 2 THEN
+    IF PLAYER_LOCATION = ROOM_FOREST_CLEARING THEN
         GENERAL_FLAG_J = 1
     END IF
 
-    IF PLAYER_LOCATION = 45 THEN
+    IF PLAYER_LOCATION = ROOM_WATERFALL_BASE THEN
         WATER_EXIT_LOCATION = 43
         GOSUB UPDATE_DYNAMIC_EXITS_SUB
     END IF
 
-    IF PLAYER_LOCATION = 35 THEN
+    IF PLAYER_LOCATION = ROOM_TEMPLE THEN
         WATER_EXIT_LOCATION = 0
         GOSUB UPDATE_DYNAMIC_EXITS_SUB
     END IF
@@ -398,7 +454,7 @@ PARSE_COMMAND_ENTRY:
         GOSUB UPDATE_DYNAMIC_EXITS_SUB
     END IF
 
-    IF PLAYER_LOCATION = 49 THEN
+    IF PLAYER_LOCATION = ROOM_DRAWBRIDGE THEN
         DRAWBRIDGE_STATE = 49
         GOSUB UPDATE_DYNAMIC_EXITS_SUB
     END IF
@@ -506,7 +562,7 @@ CHECK_CREATURE_BAT_SPECIAL:
 
     IF HOSTILE_CREATURE_INDEX = 5 THEN
         PRINT "The giant bat picked you up and carried you to another place."
-        PLAYER_LOCATION = 33
+        PLAYER_LOCATION = ROOM_BAT_CAVE
         RESHOW_FLAG = 0
         OBJECT_LOCATION(5) = OBJECT_LOCATION(5) + 7
         GOTO DESCRIBE_CURRENT_LOCATION
@@ -589,7 +645,7 @@ HANDLE_NON_MOVEMENT_COMMAND:
     IF INSTR(INPUT_COMMAND$, " galar ") > 0 THEN
         RESHOW_FLAG = 0
         PRINT "Suddenly a magic wind carried you to another place..."
-        PLAYER_LOCATION = 16
+        PLAYER_LOCATION = ROOM_CAVE_ENTRY
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
 
@@ -687,7 +743,7 @@ ROUTE_USE_BY_OBJECT:
 
 USE_KEY:
 
-    IF PLAYER_LOCATION <> 2 AND PLAYER_LOCATION <> 35 THEN
+    IF PLAYER_LOCATION <> ROOM_FOREST_CLEARING AND PLAYER_LOCATION <> ROOM_TEMPLE THEN
         PRINT "It won't open!"
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
@@ -696,11 +752,11 @@ USE_KEY:
     OBJECT_LOCATION(19) = PLAYER_LOCATION
     RESHOW_FLAG = 0
 
-    IF PLAYER_LOCATION = 2 THEN
-        PLAYER_LOCATION = 1
+    IF PLAYER_LOCATION = ROOM_FOREST_CLEARING THEN
+        PLAYER_LOCATION = ROOM_DARK_ROOM
         GOTO DESCRIBE_CURRENT_LOCATION
     ELSE
-        PLAYER_LOCATION = 37
+        PLAYER_LOCATION = ROOM_CRYPT
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
 
@@ -796,9 +852,9 @@ USE_BOMB:
     PRINT "The fuse burnt away and....BOOM!!....the explosion blew you out of the way (Lucky!)"
     RESHOW_FLAG = 0
 
-    IF PLAYER_LOCATION > 1 THEN
+    IF PLAYER_LOCATION > ROOM_DARK_ROOM THEN
         PLAYER_LOCATION = PLAYER_LOCATION - 1
-        IF PLAYER_LOCATION = 20 THEN
+        IF PLAYER_LOCATION = ROOM_OAK_DOOR THEN
             TELEPORT_DESTINATION = 19
             GOSUB UPDATE_DYNAMIC_EXITS_SUB
         END IF
@@ -811,7 +867,7 @@ USE_BOMB:
 
 USE_ROPE:
 
-    IF PLAYER_LOCATION <> 28 THEN
+    IF PLAYER_LOCATION <> ROOM_TEMPLE_BALCONY THEN
         PRINT "It's too dangerous!!!"
         GOTO DESCRIBE_CURRENT_LOCATION
     END IF
@@ -819,7 +875,7 @@ USE_ROPE:
     PRINT "You descend the rope, but it drops 10 feet short of the floor.  You jump the rest of the way."
     RESHOW_FLAG = 0
     OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
-    PLAYER_LOCATION = 35
+    PLAYER_LOCATION = ROOM_TEMPLE
     GOTO DESCRIBE_CURRENT_LOCATION
 
 
@@ -951,14 +1007,60 @@ REM ---------------------------------------------------------
 
 
 MOVEMENT_TABLE_DATA:
-    DATA 2,0,0,0,0,0,3,4,2,5,5,0,2,5,0,9,0,6,3,4,5,0,7,8,0,0,128,6,0,0,6,0,0,10,4,0,9
-    DATA 11,4,0,10,12,128,128,11,13,13,0,12,12,14,12,15,16,0,13,0,14,0,0,14,18,0,17,0
-    DATA 0,16,0,16,0,23,0,0,0,20,0,21,23,0,0,0,24,0,20,0,23,21,16,22,0,18,18,21,26,0
-    DATA 18,0,27,24,0,24,27,29,25,18,0,0,28,0,0,27,0,0,33,0,26,29,31,0,0,32,0,0,0
-    DATA 33,30,0,0,0,31,34,0,0,0,0,33,0,0,0,0,39,0,35,40,0,35,0,0,0,0,0,0,0,36,38,0
-    DATA 45,48,36,128,46,43,54,42,46,43,41,43,46,38,42,44,47,47,0,47,0,40,0,128
-    DATA 47,0,47,47,0,45,46,0,40,128,0,128,0,0,48,50,0,52,49,51,0,0,50,0,50,0,53,50
-    DATA 54,0,0,52,0,53,41,0
+    DATA ROOM_FOREST_CLEARING,0,0,0
+    DATA 0,0,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
+    DATA ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,ROOM_RIVER_CLIFF,0
+    DATA ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,0,ROOM_MT_YMIR_SLOPE
+    DATA 0,ROOM_RIVER_BANK,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
+    DATA ROOM_RIVER_CLIFF,0,ROOM_CRATER_EDGE,ROOM_RIVER_OUTCROP
+    DATA 0,0,128,ROOM_RIVER_BANK
+    DATA 0,0,ROOM_RIVER_BANK,0
+    DATA 0,ROOM_BRIDGE_NORTH_ANCHOR,ROOM_CLOVER_FIELD,0
+    DATA ROOM_MT_YMIR_SLOPE,ROOM_BRIDGE_MID,ROOM_CLOVER_FIELD,0
+    DATA ROOM_BRIDGE_NORTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR,128,128
+    DATA ROOM_BRIDGE_MID,ROOM_MUSHROOM_ROCK,ROOM_MUSHROOM_ROCK,0
+    DATA ROOM_BRIDGE_SOUTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR,ROOM_CAVE_ENTRANCE_CLEARING,ROOM_BRIDGE_SOUTH_ANCHOR
+    DATA ROOM_CLIFF_FACE,ROOM_CAVE_ENTRY,0,ROOM_MUSHROOM_ROCK
+    DATA 0,ROOM_CAVE_ENTRANCE_CLEARING,0,0
+    DATA ROOM_CAVE_ENTRANCE_CLEARING,ROOM_DARK_CAVERN_A,0,ROOM_DEAD_END_INSCRIPTION
+    DATA 0,0,ROOM_CAVE_ENTRY,0
+    DATA ROOM_CAVE_ENTRY,0,ROOM_TORTURE_CHAMBER,0
+    DATA 0,0,ROOM_OAK_DOOR,0
+    DATA ROOM_DARK_CAVERN_B,ROOM_TORTURE_CHAMBER,0,0
+    DATA 0,ROOM_NORTH_SOUTH_TUNNEL,0,ROOM_OAK_DOOR
+    DATA 0,ROOM_TORTURE_CHAMBER,ROOM_DARK_CAVERN_B,ROOM_CAVE_ENTRY
+    DATA ROOM_WIND_CORRIDOR,0,ROOM_DARK_CAVERN_A,ROOM_DARK_CAVERN_A
+    DATA ROOM_DARK_CAVERN_B,ROOM_ROUND_ROOM,0,ROOM_DARK_CAVERN_A
+    DATA 0,ROOM_LEDGE_OVER_RIVER,ROOM_NORTH_SOUTH_TUNNEL,0
+    DATA ROOM_NORTH_SOUTH_TUNNEL,ROOM_LEDGE_OVER_RIVER,ROOM_DARK_CAVERN_D,ROOM_DARK_CAVERN_C
+    DATA ROOM_DARK_CAVERN_A,0,0,ROOM_TEMPLE_BALCONY
+    DATA 0,0,ROOM_LEDGE_OVER_RIVER,0
+    DATA 0,ROOM_BAT_CAVE,0,ROOM_ROUND_ROOM
+    DATA ROOM_DARK_CAVERN_D,ROOM_DARK_CAVERN_F,0,0
+    DATA ROOM_DARK_CAVERN_G,0,0,0
+    DATA ROOM_BAT_CAVE,ROOM_DARK_CAVERN_E,0,0
+    DATA 0,ROOM_DARK_CAVERN_F,ROOM_DARK_CAVERN_H,0
+    DATA 0,0,0,ROOM_BAT_CAVE
+    DATA 0,0,0,0
+    DATA ROOM_DARK_CAVERN_J,0,ROOM_TEMPLE,ROOM_LEDGE_WATERFALL_IN
+    DATA 0,ROOM_TEMPLE,0,0
+    DATA 0,0,0,0
+    DATA 0,ROOM_DARK_CAVERN_I,ROOM_TINY_CELL,0
+    DATA ROOM_WATERFALL_BASE,ROOM_CASTLE_LEDGE,ROOM_DARK_CAVERN_I,128
+    DATA ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_RIVER_CONDUIT,ROOM_DRAIN_B
+    DATA ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_DRAIN_A,ROOM_DRAIN_C
+    DATA ROOM_DARK_CAVERN_K,ROOM_TINY_CELL,ROOM_DRAIN_B,ROOM_DRAIN_D
+    DATA ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE
+    DATA 0,ROOM_LEDGE_WATERFALL_IN,0,128
+    DATA ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE
+    DATA 0,ROOM_WATERFALL_BASE,ROOM_DARK_CAVERN_K,0
+    DATA ROOM_LEDGE_WATERFALL_IN,128,0,128
+    DATA 0,0,ROOM_CASTLE_LEDGE,ROOM_CASTLE_COURTYARD
+    DATA 0,ROOM_EAST_RIVERBANK,ROOM_DRAWBRIDGE,ROOM_POWDER_MAG
+    DATA 0,0,ROOM_CASTLE_COURTYARD,0
+    DATA ROOM_CASTLE_COURTYARD,0,ROOM_WOODEN_BRIDGE,ROOM_CASTLE_COURTYARD
+    DATA ROOM_RIVER_CONDUIT,0,0,ROOM_EAST_RIVERBANK
+    DATA 0,ROOM_WOODEN_BRIDGE,ROOM_DRAIN_A,0
 
 
 MONSTER_DESCRIPTION_DATA:
@@ -999,17 +1101,19 @@ UPDATE_DYNAMIC_EXITS_SUB:
 
     REM Patch dynamic exits in movement table
     REM Dynamic exit slots patched at runtime (room, direction):
-    REM (10,DIR_SOUTH)=BRIDGE_CONDITION, (12,DIR_NORTH)=BRIDGE_CONDITION
-    REM (20,DIR_EAST)=TELEPORT_DESTINATION
-    REM (37,DIR_EAST)=SECRET_EXIT_LOCATION
-    REM (38,DIR_NORTH)=WATER_EXIT_LOCATION, (38,DIR_EAST)=GATE_DESTINATION
-    REM (48,DIR_EAST)=DRAWBRIDGE_STATE
+    REM (ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH)=BRIDGE_CONDITION
+    REM (ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH)=BRIDGE_CONDITION
+    REM (ROOM_OAK_DOOR,DIR_EAST)=TELEPORT_DESTINATION
+    REM (ROOM_CRYPT,DIR_EAST)=SECRET_EXIT_LOCATION
+    REM (ROOM_TINY_CELL,DIR_NORTH)=WATER_EXIT_LOCATION
+    REM (ROOM_TINY_CELL,DIR_EAST)=GATE_DESTINATION
+    REM (ROOM_CASTLE_LEDGE,DIR_EAST)=DRAWBRIDGE_STATE
 
-    MOVEMENT_TABLE(10,DIR_SOUTH) = BRIDGE_CONDITION
-    MOVEMENT_TABLE(12,DIR_NORTH) = BRIDGE_CONDITION
-    MOVEMENT_TABLE(20,DIR_EAST) = TELEPORT_DESTINATION
-    MOVEMENT_TABLE(37,DIR_EAST) = SECRET_EXIT_LOCATION
-    MOVEMENT_TABLE(38,DIR_NORTH) = WATER_EXIT_LOCATION
-    MOVEMENT_TABLE(38,DIR_EAST) = GATE_DESTINATION
-    MOVEMENT_TABLE(48,DIR_EAST) = DRAWBRIDGE_STATE
+    MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH) = BRIDGE_CONDITION
+    MOVEMENT_TABLE(ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH) = BRIDGE_CONDITION
+    MOVEMENT_TABLE(ROOM_OAK_DOOR,DIR_EAST) = TELEPORT_DESTINATION
+    MOVEMENT_TABLE(ROOM_CRYPT,DIR_EAST) = SECRET_EXIT_LOCATION
+    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_NORTH) = WATER_EXIT_LOCATION
+    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_EAST) = GATE_DESTINATION
+    MOVEMENT_TABLE(ROOM_CASTLE_LEDGE,DIR_EAST) = DRAWBRIDGE_STATE
     RETURN
