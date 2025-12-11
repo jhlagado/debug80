@@ -1,17 +1,29 @@
-rem ---------------------------------------------------------
-rem  CAVERNS – Fictional BASIC Dialect Version
-rem  Based on MicroWorld BASIC game by John Hardy (c) 1983
-rem  No line numbers, label-based control flow, long variable names
-rem ---------------------------------------------------------
-rem  INDEX MAP (for future assembly translation)
-rem  CREATURES: 1 wizard, 2 demon, 3 troll, 4 dragon, 5 bat, 6 dwarf
-rem  OBJECTS 7-24: coin, compass, bomb, ruby, diamond, pearl, stone,
-rem                ring, pendant, grail, shield, box, key, sword,
-rem                candle, rope, brick, grill
-rem  ROOM FLAGS: BRIDGE_CONDITION/H, DRAWBRIDGE_STATE/D,
-rem              WATER_EXIT_LOCATION/W, GATE_DESTINATION/G,
-rem              TELEPORT_DESTINATION/T, SECRET_EXIT_LOCATION/E
-rem  DIRECTION INDEX: DIR_NORTH_STR=0, DIR_SOUTH_STR=1, DIR_WEST_STR=2, DIR_EAST_STR=3
+; ---------------------------------------------------------
+;  CAVERNS – Fictional BASIC Dialect Version
+;  Based on MicroWorld BASIC game by John Hardy (c) 1983
+;  No line numbers, label-based control flow, long variable names
+; ---------------------------------------------------------
+;  INDEX MAP (for future assembly translation)
+;  CREATURES: 1 wizard, 2 demon, 3 troll, 4 dragon, 5 bat, 6 dwarf
+;  OBJECTS 7-24: coin, compass, bomb, ruby, diamond, pearl, stone,
+;                ring, pendant, grail, shield, box, key, sword,
+;                candle, rope, brick, grill
+;  ROOM FLAGS: BRIDGE_CONDITION/H, DRAWBRIDGE_STATE/D,
+;              WATER_EXIT_LOCATION/W, GATE_DESTINATION/G,
+;              TELEPORT_DESTINATION/T, SECRET_EXIT_LOCATION/E
+;  DIRECTION INDEX: DIR_NORTH_STR=0, DIR_SOUTH_STR=1, DIR_WEST_STR=2, DIR_EAST_STR=3
+
+
+; Macro: PRINT "text"
+; Emits inline null-terminated string and calls puts (from utils.asm)
+PRINT MACRO txt
+    LOCAL _str, _after
+    ld hl,_str
+    call puts
+    jr _after
+_str: db txt,0
+_after:
+ENDM
 
 
 GAME_START:
@@ -28,7 +40,7 @@ GAME_START:
     ROOM_MAX = 54
     DIR_NORTH = 0: DIR_SOUTH = 1: DIR_WEST = 2: DIR_EAST = 3
 
-    rem Room ID constants (1..54)
+    ; Room ID constants (1..54)
     ROOM_DARK_ROOM = 1
     ROOM_FOREST_CLEARING = 2
     ROOM_DARK_FOREST = 3
@@ -84,15 +96,15 @@ GAME_START:
     ROOM_WOODEN_BRIDGE = 53
 ROOM_RIVER_CONDUIT = 54
 
-    rem Exit codes
+    ; Exit codes
     EXIT_NONE = 0
     EXIT_FATAL = 128
 
-    rem Turn thresholds for candle
+    ; Turn thresholds for candle
     CANDLE_DIM_TURN = 200
     CANDLE_OUT_TURN = 230
 
-    rem Object indices (7..24)
+    ; Object indices (7..24)
     OBJ_DRAGON = 4
     OBJ_BOMB = 9
     OBJ_GRILL = 24
@@ -102,14 +114,14 @@ ROOM_RIVER_CONDUIT = 54
     OBJ_ROPE = 22
     NULL = 0
 
-    dim MOVEMENT_TABLE(ROOM_MAX,3)  rem byte-sized entries: room exit destination
+    dim MOVEMENT_TABLE(ROOM_MAX,3)  ; byte-sized entries: room exit destination
     dim OBJECT_LOCATION(24)
-    dim ROOM_DESC1_PTR(ROOM_MAX), ROOM_DESC2_PTR(ROOM_MAX)  rem pointers to description strings
-    dim OBJECT_NAME_ADJ(24), OBJECT_NAME_NOUN(24)  rem pointers to strings
-    dim MONSTER_ADJ(6), MONSTER_NOUN(6)            rem pointers to strings
-    dim VERB_PATTERN(16)                           rem pointers to strings
-    dim DIR_WORD_INDEX(4)                          rem pointers to strings
-    dim OBJDESC1(24), OBJDESC2(24)                 rem pointers to strings
+    dim ROOM_DESC1_PTR(ROOM_MAX), ROOM_DESC2_PTR(ROOM_MAX)  ; pointers to description strings
+    dim OBJECT_NAME_ADJ(24), OBJECT_NAME_NOUN(24)  ; pointers to strings
+    dim MONSTER_ADJ(6), MONSTER_NOUN(6)            ; pointers to strings
+    dim VERB_PATTERN(16)                           ; pointers to strings
+    dim DIR_WORD_INDEX(4)                          ; pointers to strings
+    dim OBJDESC1(24), OBJDESC2(24)                 ; pointers to strings
 
     GENERAL_FLAG_J = 0
     HOSTILE_CREATURE_INDEX = 0
@@ -122,7 +134,7 @@ ROOM_RIVER_CONDUIT = 54
     SWORD_SWING_COUNT = 0
     SCORE = 0
 
-    rem Data tables are pre-initialized (assembly targets will map these to DB/DW); no RESTORE/READ needed
+    ; Data tables are pre-initialized (assembly targets will map these to DB/DW); no RESTORE/READ needed
     OBJECT_LOCATION = OBJECT_LOCATION_DATA
     OBJECT_NAME_ADJ = OBJECT_NAME_ADJ_DATA
     OBJECT_NAME_NOUN = OBJECT_NAME_NOUN_DATA
@@ -141,13 +153,13 @@ ROOM_RIVER_CONDUIT = 54
 
 DESCRIBE_CURRENT_LOCATION:
 
-    rem If a hostile creature is active (except some special case),
-    rem jump to monster-attack logic
+    ; If a hostile creature is active (except some special case),
+    ; jump to monster-attack logic
     if HOSTILE_CREATURE_INDEX > 0 and HOSTILE_CREATURE_INDEX <> 5 and CURRENT_OBJECT_INDEX <> OBJ_SWORD then
         goto MONSTER_ATTACK
     end if
 
-    rem Darkness logic
+    ; Darkness logic
     if PLAYER_LOCATION < ROOM_DARK_CAVERN_A or CANDLE_IS_LIT_FLAG = 1 and (OBJECT_LOCATION(21) = PLAYER_LOCATION or OBJECT_LOCATION(21) = -1) then
         goto PRINT_ROOM_DESCRIPTION
     end if
@@ -159,7 +171,7 @@ DESCRIBE_CURRENT_LOCATION:
 
 PRINT_ROOM_DESCRIPTION:
 
-    rem Pointer-based room descriptions (for assembly translation, @PTR means dereference)
+    ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
     if ROOM_DESC1_PTR(PLAYER_LOCATION) <> NULL then
         print @ROOM_DESC1_PTR(PLAYER_LOCATION)
     end if
@@ -288,13 +300,13 @@ PARSE_COMMAND_ENTRY:
         OBJECT_NOUN$ = ""
     end if
 
-    rem Bridge condition when halfway
+    ; Bridge condition when halfway
     if PLAYER_LOCATION = ROOM_BRIDGE_MID then
         BRIDGE_CONDITION = 128
         gosub UPDATE_DYNAMIC_EXITS_SUB
     end if
 
-    rem Hut flag
+    ; Hut flag
     if PLAYER_LOCATION = ROOM_FOREST_CLEARING then
         GENERAL_FLAG_J = 1
     end if
@@ -319,18 +331,18 @@ PARSE_COMMAND_ENTRY:
         gosub UPDATE_DYNAMIC_EXITS_SUB
     end if
 
-    rem LOOK command
+    ; LOOK command
     if INSTR(INPUT_COMMAND$, " look ") > 0 then
         RESHOW_FLAG = 0
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    rem LIST inventory
+    ; LIST inventory
     if INSTR(INPUT_COMMAND$, " list ") > 0 then
         goto SHOW_INVENTORY
     end if
 
-    rem QUIT
+    ; QUIT
     if INSTR(INPUT_COMMAND$, " quit ") > 0 then
         goto QUIT_GAME
     end if
@@ -445,14 +457,14 @@ MONSTER_ATTACK:
 
 HANDLE_VERB_OR_MOVEMENT:
 
-    rem First route generic verbs via the pattern table (take/put/unlock/jump/etc.)
+    ; First route generic verbs via the pattern table (take/put/unlock/jump/etc.)
     for VERB_PATTERN_INDEX = 1 to 16
         if INSTR(INPUT_COMMAND$, @VERB_PATTERN(VERB_PATTERN_INDEX)) > 0 then
             goto ROUTE_BY_VERB_PATTERN
         end if
     next VERB_PATTERN_INDEX
 
-    rem Then check for movement (north/south/etc.)
+    ; Then check for movement (north/south/etc.)
     for DIRECTION_INDEX = 0 to 3
         if INSTR(INPUT_COMMAND$, @DIR_WORD_INDEX(DIRECTION_INDEX+1)) > 0 then
             goto HANDLE_MOVEMENT_COMMAND
@@ -465,7 +477,7 @@ HANDLE_VERB_OR_MOVEMENT:
 
 HANDLE_MOVEMENT_COMMAND:
 
-    rem Special check related to bomb or location
+    ; Special check related to bomb or location
     if OBJECT_LOCATION(OBJ_BOMB) <> -1 and OBJECT_LOCATION(OBJ_BOMB) <> PLAYER_LOCATION then
         RANDOM_DIRECTION_INDEX = INT(RND * 4)
     else
@@ -494,7 +506,7 @@ HANDLE_MOVEMENT_COMMAND:
 
 HANDLE_NON_MOVEMENT_COMMAND:
 
-    rem Magic word "galar"
+    ; Magic word "galar"
     if INSTR(INPUT_COMMAND$, " galar ") > 0 then
         RESHOW_FLAG = 0
         print "Suddenly a magic wind carried you to another place..."
@@ -502,7 +514,7 @@ HANDLE_NON_MOVEMENT_COMMAND:
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    rem Crypt wall "ape"
+    ; Crypt wall "ape"
     if INSTR(INPUT_COMMAND$, " ape ") > 0 then
         print "Hey! the eastern wall of the crypt slid open..."
         SECRET_EXIT_LOCATION = 38
@@ -515,7 +527,7 @@ HANDLE_NON_MOVEMENT_COMMAND:
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    rem Object must be visible or carried
+    ; Object must be visible or carried
     if OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1 or OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION then
         goto CHECK_GET_DROP_USE
     else
@@ -527,17 +539,17 @@ HANDLE_NON_MOVEMENT_COMMAND:
 
 CHECK_GET_DROP_USE:
 
-    rem GET command
+    ; GET command
     if INSTR(INPUT_COMMAND$, " get ") > 0 then
         goto HANDLE_GET_COMMAND
     end if
 
-    rem DROP command
+    ; DROP command
     if INSTR(INPUT_COMMAND$, " drop ") > 0 then
         goto HANDLE_DROP_COMMAND
     end if
 
-    rem USE-type verbs routed by object index
+    ; USE-type verbs routed by object index
     goto ROUTE_USE_BY_OBJECT
 
 
@@ -751,7 +763,7 @@ ROUTE_BY_VERB_PATTERN:
 
 NORMALIZE_INPUT_SUB:
 
-    rem Convert uppercase to lowercase for parsing
+    ; Convert uppercase to lowercase for parsing
     for LOOP_INDEX_X = 1 to LEN(INPUT_COMMAND$)
         CHARACTER_CODE = ASC(MID$(INPUT_COMMAND$, LOOP_INDEX_X, 1))
         if CHARACTER_CODE > 64 and CHARACTER_CODE < 91 then
@@ -826,9 +838,9 @@ TRIGGER_CREATURE_INTRO_SUB:
 
 
 
-rem ---------------------------------------------------------
-rem  DATA TABLES
-rem ---------------------------------------------------------
+; ---------------------------------------------------------
+;  DATA TABLES
+; ---------------------------------------------------------
 
 
 MOVEMENT_TABLE_DATA:
@@ -997,7 +1009,7 @@ DIR_WEST_STR: DB " west ",0
 DIR_EAST_STR: DB " east ",0
 
 
-rem NOTE: article handling (a/an) and leading/trailing spaces in strings to be normalized later via an article routine
+; NOTE: article handling (a/an) and leading/trailing spaces in strings to be normalized later via an article routine
 MONSTER_ADJ_DATA:
     DW MON_ADJ_WIZ, MON_ADJ_DEMON, MON_ADJ_TROLL, MON_ADJ_DRAGON, MON_ADJ_BAT, MON_ADJ_DWARF
 
@@ -1018,7 +1030,7 @@ MON_NOUN_DRAGON: DB " dragon ",0
 MON_NOUN_BAT: DB " bat ",0
 MON_NOUN_DWARF: DB " dwarf ",0
 
-rem NOTE: article handling (a/an) and trimming leading/trailing padding spaces to be addressed later
+; NOTE: article handling (a/an) and trimming leading/trailing padding spaces to be addressed later
 OBJECT_NAME_ADJ_DATA:
     DW OBJ_ADJ_COIN, OBJ_ADJ_COMPASS, OBJ_ADJ_BOMB, OBJ_ADJ_RUBY, OBJ_ADJ_DIAMOND, OBJ_ADJ_PEARL, OBJ_ADJ_STONE, OBJ_ADJ_RING, OBJ_ADJ_PENDANT, OBJ_ADJ_GRAIL, OBJ_ADJ_SHIELD
     DW OBJ_ADJ_BOX, OBJ_ADJ_KEY, OBJ_ADJ_SWORD, OBJ_ADJ_CANDLE, OBJ_ADJ_ROPE, OBJ_ADJ_BRICK, OBJ_ADJ_GRILL
@@ -1086,15 +1098,15 @@ OBJDESC2_DATA:
 
 UPDATE_DYNAMIC_EXITS_SUB:
 
-    rem Patch dynamic exits in movement table
-    rem Dynamic exit slots patched at runtime (room, direction):
-    rem (ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR)=BRIDGE_CONDITION
-    rem (ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR)=BRIDGE_CONDITION
-    rem (ROOM_OAK_DOOR,DIR_EAST_STR)=TELEPORT_DESTINATION
-    rem (ROOM_CRYPT,DIR_EAST_STR)=SECRET_EXIT_LOCATION
-    rem (ROOM_TINY_CELL,DIR_NORTH_STR)=WATER_EXIT_LOCATION
-    rem (ROOM_TINY_CELL,DIR_EAST_STR)=GATE_DESTINATION
-    rem (ROOM_CASTLE_LEDGE,DIR_EAST_STR)=DRAWBRIDGE_STATE
+    ; Patch dynamic exits in movement table
+    ; Dynamic exit slots patched at runtime (room, direction):
+    ; (ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR)=BRIDGE_CONDITION
+    ; (ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR)=BRIDGE_CONDITION
+    ; (ROOM_OAK_DOOR,DIR_EAST_STR)=TELEPORT_DESTINATION
+    ; (ROOM_CRYPT,DIR_EAST_STR)=SECRET_EXIT_LOCATION
+    ; (ROOM_TINY_CELL,DIR_NORTH_STR)=WATER_EXIT_LOCATION
+    ; (ROOM_TINY_CELL,DIR_EAST_STR)=GATE_DESTINATION
+    ; (ROOM_CASTLE_LEDGE,DIR_EAST_STR)=DRAWBRIDGE_STATE
 
     MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR) = BRIDGE_CONDITION
     MOVEMENT_TABLE(ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR) = BRIDGE_CONDITION
