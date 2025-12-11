@@ -1,0 +1,968 @@
+REM ---------------------------------------------------------
+REM  CAVERNS – Fictional BASIC Dialect Version
+REM  Based on MicroWorld BASIC game by John Hardy (c) 1983
+REM  No line numbers, label-based control flow, long variable names
+REM ---------------------------------------------------------
+
+
+GAME_START:
+
+    CLS
+
+    BRIDGE_CONDITION = 11
+    DRAWBRIDGE_STATE = 128
+    WATER_EXIT_LOCATION = 0
+    GATE_DESTINATION = 0
+    TELEPORT_DESTINATION = 0
+    SECRET_EXIT_LOCATION = 0
+
+    DIM MOVEMENT_OFFSETS(3)
+    DIM OBJECT_LOCATION(24)
+
+    GENERAL_FLAG_J = 0
+    HOSTILE_CREATURE_INDEX = 0
+    RESHOW_FLAG = 0
+    PLAYER_LOCATION = 1
+    CANDLE_IS_LIT_FLAG = 1
+
+    FEAR_COUNTER = 0
+    TURN_COUNTER = 0
+    SWORD_SWING_COUNT = 0
+    SCORE = 0
+
+    REM Load initial object locations
+    RESTORE OBJECT_LOCATION_DATA
+    FOR LOOP_INDEX = 1 TO 24
+        READ OBJECT_LOCATION(LOOP_INDEX)
+    NEXT LOOP_INDEX
+
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+DESCRIBE_CURRENT_LOCATION:
+
+    REM If a hostile creature is active (except some special case),
+    REM jump to monster-attack logic
+    IF HOSTILE_CREATURE_INDEX > 0 AND HOSTILE_CREATURE_INDEX <> 5 AND CURRENT_OBJECT_INDEX <> 20 THEN
+        GOTO MONSTER_ATTACK
+    END IF
+
+    REM Darkness logic
+    IF PLAYER_LOCATION < 18 OR CANDLE_IS_LIT_FLAG = 1 AND (OBJECT_LOCATION(21) = PLAYER_LOCATION OR OBJECT_LOCATION(21) = -1) THEN
+        GOTO PRINT_ROOM_DESCRIPTION
+    END IF
+
+    PRINT "It's very dark, too dark to see anything...I'm scared!"
+    GOTO LIST_ROOM_OBJECTS_AND_CREATURES
+
+
+
+PRINT_ROOM_DESCRIPTION:
+
+    IF PLAYER_LOCATION = 1 THEN
+        PRINT "You are standing in a darkened room. There is a door to the     north."
+    END IF
+
+    IF PLAYER_LOCATION = 2 THEN
+        PRINT "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door."
+    END IF
+
+    IF PLAYER_LOCATION = 3 THEN
+        PRINT "You are deep in a dark forest. In the distance you can see a    mighty river."
+    END IF
+
+    IF PLAYER_LOCATION = 4 THEN
+        PRINT "You are standing in a field of four-leafed clovers. There is a  small hut to the north."
+    END IF
+
+    IF PLAYER_LOCATION = 13 THEN
+        PRINT "You are standing on a rock in the middle of a mighty oak forest.Surrounding you are thousands of poisonous mushrooms."
+    END IF
+
+    IF PLAYER_LOCATION = 15 THEN
+        PRINT "You are on a cliff face over looking the river."
+    END IF
+
+    IF PLAYER_LOCATION = 5 THEN
+        PRINT "The forest has opened up at this point. You are standing on a   cliff overlooking a wide glacial river. A small foot-beaten pathleads south."
+    END IF
+
+    IF PLAYER_LOCATION = 6 THEN
+        PRINT "You are standing at the rocky edge of the mighty river Gioll.   The path forks east and west."
+    END IF
+
+    IF PLAYER_LOCATION = 7 THEN
+        PRINT "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the    Gioll pours into it."
+    END IF
+
+    IF PLAYER_LOCATION = 8 THEN
+        PRINT "The path to the east stops here. You are on a rocky outcrop,    projected about 15 feet above the river. In the distance,       a tiny bridge spans the river."
+    END IF
+
+    IF PLAYER_LOCATION = 9 THEN
+        PRINT "You are on the lower slopes of Mt. Ymir. The forest stretches   far away and to the west. Arctic winds blow fiercely, it's very cold!"
+    END IF
+
+    IF PLAYER_LOCATION = 10 THEN
+        PRINT "You stand on a rocky precipice high above the river, Gioll;     Mt. Ymir stands to the north. A flimsy string bridge spans the  mighty river."
+    END IF
+
+    IF PLAYER_LOCATION = 11 THEN
+        PRINT "You have made your way half way across the creaking bridge.     It sways violently from side to side. It's going to collapse anysecond!!"
+    END IF
+
+    IF PLAYER_LOCATION = 12 THEN
+        PRINT "You are on the southern edge of the mighty river, before        the string bridge."
+    END IF
+
+    IF PLAYER_LOCATION = 14 THEN
+        PRINT "You are in a clearing in the forest. An ancient basalt rock      formation towers above you. To your south is the entrance of a  VERY interesting cave..."
+    END IF
+
+    IF PLAYER_LOCATION = 16 THEN
+        PRINT "You are just inside the cave. Sunlight pours into the cave      lighting a path to the east and another to the south. I don't   mind saying I'm a bit scared!"
+    END IF
+
+    IF PLAYER_LOCATION = 17 THEN
+        PRINT "This passage appears to be a dead end. On a wall before you is  carved `Find the Sacred Key of Thialfi'."
+    END IF
+
+    IF PLAYER_LOCATION = 19 THEN
+        PRINT "You are in the legendary treasure room of the black elves of    Svartalfheim. Every red-blooded Viking has dreamed of entering  this sacred room."
+    END IF
+
+    IF PLAYER_LOCATION = 20 THEN
+        PRINT "You can see a small oak door to the east. It has been locked    from the inside."
+    END IF
+
+    IF PLAYER_LOCATION = 22 THEN
+        PRINT "You are standing in an east-west corridor. You can feel a faint breeze coming from the east."
+    END IF
+
+    IF PLAYER_LOCATION = 23 THEN
+        PRINT "You are standing in what appears to have once been a torture    chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,"
+        PRINT "coagulated blood stains on the walls and mangled bits of bone onthe floor make me think that a number of would be adventurers   croaked it here!"
+    END IF
+
+    IF PLAYER_LOCATION = 24 THEN
+        PRINT "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow   crack in the eastern wall."
+    END IF
+
+    IF PLAYER_LOCATION = 26 THEN
+        PRINT "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of "
+        PRINT "the floor. Note: This is one of the hidden chambers of the      infamous pagan sect, the monks of Loki. Norse folk believe them to be gods."
+    END IF
+
+    IF PLAYER_LOCATION = 27 THEN
+        PRINT "You are standing on a narrow ledge, high above a subterranean   river. There is an exit to the east. "
+    END IF
+
+    IF PLAYER_LOCATION = 28 THEN
+        PRINT "You are on a balcony, overlooking a huge cavern which has been  converted into a pagan temple. Note: this temple has been       dedicated to Loki, the god of"
+        PRINT "fire, who came to live in Svartalfheim after he had been        banished to exile by Odin. Since then he has been waiting       for the `End Of All Things'."
+    END IF
+
+    IF PLAYER_LOCATION = 33 THEN
+        PRINT "You are in the central cave of a giant bat colony. Above you    hundreds of giant bats hang from the ceiling and the floor is   covered in centuries of "
+        PRINT "giant bat droppings. Careful where you step! Incidentally, the  smell is indescribable."
+    END IF
+
+    IF PLAYER_LOCATION = 35 THEN
+        PRINT "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock   itself!"
+    END IF
+
+    IF PLAYER_LOCATION = 37 THEN
+        PRINT "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word "
+        PRINT "starting with 'G---' and another ending with '---X'' Note: The   monks of Loki must have liked silly puzzles.  Putrefaction and decay fills the air here."
+    END IF
+
+    IF PLAYER_LOCATION = 38 THEN
+        PRINT "You are in a tiny cell. The western wall has now firmly closed  again. There is a ventilator shaft on the eastern wall."
+    END IF
+
+    IF PLAYER_LOCATION = 40 THEN
+        PRINT "You are on another ledge high above a subterranean river. The   water flows in through a hole in the cavern roof, to the north."
+    END IF
+
+    IF PLAYER_LOCATION > 40 AND PLAYER_LOCATION < 45 THEN
+        PRINT "Somehow you have gotten into the complex drainage system of thisentire cavern network!!"
+    END IF
+
+    IF PLAYER_LOCATION = 45 THEN
+        PRINT "You are standing near an enormous waterfall which brings water  down from the surface, from the river Gioll."
+    END IF
+
+    IF PLAYER_LOCATION = 47 THEN
+        PRINT "You are standing before a stone staircase which leads           southwards."
+    END IF
+
+    IF PLAYER_LOCATION = 48 THEN
+        PRINT "You are on a narrow and crumbling ledge. On the other side of   the river you can see a magic castle. (Don't ask me why it's    magic...I just know it is)"
+    END IF
+
+    IF PLAYER_LOCATION = 49 THEN
+        PRINT "You are by the drawbridge which has just lowered itself....by   magic!!"
+    END IF
+
+    IF PLAYER_LOCATION = 50 THEN
+        PRINT "You are in the courtyard of the magic castle. WOW! This castle  is really something! On the wall is inscribed 'hzb tzozi'.      A secret escape tunnel leads south"
+    END IF
+
+    IF PLAYER_LOCATION = 51 THEN
+        PRINT "You are in the powder magazine of this really super castle."
+    END IF
+
+    IF PLAYER_LOCATION = 53 THEN
+        PRINT "You stand before a small wooden bridge which crosses the river."
+    END IF
+
+    IF PLAYER_LOCATION = 52 THEN
+        PRINT "You are on the eastern side of the river. A small tunnel leads  east into the cliff face."
+    END IF
+
+    IF PLAYER_LOCATION = 54 THEN
+        PRINT "You are in a conduit draining into the river. The water comes upto your knees and is freezing cold. A narrow service path leads south."
+    END IF
+
+    IF PLAYER_LOCATION = 18 OR PLAYER_LOCATION = 21 OR PLAYER_LOCATION = 25 OR PLAYER_LOCATION > 28 AND PLAYER_LOCATION < 32 OR PLAYER_LOCATION = 34 OR PLAYER_LOCATION = 36 OR PLAYER_LOCATION = 39 OR PLAYER_LOCATION = 46 OR PLAYER_LOCATION = 53 THEN
+        PRINT "You are deep in a dark cavern."
+    END IF
+
+    IF (PLAYER_LOCATION = 10 OR PLAYER_LOCATION = 12) AND BRIDGE_CONDITION = 128 THEN
+        PRINT "Two of the ropes have snapped under your weight. It's totally unfit to cross again."
+    END IF
+
+    IF PLAYER_LOCATION = 14 AND OBJECT_LOCATION(4) = 0 THEN
+        PRINT "You can also see the bloody corpse of an enormous dragon."
+    END IF
+
+    IF PLAYER_LOCATION = 48 AND DRAWBRIDGE_STATE = 49 THEN
+        PRINT " A mighty golden drawbridge spans the waters."
+    END IF
+
+    IF TURN_COUNTER > 200 THEN
+        PRINT "Your candle is growing dim."
+    END IF
+
+    IF TURN_COUNTER >= 230 THEN
+        CANDLE_IS_LIT_FLAG = 0
+        PRINT "In fact...it went out!"
+    END IF
+
+    GOTO LIST_ROOM_OBJECTS_AND_CREATURES
+
+
+
+LIST_ROOM_OBJECTS_AND_CREATURES:
+
+    VISIBLE_OBJECT_COUNT = 0
+
+    FOR LOOP_INDEX = 7 TO 24
+        IF OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION THEN
+            VISIBLE_OBJECT_COUNT = VISIBLE_OBJECT_COUNT + 1
+        END IF
+    NEXT LOOP_INDEX
+
+    IF VISIBLE_OBJECT_COUNT > 0 THEN
+        PRINT "You can also see..."
+        FOR LOOP_INDEX = 7 TO 24
+            IF OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION THEN
+                CURRENT_OBJECT_INDEX = LOOP_INDEX
+                GOSUB PRINT_OBJECT_DESCRIPTION_SUB
+            END IF
+        NEXT LOOP_INDEX
+    END IF
+
+    VISIBLE_CREATURE_COUNT = 0
+
+    FOR LOOP_INDEX = 1 TO 6
+        IF OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION THEN
+            VISIBLE_CREATURE_COUNT = VISIBLE_CREATURE_COUNT + 1
+            CURRENT_OBJECT_INDEX = LOOP_INDEX
+            GOSUB TRIGGER_CREATURE_INTRO_SUB
+        END IF
+    NEXT LOOP_INDEX
+
+    IF VISIBLE_CREATURE_COUNT > 0 THEN
+        PRINT "Nearby there lurks..."
+        FOR LOOP_INDEX = 1 TO 6
+            IF OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION THEN
+                CURRENT_OBJECT_INDEX = LOOP_INDEX
+                GOSUB PRINT_OBJECT_DESCRIPTION_SUB
+            END IF
+        NEXT LOOP_INDEX
+    END IF
+
+    PRINT
+    RESHOW_FLAG = 1
+    PRINT ">";
+
+    IF HOSTILE_CREATURE_INDEX > 0 AND HOSTILE_CREATURE_INDEX <> 5 AND CURRENT_OBJECT_INDEX <> 20 THEN
+        GOTO MONSTER_ATTACK
+    END IF
+
+    GOTO GET_PLAYER_INPUT
+
+
+
+GET_PLAYER_INPUT:
+
+    INPUT INPUT_COMMAND$
+
+    IF INPUT_COMMAND$ = "" THEN
+        GOTO GET_PLAYER_INPUT
+    END IF
+
+    INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " "
+    TURN_COUNTER = TURN_COUNTER + 1
+
+    REM Convert uppercase to lowercase
+    FOR LOOP_INDEX_X = 1 TO LEN(INPUT_COMMAND$)
+        CHARACTER_CODE = ASC(MID$(INPUT_COMMAND$, LOOP_INDEX_X, 1))
+        IF CHARACTER_CODE > 64 AND CHARACTER_CODE < 91 THEN
+            TEMP_COMMAND$ = LEFT$(INPUT_COMMAND$, LOOP_INDEX_X - 1) + CHR$(CHARACTER_CODE + 32) + MID$(INPUT_COMMAND$, LOOP_INDEX_X + 1)
+            INPUT_COMMAND$ = TEMP_COMMAND$
+        END IF
+    NEXT LOOP_INDEX_X
+
+    CLS
+
+    GOTO PARSE_COMMAND_ENTRY
+
+
+
+PARSE_COMMAND_ENTRY:
+
+    RESTORE OBJECT_NAME_DATA
+
+    CURRENT_OBJECT_INDEX = 0
+    OBJECT_ADJECTIVE$ = ""
+    OBJECT_NOUN$ = ""
+
+    FOR LOOP_INDEX = 7 TO 24
+        READ OBJECT_ADJECTIVE$, OBJECT_NOUN$
+        IF INSTR(INPUT_COMMAND$, OBJECT_NOUN$) > 0 THEN
+            CURRENT_OBJECT_INDEX = LOOP_INDEX
+            EXIT_FOR_OBJECT_SEARCH:
+            IF 1 = 1 THEN
+                EXIT FOR
+            END IF
+        END IF
+    NEXT LOOP_INDEX
+
+    IF CURRENT_OBJECT_INDEX = 0 THEN
+        OBJECT_ADJECTIVE$ = ""
+        OBJECT_NOUN$ = ""
+    END IF
+
+    REM Bridge condition when halfway
+    IF PLAYER_LOCATION = 11 THEN
+        BRIDGE_CONDITION = 128
+    END IF
+
+    REM Hut flag
+    IF PLAYER_LOCATION = 2 THEN
+        GENERAL_FLAG_J = 1
+    END IF
+
+    IF PLAYER_LOCATION = 45 THEN
+        WATER_EXIT_LOCATION = 43
+    END IF
+
+    IF PLAYER_LOCATION = 35 THEN
+        WATER_EXIT_LOCATION = 0
+    END IF
+
+    IF OBJECT_LOCATION(24) <> 38 THEN
+        GATE_DESTINATION = 39
+    END IF
+
+    IF PLAYER_LOCATION = 49 THEN
+        DRAWBRIDGE_STATE = 49
+    END IF
+
+    REM LOOK command
+    IF INSTR(INPUT_COMMAND$, " look ") > 0 THEN
+        RESHOW_FLAG = 0
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    REM LIST inventory
+    IF INSTR(INPUT_COMMAND$, " list ") > 0 THEN
+        GOTO SHOW_INVENTORY
+    END IF
+
+    REM QUIT
+    IF INSTR(INPUT_COMMAND$, " quit ") > 0 THEN
+        GOTO QUIT_GAME
+    END IF
+
+    GOTO CHECK_CREATURE_AT_LOCATION
+
+
+
+SHOW_INVENTORY:
+
+    PRINT "You are carrying ";
+    VISIBLE_OBJECT_COUNT = 0
+
+    FOR LOOP_INDEX = 7 TO 24
+        IF OBJECT_LOCATION(LOOP_INDEX) = -1 THEN
+            VISIBLE_OBJECT_COUNT = VISIBLE_OBJECT_COUNT + 1
+        END IF
+    NEXT LOOP_INDEX
+
+    IF VISIBLE_OBJECT_COUNT = 0 THEN
+        PRINT "nothing."
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    PRINT
+    FOR LOOP_INDEX = 7 TO 24
+        IF OBJECT_LOCATION(LOOP_INDEX) = -1 THEN
+            CURRENT_OBJECT_INDEX = LOOP_INDEX
+            GOSUB PRINT_OBJECT_DESCRIPTION_SUB
+        END IF
+    NEXT LOOP_INDEX
+
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+QUIT_GAME:
+
+    SCORE = 0
+
+    FOR LOOP_INDEX = 7 TO 17
+        IF OBJECT_LOCATION(LOOP_INDEX) = -1 THEN
+            SCORE = SCORE + LOOP_INDEX - 6
+        END IF
+        IF OBJECT_LOCATION(LOOP_INDEX) = 1 THEN
+            SCORE = SCORE + (LOOP_INDEX - 6) * 2
+        END IF
+    NEXT LOOP_INDEX
+
+    PRINT
+    PRINT "You have a score of"; SCORE; " out of a possible 126 points in"; TURN_COUNTER; " moves."
+
+    GOSUB PRINT_RANKING_SUB
+
+    PRINT "Another adventure? ";
+
+WAIT_FOR_YES_NO:
+    YESNO_KEY$ = INKEY$
+    IF YESNO_KEY$ = "" THEN
+        GOTO WAIT_FOR_YES_NO
+    END IF
+
+    IF YESNO_KEY$ = "N" OR YESNO_KEY$ = "n" THEN
+        END
+    END IF
+
+    IF YESNO_KEY$ = "Y" OR YESNO_KEY$ = "y" THEN
+        GOTO GAME_START
+    END IF
+
+    GOTO WAIT_FOR_YES_NO
+
+
+
+CHECK_CREATURE_AT_LOCATION:
+
+    FOR HOSTILE_CREATURE_INDEX = 1 TO 6
+        IF OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = PLAYER_LOCATION THEN
+            GOTO CHECK_CREATURE_BAT_SPECIAL
+        END IF
+    NEXT HOSTILE_CREATURE_INDEX
+
+    HOSTILE_CREATURE_INDEX = 0
+    GOTO HANDLE_VERB_OR_MOVEMENT
+
+
+
+CHECK_CREATURE_BAT_SPECIAL:
+
+    IF HOSTILE_CREATURE_INDEX = 5 THEN
+        PRINT "The giant bat picked you up and carried you to another place."
+        PLAYER_LOCATION = 33
+        RESHOW_FLAG = 0
+        OBJECT_LOCATION(5) = OBJECT_LOCATION(5) + 7
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    GOTO HANDLE_VERB_OR_MOVEMENT
+
+
+
+MONSTER_ATTACK:
+
+    RESTORE MONSTER_DESCRIPTION_DATA
+    FOR DISPLAY_CREATURE_INDEX = 1 TO HOSTILE_CREATURE_INDEX
+        READ MONSTER_ADJECTIVE$, MONSTER_NOUN$
+    NEXT DISPLAY_CREATURE_INDEX
+
+    PRINT "AUUUUUGH...you've just been killed by a"; MONSTER_ADJECTIVE$; MONSTER_NOUN$; "!!"
+
+    GOTO QUIT_GAME
+
+
+
+HANDLE_VERB_OR_MOVEMENT:
+
+    REM First route generic verbs via the pattern table (take/put/unlock/jump/etc.)
+    RESTORE VERB_PATTERN_DATA
+    FOR VERB_PATTERN_INDEX = 1 TO 16
+        READ VERB_PATTERN$
+        IF INSTR(INPUT_COMMAND$, VERB_PATTERN$) > 0 THEN
+            GOTO ROUTE_BY_VERB_PATTERN
+        END IF
+    NEXT VERB_PATTERN_INDEX
+
+    REM Then check for movement (north/south/etc.)
+    RESTORE DIRECTION_WORD_DATA
+
+    FOR DIRECTION_INDEX = 0 TO 3
+        READ MOVEMENT_WORD$
+        IF INSTR(INPUT_COMMAND$, MOVEMENT_WORD$) > 0 THEN
+            GOTO HANDLE_MOVEMENT_COMMAND
+        END IF
+    NEXT DIRECTION_INDEX
+
+    GOTO HANDLE_NON_MOVEMENT_COMMAND
+
+
+
+HANDLE_MOVEMENT_COMMAND:
+
+    REM Special check related to bomb or location
+    IF OBJECT_LOCATION(8) <> -1 AND OBJECT_LOCATION(8) <> PLAYER_LOCATION THEN
+        RANDOM_DIRECTION_INDEX = INT(RND * 4)
+    ELSE
+        RANDOM_DIRECTION_INDEX = 0
+    END IF
+
+    RESTORE MOVEMENT_TABLE_DATA
+
+    FOR ROOM_INDEX = 1 TO PLAYER_LOCATION
+        FOR OFFSET_INDEX = 0 TO 3
+            READ MOVEMENT_OFFSETS(OFFSET_INDEX)
+        NEXT OFFSET_INDEX
+    NEXT ROOM_INDEX
+
+    TARGET_LOCATION = MOVEMENT_OFFSETS(RANDOM_DIRECTION_INDEX)
+
+    IF TARGET_LOCATION = 0 THEN
+        PRINT "You can't go that way"
+    END IF
+
+    IF TARGET_LOCATION = 128 THEN
+        PRINT "You stumble and fall into the chasm and smash yourself to a pulp on the rocks below."
+        GOTO QUIT_GAME
+    END IF
+
+    IF TARGET_LOCATION > 0 THEN
+        PLAYER_LOCATION = TARGET_LOCATION
+    END IF
+
+    RESHOW_FLAG = 0
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+HANDLE_NON_MOVEMENT_COMMAND:
+
+    REM Magic word "galar"
+    IF INSTR(INPUT_COMMAND$, " galar ") > 0 THEN
+        RESHOW_FLAG = 0
+        PRINT "Suddenly a magic wind carried you to another place..."
+        PLAYER_LOCATION = 16
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    REM Crypt wall "ape"
+    IF INSTR(INPUT_COMMAND$, " ape ") > 0 THEN
+        PRINT "Hey! the eastern wall of the crypt slid open..."
+        SECRET_EXIT_LOCATION = 38
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    IF CURRENT_OBJECT_INDEX < 1 THEN
+        PRINT "eh?"
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    REM Object must be visible or carried
+    IF OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1 OR OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION THEN
+        GOTO CHECK_GET_DROP_USE
+    ELSE
+        PRINT "Where? I can't see it."
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+
+
+CHECK_GET_DROP_USE:
+
+    REM GET command
+    IF INSTR(INPUT_COMMAND$, " get ") > 0 THEN
+        GOTO HANDLE_GET_COMMAND
+    END IF
+
+    REM DROP command
+    IF INSTR(INPUT_COMMAND$, " drop ") > 0 THEN
+        GOTO HANDLE_DROP_COMMAND
+    END IF
+
+    REM USE-type verbs routed by object index
+    GOTO ROUTE_USE_BY_OBJECT
+
+
+
+HANDLE_GET_COMMAND:
+
+    CARRIED_COUNT = 0
+
+    FOR LOOP_INDEX = 7 TO 24
+        IF OBJECT_LOCATION(LOOP_INDEX) = -1 THEN
+            CARRIED_COUNT = CARRIED_COUNT + 1
+        END IF
+    NEXT LOOP_INDEX
+
+    IF CARRIED_COUNT > 10 THEN
+        PRINT "You are carrying too many objects."
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+HANDLE_DROP_COMMAND:
+
+    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+ROUTE_USE_BY_OBJECT:
+
+    SELECTED_USE_INDEX = CURRENT_OBJECT_INDEX - 18
+
+    IF SELECTED_USE_INDEX = 1 THEN
+        GOTO USE_KEY
+    END IF
+
+    IF SELECTED_USE_INDEX = 2 THEN
+        GOTO USE_SWORD
+    END IF
+
+    IF SELECTED_USE_INDEX = 3 THEN
+        GOTO USE_BOMB
+    END IF
+
+    IF SELECTED_USE_INDEX = 4 THEN
+        GOTO USE_ROPE
+    END IF
+
+    PRINT "How am I supposed to use it?"
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+USE_KEY:
+
+    IF PLAYER_LOCATION <> 2 AND PLAYER_LOCATION <> 35 THEN
+        PRINT "It won't open!"
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    PRINT "You opened the door."
+    OBJECT_LOCATION(19) = PLAYER_LOCATION
+    RESHOW_FLAG = 0
+
+    IF PLAYER_LOCATION = 2 THEN
+        PLAYER_LOCATION = 1
+        GOTO DESCRIBE_CURRENT_LOCATION
+    ELSE
+        PLAYER_LOCATION = 37
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+
+
+USE_SWORD:
+
+    IF HOSTILE_CREATURE_INDEX = 0 THEN
+        PRINT "But there's nothing to kill..."
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    SWORD_SWING_COUNT = SWORD_SWING_COUNT + 1
+
+    IF RND * 7 + 15 > SWORD_SWING_COUNT THEN
+        GOTO SWORD_FIGHT_CONTINUES
+    END IF
+
+    PRINT "You swing with your sword but miss and the creature smashes your skull."
+    GOTO QUIT_GAME
+
+
+
+SWORD_FIGHT_CONTINUES:
+
+    IF RND < .38 THEN
+        GOTO SWORD_KILLS_TARGET
+    END IF
+
+    RANDOM_FIGHT_MESSAGE = INT(RND * 4)
+
+    IF HOSTILE_CREATURE_INDEX = 5 THEN
+        GOTO CHECK_CREATURE_BAT_SPECIAL
+    END IF
+
+    IF RANDOM_FIGHT_MESSAGE = 0 THEN
+        PRINT "You attack but the creature moves aside."
+    END IF
+
+    IF RANDOM_FIGHT_MESSAGE = 1 THEN
+        PRINT "The creature deflects your blow."
+    END IF
+
+    IF RANDOM_FIGHT_MESSAGE = 2 THEN
+        PRINT "The foe is stunned but quickly regains his balance."
+    END IF
+
+    IF RANDOM_FIGHT_MESSAGE = 3 THEN
+        PRINT "You missed and he deals a blow to your head."
+    END IF
+
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+SWORD_KILLS_TARGET:
+
+    PRINT "The sword strikes home and your foe dies..."
+    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1
+
+    IF HOSTILE_CREATURE_INDEX = 3 OR HOSTILE_CREATURE_INDEX = 5 THEN
+        OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) + 10
+    ELSE
+        OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = 0
+        IF HOSTILE_CREATURE_INDEX = 1 THEN
+            PRINT "Hey! Your sword has just crumbled into dust!!"
+            OBJECT_LOCATION(20) = 35
+        END IF
+    END IF
+
+    IF HOSTILE_CREATURE_INDEX <> 4 THEN
+        PRINT "Suddenly a black cloud descends and the corpse vaporizes into   nothing."
+    END IF
+
+    HOSTILE_CREATURE_INDEX = 0
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+USE_BOMB:
+
+    IF OBJECT_LOCATION(9) <> -1 AND OBJECT_LOCATION(9) <> PLAYER_LOCATION THEN
+        PRINT "That won't burn, Dummy...In fact, the candle went out."
+        CANDLE_IS_LIT_FLAG = 0
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    IF CANDLE_IS_LIT_FLAG <> 1 THEN
+        PRINT "But the candle is out, stupid!!"
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    PRINT "The fuse burnt away and....BOOM!!....the explosion blew you out of the way (Lucky!)"
+    RESHOW_FLAG = 0
+
+    IF PLAYER_LOCATION > 1 THEN
+        PLAYER_LOCATION = PLAYER_LOCATION - 1
+        IF PLAYER_LOCATION = 20 THEN
+            TELEPORT_DESTINATION = 19
+        END IF
+    END IF
+
+    OBJECT_LOCATION(9) = 0
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+USE_ROPE:
+
+    IF PLAYER_LOCATION <> 28 THEN
+        PRINT "It's too dangerous!!!"
+        GOTO DESCRIBE_CURRENT_LOCATION
+    END IF
+
+    PRINT "You descend the rope, but it drops 10 feet short of the floor.  You jump the rest of the way."
+    RESHOW_FLAG = 0
+    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
+    PLAYER_LOCATION = 35
+    GOTO DESCRIBE_CURRENT_LOCATION
+
+
+
+PRINT_OBJECT_DESCRIPTION_SUB:
+
+    RESTORE MONSTER_AND_OBJECT_DESCRIPTION_DATA
+
+    FOR DESCRIPTION_INDEX = 1 TO CURRENT_OBJECT_INDEX
+        READ OBJECT_DESCRIPTOR_1$, OBJECT_DESCRIPTOR_2$
+    NEXT DESCRIPTION_INDEX
+
+    PRINT "a"; OBJECT_DESCRIPTOR_1$; OBJECT_DESCRIPTOR_2$; ", ";
+    RETURN
+
+
+
+ROUTE_BY_VERB_PATTERN:
+
+    IF VERB_PATTERN_INDEX = 1 THEN GOTO HANDLE_GET_COMMAND
+    IF VERB_PATTERN_INDEX = 2 THEN GOTO HANDLE_DROP_COMMAND
+    IF VERB_PATTERN_INDEX = 3 THEN GOTO ROUTE_USE_BY_OBJECT
+    IF VERB_PATTERN_INDEX = 4 THEN GOTO ROUTE_USE_BY_OBJECT
+
+    IF VERB_PATTERN_INDEX < 7 THEN
+        PRINT "Nothing happens!"
+    ELSEIF VERB_PATTERN_INDEX > 6 AND VERB_PATTERN_INDEX < 13 THEN
+        PRINT "Please tell me how."
+    ELSE
+        PRINT "I can't!"
+    END IF
+
+    PRINT
+    GOTO GET_PLAYER_INPUT
+
+
+
+PRINT_RANKING_SUB:
+
+    PRINT "This gives you an adventurer's ranking of:"
+
+    IF SCORE < 20 THEN
+        PRINT "Hopeless beginner"
+    END IF
+
+    IF SCORE < 50 AND SCORE > 19 THEN
+        PRINT "Experienced loser"
+    END IF
+
+    IF SCORE < 100 AND SCORE > 49 THEN
+        PRINT "Average Viking"
+    END IF
+
+    IF SCORE < 126 AND SCORE > 99 THEN
+        PRINT "Excellent...but you've left something behind!"
+    END IF
+
+    IF SCORE = 126 THEN
+        PRINT "Perfectionist and genius!!"
+    END IF
+
+    RETURN
+
+
+
+READ_INPUT_THEN_CLEAR_SUB:
+
+    INPUT INPUT_COMMAND$
+    CLS
+    RETURN
+
+
+
+ENCOUNTER_WIZARD_LABEL:
+
+    PRINT "There, before you in a swirling mist stands an evil wizard with his hand held outwards...`Thou shall not pass' he cries."
+    GOTO LIST_ROOM_OBJECTS_AND_CREATURES
+
+
+
+ENCOUNTER_DRAGON_LABEL:
+
+    PRINT "Before the entrance of the cave lies an enormous, green,        sleeping dragon. Realizing your presence, its eyes flicker open"
+    PRINT "and it leaps up, breathing jets fire at you."
+    GOTO LIST_ROOM_OBJECTS_AND_CREATURES
+
+
+
+ENCOUNTER_DWARF_LABEL:
+
+    PRINT "From around the corner trots an old and gnarled drawf carrying  a lantern. `My job is to protect these stone steps!' he says andlunges at you with his dagger."
+    GOTO LIST_ROOM_OBJECTS_AND_CREATURES
+
+
+
+TRIGGER_CREATURE_INTRO_SUB:
+
+    IF CURRENT_OBJECT_INDEX = 1 THEN
+        GOTO ENCOUNTER_WIZARD_LABEL
+    END IF
+
+    IF CURRENT_OBJECT_INDEX = 4 THEN
+        GOTO ENCOUNTER_DRAGON_LABEL
+    END IF
+
+    IF CURRENT_OBJECT_INDEX = 6 THEN
+        GOTO ENCOUNTER_DWARF_LABEL
+    END IF
+
+    RETURN
+
+
+
+REM ---------------------------------------------------------
+REM  DATA TABLES
+REM ---------------------------------------------------------
+
+
+MOVEMENT_TABLE_DATA:
+    DATA 2,0,0,0,0,0,3,4,2,5,5,0,2,5,0,9,0,6,3,4,5,0,7,8,0,0,128,6,0,0,6,0,0,10,4,0,9
+    DATA BRIDGE_CONDITION,4,0,10,12,128,128,BRIDGE_CONDITION,13,13,0,12,12,14,12,15,16,0,13,0,14,0,0,14,18,0,17,0
+    DATA 0,16,0,16,0,23,0,0,0,20,0,21,23,0,TELEPORT_DESTINATION,0,24,0,20,0,23,21,16,22,0,18,18,21,26,0
+    DATA 18,0,27,24,0,24,27,29,25,18,0,0,28,0,0,27,0,0,33,0,26,29,31,0,0,32,0,0,0
+    DATA 33,30,0,0,0,31,34,0,0,0,0,33,0,0,0,0,39,0,35,40,0,35,0,SECRET_EXIT_LOCATION,WATER_EXIT_LOCATION,0,0,GATE_DESTINATION,0,36,38,0
+    DATA 45,48,36,128,46,43,54,42,46,43,41,43,46,38,42,44,47,47,0,47,0,40,0,128
+    DATA 47,0,47,47,0,45,46,0,40,128,0,DRAWBRIDGE_STATE,0,0,48,50,0,52,49,51,0,0,50,0,50,0,53,50
+    DATA 54,0,0,52,0,53,41,0
+
+
+MONSTER_DESCRIPTION_DATA:
+    DATA "n evil"," wizard "," fiery"," demon ","n axe wielding"," troll "," fire breathing"," dragon "," giant"," bat "
+    DATA "n old and gnarled"," dwarf "
+
+
+OBJECT_NAME_DATA:
+    DATA " gold"," coin "," useful looking"," compass "," home made"," bomb "," blood red"," ruby "," sparkling"," diamond "
+    DATA " moon-like"," pearl ","n interesting"," stone "," diamond studded"," ring "," magic"," pendant "," most holy"," grail "," mirror like"," shield "
+    DATA " nondescript black"," box ","n old an rusty"," key "," double bladed"," sword "," small"," candle "," thin and tatty"," rope "," red house"," brick "," rusty ventilation"
+    DATA " grill "
+
+
+OBJECT_LOCATION_DATA:
+    DATA 36,19,10,14,17,47,8,1,51,45,22,46,54,19,19,19,19,0,34,7,18,15,24,38
+
+
+DIRECTION_WORD_DATA:
+    DATA " north "," south "," west "," east "
+
+
+VERB_PATTERN_DATA:
+    DATA " take "," put "," using "," with "," cut "," break "," unlock "," open "," kill "," attack "
+    DATA " light "," burn "," up "," down "," jump "," swim "
+
+
+MONSTER_AND_OBJECT_DESCRIPTION_DATA:
+    DATA "n evil"," wizard "," fiery"," demon ","n axe wielding"," troll "," fire breathing"," dragon "," giant"," bat "
+    DATA "n old and gnarled"," dwarf "
+    DATA " gold"," coin "," useful looking"," compass "," home made"," bomb "," blood red"," ruby "," sparkling"," diamond "
+    DATA " moon-like"," pearl ","n interesting"," stone "," diamond studded"," ring "," magic"," pendant "," most holy"," grail "," mirror like"," shield "
+    DATA " nondescript black"," box ","n old an rusty"," key "," double bladed"," sword "," small"," candle "," thin and tatty"," rope "," red house"," brick "," rusty ventilation"
+    DATA " grill "
