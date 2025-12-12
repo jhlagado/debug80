@@ -13,17 +13,10 @@
 ;              TELEPORT_DESTINATION/T, SECRET_EXIT_LOCATION/E
 ;  DIRECTION INDEX: DIR_NORTH_STR=0, DIR_SOUTH_STR=1, DIR_WEST_STR=2, DIR_EAST_STR=3
 
-
-; Macro: PRINT "text"
-; Emits inline null-terminated string and calls puts (from utils.asm)
-PRINT MACRO txt
-    LOCAL _str, _after
-    ld hl,_str
-    call puts
-    jr _after
-_str: db txt,0
-_after:
-ENDM
+    .include "constants.asm"
+    .include "macros.asm"
+    .include "variables.asm"
+    .include "utils.asm"
 
 
 GAME_START:
@@ -37,92 +30,6 @@ GAME_START:
     TELEPORT_DESTINATION = 0
     SECRET_EXIT_LOCATION = 0
 
-    ROOM_MAX = 54
-    DIR_NORTH = 0: DIR_SOUTH = 1: DIR_WEST = 2: DIR_EAST = 3
-
-    ; Room ID constants (1..54)
-    ROOM_DARK_ROOM = 1
-    ROOM_FOREST_CLEARING = 2
-    ROOM_DARK_FOREST = 3
-    ROOM_CLOVER_FIELD = 4
-    ROOM_RIVER_CLIFF = 5
-    ROOM_RIVER_BANK = 6
-    ROOM_CRATER_EDGE = 7
-    ROOM_RIVER_OUTCROP = 8
-    ROOM_MT_YMIR_SLOPE = 9
-    ROOM_BRIDGE_NORTH_ANCHOR = 10
-    ROOM_BRIDGE_MID = 11
-    ROOM_BRIDGE_SOUTH_ANCHOR = 12
-    ROOM_MUSHROOM_ROCK = 13
-    ROOM_CAVE_ENTRANCE_CLEARING = 14
-    ROOM_CLIFF_FACE = 15
-    ROOM_CAVE_ENTRY = 16
-    ROOM_DEAD_END_INSCRIPTION = 17
-    ROOM_DARK_CAVERN_A = 18
-    ROOM_TREASURE_ROOM = 19
-    ROOM_OAK_DOOR = 20
-    ROOM_DARK_CAVERN_B = 21
-    ROOM_WIND_CORRIDOR = 22
-    ROOM_TORTURE_CHAMBER = 23
-    ROOM_NORTH_SOUTH_TUNNEL = 24
-    ROOM_DARK_CAVERN_C = 25
-    ROOM_ROUND_ROOM = 26
-    ROOM_LEDGE_OVER_RIVER = 27
-    ROOM_TEMPLE_BALCONY = 28
-    ROOM_DARK_CAVERN_D = 29
-    ROOM_DARK_CAVERN_E = 30
-    ROOM_DARK_CAVERN_F = 31
-    ROOM_DARK_CAVERN_G = 32
-    ROOM_BAT_CAVE = 33
-    ROOM_DARK_CAVERN_H = 34
-    ROOM_TEMPLE = 35
-    ROOM_DARK_CAVERN_I = 36
-    ROOM_CRYPT = 37
-    ROOM_TINY_CELL = 38
-    ROOM_DARK_CAVERN_J = 39
-    ROOM_LEDGE_WATERFALL_IN = 40
-    ROOM_DRAIN_A = 41
-    ROOM_DRAIN_B = 42
-    ROOM_DRAIN_C = 43
-    ROOM_DRAIN_D = 44
-    ROOM_WATERFALL_BASE = 45
-    ROOM_DARK_CAVERN_K = 46
-    ROOM_STONE_STAIRCASE = 47
-    ROOM_CASTLE_LEDGE = 48
-    ROOM_DRAWBRIDGE = 49
-    ROOM_CASTLE_COURTYARD = 50
-    ROOM_POWDER_MAG = 51
-    ROOM_EAST_RIVERBANK = 52
-    ROOM_WOODEN_BRIDGE = 53
-ROOM_RIVER_CONDUIT = 54
-
-    ; Exit codes
-    EXIT_NONE = 0
-    EXIT_FATAL = 128
-
-    ; Turn thresholds for candle
-    CANDLE_DIM_TURN = 200
-    CANDLE_OUT_TURN = 230
-
-    ; Object indices (7..24)
-    OBJ_DRAGON = 4
-    OBJ_BOMB = 9
-    OBJ_GRILL = 24
-    OBJ_KEY = 19
-    OBJ_SWORD = 20
-    OBJ_CANDLE = 21
-    OBJ_ROPE = 22
-    NULL = 0
-
-    dim MOVEMENT_TABLE(ROOM_MAX,3)  ; byte-sized entries: room exit destination
-    dim OBJECT_LOCATION(24)
-    dim ROOM_DESC1_PTR(ROOM_MAX), ROOM_DESC2_PTR(ROOM_MAX)  ; pointers to description strings
-    dim OBJECT_NAME_ADJ(24), OBJECT_NAME_NOUN(24)  ; pointers to strings
-    dim MONSTER_ADJ(6), MONSTER_NOUN(6)            ; pointers to strings
-    dim VERB_PATTERN(16)                           ; pointers to strings
-    dim DIR_WORD_INDEX(4)                          ; pointers to strings
-    dim OBJDESC1(24), OBJDESC2(24)                 ; pointers to strings
-
     GENERAL_FLAG_J = 0
     HOSTILE_CREATURE_INDEX = 0
     RESHOW_FLAG = 0
@@ -135,15 +42,8 @@ ROOM_RIVER_CONDUIT = 54
     SCORE = 0
 
     ; Data tables are pre-initialized (assembly targets will map these to DB/DW); no RESTORE/READ needed
+    ; OBJECT_LOCATION is mutable; other tables are constant in code
     OBJECT_LOCATION = OBJECT_LOCATION_DATA
-    OBJECT_NAME_ADJ = OBJECT_NAME_ADJ_DATA
-    OBJECT_NAME_NOUN = OBJECT_NAME_NOUN_DATA
-    MONSTER_ADJ = MONSTER_ADJ_DATA
-    MONSTER_NOUN = MONSTER_NOUN_DATA
-    VERB_PATTERN = VERB_PATTERN_DATA
-    DIR_WORD_INDEX = DIR_WORD_INDEX_DATA
-    OBJDESC1 = OBJDESC1_DATA
-    OBJDESC2 = OBJDESC2_DATA
 
     gosub UPDATE_DYNAMIC_EXITS_SUB
 
@@ -932,51 +832,50 @@ ROOM_DESC2_PTR:
     DW NULL, NULL, NULL, NULL, DESC_TORTURE_CHAMBER2, NULL, NULL, DESC_ROUND_ROOM2, NULL, DESC_TEMPLE_BALCONY2
     DW NULL, NULL, NULL, NULL, DESC_BAT_CAVE2, NULL, NULL, NULL, DESC_CRYPT2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 
-DESC_DARK_ROOM: DB "You are standing in a darkened room. There is a door to the north.",0
-DESC_FOREST_CLEARING: DB "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door.",0
-DESC_DARK_FOREST: DB "You are deep in a dark forest. In the distance you can see a mighty river.",0
-DESC_CLOVER_FIELD: DB "You are standing in a field of four-leafed clovers. There is a small hut to the north.",0
-DESC_RIVER_CLIFF: DB "The forest has opened up at this point. You are standing on a cliff overlooking a wide glacial river. A small foot-beaten path leads south.",0
-DESC_RIVER_BANK: DB "You are standing at the rocky edge of the mighty river Gioll. The path forks east and west.",0
-DESC_CRATER_EDGE: DB "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the Gioll pours into it.",0
-DESC_RIVER_OUTCROP: DB "The path to the east stops here. You are on a rocky outcrop, projected about 15 feet above the river. In the distance, a tiny bridge spans the river.",0
-DESC_MT_YMIR: DB "You are on the lower slopes of Mt. Ymir. The forest stretches far away and to the west. Arctic winds blow fiercely, it's very cold!",0
-DESC_BRIDGE_NORTH: DB "You stand on a rocky precipice high above the river, Gioll; Mt. Ymir stands to the north. A flimsy string bridge spans the mighty river.",0
-DESC_BRIDGE_MID: DB "You have made your way half way across the creaking bridge. It sways violently from side to side. It's going to collapse any second!!",0
-DESC_BRIDGE_SOUTH: DB "You are on the southern edge of the mighty river, before the string bridge.",0
-DESC_MUSHROOM_ROCK: DB "You are standing on a rock in the middle of a mighty oak forest. Surrounding you are thousands of poisonous mushrooms.",0
-DESC_CAVE_CLEARING: DB "You are in a clearing in the forest. An ancient basalt rock formation towers above you. To your south is the entrance of a VERY interesting cave...",0
-DESC_CLIFF_FACE: DB "You are on a cliff face over looking the river.",0
-DESC_CAVE_ENTRY: DB "You are just inside the cave. Sunlight pours into the cave lighting a path to the east and another to the south. I don't mind saying I'm a bit scared!",0
-DESC_DEAD_END: DB "This passage appears to be a dead end. On a wall before you is carved `Find the Sacred Key of Thialfi'.",0
-DESC_TREASURE_ROOM: DB "You are in the legendary treasure room of the black elves of Svartalfheim. Every red-blooded Viking has dreamed of entering this sacred room.",0
-DESC_OAK_DOOR: DB "You can see a small oak door to the east. It has been locked from the inside.",0
-DESC_WIND_CORRIDOR: DB "You are standing in an east-west corridor. You can feel a faint breeze coming from the east.",0
-DESC_TORTURE_CHAMBER: DB "You are standing in what appears to have once been a torture chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,",0
-DESC_TORTURE_CHAMBER2: DB "coagulated blood stains on the walls and mangled bits of bone on the floor make me think that a number of would be adventurers croaked it here!",0
-DESC_NS_TUNNEL: DB "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow crack in the eastern wall.",0
-DESC_ROUND_ROOM: DB "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of ",0
-DESC_ROUND_ROOM2: DB "the floor. Note: This is one of the hidden chambers of the infamous pagan sect, the monks of Loki. Norse folk believe them to be gods.",0
-DESC_LEDGE_RIVER: DB "You are standing on a narrow ledge, high above a subterranean river. There is an exit to the east.",0
-DESC_TEMPLE_BALCONY: DB "You are on a balcony, overlooking a huge cavern which has been converted into a pagan temple. Note: this temple has been dedicated to Loki, the god of",0
-DESC_TEMPLE_BALCONY2: DB "fire, who came to live in Svartalfheim after he had been banished to exile by Odin. Since then he has been waiting for the `End Of All Things'.",0
-DESC_BAT_CAVE: DB "You are in the central cave of a giant bat colony. Above you hundreds of giant bats hang from the ceiling and the floor is covered in centuries of ",0
-DESC_BAT_CAVE2: DB "giant bat droppings. Careful where you step! Incidentally, the smell is indescribable.",0
-DESC_TEMPLE: DB "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock itself!",0
-DESC_CRYPT: DB "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word ",0
-DESC_CRYPT2: DB "starting with 'G---' and another ending with '---X'' Note: The monks of Loki must have liked silly puzzles. Putrefaction and decay fills the air here.",0
-DESC_TINY_CELL: DB "You are in a tiny cell. The western wall has now firmly closed again. There is a ventilator shaft on the eastern wall.",0
-DESC_WATERFALL_LEDGE: DB "You are on another ledge high above a subterranean river. The water flows in through a hole in the cavern roof, to the north.",0
-DESC_WATERFALL_BASE: DB "You are standing near an enormous waterfall which brings water down from the surface, from the river Gioll.",0
-DESC_STONE_STAIR: DB "You are standing before a stone staircase which leads southwards.",0
-DESC_CASTLE_LEDGE: DB "You are on a narrow and crumbling ledge. On the other side of the river you can see a magic castle. (Don't ask me why it's magic...I just know it is)",0
-DESC_DRAWBRIDGE: DB "You are by the drawbridge which has just lowered itself....by magic!!",0
-DESC_CASTLE_COURTYARD: DB "You are in the courtyard of the magic castle. WOW! This castle is really something! On the wall is inscribed 'hzb tzozi'. A secret escape tunnel leads south",0
-DESC_POWDER_MAG: DB "You are in the powder magazine of this really super castle.",0
-DESC_EAST_BANK: DB "You are on the eastern side of the river. A small tunnel leads east into the cliff face.",0
-DESC_WOODEN_BRIDGE: DB "You stand before a small wooden bridge which crosses the river.",0
-DESC_RIVER_CONDUIT: DB "You are in a conduit draining into the river. The water comes up to your knees and is freezing cold. A narrow service path leads south.",0
-
+DESC_DARK_ROOM          DB "You are standing in a darkened room. There is a door to the north.",0
+DESC_FOREST_CLEARING    DB "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door.",0
+DESC_DARK_FOREST        DB "You are deep in a dark forest. In the distance you can see a mighty river.",0
+DESC_CLOVER_FIELD       DB "You are standing in a field of four-leafed clovers. There is a small hut to the north.",0
+DESC_RIVER_CLIFF        DB "The forest has opened up at this point. You are standing on a cliff overlooking a wide glacial river. A small foot-beaten path leads south.",0
+DESC_RIVER_BANK         DB "You are standing at the rocky edge of the mighty river Gioll. The path forks east and west.",0
+DESC_CRATER_EDGE        DB "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the Gioll pours into it.",0
+DESC_RIVER_OUTCROP      DB "The path to the east stops here. You are on a rocky outcrop, projected about 15 feet above the river. In the distance, a tiny bridge spans the river.",0
+DESC_MT_YMIR            DB "You are on the lower slopes of Mt. Ymir. The forest stretches far away and to the west. Arctic winds blow fiercely, it's very cold!",0
+DESC_BRIDGE_NORTH       DB "You stand on a rocky precipice high above the river, Gioll; Mt. Ymir stands to the north. A flimsy string bridge spans the mighty river.",0
+DESC_BRIDGE_MID         DB "You have made your way half way across the creaking bridge. It sways violently from side to side. It's going to collapse any second!!",0
+DESC_BRIDGE_SOUTH       DB "You are on the southern edge of the mighty river, before the string bridge.",0
+DESC_MUSHROOM_ROCK      DB "You are standing on a rock in the middle of a mighty oak forest. Surrounding you are thousands of poisonous mushrooms.",0
+DESC_CAVE_CLEARING      DB "You are in a clearing in the forest. An ancient basalt rock formation towers above you. To your south is the entrance of a VERY interesting cave...",0
+DESC_CLIFF_FACE         DB "You are on a cliff face over looking the river.",0
+DESC_CAVE_ENTRY         DB "You are just inside the cave. Sunlight pours into the cave lighting a path to the east and another to the south. I don't mind saying I'm a bit scared!",0
+DESC_DEAD_END           DB "This passage appears to be a dead end. On a wall before you is carved `Find the Sacred Key of Thialfi'.",0
+DESC_TREASURE_ROOM      DB "You are in the legendary treasure room of the black elves of Svartalfheim. Every red-blooded Viking has dreamed of entering this sacred room.",0
+DESC_OAK_DOOR           DB "You can see a small oak door to the east. It has been locked from the inside.",0
+DESC_WIND_CORRIDOR      DB "You are standing in an east-west corridor. You can feel a faint breeze coming from the east.",0
+DESC_TORTURE_CHAMBER    DB "You are standing in what appears to have once been a torture chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,",0
+DESC_TORTURE_CHAMBER2   DB "coagulated blood stains on the walls and mangled bits of bone on the floor make me think that a number of would be adventurers croaked it here!",0
+DESC_NS_TUNNEL          DB "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow crack in the eastern wall.",0
+DESC_ROUND_ROOM         DB "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of ",0
+DESC_ROUND_ROOM2        DB "the floor. Note: This is one of the hidden chambers of the infamous pagan sect, the monks of Loki. Norse folk believe them to be gods.",0
+DESC_LEDGE_RIVER        DB "You are standing on a narrow ledge, high above a subterranean river. There is an exit to the east.",0
+DESC_TEMPLE_BALCONY     DB "You are on a balcony, overlooking a huge cavern which has been converted into a pagan temple. Note: this temple has been dedicated to Loki, the god of",0
+DESC_TEMPLE_BALCONY2    DB "fire, who came to live in Svartalfheim after he had been banished to exile by Odin. Since then he has been waiting for the `End Of All Things'.",0
+DESC_BAT_CAVE           DB "You are in the central cave of a giant bat colony. Above you hundreds of giant bats hang from the ceiling and the floor is covered in centuries of ",0
+DESC_BAT_CAVE2          DB "giant bat droppings. Careful where you step! Incidentally, the smell is indescribable.",0
+DESC_TEMPLE             DB "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock itself!",0
+DESC_CRYPT              DB "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word ",0
+DESC_CRYPT2             DB "starting with 'G---' and another ending with '---X'' Note: The monks of Loki must have liked silly puzzles. Putrefaction and decay fills the air here.",0
+DESC_TINY_CELL          DB "You are in a tiny cell. The western wall has now firmly closed again. There is a ventilator shaft on the eastern wall.",0
+DESC_WATERFALL_LEDGE    DB "You are on another ledge high above a subterranean river. The water flows in through a hole in the cavern roof, to the north.",0
+DESC_WATERFALL_BASE     DB "You are standing near an enormous waterfall which brings water down from the surface, from the river Gioll.",0
+DESC_STONE_STAIR        DB "You are standing before a stone staircase which leads southwards.",0
+DESC_CASTLE_LEDGE       DB "You are on a narrow and crumbling ledge. On the other side of the river you can see a magic castle. (Don't ask me why it's magic...I just know it is)",0
+DESC_DRAWBRIDGE         DB "You are by the drawbridge which has just lowered itself....by magic!!",0
+DESC_CASTLE_COURTYARD   DB "You are in the courtyard of the magic castle. WOW! This castle is really something! On the wall is inscribed 'hzb tzozi'. A secret escape tunnel leads south",0
+DESC_POWDER_MAG         DB "You are in the powder magazine of this really super castle.",0
+DESC_EAST_BANK          DB "You are on the eastern side of the river. A small tunnel leads east into the cliff face.",0
+DESC_WOODEN_BRIDGE      DB "You stand before a small wooden bridge which crosses the river.",0
+DESC_RIVER_CONDUIT      DB "You are in a conduit draining into the river. The water comes up to your knees and is freezing cold. A narrow service path leads south.",0
 
 VERB_PATTERN_DATA:
     DW VERB_TAKE, VERB_PUT, VERB_USING, VERB_WITH, VERB_CUT

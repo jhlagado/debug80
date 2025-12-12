@@ -160,3 +160,12 @@ printObjectDesc:
 ; Data placeholders (caller to allocate in BSS/vars area)
 RAND_STATE: db 1
 SPACE_STR: db " ",0
+
+; printStr: print inline .cstr following call site
+; Assumes SVC_PUTS leaves HL at terminating null; we advance past it
+printStr:
+    ex (sp),hl           ; HL = return addr -> string, save old HL on stack
+    SVC_PUTS             ; print null-terminated string at HL
+    inc hl               ; advance past terminator
+    ex (sp),hl           ; restore HL, update return addr
+    ret
