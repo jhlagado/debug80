@@ -17,35 +17,16 @@
     .include "macros.asm"
     .include "variables.asm"
     .include "utils.asm"
+    .include "tables.asm"
 
 
 GAME_START:
 
     cls
 
-    BRIDGE_CONDITION = 11
-    DRAWBRIDGE_STATE = 128
-    WATER_EXIT_LOCATION = 0
-    GATE_DESTINATION = 0
-    TELEPORT_DESTINATION = 0
-    SECRET_EXIT_LOCATION = 0
+    call INIT_STATE
 
-    GENERAL_FLAG_J = 0
-    HOSTILE_CREATURE_INDEX = 0
-    RESHOW_FLAG = 0
-    PLAYER_LOCATION = ROOM_DARK_ROOM
-    CANDLE_IS_LIT_FLAG = 1
-
-    FEAR_COUNTER = 0
-    TURN_COUNTER = 0
-    SWORD_SWING_COUNT = 0
-    SCORE = 0
-
-    ; Data tables are pre-initialized (assembly targets will map these to DB/DW); no RESTORE/READ needed
-    ; OBJECT_LOCATION is mutable; other tables are constant in code
-    OBJECT_LOCATION = OBJECT_LOCATION_DATA
-
-    gosub UPDATE_DYNAMIC_EXITS_SUB
+    call UPDATE_DYNAMIC_EXITS
 
     goto DESCRIBE_CURRENT_LOCATION
 
@@ -72,12 +53,12 @@ DESCRIBE_CURRENT_LOCATION:
 PRINT_ROOM_DESCRIPTION:
 
     ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
-    if ROOM_DESC1_PTR(PLAYER_LOCATION) <> NULL then
-        print @ROOM_DESC1_PTR(PLAYER_LOCATION)
+    if ROOM_DESC1_TABLE(PLAYER_LOCATION) <> NULL then
+        print @ROOM_DESC1_TABLE(PLAYER_LOCATION)
     end if
 
-    if ROOM_DESC2_PTR(PLAYER_LOCATION) <> NULL then
-        print @ROOM_DESC2_PTR(PLAYER_LOCATION)
+    if ROOM_DESC2_TABLE(PLAYER_LOCATION) <> NULL then
+        print @ROOM_DESC2_TABLE(PLAYER_LOCATION)
     end if
 
     if PLAYER_LOCATION = ROOM_DARK_CAVERN_A or PLAYER_LOCATION = ROOM_DARK_CAVERN_B or PLAYER_LOCATION = ROOM_DARK_CAVERN_C or PLAYER_LOCATION > ROOM_TEMPLE_BALCONY and PLAYER_LOCATION < ROOM_DARK_CAVERN_G or PLAYER_LOCATION = ROOM_DARK_CAVERN_H or PLAYER_LOCATION = ROOM_DARK_CAVERN_I or PLAYER_LOCATION = ROOM_DARK_CAVERN_J or PLAYER_LOCATION = ROOM_DARK_CAVERN_K or PLAYER_LOCATION = ROOM_WOODEN_BRIDGE then
@@ -124,7 +105,7 @@ LIST_ROOM_OBJECTS_AND_CREATURES:
         for LOOP_INDEX = 7 to 24
             if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
                 CURRENT_OBJECT_INDEX = LOOP_INDEX
-                gosub PRINT_OBJECT_DESCRIPTION_SUB
+                call PRINT_OBJECT_DESCRIPTION_SUB
             end if
         next LOOP_INDEX
     end if
@@ -135,7 +116,7 @@ LIST_ROOM_OBJECTS_AND_CREATURES:
         if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
             VISIBLE_CREATURE_COUNT = VISIBLE_CREATURE_COUNT + 1
             CURRENT_OBJECT_INDEX = LOOP_INDEX
-            gosub TRIGGER_CREATURE_INTRO_SUB
+            call TRIGGER_CREATURE_INTRO_SUB
         end if
     next LOOP_INDEX
 
@@ -144,7 +125,7 @@ LIST_ROOM_OBJECTS_AND_CREATURES:
         for LOOP_INDEX = 1 to 6
             if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
                 CURRENT_OBJECT_INDEX = LOOP_INDEX
-                gosub PRINT_OBJECT_DESCRIPTION_SUB
+                call PRINT_OBJECT_DESCRIPTION_SUB
             end if
         next LOOP_INDEX
     end if
@@ -172,7 +153,7 @@ GET_PLAYER_INPUT:
     INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " "
     TURN_COUNTER = TURN_COUNTER + 1
 
-    gosub NORMALIZE_INPUT_SUB
+    call NORMALIZE_INPUT_SUB
 
     cls
 
@@ -203,7 +184,7 @@ PARSE_COMMAND_ENTRY:
     ; Bridge condition when halfway
     if PLAYER_LOCATION = ROOM_BRIDGE_MID then
         BRIDGE_CONDITION = 128
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
     end if
 
     ; Hut flag
@@ -213,22 +194,22 @@ PARSE_COMMAND_ENTRY:
 
     if PLAYER_LOCATION = ROOM_WATERFALL_BASE then
         WATER_EXIT_LOCATION = 43
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
     end if
 
     if PLAYER_LOCATION = ROOM_TEMPLE then
         WATER_EXIT_LOCATION = 0
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
     end if
 
     if OBJECT_LOCATION(OBJ_GRILL) <> ROOM_TINY_CELL then
         GATE_DESTINATION = 39
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
     end if
 
     if PLAYER_LOCATION = ROOM_DRAWBRIDGE then
         DRAWBRIDGE_STATE = 49
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
     end if
 
     ; LOOK command
@@ -271,7 +252,7 @@ SHOW_INVENTORY:
     for LOOP_INDEX = 7 to 24
         if OBJECT_LOCATION(LOOP_INDEX) = -1 then
             CURRENT_OBJECT_INDEX = LOOP_INDEX
-            gosub PRINT_OBJECT_DESCRIPTION_SUB
+            call PRINT_OBJECT_DESCRIPTION_SUB
         end if
     next LOOP_INDEX
 
@@ -295,7 +276,7 @@ QUIT_GAME:
     print
     print "You have a score of"; SCORE; " out of a possible 126 points in"; TURN_COUNTER; " moves."
 
-    gosub PRINT_RANKING_SUB
+    call PRINT_RANKING_SUB
 
     print "Another adventure? ";
 
@@ -418,7 +399,7 @@ HANDLE_NON_MOVEMENT_COMMAND:
     if INSTR(INPUT_COMMAND$, " ape ") > 0 then
         print "Hey! the eastern wall of the crypt slid open..."
         SECRET_EXIT_LOCATION = 38
-        gosub UPDATE_DYNAMIC_EXITS_SUB
+        call UPDATE_DYNAMIC_EXITS
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
@@ -609,7 +590,7 @@ USE_BOMB:
         PLAYER_LOCATION = PLAYER_LOCATION - 1
         if PLAYER_LOCATION = ROOM_OAK_DOOR then
             TELEPORT_DESTINATION = 19
-            gosub UPDATE_DYNAMIC_EXITS_SUB
+            call UPDATE_DYNAMIC_EXITS
         end if
     end if
 
@@ -636,7 +617,7 @@ USE_ROPE:
 PRINT_OBJECT_DESCRIPTION_SUB:
 
     print "a"; @OBJDESC1(CURRENT_OBJECT_INDEX); @OBJDESC2(CURRENT_OBJECT_INDEX); ", ";
-    return
+    ret
 
 
 
@@ -671,7 +652,7 @@ NORMALIZE_INPUT_SUB:
             INPUT_COMMAND$ = TEMP_COMMAND$
         end if
     next LOOP_INDEX_X
-    return
+    ret
 
 
 PRINT_RANKING_SUB:
@@ -690,7 +671,7 @@ PRINT_RANKING_SUB:
         print "Perfectionist and genius!!"
     end if
 
-    return
+    ret
 
 
 
@@ -698,7 +679,7 @@ READ_INPUT_THEN_CLEAR_SUB:
 
     input INPUT_COMMAND$
     cls
-    return
+    ret
 
 
 
@@ -734,278 +715,14 @@ TRIGGER_CREATURE_INTRO_SUB:
         case 6
             goto ENCOUNTER_DWARF_LABEL
     end select
-    return
+    ret
 
 
 
 ; ---------------------------------------------------------
-;  DATA TABLES
-; ---------------------------------------------------------
-
-
-MOVEMENT_TABLE_DATA:
-    DB ROOM_FOREST_CLEARING,0,0,0
-    DB 0,0,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
-    DB ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,ROOM_RIVER_CLIFF,0
-    DB ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,0,ROOM_MT_YMIR_SLOPE
-    DB 0,ROOM_RIVER_BANK,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
-    DB ROOM_RIVER_CLIFF,0,ROOM_CRATER_EDGE,ROOM_RIVER_OUTCROP
-    DB 0,0,128,ROOM_RIVER_BANK
-    DB 0,0,ROOM_RIVER_BANK,0
-    DB 0,ROOM_BRIDGE_NORTH_ANCHOR,ROOM_CLOVER_FIELD,0
-    DB ROOM_MT_YMIR_SLOPE,ROOM_BRIDGE_MID,ROOM_CLOVER_FIELD,0
-    DB ROOM_BRIDGE_NORTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR,128,128
-    DB ROOM_BRIDGE_MID,ROOM_MUSHROOM_ROCK,ROOM_MUSHROOM_ROCK,0
-    DB ROOM_BRIDGE_SOUTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR,ROOM_CAVE_ENTRANCE_CLEARING,ROOM_BRIDGE_SOUTH_ANCHOR
-    DB ROOM_CLIFF_FACE,ROOM_CAVE_ENTRY,0,ROOM_MUSHROOM_ROCK
-    DB 0,ROOM_CAVE_ENTRANCE_CLEARING,0,0
-    DB ROOM_CAVE_ENTRANCE_CLEARING,ROOM_DARK_CAVERN_A,0,ROOM_DEAD_END_INSCRIPTION
-    DB 0,0,ROOM_CAVE_ENTRY,0
-    DB ROOM_CAVE_ENTRY,0,ROOM_TORTURE_CHAMBER,0
-    DB 0,0,ROOM_OAK_DOOR,0
-    DB ROOM_DARK_CAVERN_B,ROOM_TORTURE_CHAMBER,0,0
-    DB 0,ROOM_NORTH_SOUTH_TUNNEL,0,ROOM_OAK_DOOR
-    DB 0,ROOM_TORTURE_CHAMBER,ROOM_DARK_CAVERN_B,ROOM_CAVE_ENTRY
-    DB ROOM_WIND_CORRIDOR,0,ROOM_DARK_CAVERN_A,ROOM_DARK_CAVERN_A
-    DB ROOM_DARK_CAVERN_B,ROOM_ROUND_ROOM,0,ROOM_DARK_CAVERN_A
-    DB 0,ROOM_LEDGE_OVER_RIVER,ROOM_NORTH_SOUTH_TUNNEL,0
-    DB ROOM_NORTH_SOUTH_TUNNEL,ROOM_LEDGE_OVER_RIVER,ROOM_DARK_CAVERN_D,ROOM_DARK_CAVERN_C
-    DB ROOM_DARK_CAVERN_A,0,0,ROOM_TEMPLE_BALCONY
-    DB 0,0,ROOM_LEDGE_OVER_RIVER,0
-    DB 0,ROOM_BAT_CAVE,0,ROOM_ROUND_ROOM
-    DB ROOM_DARK_CAVERN_D,ROOM_DARK_CAVERN_F,0,0
-    DB ROOM_DARK_CAVERN_G,0,0,0
-    DB ROOM_BAT_CAVE,ROOM_DARK_CAVERN_E,0,0
-    DB 0,ROOM_DARK_CAVERN_F,ROOM_DARK_CAVERN_H,0
-    DB 0,0,0,ROOM_BAT_CAVE
-    DB 0,0,0,0
-    DB ROOM_DARK_CAVERN_J,0,ROOM_TEMPLE,ROOM_LEDGE_WATERFALL_IN
-    DB 0,ROOM_TEMPLE,0,0
-    DB 0,0,0,0
-    DB 0,ROOM_DARK_CAVERN_I,ROOM_TINY_CELL,0
-    DB ROOM_WATERFALL_BASE,ROOM_CASTLE_LEDGE,ROOM_DARK_CAVERN_I,128
-    DB ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_RIVER_CONDUIT,ROOM_DRAIN_B
-    DB ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_DRAIN_A,ROOM_DRAIN_C
-    DB ROOM_DARK_CAVERN_K,ROOM_TINY_CELL,ROOM_DRAIN_B,ROOM_DRAIN_D
-    DB ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE
-    DB 0,ROOM_LEDGE_WATERFALL_IN,0,128
-    DB ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE
-    DB 0,ROOM_WATERFALL_BASE,ROOM_DARK_CAVERN_K,0
-    DB ROOM_LEDGE_WATERFALL_IN,128,0,128
-    DB 0,0,ROOM_CASTLE_LEDGE,ROOM_CASTLE_COURTYARD
-    DB 0,ROOM_EAST_RIVERBANK,ROOM_DRAWBRIDGE,ROOM_POWDER_MAG
-    DB 0,0,ROOM_CASTLE_COURTYARD,0
-    DB ROOM_CASTLE_COURTYARD,0,ROOM_WOODEN_BRIDGE,ROOM_CASTLE_COURTYARD
-    DB ROOM_RIVER_CONDUIT,0,0,ROOM_EAST_RIVERBANK
-    DB 0,ROOM_WOODEN_BRIDGE,ROOM_DRAIN_A,0
-
-
-OBJECT_LOCATION_DATA:
-    DW ROOM_DARK_CAVERN_I, ROOM_TREASURE_ROOM, ROOM_BRIDGE_NORTH_ANCHOR, ROOM_CAVE_ENTRANCE_CLEARING
-    DW ROOM_DEAD_END_INSCRIPTION, ROOM_STONE_STAIRCASE, ROOM_RIVER_OUTCROP, ROOM_DARK_ROOM
-    DW ROOM_POWDER_MAG, ROOM_WATERFALL_BASE, ROOM_WIND_CORRIDOR, ROOM_DARK_CAVERN_K
-    DW ROOM_RIVER_CONDUIT, ROOM_TREASURE_ROOM, ROOM_TREASURE_ROOM, ROOM_TREASURE_ROOM
-    DW ROOM_TREASURE_ROOM, EXIT_NONE, ROOM_DARK_CAVERN_H, ROOM_CRATER_EDGE
-    DW ROOM_DARK_CAVERN_A, ROOM_CLIFF_FACE, ROOM_NORTH_SOUTH_TUNNEL, ROOM_TINY_CELL
-
-
-ROOM_DESC1_PTR:
-    DW DESC_DARK_ROOM, DESC_FOREST_CLEARING, DESC_DARK_FOREST
-    DW DESC_CLOVER_FIELD, DESC_RIVER_CLIFF, DESC_RIVER_BANK
-    DW DESC_CRATER_EDGE, DESC_RIVER_OUTCROP, DESC_MT_YMIR
-    DW DESC_BRIDGE_NORTH, DESC_BRIDGE_MID, DESC_BRIDGE_SOUTH
-    DW DESC_MUSHROOM_ROCK, DESC_CAVE_CLEARING, DESC_CLIFF_FACE
-    DW DESC_CAVE_ENTRY, DESC_DEAD_END, NULL
-    DW DESC_TREASURE_ROOM, DESC_OAK_DOOR, NULL, DESC_WIND_CORRIDOR
-    DW DESC_TORTURE_CHAMBER, DESC_NS_TUNNEL, NULL, DESC_ROUND_ROOM
-    DW DESC_LEDGE_RIVER, DESC_TEMPLE_BALCONY
-    DW NULL, NULL, NULL, NULL, DESC_BAT_CAVE, NULL, DESC_TEMPLE
-    DW NULL, DESC_CRYPT, DESC_TINY_CELL, NULL, DESC_WATERFALL_LEDGE
-    DW NULL, NULL, NULL, NULL, NULL, DESC_WATERFALL_BASE, NULL
-    DW DESC_STONE_STAIR, DESC_CASTLE_LEDGE, DESC_DRAWBRIDGE
-    DW DESC_CASTLE_COURTYARD, DESC_POWDER_MAG, DESC_EAST_BANK
-    DW DESC_WOODEN_BRIDGE, DESC_RIVER_CONDUIT
-
-ROOM_DESC2_PTR:
-    DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-    DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-    DW NULL, NULL, NULL, NULL, DESC_TORTURE_CHAMBER2, NULL, NULL, DESC_ROUND_ROOM2, NULL, DESC_TEMPLE_BALCONY2
-    DW NULL, NULL, NULL, NULL, DESC_BAT_CAVE2, NULL, NULL, NULL, DESC_CRYPT2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-
-DESC_DARK_ROOM          DB "You are standing in a darkened room. There is a door to the north.",0
-DESC_FOREST_CLEARING    DB "You are in a forest clearing before a small bark hut. There are no windows, and locked door to the south. The latch was engaged when you closed the door.",0
-DESC_DARK_FOREST        DB "You are deep in a dark forest. In the distance you can see a mighty river.",0
-DESC_CLOVER_FIELD       DB "You are standing in a field of four-leafed clovers. There is a small hut to the north.",0
-DESC_RIVER_CLIFF        DB "The forest has opened up at this point. You are standing on a cliff overlooking a wide glacial river. A small foot-beaten path leads south.",0
-DESC_RIVER_BANK         DB "You are standing at the rocky edge of the mighty river Gioll. The path forks east and west.",0
-DESC_CRATER_EDGE        DB "You are on the edge of an enormous crater. The rim is extremely slippery. Clouds of water vapour rise high in the air as the Gioll pours into it.",0
-DESC_RIVER_OUTCROP      DB "The path to the east stops here. You are on a rocky outcrop, projected about 15 feet above the river. In the distance, a tiny bridge spans the river.",0
-DESC_MT_YMIR            DB "You are on the lower slopes of Mt. Ymir. The forest stretches far away and to the west. Arctic winds blow fiercely, it's very cold!",0
-DESC_BRIDGE_NORTH       DB "You stand on a rocky precipice high above the river, Gioll; Mt. Ymir stands to the north. A flimsy string bridge spans the mighty river.",0
-DESC_BRIDGE_MID         DB "You have made your way half way across the creaking bridge. It sways violently from side to side. It's going to collapse any second!!",0
-DESC_BRIDGE_SOUTH       DB "You are on the southern edge of the mighty river, before the string bridge.",0
-DESC_MUSHROOM_ROCK      DB "You are standing on a rock in the middle of a mighty oak forest. Surrounding you are thousands of poisonous mushrooms.",0
-DESC_CAVE_CLEARING      DB "You are in a clearing in the forest. An ancient basalt rock formation towers above you. To your south is the entrance of a VERY interesting cave...",0
-DESC_CLIFF_FACE         DB "You are on a cliff face over looking the river.",0
-DESC_CAVE_ENTRY         DB "You are just inside the cave. Sunlight pours into the cave lighting a path to the east and another to the south. I don't mind saying I'm a bit scared!",0
-DESC_DEAD_END           DB "This passage appears to be a dead end. On a wall before you is carved `Find the Sacred Key of Thialfi'.",0
-DESC_TREASURE_ROOM      DB "You are in the legendary treasure room of the black elves of Svartalfheim. Every red-blooded Viking has dreamed of entering this sacred room.",0
-DESC_OAK_DOOR           DB "You can see a small oak door to the east. It has been locked from the inside.",0
-DESC_WIND_CORRIDOR      DB "You are standing in an east-west corridor. You can feel a faint breeze coming from the east.",0
-DESC_TORTURE_CHAMBER    DB "You are standing in what appears to have once been a torture chamber. Apart from the rather comprehensive range of instumentsof absolutely inhuman agony,",0
-DESC_TORTURE_CHAMBER2   DB "coagulated blood stains on the walls and mangled bits of bone on the floor make me think that a number of would be adventurers croaked it here!",0
-DESC_NS_TUNNEL          DB "You stand in a long tunnel which has been bored out of the rock.It runs from north to south. A faint glow comes from a narrow crack in the eastern wall.",0
-DESC_ROUND_ROOM         DB "You are in a large round room with a number of exits. The walls have been painted in a mystical dark purple and a big chalk staris drawn in the centre of ",0
-DESC_ROUND_ROOM2        DB "the floor. Note: This is one of the hidden chambers of the infamous pagan sect, the monks of Loki. Norse folk believe them to be gods.",0
-DESC_LEDGE_RIVER        DB "You are standing on a narrow ledge, high above a subterranean river. There is an exit to the east.",0
-DESC_TEMPLE_BALCONY     DB "You are on a balcony, overlooking a huge cavern which has been converted into a pagan temple. Note: this temple has been dedicated to Loki, the god of",0
-DESC_TEMPLE_BALCONY2    DB "fire, who came to live in Svartalfheim after he had been banished to exile by Odin. Since then he has been waiting for the `End Of All Things'.",0
-DESC_BAT_CAVE           DB "You are in the central cave of a giant bat colony. Above you hundreds of giant bats hang from the ceiling and the floor is covered in centuries of ",0
-DESC_BAT_CAVE2          DB "giant bat droppings. Careful where you step! Incidentally, the smell is indescribable.",0
-DESC_TEMPLE             DB "You are in the temple. To the north is a locked gate and on the wall is a giant statue of Loki, carved out of the living rock itself!",0
-DESC_CRYPT              DB "You stand in an old and musty crypt, the final resting place of hundreds of Loki devotees. On the wall is carved:``What 3 letter word completes a word ",0
-DESC_CRYPT2             DB "starting with 'G---' and another ending with '---X'' Note: The monks of Loki must have liked silly puzzles. Putrefaction and decay fills the air here.",0
-DESC_TINY_CELL          DB "You are in a tiny cell. The western wall has now firmly closed again. There is a ventilator shaft on the eastern wall.",0
-DESC_WATERFALL_LEDGE    DB "You are on another ledge high above a subterranean river. The water flows in through a hole in the cavern roof, to the north.",0
-DESC_WATERFALL_BASE     DB "You are standing near an enormous waterfall which brings water down from the surface, from the river Gioll.",0
-DESC_STONE_STAIR        DB "You are standing before a stone staircase which leads southwards.",0
-DESC_CASTLE_LEDGE       DB "You are on a narrow and crumbling ledge. On the other side of the river you can see a magic castle. (Don't ask me why it's magic...I just know it is)",0
-DESC_DRAWBRIDGE         DB "You are by the drawbridge which has just lowered itself....by magic!!",0
-DESC_CASTLE_COURTYARD   DB "You are in the courtyard of the magic castle. WOW! This castle is really something! On the wall is inscribed 'hzb tzozi'. A secret escape tunnel leads south",0
-DESC_POWDER_MAG         DB "You are in the powder magazine of this really super castle.",0
-DESC_EAST_BANK          DB "You are on the eastern side of the river. A small tunnel leads east into the cliff face.",0
-DESC_WOODEN_BRIDGE      DB "You stand before a small wooden bridge which crosses the river.",0
-DESC_RIVER_CONDUIT      DB "You are in a conduit draining into the river. The water comes up to your knees and is freezing cold. A narrow service path leads south.",0
-
-VERB_PATTERN_DATA:
-    DW VERB_TAKE, VERB_PUT, VERB_USING, VERB_WITH, VERB_CUT
-    DW VERB_BREAK, VERB_UNLOCK, VERB_OPEN, VERB_KILL, VERB_ATTACK
-    DW VERB_LIGHT, VERB_BURN, VERB_UP, VERB_DOWN, VERB_JUMP, VERB_SWIM
-
-VERB_TAKE: DB "take",0
-VERB_PUT: DB "put",0
-VERB_USING: DB "using",0
-VERB_WITH: DB "with",0
-VERB_CUT: DB "cut",0
-VERB_BREAK: DB "break",0
-VERB_UNLOCK: DB "unlock",0
-VERB_OPEN: DB "open",0
-VERB_KILL: DB "kill",0
-VERB_ATTACK: DB "attack",0
-VERB_LIGHT: DB "light",0
-VERB_BURN: DB "burn",0
-VERB_UP: DB "up",0
-VERB_DOWN: DB "down",0
-VERB_JUMP: DB "jump",0
-VERB_SWIM: DB "swim",0
-
-DIR_WORD_INDEX_DATA:
-    DW DIR_NORTH_STR, DIR_SOUTH_STR, DIR_WEST_STR, DIR_EAST_STR
-
-DIR_NORTH_STR: DB " north ",0
-DIR_SOUTH_STR: DB " south ",0
-DIR_WEST_STR: DB " west ",0
-DIR_EAST_STR: DB " east ",0
-
-
-; NOTE: article handling (a/an) and leading/trailing spaces in strings to be normalized later via an article routine
-MONSTER_ADJ_DATA:
-    DW MON_ADJ_WIZ, MON_ADJ_DEMON, MON_ADJ_TROLL, MON_ADJ_DRAGON, MON_ADJ_BAT, MON_ADJ_DWARF
-
-MON_ADJ_WIZ: DB "n evil",0
-MON_ADJ_DEMON: DB " fiery",0
-MON_ADJ_TROLL: DB "n axe wielding",0
-MON_ADJ_DRAGON: DB " fire breathing",0
-MON_ADJ_BAT: DB " giant",0
-MON_ADJ_DWARF: DB "n old and gnarled",0
-
-MONSTER_NOUN_DATA:
-    DW MON_NOUN_WIZ, MON_NOUN_DEMON, MON_NOUN_TROLL, MON_NOUN_DRAGON, MON_NOUN_BAT, MON_NOUN_DWARF
-
-MON_NOUN_WIZ: DB " wizard ",0
-MON_NOUN_DEMON: DB " demon ",0
-MON_NOUN_TROLL: DB " troll ",0
-MON_NOUN_DRAGON: DB " dragon ",0
-MON_NOUN_BAT: DB " bat ",0
-MON_NOUN_DWARF: DB " dwarf ",0
-
-; NOTE: article handling (a/an) and trimming leading/trailing padding spaces to be addressed later
-OBJECT_NAME_ADJ_DATA:
-    DW OBJ_ADJ_COIN, OBJ_ADJ_COMPASS, OBJ_ADJ_BOMB, OBJ_ADJ_RUBY, OBJ_ADJ_DIAMOND, OBJ_ADJ_PEARL, OBJ_ADJ_STONE, OBJ_ADJ_RING, OBJ_ADJ_PENDANT, OBJ_ADJ_GRAIL, OBJ_ADJ_SHIELD
-    DW OBJ_ADJ_BOX, OBJ_ADJ_KEY, OBJ_ADJ_SWORD, OBJ_ADJ_CANDLE, OBJ_ADJ_ROPE, OBJ_ADJ_BRICK, OBJ_ADJ_GRILL
-
-OBJ_ADJ_COIN: DB " gold",0
-OBJ_ADJ_COMPASS: DB " useful looking",0
-OBJ_ADJ_BOMB: DB " home made",0
-OBJ_ADJ_RUBY: DB " blood red",0
-OBJ_ADJ_DIAMOND: DB " sparkling",0
-OBJ_ADJ_PEARL: DB " moon-like",0
-OBJ_ADJ_STONE: DB "n interesting",0
-OBJ_ADJ_RING: DB " diamond studded",0
-OBJ_ADJ_PENDANT: DB " magic",0
-OBJ_ADJ_GRAIL: DB " most holy",0
-OBJ_ADJ_SHIELD: DB " mirror like",0
-OBJ_ADJ_BOX: DB " nondescript black",0
-OBJ_ADJ_KEY: DB "n old an rusty",0
-OBJ_ADJ_SWORD: DB " double bladed",0
-OBJ_ADJ_CANDLE: DB " small",0
-OBJ_ADJ_ROPE: DB " thin and tatty",0
-OBJ_ADJ_BRICK: DB " red house",0
-OBJ_ADJ_GRILL: DB " rusty ventilation",0
-
-OBJECT_NAME_NOUN_DATA:
-    DW OBJ_NOUN_COIN, OBJ_NOUN_COMPASS, OBJ_NOUN_BOMB, OBJ_NOUN_RUBY, OBJ_NOUN_DIAMOND, OBJ_NOUN_PEARL, OBJ_NOUN_STONE, OBJ_NOUN_RING, OBJ_NOUN_PENDANT, OBJ_NOUN_GRAIL, OBJ_NOUN_SHIELD
-    DW OBJ_NOUN_BOX, OBJ_NOUN_KEY, OBJ_NOUN_SWORD, OBJ_NOUN_CANDLE, OBJ_NOUN_ROPE, OBJ_NOUN_BRICK, OBJ_NOUN_GRILL
-
-OBJ_NOUN_COIN: DB " coin ",0
-OBJ_NOUN_COMPASS: DB " compass ",0
-OBJ_NOUN_BOMB: DB " bomb ",0
-OBJ_NOUN_RUBY: DB " ruby ",0
-OBJ_NOUN_DIAMOND: DB " diamond ",0
-OBJ_NOUN_PEARL: DB " pearl ",0
-OBJ_NOUN_STONE: DB " stone ",0
-OBJ_NOUN_RING: DB " ring ",0
-OBJ_NOUN_PENDANT: DB " pendant ",0
-OBJ_NOUN_GRAIL: DB " grail ",0
-OBJ_NOUN_SHIELD: DB " shield ",0
-OBJ_NOUN_BOX: DB " box ",0
-OBJ_NOUN_KEY: DB " key ",0
-OBJ_NOUN_SWORD: DB " sword ",0
-OBJ_NOUN_CANDLE: DB " candle ",0
-OBJ_NOUN_ROPE: DB " rope ",0
-OBJ_NOUN_BRICK: DB " brick ",0
-OBJ_NOUN_GRILL: DB " grill ",0
-
-OBJDESC1_DATA:
-    DW MON_ADJ_WIZ, MON_ADJ_DEMON, MON_ADJ_TROLL
-    DW MON_ADJ_DRAGON, MON_ADJ_BAT, MON_ADJ_DWARF
-    DW OBJ_ADJ_COIN, OBJ_ADJ_COMPASS, OBJ_ADJ_BOMB, OBJ_ADJ_RUBY
-    DW OBJ_ADJ_DIAMOND, OBJ_ADJ_PEARL, OBJ_ADJ_STONE, OBJ_ADJ_RING
-    DW OBJ_ADJ_PENDANT, OBJ_ADJ_GRAIL, OBJ_ADJ_SHIELD, OBJ_ADJ_BOX
-    DW OBJ_ADJ_KEY, OBJ_ADJ_SWORD, OBJ_ADJ_CANDLE, OBJ_ADJ_ROPE
-    DW OBJ_ADJ_BRICK, OBJ_ADJ_GRILL
-
-OBJDESC2_DATA:
-    DW MON_NOUN_WIZ, MON_NOUN_DEMON, MON_NOUN_TROLL
-    DW MON_NOUN_DRAGON, MON_NOUN_BAT, MON_NOUN_DWARF
-    DW OBJ_NOUN_COIN, OBJ_NOUN_COMPASS, OBJ_NOUN_BOMB, OBJ_NOUN_RUBY
-    DW OBJ_NOUN_DIAMOND, OBJ_NOUN_PEARL, OBJ_NOUN_STONE, OBJ_NOUN_RING
-    DW OBJ_NOUN_PENDANT, OBJ_NOUN_GRAIL, OBJ_NOUN_SHIELD, OBJ_NOUN_BOX
-    DW OBJ_NOUN_KEY, OBJ_NOUN_SWORD, OBJ_NOUN_CANDLE, OBJ_NOUN_ROPE
-    DW OBJ_NOUN_BRICK, OBJ_NOUN_GRILL
-
-
-UPDATE_DYNAMIC_EXITS_SUB:
+UPDATE_DYNAMIC_EXITS:
 
     ; Patch dynamic exits in movement table
-    ; Dynamic exit slots patched at runtime (room, direction):
-    ; (ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR)=BRIDGE_CONDITION
-    ; (ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR)=BRIDGE_CONDITION
-    ; (ROOM_OAK_DOOR,DIR_EAST_STR)=TELEPORT_DESTINATION
-    ; (ROOM_CRYPT,DIR_EAST_STR)=SECRET_EXIT_LOCATION
-    ; (ROOM_TINY_CELL,DIR_NORTH_STR)=WATER_EXIT_LOCATION
-    ; (ROOM_TINY_CELL,DIR_EAST_STR)=GATE_DESTINATION
-    ; (ROOM_CASTLE_LEDGE,DIR_EAST_STR)=DRAWBRIDGE_STATE
 
     MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR) = BRIDGE_CONDITION
     MOVEMENT_TABLE(ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR) = BRIDGE_CONDITION
@@ -1014,4 +731,46 @@ UPDATE_DYNAMIC_EXITS_SUB:
     MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_NORTH_STR) = WATER_EXIT_LOCATION
     MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_EAST_STR) = GATE_DESTINATION
     MOVEMENT_TABLE(ROOM_CASTLE_LEDGE,DIR_EAST_STR) = DRAWBRIDGE_STATE
-    return
+    ret
+
+
+INIT_STATE:
+    ; Initialize flags and counters
+    ld a,11
+    ld (BRIDGE_CONDITION),a
+    ld a,128
+    ld (DRAWBRIDGE_STATE),a
+    xor a
+    ld (WATER_EXIT_LOCATION),a
+    ld (GATE_DESTINATION),a
+    ld (TELEPORT_DESTINATION),a
+    ld (SECRET_EXIT_LOCATION),a
+
+    xor a
+    ld (GENERAL_FLAG_J),a
+    ld (HOSTILE_CREATURE_INDEX),a
+    ld (RESHOW_FLAG),a
+    ld a,ROOM_DARK_ROOM
+    ld (PLAYER_LOCATION),a
+    ld a,1
+    ld (CANDLE_IS_LIT_FLAG),a
+
+    xor a
+    ld (FEAR_COUNTER),a
+    ld (TURN_COUNTER),a
+    ld (SWORD_SWING_COUNT),a
+    ld (SCORE),a
+
+    ; Copy static tables into mutable buffers
+    ld hl,MOVEMENT_TABLE_DATA
+    ld de,MOVEMENT_TABLE
+    ld bc,MOVEMENT_TABLE_BYTES
+    ldir
+
+    ld hl,OBJECT_LOCATION_TABLE
+    ld de,OBJECT_LOCATION
+    ld bc,OBJECT_COUNT
+    ld hl,OBJECT_LOCATION_TABLE
+    ld de,OBJECT_LOCATION
+    ldir
+    ret

@@ -83,3 +83,5 @@ OBJ_ROPE     equ 22
 NULL         equ 0
 
 ROOM_MAX     equ 54
+OBJECT_COUNT equ 24
+MOVEMENT_TABLE_BYTES equ ROOM_MAX*4
