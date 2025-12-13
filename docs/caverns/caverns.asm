@@ -34,19 +34,42 @@ GAME_START:
 
 DESCRIBE_CURRENT_LOCATION:
 
-    ; If a hostile creature is active (except some special case),
-    ; jump to monster-attack logic
-    if HOSTILE_CREATURE_INDEX > 0 and HOSTILE_CREATURE_INDEX <> 5 and CURRENT_OBJECT_INDEX <> OBJ_SWORD then
-        goto MONSTER_ATTACK
-    end if
+    ; If a hostile creature is active (except some special case), jump to monster-attack logic
+    ld a,(HOSTILE_CREATURE_INDEX)
+    or a
+    jp z,DC_DARKNESS_CHECK
+    cp 5
+    jp z,DC_DARKNESS_CHECK
+    ld a,(CURRENT_OBJECT_INDEX)
+    cp OBJ_SWORD
+    jp z,DC_DARKNESS_CHECK
+    jp MONSTER_ATTACK
 
-    ; Darkness logic
-    if PLAYER_LOCATION < ROOM_DARK_CAVERN_A or CANDLE_IS_LIT_FLAG = 1 and (OBJECT_LOCATION(21) = PLAYER_LOCATION or OBJECT_LOCATION(21) = -1) then
-        goto PRINT_ROOM_DESCRIPTION
-    end if
+DC_DARKNESS_CHECK:
+    ; Darkness logic: show room description if lit or before dark caverns
+    ld a,(PLAYER_LOCATION)
+    cp ROOM_DARK_CAVERN_A
+    jp c,PRINT_ROOM_DESCRIPTION
 
-    print "It's very dark, too dark to see anything...I'm scared!"
-    goto LIST_ROOM_OBJECTS_AND_CREATURES
+    ld a,(CANDLE_IS_LIT_FLAG)
+    or a
+    jp z,DC_SHOW_DARKNESS
+
+    ; Is candle at player location?
+    ld a,(OBJECT_LOCATION+20)        ; OBJ_CANDLE index 21 -> offset 20
+    ld b,a
+    ld a,(PLAYER_LOCATION)
+    cp b
+    jp z,PRINT_ROOM_DESCRIPTION
+
+    ; Or carried? (-1 == 0xFF)
+    ld a,b
+    cp 255
+    jp z,PRINT_ROOM_DESCRIPTION
+
+DC_SHOW_DARKNESS:
+    PRINT "It's very dark, too dark to see anything...I'm scared!"
+    jp LIST_ROOM_OBJECTS_AND_CREATURES
 
 
 
@@ -464,19 +487,21 @@ HANDLE_DROP_COMMAND:
 
 ROUTE_USE_BY_OBJECT:
 
-    select case CURRENT_OBJECT_INDEX
-        case OBJ_KEY
-            goto USE_KEY
-        case OBJ_SWORD
-            goto USE_SWORD
-        case OBJ_CANDLE
-            goto USE_BOMB
-        case OBJ_ROPE
-            goto USE_ROPE
-        case else
-            print "How am I supposed to use it?"
-            goto DESCRIBE_CURRENT_LOCATION
-    end select
+    if CURRENT_OBJECT_INDEX = OBJ_KEY then
+        goto USE_KEY
+    end if
+    if CURRENT_OBJECT_INDEX = OBJ_SWORD then
+        goto USE_SWORD
+    end if
+    if CURRENT_OBJECT_INDEX = OBJ_CANDLE then
+        goto USE_BOMB
+    end if
+    if CURRENT_OBJECT_INDEX = OBJ_ROPE then
+        goto USE_ROPE
+    end if
+
+    print "How am I supposed to use it?"
+    goto DESCRIBE_CURRENT_LOCATION
 
 
 
@@ -531,16 +556,19 @@ SWORD_FIGHT_CONTINUES:
         goto CHECK_CREATURE_BAT_SPECIAL
     end if
 
-    select case RANDOM_FIGHT_MESSAGE
-        case 0
-            print "You attack but the creature moves aside."
-        case 1
+    if RANDOM_FIGHT_MESSAGE = 0 then
+        print "You attack but the creature moves aside."
+    else
+        if RANDOM_FIGHT_MESSAGE = 1 then
             print "The creature deflects your blow."
-        case 2
-            print "The foe is stunned but quickly regains his balance."
-        case 3
-            print "You missed and he deals a blow to your head."
-    end select
+        else
+            if RANDOM_FIGHT_MESSAGE = 2 then
+                print "The foe is stunned but quickly regains his balance."
+            else
+                print "You missed and he deals a blow to your head."
+            end if
+        end if
+    end if
 
     goto DESCRIBE_CURRENT_LOCATION
 
@@ -623,20 +651,27 @@ PRINT_OBJECT_DESCRIPTION_SUB:
 
 ROUTE_BY_VERB_PATTERN:
 
-    select case VERB_PATTERN_INDEX
-        case 1
-            goto HANDLE_GET_COMMAND
-        case 2
-            goto HANDLE_DROP_COMMAND
-        case 3,4
-            goto ROUTE_USE_BY_OBJECT
-        case 5,6
-            print "Nothing happens!"
-        case 7 to 12
+    if VERB_PATTERN_INDEX = 1 then
+        goto HANDLE_GET_COMMAND
+    end if
+
+    if VERB_PATTERN_INDEX = 2 then
+        goto HANDLE_DROP_COMMAND
+    end if
+
+    if VERB_PATTERN_INDEX = 3 or VERB_PATTERN_INDEX = 4 then
+        goto ROUTE_USE_BY_OBJECT
+    end if
+
+    if VERB_PATTERN_INDEX <= 6 then
+        print "Nothing happens!"
+    else
+        if VERB_PATTERN_INDEX >= 7 and VERB_PATTERN_INDEX <= 12 then
             print "Please tell me how."
-        case else
+        else
             print "I can't!"
-    end select
+        end if
+    end if
 
     print
     goto GET_PLAYER_INPUT
@@ -707,14 +742,15 @@ ENCOUNTER_DWARF_LABEL:
 
 TRIGGER_CREATURE_INTRO_SUB:
 
-    select case CURRENT_OBJECT_INDEX
-        case 1
-            goto ENCOUNTER_WIZARD_LABEL
-        case 4
-            goto ENCOUNTER_DRAGON_LABEL
-        case 6
-            goto ENCOUNTER_DWARF_LABEL
-    end select
+    if CURRENT_OBJECT_INDEX = 1 then
+        goto ENCOUNTER_WIZARD_LABEL
+    end if
+    if CURRENT_OBJECT_INDEX = 4 then
+        goto ENCOUNTER_DRAGON_LABEL
+    end if
+    if CURRENT_OBJECT_INDEX = 6 then
+        goto ENCOUNTER_DWARF_LABEL
+    end if
     ret
 
 
@@ -736,41 +772,25 @@ UPDATE_DYNAMIC_EXITS:
 
 INIT_STATE:
     ; Initialize flags and counters
-    ld a,11
-    ld (BRIDGE_CONDITION),a
-    ld a,128
-    ld (DRAWBRIDGE_STATE),a
-    xor a
-    ld (WATER_EXIT_LOCATION),a
-    ld (GATE_DESTINATION),a
-    ld (TELEPORT_DESTINATION),a
-    ld (SECRET_EXIT_LOCATION),a
+    SET8 BRIDGE_CONDITION,11
+    SET8 DRAWBRIDGE_STATE,128
+    SET8 WATER_EXIT_LOCATION,0
+    SET8 GATE_DESTINATION,0
+    SET8 TELEPORT_DESTINATION,0
+    SET8 SECRET_EXIT_LOCATION,0
 
-    xor a
-    ld (GENERAL_FLAG_J),a
-    ld (HOSTILE_CREATURE_INDEX),a
-    ld (RESHOW_FLAG),a
-    ld a,ROOM_DARK_ROOM
-    ld (PLAYER_LOCATION),a
-    ld a,1
-    ld (CANDLE_IS_LIT_FLAG),a
+    SET8 GENERAL_FLAG_J,0
+    SET8 HOSTILE_CREATURE_INDEX,0
+    SET8 RESHOW_FLAG,0
+    SET8 PLAYER_LOCATION,ROOM_DARK_ROOM
+    SET8 CANDLE_IS_LIT_FLAG,1
 
-    xor a
-    ld (FEAR_COUNTER),a
-    ld (TURN_COUNTER),a
-    ld (SWORD_SWING_COUNT),a
-    ld (SCORE),a
+    SET8 FEAR_COUNTER,0
+    SET8 TURN_COUNTER,0
+    SET8 SWORD_SWING_COUNT,0
+    SET8 SCORE,0
 
     ; Copy static tables into mutable buffers
-    ld hl,MOVEMENT_TABLE_DATA
-    ld de,MOVEMENT_TABLE
-    ld bc,MOVEMENT_TABLE_BYTES
-    ldir
-
-    ld hl,OBJECT_LOCATION_TABLE
-    ld de,OBJECT_LOCATION
-    ld bc,OBJECT_COUNT
-    ld hl,OBJECT_LOCATION_TABLE
-    ld de,OBJECT_LOCATION
-    ldir
+    COPY MOVEMENT_TABLE_DATA,MOVEMENT_TABLE,MOVEMENT_TABLE_BYTES
+    COPY OBJECT_LOCATION_TABLE,OBJECT_LOCATION,OBJECT_COUNT
     ret
