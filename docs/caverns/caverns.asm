@@ -391,40 +391,54 @@ LOC_DONE:
 
 GET_PLAYER_INPUT:
 
-    input INPUT_COMMAND$
+    ; ---------------------------------------------------------
+    ; GET_PLAYER_INPUT
+    ; Read a non-empty command line, normalize it (pad spaces,
+    ; lowercase, trim multiples), bump turn counter, and route to
+    ; parsing. Clears the screen afterward.
+    ; ---------------------------------------------------------
 
-    if INPUT_COMMAND$ = "" then
+    input INPUT_COMMAND$          ; read command line
+
+    if INPUT_COMMAND$ = "" then   ; empty? keep prompting
         goto GET_PLAYER_INPUT
     end if
 
-    INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " "
-    TURN_COUNTER = TURN_COUNTER + 1
+    INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " " ; pad with spaces for INSTR finds
+    TURN_COUNTER = TURN_COUNTER + 1              ; advance turn count
 
-    call NORMALIZE_INPUT_SUB
+    call NORMALIZE_INPUT_SUB      ; lowercase/trim/pad as per helper
 
-    cls
+    cls                           ; clear screen before processing
 
-    goto PARSE_COMMAND_ENTRY
+    goto PARSE_COMMAND_ENTRY      ; continue to parser
 
 
 
 PARSE_COMMAND_ENTRY:
 
-    CURRENT_OBJECT_INDEX = 0
-    OBJECT_ADJECTIVE$ = ""
-    OBJECT_NOUN$ = ""
+    ; ---------------------------------------------------------
+    ; PARSE_COMMAND_ENTRY
+    ; Identify noun in input, set CURRENT_OBJECT_INDEX, refresh
+    ; dynamic exits/flags that depend on location/state, then
+    ; continue into verb routing.
+    ; ---------------------------------------------------------
+
+    CURRENT_OBJECT_INDEX = 0      ; reset matched object index
+    OBJECT_ADJECTIVE$ = ""        ; clear parsed adjective
+    OBJECT_NOUN$ = ""             ; clear parsed noun
 
     for LOOP_INDEX = 7 to 24
-        OBJECT_ADJECTIVE$ = @OBJECT_NAME_ADJ(LOOP_INDEX)
-        OBJECT_NOUN$ = @OBJECT_NAME_NOUN(LOOP_INDEX)
-        if INSTR(INPUT_COMMAND$, OBJECT_NOUN$) > 0 then
-            CURRENT_OBJECT_INDEX = LOOP_INDEX
-            EXIT for
+        OBJECT_ADJECTIVE$ = @OBJECT_NAME_ADJ(LOOP_INDEX) ; candidate adj
+        OBJECT_NOUN$ = @OBJECT_NAME_NOUN(LOOP_INDEX)     ; candidate noun
+        if INSTR(INPUT_COMMAND$, OBJECT_NOUN$) > 0 then  ; noun found?
+            CURRENT_OBJECT_INDEX = LOOP_INDEX            ; remember which
+            EXIT for                                     ; stop search
         end if
     next LOOP_INDEX
 
     if CURRENT_OBJECT_INDEX = 0 then
-        OBJECT_ADJECTIVE$ = ""
+        OBJECT_ADJECTIVE$ = ""    ; no noun matched -> clear
         OBJECT_NOUN$ = ""
     end if
 
@@ -439,21 +453,25 @@ PARSE_COMMAND_ENTRY:
         GENERAL_FLAG_J = 1
     end if
 
+    ; Waterfall conduit exit opens when at base
     if PLAYER_LOCATION = ROOM_WATERFALL_BASE then
         WATER_EXIT_LOCATION = 43
         call UPDATE_DYNAMIC_EXITS
     end if
 
+    ; Reset water exit when back in temple
     if PLAYER_LOCATION = ROOM_TEMPLE then
         WATER_EXIT_LOCATION = 0
         call UPDATE_DYNAMIC_EXITS
     end if
 
+    ; Gate destination changes once grill moved
     if OBJECT_LOCATION(OBJ_GRILL) <> ROOM_TINY_CELL then
         GATE_DESTINATION = 39
         call UPDATE_DYNAMIC_EXITS
     end if
 
+    ; Drawbridge lowers when on drawbridge room
     if PLAYER_LOCATION = ROOM_DRAWBRIDGE then
         DRAWBRIDGE_STATE = 49
         call UPDATE_DYNAMIC_EXITS
@@ -631,54 +649,68 @@ MONSTER_ATTACK:
 
 HANDLE_VERB_OR_MOVEMENT:
 
-    ; First route generic verbs via the pattern table (take/put/unlock/jump/etc.)
-    for VERB_PATTERN_INDEX = 1 to 16
-        if INSTR(INPUT_COMMAND$, @VERB_PATTERN(VERB_PATTERN_INDEX)) > 0 then
-            goto ROUTE_BY_VERB_PATTERN
-        end if
-    next VERB_PATTERN_INDEX
+    ; ---------------------------------------------------------
+    ; HANDLE_VERB_OR_MOVEMENT
+    ; Dispatch input by first matching generic verbs (take/put/
+    ; unlock/jump/etc.) via pattern table, then directions, else
+    ; fall back to non-movement handlers.
+    ; ---------------------------------------------------------
 
-    ; Then check for movement (north/south/etc.)
-    for DIRECTION_INDEX = 0 to 3
-        if INSTR(INPUT_COMMAND$, @DIR_WORD_INDEX(DIRECTION_INDEX+1)) > 0 then
-            goto HANDLE_MOVEMENT_COMMAND
+    ; Scan verb patterns (1..16) for a match in INPUT_COMMAND$
+    for VERB_PATTERN_INDEX = 1 to 16       ; iterate patterns
+        if INSTR(INPUT_COMMAND$, @VERB_PATTERN(VERB_PATTERN_INDEX)) > 0 then ; found?
+            goto ROUTE_BY_VERB_PATTERN     ; handle specific verb
         end if
-    next DIRECTION_INDEX
+    next VERB_PATTERN_INDEX                 ; next pattern
 
-    goto HANDLE_NON_MOVEMENT_COMMAND
+    ; Check for movement words (north/south/west/east)
+    for DIRECTION_INDEX = 0 to 3            ; 0..3
+        if INSTR(INPUT_COMMAND$, @DIR_WORD_INDEX(DIRECTION_INDEX+1)) > 0 then ; dir found?
+            goto HANDLE_MOVEMENT_COMMAND    ; route to movement
+        end if
+    next DIRECTION_INDEX                    ; next direction
+
+    goto HANDLE_NON_MOVEMENT_COMMAND        ; nothing matched -> non-movement
 
 
 
 HANDLE_MOVEMENT_COMMAND:
 
-    ; Special check related to bomb or location
+    ; ---------------------------------------------------------
+    ; HANDLE_MOVEMENT_COMMAND
+    ; Resolve direction (may be randomized by bomb), look up
+    ; target in MOVEMENT_TABLE, apply exits (none/fatal/room),
+    ; then redisplay location.
+    ; ---------------------------------------------------------
+
+    ; Special check: if bomb is elsewhere, randomize direction
     if OBJECT_LOCATION(OBJ_BOMB) <> -1 and OBJECT_LOCATION(OBJ_BOMB) <> PLAYER_LOCATION then
-        RANDOM_DIRECTION_INDEX = INT(RND * 4)
+        RANDOM_DIRECTION_INDEX = INT(RND * 4) ; pick 0..3
     else
-        RANDOM_DIRECTION_INDEX = 0
+        RANDOM_DIRECTION_INDEX = 0             ; otherwise use first direction found
     end if
 
-    TARGET_LOCATION = MOVEMENT_TABLE(PLAYER_LOCATION, RANDOM_DIRECTION_INDEX)
+    TARGET_LOCATION = MOVEMENT_TABLE(PLAYER_LOCATION, RANDOM_DIRECTION_INDEX) ; fetch exit
 
-    if TARGET_LOCATION = EXIT_NONE then
+    if TARGET_LOCATION = EXIT_NONE then        ; no exit
         ld hl,STR_CANT_GO_THAT_WAY
         call printStr
         call printNewline
     end if
 
-    if TARGET_LOCATION = EXIT_FATAL then
+    if TARGET_LOCATION = EXIT_FATAL then       ; fatal exit
         ld hl,STR_FATAL_FALL
         call printStr
         call printNewline
         goto QUIT_GAME
     end if
 
-    if TARGET_LOCATION > 0 then
-        PLAYER_LOCATION = TARGET_LOCATION
+    if TARGET_LOCATION > 0 then                ; valid room
+        PLAYER_LOCATION = TARGET_LOCATION      ; move player
     end if
 
-    RESHOW_FLAG = 0
-    goto DESCRIBE_CURRENT_LOCATION
+    RESHOW_FLAG = 0                            ; force redisplay
+    goto DESCRIBE_CURRENT_LOCATION             ; show new room
 
 
 
@@ -940,40 +972,81 @@ USE_ROPE:
 
 PRINT_OBJECT_DESCRIPTION_SUB:
 
-    print "a"; @OBJDESC1(CURRENT_OBJECT_INDEX); @OBJDESC2(CURRENT_OBJECT_INDEX); ", ";
+    ; ---------------------------------------------------------
+    ; PRINT_OBJECT_DESCRIPTION_SUB
+    ; Purpose: print "a/an <adj> <noun>, " for the object/creature
+    ; at CURRENT_OBJECT_INDEX using OBJDESC tables.
+    ; Inputs: CURRENT_OBJECT_INDEX (1-based)
+    ; Uses: BC, DE, HL
+    ; ---------------------------------------------------------
+
+    ; Fetch adjective pointer from OBJDESC1_TABLE
+    ld a,(CURRENT_OBJECT_INDEX)   ; A = index (1..24)
+    dec a                         ; to 0-based
+    add a,a                       ; *2 for word offset
+    ld l,a
+    ld h,0
+    ld de,OBJDESC1_TABLE          ; DE = base of adjectives
+    add hl,de                     ; HL -> word entry
+    ld c,(hl)                     ; C = low byte of adj ptr
+    inc hl
+    ld b,(hl)                     ; B = high byte of adj ptr
+
+    ; Fetch noun pointer from OBJDESC2_TABLE
+    ld a,(CURRENT_OBJECT_INDEX)   ; A = index
+    dec a                         ; to 0-based
+    add a,a                       ; *2 for word offset
+    ld l,a
+    ld h,0
+    ld de,OBJDESC2_TABLE          ; DE = base of nouns
+    add hl,de                     ; HL -> word entry
+    ld e,(hl)                     ; E = low byte of noun ptr
+    inc hl
+    ld d,(hl)                     ; D = high byte of noun ptr
+
+    ; Call shared printer: HL = adj, DE = noun
+    ld h,b                        ; HL = adj pointer
+    ld l,c
+    call printObjectDesc          ; prints "a/an <adj> <noun>, "
     ret
 
 
 
 ROUTE_BY_VERB_PATTERN:
 
-    if VERB_PATTERN_INDEX = 1 then
+    ; ---------------------------------------------------------
+    ; ROUTE_BY_VERB_PATTERN
+    ; Map the matched VERB_PATTERN_INDEX to specific handlers or
+    ; default responses. Keeps verb ordering identical to BASIC.
+    ; ---------------------------------------------------------
+
+    if VERB_PATTERN_INDEX = 1 then           ; take
         goto HANDLE_GET_COMMAND
     end if
 
-    if VERB_PATTERN_INDEX = 2 then
+    if VERB_PATTERN_INDEX = 2 then           ; drop
         goto HANDLE_DROP_COMMAND
     end if
 
-    if VERB_PATTERN_INDEX = 3 or VERB_PATTERN_INDEX = 4 then
+    if VERB_PATTERN_INDEX = 3 or VERB_PATTERN_INDEX = 4 then ; using/with
         goto ROUTE_USE_BY_OBJECT
     end if
 
-    if VERB_PATTERN_INDEX <= 6 then
+    if VERB_PATTERN_INDEX <= 6 then          ; cut/break/unlock/open
         ld hl,STR_NOTHING_HAPPENS
         call printStr
     else
-        if VERB_PATTERN_INDEX >= 7 and VERB_PATTERN_INDEX <= 12 then
+        if VERB_PATTERN_INDEX >= 7 and VERB_PATTERN_INDEX <= 12 then ; kill/attack/light/burn/up/down
             ld hl,STR_PLEASE_TELL
             call printStr
-        else
+        else                                 ; jump/swim/other
             ld hl,STR_I_CANT
             call printStr
         end if
     end if
 
-    call printNewline
-    goto GET_PLAYER_INPUT
+    call printNewline                        ; blank line after response
+    goto GET_PLAYER_INPUT                    ; re-prompt
 
 
 NORMALIZE_INPUT_SUB:
