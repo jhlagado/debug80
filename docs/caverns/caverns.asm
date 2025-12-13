@@ -988,9 +988,13 @@ PRINT_OBJECT_DESCRIPTION_SUB:
     ld h,0
     ld de,OBJDESC1_TABLE          ; DE = base of adjectives
     add hl,de                     ; HL -> word entry
-    ld c,(hl)                     ; C = low byte of adj ptr
+    ld e,(hl)                     ; E = low byte of adj ptr
     inc hl
-    ld b,(hl)                     ; B = high byte of adj ptr
+    ld d,(hl)                     ; D = high byte of adj ptr
+
+    ; Print article + adjective
+    ex de,hl                      ; HL = adj pointer
+    call printAdj                 ; emits "a/an <adj>"
 
     ; Fetch noun pointer from OBJDESC2_TABLE
     ld a,(CURRENT_OBJECT_INDEX)   ; A = index
@@ -1004,10 +1008,15 @@ PRINT_OBJECT_DESCRIPTION_SUB:
     inc hl
     ld d,(hl)                     ; D = high byte of noun ptr
 
-    ; Call shared printer: HL = adj, DE = noun
-    ld h,b                        ; HL = adj pointer
-    ld l,c
-    call printObjectDesc          ; prints "a/an <adj> <noun>, "
+    ; Print space + noun
+    call printSpace
+    ex de,hl                      ; HL = noun pointer
+    call printStr
+
+    ; Trailing comma and space to match original output
+    ld a,','
+    call putc
+    call printSpace
     ret
 
 
