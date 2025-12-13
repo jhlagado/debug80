@@ -529,21 +529,21 @@ showInventory:
 
 quitGame:
 
-    SCORE = 0
+    score = 0
 
     for loopIndex = 7 to 17
         if objectLocation(loopIndex) = -1 then
-            SCORE = SCORE + loopIndex - 6
+            score = score + loopIndex - 6
         end if
         if objectLocation(loopIndex) = 1 then
-            SCORE = SCORE + (loopIndex - 6) * 2
+            score = score + (loopIndex - 6) * 2
         end if
     next loopIndex
 
     call printNewline
     ld hl,strScorePrefix
     call printStr
-    ld a,(SCORE)
+    ld a,(score)
     ld l,a
     ld h,0
     call printNum
@@ -1063,16 +1063,16 @@ printRankingSub:
     ld hl,strRanking
     call printStr
 
-    if SCORE < 20 then
+    if score < 20 then
         ld hl,strRankHopeless
         call printStr
-    elseif SCORE < 50 then
+    elseif score < 50 then
         ld hl,strRankLoser
         call printStr
-    elseif SCORE < 100 then
+    elseif score < 100 then
         ld hl,strRankAverage
         call printStr
-    elseif SCORE < 126 then
+    elseif score < 126 then
         ld hl,strRankExcellent
         call printStr
     else
@@ -1189,7 +1189,7 @@ initState:
     SET8 fearCounter,0
     SET8 turnCounter,0
     SET8 swordSwingCount,0
-    SET8 SCORE,0
+    SET8 score,0
 
     ; Copy static tables into mutable buffers
     COPY movementTableData,movementTable,movementTableBytes

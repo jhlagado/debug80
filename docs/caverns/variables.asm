@@ -17,7 +17,7 @@ candleIsLitFlag     db 0
 fearCounter           db 0
 turnCounter           db 0
 swordSwingCount      db 0
-SCORE                  db 0
+score                db 0
 currentObjectIndex   db 0
 visibleObjectCount   db 0
 visibleCreatureCount db 0
