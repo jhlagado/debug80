@@ -142,39 +142,96 @@ PR_CHECK_DESC2:
     pop de
 
 PR_AFTER_DESC:
+    ; ---------------------------------------------------------
+    ; PR_AFTER_DESC
+    ; Purpose: After room description, emit contextual lines
+    ; (dark cavern notice, bridge status, dragon corpse, etc.)
+    ; and handle candle aging. Falls through to listing objects.
+    ; ---------------------------------------------------------
 
-    if PLAYER_LOCATION = ROOM_DARK_CAVERN_A or PLAYER_LOCATION = ROOM_DARK_CAVERN_B or PLAYER_LOCATION = ROOM_DARK_CAVERN_C or PLAYER_LOCATION > ROOM_TEMPLE_BALCONY and PLAYER_LOCATION < ROOM_DARK_CAVERN_G or PLAYER_LOCATION = ROOM_DARK_CAVERN_H or PLAYER_LOCATION = ROOM_DARK_CAVERN_I or PLAYER_LOCATION = ROOM_DARK_CAVERN_J or PLAYER_LOCATION = ROOM_DARK_CAVERN_K or PLAYER_LOCATION = ROOM_WOODEN_BRIDGE then
-        ld hl,STR_DARK_CAVERN
-        call printStr
-    end if
+    ; Check if current room needs the generic dark-cavern message
+    ld a,(PLAYER_LOCATION)
+    ld b,a
+    cp ROOM_DARK_CAVERN_A
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_B
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_C
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_H
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_I
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_J
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_DARK_CAVERN_K
+    jp z,PRAD_PRINT_DARK
+    cp ROOM_WOODEN_BRIDGE
+    jp z,PRAD_PRINT_DARK
+    ; Range: ROOM_TEMPLE_BALCONY < room < ROOM_DARK_CAVERN_G (i.e., D/E/F)
+    ld a,b
+    cp ROOM_TEMPLE_BALCONY+1     ; >= 29?
+    jp c,PRAD_BRIDGE_CHECK
+    cp ROOM_DARK_CAVERN_G        ; < 32
+    jp nc,PRAD_BRIDGE_CHECK
+PRAD_PRINT_DARK:
+    ld hl,STR_DARK_CAVERN
+    call printStr
 
-    if (PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR or PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR) and BRIDGE_CONDITION = EXIT_FATAL then
-        ld hl,STR_BRIDGE_SNAPPED
-        call printStr
-    end if
+PRAD_BRIDGE_CHECK:
+    ; Broken bridge message when at north/south anchor and bridge is fatal
+    ld a,(PLAYER_LOCATION)
+    cp ROOM_BRIDGE_NORTH_ANCHOR
+    jr z,BRIDGE_MAYBE
+    cp ROOM_BRIDGE_SOUTH_ANCHOR
+    jr nz,PRAD_DRAGON_CHECK
+BRIDGE_MAYBE:
+    ld a,(BRIDGE_CONDITION)
+    cp EXIT_FATAL
+    jr nz,PRAD_DRAGON_CHECK
+    ld hl,STR_BRIDGE_SNAPPED
+    call printStr
 
-    if PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING and OBJECT_LOCATION(OBJ_DRAGON) = 0 then
-        ld hl,STR_DRAGON_CORPSE
-        call printStr
-    end if
+PRAD_DRAGON_CHECK:
+    ; Dead dragon corpse visible only at cave entrance clearing when OBJ_DRAGON = 0
+    ld a,(PLAYER_LOCATION)
+    cp ROOM_CAVE_ENTRANCE_CLEARING
+    jr nz,PRAD_BRIDGE_STATE
+    ld a,(OBJECT_LOCATION+3)      ; OBJ_DRAGON index 4 -> offset 3
+    or a
+    jr nz,PRAD_BRIDGE_STATE
+    ld hl,STR_DRAGON_CORPSE
+    call printStr
 
-    if PLAYER_LOCATION = ROOM_CASTLE_LEDGE and DRAWBRIDGE_STATE = ROOM_DRAWBRIDGE then
-        ld hl,STR_GOLD_BRIDGE
-        call printStr
-    end if
+PRAD_BRIDGE_STATE:
+    ; Show golden drawbridge text when at castle ledge and drawbridge lowered
+    ld a,(PLAYER_LOCATION)
+    cp ROOM_CASTLE_LEDGE
+    jr nz,PRAD_CANDLE_DIM
+    ld a,(DRAWBRIDGE_STATE)
+    cp ROOM_DRAWBRIDGE
+    jr nz,PRAD_CANDLE_DIM
+    ld hl,STR_GOLD_BRIDGE
+    call printStr
 
-    if TURN_COUNTER > CANDLE_DIM_TURN then
-        ld hl,STR_CANDLE_DIM
-        call printStr
-    end if
+PRAD_CANDLE_DIM:
+    ; Candle dim warning
+    ld a,(TURN_COUNTER)
+    cp CANDLE_DIM_TURN
+    jr c,PRAD_CANDLE_OUT
+    ld hl,STR_CANDLE_DIM
+    call printStr
 
-    if TURN_COUNTER >= CANDLE_OUT_TURN then
-        CANDLE_IS_LIT_FLAG = 0
-        ld hl,STR_CANDLE_OUT
-        call printStr
-    end if
-
-    goto LIST_ROOM_OBJECTS_AND_CREATURES
+PRAD_CANDLE_OUT:
+    ; Candle extinguished
+    ld a,(TURN_COUNTER)
+    cp CANDLE_OUT_TURN
+    jp c,LIST_ROOM_OBJECTS_AND_CREATURES
+    xor a
+    ld (CANDLE_IS_LIT_FLAG),a
+    ld hl,STR_CANDLE_OUT
+    call printStr
+    jp LIST_ROOM_OBJECTS_AND_CREATURES
 
 
 
