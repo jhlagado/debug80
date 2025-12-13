@@ -1,33 +1,33 @@
 ; ---------------------------------------------------------
-;  Variables and arrays (uninitialised, set at GAME_START)
+;  Variables and arrays (uninitialised, set at gameStart)
 ; ---------------------------------------------------------
 
 ; Single-byte state
-BRIDGE_CONDITION       db 0
-DRAWBRIDGE_STATE       db 0
-WATER_EXIT_LOCATION    db 0
-GATE_DESTINATION       db 0
-TELEPORT_DESTINATION   db 0
-SECRET_EXIT_LOCATION   db 0
-GENERAL_FLAG_J         db 0
-HOSTILE_CREATURE_INDEX db 0
-RESHOW_FLAG            db 0
-PLAYER_LOCATION        db 0
-CANDLE_IS_LIT_FLAG     db 0
-FEAR_COUNTER           db 0
-TURN_COUNTER           db 0
-SWORD_SWING_COUNT      db 0
+bridgeCondition       db 0
+drawbridgeState       db 0
+waterExitLocation    db 0
+gateDestination       db 0
+teleportDestination   db 0
+secretExitLocation   db 0
+generalFlagJ         db 0
+hostileCreatureIndex db 0
+reshowFlag            db 0
+playerLocation        db 0
+candleIsLitFlag     db 0
+fearCounter           db 0
+turnCounter           db 0
+swordSwingCount      db 0
 SCORE                  db 0
-CURRENT_OBJECT_INDEX   db 0
-VISIBLE_OBJECT_COUNT   db 0
-VISIBLE_CREATURE_COUNT db 0
-YESNO_KEY              db 0
-RANDOM_DIRECTION_INDEX db 0
-RANDOM_FIGHT_MESSAGE   db 0
-TARGET_LOCATION        db 0
+currentObjectIndex   db 0
+visibleObjectCount   db 0
+visibleCreatureCount db 0
+yesnoKey              db 0
+randomDirectionIndex db 0
+randomFightMessage   db 0
+targetLocation        db 0
 
 ; Arrays (mutable)
-; Movement table: ROOM_MAX * 4 bytes
-MOVEMENT_TABLE:    ds ROOM_MAX*4
+; Movement table: roomMax * 4 bytes
+movementTable:    ds roomMax*4
 
-OBJECT_LOCATION:   ds 24               ; byte per object/creature
+objectLocation:   ds 24               ; byte per object/creature

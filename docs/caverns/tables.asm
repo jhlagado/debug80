@@ -2,150 +2,150 @@
 ;  Data tables (constants)
 ; ---------------------------------------------------------
 
-MOVEMENT_TABLE
-                        DB ROOM_FOREST_CLEARING,0,0,0
-                        DB 0,0,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
-                        DB ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,ROOM_RIVER_CLIFF,0
-                        DB ROOM_FOREST_CLEARING,ROOM_RIVER_CLIFF,0,ROOM_MT_YMIR_SLOPE
-                        DB 0,ROOM_RIVER_BANK,ROOM_DARK_FOREST,ROOM_CLOVER_FIELD
-                        DB ROOM_RIVER_CLIFF,0,ROOM_CRATER_EDGE,ROOM_RIVER_OUTCROP
-                        DB 0,0,128,ROOM_RIVER_BANK
-                        DB 0,0,ROOM_RIVER_BANK,0
-                        DB 0,ROOM_BRIDGE_NORTH_ANCHOR,ROOM_CLOVER_FIELD,0
-                        DB ROOM_MT_YMIR_SLOPE,ROOM_BRIDGE_MID,ROOM_CLOVER_FIELD,0
-                        DB ROOM_BRIDGE_NORTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR,128,128
-                        DB ROOM_BRIDGE_MID,ROOM_MUSHROOM_ROCK,ROOM_MUSHROOM_ROCK,0
-                        DB ROOM_BRIDGE_SOUTH_ANCHOR,ROOM_BRIDGE_SOUTH_ANCHOR
-                        DB ROOM_CAVE_ENTRANCE_CLEARING,ROOM_BRIDGE_SOUTH_ANCHOR
-                        DB ROOM_CLIFF_FACE,ROOM_CAVE_ENTRY,0,ROOM_MUSHROOM_ROCK
-                        DB 0,ROOM_CAVE_ENTRANCE_CLEARING,0,0
-                        DB ROOM_CAVE_ENTRANCE_CLEARING,ROOM_DARK_CAVERN_A
-                        DB 0,ROOM_DEAD_END_INSCRIPTION
-                        DB 0,0,ROOM_CAVE_ENTRY,0
-                        DB ROOM_CAVE_ENTRY,0,ROOM_TORTURE_CHAMBER,0
-                        DB 0,0,ROOM_OAK_DOOR,0
-                        DB ROOM_DARK_CAVERN_B,ROOM_TORTURE_CHAMBER,0,0
-                        DB 0,ROOM_NORTH_SOUTH_TUNNEL,0,ROOM_OAK_DOOR
-                        DB 0,ROOM_TORTURE_CHAMBER,ROOM_DARK_CAVERN_B,ROOM_CAVE_ENTRY
-                        DB ROOM_WIND_CORRIDOR,0,ROOM_DARK_CAVERN_A,ROOM_DARK_CAVERN_A
-                        DB ROOM_DARK_CAVERN_B,ROOM_ROUND_ROOM,0,ROOM_DARK_CAVERN_A
-                        DB 0,ROOM_LEDGE_OVER_RIVER,ROOM_NORTH_SOUTH_TUNNEL,0
-                        DB ROOM_NORTH_SOUTH_TUNNEL,ROOM_LEDGE_OVER_RIVER,ROOM_DARK_CAVERN_D
-                        DB ROOM_DARK_CAVERN_C
-                        DB ROOM_DARK_CAVERN_A,0,0,ROOM_TEMPLE_BALCONY
-                        DB 0,0,ROOM_LEDGE_OVER_RIVER,0
-                        DB 0,ROOM_BAT_CAVE,0,ROOM_ROUND_ROOM
-                        DB ROOM_DARK_CAVERN_D,ROOM_DARK_CAVERN_F,0,0
-                        DB ROOM_DARK_CAVERN_G,0,0,0
-                        DB ROOM_BAT_CAVE,ROOM_DARK_CAVERN_E,0,0
-                        DB 0,ROOM_DARK_CAVERN_F,ROOM_DARK_CAVERN_H,0
-                        DB 0,0,0,ROOM_BAT_CAVE
+movementTable
+                        DB roomForestClearing,0,0,0
+                        DB 0,0,roomDarkForest,roomCloverField
+                        DB roomForestClearing,roomRiverCliff,roomRiverCliff,0
+                        DB roomForestClearing,roomRiverCliff,0,roomMtYmirSlope
+                        DB 0,roomRiverBank,roomDarkForest,roomCloverField
+                        DB roomRiverCliff,0,roomCraterEdge,roomRiverOutcrop
+                        DB 0,0,128,roomRiverBank
+                        DB 0,0,roomRiverBank,0
+                        DB 0,roomBridgeNorthAnchor,roomCloverField,0
+                        DB roomMtYmirSlope,roomBridgeMid,roomCloverField,0
+                        DB roomBridgeNorthAnchor,roomBridgeSouthAnchor,128,128
+                        DB roomBridgeMid,roomMushroomRock,roomMushroomRock,0
+                        DB roomBridgeSouthAnchor,roomBridgeSouthAnchor
+                        DB roomCaveEntranceClearing,roomBridgeSouthAnchor
+                        DB roomCliffFace,roomCaveEntry,0,roomMushroomRock
+                        DB 0,roomCaveEntranceClearing,0,0
+                        DB roomCaveEntranceClearing,roomDarkCavernA
+                        DB 0,roomDeadEndInscription
+                        DB 0,0,roomCaveEntry,0
+                        DB roomCaveEntry,0,roomTortureChamber,0
+                        DB 0,0,roomOakDoor,0
+                        DB roomDarkCavernB,roomTortureChamber,0,0
+                        DB 0,roomNorthSouthTunnel,0,roomOakDoor
+                        DB 0,roomTortureChamber,roomDarkCavernB,roomCaveEntry
+                        DB roomWindCorridor,0,roomDarkCavernA,roomDarkCavernA
+                        DB roomDarkCavernB,roomRoundRoom,0,roomDarkCavernA
+                        DB 0,roomLedgeOverRiver,roomNorthSouthTunnel,0
+                        DB roomNorthSouthTunnel,roomLedgeOverRiver,roomDarkCavernD
+                        DB roomDarkCavernC
+                        DB roomDarkCavernA,0,0,roomTempleBalcony
+                        DB 0,0,roomLedgeOverRiver,0
+                        DB 0,roomBatCave,0,roomRoundRoom
+                        DB roomDarkCavernD,roomDarkCavernF,0,0
+                        DB roomDarkCavernG,0,0,0
+                        DB roomBatCave,roomDarkCavernE,0,0
+                        DB 0,roomDarkCavernF,roomDarkCavernH,0
+                        DB 0,0,0,roomBatCave
                         DB 0,0,0,0
-                        DB ROOM_DARK_CAVERN_J,0,ROOM_TEMPLE,ROOM_LEDGE_WATERFALL_IN
-                        DB 0,ROOM_TEMPLE,0,0
+                        DB roomDarkCavernJ,0,roomTemple,roomLedgeWaterfallIn
+                        DB 0,roomTemple,0,0
                         DB 0,0,0,0
-                        DB 0,ROOM_DARK_CAVERN_I,ROOM_TINY_CELL,0
-                        DB ROOM_WATERFALL_BASE,ROOM_CASTLE_LEDGE,ROOM_DARK_CAVERN_I,128
-                        DB ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_RIVER_CONDUIT,ROOM_DRAIN_B
-                        DB ROOM_DARK_CAVERN_K,ROOM_DRAIN_C,ROOM_DRAIN_A,ROOM_DRAIN_C
-                        DB ROOM_DARK_CAVERN_K,ROOM_TINY_CELL,ROOM_DRAIN_B,ROOM_DRAIN_D
-                        DB ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE
-                        DB 0,ROOM_LEDGE_WATERFALL_IN,0,128
-                        DB ROOM_STONE_STAIRCASE,0,ROOM_STONE_STAIRCASE,ROOM_STONE_STAIRCASE
-                        DB 0,ROOM_WATERFALL_BASE,ROOM_DARK_CAVERN_K,0
-                        DB ROOM_LEDGE_WATERFALL_IN,128,0,128
-                        DB 0,0,ROOM_CASTLE_LEDGE,ROOM_CASTLE_COURTYARD
-                        DB 0,ROOM_EAST_RIVERBANK,ROOM_DRAWBRIDGE,ROOM_POWDER_MAG
-                        DB 0,0,ROOM_CASTLE_COURTYARD,0
-                        DB ROOM_CASTLE_COURTYARD,0,ROOM_WOODEN_BRIDGE,ROOM_CASTLE_COURTYARD
-                        DB ROOM_RIVER_CONDUIT,0,0,ROOM_EAST_RIVERBANK
-                        DB 0,ROOM_WOODEN_BRIDGE,ROOM_DRAIN_A,0
+                        DB 0,roomDarkCavernI,roomTinyCell,0
+                        DB roomWaterfallBase,roomCastleLedge,roomDarkCavernI,128
+                        DB roomDarkCavernK,roomDrainC,roomRiverConduit,roomDrainB
+                        DB roomDarkCavernK,roomDrainC,roomDrainA,roomDrainC
+                        DB roomDarkCavernK,roomTinyCell,roomDrainB,roomDrainD
+                        DB roomStoneStaircase,roomStoneStaircase,0,roomStoneStaircase
+                        DB 0,roomLedgeWaterfallIn,0,128
+                        DB roomStoneStaircase,0,roomStoneStaircase,roomStoneStaircase
+                        DB 0,roomWaterfallBase,roomDarkCavernK,0
+                        DB roomLedgeWaterfallIn,128,0,128
+                        DB 0,0,roomCastleLedge,roomCastleCourtyard
+                        DB 0,roomEastRiverbank,roomDrawbridge,roomPowderMag
+                        DB 0,0,roomCastleCourtyard,0
+                        DB roomCastleCourtyard,0,roomWoodenBridge,roomCastleCourtyard
+                        DB roomRiverConduit,0,0,roomEastRiverbank
+                        DB 0,roomWoodenBridge,roomDrainA,0
 
-OBJECT_LOCATION_TABLE
-                        DW ROOM_DARK_CAVERN_I, ROOM_TREASURE_ROOM, ROOM_BRIDGE_NORTH_ANCHOR
-                        DW ROOM_CAVE_ENTRANCE_CLEARING
-                        DW ROOM_DEAD_END_INSCRIPTION, ROOM_STONE_STAIRCASE, ROOM_RIVER_OUTCROP
-                        DW ROOM_DARK_ROOM
-                        DW ROOM_POWDER_MAG, ROOM_WATERFALL_BASE
-                        DW ROOM_WIND_CORRIDOR, ROOM_DARK_CAVERN_K
-                        DW ROOM_RIVER_CONDUIT, ROOM_TREASURE_ROOM
-                        DW ROOM_TREASURE_ROOM, ROOM_TREASURE_ROOM
-                        DW ROOM_TREASURE_ROOM, EXIT_NONE
-                        DW ROOM_DARK_CAVERN_H, ROOM_CRATER_EDGE
-                        DW ROOM_DARK_CAVERN_A, ROOM_CLIFF_FACE
-                        DW ROOM_NORTH_SOUTH_TUNNEL, ROOM_TINY_CELL
+objectLocationTable
+                        DW roomDarkCavernI, roomTreasureRoom, roomBridgeNorthAnchor
+                        DW roomCaveEntranceClearing
+                        DW roomDeadEndInscription, roomStoneStaircase, roomRiverOutcrop
+                        DW roomDarkRoom
+                        DW roomPowderMag, roomWaterfallBase
+                        DW roomWindCorridor, roomDarkCavernK
+                        DW roomRiverConduit, roomTreasureRoom
+                        DW roomTreasureRoom, roomTreasureRoom
+                        DW roomTreasureRoom, exitNone
+                        DW roomDarkCavernH, roomCraterEdge
+                        DW roomDarkCavernA, roomCliffFace
+                        DW roomNorthSouthTunnel, roomTinyCell
 
 
-ROOM_DESC1_TABLE
-                        DW DESC_DARK_ROOM, DESC_FOREST_CLEARING, DESC_DARK_FOREST
-                        DW DESC_CLOVER_FIELD, DESC_RIVER_CLIFF, DESC_RIVER_BANK
-                        DW DESC_CRATER_EDGE, DESC_RIVER_OUTCROP, DESC_MT_YMIR
-                        DW DESC_BRIDGE_NORTH, DESC_BRIDGE_MID, DESC_BRIDGE_SOUTH
-                        DW DESC_MUSHROOM_ROCK, DESC_CAVE_CLEARING, DESC_CLIFF_FACE
-                        DW DESC_CAVE_ENTRY, DESC_DEAD_END, NULL
-                        DW DESC_TREASURE_ROOM, DESC_OAK_DOOR, NULL, DESC_WIND_CORRIDOR
-                        DW DESC_TORTURE_CHAMBER, DESC_NS_TUNNEL, NULL, DESC_ROUND_ROOM
-                        DW DESC_LEDGE_RIVER, DESC_TEMPLE_BALCONY
-                        DW NULL, NULL, NULL, NULL, DESC_BAT_CAVE, NULL, DESC_TEMPLE
-                        DW NULL, DESC_CRYPT, DESC_TINY_CELL, NULL, DESC_WATERFALL_LEDGE
-                        DW NULL, NULL, NULL, NULL, NULL, DESC_WATERFALL_BASE, NULL
-                        DW DESC_STONE_STAIR, DESC_CASTLE_LEDGE, DESC_DRAWBRIDGE
-                        DW DESC_CASTLE_COURTYARD, DESC_POWDER_MAG, DESC_EAST_BANK
-                        DW DESC_WOODEN_BRIDGE, DESC_RIVER_CONDUIT
+roomDesc1Table
+                        DW descDarkRoom, descForestClearing, descDarkForest
+                        DW descCloverField, descRiverCliff, descRiverBank
+                        DW descCraterEdge, descRiverOutcrop, descMtYmir
+                        DW descBridgeNorth, descBridgeMid, descBridgeSouth
+                        DW descMushroomRock, descCaveClearing, descCliffFace
+                        DW descCaveEntry, descDeadEnd, NULL
+                        DW descTreasureRoom, descOakDoor, NULL, descWindCorridor
+                        DW descTortureChamber, descNsTunnel, NULL, descRoundRoom
+                        DW descLedgeRiver, descTempleBalcony
+                        DW NULL, NULL, NULL, NULL, descBatCave, NULL, descTemple
+                        DW NULL, descCrypt, descTinyCell, NULL, descWaterfallLedge
+                        DW NULL, NULL, NULL, NULL, NULL, descWaterfallBase, NULL
+                        DW descStoneStair, descCastleLedge, descDrawbridge
+                        DW descCastleCourtyard, descPowderMag, descEastBank
+                        DW descWoodenBridge, descRiverConduit
 
-ROOM_DESC2_TABLE
+roomDesc2Table
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-                        DW NULL, NULL, NULL, NULL, DESC_TORTURE_CHAMBER2, NULL, NULL
-                        DW DESC_ROUND_ROOM2, NULL, DESC_TEMPLE_BALCONY2
-                        DW NULL, NULL, NULL, NULL, DESC_BAT_CAVE2, NULL, NULL, NULL, DESC_CRYPT2
+                        DW NULL, NULL, NULL, NULL, descTortureChamber2, NULL, NULL
+                        DW descRoundRoom2, NULL, descTempleBalcony2
+                        DW NULL, NULL, NULL, NULL, descBatCave2, NULL, NULL, NULL, descCrypt2
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL
 
-VERB_PATTERN_TABLE
-                        DW VERB_TAKE, VERB_PUT, VERB_USING, VERB_WITH, VERB_CUT
-                        DW VERB_BREAK, VERB_UNLOCK, VERB_OPEN, VERB_KILL, VERB_ATTACK
-                        DW VERB_LIGHT, VERB_BURN, VERB_UP, VERB_DOWN, VERB_JUMP, VERB_SWIM
+verbPatternTable
+                        DW verbTake, verbPut, verbUsing, verbWith, verbCut
+                        DW verbBreak, verbUnlock, verbOpen, verbKill, verbAttack
+                        DW verbLight, verbBurn, verbUp, verbDown, verbJump, verbSwim
 
-DIR_WORD_INDEX_TABLE
-                        DW DIR_NORTH_STR, DIR_SOUTH_STR, DIR_WEST_STR, DIR_EAST_STR
+dirWordIndexTable
+                        DW dirNorthStr, dirSouthStr, dirWestStr, dirEastStr
 
-MONSTER_NAME_TABLE
-                        DW MON_NAME_WIZ, MON_NAME_DEMON, MON_NAME_TROLL
-                        DW MON_NAME_DRAGON, MON_NAME_BAT, MON_NAME_DWARF
+monsterNameTable
+                        DW monNameWiz, monNameDemon, monNameTroll
+                        DW monNameDragon, monNameBat, monNameDwarf
 
-MONSTER_NOUN_TABLE
-                        DW MON_NOUN_WIZ, MON_NOUN_DEMON, MON_NOUN_TROLL
-                        DW MON_NOUN_DRAGON, MON_NOUN_BAT, MON_NOUN_DWARF
+monsterNounTable
+                        DW monNounWiz, monNounDemon, monNounTroll
+                        DW monNounDragon, monNounBat, monNounDwarf
 
-OBJECT_NAME_NAME_TABLE:
-                        DW OBJ_NAME_COIN, OBJ_NAME_COMPASS, OBJ_NAME_BOMB, OBJ_NAME_RUBY
-                        DW OBJ_NAME_DIAMOND, OBJ_NAME_PEARL, OBJ_NAME_STONE, OBJ_NAME_RING
-                        DW OBJ_NAME_PENDANT, OBJ_NAME_GRAIL, OBJ_NAME_SHIELD, OBJ_NAME_BOX
-                        DW OBJ_NAME_KEY, OBJ_NAME_SWORD, OBJ_NAME_CANDLE, OBJ_NAME_ROPE
-                        DW OBJ_NAME_BRICK, OBJ_NAME_GRILL
+objectNameNameTable:
+                        DW objNameCoin, objNameCompass, objNameBomb, objNameRuby
+                        DW objNameDiamond, objNamePearl, objNameStone, objNameRing
+                        DW objNamePendant, objNameGrail, objNameShield, objNameBox
+                        DW objNameKey, objNameSword, objNameCandle, objNameRope
+                        DW objNameBrick, objNameGrill
 
-OBJECT_NAME_NOUN_TABLE:
-                        DW OBJ_NOUN_COIN, OBJ_NOUN_COMPASS, OBJ_NOUN_BOMB, OBJ_NOUN_RUBY
-                        DW OBJ_NOUN_DIAMOND, OBJ_NOUN_PEARL, OBJ_NOUN_STONE, OBJ_NOUN_RING
-                        DW OBJ_NOUN_PENDANT, OBJ_NOUN_GRAIL, OBJ_NOUN_SHIELD, OBJ_NOUN_BOX
-                        DW OBJ_NOUN_KEY, OBJ_NOUN_SWORD, OBJ_NOUN_CANDLE, OBJ_NOUN_ROPE
-                        DW OBJ_NOUN_BRICK, OBJ_NOUN_GRILL
+objectNameNounTable:
+                        DW objNounCoin, objNounCompass, objNounBomb, objNounRuby
+                        DW objNounDiamond, objNounPearl, objNounStone, objNounRing
+                        DW objNounPendant, objNounGrail, objNounShield, objNounBox
+                        DW objNounKey, objNounSword, objNounCandle, objNounRope
+                        DW objNounBrick, objNounGrill
 
-OBJDESC1_TABLE:
-                        DW MON_NAME_WIZ, MON_NAME_DEMON, MON_NAME_TROLL
-                        DW MON_NAME_DRAGON, MON_NAME_BAT, MON_NAME_DWARF
-                        DW OBJ_NAME_COIN, OBJ_NAME_COMPASS, OBJ_NAME_BOMB, OBJ_NAME_RUBY
-                        DW OBJ_NAME_DIAMOND, OBJ_NAME_PEARL, OBJ_NAME_STONE, OBJ_NAME_RING
-                        DW OBJ_NAME_PENDANT, OBJ_NAME_GRAIL, OBJ_NAME_SHIELD, OBJ_NAME_BOX
-                        DW OBJ_NAME_KEY, OBJ_NAME_SWORD, OBJ_NAME_CANDLE, OBJ_NAME_ROPE
-                        DW OBJ_NAME_BRICK, OBJ_NAME_GRILL
+objdesc1Table:
+                        DW monNameWiz, monNameDemon, monNameTroll
+                        DW monNameDragon, monNameBat, monNameDwarf
+                        DW objNameCoin, objNameCompass, objNameBomb, objNameRuby
+                        DW objNameDiamond, objNamePearl, objNameStone, objNameRing
+                        DW objNamePendant, objNameGrail, objNameShield, objNameBox
+                        DW objNameKey, objNameSword, objNameCandle, objNameRope
+                        DW objNameBrick, objNameGrill
 
-OBJDESC2_TABLE:
-                        DW MON_NOUN_WIZ, MON_NOUN_DEMON, MON_NOUN_TROLL
-                        DW MON_NOUN_DRAGON, MON_NOUN_BAT, MON_NOUN_DWARF
-                        DW OBJ_NOUN_COIN, OBJ_NOUN_COMPASS, OBJ_NOUN_BOMB, OBJ_NOUN_RUBY
-                        DW OBJ_NOUN_DIAMOND, OBJ_NOUN_PEARL, OBJ_NOUN_STONE, OBJ_NOUN_RING
-                        DW OBJ_NOUN_PENDANT, OBJ_NOUN_GRAIL, OBJ_NOUN_SHIELD, OBJ_NOUN_BOX
-                        DW OBJ_NOUN_KEY, OBJ_NOUN_SWORD, OBJ_NOUN_CANDLE, OBJ_NOUN_ROPE
-                        DW OBJ_NOUN_BRICK, OBJ_NOUN_GRILL
+objdesc2Table:
+                        DW monNounWiz, monNounDemon, monNounTroll
+                        DW monNounDragon, monNounBat, monNounDwarf
+                        DW objNounCoin, objNounCompass, objNounBomb, objNounRuby
+                        DW objNounDiamond, objNounPearl, objNounStone, objNounRing
+                        DW objNounPendant, objNounGrail, objNounShield, objNounBox
+                        DW objNounKey, objNounSword, objNounCandle, objNounRope
+                        DW objNounBrick, objNounGrill

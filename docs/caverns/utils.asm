@@ -2,22 +2,22 @@
 ; Conventions:
 ; - Inputs in A/HL (DE/BC as needed), IX/IY for advanced use
 ; - Outputs in A or HL
-; - Uses system macros: SYS_GETC, SYS_PUTC, SYS_PUTS
+; - Uses system macros: sysGetc, sysPutc, sysPuts
 ; - All buffers null-terminated unless specified
 
 ; getc: read one character into A (blocks until available)
 getc:
-    SYS_GETC             ; A = char, flags set accordingly
+    sysGetc             ; A = char, flags set accordingly
     ret
 
 ; putc: write character in A
 putc:
-    SYS_PUTC             ; writes A
+    sysPutc             ; writes A
     ret
 
 ; puts: write null-terminated string at HL
 puts:
-    SYS_PUTS             ; HL -> string, prints until 0
+    sysPuts             ; HL -> string, prints until 0
     ret
 
 ; readLine: reads a line into buffer at HL, max length in B (not counting terminator)
@@ -28,7 +28,7 @@ readLine:
     push bc
     ld d,0               ; length counter in D
 readLoop:
-    SYS_GETC             ; A = ch
+    sysGetc             ; A = ch
     cp 13                ; CR?
     jr z,readDone
     cp 10                ; LF?
@@ -47,7 +47,7 @@ readLoop:
     dec hl
     ld a,(hl)            ; reload char for echo
     inc hl
-    SYS_PUTC             ; echo
+    sysPutc             ; echo
     jr readLoop
 readDone:
     ld (hl),0
@@ -64,10 +64,10 @@ toLowerAscii:
     add a,32
     ret
 
-; rand0_3: returns pseudo-random 0..3 in A
+; rand0To3: returns pseudo-random 0..3 in A
 ; - Simple LFSR/state at randState (one byte)
 ; - Caller must define randState storage
-rand0_3:
+rand0To3:
     ld hl,randState
     ld a,(hl)
     ld b,a
@@ -128,10 +128,10 @@ findFound:
 
 ; tokenizeInput: simple whitespace tokenizer in-place
 ; Inputs: HL = buffer (null-terminated)
-; Outputs: TOKEN_PTRS array (caller defines), TOKEN_COUNT byte
+; Outputs: tokenPtrs array (caller defines), tokenCount byte
 ; - Splits on space, collapses multiple spaces
 tokenizeInput:
-    ; Caller supplies TOKEN_PTRS (word array) and TOKEN_COUNT (byte)
+    ; Caller supplies tokenPtrs (word array) and tokenCount (byte)
     ; Implementation intentionally left for integration context
     ret
 
@@ -154,7 +154,7 @@ spaceStr: db " ",0
 
 ; printStr: print null-terminated string at HL
 printStr:
-    SVC_PUTS
+    svcPuts
     ret
 
 ; printNewline: emit CR/LF
@@ -214,9 +214,9 @@ printNum7:
     ld a,b
     jp putc
 
-; NORMALIZE_INPUT_SUB: lowercase a null-terminated string in-place
+; normalizeInput: lowercase a null-terminated string in-place
 ; Input: HL -> string; Output: HL -> terminator; Clobbers: A
-NORMALIZE_INPUT_SUB:
+normalizeInput:
 normLoop:
     ld a,(hl)                     ; load current char
     or a                          ; terminator?

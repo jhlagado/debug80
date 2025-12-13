@@ -8,10 +8,10 @@
 ;  OBJECTS 7-24: coin, compass, bomb, ruby, diamond, pearl, stone,
 ;                ring, pendant, grail, shield, box, key, sword,
 ;                candle, rope, brick, grill
-;  ROOM FLAGS: BRIDGE_CONDITION/H, DRAWBRIDGE_STATE/D,
-;              WATER_EXIT_LOCATION/W, GATE_DESTINATION/G,
-;              TELEPORT_DESTINATION/T, SECRET_EXIT_LOCATION/E
-;  DIRECTION INDEX: DIR_NORTH_STR=0, DIR_SOUTH_STR=1, DIR_WEST_STR=2, DIR_EAST_STR=3
+;  ROOM FLAGS: bridgeCondition/H, drawbridgeState/D,
+;              waterExitLocation/W, gateDestination/G,
+;              teleportDestination/T, secretExitLocation/E
+;  DIRECTION INDEX: dirNorthStr=0, dirSouthStr=1, dirWestStr=2, dirEastStr=3
 
     .include "constants.asm"
     .include "macros.asm"
@@ -21,79 +21,79 @@
     .include "variables.asm"
 
 
-GAME_START:
+gameStart:
     cls
-    call INIT_STATE
-    call UPDATE_DYNAMIC_EXITS
-    goto DESCRIBE_CURRENT_LOCATION
+    call initState
+    call updateDynamicExits
+    goto describeCurrentLocation
 
-DESCRIBE_CURRENT_LOCATION:
+describeCurrentLocation:
 
     ; ---------------------------------------------------------
-    ; DESCRIBE_CURRENT_LOCATION
+    ; describeCurrentLocation
     ; Purpose: entry point after each player action to show the
     ; current room state or trigger an immediate monster attack.
     ; Steps:
     ;   1) If a hostile creature is present (non-bat) and player
-    ;      is not holding the sword, jump to MONSTER_ATTACK.
+    ;      is not holding the sword, jump to monsterAttack.
     ;   2) Darkness check: if room index < first dark cavern OR
     ;      candle lit AND candle is present/carried, show room;
     ;      otherwise print darkness warning and list occupants.
-    ;   3) Fall through to LIST_ROOM_OBJECTS_AND_CREATURES.
+    ;   3) Fall through to listRoomObjectsAndCreatures.
     ; Notes:
     ;   - Uses short-lived A loads for compares; all state lives
     ;     in RAM variables.
     ; ---------------------------------------------------------
 
     ; If a hostile creature is active (except some special case), jump to monster-attack logic
-    ld a,(HOSTILE_CREATURE_INDEX)
+    ld a,(hostileCreatureIndex)
     or a
-    jp z,DC_DARKNESS_CHECK
+    jp z,dcDarknessCheck
     cp 5
-    jp z,DC_DARKNESS_CHECK
-    ld a,(CURRENT_OBJECT_INDEX)
-    cp OBJ_SWORD
-    jp z,DC_DARKNESS_CHECK
-    jp MONSTER_ATTACK
+    jp z,dcDarknessCheck
+    ld a,(currentObjectIndex)
+    cp objSword
+    jp z,dcDarknessCheck
+    jp monsterAttack
 
-DC_DARKNESS_CHECK:
+dcDarknessCheck:
     ; Darkness logic: show room description if lit or before dark caverns
-    ld a,(PLAYER_LOCATION)
-    cp ROOM_DARK_CAVERN_A
-    jp c,PRINT_ROOM_DESCRIPTION
+    ld a,(playerLocation)
+    cp roomDarkCavernA
+    jp c,printRoomDescription
 
-    ld a,(CANDLE_IS_LIT_FLAG)
+    ld a,(candleIsLitFlag)
     or a
-    jp z,DC_SHOW_DARKNESS
+    jp z,dcShowDarkness
 
     ; Is candle at player location?
-    ld a,(OBJECT_LOCATION+20)        ; OBJ_CANDLE index 21 -> offset 20
+    ld a,(objectLocation+20)        ; objCandle index 21 -> offset 20
     ld b,a
-    ld a,(PLAYER_LOCATION)
+    ld a,(playerLocation)
     cp b
-    jp z,PRINT_ROOM_DESCRIPTION
+    jp z,printRoomDescription
 
     ; Or carried? (-1 == 0xFF)
     ld a,b
     cp 255
-    jp z,PRINT_ROOM_DESCRIPTION
+    jp z,printRoomDescription
 
-DC_SHOW_DARKNESS:
-    ld hl,STR_TOO_DARK
+dcShowDarkness:
+    ld hl,strTooDark
     call printStr
-    jp LIST_ROOM_OBJECTS_AND_CREATURES
+    jp listRoomObjectsAndCreatures
 
 
 
-PRINT_ROOM_DESCRIPTION:
+printRoomDescription:
 
     ; ---------------------------------------------------------
-    ; PRINT_ROOM_DESCRIPTION
+    ; printRoomDescription
     ; Purpose: show the room’s primary/secondary description and
     ; supplemental text based on dynamic state (darkness, bridge,
     ; dragon corpse, drawbridge, candle dim/out).
     ; Steps:
-    ;   1) Fetch ROOM_DESC1/2_TABLE word pointers by room index
+    ;   1) Fetch roomDesc1/2Table word pointers by room index
     ;      (1-based) and print if non-null.
     ;   2) Conditional extras:
     ;        - Dark cavern generic line for specific room ranges.
@@ -101,524 +101,524 @@ PRINT_ROOM_DESCRIPTION:
     ;        - Dragon corpse when present.
     ;        - Golden drawbridge when lowered.
     ;        - Candle dim/out thresholds (also clears lit flag).
-    ;   3) Jump to LIST_ROOM_OBJECTS_AND_CREATURES.
+    ;   3) Jump to listRoomObjectsAndCreatures.
     ; ---------------------------------------------------------
 
     ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
-    ; ROOM_DESC1_TABLE entry (word) = DESC pointer for current room
-    ld a,(PLAYER_LOCATION)
+    ; roomDesc1Table entry (word) = DESC pointer for current room
+    ld a,(playerLocation)
     dec a                       ; 0-based index
     add a,a                     ; *2 for word table
     ld l,a
     ld h,0
-    ld de,ROOM_DESC1_TABLE
+    ld de,roomDesc1Table
     add hl,de                   ; HL -> entry
     ld e,(hl)
     inc hl
     ld d,(hl)                   ; DE = ptr
     ld a,d
     or e
-    jp z,PR_CHECK_DESC2
+    jp z,prCheckDesc2
     push de
-    call printStr               ; SVC_PUTS leaves HL at end of string
+    call printStr               ; svcPuts leaves HL at end of string
     pop de
 
-PR_CHECK_DESC2:
-    ld a,(PLAYER_LOCATION)
+prCheckDesc2:
+    ld a,(playerLocation)
     dec a
     add a,a
     ld l,a
     ld h,0
-    ld de,ROOM_DESC2_TABLE
+    ld de,roomDesc2Table
     add hl,de
     ld e,(hl)
     inc hl
     ld d,(hl)
     ld a,d
     or e
-    jp z,PR_AFTER_DESC
+    jp z,prAfterDesc
     push de
     call printStr
     pop de
 
-PR_AFTER_DESC:
+prAfterDesc:
     ; ---------------------------------------------------------
-    ; PR_AFTER_DESC
+    ; prAfterDesc
     ; After room description, emit contextual extras and candle
     ; warnings, then fall through to listing objects/creatures.
     ; ---------------------------------------------------------
 
     ; Check if current room needs the generic dark-cavern message
-    ld a,(PLAYER_LOCATION)        ; A = current room
+    ld a,(playerLocation)        ; A = current room
     ld b,a                        ; B = current room (reuse)
-    cp ROOM_DARK_CAVERN_A         ; dark cavern A?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_B         ; dark cavern B?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_C         ; dark cavern C?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_H         ; dark cavern H?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_I         ; dark cavern I?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_J         ; dark cavern J?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_K         ; dark cavern K?
-    jp z,PRAD_PRINT_DARK
-    cp ROOM_WOODEN_BRIDGE         ; wooden bridge also dark
-    jp z,PRAD_PRINT_DARK
+    cp roomDarkCavernA         ; dark cavern A?
+    jp z,pradPrintDark
+    cp roomDarkCavernB         ; dark cavern B?
+    jp z,pradPrintDark
+    cp roomDarkCavernC         ; dark cavern C?
+    jp z,pradPrintDark
+    cp roomDarkCavernH         ; dark cavern H?
+    jp z,pradPrintDark
+    cp roomDarkCavernI         ; dark cavern I?
+    jp z,pradPrintDark
+    cp roomDarkCavernJ         ; dark cavern J?
+    jp z,pradPrintDark
+    cp roomDarkCavernK         ; dark cavern K?
+    jp z,pradPrintDark
+    cp roomWoodenBridge         ; wooden bridge also dark
+    jp z,pradPrintDark
     ld a,b                        ; A = current room
-    cp ROOM_TEMPLE_BALCONY+1      ; >= 29? (caverns D/E/F)
-    jp c,PRAD_BRIDGE_CHECK
-    cp ROOM_DARK_CAVERN_G         ; < 32? (before cavern G)
-    jp nc,PRAD_BRIDGE_CHECK
-PRAD_PRINT_DARK:
-    ld hl,STR_DARK_CAVERN         ; "You are deep in a dark cavern."
+    cp roomTempleBalcony+1      ; >= 29? (caverns D/E/F)
+    jp c,pradBridgeCheck
+    cp roomDarkCavernG         ; < 32? (before cavern G)
+    jp nc,pradBridgeCheck
+pradPrintDark:
+    ld hl,strDarkCavern         ; "You are deep in a dark cavern."
     call printStr                 ; emit dark cavern note
 
-PRAD_BRIDGE_CHECK:
+pradBridgeCheck:
     ; Broken bridge message when at north/south anchor and bridge is fatal
-    ld a,(PLAYER_LOCATION)        ; A = current room
-    cp ROOM_BRIDGE_NORTH_ANCHOR   ; at north anchor?
-    jr z,BRIDGE_MAYBE
-    cp ROOM_BRIDGE_SOUTH_ANCHOR   ; at south anchor?
-    jr nz,PRAD_DRAGON_CHECK
-BRIDGE_MAYBE:
-    ld a,(BRIDGE_CONDITION)       ; A = bridge state
-    cp EXIT_FATAL                 ; snapped?
-    jr nz,PRAD_DRAGON_CHECK
-    ld hl,STR_BRIDGE_SNAPPED      ; "Two of the ropes have snapped..."
+    ld a,(playerLocation)        ; A = current room
+    cp roomBridgeNorthAnchor   ; at north anchor?
+    jr z,bridgeMaybe
+    cp roomBridgeSouthAnchor   ; at south anchor?
+    jr nz,pradDragonCheck
+bridgeMaybe:
+    ld a,(bridgeCondition)       ; A = bridge state
+    cp exitFatal                 ; snapped?
+    jr nz,pradDragonCheck
+    ld hl,strBridgeSnapped      ; "Two of the ropes have snapped..."
     call printStr                 ; warn bridge unusable
 
-PRAD_DRAGON_CHECK:
-    ; Dead dragon corpse visible only at cave entrance clearing when OBJ_DRAGON = 0
-    ld a,(PLAYER_LOCATION)        ; A = current room
-    cp ROOM_CAVE_ENTRANCE_CLEARING ; at cave entrance clearing?
-    jr nz,PRAD_BRIDGE_STATE
-    ld a,(OBJECT_LOCATION+3)      ; OBJ_DRAGON index 4 -> offset 3
+pradDragonCheck:
+    ; Dead dragon corpse visible only at cave entrance clearing when objDragon = 0
+    ld a,(playerLocation)        ; A = current room
+    cp roomCaveEntranceClearing ; at cave entrance clearing?
+    jr nz,pradBridgeState
+    ld a,(objectLocation+3)      ; objDragon index 4 -> offset 3
     or a                          ; zero means corpse present
-    jr nz,PRAD_BRIDGE_STATE
-    ld hl,STR_DRAGON_CORPSE       ; "You can also see the bloody corpse..."
+    jr nz,pradBridgeState
+    ld hl,strDragonCorpse       ; "You can also see the bloody corpse..."
     call printStr                 ; show corpse line
 
-PRAD_BRIDGE_STATE:
+pradBridgeState:
     ; Show golden drawbridge text when at castle ledge and drawbridge lowered
-    ld a,(PLAYER_LOCATION)        ; A = current room
-    cp ROOM_CASTLE_LEDGE          ; on castle ledge?
-    jr nz,PRAD_CANDLE_DIM
-    ld a,(DRAWBRIDGE_STATE)       ; A = drawbridge state
-    cp ROOM_DRAWBRIDGE            ; lowered into room 49?
-    jr nz,PRAD_CANDLE_DIM
-    ld hl,STR_GOLD_BRIDGE         ; "A mighty golden drawbridge..."
+    ld a,(playerLocation)        ; A = current room
+    cp roomCastleLedge          ; on castle ledge?
+    jr nz,pradCandleDim
+    ld a,(drawbridgeState)       ; A = drawbridge state
+    cp roomDrawbridge            ; lowered into room 49?
+    jr nz,pradCandleDim
+    ld hl,strGoldBridge         ; "A mighty golden drawbridge..."
     call printStr                 ; describe drawbridge
 
-PRAD_CANDLE_DIM:
+pradCandleDim:
     ; Candle dim warning once past threshold
-    ld a,(TURN_COUNTER)           ; A = turn count
-    cp CANDLE_DIM_TURN            ; dim threshold reached?
-    jr c,PRAD_CANDLE_OUT
-    ld hl,STR_CANDLE_DIM          ; "Your candle is growing dim."
+    ld a,(turnCounter)           ; A = turn count
+    cp candleDimTurn            ; dim threshold reached?
+    jr c,pradCandleOut
+    ld hl,strCandleDim          ; "Your candle is growing dim."
     call printStr                 ; warn dimming
 
-PRAD_CANDLE_OUT:
+pradCandleOut:
     ; Candle extinguished once out threshold reached
-    ld a,(TURN_COUNTER)           ; A = turn count
-    cp CANDLE_OUT_TURN            ; out threshold?
-    jp c,LIST_ROOM_OBJECTS_AND_CREATURES
+    ld a,(turnCounter)           ; A = turn count
+    cp candleOutTurn            ; out threshold?
+    jp c,listRoomObjectsAndCreatures
     xor a                         ; A = 0
-    ld (CANDLE_IS_LIT_FLAG),a     ; flag candle out
-    ld hl,STR_CANDLE_OUT          ; "In fact...it went out!"
+    ld (candleIsLitFlag),a     ; flag candle out
+    ld hl,strCandleOut          ; "In fact...it went out!"
     call printStr                 ; announce candle out
-    jp LIST_ROOM_OBJECTS_AND_CREATURES
+    jp listRoomObjectsAndCreatures
 
 
 
-LIST_ROOM_OBJECTS_AND_CREATURES:
+listRoomObjectsAndCreatures:
 
     ; ---------------------------------------------------------
-    ; LIST_ROOM_OBJECTS_AND_CREATURES
+    ; listRoomObjectsAndCreatures
     ; After room description/extras, list objects and creatures in
     ; the current room, trigger first-encounter text, then show the
     ; prompt and possibly launch an attack if a hostile is present.
     ; ---------------------------------------------------------
 
-    VISIBLE_OBJECT_COUNT = 0      ; reset visible object counter
+    visibleObjectCount = 0      ; reset visible object counter
 
     ; Count objects at current location (indices 7..24)
     ld a,7                        ; start at object index 7
-    ld (LOOP_INDEX),a             ; LOOP_INDEX = 7
-LOC_COUNT_OBJECTS:
-    ld a,(LOOP_INDEX)             ; A = current object index
+    ld (loopIndex),a             ; loopIndex = 7
+locCountObjects:
+    ld a,(loopIndex)             ; A = current object index
     cp 25                         ; past last object?
-    jp z,LOC_COUNT_DONE           ; done counting
-    ld a,(LOOP_INDEX)             ; A = index
+    jp z,locCountDone           ; done counting
+    ld a,(loopIndex)             ; A = index
     sub 1                         ; convert to 0-based offset
     ld l,a
     ld h,0
-    ld de,OBJECT_LOCATION         ; DE = base of object locations
-    add hl,de                     ; HL -> OBJECT_LOCATION(index)
+    ld de,objectLocation         ; DE = base of object locations
+    add hl,de                     ; HL -> objectLocation(index)
     ld a,(hl)                     ; A = object location
     ld b,a                        ; B = copy of location
-    ld a,(PLAYER_LOCATION)        ; A = player room
+    ld a,(playerLocation)        ; A = player room
     cp b                          ; same room?
-    jp nz,LOC_NEXT_OBJ            ; skip if not here
-    ld a,(VISIBLE_OBJECT_COUNT)   ; A = count so far
+    jp nz,locNextObj            ; skip if not here
+    ld a,(visibleObjectCount)   ; A = count so far
     inc a                         ; count++
-    ld (VISIBLE_OBJECT_COUNT),a   ; store updated count
-LOC_NEXT_OBJ:
-    ld a,(LOOP_INDEX)             ; A = index
+    ld (visibleObjectCount),a   ; store updated count
+locNextObj:
+    ld a,(loopIndex)             ; A = index
     inc a                         ; index++
-    ld (LOOP_INDEX),a             ; store
-    jp LOC_COUNT_OBJECTS          ; continue loop
-LOC_COUNT_DONE:
+    ld (loopIndex),a             ; store
+    jp locCountObjects          ; continue loop
+locCountDone:
 
-    if VISIBLE_OBJECT_COUNT > 0 then
-        ld hl,STR_SEE_OBJECTS     ; "You can also see..."
+    if visibleObjectCount > 0 then
+        ld hl,strSeeObjects     ; "You can also see..."
         call printStr             ; print header
         ; List objects at current location
         ld a,7                    ; restart at object 7
-        ld (LOOP_INDEX),a
-LOC_LIST_OBJECTS:
-        ld a,(LOOP_INDEX)         ; A = object index
+        ld (loopIndex),a
+locListObjects:
+        ld a,(loopIndex)         ; A = object index
         cp 25                     ; done listing?
-        jp z,LOC_DONE_LIST
-        ld a,(LOOP_INDEX)         ; A = index
+        jp z,locDoneList
+        ld a,(loopIndex)         ; A = index
         sub 1                     ; to offset
         ld l,a
         ld h,0
-        ld de,OBJECT_LOCATION     ; DE = base
-        add hl,de                 ; HL -> OBJECT_LOCATION(index)
+        ld de,objectLocation     ; DE = base
+        add hl,de                 ; HL -> objectLocation(index)
         ld a,(hl)                 ; A = object location
         ld b,a                    ; B = location copy
-        ld a,(PLAYER_LOCATION)    ; A = player room
+        ld a,(playerLocation)    ; A = player room
         cp b                      ; object here?
-        jp nz,LOC_NEXT_LIST       ; skip if not
-        ld a,(LOOP_INDEX)         ; A = object index
-        ld (CURRENT_OBJECT_INDEX),a ; remember current object index
-        call PRINT_OBJECT_DESCRIPTION_SUB ; print "a/an <adj> <noun>, "
-LOC_NEXT_LIST:
-        ld a,(LOOP_INDEX)         ; A = index
+        jp nz,locNextList       ; skip if not
+        ld a,(loopIndex)         ; A = object index
+        ld (currentObjectIndex),a ; remember current object index
+        call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+locNextList:
+        ld a,(loopIndex)         ; A = index
         inc a                     ; next object
-        ld (LOOP_INDEX),a         ; store
-        jp LOC_LIST_OBJECTS       ; loop list
-LOC_DONE_LIST:
+        ld (loopIndex),a         ; store
+        jp locListObjects       ; loop list
+locDoneList:
     end if
 
-    VISIBLE_CREATURE_COUNT = 0    ; reset visible creature counter
+    visibleCreatureCount = 0    ; reset visible creature counter
 
     ; Count/intro creatures at current location (indices 1..6)
     ld a,1                        ; start at creature index 1
-    ld (LOOP_INDEX),a             ; LOOP_INDEX = 1
-LOC_COUNT_CREATURES:
-    ld a,(LOOP_INDEX)             ; A = creature index
+    ld (loopIndex),a             ; loopIndex = 1
+locCountCreatures:
+    ld a,(loopIndex)             ; A = creature index
     cp 7                          ; past last creature?
-    jp z,LOC_COUNT_CRE_DONE       ; done counting
-    ld a,(LOOP_INDEX)             ; A = index
+    jp z,locCountCreDone       ; done counting
+    ld a,(loopIndex)             ; A = index
     sub 1                         ; to offset
     ld l,a
     ld h,0
-    ld de,OBJECT_LOCATION         ; DE = base
-    add hl,de                     ; HL -> OBJECT_LOCATION(index)
+    ld de,objectLocation         ; DE = base
+    add hl,de                     ; HL -> objectLocation(index)
     ld a,(hl)                     ; A = creature location
     ld b,a                        ; B = location copy
-    ld a,(PLAYER_LOCATION)        ; A = player room
+    ld a,(playerLocation)        ; A = player room
     cp b                          ; creature here?
-    jp nz,LOC_NEXT_CRE            ; skip if not here
-    ld a,(VISIBLE_CREATURE_COUNT) ; A = creature count
+    jp nz,locNextCre            ; skip if not here
+    ld a,(visibleCreatureCount) ; A = creature count
     inc a                         ; count++
-    ld (VISIBLE_CREATURE_COUNT),a ; store
-    ld a,(LOOP_INDEX)             ; A = creature index
-    ld (CURRENT_OBJECT_INDEX),a   ; remember current creature
-    call TRIGGER_CREATURE_INTRO_SUB ; trigger intro text if needed
-LOC_NEXT_CRE:
-    ld a,(LOOP_INDEX)             ; A = index
+    ld (visibleCreatureCount),a ; store
+    ld a,(loopIndex)             ; A = creature index
+    ld (currentObjectIndex),a   ; remember current creature
+    call triggerCreatureIntroSub ; trigger intro text if needed
+locNextCre:
+    ld a,(loopIndex)             ; A = index
     inc a                         ; next creature
-    ld (LOOP_INDEX),a             ; store
-    jp LOC_COUNT_CREATURES        ; loop
-LOC_COUNT_CRE_DONE:
+    ld (loopIndex),a             ; store
+    jp locCountCreatures        ; loop
+locCountCreDone:
 
-    if VISIBLE_CREATURE_COUNT > 0 then
-        ld hl,STR_SEE_CREATURES   ; "Nearby there lurks..."
+    if visibleCreatureCount > 0 then
+        ld hl,strSeeCreatures   ; "Nearby there lurks..."
         call printStr             ; print creature header
         ; List creatures at current location
         ld a,1                    ; restart at creature 1
-        ld (LOOP_INDEX),a
-LOC_LIST_CREATURES:
-        ld a,(LOOP_INDEX)         ; A = creature index
+        ld (loopIndex),a
+locListCreatures:
+        ld a,(loopIndex)         ; A = creature index
         cp 7                      ; finished listing?
-        jp z,LOC_LIST_CRE_DONE
-        ld a,(LOOP_INDEX)         ; A = index
+        jp z,locListCreDone
+        ld a,(loopIndex)         ; A = index
         sub 1                     ; to offset
         ld l,a
         ld h,0
-        ld de,OBJECT_LOCATION     ; DE = base
-        add hl,de                 ; HL -> OBJECT_LOCATION(index)
+        ld de,objectLocation     ; DE = base
+        add hl,de                 ; HL -> objectLocation(index)
         ld a,(hl)                 ; A = creature location
         ld b,a                    ; B = location copy
-        ld a,(PLAYER_LOCATION)    ; A = player room
+        ld a,(playerLocation)    ; A = player room
         cp b                      ; creature here?
-        jp nz,LOC_NEXT_CRE_LIST   ; skip if not
-        ld a,(LOOP_INDEX)         ; A = creature index
-        ld (CURRENT_OBJECT_INDEX),a ; remember creature index
-        call PRINT_OBJECT_DESCRIPTION_SUB ; print "a/an <adj> <noun>, "
-LOC_NEXT_CRE_LIST:
-        ld a,(LOOP_INDEX)         ; A = index
+        jp nz,locNextCreList   ; skip if not
+        ld a,(loopIndex)         ; A = creature index
+        ld (currentObjectIndex),a ; remember creature index
+        call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+locNextCreList:
+        ld a,(loopIndex)         ; A = index
         inc a                     ; next creature
-        ld (LOOP_INDEX),a         ; store
-        jp LOC_LIST_CREATURES     ; loop listing
-LOC_LIST_CRE_DONE:
+        ld (loopIndex),a         ; store
+        jp locListCreatures     ; loop listing
+locListCreDone:
     end if
 
     call printNewline             ; blank line
-    ld hl,STR_PROMPT              ; ">"
+    ld hl,strPrompt              ; ">"
     call printStr                 ; show prompt
-    SET8 RESHOW_FLAG,1            ; remember we displayed room
+    SET8 reshowFlag,1            ; remember we displayed room
 
-    ld a,(HOSTILE_CREATURE_INDEX) ; A = hostile index (0 if none)
+    ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
     or a                          ; any hostile?
-    jp z,LOC_DONE                 ; none -> input
+    jp z,locDone                 ; none -> input
     cp 5                          ; dragon handled elsewhere; bat (6) non-hostile
-    jp z,LOC_DONE
-    ld a,(CURRENT_OBJECT_INDEX)   ; A = last listed index
-    cp OBJ_SWORD                  ; sword available?
-    jp z,LOC_DONE                 ; sword means no auto attack
-    jp MONSTER_ATTACK             ; attack player
-LOC_DONE:
+    jp z,locDone
+    ld a,(currentObjectIndex)   ; A = last listed index
+    cp objSword                  ; sword available?
+    jp z,locDone                 ; sword means no auto attack
+    jp monsterAttack             ; attack player
+locDone:
 
-    goto GET_PLAYER_INPUT
+    goto getPlayerInput
 
 
 
-GET_PLAYER_INPUT:
+getPlayerInput:
 
     ; ---------------------------------------------------------
-    ; GET_PLAYER_INPUT
+    ; getPlayerInput
     ; Read a non-empty command line, normalize it (pad spaces,
     ; lowercase, trim multiples), bump turn counter, and route to
     ; parsing. Clears the screen afterward.
     ; ---------------------------------------------------------
 
-    input INPUT_COMMAND$          ; read command line
+    input inputCommand$          ; read command line
 
-    if INPUT_COMMAND$ = "" then   ; empty? keep prompting
-        goto GET_PLAYER_INPUT
+    if inputCommand$ = "" then   ; empty? keep prompting
+        goto getPlayerInput
     end if
 
-    INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " " ; pad with spaces for INSTR finds
-    TURN_COUNTER = TURN_COUNTER + 1              ; advance turn count
+    inputCommand$ = " " + inputCommand$ + " " ; pad with spaces for INSTR finds
+    turnCounter = turnCounter + 1              ; advance turn count
 
-    call NORMALIZE_INPUT_SUB      ; lowercase/trim/pad as per helper
+    call normalizeInput           ; lowercase/trim/pad as per helper
 
     cls                           ; clear screen before processing
 
-    goto PARSE_COMMAND_ENTRY      ; continue to parser
+    goto parseCommandEntry      ; continue to parser
 
 
 
-PARSE_COMMAND_ENTRY:
+parseCommandEntry:
 
     ; ---------------------------------------------------------
-    ; PARSE_COMMAND_ENTRY
-    ; Identify noun in input, set CURRENT_OBJECT_INDEX, refresh
+    ; parseCommandEntry
+    ; Identify noun in input, set currentObjectIndex, refresh
     ; dynamic exits/flags that depend on location/state, then
     ; continue into verb routing.
     ; ---------------------------------------------------------
 
-    CURRENT_OBJECT_INDEX = 0      ; reset matched object index
-    OBJECT_ADJECTIVE$ = ""        ; clear parsed adjective
-    OBJECT_NOUN$ = ""             ; clear parsed noun
+    currentObjectIndex = 0      ; reset matched object index
+    objectAdjective$ = ""        ; clear parsed adjective
+    objectNoun$ = ""             ; clear parsed noun
 
-    for LOOP_INDEX = 7 to 24
-        OBJECT_ADJECTIVE$ = @OBJECT_NAME_ADJ(LOOP_INDEX) ; candidate adj
-        OBJECT_NOUN$ = @OBJECT_NAME_NOUN(LOOP_INDEX)     ; candidate noun
-        if INSTR(INPUT_COMMAND$, OBJECT_NOUN$) > 0 then  ; noun found?
-            CURRENT_OBJECT_INDEX = LOOP_INDEX            ; remember which
+    for loopIndex = 7 to 24
+        objectAdjective$ = @objectNameAdj(loopIndex) ; candidate adj
+        objectNoun$ = @objectNameNoun(loopIndex)     ; candidate noun
+        if INSTR(inputCommand$, objectNoun$) > 0 then  ; noun found?
+            currentObjectIndex = loopIndex            ; remember which
             EXIT for                                     ; stop search
         end if
-    next LOOP_INDEX
+    next loopIndex
 
-    if CURRENT_OBJECT_INDEX = 0 then
-        OBJECT_ADJECTIVE$ = ""    ; no noun matched -> clear
-        OBJECT_NOUN$ = ""
+    if currentObjectIndex = 0 then
+        objectAdjective$ = ""    ; no noun matched -> clear
+        objectNoun$ = ""
     end if
 
     ; Bridge condition when halfway
-    if PLAYER_LOCATION = ROOM_BRIDGE_MID then
-        BRIDGE_CONDITION = 128
-        call UPDATE_DYNAMIC_EXITS
+    if playerLocation = roomBridgeMid then
+        bridgeCondition = 128
+        call updateDynamicExits
     end if
 
     ; Hut flag
-    if PLAYER_LOCATION = ROOM_FOREST_CLEARING then
-        GENERAL_FLAG_J = 1
+    if playerLocation = roomForestClearing then
+        generalFlagJ = 1
     end if
 
     ; Waterfall conduit exit opens when at base
-    if PLAYER_LOCATION = ROOM_WATERFALL_BASE then
-        WATER_EXIT_LOCATION = 43
-        call UPDATE_DYNAMIC_EXITS
+    if playerLocation = roomWaterfallBase then
+        waterExitLocation = 43
+        call updateDynamicExits
     end if
 
     ; Reset water exit when back in temple
-    if PLAYER_LOCATION = ROOM_TEMPLE then
-        WATER_EXIT_LOCATION = 0
-        call UPDATE_DYNAMIC_EXITS
+    if playerLocation = roomTemple then
+        waterExitLocation = 0
+        call updateDynamicExits
     end if
 
     ; Gate destination changes once grill moved
-    if OBJECT_LOCATION(OBJ_GRILL) <> ROOM_TINY_CELL then
-        GATE_DESTINATION = 39
-        call UPDATE_DYNAMIC_EXITS
+    if objectLocation(objGrill) <> roomTinyCell then
+        gateDestination = 39
+        call updateDynamicExits
     end if
 
     ; Drawbridge lowers when on drawbridge room
-    if PLAYER_LOCATION = ROOM_DRAWBRIDGE then
-        DRAWBRIDGE_STATE = 49
-        call UPDATE_DYNAMIC_EXITS
+    if playerLocation = roomDrawbridge then
+        drawbridgeState = 49
+        call updateDynamicExits
     end if
 
     ; LOOK command
-    if INSTR(INPUT_COMMAND$, " look ") > 0 then
-        RESHOW_FLAG = 0
-        goto DESCRIBE_CURRENT_LOCATION
+    if INSTR(inputCommand$, " look ") > 0 then
+        reshowFlag = 0
+        goto describeCurrentLocation
     end if
 
     ; LIST inventory
-    if INSTR(INPUT_COMMAND$, " list ") > 0 then
-        goto SHOW_INVENTORY
+    if INSTR(inputCommand$, " list ") > 0 then
+        goto showInventory
     end if
 
     ; QUIT
-    if INSTR(INPUT_COMMAND$, " quit ") > 0 then
-        goto QUIT_GAME
+    if INSTR(inputCommand$, " quit ") > 0 then
+        goto quitGame
     end if
 
-    goto CHECK_CREATURE_AT_LOCATION
+    goto checkCreatureAtLocation
 
 
 
-SHOW_INVENTORY:
+showInventory:
 
-    ld hl,STR_CARRYING_PREFIX
+    ld hl,strCarryingPrefix
     call printStr
-    VISIBLE_OBJECT_COUNT = 0
+    visibleObjectCount = 0
 
-    for LOOP_INDEX = 7 to 24
-        if OBJECT_LOCATION(LOOP_INDEX) = -1 then
-            VISIBLE_OBJECT_COUNT = VISIBLE_OBJECT_COUNT + 1
+    for loopIndex = 7 to 24
+        if objectLocation(loopIndex) = -1 then
+            visibleObjectCount = visibleObjectCount + 1
         end if
-    next LOOP_INDEX
+    next loopIndex
 
-    if VISIBLE_OBJECT_COUNT = 0 then
-        ld hl,STR_NOTHING
+    if visibleObjectCount = 0 then
+        ld hl,strNothing
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
     call printNewline
-    for LOOP_INDEX = 7 to 24
-        if OBJECT_LOCATION(LOOP_INDEX) = -1 then
-            CURRENT_OBJECT_INDEX = LOOP_INDEX
-            call PRINT_OBJECT_DESCRIPTION_SUB
+    for loopIndex = 7 to 24
+        if objectLocation(loopIndex) = -1 then
+            currentObjectIndex = loopIndex
+            call printObjectDescriptionSub
         end if
-    next LOOP_INDEX
+    next loopIndex
 
-    goto DESCRIBE_CURRENT_LOCATION
+    goto describeCurrentLocation
 
 
 
-QUIT_GAME:
+quitGame:
 
     SCORE = 0
 
-    for LOOP_INDEX = 7 to 17
-        if OBJECT_LOCATION(LOOP_INDEX) = -1 then
-            SCORE = SCORE + LOOP_INDEX - 6
+    for loopIndex = 7 to 17
+        if objectLocation(loopIndex) = -1 then
+            SCORE = SCORE + loopIndex - 6
         end if
-        if OBJECT_LOCATION(LOOP_INDEX) = 1 then
-            SCORE = SCORE + (LOOP_INDEX - 6) * 2
+        if objectLocation(loopIndex) = 1 then
+            SCORE = SCORE + (loopIndex - 6) * 2
         end if
-    next LOOP_INDEX
+    next loopIndex
 
     call printNewline
-    ld hl,STR_SCORE_PREFIX
+    ld hl,strScorePrefix
     call printStr
     ld a,(SCORE)
     ld l,a
     ld h,0
     call printNum
-    ld hl,STR_SCORE_MID
+    ld hl,strScoreMid
     call printStr
-    ld a,(TURN_COUNTER)
+    ld a,(turnCounter)
     ld l,a
     ld h,0
     call printNum
-    ld hl,STR_SCORE_SUFFIX
+    ld hl,strScoreSuffix
     call printStr
 
-    call PRINT_RANKING_SUB
+    call printRankingSub
 
-    ld hl,STR_ANOTHER
+    ld hl,strAnother
     call printStr
 
-WAIT_FOR_YES_NO:
-    YESNO_KEY$ = INKEY$
-    if YESNO_KEY$ = "" then
-        goto WAIT_FOR_YES_NO
+waitForYesNo:
+    yesnoKey$ = INKEY$
+    if yesnoKey$ = "" then
+        goto waitForYesNo
     end if
 
-    if YESNO_KEY$ = "N" or YESNO_KEY$ = "n" then
+    if yesnoKey$ = "N" or yesnoKey$ = "n" then
         end
     end if
 
-    if YESNO_KEY$ = "Y" or YESNO_KEY$ = "y" then
-        goto GAME_START
+    if yesnoKey$ = "Y" or yesnoKey$ = "y" then
+        goto gameStart
     end if
 
-    goto WAIT_FOR_YES_NO
+    goto waitForYesNo
 
 
 
-CHECK_CREATURE_AT_LOCATION:
+checkCreatureAtLocation:
 
-    for HOSTILE_CREATURE_INDEX = 1 to 6
-        if OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = PLAYER_LOCATION then
-            goto CHECK_CREATURE_BAT_SPECIAL
+    for hostileCreatureIndex = 1 to 6
+        if objectLocation(hostileCreatureIndex) = playerLocation then
+            goto checkCreatureBatSpecial
         end if
-    next HOSTILE_CREATURE_INDEX
+    next hostileCreatureIndex
 
-    HOSTILE_CREATURE_INDEX = 0
-    goto HANDLE_VERB_OR_MOVEMENT
+    hostileCreatureIndex = 0
+    goto handleVerbOrMovement
 
 
 
-CHECK_CREATURE_BAT_SPECIAL:
+checkCreatureBatSpecial:
 
-    if HOSTILE_CREATURE_INDEX = 5 then
-        ld hl,STR_GIANT_BAT
+    if hostileCreatureIndex = 5 then
+        ld hl,strGiantBat
         call printStr
-        PLAYER_LOCATION = ROOM_BAT_CAVE
-        RESHOW_FLAG = 0
-        OBJECT_LOCATION(5) = OBJECT_LOCATION(5) + 7
-        goto DESCRIBE_CURRENT_LOCATION
+        playerLocation = roomBatCave
+        reshowFlag = 0
+        objectLocation(5) = objectLocation(5) + 7
+        goto describeCurrentLocation
     end if
 
-    goto HANDLE_VERB_OR_MOVEMENT
+    goto handleVerbOrMovement
 
 
 
-MONSTER_ATTACK:
+monsterAttack:
     ; Print "killed by a <adj><noun>!!"
-    ld hl,STR_MONSTER_KILLED
+    ld hl,strMonsterKilled
     call printStr
 
     ; Fetch monster adjective pointer
-    ld a,(HOSTILE_CREATURE_INDEX)
+    ld a,(hostileCreatureIndex)
     dec a
     add a,a
     ld l,a
     ld h,0
-    ld de,MONSTER_ADJ_DATA
+    ld de,monsterAdjData
     add hl,de
     ld e,(hl)
     inc hl
@@ -627,12 +627,12 @@ MONSTER_ATTACK:
     call printStr
 
     ; Fetch monster noun pointer
-    ld a,(HOSTILE_CREATURE_INDEX)
+    ld a,(hostileCreatureIndex)
     dec a
     add a,a
     ld l,a
     ld h,0
-    ld de,MONSTER_NOUN_DATA
+    ld de,monsterNounData
     add hl,de
     ld e,(hl)
     inc hl
@@ -640,353 +640,353 @@ MONSTER_ATTACK:
     ex de,hl
     call printStr
 
-    ld hl,STR_MONSTER_SUFFIX
+    ld hl,strMonsterSuffix
     call printStr
 
-    goto QUIT_GAME
+    goto quitGame
 
 
 
-HANDLE_VERB_OR_MOVEMENT:
+handleVerbOrMovement:
 
     ; ---------------------------------------------------------
-    ; HANDLE_VERB_OR_MOVEMENT
+    ; handleVerbOrMovement
     ; Dispatch input by first matching generic verbs (take/put/
     ; unlock/jump/etc.) via pattern table, then directions, else
     ; fall back to non-movement handlers.
     ; ---------------------------------------------------------
 
-    ; Scan verb patterns (1..16) for a match in INPUT_COMMAND$
-    for VERB_PATTERN_INDEX = 1 to 16       ; iterate patterns
-        if INSTR(INPUT_COMMAND$, @VERB_PATTERN(VERB_PATTERN_INDEX)) > 0 then ; found?
-            goto ROUTE_BY_VERB_PATTERN     ; handle specific verb
+    ; Scan verb patterns (1..16) for a match in inputCommand$
+    for verbPatternIndex = 1 to 16       ; iterate patterns
+        if INSTR(inputCommand$, @verbPattern(verbPatternIndex)) > 0 then ; found?
+            goto routeByVerbPattern     ; handle specific verb
         end if
-    next VERB_PATTERN_INDEX                 ; next pattern
+    next verbPatternIndex                 ; next pattern
 
     ; Check for movement words (north/south/west/east)
-    for DIRECTION_INDEX = 0 to 3            ; 0..3
-        if INSTR(INPUT_COMMAND$, @DIR_WORD_INDEX(DIRECTION_INDEX+1)) > 0 then ; dir found?
-            goto HANDLE_MOVEMENT_COMMAND    ; route to movement
+    for directionIndex = 0 to 3            ; 0..3
+        if INSTR(inputCommand$, @dirWordIndex(directionIndex+1)) > 0 then ; dir found?
+            goto handleMovementCommand    ; route to movement
         end if
-    next DIRECTION_INDEX                    ; next direction
+    next directionIndex                    ; next direction
 
-    goto HANDLE_NON_MOVEMENT_COMMAND        ; nothing matched -> non-movement
+    goto handleNonMovementCommand        ; nothing matched -> non-movement
 
 
 
-HANDLE_MOVEMENT_COMMAND:
+handleMovementCommand:
 
     ; ---------------------------------------------------------
-    ; HANDLE_MOVEMENT_COMMAND
+    ; handleMovementCommand
     ; Resolve direction (may be randomized by bomb), look up
-    ; target in MOVEMENT_TABLE, apply exits (none/fatal/room),
+    ; target in movementTable, apply exits (none/fatal/room),
     ; then redisplay location.
     ; ---------------------------------------------------------
 
     ; Special check: if bomb is elsewhere, randomize direction
-    if OBJECT_LOCATION(OBJ_BOMB) <> -1 and OBJECT_LOCATION(OBJ_BOMB) <> PLAYER_LOCATION then
-        RANDOM_DIRECTION_INDEX = INT(RND * 4) ; pick 0..3
+    if objectLocation(objBomb) <> -1 and objectLocation(objBomb) <> playerLocation then
+        randomDirectionIndex = INT(RND * 4) ; pick 0..3
     else
-        RANDOM_DIRECTION_INDEX = 0             ; otherwise use first direction found
+        randomDirectionIndex = 0             ; otherwise use first direction found
     end if
 
-    TARGET_LOCATION = MOVEMENT_TABLE(PLAYER_LOCATION, RANDOM_DIRECTION_INDEX) ; fetch exit
+    targetLocation = movementTable(playerLocation, randomDirectionIndex) ; fetch exit
 
-    if TARGET_LOCATION = EXIT_NONE then        ; no exit
-        ld hl,STR_CANT_GO_THAT_WAY
+    if targetLocation = exitNone then        ; no exit
+        ld hl,strCantGoThatWay
         call printStr
         call printNewline
     end if
 
-    if TARGET_LOCATION = EXIT_FATAL then       ; fatal exit
-        ld hl,STR_FATAL_FALL
+    if targetLocation = exitFatal then       ; fatal exit
+        ld hl,strFatalFall
         call printStr
         call printNewline
-        goto QUIT_GAME
+        goto quitGame
     end if
 
-    if TARGET_LOCATION > 0 then                ; valid room
-        PLAYER_LOCATION = TARGET_LOCATION      ; move player
+    if targetLocation > 0 then                ; valid room
+        playerLocation = targetLocation      ; move player
     end if
 
-    RESHOW_FLAG = 0                            ; force redisplay
-    goto DESCRIBE_CURRENT_LOCATION             ; show new room
+    reshowFlag = 0                            ; force redisplay
+    goto describeCurrentLocation             ; show new room
 
 
 
-HANDLE_NON_MOVEMENT_COMMAND:
+handleNonMovementCommand:
 
     ; Magic word "galar"
-    if INSTR(INPUT_COMMAND$, " galar ") > 0 then
-        RESHOW_FLAG = 0
-        ld hl,STR_MAGIC_WIND
+    if INSTR(inputCommand$, " galar ") > 0 then
+        reshowFlag = 0
+        ld hl,strMagicWind
         call printStr
-        PLAYER_LOCATION = ROOM_CAVE_ENTRY
-        goto DESCRIBE_CURRENT_LOCATION
+        playerLocation = roomCaveEntry
+        goto describeCurrentLocation
     end if
 
     ; Crypt wall "ape"
-    if INSTR(INPUT_COMMAND$, " ape ") > 0 then
-        ld hl,STR_CRYPT_WALL
+    if INSTR(inputCommand$, " ape ") > 0 then
+        ld hl,strCryptWall
         call printStr
-        SECRET_EXIT_LOCATION = 38
-        call UPDATE_DYNAMIC_EXITS
-        goto DESCRIBE_CURRENT_LOCATION
+        secretExitLocation = 38
+        call updateDynamicExits
+        goto describeCurrentLocation
     end if
 
-    if CURRENT_OBJECT_INDEX < 1 then
-        ld hl,STR_EH
+    if currentObjectIndex < 1 then
+        ld hl,strEh
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
     ; Object must be visible or carried
-    if OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1 or OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION then
-        goto CHECK_GET_DROP_USE
+    if objectLocation(currentObjectIndex) = -1 or objectLocation(currentObjectIndex) = playerLocation then
+        goto checkGetDropUse
     else
-        ld hl,STR_CANT_SEE_IT
+        ld hl,strCantSeeIt
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
 
 
-CHECK_GET_DROP_USE:
+checkGetDropUse:
 
     ; GET command
-    if INSTR(INPUT_COMMAND$, " get ") > 0 then
-        goto HANDLE_GET_COMMAND
+    if INSTR(inputCommand$, " get ") > 0 then
+        goto handleGetCommand
     end if
 
     ; DROP command
-    if INSTR(INPUT_COMMAND$, " drop ") > 0 then
-        goto HANDLE_DROP_COMMAND
+    if INSTR(inputCommand$, " drop ") > 0 then
+        goto handleDropCommand
     end if
 
     ; USE-type verbs routed by object index
-    goto ROUTE_USE_BY_OBJECT
+    goto routeUseByObject
 
 
 
-HANDLE_GET_COMMAND:
+handleGetCommand:
 
-    CARRIED_COUNT = 0
+    carriedCount = 0
 
-    for LOOP_INDEX = 7 to 24
-        if OBJECT_LOCATION(LOOP_INDEX) = -1 then
-            CARRIED_COUNT = CARRIED_COUNT + 1
+    for loopIndex = 7 to 24
+        if objectLocation(loopIndex) = -1 then
+            carriedCount = carriedCount + 1
         end if
-    next LOOP_INDEX
+    next loopIndex
 
-    if CARRIED_COUNT > 10 then
-        ld hl,STR_TOO_MANY_OBJECTS
+    if carriedCount > 10 then
+        ld hl,strTooManyObjects
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
-    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1
-    goto DESCRIBE_CURRENT_LOCATION
+    objectLocation(currentObjectIndex) = -1
+    goto describeCurrentLocation
 
 
 
-HANDLE_DROP_COMMAND:
+handleDropCommand:
 
-    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
-    goto DESCRIBE_CURRENT_LOCATION
+    objectLocation(currentObjectIndex) = playerLocation
+    goto describeCurrentLocation
 
 
 
-ROUTE_USE_BY_OBJECT:
+routeUseByObject:
 
-    if CURRENT_OBJECT_INDEX = OBJ_KEY then
-        goto USE_KEY
+    if currentObjectIndex = objKey then
+        goto useKey
     end if
-    if CURRENT_OBJECT_INDEX = OBJ_SWORD then
-        goto USE_SWORD
+    if currentObjectIndex = objSword then
+        goto useSword
     end if
-    if CURRENT_OBJECT_INDEX = OBJ_CANDLE then
-        goto USE_BOMB
+    if currentObjectIndex = objCandle then
+        goto useBomb
     end if
-    if CURRENT_OBJECT_INDEX = OBJ_ROPE then
-        goto USE_ROPE
+    if currentObjectIndex = objRope then
+        goto useRope
     end if
 
-    ld hl,STR_USE_HOW
+    ld hl,strUseHow
     call printStr
-    goto DESCRIBE_CURRENT_LOCATION
+    goto describeCurrentLocation
 
 
 
-USE_KEY:
+useKey:
 
-    if PLAYER_LOCATION <> ROOM_FOREST_CLEARING and PLAYER_LOCATION <> ROOM_TEMPLE then
-        ld hl,STR_WONT_OPEN
+    if playerLocation <> roomForestClearing and playerLocation <> roomTemple then
+        ld hl,strWontOpen
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
-    ld hl,STR_DOOR_OPENED
+    ld hl,strDoorOpened
     call printStr
-    OBJECT_LOCATION(19) = PLAYER_LOCATION
-    RESHOW_FLAG = 0
+    objectLocation(19) = playerLocation
+    reshowFlag = 0
 
-    if PLAYER_LOCATION = ROOM_FOREST_CLEARING then
-        PLAYER_LOCATION = ROOM_DARK_ROOM
-        goto DESCRIBE_CURRENT_LOCATION
+    if playerLocation = roomForestClearing then
+        playerLocation = roomDarkRoom
+        goto describeCurrentLocation
     else
-        PLAYER_LOCATION = ROOM_CRYPT
-        goto DESCRIBE_CURRENT_LOCATION
+        playerLocation = roomCrypt
+        goto describeCurrentLocation
     end if
 
 
 
-USE_SWORD:
+useSword:
 
-    if HOSTILE_CREATURE_INDEX = 0 then
-        ld hl,STR_NOTHING_TO_KILL
+    if hostileCreatureIndex = 0 then
+        ld hl,strNothingToKill
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
-    SWORD_SWING_COUNT = SWORD_SWING_COUNT + 1
+    swordSwingCount = swordSwingCount + 1
 
-    if RND * 7 + 15 > SWORD_SWING_COUNT then
-        goto SWORD_FIGHT_CONTINUES
+    if RND * 7 + 15 > swordSwingCount then
+        goto swordFightContinues
     end if
 
-    ld hl,STR_SWORD_MISS
+    ld hl,strSwordMiss
     call printStr
-    goto QUIT_GAME
+    goto quitGame
 
 
 
-SWORD_FIGHT_CONTINUES:
+swordFightContinues:
 
     if RND < .38 then
-        goto SWORD_KILLS_TARGET
+        goto swordKillsTarget
     end if
 
-    RANDOM_FIGHT_MESSAGE = INT(RND * 4)
+    randomFightMessage = INT(RND * 4)
 
-    if HOSTILE_CREATURE_INDEX = 5 then
-        goto CHECK_CREATURE_BAT_SPECIAL
+    if hostileCreatureIndex = 5 then
+        goto checkCreatureBatSpecial
     end if
 
-    if RANDOM_FIGHT_MESSAGE = 0 then
-        ld hl,STR_ATTACK_MOVE
+    if randomFightMessage = 0 then
+        ld hl,strAttackMove
         call printStr
     else
-        if RANDOM_FIGHT_MESSAGE = 1 then
-            ld hl,STR_ATTACK_DEFLECT
+        if randomFightMessage = 1 then
+            ld hl,strAttackDeflect
             call printStr
         else
-            if RANDOM_FIGHT_MESSAGE = 2 then
-                ld hl,STR_ATTACK_STUN
+            if randomFightMessage = 2 then
+                ld hl,strAttackStun
                 call printStr
             else
-                ld hl,STR_ATTACK_HEAD_BLOW
+                ld hl,strAttackHeadBlow
                 call printStr
             end if
         end if
     end if
 
-    goto DESCRIBE_CURRENT_LOCATION
+    goto describeCurrentLocation
 
 
 
-SWORD_KILLS_TARGET:
+swordKillsTarget:
 
-    ld hl,STR_SWORD_KILLS
+    ld hl,strSwordKills
     call printStr
-    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1
+    objectLocation(currentObjectIndex) = -1
 
-    if HOSTILE_CREATURE_INDEX = 3 or HOSTILE_CREATURE_INDEX = 5 then
-        OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) + 10
+    if hostileCreatureIndex = 3 or hostileCreatureIndex = 5 then
+        objectLocation(hostileCreatureIndex) = objectLocation(hostileCreatureIndex) + 10
     else
-        OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = 0
-        if HOSTILE_CREATURE_INDEX = 1 then
-            ld hl,STR_SWORD_CRUMBLES
+        objectLocation(hostileCreatureIndex) = 0
+        if hostileCreatureIndex = 1 then
+            ld hl,strSwordCrumbles
             call printStr
-            OBJECT_LOCATION(20) = 35
+            objectLocation(20) = 35
         end if
     end if
 
-    if HOSTILE_CREATURE_INDEX <> 4 then
-        ld hl,STR_CORPSE_VAPOR
+    if hostileCreatureIndex <> 4 then
+        ld hl,strCorpseVapor
         call printStr
     end if
 
-    HOSTILE_CREATURE_INDEX = 0
-    goto DESCRIBE_CURRENT_LOCATION
+    hostileCreatureIndex = 0
+    goto describeCurrentLocation
 
 
 
-USE_BOMB:
+useBomb:
 
-    if OBJECT_LOCATION(9) <> -1 and OBJECT_LOCATION(9) <> PLAYER_LOCATION then
-        ld hl,STR_WONT_BURN
+    if objectLocation(9) <> -1 and objectLocation(9) <> playerLocation then
+        ld hl,strWontBurn
         call printStr
-        CANDLE_IS_LIT_FLAG = 0
-        goto DESCRIBE_CURRENT_LOCATION
+        candleIsLitFlag = 0
+        goto describeCurrentLocation
     end if
 
-    if CANDLE_IS_LIT_FLAG <> 1 then
-        ld hl,STR_CANDLE_OUT_STUPID
+    if candleIsLitFlag <> 1 then
+        ld hl,strCandleOutStupid
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
-    ld hl,STR_BOMB_EXPLODE
+    ld hl,strBombExplode
     call printStr
-    RESHOW_FLAG = 0
+    reshowFlag = 0
 
-    if PLAYER_LOCATION > ROOM_DARK_ROOM then
-        PLAYER_LOCATION = PLAYER_LOCATION - 1
-        if PLAYER_LOCATION = ROOM_OAK_DOOR then
-            TELEPORT_DESTINATION = 19
-            call UPDATE_DYNAMIC_EXITS
+    if playerLocation > roomDarkRoom then
+        playerLocation = playerLocation - 1
+        if playerLocation = roomOakDoor then
+            teleportDestination = 19
+            call updateDynamicExits
         end if
     end if
 
-    OBJECT_LOCATION(9) = 0
-    goto DESCRIBE_CURRENT_LOCATION
+    objectLocation(9) = 0
+    goto describeCurrentLocation
 
 
 
-USE_ROPE:
+useRope:
 
-    if PLAYER_LOCATION <> ROOM_TEMPLE_BALCONY then
-        ld hl,STR_TOO_DANGEROUS
+    if playerLocation <> roomTempleBalcony then
+        ld hl,strTooDangerous
         call printStr
-        goto DESCRIBE_CURRENT_LOCATION
+        goto describeCurrentLocation
     end if
 
-    ld hl,STR_DESCEND_ROPE
+    ld hl,strDescendRope
     call printStr
-    RESHOW_FLAG = 0
-    OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
-    PLAYER_LOCATION = ROOM_TEMPLE
-    goto DESCRIBE_CURRENT_LOCATION
+    reshowFlag = 0
+    objectLocation(currentObjectIndex) = playerLocation
+    playerLocation = roomTemple
+    goto describeCurrentLocation
 
 
 
-PRINT_OBJECT_DESCRIPTION_SUB:
+printObjectDescriptionSub:
 
     ; ---------------------------------------------------------
-    ; PRINT_OBJECT_DESCRIPTION_SUB
+    ; printObjectDescriptionSub
     ; Purpose: print "a/an <adj> <noun>, " for the object/creature
-    ; at CURRENT_OBJECT_INDEX using OBJDESC tables.
-    ; Inputs: CURRENT_OBJECT_INDEX (1-based)
+    ; at currentObjectIndex using OBJDESC tables.
+    ; Inputs: currentObjectIndex (1-based)
     ; Uses: BC, DE, HL
     ; ---------------------------------------------------------
 
-    ; Fetch adjective pointer from OBJDESC1_TABLE
-    ld a,(CURRENT_OBJECT_INDEX)   ; A = index (1..24)
+    ; Fetch adjective pointer from objdesc1Table
+    ld a,(currentObjectIndex)   ; A = index (1..24)
     dec a                         ; to 0-based
     add a,a                       ; *2 for word offset
     ld l,a
     ld h,0
-    ld de,OBJDESC1_TABLE          ; DE = base of adjectives
+    ld de,objdesc1Table          ; DE = base of adjectives
     add hl,de                     ; HL -> word entry
     ld e,(hl)                     ; E = low byte of adj ptr
     inc hl
@@ -996,13 +996,13 @@ PRINT_OBJECT_DESCRIPTION_SUB:
     ex de,hl                      ; HL = adj pointer
     call printAdj                 ; emits "a/an <adj>"
 
-    ; Fetch noun pointer from OBJDESC2_TABLE
-    ld a,(CURRENT_OBJECT_INDEX)   ; A = index
+    ; Fetch noun pointer from objdesc2Table
+    ld a,(currentObjectIndex)   ; A = index
     dec a                         ; to 0-based
     add a,a                       ; *2 for word offset
     ld l,a
     ld h,0
-    ld de,OBJDESC2_TABLE          ; DE = base of nouns
+    ld de,objdesc2Table          ; DE = base of nouns
     add hl,de                     ; HL -> word entry
     ld e,(hl)                     ; E = low byte of noun ptr
     inc hl
@@ -1021,62 +1021,62 @@ PRINT_OBJECT_DESCRIPTION_SUB:
 
 
 
-ROUTE_BY_VERB_PATTERN:
+routeByVerbPattern:
 
     ; ---------------------------------------------------------
-    ; ROUTE_BY_VERB_PATTERN
-    ; Map the matched VERB_PATTERN_INDEX to specific handlers or
+    ; routeByVerbPattern
+    ; Map the matched verbPatternIndex to specific handlers or
     ; default responses. Keeps verb ordering identical to BASIC.
     ; ---------------------------------------------------------
 
-    if VERB_PATTERN_INDEX = 1 then           ; take
-        goto HANDLE_GET_COMMAND
+    if verbPatternIndex = 1 then           ; take
+        goto handleGetCommand
     end if
 
-    if VERB_PATTERN_INDEX = 2 then           ; drop
-        goto HANDLE_DROP_COMMAND
+    if verbPatternIndex = 2 then           ; drop
+        goto handleDropCommand
     end if
 
-    if VERB_PATTERN_INDEX = 3 or VERB_PATTERN_INDEX = 4 then ; using/with
-        goto ROUTE_USE_BY_OBJECT
+    if verbPatternIndex = 3 or verbPatternIndex = 4 then ; using/with
+        goto routeUseByObject
     end if
 
-    if VERB_PATTERN_INDEX <= 6 then          ; cut/break/unlock/open
-        ld hl,STR_NOTHING_HAPPENS
+    if verbPatternIndex <= 6 then          ; cut/break/unlock/open
+        ld hl,strNothingHappens
         call printStr
     else
-        if VERB_PATTERN_INDEX >= 7 and VERB_PATTERN_INDEX <= 12 then ; kill/attack/light/burn/up/down
-            ld hl,STR_PLEASE_TELL
+        if verbPatternIndex >= 7 and verbPatternIndex <= 12 then ; kill/attack/light/burn/up/down
+            ld hl,strPleaseTell
             call printStr
         else                                 ; jump/swim/other
-            ld hl,STR_I_CANT
+            ld hl,strICant
             call printStr
         end if
     end if
 
     call printNewline                        ; blank line after response
-    goto GET_PLAYER_INPUT                    ; re-prompt
+    goto getPlayerInput                    ; re-prompt
 
 
-PRINT_RANKING_SUB:
+printRankingSub:
 
-    ld hl,STR_RANKING
+    ld hl,strRanking
     call printStr
 
     if SCORE < 20 then
-        ld hl,STR_RANK_HOPELESS
+        ld hl,strRankHopeless
         call printStr
     elseif SCORE < 50 then
-        ld hl,STR_RANK_LOSER
+        ld hl,strRankLoser
         call printStr
     elseif SCORE < 100 then
-        ld hl,STR_RANK_AVERAGE
+        ld hl,strRankAverage
         call printStr
     elseif SCORE < 126 then
-        ld hl,STR_RANK_EXCELLENT
+        ld hl,strRankExcellent
         call printStr
     else
-        ld hl,STR_RANK_PERFECT
+        ld hl,strRankPerfect
         call printStr
     end if
 
@@ -1084,114 +1084,114 @@ PRINT_RANKING_SUB:
 
 
 
-READ_INPUT_THEN_CLEAR_SUB:
+readInputThenClearSub:
 
-    input INPUT_COMMAND$
+    input inputCommand$
     cls
     ret
 
 
 
-ENCOUNTER_WIZARD_LABEL:
+encounterWizardLabel:
 
-    ld hl,STR_ENC_WIZARD
+    ld hl,strEncWizard
     call printStr
-    goto LIST_ROOM_OBJECTS_AND_CREATURES
+    goto listRoomObjectsAndCreatures
 
 
 
-ENCOUNTER_DRAGON_LABEL:
+encounterDragonLabel:
 
-    ld hl,STR_ENC_DRAGON1
+    ld hl,strEncDragon1
     call printStr
-    ld hl,STR_ENC_DRAGON2
+    ld hl,strEncDragon2
     call printStr
-    goto LIST_ROOM_OBJECTS_AND_CREATURES
+    goto listRoomObjectsAndCreatures
 
 
 
-ENCOUNTER_DWARF_LABEL:
+encounterDwarfLabel:
 
-    ld hl,STR_ENC_DWARF
+    ld hl,strEncDwarf
     call printStr
-    goto LIST_ROOM_OBJECTS_AND_CREATURES
+    goto listRoomObjectsAndCreatures
 
 
 
-TRIGGER_CREATURE_INTRO_SUB:
+triggerCreatureIntroSub:
 
-    if CURRENT_OBJECT_INDEX = 1 then
-        goto ENCOUNTER_WIZARD_LABEL
+    if currentObjectIndex = 1 then
+        goto encounterWizardLabel
     end if
-    if CURRENT_OBJECT_INDEX = 4 then
-        goto ENCOUNTER_DRAGON_LABEL
+    if currentObjectIndex = 4 then
+        goto encounterDragonLabel
     end if
-    if CURRENT_OBJECT_INDEX = 6 then
-        goto ENCOUNTER_DWARF_LABEL
+    if currentObjectIndex = 6 then
+        goto encounterDwarfLabel
     end if
     ret
 
 
 
 ; ---------------------------------------------------------
-UPDATE_DYNAMIC_EXITS:
+updateDynamicExits:
 
     ; ---------------------------------------------------------
-    ; UPDATE_DYNAMIC_EXITS
+    ; updateDynamicExits
     ; Purpose: patch movement table entries that depend on
     ; runtime state (bridge, teleport, secret exits, drawbridge).
     ; Notes:
-    ;   - All values are bytes; direct stores into MOVEMENT_TABLE.
+    ;   - All values are bytes; direct stores into movementTable.
     ;   - Caller updates the backing variables before invoking.
     ; ---------------------------------------------------------
 
     ; Patch dynamic exits in movement table
 
-    MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR) = BRIDGE_CONDITION
-    MOVEMENT_TABLE(ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR) = BRIDGE_CONDITION
-    MOVEMENT_TABLE(ROOM_OAK_DOOR,DIR_EAST_STR) = TELEPORT_DESTINATION
-    MOVEMENT_TABLE(ROOM_CRYPT,DIR_EAST_STR) = SECRET_EXIT_LOCATION
-    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_NORTH_STR) = WATER_EXIT_LOCATION
-    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_EAST_STR) = GATE_DESTINATION
-    MOVEMENT_TABLE(ROOM_CASTLE_LEDGE,DIR_EAST_STR) = DRAWBRIDGE_STATE
+    movementTable(roomBridgeNorthAnchor,dirSouthStr) = bridgeCondition
+    movementTable(roomBridgeSouthAnchor,dirNorthStr) = bridgeCondition
+    movementTable(roomOakDoor,dirEastStr) = teleportDestination
+    movementTable(roomCrypt,dirEastStr) = secretExitLocation
+    movementTable(roomTinyCell,dirNorthStr) = waterExitLocation
+    movementTable(roomTinyCell,dirEastStr) = gateDestination
+    movementTable(roomCastleLedge,dirEastStr) = drawbridgeState
     ret
 
 
-INIT_STATE:
+initState:
     ; ---------------------------------------------------------
-    ; INIT_STATE
+    ; initState
     ; Purpose: reset all mutable state and copy static tables
     ; to working buffers.
     ; Steps:
     ;   1) Set all flags/counters to defaults.
-    ;   2) Copy MOVEMENT_TABLE_DATA -> MOVEMENT_TABLE (byte table).
-    ;   3) Copy OBJECT_LOCATION_TABLE -> OBJECT_LOCATION (bytes).
-    ; Source of truth: matches pseudo2.txt GAME_START defaults
-    ; (BRIDGE_CONDITION=11, DRAWBRIDGE_STATE=128, WATER_EXIT=0,
-    ;  GATE=0, TELEPORT=0, SECRET_EXIT=0, PLAYER_LOCATION=ROOM_DARK_ROOM,
-    ;  CANDLE_IS_LIT_FLAG=1, counters zeroed).
+    ;   2) Copy movementTableData -> movementTable (byte table).
+    ;   3) Copy objectLocationTable -> objectLocation (bytes).
+    ; Source of truth: matches pseudo2.txt gameStart defaults
+    ; (bridgeCondition=11, drawbridgeState=128, waterExit=0,
+    ;  GATE=0, TELEPORT=0, secretExit=0, playerLocation=roomDarkRoom,
+    ;  candleIsLitFlag=1, counters zeroed).
     ; ---------------------------------------------------------
 
     ; Initialize flags and counters
-    SET8 BRIDGE_CONDITION,11
-    SET8 DRAWBRIDGE_STATE,128
-    SET8 WATER_EXIT_LOCATION,0
-    SET8 GATE_DESTINATION,0
-    SET8 TELEPORT_DESTINATION,0
-    SET8 SECRET_EXIT_LOCATION,0
+    SET8 bridgeCondition,11
+    SET8 drawbridgeState,128
+    SET8 waterExitLocation,0
+    SET8 gateDestination,0
+    SET8 teleportDestination,0
+    SET8 secretExitLocation,0
 
-    SET8 GENERAL_FLAG_J,0
-    SET8 HOSTILE_CREATURE_INDEX,0
-    SET8 RESHOW_FLAG,0
-    SET8 PLAYER_LOCATION,ROOM_DARK_ROOM
-    SET8 CANDLE_IS_LIT_FLAG,1
+    SET8 generalFlagJ,0
+    SET8 hostileCreatureIndex,0
+    SET8 reshowFlag,0
+    SET8 playerLocation,roomDarkRoom
+    SET8 candleIsLitFlag,1
 
-    SET8 FEAR_COUNTER,0
-    SET8 TURN_COUNTER,0
-    SET8 SWORD_SWING_COUNT,0
+    SET8 fearCounter,0
+    SET8 turnCounter,0
+    SET8 swordSwingCount,0
     SET8 SCORE,0
 
     ; Copy static tables into mutable buffers
-    COPY MOVEMENT_TABLE_DATA,MOVEMENT_TABLE,MOVEMENT_TABLE_BYTES
-    COPY OBJECT_LOCATION_TABLE,OBJECT_LOCATION,OBJECT_COUNT
+    COPY movementTableData,movementTable,movementTableBytes
+    COPY objectLocationTable,objectLocation,objectCount
     ret
