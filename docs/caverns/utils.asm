@@ -138,23 +138,14 @@ tokenizeInput:
 ; printObjectDesc: helper to print "a" + adj + noun + ", "
 ; Inputs: HL = ptr to adj string, DE = ptr to noun string
 printObjectDesc:
-    push de
-    push hl
-    ld a,'a'
-    call putc
-    ld hl,SPACE_STR
-    call puts
-    pop hl               ; adj
-    call puts
-    ld hl,SPACE_STR      ; separator
-    call puts
+    push de              ; save noun
+    call printAdj        ; prints article + adj string at HL
     pop de               ; noun
     ex de,hl
     call puts
     ld a,','
     call putc
-    ld a,' '
-    call putc
+    call printSpace
     ret
 
 ; Data placeholders (caller to allocate in BSS/vars area)
@@ -222,3 +213,45 @@ printNum6:
 printNum7:
     ld a,b
     jp putc
+
+; printSpace: convenience to emit a single space
+printSpace:
+    ld a,' '
+    jp putc
+
+; printAdj: print correct article + space + adjective at HL
+; - HL: pointer to adjective string (may have leading spaces; may include trailing space)
+; - Emits "a " or "an " based on first non-space character, then the adjective
+printAdj:
+    push hl
+    ld d,h
+    ld e,l               ; DE scans for first non-space
+.skipSpaces:
+    ld a,(de)
+    cp ' '
+    jr nz,.haveChar
+    inc de
+    jr .skipSpaces
+.haveChar:
+    call toLowerAscii
+    ld b,a               ; first non-space, lowercased
+    ld a,'a'
+    call putc
+    ld a,b
+    cp 'a'
+    jr z,.vowel
+    cp 'e'
+    jr z,.vowel
+    cp 'i'
+    jr z,.vowel
+    cp 'o'
+    jr z,.vowel
+    cp 'u'
+    jr nz,.afterArticle
+.vowel:
+    ld a,'n'
+    call putc
+.afterArticle:
+    call printSpace
+    pop hl               ; restore adjective ptr
+    jp puts

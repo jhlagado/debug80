@@ -15,10 +15,10 @@
 
     .include "constants.asm"
     .include "macros.asm"
-    .include "variables.asm"
     .include "utils.asm"
     .include "tables.asm"
     .include "strings.asm"
+    .include "variables.asm"
 
 
 GAME_START:

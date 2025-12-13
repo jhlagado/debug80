@@ -110,7 +110,6 @@ VERB_PATTERN_TABLE
 DIR_WORD_INDEX_TABLE
                         DW DIR_NORTH_STR, DIR_SOUTH_STR, DIR_WEST_STR, DIR_EAST_STR
 
-; NOTE: article handling (a/an) and leading/trailing spaces in strings to be normalized later via an article routine
 MONSTER_NAME_TABLE
                         DW MON_NAME_WIZ, MON_NAME_DEMON, MON_NAME_TROLL
                         DW MON_NAME_DRAGON, MON_NAME_BAT, MON_NAME_DWARF
@@ -119,7 +118,6 @@ MONSTER_NOUN_TABLE
                         DW MON_NOUN_WIZ, MON_NOUN_DEMON, MON_NOUN_TROLL
                         DW MON_NOUN_DRAGON, MON_NOUN_BAT, MON_NOUN_DWARF
 
-; NOTE: article handling (a/an) and trimming leading/trailing padding spaces to be addressed later
 OBJECT_NAME_NAME_TABLE:
                         DW OBJ_NAME_COIN, OBJ_NAME_COMPASS, OBJ_NAME_BOMB, OBJ_NAME_RUBY
                         DW OBJ_NAME_DIAMOND, OBJ_NAME_PEARL, OBJ_NAME_STONE, OBJ_NAME_RING
