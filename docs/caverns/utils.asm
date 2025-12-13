@@ -27,29 +27,29 @@ puts:
 readLine:
     push bc
     ld d,0               ; length counter in D
-READ_LOOP:
+readLoop:
     SYS_GETC             ; A = ch
     cp 13                ; CR?
-    jr z,READ_DONE
+    jr z,readDone
     cp 10                ; LF?
-    jr z,READ_DONE
+    jr z,readDone
     ld e,a               ; save char
     ld a,d
     cp b                 ; length >= max?
-    jr nc,READ_LOOP      ; ignore extra chars
+    jr nc,readLoop       ; ignore extra chars
     ld a,e
     ld (hl),a            ; store char
     inc hl
     inc d
     ld a,c               ; echo flag from caller
     or a
-    jr z,READ_LOOP
+    jr z,readLoop
     dec hl
     ld a,(hl)            ; reload char for echo
     inc hl
     SYS_PUTC             ; echo
-    jr READ_LOOP
-READ_DONE:
+    jr readLoop
+readDone:
     ld (hl),0
     ld a,d               ; return length in A
     pop bc
@@ -65,10 +65,10 @@ toLowerAscii:
     ret
 
 ; rand0_3: returns pseudo-random 0..3 in A
-; - Simple LFSR/state at RAND_STATE (one byte)
-; - Caller must define RAND_STATE storage
+; - Simple LFSR/state at randState (one byte)
+; - Caller must define randState storage
 rand0_3:
-    ld hl,RAND_STATE
+    ld hl,randState
     ld a,(hl)
     ld b,a
     rlca
@@ -81,7 +81,7 @@ rand0_3:
 ; compareStr: compare null-terminated strings at HL and DE
 ; Returns Z if equal, NZ otherwise
 compareStr:
-COMPARE_LOOP:
+compareLoop:
     ld a,(hl)
     cp (de)
     ret nz
@@ -89,7 +89,7 @@ COMPARE_LOOP:
     ret z
     inc hl
     inc de
-    jr COMPARE_LOOP
+    jr compareLoop
 
 ; findTokenIndex: scan table of null-terminated strings
 ; Inputs: HL = token ptr, DE = table ptr, B = count
@@ -97,10 +97,10 @@ COMPARE_LOOP:
 findTokenIndex:
     push hl
     ld c,1
-.FIND_NEXT:
+findNext:
     ld a,b
     or a
-    jr z,FIND_NOTFOUND
+    jr z,findNotFound
     push bc
     push de
     push hl
@@ -108,20 +108,20 @@ findTokenIndex:
     pop hl
     pop de
     pop bc
-    jr z,FIND_FOUND
+    jr z,findFound
     ; advance DE to next string
-.FIND_SKIPSTR:
+findSkipStr:
     ld a,(de)
     inc de
     or a
-    jr nz,FIND_SKIPSTR
+    jr nz,findSkipStr
     inc c
-    djnz .FIND_NEXT
-FIND_NOTFOUND:
+    djnz findNext
+findNotFound:
     xor a
     pop hl
     ret
-FIND_FOUND:
+findFound:
     ld a,c
     pop hl
     ret
@@ -149,8 +149,8 @@ printObjectDesc:
     ret
 
 ; Data placeholders (caller to allocate in BSS/vars area)
-RAND_STATE: db 1
-SPACE_STR: db " ",0
+randState: db 1
+spaceStr: db " ",0
 
 ; printStr: print null-terminated string at HL
 printStr:
@@ -217,19 +217,19 @@ printNum7:
 ; NORMALIZE_INPUT_SUB: lowercase a null-terminated string in-place
 ; Input: HL -> string; Output: HL -> terminator; Clobbers: A
 NORMALIZE_INPUT_SUB:
-NORM_LOOP:
+normLoop:
     ld a,(hl)                     ; load current char
     or a                          ; terminator?
     ret z                         ; done if 0
     cp 'A'                        ; below 'A'?
-    jr c,NORM_NEXT                ; skip
+    jr c,normNext                 ; skip
     cp 'Z'+1                      ; past 'Z'?
-    jr nc,NORM_NEXT               ; skip
+    jr nc,normNext                ; skip
     add a,32                      ; to lowercase
     ld (hl),a                     ; write back
-NORM_NEXT:
+normNext:
     inc hl                        ; advance
-    jr NORM_LOOP                  ; continue
+    jr normLoop                   ; continue
 
 ; printSpace: convenience to emit a single space
 printSpace:
@@ -243,32 +243,32 @@ printAdj:
     push hl
     ld d,h
     ld e,l               ; DE scans for first non-space
-.ADJ_SKIPSPACES:
+adjSkipSpaces:
     ld a,(de)
     cp ' '
-    jr nz,ADJ_HAVECHAR
+    jr nz,adjHaveChar
     inc de
-    jr ADJ_SKIPSPACES
-ADJ_HAVECHAR:
+    jr adjSkipSpaces
+adjHaveChar:
     call toLowerAscii
     ld b,a               ; first non-space, lowercased
     ld a,'a'
     call putc
     ld a,b
     cp 'a'
-    jr z,ADJ_VOWEL
+    jr z,adjVowel
     cp 'e'
-    jr z,ADJ_VOWEL
+    jr z,adjVowel
     cp 'i'
-    jr z,ADJ_VOWEL
+    jr z,adjVowel
     cp 'o'
-    jr z,ADJ_VOWEL
+    jr z,adjVowel
     cp 'u'
-    jr nz,ADJ_AFTER
-ADJ_VOWEL:
+    jr nz,adjAfter
+adjVowel:
     ld a,'n'
     call putc
-ADJ_AFTER:
+adjAfter:
     call printSpace
     pop hl               ; restore adjective ptr
     jp puts
