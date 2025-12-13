@@ -1058,19 +1058,6 @@ ROUTE_BY_VERB_PATTERN:
     goto GET_PLAYER_INPUT                    ; re-prompt
 
 
-NORMALIZE_INPUT_SUB:
-
-    ; Convert uppercase to lowercase for parsing
-    for LOOP_INDEX_X = 1 to LEN(INPUT_COMMAND$)
-        CHARACTER_CODE = ASC(MID$(INPUT_COMMAND$, LOOP_INDEX_X, 1))
-        if CHARACTER_CODE > 64 and CHARACTER_CODE < 91 then
-            TEMP_COMMAND$ = LEFT$(INPUT_COMMAND$, LOOP_INDEX_X - 1) + CHR$(CHARACTER_CODE + 32) + MID$(INPUT_COMMAND$, LOOP_INDEX_X + 1)
-            INPUT_COMMAND$ = TEMP_COMMAND$
-        end if
-    next LOOP_INDEX_X
-    ret
-
-
 PRINT_RANKING_SUB:
 
     ld hl,STR_RANKING

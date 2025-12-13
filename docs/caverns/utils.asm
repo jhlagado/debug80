@@ -27,29 +27,29 @@ puts:
 readLine:
     push bc
     ld d,0               ; length counter in D
-.readLoop:
+READ_LOOP:
     SYS_GETC             ; A = ch
     cp 13                ; CR?
-    jr z,.done
+    jr z,READ_DONE
     cp 10                ; LF?
-    jr z,.done
+    jr z,READ_DONE
     ld e,a               ; save char
     ld a,d
     cp b                 ; length >= max?
-    jr nc,.readLoop      ; ignore extra chars
+    jr nc,READ_LOOP      ; ignore extra chars
     ld a,e
     ld (hl),a            ; store char
     inc hl
     inc d
     ld a,c               ; echo flag from caller
     or a
-    jr z,.readLoop
+    jr z,READ_LOOP
     dec hl
     ld a,(hl)            ; reload char for echo
     inc hl
     SYS_PUTC             ; echo
-    jr .readLoop
-.done:
+    jr READ_LOOP
+READ_DONE:
     ld (hl),0
     ld a,d               ; return length in A
     pop bc
@@ -81,7 +81,7 @@ rand0_3:
 ; compareStr: compare null-terminated strings at HL and DE
 ; Returns Z if equal, NZ otherwise
 compareStr:
-.loop:
+COMPARE_LOOP:
     ld a,(hl)
     cp (de)
     ret nz
@@ -89,7 +89,7 @@ compareStr:
     ret z
     inc hl
     inc de
-    jr .loop
+    jr COMPARE_LOOP
 
 ; findTokenIndex: scan table of null-terminated strings
 ; Inputs: HL = token ptr, DE = table ptr, B = count
@@ -97,10 +97,10 @@ compareStr:
 findTokenIndex:
     push hl
     ld c,1
-.next:
+.FIND_NEXT:
     ld a,b
     or a
-    jr z,.notFound
+    jr z,FIND_NOTFOUND
     push bc
     push de
     push hl
@@ -108,20 +108,20 @@ findTokenIndex:
     pop hl
     pop de
     pop bc
-    jr z,.found
+    jr z,FIND_FOUND
     ; advance DE to next string
-.skipStr:
+.FIND_SKIPSTR:
     ld a,(de)
     inc de
     or a
-    jr nz,.skipStr
+    jr nz,FIND_SKIPSTR
     inc c
-    djnz .next
-.notFound:
+    djnz .FIND_NEXT
+FIND_NOTFOUND:
     xor a
     pop hl
     ret
-.found:
+FIND_FOUND:
     ld a,c
     pop hl
     ret
@@ -214,6 +214,23 @@ printNum7:
     ld a,b
     jp putc
 
+; NORMALIZE_INPUT_SUB: lowercase a null-terminated string in-place
+; Input: HL -> string; Output: HL -> terminator; Clobbers: A
+NORMALIZE_INPUT_SUB:
+NORM_LOOP:
+    ld a,(hl)                     ; load current char
+    or a                          ; terminator?
+    ret z                         ; done if 0
+    cp 'A'                        ; below 'A'?
+    jr c,NORM_NEXT                ; skip
+    cp 'Z'+1                      ; past 'Z'?
+    jr nc,NORM_NEXT               ; skip
+    add a,32                      ; to lowercase
+    ld (hl),a                     ; write back
+NORM_NEXT:
+    inc hl                        ; advance
+    jr NORM_LOOP                  ; continue
+
 ; printSpace: convenience to emit a single space
 printSpace:
     ld a,' '
@@ -226,32 +243,32 @@ printAdj:
     push hl
     ld d,h
     ld e,l               ; DE scans for first non-space
-.skipSpaces:
+.ADJ_SKIPSPACES:
     ld a,(de)
     cp ' '
-    jr nz,.haveChar
+    jr nz,ADJ_HAVECHAR
     inc de
-    jr .skipSpaces
-.haveChar:
+    jr ADJ_SKIPSPACES
+ADJ_HAVECHAR:
     call toLowerAscii
     ld b,a               ; first non-space, lowercased
     ld a,'a'
     call putc
     ld a,b
     cp 'a'
-    jr z,.vowel
+    jr z,ADJ_VOWEL
     cp 'e'
-    jr z,.vowel
+    jr z,ADJ_VOWEL
     cp 'i'
-    jr z,.vowel
+    jr z,ADJ_VOWEL
     cp 'o'
-    jr z,.vowel
+    jr z,ADJ_VOWEL
     cp 'u'
-    jr nz,.afterArticle
-.vowel:
+    jr nz,ADJ_AFTER
+ADJ_VOWEL:
     ld a,'n'
     call putc
-.afterArticle:
+ADJ_AFTER:
     call printSpace
     pop hl               ; restore adjective ptr
     jp puts
