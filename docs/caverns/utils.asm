@@ -161,11 +161,64 @@ printObjectDesc:
 RAND_STATE: db 1
 SPACE_STR: db " ",0
 
-; printStr: print inline .cstr following call site
-; Assumes SVC_PUTS leaves HL at terminating null; we advance past it
+; printStr: print null-terminated string at HL
 printStr:
-    ex (sp),hl           ; HL = return addr -> string, save old HL on stack
-    SVC_PUTS             ; print null-terminated string at HL
-    inc hl               ; advance past terminator
-    ex (sp),hl           ; restore HL, update return addr
+    SVC_PUTS
     ret
+
+; printNewline: emit CR/LF
+printNewline:
+    ld a,13
+    call putc
+    ld a,10
+    call putc
+    ret
+
+; printNum: print signed 16-bit in HL (decimal)
+; Adapted from provided printDec routine; uses putc
+printNum:
+    bit 7,h
+    jr z,printNum2
+    ld a,'-'
+    call putc
+    xor a
+    sub l
+    ld l,a
+    sbc a,a
+    sub h
+    ld h,a
+printNum2:
+    push bc
+    ld c,0                      ; leading zeros flag = false
+    ld de,-10000
+    call printNum4
+    ld de,-1000
+    call printNum4
+    ld de,-100
+    call printNum4
+    ld e,-10
+    call printNum4
+    inc c                       ; flag = true for at least digit
+    ld e,-1
+    call printNum4
+    pop bc
+    ret
+printNum4:
+    ld b,'0'-1
+printNum5:
+    inc b
+    add hl,de
+    jr c,printNum5
+    sbc hl,de
+    ld a,'0'
+    cp b
+    jr nz,printNum6
+    xor a
+    or c
+    ret z
+    jr printNum7
+printNum6:
+    inc c
+printNum7:
+    ld a,b
+    jp putc

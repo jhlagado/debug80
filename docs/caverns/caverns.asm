@@ -18,6 +18,7 @@
     .include "variables.asm"
     .include "utils.asm"
     .include "tables.asm"
+    .include "strings.asm"
 
 
 GAME_START:
@@ -28,10 +29,21 @@ GAME_START:
 
 DESCRIBE_CURRENT_LOCATION:
 
-    ; Pseudo:
-    ; - If hostile (not bat) and not wielding sword -> MONSTER_ATTACK
-    ; - If lit or pre-dark area -> PRINT_ROOM_DESCRIPTION else show darkness text
-    ; - Then LIST_ROOM_OBJECTS_AND_CREATURES
+    ; ---------------------------------------------------------
+    ; DESCRIBE_CURRENT_LOCATION
+    ; Purpose: entry point after each player action to show the
+    ; current room state or trigger an immediate monster attack.
+    ; Steps:
+    ;   1) If a hostile creature is present (non-bat) and player
+    ;      is not holding the sword, jump to MONSTER_ATTACK.
+    ;   2) Darkness check: if room index < first dark cavern OR
+    ;      candle lit AND candle is present/carried, show room;
+    ;      otherwise print darkness warning and list occupants.
+    ;   3) Fall through to LIST_ROOM_OBJECTS_AND_CREATURES.
+    ; Notes:
+    ;   - Uses short-lived A loads for compares; all state lives
+    ;     in RAM variables.
+    ; ---------------------------------------------------------
 
     ; If a hostile creature is active (except some special case), jump to monster-attack logic
     ld a,(HOSTILE_CREATURE_INDEX)
@@ -67,18 +79,30 @@ DC_DARKNESS_CHECK:
     jp z,PRINT_ROOM_DESCRIPTION
 
 DC_SHOW_DARKNESS:
-    PRINT "It's very dark, too dark to see anything...I'm scared!"
+    ld hl,STR_TOO_DARK
+    call printStr
     jp LIST_ROOM_OBJECTS_AND_CREATURES
 
 
 
 PRINT_ROOM_DESCRIPTION:
 
-    ; Pseudo:
-    ; - Print room desc line 1 (if non-null)
-    ; - Print room desc line 2 (if non-null)
-    ; - Print extra messages for dark caverns, broken bridge, dragon corpse, drawbridge
-    ; - Handle candle dim/out messages, then list room objects
+    ; ---------------------------------------------------------
+    ; PRINT_ROOM_DESCRIPTION
+    ; Purpose: show the room’s primary/secondary description and
+    ; supplemental text based on dynamic state (darkness, bridge,
+    ; dragon corpse, drawbridge, candle dim/out).
+    ; Steps:
+    ;   1) Fetch ROOM_DESC1/2_TABLE word pointers by room index
+    ;      (1-based) and print if non-null.
+    ;   2) Conditional extras:
+    ;        - Dark cavern generic line for specific room ranges.
+    ;        - Bridge warning when broken.
+    ;        - Dragon corpse when present.
+    ;        - Golden drawbridge when lowered.
+    ;        - Candle dim/out thresholds (also clears lit flag).
+    ;   3) Jump to LIST_ROOM_OBJECTS_AND_CREATURES.
+    ; ---------------------------------------------------------
 
     ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
     ; ROOM_DESC1_TABLE entry (word) = DESC pointer for current room
@@ -120,28 +144,34 @@ PR_CHECK_DESC2:
 PR_AFTER_DESC:
 
     if PLAYER_LOCATION = ROOM_DARK_CAVERN_A or PLAYER_LOCATION = ROOM_DARK_CAVERN_B or PLAYER_LOCATION = ROOM_DARK_CAVERN_C or PLAYER_LOCATION > ROOM_TEMPLE_BALCONY and PLAYER_LOCATION < ROOM_DARK_CAVERN_G or PLAYER_LOCATION = ROOM_DARK_CAVERN_H or PLAYER_LOCATION = ROOM_DARK_CAVERN_I or PLAYER_LOCATION = ROOM_DARK_CAVERN_J or PLAYER_LOCATION = ROOM_DARK_CAVERN_K or PLAYER_LOCATION = ROOM_WOODEN_BRIDGE then
-        print "You are deep in a dark cavern."
+        ld hl,STR_DARK_CAVERN
+        call printStr
     end if
 
     if (PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR or PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR) and BRIDGE_CONDITION = EXIT_FATAL then
-        print "Two of the ropes have snapped under your weight. It's totally unfit to cross again."
+        ld hl,STR_BRIDGE_SNAPPED
+        call printStr
     end if
 
     if PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING and OBJECT_LOCATION(OBJ_DRAGON) = 0 then
-        print "You can also see the bloody corpse of an enormous dragon."
+        ld hl,STR_DRAGON_CORPSE
+        call printStr
     end if
 
     if PLAYER_LOCATION = ROOM_CASTLE_LEDGE and DRAWBRIDGE_STATE = ROOM_DRAWBRIDGE then
-        print " A mighty golden drawbridge spans the waters."
+        ld hl,STR_GOLD_BRIDGE
+        call printStr
     end if
 
     if TURN_COUNTER > CANDLE_DIM_TURN then
-        print "Your candle is growing dim."
+        ld hl,STR_CANDLE_DIM
+        call printStr
     end if
 
     if TURN_COUNTER >= CANDLE_OUT_TURN then
         CANDLE_IS_LIT_FLAG = 0
-        print "In fact...it went out!"
+        ld hl,STR_CANDLE_OUT
+        call printStr
     end if
 
     goto LIST_ROOM_OBJECTS_AND_CREATURES
@@ -150,51 +180,166 @@ PR_AFTER_DESC:
 
 LIST_ROOM_OBJECTS_AND_CREATURES:
 
+    ; ---------------------------------------------------------
+    ; LIST_ROOM_OBJECTS_AND_CREATURES
+    ; Purpose: enumerate objects (7..24) and creatures (1..6) at
+    ; the player’s location, emit headings, trigger intros, and
+    ; show the prompt.
+    ; Steps:
+    ;   1) Count objects at PLAYER_LOCATION; if any, print header
+    ;      and list them (sets CURRENT_OBJECT_INDEX per item).
+    ;   2) Count creatures; trigger intros during count; if any,
+    ;      print header and list them.
+    ;   3) Print newline and prompt, set RESHOW_FLAG=1.
+    ;   4) If a hostile (non-bat) is present and player not sword,
+    ;      jump to MONSTER_ATTACK; else go to GET_PLAYER_INPUT.
+    ; Notes:
+    ;   - Array access is byte-indexed (OBJECT_LOCATION base + idx-1).
+    ; ---------------------------------------------------------
+
     VISIBLE_OBJECT_COUNT = 0
 
-    for LOOP_INDEX = 7 to 24
-        if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
-            VISIBLE_OBJECT_COUNT = VISIBLE_OBJECT_COUNT + 1
-        end if
-    next LOOP_INDEX
+    ; Count objects at current location (indices 7..24)
+    ld a,7
+    ld (LOOP_INDEX),a
+LOC_COUNT_OBJECTS:
+    ld a,(LOOP_INDEX)
+    cp 25
+    jp z,LOC_COUNT_DONE
+    ; load OBJECT_LOCATION(LOOP_INDEX)
+    ld a,(LOOP_INDEX)
+    sub 1                     ; zero-based offset (index-1)
+    ld l,a
+    ld h,0
+    ld de,OBJECT_LOCATION
+    add hl,de
+    ld a,(hl)
+    ld b,a                     ; save object loc
+    ld a,(PLAYER_LOCATION)
+    cp b
+    jp nz,LOC_NEXT_OBJ
+    ld a,(VISIBLE_OBJECT_COUNT)
+    inc a
+    ld (VISIBLE_OBJECT_COUNT),a
+LOC_NEXT_OBJ:
+    ld a,(LOOP_INDEX)
+    inc a
+    ld (LOOP_INDEX),a
+    jp LOC_COUNT_OBJECTS
+LOC_COUNT_DONE:
 
     if VISIBLE_OBJECT_COUNT > 0 then
-        print "You can also see..."
-        for LOOP_INDEX = 7 to 24
-            if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
-                CURRENT_OBJECT_INDEX = LOOP_INDEX
-                call PRINT_OBJECT_DESCRIPTION_SUB
-            end if
-        next LOOP_INDEX
+        ld hl,STR_SEE_OBJECTS
+        call printStr
+        ; List objects at current location
+        ld a,7
+        ld (LOOP_INDEX),a
+LOC_LIST_OBJECTS:
+        ld a,(LOOP_INDEX)
+        cp 25
+        jp z,LOC_DONE_LIST
+        ld a,(LOOP_INDEX)
+        sub 1
+        ld l,a
+        ld h,0
+        ld de,OBJECT_LOCATION
+        add hl,de
+        ld a,(hl)
+        ld b,a
+        ld a,(PLAYER_LOCATION)
+        cp b
+        jp nz,LOC_NEXT_LIST
+        ld a,(LOOP_INDEX)
+        ld (CURRENT_OBJECT_INDEX),a
+        call PRINT_OBJECT_DESCRIPTION_SUB
+LOC_NEXT_LIST:
+        ld a,(LOOP_INDEX)
+        inc a
+        ld (LOOP_INDEX),a
+        jp LOC_LIST_OBJECTS
+LOC_DONE_LIST:
     end if
 
     VISIBLE_CREATURE_COUNT = 0
 
-    for LOOP_INDEX = 1 to 6
-        if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
-            VISIBLE_CREATURE_COUNT = VISIBLE_CREATURE_COUNT + 1
-            CURRENT_OBJECT_INDEX = LOOP_INDEX
-            call TRIGGER_CREATURE_INTRO_SUB
-        end if
-    next LOOP_INDEX
+    ; Count/intro creatures at current location (indices 1..6)
+    ld a,1
+    ld (LOOP_INDEX),a
+LOC_COUNT_CREATURES:
+    ld a,(LOOP_INDEX)
+    cp 7
+    jp z,LOC_COUNT_CRE_DONE
+    ld a,(LOOP_INDEX)
+    sub 1
+    ld l,a
+    ld h,0
+    ld de,OBJECT_LOCATION
+    add hl,de
+    ld a,(hl)
+    ld b,a
+    ld a,(PLAYER_LOCATION)
+    cp b
+    jp nz,LOC_NEXT_CRE
+    ld a,(VISIBLE_CREATURE_COUNT)
+    inc a
+    ld (VISIBLE_CREATURE_COUNT),a
+    ld a,(LOOP_INDEX)
+    ld (CURRENT_OBJECT_INDEX),a
+    call TRIGGER_CREATURE_INTRO_SUB
+LOC_NEXT_CRE:
+    ld a,(LOOP_INDEX)
+    inc a
+    ld (LOOP_INDEX),a
+    jp LOC_COUNT_CREATURES
+LOC_COUNT_CRE_DONE:
 
     if VISIBLE_CREATURE_COUNT > 0 then
-        print "Nearby there lurks..."
-        for LOOP_INDEX = 1 to 6
-            if OBJECT_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
-                CURRENT_OBJECT_INDEX = LOOP_INDEX
-                call PRINT_OBJECT_DESCRIPTION_SUB
-            end if
-        next LOOP_INDEX
+        ld hl,STR_SEE_CREATURES
+        call printStr
+        ; List creatures at current location
+        ld a,1
+        ld (LOOP_INDEX),a
+LOC_LIST_CREATURES:
+        ld a,(LOOP_INDEX)
+        cp 7
+        jp z,LOC_LIST_CRE_DONE
+        ld a,(LOOP_INDEX)
+        sub 1
+        ld l,a
+        ld h,0
+        ld de,OBJECT_LOCATION
+        add hl,de
+        ld a,(hl)
+        ld b,a
+        ld a,(PLAYER_LOCATION)
+        cp b
+        jp nz,LOC_NEXT_CRE_LIST
+        ld a,(LOOP_INDEX)
+        ld (CURRENT_OBJECT_INDEX),a
+        call PRINT_OBJECT_DESCRIPTION_SUB
+LOC_NEXT_CRE_LIST:
+        ld a,(LOOP_INDEX)
+        inc a
+        ld (LOOP_INDEX),a
+        jp LOC_LIST_CREATURES
+LOC_LIST_CRE_DONE:
     end if
 
-    print
-    RESHOW_FLAG = 1
-    print ">";
+    call printNewline
+    SET8 RESHOW_FLAG,1
+    ld hl,STR_PROMPT
+    call printStr
 
-    if HOSTILE_CREATURE_INDEX > 0 and HOSTILE_CREATURE_INDEX <> 5 and CURRENT_OBJECT_INDEX <> 20 then
-        goto MONSTER_ATTACK
-    end if
+    ld a,(HOSTILE_CREATURE_INDEX)
+    or a
+    jp z,LOC_DONE
+    cp 5
+    jp z,LOC_DONE
+    ld a,(CURRENT_OBJECT_INDEX)
+    cp OBJ_SWORD
+    jp z,LOC_DONE
+    jp MONSTER_ATTACK
+LOC_DONE:
 
     goto GET_PLAYER_INPUT
 
@@ -292,7 +437,8 @@ PARSE_COMMAND_ENTRY:
 
 SHOW_INVENTORY:
 
-    print "You are carrying ";
+    ld hl,STR_CARRYING_PREFIX
+    call printStr
     VISIBLE_OBJECT_COUNT = 0
 
     for LOOP_INDEX = 7 to 24
@@ -302,11 +448,12 @@ SHOW_INVENTORY:
     next LOOP_INDEX
 
     if VISIBLE_OBJECT_COUNT = 0 then
-        print "nothing."
+        ld hl,STR_NOTHING
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    print
+    call printNewline
     for LOOP_INDEX = 7 to 24
         if OBJECT_LOCATION(LOOP_INDEX) = -1 then
             CURRENT_OBJECT_INDEX = LOOP_INDEX
@@ -331,12 +478,26 @@ QUIT_GAME:
         end if
     next LOOP_INDEX
 
-    print
-    print "You have a score of"; SCORE; " out of a possible 126 points in"; TURN_COUNTER; " moves."
+    call printNewline
+    ld hl,STR_SCORE_PREFIX
+    call printStr
+    ld a,(SCORE)
+    ld l,a
+    ld h,0
+    call printNum
+    ld hl,STR_SCORE_MID
+    call printStr
+    ld a,(TURN_COUNTER)
+    ld l,a
+    ld h,0
+    call printNum
+    ld hl,STR_SCORE_SUFFIX
+    call printStr
 
     call PRINT_RANKING_SUB
 
-    print "Another adventure? ";
+    ld hl,STR_ANOTHER
+    call printStr
 
 WAIT_FOR_YES_NO:
     YESNO_KEY$ = INKEY$
@@ -372,7 +533,8 @@ CHECK_CREATURE_AT_LOCATION:
 CHECK_CREATURE_BAT_SPECIAL:
 
     if HOSTILE_CREATURE_INDEX = 5 then
-        print "The giant bat picked you up and carried you to another place."
+        ld hl,STR_GIANT_BAT
+        call printStr
         PLAYER_LOCATION = ROOM_BAT_CAVE
         RESHOW_FLAG = 0
         OBJECT_LOCATION(5) = OBJECT_LOCATION(5) + 7
@@ -384,11 +546,40 @@ CHECK_CREATURE_BAT_SPECIAL:
 
 
 MONSTER_ATTACK:
+    ; Print "killed by a <adj><noun>!!"
+    ld hl,STR_MONSTER_KILLED
+    call printStr
 
-    MONSTER_ADJECTIVE$ = @MONSTER_ADJ(HOSTILE_CREATURE_INDEX)
-    MONSTER_NOUN$ = @MONSTER_NOUN(HOSTILE_CREATURE_INDEX)
+    ; Fetch monster adjective pointer
+    ld a,(HOSTILE_CREATURE_INDEX)
+    dec a
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,MONSTER_ADJ_DATA
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ex de,hl
+    call printStr
 
-    print "AUUUUUGH...you've just been killed by a"; MONSTER_ADJECTIVE$; MONSTER_NOUN$; "!!"
+    ; Fetch monster noun pointer
+    ld a,(HOSTILE_CREATURE_INDEX)
+    dec a
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,MONSTER_NOUN_DATA
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ex de,hl
+    call printStr
+
+    ld hl,STR_MONSTER_SUFFIX
+    call printStr
 
     goto QUIT_GAME
 
@@ -426,11 +617,15 @@ HANDLE_MOVEMENT_COMMAND:
     TARGET_LOCATION = MOVEMENT_TABLE(PLAYER_LOCATION, RANDOM_DIRECTION_INDEX)
 
     if TARGET_LOCATION = EXIT_NONE then
-        print "You can't go that way"
+        ld hl,STR_CANT_GO_THAT_WAY
+        call printStr
+        call printNewline
     end if
 
     if TARGET_LOCATION = EXIT_FATAL then
-        print "You stumble and fall into the chasm and smash yourself to a pulp on the rocks below."
+        ld hl,STR_FATAL_FALL
+        call printStr
+        call printNewline
         goto QUIT_GAME
     end if
 
@@ -448,21 +643,24 @@ HANDLE_NON_MOVEMENT_COMMAND:
     ; Magic word "galar"
     if INSTR(INPUT_COMMAND$, " galar ") > 0 then
         RESHOW_FLAG = 0
-        print "Suddenly a magic wind carried you to another place..."
+        ld hl,STR_MAGIC_WIND
+        call printStr
         PLAYER_LOCATION = ROOM_CAVE_ENTRY
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
     ; Crypt wall "ape"
     if INSTR(INPUT_COMMAND$, " ape ") > 0 then
-        print "Hey! the eastern wall of the crypt slid open..."
+        ld hl,STR_CRYPT_WALL
+        call printStr
         SECRET_EXIT_LOCATION = 38
         call UPDATE_DYNAMIC_EXITS
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
     if CURRENT_OBJECT_INDEX < 1 then
-        print "eh?"
+        ld hl,STR_EH
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
@@ -470,7 +668,8 @@ HANDLE_NON_MOVEMENT_COMMAND:
     if OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1 or OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION then
         goto CHECK_GET_DROP_USE
     else
-        print "Where? I can't see it."
+        ld hl,STR_CANT_SEE_IT
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
@@ -504,7 +703,8 @@ HANDLE_GET_COMMAND:
     next LOOP_INDEX
 
     if CARRIED_COUNT > 10 then
-        print "You are carrying too many objects."
+        ld hl,STR_TOO_MANY_OBJECTS
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
@@ -535,7 +735,8 @@ ROUTE_USE_BY_OBJECT:
         goto USE_ROPE
     end if
 
-    print "How am I supposed to use it?"
+    ld hl,STR_USE_HOW
+    call printStr
     goto DESCRIBE_CURRENT_LOCATION
 
 
@@ -543,11 +744,13 @@ ROUTE_USE_BY_OBJECT:
 USE_KEY:
 
     if PLAYER_LOCATION <> ROOM_FOREST_CLEARING and PLAYER_LOCATION <> ROOM_TEMPLE then
-        print "It won't open!"
+        ld hl,STR_WONT_OPEN
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    print "You opened the door."
+    ld hl,STR_DOOR_OPENED
+    call printStr
     OBJECT_LOCATION(19) = PLAYER_LOCATION
     RESHOW_FLAG = 0
 
@@ -564,7 +767,8 @@ USE_KEY:
 USE_SWORD:
 
     if HOSTILE_CREATURE_INDEX = 0 then
-        print "But there's nothing to kill..."
+        ld hl,STR_NOTHING_TO_KILL
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
@@ -574,7 +778,8 @@ USE_SWORD:
         goto SWORD_FIGHT_CONTINUES
     end if
 
-    print "You swing with your sword but miss and the creature smashes your skull."
+    ld hl,STR_SWORD_MISS
+    call printStr
     goto QUIT_GAME
 
 
@@ -592,15 +797,19 @@ SWORD_FIGHT_CONTINUES:
     end if
 
     if RANDOM_FIGHT_MESSAGE = 0 then
-        print "You attack but the creature moves aside."
+        ld hl,STR_ATTACK_MOVE
+        call printStr
     else
         if RANDOM_FIGHT_MESSAGE = 1 then
-            print "The creature deflects your blow."
+            ld hl,STR_ATTACK_DEFLECT
+            call printStr
         else
             if RANDOM_FIGHT_MESSAGE = 2 then
-                print "The foe is stunned but quickly regains his balance."
+                ld hl,STR_ATTACK_STUN
+                call printStr
             else
-                print "You missed and he deals a blow to your head."
+                ld hl,STR_ATTACK_HEAD_BLOW
+                call printStr
             end if
         end if
     end if
@@ -611,7 +820,8 @@ SWORD_FIGHT_CONTINUES:
 
 SWORD_KILLS_TARGET:
 
-    print "The sword strikes home and your foe dies..."
+    ld hl,STR_SWORD_KILLS
+    call printStr
     OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1
 
     if HOSTILE_CREATURE_INDEX = 3 or HOSTILE_CREATURE_INDEX = 5 then
@@ -619,13 +829,15 @@ SWORD_KILLS_TARGET:
     else
         OBJECT_LOCATION(HOSTILE_CREATURE_INDEX) = 0
         if HOSTILE_CREATURE_INDEX = 1 then
-            print "Hey! Your sword has just crumbled into dust!!"
+            ld hl,STR_SWORD_CRUMBLES
+            call printStr
             OBJECT_LOCATION(20) = 35
         end if
     end if
 
     if HOSTILE_CREATURE_INDEX <> 4 then
-        print "Suddenly a black cloud descends and the corpse vaporizes into nothing."
+        ld hl,STR_CORPSE_VAPOR
+        call printStr
     end if
 
     HOSTILE_CREATURE_INDEX = 0
@@ -636,17 +848,20 @@ SWORD_KILLS_TARGET:
 USE_BOMB:
 
     if OBJECT_LOCATION(9) <> -1 and OBJECT_LOCATION(9) <> PLAYER_LOCATION then
-        print "That won't burn, Dummy...In fact, the candle went out."
+        ld hl,STR_WONT_BURN
+        call printStr
         CANDLE_IS_LIT_FLAG = 0
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
     if CANDLE_IS_LIT_FLAG <> 1 then
-        print "But the candle is out, stupid!!"
+        ld hl,STR_CANDLE_OUT_STUPID
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    print "The fuse burnt away and....BOOM!!....the explosion blew you out of the way (Lucky!)"
+    ld hl,STR_BOMB_EXPLODE
+    call printStr
     RESHOW_FLAG = 0
 
     if PLAYER_LOCATION > ROOM_DARK_ROOM then
@@ -665,11 +880,13 @@ USE_BOMB:
 USE_ROPE:
 
     if PLAYER_LOCATION <> ROOM_TEMPLE_BALCONY then
-        print "It's too dangerous!!!"
+        ld hl,STR_TOO_DANGEROUS
+        call printStr
         goto DESCRIBE_CURRENT_LOCATION
     end if
 
-    print "You descend the rope, but it drops 10 feet short of the floor. You jump the rest of the way."
+    ld hl,STR_DESCEND_ROPE
+    call printStr
     RESHOW_FLAG = 0
     OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = PLAYER_LOCATION
     PLAYER_LOCATION = ROOM_TEMPLE
@@ -699,16 +916,19 @@ ROUTE_BY_VERB_PATTERN:
     end if
 
     if VERB_PATTERN_INDEX <= 6 then
-        print "Nothing happens!"
+        ld hl,STR_NOTHING_HAPPENS
+        call printStr
     else
         if VERB_PATTERN_INDEX >= 7 and VERB_PATTERN_INDEX <= 12 then
-            print "Please tell me how."
+            ld hl,STR_PLEASE_TELL
+            call printStr
         else
-            print "I can't!"
+            ld hl,STR_I_CANT
+            call printStr
         end if
     end if
 
-    print
+    call printNewline
     goto GET_PLAYER_INPUT
 
 
@@ -727,18 +947,24 @@ NORMALIZE_INPUT_SUB:
 
 PRINT_RANKING_SUB:
 
-    print "This gives you an adventurer's ranking of:"
+    ld hl,STR_RANKING
+    call printStr
 
     if SCORE < 20 then
-        print "Hopeless beginner"
+        ld hl,STR_RANK_HOPELESS
+        call printStr
     elseif SCORE < 50 then
-        print "Experienced loser"
+        ld hl,STR_RANK_LOSER
+        call printStr
     elseif SCORE < 100 then
-        print "Average Viking"
+        ld hl,STR_RANK_AVERAGE
+        call printStr
     elseif SCORE < 126 then
-        print "Excellent...but you've left something behind!"
+        ld hl,STR_RANK_EXCELLENT
+        call printStr
     else
-        print "Perfectionist and genius!!"
+        ld hl,STR_RANK_PERFECT
+        call printStr
     end if
 
     ret
@@ -755,22 +981,26 @@ READ_INPUT_THEN_CLEAR_SUB:
 
 ENCOUNTER_WIZARD_LABEL:
 
-    print "There, before you in a swirling mist stands an evil wizard with his hand held outwards...`Thou shall not pass' he cries."
+    ld hl,STR_ENC_WIZARD
+    call printStr
     goto LIST_ROOM_OBJECTS_AND_CREATURES
 
 
 
 ENCOUNTER_DRAGON_LABEL:
 
-    print "Before the entrance of the cave lies an enormous, green, sleeping dragon. Realizing your presence, its eyes flicker open"
-    print "and it leaps up, breathing jets fire at you."
+    ld hl,STR_ENC_DRAGON1
+    call printStr
+    ld hl,STR_ENC_DRAGON2
+    call printStr
     goto LIST_ROOM_OBJECTS_AND_CREATURES
 
 
 
 ENCOUNTER_DWARF_LABEL:
 
-    print "From around the corner trots an old and gnarled drawf carrying a lantern. `My job is to protect these stone steps!' he says andlunges at you with his dagger."
+    ld hl,STR_ENC_DWARF
+    call printStr
     goto LIST_ROOM_OBJECTS_AND_CREATURES
 
 
@@ -793,6 +1023,15 @@ TRIGGER_CREATURE_INTRO_SUB:
 ; ---------------------------------------------------------
 UPDATE_DYNAMIC_EXITS:
 
+    ; ---------------------------------------------------------
+    ; UPDATE_DYNAMIC_EXITS
+    ; Purpose: patch movement table entries that depend on
+    ; runtime state (bridge, teleport, secret exits, drawbridge).
+    ; Notes:
+    ;   - All values are bytes; direct stores into MOVEMENT_TABLE.
+    ;   - Caller updates the backing variables before invoking.
+    ; ---------------------------------------------------------
+
     ; Patch dynamic exits in movement table
 
     MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR) = BRIDGE_CONDITION
@@ -806,6 +1045,20 @@ UPDATE_DYNAMIC_EXITS:
 
 
 INIT_STATE:
+    ; ---------------------------------------------------------
+    ; INIT_STATE
+    ; Purpose: reset all mutable state and copy static tables
+    ; to working buffers.
+    ; Steps:
+    ;   1) Set all flags/counters to defaults.
+    ;   2) Copy MOVEMENT_TABLE_DATA -> MOVEMENT_TABLE (byte table).
+    ;   3) Copy OBJECT_LOCATION_TABLE -> OBJECT_LOCATION (bytes).
+    ; Source of truth: matches pseudo2.txt GAME_START defaults
+    ; (BRIDGE_CONDITION=11, DRAWBRIDGE_STATE=128, WATER_EXIT=0,
+    ;  GATE=0, TELEPORT=0, SECRET_EXIT=0, PLAYER_LOCATION=ROOM_DARK_ROOM,
+    ;  CANDLE_IS_LIT_FLAG=1, counters zeroed).
+    ; ---------------------------------------------------------
+
     ; Initialize flags and counters
     SET8 BRIDGE_CONDITION,11
     SET8 DRAWBRIDGE_STATE,128

@@ -5,8 +5,11 @@
 ; PRINT "text"
 ; Emits inline C-string and calls printStr; wraps with CR/LF
 .macro PRINT,msg1
+    LOCAL _str
+    ld hl,_str
     call printStr
-    .cstr "\r\n",msg1,"\r\n"
+    ret
+_str: db "\r\n",msg1,"\r\n",0
 .endm
 
 ; SET8 dest, value  -> ld a,value / ld (dest),a
