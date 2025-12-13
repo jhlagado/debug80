@@ -21,18 +21,17 @@
 
 
 GAME_START:
-
     cls
-
     call INIT_STATE
-
     call UPDATE_DYNAMIC_EXITS
-
     goto DESCRIBE_CURRENT_LOCATION
 
-
-
 DESCRIBE_CURRENT_LOCATION:
+
+    ; Pseudo:
+    ; - If hostile (not bat) and not wielding sword -> MONSTER_ATTACK
+    ; - If lit or pre-dark area -> PRINT_ROOM_DESCRIPTION else show darkness text
+    ; - Then LIST_ROOM_OBJECTS_AND_CREATURES
 
     ; If a hostile creature is active (except some special case), jump to monster-attack logic
     ld a,(HOSTILE_CREATURE_INDEX)
@@ -75,14 +74,50 @@ DC_SHOW_DARKNESS:
 
 PRINT_ROOM_DESCRIPTION:
 
-    ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
-    if ROOM_DESC1_TABLE(PLAYER_LOCATION) <> NULL then
-        print @ROOM_DESC1_TABLE(PLAYER_LOCATION)
-    end if
+    ; Pseudo:
+    ; - Print room desc line 1 (if non-null)
+    ; - Print room desc line 2 (if non-null)
+    ; - Print extra messages for dark caverns, broken bridge, dragon corpse, drawbridge
+    ; - Handle candle dim/out messages, then list room objects
 
-    if ROOM_DESC2_TABLE(PLAYER_LOCATION) <> NULL then
-        print @ROOM_DESC2_TABLE(PLAYER_LOCATION)
-    end if
+    ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
+    ; ROOM_DESC1_TABLE entry (word) = DESC pointer for current room
+    ld a,(PLAYER_LOCATION)
+    dec a                       ; 0-based index
+    add a,a                     ; *2 for word table
+    ld l,a
+    ld h,0
+    ld de,ROOM_DESC1_TABLE
+    add hl,de                   ; HL -> entry
+    ld e,(hl)
+    inc hl
+    ld d,(hl)                   ; DE = ptr
+    ld a,d
+    or e
+    jp z,PR_CHECK_DESC2
+    push de
+    call printStr               ; SVC_PUTS leaves HL at end of string
+    pop de
+
+PR_CHECK_DESC2:
+    ld a,(PLAYER_LOCATION)
+    dec a
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,ROOM_DESC2_TABLE
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld a,d
+    or e
+    jp z,PR_AFTER_DESC
+    push de
+    call printStr
+    pop de
+
+PR_AFTER_DESC:
 
     if PLAYER_LOCATION = ROOM_DARK_CAVERN_A or PLAYER_LOCATION = ROOM_DARK_CAVERN_B or PLAYER_LOCATION = ROOM_DARK_CAVERN_C or PLAYER_LOCATION > ROOM_TEMPLE_BALCONY and PLAYER_LOCATION < ROOM_DARK_CAVERN_G or PLAYER_LOCATION = ROOM_DARK_CAVERN_H or PLAYER_LOCATION = ROOM_DARK_CAVERN_I or PLAYER_LOCATION = ROOM_DARK_CAVERN_J or PLAYER_LOCATION = ROOM_DARK_CAVERN_K or PLAYER_LOCATION = ROOM_WOODEN_BRIDGE then
         print "You are deep in a dark cavern."
