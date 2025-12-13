@@ -144,93 +144,91 @@ PR_CHECK_DESC2:
 PR_AFTER_DESC:
     ; ---------------------------------------------------------
     ; PR_AFTER_DESC
-    ; Purpose: After room description, emit contextual lines
-    ; (dark cavern notice, bridge status, dragon corpse, etc.)
-    ; and handle candle aging. Falls through to listing objects.
+    ; After room description, emit contextual extras and candle
+    ; warnings, then fall through to listing objects/creatures.
     ; ---------------------------------------------------------
 
     ; Check if current room needs the generic dark-cavern message
-    ld a,(PLAYER_LOCATION)
-    ld b,a
-    cp ROOM_DARK_CAVERN_A
+    ld a,(PLAYER_LOCATION)        ; A = current room
+    ld b,a                        ; B = current room (reuse)
+    cp ROOM_DARK_CAVERN_A         ; dark cavern A?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_B
+    cp ROOM_DARK_CAVERN_B         ; dark cavern B?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_C
+    cp ROOM_DARK_CAVERN_C         ; dark cavern C?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_H
+    cp ROOM_DARK_CAVERN_H         ; dark cavern H?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_I
+    cp ROOM_DARK_CAVERN_I         ; dark cavern I?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_J
+    cp ROOM_DARK_CAVERN_J         ; dark cavern J?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_DARK_CAVERN_K
+    cp ROOM_DARK_CAVERN_K         ; dark cavern K?
     jp z,PRAD_PRINT_DARK
-    cp ROOM_WOODEN_BRIDGE
+    cp ROOM_WOODEN_BRIDGE         ; wooden bridge also dark
     jp z,PRAD_PRINT_DARK
-    ; Range: ROOM_TEMPLE_BALCONY < room < ROOM_DARK_CAVERN_G (i.e., D/E/F)
-    ld a,b
-    cp ROOM_TEMPLE_BALCONY+1     ; >= 29?
+    ld a,b                        ; A = current room
+    cp ROOM_TEMPLE_BALCONY+1      ; >= 29? (caverns D/E/F)
     jp c,PRAD_BRIDGE_CHECK
-    cp ROOM_DARK_CAVERN_G        ; < 32
+    cp ROOM_DARK_CAVERN_G         ; < 32? (before cavern G)
     jp nc,PRAD_BRIDGE_CHECK
 PRAD_PRINT_DARK:
-    ld hl,STR_DARK_CAVERN
-    call printStr
+    ld hl,STR_DARK_CAVERN         ; "You are deep in a dark cavern."
+    call printStr                 ; emit dark cavern note
 
 PRAD_BRIDGE_CHECK:
     ; Broken bridge message when at north/south anchor and bridge is fatal
-    ld a,(PLAYER_LOCATION)
-    cp ROOM_BRIDGE_NORTH_ANCHOR
+    ld a,(PLAYER_LOCATION)        ; A = current room
+    cp ROOM_BRIDGE_NORTH_ANCHOR   ; at north anchor?
     jr z,BRIDGE_MAYBE
-    cp ROOM_BRIDGE_SOUTH_ANCHOR
+    cp ROOM_BRIDGE_SOUTH_ANCHOR   ; at south anchor?
     jr nz,PRAD_DRAGON_CHECK
 BRIDGE_MAYBE:
-    ld a,(BRIDGE_CONDITION)
-    cp EXIT_FATAL
+    ld a,(BRIDGE_CONDITION)       ; A = bridge state
+    cp EXIT_FATAL                 ; snapped?
     jr nz,PRAD_DRAGON_CHECK
-    ld hl,STR_BRIDGE_SNAPPED
-    call printStr
+    ld hl,STR_BRIDGE_SNAPPED      ; "Two of the ropes have snapped..."
+    call printStr                 ; warn bridge unusable
 
 PRAD_DRAGON_CHECK:
     ; Dead dragon corpse visible only at cave entrance clearing when OBJ_DRAGON = 0
-    ld a,(PLAYER_LOCATION)
-    cp ROOM_CAVE_ENTRANCE_CLEARING
+    ld a,(PLAYER_LOCATION)        ; A = current room
+    cp ROOM_CAVE_ENTRANCE_CLEARING ; at cave entrance clearing?
     jr nz,PRAD_BRIDGE_STATE
     ld a,(OBJECT_LOCATION+3)      ; OBJ_DRAGON index 4 -> offset 3
-    or a
+    or a                          ; zero means corpse present
     jr nz,PRAD_BRIDGE_STATE
-    ld hl,STR_DRAGON_CORPSE
-    call printStr
+    ld hl,STR_DRAGON_CORPSE       ; "You can also see the bloody corpse..."
+    call printStr                 ; show corpse line
 
 PRAD_BRIDGE_STATE:
     ; Show golden drawbridge text when at castle ledge and drawbridge lowered
-    ld a,(PLAYER_LOCATION)
-    cp ROOM_CASTLE_LEDGE
+    ld a,(PLAYER_LOCATION)        ; A = current room
+    cp ROOM_CASTLE_LEDGE          ; on castle ledge?
     jr nz,PRAD_CANDLE_DIM
-    ld a,(DRAWBRIDGE_STATE)
-    cp ROOM_DRAWBRIDGE
+    ld a,(DRAWBRIDGE_STATE)       ; A = drawbridge state
+    cp ROOM_DRAWBRIDGE            ; lowered into room 49?
     jr nz,PRAD_CANDLE_DIM
-    ld hl,STR_GOLD_BRIDGE
-    call printStr
+    ld hl,STR_GOLD_BRIDGE         ; "A mighty golden drawbridge..."
+    call printStr                 ; describe drawbridge
 
 PRAD_CANDLE_DIM:
-    ; Candle dim warning
-    ld a,(TURN_COUNTER)
-    cp CANDLE_DIM_TURN
+    ; Candle dim warning once past threshold
+    ld a,(TURN_COUNTER)           ; A = turn count
+    cp CANDLE_DIM_TURN            ; dim threshold reached?
     jr c,PRAD_CANDLE_OUT
-    ld hl,STR_CANDLE_DIM
-    call printStr
+    ld hl,STR_CANDLE_DIM          ; "Your candle is growing dim."
+    call printStr                 ; warn dimming
 
 PRAD_CANDLE_OUT:
-    ; Candle extinguished
-    ld a,(TURN_COUNTER)
-    cp CANDLE_OUT_TURN
+    ; Candle extinguished once out threshold reached
+    ld a,(TURN_COUNTER)           ; A = turn count
+    cp CANDLE_OUT_TURN            ; out threshold?
     jp c,LIST_ROOM_OBJECTS_AND_CREATURES
-    xor a
-    ld (CANDLE_IS_LIT_FLAG),a
-    ld hl,STR_CANDLE_OUT
-    call printStr
+    xor a                         ; A = 0
+    ld (CANDLE_IS_LIT_FLAG),a     ; flag candle out
+    ld hl,STR_CANDLE_OUT          ; "In fact...it went out!"
+    call printStr                 ; announce candle out
     jp LIST_ROOM_OBJECTS_AND_CREATURES
 
 
@@ -239,163 +237,152 @@ LIST_ROOM_OBJECTS_AND_CREATURES:
 
     ; ---------------------------------------------------------
     ; LIST_ROOM_OBJECTS_AND_CREATURES
-    ; Purpose: enumerate objects (7..24) and creatures (1..6) at
-    ; the player’s location, emit headings, trigger intros, and
-    ; show the prompt.
-    ; Steps:
-    ;   1) Count objects at PLAYER_LOCATION; if any, print header
-    ;      and list them (sets CURRENT_OBJECT_INDEX per item).
-    ;   2) Count creatures; trigger intros during count; if any,
-    ;      print header and list them.
-    ;   3) Print newline and prompt, set RESHOW_FLAG=1.
-    ;   4) If a hostile (non-bat) is present and player not sword,
-    ;      jump to MONSTER_ATTACK; else go to GET_PLAYER_INPUT.
-    ; Notes:
-    ;   - Array access is byte-indexed (OBJECT_LOCATION base + idx-1).
+    ; After room description/extras, list objects and creatures in
+    ; the current room, trigger first-encounter text, then show the
+    ; prompt and possibly launch an attack if a hostile is present.
     ; ---------------------------------------------------------
 
-    VISIBLE_OBJECT_COUNT = 0
+    VISIBLE_OBJECT_COUNT = 0      ; reset visible object counter
 
     ; Count objects at current location (indices 7..24)
-    ld a,7
-    ld (LOOP_INDEX),a
+    ld a,7                        ; start at object index 7
+    ld (LOOP_INDEX),a             ; LOOP_INDEX = 7
 LOC_COUNT_OBJECTS:
-    ld a,(LOOP_INDEX)
-    cp 25
-    jp z,LOC_COUNT_DONE
-    ; load OBJECT_LOCATION(LOOP_INDEX)
-    ld a,(LOOP_INDEX)
-    sub 1                     ; zero-based offset (index-1)
+    ld a,(LOOP_INDEX)             ; A = current object index
+    cp 25                         ; past last object?
+    jp z,LOC_COUNT_DONE           ; done counting
+    ld a,(LOOP_INDEX)             ; A = index
+    sub 1                         ; convert to 0-based offset
     ld l,a
     ld h,0
-    ld de,OBJECT_LOCATION
-    add hl,de
-    ld a,(hl)
-    ld b,a                     ; save object loc
-    ld a,(PLAYER_LOCATION)
-    cp b
-    jp nz,LOC_NEXT_OBJ
-    ld a,(VISIBLE_OBJECT_COUNT)
-    inc a
-    ld (VISIBLE_OBJECT_COUNT),a
+    ld de,OBJECT_LOCATION         ; DE = base of object locations
+    add hl,de                     ; HL -> OBJECT_LOCATION(index)
+    ld a,(hl)                     ; A = object location
+    ld b,a                        ; B = copy of location
+    ld a,(PLAYER_LOCATION)        ; A = player room
+    cp b                          ; same room?
+    jp nz,LOC_NEXT_OBJ            ; skip if not here
+    ld a,(VISIBLE_OBJECT_COUNT)   ; A = count so far
+    inc a                         ; count++
+    ld (VISIBLE_OBJECT_COUNT),a   ; store updated count
 LOC_NEXT_OBJ:
-    ld a,(LOOP_INDEX)
-    inc a
-    ld (LOOP_INDEX),a
-    jp LOC_COUNT_OBJECTS
+    ld a,(LOOP_INDEX)             ; A = index
+    inc a                         ; index++
+    ld (LOOP_INDEX),a             ; store
+    jp LOC_COUNT_OBJECTS          ; continue loop
 LOC_COUNT_DONE:
 
     if VISIBLE_OBJECT_COUNT > 0 then
-        ld hl,STR_SEE_OBJECTS
-        call printStr
+        ld hl,STR_SEE_OBJECTS     ; "You can also see..."
+        call printStr             ; print header
         ; List objects at current location
-        ld a,7
+        ld a,7                    ; restart at object 7
         ld (LOOP_INDEX),a
 LOC_LIST_OBJECTS:
-        ld a,(LOOP_INDEX)
-        cp 25
+        ld a,(LOOP_INDEX)         ; A = object index
+        cp 25                     ; done listing?
         jp z,LOC_DONE_LIST
-        ld a,(LOOP_INDEX)
-        sub 1
+        ld a,(LOOP_INDEX)         ; A = index
+        sub 1                     ; to offset
         ld l,a
         ld h,0
-        ld de,OBJECT_LOCATION
-        add hl,de
-        ld a,(hl)
-        ld b,a
-        ld a,(PLAYER_LOCATION)
-        cp b
-        jp nz,LOC_NEXT_LIST
-        ld a,(LOOP_INDEX)
-        ld (CURRENT_OBJECT_INDEX),a
-        call PRINT_OBJECT_DESCRIPTION_SUB
+        ld de,OBJECT_LOCATION     ; DE = base
+        add hl,de                 ; HL -> OBJECT_LOCATION(index)
+        ld a,(hl)                 ; A = object location
+        ld b,a                    ; B = location copy
+        ld a,(PLAYER_LOCATION)    ; A = player room
+        cp b                      ; object here?
+        jp nz,LOC_NEXT_LIST       ; skip if not
+        ld a,(LOOP_INDEX)         ; A = object index
+        ld (CURRENT_OBJECT_INDEX),a ; remember current object index
+        call PRINT_OBJECT_DESCRIPTION_SUB ; print "a/an <adj> <noun>, "
 LOC_NEXT_LIST:
-        ld a,(LOOP_INDEX)
-        inc a
-        ld (LOOP_INDEX),a
-        jp LOC_LIST_OBJECTS
+        ld a,(LOOP_INDEX)         ; A = index
+        inc a                     ; next object
+        ld (LOOP_INDEX),a         ; store
+        jp LOC_LIST_OBJECTS       ; loop list
 LOC_DONE_LIST:
     end if
 
-    VISIBLE_CREATURE_COUNT = 0
+    VISIBLE_CREATURE_COUNT = 0    ; reset visible creature counter
 
     ; Count/intro creatures at current location (indices 1..6)
-    ld a,1
-    ld (LOOP_INDEX),a
+    ld a,1                        ; start at creature index 1
+    ld (LOOP_INDEX),a             ; LOOP_INDEX = 1
 LOC_COUNT_CREATURES:
-    ld a,(LOOP_INDEX)
-    cp 7
-    jp z,LOC_COUNT_CRE_DONE
-    ld a,(LOOP_INDEX)
-    sub 1
+    ld a,(LOOP_INDEX)             ; A = creature index
+    cp 7                          ; past last creature?
+    jp z,LOC_COUNT_CRE_DONE       ; done counting
+    ld a,(LOOP_INDEX)             ; A = index
+    sub 1                         ; to offset
     ld l,a
     ld h,0
-    ld de,OBJECT_LOCATION
-    add hl,de
-    ld a,(hl)
-    ld b,a
-    ld a,(PLAYER_LOCATION)
-    cp b
-    jp nz,LOC_NEXT_CRE
-    ld a,(VISIBLE_CREATURE_COUNT)
-    inc a
-    ld (VISIBLE_CREATURE_COUNT),a
-    ld a,(LOOP_INDEX)
-    ld (CURRENT_OBJECT_INDEX),a
-    call TRIGGER_CREATURE_INTRO_SUB
+    ld de,OBJECT_LOCATION         ; DE = base
+    add hl,de                     ; HL -> OBJECT_LOCATION(index)
+    ld a,(hl)                     ; A = creature location
+    ld b,a                        ; B = location copy
+    ld a,(PLAYER_LOCATION)        ; A = player room
+    cp b                          ; creature here?
+    jp nz,LOC_NEXT_CRE            ; skip if not here
+    ld a,(VISIBLE_CREATURE_COUNT) ; A = creature count
+    inc a                         ; count++
+    ld (VISIBLE_CREATURE_COUNT),a ; store
+    ld a,(LOOP_INDEX)             ; A = creature index
+    ld (CURRENT_OBJECT_INDEX),a   ; remember current creature
+    call TRIGGER_CREATURE_INTRO_SUB ; trigger intro text if needed
 LOC_NEXT_CRE:
-    ld a,(LOOP_INDEX)
-    inc a
-    ld (LOOP_INDEX),a
-    jp LOC_COUNT_CREATURES
+    ld a,(LOOP_INDEX)             ; A = index
+    inc a                         ; next creature
+    ld (LOOP_INDEX),a             ; store
+    jp LOC_COUNT_CREATURES        ; loop
 LOC_COUNT_CRE_DONE:
 
     if VISIBLE_CREATURE_COUNT > 0 then
-        ld hl,STR_SEE_CREATURES
-        call printStr
+        ld hl,STR_SEE_CREATURES   ; "Nearby there lurks..."
+        call printStr             ; print creature header
         ; List creatures at current location
-        ld a,1
+        ld a,1                    ; restart at creature 1
         ld (LOOP_INDEX),a
 LOC_LIST_CREATURES:
-        ld a,(LOOP_INDEX)
-        cp 7
+        ld a,(LOOP_INDEX)         ; A = creature index
+        cp 7                      ; finished listing?
         jp z,LOC_LIST_CRE_DONE
-        ld a,(LOOP_INDEX)
-        sub 1
+        ld a,(LOOP_INDEX)         ; A = index
+        sub 1                     ; to offset
         ld l,a
         ld h,0
-        ld de,OBJECT_LOCATION
-        add hl,de
-        ld a,(hl)
-        ld b,a
-        ld a,(PLAYER_LOCATION)
-        cp b
-        jp nz,LOC_NEXT_CRE_LIST
-        ld a,(LOOP_INDEX)
-        ld (CURRENT_OBJECT_INDEX),a
-        call PRINT_OBJECT_DESCRIPTION_SUB
+        ld de,OBJECT_LOCATION     ; DE = base
+        add hl,de                 ; HL -> OBJECT_LOCATION(index)
+        ld a,(hl)                 ; A = creature location
+        ld b,a                    ; B = location copy
+        ld a,(PLAYER_LOCATION)    ; A = player room
+        cp b                      ; creature here?
+        jp nz,LOC_NEXT_CRE_LIST   ; skip if not
+        ld a,(LOOP_INDEX)         ; A = creature index
+        ld (CURRENT_OBJECT_INDEX),a ; remember creature index
+        call PRINT_OBJECT_DESCRIPTION_SUB ; print "a/an <adj> <noun>, "
 LOC_NEXT_CRE_LIST:
-        ld a,(LOOP_INDEX)
-        inc a
-        ld (LOOP_INDEX),a
-        jp LOC_LIST_CREATURES
+        ld a,(LOOP_INDEX)         ; A = index
+        inc a                     ; next creature
+        ld (LOOP_INDEX),a         ; store
+        jp LOC_LIST_CREATURES     ; loop listing
 LOC_LIST_CRE_DONE:
     end if
 
-    call printNewline
-    SET8 RESHOW_FLAG,1
-    ld hl,STR_PROMPT
-    call printStr
+    call printNewline             ; blank line
+    ld hl,STR_PROMPT              ; ">"
+    call printStr                 ; show prompt
+    SET8 RESHOW_FLAG,1            ; remember we displayed room
 
-    ld a,(HOSTILE_CREATURE_INDEX)
-    or a
+    ld a,(HOSTILE_CREATURE_INDEX) ; A = hostile index (0 if none)
+    or a                          ; any hostile?
+    jp z,LOC_DONE                 ; none -> input
+    cp 5                          ; dragon handled elsewhere; bat (6) non-hostile
     jp z,LOC_DONE
-    cp 5
-    jp z,LOC_DONE
-    ld a,(CURRENT_OBJECT_INDEX)
-    cp OBJ_SWORD
-    jp z,LOC_DONE
-    jp MONSTER_ATTACK
+    ld a,(CURRENT_OBJECT_INDEX)   ; A = last listed index
+    cp OBJ_SWORD                  ; sword available?
+    jp z,LOC_DONE                 ; sword means no auto attack
+    jp MONSTER_ATTACK             ; attack player
 LOC_DONE:
 
     goto GET_PLAYER_INPUT
