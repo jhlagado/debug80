@@ -937,19 +937,19 @@ swordFightContinues:
     cp creatureBatIndex
     jp z,checkCreatureBatSpecial
     ld a,(randomFightMessage)
-    or a
+    cp fightMsgMove              ; 0 -> "moves"
     jr nz,sfcMsg1
     ld hl,strAttackMove
     call printStr
     goto describeCurrentLocation
 sfcMsg1:
-    cp 1
+    cp fightMsgDeflect           ; 1 -> "deflects"
     jr nz,sfcMsg2
     ld hl,strAttackDeflect
     call printStr
     goto describeCurrentLocation
 sfcMsg2:
-    cp 2
+    cp fightMsgStun              ; 2 -> "stuns"
     jr nz,sfcMsg3
     ld hl,strAttackStun
     call printStr
@@ -1035,8 +1035,8 @@ useBomb:
 
 useBombCheckLit:
     ld a,(candleIsLitFlag)
-    cp 1
-    jr z,useBombExplode
+    or a                         ; lit? (non-zero)
+    jr nz,useBombExplode
     ld hl,strCandleOutStupid
     call printStr
     goto describeCurrentLocation
@@ -1143,18 +1143,18 @@ routeByVerbPattern:
     ; default responses. Keeps verb ordering identical to BASIC.
     ; ---------------------------------------------------------
     ld a,(verbPatternIndex)
-    cp 1
+    cp verbPatternGetIndex
     jp z,handleGetCommand
-    cp 2
+    cp verbPatternDropIndex
     jp z,handleDropCommand
-    cp 3
+    cp verbPatternUseIndex
     jp z,routeUseByObject
-    cp 4
+    cp verbPatternWithIndex
     jp z,routeUseByObject
 
-    cp 7
+    cp verbPatternPleaseStart
     jr c,routeVerbNothing        ; <=6 -> nothing happens
-    cp 13
+    cp verbPatternCantStart
     jr c,routeVerbPlease         ; 7..12 -> please tell me how
     ; else >=13
     ld hl,strICant
@@ -1175,13 +1175,13 @@ printRankingSub:
     ld hl,strRanking
     call printStr
     ld a,(score)
-    cp 20
+    cp rankHopeless
     jr c,prRankHopeless
-    cp 50
+    cp rankLoser
     jr c,prRankLoser
-    cp 100
+    cp rankAverage
     jr c,prRankAverage
-    cp 126
+    cp rankPerfect
     jr c,prRankExcellent
     ld hl,strRankPerfect
     jr prRankPrint

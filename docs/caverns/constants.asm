@@ -16,6 +16,26 @@ dirSouth        equ 1
 dirWest         equ 2
 dirEast         equ 3
 
+; Verb pattern indices (order from verbPatternTable)
+verbPatternGetIndex    equ 1   ; get/take
+verbPatternDropIndex   equ 2   ; drop/put
+verbPatternUseIndex    equ 3   ; using
+verbPatternWithIndex   equ 4   ; with
+verbPatternPleaseStart equ 7   ; unlock..burn -> "please tell me how"
+verbPatternPleaseEnd   equ 12
+verbPatternCantStart   equ 13  ; up..swim -> "I can't"
+
+; Random fight message ids
+fightMsgMove    equ 0
+fightMsgDeflect equ 1
+fightMsgStun    equ 2
+
+; Score thresholds
+rankHopeless equ 20
+rankLoser    equ 50
+rankAverage  equ 100
+rankPerfect  equ 126
+
 ; Room ID constants (1..54)
 roomDarkRoom             equ 1
 roomForestClearing       equ 2

@@ -156,23 +156,21 @@ csCompare:
     inc de
     jr csCompare
 csMismatch:
-    pop de
-    pop hl
-    inc hl               ; advance haystack start
+    pop de                ; restore needle ptr
+    pop hl                ; restore haystack start
+    inc hl                ; advance haystack start
     jr csNextStart
 csFound:
-    pop de
-    pop hl
-    ld a,1
-    pop de
-    pop hl
+    pop de                ; drop needle save
+    pop hl                ; drop haystack save
+    ld a,1                ; found
+    pop de                ; restore original DE
+    pop hl                ; restore original HL
     ret
 csNotFound:
-    pop de
-    pop hl
-    xor a
-    pop de
-    pop hl
+    xor a                 ; not found
+    pop de                ; restore original DE
+    pop hl                ; restore original HL
     ret
 
 ; printObjectDesc: helper to print "a" + adj + noun + ", "
