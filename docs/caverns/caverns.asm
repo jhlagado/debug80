@@ -261,16 +261,16 @@ locListObjects:
     sub 1                     ; to offset
     ld l,a
     ld h,0
-        ld de,objectLocation     ; DE = base
-        add hl,de                 ; HL -> objectLocation(index)
-        ld a,(hl)                 ; A = object location
-        ld b,a                    ; B = location copy
-        ld a,(playerLocation)    ; A = player room
-        cp b                      ; object here?
-        jp nz,locNextList       ; skip if not
-        ld a,(loopIndex)         ; A = object index
-        ld (currentObjectIndex),a ; remember current object index
-        call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+    ld de,objectLocation     ; DE = base
+    add hl,de                 ; HL -> objectLocation(index)
+    ld a,(hl)                 ; A = object location
+    ld b,a                    ; B = location copy
+    ld a,(playerLocation)    ; A = player room
+    cp b                      ; object here?
+    jp nz,locNextList       ; skip if not
+    ld a,(loopIndex)         ; A = object index
+    ld (currentObjectIndex),a ; remember current object index
+    call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
 locNextList:
     ld a,(loopIndex)         ; A = index
     inc a                     ; next object
@@ -319,28 +319,28 @@ locCountCreDone:
     ld a,creatureWizardIndex     ; restart at creature 1
     ld (loopIndex),a
 locListCreatures:
-        ld a,(loopIndex)         ; A = creature index
-        cp creatureCount+1        ; finished listing?
-        jp z,locListCreDone
-        ld a,(loopIndex)         ; A = index
-        sub 1                     ; to offset
-        ld l,a
-        ld h,0
-        ld de,objectLocation     ; DE = base
-        add hl,de                 ; HL -> objectLocation(index)
-        ld a,(hl)                 ; A = creature location
-        ld b,a                    ; B = location copy
-        ld a,(playerLocation)    ; A = player room
-        cp b                      ; creature here?
-        jp nz,locNextCreList   ; skip if not
-        ld a,(loopIndex)         ; A = creature index
-        ld (currentObjectIndex),a ; remember creature index
-        call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+    ld a,(loopIndex)         ; A = creature index
+    cp creatureCount+1        ; finished listing?
+    jp z,locListCreDone
+    ld a,(loopIndex)         ; A = index
+    sub 1                     ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation     ; DE = base
+    add hl,de                 ; HL -> objectLocation(index)
+    ld a,(hl)                 ; A = creature location
+    ld b,a                    ; B = location copy
+    ld a,(playerLocation)    ; A = player room
+    cp b                      ; creature here?
+    jp nz,locNextCreList   ; skip if not
+    ld a,(loopIndex)         ; A = creature index
+    ld (currentObjectIndex),a ; remember creature index
+    call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
 locNextCreList:
-        ld a,(loopIndex)         ; A = index
-        inc a                     ; next creature
-        ld (loopIndex),a         ; store
-        jp locListCreatures     ; loop listing
+    ld a,(loopIndex)         ; A = index
+    inc a                     ; next creature
+    ld (loopIndex),a         ; store
+    jp locListCreatures     ; loop listing
 locListCreDone:
     call printNewline             ; blank line
     ld hl,strPrompt              ; ">"
