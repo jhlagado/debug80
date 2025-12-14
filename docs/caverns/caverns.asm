@@ -44,7 +44,7 @@ describeCurrentLocation:
     ld a,(hostileCreatureIndex)
     or a
     jp z,dcDarknessCheck
-    cp 5
+    cp creatureBatIndex            ; bat does not auto-attack
     jp z,dcDarknessCheck
     ld a,(currentObjectIndex)
     cp objSword
@@ -278,11 +278,11 @@ locDoneList:
     end if
     visibleCreatureCount = 0    ; reset visible creature counter
     ; Count/intro creatures at current location (indices 1..6)
-    ld a,1                        ; start at creature index 1
+    ld a,creatureWizardIndex      ; start at first creature index
     ld (loopIndex),a             ; loopIndex = 1
 locCountCreatures:
     ld a,(loopIndex)             ; A = creature index
-    cp 7                          ; past last creature?
+    cp creatureCount+1            ; past last creature?
     jp z,locCountCreDone       ; done counting
     ld a,(loopIndex)             ; A = index
     sub 1                         ; to offset
@@ -311,11 +311,11 @@ locCountCreDone:
         ld hl,strSeeCreatures   ; "Nearby there lurks..."
         call printStr             ; print creature header
         ; List creatures at current location
-        ld a,1                    ; restart at creature 1
+        ld a,creatureWizardIndex  ; restart at creature 1
         ld (loopIndex),a
 locListCreatures:
         ld a,(loopIndex)         ; A = creature index
-        cp 7                      ; finished listing?
+        cp creatureCount+1        ; finished listing?
         jp z,locListCreDone
         ld a,(loopIndex)         ; A = index
         sub 1                     ; to offset
@@ -345,7 +345,7 @@ locListCreDone:
     ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
     or a                          ; any hostile?
     jp z,locDone                 ; none -> input
-    cp 5                          ; dragon handled elsewhere; bat (6) non-hostile
+    cp creatureBatIndex           ; bat is non-hostile
     jp z,locDone
     ld a,(currentObjectIndex)   ; A = last listed index
     cp objSword                  ; sword available?
@@ -521,10 +521,10 @@ checkCreatureAtLocation:
     ; set hostileCreatureIndex and branch for special handling.
     ; Otherwise clear hostileCreatureIndex and continue to verb handling.
     ; ---------------------------------------------------------
-    set8 hostileCreatureIndex,1         ; start at creature 1
+    set8 hostileCreatureIndex,creatureWizardIndex         ; start at creature 1
 ccalLoop:
     ld a,(hostileCreatureIndex)         ; A = creature index (1..6)
-    cp 7                                ; past last creature?
+    cp creatureCount+1                  ; past last creature?
     jp z,ccalNone                       ; no hostiles found
     ; compute objectLocation offset = index-1
     dec a                               ; zero-based offset
@@ -553,7 +553,7 @@ checkCreatureBatSpecial:
     ; and redisplay. Otherwise continue verb handling.
     ; ---------------------------------------------------------
     ld a,(hostileCreatureIndex)
-    cp 5                                ; bat index?
+    cp creatureBatIndex                 ; bat index?
     jp nz,handleVerbOrMovement          ; not bat -> continue
     ld hl,strGiantBat                   ; "The giant bat picked you up..."
     call printStr
@@ -561,7 +561,7 @@ checkCreatureBatSpecial:
     ld (playerLocation),a               ; move player
     set8 reshowFlag,0                   ; force redisplay
     ; objectLocation(5) = objectLocation(5) + 7 (index 5 -> offset 4)
-    ld hl,objectLocation+4
+    ld hl,objectLocation+creatureBatIndex-1
     ld a,(hl)
     add a,7
     ld (hl),a
@@ -769,7 +769,7 @@ hgcNext:
     jp hgcCount
 hgcDoneCount:
     ld a,(carriedCount)
-    cp 11                              ; >10?
+    cp maxCarryItems+1                 ; > max carry?
     jr c,hgcCarryOk
     ld hl,strTooManyObjects
     call printStr
@@ -895,7 +895,7 @@ swordFightContinues:
     jp z,swordKillsTarget
     ld (randomFightMessage),a
     ld a,(hostileCreatureIndex)
-    cp 5
+    cp creatureBatIndex
     jp z,checkCreatureBatSpecial
     ld a,(randomFightMessage)
     cp 0
@@ -934,9 +934,9 @@ swordKillsTarget:
     ld (hl),a
     ; adjust hostile creature location
     ld a,(hostileCreatureIndex)
-    cp 3
+    cp creatureTrollIndex
     jr z,sktAddTen
-    cp 5
+    cp creatureBatIndex
     jr z,sktAddTen
     ; else set to 0
     dec a
@@ -947,12 +947,12 @@ swordKillsTarget:
     xor a
     ld (hl),a
     ld a,(hostileCreatureIndex)
-    cp 1
+    cp creatureWizardIndex
     jr nz,sktCorpseCheck
     ld hl,strSwordCrumbles
     call printStr
     ld a,35
-    ld (objectLocation+19),a      ; sword moves to room 35
+    ld (objectLocation+objSword-1),a      ; sword moves to room 35
     jr sktCorpseCheck
 sktAddTen:
     dec a
@@ -965,7 +965,7 @@ sktAddTen:
     ld (hl),a
 sktCorpseCheck:
     ld a,(hostileCreatureIndex)
-    cp 4
+    cp creatureDragonIndex
     jr z,sktDone
     ld hl,strCorpseVapor
     call printStr
@@ -982,7 +982,7 @@ useBomb:
     ; teleportDestination, and move bomb to room 0.
     ; ---------------------------------------------------------
     ; Check candle location (index 9 -> offset 8? actually candle index 21 -> offset 20; bomb index 9 -> offset 8)
-    ld a,(objectLocation+8)          ; bomb index 9 offset 8
+    ld a,(objectLocation+objBomb-1)       ; bomb index -> offset (objBomb-1)
     cp 255                           ; carried?
     jr z,useBombCheckLit
     ld b,a
@@ -1019,7 +1019,7 @@ useBombExplode:
     call updateDynamicExits
 useBombNoMove:
     ld a,0
-    ld (objectLocation+8),a          ; bomb to room 0
+    ld (objectLocation+objBomb-1),a       ; bomb to room 0
     goto describeCurrentLocation
 
 useRope:

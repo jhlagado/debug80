@@ -80,7 +80,20 @@ objKey      equ 19
 objSword    equ 20
 objCandle   equ 21
 objRope     equ 22
-NULL         equ 0
+objBrick    equ 23
+
+; Creature indices (1..6)
+creatureWizardIndex equ 1
+creatureDemonIndex  equ 2
+creatureTrollIndex  equ 3
+creatureDragonIndex equ 4
+creatureBatIndex    equ 5
+creatureDwarfIndex  equ 6
+creatureCount       equ 6
+
+maxCarryItems      equ 10
+
+null         equ 0
 
 roomMax     equ 54
 objectCount equ 24
