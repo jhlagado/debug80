@@ -203,6 +203,14 @@ printNewline:
     call putc
     ret
 
+; clearScreen: stub hook for platform-specific CLS
+; - For now, just prints a couple of newlines so the call sites are pure assembly.
+; - Replace with a real terminal clear sequence when targeting a concrete system.
+clearScreen:
+    call printNewline
+    call printNewline
+    ret
+
 ; printNum: print signed 16-bit in HL (decimal)
 ; Adapted from provided printDec routine; uses putc
 printNum:

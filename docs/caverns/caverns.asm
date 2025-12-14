@@ -18,7 +18,7 @@
     .include "strings.asm"
     .include "variables.asm"
 gameStart:
-    cls
+    call clearScreen
     call initState
     call updateDynamicExits
     jp describeCurrentLocation
@@ -65,7 +65,7 @@ dcDarknessCheck:
     jp z,printRoomDescription
     ; Or carried? (-1 == 0xFF)
     ld a,b
-    cp 255
+    cp roomCarried
     jp z,printRoomDescription
 dcShowDarkness:
     ld hl,strTooDark
@@ -176,7 +176,7 @@ pradDragonCheck:
     ld a,(playerLocation)        ; A = current room
     cp roomCaveEntranceClearing ; at cave entrance clearing?
     jr nz,pradBridgeState
-    ld a,(objectLocation+3)      ; objDragon index 4 -> offset 3
+    ld a,(objectLocation+objDragon-1) ; dragon object location byte
     or a                          ; zero means corpse present
     jr nz,pradBridgeState
     ld hl,strDragonCorpse       ; "You can also see the bloody corpse..."
@@ -216,13 +216,14 @@ listRoomObjectsAndCreatures:
     ; the current room, trigger first-encounter text, then show the
     ; prompt and possibly launch an attack if a hostile is present.
     ; ---------------------------------------------------------
-    visibleObjectCount = 0      ; reset visible object counter
+    xor a                          ; A = 0
+    ld (visibleObjectCount),a      ; reset visible object counter
     ; Count objects at current location (indices 7..24)
-    ld a,7                        ; start at object index 7
+    ld a,firstObjectIndex          ; start at first object index
     ld (loopIndex),a             ; loopIndex = 7
 locCountObjects:
     ld a,(loopIndex)             ; A = current object index
-    cp 25                         ; past last object?
+    cp objectCount+1               ; past last object?
     jp z,locCountDone           ; done counting
     ld a,(loopIndex)             ; A = index
     sub 1                         ; convert to 0-based offset
@@ -250,7 +251,7 @@ locCountDone:
     ld hl,strSeeObjects         ; "You can also see..."
     call printStr                 ; print header
     ; List objects at current location
-    ld a,7                        ; restart at object 7
+    ld a,firstObjectIndex          ; restart at first object index
     ld (loopIndex),a
 locListObjects:
     ld a,(loopIndex)         ; A = object index
@@ -344,7 +345,7 @@ locListCreDone:
     call printNewline             ; blank line
     ld hl,strPrompt              ; ">"
     call printStr                 ; show prompt
-    ld a,1                        ; A = 1
+    ld a,boolTrue                  ; A = true
     ld (reshowFlag),a             ; remember we displayed room
     ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
     or a                          ; any hostile?
@@ -389,7 +390,7 @@ gpiReadLine:
     ld a,(turnCounter)
     inc a
     ld (turnCounter),a
-    cls                           ; clear screen before processing
+    call clearScreen              ; clear screen before processing
     jp parseCommandEntry      ; continue to parser
 
 parseCommandEntry:
@@ -402,7 +403,7 @@ parseCommandEntry:
     ld a,0                          ; A = 0
     ld (currentObjectIndex),a       ; reset matched object index
     ; Find noun match in inputBuffer by scanning objectNameNounTable (objects 7..24)
-    ld a,7                          ; A = first object index
+    ld a,firstObjectIndex           ; A = first object index
     ld (loopIndex),a
 pceFindNoun:
     ld a,(loopIndex)
@@ -410,7 +411,7 @@ pceFindNoun:
     jp z,pceAfterNoun              ; none found
     ; compute noun pointer = objectNameNounTable[(index-7)]
     ld a,(loopIndex)
-    sub 7
+    sub firstObjectIndex
     ld l,a
     ld h,0
     add hl,hl                      ; *2 for word table
@@ -445,7 +446,7 @@ pceHutFlag:
     ld a,(playerLocation)
     cp roomForestClearing
     jp nz,pceWaterfall
-    ld a,1
+    ld a,boolTrue
     ld (generalFlagJ),a
 pceWaterfall:
     ld a,(playerLocation)
@@ -509,7 +510,7 @@ showInventory:
     call printStr
     xor a
     ld (visibleObjectCount),a
-    ld a,7
+    ld a,firstObjectIndex
     ld (loopIndex),a
 siCountLoop:
     ld a,(loopIndex)
@@ -521,7 +522,7 @@ siCountLoop:
     ld de,objectLocation
     add hl,de
     ld a,(hl)
-    cp 255
+    cp roomCarried
     jp nz,siCountNext
     ld a,(visibleObjectCount)
     inc a
@@ -540,7 +541,7 @@ siCountDone:
     jp describeCurrentLocation
 siList:
     call printNewline
-    ld a,7
+    ld a,firstObjectIndex
     ld (loopIndex),a
 siPrintLoop:
     ld a,(loopIndex)
@@ -552,7 +553,7 @@ siPrintLoop:
     ld de,objectLocation
     add hl,de
     ld a,(hl)
-    cp 255
+    cp roomCarried
     jp nz,siPrintNext
     ld a,(loopIndex)
     ld (currentObjectIndex),a
@@ -574,16 +575,16 @@ quitGame:
     ; score = 0
     xor a
     ld (score),a
-    ; loopIndex = 7 (first treasure object)
-    ld a,7
+    ; loopIndex = firstScoreObjectIndex (first treasure object)
+    ld a,firstScoreObjectIndex
     ld (loopIndex),a
 qgScoreLoop:
     ; Stop after object 17 (loop while index < 18)
     ld a,(loopIndex)
-    cp 18
+    cp afterLastScoreObjectIndex
     jp z,qgScoreDone
     ; HL = &objectLocation[loopIndex-1]
-    ld c,a                            ; C = object index (7..17)
+    ld c,a                            ; C = object index (firstScoreObjectIndex..lastScoreObjectIndex)
     dec a                             ; A = 0-based offset
     ld l,a
     ld h,0
@@ -592,22 +593,22 @@ qgScoreLoop:
     ; B = object location (room id or 255 for carried)
     ld a,(hl)
     ld b,a
-    ; If carried (255) then score += (loopIndex-6)
-    cp 255
+    ; If carried (roomCarried) then score += (loopIndex-scoreIndexBaseSub)
+    cp roomCarried
     jr nz,qgCheckInDarkRoom
     ld a,c                            ; A = loopIndex
-    sub 6                             ; A = points (1..11)
+    sub scoreIndexBaseSub             ; A = points (1..11)
     ld d,a                            ; D = points
     ld a,(score)
     add a,d
     ld (score),a
 qgCheckInDarkRoom:
-    ; If object is in roomDarkRoom (1) then score += 2*(loopIndex-6)
+    ; If object is in roomDarkRoom then score += 2*(loopIndex-scoreIndexBaseSub)
     ld a,b
     cp roomDarkRoom
     jr nz,qgNextObj
     ld a,c                            ; A = loopIndex
-    sub 6                             ; A = points (1..11)
+    sub scoreIndexBaseSub             ; A = points (1..11)
     add a,a                           ; A = points*2
     ld d,a                            ; D = points*2
     ld a,(score)
@@ -708,10 +709,10 @@ checkCreatureBatSpecial:
     ld (playerLocation),a               ; move player
     xor a
     ld (reshowFlag),a                   ; force redisplay
-    ; objectLocation(5) = objectLocation(5) + 7 (index 5 -> offset 4)
+    ; objectLocation(creatureBatIndex) = objectLocation(creatureBatIndex) + batRelocateOffset
     ld hl,objectLocation+creatureBatIndex-1
     ld a,(hl)
-    add a,7
+    add a,batRelocateOffset
     ld (hl),a
     jp describeCurrentLocation
 
@@ -788,7 +789,7 @@ hvmVerbDone:
     ld (directionIndex),a
 hvmDirLoop:
     ld a,(directionIndex)
-    cp 4
+    cp dirCount
     jp z,hvmDirDone
     ; pattern pointer = dirWordIndexTable[directionIndex]
     ld l,a
@@ -818,8 +819,8 @@ handleMovementCommand:
     ; then redisplay location.
     ; ---------------------------------------------------------
     ; Special check: if bomb is elsewhere, randomize direction
-    ld a,(objectLocation+8)                ; objBomb index 9 -> offset 8
-    cp 255                                 ; carried?
+    ld a,(objectLocation+objBomb-1)        ; bomb location byte
+    cp roomCarried                         ; carried?
     jr z,hmcBombHandled
     ld b,a                                 ; B = bomb location
     ld a,(playerLocation)
@@ -915,7 +916,7 @@ hnmCheckVisibility:
     ld de,objectLocation
     add hl,de                      ; HL -> objectLocation(entry)
     ld a,(hl)                      ; A = object location
-    cp 255                         ; carried?
+    cp roomCarried                  ; carried?
     jr z,checkGetDropUse
     ld b,a                         ; B = location
     ld a,(playerLocation)
@@ -954,11 +955,11 @@ handleGetCommand:
     ; ---------------------------------------------------------
     xor a
     ld (carriedCount),a                ; reset counter
-    ld a,7
+    ld a,firstObjectIndex
     ld (loopIndex),a                   ; start at object 7
 hgcCount:
     ld a,(loopIndex)                   ; A = index
-    cp 25                              ; past object 24?
+    cp objectCount+1                     ; past last object?
     jp z,hgcDoneCount
     dec a                              ; to offset
     ld l,a
@@ -966,7 +967,7 @@ hgcCount:
     ld de,objectLocation
     add hl,de                          ; HL -> objectLocation(entry)
     ld a,(hl)                          ; A = location byte
-    cp 255                             ; carried?
+    cp roomCarried                      ; carried?
     jp nz,hgcNext
     ld a,(carriedCount)                ; increment carried count
     inc a
@@ -991,7 +992,7 @@ hgcCarryOk:
     ld h,0
     ld de,objectLocation
     add hl,de
-    ld a,255
+    ld a,roomCarried
     ld (hl),a
     jp describeCurrentLocation
 
@@ -1048,9 +1049,9 @@ useKey:
 useKeyAllowed:
     ld hl,strDoorOpened
     call printStr
-    ; objectLocation(19) = playerLocation (key index 19 -> offset 18)
+    ; objectLocation(objKey) = playerLocation
     ld a,(playerLocation)
-    ld (objectLocation+18),a
+    ld (objectLocation+objKey-1),a
     xor a
     ld (reshowFlag),a
     ld a,(playerLocation)
@@ -1089,7 +1090,7 @@ useSwordHasTarget:
     ld b,a
     ld a,b
     add a,a                       ; rand*2
-    add a,15
+    add a,swordFightBaseThreshold     ; base threshold for miss/kill pacing
     ld b,a                        ; B = threshold
     ld a,(swordSwingCount)
     cp b
@@ -1140,7 +1141,7 @@ swordKillsTarget:
     ld h,0
     ld de,objectLocation
     add hl,de
-    ld a,255
+    ld a,roomCarried
     ld (hl),a
     ; adjust hostile creature location
     ld a,(hostileCreatureIndex)
@@ -1161,8 +1162,8 @@ swordKillsTarget:
     jr nz,sktCorpseCheck
     ld hl,strSwordCrumbles
     call printStr
-    ld a,35
-    ld (objectLocation+objSword-1),a      ; sword moves to room 35
+    ld a,roomTemple
+    ld (objectLocation+objSword-1),a      ; sword moves to temple
     jr sktCorpseCheck
 sktAddTen:
     dec a
@@ -1171,7 +1172,7 @@ sktAddTen:
     ld de,objectLocation
     add hl,de
     ld a,(hl)
-    add a,10
+    add a,corpseRelocateOffset
     ld (hl),a
 sktCorpseCheck:
     ld a,(hostileCreatureIndex)
@@ -1194,7 +1195,7 @@ useBomb:
     ; ---------------------------------------------------------
     ; Check candle location (index 9 -> offset 8? actually candle index 21 -> offset 20; bomb index 9 -> offset 8)
     ld a,(objectLocation+objBomb-1)       ; bomb index -> offset (objBomb-1)
-    cp 255                           ; carried?
+    cp roomCarried                    ; carried?
     jr z,useBombCheckLit
     ld b,a
     ld a,(playerLocation)
@@ -1227,7 +1228,7 @@ useBombExplode:
     ld (playerLocation),a
     cp roomOakDoor
     jp nz,useBombNoMove
-    ld a,19
+    ld a,roomTreasureRoom
     ld (teleportDestination),a
     call updateDynamicExits
 useBombNoMove:
@@ -1536,13 +1537,13 @@ initState:
     ; ---------------------------------------------------------
     ; Initialize flags and counters
     ; Non-zero defaults
-    ld a,11
+    ld a,roomBridgeMid
     ld (bridgeCondition),a
-    ld a,128
+    ld a,exitFatal
     ld (drawbridgeState),a
     ld a,roomDarkRoom
     ld (playerLocation),a
-    ld a,1
+    ld a,boolTrue
     ld (candleIsLitFlag),a
     ; Zero defaults (grouped)
     xor a

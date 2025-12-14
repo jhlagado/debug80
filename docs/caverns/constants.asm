@@ -6,6 +6,11 @@
 exitNone        equ 0
 exitFatal       equ 128
 
+; Common byte values / sentinels
+byteZero           equ 0
+roomCarried        equ -1         ; int8 sentinel in objectLocation[] meaning “carried”
+boolTrue           equ 1
+
 ; Turn thresholds for candle
 candleDimTurn  equ 200
 candleOutTurn  equ 230
@@ -15,6 +20,9 @@ dirNorth        equ 0
 dirSouth        equ 1
 dirWest         equ 2
 dirEast         equ 3
+
+; Direction counts
+dirCount        equ 4
 
 ; Verb pattern indices (order from verbPatternTable)
 verbPatternGetIndex    equ 1   ; get/take
@@ -122,3 +130,20 @@ movementTableBytes equ roomMax*4
 
 ; Input buffer sizing
 inputBufferSize equ 80        ; characters incl. padding/terminator
+
+; Object index ranges
+firstObjectIndex equ 7
+lastObjectIndex  equ objectCount
+
+; Score calculation range (objects 7..17)
+firstScoreObjectIndex equ 7
+lastScoreObjectIndex  equ 17
+afterLastScoreObjectIndex equ 18
+scoreIndexBaseSub     equ 6
+
+; Creature relocation offsets
+batRelocateOffset     equ 7
+corpseRelocateOffset  equ 10
+
+; Sword combat tuning (current approximation)
+swordFightBaseThreshold equ 15
