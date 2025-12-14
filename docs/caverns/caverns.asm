@@ -974,28 +974,52 @@ sktDone:
     goto describeCurrentLocation
 
 useBomb:
-    if objectLocation(9) <> -1 and objectLocation(9) <> playerLocation then
-        ld hl,strWontBurn
-        call printStr
-        candleIsLitFlag = 0
-        goto describeCurrentLocation
-    end if
-    if candleIsLitFlag <> 1 then
-        ld hl,strCandleOutStupid
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ; ---------------------------------------------------------
+    ; useBomb (candle)
+    ; If candle not at player or carried, won't burn and candle out.
+    ; If candle already out, complain. Otherwise bomb explodes:
+    ; move player back a room (except below darkRoom), possibly set
+    ; teleportDestination, and move bomb to room 0.
+    ; ---------------------------------------------------------
+    ; Check candle location (index 9 -> offset 8? actually candle index 21 -> offset 20; bomb index 9 -> offset 8)
+    ld a,(objectLocation+8)          ; bomb index 9 offset 8
+    cp 255                           ; carried?
+    jr z,useBombCheckLit
+    ld b,a
+    ld a,(playerLocation)
+    cp b
+    jr z,useBombCheckLit
+    ld hl,strWontBurn
+    call printStr
+    set8 candleIsLitFlag,0
+    goto describeCurrentLocation
+
+useBombCheckLit:
+    ld a,(candleIsLitFlag)
+    cp 1
+    jr z,useBombExplode
+    ld hl,strCandleOutStupid
+    call printStr
+    goto describeCurrentLocation
+
+useBombExplode:
     ld hl,strBombExplode
     call printStr
-    reshowFlag = 0
-    if playerLocation > roomDarkRoom then
-        playerLocation = playerLocation - 1
-        if playerLocation = roomOakDoor then
-            teleportDestination = 19
-            call updateDynamicExits
-        end if
-    end if
-    objectLocation(9) = 0
+    set8 reshowFlag,0
+
+    ld a,(playerLocation)
+    cp roomDarkRoom
+    jp z,useBombNoMove
+    dec a                            ; playerLocation = playerLocation - 1
+    ld (playerLocation),a
+    cp roomOakDoor
+    jp nz,useBombNoMove
+    ld a,19
+    ld (teleportDestination),a
+    call updateDynamicExits
+useBombNoMove:
+    ld a,0
+    ld (objectLocation+8),a          ; bomb to room 0
     goto describeCurrentLocation
 
 useRope:
