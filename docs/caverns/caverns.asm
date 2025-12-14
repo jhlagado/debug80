@@ -13,7 +13,6 @@
 ;              teleportDestination/T, secretExitLocation/E
 ;  DIRECTION INDEX: dirNorthStr=0, dirSouthStr=1, dirWestStr=2, dirEastStr=3
     .include "constants.asm"
-    .include "macros.asm"
     .include "utils.asm"
     .include "tables.asm"
     .include "strings.asm"
@@ -22,7 +21,7 @@ gameStart:
     cls
     call initState
     call updateDynamicExits
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 describeCurrentLocation:
     ; ---------------------------------------------------------
@@ -358,7 +357,7 @@ locListCreDone:
     jp z,locDone                 ; sword means no auto attack
     jp monsterAttack             ; attack player
 locDone:
-    goto getPlayerInput
+    jp getPlayerInput
 
 getPlayerInput:
     ; ---------------------------------------------------------
@@ -392,7 +391,7 @@ gpiReadLine:
     inc a
     ld (turnCounter),a
     cls                           ; clear screen before processing
-    goto parseCommandEntry      ; continue to parser
+    jp parseCommandEntry      ; continue to parser
 
 parseCommandEntry:
     ; ---------------------------------------------------------
@@ -488,7 +487,7 @@ pceLookCheck:
     jp z,pceListCheck
     xor a
     ld (reshowFlag),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 pceListCheck:
     ; LIST inventory
     ld hl,inputBuffer
@@ -496,7 +495,7 @@ pceListCheck:
     call containsStr
     or a
     jp z,pceQuitCheck
-    goto showInventory
+    jp showInventory
 pceQuitCheck:
     ; QUIT
     ld hl,inputBuffer
@@ -504,7 +503,7 @@ pceQuitCheck:
     call containsStr
     or a
     jp z,checkCreatureAtLocation
-    goto quitGame
+    jp quitGame
 
 showInventory:
     ld hl,strCarryingPrefix
@@ -539,7 +538,7 @@ siCountDone:
     jp nz,siList
     ld hl,strNothing
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 siList:
     call printNewline
     ld a,7
@@ -565,7 +564,7 @@ siPrintNext:
     ld (loopIndex),a
     jp siPrintLoop
 siDone:
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 quitGame:
     ; ---------------------------------------------------------
@@ -653,7 +652,7 @@ ccalLoop:
 ccalNone:
     xor a
     ld (hostileCreatureIndex),a         ; none present
-    goto handleVerbOrMovement
+    jp handleVerbOrMovement
 checkCreatureBatSpecial:
     ; ---------------------------------------------------------
     ; checkCreatureBatSpecial
@@ -675,7 +674,7 @@ checkCreatureBatSpecial:
     ld a,(hl)
     add a,7
     ld (hl),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 monsterAttack:
     ; Print "killed by a <adj><noun>!!"
@@ -709,7 +708,7 @@ monsterAttack:
     call printStr
     ld hl,strMonsterSuffix
     call printStr
-    goto quitGame
+    jp quitGame
 
 handleVerbOrMovement:
     ; ---------------------------------------------------------
@@ -770,7 +769,7 @@ hvmDirLoop:
     ld (directionIndex),a
     jp hvmDirLoop
 hvmDirDone:
-    goto handleNonMovementCommand        ; nothing matched -> non-movement
+    jp handleNonMovementCommand        ; nothing matched -> non-movement
 
 handleMovementCommand:
     ; ---------------------------------------------------------
