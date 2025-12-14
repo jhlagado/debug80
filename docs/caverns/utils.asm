@@ -15,11 +15,6 @@ putc:
     sysPutc             ; writes A
     ret
 
-; puts: write null-terminated string at HL
-puts:
-    sysPuts             ; HL -> string, prints until 0
-    ret
-
 ; readLine: reads a line into buffer at HL, max length in B (not counting terminator)
 ; - Converts CR/LF to terminator 0
 ; - Echo optional: toggle via C (0 = no echo, nonzero = echo)
@@ -221,28 +216,32 @@ csNotFound:
 
 ; Data placeholders (caller to allocate in BSS/vars area)
 randState: db 1
-spaceStr: db " ",0
+crlfStr:  db 13,10,0
+ansiClearStr: db 27,"[2J",27,"[H",0
 
 ; printStr: print null-terminated string at HL
 printStr:
-    svcPuts
+    sysPuts
     ret
 
-; printNewline: emit CR/LF
+; printNewline: emit CR/LF via printStr (crlfStr)
 printNewline:
-    ld a,13
-    call putc
-    ld a,10
-    call putc
-    ret
+    ld hl,crlfStr
+    jp printStr
+
+; printLine: print string then CR/LF
+; Input: HL -> string
+; Clobbers: HL
+printLine:
+    call printStr
+    ld hl,crlfStr
+    jp printStr
 
 ; clearScreen: stub hook for platform-specific CLS
-; - For now, just prints a couple of newlines so the call sites are pure assembly.
-; - Replace with a real terminal clear sequence when targeting a concrete system.
+; Uses ANSI: ESC[2J ESC[H (clear screen and home cursor).
 clearScreen:
-    call printNewline
-    call printNewline
-    ret
+    ld hl,ansiClearStr
+    jp printStr
 
 ; printNum: print signed 16-bit in HL (decimal)
 ; Adapted from provided printDec routine; uses putc
@@ -350,7 +349,7 @@ adjVowel:
 adjAfter:
     call printSpace
     pop hl               ; restore adjective ptr
-    jp puts
+    jp printStr
 
 ; containsByteListZeroTerm
 ; Purpose: test whether a byte value exists in a 0-terminated byte list.
@@ -388,6 +387,24 @@ getObjLoc:
     ld hl,objectLocation          ; HL = base of location array
     add hl,de                     ; HL = &objectLocation[index-1]
     ld a,(hl)                     ; A = location
+    ret
+
+; setObjLoc
+; Purpose: store an object/creature location byte into objectLocation[].
+; Inputs:
+;   A = object index (1..objectCount)
+;   E = location byte to store (0, room id 1..roomMax, or roomCarried)
+; Outputs: none
+; Clobbers: A, HL, DE
+setObjLoc:
+    dec a                         ; A = index-1 (0-based)
+    ld d,0
+    ld l,a                        ; HL = offset
+    ld h,0
+    ld a,e                        ; A = value
+    ld de,objectLocation          ; DE = base
+    add hl,de                     ; HL = &objectLocation[index-1]
+    ld (hl),a                     ; store location
     ret
 
 ; isObjHereOrCarried

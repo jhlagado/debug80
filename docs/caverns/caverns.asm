@@ -524,12 +524,7 @@ siCountLoop:
     ld a,(loopIndex)
     cp objectCount+1
     jp z,siCountDone
-    dec a                          ; to offset
-    ld l,a
-    ld h,0
-    ld de,objectLocation
-    add hl,de
-    ld a,(hl)
+    call getObjLoc                 ; A = objectLocation[loopIndex]
     cp roomCarried
     jp nz,siCountNext
     ld a,(visibleObjectCount)
@@ -554,12 +549,7 @@ siPrintLoop:
     ld a,(loopIndex)
     cp objectCount+1
     jp z,siDone
-    dec a                          ; to offset
-    ld l,a
-    ld h,0
-    ld de,objectLocation
-    add hl,de
-    ld a,(hl)
+    call getObjLoc                 ; A = objectLocation[loopIndex]
     cp roomCarried
     jp nz,siPrintNext
     ld a,(loopIndex)
@@ -1300,14 +1290,20 @@ routeByVerbPattern:
     ; default responses. Keeps verb ordering identical to BASIC.
     ; ---------------------------------------------------------
     ld a,(verbPatternIndex)            ; A = 1..verbPatternCount (matched pattern)
-    cp verbPatternGetIndex             ; 1 = "take"  -> GET handler
-    jp z,handleGetCommand              ; route to GET
-    cp verbPatternDropIndex            ; 2 = "put"   -> DROP handler
-    jp z,handleDropCommand             ; route to DROP
-    cp verbPatternUseIndex             ; 3 = "using" -> USE handler
-    jp z,routeUseByObject              ; route by object index
-    cp verbPatternWithIndex            ; 4 = "with"  -> USE handler
-    jp z,routeUseByObject              ; route by object index
+    cp verbPatternJumpTableMax+1       ; indices 1..4 are handled via jump table
+    jr nc,rvpOther
+    dec a                              ; A = 0..3
+    add a,a                            ; A = byte offset into DW table
+    ld l,a
+    ld h,0
+    ld de,verbPatternRouteTable
+    add hl,de                          ; HL = &verbPatternRouteTable[(index-1)*2]
+    ld e,(hl)
+    inc hl
+    ld d,(hl)                          ; DE = target address
+    ex de,hl                           ; HL = target address
+    jp (hl)                            ; tail-jump to handler
+rvpOther:
 
     cp verbPatternPleaseStart          ; <7  => verbs 5..6 ("cut","break")
     jr c,routeVerbNothing              ; "Nothing happens."
@@ -1327,6 +1323,12 @@ routeVerbPlease:
 routeVerbDone:
     call printNewline                        ; blank line after response
     jp getPlayerInput                    ; re-prompt
+
+verbPatternRouteTable:
+    DW handleGetCommand
+    DW handleDropCommand
+    DW routeUseByObject
+    DW routeUseByObject
 
 printRankingSub:
     ld hl,strRanking
