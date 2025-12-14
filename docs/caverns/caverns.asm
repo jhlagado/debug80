@@ -341,7 +341,6 @@ locNextCreList:
         ld (loopIndex),a         ; store
         jp locListCreatures     ; loop listing
 locListCreDone:
-    end if
     call printNewline             ; blank line
     ld hl,strPrompt              ; ">"
     call printStr                 ; show prompt
@@ -572,15 +571,55 @@ quitGame:
     ; Compute score, print it with turn count, show ranking, and
     ; prompt for another game (handled by waitForYesNo).
     ; ---------------------------------------------------------
-    score = 0                           ; reset score accumulator
-    for loopIndex = 7 to 17             ; score items 7..17
-        if objectLocation(loopIndex) = -1 then
-            score = score + loopIndex - 6
-        end if
-        if objectLocation(loopIndex) = 1 then
-            score = score + (loopIndex - 6) * 2
-        end if
-    next loopIndex
+    ; score = 0
+    xor a
+    ld (score),a
+    ; loopIndex = 7 (first treasure object)
+    ld a,7
+    ld (loopIndex),a
+qgScoreLoop:
+    ; Stop after object 17 (loop while index < 18)
+    ld a,(loopIndex)
+    cp 18
+    jp z,qgScoreDone
+    ; HL = &objectLocation[loopIndex-1]
+    ld c,a                            ; C = object index (7..17)
+    dec a                             ; A = 0-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                         ; HL -> objectLocation entry
+    ; B = object location (room id or 255 for carried)
+    ld a,(hl)
+    ld b,a
+    ; If carried (255) then score += (loopIndex-6)
+    cp 255
+    jr nz,qgCheckInDarkRoom
+    ld a,c                            ; A = loopIndex
+    sub 6                             ; A = points (1..11)
+    ld d,a                            ; D = points
+    ld a,(score)
+    add a,d
+    ld (score),a
+qgCheckInDarkRoom:
+    ; If object is in roomDarkRoom (1) then score += 2*(loopIndex-6)
+    ld a,b
+    cp roomDarkRoom
+    jr nz,qgNextObj
+    ld a,c                            ; A = loopIndex
+    sub 6                             ; A = points (1..11)
+    add a,a                           ; A = points*2
+    ld d,a                            ; D = points*2
+    ld a,(score)
+    add a,d
+    ld (score),a
+qgNextObj:
+    ; loopIndex++
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp qgScoreLoop
+qgScoreDone:
     call printNewline
     ld hl,strScorePrefix                ; "You have a score of "
     call printStr
@@ -943,7 +982,7 @@ hgcDoneCount:
     jr c,hgcCarryOk
     ld hl,strTooManyObjects
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 hgcCarryOk:
     ; objectLocation(currentObjectIndex) = -1 (255)
     ld a,(currentObjectIndex)
@@ -954,7 +993,7 @@ hgcCarryOk:
     add hl,de
     ld a,255
     ld (hl),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 handleDropCommand:
     ; ---------------------------------------------------------
@@ -969,7 +1008,7 @@ handleDropCommand:
     add hl,de                          ; HL -> objectLocation(entry)
     ld a,(playerLocation)              ; A = room id
     ld (hl),a                          ; store new location
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 routeUseByObject:
     ; ---------------------------------------------------------
@@ -987,7 +1026,7 @@ routeUseByObject:
     jp z,useRope                       ; handle rope logic
     ld hl,strUseHow                     ; otherwise: "Use it how?"
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useKey:
     ; ---------------------------------------------------------
@@ -1004,7 +1043,7 @@ useKey:
     ; not allowed: won't open
     ld hl,strWontOpen
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useKeyAllowed:
     ld hl,strDoorOpened
@@ -1019,12 +1058,12 @@ useKeyAllowed:
     jp nz,useKeyToCrypt
     ld a,roomDarkRoom
     ld (playerLocation),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useKeyToCrypt:
     ld a,roomCrypt
     ld (playerLocation),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useSword:
     ; ---------------------------------------------------------
@@ -1037,7 +1076,7 @@ useSword:
     jp nz,useSwordHasTarget
     ld hl,strNothingToKill
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useSwordHasTarget:
     ; swordSwingCount++
@@ -1057,7 +1096,7 @@ useSwordHasTarget:
     jp c,swordFightContinues      ; swordSwingCount < threshold => continue
     ld hl,strSwordMiss
     call printStr
-    goto quitGame
+    jp quitGame
 
 swordFightContinues:
     ; Rough kill chance: if rand0To3 == 0, kill; otherwise pick message
@@ -1073,23 +1112,23 @@ swordFightContinues:
     jr nz,sfcMsg1
     ld hl,strAttackMove
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 sfcMsg1:
     cp fightMsgDeflect           ; 1 -> "deflects"
     jr nz,sfcMsg2
     ld hl,strAttackDeflect
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 sfcMsg2:
     cp fightMsgStun              ; 2 -> "stuns"
     jr nz,sfcMsg3
     ld hl,strAttackStun
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 sfcMsg3:
     ld hl,strAttackHeadBlow
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 swordKillsTarget:
     ld hl,strSwordKills
@@ -1143,7 +1182,7 @@ sktCorpseCheck:
 sktDone:
     xor a
     ld (hostileCreatureIndex),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useBomb:
     ; ---------------------------------------------------------
@@ -1165,7 +1204,7 @@ useBomb:
     call printStr
     xor a
     ld (candleIsLitFlag),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useBombCheckLit:
     ld a,(candleIsLitFlag)
@@ -1173,7 +1212,7 @@ useBombCheckLit:
     jr nz,useBombExplode
     ld hl,strCandleOutStupid
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useBombExplode:
     ld hl,strBombExplode
@@ -1194,7 +1233,7 @@ useBombExplode:
 useBombNoMove:
     ld a,0
     ld (objectLocation+objBomb-1),a       ; bomb to room 0
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useRope:
     ; ---------------------------------------------------------
@@ -1208,7 +1247,7 @@ useRope:
     jp z,useRopeAllowed
     ld hl,strTooDangerous
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 useRopeAllowed:
     ld hl,strDescendRope
@@ -1227,7 +1266,7 @@ useRopeAllowed:
     ; move player to temple
     ld a,roomTemple
     ld (playerLocation),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 printObjectDescriptionSub:
     ; ---------------------------------------------------------
@@ -1305,7 +1344,7 @@ routeVerbPlease:
     call printStr
 routeVerbDone:
     call printNewline                        ; blank line after response
-    goto getPlayerInput                    ; re-prompt
+    jp getPlayerInput                    ; re-prompt
 
 printRankingSub:
     ld hl,strRanking
@@ -1343,19 +1382,19 @@ readInputThenClearSub:
 encounterWizardLabel:
     ld hl,strEncWizard           ; wizard intro text
     call printStr
-    goto listRoomObjectsAndCreatures
+    jp listRoomObjectsAndCreatures
 
 encounterDragonLabel:
     ld hl,strEncDragon1
     call printStr
     ld hl,strEncDragon2
     call printStr
-    goto listRoomObjectsAndCreatures
+    jp listRoomObjectsAndCreatures
 
 encounterDwarfLabel:
     ld hl,strEncDwarf
     call printStr
-    goto listRoomObjectsAndCreatures
+    jp listRoomObjectsAndCreatures
 
 triggerCreatureIntroSub:
     ; ---------------------------------------------------------
