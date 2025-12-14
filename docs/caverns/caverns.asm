@@ -278,7 +278,8 @@ locNextList:
     jp locListObjects       ; loop list
 locDoneList:
 locObjectsListed:
-    set8 visibleCreatureCount,0    ; reset visible creature counter
+    ld a,0                           ; A = 0
+    ld (visibleCreatureCount),a      ; reset visible creature counter
     ; Count/intro creatures at current location (indices 1..6)
     ld a,creatureWizardIndex      ; start at first creature index
     ld (loopIndex),a             ; loopIndex = 1
@@ -345,7 +346,8 @@ locListCreDone:
     call printNewline             ; blank line
     ld hl,strPrompt              ; ">"
     call printStr                 ; show prompt
-    set8 reshowFlag,1            ; remember we displayed room
+    ld a,1                        ; A = 1
+    ld (reshowFlag),a             ; remember we displayed room
     ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
     or a                          ; any hostile?
     jp z,locDone                 ; none -> input
@@ -399,9 +401,11 @@ parseCommandEntry:
     ; dynamic exits/flags that depend on location/state, then
     ; continue into verb routing.
     ; ---------------------------------------------------------
-    set8 currentObjectIndex,0      ; reset matched object index
+    ld a,0                          ; A = 0
+    ld (currentObjectIndex),a       ; reset matched object index
     ; Find noun match in inputBuffer by scanning objectNameNounTable (objects 7..24)
-    set8 loopIndex,7
+    ld a,7                          ; A = first object index
+    ld (loopIndex),a
 pceFindNoun:
     ld a,(loopIndex)
     cp objectCount+1               ; past last?
@@ -436,38 +440,44 @@ pceAfterNoun:
     ld a,(playerLocation)
     cp roomBridgeMid
     jp nz,pceHutFlag
-    set8 bridgeCondition,exitFatal
+    ld a,exitFatal
+    ld (bridgeCondition),a
     call updateDynamicExits
 pceHutFlag:
     ld a,(playerLocation)
     cp roomForestClearing
     jp nz,pceWaterfall
-    set8 generalFlagJ,1
+    ld a,1
+    ld (generalFlagJ),a
 pceWaterfall:
     ld a,(playerLocation)
     cp roomWaterfallBase
     jp nz,pceTempleReset
-    set8 waterExitLocation,roomDrainC      ; 43
+    ld a,roomDrainC                  ; 43
+    ld (waterExitLocation),a
     call updateDynamicExits
 pceTempleReset:
     ld a,(playerLocation)
     cp roomTemple
     jp nz,pceGateCheck
-    set8 waterExitLocation,0
+    xor a
+    ld (waterExitLocation),a
     call updateDynamicExits
 pceGateCheck:
     ; Gate destination changes once grill moved
     ld a,(objectLocation+objGrill-1)
     cp roomTinyCell
     jp z,pceDrawbridge
-    set8 gateDestination,roomDrainC        ; 39
+    ld a,roomDrainC                  ; 39
+    ld (gateDestination),a
     call updateDynamicExits
 pceDrawbridge:
     ; Drawbridge lowers when on drawbridge room
     ld a,(playerLocation)
     cp roomDrawbridge
     jp nz,pceLookCheck
-    set8 drawbridgeState,roomDrawbridge
+    ld a,roomDrawbridge
+    ld (drawbridgeState),a
     call updateDynamicExits
 pceLookCheck:
     ; LOOK command
@@ -476,7 +486,8 @@ pceLookCheck:
     call containsStr
     or a
     jp z,pceListCheck
-    set8 reshowFlag,0
+    xor a
+    ld (reshowFlag),a
     goto describeCurrentLocation
 pceListCheck:
     ; LIST inventory
@@ -498,8 +509,10 @@ pceQuitCheck:
 showInventory:
     ld hl,strCarryingPrefix
     call printStr
-    set8 visibleObjectCount,0
-    set8 loopIndex,7
+    xor a
+    ld (visibleObjectCount),a
+    ld a,7
+    ld (loopIndex),a
 siCountLoop:
     ld a,(loopIndex)
     cp objectCount+1
@@ -529,7 +542,8 @@ siCountDone:
     goto describeCurrentLocation
 siList:
     call printNewline
-    set8 loopIndex,7
+    ld a,7
+    ld (loopIndex),a
 siPrintLoop:
     ld a,(loopIndex)
     cp objectCount+1
@@ -614,7 +628,8 @@ checkCreatureAtLocation:
     ; set hostileCreatureIndex and branch for special handling.
     ; Otherwise clear hostileCreatureIndex and continue to verb handling.
     ; ---------------------------------------------------------
-    set8 hostileCreatureIndex,creatureWizardIndex         ; start at creature 1
+    ld a,creatureWizardIndex        ; start at creature 1
+    ld (hostileCreatureIndex),a
 ccalLoop:
     ld a,(hostileCreatureIndex)         ; A = creature index (1..6)
     cp creatureCount+1                  ; past last creature?
@@ -636,7 +651,8 @@ ccalLoop:
     ld (hostileCreatureIndex),a
     jp ccalLoop
 ccalNone:
-    set8 hostileCreatureIndex,0         ; none present
+    xor a
+    ld (hostileCreatureIndex),a         ; none present
     goto handleVerbOrMovement
 checkCreatureBatSpecial:
     ; ---------------------------------------------------------
@@ -652,7 +668,8 @@ checkCreatureBatSpecial:
     call printStr
     ld a,roomBatCave
     ld (playerLocation),a               ; move player
-    set8 reshowFlag,0                   ; force redisplay
+    xor a
+    ld (reshowFlag),a                   ; force redisplay
     ; objectLocation(5) = objectLocation(5) + 7 (index 5 -> offset 4)
     ld hl,objectLocation+creatureBatIndex-1
     ld a,(hl)
@@ -702,10 +719,11 @@ handleVerbOrMovement:
     ; fall back to non-movement handlers.
     ; ---------------------------------------------------------
     ; Scan verb patterns (1..16) for a match in inputBuffer
-    set8 verbPatternIndex,1
+    ld a,1
+    ld (verbPatternIndex),a
 hvmVerbLoop:
     ld a,(verbPatternIndex)
-    cp 17
+    cp verbPatternCount+1
     jp z,hvmVerbDone
     ; fetch pattern pointer from verbPatternTable
     ld a,(verbPatternIndex)
@@ -728,7 +746,8 @@ hvmVerbLoop:
     jp hvmVerbLoop
 hvmVerbDone:
     ; Check for movement words (north/south/west/east)
-    set8 directionIndex,0
+    xor a
+    ld (directionIndex),a
 hvmDirLoop:
     ld a,(directionIndex)
     cp 4
@@ -811,7 +830,8 @@ hmcMoveRoom:
     jp z,hmcDoneMove
     ld (playerLocation),a                  ; move player
 hmcDoneMove:
-    set8 reshowFlag,0                      ; force redisplay
+    xor a
+    ld (reshowFlag),a                      ; force redisplay
     goto describeCurrentLocation           ; show new room
 
 handleNonMovementCommand:
@@ -821,10 +841,12 @@ handleNonMovementCommand:
     call containsStr
     or a
     jp z,hnmApeCheck
-    set8 reshowFlag,0
+    xor a
+    ld (reshowFlag),a
     ld hl,strMagicWind
     call printStr
-    set8 playerLocation,roomCaveEntry
+    ld a,roomCaveEntry
+    ld (playerLocation),a
     goto describeCurrentLocation
     ; Crypt wall "ape"
 hnmApeCheck:
@@ -835,7 +857,8 @@ hnmApeCheck:
     jp z,hnmCheckVisibility
     ld hl,strCryptWall
     call printStr
-    set8 secretExitLocation,roomTinyCell  ; open wall exit to tiny cell
+    ld a,roomTinyCell                  ; open wall exit to tiny cell
+    ld (secretExitLocation),a
     call updateDynamicExits
     goto describeCurrentLocation
     ; Ensure an object was parsed
@@ -891,8 +914,10 @@ handleGetCommand:
     ; Count carried items; if >10, refuse. Otherwise set the
     ; current object to carried (-1) and redisplay.
     ; ---------------------------------------------------------
-    set8 carriedCount,0                ; reset counter
-    set8 loopIndex,7                   ; start at object 7
+    xor a
+    ld (carriedCount),a                ; reset counter
+    ld a,7
+    ld (loopIndex),a                   ; start at object 7
 hgcCount:
     ld a,(loopIndex)                   ; A = index
     cp 25                              ; past object 24?
@@ -952,16 +977,16 @@ routeUseByObject:
     ; routeUseByObject
     ; Dispatch USE targets by currentObjectIndex (key/sword/bomb/rope).
     ; ---------------------------------------------------------
-    ld a,(currentObjectIndex)
-    cp objKey
-    jp z,useKey
-    cp objSword
-    jp z,useSword
-    cp objCandle
-    jp z,useBomb
-    cp objRope
-    jp z,useRope
-    ld hl,strUseHow
+    ld a,(currentObjectIndex)          ; A = selected object index (7..24)
+    cp objKey                          ; key?
+    jp z,useKey                        ; handle key logic
+    cp objSword                        ; sword?
+    jp z,useSword                      ; handle combat logic
+    cp objBomb                         ; bomb?
+    jp z,useBomb                       ; handle bomb logic
+    cp objRope                         ; rope?
+    jp z,useRope                       ; handle rope logic
+    ld hl,strUseHow                     ; otherwise: "Use it how?"
     call printStr
     goto describeCurrentLocation
 
@@ -988,7 +1013,8 @@ useKeyAllowed:
     ; objectLocation(19) = playerLocation (key index 19 -> offset 18)
     ld a,(playerLocation)
     ld (objectLocation+18),a
-    set8 reshowFlag,0
+    xor a
+    ld (reshowFlag),a
     ld a,(playerLocation)
     cp roomForestClearing
     jp nz,useKeyToCrypt
@@ -1116,13 +1142,14 @@ sktCorpseCheck:
     ld hl,strCorpseVapor
     call printStr
 sktDone:
-    set8 hostileCreatureIndex,0
+    xor a
+    ld (hostileCreatureIndex),a
     goto describeCurrentLocation
 
 useBomb:
     ; ---------------------------------------------------------
-    ; useBomb (candle)
-    ; If candle not at player or carried, won't burn and candle out.
+    ; useBomb
+    ; If bomb not at player or carried, refuse and extinguish candle.
     ; If candle already out, complain. Otherwise bomb explodes:
     ; move player back a room (except below darkRoom), possibly set
     ; teleportDestination, and move bomb to room 0.
@@ -1137,7 +1164,8 @@ useBomb:
     jr z,useBombCheckLit
     ld hl,strWontBurn
     call printStr
-    set8 candleIsLitFlag,0
+    xor a
+    ld (candleIsLitFlag),a
     goto describeCurrentLocation
 
 useBombCheckLit:
@@ -1151,7 +1179,8 @@ useBombCheckLit:
 useBombExplode:
     ld hl,strBombExplode
     call printStr
-    set8 reshowFlag,0
+    xor a
+    ld (reshowFlag),a
 
     ld a,(playerLocation)
     cp roomDarkRoom
@@ -1185,7 +1214,8 @@ useRope:
 useRopeAllowed:
     ld hl,strDescendRope
     call printStr
-    set8 reshowFlag,0
+    xor a
+    ld (reshowFlag),a
     ; objectLocation(currentObjectIndex) = playerLocation
     ld a,(currentObjectIndex)
     dec a
@@ -1249,24 +1279,24 @@ routeByVerbPattern:
     ; Map the matched verbPatternIndex to specific handlers or
     ; default responses. Keeps verb ordering identical to BASIC.
     ; ---------------------------------------------------------
-    ld a,(verbPatternIndex)
-    cp verbPatternGetIndex
-    jp z,handleGetCommand
-    cp verbPatternDropIndex
-    jp z,handleDropCommand
-    cp verbPatternUseIndex
-    jp z,routeUseByObject
-    cp verbPatternWithIndex
-    jp z,routeUseByObject
+    ld a,(verbPatternIndex)            ; A = 1..verbPatternCount (matched pattern)
+    cp verbPatternGetIndex             ; 1 = "take"  -> GET handler
+    jp z,handleGetCommand              ; route to GET
+    cp verbPatternDropIndex            ; 2 = "put"   -> DROP handler
+    jp z,handleDropCommand             ; route to DROP
+    cp verbPatternUseIndex             ; 3 = "using" -> USE handler
+    jp z,routeUseByObject              ; route by object index
+    cp verbPatternWithIndex            ; 4 = "with"  -> USE handler
+    jp z,routeUseByObject              ; route by object index
 
-    cp verbPatternPleaseStart
-    jr c,routeVerbNothing        ; <=6 -> nothing happens
-    cp verbPatternCantStart
-    jr c,routeVerbPlease         ; 7..12 -> please tell me how
-    ; else >=13
-    ld hl,strICant
-    call printStr
-    jr routeVerbDone
+    cp verbPatternPleaseStart          ; <7  => verbs 5..6 ("cut","break")
+    jr c,routeVerbNothing              ; "Nothing happens."
+    cp verbPatternCantStart            ; <13 => verbs 7..12 ("unlock".."burn")
+    jr c,routeVerbPlease               ; "Please tell me how..."
+    ; >=13 => verbs 13..16 ("up","down","jump","swim")
+    ld hl,strICant                     ; "I can't do that."
+    call printStr                      ; emit message
+    jr routeVerbDone                   ; common exit
 routeVerbNothing:
     ld hl,strNothingHappens
     call printStr
@@ -1308,8 +1338,7 @@ prRankPrint:
     ret
 
 readInputThenClearSub:
-    input inputCommand$
-    cls
+    ; Unused legacy stub (replaced by getPlayerInput/inputBuffer path)
     ret
 
 encounterWizardLabel:
@@ -1468,22 +1497,37 @@ initState:
     ;  candleIsLitFlag=1, counters zeroed).
     ; ---------------------------------------------------------
     ; Initialize flags and counters
-    set8 bridgeCondition,11
-    set8 drawbridgeState,128
-    set8 waterExitLocation,0
-    set8 gateDestination,0
-    set8 teleportDestination,0
-    set8 secretExitLocation,0
-    set8 generalFlagJ,0
-    set8 hostileCreatureIndex,0
-    set8 reshowFlag,0
-    set8 playerLocation,roomDarkRoom
-    set8 candleIsLitFlag,1
-    set8 fearCounter,0
-    set8 turnCounter,0
-    set8 swordSwingCount,0
-    set8 score,0
+    ; Non-zero defaults
+    ld a,11
+    ld (bridgeCondition),a
+    ld a,128
+    ld (drawbridgeState),a
+    ld a,roomDarkRoom
+    ld (playerLocation),a
+    ld a,1
+    ld (candleIsLitFlag),a
+    ; Zero defaults (grouped)
+    xor a
+    ld (waterExitLocation),a
+    ld (gateDestination),a
+    ld (teleportDestination),a
+    ld (secretExitLocation),a
+    ld (generalFlagJ),a
+    ld (hostileCreatureIndex),a
+    ld (reshowFlag),a
+    ld (fearCounter),a
+    ld (turnCounter),a
+    ld (swordSwingCount),a
+    ld (score),a
     ; Copy static tables into mutable buffers
-    copy movementTableData,movementTable,movementTableBytes
-    copy objectLocationTable,objectLocation,objectCount
+    ; Copy movementTableData -> movementTable (movementTableBytes bytes)
+    ld hl,movementTableData           ; HL = source table (ROM/const)
+    ld de,movementTable               ; DE = destination buffer (RAM)
+    ld bc,movementTableBytes          ; BC = number of bytes
+    ldir                              ; copy until BC == 0
+    ; Copy objectLocationTable -> objectLocation (objectCount bytes)
+    ld hl,objectLocationTable         ; HL = source table (ROM/const)
+    ld de,objectLocation              ; DE = destination buffer (RAM)
+    ld bc,objectCount                 ; BC = number of bytes
+    ldir                              ; copy until BC == 0
     ret

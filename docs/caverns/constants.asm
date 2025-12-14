@@ -21,6 +21,7 @@ verbPatternGetIndex    equ 1   ; get/take
 verbPatternDropIndex   equ 2   ; drop/put
 verbPatternUseIndex    equ 3   ; using
 verbPatternWithIndex   equ 4   ; with
+verbPatternCount       equ 16
 verbPatternPleaseStart equ 7   ; unlock..burn -> "please tell me how"
 verbPatternPleaseEnd   equ 12
 verbPatternCantStart   equ 13  ; up..swim -> "I can't"
