@@ -219,19 +219,6 @@ csNotFound:
     pop hl                ; restore original HL
     ret
 
-; printObjectDesc: helper to print "a" + adj + noun + ", "
-; Inputs: HL = ptr to adj string, DE = ptr to noun string
-printObjectDesc:
-    push de              ; save noun
-    call printAdj        ; prints article + adj string at HL
-    pop de               ; noun
-    ex de,hl
-    call puts
-    ld a,','
-    call putc
-    call printSpace
-    ret
-
 ; Data placeholders (caller to allocate in BSS/vars area)
 randState: db 1
 spaceStr: db " ",0
@@ -437,4 +424,20 @@ printWordTableEntryIfNotNull:
     ex de,hl                      ; HL = string pointer
     call printStr                 ; emit string
     or 1                          ; force Z=0 to indicate "printed"
+    ret
+
+; getWordTableEntryToHl
+; Purpose: fetch a DW table entry into HL (instead of DE).
+; Inputs:
+;   HL = table base (DW entries)
+;   A  = 1-based index into table
+; Outputs:
+;   HL = entry value (pointer)
+;   Z  = 1 if entry was NULL (HL=0), Z = 0 otherwise
+; Clobbers: A, DE
+getWordTableEntryToHl:
+    call getWordFromTable         ; DE = entry (or 0)
+    ld a,d
+    or e                          ; Z=1 if NULL
+    ex de,hl                      ; HL = entry
     ret

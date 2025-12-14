@@ -1277,17 +1277,15 @@ printObjectDescriptionSub:
     ; Fetch adjective pointer from objdesc1Table[currentObjectIndex]
     ld hl,objdesc1Table
     ld a,(currentObjectIndex)
-    call getWordFromTable
-    ex de,hl                      ; HL = adjective string
+    call getWordTableEntryToHl     ; HL = adjective string (Z=1 if NULL)
     ; Print article + adjective (a/an computed)
     call printAdj
     ; Fetch noun pointer from objdesc2Table[currentObjectIndex]
     ld hl,objdesc2Table
     ld a,(currentObjectIndex)
-    call getWordFromTable
+    call getWordTableEntryToHl     ; HL = noun string (Z=1 if NULL)
     ; Print space + noun
     call printSpace
-    ex de,hl                      ; HL = noun string
     call printStr
     ; Trailing comma and space to match original output
     ld a,','
