@@ -105,15 +105,9 @@ dcDarknessCheck:
     ld a,(candleIsLitFlag)
     or a
     jp z,dcShowDarkness
-    ; Is candle at player location?
-    ld a,(objectLocation+20)        ; objCandle index 21 -> offset 20
-    ld b,a
-    ld a,(playerLocation)
-    cp b
-    jp z,printRoomDescription
-    ; Or carried? (-1 == 0xFF)
-    ld a,b
-    cp roomCarried
+    ; If candle is here or carried, treat room as lit
+    ld a,objCandle                  ; object index for candle (1..objectCount)
+    call isObjHereOrCarried          ; Z=1 if here or carried
     jp z,printRoomDescription
 dcShowDarkness:
     ld hl,strTooDark
@@ -172,30 +166,12 @@ prAfterDesc:
     ld hl,strDrainageSystem
     call printStr
 pradDrainageDone:
-    ; Check if current room needs the generic dark-cavern message
+    ; Check if current room needs the generic dark-cavern message.
+    ; This is table-driven for compactness (see darkCavernRoomList in tables.asm).
     ld a,(playerLocation)        ; A = current room
-    ld b,a                        ; B = current room (reuse)
-    cp roomDarkCavernA         ; dark cavern A?
-    jp z,pradPrintDark
-    cp roomDarkCavernB         ; dark cavern B?
-    jp z,pradPrintDark
-    cp roomDarkCavernC         ; dark cavern C?
-    jp z,pradPrintDark
-    cp roomDarkCavernH         ; dark cavern H?
-    jp z,pradPrintDark
-    cp roomDarkCavernI         ; dark cavern I?
-    jp z,pradPrintDark
-    cp roomDarkCavernJ         ; dark cavern J?
-    jp z,pradPrintDark
-    cp roomDarkCavernK         ; dark cavern K?
-    jp z,pradPrintDark
-    cp roomWoodenBridge         ; wooden bridge also dark
-    jp z,pradPrintDark
-    ld a,b                        ; A = current room
-    cp roomTempleBalcony+1      ; >= 29? (caverns D/E/F)
-    jp c,pradBridgeCheck
-    cp roomDarkCavernG         ; < 32? (before cavern G)
-    jp nc,pradBridgeCheck
+    ld hl,darkCavernRoomList     ; HL = 0-terminated room id list
+    call containsByteListZeroTerm ; Z=1 if in list
+    jp nz,pradBridgeCheck        ; not in list -> skip dark message
 pradPrintDark:
     ld hl,strDarkCavern         ; "You are deep in a dark cavern."
     call printStr                 ; emit dark cavern note

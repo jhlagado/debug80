@@ -171,3 +171,19 @@ dynamicExitPatchTable:
                         DW gateDestination
                         DB roomCastleLedge, dirEast
                         DW drawbridgeState
+
+; Rooms that should display the generic "dark cavern" extra line after the
+; base description. Zero-terminated list for containsByteListZeroTerm.
+darkCavernRoomList:
+                        DB roomDarkCavernA
+                        DB roomDarkCavernB
+                        DB roomDarkCavernC
+                        DB roomDarkCavernD
+                        DB roomDarkCavernE
+                        DB roomDarkCavernF
+                        DB roomDarkCavernH
+                        DB roomDarkCavernI
+                        DB roomDarkCavernJ
+                        DB roomDarkCavernK
+                        DB roomWoodenBridge
+                        DB 0

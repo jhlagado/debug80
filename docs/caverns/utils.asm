@@ -364,3 +364,59 @@ adjAfter:
     call printSpace
     pop hl               ; restore adjective ptr
     jp puts
+
+; containsByteListZeroTerm
+; Purpose: test whether a byte value exists in a 0-terminated byte list.
+; Inputs:
+;   A  = value to find
+;   HL = pointer to list (DB v1, v2, ..., 0)
+; Outputs:
+;   Z  = 1 if found, Z = 0 if not found
+; Clobbers: A, B, HL
+containsByteListZeroTerm:
+    ld b,a                        ; B = target value
+cbztLoop:
+    ld a,(hl)                     ; A = current list value
+    or a                          ; terminator (0)?
+    jr z,cbztNotFound             ; end of list -> not found
+    cp b                          ; found?
+    ret z                         ; yes (Z=1)
+    inc hl                        ; next byte
+    jr cbztLoop                   ; keep scanning
+cbztNotFound:
+    or 1                          ; force Z=0 to signal not found
+    ret
+
+; getObjLoc
+; Purpose: fetch object/creature location byte from objectLocation[].
+; Inputs:
+;   A = object index (1..objectCount)
+; Outputs:
+;   A = location byte (0, room id 1..roomMax, or roomCarried)
+; Clobbers: HL, DE
+getObjLoc:
+    dec a                         ; A = index-1 (0-based)
+    ld e,a                        ; DE = offset
+    ld d,0
+    ld hl,objectLocation          ; HL = base of location array
+    add hl,de                     ; HL = &objectLocation[index-1]
+    ld a,(hl)                     ; A = location
+    ret
+
+; isObjHereOrCarried
+; Purpose: test if an object is either in the current room or carried.
+; Inputs:
+;   A = object index (1..objectCount)
+; Outputs:
+;   Z = 1 if (location == playerLocation) OR (location == roomCarried)
+;   Z = 0 otherwise
+; Clobbers: A, B, HL, DE
+isObjHereOrCarried:
+    call getObjLoc                ; A = location
+    ld b,a                        ; B = location
+    ld a,(playerLocation)         ; A = current room
+    cp b                          ; here?
+    ret z                         ; yes -> Z=1
+    ld a,b                        ; A = location
+    cp roomCarried                ; carried?
+    ret
