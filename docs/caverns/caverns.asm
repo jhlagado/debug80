@@ -132,24 +132,15 @@ printRoomDescription:
     ;   3) Jump to listRoomObjectsAndCreatures.
     ; ---------------------------------------------------------
     ; Print primary room description if present (roomDesc1Table[playerLocation])
-    ld hl,roomDesc1Table        ; HL = table base (DW)
-    ld a,(playerLocation)       ; A = 1-based room id
-    call getWordFromTable       ; DE = pointer (or 0)
-    ld a,d
-    or e
-    jp z,prCheckDesc2
-    ex de,hl                    ; HL = string pointer
-    call printStr
+    ld hl,roomDesc1Table             ; HL = table base (DW)
+    ld a,(playerLocation)            ; A = 1-based room id
+    call printWordTableEntryIfNotNull ; prints if non-NULL (no-op if NULL)
 prCheckDesc2:
     ; Print secondary room description if present (roomDesc2Table[playerLocation])
-    ld hl,roomDesc2Table
-    ld a,(playerLocation)
-    call getWordFromTable
-    ld a,d
-    or e
-    jp z,prAfterDesc
-    ex de,hl
-    call printStr
+    ld hl,roomDesc2Table             ; HL = table base (DW)
+    ld a,(playerLocation)            ; A = 1-based room id
+    call printWordTableEntryIfNotNull ; prints if non-NULL (no-op if NULL)
+    jp z,prAfterDesc                 ; keep old control flow shape (Z=1 means NULL)
 
 prAfterDesc:
     ; ---------------------------------------------------------

@@ -420,3 +420,21 @@ isObjHereOrCarried:
     ld a,b                        ; A = location
     cp roomCarried                ; carried?
     ret
+
+; printWordTableEntryIfNotNull
+; Purpose: print a string pointer from a DW table indexed by a 1-based byte id.
+; Inputs:
+;   HL = table base (DW entries)
+;   A  = 1-based index into table
+; Outputs:
+;   Z  = 1 if entry was NULL (printed nothing), Z = 0 if printed
+; Clobbers: A, DE, HL
+printWordTableEntryIfNotNull:
+    call getWordFromTable         ; DE = table entry (pointer or 0)
+    ld a,d
+    or e
+    ret z                         ; NULL -> return with Z=1
+    ex de,hl                      ; HL = string pointer
+    call printStr                 ; emit string
+    or 1                          ; force Z=0 to indicate "printed"
+    ret
