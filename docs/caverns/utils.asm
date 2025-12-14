@@ -23,7 +23,7 @@ puts:
 ; readLine: reads a line into buffer at HL, max length in B (not counting terminator)
 ; - Converts CR/LF to terminator 0
 ; - Echo optional: toggle via C (0 = no echo, nonzero = echo)
-; Returns HL unchanged; A = length stored (excluding terminator)
+; Returns HL pointing to terminator; A = length stored (excluding terminator)
 readLine:
     push bc
     ld d,0               ; length counter in D

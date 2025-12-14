@@ -26,9 +26,15 @@ randomDirectionIndex db 0
 randomFightMessage   db 0
 targetLocation        db 0
 carriedCount          db 0
+loopIndex             db 0
+verbPatternIndex      db 0
+directionIndex        db 0
 
 ; Arrays (mutable)
 ; Movement table: roomMax * 4 bytes
 movementTable:    ds roomMax*4
 
 objectLocation:   ds 24               ; byte per object/creature
+
+; Input buffer (padded with leading/trailing space)
+inputBuffer: ds inputBufferSize

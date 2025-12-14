@@ -361,17 +361,34 @@ locDone:
 getPlayerInput:
     ; ---------------------------------------------------------
     ; getPlayerInput
-    ; Read a non-empty command line, normalize it (pad spaces,
-    ; lowercase, trim multiples), bump turn counter, and route to
-    ; parsing. Clears the screen afterward.
+    ; Read a non-empty command line, pad with leading/trailing
+    ; spaces, normalize to lowercase, bump turn counter, and route
+    ; to parsing. Clears the screen afterward.
     ; ---------------------------------------------------------
-    input inputCommand$          ; read command line
-    if inputCommand$ = "" then   ; empty? keep prompting
-        goto getPlayerInput
-    end if
-    inputCommand$ = " " + inputCommand$ + " " ; pad with spaces for INSTR finds
-    turnCounter = turnCounter + 1              ; advance turn count
-    call normalizeInput           ; lowercase/trim/pad as per helper
+gpiReadLine:
+    ; Build buffer with leading space, read line, append trailing space + null
+    ld hl,inputBuffer
+    ld a,' '
+    ld (hl),a                     ; leading space
+    inc hl                        ; HL -> write position after leading space
+    ld b,inputBufferSize-3        ; leave room for trailing space + terminator
+    ld c,1                        ; echo on
+    call readLine                 ; reads into HL.., returns length in A, HL at terminator
+    ; HL currently at terminator after the input; append trailing space and terminator
+    ld (hl),' '
+    inc hl
+    ld (hl),0
+    ; Normalize to lowercase from start of buffer (includes padding)
+    ld hl,inputBuffer
+    call normalizeInput
+    ; Empty check: buffer is " " + 0?
+    ld a,(inputBuffer+1)
+    or a
+    jp z,gpiReadLine              ; re-prompt on empty
+    ; turnCounter++
+    ld a,(turnCounter)
+    inc a
+    ld (turnCounter),a
     cls                           ; clear screen before processing
     goto parseCommandEntry      ; continue to parser
 
@@ -382,64 +399,101 @@ parseCommandEntry:
     ; dynamic exits/flags that depend on location/state, then
     ; continue into verb routing.
     ; ---------------------------------------------------------
-    currentObjectIndex = 0      ; reset matched object index
-    objectAdjective$ = ""        ; clear parsed adjective
-    objectNoun$ = ""             ; clear parsed noun
-    for loopIndex = 7 to 24
-        objectAdjective$ = @objectNameAdj(loopIndex) ; candidate adj
-        objectNoun$ = @objectNameNoun(loopIndex)     ; candidate noun
-        if INSTR(inputCommand$, objectNoun$) > 0 then  ; noun found?
-            currentObjectIndex = loopIndex            ; remember which
-            EXIT for                                     ; stop search
-        end if
-    next loopIndex
-    if currentObjectIndex = 0 then
-        objectAdjective$ = ""    ; no noun matched -> clear
-        objectNoun$ = ""
-    end if
+    set8 currentObjectIndex,0      ; reset matched object index
+    ; Find noun match in inputBuffer by scanning objectNameNounTable (objects 7..24)
+    set8 loopIndex,7
+pceFindNoun:
+    ld a,(loopIndex)
+    cp objectCount+1               ; past last?
+    jp z,pceAfterNoun              ; none found
+    ; compute noun pointer = objectNameNounTable[(index-7)]
+    ld a,(loopIndex)
+    sub 7
+    ld l,a
+    ld h,0
+    add hl,hl                      ; *2 for word table
+    ld de,objectNameNounTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)                      ; DE = noun pointer
+    ld hl,inputBuffer              ; HL = haystack
+    call containsStr               ; A=1 if found
+    or a
+    jr z,pceNextNoun
+    ; match found -> record currentObjectIndex and break
+    ld a,(loopIndex)
+    ld (currentObjectIndex),a
+    jp pceAfterNoun
+pceNextNoun:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp pceFindNoun
+pceAfterNoun:
     ; Bridge condition when halfway
-    if playerLocation = roomBridgeMid then
-        bridgeCondition = 128
-        call updateDynamicExits
-    end if
-    ; Hut flag
-    if playerLocation = roomForestClearing then
-        generalFlagJ = 1
-    end if
-    ; Waterfall conduit exit opens when at base
-    if playerLocation = roomWaterfallBase then
-        waterExitLocation = 43
-        call updateDynamicExits
-    end if
-    ; Reset water exit when back in temple
-    if playerLocation = roomTemple then
-        waterExitLocation = 0
-        call updateDynamicExits
-    end if
+    ; Bridge condition when halfway
+    ld a,(playerLocation)
+    cp roomBridgeMid
+    jp nz,pceHutFlag
+    set8 bridgeCondition,exitFatal
+    call updateDynamicExits
+pceHutFlag:
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp nz,pceWaterfall
+    set8 generalFlagJ,1
+pceWaterfall:
+    ld a,(playerLocation)
+    cp roomWaterfallBase
+    jp nz,pceTempleReset
+    set8 waterExitLocation,roomDrainC      ; 43
+    call updateDynamicExits
+pceTempleReset:
+    ld a,(playerLocation)
+    cp roomTemple
+    jp nz,pceGateCheck
+    set8 waterExitLocation,0
+    call updateDynamicExits
+pceGateCheck:
     ; Gate destination changes once grill moved
-    if objectLocation(objGrill) <> roomTinyCell then
-        gateDestination = 39
-        call updateDynamicExits
-    end if
+    ld a,(objectLocation+objGrill-1)
+    cp roomTinyCell
+    jp z,pceDrawbridge
+    set8 gateDestination,roomDrainC        ; 39
+    call updateDynamicExits
+pceDrawbridge:
     ; Drawbridge lowers when on drawbridge room
-    if playerLocation = roomDrawbridge then
-        drawbridgeState = 49
-        call updateDynamicExits
-    end if
+    ld a,(playerLocation)
+    cp roomDrawbridge
+    jp nz,pceLookCheck
+    set8 drawbridgeState,roomDrawbridge
+    call updateDynamicExits
+pceLookCheck:
     ; LOOK command
-    if INSTR(inputCommand$, " look ") > 0 then
-        reshowFlag = 0
-        goto describeCurrentLocation
-    end if
+    ld hl,inputBuffer
+    ld de,tokenLook
+    call containsStr
+    or a
+    jp z,pceListCheck
+    set8 reshowFlag,0
+    goto describeCurrentLocation
+pceListCheck:
     ; LIST inventory
-    if INSTR(inputCommand$, " list ") > 0 then
-        goto showInventory
-    end if
+    ld hl,inputBuffer
+    ld de,tokenList
+    call containsStr
+    or a
+    jp z,pceQuitCheck
+    goto showInventory
+pceQuitCheck:
     ; QUIT
-    if INSTR(inputCommand$, " quit ") > 0 then
-        goto quitGame
-    end if
-    goto checkCreatureAtLocation
+    ld hl,inputBuffer
+    ld de,tokenQuit
+    call containsStr
+    or a
+    jp z,checkCreatureAtLocation
+    goto quitGame
 
 showInventory:
     ld hl,strCarryingPrefix
@@ -647,18 +701,56 @@ handleVerbOrMovement:
     ; unlock/jump/etc.) via pattern table, then directions, else
     ; fall back to non-movement handlers.
     ; ---------------------------------------------------------
-    ; Scan verb patterns (1..16) for a match in inputCommand$
-    for verbPatternIndex = 1 to 16       ; iterate patterns
-        if INSTR(inputCommand$, @verbPattern(verbPatternIndex)) > 0 then ; found?
-            goto routeByVerbPattern     ; handle specific verb
-        end if
-    next verbPatternIndex                 ; next pattern
+    ; Scan verb patterns (1..16) for a match in inputBuffer
+    set8 verbPatternIndex,1
+hvmVerbLoop:
+    ld a,(verbPatternIndex)
+    cp 17
+    jp z,hvmVerbDone
+    ; fetch pattern pointer from verbPatternTable
+    ld a,(verbPatternIndex)
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    ld de,verbPatternTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld hl,inputBuffer
+    call containsStr
+    or a
+    jp nz,routeByVerbPattern
+    ld a,(verbPatternIndex)
+    inc a
+    ld (verbPatternIndex),a
+    jp hvmVerbLoop
+hvmVerbDone:
     ; Check for movement words (north/south/west/east)
-    for directionIndex = 0 to 3            ; 0..3
-        if INSTR(inputCommand$, @dirWordIndex(directionIndex+1)) > 0 then ; dir found?
-            goto handleMovementCommand    ; route to movement
-        end if
-    next directionIndex                    ; next direction
+    set8 directionIndex,0
+hvmDirLoop:
+    ld a,(directionIndex)
+    cp 4
+    jp z,hvmDirDone
+    ; pattern pointer = dirWordIndexTable[directionIndex]
+    ld l,a
+    ld h,0
+    add hl,hl
+    ld de,dirWordIndexTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld hl,inputBuffer
+    call containsStr
+    or a
+    jp nz,handleMovementCommand
+    ld a,(directionIndex)
+    inc a
+    ld (directionIndex),a
+    jp hvmDirLoop
+hvmDirDone:
     goto handleNonMovementCommand        ; nothing matched -> non-movement
 
 handleMovementCommand:
@@ -724,21 +816,28 @@ hmcDoneMove:
 
 handleNonMovementCommand:
     ; Magic word "galar"
-    if INSTR(inputCommand$, " galar ") > 0 then
-        reshowFlag = 0
-        ld hl,strMagicWind
-        call printStr
-        playerLocation = roomCaveEntry
-        goto describeCurrentLocation
-    end if
+    ld hl,inputBuffer
+    ld de,tokenGalar
+    call containsStr
+    or a
+    jp z,hnmApeCheck
+    set8 reshowFlag,0
+    ld hl,strMagicWind
+    call printStr
+    set8 playerLocation,roomCaveEntry
+    goto describeCurrentLocation
     ; Crypt wall "ape"
-    if INSTR(inputCommand$, " ape ") > 0 then
-        ld hl,strCryptWall
-        call printStr
-        secretExitLocation = 38
-        call updateDynamicExits
-        goto describeCurrentLocation
-    end if
+hnmApeCheck:
+    ld hl,inputBuffer
+    ld de,tokenApe
+    call containsStr
+    or a
+    jp z,hnmCheckVisibility
+    ld hl,strCryptWall
+    call printStr
+    set8 secretExitLocation,roomTinyCell  ; open wall exit to tiny cell
+    call updateDynamicExits
+    goto describeCurrentLocation
     ; Ensure an object was parsed
     ld a,(currentObjectIndex)
     or a
@@ -768,13 +867,21 @@ hnmCheckVisibility:
 
 checkGetDropUse:
     ; GET command
-    if INSTR(inputCommand$, " get ") > 0 then
-        goto handleGetCommand
-    end if
+    ld hl,inputBuffer
+    ld de,tokenGet
+    call containsStr
+    or a
+    jp z,checkDrop
+    goto handleGetCommand
+checkDrop:
     ; DROP command
-    if INSTR(inputCommand$, " drop ") > 0 then
-        goto handleDropCommand
-    end if
+    ld hl,inputBuffer
+    ld de,tokenDrop
+    call containsStr
+    or a
+    jp z,checkUse
+    goto handleDropCommand
+checkUse:
     ; USE-type verbs routed by object index
     goto routeUseByObject
 

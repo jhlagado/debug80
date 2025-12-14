@@ -209,6 +209,14 @@ dirSouthStr           DB "south",0
 dirWestStr            DB "west",0
 dirEastStr            DB "east",0
 
+tokenLook             DB " look ",0
+tokenList             DB " list ",0
+tokenQuit             DB " quit ",0
+tokenGalar            DB " galar ",0
+tokenApe              DB " ape ",0
+tokenGet              DB " get ",0
+tokenDrop             DB " drop ",0
+
 monNameWiz            DB "evil "
 monNounWiz            DB "wizard",0
 monNameDemon          DB "fiery "

@@ -118,3 +118,6 @@ null         equ 0
 roomMax     equ 54
 objectCount equ 24
 movementTableBytes equ roomMax*4
+
+; Input buffer sizing
+inputBufferSize equ 80        ; characters incl. padding/terminator
