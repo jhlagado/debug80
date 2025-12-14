@@ -164,6 +164,15 @@ prAfterDesc:
     ; After room description, emit contextual extras and candle
     ; warnings, then fall through to listing objects/creatures.
     ; ---------------------------------------------------------
+    ; Drainage system message for rooms 41..44
+    ld a,(playerLocation)        ; A = current room
+    cp roomDrainA                ; >= 41?
+    jp c,pradDrainageDone
+    cp roomWaterfallBase         ; < 45?
+    jp nc,pradDrainageDone
+    ld hl,strDrainageSystem
+    call printStr
+pradDrainageDone:
     ; Check if current room needs the generic dark-cavern message
     ld a,(playerLocation)        ; A = current room
     ld b,a                        ; B = current room (reuse)

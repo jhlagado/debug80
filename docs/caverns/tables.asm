@@ -88,10 +88,10 @@ roomDesc1Table
                         DW descLedgeRiver, descTempleBalcony
                         DW NULL, NULL, NULL, NULL, descBatCave, NULL, descTemple
                         DW NULL, descCrypt, descTinyCell, NULL, descWaterfallLedge
-                        DW NULL, NULL, NULL, NULL, NULL, descWaterfallBase, NULL
-                        DW descStoneStair, descCastleLedge, descDrawbridge
-                        DW descCastleCourtyard, descPowderMag, descEastBank
-                        DW descWoodenBridge, descRiverConduit
+                        DW NULL, NULL, NULL, NULL, descWaterfallBase, NULL, descStoneStair
+                        DW descCastleLedge, descDrawbridge, descCastleCourtyard
+                        DW descPowderMag, descEastBank, descWoodenBridge
+                        DW descRiverConduit
 
 roomDesc2Table
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
