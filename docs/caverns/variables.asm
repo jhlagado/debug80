@@ -25,6 +25,7 @@ yesnoKey              db 0
 randomDirectionIndex db 0
 randomFightMessage   db 0
 targetLocation        db 0
+carriedCount          db 0
 
 ; Arrays (mutable)
 ; Movement table: roomMax * 4 bytes

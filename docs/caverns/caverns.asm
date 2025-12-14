@@ -860,28 +860,68 @@ checkGetDropUse:
 
 handleGetCommand:
 
-    carriedCount = 0
-
-    for loopIndex = 7 to 24
-        if objectLocation(loopIndex) = -1 then
-            carriedCount = carriedCount + 1
-        end if
-    next loopIndex
-
-    if carriedCount > 10 then
-        ld hl,strTooManyObjects
-        call printStr
-        goto describeCurrentLocation
-    end if
-
-    objectLocation(currentObjectIndex) = -1
+    ; ---------------------------------------------------------
+    ; handleGetCommand
+    ; Count carried items; if >10, refuse. Otherwise set the
+    ; current object to carried (-1) and redisplay.
+    ; ---------------------------------------------------------
+    set8 carriedCount,0                ; reset counter
+    set8 loopIndex,7                   ; start at object 7
+hgcCount:
+    ld a,(loopIndex)                   ; A = index
+    cp 25                              ; past object 24?
+    jp z,hgcDoneCount
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                          ; HL -> objectLocation(entry)
+    ld a,(hl)                          ; A = location byte
+    cp 255                             ; carried?
+    jp nz,hgcNext
+    ld a,(carriedCount)                ; increment carried count
+    inc a
+    ld (carriedCount),a
+hgcNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp hgcCount
+hgcDoneCount:
+    ld a,(carriedCount)
+    cp 11                              ; >10?
+    jr c,hgcCarryOk
+    ld hl,strTooManyObjects
+    call printStr
+    goto describeCurrentLocation
+hgcCarryOk:
+    ; objectLocation(currentObjectIndex) = -1 (255)
+    ld a,(currentObjectIndex)
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,255
+    ld (hl),a
     goto describeCurrentLocation
 
 
 
 handleDropCommand:
 
-    objectLocation(currentObjectIndex) = playerLocation
+    ; ---------------------------------------------------------
+    ; handleDropCommand
+    ; Place the current object in the player’s room.
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)          ; A = index
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                          ; HL -> objectLocation(entry)
+    ld a,(playerLocation)              ; A = room id
+    ld (hl),a                          ; store new location
     goto describeCurrentLocation
 
 
