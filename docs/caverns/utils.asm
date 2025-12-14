@@ -139,6 +139,39 @@ findFound:
     pop hl
     ret
 
+; getWordFromTable: fetch word pointer/value from a word table by 1-based index
+; Inputs:
+;   HL = table base (DW entries)
+;   A  = index (1..N)
+; Outputs:
+;   DE = word at table[index]
+; Clobbers: A, HL
+getWordFromTable:
+    dec a                 ; A = index-1 (0-based)
+    add a,a               ; A = (index-1)*2
+    ld e,a
+    ld d,0
+    add hl,de             ; HL -> entry
+    ld e,(hl)             ; DE = word (little-endian)
+    inc hl
+    ld d,(hl)
+    ret
+
+; getByteFromTable: fetch byte from a byte table by 1-based index
+; Inputs:
+;   HL = table base (DB entries)
+;   A  = index (1..N)
+; Outputs:
+;   A  = byte at table[index]
+; Clobbers: HL
+getByteFromTable:
+    dec a                 ; A = index-1 (0-based)
+    ld e,a
+    ld d,0
+    add hl,de             ; HL -> entry
+    ld a,(hl)
+    ret
+
 ; tokenizeInput: simple whitespace tokenizer in-place
 ; Inputs: HL = buffer (null-terminated)
 ; Outputs: tokenPtrs array (caller defines), tokenCount byte

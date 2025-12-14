@@ -75,7 +75,6 @@ objectLocationTable:
                         DW roomDarkCavernA, roomCliffFace
                         DW roomNorthSouthTunnel, roomTinyCell
 
-
 roomDesc1Table:
                         DW descDarkRoom, descForestClearing, descDarkForest
                         DW descCloverField, descRiverCliff, descRiverBank

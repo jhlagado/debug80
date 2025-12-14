@@ -122,41 +122,25 @@ printRoomDescription:
     ;        - Candle dim/out thresholds (also clears lit flag).
     ;   3) Jump to listRoomObjectsAndCreatures.
     ; ---------------------------------------------------------
-    ; Pointer-based room descriptions (for assembly translation, @PTR means dereference)
-    ; roomDesc1Table entry (word) = DESC pointer for current room
-    ld a,(playerLocation)
-    dec a                       ; 0-based index
-    add a,a                     ; *2 for word table
-    ld l,a
-    ld h,0
-    ld de,roomDesc1Table
-    add hl,de                   ; HL -> entry
-    ld e,(hl)
-    inc hl
-    ld d,(hl)                   ; DE = ptr
+    ; Print primary room description if present (roomDesc1Table[playerLocation])
+    ld hl,roomDesc1Table        ; HL = table base (DW)
+    ld a,(playerLocation)       ; A = 1-based room id
+    call getWordFromTable       ; DE = pointer (or 0)
     ld a,d
     or e
     jp z,prCheckDesc2
-    push de
-    call printStr               ; svcPuts leaves HL at end of string
-    pop de
+    ex de,hl                    ; HL = string pointer
+    call printStr
 prCheckDesc2:
+    ; Print secondary room description if present (roomDesc2Table[playerLocation])
+    ld hl,roomDesc2Table
     ld a,(playerLocation)
-    dec a
-    add a,a
-    ld l,a
-    ld h,0
-    ld de,roomDesc2Table
-    add hl,de
-    ld e,(hl)
-    inc hl
-    ld d,(hl)
+    call getWordFromTable
     ld a,d
     or e
     jp z,prAfterDesc
-    push de
+    ex de,hl
     call printStr
-    pop de
 
 prAfterDesc:
     ; ---------------------------------------------------------
@@ -1322,34 +1306,20 @@ printObjectDescriptionSub:
     ; Inputs: currentObjectIndex (1-based)
     ; Uses: BC, DE, HL
     ; ---------------------------------------------------------
-    ; Fetch adjective pointer from objdesc1Table
-    ld a,(currentObjectIndex)   ; A = index (1..24)
-    dec a                         ; to 0-based
-    add a,a                       ; *2 for word offset
-    ld l,a
-    ld h,0
-    ld de,objdesc1Table          ; DE = base of adjectives
-    add hl,de                     ; HL -> word entry
-    ld e,(hl)                     ; E = low byte of adj ptr
-    inc hl
-    ld d,(hl)                     ; D = high byte of adj ptr
-    ; Print article + adjective
-    ex de,hl                      ; HL = adj pointer
-    call printAdj                 ; emits "a/an <adj>"
-    ; Fetch noun pointer from objdesc2Table
-    ld a,(currentObjectIndex)   ; A = index
-    dec a                         ; to 0-based
-    add a,a                       ; *2 for word offset
-    ld l,a
-    ld h,0
-    ld de,objdesc2Table          ; DE = base of nouns
-    add hl,de                     ; HL -> word entry
-    ld e,(hl)                     ; E = low byte of noun ptr
-    inc hl
-    ld d,(hl)                     ; D = high byte of noun ptr
+    ; Fetch adjective pointer from objdesc1Table[currentObjectIndex]
+    ld hl,objdesc1Table
+    ld a,(currentObjectIndex)
+    call getWordFromTable
+    ex de,hl                      ; HL = adjective string
+    ; Print article + adjective (a/an computed)
+    call printAdj
+    ; Fetch noun pointer from objdesc2Table[currentObjectIndex]
+    ld hl,objdesc2Table
+    ld a,(currentObjectIndex)
+    call getWordFromTable
     ; Print space + noun
     call printSpace
-    ex de,hl                      ; HL = noun pointer
+    ex de,hl                      ; HL = noun string
     call printStr
     ; Trailing comma and space to match original output
     ld a,','
@@ -1465,102 +1435,68 @@ updateDynamicExits:
     ;   - All values are bytes; direct stores into movementTable.
     ;   - Caller updates the backing variables before invoking.
     ; ---------------------------------------------------------
-    ; Patch dynamic exits in movement table
-    ; movementTable(roomBridgeNorthAnchor,dirSouth) = bridgeCondition
-    ld a,roomBridgeNorthAnchor
+    ; Helper: HL = &movementTable[(room-1)*4 + dir]
+    ; Inputs: A = room (1-based), C = dir (0..3)
+updateExitPtr:
     dec a
     ld l,a
     ld h,0
     add hl,hl
-    add hl,hl                          ; (room-1)*4
-    ld de,dirSouth
-    add hl,de
+    add hl,hl                      ; HL = (room-1)*4
+    ld b,0
+    ld a,c
+    ld c,a
+    add hl,bc                      ; + dir
     ld de,movementTable
-    add hl,de
+    add hl,de                      ; HL -> cell
+    ret
+
+    ; movementTable(roomBridgeNorthAnchor,dirSouth) = bridgeCondition
+    ld c,dirSouth
+    ld a,roomBridgeNorthAnchor
+    call updateExitPtr
     ld a,(bridgeCondition)
     ld (hl),a
 
     ; movementTable(roomBridgeSouthAnchor,dirNorth) = bridgeCondition
+    ld c,dirNorth
     ld a,roomBridgeSouthAnchor
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirNorth
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(bridgeCondition)
     ld (hl),a
 
     ; movementTable(roomOakDoor,dirEast) = teleportDestination
+    ld c,dirEast
     ld a,roomOakDoor
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirEast
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(teleportDestination)
     ld (hl),a
 
     ; movementTable(roomCrypt,dirEast) = secretExitLocation
+    ld c,dirEast
     ld a,roomCrypt
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirEast
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(secretExitLocation)
     ld (hl),a
 
     ; movementTable(roomTinyCell,dirNorth) = waterExitLocation
+    ld c,dirNorth
     ld a,roomTinyCell
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirNorth
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(waterExitLocation)
     ld (hl),a
 
     ; movementTable(roomTinyCell,dirEast) = gateDestination
+    ld c,dirEast
     ld a,roomTinyCell
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirEast
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(gateDestination)
     ld (hl),a
 
     ; movementTable(roomCastleLedge,dirEast) = drawbridgeState
+    ld c,dirEast
     ld a,roomCastleLedge
-    dec a
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    ld de,dirEast
-    add hl,de
-    ld de,movementTable
-    add hl,de
+    call updateExitPtr
     ld a,(drawbridgeState)
     ld (hl),a
 
