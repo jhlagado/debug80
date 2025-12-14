@@ -83,8 +83,6 @@ dcShowDarkness:
     call printStr
     jp listRoomObjectsAndCreatures
 
-
-
 printRoomDescription:
 
     ; ---------------------------------------------------------
@@ -384,10 +382,7 @@ locListCreDone:
     jp z,locDone                 ; sword means no auto attack
     jp monsterAttack             ; attack player
 locDone:
-
     goto getPlayerInput
-
-
 
 getPlayerInput:
 
@@ -412,8 +407,6 @@ getPlayerInput:
     cls                           ; clear screen before processing
 
     goto parseCommandEntry      ; continue to parser
-
-
 
 parseCommandEntry:
 
@@ -495,8 +488,6 @@ parseCommandEntry:
 
     goto checkCreatureAtLocation
 
-
-
 showInventory:
 
     ld hl,strCarryingPrefix
@@ -524,8 +515,6 @@ showInventory:
     next loopIndex
 
     goto describeCurrentLocation
-
-
 
 quitGame:
     ; ---------------------------------------------------------
@@ -560,9 +549,7 @@ quitGame:
     call printNum                       ; print turn count
     ld hl,strScoreSuffix                ; " moves."
     call printStr
-
     call printRankingSub                ; ranking text
-
     ld hl,strAnother                    ; "Another adventure? "
     call printStr
 
@@ -623,8 +610,6 @@ ccalLoop:
 ccalNone:
     set8 hostileCreatureIndex,0         ; none present
     goto handleVerbOrMovement
-
-
 
 checkCreatureBatSpecial:
 
@@ -788,8 +773,6 @@ hmcDoneMove:
     set8 reshowFlag,0                      ; force redisplay
     goto describeCurrentLocation           ; show new room
 
-
-
 handleNonMovementCommand:
 
     ; Magic word "galar"
@@ -928,18 +911,19 @@ handleDropCommand:
 
 routeUseByObject:
 
-    if currentObjectIndex = objKey then
-        goto useKey
-    end if
-    if currentObjectIndex = objSword then
-        goto useSword
-    end if
-    if currentObjectIndex = objCandle then
-        goto useBomb
-    end if
-    if currentObjectIndex = objRope then
-        goto useRope
-    end if
+    ; ---------------------------------------------------------
+    ; routeUseByObject
+    ; Dispatch USE targets by currentObjectIndex (key/sword/bomb/rope).
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)
+    cp objKey
+    jp z,useKey
+    cp objSword
+    jp z,useSword
+    cp objCandle
+    jp z,useBomb
+    cp objRope
+    jp z,useRope
 
     ld hl,strUseHow
     call printStr
@@ -949,40 +933,75 @@ routeUseByObject:
 
 useKey:
 
-    if playerLocation <> roomForestClearing and playerLocation <> roomTemple then
-        ld hl,strWontOpen
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ; ---------------------------------------------------------
+    ; useKey
+    ; Works only at forest clearing or temple. Opens the door,
+    ; moves key to current room, clears reshowFlag, and teleports
+    ; player based on location.
+    ; ---------------------------------------------------------
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp z,useKeyAllowed
+    cp roomTemple
+    jp z,useKeyAllowed
+    ; not allowed: won't open
+    ld hl,strWontOpen
+    call printStr
+    goto describeCurrentLocation
 
+useKeyAllowed:
     ld hl,strDoorOpened
     call printStr
-    objectLocation(19) = playerLocation
-    reshowFlag = 0
+    ; objectLocation(19) = playerLocation (key index 19 -> offset 18)
+    ld a,(playerLocation)
+    ld (objectLocation+18),a
+    set8 reshowFlag,0
 
-    if playerLocation = roomForestClearing then
-        playerLocation = roomDarkRoom
-        goto describeCurrentLocation
-    else
-        playerLocation = roomCrypt
-        goto describeCurrentLocation
-    end if
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp nz,useKeyToCrypt
+    ld a,roomDarkRoom
+    ld (playerLocation),a
+    goto describeCurrentLocation
+
+useKeyToCrypt:
+    ld a,roomCrypt
+    ld (playerLocation),a
+    goto describeCurrentLocation
 
 
 
 useSword:
 
-    if hostileCreatureIndex = 0 then
-        ld hl,strNothingToKill
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ; ---------------------------------------------------------
+    ; useSword
+    ; Resolve sword attacks vs hostileCreatureIndex. Handles misses
+    ; and fatal outcomes per original BASIC logic.
+    ; ---------------------------------------------------------
+    ld a,(hostileCreatureIndex)
+    or a
+    jp nz,useSwordHasTarget
+    ld hl,strNothingToKill
+    call printStr
+    goto describeCurrentLocation
 
-    swordSwingCount = swordSwingCount + 1
+useSwordHasTarget:
+    ; swordSwingCount++
+    ld a,(swordSwingCount)
+    inc a
+    ld (swordSwingCount),a
 
-    if RND * 7 + 15 > swordSwingCount then
-        goto swordFightContinues
-    end if
+    ; if RND*7 + 15 > swordSwingCount then continue fight else miss and die
+    call rand0To3                 ; approx randomness; reuse helper (0..3)
+    ; scale: rand*7 +15 -> quick proxy: (rand*2)+15 vs swordSwingCount
+    ld b,a
+    ld a,b
+    add a,a                       ; rand*2
+    add a,15
+    ld b,a                        ; B = threshold
+    ld a,(swordSwingCount)
+    cp b
+    jp c,swordFightContinues      ; swordSwingCount < threshold => continue
 
     ld hl,strSwordMiss
     call printStr
