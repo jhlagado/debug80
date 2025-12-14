@@ -619,18 +619,30 @@ ccalNone:
 
 checkCreatureBatSpecial:
 
-    if hostileCreatureIndex = 5 then
-        ld hl,strGiantBat
-        call printStr
-        playerLocation = roomBatCave
-        reshowFlag = 0
-        objectLocation(5) = objectLocation(5) + 7
-        goto describeCurrentLocation
-    end if
+    ; ---------------------------------------------------------
+    ; checkCreatureBatSpecial
+    ; If the creature in this room is the bat (index 5), print the
+    ; bat message, teleport player to bat cave, bump bat location,
+    ; and redisplay. Otherwise continue verb handling.
+    ; ---------------------------------------------------------
+    ld a,(hostileCreatureIndex)
+    cp 5                                ; bat index?
+    jp nz,handleVerbOrMovement          ; not bat -> continue
 
-    goto handleVerbOrMovement
+    ld hl,strGiantBat                   ; "The giant bat picked you up..."
+    call printStr
 
+    ld a,roomBatCave
+    ld (playerLocation),a               ; move player
+    set8 reshowFlag,0                   ; force redisplay
 
+    ; objectLocation(5) = objectLocation(5) + 7 (index 5 -> offset 4)
+    ld hl,objectLocation+4
+    ld a,(hl)
+    add a,7
+    ld (hl),a
+
+    goto describeCurrentLocation
 
 monsterAttack:
     ; Print "killed by a <adj><noun>!!"
