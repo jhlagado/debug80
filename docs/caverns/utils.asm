@@ -135,6 +135,46 @@ tokenizeInput:
     ; Implementation intentionally left for integration context
     ret
 
+; containsStr: return 1 in A if needle (DE) is found in haystack (HL), else 0
+; - Simple brute-force substring search; both strings are null-terminated
+containsStr:
+    push hl
+    push de
+csNextStart:
+    ld a,(hl)             ; end of haystack?
+    or a
+    jr z,csNotFound
+    push hl               ; save current haystack ptr
+    push de
+csCompare:
+    ld a,(de)             ; needle char
+    or a
+    jr z,csFound          ; hit terminator => match
+    cp (hl)
+    jr nz,csMismatch
+    inc hl
+    inc de
+    jr csCompare
+csMismatch:
+    pop de
+    pop hl
+    inc hl               ; advance haystack start
+    jr csNextStart
+csFound:
+    pop de
+    pop hl
+    ld a,1
+    pop de
+    pop hl
+    ret
+csNotFound:
+    pop de
+    pop hl
+    xor a
+    pop de
+    pop hl
+    ret
+
 ; printObjectDesc: helper to print "a" + adj + noun + ", "
 ; Inputs: HL = ptr to adj string, DE = ptr to noun string
 printObjectDesc:
