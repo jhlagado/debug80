@@ -2,7 +2,7 @@
 ;  Data tables (constants)
 ; ---------------------------------------------------------
 
-movementTable
+movementTable:
                         DB roomForestClearing,0,0,0
                         DB 0,0,roomDarkForest,roomCloverField
                         DB roomForestClearing,roomRiverCliff,roomRiverCliff,0
@@ -61,7 +61,7 @@ movementTable
                         DB roomRiverConduit,0,0,roomEastRiverbank
                         DB 0,roomWoodenBridge,roomDrainA,0
 
-objectLocationTable
+objectLocationTable:
                         DW roomDarkCavernI, roomTreasureRoom, roomBridgeNorthAnchor
                         DW roomCaveEntranceClearing
                         DW roomDeadEndInscription, roomStoneStaircase, roomRiverOutcrop
@@ -76,7 +76,7 @@ objectLocationTable
                         DW roomNorthSouthTunnel, roomTinyCell
 
 
-roomDesc1Table
+roomDesc1Table:
                         DW descDarkRoom, descForestClearing, descDarkForest
                         DW descCloverField, descRiverCliff, descRiverBank
                         DW descCraterEdge, descRiverOutcrop, descMtYmir
@@ -93,7 +93,7 @@ roomDesc1Table
                         DW descPowderMag, descEastBank, descWoodenBridge
                         DW descRiverConduit
 
-roomDesc2Table
+roomDesc2Table:
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, descTortureChamber2, NULL, NULL
@@ -102,19 +102,19 @@ roomDesc2Table
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL
 
-verbPatternTable
+verbPatternTable:
                         DW verbTake, verbPut, verbUsing, verbWith, verbCut
                         DW verbBreak, verbUnlock, verbOpen, verbKill, verbAttack
                         DW verbLight, verbBurn, verbUp, verbDown, verbJump, verbSwim
 
-dirWordIndexTable
+dirWordIndexTable:
                         DW dirNorthStr, dirSouthStr, dirWestStr, dirEastStr
 
-monsterNameTable
+monsterNameTable:
                         DW monNameWiz, monNameDemon, monNameTroll
                         DW monNameDragon, monNameBat, monNameDwarf
 
-monsterNounTable
+monsterNounTable:
                         DW monNounWiz, monNounDemon, monNounTroll
                         DW monNounDragon, monNounBat, monNounDwarf
 
