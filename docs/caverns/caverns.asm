@@ -823,7 +823,7 @@ hmcCheckFatal:
     ld hl,strFatalFall
     call printStr
     call printNewline
-    goto quitGame
+    jp quitGame
 hmcMoveRoom:
     or a                                   ; target > 0?
     jp z,hmcDoneMove
@@ -831,7 +831,7 @@ hmcMoveRoom:
 hmcDoneMove:
     xor a
     ld (reshowFlag),a                      ; force redisplay
-    goto describeCurrentLocation           ; show new room
+    jp describeCurrentLocation           ; show new room
 
 handleNonMovementCommand:
     ; Magic word "galar"
@@ -846,7 +846,7 @@ handleNonMovementCommand:
     call printStr
     ld a,roomCaveEntry
     ld (playerLocation),a
-    goto describeCurrentLocation
+    jp describeCurrentLocation
     ; Crypt wall "ape"
 hnmApeCheck:
     ld hl,inputBuffer
@@ -859,14 +859,14 @@ hnmApeCheck:
     ld a,roomTinyCell                  ; open wall exit to tiny cell
     ld (secretExitLocation),a
     call updateDynamicExits
-    goto describeCurrentLocation
+    jp describeCurrentLocation
     ; Ensure an object was parsed
     ld a,(currentObjectIndex)
     or a
     jr nz,hnmCheckVisibility
     ld hl,strEh
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 hnmCheckVisibility:
     ; Object must be visible or carried
     ld a,(currentObjectIndex)
@@ -885,7 +885,7 @@ hnmCheckVisibility:
     ; Not visible/carrying -> error message
     ld hl,strCantSeeIt
     call printStr
-    goto describeCurrentLocation
+    jp describeCurrentLocation
 
 checkGetDropUse:
     ; GET command
@@ -894,7 +894,7 @@ checkGetDropUse:
     call containsStr
     or a
     jp z,checkDrop
-    goto handleGetCommand
+    jp handleGetCommand
 checkDrop:
     ; DROP command
     ld hl,inputBuffer
@@ -902,10 +902,10 @@ checkDrop:
     call containsStr
     or a
     jp z,checkUse
-    goto handleDropCommand
+    jp handleDropCommand
 checkUse:
     ; USE-type verbs routed by object index
-    goto routeUseByObject
+    jp routeUseByObject
 
 handleGetCommand:
     ; ---------------------------------------------------------
