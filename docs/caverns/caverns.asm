@@ -372,7 +372,7 @@ locListCreDone:
     call printNewline             ; blank line
     ld hl,strPrompt              ; ">"
     call printStr                 ; show prompt
-    SET8 reshowFlag,1            ; remember we displayed room
+    set8 reshowFlag,1            ; remember we displayed room
 
     ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
     or a                          ; any hostile?
@@ -580,14 +580,39 @@ waitForYesNo:
 
 
 checkCreatureAtLocation:
+    ; ---------------------------------------------------------
+    ; checkCreatureAtLocation
+    ; Scan creature slots 1..6; if any shares playerLocation,
+    ; set hostileCreatureIndex and branch for special handling.
+    ; Otherwise clear hostileCreatureIndex and continue to verb handling.
+    ; ---------------------------------------------------------
+    set8 hostileCreatureIndex,1         ; start at creature 1
 
-    for hostileCreatureIndex = 1 to 6
-        if objectLocation(hostileCreatureIndex) = playerLocation then
-            goto checkCreatureBatSpecial
-        end if
-    next hostileCreatureIndex
+ccalLoop:
+    ld a,(hostileCreatureIndex)         ; A = creature index (1..6)
+    cp 7                                ; past last creature?
+    jp z,ccalNone                       ; no hostiles found
 
-    hostileCreatureIndex = 0
+    ; compute objectLocation offset = index-1
+    dec a                               ; zero-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                           ; HL -> objectLocation(entry)
+    ld a,(hl)                           ; A = creature location
+    ld b,a                              ; save location
+    ld a,(playerLocation)               ; A = player room
+    cp b                                ; match?
+    jp z,checkCreatureBatSpecial        ; found hostile/bat
+
+    ; next creature
+    ld a,(hostileCreatureIndex)
+    inc a
+    ld (hostileCreatureIndex),a
+    jp ccalLoop
+
+ccalNone:
+    set8 hostileCreatureIndex,0         ; none present
     goto handleVerbOrMovement
 
 
@@ -1173,25 +1198,25 @@ initState:
     ; ---------------------------------------------------------
 
     ; Initialize flags and counters
-    SET8 bridgeCondition,11
-    SET8 drawbridgeState,128
-    SET8 waterExitLocation,0
-    SET8 gateDestination,0
-    SET8 teleportDestination,0
-    SET8 secretExitLocation,0
+    set8 bridgeCondition,11
+    set8 drawbridgeState,128
+    set8 waterExitLocation,0
+    set8 gateDestination,0
+    set8 teleportDestination,0
+    set8 secretExitLocation,0
 
-    SET8 generalFlagJ,0
-    SET8 hostileCreatureIndex,0
-    SET8 reshowFlag,0
-    SET8 playerLocation,roomDarkRoom
-    SET8 candleIsLitFlag,1
+    set8 generalFlagJ,0
+    set8 hostileCreatureIndex,0
+    set8 reshowFlag,0
+    set8 playerLocation,roomDarkRoom
+    set8 candleIsLitFlag,1
 
-    SET8 fearCounter,0
-    SET8 turnCounter,0
-    SET8 swordSwingCount,0
-    SET8 score,0
+    set8 fearCounter,0
+    set8 turnCounter,0
+    set8 swordSwingCount,0
+    set8 score,0
 
     ; Copy static tables into mutable buffers
-    COPY movementTableData,movementTable,movementTableBytes
-    COPY objectLocationTable,objectLocation,objectCount
+    copy movementTableData,movementTable,movementTableBytes
+    copy objectLocationTable,objectLocation,objectCount
     ret
