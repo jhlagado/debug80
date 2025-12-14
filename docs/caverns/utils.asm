@@ -64,10 +64,9 @@ toLowerAscii:
     add a,32
     ret
 
-; rand0To3: returns pseudo-random 0..3 in A
-; - Simple LFSR/state at randState (one byte)
-; - Caller must define randState storage
-rand0To3:
+; randByte: returns pseudo-random 0..255 in A
+; - Simple 8-bit state at randState (one byte)
+randByte:
     ld hl,randState
     ld a,(hl)
     ld b,a
@@ -75,7 +74,21 @@ rand0To3:
     rlca
     xor b
     ld (hl),a
-    and 3                ; 0..3
+    ret
+
+; rand0To3: returns pseudo-random 0..3 in A
+rand0To3:
+    call randByte
+    and 3
+    ret
+
+; rand0To6: returns pseudo-random 0..6 in A (rejects 7)
+rand0To6:
+rbLoop:
+    call randByte
+    and 7
+    cp 7
+    jr z,rbLoop
     ret
 
 ; compareStr: compare null-terminated strings at HL and DE

@@ -500,7 +500,7 @@ pceGateCheck:
     ld a,(objectLocation+objGrill-1)
     cp roomTinyCell
     jp z,pceDrawbridge
-    ld a,roomDrainC                  ; 39
+    ld a,roomDarkCavernJ             ; 39
     ld (gateDestination),a
     call updateDynamicExits
 pceDrawbridge:
@@ -926,7 +926,7 @@ hnmApeCheck:
     ld de,tokenApe
     call containsStr
     or a
-    jp z,hnmCheckVisibility
+    jp z,hnmEnsureObjectParsed
     ld hl,strCryptWall
     call printStr
     ld a,roomTinyCell                  ; open wall exit to tiny cell
@@ -934,6 +934,7 @@ hnmApeCheck:
     call updateDynamicExits
     jp describeCurrentLocation
     ; Ensure an object was parsed
+hnmEnsureObjectParsed:
     ld a,(currentObjectIndex)
     or a
     jr nz,hnmCheckVisibility
@@ -1047,15 +1048,17 @@ handleDropCommand:
 routeUseByObject:
     ; ---------------------------------------------------------
     ; routeUseByObject
-    ; Dispatch USE targets by currentObjectIndex (key/sword/bomb/rope).
+    ; Dispatch USE targets by currentObjectIndex.
+    ; NOTE: Matches pseudo2.txt: candle routes to useBomb (bomb ignition),
+    ; not the bomb object itself.
     ; ---------------------------------------------------------
     ld a,(currentObjectIndex)          ; A = selected object index (7..24)
     cp objKey                          ; key?
     jp z,useKey                        ; handle key logic
     cp objSword                        ; sword?
     jp z,useSword                      ; handle combat logic
-    cp objBomb                         ; bomb?
-    jp z,useBomb                       ; handle bomb logic
+    cp objCandle                       ; candle?
+    jp z,useBomb                       ; candle ignites bomb logic
     cp objRope                         ; rope?
     jp z,useRope                       ; handle rope logic
     ld hl,strUseHow                     ; otherwise: "Use it how?"
@@ -1118,13 +1121,10 @@ useSwordHasTarget:
     inc a
     ld (swordSwingCount),a
     ; if RND*7 + 15 > swordSwingCount then continue fight else miss and die
-    call rand0To3                 ; approx randomness; reuse helper (0..3)
-    ; scale: rand*7 +15 -> quick proxy: (rand*2)+15 vs swordSwingCount
-    ld b,a
-    ld a,b
-    add a,a                       ; rand*2
-    add a,swordFightBaseThreshold     ; base threshold for miss/kill pacing
-    ld b,a                        ; B = threshold
+    ; - Use an integer approximation: threshold = (rand 0..6) + swordFightBaseThreshold (15)
+    call rand0To6                 ; A = 0..6
+    add a,swordFightBaseThreshold ; A = 15..21
+    ld b,a                        ; B = threshold (15..21)
     ld a,(swordSwingCount)
     cp b
     jp c,swordFightContinues      ; swordSwingCount < threshold => continue
@@ -1133,10 +1133,12 @@ useSwordHasTarget:
     jp quitGame
 
 swordFightContinues:
-    ; Rough kill chance: if rand0To3 == 0, kill; otherwise pick message
+    ; Pseudo2: if RND < .38 then kill
+    call randByte
+    cp swordKillChanceThreshold
+    jp c,swordKillsTarget
+    ; Pseudo2: RANDOM_FIGHT_MESSAGE = INT(RND*4) (0..3)
     call rand0To3
-    or a
-    jp z,swordKillsTarget
     ld (randomFightMessage),a
     ld a,(hostileCreatureIndex)
     cp creatureBatIndex
@@ -1160,6 +1162,7 @@ sfcMsg2:
     call printStr
     jp describeCurrentLocation
 sfcMsg3:
+    ; 3 -> "head blow"
     ld hl,strAttackHeadBlow
     call printStr
     jp describeCurrentLocation

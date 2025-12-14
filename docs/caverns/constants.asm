@@ -35,9 +35,10 @@ verbPatternPleaseEnd   equ 12
 verbPatternCantStart   equ 13  ; up..swim -> "I can't"
 
 ; Random fight message ids
-fightMsgMove    equ 0
-fightMsgDeflect equ 1
-fightMsgStun    equ 2
+fightMsgMove      equ 0
+fightMsgDeflect   equ 1
+fightMsgStun      equ 2
+fightMsgHeadBlow  equ 3
 
 ; Score thresholds
 rankHopeless equ 20
@@ -147,3 +148,7 @@ corpseRelocateOffset  equ 10
 
 ; Sword combat tuning (current approximation)
 swordFightBaseThreshold equ 15
+
+; Sword kill chance: pseudo2 uses `RND < .38`
+; Using an 8-bit threshold: kill if randByte < 97  (~0.379)
+swordKillChanceThreshold equ 97
