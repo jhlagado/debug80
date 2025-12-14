@@ -19,7 +19,40 @@
     .include "variables.asm"
 gameStart:
     call clearScreen
-    call initState
+    ; Initialize flags and counters
+    ; Non-zero defaults
+    ld a,roomBridgeMid
+    ld (bridgeCondition),a
+    ld a,exitFatal
+    ld (drawbridgeState),a
+    ld a,roomDarkRoom
+    ld (playerLocation),a
+    ld a,boolTrue
+    ld (candleIsLitFlag),a
+    ; Zero defaults (grouped)
+    xor a
+    ld (waterExitLocation),a
+    ld (gateDestination),a
+    ld (teleportDestination),a
+    ld (secretExitLocation),a
+    ld (generalFlagJ),a
+    ld (hostileCreatureIndex),a
+    ld (reshowFlag),a
+    ld (fearCounter),a
+    ld (turnCounter),a
+    ld (swordSwingCount),a
+    ld (score),a
+    ; Copy static tables into mutable buffers
+    ; Copy movementTableData -> movementTable (movementTableBytes bytes)
+    ld hl,movementTableData           ; HL = source table (ROM/const)
+    ld de,movementTable               ; DE = destination buffer (RAM)
+    ld bc,movementTableBytes          ; BC = number of bytes
+    ldir                              ; copy until BC == 0
+    ; Copy objectLocationTable -> objectLocation (objectCount bytes)
+    ld hl,objectLocationTable         ; HL = source table (ROM/const)
+    ld de,objectLocation              ; DE = destination buffer (RAM)
+    ld bc,objectCount                 ; BC = number of bytes
+    ldir                              ; copy until BC == 0
     call updateDynamicExits
     jp describeCurrentLocation
 
@@ -1521,52 +1554,3 @@ updateDynamicExits:
 
     ret
     
-initState:
-    ; ---------------------------------------------------------
-    ; initState
-    ; Purpose: reset all mutable state and copy static tables
-    ; to working buffers.
-    ; Steps:
-    ;   1) Set all flags/counters to defaults.
-    ;   2) Copy movementTableData -> movementTable (byte table).
-    ;   3) Copy objectLocationTable -> objectLocation (bytes).
-    ; Source of truth: matches pseudo2.txt gameStart defaults
-    ; (bridgeCondition=11, drawbridgeState=128, waterExit=0,
-    ;  GATE=0, TELEPORT=0, secretExit=0, playerLocation=roomDarkRoom,
-    ;  candleIsLitFlag=1, counters zeroed).
-    ; ---------------------------------------------------------
-    ; Initialize flags and counters
-    ; Non-zero defaults
-    ld a,roomBridgeMid
-    ld (bridgeCondition),a
-    ld a,exitFatal
-    ld (drawbridgeState),a
-    ld a,roomDarkRoom
-    ld (playerLocation),a
-    ld a,boolTrue
-    ld (candleIsLitFlag),a
-    ; Zero defaults (grouped)
-    xor a
-    ld (waterExitLocation),a
-    ld (gateDestination),a
-    ld (teleportDestination),a
-    ld (secretExitLocation),a
-    ld (generalFlagJ),a
-    ld (hostileCreatureIndex),a
-    ld (reshowFlag),a
-    ld (fearCounter),a
-    ld (turnCounter),a
-    ld (swordSwingCount),a
-    ld (score),a
-    ; Copy static tables into mutable buffers
-    ; Copy movementTableData -> movementTable (movementTableBytes bytes)
-    ld hl,movementTableData           ; HL = source table (ROM/const)
-    ld de,movementTable               ; DE = destination buffer (RAM)
-    ld bc,movementTableBytes          ; BC = number of bytes
-    ldir                              ; copy until BC == 0
-    ; Copy objectLocationTable -> objectLocation (objectCount bytes)
-    ld hl,objectLocationTable         ; HL = source table (ROM/const)
-    ld de,objectLocation              ; DE = destination buffer (RAM)
-    ld bc,objectCount                 ; BC = number of bytes
-    ldir                              ; copy until BC == 0
-    ret
