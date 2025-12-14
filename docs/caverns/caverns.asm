@@ -889,51 +889,88 @@ useSwordHasTarget:
     goto quitGame
 
 swordFightContinues:
-    if RND < .38 then
-        goto swordKillsTarget
-    end if
-    randomFightMessage = INT(RND * 4)
-    if hostileCreatureIndex = 5 then
-        goto checkCreatureBatSpecial
-    end if
-    if randomFightMessage = 0 then
-        ld hl,strAttackMove
-        call printStr
-    else
-        if randomFightMessage = 1 then
-            ld hl,strAttackDeflect
-            call printStr
-        else
-            if randomFightMessage = 2 then
-                ld hl,strAttackStun
-                call printStr
-            else
-                ld hl,strAttackHeadBlow
-                call printStr
-            end if
-        end if
-    end if
+    ; Rough kill chance: if rand0To3 == 0, kill; otherwise pick message
+    call rand0To3
+    or a
+    jp z,swordKillsTarget
+    ld (randomFightMessage),a
+    ld a,(hostileCreatureIndex)
+    cp 5
+    jp z,checkCreatureBatSpecial
+    ld a,(randomFightMessage)
+    cp 0
+    jr nz,sfcMsg1
+    ld hl,strAttackMove
+    call printStr
+    goto describeCurrentLocation
+sfcMsg1:
+    cp 1
+    jr nz,sfcMsg2
+    ld hl,strAttackDeflect
+    call printStr
+    goto describeCurrentLocation
+sfcMsg2:
+    cp 2
+    jr nz,sfcMsg3
+    ld hl,strAttackStun
+    call printStr
+    goto describeCurrentLocation
+sfcMsg3:
+    ld hl,strAttackHeadBlow
+    call printStr
     goto describeCurrentLocation
 
 swordKillsTarget:
     ld hl,strSwordKills
     call printStr
-    objectLocation(currentObjectIndex) = -1
-    if hostileCreatureIndex = 3 or hostileCreatureIndex = 5 then
-        objectLocation(hostileCreatureIndex) = objectLocation(hostileCreatureIndex) + 10
-    else
-        objectLocation(hostileCreatureIndex) = 0
-        if hostileCreatureIndex = 1 then
-            ld hl,strSwordCrumbles
-            call printStr
-            objectLocation(20) = 35
-        end if
-    end if
-    if hostileCreatureIndex <> 4 then
-        ld hl,strCorpseVapor
-        call printStr
-    end if
-    hostileCreatureIndex = 0
+    ; objectLocation(currentObjectIndex) = -1 (carried)
+    ld a,(currentObjectIndex)
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,255
+    ld (hl),a
+    ; adjust hostile creature location
+    ld a,(hostileCreatureIndex)
+    cp 3
+    jr z,sktAddTen
+    cp 5
+    jr z,sktAddTen
+    ; else set to 0
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    xor a
+    ld (hl),a
+    ld a,(hostileCreatureIndex)
+    cp 1
+    jr nz,sktCorpseCheck
+    ld hl,strSwordCrumbles
+    call printStr
+    ld a,35
+    ld (objectLocation+19),a      ; sword moves to room 35
+    jr sktCorpseCheck
+sktAddTen:
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(hl)
+    add a,10
+    ld (hl),a
+sktCorpseCheck:
+    ld a,(hostileCreatureIndex)
+    cp 4
+    jr z,sktDone
+    ld hl,strCorpseVapor
+    call printStr
+sktDone:
+    set8 hostileCreatureIndex,0
     goto describeCurrentLocation
 
 useBomb:
