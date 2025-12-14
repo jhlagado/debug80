@@ -24,6 +24,9 @@ dirEast         equ 3
 ; Direction counts
 dirCount        equ 4
 
+; Dynamic exit patching (updateDynamicExits)
+dynamicExitPatchCount equ 7
+
 ; Verb pattern indices (order from verbPatternTable)
 verbPatternGetIndex    equ 1   ; get/take
 verbPatternDropIndex   equ 2   ; drop/put

@@ -17,6 +17,21 @@
     .include "tables.asm"
     .include "strings.asm"
     .include "variables.asm"
+
+; printAndRedisplay
+; HL = null-terminated string to print
+; Prints HL and immediately redisplays the current location.
+printAndRedisplay:
+    call printStr
+    jp describeCurrentLocation
+
+; printAndQuit
+; HL = null-terminated string to print
+; Prints HL and immediately enters quitGame scoring/flow.
+printAndQuit:
+    call printStr
+    jp quitGame
+
 gameStart:
     call clearScreen
     ; Initialize flags and counters
@@ -563,8 +578,7 @@ siCountDone:
     or a
     jp nz,siList
     ld hl,strNothing
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 siList:
     call printNewline
     ld a,firstObjectIndex
@@ -773,8 +787,7 @@ monsterAttack:
     ex de,hl
     call printStr
     ld hl,strMonsterSuffix
-    call printStr
-    jp quitGame
+    jp printAndQuit
 
 handleVerbOrMovement:
     ; ---------------------------------------------------------
@@ -932,8 +945,7 @@ hnmEnsureObjectParsed:
     or a
     jr nz,hnmCheckVisibility
     ld hl,strEh
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 hnmCheckVisibility:
     ; Object must be visible or carried
     ld a,(currentObjectIndex)
@@ -951,8 +963,7 @@ hnmCheckVisibility:
     jr z,checkGetDropUse
     ; Not visible/carrying -> error message
     ld hl,strCantSeeIt
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 checkGetDropUse:
     ; GET command
@@ -1009,8 +1020,7 @@ hgcDoneCount:
     cp maxCarryItems+1                 ; > max carry?
     jr c,hgcCarryOk
     ld hl,strTooManyObjects
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 hgcCarryOk:
     ; objectLocation(currentObjectIndex) = -1 (255)
     ld a,(currentObjectIndex)
@@ -1072,8 +1082,7 @@ useKey:
     jp z,useKeyAllowed
     ; not allowed: won't open
     ld hl,strWontOpen
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 useKeyAllowed:
     ld hl,strDoorOpened
@@ -1105,8 +1114,7 @@ useSword:
     or a
     jp nz,useSwordHasTarget
     ld hl,strNothingToKill
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 useSwordHasTarget:
     ; swordSwingCount++
@@ -1122,8 +1130,7 @@ useSwordHasTarget:
     cp b
     jp c,swordFightContinues      ; swordSwingCount < threshold => continue
     ld hl,strSwordMiss
-    call printStr
-    jp quitGame
+    jp printAndQuit
 
 swordFightContinues:
     ; Pseudo2: if RND < .38 then kill
@@ -1140,25 +1147,21 @@ swordFightContinues:
     cp fightMsgMove              ; 0 -> "moves"
     jr nz,sfcMsg1
     ld hl,strAttackMove
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 sfcMsg1:
     cp fightMsgDeflect           ; 1 -> "deflects"
     jr nz,sfcMsg2
     ld hl,strAttackDeflect
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 sfcMsg2:
     cp fightMsgStun              ; 2 -> "stuns"
     jr nz,sfcMsg3
     ld hl,strAttackStun
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 sfcMsg3:
     ; 3 -> "head blow"
     ld hl,strAttackHeadBlow
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 swordKillsTarget:
     ld hl,strSwordKills
@@ -1241,8 +1244,7 @@ useBombCheckLit:
     or a                         ; lit? (non-zero)
     jr nz,useBombExplode
     ld hl,strCandleOutStupid
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 useBombExplode:
     ld hl,strBombExplode
@@ -1276,8 +1278,7 @@ useRope:
     cp roomTempleBalcony
     jp z,useRopeAllowed
     ld hl,strTooDangerous
-    call printStr
-    jp describeCurrentLocation
+    jp printAndRedisplay
 
 useRopeAllowed:
     ld hl,strDescendRope
@@ -1435,70 +1436,42 @@ updateDynamicExits:
     ;   - All values are bytes; direct stores into movementTable.
     ;   - Caller updates the backing variables before invoking.
     ; ---------------------------------------------------------
-    ; Helper: HL = &movementTable[(room-1)*4 + dir]
-    ; Inputs: A = room (1-based), C = dir (0..3)
-updateExitPtr:
+    ; Data-driven patch list to minimize code size:
+    ; Each entry: DB roomId, DB dir, DW &stateByte
+    ld hl,dynamicExitPatchTable
+    ld b,dynamicExitPatchCount
+udeLoop:
+    ld a,(hl)                      ; A = room id
+    inc hl
+    ld c,(hl)                      ; C = direction (0..3)
+    inc hl
+    ld e,(hl)                      ; DE = &stateByte
+    inc hl
+    ld d,(hl)
+    inc hl
+    push hl                        ; preserve table cursor
+    push de                        ; preserve &stateByte
+    call movementCellPtr           ; HL = &movementTable[(room-1)*4 + dir]
+    pop de
+    ld a,(de)                      ; A = state byte value
+    ld (hl),a                      ; patch movement cell
+    pop hl                         ; restore table cursor
+    djnz udeLoop
+    ret
+
+; movementCellPtr
+; Inputs: A = room (1-based), C = dir (0..3)
+; Output: HL = &movementTable[(room-1)*4 + dir]
+; Clobbers: A, BC, DE
+movementCellPtr:
     dec a
     ld l,a
     ld h,0
     add hl,hl
     add hl,hl                      ; HL = (room-1)*4
     ld b,0
-    ld a,c
-    ld c,a
     add hl,bc                      ; + dir
     ld de,movementTable
     add hl,de                      ; HL -> cell
-    ret
-
-    ; movementTable(roomBridgeNorthAnchor,dirSouth) = bridgeCondition
-    ld c,dirSouth
-    ld a,roomBridgeNorthAnchor
-    call updateExitPtr
-    ld a,(bridgeCondition)
-    ld (hl),a
-
-    ; movementTable(roomBridgeSouthAnchor,dirNorth) = bridgeCondition
-    ld c,dirNorth
-    ld a,roomBridgeSouthAnchor
-    call updateExitPtr
-    ld a,(bridgeCondition)
-    ld (hl),a
-
-    ; movementTable(roomOakDoor,dirEast) = teleportDestination
-    ld c,dirEast
-    ld a,roomOakDoor
-    call updateExitPtr
-    ld a,(teleportDestination)
-    ld (hl),a
-
-    ; movementTable(roomCrypt,dirEast) = secretExitLocation
-    ld c,dirEast
-    ld a,roomCrypt
-    call updateExitPtr
-    ld a,(secretExitLocation)
-    ld (hl),a
-
-    ; movementTable(roomTinyCell,dirNorth) = waterExitLocation
-    ld c,dirNorth
-    ld a,roomTinyCell
-    call updateExitPtr
-    ld a,(waterExitLocation)
-    ld (hl),a
-
-    ; movementTable(roomTinyCell,dirEast) = gateDestination
-    ld c,dirEast
-    ld a,roomTinyCell
-    call updateExitPtr
-    ld a,(gateDestination)
-    ld (hl),a
-
-    ; movementTable(roomCastleLedge,dirEast) = drawbridgeState
-    ld c,dirEast
-    ld a,roomCastleLedge
-    call updateExitPtr
-    ld a,(drawbridgeState)
-    ld (hl),a
-
     ret
     

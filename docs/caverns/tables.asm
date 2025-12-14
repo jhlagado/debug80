@@ -148,3 +148,26 @@ objdesc2Table:
                         DW objNounPendant, objNounGrail, objNounShield, objNounBox
                         DW objNounKey, objNounSword, objNounCandle, objNounRope
                         DW objNounBrick, objNounGrill
+
+; ---------------------------------------------------------
+;  Dynamic exit patch table for updateDynamicExits
+;  Each entry:
+;    DB roomId
+;    DB dirIndex (dirNorth/dirSouth/dirWest/dirEast)
+;    DW &stateByte (variable holding runtime destination/flag)
+; ---------------------------------------------------------
+dynamicExitPatchTable:
+                        DB roomBridgeNorthAnchor, dirSouth
+                        DW bridgeCondition
+                        DB roomBridgeSouthAnchor, dirNorth
+                        DW bridgeCondition
+                        DB roomOakDoor, dirEast
+                        DW teleportDestination
+                        DB roomCrypt, dirEast
+                        DW secretExitLocation
+                        DB roomTinyCell, dirNorth
+                        DW waterExitLocation
+                        DB roomTinyCell, dirEast
+                        DW gateDestination
+                        DB roomCastleLedge, dirEast
+                        DW drawbridgeState
