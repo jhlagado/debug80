@@ -245,20 +245,22 @@ locNextObj:
     ld (loopIndex),a             ; store
     jp locCountObjects          ; continue loop
 locCountDone:
-    if visibleObjectCount > 0 then
-        ld hl,strSeeObjects     ; "You can also see..."
-        call printStr             ; print header
-        ; List objects at current location
-        ld a,7                    ; restart at object 7
-        ld (loopIndex),a
+    ld a,(visibleObjectCount)
+    or a
+    jp z,locObjectsListed        ; nothing to list
+    ld hl,strSeeObjects         ; "You can also see..."
+    call printStr                 ; print header
+    ; List objects at current location
+    ld a,7                        ; restart at object 7
+    ld (loopIndex),a
 locListObjects:
-        ld a,(loopIndex)         ; A = object index
-        cp 25                     ; done listing?
-        jp z,locDoneList
-        ld a,(loopIndex)         ; A = index
-        sub 1                     ; to offset
-        ld l,a
-        ld h,0
+    ld a,(loopIndex)         ; A = object index
+    cp objectCount+1         ; done listing?
+    jp z,locDoneList
+    ld a,(loopIndex)         ; A = index
+    sub 1                     ; to offset
+    ld l,a
+    ld h,0
         ld de,objectLocation     ; DE = base
         add hl,de                 ; HL -> objectLocation(index)
         ld a,(hl)                 ; A = object location
@@ -270,13 +272,13 @@ locListObjects:
         ld (currentObjectIndex),a ; remember current object index
         call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
 locNextList:
-        ld a,(loopIndex)         ; A = index
-        inc a                     ; next object
-        ld (loopIndex),a         ; store
-        jp locListObjects       ; loop list
+    ld a,(loopIndex)         ; A = index
+    inc a                     ; next object
+    ld (loopIndex),a         ; store
+    jp locListObjects       ; loop list
 locDoneList:
-    end if
-    visibleCreatureCount = 0    ; reset visible creature counter
+locObjectsListed:
+    set8 visibleCreatureCount,0    ; reset visible creature counter
     ; Count/intro creatures at current location (indices 1..6)
     ld a,creatureWizardIndex      ; start at first creature index
     ld (loopIndex),a             ; loopIndex = 1
@@ -307,12 +309,14 @@ locNextCre:
     ld (loopIndex),a             ; store
     jp locCountCreatures        ; loop
 locCountCreDone:
-    if visibleCreatureCount > 0 then
-        ld hl,strSeeCreatures   ; "Nearby there lurks..."
-        call printStr             ; print creature header
-        ; List creatures at current location
-        ld a,creatureWizardIndex  ; restart at creature 1
-        ld (loopIndex),a
+    ld a,(visibleCreatureCount)
+    or a
+    jp z,locListCreDone          ; none to list
+    ld hl,strSeeCreatures        ; "Nearby there lurks..."
+    call printStr                ; print creature header
+    ; List creatures at current location
+    ld a,creatureWizardIndex     ; restart at creature 1
+    ld (loopIndex),a
 locListCreatures:
         ld a,(loopIndex)         ; A = creature index
         cp creatureCount+1        ; finished listing?
@@ -440,24 +444,59 @@ parseCommandEntry:
 showInventory:
     ld hl,strCarryingPrefix
     call printStr
-    visibleObjectCount = 0
-    for loopIndex = 7 to 24
-        if objectLocation(loopIndex) = -1 then
-            visibleObjectCount = visibleObjectCount + 1
-        end if
-    next loopIndex
-    if visibleObjectCount = 0 then
-        ld hl,strNothing
-        call printStr
-        goto describeCurrentLocation
-    end if
+    set8 visibleObjectCount,0
+    set8 loopIndex,7
+siCountLoop:
+    ld a,(loopIndex)
+    cp objectCount+1
+    jp z,siCountDone
+    dec a                          ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(hl)
+    cp 255
+    jp nz,siCountNext
+    ld a,(visibleObjectCount)
+    inc a
+    ld (visibleObjectCount),a
+siCountNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp siCountLoop
+siCountDone:
+    ld a,(visibleObjectCount)
+    or a
+    jp nz,siList
+    ld hl,strNothing
+    call printStr
+    goto describeCurrentLocation
+siList:
     call printNewline
-    for loopIndex = 7 to 24
-        if objectLocation(loopIndex) = -1 then
-            currentObjectIndex = loopIndex
-            call printObjectDescriptionSub
-        end if
-    next loopIndex
+    set8 loopIndex,7
+siPrintLoop:
+    ld a,(loopIndex)
+    cp objectCount+1
+    jp z,siDone
+    dec a                          ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(hl)
+    cp 255
+    jp nz,siPrintNext
+    ld a,(loopIndex)
+    ld (currentObjectIndex),a
+    call printObjectDescriptionSub
+siPrintNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp siPrintLoop
+siDone:
     goto describeCurrentLocation
 
 quitGame:
@@ -898,7 +937,7 @@ swordFightContinues:
     cp creatureBatIndex
     jp z,checkCreatureBatSpecial
     ld a,(randomFightMessage)
-    cp 0
+    or a
     jr nz,sfcMsg1
     ld hl,strAttackMove
     call printStr
@@ -1023,16 +1062,35 @@ useBombNoMove:
     goto describeCurrentLocation
 
 useRope:
-    if playerLocation <> roomTempleBalcony then
-        ld hl,strTooDangerous
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ; ---------------------------------------------------------
+    ; useRope
+    ; Only works at the temple balcony. Prints descent text,
+    ; leaves the rope in the current room, moves player to roomTemple,
+    ; and redisplays.
+    ; ---------------------------------------------------------
+    ld a,(playerLocation)
+    cp roomTempleBalcony
+    jp z,useRopeAllowed
+    ld hl,strTooDangerous
+    call printStr
+    goto describeCurrentLocation
+
+useRopeAllowed:
     ld hl,strDescendRope
     call printStr
-    reshowFlag = 0
-    objectLocation(currentObjectIndex) = playerLocation
-    playerLocation = roomTemple
+    set8 reshowFlag,0
+    ; objectLocation(currentObjectIndex) = playerLocation
+    ld a,(currentObjectIndex)
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(playerLocation)
+    ld (hl),a
+    ; move player to temple
+    ld a,roomTemple
+    ld (playerLocation),a
     goto describeCurrentLocation
 
 printObjectDescriptionSub:
@@ -1084,49 +1142,62 @@ routeByVerbPattern:
     ; Map the matched verbPatternIndex to specific handlers or
     ; default responses. Keeps verb ordering identical to BASIC.
     ; ---------------------------------------------------------
-    if verbPatternIndex = 1 then           ; take
-        goto handleGetCommand
-    end if
-    if verbPatternIndex = 2 then           ; drop
-        goto handleDropCommand
-    end if
-    if verbPatternIndex = 3 or verbPatternIndex = 4 then ; using/with
-        goto routeUseByObject
-    end if
-    if verbPatternIndex <= 6 then          ; cut/break/unlock/open
-        ld hl,strNothingHappens
-        call printStr
-    else
-        if verbPatternIndex >= 7 and verbPatternIndex <= 12 then ; kill/attack/light/burn/up/down
-            ld hl,strPleaseTell
-            call printStr
-        else                                 ; jump/swim/other
-            ld hl,strICant
-            call printStr
-        end if
-    end if
+    ld a,(verbPatternIndex)
+    cp 1
+    jp z,handleGetCommand
+    cp 2
+    jp z,handleDropCommand
+    cp 3
+    jp z,routeUseByObject
+    cp 4
+    jp z,routeUseByObject
+
+    cp 7
+    jr c,routeVerbNothing        ; <=6 -> nothing happens
+    cp 13
+    jr c,routeVerbPlease         ; 7..12 -> please tell me how
+    ; else >=13
+    ld hl,strICant
+    call printStr
+    jr routeVerbDone
+routeVerbNothing:
+    ld hl,strNothingHappens
+    call printStr
+    jr routeVerbDone
+routeVerbPlease:
+    ld hl,strPleaseTell
+    call printStr
+routeVerbDone:
     call printNewline                        ; blank line after response
     goto getPlayerInput                    ; re-prompt
 
 printRankingSub:
     ld hl,strRanking
     call printStr
-    if score < 20 then
-        ld hl,strRankHopeless
-        call printStr
-    elseif score < 50 then
-        ld hl,strRankLoser
-        call printStr
-    elseif score < 100 then
-        ld hl,strRankAverage
-        call printStr
-    elseif score < 126 then
-        ld hl,strRankExcellent
-        call printStr
-    else
-        ld hl,strRankPerfect
-        call printStr
-    end if
+    ld a,(score)
+    cp 20
+    jr c,prRankHopeless
+    cp 50
+    jr c,prRankLoser
+    cp 100
+    jr c,prRankAverage
+    cp 126
+    jr c,prRankExcellent
+    ld hl,strRankPerfect
+    jr prRankPrint
+prRankHopeless:
+    ld hl,strRankHopeless
+    jr prRankPrint
+prRankLoser:
+    ld hl,strRankLoser
+    jr prRankPrint
+prRankAverage:
+    ld hl,strRankAverage
+    jr prRankPrint
+prRankExcellent:
+    ld hl,strRankExcellent
+prRankPrint:
+    call printStr
     ret
 
 readInputThenClearSub:
@@ -1135,7 +1206,7 @@ readInputThenClearSub:
     ret
 
 encounterWizardLabel:
-    ld hl,strEncWizard
+    ld hl,strEncWizard           ; wizard intro text
     call printStr
     goto listRoomObjectsAndCreatures
 
@@ -1152,15 +1223,17 @@ encounterDwarfLabel:
     goto listRoomObjectsAndCreatures
 
 triggerCreatureIntroSub:
-    if currentObjectIndex = 1 then
-        goto encounterWizardLabel
-    end if
-    if currentObjectIndex = 4 then
-        goto encounterDragonLabel
-    end if
-    if currentObjectIndex = 6 then
-        goto encounterDwarfLabel
-    end if
+    ; ---------------------------------------------------------
+    ; triggerCreatureIntroSub
+    ; Print encounter text for wizard/dragon/dwarf when first seen.
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)
+    cp creatureWizardIndex
+    jp z,encounterWizardLabel
+    cp creatureDragonIndex
+    jp z,encounterDragonLabel
+    cp creatureDwarfIndex
+    jp z,encounterDwarfLabel
     ret
 ; ---------------------------------------------------------
 updateDynamicExits:
@@ -1173,13 +1246,104 @@ updateDynamicExits:
     ;   - Caller updates the backing variables before invoking.
     ; ---------------------------------------------------------
     ; Patch dynamic exits in movement table
-    movementTable(roomBridgeNorthAnchor,dirSouthStr) = bridgeCondition
-    movementTable(roomBridgeSouthAnchor,dirNorthStr) = bridgeCondition
-    movementTable(roomOakDoor,dirEastStr) = teleportDestination
-    movementTable(roomCrypt,dirEastStr) = secretExitLocation
-    movementTable(roomTinyCell,dirNorthStr) = waterExitLocation
-    movementTable(roomTinyCell,dirEastStr) = gateDestination
-    movementTable(roomCastleLedge,dirEastStr) = drawbridgeState
+    ; movementTable(roomBridgeNorthAnchor,dirSouth) = bridgeCondition
+    ld a,roomBridgeNorthAnchor
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl                          ; (room-1)*4
+    ld de,dirSouth
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(bridgeCondition)
+    ld (hl),a
+
+    ; movementTable(roomBridgeSouthAnchor,dirNorth) = bridgeCondition
+    ld a,roomBridgeSouthAnchor
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirNorth
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(bridgeCondition)
+    ld (hl),a
+
+    ; movementTable(roomOakDoor,dirEast) = teleportDestination
+    ld a,roomOakDoor
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirEast
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(teleportDestination)
+    ld (hl),a
+
+    ; movementTable(roomCrypt,dirEast) = secretExitLocation
+    ld a,roomCrypt
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirEast
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(secretExitLocation)
+    ld (hl),a
+
+    ; movementTable(roomTinyCell,dirNorth) = waterExitLocation
+    ld a,roomTinyCell
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirNorth
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(waterExitLocation)
+    ld (hl),a
+
+    ; movementTable(roomTinyCell,dirEast) = gateDestination
+    ld a,roomTinyCell
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirEast
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(gateDestination)
+    ld (hl),a
+
+    ; movementTable(roomCastleLedge,dirEast) = drawbridgeState
+    ld a,roomCastleLedge
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,dirEast
+    add hl,de
+    ld de,movementTable
+    add hl,de
+    ld a,(drawbridgeState)
+    ld (hl),a
+
     ret
     
 initState:
