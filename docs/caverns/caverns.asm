@@ -730,33 +730,63 @@ handleMovementCommand:
     ; ---------------------------------------------------------
 
     ; Special check: if bomb is elsewhere, randomize direction
-    if objectLocation(objBomb) <> -1 and objectLocation(objBomb) <> playerLocation then
-        randomDirectionIndex = INT(RND * 4) ; pick 0..3
-    else
-        randomDirectionIndex = 0             ; otherwise use first direction found
-    end if
+    ld a,(objectLocation+8)                ; objBomb index 9 -> offset 8
+    cp 255                                 ; carried?
+    jr z,hmcBombHandled
+    ld b,a                                 ; B = bomb location
+    ld a,(playerLocation)
+    cp b
+    jr z,hmcBombHandled                    ; bomb at player => no random
+    ; bomb elsewhere: random dir 0..3
+    call rand0To3
+    ld (randomDirectionIndex),a
+    jr hmcPickTarget
+hmcBombHandled:
+    xor a                                  ; default dir = 0
+    ld (randomDirectionIndex),a
 
-    targetLocation = movementTable(playerLocation, randomDirectionIndex) ; fetch exit
+hmcPickTarget:
+    ; targetLocation = movementTable(playerLocation, randomDirectionIndex)
+    ld a,(playerLocation)
+    dec a                                  ; zero-based room index
+    ld l,a
+    ld h,0
+    add hl,hl                              ; room *2
+    add hl,hl                              ; room *4
+    ld b,h
+    ld c,l                                 ; BC = room*4
+    ld a,(randomDirectionIndex)
+    ld l,a
+    ld h,0
+    add hl,bc                              ; offset = room*4 + dir
+    ld de,movementTable
+    add hl,de
+    ld a,(hl)
+    ld (targetLocation),a                  ; store target
 
-    if targetLocation = exitNone then        ; no exit
-        ld hl,strCantGoThatWay
-        call printStr
-        call printNewline
-    end if
+    cp exitNone                            ; no exit?
+    jr nz,hmcCheckFatal
+    ld hl,strCantGoThatWay
+    call printStr
+    call printNewline
+    jr hmcDoneMove
 
-    if targetLocation = exitFatal then       ; fatal exit
-        ld hl,strFatalFall
-        call printStr
-        call printNewline
-        goto quitGame
-    end if
+hmcCheckFatal:
+    cp exitFatal                           ; fatal exit?
+    jr nz,hmcMoveRoom
+    ld hl,strFatalFall
+    call printStr
+    call printNewline
+    goto quitGame
 
-    if targetLocation > 0 then                ; valid room
-        playerLocation = targetLocation      ; move player
-    end if
+hmcMoveRoom:
+    or a                                   ; target > 0?
+    jp z,hmcDoneMove
+    ld (playerLocation),a                  ; move player
 
-    reshowFlag = 0                            ; force redisplay
-    goto describeCurrentLocation             ; show new room
+hmcDoneMove:
+    set8 reshowFlag,0                      ; force redisplay
+    goto describeCurrentLocation           ; show new room
 
 
 
@@ -780,20 +810,34 @@ handleNonMovementCommand:
         goto describeCurrentLocation
     end if
 
-    if currentObjectIndex < 1 then
-        ld hl,strEh
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ; Ensure an object was parsed
+    ld a,(currentObjectIndex)
+    or a
+    jr nz,hnmCheckVisibility
+    ld hl,strEh
+    call printStr
+    goto describeCurrentLocation
 
+hnmCheckVisibility:
     ; Object must be visible or carried
-    if objectLocation(currentObjectIndex) = -1 or objectLocation(currentObjectIndex) = playerLocation then
-        goto checkGetDropUse
-    else
-        ld hl,strCantSeeIt
-        call printStr
-        goto describeCurrentLocation
-    end if
+    ld a,(currentObjectIndex)
+    dec a                          ; zero-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                      ; HL -> objectLocation(entry)
+    ld a,(hl)                      ; A = object location
+    cp 255                         ; carried?
+    jr z,checkGetDropUse
+    ld b,a                         ; B = location
+    ld a,(playerLocation)
+    cp b                           ; same room?
+    jr z,checkGetDropUse
+
+    ; Not visible/carrying -> error message
+    ld hl,strCantSeeIt
+    call printStr
+    goto describeCurrentLocation
 
 
 
