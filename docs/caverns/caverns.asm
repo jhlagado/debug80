@@ -528,10 +528,15 @@ showInventory:
 
 
 quitGame:
+    ; ---------------------------------------------------------
+    ; quitGame
+    ; Compute score, print it with turn count, show ranking, and
+    ; prompt for another game (handled by waitForYesNo).
+    ; ---------------------------------------------------------
 
-    score = 0
+    score = 0                           ; reset score accumulator
 
-    for loopIndex = 7 to 17
+    for loopIndex = 7 to 17             ; score items 7..17
         if objectLocation(loopIndex) = -1 then
             score = score + loopIndex - 6
         end if
@@ -541,41 +546,45 @@ quitGame:
     next loopIndex
 
     call printNewline
-    ld hl,strScorePrefix
+    ld hl,strScorePrefix                ; "You have a score of "
     call printStr
     ld a,(score)
     ld l,a
     ld h,0
-    call printNum
-    ld hl,strScoreMid
+    call printNum                       ; print score
+    ld hl,strScoreMid                   ; " out of a possible 126 points in "
     call printStr
     ld a,(turnCounter)
     ld l,a
     ld h,0
-    call printNum
-    ld hl,strScoreSuffix
+    call printNum                       ; print turn count
+    ld hl,strScoreSuffix                ; " moves."
     call printStr
 
-    call printRankingSub
+    call printRankingSub                ; ranking text
 
-    ld hl,strAnother
+    ld hl,strAnother                    ; "Another adventure? "
     call printStr
 
 waitForYesNo:
-    yesnoKey$ = INKEY$
-    if yesnoKey$ = "" then
-        goto waitForYesNo
-    end if
+    ; ---------------------------------------------------------
+    ; waitForYesNo
+    ; Block until user presses Y/y or N/n.
+    ; Y -> restart gameStart, N -> halt (end).
+    ; ---------------------------------------------------------
+waitYesNoLoop:
+    call getc                    ; read key into A
+    ld (yesnoKey),a              ; store raw key
+    call toLowerAscii            ; normalize to lowercase
+    cp 'n'
+    jp z,gameEnd                 ; end program
+    cp 'y'
+    jp z,gameStart               ; restart
+    jp waitYesNoLoop             ; otherwise keep waiting
 
-    if yesnoKey$ = "N" or yesnoKey$ = "n" then
-        end
-    end if
-
-    if yesnoKey$ = "Y" or yesnoKey$ = "y" then
-        goto gameStart
-    end if
-
-    goto waitForYesNo
+; Simple halt loop for "end"
+gameEnd:
+    jp gameEnd
 
 
 
