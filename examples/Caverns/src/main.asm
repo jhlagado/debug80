@@ -8,8 +8,11 @@
         ; Main program start
         ORG     APPSTART
 
-START:  LD      HL,title
-        SYS_PUTS
+START:
+        CALL    initState
+        CALL    printCurrentRoomDescription
+        LD      A,LF
+        SYS_PUTC
 
 READLOOP:
         LD      HL,BUF
@@ -28,6 +31,70 @@ READLOOP:
 DONE:   LD      HL,DONE_MSG
         SYS_PUTS
         HALT
+
+; ---------------------------------------------------------
+; initState
+; Initializes a minimal subset of game state (expand incrementally).
+; ---------------------------------------------------------
+initState:
+        ; Clear screen (ANSI ESC[2J ESC[H])
+        LD      HL,clear_seq
+        SYS_PUTS
+
+        LD      A,roomDarkRoom
+        LD      (playerLocation),A
+
+        LD      A,boolTrue
+        LD      (candleIsLitFlag),A
+
+        XOR     A
+        LD      (bridgeCondition),A
+        LD      (drawbridgeState),A
+        LD      (waterExitLocation),A
+        LD      (gateDestination),A
+        LD      (teleportDestination),A
+        LD      (secretExitLocation),A
+        LD      (generalFlagJ),A
+        LD      (hostileCreatureIndex),A
+        LD      (reshowFlag),A
+        LD      (fearCounter),A
+        LD      (turnCounter),A
+        LD      (swordSwingCount),A
+        LD      (score),A
+        RET
+
+; ---------------------------------------------------------
+; printCurrentRoomDescription
+; Prints the primary description for playerLocation via roomDesc1Table.
+; ---------------------------------------------------------
+printCurrentRoomDescription:
+        LD      A,(playerLocation)     ; 1-based room id
+        LD      HL,roomDesc1Table
+        CALL    printWordTableEntryIfNotNull
+        RET
+
+; ---------------------------------------------------------
+; printWordTableEntryIfNotNull
+; HL = base of DW table, A = 1-based index
+; Loads word pointer and prints if non-zero.
+; ---------------------------------------------------------
+printWordTableEntryIfNotNull:
+        OR      A
+        RET     Z
+        DEC     A
+        ADD     A,A                    ; (index-1) * 2
+        LD      E,A
+        LD      D,0
+        ADD     HL,DE
+        LD      E,(HL)
+        INC     HL
+        LD      D,(HL)
+        LD      A,D
+        OR      E
+        RET     Z
+        EX      DE,HL
+        SYS_PUTS
+        RET
 
 ; readLn: HL buffer, B = buffer length (including terminator)
 ; Reads until newline (0x0A) or buffer full-1, echoes as it reads,

@@ -1,0 +1,1444 @@
+; ---------------------------------------------------------
+;  CAVERNS – Fictional BASIC Dialect Version
+;  Based on MicroWorld BASIC game by John Hardy (c) 1983
+;  No line numbers, label-based control flow, long variable names
+; ---------------------------------------------------------
+;  INDEX MAP (for future assembly translation)
+;  CREATURES: 1 wizard, 2 demon, 3 troll, 4 dragon, 5 bat, 6 dwarf
+;  OBJECTS 7-24: coin, compass, bomb, ruby, diamond, pearl, stone,
+;                ring, pendant, grail, shield, box, key, sword,
+;                candle, rope, brick, grill
+;  ROOM FLAGS: bridgeCondition/H, drawbridgeState/D,
+;              waterExitLocation/W, gateDestination/G,
+;              teleportDestination/T, secretExitLocation/E
+;  DIRECTION INDEX: dirNorthStr=0, dirSouthStr=1, dirWestStr=2, dirEastStr=3
+    .include "constants.asm"
+    .include "utils.asm"
+    .include "tables.asm"
+    .include "strings.asm"
+    .include "variables.asm"
+
+; printAndRedisplay
+; HL = null-terminated string to print
+; Prints HL and immediately redisplays the current location.
+printAndRedisplay:
+    call printStr
+    jp describeCurrentLocation
+
+; printAndQuit
+; HL = null-terminated string to print
+; Prints HL and immediately enters quitGame scoring/flow.
+printAndQuit:
+    call printStr
+    jp quitGame
+
+gameStart:
+    call clearScreen
+    ; Initialize flags and counters
+    ; Non-zero defaults
+    ld a,roomBridgeMid
+    ld (bridgeCondition),a
+    ld a,exitFatal
+    ld (drawbridgeState),a
+    ld a,roomDarkRoom
+    ld (playerLocation),a
+    ld a,boolTrue
+    ld (candleIsLitFlag),a
+    ; Zero defaults (grouped)
+    xor a
+    ld (waterExitLocation),a
+    ld (gateDestination),a
+    ld (teleportDestination),a
+    ld (secretExitLocation),a
+    ld (generalFlagJ),a
+    ld (hostileCreatureIndex),a
+    ld (reshowFlag),a
+    ld (fearCounter),a
+    ld (turnCounter),a
+    ld (swordSwingCount),a
+    ld (score),a
+    ; Copy static tables into mutable buffers
+    ; Copy movementTableData -> movementTable (movementTableBytes bytes)
+    ld hl,movementTableData           ; HL = source table (ROM/const)
+    ld de,movementTable               ; DE = destination buffer (RAM)
+    ld bc,movementTableBytes          ; BC = number of bytes
+    ldir                              ; copy until BC == 0
+    ; Copy objectLocationTable -> objectLocation (objectCount bytes)
+    ld hl,objectLocationTable         ; HL = source table (ROM/const)
+    ld de,objectLocation              ; DE = destination buffer (RAM)
+    ld bc,objectCount                 ; BC = number of bytes
+    ldir                              ; copy until BC == 0
+    call updateDynamicExits
+    jp describeCurrentLocation
+
+describeCurrentLocation:
+    ; ---------------------------------------------------------
+    ; describeCurrentLocation
+    ; Purpose: entry point after each player action to show the
+    ; current room state or trigger an immediate monster attack.
+    ; Steps:
+    ;   1) If a hostile creature is present (non-bat) and player
+    ;      is not holding the sword, jump to monsterAttack.
+    ;   2) Darkness check: if room index < first dark cavern OR
+    ;      candle lit AND candle is present/carried, show room;
+    ;      otherwise print darkness warning and list occupants.
+    ;   3) Fall through to listRoomObjectsAndCreatures.
+    ; Notes:
+    ;   - Uses short-lived A loads for compares; all state lives
+    ;     in RAM variables.
+    ; ---------------------------------------------------------
+    ; If a hostile creature is active (except some special case), jump to monster-attack logic
+    ld a,(hostileCreatureIndex)
+    or a
+    jp z,dcDarknessCheck
+    cp creatureBatIndex            ; bat does not auto-attack
+    jp z,dcDarknessCheck
+    ld a,(currentObjectIndex)
+    cp objSword
+    jp z,dcDarknessCheck
+    jp monsterAttack
+dcDarknessCheck:
+    ; Darkness logic: show room description if lit or before dark caverns
+    ld a,(playerLocation)
+    cp roomDarkCavernA
+    jp c,printRoomDescription
+    ld a,(candleIsLitFlag)
+    or a
+    jp z,dcShowDarkness
+    ; If candle is here or carried, treat room as lit
+    ld a,objCandle                  ; object index for candle (1..objectCount)
+    call isObjHereOrCarried          ; Z=1 if here or carried
+    jp z,printRoomDescription
+dcShowDarkness:
+    ld hl,strTooDark
+    call printStr
+    jp listRoomObjectsAndCreatures
+
+printRoomDescription:
+    ; ---------------------------------------------------------
+    ; printRoomDescription
+    ; Purpose: show the room’s primary/secondary description and
+    ; supplemental text based on dynamic state (darkness, bridge,
+    ; dragon corpse, drawbridge, candle dim/out).
+    ; Steps:
+    ;   1) Fetch roomDesc1/2Table word pointers by room index
+    ;      (1-based) and print if non-null.
+    ;   2) Conditional extras:
+    ;        - Dark cavern generic line for specific room ranges.
+    ;        - Bridge warning when broken.
+    ;        - Dragon corpse when present.
+    ;        - Golden drawbridge when lowered.
+    ;        - Candle dim/out thresholds (also clears lit flag).
+    ;   3) Jump to listRoomObjectsAndCreatures.
+    ; ---------------------------------------------------------
+    ; Print primary room description if present (roomDesc1Table[playerLocation])
+    ld hl,roomDesc1Table             ; HL = table base (DW)
+    ld a,(playerLocation)            ; A = 1-based room id
+    call printWordTableEntryIfNotNull ; prints if non-NULL (no-op if NULL)
+prCheckDesc2:
+    ; Print secondary room description if present (roomDesc2Table[playerLocation])
+    ld hl,roomDesc2Table             ; HL = table base (DW)
+    ld a,(playerLocation)            ; A = 1-based room id
+    call printWordTableEntryIfNotNull ; prints if non-NULL (no-op if NULL)
+    jp z,prAfterDesc                 ; keep old control flow shape (Z=1 means NULL)
+
+prAfterDesc:
+    ; ---------------------------------------------------------
+    ; prAfterDesc
+    ; After room description, emit contextual extras and candle
+    ; warnings, then fall through to listing objects/creatures.
+    ; ---------------------------------------------------------
+    ; Drainage system message for rooms 41..44
+    ld a,(playerLocation)        ; A = current room
+    cp roomDrainA                ; >= 41?
+    jp c,pradDrainageDone
+    cp roomWaterfallBase         ; < 45?
+    jp nc,pradDrainageDone
+    ld hl,strDrainageSystem
+    call printStr
+pradDrainageDone:
+    ; Check if current room needs the generic dark-cavern message.
+    ; This is table-driven for compactness (see darkCavernRoomList in tables.asm).
+    ld a,(playerLocation)        ; A = current room
+    ld hl,darkCavernRoomList     ; HL = 0-terminated room id list
+    call containsByteListZeroTerm ; Z=1 if in list
+    jp nz,pradBridgeCheck        ; not in list -> skip dark message
+pradPrintDark:
+    ld hl,strDarkCavern         ; "You are deep in a dark cavern."
+    call printStr                 ; emit dark cavern note
+pradBridgeCheck:
+    ; Broken bridge message when at north/south anchor and bridge is fatal
+    ld a,(playerLocation)        ; A = current room
+    cp roomBridgeNorthAnchor   ; at north anchor?
+    jr z,bridgeMaybe
+    cp roomBridgeSouthAnchor   ; at south anchor?
+    jr nz,pradDragonCheck
+bridgeMaybe:
+    ld a,(bridgeCondition)       ; A = bridge state
+    cp exitFatal                 ; snapped?
+    jr nz,pradDragonCheck
+    ld hl,strBridgeSnapped      ; "Two of the ropes have snapped..."
+    call printStr                 ; warn bridge unusable
+pradDragonCheck:
+    ; Dead dragon corpse visible only at cave entrance clearing when objDragon = 0
+    ld a,(playerLocation)        ; A = current room
+    cp roomCaveEntranceClearing ; at cave entrance clearing?
+    jr nz,pradBridgeState
+    ld a,(objectLocation+objDragon-1) ; dragon object location byte
+    or a                          ; zero means corpse present
+    jr nz,pradBridgeState
+    ld hl,strDragonCorpse       ; "You can also see the bloody corpse..."
+    call printStr                 ; show corpse line
+pradBridgeState:
+    ; Show golden drawbridge text when at castle ledge and drawbridge lowered
+    ld a,(playerLocation)        ; A = current room
+    cp roomCastleLedge          ; on castle ledge?
+    jr nz,pradCandleDim
+    ld a,(drawbridgeState)       ; A = drawbridge state
+    cp roomDrawbridge            ; lowered into room 49?
+    jr nz,pradCandleDim
+    ld hl,strGoldBridge         ; "A mighty golden drawbridge..."
+    call printStr                 ; describe drawbridge
+pradCandleDim:
+    ; Candle dim warning once past threshold
+    ld a,(turnCounter)           ; A = turn count
+    cp candleDimTurn            ; dim threshold reached?
+    jr c,pradCandleOut
+    ld hl,strCandleDim          ; "Your candle is growing dim."
+    call printStr                 ; warn dimming
+pradCandleOut:
+    ; Candle extinguished once out threshold reached
+    ld a,(turnCounter)           ; A = turn count
+    cp candleOutTurn            ; out threshold?
+    jp c,listRoomObjectsAndCreatures
+    xor a                         ; A = 0
+    ld (candleIsLitFlag),a     ; flag candle out
+    ld hl,strCandleOut          ; "In fact...it went out!"
+    call printStr                 ; announce candle out
+    jp listRoomObjectsAndCreatures
+
+listRoomObjectsAndCreatures:
+    ; ---------------------------------------------------------
+    ; listRoomObjectsAndCreatures
+    ; After room description/extras, list objects and creatures in
+    ; the current room, trigger first-encounter text, then show the
+    ; prompt and possibly launch an attack if a hostile is present.
+    ; ---------------------------------------------------------
+    xor a                          ; A = 0
+    ld (visibleObjectCount),a      ; reset visible object counter
+    ; Count objects at current location (indices 7..24)
+    ld a,firstObjectIndex          ; start at first object index
+    ld (loopIndex),a             ; loopIndex = 7
+locCountObjects:
+    ld a,(loopIndex)             ; A = current object index
+    cp objectCount+1               ; past last object?
+    jp z,locCountDone           ; done counting
+    ld a,(loopIndex)             ; A = index
+    sub 1                         ; convert to 0-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation         ; DE = base of object locations
+    add hl,de                     ; HL -> objectLocation(index)
+    ld a,(hl)                     ; A = object location
+    ld b,a                        ; B = copy of location
+    ld a,(playerLocation)        ; A = player room
+    cp b                          ; same room?
+    jp nz,locNextObj            ; skip if not here
+    ld a,(visibleObjectCount)   ; A = count so far
+    inc a                         ; count++
+    ld (visibleObjectCount),a   ; store updated count
+locNextObj:
+    ld a,(loopIndex)             ; A = index
+    inc a                         ; index++
+    ld (loopIndex),a             ; store
+    jp locCountObjects          ; continue loop
+locCountDone:
+    ld a,(visibleObjectCount)
+    or a
+    jp z,locObjectsListed        ; nothing to list
+    ld hl,strSeeObjects         ; "You can also see..."
+    call printStr                 ; print header
+    ; List objects at current location
+    ld a,firstObjectIndex          ; restart at first object index
+    ld (loopIndex),a
+locListObjects:
+    ld a,(loopIndex)         ; A = object index
+    cp objectCount+1         ; done listing?
+    jp z,locDoneList
+    ld a,(loopIndex)         ; A = index
+    sub 1                     ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation     ; DE = base
+    add hl,de                 ; HL -> objectLocation(index)
+    ld a,(hl)                 ; A = object location
+    ld b,a                    ; B = location copy
+    ld a,(playerLocation)    ; A = player room
+    cp b                      ; object here?
+    jp nz,locNextList       ; skip if not
+    ld a,(loopIndex)         ; A = object index
+    ld (currentObjectIndex),a ; remember current object index
+    call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+locNextList:
+    ld a,(loopIndex)         ; A = index
+    inc a                     ; next object
+    ld (loopIndex),a         ; store
+    jp locListObjects       ; loop list
+locDoneList:
+locObjectsListed:
+    ld a,0                           ; A = 0
+    ld (visibleCreatureCount),a      ; reset visible creature counter
+    ; Count/intro creatures at current location (indices 1..6)
+    ld a,creatureWizardIndex      ; start at first creature index
+    ld (loopIndex),a             ; loopIndex = 1
+locCountCreatures:
+    ld a,(loopIndex)             ; A = creature index
+    cp creatureCount+1            ; past last creature?
+    jp z,locCountCreDone       ; done counting
+    ld a,(loopIndex)             ; A = index
+    sub 1                         ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation         ; DE = base
+    add hl,de                     ; HL -> objectLocation(index)
+    ld a,(hl)                     ; A = creature location
+    ld b,a                        ; B = location copy
+    ld a,(playerLocation)        ; A = player room
+    cp b                          ; creature here?
+    jp nz,locNextCre            ; skip if not here
+    ld a,(visibleCreatureCount) ; A = creature count
+    inc a                         ; count++
+    ld (visibleCreatureCount),a ; store
+    ld a,(loopIndex)             ; A = creature index
+    ld (currentObjectIndex),a   ; remember current creature
+    call triggerCreatureIntroSub ; trigger intro text if needed
+locNextCre:
+    ld a,(loopIndex)             ; A = index
+    inc a                         ; next creature
+    ld (loopIndex),a             ; store
+    jp locCountCreatures        ; loop
+locCountCreDone:
+    ld a,(visibleCreatureCount)
+    or a
+    jp z,locListCreDone          ; none to list
+    ld hl,strSeeCreatures        ; "Nearby there lurks..."
+    call printStr                ; print creature header
+    ; List creatures at current location
+    ld a,creatureWizardIndex     ; restart at creature 1
+    ld (loopIndex),a
+locListCreatures:
+    ld a,(loopIndex)         ; A = creature index
+    cp creatureCount+1        ; finished listing?
+    jp z,locListCreDone
+    ld a,(loopIndex)         ; A = index
+    sub 1                     ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation     ; DE = base
+    add hl,de                 ; HL -> objectLocation(index)
+    ld a,(hl)                 ; A = creature location
+    ld b,a                    ; B = location copy
+    ld a,(playerLocation)    ; A = player room
+    cp b                      ; creature here?
+    jp nz,locNextCreList   ; skip if not
+    ld a,(loopIndex)         ; A = creature index
+    ld (currentObjectIndex),a ; remember creature index
+    call printObjectDescriptionSub ; print "a/an <adj> <noun>, "
+locNextCreList:
+    ld a,(loopIndex)         ; A = index
+    inc a                     ; next creature
+    ld (loopIndex),a         ; store
+    jp locListCreatures     ; loop listing
+locListCreDone:
+    call printNewline             ; blank line
+    ld hl,strPrompt              ; ">"
+    call printStr                 ; show prompt
+    ld a,boolTrue                  ; A = true
+    ld (reshowFlag),a             ; remember we displayed room
+    ld a,(hostileCreatureIndex) ; A = hostile index (0 if none)
+    or a                          ; any hostile?
+    jp z,locDone                 ; none -> input
+    cp creatureBatIndex           ; bat is non-hostile
+    jp z,locDone
+    ld a,(currentObjectIndex)   ; A = last listed index
+    cp objSword                  ; sword available?
+    jp z,locDone                 ; sword means no auto attack
+    jp monsterAttack             ; attack player
+locDone:
+    jp getPlayerInput
+
+getPlayerInput:
+    ; ---------------------------------------------------------
+    ; getPlayerInput
+    ; Read a non-empty command line, pad with leading/trailing
+    ; spaces, normalize to lowercase, bump turn counter, and route
+    ; to parsing. Clears the screen afterward.
+    ; ---------------------------------------------------------
+gpiReadLine:
+    ; Build buffer with leading space, read line, append trailing space + null
+    ld hl,inputBuffer
+    ld a,' '
+    ld (hl),a                     ; leading space
+    inc hl                        ; HL -> write position after leading space
+    ld b,inputBufferSize-3        ; leave room for trailing space + terminator
+    ld c,1                        ; echo on
+    call readLine                 ; reads into HL.., returns length in A, HL at terminator
+    ; HL currently at terminator after the input; append trailing space and terminator
+    ld (hl),' '
+    inc hl
+    ld (hl),0
+    ; Normalize to lowercase from start of buffer (includes padding)
+    ld hl,inputBuffer
+    call normalizeInput
+    ; Empty check: buffer is " " + 0?
+    ld a,(inputBuffer+1)
+    or a
+    jp z,gpiReadLine              ; re-prompt on empty
+    ; turnCounter++
+    ld a,(turnCounter)
+    inc a
+    ld (turnCounter),a
+    call clearScreen              ; clear screen before processing
+    jp parseCommandEntry      ; continue to parser
+
+parseCommandEntry:
+    ; ---------------------------------------------------------
+    ; parseCommandEntry
+    ; Identify noun in input, set currentObjectIndex, refresh
+    ; dynamic exits/flags that depend on location/state, then
+    ; continue into verb routing.
+    ; ---------------------------------------------------------
+    ld a,0                          ; A = 0
+    ld (currentObjectIndex),a       ; reset matched object index
+    ; Find noun match in inputBuffer by scanning objectNameNounTable (objects 7..24)
+    ld a,firstObjectIndex           ; A = first object index
+    ld (loopIndex),a
+pceFindNoun:
+    ld a,(loopIndex)
+    cp objectCount+1               ; past last?
+    jp z,pceAfterNoun              ; none found
+    ; compute noun pointer = objectNameNounTable[(index-7)]
+    ld a,(loopIndex)
+    sub firstObjectIndex
+    ld l,a
+    ld h,0
+    add hl,hl                      ; *2 for word table
+    ld de,objectNameNounTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)                      ; DE = noun pointer
+    ld hl,inputBuffer              ; HL = haystack
+    call containsStr               ; A=1 if found
+    or a
+    jr z,pceNextNoun
+    ; match found -> record currentObjectIndex and break
+    ld a,(loopIndex)
+    ld (currentObjectIndex),a
+    jp pceAfterNoun
+pceNextNoun:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp pceFindNoun
+pceAfterNoun:
+    ; Bridge condition when halfway
+    ; Bridge condition when halfway
+    ld a,(playerLocation)
+    cp roomBridgeMid
+    jp nz,pceHutFlag
+    ld a,exitFatal
+    ld (bridgeCondition),a
+    call updateDynamicExits
+pceHutFlag:
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp nz,pceWaterfall
+    ld a,boolTrue
+    ld (generalFlagJ),a
+pceWaterfall:
+    ld a,(playerLocation)
+    cp roomWaterfallBase
+    jp nz,pceTempleReset
+    ld a,roomDrainC                  ; 43
+    ld (waterExitLocation),a
+    call updateDynamicExits
+pceTempleReset:
+    ld a,(playerLocation)
+    cp roomTemple
+    jp nz,pceGateCheck
+    xor a
+    ld (waterExitLocation),a
+    call updateDynamicExits
+pceGateCheck:
+    ; Gate destination changes once grill moved
+    ld a,(objectLocation+objGrill-1)
+    cp roomTinyCell
+    jp z,pceDrawbridge
+    ld a,roomDarkCavernJ             ; 39
+    ld (gateDestination),a
+    call updateDynamicExits
+pceDrawbridge:
+    ; Drawbridge lowers when on drawbridge room
+    ld a,(playerLocation)
+    cp roomDrawbridge
+    jp nz,pceLookCheck
+    ld a,roomDrawbridge
+    ld (drawbridgeState),a
+    call updateDynamicExits
+pceLookCheck:
+    ; LOOK command
+    ld hl,inputBuffer
+    ld de,tokenLook
+    call containsStr
+    or a
+    jp z,pceListCheck
+    xor a
+    ld (reshowFlag),a
+    jp describeCurrentLocation
+pceListCheck:
+    ; LIST inventory
+    ld hl,inputBuffer
+    ld de,tokenList
+    call containsStr
+    or a
+    jp z,pceQuitCheck
+    jp showInventory
+pceQuitCheck:
+    ; QUIT
+    ld hl,inputBuffer
+    ld de,tokenQuit
+    call containsStr
+    or a
+    jp z,checkCreatureAtLocation
+    jp quitGame
+
+showInventory:
+    ld hl,strCarryingPrefix
+    call printStr
+    xor a
+    ld (visibleObjectCount),a
+    ld a,firstObjectIndex
+    ld (loopIndex),a
+siCountLoop:
+    ld a,(loopIndex)
+    cp objectCount+1
+    jp z,siCountDone
+    call getObjLoc                 ; A = objectLocation[loopIndex]
+    cp roomCarried
+    jp nz,siCountNext
+    ld a,(visibleObjectCount)
+    inc a
+    ld (visibleObjectCount),a
+siCountNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp siCountLoop
+siCountDone:
+    ld a,(visibleObjectCount)
+    or a
+    jp nz,siList
+    ld hl,strNothing
+    jp printAndRedisplay
+siList:
+    call printNewline
+    ld a,firstObjectIndex
+    ld (loopIndex),a
+siPrintLoop:
+    ld a,(loopIndex)
+    cp objectCount+1
+    jp z,siDone
+    call getObjLoc                 ; A = objectLocation[loopIndex]
+    cp roomCarried
+    jp nz,siPrintNext
+    ld a,(loopIndex)
+    ld (currentObjectIndex),a
+    call printObjectDescriptionSub
+siPrintNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp siPrintLoop
+siDone:
+    jp describeCurrentLocation
+
+quitGame:
+    ; ---------------------------------------------------------
+    ; quitGame
+    ; Compute score, print it with turn count, show ranking, and
+    ; prompt for another game (handled by waitForYesNo).
+    ; ---------------------------------------------------------
+    ; score = 0
+    xor a
+    ld (score),a
+    ; loopIndex = firstScoreObjectIndex (first treasure object)
+    ld a,firstScoreObjectIndex
+    ld (loopIndex),a
+qgScoreLoop:
+    ; Stop after object 17 (loop while index < 18)
+    ld a,(loopIndex)
+    cp afterLastScoreObjectIndex
+    jp z,qgScoreDone
+    ; HL = &objectLocation[loopIndex-1]
+    ld c,a                            ; C = object index (firstScoreObjectIndex..lastScoreObjectIndex)
+    dec a                             ; A = 0-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                         ; HL -> objectLocation entry
+    ; B = object location (room id or 255 for carried)
+    ld a,(hl)
+    ld b,a
+    ; If carried (roomCarried) then score += (loopIndex-scoreIndexBaseSub)
+    cp roomCarried
+    jr nz,qgCheckInDarkRoom
+    ld a,c                            ; A = loopIndex
+    sub scoreIndexBaseSub             ; A = points (1..11)
+    ld d,a                            ; D = points
+    ld a,(score)
+    add a,d
+    ld (score),a
+qgCheckInDarkRoom:
+    ; If object is in roomDarkRoom then score += 2*(loopIndex-scoreIndexBaseSub)
+    ld a,b
+    cp roomDarkRoom
+    jr nz,qgNextObj
+    ld a,c                            ; A = loopIndex
+    sub scoreIndexBaseSub             ; A = points (1..11)
+    add a,a                           ; A = points*2
+    ld d,a                            ; D = points*2
+    ld a,(score)
+    add a,d
+    ld (score),a
+qgNextObj:
+    ; loopIndex++
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp qgScoreLoop
+qgScoreDone:
+    call printNewline
+    ld hl,strScorePrefix                ; "You have a score of "
+    call printStr
+    ld a,(score)
+    ld l,a
+    ld h,0
+    call printNum                       ; print score
+    ld hl,strScoreMid                   ; " out of a possible 126 points in "
+    call printStr
+    ld a,(turnCounter)
+    ld l,a
+    ld h,0
+    call printNum                       ; print turn count
+    ld hl,strScoreSuffix                ; " moves."
+    call printStr
+    call printRankingSub                ; ranking text
+    ld hl,strAnother                    ; "Another adventure? "
+    call printStr
+
+waitForYesNo:
+    ; ---------------------------------------------------------
+    ; waitForYesNo
+    ; Block until user presses Y/y or N/n.
+    ; Y -> restart gameStart, N -> halt (end).
+    ; ---------------------------------------------------------
+waitYesNoLoop:
+    call getc                    ; read key into A
+    ld (yesnoKey),a              ; store raw key
+    call toLowerAscii            ; normalize to lowercase
+    cp 'n'
+    jp z,gameEnd                 ; end program
+    cp 'y'
+    jp z,gameStart               ; restart
+    jp waitYesNoLoop             ; otherwise keep waiting
+
+; Simple halt loop for "end"
+gameEnd:
+    jp gameEnd
+
+checkCreatureAtLocation:
+    ; ---------------------------------------------------------
+    ; checkCreatureAtLocation
+    ; Scan creature slots 1..6; if any shares playerLocation,
+    ; set hostileCreatureIndex and branch for special handling.
+    ; Otherwise clear hostileCreatureIndex and continue to verb handling.
+    ; ---------------------------------------------------------
+    ld a,creatureWizardIndex        ; start at creature 1
+    ld (hostileCreatureIndex),a
+ccalLoop:
+    ld a,(hostileCreatureIndex)         ; A = creature index (1..6)
+    cp creatureCount+1                  ; past last creature?
+    jp z,ccalNone                       ; no hostiles found
+    ; compute objectLocation offset = index-1
+    dec a                               ; zero-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                           ; HL -> objectLocation(entry)
+    ld a,(hl)                           ; A = creature location
+    ld b,a                              ; save location
+    ld a,(playerLocation)               ; A = player room
+    cp b                                ; match?
+    jp z,checkCreatureBatSpecial        ; found hostile/bat
+    ; next creature
+    ld a,(hostileCreatureIndex)
+    inc a
+    ld (hostileCreatureIndex),a
+    jp ccalLoop
+ccalNone:
+    xor a
+    ld (hostileCreatureIndex),a         ; none present
+    jp handleVerbOrMovement
+checkCreatureBatSpecial:
+    ; ---------------------------------------------------------
+    ; checkCreatureBatSpecial
+    ; If the creature in this room is the bat (index 5), print the
+    ; bat message, teleport player to bat cave, bump bat location,
+    ; and redisplay. Otherwise continue verb handling.
+    ; ---------------------------------------------------------
+    ld a,(hostileCreatureIndex)
+    cp creatureBatIndex                 ; bat index?
+    jp nz,handleVerbOrMovement          ; not bat -> continue
+    ld hl,strGiantBat                   ; "The giant bat picked you up..."
+    call printStr
+    ld a,roomBatCave
+    ld (playerLocation),a               ; move player
+    xor a
+    ld (reshowFlag),a                   ; force redisplay
+    ; objectLocation(creatureBatIndex) = objectLocation(creatureBatIndex) + batRelocateOffset
+    ld hl,objectLocation+creatureBatIndex-1
+    ld a,(hl)
+    add a,batRelocateOffset
+    ld (hl),a
+    jp describeCurrentLocation
+
+monsterAttack:
+    ; Print "killed by a <adj><noun>!!"
+    ld hl,strMonsterKilled
+    call printStr
+    ; Fetch monster adjective pointer
+    ld a,(hostileCreatureIndex)
+    dec a
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,monsterAdjData
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ex de,hl
+    call printStr
+    ; Fetch monster noun pointer
+    ld a,(hostileCreatureIndex)
+    dec a
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,monsterNounData
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ex de,hl
+    call printStr
+    ld hl,strMonsterSuffix
+    jp printAndQuit
+
+handleVerbOrMovement:
+    ; ---------------------------------------------------------
+    ; handleVerbOrMovement
+    ; Dispatch input by first matching generic verbs (take/put/
+    ; unlock/jump/etc.) via pattern table, then directions, else
+    ; fall back to non-movement handlers.
+    ; ---------------------------------------------------------
+    ; Scan verb patterns (1..16) for a match in inputBuffer
+    ld a,1
+    ld (verbPatternIndex),a
+hvmVerbLoop:
+    ld a,(verbPatternIndex)
+    cp verbPatternCount+1
+    jp z,hvmVerbDone
+    ; fetch pattern pointer from verbPatternTable
+    ld a,(verbPatternIndex)
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    ld de,verbPatternTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld hl,inputBuffer
+    call containsStr
+    or a
+    jp nz,routeByVerbPattern
+    ld a,(verbPatternIndex)
+    inc a
+    ld (verbPatternIndex),a
+    jp hvmVerbLoop
+hvmVerbDone:
+    ; Check for movement words (north/south/west/east)
+    xor a
+    ld (directionIndex),a
+hvmDirLoop:
+    ld a,(directionIndex)
+    cp dirCount
+    jp z,hvmDirDone
+    ; pattern pointer = dirWordIndexTable[directionIndex]
+    ld l,a
+    ld h,0
+    add hl,hl
+    ld de,dirWordIndexTable
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld hl,inputBuffer
+    call containsStr
+    or a
+    jp nz,handleMovementCommand
+    ld a,(directionIndex)
+    inc a
+    ld (directionIndex),a
+    jp hvmDirLoop
+hvmDirDone:
+    jp handleNonMovementCommand        ; nothing matched -> non-movement
+
+handleMovementCommand:
+    ; ---------------------------------------------------------
+    ; handleMovementCommand
+    ; Resolve direction (may be randomized by bomb), look up
+    ; target in movementTable, apply exits (none/fatal/room),
+    ; then redisplay location.
+    ; ---------------------------------------------------------
+    ; Special check: if bomb is elsewhere, randomize direction
+    ld a,(objectLocation+objBomb-1)        ; bomb location byte
+    cp roomCarried                         ; carried?
+    jr z,hmcBombHandled
+    ld b,a                                 ; B = bomb location
+    ld a,(playerLocation)
+    cp b
+    jr z,hmcBombHandled                    ; bomb at player => no random
+    ; bomb elsewhere: random dir 0..3
+    call rand0To3
+    ld (randomDirectionIndex),a
+    jr hmcPickTarget
+hmcBombHandled:
+    xor a                                  ; default dir = 0
+    ld (randomDirectionIndex),a
+hmcPickTarget:
+    ; targetLocation = movementTable(playerLocation, randomDirectionIndex)
+    ld a,(playerLocation)
+    dec a                                  ; zero-based room index
+    ld l,a
+    ld h,0
+    add hl,hl                              ; room *2
+    add hl,hl                              ; room *4
+    ld b,h
+    ld c,l                                 ; BC = room*4
+    ld a,(randomDirectionIndex)
+    ld l,a
+    ld h,0
+    add hl,bc                              ; offset = room*4 + dir
+    ld de,movementTable
+    add hl,de
+    ld a,(hl)
+    ld (targetLocation),a                  ; store target
+    cp exitNone                            ; no exit?
+    jr nz,hmcCheckFatal
+    ld hl,strCantGoThatWay
+    call printStr
+    call printNewline
+    jr hmcDoneMove
+hmcCheckFatal:
+    cp exitFatal                           ; fatal exit?
+    jr nz,hmcMoveRoom
+    ld hl,strFatalFall
+    call printStr
+    call printNewline
+    jp quitGame
+hmcMoveRoom:
+    or a                                   ; target > 0?
+    jp z,hmcDoneMove
+    ld (playerLocation),a                  ; move player
+hmcDoneMove:
+    xor a
+    ld (reshowFlag),a                      ; force redisplay
+    jp describeCurrentLocation           ; show new room
+
+handleNonMovementCommand:
+    ; Magic word "galar"
+    ld hl,inputBuffer
+    ld de,tokenGalar
+    call containsStr
+    or a
+    jp z,hnmApeCheck
+    xor a
+    ld (reshowFlag),a
+    ld hl,strMagicWind
+    call printStr
+    ld a,roomCaveEntry
+    ld (playerLocation),a
+    jp describeCurrentLocation
+    ; Crypt wall "ape"
+hnmApeCheck:
+    ld hl,inputBuffer
+    ld de,tokenApe
+    call containsStr
+    or a
+    jp z,hnmEnsureObjectParsed
+    ld hl,strCryptWall
+    call printStr
+    ld a,roomTinyCell                  ; open wall exit to tiny cell
+    ld (secretExitLocation),a
+    call updateDynamicExits
+    jp describeCurrentLocation
+    ; Ensure an object was parsed
+hnmEnsureObjectParsed:
+    ld a,(currentObjectIndex)
+    or a
+    jr nz,hnmCheckVisibility
+    ld hl,strEh
+    jp printAndRedisplay
+hnmCheckVisibility:
+    ; Object must be visible or carried
+    ld a,(currentObjectIndex)
+    dec a                          ; zero-based offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                      ; HL -> objectLocation(entry)
+    ld a,(hl)                      ; A = object location
+    cp roomCarried                  ; carried?
+    jr z,checkGetDropUse
+    ld b,a                         ; B = location
+    ld a,(playerLocation)
+    cp b                           ; same room?
+    jr z,checkGetDropUse
+    ; Not visible/carrying -> error message
+    ld hl,strCantSeeIt
+    jp printAndRedisplay
+
+checkGetDropUse:
+    ; GET command
+    ld hl,inputBuffer
+    ld de,tokenGet
+    call containsStr
+    or a
+    jp z,checkDrop
+    jp handleGetCommand
+checkDrop:
+    ; DROP command
+    ld hl,inputBuffer
+    ld de,tokenDrop
+    call containsStr
+    or a
+    jp z,checkUse
+    jp handleDropCommand
+checkUse:
+    ; USE-type verbs routed by object index
+    jp routeUseByObject
+
+handleGetCommand:
+    ; ---------------------------------------------------------
+    ; handleGetCommand
+    ; Count carried items; if >10, refuse. Otherwise set the
+    ; current object to carried (-1) and redisplay.
+    ; ---------------------------------------------------------
+    xor a
+    ld (carriedCount),a                ; reset counter
+    ld a,firstObjectIndex
+    ld (loopIndex),a                   ; start at object 7
+hgcCount:
+    ld a,(loopIndex)                   ; A = index
+    cp objectCount+1                     ; past last object?
+    jp z,hgcDoneCount
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                          ; HL -> objectLocation(entry)
+    ld a,(hl)                          ; A = location byte
+    cp roomCarried                      ; carried?
+    jp nz,hgcNext
+    ld a,(carriedCount)                ; increment carried count
+    inc a
+    ld (carriedCount),a
+hgcNext:
+    ld a,(loopIndex)
+    inc a
+    ld (loopIndex),a
+    jp hgcCount
+hgcDoneCount:
+    ld a,(carriedCount)
+    cp maxCarryItems+1                 ; > max carry?
+    jr c,hgcCarryOk
+    ld hl,strTooManyObjects
+    jp printAndRedisplay
+hgcCarryOk:
+    ; objectLocation(currentObjectIndex) = -1 (255)
+    ld a,(currentObjectIndex)
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,roomCarried
+    ld (hl),a
+    jp describeCurrentLocation
+
+handleDropCommand:
+    ; ---------------------------------------------------------
+    ; handleDropCommand
+    ; Place the current object in the player’s room.
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)          ; A = index
+    dec a                              ; to offset
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de                          ; HL -> objectLocation(entry)
+    ld a,(playerLocation)              ; A = room id
+    ld (hl),a                          ; store new location
+    jp describeCurrentLocation
+
+routeUseByObject:
+    ; ---------------------------------------------------------
+    ; routeUseByObject
+    ; Dispatch USE targets by currentObjectIndex.
+    ; NOTE: Matches pseudo2.txt: candle routes to useBomb (bomb ignition),
+    ; not the bomb object itself.
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)          ; A = selected object index (7..24)
+    cp objKey                          ; key?
+    jp z,useKey                        ; handle key logic
+    cp objSword                        ; sword?
+    jp z,useSword                      ; handle combat logic
+    cp objCandle                       ; candle?
+    jp z,useBomb                       ; candle ignites bomb logic
+    cp objRope                         ; rope?
+    jp z,useRope                       ; handle rope logic
+    ld hl,strUseHow                     ; otherwise: "Use it how?"
+    call printStr
+    jp describeCurrentLocation
+
+useKey:
+    ; ---------------------------------------------------------
+    ; useKey
+    ; Works only at forest clearing or temple. Opens the door,
+    ; moves key to current room, clears reshowFlag, and teleports
+    ; player based on location.
+    ; ---------------------------------------------------------
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp z,useKeyAllowed
+    cp roomTemple
+    jp z,useKeyAllowed
+    ; not allowed: won't open
+    ld hl,strWontOpen
+    jp printAndRedisplay
+
+useKeyAllowed:
+    ld hl,strDoorOpened
+    call printStr
+    ; objectLocation(objKey) = playerLocation
+    ld a,(playerLocation)
+    ld (objectLocation+objKey-1),a
+    xor a
+    ld (reshowFlag),a
+    ld a,(playerLocation)
+    cp roomForestClearing
+    jp nz,useKeyToCrypt
+    ld a,roomDarkRoom
+    ld (playerLocation),a
+    jp describeCurrentLocation
+
+useKeyToCrypt:
+    ld a,roomCrypt
+    ld (playerLocation),a
+    jp describeCurrentLocation
+
+useSword:
+    ; ---------------------------------------------------------
+    ; useSword
+    ; Resolve sword attacks vs hostileCreatureIndex. Handles misses
+    ; and fatal outcomes per original BASIC logic.
+    ; ---------------------------------------------------------
+    ld a,(hostileCreatureIndex)
+    or a
+    jp nz,useSwordHasTarget
+    ld hl,strNothingToKill
+    jp printAndRedisplay
+
+useSwordHasTarget:
+    ; swordSwingCount++
+    ld a,(swordSwingCount)
+    inc a
+    ld (swordSwingCount),a
+    ; if RND*7 + 15 > swordSwingCount then continue fight else miss and die
+    ; - Use an integer approximation: threshold = (rand 0..6) + swordFightBaseThreshold (15)
+    call rand0To6                 ; A = 0..6
+    add a,swordFightBaseThreshold ; A = 15..21
+    ld b,a                        ; B = threshold (15..21)
+    ld a,(swordSwingCount)
+    cp b
+    jp c,swordFightContinues      ; swordSwingCount < threshold => continue
+    ld hl,strSwordMiss
+    jp printAndQuit
+
+swordFightContinues:
+    ; Pseudo2: if RND < .38 then kill
+    call randByte
+    cp swordKillChanceThreshold
+    jp c,swordKillsTarget
+    ; Pseudo2: RANDOM_FIGHT_MESSAGE = INT(RND*4) (0..3)
+    call rand0To3
+    ld (randomFightMessage),a
+    ld a,(hostileCreatureIndex)
+    cp creatureBatIndex
+    jp z,checkCreatureBatSpecial
+    ld a,(randomFightMessage)
+    cp fightMsgMove              ; 0 -> "moves"
+    jr nz,sfcMsg1
+    ld hl,strAttackMove
+    jp printAndRedisplay
+sfcMsg1:
+    cp fightMsgDeflect           ; 1 -> "deflects"
+    jr nz,sfcMsg2
+    ld hl,strAttackDeflect
+    jp printAndRedisplay
+sfcMsg2:
+    cp fightMsgStun              ; 2 -> "stuns"
+    jr nz,sfcMsg3
+    ld hl,strAttackStun
+    jp printAndRedisplay
+sfcMsg3:
+    ; 3 -> "head blow"
+    ld hl,strAttackHeadBlow
+    jp printAndRedisplay
+
+swordKillsTarget:
+    ld hl,strSwordKills
+    call printStr
+    ; objectLocation(currentObjectIndex) = -1 (carried)
+    ld a,(currentObjectIndex)
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,roomCarried
+    ld (hl),a
+    ; adjust hostile creature location
+    ld a,(hostileCreatureIndex)
+    cp creatureTrollIndex
+    jr z,sktAddTen
+    cp creatureBatIndex
+    jr z,sktAddTen
+    ; else set to 0
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    xor a
+    ld (hl),a
+    ld a,(hostileCreatureIndex)
+    cp creatureWizardIndex
+    jr nz,sktCorpseCheck
+    ld hl,strSwordCrumbles
+    call printStr
+    ld a,roomTemple
+    ld (objectLocation+objSword-1),a      ; sword moves to temple
+    jr sktCorpseCheck
+sktAddTen:
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(hl)
+    add a,corpseRelocateOffset
+    ld (hl),a
+sktCorpseCheck:
+    ld a,(hostileCreatureIndex)
+    cp creatureDragonIndex
+    jr z,sktDone
+    ld hl,strCorpseVapor
+    call printStr
+sktDone:
+    xor a
+    ld (hostileCreatureIndex),a
+    jp describeCurrentLocation
+
+useBomb:
+    ; ---------------------------------------------------------
+    ; useBomb
+    ; If bomb not at player or carried, refuse and extinguish candle.
+    ; If candle already out, complain. Otherwise bomb explodes:
+    ; move player back a room (except below darkRoom), possibly set
+    ; teleportDestination, and move bomb to room 0.
+    ; ---------------------------------------------------------
+    ; Check candle location (index 9 -> offset 8? actually candle index 21 -> offset 20; bomb index 9 -> offset 8)
+    ld a,(objectLocation+objBomb-1)       ; bomb index -> offset (objBomb-1)
+    cp roomCarried                    ; carried?
+    jr z,useBombCheckLit
+    ld b,a
+    ld a,(playerLocation)
+    cp b
+    jr z,useBombCheckLit
+    ld hl,strWontBurn
+    call printStr
+    xor a
+    ld (candleIsLitFlag),a
+    jp describeCurrentLocation
+
+useBombCheckLit:
+    ld a,(candleIsLitFlag)
+    or a                         ; lit? (non-zero)
+    jr nz,useBombExplode
+    ld hl,strCandleOutStupid
+    jp printAndRedisplay
+
+useBombExplode:
+    ld hl,strBombExplode
+    call printStr
+    xor a
+    ld (reshowFlag),a
+
+    ld a,(playerLocation)
+    cp roomDarkRoom
+    jp z,useBombNoMove
+    dec a                            ; playerLocation = playerLocation - 1
+    ld (playerLocation),a
+    cp roomOakDoor
+    jp nz,useBombNoMove
+    ld a,roomTreasureRoom
+    ld (teleportDestination),a
+    call updateDynamicExits
+useBombNoMove:
+    ld a,0
+    ld (objectLocation+objBomb-1),a       ; bomb to room 0
+    jp describeCurrentLocation
+
+useRope:
+    ; ---------------------------------------------------------
+    ; useRope
+    ; Only works at the temple balcony. Prints descent text,
+    ; leaves the rope in the current room, moves player to roomTemple,
+    ; and redisplays.
+    ; ---------------------------------------------------------
+    ld a,(playerLocation)
+    cp roomTempleBalcony
+    jp z,useRopeAllowed
+    ld hl,strTooDangerous
+    jp printAndRedisplay
+
+useRopeAllowed:
+    ld hl,strDescendRope
+    call printStr
+    xor a
+    ld (reshowFlag),a
+    ; objectLocation(currentObjectIndex) = playerLocation
+    ld a,(currentObjectIndex)
+    dec a
+    ld l,a
+    ld h,0
+    ld de,objectLocation
+    add hl,de
+    ld a,(playerLocation)
+    ld (hl),a
+    ; move player to temple
+    ld a,roomTemple
+    ld (playerLocation),a
+    jp describeCurrentLocation
+
+printObjectDescriptionSub:
+    ; ---------------------------------------------------------
+    ; printObjectDescriptionSub
+    ; Purpose: print "a/an <adj> <noun>, " for the object/creature
+    ; at currentObjectIndex using OBJDESC tables.
+    ; Inputs: currentObjectIndex (1-based)
+    ; Uses: BC, DE, HL
+    ; ---------------------------------------------------------
+    ; Fetch adjective pointer from objdesc1Table[currentObjectIndex]
+    ld hl,objdesc1Table
+    ld a,(currentObjectIndex)
+    call getWordTableEntryToHl     ; HL = adjective string (Z=1 if NULL)
+    ; Print article + adjective (a/an computed)
+    call printAdj
+    ; Fetch noun pointer from objdesc2Table[currentObjectIndex]
+    ld hl,objdesc2Table
+    ld a,(currentObjectIndex)
+    call getWordTableEntryToHl     ; HL = noun string (Z=1 if NULL)
+    ; Print space + noun
+    call printSpace
+    call printStr
+    ; Trailing comma and space to match original output
+    ld a,','
+    call putc
+    call printSpace
+    ret
+
+routeByVerbPattern:
+    ; ---------------------------------------------------------
+    ; routeByVerbPattern
+    ; Map the matched verbPatternIndex to specific handlers or
+    ; default responses. Keeps verb ordering identical to BASIC.
+    ; ---------------------------------------------------------
+    ld a,(verbPatternIndex)            ; A = 1..verbPatternCount (matched pattern)
+    cp verbPatternJumpTableMax+1       ; indices 1..4 are handled via jump table
+    jr nc,rvpOther
+    dec a                              ; A = 0..3
+    add a,a                            ; A = byte offset into DW table
+    ld l,a
+    ld h,0
+    ld de,verbPatternRouteTable
+    add hl,de                          ; HL = &verbPatternRouteTable[(index-1)*2]
+    ld e,(hl)
+    inc hl
+    ld d,(hl)                          ; DE = target address
+    ex de,hl                           ; HL = target address
+    jp (hl)                            ; tail-jump to handler
+rvpOther:
+
+    cp verbPatternPleaseStart          ; <7  => verbs 5..6 ("cut","break")
+    jr c,routeVerbNothing              ; "Nothing happens."
+    cp verbPatternCantStart            ; <13 => verbs 7..12 ("unlock".."burn")
+    jr c,routeVerbPlease               ; "Please tell me how..."
+    ; >=13 => verbs 13..16 ("up","down","jump","swim")
+    ld hl,strICant                     ; "I can't do that."
+    call printStr                      ; emit message
+    jr routeVerbDone                   ; common exit
+routeVerbNothing:
+    ld hl,strNothingHappens
+    call printStr
+    jr routeVerbDone
+routeVerbPlease:
+    ld hl,strPleaseTell
+    call printStr
+routeVerbDone:
+    call printNewline                        ; blank line after response
+    jp getPlayerInput                    ; re-prompt
+
+verbPatternRouteTable:
+    DW handleGetCommand
+    DW handleDropCommand
+    DW routeUseByObject
+    DW routeUseByObject
+
+printRankingSub:
+    ld hl,strRanking
+    call printStr
+    ld a,(score)
+    cp rankHopeless
+    jr c,prRankHopeless
+    cp rankLoser
+    jr c,prRankLoser
+    cp rankAverage
+    jr c,prRankAverage
+    cp rankPerfect
+    jr c,prRankExcellent
+    ld hl,strRankPerfect
+    jr prRankPrint
+prRankHopeless:
+    ld hl,strRankHopeless
+    jr prRankPrint
+prRankLoser:
+    ld hl,strRankLoser
+    jr prRankPrint
+prRankAverage:
+    ld hl,strRankAverage
+    jr prRankPrint
+prRankExcellent:
+    ld hl,strRankExcellent
+prRankPrint:
+    call printStr
+    ret
+
+readInputThenClearSub:
+    ; Unused legacy stub (replaced by getPlayerInput/inputBuffer path)
+    ret
+
+encounterWizardLabel:
+    ld hl,strEncWizard           ; wizard intro text
+    call printStr
+    jp listRoomObjectsAndCreatures
+
+encounterDragonLabel:
+    ld hl,strEncDragon1
+    call printStr
+    ld hl,strEncDragon2
+    call printStr
+    jp listRoomObjectsAndCreatures
+
+encounterDwarfLabel:
+    ld hl,strEncDwarf
+    call printStr
+    jp listRoomObjectsAndCreatures
+
+triggerCreatureIntroSub:
+    ; ---------------------------------------------------------
+    ; triggerCreatureIntroSub
+    ; Print encounter text for wizard/dragon/dwarf when first seen.
+    ; ---------------------------------------------------------
+    ld a,(currentObjectIndex)
+    cp creatureWizardIndex
+    jp z,encounterWizardLabel
+    cp creatureDragonIndex
+    jp z,encounterDragonLabel
+    cp creatureDwarfIndex
+    jp z,encounterDwarfLabel
+    ret
+; ---------------------------------------------------------
+updateDynamicExits:
+    ; ---------------------------------------------------------
+    ; updateDynamicExits
+    ; Purpose: patch movement table entries that depend on
+    ; runtime state (bridge, teleport, secret exits, drawbridge).
+    ; Notes:
+    ;   - All values are bytes; direct stores into movementTable.
+    ;   - Caller updates the backing variables before invoking.
+    ; ---------------------------------------------------------
+    ; Data-driven patch list to minimize code size:
+    ; Each entry: DB roomId, DB dir, DW &stateByte
+    ld hl,dynamicExitPatchTable
+    ld b,dynamicExitPatchCount
+udeLoop:
+    ld a,(hl)                      ; A = room id
+    inc hl
+    ld c,(hl)                      ; C = direction (0..3)
+    inc hl
+    ld e,(hl)                      ; DE = &stateByte
+    inc hl
+    ld d,(hl)
+    inc hl
+    push hl                        ; preserve table cursor
+    push de                        ; preserve &stateByte
+    call movementCellPtr           ; HL = &movementTable[(room-1)*4 + dir]
+    pop de
+    ld a,(de)                      ; A = state byte value
+    ld (hl),a                      ; patch movement cell
+    pop hl                         ; restore table cursor
+    djnz udeLoop
+    ret
+
+; movementCellPtr
+; Inputs: A = room (1-based), C = dir (0..3)
+; Output: HL = &movementTable[(room-1)*4 + dir]
+; Clobbers: A, BC, DE
+movementCellPtr:
+    dec a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl                      ; HL = (room-1)*4
+    ld b,0
+    add hl,bc                      ; + dir
+    ld de,movementTable
+    add hl,de                      ; HL -> cell
+    ret
+    
