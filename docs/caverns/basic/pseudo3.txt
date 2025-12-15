@@ -15,6 +15,10 @@ rem    - removed (0)              -> 0x00
 rem    - scalar flags/vars        -> FLAGS[index]
 rem    - input parsing output     -> FLAGS[FLAG_CURRENT_*]
 rem
+rem  Constant sources:
+rem    - ROOM_* numeric constants (1..54) are defined in the legacy appendix below.
+rem      The data-driven guards/actions in this overlay reference those ROOM_* symbols.
+rem
 rem  Phases (minimum):
 rem    PHASE_DESCRIBE   : description + darkness + listing
 rem    PHASE_ON_ENTER   : immediate effects after movement (bridge mid, waterfall, etc.)
@@ -31,6 +35,7 @@ rem  Suggested FLAGS layout (indices are placeholders)
 rem ---------------------------------------------------------
 FLAG_HOSTILE_CREATURE_INDEX = 0    rem 0 or 1..6
 FLAG_CANDLE_LIT            = 1    rem 0/1
+FLAG_HUT_VISITED           = 2    rem 0/1 (pseudo3 GENERAL_FLAG_J)
 FLAG_BRIDGE_CONDITION      = 10   rem 0/room/EXIT_FATAL (patched movement)
 FLAG_DRAWBRIDGE_STATE      = 11   rem 0/room/EXIT_FATAL (patched movement)
 FLAG_WATER_EXIT_LOCATION   = 12   rem 0/room (patched movement)
@@ -43,6 +48,31 @@ FLAG_CURRENT_OBJECT        = 22   rem 0 or 7..24
 FLAG_SPECIAL_WORD          = 23   rem enum: none/look/list/quit/galar/ape
 FLAG_SWORD_SWING_COUNT     = 30
 FLAG_SCORE                 = 31
+
+rem ---------------------------------------------------------
+rem  Parser enums (byte values)
+rem ---------------------------------------------------------
+rem These values are what ACT_PARSE_INPUT writes into the FLAG_CURRENT_* flags.
+
+rem FLAG_SPECIAL_WORD (fast-path commands / magic words)
+SPECIAL_NONE  = 0
+SPECIAL_LOOK  = 1
+SPECIAL_LIST  = 2
+SPECIAL_QUIT  = 3
+SPECIAL_GALAR = 4
+SPECIAL_APE   = 5
+
+rem FLAG_CURRENT_VERB (normalized verbs)
+VERB_NONE = 0
+VERB_GET  = 1
+VERB_DROP = 2
+VERB_USE  = 3
+
+rem Optional: map legacy VERB_PATTERN_INDEX behaviors to verbs
+rem   TAKE -> VERB_GET
+rem   PUT  -> VERB_DROP
+rem   USING/WITH -> VERB_USE
+rem Everything else can remain "pattern response" (handled by a separate rule group if desired).
 
 rem ---------------------------------------------------------
 rem  Action inventory (map these to assembler routines)
@@ -73,6 +103,315 @@ rem   ACT_USE_BOMB
 rem   ACT_USE_ROPE
 rem Quit/scoring:
 rem   ACT_QUIT_AND_SCORE
+
+rem ---------------------------------------------------------
+rem  Step 5: Action specs (inputs/outputs/side effects)
+rem ---------------------------------------------------------
+rem Each action below is an imperative routine called by the interpreter.
+rem It may read/write `PLAYER_LOCATION`, `TURN_COUNTER`, `PLAYER_ALIVE`,
+rem `ENTITY_LOCATION[]`, and `FLAGS[]`, but MUST NOT call back into rule evaluation.
+rem
+rem Naming convention: actions referenced by RULE_TABLE should appear here.
+
+rem --- Core loop helpers (called outside phases) ---
+rem ACT_READ_INPUT_AND_NORMALIZE
+rem   Reads: keyboard input
+rem   Writes:
+rem     - normalized input buffer (implementation-specific)
+rem     - TURN_COUNTER++
+rem
+rem ACT_PARSE_INPUT
+rem   Reads: normalized input buffer, VERB_PATTERN_DATA, DIR_WORD_INDEX_DATA, OBJECT_NAME_NOUN_DATA
+rem   Writes:
+rem     - FLAGS[FLAG_SPECIAL_WORD] (SPECIAL_*)
+rem     - FLAGS[FLAG_CURRENT_VERB] (VERB_*)
+rem     - FLAGS[FLAG_CURRENT_DIR] (0..3 or 0xFF)
+rem     - FLAGS[FLAG_CURRENT_OBJECT] (0 or 7..24)
+rem     - FLAGS[FLAG_VERB_PATTERN_INDEX] (0 if none, else 1..16)
+rem
+rem ACT_UPDATE_HOSTILE_CREATURE_INDEX
+rem   Reads: PLAYER_LOCATION, ENTITY_LOCATION[1..6]
+rem   Writes: FLAGS[FLAG_HOSTILE_CREATURE_INDEX] = 0 or creature id
+
+rem --- PHASE_DESCRIBE actions ---
+rem ACT_DESCRIBE_LIT
+rem   Reads: PLAYER_LOCATION, ROOM_DESC1_PTR, ROOM_DESC2_PTR, TURN_COUNTER, FLAGS (dynamic exit flags), ENTITY_LOCATION
+rem   Writes: (output only; may also clear candle flag if turn threshold exceeded)
+rem   Output sequence (matches pseudo3 intent):
+rem     1) room description pointers (if non-null)
+rem     2) extras (drainage/deep cavern/bridge ropes/dragon corpse/drawbridge/candle dim/out)
+rem     3) list visible objects and creatures (with creature intro text)
+rem     4) prompt ">"
+rem
+rem ACT_DESCRIBE_DARK
+rem   Reads: PLAYER_LOCATION, TURN_COUNTER, FLAGS, ENTITY_LOCATION
+rem   Writes: (output only)
+rem   Output sequence:
+rem     1) darkness message
+rem     2) list visible objects/creatures (note: pseudo3 still lists after darkness)
+rem     3) prompt ">"
+rem
+rem ACT_MONSTER_ATTACK_AND_KILL
+rem   Reads: FLAGS[FLAG_HOSTILE_CREATURE_INDEX], MONSTER_ADJ_DATA, MONSTER_NOUN_DATA
+rem   Writes:
+rem     - PLAYER_ALIVE = 0
+rem   Output: killed-by-hostile message
+rem   Next: main loop should transition to quit/scoring flow (or treat PLAYER_ALIVE==0 as exit).
+
+rem --- PHASE_ON_COMMAND actions ---
+rem ACT_FORCE_REDESCRIBE
+rem   Writes: (optional) FLAGS[RESHOW] = 0
+rem   Effect: no state change; main loop should run PHASE_DESCRIBE immediately.
+rem
+rem ACT_PRINT_INVENTORY
+rem   Reads: ENTITY_LOCATION[7..24], OBJDESC tables
+rem   Writes: output only
+rem
+rem ACT_QUIT_AND_SCORE
+rem   Reads: TURN_COUNTER, ENTITY_LOCATION[7..17]
+rem   Writes:
+rem     - FLAGS[FLAG_SCORE]
+rem     - PLAYER_ALIVE = 0 (terminate)
+rem   Output: score line + ranking + restart prompt (restart handling can remain outside rule engine).
+rem
+rem ACT_TELEPORT_TO_CAVE_ENTRY
+rem   Writes: PLAYER_LOCATION = ROOM_CAVE_ENTRY
+rem   Output: teleport message (matches pseudo3)
+rem   Next: main loop should run PHASE_ON_ENTER then PHASE_DESCRIBE.
+rem
+rem ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_SECRET_EXIT_LOCATION] = ROOM_TINY_CELL (38 in pseudo3)
+rem     - calls ACT_PATCH_DYNAMIC_EXITS effect (see below)
+rem   Output: crypt wall message
+rem
+rem ACT_PRINT_EH
+rem   Output: "eh?"
+rem
+rem ACT_PRINT_WHERE_I_CANT_SEE_IT
+rem   Output: "Where? I can't see it."
+rem
+rem ACT_TRY_GET_CURRENT_OBJECT
+rem   Reads: FLAGS[FLAG_CURRENT_OBJECT], ENTITY_LOCATION[7..24]
+rem   Writes:
+rem     - if carried count > 10: output "too many objects"
+rem     - else ENTITY_LOCATION[obj] = 0xFF
+rem
+rem ACT_DROP_CURRENT_OBJECT
+rem   Reads: FLAGS[FLAG_CURRENT_OBJECT]
+rem   Writes: ENTITY_LOCATION[obj] = PLAYER_LOCATION
+rem
+rem ACT_PRINT_IT_WONT_OPEN
+rem   Output: "It won't open!"
+rem
+rem ACT_USE_KEY_FOREST
+rem   Preconditions: at ROOM_FOREST_CLEARING
+rem   Writes:
+rem     - ENTITY_LOCATION[OBJ_KEY] = PLAYER_LOCATION (matches pseudo3 "drop key")
+rem     - PLAYER_LOCATION = ROOM_DARK_ROOM
+rem   Output: "You opened the door."
+rem
+rem ACT_USE_KEY_TEMPLE
+rem   Preconditions: at ROOM_TEMPLE
+rem   Writes:
+rem     - ENTITY_LOCATION[OBJ_KEY] = PLAYER_LOCATION
+rem     - PLAYER_LOCATION = ROOM_CRYPT
+rem   Output: "You opened the door."
+rem
+rem ACT_PRINT_NOTHING_TO_KILL
+rem   Output: "But there's nothing to kill..."
+rem
+rem ACT_SWORD_COMBAT
+rem   Reads: FLAGS[FLAG_HOSTILE_CREATURE_INDEX], FLAGS[FLAG_SWORD_SWING_COUNT], RNG
+rem   Writes:
+rem     - FLAGS[FLAG_SWORD_SWING_COUNT]++
+rem     - may set PLAYER_ALIVE=0
+rem     - may remove hostile creature (ENTITY_LOCATION[creature]=0) and emit extra messages
+rem     - wizard special: crumble sword and relocate sword entity
+rem   Output: combat messages (pseudo3 strings)
+rem
+rem ACT_USE_BOMB
+rem   Reads: ENTITY_LOCATION[OBJ_BOMB], FLAGS[FLAG_CANDLE_LIT], PLAYER_LOCATION, RNG (if any)
+rem   Writes:
+rem     - may clear FLAGS[FLAG_CANDLE_LIT]
+rem     - may move player back one room
+rem     - ENTITY_LOCATION[OBJ_BOMB] = 0 (removed)
+rem     - may set FLAGS[FLAG_TELEPORT_DESTINATION] and patch exits if player reaches oak door
+rem   Output: pseudo3 bomb/candle messages
+rem
+rem ACT_PRINT_TOO_DANGEROUS
+rem   Output: "It's too dangerous!!!"
+rem
+rem ACT_USE_ROPE
+rem   Preconditions: at ROOM_TEMPLE_BALCONY
+rem   Writes:
+rem     - ENTITY_LOCATION[OBJ_ROPE] = PLAYER_LOCATION (drops rope)
+rem     - PLAYER_LOCATION = ROOM_TEMPLE
+rem   Output: rope descent message
+rem
+rem ACT_PRINT_PATTERN_RESPONSE
+rem   Reads: FLAGS[FLAG_VERB_PATTERN_INDEX]
+rem   Output: legacy canned responses:
+rem     - cut/break -> "Nothing happens!"
+rem     - unlock/open/kill/attack/light/burn -> "Please tell me how."
+rem     - up/down/jump/swim -> "I can't!"
+rem   Notes: TAKE/PUT/USING/WITH should be normalized by ACT_PARSE_INPUT into VERB_GET/VERB_DROP/VERB_USE instead.
+
+rem ACT_RESOLVE_MOVEMENT
+rem   Reads: PLAYER_LOCATION, FLAGS[FLAG_CURRENT_DIR], MOVEMENT_TABLE, ENTITY_LOCATION[OBJ_BOMB]
+rem   Writes:
+rem     - possibly PLAYER_LOCATION (move)
+rem     - possibly PLAYER_ALIVE=0 on fatal exit
+rem   Output:
+rem     - EXIT_NONE -> "You can't go that way"
+rem     - EXIT_FATAL -> fatal fall message
+rem   Notes: includes pseudo3's random-direction quirk tied to bomb placement.
+
+rem --- PHASE_ON_ENTER actions (dynamic state) ---
+rem ACT_SET_BRIDGE_FATAL_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_BRIDGE_CONDITION] = EXIT_FATAL
+rem     - ACT_PATCH_DYNAMIC_EXITS effect
+rem
+rem ACT_SET_HUT_VISITED
+rem   Writes: FLAGS[FLAG_HUT_VISITED]=1 (if you keep it; pseudo3 uses GENERAL_FLAG_J)
+rem
+rem ACT_ENABLE_WATER_EXIT_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_WATER_EXIT_LOCATION] = ROOM_DRAIN_C (43)
+rem     - patch exits
+rem
+rem ACT_DISABLE_WATER_EXIT_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_WATER_EXIT_LOCATION] = 0
+rem     - patch exits
+rem
+rem ACT_SET_GATE_DEST_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_GATE_DESTINATION] = ROOM_DARK_CAVERN_J (39)
+rem     - patch exits
+rem
+rem ACT_SET_DRAWBRIDGE_AND_PATCH
+rem   Writes:
+rem     - FLAGS[FLAG_DRAWBRIDGE_STATE] = ROOM_DRAWBRIDGE (49)
+rem     - patch exits
+rem
+rem ACT_PATCH_DYNAMIC_EXITS
+rem   Writes: MOVEMENT_TABLE slot patches (see mapping above)
+rem
+rem ACT_BAT_CARRY
+rem   Writes:
+rem     - output carry message
+rem     - PLAYER_LOCATION = ROOM_BAT_CAVE
+rem     - mutate bat location (pseudo3 does OBJECT_LOCATION(5) += 7; preserve behavior in entity terms)
+rem
+rem ACT_NOOP
+rem   No effect
+
+rem ---------------------------------------------------------
+rem  Step 6: Legacy label -> rule/action mapping
+rem ---------------------------------------------------------
+rem This provides a mechanical translation path from the imperative sections below.
+rem Format:
+rem   LEGACY_LABEL -> phase(s) -> rule(s) -> action(s)
+rem
+rem GAME_START
+rem   -> engine init (outside phases):
+rem      - initialize PLAYER_LOCATION, ENTITY_LOCATION[], FLAGS[] to match old variables
+rem      - call ACT_PATCH_DYNAMIC_EXITS once after initializing dynamic-exit flags
+rem      - enter main loop (read/parse/update-hostile/run phases)
+rem
+rem DESCRIBE_CURRENT_LOCATION
+rem   -> PHASE_DESCRIBE:
+rem      - GUARD_HOSTILE_ATTACKABLE -> ACT_MONSTER_ATTACK_AND_KILL
+rem      - GUARD_BRIGHT_BY_ROOM -> ACT_DESCRIBE_LIT
+rem      - GUARD_BRIGHT_BY_CANDLE -> ACT_DESCRIBE_LIT
+rem      - GUARD_ALWAYS -> ACT_DESCRIBE_DARK
+rem
+rem PRINT_ROOM_DESCRIPTION
+rem   -> folded into ACT_DESCRIBE_LIT (room pointer printing) + ACT_PRINT_ROOM_EXTRAS
+rem
+rem LIST_ROOM_OBJECTS_AND_CREATURES
+rem   -> folded into ACT_LIST_VISIBLE_ENTITIES (called by ACT_DESCRIBE_* composite output)
+rem
+rem GET_PLAYER_INPUT
+rem   -> ACT_READ_INPUT_AND_NORMALIZE (outside phases)
+rem
+rem PARSE_COMMAND_ENTRY
+rem   -> ACT_PARSE_INPUT (outside phases) + (dynamic exit updates move to PHASE_ON_ENTER)
+rem
+rem SHOW_INVENTORY
+rem   -> PHASE_ON_COMMAND:
+rem      - GUARD_SPECIAL_LIST -> ACT_PRINT_INVENTORY
+rem
+rem QUIT_GAME + WAIT_FOR_YES_NO + PRINT_RANKING_SUB
+rem   -> PHASE_ON_COMMAND:
+rem      - GUARD_SPECIAL_QUIT -> ACT_QUIT_AND_SCORE
+rem   -> restart prompt can remain outside interpreter (shell loop) or become a post-action flow.
+rem
+rem CHECK_CREATURE_AT_LOCATION
+rem   -> ACT_UPDATE_HOSTILE_CREATURE_INDEX (outside phases)
+rem
+rem CHECK_CREATURE_BAT_SPECIAL
+rem   -> PHASE_ON_ENTER:
+rem      - GUARD_BAT_PRESENT -> ACT_BAT_CARRY
+rem   (bat carry is an enter-time effect in practice; keep it here to avoid mixing with command rules)
+rem
+rem MONSTER_ATTACK
+rem   -> ACT_MONSTER_ATTACK_AND_KILL (invoked by PHASE_DESCRIBE rule)
+rem
+rem HANDLE_VERB_OR_MOVEMENT + ROUTE_BY_VERB_PATTERN
+rem   -> ACT_PARSE_INPUT sets:
+rem        - VERB_GET / VERB_DROP / VERB_USE where applicable
+rem        - FLAG_VERB_PATTERN_INDEX for all other matches
+rem   -> PHASE_ON_COMMAND:
+rem        - GUARD_VERB_GET / GUARD_VERB_DROP / (USE guards) / GUARD_PATTERN_RESPONSE
+rem
+rem HANDLE_MOVEMENT_COMMAND
+rem   -> PHASE_ON_COMMAND:
+rem        - GUARD_HAS_DIRECTION -> ACT_RESOLVE_MOVEMENT
+rem   -> after successful move: PHASE_ON_ENTER runs, then PHASE_DESCRIBE.
+rem
+rem HANDLE_NON_MOVEMENT_COMMAND
+rem   -> PHASE_ON_COMMAND special words:
+rem        - GUARD_SPECIAL_GALAR -> ACT_TELEPORT_TO_CAVE_ENTRY
+rem        - GUARD_SPECIAL_APE   -> ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH
+rem        - fallback -> ACT_PRINT_EH
+rem
+rem CHECK_GET_DROP_USE + HANDLE_GET_COMMAND + HANDLE_DROP_COMMAND
+rem   -> PHASE_ON_COMMAND:
+rem        - GUARD_OBJECT_NOT_VISIBLE -> ACT_PRINT_WHERE_I_CANT_SEE_IT
+rem        - GUARD_VERB_GET -> ACT_TRY_GET_CURRENT_OBJECT
+rem        - GUARD_VERB_DROP -> ACT_DROP_CURRENT_OBJECT
+rem
+rem ROUTE_USE_BY_OBJECT
+rem   -> PHASE_ON_COMMAND:
+rem        - KEY rules -> ACT_USE_KEY_FOREST / ACT_USE_KEY_TEMPLE / ACT_PRINT_IT_WONT_OPEN
+rem        - SWORD rules -> ACT_SWORD_COMBAT / ACT_PRINT_NOTHING_TO_KILL
+rem        - CANDLE->BOMB rule -> ACT_USE_BOMB
+rem        - ROPE rules -> ACT_USE_ROPE / ACT_PRINT_TOO_DANGEROUS
+rem        - else -> ACT_PRINT_PATTERN_RESPONSE or a dedicated ACT_PRINT_DONT_KNOW_HOW_TO_USE
+rem
+rem USE_KEY
+rem   -> split by location (two rules already in RULE_TABLE):
+rem        - GUARD_USE_KEY_FOREST -> ACT_USE_KEY_FOREST
+rem        - GUARD_USE_KEY_TEMPLE -> ACT_USE_KEY_TEMPLE
+rem        - GUARD_USE_KEY_BAD_LOCATION -> ACT_PRINT_IT_WONT_OPEN
+rem
+rem USE_SWORD + SWORD_FIGHT_CONTINUES + SWORD_KILLS_TARGET
+rem   -> single action ACT_SWORD_COMBAT invoked by GUARD_USE_SWORD_HOSTILE
+rem
+rem USE_BOMB
+rem   -> single action ACT_USE_BOMB invoked by GUARD_USE_BOMB
+rem
+rem USE_ROPE
+rem   -> split by location:
+rem        - GUARD_USE_ROPE_OK -> ACT_USE_ROPE
+rem        - GUARD_USE_ROPE_BAD_LOCATION -> ACT_PRINT_TOO_DANGEROUS
+rem
+rem UPDATE_DYNAMIC_EXITS_SUB
+rem   -> single action ACT_PATCH_DYNAMIC_EXITS
+rem   -> called by the *_AND_PATCH on-enter actions and by APE/open-secret-exit action.
 
 rem ---------------------------------------------------------
 rem  Data tables (how actions consume the existing tables)
@@ -120,6 +459,229 @@ rem   - object visibility gate (must be carried or at player)
 rem   - GET/DROP
 rem   - USE routing (key/sword/bomb/rope)
 rem
+rem ---------------------------------------------------------
+rem  RULE_TABLE skeleton (concrete; ordered; per phase)
+rem ---------------------------------------------------------
+rem Record layout (assembler-friendly):
+rem   DB phaseId
+rem   DW guardListPtr
+rem   DW actionPtr
+rem
+rem Notes:
+rem - These rules intentionally reference guard/action symbols that are defined later in this overlay
+rem   or will be implemented as assembler routines. Step 4 will provide the full guard lists.
+rem - First matching rule terminates the phase.
+rem
+RULE_TABLE:
+
+rem --- PHASE_ON_COMMAND ---
+    DB PHASE_ON_COMMAND: DW GUARD_SPECIAL_LOOK:        DW ACT_FORCE_REDESCRIBE
+    DB PHASE_ON_COMMAND: DW GUARD_SPECIAL_LIST:        DW ACT_PRINT_INVENTORY
+    DB PHASE_ON_COMMAND: DW GUARD_SPECIAL_QUIT:        DW ACT_QUIT_AND_SCORE
+    DB PHASE_ON_COMMAND: DW GUARD_SPECIAL_GALAR:       DW ACT_TELEPORT_TO_CAVE_ENTRY
+    DB PHASE_ON_COMMAND: DW GUARD_SPECIAL_APE:         DW ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH
+
+    DB PHASE_ON_COMMAND: DW GUARD_HAS_DIRECTION:       DW ACT_RESOLVE_MOVEMENT
+
+    DB PHASE_ON_COMMAND: DW GUARD_NO_OBJECT_PARSED:    DW ACT_PRINT_EH
+    DB PHASE_ON_COMMAND: DW GUARD_OBJECT_NOT_VISIBLE:  DW ACT_PRINT_WHERE_I_CANT_SEE_IT
+
+    DB PHASE_ON_COMMAND: DW GUARD_VERB_GET:            DW ACT_TRY_GET_CURRENT_OBJECT
+    DB PHASE_ON_COMMAND: DW GUARD_VERB_DROP:           DW ACT_DROP_CURRENT_OBJECT
+
+    DB PHASE_ON_COMMAND: DW GUARD_USE_KEY_BAD_LOCATION: DW ACT_PRINT_IT_WONT_OPEN
+    DB PHASE_ON_COMMAND: DW GUARD_USE_KEY_FOREST:       DW ACT_USE_KEY_FOREST
+    DB PHASE_ON_COMMAND: DW GUARD_USE_KEY_TEMPLE:       DW ACT_USE_KEY_TEMPLE
+
+    DB PHASE_ON_COMMAND: DW GUARD_USE_SWORD_NO_HOSTILE: DW ACT_PRINT_NOTHING_TO_KILL
+    DB PHASE_ON_COMMAND: DW GUARD_USE_SWORD_HOSTILE:    DW ACT_SWORD_COMBAT
+
+    DB PHASE_ON_COMMAND: DW GUARD_USE_BOMB:             DW ACT_USE_BOMB
+    DB PHASE_ON_COMMAND: DW GUARD_USE_ROPE_BAD_LOCATION:DW ACT_PRINT_TOO_DANGEROUS
+    DB PHASE_ON_COMMAND: DW GUARD_USE_ROPE_OK:          DW ACT_USE_ROPE
+
+    DB PHASE_ON_COMMAND: DW GUARD_PATTERN_RESPONSE:     DW ACT_PRINT_PATTERN_RESPONSE
+
+    DB PHASE_ON_COMMAND: DW GUARD_ALWAYS:               DW ACT_PRINT_EH
+
+rem --- PHASE_ON_ENTER ---
+    DB PHASE_ON_ENTER: DW GUARD_AT_BRIDGE_MID:        DW ACT_SET_BRIDGE_FATAL_AND_PATCH
+    DB PHASE_ON_ENTER: DW GUARD_AT_FOREST_CLEARING:   DW ACT_SET_HUT_VISITED
+    DB PHASE_ON_ENTER: DW GUARD_AT_WATERFALL_BASE:    DW ACT_ENABLE_WATER_EXIT_AND_PATCH
+    DB PHASE_ON_ENTER: DW GUARD_AT_TEMPLE:            DW ACT_DISABLE_WATER_EXIT_AND_PATCH
+    DB PHASE_ON_ENTER: DW GUARD_GRILL_NOT_IN_TINY_CELL: DW ACT_SET_GATE_DEST_AND_PATCH
+    DB PHASE_ON_ENTER: DW GUARD_AT_DRAWBRIDGE:        DW ACT_SET_DRAWBRIDGE_AND_PATCH
+
+    DB PHASE_ON_ENTER: DW GUARD_BAT_PRESENT:          DW ACT_BAT_CARRY
+
+    DB PHASE_ON_ENTER: DW GUARD_ALWAYS:               DW ACT_NOOP
+
+rem --- PHASE_DESCRIBE ---
+    DB PHASE_DESCRIBE: DW GUARD_HOSTILE_ATTACKABLE:   DW ACT_MONSTER_ATTACK_AND_KILL
+
+    DB PHASE_DESCRIBE: DW GUARD_BRIGHT_BY_ROOM:       DW ACT_DESCRIBE_LIT
+    DB PHASE_DESCRIBE: DW GUARD_BRIGHT_BY_CANDLE:     DW ACT_DESCRIBE_LIT
+    DB PHASE_DESCRIBE: DW GUARD_ALWAYS:               DW ACT_DESCRIBE_DARK
+
+rem ---------------------------------------------------------
+rem  Guard list definitions (fixed 3-byte guards)
+rem ---------------------------------------------------------
+rem All guard lists end with: DB G_END, 0, 0
+
+GUARD_ALWAYS:
+    DB G_END, 0, 0
+
+rem --- Special words ---
+GUARD_SPECIAL_LOOK:
+    DB G_FLAG_EQ, FLAG_SPECIAL_WORD, SPECIAL_LOOK
+    DB G_END, 0, 0
+
+GUARD_SPECIAL_LIST:
+    DB G_FLAG_EQ, FLAG_SPECIAL_WORD, SPECIAL_LIST
+    DB G_END, 0, 0
+
+GUARD_SPECIAL_QUIT:
+    DB G_FLAG_EQ, FLAG_SPECIAL_WORD, SPECIAL_QUIT
+    DB G_END, 0, 0
+
+GUARD_SPECIAL_GALAR:
+    DB G_FLAG_EQ, FLAG_SPECIAL_WORD, SPECIAL_GALAR
+    DB G_END, 0, 0
+
+GUARD_SPECIAL_APE:
+    DB G_FLAG_EQ, FLAG_SPECIAL_WORD, SPECIAL_APE
+    DB G_END, 0, 0
+
+rem --- Movement ---
+GUARD_HAS_DIRECTION:
+    DB G_FLAG_NE, FLAG_CURRENT_DIR, 255
+    DB G_END, 0, 0
+
+rem --- Object routing / visibility ---
+GUARD_NO_OBJECT_PARSED:
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, 0
+    DB G_END, 0, 0
+
+GUARD_OBJECT_NOT_VISIBLE:
+    DB G_FLAG_NE, FLAG_CURRENT_OBJECT, 0
+    DB 0x80 + G_ENT_VISIBLE, FLAG_CURRENT_OBJECT, 0
+    DB G_END, 0, 0
+
+rem --- Inventory verbs ---
+GUARD_VERB_GET:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_GET
+    DB G_END, 0, 0
+
+GUARD_VERB_DROP:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_DROP
+    DB G_END, 0, 0
+
+rem --- USE: KEY ---
+GUARD_USE_KEY_BAD_LOCATION:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_KEY
+    DB 0x80 + G_AT, ROOM_FOREST_CLEARING, 0
+    DB 0x80 + G_AT, ROOM_TEMPLE, 0
+    DB G_END, 0, 0
+
+GUARD_USE_KEY_FOREST:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_KEY
+    DB G_AT, ROOM_FOREST_CLEARING, 0
+    DB G_END, 0, 0
+
+GUARD_USE_KEY_TEMPLE:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_KEY
+    DB G_AT, ROOM_TEMPLE, 0
+    DB G_END, 0, 0
+
+rem --- USE: SWORD ---
+GUARD_USE_SWORD_NO_HOSTILE:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_SWORD
+    DB G_FLAG_EQ, FLAG_HOSTILE_CREATURE_INDEX, 0
+    DB G_END, 0, 0
+
+GUARD_USE_SWORD_HOSTILE:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_SWORD
+    DB G_FLAG_NE, FLAG_HOSTILE_CREATURE_INDEX, 0
+    DB G_END, 0, 0
+
+rem --- USE: BOMB (pseudo3 routes candle -> bomb logic) ---
+GUARD_USE_BOMB:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_CANDLE
+    DB G_END, 0, 0
+
+rem --- USE: ROPE ---
+GUARD_USE_ROPE_BAD_LOCATION:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_ROPE
+    DB 0x80 + G_AT, ROOM_TEMPLE_BALCONY, 0
+    DB G_END, 0, 0
+
+GUARD_USE_ROPE_OK:
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_USE
+    DB G_FLAG_EQ, FLAG_CURRENT_OBJECT, OBJ_ROPE
+    DB G_AT, ROOM_TEMPLE_BALCONY, 0
+    DB G_END, 0, 0
+
+rem --- Pattern-response fallback (legacy VERB_PATTERN_INDEX) ---
+rem Requires ACT_PARSE_INPUT to also write a legacy pattern index (0 if none).
+FLAG_VERB_PATTERN_INDEX = 24
+
+GUARD_PATTERN_RESPONSE:
+    DB G_FLAG_NE, FLAG_VERB_PATTERN_INDEX, 0
+    DB G_FLAG_EQ, FLAG_CURRENT_VERB, VERB_NONE
+    DB G_END, 0, 0
+
+rem --- On-enter / dynamic state ---
+GUARD_AT_BRIDGE_MID:
+    DB G_AT, ROOM_BRIDGE_MID, 0
+    DB G_END, 0, 0
+
+GUARD_AT_FOREST_CLEARING:
+    DB G_AT, ROOM_FOREST_CLEARING, 0
+    DB G_END, 0, 0
+
+GUARD_AT_WATERFALL_BASE:
+    DB G_AT, ROOM_WATERFALL_BASE, 0
+    DB G_END, 0, 0
+
+GUARD_AT_TEMPLE:
+    DB G_AT, ROOM_TEMPLE, 0
+    DB G_END, 0, 0
+
+GUARD_AT_DRAWBRIDGE:
+    DB G_AT, ROOM_DRAWBRIDGE, 0
+    DB G_END, 0, 0
+
+GUARD_GRILL_NOT_IN_TINY_CELL:
+    DB 0x80 + G_ENT_AT_ROOM, OBJ_GRILL, ROOM_TINY_CELL
+    DB G_END, 0, 0
+
+GUARD_BAT_PRESENT:
+    DB G_ENT_AT_PLAYER, ENT_BAT, 0
+    DB G_END, 0, 0
+
+rem --- Describe ---
+GUARD_HOSTILE_ATTACKABLE:
+    DB G_FLAG_NE, FLAG_HOSTILE_CREATURE_INDEX, 0
+    DB G_FLAG_NE, FLAG_HOSTILE_CREATURE_INDEX, ENT_BAT
+    DB G_FLAG_NE, FLAG_CURRENT_OBJECT, OBJ_SWORD
+    DB G_END, 0, 0
+
+GUARD_BRIGHT_BY_ROOM:
+    DB G_ROOM_LT, ROOM_DARK_CAVERN_A, 0
+    DB G_END, 0, 0
+
+GUARD_BRIGHT_BY_CANDLE:
+    DB G_FLAG_EQ, FLAG_CANDLE_LIT, 1
+    DB G_ENT_VISIBLE, OBJ_CANDLE, 0
+    DB G_END, 0, 0
+
 rem ---------------------------------------------------------
 rem  Concrete guard list examples (fixed arity)
 rem ---------------------------------------------------------
@@ -401,6 +963,18 @@ rem   L36 PRINT_RANKING_SUB (ranking text)
 rem
 rem =========================================================
 
+rem =========================================================
+rem  Appendix: Legacy Imperative Listing (reference only)
+rem =========================================================
+rem The section below is the older label/goto pseudo-BASIC representation.
+rem It is retained to validate the conversion ledger, but it is NOT the target
+rem execution model anymore. The intended model is the data-driven overlay above.
+rem
+rem When converting to assembler tables + interpreter, translate this appendix using:
+rem   - Step 1 conversion ledger
+rem   - RULE_TABLE skeleton
+rem   - guard lists + action specs
+rem
 rem ---------------------------------------------------------
 rem  CAVERNS – Fictional BASIC Dialect Version
 rem  Based on MicroWorld BASIC game by John Hardy (c) 1983
