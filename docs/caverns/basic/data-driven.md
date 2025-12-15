@@ -177,6 +177,7 @@ Rules are evaluated **in table order**.
 | `G_ENT_AT_PLAYER` | ent       | unused    | `ENTITY_LOCATION[ent] == PLAYER_LOCATION` |
 | `G_ENT_CARRIED`   | ent       | unused    | `ENTITY_LOCATION[ent] == 0xFF`            |
 | `G_ENT_VISIBLE`   | ent       | unused    | carried OR at player location             |
+| `G_ENT_VISIBLE_CURRENT` | flag | unused    | carried OR at player location, where `ent = FLAGS[flag]` |
 
 ---
 
@@ -738,6 +739,7 @@ All guards consume **two operands**, even if unused.
 | `G_ENT_AT_PLAYER` | ent | unused | entity at player |
 | `G_ENT_CARRIED` | ent | unused | entity carried |
 | `G_ENT_VISIBLE` | ent | unused | carried or at player |
+| `G_ENT_VISIBLE_CURRENT` | flag | unused | visible where `ent = FLAGS[flag]` |
 
 ---
 

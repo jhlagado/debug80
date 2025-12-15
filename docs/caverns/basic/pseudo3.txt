@@ -5,6 +5,13 @@ rem  This section describes how to interpret the imperative pseudo below
 rem  using the phase/rule/guard/action model in:
 rem    docs/caverns/basic/data-driven.md
 rem
+rem  Scope note:
+rem    This file contains both:
+rem      1) an executable pseudo3 data-driven engine (DATA_DRIVEN_START), and
+rem      2) a legacy label/goto appendix (reference only).
+rem    It still does not require changes to any assembler sources; the goal is to express
+rem    the conversion *in this file* first.
+rem
 rem  Preference rule: if anything below conflicts with this overlay,
 rem  treat this overlay as the intended model (it is newer).
 rem
@@ -50,6 +57,12 @@ FLAG_SWORD_SWING_COUNT     = 30
 FLAG_SCORE                 = 31
 
 rem ---------------------------------------------------------
+rem  Entry point
+rem ---------------------------------------------------------
+rem Default entry for this file is the data-driven engine.
+goto DATA_DRIVEN_START
+
+rem ---------------------------------------------------------
 rem  Parser enums (byte values)
 rem ---------------------------------------------------------
 rem These values are what ACT_PARSE_INPUT writes into the FLAG_CURRENT_* flags.
@@ -73,6 +86,85 @@ rem   TAKE -> VERB_GET
 rem   PUT  -> VERB_DROP
 rem   USING/WITH -> VERB_USE
 rem Everything else can remain "pattern response" (handled by a separate rule group if desired).
+
+rem ---------------------------------------------------------
+rem  Text IDs (assign new IDs)
+rem ---------------------------------------------------------
+rem Use these as stable identifiers for `ACT_PRINT_TEXT(TEXT_*)` (or as indices into a text pointer table).
+rem These are the canonical IDs for legacy string literals in the appendix below.
+rem
+rem Implementation guidance (no code changes required here):
+rem   In the target assembler/runtime, define a `TEXT_PTR_TABLE[TEXT_*] -> stringPtr` so
+rem   actions can print via IDs instead of hardcoding string labels.
+
+TEXT_DARKNESS                     = 1
+TEXT_DRAINAGE_SYSTEM              = 2
+TEXT_DEEP_DARK_CAVERN             = 3
+TEXT_BRIDGE_ROPES_SNAPPED         = 4
+TEXT_DRAGON_CORPSE                = 5
+TEXT_DRAWBRIDGE_SPANS_WATERS      = 6
+TEXT_CANDLE_GROWING_DIM           = 7
+TEXT_CANDLE_WENT_OUT              = 8
+
+TEXT_YOU_CAN_ALSO_SEE             = 9
+TEXT_NEARBY_THERE_LURKS           = 10
+TEXT_PROMPT                       = 11
+
+TEXT_INVENTORY_PREFIX             = 12   rem "You are carrying "
+TEXT_INVENTORY_NOTHING            = 13   rem "nothing."
+
+TEXT_SCORE_LINE                   = 14   rem formatted line in ACT_QUIT_AND_SCORE
+TEXT_ANOTHER_ADVENTURE            = 15
+
+TEXT_BAT_CARRIES_YOU              = 16
+TEXT_MONSTER_KILLS_YOU            = 17   rem formatted line in ACT_MONSTER_ATTACK_AND_KILL
+
+TEXT_CANT_GO_THAT_WAY             = 18
+TEXT_FALL_AND_DIE                 = 19
+
+TEXT_TELEPORT_WIND                = 20
+TEXT_CRYPT_WALL_OPENS             = 21
+
+TEXT_EH                           = 22
+TEXT_WHERE_CANT_SEE_IT            = 23
+TEXT_TOO_MANY_OBJECTS             = 24
+TEXT_DONT_KNOW_HOW_TO_USE         = 25
+
+TEXT_IT_WONT_OPEN                 = 26
+TEXT_OPENED_THE_DOOR              = 27
+
+TEXT_NOTHING_TO_KILL              = 28
+TEXT_SWORD_MISS_YOU_DIE           = 29
+TEXT_SWORD_ATTACK_MISSED          = 30
+TEXT_SWORD_DEFLECTED              = 31
+TEXT_SWORD_STUNNED                = 32
+TEXT_SWORD_YOU_GOT_HIT            = 33
+TEXT_SWORD_STRIKES_HOME           = 34
+TEXT_SWORD_CRUMBLES               = 35
+TEXT_CORPSE_VAPORIZES             = 36
+
+TEXT_BOMB_WONT_BURN_CANDLE_OUT     = 37
+TEXT_CANDLE_OUT_INSULT            = 38
+TEXT_BOMB_BOOM_LUCKY              = 39
+
+TEXT_TOO_DANGEROUS                = 40
+TEXT_ROPE_DESCEND                 = 41
+
+TEXT_PATTERN_NOTHING_HAPPENS       = 42
+TEXT_PATTERN_PLEASE_TELL_ME_HOW    = 43
+TEXT_PATTERN_I_CANT               = 44
+
+TEXT_RANKING_HEADER               = 45
+TEXT_RANKING_HOPELESS_BEGINNER     = 46
+TEXT_RANKING_EXPERIENCED_LOSER     = 47
+TEXT_RANKING_AVERAGE_VIKING        = 48
+TEXT_RANKING_EXCELLENT_LEFT_BEHIND = 49
+TEXT_RANKING_PERFECTIONIST        = 50
+
+TEXT_ENCOUNTER_WIZARD              = 51
+TEXT_ENCOUNTER_DRAGON_1            = 52
+TEXT_ENCOUNTER_DRAGON_2            = 53
+TEXT_ENCOUNTER_DWARF               = 54
 
 rem ---------------------------------------------------------
 rem  Action inventory (map these to assembler routines)
@@ -139,15 +231,23 @@ rem   Reads: PLAYER_LOCATION, ROOM_DESC1_PTR, ROOM_DESC2_PTR, TURN_COUNTER, FLAG
 rem   Writes: (output only; may also clear candle flag if turn threshold exceeded)
 rem   Output sequence (matches pseudo3 intent):
 rem     1) room description pointers (if non-null)
-rem     2) extras (drainage/deep cavern/bridge ropes/dragon corpse/drawbridge/candle dim/out)
+rem     2) extras (drainage/deep cavern/bridge ropes/dragon corpse/drawbridge/candle dim/out):
+rem          - TEXT_DRAINAGE_SYSTEM
+rem          - TEXT_DEEP_DARK_CAVERN
+rem          - TEXT_BRIDGE_ROPES_SNAPPED
+rem          - TEXT_DRAGON_CORPSE
+rem          - TEXT_DRAWBRIDGE_SPANS_WATERS
+rem          - TEXT_CANDLE_GROWING_DIM
+rem          - TEXT_CANDLE_WENT_OUT
 rem     3) list visible objects and creatures (with creature intro text)
-rem     4) prompt ">"
+rem          - TEXT_YOU_CAN_ALSO_SEE / TEXT_NEARBY_THERE_LURKS
+rem     4) prompt ">" (TEXT_PROMPT)
 rem
 rem ACT_DESCRIBE_DARK
 rem   Reads: PLAYER_LOCATION, TURN_COUNTER, FLAGS, ENTITY_LOCATION
 rem   Writes: (output only)
 rem   Output sequence:
-rem     1) darkness message
+rem     1) darkness message (TEXT_DARKNESS)
 rem     2) list visible objects/creatures (note: pseudo3 still lists after darkness)
 rem     3) prompt ">"
 rem
@@ -155,7 +255,7 @@ rem ACT_MONSTER_ATTACK_AND_KILL
 rem   Reads: FLAGS[FLAG_HOSTILE_CREATURE_INDEX], MONSTER_ADJ_DATA, MONSTER_NOUN_DATA
 rem   Writes:
 rem     - PLAYER_ALIVE = 0
-rem   Output: killed-by-hostile message
+rem   Output: killed-by-hostile message (TEXT_MONSTER_KILLS_YOU, formatted with adj/noun)
 rem   Next: main loop should transition to quit/scoring flow (or treat PLAYER_ALIVE==0 as exit).
 
 rem --- PHASE_ON_COMMAND actions ---
@@ -176,25 +276,25 @@ rem   Output: score line + ranking + restart prompt (restart handling can remain
 rem
 rem ACT_TELEPORT_TO_CAVE_ENTRY
 rem   Writes: PLAYER_LOCATION = ROOM_CAVE_ENTRY
-rem   Output: teleport message (matches pseudo3)
+rem   Output: teleport message (TEXT_TELEPORT_WIND)
 rem   Next: main loop should run PHASE_ON_ENTER then PHASE_DESCRIBE.
 rem
 rem ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH
 rem   Writes:
 rem     - FLAGS[FLAG_SECRET_EXIT_LOCATION] = ROOM_TINY_CELL (38 in pseudo3)
 rem     - calls ACT_PATCH_DYNAMIC_EXITS effect (see below)
-rem   Output: crypt wall message
+rem   Output: crypt wall message (TEXT_CRYPT_WALL_OPENS)
 rem
 rem ACT_PRINT_EH
-rem   Output: "eh?"
+rem   Output: TEXT_EH
 rem
 rem ACT_PRINT_WHERE_I_CANT_SEE_IT
-rem   Output: "Where? I can't see it."
+rem   Output: TEXT_WHERE_CANT_SEE_IT
 rem
 rem ACT_TRY_GET_CURRENT_OBJECT
 rem   Reads: FLAGS[FLAG_CURRENT_OBJECT], ENTITY_LOCATION[7..24]
 rem   Writes:
-rem     - if carried count > 10: output "too many objects"
+rem     - if carried count > 10: output TEXT_TOO_MANY_OBJECTS
 rem     - else ENTITY_LOCATION[obj] = 0xFF
 rem
 rem ACT_DROP_CURRENT_OBJECT
@@ -202,24 +302,24 @@ rem   Reads: FLAGS[FLAG_CURRENT_OBJECT]
 rem   Writes: ENTITY_LOCATION[obj] = PLAYER_LOCATION
 rem
 rem ACT_PRINT_IT_WONT_OPEN
-rem   Output: "It won't open!"
+rem   Output: TEXT_IT_WONT_OPEN
 rem
 rem ACT_USE_KEY_FOREST
 rem   Preconditions: at ROOM_FOREST_CLEARING
 rem   Writes:
 rem     - ENTITY_LOCATION[OBJ_KEY] = PLAYER_LOCATION (matches pseudo3 "drop key")
 rem     - PLAYER_LOCATION = ROOM_DARK_ROOM
-rem   Output: "You opened the door."
+rem   Output: TEXT_OPENED_THE_DOOR
 rem
 rem ACT_USE_KEY_TEMPLE
 rem   Preconditions: at ROOM_TEMPLE
 rem   Writes:
 rem     - ENTITY_LOCATION[OBJ_KEY] = PLAYER_LOCATION
 rem     - PLAYER_LOCATION = ROOM_CRYPT
-rem   Output: "You opened the door."
+rem   Output: TEXT_OPENED_THE_DOOR
 rem
 rem ACT_PRINT_NOTHING_TO_KILL
-rem   Output: "But there's nothing to kill..."
+rem   Output: TEXT_NOTHING_TO_KILL
 rem
 rem ACT_SWORD_COMBAT
 rem   Reads: FLAGS[FLAG_HOSTILE_CREATURE_INDEX], FLAGS[FLAG_SWORD_SWING_COUNT], RNG
@@ -228,7 +328,12 @@ rem     - FLAGS[FLAG_SWORD_SWING_COUNT]++
 rem     - may set PLAYER_ALIVE=0
 rem     - may remove hostile creature (ENTITY_LOCATION[creature]=0) and emit extra messages
 rem     - wizard special: crumble sword and relocate sword entity
-rem   Output: combat messages (pseudo3 strings)
+rem   Output: combat messages:
+rem     - TEXT_SWORD_MISS_YOU_DIE
+rem     - TEXT_SWORD_ATTACK_MISSED / TEXT_SWORD_DEFLECTED / TEXT_SWORD_STUNNED / TEXT_SWORD_YOU_GOT_HIT
+rem     - TEXT_SWORD_STRIKES_HOME
+rem     - TEXT_SWORD_CRUMBLES
+rem     - TEXT_CORPSE_VAPORIZES
 rem
 rem ACT_USE_BOMB
 rem   Reads: ENTITY_LOCATION[OBJ_BOMB], FLAGS[FLAG_CANDLE_LIT], PLAYER_LOCATION, RNG (if any)
@@ -237,24 +342,27 @@ rem     - may clear FLAGS[FLAG_CANDLE_LIT]
 rem     - may move player back one room
 rem     - ENTITY_LOCATION[OBJ_BOMB] = 0 (removed)
 rem     - may set FLAGS[FLAG_TELEPORT_DESTINATION] and patch exits if player reaches oak door
-rem   Output: pseudo3 bomb/candle messages
+rem   Output:
+rem     - TEXT_BOMB_WONT_BURN_CANDLE_OUT
+rem     - TEXT_CANDLE_OUT_INSULT
+rem     - TEXT_BOMB_BOOM_LUCKY
 rem
 rem ACT_PRINT_TOO_DANGEROUS
-rem   Output: "It's too dangerous!!!"
+rem   Output: TEXT_TOO_DANGEROUS
 rem
 rem ACT_USE_ROPE
 rem   Preconditions: at ROOM_TEMPLE_BALCONY
 rem   Writes:
 rem     - ENTITY_LOCATION[OBJ_ROPE] = PLAYER_LOCATION (drops rope)
 rem     - PLAYER_LOCATION = ROOM_TEMPLE
-rem   Output: rope descent message
+rem   Output: TEXT_ROPE_DESCEND
 rem
 rem ACT_PRINT_PATTERN_RESPONSE
 rem   Reads: FLAGS[FLAG_VERB_PATTERN_INDEX]
 rem   Output: legacy canned responses:
-rem     - cut/break -> "Nothing happens!"
-rem     - unlock/open/kill/attack/light/burn -> "Please tell me how."
-rem     - up/down/jump/swim -> "I can't!"
+rem     - cut/break -> TEXT_PATTERN_NOTHING_HAPPENS
+rem     - unlock/open/kill/attack/light/burn -> TEXT_PATTERN_PLEASE_TELL_ME_HOW
+rem     - up/down/jump/swim -> TEXT_PATTERN_I_CANT
 rem   Notes: TAKE/PUT/USING/WITH should be normalized by ACT_PARSE_INPUT into VERB_GET/VERB_DROP/VERB_USE instead.
 
 rem ACT_RESOLVE_MOVEMENT
@@ -263,9 +371,14 @@ rem   Writes:
 rem     - possibly PLAYER_LOCATION (move)
 rem     - possibly PLAYER_ALIVE=0 on fatal exit
 rem   Output:
-rem     - EXIT_NONE -> "You can't go that way"
-rem     - EXIT_FATAL -> fatal fall message
-rem   Notes: includes pseudo3's random-direction quirk tied to bomb placement.
+rem     - EXIT_NONE -> TEXT_CANT_GO_THAT_WAY
+rem     - EXIT_FATAL -> TEXT_FALL_AND_DIE
+rem   Notes: pseudo3 likely has a bug here (typed direction is ignored).
+rem     Suggested behavior:
+rem       dir = FLAGS[FLAG_CURRENT_DIR]
+rem       if (bomb exists) AND (bomb not carried) AND (bomb not at player):
+rem         dir = random(0..3)
+rem       target = MOVEMENT_TABLE[PLAYER_LOCATION][dir]
 
 rem --- PHASE_ON_ENTER actions (dynamic state) ---
 rem ACT_SET_BRIDGE_FATAL_AND_PATCH
@@ -301,9 +414,14 @@ rem   Writes: MOVEMENT_TABLE slot patches (see mapping above)
 rem
 rem ACT_BAT_CARRY
 rem   Writes:
-rem     - output carry message
+rem     - output carry message (TEXT_BAT_CARRIES_YOU)
 rem     - PLAYER_LOCATION = ROOM_BAT_CAVE
-rem     - mutate bat location (pseudo3 does OBJECT_LOCATION(5) += 7; preserve behavior in entity terms)
+rem     - mutate bat location (pseudo3 does OBJECT_LOCATION(5) += 7)
+rem       Suggested ENTITY_LOCATION[] meaning:
+rem         - let oldRoom = ENTITY_LOCATION[ENT_BAT]
+rem         - set ENTITY_LOCATION[ENT_BAT] = oldRoom + 7
+rem         - if result > ROOM_MAX, wrap to ROOM_BAT_CAVE (keeps within valid room ids)
+rem       Rationale: preserves the original “bat moves away” behavior without adding new state.
 rem
 rem ACT_NOOP
 rem   No effect
@@ -564,7 +682,7 @@ GUARD_NO_OBJECT_PARSED:
 
 GUARD_OBJECT_NOT_VISIBLE:
     DB G_FLAG_NE, FLAG_CURRENT_OBJECT, 0
-    DB 0x80 + G_ENT_VISIBLE, FLAG_CURRENT_OBJECT, 0
+    DB 0x80 + G_ENT_VISIBLE_CURRENT, FLAG_CURRENT_OBJECT, 0
     DB G_END, 0, 0
 
 rem --- Inventory verbs ---
@@ -770,6 +888,20 @@ rem  5) grill NOT at ROOM_TINY_CELL -> set FLAG_GATE_DESTINATION=39; patch
 rem  6) at ROOM_DRAWBRIDGE        -> set FLAG_DRAWBRIDGE_STATE=ROOM_DRAWBRIDGE; patch
 rem  7) otherwise                 -> no-op
 rem
+rem Note (legacy parity):
+rem   - WATER_EXIT_LOCATION is explicitly reset at ROOM_TEMPLE; we match that.
+rem   - In the legacy flow, DRAWBRIDGE_STATE, TELEPORT_DESTINATION, SECRET_EXIT_LOCATION are only set
+rem     and are not explicitly cleared.
+rem   - In the executable data-driven engine below, we *do* include clear-on-leave rules for:
+rem       - DRAWBRIDGE_STATE (clear when not at ROOM_DRAWBRIDGE)
+rem       - TELEPORT_DESTINATION (clear when not at ROOM_OAK_DOOR)
+rem       - SECRET_EXIT_LOCATION (clear when not at ROOM_CRYPT)
+rem     If you want strict legacy parity, remove those clear rules/actions.
+rem
+rem Set/clear ordering rule:
+rem   For any “set” action guarded by `G_AT room`, ensure it appears before the corresponding
+rem   “clear” action guarded by `NOT G_AT room`, otherwise the clear will win and the state
+rem   will never stick.
 rem ---------------------------------------------------------
 rem  Interpreter pseudocode (Appendix B semantics)
 rem ---------------------------------------------------------
@@ -801,6 +933,1094 @@ rem     else:
 rem       acc = acc OR res
 rem       if acc == TRUE: return TRUE
 rem
+rem =========================================================
+rem  Data-Driven Engine (executable pseudo)
+rem =========================================================
+
+rem This is the same game logic as the legacy appendix, but expressed as:
+rem   - flat state arrays
+rem   - phase-based rule evaluation
+rem   - fixed-arity guard lists
+rem   - action dispatch by action-id
+rem
+rem NOTE: This is “code” in the pseudo3 dialect. The legacy listing remains as a
+rem reference appendix only.
+
+
+rem ---------------------------------------------------------
+rem Constants (copied from legacy so this section is standalone)
+rem ---------------------------------------------------------
+
+ROOM_MAX = 54
+DIR_NORTH_STR=0: DIR_SOUTH_STR=1: DIR_WEST_STR=2: DIR_EAST_STR=3
+EXIT_NONE = 0
+EXIT_FATAL = 128
+
+rem Rooms 1..54
+ROOM_DARK_ROOM = 1
+ROOM_FOREST_CLEARING = 2
+ROOM_DARK_FOREST = 3
+ROOM_CLOVER_FIELD = 4
+ROOM_RIVER_CLIFF = 5
+ROOM_RIVER_BANK = 6
+ROOM_CRATER_EDGE = 7
+ROOM_RIVER_OUTCROP = 8
+ROOM_MT_YMIR_SLOPE = 9
+ROOM_BRIDGE_NORTH_ANCHOR = 10
+ROOM_BRIDGE_MID = 11
+ROOM_BRIDGE_SOUTH_ANCHOR = 12
+ROOM_MUSHROOM_ROCK = 13
+ROOM_CAVE_ENTRANCE_CLEARING = 14
+ROOM_CLIFF_FACE = 15
+ROOM_CAVE_ENTRY = 16
+ROOM_DEAD_END_INSCRIPTION = 17
+ROOM_DARK_CAVERN_A = 18
+ROOM_TREASURE_ROOM = 19
+ROOM_OAK_DOOR = 20
+ROOM_DARK_CAVERN_B = 21
+ROOM_WIND_CORRIDOR = 22
+ROOM_TORTURE_CHAMBER = 23
+ROOM_NORTH_SOUTH_TUNNEL = 24
+ROOM_DARK_CAVERN_C = 25
+ROOM_ROUND_ROOM = 26
+ROOM_LEDGE_OVER_RIVER = 27
+ROOM_TEMPLE_BALCONY = 28
+ROOM_DARK_CAVERN_D = 29
+ROOM_DARK_CAVERN_E = 30
+ROOM_DARK_CAVERN_F = 31
+ROOM_DARK_CAVERN_G = 32
+ROOM_BAT_CAVE = 33
+ROOM_DARK_CAVERN_H = 34
+ROOM_TEMPLE = 35
+ROOM_DARK_CAVERN_I = 36
+ROOM_CRYPT = 37
+ROOM_TINY_CELL = 38
+ROOM_DARK_CAVERN_J = 39
+ROOM_LEDGE_WATERFALL_IN = 40
+ROOM_DRAIN_A = 41
+ROOM_DRAIN_B = 42
+ROOM_DRAIN_C = 43
+ROOM_DRAIN_D = 44
+ROOM_WATERFALL_BASE = 45
+ROOM_DARK_CAVERN_K = 46
+ROOM_STONE_STAIRCASE = 47
+ROOM_CASTLE_LEDGE = 48
+ROOM_DRAWBRIDGE = 49
+ROOM_CASTLE_COURTYARD = 50
+ROOM_POWDER_MAG = 51
+ROOM_EAST_RIVERBANK = 52
+ROOM_WOODEN_BRIDGE = 53
+ROOM_RIVER_CONDUIT = 54
+
+rem Entities 1..24 (1–6 creatures, 7–24 objects)
+ENT_WIZARD=1: ENT_DEMON=2: ENT_TROLL=3: ENT_DRAGON=4: ENT_BAT=5: ENT_DWARF=6
+OBJ_BOMB=9: OBJ_KEY=19: OBJ_SWORD=20: OBJ_CANDLE=21: OBJ_ROPE=22: OBJ_GRILL=24
+
+ENT_LOC_CARRIED = 255
+ENT_LOC_REMOVED = 0
+
+PHASE_DESCRIBE=0: PHASE_ON_ENTER=1: PHASE_ON_COMMAND=2
+
+
+rem ---------------------------------------------------------
+rem Parser enums (byte values)
+rem ---------------------------------------------------------
+
+SPECIAL_NONE  = 0
+SPECIAL_LOOK  = 1
+SPECIAL_LIST  = 2
+SPECIAL_QUIT  = 3
+SPECIAL_GALAR = 4
+SPECIAL_APE   = 5
+
+VERB_NONE = 0
+VERB_GET  = 1
+VERB_DROP = 2
+VERB_USE  = 3
+
+
+rem ---------------------------------------------------------
+rem Runtime state
+rem ---------------------------------------------------------
+
+PLAYER_ALIVE = 1
+PLAYER_LOCATION = ROOM_DARK_ROOM
+TURN_COUNTER = 0
+dim ENTITY_LOCATION(24)
+dim FLAGS(64)
+
+NULL = 0
+
+rem Tables (reused from legacy DATA TABLES section later in this file)
+dim MOVEMENT_TABLE(ROOM_MAX,3)
+dim ROOM_DESC1_PTR(ROOM_MAX), ROOM_DESC2_PTR(ROOM_MAX)
+dim OBJECT_NAME_ADJ(24), OBJECT_NAME_NOUN(24)
+dim MONSTER_ADJ(6), MONSTER_NOUN(6)
+dim VERB_PATTERN(16)
+dim DIR_WORD_INDEX(4)
+dim OBJDESC1(24), OBJDESC2(24)
+
+FLAG_HOSTILE_CREATURE_INDEX = 0
+FLAG_CANDLE_LIT            = 1
+FLAG_HUT_VISITED           = 2
+FLAG_BRIDGE_CONDITION      = 10
+FLAG_DRAWBRIDGE_STATE      = 11
+FLAG_WATER_EXIT_LOCATION   = 12
+FLAG_GATE_DESTINATION      = 13
+FLAG_TELEPORT_DESTINATION  = 14
+FLAG_SECRET_EXIT_LOCATION  = 15
+FLAG_CURRENT_VERB          = 20
+FLAG_CURRENT_DIR           = 21
+FLAG_CURRENT_OBJECT        = 22
+FLAG_SPECIAL_WORD          = 23
+FLAG_VERB_PATTERN_INDEX    = 24
+FLAG_SWORD_SWING_COUNT     = 30
+FLAG_SCORE                 = 31
+FLAG_PLAYER_MOVED          = 40
+
+
+rem ---------------------------------------------------------
+rem Guard opcodes (subset)
+rem ---------------------------------------------------------
+
+G_END=0
+G_AND=1
+G_OR=2
+G_AT=3
+G_ROOM_LT=4
+G_FLAG_EQ=5
+G_FLAG_NE=6
+G_ENT_AT_ROOM=7
+G_ENT_AT_PLAYER=8
+G_ENT_CARRIED=9
+G_ENT_VISIBLE=10
+G_ENT_VISIBLE_CURRENT=11
+
+
+rem ---------------------------------------------------------
+rem Action IDs (dispatch since indirect GOSUB isn't available)
+rem ---------------------------------------------------------
+
+ACT_FORCE_REDESCRIBE = 1
+ACT_PRINT_INVENTORY = 2
+ACT_QUIT_AND_SCORE = 3
+ACT_TELEPORT_TO_CAVE_ENTRY = 4
+ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH = 5
+ACT_RESOLVE_MOVEMENT = 6
+ACT_PRINT_EH = 7
+ACT_PRINT_WHERE_I_CANT_SEE_IT = 8
+ACT_TRY_GET_CURRENT_OBJECT = 9
+ACT_DROP_CURRENT_OBJECT = 10
+ACT_PRINT_IT_WONT_OPEN = 11
+ACT_USE_KEY_FOREST = 12
+ACT_USE_KEY_TEMPLE = 13
+ACT_PRINT_NOTHING_TO_KILL = 14
+ACT_SWORD_COMBAT = 15
+ACT_USE_BOMB = 16
+ACT_PRINT_TOO_DANGEROUS = 17
+ACT_USE_ROPE = 18
+ACT_PRINT_PATTERN_RESPONSE = 19
+ACT_SET_BRIDGE_FATAL_AND_PATCH = 20
+ACT_SET_HUT_VISITED = 21
+ACT_ENABLE_WATER_EXIT_AND_PATCH = 22
+ACT_DISABLE_WATER_EXIT_AND_PATCH = 23
+ACT_SET_GATE_DEST_AND_PATCH = 24
+ACT_SET_DRAWBRIDGE_AND_PATCH = 25
+ACT_BAT_CARRY = 26
+ACT_NOOP = 27
+ACT_MONSTER_ATTACK_AND_KILL = 28
+ACT_DESCRIBE_LIT = 29
+ACT_DESCRIBE_DARK = 30
+ACT_CLEAR_GATE_DEST_AND_PATCH = 31
+ACT_CLEAR_DRAWBRIDGE_AND_PATCH = 32
+ACT_CLEAR_TELEPORT_DEST_AND_PATCH = 33
+ACT_CLEAR_SECRET_EXIT_AND_PATCH = 34
+
+
+rem ---------------------------------------------------------
+rem Rules and guards (tables)
+rem ---------------------------------------------------------
+
+RULE_COUNT = 0
+dim RULE_PHASE(128)
+dim RULE_GPTR(128)
+dim RULE_ACT(128)
+
+dim GUARD_DATA(2048)
+
+gosub BUILD_RULE_TABLE_SUB
+
+
+rem ---------------------------------------------------------
+rem Program entry (data-driven)
+rem ---------------------------------------------------------
+
+DATA_DRIVEN_START:
+    gosub INIT_STATE_SUB
+
+MAIN_LOOP:
+    if PLAYER_ALIVE = 0 then
+        gosub ACT_QUIT_AND_SCORE_SUB
+        end
+    end if
+
+    gosub READ_INPUT_AND_PARSE_SUB
+    gosub UPDATE_HOSTILE_SUB
+
+    CURRENT_PHASE = PHASE_ON_COMMAND
+    gosub RUN_PHASE_SUB
+
+    if FLAGS(FLAG_PLAYER_MOVED) = 1 then
+        FLAGS(FLAG_PLAYER_MOVED) = 0
+        CURRENT_PHASE = PHASE_ON_ENTER
+        gosub RUN_PHASE_SUB
+    end if
+
+    CURRENT_PHASE = PHASE_DESCRIBE
+    gosub RUN_PHASE_SUB
+
+    goto MAIN_LOOP
+
+
+rem ---------------------------------------------------------
+rem Interpreter (rule evaluation + fixed-arity guards)
+rem ---------------------------------------------------------
+
+RUN_PHASE_SUB:
+    for RULE_I = 0 to RULE_COUNT-1
+        if RULE_PHASE(RULE_I) <> CURRENT_PHASE then
+            goto NEXT_RULE
+        end if
+        GUARD_PTR = RULE_GPTR(RULE_I)
+        gosub EVAL_GUARDS_SUB
+        if GUARDS_PASS = 1 then
+            ACTION_ID = RULE_ACT(RULE_I)
+            gosub DISPATCH_ACTION_SUB
+            return
+        end if
+NEXT_RULE:
+    next RULE_I
+    return
+
+EVAL_GUARDS_SUB:
+    GUARDS_PASS = 0
+    BOOL_MODE = G_AND
+    ACC = 1
+EVAL_LOOP:
+    OPCODE = GUARD_DATA(GUARD_PTR): GUARD_PTR = GUARD_PTR + 1
+    OPA    = GUARD_DATA(GUARD_PTR): GUARD_PTR = GUARD_PTR + 1
+    OPB    = GUARD_DATA(GUARD_PTR): GUARD_PTR = GUARD_PTR + 1
+
+    if OPCODE = G_END then
+        GUARDS_PASS = ACC
+        return
+    end if
+    if OPCODE = G_AND then
+        BOOL_MODE = G_AND
+        goto EVAL_LOOP
+    end if
+    if OPCODE = G_OR then
+        BOOL_MODE = G_OR
+        goto EVAL_LOOP
+    end if
+
+    NOTBIT = 0
+    if OPCODE >= 128 then
+        NOTBIT = 1
+        OPCODE = OPCODE - 128
+    end if
+
+    gosub EVAL_ATOMIC_GUARD_SUB
+    RES = ATOMIC_RESULT
+    if NOTBIT = 1 then
+        if RES = 1 then RES = 0 else RES = 1
+    end if
+
+    if BOOL_MODE = G_AND then
+        if ACC = 1 and RES = 1 then
+            ACC = 1
+        else
+            GUARDS_PASS = 0
+            return
+        end if
+    else
+        if ACC = 1 or RES = 1 then
+            GUARDS_PASS = 1
+            return
+        end if
+    end if
+
+    goto EVAL_LOOP
+
+EVAL_ATOMIC_GUARD_SUB:
+    ATOMIC_RESULT = 0
+    if OPCODE = G_AT then
+        if PLAYER_LOCATION = OPA then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ROOM_LT then
+        if PLAYER_LOCATION < OPA then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_FLAG_EQ then
+        if FLAGS(OPA) = OPB then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_FLAG_NE then
+        if FLAGS(OPA) <> OPB then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ENT_AT_ROOM then
+        if ENTITY_LOCATION(OPA) = OPB then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ENT_AT_PLAYER then
+        if ENTITY_LOCATION(OPA) = PLAYER_LOCATION then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ENT_CARRIED then
+        if ENTITY_LOCATION(OPA) = ENT_LOC_CARRIED then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ENT_VISIBLE then
+        if ENTITY_LOCATION(OPA) = ENT_LOC_CARRIED or ENTITY_LOCATION(OPA) = PLAYER_LOCATION then ATOMIC_RESULT = 1
+        return
+    end if
+    if OPCODE = G_ENT_VISIBLE_CURRENT then
+        ENT = FLAGS(OPA)
+        if ENT <> 0 then
+            if ENTITY_LOCATION(ENT) = ENT_LOC_CARRIED or ENTITY_LOCATION(ENT) = PLAYER_LOCATION then ATOMIC_RESULT = 1
+        end if
+        return
+    end if
+    return
+
+
+DISPATCH_ACTION_SUB:
+    select case ACTION_ID
+        case ACT_FORCE_REDESCRIBE: gosub ACT_FORCE_REDESCRIBE_SUB
+        case ACT_PRINT_INVENTORY: gosub ACT_PRINT_INVENTORY_SUB
+        case ACT_QUIT_AND_SCORE: gosub ACT_QUIT_AND_SCORE_SUB
+        case ACT_TELEPORT_TO_CAVE_ENTRY: gosub ACT_TELEPORT_TO_CAVE_ENTRY_SUB
+        case ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH: gosub ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH_SUB
+        case ACT_RESOLVE_MOVEMENT: gosub ACT_RESOLVE_MOVEMENT_SUB
+        case ACT_PRINT_EH: gosub ACT_PRINT_EH_SUB
+        case ACT_PRINT_WHERE_I_CANT_SEE_IT: gosub ACT_PRINT_WHERE_I_CANT_SEE_IT_SUB
+        case ACT_TRY_GET_CURRENT_OBJECT: gosub ACT_TRY_GET_CURRENT_OBJECT_SUB
+        case ACT_DROP_CURRENT_OBJECT: gosub ACT_DROP_CURRENT_OBJECT_SUB
+        case ACT_PRINT_IT_WONT_OPEN: gosub ACT_PRINT_IT_WONT_OPEN_SUB
+        case ACT_USE_KEY_FOREST: gosub ACT_USE_KEY_FOREST_SUB
+        case ACT_USE_KEY_TEMPLE: gosub ACT_USE_KEY_TEMPLE_SUB
+        case ACT_PRINT_NOTHING_TO_KILL: gosub ACT_PRINT_NOTHING_TO_KILL_SUB
+        case ACT_SWORD_COMBAT: gosub ACT_SWORD_COMBAT_SUB
+        case ACT_USE_BOMB: gosub ACT_USE_BOMB_SUB
+        case ACT_PRINT_TOO_DANGEROUS: gosub ACT_PRINT_TOO_DANGEROUS_SUB
+        case ACT_USE_ROPE: gosub ACT_USE_ROPE_SUB
+        case ACT_PRINT_PATTERN_RESPONSE: gosub ACT_PRINT_PATTERN_RESPONSE_SUB
+        case ACT_SET_BRIDGE_FATAL_AND_PATCH: gosub ACT_SET_BRIDGE_FATAL_AND_PATCH_SUB
+        case ACT_SET_HUT_VISITED: gosub ACT_SET_HUT_VISITED_SUB
+        case ACT_ENABLE_WATER_EXIT_AND_PATCH: gosub ACT_ENABLE_WATER_EXIT_AND_PATCH_SUB
+        case ACT_DISABLE_WATER_EXIT_AND_PATCH: gosub ACT_DISABLE_WATER_EXIT_AND_PATCH_SUB
+        case ACT_SET_GATE_DEST_AND_PATCH: gosub ACT_SET_GATE_DEST_AND_PATCH_SUB
+        case ACT_CLEAR_GATE_DEST_AND_PATCH: gosub ACT_CLEAR_GATE_DEST_AND_PATCH_SUB
+        case ACT_SET_DRAWBRIDGE_AND_PATCH: gosub ACT_SET_DRAWBRIDGE_AND_PATCH_SUB
+        case ACT_CLEAR_DRAWBRIDGE_AND_PATCH: gosub ACT_CLEAR_DRAWBRIDGE_AND_PATCH_SUB
+        case ACT_CLEAR_TELEPORT_DEST_AND_PATCH: gosub ACT_CLEAR_TELEPORT_DEST_AND_PATCH_SUB
+        case ACT_CLEAR_SECRET_EXIT_AND_PATCH: gosub ACT_CLEAR_SECRET_EXIT_AND_PATCH_SUB
+        case ACT_BAT_CARRY: gosub ACT_BAT_CARRY_SUB
+        case ACT_NOOP: gosub ACT_NOOP_SUB
+        case ACT_MONSTER_ATTACK_AND_KILL: gosub ACT_MONSTER_ATTACK_AND_KILL_SUB
+        case ACT_DESCRIBE_LIT: gosub ACT_DESCRIBE_LIT_SUB
+        case ACT_DESCRIBE_DARK: gosub ACT_DESCRIBE_DARK_SUB
+    end select
+    return
+
+
+rem ---------------------------------------------------------
+rem Build tables
+rem ---------------------------------------------------------
+
+ADD_RULE_SUB:
+    RULE_PHASE(RULE_COUNT) = RULE_PHASE_TMP
+    RULE_GPTR(RULE_COUNT)  = RULE_GPTR_TMP
+    RULE_ACT(RULE_COUNT)   = RULE_ACT_TMP
+    RULE_COUNT = RULE_COUNT + 1
+    return
+
+BUILD_RULE_TABLE_SUB:
+    gosub BUILD_GUARDS_SUB
+
+    rem PHASE_ON_COMMAND
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_SPECIAL_LOOK: RULE_ACT_TMP=ACT_FORCE_REDESCRIBE: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_SPECIAL_LIST: RULE_ACT_TMP=ACT_PRINT_INVENTORY: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_SPECIAL_QUIT: RULE_ACT_TMP=ACT_QUIT_AND_SCORE: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_SPECIAL_GALAR: RULE_ACT_TMP=ACT_TELEPORT_TO_CAVE_ENTRY: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_SPECIAL_APE: RULE_ACT_TMP=ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_HAS_DIR: RULE_ACT_TMP=ACT_RESOLVE_MOVEMENT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_NO_OBJECT: RULE_ACT_TMP=ACT_PRINT_EH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_OBJ_NOT_VISIBLE: RULE_ACT_TMP=ACT_PRINT_WHERE_I_CANT_SEE_IT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_VERB_GET: RULE_ACT_TMP=ACT_TRY_GET_CURRENT_OBJECT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_VERB_DROP: RULE_ACT_TMP=ACT_DROP_CURRENT_OBJECT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_KEY_BAD: RULE_ACT_TMP=ACT_PRINT_IT_WONT_OPEN: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_KEY_FOREST: RULE_ACT_TMP=ACT_USE_KEY_FOREST: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_KEY_TEMPLE: RULE_ACT_TMP=ACT_USE_KEY_TEMPLE: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_SWORD_NOHOST: RULE_ACT_TMP=ACT_PRINT_NOTHING_TO_KILL: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_SWORD_HOST: RULE_ACT_TMP=ACT_SWORD_COMBAT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_BOMB: RULE_ACT_TMP=ACT_USE_BOMB: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_ROPE_BAD: RULE_ACT_TMP=ACT_PRINT_TOO_DANGEROUS: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_USE_ROPE_OK: RULE_ACT_TMP=ACT_USE_ROPE: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_PATTERN_RESP: RULE_ACT_TMP=ACT_PRINT_PATTERN_RESPONSE: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_COMMAND: RULE_GPTR_TMP=GP_ALWAYS: RULE_ACT_TMP=ACT_PRINT_EH: gosub ADD_RULE_SUB
+
+    rem PHASE_ON_ENTER
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_BRIDGE_MID: RULE_ACT_TMP=ACT_SET_BRIDGE_FATAL_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_FOREST_CLEARING: RULE_ACT_TMP=ACT_SET_HUT_VISITED: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_WATERFALL_BASE: RULE_ACT_TMP=ACT_ENABLE_WATER_EXIT_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_TEMPLE: RULE_ACT_TMP=ACT_DISABLE_WATER_EXIT_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_GRILL_NOT_TINY: RULE_ACT_TMP=ACT_SET_GATE_DEST_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_GRILL_IN_TINY: RULE_ACT_TMP=ACT_CLEAR_GATE_DEST_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_DRAWBRIDGE: RULE_ACT_TMP=ACT_SET_DRAWBRIDGE_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_NOT_AT_DRAWBRIDGE: RULE_ACT_TMP=ACT_CLEAR_DRAWBRIDGE_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_OAK_DOOR: RULE_ACT_TMP=ACT_NOOP: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_NOT_AT_OAK_DOOR: RULE_ACT_TMP=ACT_CLEAR_TELEPORT_DEST_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_AT_CRYPT: RULE_ACT_TMP=ACT_NOOP: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_NOT_AT_CRYPT: RULE_ACT_TMP=ACT_CLEAR_SECRET_EXIT_AND_PATCH: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_BAT_PRESENT: RULE_ACT_TMP=ACT_BAT_CARRY: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_ON_ENTER: RULE_GPTR_TMP=GP_ALWAYS: RULE_ACT_TMP=ACT_NOOP: gosub ADD_RULE_SUB
+
+    rem PHASE_DESCRIBE
+    RULE_PHASE_TMP=PHASE_DESCRIBE: RULE_GPTR_TMP=GP_HOSTILE_ATTACK: RULE_ACT_TMP=ACT_MONSTER_ATTACK_AND_KILL: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_DESCRIBE: RULE_GPTR_TMP=GP_BRIGHT_ROOM: RULE_ACT_TMP=ACT_DESCRIBE_LIT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_DESCRIBE: RULE_GPTR_TMP=GP_BRIGHT_CANDLE: RULE_ACT_TMP=ACT_DESCRIBE_LIT: gosub ADD_RULE_SUB
+    RULE_PHASE_TMP=PHASE_DESCRIBE: RULE_GPTR_TMP=GP_ALWAYS: RULE_ACT_TMP=ACT_DESCRIBE_DARK: gosub ADD_RULE_SUB
+    return
+
+BUILD_GUARDS_SUB:
+    GD = 0
+
+    GP_ALWAYS = GD: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_SPECIAL_LOOK = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_SPECIAL_WORD:GUARD_DATA(GD+2)=SPECIAL_LOOK: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_SPECIAL_LIST = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_SPECIAL_WORD:GUARD_DATA(GD+2)=SPECIAL_LIST: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_SPECIAL_QUIT = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_SPECIAL_WORD:GUARD_DATA(GD+2)=SPECIAL_QUIT: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_SPECIAL_GALAR = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_SPECIAL_WORD:GUARD_DATA(GD+2)=SPECIAL_GALAR: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_SPECIAL_APE = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_SPECIAL_WORD:GUARD_DATA(GD+2)=SPECIAL_APE: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_HAS_DIR = GD: GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_CURRENT_DIR:GUARD_DATA(GD+2)=255: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_NO_OBJECT = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_OBJ_NOT_VISIBLE = GD: GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=128+G_ENT_VISIBLE_CURRENT:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_VERB_GET = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_GET: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_VERB_DROP = GD: GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_DROP: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_KEY_BAD = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_KEY: GD=GD+3
+    GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_FOREST_CLEARING:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_TEMPLE:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_KEY_FOREST = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_KEY: GD=GD+3
+    GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_FOREST_CLEARING:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_KEY_TEMPLE = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_KEY: GD=GD+3
+    GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_TEMPLE:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_SWORD_NOHOST = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_SWORD: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_HOSTILE_CREATURE_INDEX:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_SWORD_HOST = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_SWORD: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_HOSTILE_CREATURE_INDEX:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_BOMB = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_CANDLE: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_ROPE_BAD = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_ROPE: GD=GD+3
+    GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_TEMPLE_BALCONY:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_USE_ROPE_OK = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_USE: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_ROPE: GD=GD+3
+    GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_TEMPLE_BALCONY:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_PATTERN_RESP = GD
+    GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_VERB_PATTERN_INDEX:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CURRENT_VERB:GUARD_DATA(GD+2)=VERB_NONE: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_AT_BRIDGE_MID = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_BRIDGE_MID:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_FOREST_CLEARING = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_FOREST_CLEARING:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_WATERFALL_BASE = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_WATERFALL_BASE:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_TEMPLE = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_TEMPLE:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_DRAWBRIDGE = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_DRAWBRIDGE:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_NOT_AT_DRAWBRIDGE = GD: GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_DRAWBRIDGE:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_OAK_DOOR = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_OAK_DOOR:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_NOT_AT_OAK_DOOR = GD: GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_OAK_DOOR:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_AT_CRYPT = GD: GUARD_DATA(GD)=G_AT:GUARD_DATA(GD+1)=ROOM_CRYPT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_NOT_AT_CRYPT = GD: GUARD_DATA(GD)=128+G_AT:GUARD_DATA(GD+1)=ROOM_CRYPT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_GRILL_NOT_TINY = GD: GUARD_DATA(GD)=128+G_ENT_AT_ROOM:GUARD_DATA(GD+1)=OBJ_GRILL:GUARD_DATA(GD+2)=ROOM_TINY_CELL: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_GRILL_IN_TINY = GD: GUARD_DATA(GD)=G_ENT_AT_ROOM:GUARD_DATA(GD+1)=OBJ_GRILL:GUARD_DATA(GD+2)=ROOM_TINY_CELL: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_BAT_PRESENT = GD: GUARD_DATA(GD)=G_ENT_AT_PLAYER:GUARD_DATA(GD+1)=ENT_BAT:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_HOSTILE_ATTACK = GD
+    GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_HOSTILE_CREATURE_INDEX:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_HOSTILE_CREATURE_INDEX:GUARD_DATA(GD+2)=ENT_BAT: GD=GD+3
+    GUARD_DATA(GD)=G_FLAG_NE:GUARD_DATA(GD+1)=FLAG_CURRENT_OBJECT:GUARD_DATA(GD+2)=OBJ_SWORD: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+
+    GP_BRIGHT_ROOM = GD: GUARD_DATA(GD)=G_ROOM_LT:GUARD_DATA(GD+1)=ROOM_DARK_CAVERN_A:GUARD_DATA(GD+2)=0: GD=GD+3: GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    GP_BRIGHT_CANDLE = GD
+    GUARD_DATA(GD)=G_FLAG_EQ:GUARD_DATA(GD+1)=FLAG_CANDLE_LIT:GUARD_DATA(GD+2)=1: GD=GD+3
+    GUARD_DATA(GD)=G_ENT_VISIBLE:GUARD_DATA(GD+1)=OBJ_CANDLE:GUARD_DATA(GD+2)=0: GD=GD+3
+    GUARD_DATA(GD)=G_END:GUARD_DATA(GD+1)=0:GUARD_DATA(GD+2)=0: GD=GD+3
+    return
+
+
+rem ---------------------------------------------------------
+rem Action implementations (stubs)
+rem ---------------------------------------------------------
+rem These are intentionally minimal here; the conversion work is in the tables+guards.
+
+INIT_STATE_SUB:
+    rem Load static tables from DATA TABLES section
+    MOVEMENT_TABLE = MOVEMENT_TABLE_DATA
+    ROOM_DESC1_PTR = ROOM_DESC1_PTR
+    ROOM_DESC2_PTR = ROOM_DESC2_PTR
+    OBJECT_NAME_ADJ = OBJECT_NAME_ADJ_DATA
+    OBJECT_NAME_NOUN = OBJECT_NAME_NOUN_DATA
+    MONSTER_ADJ = MONSTER_ADJ_DATA
+    MONSTER_NOUN = MONSTER_NOUN_DATA
+    VERB_PATTERN = VERB_PATTERN_DATA
+    DIR_WORD_INDEX = DIR_WORD_INDEX_DATA
+    OBJDESC1 = OBJDESC1_DATA
+    OBJDESC2 = OBJDESC2_DATA
+
+    rem Initialize entity locations from legacy object table
+    ENTITY_LOCATION = OBJECT_LOCATION_DATA
+
+    PLAYER_ALIVE = 1
+    PLAYER_LOCATION = ROOM_DARK_ROOM
+    TURN_COUNTER = 0
+    FLAGS(FLAG_PLAYER_MOVED) = 0
+
+    rem Dynamic exit state (matches legacy initial values)
+    FLAGS(FLAG_BRIDGE_CONDITION) = ROOM_BRIDGE_MID
+    FLAGS(FLAG_DRAWBRIDGE_STATE) = EXIT_FATAL
+    FLAGS(FLAG_WATER_EXIT_LOCATION) = 0
+    FLAGS(FLAG_GATE_DESTINATION) = 0
+    FLAGS(FLAG_TELEPORT_DESTINATION) = 0
+    FLAGS(FLAG_SECRET_EXIT_LOCATION) = 0
+
+    FLAGS(FLAG_HUT_VISITED) = 0
+    FLAGS(FLAG_HOSTILE_CREATURE_INDEX) = 0
+    FLAGS(FLAG_CANDLE_LIT) = 1
+    FLAGS(FLAG_SWORD_SWING_COUNT) = 0
+    FLAGS(FLAG_SCORE) = 0
+
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+READ_INPUT_AND_PARSE_SUB:
+    input INPUT_COMMAND$
+    if INPUT_COMMAND$ = "" then
+        goto READ_INPUT_AND_PARSE_SUB
+    end if
+
+    INPUT_COMMAND$ = " " + INPUT_COMMAND$ + " "
+    TURN_COUNTER = TURN_COUNTER + 1
+
+    gosub NORMALIZE_INPUT_SUB
+
+    FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_NONE
+    FLAGS(FLAG_CURRENT_VERB) = VERB_NONE
+    FLAGS(FLAG_CURRENT_DIR) = 255
+    FLAGS(FLAG_CURRENT_OBJECT) = 0
+    FLAGS(FLAG_VERB_PATTERN_INDEX) = 0
+
+    rem Special tokens
+    if INSTR(INPUT_COMMAND$, " look ") > 0 then FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_LOOK
+    if INSTR(INPUT_COMMAND$, " list ") > 0 then FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_LIST
+    if INSTR(INPUT_COMMAND$, " quit ") > 0 then FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_QUIT
+    if INSTR(INPUT_COMMAND$, " galar ") > 0 then FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_GALAR
+    if INSTR(INPUT_COMMAND$, " ape ") > 0 then FLAGS(FLAG_SPECIAL_WORD) = SPECIAL_APE
+
+    rem Direct verb tokens (preferred when present)
+    if INSTR(INPUT_COMMAND$, " get ") > 0 then FLAGS(FLAG_CURRENT_VERB) = VERB_GET
+    if INSTR(INPUT_COMMAND$, " drop ") > 0 then FLAGS(FLAG_CURRENT_VERB) = VERB_DROP
+    if INSTR(INPUT_COMMAND$, " use ") > 0 then FLAGS(FLAG_CURRENT_VERB) = VERB_USE
+
+    rem Direction parsing (first match wins)
+    for DIRECTION_INDEX = 0 to 3
+        if INSTR(INPUT_COMMAND$, @DIR_WORD_INDEX(DIRECTION_INDEX+1)) > 0 then
+            FLAGS(FLAG_CURRENT_DIR) = DIRECTION_INDEX
+            EXIT for
+        end if
+    next DIRECTION_INDEX
+
+    rem Verb patterns: normalize a few to verbs, keep legacy index for the rest
+    for VERB_PATTERN_INDEX = 1 to 16
+        if INSTR(INPUT_COMMAND$, @VERB_PATTERN(VERB_PATTERN_INDEX)) > 0 then
+            FLAGS(FLAG_VERB_PATTERN_INDEX) = VERB_PATTERN_INDEX
+            if FLAGS(FLAG_CURRENT_VERB) = VERB_NONE then
+                select case VERB_PATTERN_INDEX
+                    case 1
+                        FLAGS(FLAG_CURRENT_VERB) = VERB_GET
+                    case 2
+                        FLAGS(FLAG_CURRENT_VERB) = VERB_DROP
+                    case 3,4
+                        FLAGS(FLAG_CURRENT_VERB) = VERB_USE
+                end select
+            end if
+            EXIT for
+        end if
+    next VERB_PATTERN_INDEX
+
+    rem Object noun parsing (7..24)
+    for LOOP_INDEX = 7 to 24
+        OBJECT_NOUN$ = @OBJECT_NAME_NOUN(LOOP_INDEX)
+        if INSTR(INPUT_COMMAND$, OBJECT_NOUN$) > 0 then
+            FLAGS(FLAG_CURRENT_OBJECT) = LOOP_INDEX
+            EXIT for
+        end if
+    next LOOP_INDEX
+
+    return
+
+UPDATE_HOSTILE_SUB:
+    FLAGS(FLAG_HOSTILE_CREATURE_INDEX) = 0
+    for I=1 to 6
+        if ENTITY_LOCATION(I) = PLAYER_LOCATION then
+            FLAGS(FLAG_HOSTILE_CREATURE_INDEX) = I
+            return
+        end if
+    next I
+    return
+
+ACT_NOOP_SUB: return
+ACT_FORCE_REDESCRIBE_SUB:
+    rem No-op: main loop always runs PHASE_DESCRIBE after command
+    return
+
+ACT_PRINT_EH_SUB:
+    print "eh?"
+    return
+
+ACT_PRINT_WHERE_I_CANT_SEE_IT_SUB:
+    print "Where? I can't see it."
+    return
+
+ACT_PRINT_TOO_DANGEROUS_SUB:
+    print "It's too dangerous!!!"
+    return
+
+ACT_PRINT_IT_WONT_OPEN_SUB:
+    print "It won't open!"
+    return
+
+ACT_PRINT_NOTHING_TO_KILL_SUB:
+    print "But there's nothing to kill..."
+    return
+
+ACT_PRINT_PATTERN_RESPONSE_SUB:
+    select case FLAGS(FLAG_VERB_PATTERN_INDEX)
+        case 5,6
+            print "Nothing happens!"
+        case 7 to 12
+            print "Please tell me how."
+        case else
+            print "I can't!"
+    end select
+    return
+
+ACT_PRINT_INVENTORY_SUB:
+    print "You are carrying ";
+    CARRIED_COUNT = 0
+    for LOOP_INDEX = 7 to 24
+        if ENTITY_LOCATION(LOOP_INDEX) = ENT_LOC_CARRIED then
+            CARRIED_COUNT = CARRIED_COUNT + 1
+        end if
+    next LOOP_INDEX
+    if CARRIED_COUNT = 0 then
+        print "nothing."
+        return
+    end if
+    print
+    for LOOP_INDEX = 7 to 24
+        if ENTITY_LOCATION(LOOP_INDEX) = ENT_LOC_CARRIED then
+            CURRENT_OBJECT_INDEX = LOOP_INDEX
+            gosub PRINT_OBJECT_DESCRIPTION_SUB
+        end if
+    next LOOP_INDEX
+    return
+
+ACT_QUIT_AND_SCORE_SUB:
+    SCORE = 0
+    for LOOP_INDEX = 7 to 17
+        if ENTITY_LOCATION(LOOP_INDEX) = ENT_LOC_CARRIED then
+            SCORE = SCORE + LOOP_INDEX - 6
+        end if
+        if ENTITY_LOCATION(LOOP_INDEX) = 1 then
+            SCORE = SCORE + (LOOP_INDEX - 6) * 2
+        end if
+    next LOOP_INDEX
+    FLAGS(FLAG_SCORE) = SCORE
+    print
+    print "You have a score of"; SCORE; " out of a possible 126 points in"; TURN_COUNTER; " moves."
+    gosub PRINT_RANKING_SUB
+    print "Another adventure? ";
+    PLAYER_ALIVE = 0
+    return
+
+ACT_TELEPORT_TO_CAVE_ENTRY_SUB:
+    print "Suddenly a magic wind carried you to another place..."
+    PLAYER_LOCATION = ROOM_CAVE_ENTRY
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_OPEN_CRYPT_SECRET_EXIT_AND_PATCH_SUB:
+    print "Hey! the eastern wall of the crypt slid open..."
+    FLAGS(FLAG_SECRET_EXIT_LOCATION) = ROOM_TINY_CELL
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_TRY_GET_CURRENT_OBJECT_SUB:
+    OBJ = FLAGS(FLAG_CURRENT_OBJECT)
+    CARRIED_COUNT = 0
+    for LOOP_INDEX = 7 to 24
+        if ENTITY_LOCATION(LOOP_INDEX) = ENT_LOC_CARRIED then
+            CARRIED_COUNT = CARRIED_COUNT + 1
+        end if
+    next LOOP_INDEX
+    if CARRIED_COUNT > 10 then
+        print "You are carrying too many objects."
+        return
+    end if
+    ENTITY_LOCATION(OBJ) = ENT_LOC_CARRIED
+    return
+
+ACT_DROP_CURRENT_OBJECT_SUB:
+    OBJ = FLAGS(FLAG_CURRENT_OBJECT)
+    ENTITY_LOCATION(OBJ) = PLAYER_LOCATION
+    return
+
+ACT_USE_KEY_FOREST_SUB:
+    print "You opened the door."
+    ENTITY_LOCATION(OBJ_KEY) = PLAYER_LOCATION
+    PLAYER_LOCATION = ROOM_DARK_ROOM
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_USE_KEY_TEMPLE_SUB:
+    print "You opened the door."
+    ENTITY_LOCATION(OBJ_KEY) = PLAYER_LOCATION
+    PLAYER_LOCATION = ROOM_CRYPT
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_USE_ROPE_SUB:
+    print "You descend the rope, but it drops 10 feet short of the floor. You jump the rest of the way."
+    ENTITY_LOCATION(OBJ_ROPE) = PLAYER_LOCATION
+    PLAYER_LOCATION = ROOM_TEMPLE
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_USE_BOMB_SUB:
+    if ENTITY_LOCATION(OBJ_BOMB) <> ENT_LOC_CARRIED and ENTITY_LOCATION(OBJ_BOMB) <> PLAYER_LOCATION then
+        print "That won't burn, Dummy...In fact, the candle went out."
+        FLAGS(FLAG_CANDLE_LIT) = 0
+        return
+    end if
+    if FLAGS(FLAG_CANDLE_LIT) <> 1 then
+        print "But the candle is out, stupid!!"
+        return
+    end if
+    print "The fuse burnt away and....BOOM!!....the explosion blew you out of the way (Lucky!)"
+    if PLAYER_LOCATION > ROOM_DARK_ROOM then
+        PLAYER_LOCATION = PLAYER_LOCATION - 1
+        if PLAYER_LOCATION = ROOM_OAK_DOOR then
+            FLAGS(FLAG_TELEPORT_DESTINATION) = ROOM_TREASURE_ROOM
+            gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+        end if
+    end if
+    ENTITY_LOCATION(OBJ_BOMB) = ENT_LOC_REMOVED
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_SWORD_COMBAT_SUB:
+    HOSTILE = FLAGS(FLAG_HOSTILE_CREATURE_INDEX)
+    if HOSTILE = 0 then
+        print "But there's nothing to kill..."
+        return
+    end if
+
+    FLAGS(FLAG_SWORD_SWING_COUNT) = FLAGS(FLAG_SWORD_SWING_COUNT) + 1
+
+    if RND * 7 + 15 <= FLAGS(FLAG_SWORD_SWING_COUNT) then
+        print "You swing with your sword but miss and the creature smashes your skull."
+        PLAYER_ALIVE = 0
+        return
+    end if
+
+    if RND < .38 then
+        goto SWORD_KILLS_TARGET_DD
+    end if
+
+    if HOSTILE = ENT_BAT then
+        gosub ACT_BAT_CARRY_SUB
+        return
+    end if
+
+    RANDOM_FIGHT_MESSAGE = INT(RND * 4)
+    select case RANDOM_FIGHT_MESSAGE
+        case 0
+            print "You attack but the creature moves aside."
+        case 1
+            print "The creature deflects your blow."
+        case 2
+            print "The foe is stunned but quickly regains his balance."
+        case 3
+            print "You missed and he deals a blow to your head."
+    end select
+    return
+
+SWORD_KILLS_TARGET_DD:
+    print "The sword strikes home and your foe dies..."
+
+    rem NOTE: the legacy sets OBJECT_LOCATION(CURRENT_OBJECT_INDEX) = -1 here, but that
+    rem variable was overloaded across loops and isn't meaningful in this action.
+    rem The data-driven action only updates the hostile creature and prints text.
+
+    rem Creature removal logic (legacy uses 0 or "+10" for troll/bat)
+    if HOSTILE = ENT_TROLL or HOSTILE = ENT_BAT then
+        ENTITY_LOCATION(HOSTILE) = ENTITY_LOCATION(HOSTILE) + 10
+    else
+        ENTITY_LOCATION(HOSTILE) = ENT_LOC_REMOVED
+        if HOSTILE = ENT_WIZARD then
+            print "Hey! Your sword has just crumbled into dust!!"
+            ENTITY_LOCATION(OBJ_SWORD) = ROOM_TEMPLE
+        end if
+    end if
+
+    if HOSTILE <> ENT_DRAGON then
+        print "Suddenly a black cloud descends and the corpse vaporizes into nothing."
+    end if
+
+    FLAGS(FLAG_HOSTILE_CREATURE_INDEX) = 0
+    return
+
+ACT_RESOLVE_MOVEMENT_SUB:
+    DIR = FLAGS(FLAG_CURRENT_DIR)
+    rem Suggested fix: only randomize dir under bomb condition (preserve typed dir otherwise)
+    if ENTITY_LOCATION(OBJ_BOMB) <> ENT_LOC_CARRIED and ENTITY_LOCATION(OBJ_BOMB) <> PLAYER_LOCATION and ENTITY_LOCATION(OBJ_BOMB) <> ENT_LOC_REMOVED then
+        DIR = INT(RND * 4)
+    end if
+
+    TARGET = MOVEMENT_TABLE(PLAYER_LOCATION, DIR)
+    if TARGET = EXIT_NONE then
+        print "You can't go that way"
+        return
+    end if
+    if TARGET = EXIT_FATAL then
+        print "You stumble and fall into the chasm and smash yourself to a pulp on the rocks below."
+        PLAYER_ALIVE = 0
+        return
+    end if
+    if TARGET > 0 then
+        PLAYER_LOCATION = TARGET
+        FLAGS(FLAG_PLAYER_MOVED) = 1
+    end if
+    return
+
+ACT_SET_BRIDGE_FATAL_AND_PATCH_SUB:
+    if FLAGS(FLAG_BRIDGE_CONDITION) <> EXIT_FATAL then
+        FLAGS(FLAG_BRIDGE_CONDITION) = EXIT_FATAL
+        gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    end if
+    return
+
+ACT_SET_HUT_VISITED_SUB:
+    FLAGS(FLAG_HUT_VISITED) = 1
+    return
+
+ACT_ENABLE_WATER_EXIT_AND_PATCH_SUB:
+    FLAGS(FLAG_WATER_EXIT_LOCATION) = ROOM_DRAIN_C
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_DISABLE_WATER_EXIT_AND_PATCH_SUB:
+    FLAGS(FLAG_WATER_EXIT_LOCATION) = 0
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_SET_GATE_DEST_AND_PATCH_SUB:
+    FLAGS(FLAG_GATE_DESTINATION) = ROOM_DARK_CAVERN_J
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_CLEAR_GATE_DEST_AND_PATCH_SUB:
+    FLAGS(FLAG_GATE_DESTINATION) = 0
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_SET_DRAWBRIDGE_AND_PATCH_SUB:
+    FLAGS(FLAG_DRAWBRIDGE_STATE) = ROOM_DRAWBRIDGE
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_CLEAR_DRAWBRIDGE_AND_PATCH_SUB:
+    FLAGS(FLAG_DRAWBRIDGE_STATE) = EXIT_FATAL
+    gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    return
+
+ACT_CLEAR_TELEPORT_DEST_AND_PATCH_SUB:
+    if FLAGS(FLAG_TELEPORT_DESTINATION) <> 0 then
+        FLAGS(FLAG_TELEPORT_DESTINATION) = 0
+        gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    end if
+    return
+
+ACT_CLEAR_SECRET_EXIT_AND_PATCH_SUB:
+    if FLAGS(FLAG_SECRET_EXIT_LOCATION) <> 0 then
+        FLAGS(FLAG_SECRET_EXIT_LOCATION) = 0
+        gosub ACT_PATCH_DYNAMIC_EXITS_SUB
+    end if
+    return
+
+ACT_PATCH_DYNAMIC_EXITS_SUB:
+    MOVEMENT_TABLE(ROOM_BRIDGE_NORTH_ANCHOR,DIR_SOUTH_STR) = FLAGS(FLAG_BRIDGE_CONDITION)
+    MOVEMENT_TABLE(ROOM_BRIDGE_SOUTH_ANCHOR,DIR_NORTH_STR) = FLAGS(FLAG_BRIDGE_CONDITION)
+    MOVEMENT_TABLE(ROOM_OAK_DOOR,DIR_EAST_STR) = FLAGS(FLAG_TELEPORT_DESTINATION)
+    MOVEMENT_TABLE(ROOM_CRYPT,DIR_EAST_STR) = FLAGS(FLAG_SECRET_EXIT_LOCATION)
+    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_NORTH_STR) = FLAGS(FLAG_WATER_EXIT_LOCATION)
+    MOVEMENT_TABLE(ROOM_TINY_CELL,DIR_EAST_STR) = FLAGS(FLAG_GATE_DESTINATION)
+    MOVEMENT_TABLE(ROOM_CASTLE_LEDGE,DIR_EAST_STR) = FLAGS(FLAG_DRAWBRIDGE_STATE)
+    return
+
+ACT_BAT_CARRY_SUB:
+    print "The giant bat picked you up and carried you to another place."
+    OLDROOM = ENTITY_LOCATION(ENT_BAT)
+    ENTITY_LOCATION(ENT_BAT) = OLDROOM + 7
+    if ENTITY_LOCATION(ENT_BAT) > ROOM_MAX then
+        ENTITY_LOCATION(ENT_BAT) = ROOM_BAT_CAVE
+    end if
+    PLAYER_LOCATION = ROOM_BAT_CAVE
+    FLAGS(FLAG_PLAYER_MOVED) = 1
+    return
+
+ACT_MONSTER_ATTACK_AND_KILL_SUB:
+    MONSTER_ADJECTIVE$ = @MONSTER_ADJ(FLAGS(FLAG_HOSTILE_CREATURE_INDEX))
+    MONSTER_NOUN$ = @MONSTER_NOUN(FLAGS(FLAG_HOSTILE_CREATURE_INDEX))
+    print "AUUUUUGH...you've just been killed by a"; MONSTER_ADJECTIVE$; MONSTER_NOUN$; "!!"
+    PLAYER_ALIVE = 0
+    return
+
+ACT_DESCRIBE_LIT_SUB:
+    if ROOM_DESC1_PTR(PLAYER_LOCATION) <> NULL then
+        print @ROOM_DESC1_PTR(PLAYER_LOCATION)
+    end if
+    if ROOM_DESC2_PTR(PLAYER_LOCATION) <> NULL then
+        print @ROOM_DESC2_PTR(PLAYER_LOCATION)
+    end if
+
+    gosub PRINT_ROOM_EXTRAS_SUB
+    gosub LIST_VISIBLE_ENTITIES_SUB
+    print
+    print ">";
+    return
+
+ACT_DESCRIBE_DARK_SUB:
+    print "It's very dark, too dark to see anything...I'm scared!"
+    gosub LIST_VISIBLE_ENTITIES_SUB
+    print
+    print ">";
+    return
+
+PRINT_ROOM_EXTRAS_SUB:
+    if PLAYER_LOCATION > ROOM_LEDGE_WATERFALL_IN and PLAYER_LOCATION < ROOM_WATERFALL_BASE then
+        print "Somehow you have gotten into the complex drainage system of this entire cavern network!!"
+    end if
+
+    if PLAYER_LOCATION = ROOM_DARK_CAVERN_A or PLAYER_LOCATION = ROOM_DARK_CAVERN_B or PLAYER_LOCATION = ROOM_DARK_CAVERN_C or PLAYER_LOCATION > ROOM_TEMPLE_BALCONY and PLAYER_LOCATION < ROOM_DARK_CAVERN_G or PLAYER_LOCATION = ROOM_DARK_CAVERN_H or PLAYER_LOCATION = ROOM_DARK_CAVERN_I or PLAYER_LOCATION = ROOM_DARK_CAVERN_J or PLAYER_LOCATION = ROOM_DARK_CAVERN_K or PLAYER_LOCATION = ROOM_WOODEN_BRIDGE then
+        print "You are deep in a dark cavern."
+    end if
+
+    if (PLAYER_LOCATION = ROOM_BRIDGE_NORTH_ANCHOR or PLAYER_LOCATION = ROOM_BRIDGE_SOUTH_ANCHOR) and FLAGS(FLAG_BRIDGE_CONDITION) = EXIT_FATAL then
+        print "Two of the ropes have snapped under your weight. It's totally unfit to cross again."
+    end if
+
+    if PLAYER_LOCATION = ROOM_CAVE_ENTRANCE_CLEARING and ENTITY_LOCATION(ENT_DRAGON) = ENT_LOC_REMOVED then
+        print "You can also see the bloody corpse of an enormous dragon."
+    end if
+
+    if PLAYER_LOCATION = ROOM_CASTLE_LEDGE and FLAGS(FLAG_DRAWBRIDGE_STATE) = ROOM_DRAWBRIDGE then
+        print " A mighty golden drawbridge spans the waters."
+    end if
+
+    if TURN_COUNTER > 200 then
+        print "Your candle is growing dim."
+    end if
+    if TURN_COUNTER >= 230 then
+        FLAGS(FLAG_CANDLE_LIT) = 0
+        print "In fact...it went out!"
+    end if
+    return
+
+LIST_VISIBLE_ENTITIES_SUB:
+    VISIBLE_OBJECT_COUNT = 0
+    for LOOP_INDEX = 7 to 24
+        if ENTITY_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
+            VISIBLE_OBJECT_COUNT = VISIBLE_OBJECT_COUNT + 1
+        end if
+    next LOOP_INDEX
+
+    if VISIBLE_OBJECT_COUNT > 0 then
+        print "You can also see..."
+        for LOOP_INDEX = 7 to 24
+            if ENTITY_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
+                CURRENT_OBJECT_INDEX = LOOP_INDEX
+                gosub PRINT_OBJECT_DESCRIPTION_SUB
+            end if
+        next LOOP_INDEX
+    end if
+
+    VISIBLE_CREATURE_COUNT = 0
+    for LOOP_INDEX = 1 to 6
+        if ENTITY_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
+            VISIBLE_CREATURE_COUNT = VISIBLE_CREATURE_COUNT + 1
+            CURRENT_OBJECT_INDEX = LOOP_INDEX
+            gosub TRIGGER_CREATURE_INTRO_SUB
+        end if
+    next LOOP_INDEX
+
+    if VISIBLE_CREATURE_COUNT > 0 then
+        print "Nearby there lurks..."
+        for LOOP_INDEX = 1 to 6
+            if ENTITY_LOCATION(LOOP_INDEX) = PLAYER_LOCATION then
+                CURRENT_OBJECT_INDEX = LOOP_INDEX
+                gosub PRINT_OBJECT_DESCRIPTION_SUB
+            end if
+        next LOOP_INDEX
+    end if
+    return
+
 rem ---------------------------------------------------------
 rem  Step 1: Conversion Ledger (what must become rules/actions)
 rem ---------------------------------------------------------
