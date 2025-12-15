@@ -10,6 +10,8 @@
 
 START:
         CALL    initState
+        LD      HL,title
+        SYS_PUTS
         CALL    printCurrentRoomDescription
         LD      A,LF
         SYS_PUTC

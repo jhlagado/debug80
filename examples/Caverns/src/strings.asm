@@ -1,9 +1,8 @@
 title:                  DB "DREAMCARDS presents...\r\n\r\n"
                         DB "C A V E R N S  by John Hardy (c) 1982-83\r\n"
                         DB "BeeHive Software House\r\n\r\n"
-                        DB "Rewritten by the author for the TEC-1G\r\n"
-                        DB "Released under GNU Public License\r\n"
-                        DB "Copyleft 2026 All wrongs reserved!\r\n",0
+                        DB "Adapted by the author for the TEC-1G\r\n"
+                        DB "GPL 3.0 Copyleft 2026 All wrongs reserved!\r\n\r\n",0
 
 promptStr:              DB "> ",0
 

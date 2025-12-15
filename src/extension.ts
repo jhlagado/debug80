@@ -7,6 +7,7 @@ import { ensureDirExists, inferDefaultTarget } from './config-utils';
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
 let terminalSession: vscode.DebugSession | undefined;
+let terminalAnsiCarry = '';
 
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
@@ -312,13 +313,66 @@ function getTerminalHtml(initial: string): string {
 }
 
 function stripAndDetectClear(text: string): { remaining: string; shouldClear: boolean } {
-  let remaining = text;
+  // The adapter emits terminal output a byte at a time, so ANSI escape sequences
+  // (e.g. ESC[2J ESC[H) can arrive split across multiple events. Track a small
+  // carry buffer so we can correctly consume them.
+  const input = terminalAnsiCarry + text;
+  terminalAnsiCarry = '';
+
+  let remaining = '';
   let shouldClear = false;
 
-  const CLEAR_SEQ = /\u001b\[2J/; // ESC[2J clear screen (VT100)
-  if (CLEAR_SEQ.test(remaining)) {
-    shouldClear = true;
-    remaining = remaining.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '');
+  let esc = '';
+  const flushEscAsText = (): void => {
+    remaining += esc;
+    esc = '';
+  };
+
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i] ?? '';
+
+    if (esc.length === 0) {
+      if (ch === '\u001b') {
+        esc = ch;
+      } else {
+        remaining += ch;
+      }
+      continue;
+    }
+
+    esc += ch;
+
+    // Support CSI sequences: ESC [ params letter
+    if (esc.length === 2) {
+      // If it's not CSI, treat it as text and move on.
+      if (esc[1] !== '[') {
+        flushEscAsText();
+      }
+      continue;
+    }
+
+    const final = esc[esc.length - 1] ?? '';
+    const isFinal = /^[A-Za-z]$/.test(final);
+    if (!isFinal) {
+      // Bound the maximum length we will buffer for an ANSI sequence.
+      if (esc.length > 32) {
+        flushEscAsText();
+      }
+      continue;
+    }
+
+    // We have a complete CSI sequence; decide whether to clear.
+    if (final === 'J') {
+      shouldClear = true;
+    }
+
+    // Consume the escape sequence (do not emit).
+    esc = '';
+  }
+
+  // If we ended mid-escape, carry it to the next chunk.
+  if (esc.length > 0) {
+    terminalAnsiCarry = esc;
   }
 
   return { remaining, shouldClear };
