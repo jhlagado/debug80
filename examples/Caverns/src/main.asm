@@ -2,6 +2,8 @@
         .include "macros.asm"
         .include "system.asm"
         .include "strings.asm"
+        .include "tables.asm"
+        .include "variables.asm"
 
         ; Main program start
         ORG     APPSTART
@@ -49,6 +51,4 @@ rl_done:
         LD      (HL),0
         RET
 
-MSG:    DEFB    "HELLO, DEBUG80!",0x0A,0
 DONE_MSG: DEFB  "Done.",0x0A,0
-BUF:    DS      32,0
