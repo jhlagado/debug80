@@ -132,9 +132,9 @@ lo_loop:
         LD      HL,strSeeObjects
         SYS_PUTS
         POP     HL
-        POP     DE
         LD      A,LF
         SYS_PUTC
+        POP     DE
         LD      D,1
 lo_print_obj:
         ; print: "a " + adjective + noun
@@ -147,9 +147,9 @@ lo_print_obj:
         LD      A,E
         CALL    printObjectAdjNoun
         POP     HL
-        POP     DE
         LD      A,LF
         SYS_PUTC
+        POP     DE
 lo_next:
         INC     HL
         INC     E
@@ -163,12 +163,13 @@ lo_next:
 ; ---------------------------------------------------------
 printObjectAdjNoun:
         SUB     firstObjectIndex
+        LD      B,A                    ; save 0-based index (SYS_PUTS clobbers C)
         LD      C,A                    ; 0-based index into object tables
         LD      HL,objectNameNameTable
-        LD      A,C
+        LD      A,B
         CALL    printWordTableEntry0Based
         LD      HL,objectNameNounTable
-        LD      A,C
+        LD      A,B
         CALL    printWordTableEntry0Based
         RET
 
