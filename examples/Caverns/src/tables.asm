@@ -5,18 +5,17 @@
 movementTable:
                         DB roomForestClearing,0,0,0
                         DB 0,0,roomDarkForest,roomCloverField
-                        DB roomForestClearing,roomRiverCliff,roomRiverCliff,0
-                        DB roomForestClearing,roomRiverCliff,0,roomMtYmirSlope
-                        DB 0,roomRiverBank,roomDarkForest,roomCloverField
+                        DB 0,0,roomRiverCliff,roomForestClearing
+                        DB 0,0,roomForestClearing,roomMtYmirSlope
+                        DB 0,roomRiverBank,0,roomDarkForest
                         DB roomRiverCliff,0,roomCraterEdge,roomRiverOutcrop
                         DB 0,0,128,roomRiverBank
                         DB 0,0,roomRiverBank,0
                         DB 0,roomBridgeNorthAnchor,roomCloverField,0
-                        DB roomMtYmirSlope,roomBridgeMid,roomCloverField,0
+                        DB roomMtYmirSlope,roomBridgeMid,0,0
                         DB roomBridgeNorthAnchor,roomBridgeSouthAnchor,128,128
                         DB roomBridgeMid,roomMushroomRock,roomMushroomRock,0
-                        DB roomBridgeSouthAnchor,roomBridgeSouthAnchor
-                        DB roomCaveEntranceClearing,roomBridgeSouthAnchor
+                        DB roomBridgeSouthAnchor,0,roomCaveEntranceClearing,roomBridgeSouthAnchor
                         DB roomCliffFace,roomCaveEntry,0,roomMushroomRock
                         DB 0,roomCaveEntranceClearing,0,0
                         DB roomCaveEntranceClearing,roomDarkCavernA

@@ -127,24 +127,38 @@ roomEastRiverbank        equ 52
 roomWoodenBridge         equ 53
 roomRiverConduit         equ 54
 
-; Object indices (7..24)
+; Index map (1..24)
+; Creatures occupy indices 1..6, objects occupy indices 7..24.
+; This matches the original BASIC (single P(1..24) array).
+
+; Creature indices (1..6) (use obj* names because they share index space)
+objWizard   equ 1
+objDemon    equ 2
+objTroll    equ 3
 objDragon   equ 4
+objBat      equ 5
+objDwarf    equ 6
+objCreatureCount equ 6
+
+; Object indices (7..24)
+objCoin     equ 7
+objCompass  equ 8
 objBomb     equ 9
-objGrill    equ 24
+objRuby     equ 10
+objDiamond  equ 11
+objPearl    equ 12
+objStone    equ 13
+objRing     equ 14
+objPendant  equ 15
+objGrail    equ 16
+objShield   equ 17
+objBox      equ 18
 objKey      equ 19
 objSword    equ 20
 objCandle   equ 21
 objRope     equ 22
 objBrick    equ 23
-
-; Creature indices (1..6)
-creatureWizardIndex equ 1
-creatureDemonIndex  equ 2
-creatureTrollIndex  equ 3
-creatureDragonIndex equ 4
-creatureBatIndex    equ 5
-creatureDwarfIndex  equ 6
-creatureCount       equ 6
+objGrill    equ 24
 
 maxCarryItems      equ 10
 
@@ -160,6 +174,7 @@ inputBufferSize equ 80        ; characters incl. padding/terminator
 ; Object index ranges
 firstObjectIndex equ 7
 lastObjectIndex  equ objectCount
+objectItemCount  equ objectCount-objCreatureCount
 
 ; Score calculation range (objects 7..17)
 firstScoreObjectIndex equ 7

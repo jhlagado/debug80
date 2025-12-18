@@ -4,7 +4,7 @@ title:                  DB "DREAMCARDS presents...\r\n\r\n"
                         DB "Adapted by the author for the TEC-1G\r\n"
                         DB "GPL 3.0 Copyleft 2026 All wrongs reserved!\r\n\r\n",0
 
-promptStr:              DB "> ",0
+promptStr:              DB "? ",0
 
 strTooDark:             DB "It's very dark, too dark to see anything...I'm scared!",0
 strDarkCavern:          DB "You are deep in a dark cavern.",0
@@ -84,7 +84,7 @@ descForestClearing      DB "You are in a forest clearing before a small bark hut
 descDarkForest          DB "You are deep in a dark forest. In the distance you can see "
                         DB "a mighty river.",0
 descCloverField         DB "You are standing in a field of four-leafed clovers. There "
-                        DB "is a small hut to the north.",0
+                        DB "is a small hut to the west.",0
 descRiverCliff          DB "The forest has opened up at this point. You are standing on "
                         DB "a cliff overlooking a wide glacial river. A small "
                         DB "foot-beaten path leads south.",0
@@ -236,39 +236,39 @@ monNounBat              DB "bat",0
 monNameDwarf            DB "old and gnarled "
 monNounDwarf            DB "dwarf",0
 
-objNameCoin             DB "gold "
+objNameCoin             DB "gold ",0
 objNounCoin             DB "coin",0
-objNameCompass          DB "useful looking "
+objNameCompass          DB "useful looking ",0
 objNounCompass          DB "compass",0
-objNameBomb             DB "home made "
+objNameBomb             DB "home made ",0
 objNounBomb             DB "bomb",0
-objNameRuby             DB "blood red "
+objNameRuby             DB "blood red ",0
 objNounRuby             DB "ruby",0
-objNameDiamond          DB "sparkling "
+objNameDiamond          DB "sparkling ",0
 objNounDiamond          DB "diamond",0
-objNamePearl            DB "moon-like "
+objNamePearl            DB "moon-like ",0
 objNounPearl            DB "pearl",0
-objNameStone            DB "interesting "
+objNameStone            DB "interesting ",0
 objNounStone            DB "stone",0
-objNameRing             DB "diamond studded "
+objNameRing             DB "diamond studded ",0
 objNounRing             DB "ring",0
-objNamePendant          DB "magic "
+objNamePendant          DB "magic ",0
 objNounPendant          DB "pendant",0
-objNameGrail            DB "most holy "
+objNameGrail            DB "most holy ",0
 objNounGrail            DB "grail",0
-objNameShield           DB "mirror like "
+objNameShield           DB "mirror like ",0
 objNounShield           DB "shield",0
-objNameBox              DB "nondescript black "
+objNameBox              DB "nondescript black ",0
 objNounBox              DB "box",0
-objNameKey              DB "old and rusty "
+objNameKey              DB "old and rusty ",0
 objNounKey              DB "key",0
-objNameSword            DB "double bladed "
+objNameSword            DB "double bladed ",0
 objNounSword            DB "sword",0
-objNameCandle           DB "small "
+objNameCandle           DB "small ",0
 objNounCandle           DB "candle",0
-objNameRope             DB "thin and tatty "
+objNameRope             DB "thin and tatty ",0
 objNounRope             DB "rope",0
-objNameBrick            DB "red house "
+objNameBrick            DB "red house ",0
 objNounBrick            DB "brick",0
-objNameGrill            DB "rusty ventilation "
+objNameGrill            DB "rusty ventilation ",0
 objNounGrill            DB "grill",0
