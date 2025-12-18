@@ -213,7 +213,7 @@ handleInputLine:
         ; Optional "GO <dir>" prefix (closer to the BASIC SEARCH-based input).
         PUSH    HL
         LD      DE,wordGO
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JR      NZ,parseCommand
         CALL    skipWord
@@ -224,69 +224,57 @@ parseCommand:
         ; single-letter dispatch).
         PUSH    HL
         LD      DE,wordNORTH
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdNorth
 
         PUSH    HL
         LD      DE,wordSOUTH
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdSouth
 
         PUSH    HL
         LD      DE,wordWEST
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdWest
 
         PUSH    HL
         LD      DE,wordEAST
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdEast
-
-        ; Single-letter directions (must be followed by space or 0).
-        LD      A,(HL)
-        CALL    toUpperA
-        CP      'N'
-        JR      Z,maybeSingleNorth
-        CP      'S'
-        JR      Z,maybeSingleSouth
-        CP      'W'
-        JR      Z,maybeSingleWest
-        CP      'E'
-        JR      Z,maybeSingleEast
 
         ; Directions (single-letter or full word).
         PUSH    HL
         LD      DE,wordNORTH
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdNorth
 
         PUSH    HL
         LD      DE,wordSOUTH
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdSouth
 
         PUSH    HL
         LD      DE,wordWEST
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdWest
 
         PUSH    HL
         LD      DE,wordEAST
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdEast
 
         ; LOOK (reprint current room).
         PUSH    HL
         LD      DE,wordLOOK
-        CALL    matchWordAtHL
+        CALL    matchWord
         POP     HL
         JP      Z,cmdLook
 
@@ -295,39 +283,6 @@ echoLine:
         SYS_PUTS
         LD      A,LF
         SYS_PUTC
-        RET
-
-maybeSingleNorth:
-        INC     HL
-        LD      A,(HL)
-        OR      A
-        JP      Z,cmdNorth
-        CP      ' '
-        JP      Z,cmdNorth
-        RET
-maybeSingleSouth:
-        INC     HL
-        LD      A,(HL)
-        OR      A
-        JP      Z,cmdSouth
-        CP      ' '
-        JP      Z,cmdSouth
-        RET
-maybeSingleWest:
-        INC     HL
-        LD      A,(HL)
-        OR      A
-        JP      Z,cmdWest
-        CP      ' '
-        JP      Z,cmdWest
-        RET
-maybeSingleEast:
-        INC     HL
-        LD      A,(HL)
-        OR      A
-        JP      Z,cmdEast
-        CP      ' '
-        JP      Z,cmdEast
         RET
 
 cmdNorth:
@@ -393,12 +348,12 @@ cmdLook:
         RET
 
 ; ---------------------------------------------------------
-; matchWordAtHL
+; matchWord
 ; HL = input position, DE = pointer to uppercase word (0-terminated)
 ; Returns Z if the word matches at HL and is followed by space or 0.
 ; Case-insensitive for ASCII letters.
 ; ---------------------------------------------------------
-matchWordAtHL:
+matchWord:
 mw_loop:
         LD      A,(DE)
         OR      A
