@@ -225,6 +225,40 @@ tokenGalar              DB " galar ",0
 tokenApe                DB " ape ",0
 tokenGet                DB " get ",0
 tokenDrop               DB " drop ",0
+tokenTake               DB " take ",0
+tokenInvent             DB " invent ",0
+
+tokenNorth              DB " north ",0
+tokenSouth              DB " south ",0
+tokenWest               DB " west ",0
+tokenEast               DB " east ",0
+
+; Noun tokens (space-padded) for orderless input scanning (indices 1..24).
+tokenWizard             DB " wizard ",0
+tokenDemon              DB " demon ",0
+tokenTroll              DB " troll ",0
+tokenDragon             DB " dragon ",0
+tokenBat                DB " bat ",0
+tokenDwarf              DB " dwarf ",0
+
+tokenCoin               DB " coin ",0
+tokenCompass            DB " compass ",0
+tokenBomb               DB " bomb ",0
+tokenRuby               DB " ruby ",0
+tokenDiamond            DB " diamond ",0
+tokenPearl              DB " pearl ",0
+tokenStone              DB " stone ",0
+tokenRing               DB " ring ",0
+tokenPendant            DB " pendant ",0
+tokenGrail              DB " grail ",0
+tokenShield             DB " shield ",0
+tokenBox                DB " box ",0
+tokenKey                DB " key ",0
+tokenSword              DB " sword ",0
+tokenCandle             DB " candle ",0
+tokenRope               DB " rope ",0
+tokenBrick              DB " brick ",0
+tokenGrill              DB " grill ",0
 
 monNameWiz              DB "evil "
 monNounWiz              DB "wizard",0

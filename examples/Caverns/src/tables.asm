@@ -108,6 +108,34 @@ verbPatternTable:
 dirWordIndexTable:
                         DW dirNorthStr, dirSouthStr, dirWestStr, dirEastStr
 
+; Verb tokens for orderless input scanning (first match wins).
+; Keep common no-noun verbs first, then get/drop, then movement.
+verbTokenTable:
+                        DW tokenLook
+                        DW tokenList
+                        DW tokenInvent
+                        DW tokenQuit
+                        DW tokenGalar
+                        DW tokenApe
+                        DW tokenGet
+                        DW tokenTake
+                        DW tokenDrop
+                        DW tokenNorth
+                        DW tokenSouth
+                        DW tokenWest
+                        DW tokenEast
+verbTokenCount          EQU 13
+
+; Noun tokens aligned to index space 1..24 (creatures 1..6, objects 7..24).
+nounTokenTable:
+                        DW tokenWizard, tokenDemon, tokenTroll
+                        DW tokenDragon, tokenBat, tokenDwarf
+                        DW tokenCoin, tokenCompass, tokenBomb, tokenRuby
+                        DW tokenDiamond, tokenPearl, tokenStone, tokenRing
+                        DW tokenPendant, tokenGrail, tokenShield, tokenBox
+                        DW tokenKey, tokenSword, tokenCandle, tokenRope
+                        DW tokenBrick, tokenGrill
+
 monsterNameTable:
                         DW monNameWiz, monNameDemon, monNameTroll
                         DW monNameDragon, monNameBat, monNameDwarf

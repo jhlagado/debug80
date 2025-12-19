@@ -214,114 +214,287 @@ handleInputLine:
         CALL    printNewLine
         CALL    printNewLine
 
-        LD      HL,BUF
-        CALL    skipSpaces
-
-        ; Optional "GO <dir>" prefix (closer to the BASIC SEARCH-based input).
-        PUSH    HL
-        LD      DE,wordGO
-        CALL    matchWord
-        POP     HL
-        JR      NZ,parseCommand
-        CALL    skipWord
-        CALL    skipSpaces
-
-parseCommand:
-        ; LIST inventory.
-        PUSH    HL
-        LD      DE,wordLIST
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdList
-
-        PUSH    HL
-        LD      DE,wordINVENT
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdList
-
-        ; DROP (minimal for now: compass only).
-        PUSH    HL
-        LD      DE,wordDROP
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdDrop
-
-        ; GET/TAKE (minimal for now: compass only).
-        PUSH    HL
-        LD      DE,wordGET
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdGet
-
-        PUSH    HL
-        LD      DE,wordTAKE
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdGet
-
-        ; Full-word directions (so "north" doesn't get trapped by the
-        ; single-letter dispatch).
-        PUSH    HL
-        LD      DE,wordNORTH
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdNorth
-
-        PUSH    HL
-        LD      DE,wordSOUTH
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdSouth
-
-        PUSH    HL
-        LD      DE,wordWEST
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdWest
-
-        PUSH    HL
-        LD      DE,wordEAST
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdEast
-
-        ; Directions (single-letter or full word).
-        PUSH    HL
-        LD      DE,wordNORTH
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdNorth
-
-        PUSH    HL
-        LD      DE,wordSOUTH
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdSouth
-
-        PUSH    HL
-        LD      DE,wordWEST
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdWest
-
-        PUSH    HL
-        LD      DE,wordEAST
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdEast
-
-        ; LOOK (reprint current room).
-        PUSH    HL
-        LD      DE,wordLOOK
-        CALL    matchWord
-        POP     HL
-        JP      Z,cmdLook
+        CALL    buildInputPadded
+        CALL    scanInputTokens
+        JP      dispatchScannedCommand
 
 echoLine:
         LD      HL,strEh
         CALL    printLine
         CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; buildInputPadded
+; Builds `inputBuffer` as: " " + BUF + " " + 0
+; This lets us SEARCH for " word " tokens like the original BASIC.
+; ---------------------------------------------------------
+buildInputPadded:
+        LD      HL,inputBuffer
+        LD      A,' '
+        LD      (HL),A
+        INC     HL
+
+        LD      DE,BUF
+bip_copy:
+        LD      A,(DE)
+        OR      A
+        JR      Z,bip_done
+        LD      (HL),A
+        INC     HL
+        INC     DE
+        JR      bip_copy
+
+bip_done:
+        LD      A,' '
+        LD      (HL),A
+        INC     HL
+        XOR     A
+        LD      (HL),A
+        RET
+
+; ---------------------------------------------------------
+; containsTokenCI
+; Case-insensitive substring search.
+;
+; Inputs:
+;   HL = haystack (0-terminated)
+;   DE = needle (0-terminated)
+;
+; Returns:
+;   Z set if found, Z clear if not found
+;
+; Clobbers:
+;   AF, BC, DE, HL
+; ---------------------------------------------------------
+containsTokenCI:
+ct_outer:
+        LD      A,(HL)
+        OR      A
+        JR      Z,ct_notfound
+
+        PUSH    HL
+        PUSH    DE
+ct_inner:
+        LD      A,(DE)
+        OR      A
+        JR      Z,ct_found
+        LD      B,A
+
+        LD      A,(HL)
+        OR      A
+        JR      Z,ct_mismatch
+        CALL    toUpperA
+        LD      C,A
+        LD      A,B
+        CALL    toUpperA
+        CP      C
+        JR      NZ,ct_mismatch
+
+        INC     HL
+        INC     DE
+        JR      ct_inner
+
+ct_mismatch:
+        POP     DE
+        POP     HL
+        INC     HL
+        JR      ct_outer
+
+ct_found:
+        POP     DE
+        POP     HL
+        CP      A              ; Z=1
+        RET
+
+ct_notfound:
+        OR      1              ; Z=0
+        RET
+
+; ---------------------------------------------------------
+; scanInputTokens
+; Populates:
+;   verbPatternIndex = verbId (1..verbTokenCount) or 0
+;   currentObjectIndex = noun1 (1..24) or 0
+;   targetLocation = noun2 (1..24) or 0
+; based on the content of inputBuffer.
+; ---------------------------------------------------------
+scanInputTokens:
+        XOR     A
+        LD      (verbPatternIndex),A
+        LD      (currentObjectIndex),A
+        LD      (targetLocation),A
+
+        ; Scan verbs (first match wins).
+        LD      IX,verbTokenTable
+        LD      B,verbTokenCount
+        LD      C,1
+sv_loop:
+        PUSH    BC
+        LD      E,(IX+0)
+        LD      D,(IX+1)               ; DE = token ptr
+        LD      HL,inputBuffer         ; HL = input
+        CALL    containsTokenCI
+        POP     BC
+        JR      Z,sv_hit
+        INC     IX
+        INC     IX
+        INC     C
+        DJNZ    sv_loop
+        JR      sn_start
+sv_hit:
+        LD      A,C
+        LD      (verbPatternIndex),A
+
+sn_start:
+        ; Scan nouns: capture first two distinct matches.
+        LD      IX,nounTokenTable
+        LD      B,objectCount          ; 24 entries (1..24)
+        LD      C,1
+sn_loop:
+        PUSH    BC
+        LD      E,(IX+0)
+        LD      D,(IX+1)               ; DE = token ptr
+        LD      HL,inputBuffer         ; HL = input
+        CALL    containsTokenCI
+        POP     BC
+        JR      NZ,sn_next
+
+        LD      A,(currentObjectIndex)
+        OR      A
+        JR      Z,sn_set1
+        CP      C
+        JR      Z,sn_next
+        LD      A,(targetLocation)
+        OR      A
+        JR      NZ,sn_next
+        LD      A,C
+        LD      (targetLocation),A
+        JR      sn_next
+sn_set1:
+        LD      A,C
+        LD      (currentObjectIndex),A
+
+sn_next:
+        INC     IX
+        INC     IX
+        INC     C
+        DJNZ    sn_loop
+        RET
+
+; ---------------------------------------------------------
+; dispatchScannedCommand
+; Executes the command based on scanned verb + nouns.
+; ---------------------------------------------------------
+dispatchScannedCommand:
+        LD      A,(verbPatternIndex)
+        OR      A
+        JP      Z,echoLine
+
+        ; Verb ids (match tables.asm verbTokenTable order)
+        CP      1
+        JP      Z,cmdLook
+        CP      2
+        JP      Z,cmdList
+        CP      3
+        JP      Z,cmdList              ; invent alias
+        CP      4
+        JP      Z,cmdQuit
+        CP      5
+        JP      Z,cmdGalar
+        CP      6
+        JP      Z,cmdApe
+        CP      7
+        JP      Z,cmdGetGeneric
+        CP      8
+        JP      Z,cmdGetGeneric        ; take alias
+        CP      9
+        JP      Z,cmdDropGeneric
+        CP      10
+        JP      Z,cmdNorth
+        CP      11
+        JP      Z,cmdSouth
+        CP      12
+        JP      Z,cmdWest
+        CP      13
+        JP      Z,cmdEast
+        JP      echoLine
+
+; Minimal quit/galar/ape placeholders for now.
+cmdQuit:
+        HALT
+cmdGalar:
+        LD      HL,strMagicWind
+        CALL    printLine
+        CALL    printNewLine
+        RET
+cmdApe:
+        LD      HL,strCryptWall
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdGetGeneric / cmdDropGeneric
+; Uses scanned nouns: chooses the first object noun (7..24).
+; ---------------------------------------------------------
+cmdGetGeneric:
+        CALL    selectScannedObject
+        OR      A
+        JP      Z,cmdGetUnknown
+        LD      B,A                    ; object index (7..24)
+        CALL    doGetObjectIndex
+        RET
+
+cmdDropGeneric:
+        CALL    selectScannedObject
+        OR      A
+        JP      Z,cmdDropUnknown
+        LD      B,A
+        CALL    doDropObjectIndex
+        RET
+
+selectScannedObject:
+        LD      A,(currentObjectIndex)
+        CP      firstObjectIndex
+        JR      NC,sso_ret
+        LD      A,(targetLocation)
+        CP      firstObjectIndex
+sso_ret:
+        RET
+
+; B = object index (7..24)
+doGetObjectIndex:
+        LD      A,(playerLocation)
+        LD      C,A                    ; room
+        LD      A,B
+        DEC     A
+        LD      L,A
+        LD      H,0
+        LD      DE,objectLocation
+        ADD     HL,DE
+        LD      A,(HL)
+        CP      C
+        JP      NZ,cmdGetCantSee
+        LD      A,roomCarried
+        LD      (HL),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; B = object index (7..24)
+doDropObjectIndex:
+        LD      A,B
+        DEC     A
+        LD      L,A
+        LD      H,0
+        LD      DE,objectLocation
+        ADD     HL,DE
+        LD      A,(HL)
+        CP      roomCarried
+        JP      NZ,cmdDropCantSee
+        LD      A,(playerLocation)
+        LD      (HL),A
+        CALL    printCurrentRoomDescription
         RET
 
 cmdNorth:
