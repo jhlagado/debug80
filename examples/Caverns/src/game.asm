@@ -457,22 +457,24 @@ dispatchScannedCommand:
         CP      6
         JP      Z,cmdApe
         CP      7
-        JP      Z,cmdGetGeneric
+        JP      Z,cmdStage2
         CP      8
-        JP      Z,cmdGetGeneric        ; take alias
+        JP      Z,cmdGetGeneric
         CP      9
-        JP      Z,cmdDropGeneric
+        JP      Z,cmdGetGeneric        ; take alias
         CP      10
-        JP      Z,cmdKillAttack
+        JP      Z,cmdDropGeneric
         CP      11
         JP      Z,cmdKillAttack
         CP      12
-        JP      Z,cmdNorth
+        JP      Z,cmdKillAttack
         CP      13
-        JP      Z,cmdSouth
+        JP      Z,cmdNorth
         CP      14
-        JP      Z,cmdWest
+        JP      Z,cmdSouth
         CP      15
+        JP      Z,cmdWest
+        CP      16
         JP      Z,cmdEast
         JP      echoLine
 
@@ -488,6 +490,22 @@ cmdApe:
         LD      HL,strCryptWall
         CALL    printLine
         CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdStage2
+; Testing helper: resets state, moves player to troll room,
+; and gives compass/coin/sword in inventory.
+; ---------------------------------------------------------
+cmdStage2:
+        CALL    initState
+        LD      A,roomBridgeNorthAnchor
+        LD      (playerLocation),A
+        LD      A,roomCarried
+        LD      (objectLocation+objCompass-1),A
+        LD      (objectLocation+objCoin-1),A
+        LD      (objectLocation+objSword-1),A
+        CALL    printCurrentRoomDescription
         RET
 
 ; ---------------------------------------------------------

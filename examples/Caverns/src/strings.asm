@@ -231,6 +231,7 @@ tokenTake               DB " take ",0
 tokenInvent             DB " invent ",0
 tokenKill               DB " kill ",0
 tokenAttack             DB " attack ",0
+tokenStage2             DB " stage2 ",0
 
 tokenNorth              DB " north ",0
 tokenSouth              DB " south ",0
