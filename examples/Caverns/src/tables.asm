@@ -120,11 +120,13 @@ verbTokenTable:
                         DW tokenGet
                         DW tokenTake
                         DW tokenDrop
+                        DW tokenKill
+                        DW tokenAttack
                         DW tokenNorth
                         DW tokenSouth
                         DW tokenWest
                         DW tokenEast
-verbTokenCount          EQU 13
+verbTokenCount          EQU 15
 
 ; Noun tokens aligned to index space 1..24 (creatures 1..6, objects 7..24).
 nounTokenTable:

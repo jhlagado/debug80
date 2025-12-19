@@ -51,15 +51,18 @@ initState:
         LD      (swordSwingCount),A
         LD      (score),A
 
-        ; Initialize object locations (minimal for now: compass in room 1).
-        LD      HL,objectLocation
+        ; Initialize creatures + objects from the original mwb P(1..24) table.
+        ; `objectLocationTable` is DW entries; the low byte is the room id.
+        LD      HL,objectLocationTable
+        LD      DE,objectLocation
         LD      B,objectCount
-is_clear_obj:
-        LD      (HL),0
+is_init_obj:
+        LD      A,(HL)                 ; low byte = room id (0..255)
+        LD      (DE),A
         INC     HL
-        DJNZ    is_clear_obj
-        LD      A,roomDarkRoom
-        LD      (objectLocation+objCompass-1),A
+        INC     HL                     ; skip high byte
+        INC     DE
+        DJNZ    is_init_obj
         RET
 
 ; ---------------------------------------------------------
@@ -74,7 +77,59 @@ printCurrentRoomDescription:
         LD      HL,roomDesc2Table
         CALL    printDescription
         CALL    listRoomObjects
+        CALL    listRoomCreatures
         CALL    printNewLine           ; blank line after the whole response
+        RET
+
+; ---------------------------------------------------------
+; listRoomCreatures
+; Prints a list of visible creatures in the current room.
+; Creatures are indices 1..6 in objectLocation[].
+; ---------------------------------------------------------
+listRoomCreatures:
+        LD      A,(playerLocation)
+        LD      C,A                    ; C = current room
+        LD      HL,objectLocation
+        LD      B,objCreatureCount     ; creatures 1..6
+        LD      D,0                    ; printed-any flag
+        LD      E,1                    ; creature index (1..6)
+lc_loop:
+        LD      A,(HL)
+        CP      C
+        JR      NZ,lc_next
+
+        LD      A,D
+        OR      A
+        JR      NZ,lc_print
+        CALL    printNewLine
+        LD      HL,strSeeCreatures
+        CALL    printLine
+        LD      D,1
+lc_print:
+        PUSH    DE
+        PUSH    HL
+        LD      A,E
+        CALL    printCreatureAdjNoun
+        POP     HL
+        CALL    printNewLine
+        POP     DE
+lc_next:
+        INC     HL
+        INC     E
+        DJNZ    lc_loop
+        RET
+
+; ---------------------------------------------------------
+; printCreatureAdjNoun
+; A = creature index (1..6)
+; Prints adjective+article then noun via monster tables.
+; ---------------------------------------------------------
+printCreatureAdjNoun:
+        DEC     A
+        LD      B,A
+        LD      HL,monsterNameTable
+        LD      A,B
+        CALL    printWordTableEntry0Based
         RET
 
 ; ---------------------------------------------------------
@@ -175,9 +230,6 @@ printObjectAdjNoun:
         LD      B,A                    ; save 0-based index (SYS_PUTS clobbers C)
         LD      C,A                    ; 0-based index into object tables
         LD      HL,objectNameNameTable
-        LD      A,B
-        CALL    printWordTableEntry0Based
-        LD      HL,objectNameNounTable
         LD      A,B
         CALL    printWordTableEntry0Based
         RET
@@ -411,12 +463,16 @@ dispatchScannedCommand:
         CP      9
         JP      Z,cmdDropGeneric
         CP      10
-        JP      Z,cmdNorth
+        JP      Z,cmdKillAttack
         CP      11
-        JP      Z,cmdSouth
+        JP      Z,cmdKillAttack
         CP      12
-        JP      Z,cmdWest
+        JP      Z,cmdNorth
         CP      13
+        JP      Z,cmdSouth
+        CP      14
+        JP      Z,cmdWest
+        CP      15
         JP      Z,cmdEast
         JP      echoLine
 
@@ -432,6 +488,125 @@ cmdApe:
         LD      HL,strCryptWall
         CALL    printLine
         CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdKillAttack
+; Minimal behavior:
+; - If a target creature is present but no tool object provided, prints "Please tell me how."
+; - If no target creature, prints "But there's nothing to kill..."
+; ---------------------------------------------------------
+cmdKillAttack:
+        ; Find target creature among noun1/noun2.
+        LD      A,(currentObjectIndex)
+        LD      B,A
+        LD      A,(targetLocation)
+        LD      C,A
+        PUSH    BC                     ; preserve noun1/noun2 across helper
+        CALL    selectTargetCreature
+        POP     BC
+        OR      A
+        JR      Z,cka_nothing
+        LD      D,A                    ; D = creature index (1..6)
+
+        ; Find tool object among noun1/noun2 (orderless).
+        CALL    selectToolObject
+        OR      A
+        JR      Z,cka_need_how
+        LD      E,A                    ; E = object index (7..24)
+
+        ; Require tool to be carried for now.
+        LD      A,E
+        DEC     A
+        LD      L,A
+        LD      H,0
+        LD      DE,objectLocation
+        ADD     HL,DE
+        LD      A,(HL)
+        CP      roomCarried
+        JR      NZ,cka_need_carry
+
+        ; For now: just print a clear placeholder (combat later).
+        LD      HL,strCombatNotImpl
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cka_nothing:
+        LD      HL,strNothingToKill
+        CALL    printLine
+        CALL    printNewLine
+        RET
+cka_need_how:
+        LD      HL,strPleaseTell
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cka_need_carry:
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; Inputs: B=noun1, C=noun2
+; Returns: A=creature index 1..6 if present, else 0
+selectTargetCreature:
+        LD      A,B
+        CP      1
+        JR      C,stc_try2
+        CP      objCreatureCount+1
+        JR      NC,stc_try2
+        ; verify creature is in current room
+        PUSH    BC
+        LD      B,A
+        CALL    creatureInRoom
+        POP     BC
+        JR      NZ,stc_try2
+        LD      A,B
+        RET
+stc_try2:
+        LD      A,C
+        CP      1
+        JR      C,stc_none
+        CP      objCreatureCount+1
+        JR      NC,stc_none
+        PUSH    BC
+        LD      B,A
+        CALL    creatureInRoom
+        POP     BC
+        JR      NZ,stc_none
+        LD      A,C
+        RET
+stc_none:
+        XOR     A
+        RET
+
+; B = creature index (1..6)
+; Returns: Z=1 if creature is in playerLocation, NZ otherwise
+creatureInRoom:
+        LD      A,(playerLocation)
+        LD      C,A
+        LD      A,B
+        DEC     A
+        LD      L,A
+        LD      H,0
+        LD      DE,objectLocation
+        ADD     HL,DE
+        LD      A,(HL)
+        CP      C
+        RET
+
+; Returns: A = object index 7..24 if present in nouns (and not the target creature), else 0
+selectToolObject:
+        ; prefer noun1 then noun2 (object indices are 7..24)
+        LD      A,B
+        CP      firstObjectIndex
+        RET     NC
+        LD      A,C
+        CP      firstObjectIndex
+        RET     NC
+        XOR     A
         RET
 
 ; ---------------------------------------------------------

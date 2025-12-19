@@ -60,6 +60,8 @@ strTooDangerous:        DB "It's too dangerous!!!",0
 strDescendRope:         DB "You descend the rope, but it drops 10 feet short of the "
                         DB "floor. You jump the rest of the way.",0
 strNothingHappens:      DB "Nothing happens!",0
+strNotCarrying:         DB "You aren't carrying that.",0
+strCombatNotImpl:       DB "You attack, but combat isn't implemented yet.",0
 strPleaseTell:          DB "Please tell me how.",0
 strICant:               DB "I can't!",0
 strRanking:             DB "This gives you an adventurer's ranking of:",0
@@ -227,6 +229,8 @@ tokenGet                DB " get ",0
 tokenDrop               DB " drop ",0
 tokenTake               DB " take ",0
 tokenInvent             DB " invent ",0
+tokenKill               DB " kill ",0
+tokenAttack             DB " attack ",0
 
 tokenNorth              DB " north ",0
 tokenSouth              DB " south ",0
@@ -260,52 +264,52 @@ tokenRope               DB " rope ",0
 tokenBrick              DB " brick ",0
 tokenGrill              DB " grill ",0
 
-monNameWiz              DB "evil "
+monNameWiz              DB "an evil "
 monNounWiz              DB "wizard",0
-monNameDemon            DB "fiery "
+monNameDemon            DB "a fiery "
 monNounDemon            DB "demon",0
-monNameTroll            DB "axe wielding "
+monNameTroll            DB "an axe wielding "
 monNounTroll            DB "troll",0
-monNameDragon           DB "fire breathing "
+monNameDragon           DB "a fire breathing "
 monNounDragon           DB "dragon",0
-monNameBat              DB "giant "
+monNameBat              DB "a giant "
 monNounBat              DB "bat",0
-monNameDwarf            DB "old and gnarled "
+monNameDwarf            DB "an old and gnarled "
 monNounDwarf            DB "dwarf",0
 
-objNameCoin             DB "a gold ",0
+objNameCoin             DB "a gold "
 objNounCoin             DB "coin",0
-objNameCompass          DB "a useful looking ",0
+objNameCompass          DB "a useful looking "
 objNounCompass          DB "compass",0
-objNameBomb             DB "a home made ",0
+objNameBomb             DB "a home made "
 objNounBomb             DB "bomb",0
-objNameRuby             DB "a blood red ",0
+objNameRuby             DB "a blood red "
 objNounRuby             DB "ruby",0
-objNameDiamond          DB "a sparkling ",0
+objNameDiamond          DB "a sparkling "
 objNounDiamond          DB "diamond",0
-objNamePearl            DB "a moon-like ",0
+objNamePearl            DB "a moon-like "
 objNounPearl            DB "pearl",0
-objNameStone            DB "an interesting ",0
+objNameStone            DB "an interesting "
 objNounStone            DB "stone",0
-objNameRing             DB "a diamond studded ",0
+objNameRing             DB "a diamond studded "
 objNounRing             DB "ring",0
-objNamePendant          DB "a magic ",0
+objNamePendant          DB "a magic "
 objNounPendant          DB "pendant",0
-objNameGrail            DB "a most holy ",0
+objNameGrail            DB "a most holy "
 objNounGrail            DB "grail",0
-objNameShield           DB "a mirror like ",0
+objNameShield           DB "a mirror like "
 objNounShield           DB "shield",0
-objNameBox              DB "a nondescript black ",0
+objNameBox              DB "a nondescript black "
 objNounBox              DB "box",0
-objNameKey              DB "an old and rusty ",0
+objNameKey              DB "an old and rusty "
 objNounKey              DB "key",0
-objNameSword            DB "a double bladed ",0
+objNameSword            DB "a double bladed "
 objNounSword            DB "sword",0
-objNameCandle           DB "a small ",0
+objNameCandle           DB "a small "
 objNounCandle           DB "candle",0
-objNameRope             DB "a thin and tatty ",0
+objNameRope             DB "a thin and tatty "
 objNounRope             DB "rope",0
-objNameBrick            DB "a red house ",0
+objNameBrick            DB "a red house "
 objNounBrick            DB "brick",0
-objNameGrill            DB "a rusty ventilation ",0
+objNameGrill            DB "a rusty ventilation "
 objNounGrill            DB "grill",0
