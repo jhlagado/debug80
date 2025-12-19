@@ -69,23 +69,20 @@ is_clear_obj:
 printCurrentRoomDescription:
         LD      A,(playerLocation)     ; 1-based room id
         LD      HL,roomDesc1Table
-        CALL    printWordTableEntryIfNotNull
+        CALL    printDescription
         LD      A,(playerLocation)     ; 1-based room id
         LD      HL,roomDesc2Table
-        CALL    printWordTableEntryIfNotNull
-        LD      A,LF
-        SYS_PUTC
+        CALL    printDescription
         CALL    listRoomObjects
-        LD      A,LF
-        SYS_PUTC
+        CALL    printNewLine           ; blank line after the whole response
         RET
 
 ; ---------------------------------------------------------
-; printWordTableEntryIfNotNull
+; printDescription
 ; HL = base of DW table, A = 1-based index
 ; Loads word pointer and prints if non-zero.
 ; ---------------------------------------------------------
-printWordTableEntryIfNotNull:
+printDescription:
         OR      A
         RET     Z
         DEC     A
@@ -100,6 +97,24 @@ printWordTableEntryIfNotNull:
         OR      E
         RET     Z
         EX      DE,HL
+        JP      printLine
+
+; ---------------------------------------------------------
+; printLine
+; HL = 0-terminated string pointer
+; Prints the string then CRLF.
+; ---------------------------------------------------------
+printLine:
+        SYS_PUTS
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; printNewLine
+; Prints a blank line (CRLF).
+; ---------------------------------------------------------
+printNewLine:
+        LD      HL,strCRLF
         SYS_PUTS
         RET
 
@@ -127,28 +142,22 @@ lo_loop:
         LD      A,D
         OR      A
         JR      NZ,lo_print_obj
+        CALL    printNewLine           ; blank line between room desc and header
         PUSH    DE                     ; preserve current object id (E)
         PUSH    HL
         LD      HL,strSeeObjects
-        SYS_PUTS
+        CALL    printLine
         POP     HL
-        LD      A,LF
-        SYS_PUTC
         POP     DE
         LD      D,1
 lo_print_obj:
-        ; print: "a " + adjective + noun
+        ; print: adjective includes article ("a"/"an") + noun
         PUSH    DE                     ; preserve current object id (E)
         PUSH    HL
-        LD      A,'a'
-        SYS_PUTC
-        LD      A,' '
-        SYS_PUTC
         LD      A,E
         CALL    printObjectAdjNoun
         POP     HL
-        LD      A,LF
-        SYS_PUTC
+        CALL    printNewLine
         POP     DE
 lo_next:
         INC     HL
@@ -202,10 +211,8 @@ printWordTableEntry0Based:
 handleInputLine:
         LD      HL,BUF                  ; echo user's input so prior actions are visible
         SYS_PUTS
-        LD      A,LF
-        SYS_PUTC
-        LD      A,LF
-        SYS_PUTC
+        CALL    printNewLine
+        CALL    printNewLine
 
         LD      HL,BUF
         CALL    skipSpaces
@@ -220,6 +227,39 @@ handleInputLine:
         CALL    skipSpaces
 
 parseCommand:
+        ; LIST inventory.
+        PUSH    HL
+        LD      DE,wordLIST
+        CALL    matchWord
+        POP     HL
+        JP      Z,cmdList
+
+        PUSH    HL
+        LD      DE,wordINVENT
+        CALL    matchWord
+        POP     HL
+        JP      Z,cmdList
+
+        ; DROP (minimal for now: compass only).
+        PUSH    HL
+        LD      DE,wordDROP
+        CALL    matchWord
+        POP     HL
+        JP      Z,cmdDrop
+
+        ; GET/TAKE (minimal for now: compass only).
+        PUSH    HL
+        LD      DE,wordGET
+        CALL    matchWord
+        POP     HL
+        JP      Z,cmdGet
+
+        PUSH    HL
+        LD      DE,wordTAKE
+        CALL    matchWord
+        POP     HL
+        JP      Z,cmdGet
+
         ; Full-word directions (so "north" doesn't get trapped by the
         ; single-letter dispatch).
         PUSH    HL
@@ -280,9 +320,8 @@ parseCommand:
 
 echoLine:
         LD      HL,strEh
-        SYS_PUTS
-        LD      A,LF
-        SYS_PUTC
+        CALL    printLine
+        CALL    printNewLine
         RET
 
 cmdNorth:
@@ -321,30 +360,152 @@ doMove:
 
         LD      (playerLocation),A
         CALL    printCurrentRoomDescription
-        LD      A,LF
-        SYS_PUTC
         RET
 
 cantMove:
         LD      HL,strCantGoThatWay
-        SYS_PUTS
-        LD      A,LF
-        SYS_PUTC
-        LD      A,LF
-        SYS_PUTC
+        CALL    printLine
+        CALL    printNewLine
         RET
 
 fatalMove:
         LD      HL,strFatalFall
-        SYS_PUTS
-        LD      A,LF
-        SYS_PUTC
+        CALL    printLine
         HALT
 
 cmdLook:
         CALL    printCurrentRoomDescription
-        LD      A,LF
-        SYS_PUTC
+        RET
+
+; ---------------------------------------------------------
+; cmdGet
+; Supports: "get compass" / "take compass"
+; ---------------------------------------------------------
+cmdGet:
+        ; Advance past verb then spaces.
+        CALL    skipWord
+        CALL    skipSpaces
+
+        ; Only "compass" for now.
+        PUSH    HL
+        LD      DE,wordCOMPASS
+        CALL    matchWord
+        POP     HL
+        JR      NZ,cmdGetUnknown
+
+        LD      A,(playerLocation)
+        LD      B,A                    ; B = room
+        LD      A,(objectLocation+objCompass-1)
+        CP      B
+        JR      NZ,cmdGetCantSee
+
+        ; Mark carried.
+        LD      A,roomCarried
+        LD      (objectLocation+objCompass-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+cmdGetCantSee:
+        LD      HL,strCantSeeIt
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cmdGetUnknown:
+        LD      HL,strEh
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdDrop
+; Supports: "drop compass"
+; ---------------------------------------------------------
+cmdDrop:
+        ; Advance past verb then spaces.
+        CALL    skipWord
+        CALL    skipSpaces
+
+        ; Only "compass" for now.
+        PUSH    HL
+        LD      DE,wordCOMPASS
+        CALL    matchWord
+        POP     HL
+        JR      NZ,cmdDropUnknown
+
+        LD      A,(objectLocation+objCompass-1)
+        CP      roomCarried
+        JR      NZ,cmdDropCantSee
+
+        LD      A,(playerLocation)
+        LD      (objectLocation+objCompass-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+cmdDropCantSee:
+        LD      HL,strCantSeeIt
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cmdDropUnknown:
+        LD      HL,strEh
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdList
+; Prints carried objects (objectLocation == roomCarried).
+; Current scope: objects 7..24 only.
+; ---------------------------------------------------------
+cmdList:
+        LD      HL,strCarryingPrefix
+        SYS_PUTS
+
+        LD      HL,objectLocation
+        LD      B,objCreatureCount     ; skip creatures 1..6
+cl_skip_creatures:
+        INC     HL
+        DJNZ    cl_skip_creatures
+
+        LD      B,objectItemCount      ; objects 7..24 count
+        LD      D,0                    ; printed-any flag
+        LD      E,firstObjectIndex     ; current object id (7..24)
+cl_loop:
+        LD      A,(HL)
+        CP      roomCarried
+        JR      NZ,cl_next
+
+        LD      A,D
+        OR      A
+        JR      Z,cl_first
+        LD      HL,strCommaSpace
+        SYS_PUTS
+        JR      cl_print
+cl_first:
+        LD      D,1
+cl_print:
+        PUSH    DE                     ; preserve object id (E)
+        PUSH    HL
+        LD      A,E
+        CALL    printObjectAdjNoun
+        POP     HL
+        POP     DE
+
+cl_next:
+        INC     HL
+        INC     E
+        DJNZ    cl_loop
+
+        LD      A,D
+        OR      A
+        JR      NZ,cl_done
+        LD      HL,strNothing
+        SYS_PUTS
+cl_done:
+        CALL    printNewLine
+        CALL    printNewLine
         RET
 
 ; ---------------------------------------------------------
@@ -410,6 +571,12 @@ toUpperA:
 
 wordGO:     DEFB    "GO",0
 wordLOOK:   DEFB    "LOOK",0
+wordLIST:   DEFB    "LIST",0
+wordINVENT: DEFB    "INVENT",0
+wordDROP:   DEFB    "DROP",0
+wordGET:    DEFB    "GET",0
+wordTAKE:   DEFB    "TAKE",0
+wordCOMPASS:DEFB    "COMPASS",0
 wordNORTH:  DEFB    "NORTH",0
 wordSOUTH:  DEFB    "SOUTH",0
 wordWEST:   DEFB    "WEST",0

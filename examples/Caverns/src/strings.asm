@@ -6,6 +6,9 @@ title:                  DB "DREAMCARDS presents...\r\n\r\n"
 
 promptStr:              DB "? ",0
 
+strCRLF:                DB "\r\n",0
+strCommaSpace:          DB ", ",0
+
 strTooDark:             DB "It's very dark, too dark to see anything...I'm scared!",0
 strDarkCavern:          DB "You are deep in a dark cavern.",0
 strBridgeSnapped:       DB "Two of the ropes have snapped under your weight. It's "
@@ -236,39 +239,39 @@ monNounBat              DB "bat",0
 monNameDwarf            DB "old and gnarled "
 monNounDwarf            DB "dwarf",0
 
-objNameCoin             DB "gold ",0
+objNameCoin             DB "a gold ",0
 objNounCoin             DB "coin",0
-objNameCompass          DB "useful looking ",0
+objNameCompass          DB "a useful looking ",0
 objNounCompass          DB "compass",0
-objNameBomb             DB "home made ",0
+objNameBomb             DB "a home made ",0
 objNounBomb             DB "bomb",0
-objNameRuby             DB "blood red ",0
+objNameRuby             DB "a blood red ",0
 objNounRuby             DB "ruby",0
-objNameDiamond          DB "sparkling ",0
+objNameDiamond          DB "a sparkling ",0
 objNounDiamond          DB "diamond",0
-objNamePearl            DB "moon-like ",0
+objNamePearl            DB "a moon-like ",0
 objNounPearl            DB "pearl",0
-objNameStone            DB "interesting ",0
+objNameStone            DB "an interesting ",0
 objNounStone            DB "stone",0
-objNameRing             DB "diamond studded ",0
+objNameRing             DB "a diamond studded ",0
 objNounRing             DB "ring",0
-objNamePendant          DB "magic ",0
+objNamePendant          DB "a magic ",0
 objNounPendant          DB "pendant",0
-objNameGrail            DB "most holy ",0
+objNameGrail            DB "a most holy ",0
 objNounGrail            DB "grail",0
-objNameShield           DB "mirror like ",0
+objNameShield           DB "a mirror like ",0
 objNounShield           DB "shield",0
-objNameBox              DB "nondescript black ",0
+objNameBox              DB "a nondescript black ",0
 objNounBox              DB "box",0
-objNameKey              DB "old and rusty ",0
+objNameKey              DB "an old and rusty ",0
 objNounKey              DB "key",0
-objNameSword            DB "double bladed ",0
+objNameSword            DB "a double bladed ",0
 objNounSword            DB "sword",0
-objNameCandle           DB "small ",0
+objNameCandle           DB "a small ",0
 objNounCandle           DB "candle",0
-objNameRope             DB "thin and tatty ",0
+objNameRope             DB "a thin and tatty ",0
 objNounRope             DB "rope",0
-objNameBrick            DB "red house ",0
+objNameBrick            DB "a red house ",0
 objNounBrick            DB "brick",0
-objNameGrill            DB "rusty ventilation ",0
+objNameGrill            DB "a rusty ventilation ",0
 objNounGrill            DB "grill",0
