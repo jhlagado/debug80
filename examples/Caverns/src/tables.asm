@@ -114,6 +114,7 @@ verbTokenTable:
                         DW tokenLook
                         DW tokenList
                         DW tokenInvent
+                        DW tokenScore
                         DW tokenQuit
                         DW tokenGalar
                         DW tokenApe
@@ -127,7 +128,7 @@ verbTokenTable:
                         DW tokenSouth
                         DW tokenWest
                         DW tokenEast
-verbTokenCount          EQU 16
+verbTokenCount          EQU 17
 
 ; Noun tokens aligned to index space 1..24 (creatures 1..6, objects 7..24).
 nounTokenTable:

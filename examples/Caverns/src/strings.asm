@@ -232,6 +232,7 @@ tokenInvent             DB " invent ",0
 tokenKill               DB " kill ",0
 tokenAttack             DB " attack ",0
 tokenStage2             DB " stage2 ",0
+tokenScore              DB " score ",0
 
 tokenNorth              DB " north ",0
 tokenSouth              DB " south ",0
@@ -304,7 +305,7 @@ objNameBox              DB "a nondescript black "
 objNounBox              DB "box",0
 objNameKey              DB "an old and rusty "
 objNounKey              DB "key",0
-objNameSword            DB "a double bladed "
+objNameSword            DB "a double-bladed "
 objNounSword            DB "sword",0
 objNameCandle           DB "a small "
 objNounCandle           DB "candle",0

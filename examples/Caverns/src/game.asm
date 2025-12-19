@@ -266,6 +266,11 @@ handleInputLine:
         CALL    printNewLine
         CALL    printNewLine
 
+        ; Count moves (one per input line).
+        LD      A,(turnCounter)
+        INC     A
+        LD      (turnCounter),A
+
         CALL    buildInputPadded
         CALL    scanInputTokens
         JP      dispatchScannedCommand
@@ -451,35 +456,85 @@ dispatchScannedCommand:
         CP      3
         JP      Z,cmdList              ; invent alias
         CP      4
-        JP      Z,cmdQuit
+        JP      Z,cmdScore
         CP      5
-        JP      Z,cmdGalar
+        JP      Z,cmdQuit
         CP      6
-        JP      Z,cmdApe
+        JP      Z,cmdGalar
         CP      7
-        JP      Z,cmdStage2
+        JP      Z,cmdApe
         CP      8
-        JP      Z,cmdGetGeneric
+        JP      Z,cmdStage2
         CP      9
-        JP      Z,cmdGetGeneric        ; take alias
+        JP      Z,cmdGetGeneric
         CP      10
-        JP      Z,cmdDropGeneric
+        JP      Z,cmdGetGeneric        ; take alias
         CP      11
-        JP      Z,cmdKillAttack
+        JP      Z,cmdDropGeneric
         CP      12
         JP      Z,cmdKillAttack
         CP      13
-        JP      Z,cmdNorth
+        JP      Z,cmdKillAttack
         CP      14
-        JP      Z,cmdSouth
+        JP      Z,cmdNorth
         CP      15
-        JP      Z,cmdWest
+        JP      Z,cmdSouth
         CP      16
+        JP      Z,cmdWest
+        CP      17
         JP      Z,cmdEast
         JP      echoLine
 
 ; Minimal quit/galar/ape placeholders for now.
+cmdScore:
+        CALL    computeScore
+        LD      HL,strScorePrefix
+        SYS_PUTS
+        LD      A,(score)
+        CALL    printByteDecA
+        CALL    printNewLine
+        CALL    printNewLine
+        RET
+
 cmdQuit:
+        CALL    computeScore
+
+        LD      HL,strScorePrefix
+        SYS_PUTS
+        LD      A,(score)
+        CALL    printByteDecA
+
+        LD      HL,strScoreMid
+        SYS_PUTS
+        LD      A,(turnCounter)
+        CALL    printByteDecA
+
+        LD      HL,strScoreSuffix
+        CALL    printLine
+        CALL    printNewLine
+
+        LD      HL,strAnother
+        SYS_PUTS
+cq_key:
+        SYS_GETC
+        CP      'y'
+        JR      Z,cq_restart
+        CP      'Y'
+        JR      Z,cq_restart
+        CP      'n'
+        JR      Z,cq_exit
+        CP      'N'
+        JR      Z,cq_exit
+        JR      cq_key
+
+cq_restart:
+        CALL    initState
+        LD      HL,title
+        SYS_PUTS
+        CALL    printCurrentRoomDescription
+        RET
+
+cq_exit:
         HALT
 cmdGalar:
         LD      HL,strMagicWind
@@ -490,6 +545,111 @@ cmdApe:
         LD      HL,strCryptWall
         CALL    printLine
         CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; computeScore
+; Implements the mwb scoring rule for objects 7..17:
+; - if carried: add (idx-6)
+; - if in room 1: add (idx-6)*2
+; Stores result in (score).
+; ---------------------------------------------------------
+computeScore:
+        XOR     A
+        LD      (score),A
+        LD      B,firstScoreObjectIndex        ; 7
+cs_loop:
+        ; Load object location for index B
+        LD      A,B
+        DEC     A
+        LD      L,A
+        LD      H,0
+        LD      DE,objectLocation
+        ADD     HL,DE
+        LD      A,(HL)
+        CP      roomCarried
+        JR      Z,cs_add_once
+        CP      roomDarkRoom
+        JR      Z,cs_add_twice
+        JR      cs_next
+
+cs_add_once:
+        LD      A,B
+        SUB     scoreIndexBaseSub              ; (idx-6)
+        LD      C,A
+        LD      A,(score)
+        ADD     A,C
+        LD      (score),A
+        JR      cs_next
+
+cs_add_twice:
+        LD      A,B
+        SUB     scoreIndexBaseSub
+        ADD     A,A
+        LD      C,A
+        LD      A,(score)
+        ADD     A,C
+        LD      (score),A
+
+cs_next:
+        INC     B
+        LD      A,B
+        CP      afterLastScoreObjectIndex      ; 18
+        JR      NZ,cs_loop
+        RET
+
+; ---------------------------------------------------------
+; printByteDecA
+; Prints unsigned A in decimal (0..255) with no leading zeros.
+; Clobbers: A, B, C, D, E
+; ---------------------------------------------------------
+printByteDecA:
+        LD      B,0                    ; printed-any flag
+
+        LD      D,100
+        CALL    pbd_digit
+        LD      D,10
+        CALL    pbd_digit
+        LD      D,1
+        CALL    pbd_digit_last
+        RET
+
+; D = divisor (100 or 10)
+pbd_digit:
+        XOR     E                      ; E=0 count (uses A=0, but we need A preserved)
+        LD      E,0
+pbd_dloop:
+        CP      D
+        JR      C,pbd_ddone
+        SUB     D
+        INC     E
+        JR      pbd_dloop
+pbd_ddone:
+        LD      C,E                    ; digit in C
+        LD      A,B
+        OR      A
+        JR      NZ,pbd_print_digit
+        LD      A,C
+        OR      A
+        RET     Z                      ; skip leading zero
+pbd_print_digit:
+        LD      A,C
+        ADD     A,'0'
+        SYS_PUTC
+        LD      B,1
+        RET
+
+; D = 1
+pbd_digit_last:
+        LD      C,A                    ; remaining value 0..9
+        LD      A,B
+        OR      A
+        JR      NZ,pbd_print_last
+        ; if nothing printed yet, print 0..9 (including 0)
+pbd_print_last:
+        LD      A,C
+        ADD     A,'0'
+        SYS_PUTC
         RET
 
 ; ---------------------------------------------------------
