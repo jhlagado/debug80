@@ -92,6 +92,8 @@ printCurrentRoomDescription:
         CALL    printLine
 
 pc_lists:
+        LD      A,D
+        CALL    updateDrawbridgeState
         CALL    updateCandleByTurns
         CALL    listRoomObjects
         CALL    listRoomCreatures
@@ -139,6 +141,21 @@ updateCandleByTurns:
 uc_dim:
         LD      HL,strCandleDim
         CALL    printLine
+        RET
+
+; ---------------------------------------------------------
+; updateDrawbridgeState
+; A = room id
+; Sets drawbridgeState once the player reaches roomDrawbridge.
+;
+; Clobbers:
+;   AF
+; ---------------------------------------------------------
+updateDrawbridgeState:
+        CP      roomDrawbridge
+        RET     NZ
+        LD      A,roomDrawbridge
+        LD      (drawbridgeState),A
         RET
 
 ; ---------------------------------------------------------
@@ -761,9 +778,6 @@ coc_hut:
 
         LD      HL,strDoorOpened
         CALL    printLine
-        ; Leave key behind in the hut clearing.
-        LD      A,roomForestClearing
-        LD      (objectLocation+objKey-1),A
         LD      A,roomDarkRoom
         LD      (playerLocation),A
         CALL    printCurrentRoomDescription
@@ -776,9 +790,6 @@ coc_gate:
 
         LD      HL,strGateOpened
         CALL    printLine
-        ; Leave key behind in the temple.
-        LD      A,roomTemple
-        LD      (objectLocation+objKey-1),A
         LD      A,roomCrypt
         LD      (playerLocation),A
         CALL    printCurrentRoomDescription
@@ -1494,8 +1505,32 @@ clb_candle_ok:
         RET
 
 clb_bomb_ok:
-        ; Placeholder until the explosion logic is wired.
-        JP      cmdStubAction
+        ; Bomb explosion logic (MWB-style).
+        LD      HL,strBombExplode
+        CALL    printLine
+
+        ; Consume the bomb.
+        XOR     A
+        LD      (objectLocation+objBomb-1),A
+
+        ; Knock the player back one room if possible.
+        LD      A,(playerLocation)
+        CP      roomDarkRoom
+        JR      Z,clb_after_knock
+        DEC     A
+        LD      (playerLocation),A
+
+clb_after_knock:
+        ; If we landed in the oak door room, open the east exit.
+        LD      A,(playerLocation)
+        CP      roomOakDoor
+        JR      NZ,clb_done
+        LD      A,roomTreasureRoom
+        LD      (teleportDestination),A
+
+clb_done:
+        CALL    printCurrentRoomDescription
+        RET
 
 cmdDropCantSee:
         LD      HL,strCantSeeIt
