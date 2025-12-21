@@ -100,14 +100,6 @@ roomDesc2Table:
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
                         DW NULL, NULL, NULL, NULL, NULL, NULL, NULL
 
-verbPatternTable:
-                        DW verbTake, verbPut, verbUsing, verbWith, verbCut
-                        DW verbBreak, verbUnlock, verbOpen, verbKill, verbAttack
-                        DW verbLight, verbBurn, verbUp, verbDown, verbJump, verbSwim
-
-dirWordIndexTable:
-                        DW dirNorthStr, dirSouthStr, dirWestStr, dirEastStr
-
 ; Verb tokens for orderless input scanning (first match wins).
 ; Keep common no-noun verbs first, then get/drop, then movement.
 verbTokenTable:
@@ -122,13 +114,24 @@ verbTokenTable:
                         DW tokenGet
                         DW tokenTake
                         DW tokenDrop
+                        DW tokenPut
+                        DW tokenCut
+                        DW tokenBreak
+                        DW tokenUnlock
+                        DW tokenOpen
                         DW tokenKill
                         DW tokenAttack
+                        DW tokenLight
+                        DW tokenBurn
+                        DW tokenUp
+                        DW tokenDown
+                        DW tokenJump
+                        DW tokenSwim
                         DW tokenNorth
                         DW tokenSouth
                         DW tokenWest
                         DW tokenEast
-verbTokenCount          EQU 17
+verbTokenCount          EQU 27
 
 ; Noun tokens aligned to index space 1..24 (creatures 1..6, objects 7..24).
 nounTokenTable:

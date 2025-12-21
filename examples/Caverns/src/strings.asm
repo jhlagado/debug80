@@ -64,6 +64,9 @@ strNotCarrying:         DB "You aren't carrying that.",0
 strCombatNotImpl:       DB "You attack, but combat isn't implemented yet.",0
 strPleaseTell:          DB "Please tell me how.",0
 strICant:               DB "I can't!",0
+strStubVerb:            DB "Not implemented: ",0
+strStubTarget:          DB " target=",0
+strStubTool:            DB " tool=",0
 strRanking:             DB "This gives you an adventurer's ranking of:",0
 strRankHopeless:        DB "Hopeless beginner",0
 strRankLoser:           DB "Experienced loser",0
@@ -198,28 +201,6 @@ descRiverConduit        DB "You are in a conduit draining into the river. The wa
                         DB "comes up to your knees and is freezing cold. A narrow "
                         DB "service path leads south.",0
 
-verbTake                DB "take",0
-verbPut                 DB "put",0
-verbUsing               DB "using",0
-verbWith                DB "with",0
-verbCut                 DB "cut",0
-verbBreak               DB "break",0
-verbUnlock              DB "unlock",0
-verbOpen                DB "open",0
-verbKill                DB "kill",0
-verbAttack              DB "attack",0
-verbLight               DB "light",0
-verbBurn                DB "burn",0
-verbUp                  DB "up",0
-verbDown                DB "down",0
-verbJump                DB "jump",0
-verbSwim                DB "swim",0
-
-dirNorthStr             DB "north",0
-dirSouthStr             DB "south",0
-dirWestStr              DB "west",0
-dirEastStr              DB "east",0
-
 tokenLook               DB " look ",0
 tokenList               DB " list ",0
 tokenQuit               DB " quit ",0
@@ -233,6 +214,19 @@ tokenKill               DB " kill ",0
 tokenAttack             DB " attack ",0
 tokenStage2             DB " stage2 ",0
 tokenScore              DB " score ",0
+tokenPut                DB " put ",0
+tokenUsing              DB " using ",0
+tokenWith               DB " with ",0
+tokenCut                DB " cut ",0
+tokenBreak              DB " break ",0
+tokenUnlock             DB " unlock ",0
+tokenOpen               DB " open ",0
+tokenLight              DB " light ",0
+tokenBurn               DB " burn ",0
+tokenUp                 DB " up ",0
+tokenDown               DB " down ",0
+tokenJump               DB " jump ",0
+tokenSwim               DB " swim ",0
 
 tokenNorth              DB " north ",0
 tokenSouth              DB " south ",0

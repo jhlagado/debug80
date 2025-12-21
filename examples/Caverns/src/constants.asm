@@ -48,16 +48,8 @@ dirCount        equ 4
 ; Dynamic exit patching (updateDynamicExits)
 dynamicExitPatchCount equ 7
 
-; Verb pattern indices (order from verbPatternTable)
-verbPatternGetIndex    equ 1   ; get/take
-verbPatternDropIndex   equ 2   ; drop/put
-verbPatternUseIndex    equ 3   ; using
-verbPatternWithIndex   equ 4   ; with
-verbPatternJumpTableMax equ 4  ; indices 1..4 are jump-table routed
-verbPatternCount       equ 16
-verbPatternPleaseStart equ 7   ; unlock..burn -> "please tell me how"
-verbPatternPleaseEnd   equ 12
-verbPatternCantStart   equ 13  ; up..swim -> "I can't"
+; Verb indices come from `verbTokenTable` (see `examples/Caverns/src/tables.asm`).
+; The parser scans for space-padded tokens like " kill " in a space-padded input buffer.
 
 ; Random fight message ids
 fightMsgMove      equ 0

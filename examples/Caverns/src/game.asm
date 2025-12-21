@@ -234,6 +234,15 @@ printObjectAdjNoun:
         CALL    printWordTableEntry0Based
         RET
 
+; A = object index (7..24)
+printObjectAdjNounFromIndex:
+        SUB     firstObjectIndex
+        LD      B,A
+        LD      HL,objectNameNameTable
+        LD      A,B
+        CALL    printWordTableEntry0Based
+        RET
+
 ; ---------------------------------------------------------
 ; printWordTableEntry0Based
 ; HL = base of DW table, A = 0-based index
@@ -466,22 +475,44 @@ dispatchScannedCommand:
         CP      8
         JP      Z,cmdStage2
         CP      9
-        JP      Z,cmdGetGeneric
+        JP      Z,cmdGet
         CP      10
-        JP      Z,cmdGetGeneric        ; take alias
+        JP      Z,cmdGet               ; take alias
         CP      11
-        JP      Z,cmdDropGeneric
+        JP      Z,cmdDrop
         CP      12
-        JP      Z,cmdKillAttack
+        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
         CP      13
-        JP      Z,cmdKillAttack
+        JP      Z,cmdStubAction         ; cut
         CP      14
-        JP      Z,cmdNorth
+        JP      Z,cmdStubAction         ; break
         CP      15
-        JP      Z,cmdSouth
+        JP      Z,cmdStubAction         ; unlock
         CP      16
-        JP      Z,cmdWest
+        JP      Z,cmdStubAction         ; open
         CP      17
+        JP      Z,cmdKillAttack
+        CP      18
+        JP      Z,cmdKillAttack
+        CP      19
+        JP      Z,cmdStubAction         ; light
+        CP      20
+        JP      Z,cmdStubAction         ; burn
+        CP      21
+        JP      Z,cmdStubAction         ; up
+        CP      22
+        JP      Z,cmdDown               ; down (rope descent)
+        CP      23
+        JP      Z,cmdStubAction         ; jump
+        CP      24
+        JP      Z,cmdStubAction         ; swim
+        CP      25
+        JP      Z,cmdNorth
+        CP      26
+        JP      Z,cmdSouth
+        CP      27
+        JP      Z,cmdWest
+        CP      28
         JP      Z,cmdEast
         JP      echoLine
 
@@ -546,6 +577,109 @@ cmdApe:
         CALL    printLine
         CALL    printNewLine
         RET
+
+; ---------------------------------------------------------
+; cmdDown
+; Clean model: DOWN is a verb. If rope is mentioned and you're in room 28,
+; descend to room 35 (temple), leaving the rope behind (like mwb).
+; ---------------------------------------------------------
+cmdDown:
+        ; Require rope noun (either noun1 or noun2) and rope must be carried.
+        LD      A,(currentObjectIndex)
+        CP      objRope
+        JR      Z,cd_have_rope_noun
+        LD      A,(targetLocation)
+        CP      objRope
+        JR      Z,cd_have_rope_noun
+        LD      HL,strICant
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cd_have_rope_noun:
+        LD      A,(objectLocation+objRope-1)
+        CP      roomCarried
+        JR      Z,cd_rope_carried
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cd_rope_carried:
+        LD      A,(playerLocation)
+        CP      roomTempleBalcony
+        JR      Z,cd_do_descend
+        LD      HL,strTooDangerous
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cd_do_descend:
+        LD      HL,strDescendRope
+        CALL    printLine
+
+        ; Leave rope in current room (28) and move player to temple (35).
+        LD      A,roomTempleBalcony
+        LD      (objectLocation+objRope-1),A
+        LD      A,roomTemple
+        LD      (playerLocation),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdStubAction
+; Placeholder for not-yet-implemented verbs. Prints the verb token
+; and the scanned nouns (noun1/noun2) for debugging.
+; ---------------------------------------------------------
+cmdStubAction:
+        LD      HL,strStubVerb
+        SYS_PUTS
+
+        ; Print verb token text (space padded) from verbTokenTable[verbPatternIndex]
+        LD      A,(verbPatternIndex)
+        DEC     A
+        ADD     A,A
+        LD      E,A
+        LD      D,0
+        LD      HL,verbTokenTable
+        ADD     HL,DE
+        LD      E,(HL)
+        INC     HL
+        LD      D,(HL)
+        EX      DE,HL
+        SYS_PUTS
+
+        LD      HL,strStubTarget
+        SYS_PUTS
+        LD      A,(currentObjectIndex)
+        CALL    printNounByIndex
+
+        LD      HL,strStubTool
+        SYS_PUTS
+        LD      A,(targetLocation)
+        CALL    printNounByIndex
+
+        CALL    printNewLine
+        CALL    printNewLine
+        RET
+
+; A = noun index (1..24) or 0
+; Prints "none" if 0 else prints the noun string via fallthrough tables.
+printNounByIndex:
+        OR      A
+        JR      NZ,pni_print
+        LD      HL,strNothing
+        SYS_PUTS
+        RET
+pni_print:
+        CP      firstObjectIndex
+        JR      NC,pni_obj
+        CALL    printCreatureAdjNoun
+        RET
+pni_obj:
+        CALL    printObjectAdjNounFromIndex
+        RET
+
 
 ; ---------------------------------------------------------
 ; computeScore
@@ -788,10 +922,10 @@ selectToolObject:
         RET
 
 ; ---------------------------------------------------------
-; cmdGetGeneric / cmdDropGeneric
+; cmdGet / cmdDrop
 ; Uses scanned nouns: chooses the first object noun (7..24).
 ; ---------------------------------------------------------
-cmdGetGeneric:
+cmdGet:
         CALL    selectScannedObject
         OR      A
         JP      Z,cmdGetUnknown
@@ -799,7 +933,7 @@ cmdGetGeneric:
         CALL    doGetObjectIndex
         RET
 
-cmdDropGeneric:
+cmdDrop:
         CALL    selectScannedObject
         OR      A
         JP      Z,cmdDropUnknown
@@ -903,34 +1037,6 @@ cmdLook:
         CALL    printCurrentRoomDescription
         RET
 
-; ---------------------------------------------------------
-; cmdGet
-; Supports: "get compass" / "take compass"
-; ---------------------------------------------------------
-cmdGet:
-        ; Advance past verb then spaces.
-        CALL    skipWord
-        CALL    skipSpaces
-
-        ; Only "compass" for now.
-        PUSH    HL
-        LD      DE,wordCOMPASS
-        CALL    matchWord
-        POP     HL
-        JR      NZ,cmdGetUnknown
-
-        LD      A,(playerLocation)
-        LD      B,A                    ; B = room
-        LD      A,(objectLocation+objCompass-1)
-        CP      B
-        JR      NZ,cmdGetCantSee
-
-        ; Mark carried.
-        LD      A,roomCarried
-        LD      (objectLocation+objCompass-1),A
-        CALL    printCurrentRoomDescription
-        RET
-
 cmdGetCantSee:
         LD      HL,strCantSeeIt
         CALL    printLine
@@ -941,31 +1047,6 @@ cmdGetUnknown:
         LD      HL,strEh
         CALL    printLine
         CALL    printNewLine
-        RET
-
-; ---------------------------------------------------------
-; cmdDrop
-; Supports: "drop compass"
-; ---------------------------------------------------------
-cmdDrop:
-        ; Advance past verb then spaces.
-        CALL    skipWord
-        CALL    skipSpaces
-
-        ; Only "compass" for now.
-        PUSH    HL
-        LD      DE,wordCOMPASS
-        CALL    matchWord
-        POP     HL
-        JR      NZ,cmdDropUnknown
-
-        LD      A,(objectLocation+objCompass-1)
-        CP      roomCarried
-        JR      NZ,cmdDropCantSee
-
-        LD      A,(playerLocation)
-        LD      (objectLocation+objCompass-1),A
-        CALL    printCurrentRoomDescription
         RET
 
 cmdDropCantSee:
@@ -1034,57 +1115,6 @@ cl_done:
         CALL    printNewLine
         RET
 
-; ---------------------------------------------------------
-; matchWord
-; HL = input position, DE = pointer to uppercase word (0-terminated)
-; Returns Z if the word matches at HL and is followed by space or 0.
-; Case-insensitive for ASCII letters.
-; ---------------------------------------------------------
-matchWord:
-mw_loop:
-        LD      A,(DE)
-        OR      A
-        JR      Z,mw_done
-        LD      B,A
-        LD      A,(HL)
-        OR      A
-        JR      Z,mw_fail
-        CALL    toUpperA
-        CP      B
-        JR      NZ,mw_fail
-        INC     HL
-        INC     DE
-        JR      mw_loop
-mw_done:
-        LD      A,(HL)
-        OR      A
-        RET     Z
-        CP      ' '
-        RET     Z
-mw_fail:
-        OR      1
-        RET
-
-; HL -> skip leading spaces, returns HL at first non-space/0
-skipSpaces:
-ss_loop:
-        LD      A,(HL)
-        CP      ' '
-        RET     NZ
-        INC     HL
-        JR      ss_loop
-
-; HL -> skip current word, returns HL at first space/0 after it
-skipWord:
-sw_loop:
-        LD      A,(HL)
-        OR      A
-        RET     Z
-        CP      ' '
-        RET     Z
-        INC     HL
-        JR      sw_loop
-
 ; toUpperA
 ; A = ASCII char; returns uppercase for a-z.
 toUpperA:
@@ -1099,15 +1129,6 @@ wordGO:     DEFB    "GO",0
 wordLOOK:   DEFB    "LOOK",0
 wordLIST:   DEFB    "LIST",0
 wordINVENT: DEFB    "INVENT",0
-wordDROP:   DEFB    "DROP",0
-wordGET:    DEFB    "GET",0
-wordTAKE:   DEFB    "TAKE",0
-wordCOMPASS:DEFB    "COMPASS",0
-wordNORTH:  DEFB    "NORTH",0
-wordSOUTH:  DEFB    "SOUTH",0
-wordWEST:   DEFB    "WEST",0
-wordEAST:   DEFB    "EAST",0
-
 ; readLn: HL buffer, B = buffer length (including terminator)
 ; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
 ; zero-terminates. Returns with A holding last read (newline).
