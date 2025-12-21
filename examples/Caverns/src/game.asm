@@ -1077,8 +1077,34 @@ selectScannedObject:
 sso_ret:
         RET
 
+; ---------------------------------------------------------
+; countCarriedItems
+; Returns: A = number of carried objects (7..24).
+; ---------------------------------------------------------
+countCarriedItems:
+        LD      HL,objectLocation+objCreatureCount  ; skip creatures 1..6
+        LD      B,objectItemCount                   ; objects 7..24
+        LD      C,0                                 ; count
+cic_loop:
+        LD      A,(HL)
+        CP      roomCarried
+        JR      NZ,cic_next
+        INC     C
+cic_next:
+        INC     HL
+        DJNZ    cic_loop
+        LD      A,C
+        RET
+
 ; B = object index (7..24)
 doGetObjectIndex:
+        ; Enforce a max carry limit (MWB: 10 objects).
+        PUSH    BC
+        CALL    countCarriedItems
+        CP      maxCarryItems
+        POP     BC
+        JP      NC,cmdGetTooMany
+
         LD      A,(playerLocation)
         LD      C,A                    ; room
         LD      A,B
@@ -1093,6 +1119,12 @@ doGetObjectIndex:
         LD      A,roomCarried
         LD      (HL),A
         CALL    printCurrentRoomDescription
+        RET
+
+cmdGetTooMany:
+        LD      HL,strTooManyObjects
+        CALL    printLine
+        CALL    printNewLine
         RET
 
 ; B = object index (7..24)
