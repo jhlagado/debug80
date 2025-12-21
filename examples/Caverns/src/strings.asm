@@ -33,7 +33,7 @@ strMonsterSuffix:       DB "!!",0
 strCantGoThatWay:       DB "You can't go that way",0
 strFatalFall:           DB "You stumble and fall into the chasm and smash yourself to "
                         DB "a pulp on the rocks below.",0
-strMagicWind:           DB "Suddenly a magic wind carried you to another place...",0
+strMagicWind:           DB "The runes of Galar glow and a magic wind carries you to another place...",0
 strCryptWall:           DB "Hey! the eastern wall of the crypt slid open...",0
 strEh:                  DB "eh?",0
 strCantSeeIt:           DB "Where? I can't see it.",0
