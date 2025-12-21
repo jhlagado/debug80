@@ -627,44 +627,48 @@ dispatchScannedCommand:
         CP      9
         JP      Z,cmdStage3
         CP      10
-        JP      Z,cmdGet
+        JP      Z,cmdStage4
         CP      11
-        JP      Z,cmdGet               ; take alias
+        JP      Z,cmdStage5
         CP      12
-        JP      Z,cmdDrop
+        JP      Z,cmdGet
         CP      13
-        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
+        JP      Z,cmdGet               ; take alias
         CP      14
-        JP      Z,cmdStubAction         ; cut
+        JP      Z,cmdDrop
         CP      15
-        JP      Z,cmdStubAction         ; break
+        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
         CP      16
-        JP      Z,cmdUnlock
+        JP      Z,cmdStubAction         ; cut
         CP      17
-        JP      Z,cmdOpen
+        JP      Z,cmdStubAction         ; break
         CP      18
-        JP      Z,cmdKillAttack
+        JP      Z,cmdUnlock
         CP      19
-        JP      Z,cmdKillAttack
+        JP      Z,cmdOpen
         CP      20
-        JP      Z,cmdLight
+        JP      Z,cmdKillAttack
         CP      21
-        JP      Z,cmdBurn
+        JP      Z,cmdKillAttack
         CP      22
-        JP      Z,cmdNeedHow            ; up
+        JP      Z,cmdLight
         CP      23
-        JP      Z,cmdDown               ; down (rope descent)
+        JP      Z,cmdBurn
         CP      24
-        JP      Z,cmdNeedHow            ; jump
+        JP      Z,cmdNeedHow            ; up
         CP      25
-        JP      Z,cmdNeedHow            ; swim
+        JP      Z,cmdDown               ; down (rope descent)
         CP      26
-        JP      Z,cmdNorth
+        JP      Z,cmdNeedHow            ; jump
         CP      27
-        JP      Z,cmdSouth
+        JP      Z,cmdNeedHow            ; swim
         CP      28
-        JP      Z,cmdWest
+        JP      Z,cmdNorth
         CP      29
+        JP      Z,cmdSouth
+        CP      30
+        JP      Z,cmdWest
+        CP      31
         JP      Z,cmdEast
         JP      echoLine
 
@@ -1099,6 +1103,40 @@ cmdStage2:
 cmdStage3:
         CALL    initState
         LD      A,roomOakDoor
+        LD      (playerLocation),A
+        LD      A,roomCarried
+        LD      (objectLocation+objCompass-1),A
+        LD      (objectLocation+objSword-1),A
+        LD      (objectLocation+objCandle-1),A
+        LD      (objectLocation+objBomb-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdStage4
+; Testing helper: resets state, moves player to castle ledge (room 48),
+; and gives compass/sword/candle/bomb in inventory.
+; ---------------------------------------------------------
+cmdStage4:
+        CALL    initState
+        LD      A,roomCastleLedge
+        LD      (playerLocation),A
+        LD      A,roomCarried
+        LD      (objectLocation+objCompass-1),A
+        LD      (objectLocation+objSword-1),A
+        LD      (objectLocation+objCandle-1),A
+        LD      (objectLocation+objBomb-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdStage5
+; Testing helper: resets state, moves player to courtyard (room 50),
+; and gives compass/sword/candle/bomb in inventory.
+; ---------------------------------------------------------
+cmdStage5:
+        CALL    initState
+        LD      A,roomCastleCourtyard
         LD      (playerLocation),A
         LD      A,roomCarried
         LD      (objectLocation+objCompass-1),A
