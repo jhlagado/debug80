@@ -133,7 +133,9 @@ verbTokenTable:
                         DW tokenEast
 verbTokenCount          EQU 27
 
-; Noun tokens aligned to index space 1..24 (creatures 1..6, objects 7..24).
+; Noun tokens scanned from input (indices 1..nounTokenCount).
+; 1..24 align to index space (creatures 1..6, objects 7..24).
+; 25.. are pseudo-nouns (not in objectLocation[]), e.g. door/gate.
 nounTokenTable:
                         DW tokenWizard, tokenDemon, tokenTroll
                         DW tokenDragon, tokenBat, tokenDwarf
@@ -142,6 +144,7 @@ nounTokenTable:
                         DW tokenPendant, tokenGrail, tokenShield, tokenBox
                         DW tokenKey, tokenSword, tokenCandle, tokenRope
                         DW tokenBrick, tokenGrill
+                        DW tokenDoor, tokenGate
 
 monsterNameTable:
                         DW monNameWiz, monNameDemon, monNameTroll

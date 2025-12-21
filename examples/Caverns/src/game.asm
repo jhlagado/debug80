@@ -542,7 +542,7 @@ sv_hit:
 sn_start:
         ; Scan nouns: capture first two distinct matches.
         LD      IX,nounTokenTable
-        LD      B,objectCount          ; 24 entries (1..24)
+        LD      B,nounTokenCount       ; entries (1..nounTokenCount)
         LD      C,1
 sn_loop:
         PUSH    BC
@@ -624,7 +624,7 @@ dispatchScannedCommand:
         CP      19
         JP      Z,cmdLight
         CP      20
-        JP      Z,cmdNeedHow            ; burn
+        JP      Z,cmdBurn
         CP      21
         JP      Z,cmdNeedHow            ; up
         CP      22
@@ -736,41 +736,29 @@ cmdUnlock:
 cmdOpen:
         ; fallthrough
 cmdOpenCommon:
-        ; Require key noun to be present in the command.
+        ; Require key to be one noun and door/gate to be the other noun.
         LD      A,(currentObjectIndex)
-        CP      objKey
-        JR      Z,coc_have_key_noun
+        LD      B,A
         LD      A,(targetLocation)
-        CP      objKey
-        JR      Z,coc_have_key_noun
-        LD      HL,strUseHow
-        CALL    printLine
-        CALL    printNewLine
-        RET
+        LD      C,A
 
-coc_have_key_noun:
-        ; Require key to be carried.
-        LD      A,(objectLocation+objKey-1)
-        CP      roomCarried
-        JR      Z,coc_key_carried
-        LD      HL,strNotCarrying
-        CALL    printLine
-        CALL    printNewLine
-        RET
-
-coc_key_carried:
+        ; Determine which action applies based on current room.
         LD      A,(playerLocation)
         CP      roomForestClearing
-        JR      Z,coc_open_hut
+        JR      Z,coc_hut
         CP      roomTemple
-        JR      Z,coc_open_gate
+        JR      Z,coc_gate
 
         LD      HL,strWontOpen
         CALL    printLine
         CALL    printNewLine
         RET
 
-coc_open_hut:
+coc_hut:
+        ; Require: key + door
+        CALL    requireKeyAndNounDoor
+        RET     NZ
+
         LD      HL,strDoorOpened
         CALL    printLine
         ; Leave key behind in the hut clearing.
@@ -781,8 +769,12 @@ coc_open_hut:
         CALL    printCurrentRoomDescription
         RET
 
-coc_open_gate:
-        LD      HL,strDoorOpened
+coc_gate:
+        ; Require: key + gate
+        CALL    requireKeyAndNounGate
+        RET     NZ
+
+        LD      HL,strGateOpened
         CALL    printLine
         ; Leave key behind in the temple.
         LD      A,roomTemple
@@ -790,6 +782,56 @@ coc_open_gate:
         LD      A,roomCrypt
         LD      (playerLocation),A
         CALL    printCurrentRoomDescription
+        RET
+
+; Inputs:
+;   B = noun1, C = noun2
+; Returns:
+;   Z=1 if ok, NZ otherwise (and prints error)
+requireKeyAndNounDoor:
+        LD      D,nounDoor
+        JR      requireKeyAndNounCommon
+
+requireKeyAndNounGate:
+        LD      D,nounGate
+        ; fallthrough
+
+requireKeyAndNounCommon:
+        ; Require key noun present.
+        LD      A,B
+        CP      objKey
+        JR      Z,rkn_key_in_b
+        LD      A,C
+        CP      objKey
+        JR      NZ,rkn_need_how
+rkn_key_in_b:
+        ; Require required noun present.
+        LD      A,B
+        CP      D
+        JR      Z,rkn_have_noun
+        LD      A,C
+        CP      D
+        JR      NZ,rkn_need_how
+rkn_have_noun:
+        ; Require key carried.
+        LD      A,(objectLocation+objKey-1)
+        CP      roomCarried
+        JR      Z,rkn_ok
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        OR      1
+        RET
+
+rkn_need_how:
+        LD      HL,strPleaseTell
+        CALL    printLine
+        CALL    printNewLine
+        OR      1
+        RET
+
+rkn_ok:
+        XOR     A                      ; Z=1
         RET
 
 ; ---------------------------------------------------------
@@ -886,12 +928,26 @@ printNounByIndex:
         SYS_PUTS
         RET
 pni_print:
+        CP      nounDoor
+        JR      Z,pni_door
+        CP      nounGate
+        JR      Z,pni_gate
         CP      firstObjectIndex
         JR      NC,pni_obj
         CALL    printCreatureAdjNoun
         RET
 pni_obj:
         CALL    printObjectAdjNounFromIndex
+        RET
+
+pni_door:
+        LD      HL,strDoorWord
+        SYS_PUTS
+        RET
+
+pni_gate:
+        LD      HL,strGateWord
+        SYS_PUTS
         RET
 
 
@@ -1372,7 +1428,74 @@ cmdNeedHow:
 ; (In the original BASIC this prints "Please tell me how." and does not relight.)
 ; ---------------------------------------------------------
 cmdLight:
+        JP      cmdLightBurnBombCommon
+
+; ---------------------------------------------------------
+; cmdBurn
+; Special-case: burning the bomb requires candle as the second noun.
+; Otherwise behaves like MWB "Please tell me how."
+; ---------------------------------------------------------
+cmdBurn:
+        ; fallthrough
+
+; ---------------------------------------------------------
+; cmdLightBurnBombCommon
+; Handles "light/burn bomb candle" gating.
+;
+; Rule (as requested):
+; - Require bomb noun + candle noun (orderless).
+; - If requirement not met: "Please tell me how."
+; - If bomb not mentioned: "Please tell me how."
+;
+; Note: The actual bomb explosion logic is implemented separately.
+; ---------------------------------------------------------
+cmdLightBurnBombCommon:
+        ; Require bomb noun to be present.
+        LD      A,(currentObjectIndex)
+        CP      objBomb
+        JR      Z,clb_have_bomb
+        LD      A,(targetLocation)
+        CP      objBomb
+        JR      Z,clb_have_bomb
         JP      cmdNeedHow
+
+clb_have_bomb:
+        ; Require candle noun (explicit, orderless).
+        LD      A,(currentObjectIndex)
+        CP      objCandle
+        JR      Z,clb_have_candle
+        LD      A,(targetLocation)
+        CP      objCandle
+        JR      Z,clb_have_candle
+        JP      cmdNeedHow
+
+clb_have_candle:
+        ; Require candle to be carried (tool).
+        LD      A,(objectLocation+objCandle-1)
+        CP      roomCarried
+        JR      Z,clb_candle_ok
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+clb_candle_ok:
+        ; Require bomb to be carried or present.
+        LD      A,(playerLocation)
+        LD      C,A
+        LD      A,(objectLocation+objBomb-1)
+        CP      roomCarried
+        JR      Z,clb_bomb_ok
+        CP      C
+        JR      Z,clb_bomb_ok
+        LD      HL,strCantSeeIt
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+clb_bomb_ok:
+        ; Placeholder until the explosion logic is wired.
+        JP      cmdStubAction
 
 cmdDropCantSee:
         LD      HL,strCantSeeIt

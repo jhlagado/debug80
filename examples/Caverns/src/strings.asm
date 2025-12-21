@@ -41,6 +41,7 @@ strTooManyObjects:      DB "You are carrying too many objects.",0
 strUseHow:              DB "How am I supposed to use it?",0
 strWontOpen:            DB "It won't open!",0
 strDoorOpened:          DB "You opened the door.",0
+strGateOpened:          DB "You opened the gate.",0
 strNothingToKill:       DB "But there's nothing to kill...",0
 strSwordMiss:           DB "You swing with your sword but miss and the creature "
                         DB "smashes your skull.",0
@@ -67,6 +68,8 @@ strICant:               DB "I can't!",0
 strStubVerb:            DB "Not implemented: ",0
 strStubTarget:          DB " target=",0
 strStubTool:            DB " tool=",0
+strDoorWord:            DB "door",0
+strGateWord:            DB "gate",0
 strRanking:             DB "This gives you an adventurer's ranking of:",0
 strRankHopeless:        DB "Hopeless beginner",0
 strRankLoser:           DB "Experienced loser",0
@@ -227,6 +230,10 @@ tokenUp                 DB " up ",0
 tokenDown               DB " down ",0
 tokenJump               DB " jump ",0
 tokenSwim               DB " swim ",0
+
+; Non-object nouns used by some verbs (not part of nounTokenTable 1..24).
+tokenDoor               DB " door ",0
+tokenGate               DB " gate ",0
 
 tokenNorth              DB " north ",0
 tokenSouth              DB " south ",0

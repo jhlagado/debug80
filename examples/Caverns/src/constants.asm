@@ -163,6 +163,11 @@ movementTableBytes equ roomMax*4
 ; Input buffer sizing
 inputBufferSize equ 80        ; characters incl. padding/terminator
 
+; Extended noun token indices (not part of objectLocation[])
+nounDoor equ 25
+nounGate equ 26
+nounTokenCount equ 26          ; nouns scanned from nounTokenTable
+
 ; Object index ranges
 firstObjectIndex equ 7
 lastObjectIndex  equ objectCount
