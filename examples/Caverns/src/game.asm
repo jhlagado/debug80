@@ -71,14 +71,141 @@ is_init_obj:
 ; ---------------------------------------------------------
 printCurrentRoomDescription:
         LD      A,(playerLocation)     ; 1-based room id
+        LD      D,A                    ; D = current room (preserve across calls)
+        CALL    isRoomTooDark          ; Z=1 if too dark to see
+        JR      Z,pc_too_dark
+
+        LD      A,D
         LD      HL,roomDesc1Table
         CALL    printDescription
-        LD      A,(playerLocation)     ; 1-based room id
+
+        LD      A,D
         LD      HL,roomDesc2Table
         CALL    printDescription
+
+        ; Extra flavor line in select rooms (matches mwb line 55).
+        LD      A,D
+        LD      HL,darkCavernRoomList
+        CALL    containsByteListZeroTerm
+        JR      NZ,pc_lists
+        LD      HL,strDarkCavern
+        CALL    printLine
+
+pc_lists:
+        CALL    updateCandleByTurns
         CALL    listRoomObjects
         CALL    listRoomCreatures
         CALL    printNewLine           ; blank line after the whole response
+        RET
+
+pc_too_dark:
+        LD      HL,strTooDark
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; updateCandleByTurns
+; MWB-like candle timing using turnCounter.
+;
+; Behavior:
+; - At turn 201 (U > 200): prints "Your candle is growing dim."
+; - At turn 230 (U >= 230): sets candleIsLitFlag = 0 and prints "In fact...it went out!"
+;
+; Notes:
+; - Only runs when the room is visible (not "too dark"), matching MWB flow.
+; - Prints messages only on the threshold turns (avoids repeated spam).
+;
+; Clobbers:
+;   AF
+; ---------------------------------------------------------
+updateCandleByTurns:
+        LD      A,(candleIsLitFlag)
+        OR      A
+        RET     Z
+
+        LD      A,(turnCounter)
+        CP      candleDimTurn+1
+        JR      Z,uc_dim
+        CP      candleOutTurn
+        RET     NZ
+
+        XOR     A
+        LD      (candleIsLitFlag),A
+        LD      HL,strCandleOut
+        CALL    printLine
+        RET
+
+uc_dim:
+        LD      HL,strCandleDim
+        CALL    printLine
+        RET
+
+; ---------------------------------------------------------
+; isRoomTooDark
+; A = room id (1..roomMax)
+;
+; Returns:
+;   Z set if room is too dark to see anything.
+;   Z clear otherwise.
+;
+; MWB rules:
+;   Rooms < roomDarkCavernA are always visible.
+;   Rooms >= roomDarkCavernA require a lit candle that is carried or present.
+;
+; Clobbers:
+;   AF, BC, HL
+; ---------------------------------------------------------
+isRoomTooDark:
+        LD      B,A                    ; B = room
+        CP      roomDarkCavernA
+        JR      NC,ird_check_candle
+        OR      1                      ; visible => Z=0
+        RET
+
+ird_check_candle:
+        LD      A,(candleIsLitFlag)
+        OR      A
+        RET     Z                      ; unlit => too dark (Z=1)
+
+        ; Candle must be carried or in this room.
+        LD      HL,objectLocation+objCandle-1
+        LD      A,(HL)
+        CP      roomCarried
+        JR      Z,ird_visible
+        CP      B
+        JR      Z,ird_visible
+        XOR     A                      ; too dark => Z=1
+        RET
+
+ird_visible:
+        OR      1                      ; visible => Z=0
+        RET
+
+; ---------------------------------------------------------
+; containsByteListZeroTerm
+; HL = byte list terminated by 0
+; A  = value to search for (0 is not a valid search value)
+;
+; Returns:
+;   Z set if found, Z clear if not found.
+;
+; Clobbers:
+;   AF, HL
+; ---------------------------------------------------------
+containsByteListZeroTerm:
+        LD      B,A                    ; B = search value
+cb_loop:
+        LD      A,(HL)
+        OR      A
+        JR      Z,cb_notfound
+        CP      B
+        RET     Z
+        INC     HL
+        JR      cb_loop
+
+cb_notfound:
+        OR      1                      ; ensure Z=0
         RET
 
 ; ---------------------------------------------------------
@@ -495,7 +622,7 @@ dispatchScannedCommand:
         CP      18
         JP      Z,cmdKillAttack
         CP      19
-        JP      Z,cmdStubAction         ; light
+        JP      Z,cmdLight
         CP      20
         JP      Z,cmdStubAction         ; burn
         CP      21
@@ -1004,6 +1131,17 @@ doMove:
         LD      A,(playerLocation)     ; 1-based room id
         OR      A
         RET     Z
+
+        ; Dynamic exit override layer:
+        ; If a (room,dir) override exists, use it; otherwise fall back to movementTable.
+        LD      B,A                    ; save current room id (1-based)
+        PUSH    BC                     ; preserve B(room) + C(dir) across resolver
+        CALL    resolveDynamicExit     ; A = override dest or 0
+        POP     BC
+        OR      A
+        JR      NZ,haveDest            ; if override present, skip static lookup
+
+        LD      A,B                    ; restore current room id for static lookup
         DEC     A                      ; 0-based room index
         ADD     A,A                    ; *2
         ADD     A,A                    ; *4
@@ -1013,6 +1151,7 @@ doMove:
         LD      HL,movementTable
         ADD     HL,DE
         LD      A,(HL)                 ; A = destination (0/128/some room id)
+haveDest:
         OR      A
         JR      Z,cantMove
         CP      exitFatal
@@ -1033,6 +1172,55 @@ fatalMove:
         CALL    printLine
         HALT
 
+; ---------------------------------------------------------
+; resolveDynamicExit
+; Checks dynamicExitPatchTable for a (room,dir) override.
+;
+; Inputs:
+;   A = current room id (1..roomMax)
+;   C = dir index (dirNorth..dirEast)
+;
+; Returns:
+;   A = overridden destination (0 means “no override”)
+;
+; Clobbers:
+;   B, D, E, HL
+;   (Preserves C)
+; ---------------------------------------------------------
+resolveDynamicExit:
+        LD      D,A                    ; D = room
+        LD      E,C                    ; E = dir
+        LD      HL,dynamicExitPatchTable
+        LD      B,dynamicExitPatchCount
+rde_loop:
+        LD      A,(HL)                 ; room
+        INC     HL
+        CP      D
+        JR      NZ,rde_skip_room
+
+        LD      A,(HL)                 ; dir
+        INC     HL
+        CP      E
+        JR      NZ,rde_skip_dir
+
+        ; Match: next word is pointer to a state byte holding destination/flag.
+        LD      A,(HL)                 ; ptr lo
+        INC     HL
+        LD      H,(HL)                 ; ptr hi
+        LD      L,A
+        LD      A,(HL)                 ; A = destination (0 => no override/blocked)
+        RET
+
+rde_skip_room:
+        INC     HL                     ; skip dir
+rde_skip_dir:
+        INC     HL                     ; skip ptr lo
+        INC     HL                     ; skip ptr hi
+        DJNZ    rde_loop
+
+        XOR     A                      ; no override
+        RET
+
 cmdLook:
         CALL    printCurrentRoomDescription
         RET
@@ -1045,6 +1233,17 @@ cmdGetCantSee:
 
 cmdGetUnknown:
         LD      HL,strEh
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; cmdLight
+; MWB-compatible behavior: "light" is recognized but requires clarification.
+; (In the original BASIC this prints "Please tell me how." and does not relight.)
+; ---------------------------------------------------------
+cmdLight:
+        LD      HL,strPleaseTell
         CALL    printLine
         CALL    printNewLine
         RET
