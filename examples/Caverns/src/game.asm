@@ -614,9 +614,9 @@ dispatchScannedCommand:
         CP      14
         JP      Z,cmdStubAction         ; break
         CP      15
-        JP      Z,cmdStubAction         ; unlock
+        JP      Z,cmdUnlock
         CP      16
-        JP      Z,cmdStubAction         ; open
+        JP      Z,cmdOpen
         CP      17
         JP      Z,cmdKillAttack
         CP      18
@@ -624,15 +624,15 @@ dispatchScannedCommand:
         CP      19
         JP      Z,cmdLight
         CP      20
-        JP      Z,cmdStubAction         ; burn
+        JP      Z,cmdNeedHow            ; burn
         CP      21
-        JP      Z,cmdStubAction         ; up
+        JP      Z,cmdNeedHow            ; up
         CP      22
         JP      Z,cmdDown               ; down (rope descent)
         CP      23
-        JP      Z,cmdStubAction         ; jump
+        JP      Z,cmdNeedHow            ; jump
         CP      24
-        JP      Z,cmdStubAction         ; swim
+        JP      Z,cmdNeedHow            ; swim
         CP      25
         JP      Z,cmdNorth
         CP      26
@@ -698,11 +698,98 @@ cmdGalar:
         LD      HL,strMagicWind
         CALL    printLine
         CALL    printNewLine
+        LD      A,roomCaveEntry
+        LD      (playerLocation),A
+        CALL    printCurrentRoomDescription
         RET
 cmdApe:
+        ; Only meaningful in the crypt.
+        LD      A,(playerLocation)
+        CP      roomCrypt
+        JR      Z,ca_do
+        LD      HL,strNothingHappens
+        CALL    printLine
+        CALL    printNewLine
+        RET
+ca_do:
         LD      HL,strCryptWall
         CALL    printLine
         CALL    printNewLine
+        ; Open the eastern wall exit via dynamic override.
+        LD      A,roomTinyCell
+        LD      (secretExitLocation),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdOpen / cmdUnlock
+; Minimal MWB-like behavior for the key:
+; - Requires key noun (orderless) and key carried
+; - Works in:
+;     roomForestClearing -> moves to roomDarkRoom (hut door)
+;     roomTemple         -> moves to roomCrypt (locked gate)
+; - Leaves the key behind in the room it was used (matches mwb P(19)=A)
+; ---------------------------------------------------------
+cmdUnlock:
+        JR      cmdOpenCommon
+
+cmdOpen:
+        ; fallthrough
+cmdOpenCommon:
+        ; Require key noun to be present in the command.
+        LD      A,(currentObjectIndex)
+        CP      objKey
+        JR      Z,coc_have_key_noun
+        LD      A,(targetLocation)
+        CP      objKey
+        JR      Z,coc_have_key_noun
+        LD      HL,strUseHow
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+coc_have_key_noun:
+        ; Require key to be carried.
+        LD      A,(objectLocation+objKey-1)
+        CP      roomCarried
+        JR      Z,coc_key_carried
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+coc_key_carried:
+        LD      A,(playerLocation)
+        CP      roomForestClearing
+        JR      Z,coc_open_hut
+        CP      roomTemple
+        JR      Z,coc_open_gate
+
+        LD      HL,strWontOpen
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+coc_open_hut:
+        LD      HL,strDoorOpened
+        CALL    printLine
+        ; Leave key behind in the hut clearing.
+        LD      A,roomForestClearing
+        LD      (objectLocation+objKey-1),A
+        LD      A,roomDarkRoom
+        LD      (playerLocation),A
+        CALL    printCurrentRoomDescription
+        RET
+
+coc_open_gate:
+        LD      HL,strDoorOpened
+        CALL    printLine
+        ; Leave key behind in the temple.
+        LD      A,roomTemple
+        LD      (objectLocation+objKey-1),A
+        LD      A,roomCrypt
+        LD      (playerLocation),A
+        CALL    printCurrentRoomDescription
         RET
 
 ; ---------------------------------------------------------
@@ -1270,15 +1357,22 @@ cmdGetUnknown:
         RET
 
 ; ---------------------------------------------------------
+; cmdNeedHow
+; MWB-compatible behavior for verbs that require extra context.
+; ---------------------------------------------------------
+cmdNeedHow:
+        LD      HL,strPleaseTell
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
 ; cmdLight
 ; MWB-compatible behavior: "light" is recognized but requires clarification.
 ; (In the original BASIC this prints "Please tell me how." and does not relight.)
 ; ---------------------------------------------------------
 cmdLight:
-        LD      HL,strPleaseTell
-        CALL    printLine
-        CALL    printNewLine
-        RET
+        JP      cmdNeedHow
 
 cmdDropCantSee:
         LD      HL,strCantSeeIt
