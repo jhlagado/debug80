@@ -216,6 +216,7 @@ tokenInvent             DB " invent ",0
 tokenKill               DB " kill ",0
 tokenAttack             DB " attack ",0
 tokenStage2             DB " stage2 ",0
+tokenStage3             DB " stage3 ",0
 tokenScore              DB " score ",0
 tokenPut                DB " put ",0
 tokenUsing              DB " using ",0

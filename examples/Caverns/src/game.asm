@@ -368,6 +368,9 @@ lo_next:
 ; printObjectAdjNoun
 ; A = object id (7..24)
 ; Prints adjective then noun via tables.
+;
+; Clobbers:
+;   AF, BC, DE, HL
 ; ---------------------------------------------------------
 printObjectAdjNoun:
         SUB     firstObjectIndex
@@ -391,6 +394,9 @@ printObjectAdjNounFromIndex:
 ; printWordTableEntry0Based
 ; HL = base of DW table, A = 0-based index
 ; Loads word pointer and prints if non-zero.
+;
+; Clobbers:
+;   AF, BC, DE, HL
 ; ---------------------------------------------------------
 printWordTableEntry0Based:
         ADD     A,A                    ; index * 2
@@ -619,44 +625,46 @@ dispatchScannedCommand:
         CP      8
         JP      Z,cmdStage2
         CP      9
-        JP      Z,cmdGet
+        JP      Z,cmdStage3
         CP      10
-        JP      Z,cmdGet               ; take alias
+        JP      Z,cmdGet
         CP      11
-        JP      Z,cmdDrop
+        JP      Z,cmdGet               ; take alias
         CP      12
-        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
+        JP      Z,cmdDrop
         CP      13
-        JP      Z,cmdStubAction         ; cut
+        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
         CP      14
-        JP      Z,cmdStubAction         ; break
+        JP      Z,cmdStubAction         ; cut
         CP      15
-        JP      Z,cmdUnlock
+        JP      Z,cmdStubAction         ; break
         CP      16
-        JP      Z,cmdOpen
+        JP      Z,cmdUnlock
         CP      17
-        JP      Z,cmdKillAttack
+        JP      Z,cmdOpen
         CP      18
         JP      Z,cmdKillAttack
         CP      19
-        JP      Z,cmdLight
+        JP      Z,cmdKillAttack
         CP      20
-        JP      Z,cmdBurn
+        JP      Z,cmdLight
         CP      21
-        JP      Z,cmdNeedHow            ; up
+        JP      Z,cmdBurn
         CP      22
-        JP      Z,cmdDown               ; down (rope descent)
+        JP      Z,cmdNeedHow            ; up
         CP      23
-        JP      Z,cmdNeedHow            ; jump
+        JP      Z,cmdDown               ; down (rope descent)
         CP      24
-        JP      Z,cmdNeedHow            ; swim
+        JP      Z,cmdNeedHow            ; jump
         CP      25
-        JP      Z,cmdNorth
+        JP      Z,cmdNeedHow            ; swim
         CP      26
-        JP      Z,cmdSouth
+        JP      Z,cmdNorth
         CP      27
-        JP      Z,cmdWest
+        JP      Z,cmdSouth
         CP      28
+        JP      Z,cmdWest
+        CP      29
         JP      Z,cmdEast
         JP      echoLine
 
@@ -1080,6 +1088,23 @@ cmdStage2:
         LD      (objectLocation+objCompass-1),A
         LD      (objectLocation+objCoin-1),A
         LD      (objectLocation+objSword-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdStage3
+; Testing helper: resets state, moves player to oak door room,
+; and gives compass/sword/candle in inventory.
+; ---------------------------------------------------------
+cmdStage3:
+        CALL    initState
+        LD      A,roomOakDoor
+        LD      (playerLocation),A
+        LD      A,roomCarried
+        LD      (objectLocation+objCompass-1),A
+        LD      (objectLocation+objSword-1),A
+        LD      (objectLocation+objCandle-1),A
+        LD      (objectLocation+objBomb-1),A
         CALL    printCurrentRoomDescription
         RET
 
@@ -1548,6 +1573,11 @@ cmdDropUnknown:
 ; cmdList
 ; Prints carried objects (objectLocation == roomCarried).
 ; Current scope: objects 7..24 only.
+;
+; Notes:
+; - SYS_PUTS clobbers C and advances HL.
+; - printObjectAdjNoun clobbers B/C/HL, so B (loop counter) and HL
+;   (objectLocation pointer) must be preserved across the call.
 ; ---------------------------------------------------------
 cmdList:
         LD      HL,strCarryingPrefix
@@ -1570,18 +1600,22 @@ cl_loop:
         LD      A,D
         OR      A
         JR      Z,cl_first
+        PUSH    HL                     ; preserve objectLocation pointer
         LD      HL,strCommaSpace
         SYS_PUTS
+        POP     HL
         JR      cl_print
 cl_first:
         LD      D,1
 cl_print:
+        PUSH    BC                     ; preserve loop counter
         PUSH    DE                     ; preserve object id (E)
-        PUSH    HL
+        PUSH    HL                     ; preserve objectLocation pointer
         LD      A,E
         CALL    printObjectAdjNoun
         POP     HL
         POP     DE
+        POP     BC
 
 cl_next:
         INC     HL
