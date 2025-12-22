@@ -32,6 +32,9 @@ directionIndex          DB 0
 
 objectLocation          DS 24               ; byte per object/creature
 
+; Save/load snapshot (RAM only, no persistence)
+saveBlock               DS saveBlockSize
+
 ; Input buffer (padded with leading/trailing space)
 inputBuffer             DS inputBufferSize
 BUF                     DS 32,0

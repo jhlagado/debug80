@@ -642,44 +642,48 @@ dispatchScannedCommand:
         CP      11
         JP      Z,cmdStage5
         CP      12
-        JP      Z,cmdGet
+        JP      Z,cmdSave
         CP      13
-        JP      Z,cmdGet               ; take alias
+        JP      Z,cmdLoad
         CP      14
-        JP      Z,cmdDrop
+        JP      Z,cmdGet
         CP      15
-        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
+        JP      Z,cmdGet               ; take alias
         CP      16
-        JP      Z,cmdStubAction         ; cut
+        JP      Z,cmdDrop
         CP      17
-        JP      Z,cmdStubAction         ; break
+        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
         CP      18
-        JP      Z,cmdUnlock
+        JP      Z,cmdStubAction         ; cut
         CP      19
-        JP      Z,cmdOpen
+        JP      Z,cmdStubAction         ; break
         CP      20
-        JP      Z,cmdKillAttack
+        JP      Z,cmdUnlock
         CP      21
-        JP      Z,cmdKillAttack
+        JP      Z,cmdOpen
         CP      22
-        JP      Z,cmdLight
+        JP      Z,cmdKillAttack
         CP      23
-        JP      Z,cmdBurn
+        JP      Z,cmdKillAttack
         CP      24
-        JP      Z,cmdNeedHow            ; up
+        JP      Z,cmdLight
         CP      25
-        JP      Z,cmdDown               ; down (rope descent)
+        JP      Z,cmdBurn
         CP      26
-        JP      Z,cmdNeedHow            ; jump
+        JP      Z,cmdNeedHow            ; up
         CP      27
-        JP      Z,cmdNeedHow            ; swim
+        JP      Z,cmdDown               ; down (rope descent)
         CP      28
-        JP      Z,cmdNorth
+        JP      Z,cmdNeedHow            ; jump
         CP      29
-        JP      Z,cmdSouth
+        JP      Z,cmdNeedHow            ; swim
         CP      30
-        JP      Z,cmdWest
+        JP      Z,cmdNorth
         CP      31
+        JP      Z,cmdSouth
+        CP      32
+        JP      Z,cmdWest
+        CP      33
         JP      Z,cmdEast
         JP      echoLine
 
@@ -1171,6 +1175,84 @@ cmdStage5:
         LD      (objectLocation+objSword-1),A
         LD      (objectLocation+objCandle-1),A
         LD      (objectLocation+objBomb-1),A
+        CALL    printCurrentRoomDescription
+        RET
+
+; ---------------------------------------------------------
+; cmdSave / cmdLoad
+; Snapshot save/load to RAM block (no persistence).
+; ---------------------------------------------------------
+cmdSave:
+        LD      HL,saveBlock
+        LD      A,(playerLocation)
+        LD      (HL),A
+        INC     HL
+        LD      A,(candleIsLitFlag)
+        LD      (HL),A
+        INC     HL
+        LD      A,(turnCounter)
+        LD      (HL),A
+        INC     HL
+        LD      A,(bridgeCondition)
+        LD      (HL),A
+        INC     HL
+        LD      A,(drawbridgeState)
+        LD      (HL),A
+        INC     HL
+        LD      A,(waterExitLocation)
+        LD      (HL),A
+        INC     HL
+        LD      A,(gateDestination)
+        LD      (HL),A
+        INC     HL
+        LD      A,(teleportDestination)
+        LD      (HL),A
+        INC     HL
+        LD      A,(secretExitLocation)
+        LD      (HL),A
+        INC     HL
+        ; objectLocation[24]
+        LD      DE,objectLocation
+        LD      BC,objectCount
+        LDIR
+        LD      HL,strNothingHappens
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cmdLoad:
+        LD      HL,saveBlock
+        LD      A,(HL)
+        LD      (playerLocation),A
+        INC     HL
+        LD      A,(HL)
+        LD      (candleIsLitFlag),A
+        INC     HL
+        LD      A,(HL)
+        LD      (turnCounter),A
+        INC     HL
+        LD      A,(HL)
+        LD      (bridgeCondition),A
+        INC     HL
+        LD      A,(HL)
+        LD      (drawbridgeState),A
+        INC     HL
+        LD      A,(HL)
+        LD      (waterExitLocation),A
+        INC     HL
+        LD      A,(HL)
+        LD      (gateDestination),A
+        INC     HL
+        LD      A,(HL)
+        LD      (teleportDestination),A
+        INC     HL
+        LD      A,(HL)
+        LD      (secretExitLocation),A
+        INC     HL
+        ; objectLocation[24]
+        LD      DE,objectLocation
+        LD      BC,objectCount
+        LDIR
         CALL    printCurrentRoomDescription
         RET
 

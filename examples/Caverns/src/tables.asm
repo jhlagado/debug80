@@ -114,6 +114,8 @@ verbTokenTable:
                         DW tokenStage3
                         DW tokenStage4
                         DW tokenStage5
+                        DW tokenSave
+                        DW tokenLoad
                         DW tokenGet
                         DW tokenTake
                         DW tokenDrop
@@ -134,7 +136,7 @@ verbTokenTable:
                         DW tokenSouth
                         DW tokenWest
                         DW tokenEast
-verbTokenCount          EQU 31
+verbTokenCount          EQU 33
 
 ; Noun tokens scanned from input (indices 1..nounTokenCount).
 ; 1..24 align to index space (creatures 1..6, objects 7..24).

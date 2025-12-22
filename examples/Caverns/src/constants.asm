@@ -168,6 +168,10 @@ nounDoor equ 25
 nounGate equ 26
 nounTokenCount equ 26          ; nouns scanned from nounTokenTable
 
+; Save/load block size (bytes)
+; playerLocation + candleIsLitFlag + turnCounter + 6 state bytes + 24 objectLocation
+saveBlockSize equ 33
+
 ; Object index ranges
 firstObjectIndex equ 7
 lastObjectIndex  equ objectCount

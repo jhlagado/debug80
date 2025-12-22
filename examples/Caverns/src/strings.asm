@@ -219,6 +219,8 @@ tokenStage2             DB " stage2 ",0
 tokenStage3             DB " stage3 ",0
 tokenStage4             DB " stage4 ",0
 tokenStage5             DB " stage5 ",0
+tokenSave               DB " save ",0
+tokenLoad               DB " load ",0
 tokenScore              DB " score ",0
 tokenPut                DB " put ",0
 tokenUsing              DB " using ",0
