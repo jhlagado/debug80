@@ -479,7 +479,6 @@ handleInputLine:
         LD      A,(turnCounter)
         INC     A
         LD      (turnCounter),A
-
         CALL    buildInputPadded
         CALL    scanInputTokens
         CALL    maybeBatCarry
@@ -689,44 +688,48 @@ dispatchScannedCommand:
         CP      13
         JP      Z,cmdLoad
         CP      14
-        JP      Z,cmdGet
+        JP      Z,cmdRead
         CP      15
-        JP      Z,cmdGet               ; take alias
+        JP      Z,cmdPray
         CP      16
-        JP      Z,cmdDrop
+        JP      Z,cmdGet
         CP      17
-        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
+        JP      Z,cmdGet               ; take alias
         CP      18
-        JP      Z,cmdStubAction         ; cut
+        JP      Z,cmdDrop
         CP      19
-        JP      Z,cmdStubAction         ; break
+        JP      Z,cmdDrop              ; put alias (stubbed same as drop for now)
         CP      20
-        JP      Z,cmdUnlock
+        JP      Z,cmdStubAction         ; cut
         CP      21
-        JP      Z,cmdOpen
+        JP      Z,cmdStubAction         ; break
         CP      22
-        JP      Z,cmdKillAttack
+        JP      Z,cmdUnlock
         CP      23
-        JP      Z,cmdKillAttack
+        JP      Z,cmdOpen
         CP      24
-        JP      Z,cmdLight
+        JP      Z,cmdKillAttack
         CP      25
-        JP      Z,cmdBurn
+        JP      Z,cmdKillAttack
         CP      26
-        JP      Z,cmdNeedHow            ; up
+        JP      Z,cmdLight
         CP      27
-        JP      Z,cmdDown               ; down (rope descent)
+        JP      Z,cmdBurn
         CP      28
-        JP      Z,cmdNeedHow            ; jump
+        JP      Z,cmdNeedHow            ; up
         CP      29
-        JP      Z,cmdNeedHow            ; swim
+        JP      Z,cmdDown               ; down (rope descent)
         CP      30
-        JP      Z,cmdNorth
+        JP      Z,cmdNeedHow            ; jump
         CP      31
-        JP      Z,cmdSouth
+        JP      Z,cmdNeedHow            ; swim
         CP      32
-        JP      Z,cmdWest
+        JP      Z,cmdNorth
         CP      33
+        JP      Z,cmdSouth
+        CP      34
+        JP      Z,cmdWest
+        CP      35
         JP      Z,cmdEast
         JP      echoLine
 
@@ -1026,6 +1029,9 @@ cmdStubAction:
 ; movement, and kill/attack.
 ; ---------------------------------------------------------
 maybeMonsterAttack:
+        LD      A,(verbPatternIndex)
+        OR      A
+        RET     Z
         ; Skip attack for non-action verbs.
         CALL    isNonCombatVerb
         RET     Z
@@ -1460,6 +1466,30 @@ cmdLoad:
         RET
 
 ; ---------------------------------------------------------
+; cmdRead / cmdPray
+; In the crypt, give the Galar inscription clue.
+; ---------------------------------------------------------
+cmdRead:
+        JR      cmdPrayCommon
+
+cmdPray:
+        ; fallthrough
+cmdPrayCommon:
+        LD      A,(playerLocation)
+        CP      roomCrypt
+        JR      Z,cpp_in_crypt
+        LD      HL,strNothingHappens
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cpp_in_crypt:
+        LD      HL,strGalarClue
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
 ; cmdKillAttack
 ; Sword combat:
 ; - Requires a target creature in room.
@@ -1598,6 +1628,8 @@ cka_need_how:
         LD      HL,strPleaseTell
         CALL    printLine
         CALL    printNewLine
+        LD      A,1
+        LD      (incompleteCommandFlag),A
         RET
 
 cka_need_carry:
@@ -1901,6 +1933,8 @@ cmdNeedHow:
         LD      HL,strPleaseTell
         CALL    printLine
         CALL    printNewLine
+        XOR     A
+        LD      (verbPatternIndex),A
         RET
 
 ; ---------------------------------------------------------

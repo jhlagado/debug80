@@ -73,6 +73,7 @@ strStubTarget:          DB " target=",0
 strStubTool:            DB " tool=",0
 strDoorWord:            DB "door",0
 strGateWord:            DB "gate",0
+strGalarClue:           DB "Speak the name that lies mirrored in the last light of the alphabet, and the ancient path shall open.",0
 strRanking:             DB "This gives you an adventurer's ranking of:",0
 strRankHopeless:        DB "Hopeless beginner",0
 strRankLoser:           DB "Experienced loser",0
@@ -224,6 +225,8 @@ tokenStage4             DB " stage4 ",0
 tokenStage5             DB " stage5 ",0
 tokenSave               DB " save ",0
 tokenLoad               DB " load ",0
+tokenRead               DB " read ",0
+tokenPray               DB " pray ",0
 tokenScore              DB " score ",0
 tokenPut                DB " put ",0
 tokenUsing              DB " using ",0
