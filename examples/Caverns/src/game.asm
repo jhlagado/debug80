@@ -7,6 +7,8 @@ START:
 READLOOP:
         LD      HL,promptStr
         SYS_PUTS
+        XOR     A
+        LD      (BUF),A                ; clear buffer to avoid stale echo
         LD      HL,BUF
         LD      B,32           ; buffer length including terminator
         CALL    readLn
@@ -484,6 +486,11 @@ printWordTableEntry0Based:
 ; Otherwise echoes the line as before.
 ; ---------------------------------------------------------
 handleInputLine:
+        LD      HL,BUF                  ; echo user's input
+        SYS_PUTS
+        CALL    printNewLine
+        CALL    printNewLine
+
         ; Count moves (one per input line).
         LD      A,(turnCounter)
         INC     A
@@ -492,6 +499,7 @@ handleInputLine:
         CALL    scanInputTokens
         CALL    maybeBatCarry
         RET     Z
+        CALL    maybeMonsterAttackOnMove
         CALL    dispatchScannedCommand
         CALL    maybeMonsterAttack
         RET
@@ -778,29 +786,10 @@ cmdQuit:
         CALL    printLine
         CALL    printNewLine
 
-        LD      HL,strAnother
-        SYS_PUTS
-cq_key:
-        SYS_GETC
-        CP      'y'
-        JR      Z,cq_restart
-        CP      'Y'
-        JR      Z,cq_restart
-        CP      'n'
-        JR      Z,cq_exit
-        CP      'N'
-        JR      Z,cq_exit
-        JR      cq_key
-
-cq_restart:
-        CALL    initState
-        LD      HL,title
-        SYS_PUTS
-        CALL    printCurrentRoomDescription
+        CALL    promptPlayAgain
         RET
 
-cq_exit:
-        HALT
+; unreachable (promptPlayAgain handles restart/exit)
 cmdGalar:
         LD      HL,strMagicWind
         CALL    printLine
@@ -827,6 +816,54 @@ ca_do:
         LD      (secretExitLocation),A
         CALL    printCurrentRoomDescription
         RET
+
+; ---------------------------------------------------------
+; promptPlayAgain
+; Asks "Another adventure?" and restarts on yes/ok.
+; ---------------------------------------------------------
+promptPlayAgain:
+        LD      HL,strAnother
+        SYS_PUTS
+
+ppa_read:
+        LD      HL,BUF
+        LD      B,32
+        CALL    readLn
+
+        LD      HL,BUF
+ppa_skip_space:
+        LD      A,(HL)
+        OR      A
+        JR      Z,ppa_read
+        CP      ' '
+        JR      NZ,ppa_check
+        INC     HL
+        JR      ppa_skip_space
+
+ppa_check:
+        CP      0
+        JR      Z,ppa_restart
+        CP      'y'
+        JR      Z,ppa_restart
+        CP      'Y'
+        JR      Z,ppa_restart
+        CP      'n'
+        JR      Z,ppa_exit
+        CP      'N'
+        JR      Z,ppa_exit
+        LD      HL,strEh
+        CALL    printLine
+        JR      ppa_read
+
+ppa_restart:
+        CALL    initState
+        LD      HL,title
+        SYS_PUTS
+        CALL    printCurrentRoomDescription
+        RET
+
+ppa_exit:
+        HALT
 
 ; ---------------------------------------------------------
 ; cmdOpen / cmdUnlock
@@ -1056,6 +1093,7 @@ maybeMonsterAttack:
         CALL    findCreatureInRoom
         OR      A
         RET     Z
+        LD      B,A                    ; preserve creature index
         CP      objBat
         RET     Z                      ; bats handled elsewhere; no attack
 
@@ -1067,23 +1105,45 @@ maybeMonsterAttack:
         CP      objSword
         RET     Z
 
-        ; 20% chance to miss (player survives), otherwise death.
-        LD      B,51                   ; 51/256 ~= 20%
+        ; 10% chance to miss (player survives), otherwise death.
+        LD      B,26                   ; 26/256 ~= 10%
         RAND
         JR      C,monster_miss
 
         ; Death message.
         LD      HL,strMonsterKilled
         SYS_PUTS
+        LD      A,B
         CALL    printCreatureAdjNoun
         LD      HL,strMonsterSuffix
         CALL    printLine
-        HALT
+        CALL    promptPlayAgain
+        RET
 
 monster_miss:
         LD      HL,strMonsterMiss
         CALL    printLine
         CALL    printNewLine
+        RET
+
+; ---------------------------------------------------------
+; maybeMonsterAttackOnMove
+; If the verb is a movement command, resolve attack before moving.
+; ---------------------------------------------------------
+maybeMonsterAttackOnMove:
+        LD      A,(verbPatternIndex)
+        CP      32                     ; north
+        JR      Z,mmom_attack
+        CP      33                     ; south
+        JR      Z,mmom_attack
+        CP      34                     ; west
+        JR      Z,mmom_attack
+        CP      35                     ; east
+        JR      Z,mmom_attack
+        RET
+
+mmom_attack:
+        CALL    maybeMonsterAttack
         RET
 
 ; ---------------------------------------------------------
@@ -1570,7 +1630,8 @@ cka_death:
         LD      HL,strSwordMiss
         CALL    printLine
         CALL    printNewLine
-        HALT
+        CALL    promptPlayAgain
+        RET
 
 cka_try_kill:
         LD      B,swordKillChanceThreshold
@@ -1795,6 +1856,13 @@ doGetObjectIndex:
         JP      NZ,cmdGetCantSee
         LD      A,roomCarried
         LD      (HL),A
+        PUSH    BC
+        LD      A,B
+        CALL    printObjectAdjNounFromIndex
+        LD      HL,strTakenSuffix
+        SYS_PUTS
+        CALL    printNewLine
+        POP     BC
         CALL    printCurrentRoomDescription
         RET
 
@@ -1879,7 +1947,8 @@ cantMove:
 fatalMove:
         LD      HL,strFatalFall
         CALL    printLine
-        HALT
+        CALL    promptPlayAgain
+        RET
 
 ; ---------------------------------------------------------
 ; resolveDynamicExit

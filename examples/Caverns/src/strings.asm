@@ -28,14 +28,14 @@ strScoreMid:            DB " out of a possible 126 points in ",0
 strScoreSuffix:         DB " moves.",0
 strGiantBat:            DB "The giant bat picked you up and carried you to another "
                         DB "place.",0
-strMonsterKilled:       DB "AUUUUUGH...you've just been killed by a ",0
+strMonsterKilled:       DB "AUUUUUGH...you've just been killed by ",0
 strMonsterSuffix:       DB "!!",0
 strCantGoThatWay:       DB "You can't go that way",0
 strFatalFall:           DB "You stumble and fall into the chasm and smash yourself to "
                         DB "a pulp on the rocks below.",0
 strMagicWind:           DB "The runes of Galar glow and a magic wind carries you to another place...",0
 strCryptWall:           DB "Hey! the eastern wall of the crypt slid open...",0
-strEh:                  DB "eh?",0
+strEh:                  DB "I didn't understand.",0
 strCantSeeIt:           DB "Where? I can't see it.",0
 strTooManyObjects:      DB "You are carrying too many objects.",0
 strUseHow:              DB "How am I supposed to use it?",0
@@ -62,6 +62,7 @@ strDescendRope:         DB "You descend the rope, but it drops 10 feet short of 
                         DB "floor. You jump the rest of the way.",0
 strNothingHappens:      DB "Nothing happens!",0
 strNotCarrying:         DB "You aren't carrying that.",0
+strTakenSuffix:         DB " taken.",0
 strCombatNotImpl:       DB "You attack, but combat isn't implemented yet.",0
 strPleaseTell:          DB "Please tell me how.",0
 strICant:               DB "I can't!",0
