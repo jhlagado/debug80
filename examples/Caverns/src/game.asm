@@ -83,6 +83,17 @@ printCurrentRoomDescription:
         LD      HL,roomDesc2Table
         CALL    printDescription
 
+        ; Dragon corpse only when dragon is dead in cave entrance clearing.
+        LD      A,D
+        CP      roomCaveEntranceClearing
+        JR      NZ,pc_after_dragon
+        LD      A,(objectLocation+objDragon-1)
+        OR      A
+        JR      NZ,pc_after_dragon
+        LD      HL,strDragonCorpse
+        CALL    printLine
+pc_after_dragon:
+
         ; Drawbridge message when activated.
         LD      A,D
         CP      roomCastleLedge
@@ -1585,8 +1596,6 @@ cka_kill:
         LD      DE,objectLocation
         ADD     HL,DE
         LD      A,D
-        CP      objTroll
-        JR      Z,cka_relocate
         CP      objBat
         JR      Z,cka_relocate
         XOR     A
