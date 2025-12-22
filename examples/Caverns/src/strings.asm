@@ -66,6 +66,8 @@ strCombatNotImpl:       DB "You attack, but combat isn't implemented yet.",0
 strPleaseTell:          DB "Please tell me how.",0
 strICant:               DB "I can't!",0
 strMonsterMiss:         DB "The creature lunges at you but you dodge at the last moment.",0
+strGameSaved:           DB "Game saved.",0
+strGameLoaded:          DB "Game loaded.",0
 strStubVerb:            DB "Not implemented: ",0
 strStubTarget:          DB " target=",0
 strStubTool:            DB " tool=",0

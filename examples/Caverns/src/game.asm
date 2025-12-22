@@ -51,7 +51,7 @@ initState:
         LD      (swordSwingCount),A
         LD      (score),A
 
-        ; Initialize creatures + objects from the original mwb P(1..24) table.
+        ; Initialize creatures + objects from the original P(1..24) table.
         ; `objectLocationTable` is DW entries; the low byte is the room id.
         LD      HL,objectLocationTable
         LD      DE,objectLocation
@@ -83,7 +83,7 @@ printCurrentRoomDescription:
         LD      HL,roomDesc2Table
         CALL    printDescription
 
-        ; Drawbridge message when activated (MWB line 58).
+        ; Drawbridge message when activated.
         LD      A,D
         CP      roomCastleLedge
         JR      NZ,pc_after_drawbridge
@@ -94,7 +94,7 @@ printCurrentRoomDescription:
         CALL    printLine
 pc_after_drawbridge:
 
-        ; Extra flavor line in select rooms (matches mwb line 55).
+        ; Extra flavor line in select rooms.
         LD      A,D
         LD      HL,darkCavernRoomList
         CALL    containsByteListZeroTerm
@@ -119,14 +119,14 @@ pc_too_dark:
 
 ; ---------------------------------------------------------
 ; updateCandleByTurns
-; MWB-like candle timing using turnCounter.
+; candle timing using turnCounter.
 ;
 ; Behavior:
 ; - At turn 201 (U > 200): prints "Your candle is growing dim."
 ; - At turn 230 (U >= 230): sets candleIsLitFlag = 0 and prints "In fact...it went out!"
 ;
 ; Notes:
-; - Only runs when the room is visible (not "too dark"), matching MWB flow.
+; - Only runs when the room is visible (not "too dark").
 ; - Prints messages only on the threshold turns (avoids repeated spam).
 ;
 ; Clobbers:
@@ -177,7 +177,7 @@ updateDrawbridgeState:
 ;   Z set if room is too dark to see anything.
 ;   Z clear otherwise.
 ;
-; MWB rules:
+; Rules:
 ;   Rooms < roomDarkCavernA are always visible.
 ;   Rooms >= roomDarkCavernA require a lit candle that is carried or present.
 ;
@@ -769,12 +769,12 @@ ca_do:
 
 ; ---------------------------------------------------------
 ; cmdOpen / cmdUnlock
-; Minimal MWB-like behavior for the key:
+; Minimal behavior for the key:
 ; - Requires key noun (orderless) and key carried
 ; - Works in:
 ;     roomForestClearing -> moves to roomDarkRoom (hut door)
 ;     roomTemple         -> moves to roomCrypt (locked gate)
-; - Leaves the key behind in the room it was used (matches mwb P(19)=A)
+; - Leaves the key behind in the room it was used
 ; ---------------------------------------------------------
 cmdUnlock:
         JR      cmdOpenCommon
@@ -894,7 +894,7 @@ goat_gate:
 ; ---------------------------------------------------------
 ; cmdDown
 ; Clean model: DOWN is a verb. If rope is mentioned and you're in room 28,
-; descend to room 35 (temple), leaving the rope behind (like mwb).
+; descend to room 35 (temple), leaving the  rope behind.
 ; ---------------------------------------------------------
 cmdDown:
         ; Require rope noun (either noun1 or noun2) and rope must be carried.
@@ -1105,10 +1105,41 @@ pni_gate:
         SYS_PUTS
         RET
 
+; ---------------------------------------------------------
+; printRandomFightMessage
+; Prints one of the four fight miss messages at random.
+; ---------------------------------------------------------
+printRandomFightMessage:
+        LD      A,R
+        AND     3                      ; 0..3
+        CP      0
+        JR      Z,prfm_move
+        CP      1
+        JR      Z,prfm_deflect
+        CP      2
+        JR      Z,prfm_stun
+        ; 3
+        LD      HL,strAttackHeadBlow
+        CALL    printLine
+        RET
+
+prfm_move:
+        LD      HL,strAttackMove
+        CALL    printLine
+        RET
+prfm_deflect:
+        LD      HL,strAttackDeflect
+        CALL    printLine
+        RET
+prfm_stun:
+        LD      HL,strAttackStun
+        CALL    printLine
+        RET
+
 
 ; ---------------------------------------------------------
 ; computeScore
-; Implements the mwb scoring rule for objects 7..17:
+; Implements the scoring rule for objects 7..17:
 ; - if carried: add (idx-6)
 ; - if in room 1: add (idx-6)*2
 ; Stores result in (score).
@@ -1315,7 +1346,7 @@ cmdSave:
         LD      DE,objectLocation
         LD      BC,objectCount
         LDIR
-        LD      HL,strNothingHappens
+        LD      HL,strGameSaved
         CALL    printLine
         CALL    printNewLine
         RET
@@ -1353,14 +1384,17 @@ cmdLoad:
         LD      DE,objectLocation
         LD      BC,objectCount
         LDIR
+        LD      HL,strGameLoaded
+        CALL    printLine
         CALL    printCurrentRoomDescription
         RET
 
 ; ---------------------------------------------------------
 ; cmdKillAttack
-; Minimal behavior:
-; - If a target creature is present but no tool object provided, prints "Please tell me how."
-; - If no target creature, prints "But there's nothing to kill..."
+; Sword combat:
+; - Requires a target creature in room.
+; - Requires a tool noun; only sword works.
+; - Uses RNG to decide kill vs. miss.
 ; ---------------------------------------------------------
 cmdKillAttack:
         ; Find target creature among noun1/noun2.
@@ -1381,20 +1415,72 @@ cmdKillAttack:
         JR      Z,cka_need_how
         LD      E,A                    ; E = object index (7..24)
 
-        ; Require tool to be carried for now.
+        ; Only sword works for now.
         LD      A,E
+        CP      objSword
+        JR      NZ,cka_nothing_happens
+
+        ; Require sword to be carried.
+        LD      A,(objectLocation+objSword-1)
+        CP      roomCarried
+        JR      NZ,cka_need_carry
+
+        ; Count swings; crumble probabilistically (MWB style).
+        LD      A,(swordSwingCount)
+        INC     A
+        LD      (swordSwingCount),A
+        LD      C,A                    ; C = swing count (F)
+
+        LD      A,R
+        AND     7                      ; 0..7
+        CP      7
+        JR      NZ,cka_rand_ok
+        LD      A,6
+cka_rand_ok:
+        ADD     A,swordFightBaseThreshold  ; 15..21
+        CP      C
+        JR      C,cka_crumble
+        JR      Z,cka_crumble
+        JR      cka_try_kill
+
+cka_crumble:
+        LD      HL,strSwordCrumbles
+        CALL    printLine
+        XOR     A
+        LD      (objectLocation+objSword-1),A
+        CALL    printNewLine
+        RET
+
+cka_try_kill:
+        LD      B,swordKillChanceThreshold
+        RAND
+        JR      C,cka_kill
+
+        ; Miss: print a random fight message.
+        CALL    printRandomFightMessage
+        CALL    printNewLine
+        RET
+
+cka_kill:
+        LD      HL,strSwordKills
+        CALL    printLine
+        ; Remove creature from play.
+        LD      A,D
         DEC     A
         LD      L,A
         LD      H,0
         LD      DE,objectLocation
         ADD     HL,DE
-        LD      A,(HL)
-        CP      roomCarried
-        JR      NZ,cka_need_carry
+        XOR     A
+        LD      (HL),A
 
-        ; For now: just print a clear placeholder (combat later).
-        LD      HL,strCombatNotImpl
+        ; Vapor message for non-dragon.
+        LD      A,D
+        CP      objDragon
+        JR      Z,cka_done
+        LD      HL,strCorpseVapor
         CALL    printLine
+cka_done:
         CALL    printNewLine
         RET
 
@@ -1411,6 +1497,12 @@ cka_need_how:
 
 cka_need_carry:
         LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+cka_nothing_happens:
+        LD      HL,strNothingHappens
         CALL    printLine
         CALL    printNewLine
         RET
@@ -1525,7 +1617,7 @@ cic_next:
 
 ; B = object index (7..24)
 doGetObjectIndex:
-        ; Enforce a max carry limit (MWB: 10 objects).
+        ; Enforce a max carry limit (10 objects).
         PUSH    BC
         CALL    countCarriedItems
         CP      maxCarryItems
@@ -1698,7 +1790,7 @@ cmdGetUnknown:
 
 ; ---------------------------------------------------------
 ; cmdNeedHow
-; MWB-compatible behavior for verbs that require extra context.
+; Behavior for verbs that require extra context.
 ; ---------------------------------------------------------
 cmdNeedHow:
         LD      HL,strPleaseTell
@@ -1708,7 +1800,7 @@ cmdNeedHow:
 
 ; ---------------------------------------------------------
 ; cmdLight
-; MWB-compatible behavior: "light" is recognized but requires clarification.
+; Behavior: "light" is recognized but requires clarification.
 ; (In the original BASIC this prints "Please tell me how." and does not relight.)
 ; ---------------------------------------------------------
 cmdLight:
@@ -1717,7 +1809,7 @@ cmdLight:
 ; ---------------------------------------------------------
 ; cmdBurn
 ; Special-case: burning the bomb requires candle as the second noun.
-; Otherwise behaves like MWB "Please tell me how."
+; Otherwise behaves like "Please tell me how."
 ; ---------------------------------------------------------
 cmdBurn:
         ; fallthrough
@@ -1788,7 +1880,7 @@ clb_candle_lit:
         RET
 
 clb_bomb_ok:
-        ; Bomb explosion logic (MWB-style).
+        ; Bomb explosion logic.
         LD      HL,strBombExplode
         CALL    printLine
 
