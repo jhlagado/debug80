@@ -333,8 +333,6 @@ mpe_wizard:
 mpe_dragon:
         LD      HL,strEncDragon1
         CALL    printLine
-        LD      HL,strEncDragon2
-        CALL    printLine
         RET
 
 mpe_goblin:
@@ -1086,14 +1084,50 @@ maybeMonsterAttack:
         LD      A,(verbPatternIndex)
         OR      A
         RET     Z
+        CP      32                     ; north
+        RET     Z
+        CP      33                     ; south
+        RET     Z
+        CP      34                     ; west
+        RET     Z
+        CP      35                     ; east
+        RET     Z
         ; Skip attack for non-action verbs.
         CALL    isNonCombatVerb
         RET     Z
+        CALL    monsterAttackCore
+        RET
 
+; ---------------------------------------------------------
+; maybeMonsterAttackOnMove
+; If the verb is a movement command, resolve attack before moving.
+; ---------------------------------------------------------
+maybeMonsterAttackOnMove:
+        LD      A,(verbPatternIndex)
+        LD      B,A                    ; save verb id
+        CP      32                     ; north
+        JR      Z,mmom_attack
+        CP      33                     ; south
+        JR      Z,mmom_attack
+        CP      34                     ; west
+        JR      Z,mmom_attack
+        CP      35                     ; east
+        JR      Z,mmom_attack
+        RET
+
+mmom_attack:
+        CALL    monsterAttackCore
+        RET
+
+; ---------------------------------------------------------
+; monsterAttackCore
+; Runs the hostile creature attack regardless of verb gating.
+; ---------------------------------------------------------
+monsterAttackCore:
         CALL    findCreatureInRoom
         OR      A
         RET     Z
-        LD      B,A                    ; preserve creature index
+        LD      (hostileCreatureIndex),A
         CP      objBat
         RET     Z                      ; bats handled elsewhere; no attack
 
@@ -1113,7 +1147,7 @@ maybeMonsterAttack:
         ; Death message.
         LD      HL,strMonsterKilled
         SYS_PUTS
-        LD      A,B
+        LD      A,(hostileCreatureIndex)
         CALL    printCreatureAdjNoun
         LD      HL,strMonsterSuffix
         CALL    printLine
@@ -1124,26 +1158,6 @@ monster_miss:
         LD      HL,strMonsterMiss
         CALL    printLine
         CALL    printNewLine
-        RET
-
-; ---------------------------------------------------------
-; maybeMonsterAttackOnMove
-; If the verb is a movement command, resolve attack before moving.
-; ---------------------------------------------------------
-maybeMonsterAttackOnMove:
-        LD      A,(verbPatternIndex)
-        CP      32                     ; north
-        JR      Z,mmom_attack
-        CP      33                     ; south
-        JR      Z,mmom_attack
-        CP      34                     ; west
-        JR      Z,mmom_attack
-        CP      35                     ; east
-        JR      Z,mmom_attack
-        RET
-
-mmom_attack:
-        CALL    maybeMonsterAttack
         RET
 
 ; ---------------------------------------------------------

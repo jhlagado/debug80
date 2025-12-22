@@ -92,10 +92,9 @@ strRankPerfect:         DB "Perfectionist and genius!!",0
 strEncWizard:           DB "There, before you in a swirling mist stands an evil wizard "
                         DB "with his hand held outwards...`Thou shall not pass' he "
                         DB "cries.",0
-strEncDragon1:          DB "Before the entrance of the cave lies an enormous, green, "
-                        DB "sleeping dragon. Realizing your presence, its eyes flicker "
-                        DB "open",0
-strEncDragon2:          DB "and it leaps up, breathing jets fire at you.",0
+strEncDragon1:          DB "Realizing your presence, its eyes flicker open and it "
+                        DB "leaps up, breathing jets fire at you.",0
+strEncDragon2:          DB "",0
 strEncGoblin:           DB "From around the corner trots a snarling goblin carrying "
                         DB "a lantern. `My job is to protect these stone steps!' "
                         DB "he says and lunges at you with his dagger.",0
