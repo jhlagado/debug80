@@ -443,6 +443,8 @@ handleInputLine:
 
         CALL    buildInputPadded
         CALL    scanInputTokens
+        CALL    maybeBatCarry
+        RET     Z
         CALL    dispatchScannedCommand
         CALL    maybeMonsterAttack
         RET
@@ -1022,6 +1024,35 @@ monster_miss:
         CALL    printNewLine
         RET
 
+; ---------------------------------------------------------
+; maybeBatCarry
+; If the bat is present in the current room, it carries the
+; player to roomBatCave and relocates itself (MWB behavior).
+;
+; Returns:
+;   Z set if carry occurred, Z clear otherwise.
+; ---------------------------------------------------------
+maybeBatCarry:
+        LD      A,(playerLocation)
+        LD      C,A
+        LD      A,(objectLocation+objBat-1)
+        CP      C
+        JR      Z,mbc_carry
+        OR      1                      ; Z=0
+        RET
+
+mbc_carry:
+        LD      HL,strGiantBat
+        CALL    printLine
+        LD      A,roomBatCave
+        LD      (playerLocation),A
+        LD      A,(objectLocation+objBat-1)
+        ADD     A,batRelocateOffset
+        LD      (objectLocation+objBat-1),A
+        CALL    printCurrentRoomDescription
+        XOR     A                      ; Z=1
+        RET
+
 ; Returns Z=1 if verb should NOT trigger monster attack.
 isNonCombatVerb:
         LD      A,(verbPatternIndex)
@@ -1425,7 +1456,7 @@ cmdKillAttack:
         CP      roomCarried
         JR      NZ,cka_need_carry
 
-        ; Count swings; crumble probabilistically (MWB style).
+        ; Count swings; if random threshold <= swing count, the monster kills you.
         LD      A,(swordSwingCount)
         INC     A
         LD      (swordSwingCount),A
@@ -1439,41 +1470,76 @@ cmdKillAttack:
 cka_rand_ok:
         ADD     A,swordFightBaseThreshold  ; 15..21
         CP      C
-        JR      C,cka_crumble
-        JR      Z,cka_crumble
+        JR      C,cka_death
+        JR      Z,cka_death
         JR      cka_try_kill
 
-cka_crumble:
-        LD      HL,strSwordCrumbles
+cka_death:
+        LD      HL,strSwordMiss
         CALL    printLine
-        XOR     A
-        LD      (objectLocation+objSword-1),A
         CALL    printNewLine
-        RET
+        HALT
 
 cka_try_kill:
         LD      B,swordKillChanceThreshold
         RAND
         JR      C,cka_kill
 
-        ; Miss: print a random fight message.
+        ; Miss: bat carries you away, otherwise print a random fight message.
+        LD      A,D
+        CP      objBat
+        JR      Z,cka_bat_carry
+
         CALL    printRandomFightMessage
         CALL    printNewLine
+        RET
+
+cka_bat_carry:
+        LD      HL,strGiantBat
+        CALL    printLine
+        LD      A,roomBatCave
+        LD      (playerLocation),A
+        LD      A,(objectLocation+objBat-1)
+        ADD     A,batRelocateOffset
+        LD      (objectLocation+objBat-1),A
+        CALL    printCurrentRoomDescription
         RET
 
 cka_kill:
         LD      HL,strSwordKills
         CALL    printLine
-        ; Remove creature from play.
+        ; Remove/relocate creature (MWB style).
         LD      A,D
         DEC     A
         LD      L,A
         LD      H,0
         LD      DE,objectLocation
         ADD     HL,DE
+        LD      A,D
+        CP      objTroll
+        JR      Z,cka_relocate
+        CP      objBat
+        JR      Z,cka_relocate
         XOR     A
         LD      (HL),A
+        JR      cka_after_creature
 
+cka_relocate:
+        LD      A,(HL)
+        ADD     A,corpseRelocateOffset
+        LD      (HL),A
+
+cka_after_creature:
+        ; Sword crumbles only when killing the wizard (MWB).
+        LD      A,D
+        CP      objWizard
+        JR      NZ,cka_after_sword
+        LD      HL,strSwordCrumbles
+        CALL    printLine
+        LD      A,roomTemple
+        LD      (objectLocation+objSword-1),A
+
+cka_after_sword:
         ; Vapor message for non-dragon.
         LD      A,D
         CP      objDragon
