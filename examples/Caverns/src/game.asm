@@ -770,24 +770,47 @@ cmdOpenCommon:
         LD      B,A
         LD      A,(targetLocation)
         LD      C,A
+        CALL    getOpenActionType
+        OR      A
+        JR      NZ,coc_have_action
+        LD      HL,strPleaseTell
+        CALL    printLine
+        CALL    printNewLine
+        RET
 
-        ; Determine which action applies based on current room.
+coc_have_action:
+        ; Require key carried.
+        LD      A,(objectLocation+objKey-1)
+        CP      roomCarried
+        JR      Z,coc_key_carried
+        LD      HL,strNotCarrying
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+coc_key_carried:
+        ; A = action type (1=door, 2=gate)
+        CP      1
+        JR      Z,coc_open_door
+        ; action type 2 = gate
         LD      A,(playerLocation)
-        CP      roomForestClearing
-        JR      Z,coc_hut
         CP      roomTemple
-        JR      Z,coc_gate
-
+        JR      Z,coc_gate_ok
         LD      HL,strWontOpen
         CALL    printLine
         CALL    printNewLine
         RET
 
-coc_hut:
-        ; Require: key + door
-        CALL    requireKeyAndNounDoor
-        RET     NZ
+coc_open_door:
+        LD      A,(playerLocation)
+        CP      roomForestClearing
+        JR      Z,coc_door_ok
+        LD      HL,strWontOpen
+        CALL    printLine
+        CALL    printNewLine
+        RET
 
+coc_door_ok:
         LD      HL,strDoorOpened
         CALL    printLine
         LD      A,roomDarkRoom
@@ -795,11 +818,7 @@ coc_hut:
         CALL    printCurrentRoomDescription
         RET
 
-coc_gate:
-        ; Require: key + gate
-        CALL    requireKeyAndNounGate
-        RET     NZ
-
+coc_gate_ok:
         LD      HL,strGateOpened
         CALL    printLine
         LD      A,roomCrypt
@@ -810,51 +829,49 @@ coc_gate:
 ; Inputs:
 ;   B = noun1, C = noun2
 ; Returns:
-;   Z=1 if ok, NZ otherwise (and prints error)
-requireKeyAndNounDoor:
-        LD      D,nounDoor
-        JR      requireKeyAndNounCommon
-
-requireKeyAndNounGate:
-        LD      D,nounGate
-        ; fallthrough
-
-requireKeyAndNounCommon:
-        ; Require key noun present.
+;   A = 1 for door, 2 for gate, 0 for missing/invalid
+getOpenActionType:
+        ; key + door
         LD      A,B
         CP      objKey
-        JR      Z,rkn_key_in_b
+        JR      NZ,goat_check_door_b
+        LD      A,C
+        CP      nounDoor
+        JR      Z,goat_door
+goat_check_door_b:
         LD      A,C
         CP      objKey
-        JR      NZ,rkn_need_how
-rkn_key_in_b:
-        ; Require required noun present.
+        JR      NZ,goat_check_gate
         LD      A,B
-        CP      D
-        JR      Z,rkn_have_noun
+        CP      nounDoor
+        JR      Z,goat_door
+
+goat_check_gate:
+        ; key + gate
+        LD      A,B
+        CP      objKey
+        JR      NZ,goat_check_gate_b
         LD      A,C
-        CP      D
-        JR      NZ,rkn_need_how
-rkn_have_noun:
-        ; Require key carried.
-        LD      A,(objectLocation+objKey-1)
-        CP      roomCarried
-        JR      Z,rkn_ok
-        LD      HL,strNotCarrying
-        CALL    printLine
-        CALL    printNewLine
-        OR      1
+        CP      nounGate
+        JR      Z,goat_gate
+goat_check_gate_b:
+        LD      A,C
+        CP      objKey
+        JR      NZ,goat_none
+        LD      A,B
+        CP      nounGate
+        JR      Z,goat_gate
+
+goat_none:
+        XOR     A
         RET
 
-rkn_need_how:
-        LD      HL,strPleaseTell
-        CALL    printLine
-        CALL    printNewLine
-        OR      1
+goat_door:
+        LD      A,1
         RET
 
-rkn_ok:
-        XOR     A                      ; Z=1
+goat_gate:
+        LD      A,2
         RET
 
 ; ---------------------------------------------------------
@@ -1554,6 +1571,16 @@ clb_have_candle:
         RET
 
 clb_candle_ok:
+        ; Candle must be lit.
+        LD      A,(candleIsLitFlag)
+        OR      A
+        JR      NZ,clb_candle_lit
+        LD      HL,strCandleOutStupid
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+clb_candle_lit:
         ; Require bomb to be carried or present.
         LD      A,(playerLocation)
         LD      C,A
