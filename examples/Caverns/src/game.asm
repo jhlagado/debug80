@@ -248,6 +248,7 @@ listRoomCreatures:
         LD      B,objCreatureCount     ; creatures 1..6
         LD      D,0                    ; printed-any flag
         LD      E,1                    ; creature index (1..6)
+        LD      IXL,0                  ; encounter-printed flag
 lc_loop:
         LD      A,(HL)
         CP      C
@@ -268,6 +269,13 @@ lc_print:
         POP     HL
         CALL    printNewLine
         POP     DE
+        LD      A,E
+        CALL    maybePrintEncounter
+        LD      A,IXL
+        OR      A
+        JR      NZ,lc_next
+        CALL    printNewLine
+        LD      IXL,1
 lc_next:
         INC     HL
         INC     E
@@ -285,6 +293,37 @@ printCreatureAdjNoun:
         LD      HL,monsterNameTable
         LD      A,B
         CALL    printWordTableEntry0Based
+        RET
+
+; ---------------------------------------------------------
+; maybePrintEncounter
+; A = creature index (1..6)
+; Prints special encounter text for wizard/dragon/dwarf.
+; ---------------------------------------------------------
+maybePrintEncounter:
+        CP      objWizard
+        JR      Z,mpe_wizard
+        CP      objDragon
+        JR      Z,mpe_dragon
+        CP      objDwarf
+        JR      Z,mpe_dwarf
+        RET
+
+mpe_wizard:
+        LD      HL,strEncWizard
+        CALL    printLine
+        RET
+
+mpe_dragon:
+        LD      HL,strEncDragon1
+        CALL    printLine
+        LD      HL,strEncDragon2
+        CALL    printLine
+        RET
+
+mpe_dwarf:
+        LD      HL,strEncDwarf
+        CALL    printLine
         RET
 
 ; ---------------------------------------------------------
