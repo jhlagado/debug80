@@ -74,6 +74,14 @@ strStubTool:            DB " tool=",0
 strDoorWord:            DB "door",0
 strGateWord:            DB "gate",0
 strGalarClue:           DB "Speak the name that lies mirrored in the last light of the alphabet, and the ancient path shall open.",0
+strHelpText:            DB "Help:\r\n"
+                        DB "look: see where you are\r\n"
+                        DB "list: see what you carry\r\n"
+                        DB "score: see how you rate\r\n"
+                        DB "quit: leave the caves\r\n"
+                        DB "go north, take compass\r\n"
+                        DB "kill dragon with sword\r\n"
+                        DB "try everything",0
 strRanking:             DB "This gives you an adventurer's ranking of:",0
 strRankHopeless:        DB "Hopeless beginner",0
 strRankLoser:           DB "Experienced loser",0
@@ -87,9 +95,9 @@ strEncDragon1:          DB "Before the entrance of the cave lies an enormous, gr
                         DB "sleeping dragon. Realizing your presence, its eyes flicker "
                         DB "open",0
 strEncDragon2:          DB "and it leaps up, breathing jets fire at you.",0
-strEncDwarf:            DB "From around the corner trots an old and gnarled drawf "
-                        DB "carrying a lantern. `My job is to protect these stone "
-                        DB "steps!' he says and lunges at you with his dagger.",0
+strEncGoblin:           DB "From around the corner trots a snarling goblin carrying "
+                        DB "a lantern. `My job is to protect these stone steps!' "
+                        DB "he says and lunges at you with his dagger.",0
 
 descDarkRoom            DB "You are standing in a darkened room. There is a door to the "
                         DB "north.",0
@@ -210,6 +218,7 @@ descRiverConduit        DB "You are in a conduit draining into the river. The wa
 
 tokenLook               DB " look ",0
 tokenList               DB " list ",0
+tokenHelp               DB " help ",0
 tokenQuit               DB " quit ",0
 tokenGalar              DB " galar ",0
 tokenApe                DB " ape ",0
@@ -257,7 +266,7 @@ tokenDemon              DB " demon ",0
 tokenTroll              DB " troll ",0
 tokenDragon             DB " dragon ",0
 tokenBat                DB " bat ",0
-tokenDwarf              DB " dwarf ",0
+tokenGoblin             DB " goblin ",0
 
 tokenCoin               DB " coin ",0
 tokenCompass            DB " compass ",0
@@ -288,8 +297,8 @@ monNameDragon           DB "a fire breathing "
 monNounDragon           DB "dragon",0
 monNameBat              DB "a giant "
 monNounBat              DB "bat",0
-monNameDwarf            DB "an old and gnarled "
-monNounDwarf            DB "dwarf",0
+monNameGoblin           DB "a snarling "
+monNounGoblin           DB "goblin",0
 
 objNameCoin             DB "a gold "
 objNounCoin             DB "coin",0

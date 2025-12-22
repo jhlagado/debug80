@@ -440,7 +440,7 @@ export class Z80DebugSession extends DebugSession {
     if (this.runtime === undefined) {
       return;
     }
-    const CHUNK = 500;
+    const CHUNK = 1000;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {

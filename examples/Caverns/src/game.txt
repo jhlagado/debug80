@@ -4,7 +4,7 @@
 ;  No line numbers, label-based control flow, long variable names
 ; ---------------------------------------------------------
 ;  INDEX MAP (for future assembly translation)
-;  CREATURES: 1 wizard, 2 demon, 3 troll, 4 dragon, 5 bat, 6 dwarf
+;  CREATURES: 1 wizard, 2 demon, 3 troll, 4 dragon, 5 bat, 6 goblin
 ;  OBJECTS 7-24: coin, compass, bomb, ruby, diamond, pearl, stone,
 ;                ring, pendant, grail, shield, box, key, sword,
 ;                candle, rope, brick, grill
@@ -1375,23 +1375,23 @@ encounterDragonLabel:
     call printStr
     jp listRoomObjectsAndCreatures
 
-encounterDwarfLabel:
-    ld hl,strEncDwarf
+encounterGoblinLabel:
+    ld hl,strEncGoblin
     call printStr
     jp listRoomObjectsAndCreatures
 
 triggerCreatureIntroSub:
     ; ---------------------------------------------------------
     ; triggerCreatureIntroSub
-    ; Print encounter text for wizard/dragon/dwarf when first seen.
+    ; Print encounter text for wizard/dragon/goblin when first seen.
     ; ---------------------------------------------------------
     ld a,(currentObjectIndex)
     cp creatureWizardIndex
     jp z,encounterWizardLabel
     cp creatureDragonIndex
     jp z,encounterDragonLabel
-    cp creatureDwarfIndex
-    jp z,encounterDwarfLabel
+    cp creatureGoblinIndex
+    jp z,encounterGoblinLabel
     ret
 ; ---------------------------------------------------------
 updateDynamicExits:

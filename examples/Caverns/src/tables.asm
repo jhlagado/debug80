@@ -138,14 +138,15 @@ verbTokenTable:
                         DW tokenSouth
                         DW tokenWest
                         DW tokenEast
-verbTokenCount          EQU 35
+                        DW tokenHelp
+verbTokenCount          EQU 36
 
 ; Noun tokens scanned from input (indices 1..nounTokenCount).
 ; 1..24 align to index space (creatures 1..6, objects 7..24).
 ; 25.. are pseudo-nouns (not in objectLocation[]), e.g. door/gate.
 nounTokenTable:
                         DW tokenWizard, tokenDemon, tokenTroll
-                        DW tokenDragon, tokenBat, tokenDwarf
+                        DW tokenDragon, tokenBat, tokenGoblin
                         DW tokenCoin, tokenCompass, tokenBomb, tokenRuby
                         DW tokenDiamond, tokenPearl, tokenStone, tokenRing
                         DW tokenPendant, tokenGrail, tokenShield, tokenBox
@@ -155,11 +156,11 @@ nounTokenTable:
 
 monsterNameTable:
                         DW monNameWiz, monNameDemon, monNameTroll
-                        DW monNameDragon, monNameBat, monNameDwarf
+                        DW monNameDragon, monNameBat, monNameGoblin
 
 monsterNounTable:
                         DW monNounWiz, monNounDemon, monNounTroll
-                        DW monNounDragon, monNounBat, monNounDwarf
+                        DW monNounDragon, monNounBat, monNounGoblin
 
 objectNameNameTable:
                         DW objNameCoin, objNameCompass, objNameBomb, objNameRuby
@@ -177,7 +178,7 @@ objectNameNounTable:
 
 objdesc1Table:
                         DW monNameWiz, monNameDemon, monNameTroll
-                        DW monNameDragon, monNameBat, monNameDwarf
+                        DW monNameDragon, monNameBat, monNameGoblin
                         DW objNameCoin, objNameCompass, objNameBomb, objNameRuby
                         DW objNameDiamond, objNamePearl, objNameStone, objNameRing
                         DW objNamePendant, objNameGrail, objNameShield, objNameBox
@@ -186,7 +187,7 @@ objdesc1Table:
 
 objdesc2Table:
                         DW monNounWiz, monNounDemon, monNounTroll
-                        DW monNounDragon, monNounBat, monNounDwarf
+                        DW monNounDragon, monNounBat, monNounGoblin
                         DW objNounCoin, objNounCompass, objNounBomb, objNounRuby
                         DW objNounDiamond, objNounPearl, objNounStone, objNounRing
                         DW objNounPendant, objNounGrail, objNounShield, objNounBox

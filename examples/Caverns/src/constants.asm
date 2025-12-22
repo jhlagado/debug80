@@ -18,6 +18,7 @@ SVC_PUTSTR  EQU 45             ; HL = ptr to 0-terminated string
 CR          EQU $0D
 LF          EQU $0A
 ESC         EQU $1B
+NULL        EQU 0
 
 ; ---------------------------------------------------------
 ;  Constants for Caverns
@@ -129,7 +130,7 @@ objDemon    equ 2
 objTroll    equ 3
 objDragon   equ 4
 objBat      equ 5
-objDwarf    equ 6
+objGoblin   equ 6
 objCreatureCount equ 6
 
 ; Object indices (7..24)

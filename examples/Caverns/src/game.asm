@@ -79,6 +79,9 @@ printCurrentRoomDescription:
         LD      HL,roomDesc1Table
         CALL    printDescription
 
+        LD      A,(playerLocation)
+        LD      D,A                    ; restore room after printDescription
+
         LD      A,D
         LD      HL,roomDesc2Table
         CALL    printDescription
@@ -309,15 +312,15 @@ printCreatureAdjNoun:
 ; ---------------------------------------------------------
 ; maybePrintEncounter
 ; A = creature index (1..6)
-; Prints special encounter text for wizard/dragon/dwarf.
+; Prints special encounter text for wizard/dragon/goblin.
 ; ---------------------------------------------------------
 maybePrintEncounter:
         CP      objWizard
         JR      Z,mpe_wizard
         CP      objDragon
         JR      Z,mpe_dragon
-        CP      objDwarf
-        JR      Z,mpe_dwarf
+        CP      objGoblin
+        JR      Z,mpe_goblin
         RET
 
 mpe_wizard:
@@ -332,8 +335,8 @@ mpe_dragon:
         CALL    printLine
         RET
 
-mpe_dwarf:
-        LD      HL,strEncDwarf
+mpe_goblin:
+        LD      HL,strEncGoblin
         CALL    printLine
         RET
 
@@ -481,11 +484,6 @@ printWordTableEntry0Based:
 ; Otherwise echoes the line as before.
 ; ---------------------------------------------------------
 handleInputLine:
-        LD      HL,BUF                  ; echo user's input so prior actions are visible
-        SYS_PUTS
-        CALL    printNewLine
-        CALL    printNewLine
-
         ; Count moves (one per input line).
         LD      A,(turnCounter)
         INC     A
@@ -742,6 +740,8 @@ dispatchScannedCommand:
         JP      Z,cmdWest
         CP      35
         JP      Z,cmdEast
+        CP      36
+        JP      Z,cmdHelp
         JP      echoLine
 
 ; Minimal quit/galar/ape placeholders for now.
@@ -752,6 +752,12 @@ cmdScore:
         LD      A,(score)
         CALL    printByteDecA
         CALL    printNewLine
+        CALL    printNewLine
+        RET
+
+cmdHelp:
+        LD      HL,strHelpText
+        CALL    printLine
         CALL    printNewLine
         RET
 
@@ -829,7 +835,7 @@ ca_do:
 ; - Works in:
 ;     roomForestClearing -> moves to roomDarkRoom (hut door)
 ;     roomTemple         -> moves to roomCrypt (locked gate)
-; - Leaves the key behind in the room it was used
+; - Key must be carried; key is not consumed
 ; ---------------------------------------------------------
 cmdUnlock:
         JR      cmdOpenCommon
@@ -1137,6 +1143,12 @@ isNonCombatVerb:
         CP      12                     ; save
         RET     Z
         CP      13                     ; load
+        RET     Z
+        CP      14                     ; read
+        RET     Z
+        CP      15                     ; pray
+        RET     Z
+        CP      36                     ; help
         RET     Z
         OR      1                      ; Z=0 => combat applies
         RET
@@ -1517,24 +1529,24 @@ cmdKillAttack:
         CALL    selectTargetCreature
         POP     BC
         OR      A
-        JR      Z,cka_nothing
+        JP      Z,cka_nothing
         LD      D,A                    ; D = creature index (1..6)
 
         ; Find tool object among noun1/noun2 (orderless).
         CALL    selectToolObject
         OR      A
-        JR      Z,cka_need_how
+        JP      Z,cka_need_how
         LD      E,A                    ; E = object index (7..24)
 
         ; Only sword works for now.
         LD      A,E
         CP      objSword
-        JR      NZ,cka_nothing_happens
+        JP      NZ,cka_nothing_happens
 
         ; Require sword to be carried.
         LD      A,(objectLocation+objSword-1)
         CP      roomCarried
-        JR      NZ,cka_need_carry
+        JP      NZ,cka_need_carry
 
         ; Count swings; if random threshold <= swing count, the monster kills you.
         LD      A,(swordSwingCount)
@@ -1545,14 +1557,14 @@ cmdKillAttack:
         LD      A,R
         AND     7                      ; 0..7
         CP      7
-        JR      NZ,cka_rand_ok
+        JP      NZ,cka_rand_ok
         LD      A,6
 cka_rand_ok:
         ADD     A,swordFightBaseThreshold  ; 15..21
         CP      C
-        JR      C,cka_death
-        JR      Z,cka_death
-        JR      cka_try_kill
+        JP      C,cka_death
+        JP      Z,cka_death
+        JP      cka_try_kill
 
 cka_death:
         LD      HL,strSwordMiss
@@ -1563,12 +1575,12 @@ cka_death:
 cka_try_kill:
         LD      B,swordKillChanceThreshold
         RAND
-        JR      C,cka_kill
+        JP      C,cka_kill
 
         ; Miss: bat carries you away, otherwise print a random fight message.
         LD      A,D
         CP      objBat
-        JR      Z,cka_bat_carry
+        JP      Z,cka_bat_carry
 
         CALL    printRandomFightMessage
         CALL    printNewLine
@@ -1597,10 +1609,10 @@ cka_kill:
         ADD     HL,DE
         LD      A,D
         CP      objBat
-        JR      Z,cka_relocate
+        JP      Z,cka_relocate
         XOR     A
         LD      (HL),A
-        JR      cka_after_creature
+        JP      cka_after_creature
 
 cka_relocate:
         LD      A,(HL)
@@ -1611,7 +1623,7 @@ cka_after_creature:
         ; Sword crumbles only when killing the wizard (MWB).
         LD      A,D
         CP      objWizard
-        JR      NZ,cka_after_sword
+        JP      NZ,cka_after_sword
         LD      HL,strSwordCrumbles
         CALL    printLine
         LD      A,roomTemple
@@ -1621,7 +1633,7 @@ cka_after_sword:
         ; Vapor message for non-dragon.
         LD      A,D
         CP      objDragon
-        JR      Z,cka_done
+        JP      Z,cka_done
         LD      HL,strCorpseVapor
         CALL    printLine
 cka_done:
@@ -1637,8 +1649,8 @@ cka_need_how:
         LD      HL,strPleaseTell
         CALL    printLine
         CALL    printNewLine
-        LD      A,1
-        LD      (incompleteCommandFlag),A
+        XOR     A
+        LD      (verbPatternIndex),A
         RET
 
 cka_need_carry:
@@ -2140,10 +2152,6 @@ toUpperA:
         AND     $DF
         RET
 
-wordGO:     DEFB    "GO",0
-wordLOOK:   DEFB    "LOOK",0
-wordLIST:   DEFB    "LIST",0
-wordINVENT: DEFB    "INVENT",0
 ; readLn: HL buffer, B = buffer length (including terminator)
 ; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
 ; zero-terminates. Returns with A holding last read (newline).
