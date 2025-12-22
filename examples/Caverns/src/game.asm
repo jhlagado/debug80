@@ -443,7 +443,9 @@ handleInputLine:
 
         CALL    buildInputPadded
         CALL    scanInputTokens
-        JP      dispatchScannedCommand
+        CALL    dispatchScannedCommand
+        CALL    maybeMonsterAttack
+        RET
 
 echoLine:
         LD      HL,strEh
@@ -974,7 +976,105 @@ cmdStubAction:
         CALL    printNewLine
         RET
 
-; A = noun index (1..24) or 0
+; ---------------------------------------------------------
+; maybeMonsterAttack
+; If a hostile creature is present and the player did not issue
+; a combat action, the creature can attack.
+;
+; Exempts non-action verbs (look/list/score/quit/save/load/stage),
+; movement, and kill/attack.
+; ---------------------------------------------------------
+maybeMonsterAttack:
+        ; Skip attack for non-action verbs.
+        CALL    isNonCombatVerb
+        RET     Z
+
+        CALL    findCreatureInRoom
+        OR      A
+        RET     Z
+        CP      objBat
+        RET     Z                      ; bats handled elsewhere; no attack
+
+        ; If the sword is mentioned anywhere in the command, skip the attack.
+        LD      A,(currentObjectIndex)
+        CP      objSword
+        RET     Z
+        LD      A,(targetLocation)
+        CP      objSword
+        RET     Z
+
+        ; 20% chance to miss (player survives), otherwise death.
+        LD      B,51                   ; 51/256 ~= 20%
+        RAND
+        JR      C,monster_miss
+
+        ; Death message.
+        LD      HL,strMonsterKilled
+        SYS_PUTS
+        CALL    printCreatureAdjNoun
+        LD      HL,strMonsterSuffix
+        CALL    printLine
+        HALT
+
+monster_miss:
+        LD      HL,strMonsterMiss
+        CALL    printLine
+        CALL    printNewLine
+        RET
+
+; Returns Z=1 if verb should NOT trigger monster attack.
+isNonCombatVerb:
+        LD      A,(verbPatternIndex)
+        CP      1                      ; look
+        RET     Z
+        CP      2                      ; list
+        RET     Z
+        CP      3                      ; invent
+        RET     Z
+        CP      4                      ; score
+        RET     Z
+        CP      5                      ; quit
+        RET     Z
+        CP      6                      ; galar
+        RET     Z
+        CP      7                      ; ape
+        RET     Z
+        CP      8                      ; stage2
+        RET     Z
+        CP      9                      ; stage3
+        RET     Z
+        CP      10                     ; stage4
+        RET     Z
+        CP      11                     ; stage5
+        RET     Z
+        CP      12                     ; save
+        RET     Z
+        CP      13                     ; load
+        RET     Z
+        OR      1                      ; Z=0 => combat applies
+        RET
+
+; Returns A = creature index (1..6) if present, else 0.
+findCreatureInRoom:
+        LD      A,(playerLocation)
+        LD      C,A
+        LD      HL,objectLocation
+        LD      B,objCreatureCount     ; 1..6
+        LD      D,1
+fcr_loop:
+        LD      A,(HL)
+        CP      C
+        JR      Z,fcr_found
+        INC     HL
+        INC     D
+        DJNZ    fcr_loop
+        XOR     A
+        RET
+fcr_found:
+        LD      A,D
+        RET
+
+; A = noun index (1..nounTokenCount) or 0
 ; Prints "none" if 0 else prints the noun string via fallthrough tables.
 printNounByIndex:
         OR      A
