@@ -83,6 +83,17 @@ printCurrentRoomDescription:
         LD      HL,roomDesc2Table
         CALL    printDescription
 
+        ; Drawbridge message when activated (MWB line 58).
+        LD      A,D
+        CP      roomCastleLedge
+        JR      NZ,pc_after_drawbridge
+        LD      A,(drawbridgeState)
+        CP      roomDrawbridge
+        JR      NZ,pc_after_drawbridge
+        LD      HL,strGoldBridge
+        CALL    printLine
+pc_after_drawbridge:
+
         ; Extra flavor line in select rooms (matches mwb line 55).
         LD      A,D
         LD      HL,darkCavernRoomList
