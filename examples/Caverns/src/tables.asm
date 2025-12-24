@@ -14,10 +14,10 @@ movementTable:
                         DB 0,roomBridgeNorthAnchor,roomCloverField,0
                         DB roomMtYmirSlope,roomBridgeMid,0,0
                         DB roomBridgeNorthAnchor,roomBridgeSouthAnchor,128,128
-                        DB roomBridgeMid,roomCaveEntranceClearing,roomMushroomRock,0
+                        DB roomBridgeMid,roomCaveEntranceClearing,roomMushroomRock,roomCliffFace
                         DB roomBridgeSouthAnchor,0,roomCaveEntranceClearing,roomBridgeSouthAnchor
-                        DB roomCliffFace,roomCaveEntry,0,roomMushroomRock
-                        DB 0,roomCaveEntranceClearing,0,0
+                        DB roomBridgeSouthAnchor,roomCaveEntry,0,roomMushroomRock
+                        DB 0,0,roomBridgeSouthAnchor,0
                         DB roomCaveEntranceClearing,roomDarkCavernA
                         DB 0,roomDeadEndInscription
                         DB 0,0,roomCaveEntry,0
