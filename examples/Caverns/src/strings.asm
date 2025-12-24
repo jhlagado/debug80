@@ -129,13 +129,14 @@ descBridgeMid           DB "You have made your way half way across the creaking 
                         DB "It sways violently from side to side. It's going to "
                         DB "collapse any second!!",0
 descBridgeSouth         DB "You are on the southern edge of the mighty river, before "
-                        DB "the string bridge. To the east is a cliff face.",0
+                        DB "the string bridge. Paths lead west, and a cliff face lies east.",0
 descMushroomRock        DB "You are standing on a rock in the middle of a mighty oak "
                         DB "forest. Surrounding you are thousands of poisonous "
-                        DB "mushrooms.",0
+                        DB "mushrooms. To the east lies the bridge; to the south the "
+                        DB "woods deepen.",0
 descCaveClearing        DB "You are in a clearing in the forest. An ancient basalt rock "
                         DB "formation towers above you. To the south is the entrance "
-                        DB "of an interesting looking cave. The bridge lies to the north.",0
+                        DB "of an interesting looking cave. The mushrooms are to the north.",0
 descCliffFace           DB "You are on a cliff face over looking the river.",0
 descCaveEntry           DB "You are just inside the cave. Sunlight pours into the cave "
                         DB "lighting a path to the east and another to the south. I "

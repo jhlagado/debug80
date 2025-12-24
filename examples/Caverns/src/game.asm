@@ -264,7 +264,6 @@ listRoomCreatures:
         LD      B,objCreatureCount     ; creatures 1..6
         LD      D,0                    ; printed-any flag
         LD      E,1                    ; creature index (1..6)
-        LD      IXL,0                  ; encounter-printed flag
 lc_loop:
         LD      A,(HL)
         CP      C
@@ -287,11 +286,6 @@ lc_print:
         POP     DE
         LD      A,E
         CALL    maybePrintEncounter
-        LD      A,IXL
-        OR      A
-        JR      NZ,lc_next
-        CALL    printNewLine
-        LD      IXL,1
 lc_next:
         INC     HL
         INC     E
@@ -326,16 +320,19 @@ maybePrintEncounter:
         RET
 
 mpe_wizard:
+        CALL    printNewLine
         LD      HL,strEncWizard
         CALL    printLine
         RET
 
 mpe_dragon:
+        CALL    printNewLine
         LD      HL,strEncDragon1
         CALL    printLine
         RET
 
 mpe_goblin:
+        CALL    printNewLine
         LD      HL,strEncGoblin
         CALL    printLine
         RET
