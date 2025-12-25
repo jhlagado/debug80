@@ -226,9 +226,9 @@ darkCavernRoomList:
                         DB roomDarkCavernD
                         DB roomDarkCavernE
                         DB roomDarkCavernF
+                        DB roomDarkCavernG
                         DB roomDarkCavernH
                         DB roomDarkCavernI
                         DB roomDarkCavernJ
                         DB roomDarkCavernK
-                        DB roomWoodenBridge
                         DB 0

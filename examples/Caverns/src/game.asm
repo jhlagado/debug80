@@ -345,6 +345,7 @@ mpe_goblin:
 printDescription:
         OR      A
         RET     Z
+        PUSH    DE
         DEC     A
         ADD     A,A                    ; (index-1) * 2
         LD      E,A
@@ -355,9 +356,12 @@ printDescription:
         LD      D,(HL)
         LD      A,D
         OR      E
-        RET     Z
+        JR      Z,pd_restore
         EX      DE,HL
-        JP      printLine
+        CALL    printLine
+pd_restore:
+        POP     DE
+        RET
 
 ; ---------------------------------------------------------
 ; printLine
@@ -1430,18 +1434,19 @@ cmdStage2:
 
 ; ---------------------------------------------------------
 ; cmdStage3
-; Testing helper: resets state, moves player to oak door room,
-; and gives compass/sword/candle in inventory.
+; Testing helper: resets state, moves player to cave entry,
+; and gives compass/coin/sword/candle/rope in inventory.
 ; ---------------------------------------------------------
 cmdStage3:
         CALL    initState
-        LD      A,roomOakDoor
+        LD      A,roomCaveEntry
         LD      (playerLocation),A
         LD      A,roomCarried
         LD      (objectLocation+objCompass-1),A
+        LD      (objectLocation+objCoin-1),A
         LD      (objectLocation+objSword-1),A
         LD      (objectLocation+objCandle-1),A
-        LD      (objectLocation+objBomb-1),A
+        LD      (objectLocation+objRope-1),A
         CALL    printCurrentRoomDescription
         RET
 
