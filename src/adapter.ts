@@ -646,11 +646,11 @@ export class Z80DebugSession extends DebugSession {
       fs.mkdirSync(outDir, { recursive: true });
     }
 
-    const command = this.findAsm80Binary(asmDir) ?? 'asm80';
+    const asm80 = this.resolveAsm80Command(asmDir);
     const outArg = path.relative(asmDir, hexPath);
     const result = cp.spawnSync(
-      command,
-      ['-m', 'Z80', '-t', 'hex', '-o', outArg, path.basename(asmPath)],
+      asm80.command,
+      [...asm80.argsPrefix, '-m', 'Z80', '-t', 'hex', '-o', outArg, path.basename(asmPath)],
       {
         cwd: asmDir,
         encoding: 'utf-8',
@@ -770,6 +770,49 @@ export class Z80DebugSession extends DebugSession {
     }
 
     return undefined;
+  }
+
+  private resolveAsm80Command(
+    asmDir: string
+  ): {
+    command: string;
+    argsPrefix: string[];
+  } {
+    const resolved = this.findAsm80Binary(asmDir) ?? 'asm80';
+    if (this.shouldInvokeWithNode(resolved)) {
+      return { command: process.execPath, argsPrefix: [resolved] };
+    }
+    return { command: resolved, argsPrefix: [] };
+  }
+
+  private shouldInvokeWithNode(command: string): boolean {
+    const lower = command.toLowerCase();
+    if (
+      process.platform === 'win32' &&
+      (lower.endsWith('.cmd') || lower.endsWith('.exe') || lower.endsWith('.ps1'))
+    ) {
+      return false;
+    }
+
+    if (!(command.includes(path.sep) || command.includes('/'))) {
+      return false;
+    }
+
+    const ext = path.extname(command).toLowerCase();
+    if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
+      return true;
+    }
+
+    try {
+      const fd = fs.openSync(command, 'r');
+      const buffer = Buffer.alloc(160);
+      const bytes = fs.readSync(fd, buffer, 0, buffer.length, 0);
+      fs.closeSync(fd);
+      const firstLine = buffer.toString('utf-8', 0, bytes).split('\n')[0] ?? '';
+      return firstLine.startsWith('#!') && firstLine.includes('node');
+    } catch {
+      return false;
+    }
   }
 
   private applyBreakpoints(bps: DebugProtocol.SourceBreakpoint[]): DebugProtocol.Breakpoint[] {
