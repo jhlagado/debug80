@@ -237,6 +237,84 @@ Same `.LST` in -> same entries, anchors, and confidence labels out. No external 
 
 ---
 
+# Section 14: Debugger Integration (Required for Source-Level Debugging)
+
+This section defines how the generated mapping is consumed by a debug adapter to enable source-level stepping and breakpoints.
+
+## 14.1 Inputs to the Debugger
+
+The debugger must have:
+
+* HEX (runtime bytes)
+* LST (listing)
+* Source map output produced by this spec (Layer 1 or Layer 2)
+
+If the source map is not produced (or cannot be loaded), the debugger must fall back to listing-only behavior.
+
+## 14.2 Program Counter -> Source Location
+
+When the CPU stops (entry/breakpoint/step):
+
+1. Resolve the current PC (`addr`) to a source location using the mapping:
+   * Find the segment whose `[start, end)` contains `addr`.
+   * If multiple segments contain `addr`, choose the one with the lowest `lst.line`.
+2. If the resolved segment has a valid `loc.file`, the debugger must:
+   * emit a stack frame with `Source.path = loc.file`
+   * set `line = loc.line` if present; otherwise use the best-available line (see fallback rule below)
+3. If no segment resolves or `loc.file` is null, fall back to listing:
+   * `Source.path = listing file`
+   * `line = listing line for the address` (from `addressToLine`)
+
+Fallback line rule:
+
+* If `loc.line` is null but `loc.file` is known, select the nearest anchor line in the same file whose address is <= `addr`. If none exists, fall back to listing line.
+
+## 14.3 Source Breakpoints -> Addresses
+
+When a breakpoint is set in a `.asm` file:
+
+1. Resolve `file:line` to one or more candidate segments:
+   * exact match on `loc.file` and `loc.line`
+   * if none, select the nearest anchor line in that file at or before the requested line
+2. Choose the lowest `start` address among candidates as the breakpoint address.
+3. Mark the breakpoint as verified if an address was found; otherwise unverified with a clear message.
+
+When a breakpoint is set in the listing file, use the existing `lineToAddress` lookup.
+
+## 14.4 Stepping Behavior
+
+Stepping should operate on addresses but report source locations using the mapping.
+
+* Step-in/step-over must update the stack frame location as per Section 14.2.
+* If a step lands on a low-confidence or null `loc.line`, the debugger should still show the file when available and may display the listing line in the UI (adapter-specific).
+
+## 14.5 Breakpoint Verification and Messaging
+
+The debugger should emit clear messages when:
+
+* a source file is missing (Layer 2 unavailable)
+* no address can be resolved for a breakpoint
+* a breakpoint is resolved only to a low-confidence location
+
+## 14.6 Path Resolution (Debugger Side)
+
+The debugger must use the same resolution rules as the mapper:
+
+* If `loc.file` is absolute, use it directly.
+* Otherwise resolve using `[lstDir, ...sourceRoots]`.
+* If the resolved path does not exist, treat the source as missing and fall back to listing or anchors.
+
+## 14.7 Data Structures Required by the Debugger
+
+To support Section 14.x, the debugger must load or derive:
+
+* `addressToLine` for listing file fallback
+* `segments`: sorted by `start` (tie-break `lst.line`)
+* `anchors` indexed by `file` and `line`
+* `anchors` indexed by `address`
+
+---
+
 # Appendix A: Layer 2 (Optional) - Matching `.asm`
 
 ## A.1 Purpose
