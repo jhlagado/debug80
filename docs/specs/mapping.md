@@ -27,6 +27,7 @@ The output does not need to be perfect; it must be deterministic and honest abou
 ### 2.2 Optional (Layer 2 only)
 
 * `.asm` files referenced by the symbol table.
+* optional `sourceRoots` (ordered list of directories) for resolving source files beyond the `.LST` directory.
 
 ---
 
@@ -95,7 +96,7 @@ For each listing line:
 
 1. Read `startAddr` from the leading hex address.
 2. Look at the remainder after the address.
-3. If the remainder starts with a 2-hex-digit byte token, consume consecutive byte tokens separated by whitespace to form the byte list.
+3. If the remainder starts with a 2-hex-digit byte token (regex `^[0-9A-Fa-f]{2}$`), consume consecutive byte tokens separated by whitespace to form the byte list.
 4. The rest of the line (after the byte tokens), trimmed of trailing whitespace, is `asmText`.
 5. If the remainder does not start with a byte token, treat the remainder as pure `asmText` and set `byteCount = 0`.
 
@@ -147,7 +148,9 @@ are cross-reference metadata only and must not affect mapping.
 
 ### 6.4 File Resolution (Layer 2)
 
-When opening `.asm` files for Layer 2, resolve `file` relative to the `.LST` directory unless it is already absolute. Do not search include paths unless explicitly provided as an extra input.
+When opening `.asm` files for Layer 2, resolve `file` relative to the `.LST` directory unless it is already absolute. If `sourceRoots` is provided, resolve in order: `[lstDir, ...sourceRoots]`. Do not search include paths unless explicitly provided as an extra input.
+
+If a referenced `.asm` file cannot be found, Layer 2 must skip that file and keep Layer 1 mappings intact. Missing source files are non-fatal and should be recorded or surfaced to the user, but must not abort parsing.
 
 ---
 
