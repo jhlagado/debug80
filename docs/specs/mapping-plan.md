@@ -16,17 +16,23 @@ Implement source-level debugging using LST-derived mapping with optional Layer 2
    * `segments` (start/end/loc/lst/confidence)
    * `anchors`
    * `addressToLine` fallback data (listing)
+   * `resolveAddress(pc)` helper for PC -> source lookup
 2. Implement deterministic LST body parsing using the byte-token rule and boundary rule in `docs/specs/mapping.md`.
 3. Parse symbol table entries and build `anchorsByAddress`.
 4. Implement Layer 1 attachment (listing order traversal) to assign `file/line/confidence` to entries.
 5. Add in-memory structures in the adapter:
    * `segmentsByAddress` sorted by `start` (tie-break `lst.line`)
-6. Update `StackTraceRequest` to:
+6. Update `launchRequest` to invoke the new parser (do not remove `parseListing` yet).
+7. Update `StackTraceRequest` to:
    * resolve PC to segment
    * use `loc.file`/`loc.line` when available
    * fall back to listing when `loc.file` is null or no segment matches
-7. Keep listing breakpoints working as-is.
-8. Add tests for:
+8. Keep listing breakpoints working as-is.
+9. Add test fixtures and unit tests:
+   * `src/test/fixtures/simple.asm`
+   * `src/test/fixtures/simple.lst`
+   * `src/test/mapping-parser.test.ts`
+10. Add tests for:
    * LST parsing (byte tokens, zero-byte lines, macro markers)
    * symbol table boundary rule
    * PC -> source fallback behavior
@@ -86,7 +92,13 @@ Implement source-level debugging using LST-derived mapping with optional Layer 2
 3. Verify breakpoint behavior for:
    * `.asm` files with and without Layer 2
    * listing breakpoints
-4. Document any residual mapping gaps.
+4. Manual check (Caverns):
+   * Launch debug session and confirm stack frames show `.asm` when mapped.
+   * Set a breakpoint in `.asm` (e.g., `game.asm`) and confirm it hits.
+5. Test commands (repo standard):
+   * `yarn build`
+   * `yarn test`
+6. Document any residual mapping gaps.
 
 ---
 
