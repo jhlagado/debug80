@@ -315,6 +315,80 @@ To support Section 14.x, the debugger must load or derive:
 
 ---
 
+# Section 15: Implementation Phases (Recommended)
+
+This work can be staged to reduce risk and keep behavior stable.
+
+## 15.1 Phase 1: Layer 1 + LST Fallback (Minimal Viable)
+
+Goals:
+
+* Keep existing listing-based behavior as a fallback.
+* Add a new mapping parser that returns `segments` and `anchors` (Layer 1 only).
+* Update stack traces to use `segments` when `loc.file` exists, otherwise fall back to listing.
+
+Required changes:
+
+* `src/z80-loaders.ts`: add a new parser (do not remove `parseListing` yet).
+* `src/adapter.ts`: resolve PC using `segments`, then fall back to listing.
+* Breakpoints in listing file must keep working.
+
+## 15.2 Phase 2: Source Breakpoints + Indexes
+
+Goals:
+
+* Breakpoints set in `.asm` files resolve to addresses using the mapping.
+* Keep breakpoint resolution fast with indexes.
+
+Required changes:
+
+* Build a `file -> line -> [segment]` index at launch.
+* Implement `resolveLocation(file, line)` using that index and anchor fallback.
+
+## 15.3 Phase 3: Layer 2 (Optional)
+
+Goals:
+
+* Enhance line accuracy using `.asm` matching.
+* Missing source files are non-fatal; keep Layer 1 mappings.
+
+Required changes:
+
+* Implement Layer 2 matcher and merge results into `segments`.
+* Record and surface missing source files.
+
+## 15.4 Phase 4: Persistence (Optional)
+
+Goals:
+
+* Emit JSON output (Appendix B) to cache map data for faster launches.
+
+Required changes:
+
+* Serialize `segments` and `anchors` after mapping.
+* Allow reading cached mapping when inputs are unchanged.
+
+---
+
+# Section 16: Runtime Data Structures (Recommended)
+
+These are in-memory structures suggested for adapter implementation:
+
+```
+interface SourceMap {
+  resolveAddress(pc: number): { file: string; line: number } | { file: string; line: number; isLST: true };
+  resolveLocation(file: string, line: number): number[];
+}
+```
+
+Index recommendations:
+
+* `segmentsByAddress`: array sorted by `start` for binary search on PC.
+* `segmentsByFileLine`: map `file -> line -> segments[]` for breakpoint lookup.
+* `anchorsByFile`: map `file -> sorted line list` for fallback.
+
+---
+
 # Appendix A: Layer 2 (Optional) - Matching `.asm`
 
 ## A.1 Purpose
