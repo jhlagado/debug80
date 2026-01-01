@@ -110,6 +110,13 @@
                 "description": "Run asm80 before launch when asm is provided",
                 "default": true
               },
+              "sourceRoots": {
+                "type": "array",
+                "description": "Additional directories to resolve source file paths from LST anchors",
+                "items": {
+                  "type": "string"
+                }
+              },
               "terminal": {
                 "type": "object",
                 "description": "Optional terminal device port mapping",
