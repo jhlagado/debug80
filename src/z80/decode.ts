@@ -4,15 +4,15 @@ import {
   cycle_counts,
   cycle_counts_ed,
   parity_bits,
-} from './z80-constants';
+} from './constants';
 import {
   flagsToByte,
   pushWord,
   setFlagsFromByte,
   setFlagsRegister,
   updateXYFlags,
-} from './z80-core-helpers';
-import { noop, OpcodeHandler, OpcodeTable } from './z80-opcode-types';
+} from './core-helpers';
+import { noop, OpcodeHandler, OpcodeTable } from './opcode-types';
 import {
   do_rl as do_rl_base,
   do_rlc as do_rlc_base,
@@ -22,8 +22,8 @@ import {
   do_sll as do_sll_base,
   do_sra as do_sra_base,
   do_srl as do_srl_base,
-} from './z80-rotate';
-import { Callbacks, Cpu } from './z80-types';
+} from './rotate';
+import { Callbacks, Cpu } from './types';
 type ByteOpHandler = (value: number) => number;
 type ByteOpVoid = (value: number) => void;
 const noopByteOp: ByteOpHandler = (value: number): number => value;

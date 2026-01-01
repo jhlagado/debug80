@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { HexProgram } from '../z80-loaders';
-import { createZ80Runtime } from '../z80-runtime';
+import { HexProgram } from '../z80/loaders';
+import { createZ80Runtime } from '../z80/runtime';
 
 const makeProgram = (bytes: number[], startAddress = 0x0000): HexProgram => {
   const memory = new Uint8Array(0x10000);

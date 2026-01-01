@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseMapping } from '../mapping-parser';
+import { parseMapping } from '../mapping/parser';
 
 const fixturePath = path.join(process.cwd(), 'src', 'test', 'fixtures', 'simple.lst');
 const listingContent = fs.readFileSync(fixturePath, 'utf-8');

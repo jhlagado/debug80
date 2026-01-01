@@ -1,4 +1,4 @@
-import { Callbacks, Cpu, Flags } from './z80-types';
+import { Callbacks, Cpu, Flags } from './types';
 
 export const setFlagsFromByte = (flags: Flags, operand: number): void => {
   flags.S = (operand & 0x80) >>> 7;

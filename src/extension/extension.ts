@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { Z80DebugAdapterFactory } from './adapter';
+import { Z80DebugAdapterFactory } from '../debug/adapter';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ensureDirExists, inferDefaultTarget } from './config-utils';
+import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';

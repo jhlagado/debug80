@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ensureDirExists, inferDefaultTarget } from '../config-utils';
+import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 
 const withTempDir = (fn: (dir: string) => void): void => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-config-'));

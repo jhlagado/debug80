@@ -1,6 +1,6 @@
 # Debug80 (Z80 debugger with HEX/LST + asm80)
 
-Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports address breakpoints via the listing, stepping/continue, and exposes registers. TinyCPU support has been removed. “Debug80” is the debugger name used in the examples below.
+Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports address breakpoints via the listing, stepping/continue, and exposes registers. “Debug80” is the debugger name used in the examples below.
 
 ## Prerequisites
 

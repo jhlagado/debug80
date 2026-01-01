@@ -1,6 +1,6 @@
-import { parity_bits } from './z80-constants';
-import { updateXYFlags } from './z80-core-helpers';
-import { Cpu } from './z80-types';
+import { parity_bits } from './constants';
+import { updateXYFlags } from './core-helpers';
+import { Cpu } from './types';
 
 const setRotateFlags = (cpu: Cpu, result: number, carry: number): void => {
   cpu.flags.N = 0;
