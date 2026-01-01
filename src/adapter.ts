@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as cp from 'child_process';
 import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo } from './z80-loaders';
+import { parseMapping, MappingParseResult, SourceMapAnchor, SourceMapSegment } from './mapping-parser';
 import {
   createZ80Runtime,
   Z80Runtime,
@@ -53,6 +54,9 @@ export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
   private listing: ListingInfo | undefined;
   private listingPath: string | undefined;
+  private mapping: MappingParseResult | undefined;
+  private mappingSegmentsByAddress: SourceMapSegment[] | undefined;
+  private mappingAnchorsByFile: Map<string, SourceMapAnchor[]> | undefined;
   private sourceFile = '';
   private stopOnEntry = false;
   private haltNotified = false;
@@ -95,6 +99,9 @@ export class Z80DebugSession extends DebugSession {
     this.runtime = undefined;
     this.listing = undefined;
     this.listingPath = undefined;
+    this.mapping = undefined;
+    this.mappingSegmentsByAddress = undefined;
+    this.mappingAnchorsByFile = undefined;
     this.terminalState = undefined;
 
     try {
@@ -151,6 +158,8 @@ export class Z80DebugSession extends DebugSession {
 
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
       this.listing = parseListing(listingContent);
+      this.mapping = parseMapping(listingContent);
+      this.buildMappingIndexes(this.mapping);
       this.listingPath = listingPath;
       this.sourceFile = listingPath;
 
@@ -267,16 +276,106 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
 
-    const sourcePath = this.listingPath ?? this.sourceFile;
-    const lineFromMap = this.listing?.addressToLine.get(this.runtime.getPC()) ?? 1;
-    const source = new Source(path.basename(sourcePath), sourcePath);
+    const resolved = this.resolveSourceForAddress(this.runtime.getPC());
+    const source = new Source(path.basename(resolved.path), resolved.path);
 
     response.body = {
-      stackFrames: [new StackFrame(0, 'main', source, lineFromMap)],
+      stackFrames: [new StackFrame(0, 'main', source, resolved.line)],
       totalFrames: 1,
     };
 
     this.sendResponse(response);
+  }
+
+  private buildMappingIndexes(mapping: MappingParseResult): void {
+    this.mappingSegmentsByAddress = [...mapping.segments].sort(
+      (a, b) => a.start - b.start || a.lst.line - b.lst.line
+    );
+
+    const anchorsByFile = new Map<string, SourceMapAnchor[]>();
+    for (const anchor of mapping.anchors) {
+      const list = anchorsByFile.get(anchor.file);
+      if (list) {
+        list.push(anchor);
+      } else {
+        anchorsByFile.set(anchor.file, [anchor]);
+      }
+    }
+    for (const list of anchorsByFile.values()) {
+      list.sort((a, b) => a.address - b.address || a.line - b.line);
+    }
+    this.mappingAnchorsByFile = anchorsByFile;
+  }
+
+  private resolveSourceForAddress(address: number): { path: string; line: number } {
+    const listingPath = this.listingPath ?? this.sourceFile;
+    const listingLine = this.listing?.addressToLine.get(address) ?? 1;
+    const fallback = { path: listingPath, line: listingLine };
+
+    const segment = this.findSegmentForAddress(address);
+    if (!segment || segment.loc.file === null) {
+      return fallback;
+    }
+
+    const resolvedPath = this.resolveMappedPath(segment.loc.file);
+    if (!resolvedPath) {
+      return fallback;
+    }
+
+    if (segment.loc.line !== null) {
+      return { path: resolvedPath, line: segment.loc.line };
+    }
+
+    const anchorLine = this.findAnchorLine(segment.loc.file, address);
+    if (anchorLine !== null) {
+      return { path: resolvedPath, line: anchorLine };
+    }
+
+    return fallback;
+  }
+
+  private findSegmentForAddress(address: number): SourceMapSegment | undefined {
+    const segments = this.mappingSegmentsByAddress;
+    if (!segments) {
+      return undefined;
+    }
+    for (const segment of segments) {
+      if (address < segment.start) {
+        break;
+      }
+      if (address >= segment.start && address < segment.end) {
+        return segment;
+      }
+    }
+    return undefined;
+  }
+
+  private resolveMappedPath(file: string): string | undefined {
+    if (path.isAbsolute(file)) {
+      return file;
+    }
+    if (this.listingPath) {
+      const candidate = path.resolve(path.dirname(this.listingPath), file);
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return undefined;
+  }
+
+  private findAnchorLine(file: string, address: number): number | null {
+    const anchors = this.mappingAnchorsByFile?.get(file);
+    if (!anchors || anchors.length === 0) {
+      return null;
+    }
+    let candidate: SourceMapAnchor | undefined;
+    for (const anchor of anchors) {
+      if (anchor.address > address) {
+        break;
+      }
+      candidate = anchor;
+    }
+    return candidate?.line ?? null;
   }
 
   protected scopesRequest(
