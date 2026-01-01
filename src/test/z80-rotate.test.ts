@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { do_rl, do_rlc, do_rr, do_rrc, do_sla, do_sll, do_sra, do_srl } from '../z80-rotate';
-import { Cpu } from '../z80-types';
+import { do_rl, do_rlc, do_rr, do_rrc, do_sla, do_sll, do_sra, do_srl } from '../z80/rotate';
+import { Cpu } from '../z80/types';
 
 const makeCpu = (): Cpu => ({
   a: 0,

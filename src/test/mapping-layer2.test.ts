@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseMapping } from '../mapping-parser';
-import { applyLayer2 } from '../mapping-layer2';
+import { parseMapping } from '../mapping/parser';
+import { applyLayer2 } from '../mapping/layer2';
 
 const fixtureDir = path.join(process.cwd(), 'src', 'test', 'fixtures');
 const lstPath = path.join(fixtureDir, 'simple.lst');

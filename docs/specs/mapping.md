@@ -329,8 +329,8 @@ Goals:
 
 Required changes:
 
-* `src/z80-loaders.ts`: add a new parser (do not remove `parseListing` yet).
-* `src/adapter.ts`: resolve PC using `segments`, then fall back to listing.
+* `src/z80/loaders.ts`: add a new parser (do not remove `parseListing` yet).
+* `src/debug/adapter.ts`: resolve PC using `segments`, then fall back to listing.
 * Breakpoints in listing file must keep working.
 
 ## 15.2 Phase 2: Source Breakpoints + Indexes

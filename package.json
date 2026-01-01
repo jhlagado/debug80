@@ -23,7 +23,7 @@
   "extensionPack": [
     "imanolea.z80-asm"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/extension/extension.js",
   "contributes": {
     "languages": [
       {

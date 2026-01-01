@@ -6,7 +6,7 @@ import {
   cycle_counts_dd,
   cycle_counts_ed,
   parity_bits,
-} from '../z80-constants';
+} from '../z80/constants';
 
 describe('z80-constants', () => {
   it('provides cycle tables of length 256', () => {

@@ -1,8 +1,8 @@
-import { decodeInstruction } from './z80-decode';
-import { pushWord, setFlagsRegister } from './z80-core-helpers';
-import { Callbacks, Cpu } from './z80-types';
+import { decodeInstruction } from './decode';
+import { pushWord, setFlagsRegister } from './core-helpers';
+import { Callbacks, Cpu } from './types';
 
-export type { Callbacks, Cpu } from './z80-types';
+export type { Callbacks, Cpu } from './types';
 
 export function init(): Cpu {
   return {
