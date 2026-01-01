@@ -7,6 +7,7 @@ import * as cp from 'child_process';
 import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo } from './z80-loaders';
 import { parseMapping, MappingParseResult } from './mapping-parser';
+import { applyLayer2 } from './mapping-layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from './source-map';
 import {
   createZ80Runtime,
@@ -167,6 +168,16 @@ export class Z80DebugSession extends DebugSession {
       this.sourceFile = listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
       this.mapping = parseMapping(listingContent);
+      const layer2 = applyLayer2(this.mapping, { resolvePath: (file) => this.resolveMappedPath(file) });
+      if (layer2.missingSources.length > 0) {
+        const unique = Array.from(new Set(layer2.missingSources));
+        this.sendEvent(
+          new OutputEvent(
+            `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}\n`,
+            'console'
+          )
+        );
+      }
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
 
       const ioHandlers = this.buildIoHandlers(merged);
