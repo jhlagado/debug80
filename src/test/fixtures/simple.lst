@@ -1,0 +1,9 @@
+0000                START:
+0000   00           NOP
+0001   DB 02        IN   A,(TERM_STATUS)
+0003                VALUE:  EQU   $0000
+0003   C3 00 00     JP START
+START: 0000 DEFINED AT LINE 1 IN simple.asm
+VALUE: 0003 DEFINED AT LINE 4 IN simple.asm
+VALUE2: 0003 DEFINED AT LINE 5 IN simple.asm
+0006   00           NOP
