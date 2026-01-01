@@ -31,24 +31,21 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
     }
   }
 
+  const anchorUsed = new Set<number>();
   let currentFile: string | null = null;
   let hintLine: number | null = null;
   let macroBlock = false;
 
   for (const segment of mapping.segments) {
     const anchor = anchorByAddress.get(segment.start);
-    if (anchor && segment.loc.file !== anchor.file) {
-      segment.loc.file = anchor.file;
-      segment.loc.line = anchor.line;
-    }
-
-    if (anchor) {
+    if (anchor && !anchorUsed.has(segment.start)) {
       segment.loc.file = anchor.file;
       segment.loc.line = anchor.line;
       segment.confidence = duplicateAddresses.has(anchor.address) ? 'MEDIUM' : 'HIGH';
       currentFile = anchor.file;
       hintLine = anchor.line;
       macroBlock = false;
+      anchorUsed.add(segment.start);
       continue;
     }
 
@@ -221,7 +218,7 @@ function chooseMatch(matches: number[], hintLine: number | null): { line: number
       chosen = forward;
     }
   }
-  return { line: chosen, ambiguous: matches.length > 1 };
+  return { line: chosen ?? null, ambiguous: matches.length > 1 };
 }
 
 function isMacroMarker(text: string): boolean {
