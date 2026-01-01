@@ -3,6 +3,7 @@
   "targets": {
     "app": {
       "sourceFile": "src/main.asm",
+      "sourceRoots": ["src"],
       "outputDir": "build",
       "artifactBase": "main",
       "entry": 0,
