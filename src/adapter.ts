@@ -967,8 +967,9 @@ export class Z80DebugSession extends DebugSession {
       for (const bp of bps) {
         const line = bp.line ?? 0;
         const addresses = this.resolveSourceBreakpoint(source, line);
-        if (addresses.length > 0) {
-          this.breakpoints.add(addresses[0]);
+        const [first] = addresses;
+        if (first !== undefined) {
+          this.breakpoints.add(first);
         }
       }
     }
