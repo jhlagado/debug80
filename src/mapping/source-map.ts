@@ -1,4 +1,4 @@
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './mapping-parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 
 export interface SourceMapIndex {
   segmentsByAddress: SourceMapSegment[];

@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './mapping-parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 
 export interface Layer2Options {
   resolvePath: (file: string) => string | undefined;

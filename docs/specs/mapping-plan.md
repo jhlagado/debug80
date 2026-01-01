@@ -12,7 +12,7 @@ Implement source-level debugging using LST-derived mapping with optional Layer 2
 
 ## Phase 1: Layer 1 Parser + LST Fallback (Minimum Viable)
 
-1. Add a new mapping parser module (e.g., `src/mapping-parser.ts`) that produces:
+1. Add a new mapping parser module (e.g., `src/mapping/parser.ts`) that produces:
    * `segments` (start/end/loc/lst/confidence)
    * `anchors`
    * `addressToLine` fallback data (listing)

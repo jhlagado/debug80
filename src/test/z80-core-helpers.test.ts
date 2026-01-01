@@ -7,8 +7,8 @@ import {
   setFlagsRegister,
   setSZXYFlags,
   updateXYFlags,
-} from '../z80-core-helpers';
-import { Callbacks, Cpu } from '../z80-types';
+} from '../z80/core-helpers';
+import { Callbacks, Cpu } from '../z80/types';
 
 const makeCpu = (): Cpu => ({
   a: 0,

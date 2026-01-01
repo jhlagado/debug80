@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseIntelHex, parseListing } from '../z80-loaders';
+import { parseIntelHex, parseListing } from '../z80/loaders';
 
 describe('z80-loaders', () => {
   it('throws on malformed hex line', () => {
