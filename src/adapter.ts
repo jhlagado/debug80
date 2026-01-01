@@ -65,6 +65,9 @@ export class Z80DebugSession extends DebugSession {
   private sourceFile = '';
   private stopOnEntry = false;
   private haltNotified = false;
+  private lastStopReason: 'breakpoint' | 'step' | 'halt' | 'entry' | undefined;
+  private lastBreakpointAddress: number | null = null;
+  private skipBreakpointOnce: number | null = null;
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
@@ -108,6 +111,9 @@ export class Z80DebugSession extends DebugSession {
     this.sourceRoots = [];
     this.baseDir = process.cwd();
     this.terminalState = undefined;
+    this.lastStopReason = undefined;
+    this.lastBreakpointAddress = null;
+    this.skipBreakpointOnce = null;
 
     try {
       const merged = this.populateFromConfig(args);
@@ -192,6 +198,8 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
 
       if (this.stopOnEntry) {
+        this.lastStopReason = 'entry';
+        this.lastBreakpointAddress = null;
         this.sendEvent(new StoppedEvent('entry', THREAD_ID));
       }
     } catch (err) {
@@ -271,6 +279,8 @@ export class Z80DebugSession extends DebugSession {
       this.handleHaltStop();
     } else {
       this.haltNotified = false;
+      this.lastStopReason = 'step';
+      this.lastBreakpointAddress = null;
       this.sendEvent(new StoppedEvent('step', THREAD_ID));
     }
   }
@@ -508,6 +518,16 @@ export class Z80DebugSession extends DebugSession {
     }
 
     this.sendResponse(response);
+    if (
+      this.lastStopReason === 'breakpoint' &&
+      this.runtime.getPC() === this.lastBreakpointAddress &&
+      this.lastBreakpointAddress !== null &&
+      this.breakpoints.has(this.lastBreakpointAddress)
+    ) {
+      this.skipBreakpointOnce = this.lastBreakpointAddress;
+    } else {
+      this.skipBreakpointOnce = null;
+    }
     this.runUntilStop();
   }
 
@@ -518,6 +538,8 @@ export class Z80DebugSession extends DebugSession {
   private handleHaltStop(): void {
     if (!this.haltNotified) {
       this.haltNotified = true;
+      this.lastStopReason = 'halt';
+      this.lastBreakpointAddress = null;
       this.sendEvent(new StoppedEvent('halt', THREAD_ID));
       return;
     }
@@ -536,11 +558,25 @@ export class Z80DebugSession extends DebugSession {
         if (this.runtime === undefined) {
           return;
         }
+        if (
+          this.skipBreakpointOnce !== null &&
+          this.runtime.getPC() === this.skipBreakpointOnce
+        ) {
+          this.skipBreakpointOnce = null;
+          const stepped = this.runtime.step();
+          if (stepped.halted) {
+            this.handleHaltStop();
+            return;
+          }
+          continue;
+        }
         if (this.breakpoints.has(this.runtime.getPC())) {
           this.haltNotified = false;
-          this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
-          return;
-        }
+          this.lastStopReason = 'breakpoint';
+          this.lastBreakpointAddress = this.runtime.getPC();
+        this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+        return;
+      }
         const result = this.runtime.step();
         if (result.halted) {
           this.handleHaltStop();
