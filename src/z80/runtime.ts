@@ -1,6 +1,6 @@
-import { HexProgram } from './z80-loaders';
-import { Cpu, execute, initCpu, resetCpu, interrupt as triggerInterrupt } from './z80-cpu';
-import { HardwareContext } from './z80-types';
+import { HexProgram } from './loaders';
+import { Cpu, execute, initCpu, resetCpu, interrupt as triggerInterrupt } from './cpu';
+import { HardwareContext } from './types';
 
 export interface Z80Runtime {
   readonly cpu: Cpu;

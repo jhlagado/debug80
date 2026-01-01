@@ -5,15 +5,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
 import { Event as DapEvent } from '@vscode/debugadapter';
-import { parseIntelHex, parseListing, ListingInfo } from './z80-loaders';
-import { parseMapping, MappingParseResult } from './mapping-parser';
-import { applyLayer2 } from './mapping-layer2';
-import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from './source-map';
+import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
+import { parseMapping, MappingParseResult } from '../mapping/parser';
+import { applyLayer2 } from '../mapping/layer2';
+import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
 import {
   createZ80Runtime,
   Z80Runtime,
   IoHandlers,
-} from './z80-runtime';
+} from '../z80/runtime';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
