@@ -56,3 +56,11 @@ export type Flags = {
   N: number;
   C: number;
 };
+
+export type ControlFlowKind = 'call' | 'rst' | 'ret';
+
+export interface StepInfo {
+  kind?: ControlFlowKind;
+  taken: boolean;
+  returnAddress?: number;
+}
