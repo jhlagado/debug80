@@ -58,5 +58,5 @@ Notes:
 
 ## Docs
 
-- `docs/specs/README.md` — entry point for debugger behavior + mapping specs
-# convo
+- `docs/TECHNICAL.md` — detailed developer guide to the extension, adapter, mapping, and stepping
+dddd
