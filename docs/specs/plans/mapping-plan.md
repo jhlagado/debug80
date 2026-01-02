@@ -17,7 +17,7 @@ Implement source-level debugging using LST-derived mapping with optional Layer 2
    * `anchors`
    * `addressToLine` fallback data (listing)
    * `resolveAddress(pc)` helper for PC -> source lookup
-2. Implement deterministic LST body parsing using the byte-token rule and boundary rule in `docs/specs/mapping.md`.
+2. Implement deterministic LST body parsing using the byte-token rule and boundary rule in `docs/specs/source-mapping.md`.
 3. Parse symbol table entries and build `anchorsByAddress`.
 4. Implement Layer 1 attachment (listing order traversal) to assign `file/line/confidence` to entries.
 5. Add in-memory structures in the adapter:

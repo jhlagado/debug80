@@ -1,0 +1,52 @@
+export const OP_CALL_NZ = 0xc4;
+export const OP_CALL_Z = 0xcc;
+export const OP_CALL_NC = 0xd4;
+export const OP_CALL_C = 0xdc;
+export const OP_CALL_PO = 0xe4;
+export const OP_CALL_PE = 0xec;
+export const OP_CALL_P = 0xf4;
+export const OP_CALL_M = 0xfc;
+export const OP_CALL_NN = 0xcd;
+
+export const OP_RST_00 = 0xc7;
+export const OP_RST_08 = 0xcf;
+export const OP_RST_10 = 0xd7;
+export const OP_RST_18 = 0xdf;
+export const OP_RST_20 = 0xe7;
+export const OP_RST_28 = 0xef;
+export const OP_RST_30 = 0xf7;
+export const OP_RST_38 = 0xff;
+
+export const RST_OPCODES = new Set<number>([
+  OP_RST_00,
+  OP_RST_08,
+  OP_RST_10,
+  OP_RST_18,
+  OP_RST_20,
+  OP_RST_28,
+  OP_RST_30,
+  OP_RST_38,
+]);
+
+export const OP_RET_NZ = 0xc0;
+export const OP_RET_Z = 0xc8;
+export const OP_RET = 0xc9;
+export const OP_RET_NC = 0xd0;
+export const OP_RET_C = 0xd8;
+export const OP_RET_PO = 0xe0;
+export const OP_RET_PE = 0xe8;
+export const OP_RET_P = 0xf0;
+export const OP_RET_M = 0xf8;
+
+export const OP_PREFIX_ED = 0xed;
+export const OP_RETN_1 = 0x45;
+export const OP_RETI = 0x4d;
+export const OP_RETN_2 = 0x55;
+export const OP_RETN_3 = 0x5d;
+
+export const ED_RET_OPCODES = new Set<number>([
+  OP_RETN_1,
+  OP_RETN_2,
+  OP_RETN_3,
+  OP_RETI,
+]);

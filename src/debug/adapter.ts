@@ -14,6 +14,7 @@ import {
   Z80Runtime,
   IoHandlers,
 } from '../z80/runtime';
+import { StepInfo } from '../z80/types';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -28,6 +29,8 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   target?: string;
   assemble?: boolean;
   sourceRoots?: string[];
+  stepOverMaxInstructions?: number;
+  stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
 }
 
@@ -65,9 +68,13 @@ export class Z80DebugSession extends DebugSession {
   private sourceFile = '';
   private stopOnEntry = false;
   private haltNotified = false;
-  private lastStopReason: 'breakpoint' | 'step' | 'halt' | 'entry' | undefined;
+  private lastStopReason: 'breakpoint' | 'step' | 'halt' | 'entry' | 'pause' | undefined;
   private lastBreakpointAddress: number | null = null;
   private skipBreakpointOnce: number | null = null;
+  private callDepth = 0;
+  private stepOverMaxInstructions = 0;
+  private stepOutMaxInstructions = 0;
+  private pauseRequested = false;
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
@@ -114,6 +121,9 @@ export class Z80DebugSession extends DebugSession {
     this.lastStopReason = undefined;
     this.lastBreakpointAddress = null;
     this.skipBreakpointOnce = null;
+    this.pauseRequested = false;
+    this.stepOverMaxInstructions = 0;
+    this.stepOutMaxInstructions = 0;
 
     try {
       const merged = this.populateFromConfig(args);
@@ -188,6 +198,15 @@ export class Z80DebugSession extends DebugSession {
 
       const ioHandlers = this.buildIoHandlers(merged);
       this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
+      this.callDepth = 0;
+      this.stepOverMaxInstructions = this.normalizeStepLimit(
+        merged.stepOverMaxInstructions,
+        0
+      );
+      this.stepOutMaxInstructions = this.normalizeStepLimit(
+        merged.stepOutMaxInstructions,
+        0
+      );
       if (this.listing !== undefined) {
         const applied = this.applyAllBreakpoints();
         for (const bp of applied) {
@@ -272,7 +291,46 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
 
-    const result = this.runtime.step();
+    const trace: StepInfo = { taken: false };
+    const result = this.runtime.step({ trace });
+    this.applyStepInfo(trace);
+    this.pauseRequested = false;
+    this.sendResponse(response);
+
+    if (result.halted) {
+      this.handleHaltStop();
+    } else {
+      if (trace.kind && trace.taken && trace.returnAddress !== undefined) {
+        this.haltNotified = false;
+        this.lastStopReason = 'step';
+        this.lastBreakpointAddress = null;
+        this.runUntilStop(
+          new Set([trace.returnAddress]),
+          this.stepOverMaxInstructions,
+          'step over'
+        );
+        return;
+      }
+      this.haltNotified = false;
+      this.lastStopReason = 'step';
+      this.lastBreakpointAddress = null;
+      this.sendEvent(new StoppedEvent('step', THREAD_ID));
+    }
+  }
+
+  protected stepInRequest(
+    response: DebugProtocol.StepInResponse,
+    _args: DebugProtocol.StepInArguments
+  ): void {
+    if (this.runtime === undefined) {
+      this.sendErrorResponse(response, 1, 'No program loaded');
+      return;
+    }
+
+    const trace: StepInfo = { taken: false };
+    const result = this.runtime.step({ trace });
+    this.applyStepInfo(trace);
+    this.pauseRequested = false;
     this.sendResponse(response);
 
     if (result.halted) {
@@ -285,24 +343,35 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  protected stepInRequest(
-    response: DebugProtocol.StepInResponse,
-    args: DebugProtocol.StepInArguments
-  ): void {
-    this.nextRequest(response, args);
-  }
-
   protected stepOutRequest(
     response: DebugProtocol.StepOutResponse,
-    args: DebugProtocol.StepOutArguments
+    _args: DebugProtocol.StepOutArguments
   ): void {
-    this.nextRequest(response, args);
+    if (this.runtime === undefined) {
+      this.sendErrorResponse(response, 1, 'No program loaded');
+      return;
+    }
+    const baseline = this.callDepth;
+    this.sendResponse(response);
+    this.pauseRequested = false;
+    if (
+      this.lastStopReason === 'breakpoint' &&
+      this.runtime.getPC() === this.lastBreakpointAddress &&
+      this.lastBreakpointAddress !== null &&
+      this.breakpoints.has(this.lastBreakpointAddress)
+    ) {
+      this.skipBreakpointOnce = this.lastBreakpointAddress;
+    } else {
+      this.skipBreakpointOnce = null;
+    }
+    void this.runUntilReturnAsync(baseline);
   }
 
   protected pauseRequest(
     response: DebugProtocol.PauseResponse,
     _args: DebugProtocol.PauseArguments
   ): void {
+    this.pauseRequested = true;
     this.sendResponse(response);
   }
 
@@ -518,6 +587,7 @@ export class Z80DebugSession extends DebugSession {
     }
 
     this.sendResponse(response);
+    this.pauseRequested = false;
     if (
       this.lastStopReason === 'breakpoint' &&
       this.runtime.getPC() === this.lastBreakpointAddress &&
@@ -531,8 +601,12 @@ export class Z80DebugSession extends DebugSession {
     this.runUntilStop();
   }
 
-  private runUntilStop(): void {
-    void this.runUntilStopAsync();
+  private runUntilStop(
+    extraBreakpoints?: Set<number>,
+    maxInstructions?: number,
+    limitLabel = 'step'
+  ): void {
+    void this.runUntilStopAsync(extraBreakpoints, maxInstructions, limitLabel);
   }
 
   private handleHaltStop(): void {
@@ -547,15 +621,42 @@ export class Z80DebugSession extends DebugSession {
     this.sendEvent(new TerminatedEvent());
   }
 
-  private async runUntilStopAsync(): Promise<void> {
+  private applyStepInfo(trace: StepInfo): void {
+    if (!trace.kind || !trace.taken) {
+      return;
+    }
+    if (trace.kind === 'call' || trace.kind === 'rst') {
+      this.callDepth += 1;
+      return;
+    }
+    if (trace.kind === 'ret') {
+      this.callDepth = Math.max(0, this.callDepth - 1);
+    }
+  }
+
+  private async runUntilStopAsync(
+    extraBreakpoints?: Set<number>,
+    maxInstructions?: number,
+    limitLabel = 'step'
+  ): Promise<void> {
     if (this.runtime === undefined) {
       return;
     }
     const CHUNK = 1000;
+    const trace: StepInfo = { taken: false };
+    let executed = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
         if (this.runtime === undefined) {
+          return;
+        }
+        if (this.pauseRequested) {
+          this.pauseRequested = false;
+          this.haltNotified = false;
+          this.lastStopReason = 'pause';
+          this.lastBreakpointAddress = null;
+          this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
         if (
@@ -563,23 +664,126 @@ export class Z80DebugSession extends DebugSession {
           this.runtime.getPC() === this.skipBreakpointOnce
         ) {
           this.skipBreakpointOnce = null;
-          const stepped = this.runtime.step();
+          const stepped = this.runtime.step({ trace });
+          this.applyStepInfo(trace);
+          executed += 1;
           if (stepped.halted) {
             this.handleHaltStop();
             return;
           }
           continue;
         }
-        if (this.breakpoints.has(this.runtime.getPC())) {
+        const pc = this.runtime.getPC();
+        if (this.breakpoints.has(pc)) {
           this.haltNotified = false;
           this.lastStopReason = 'breakpoint';
-          this.lastBreakpointAddress = this.runtime.getPC();
-        this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
-        return;
-      }
-        const result = this.runtime.step();
+          this.lastBreakpointAddress = pc;
+          this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+          return;
+        }
+        if (extraBreakpoints?.has(pc)) {
+          this.haltNotified = false;
+          this.lastStopReason = 'step';
+          this.lastBreakpointAddress = null;
+          this.sendEvent(new StoppedEvent('step', THREAD_ID));
+          return;
+        }
+        const result = this.runtime.step({ trace });
+        this.applyStepInfo(trace);
+        executed += 1;
         if (result.halted) {
           this.handleHaltStop();
+          return;
+        }
+        if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
+          this.haltNotified = false;
+          this.lastStopReason = 'step';
+          this.lastBreakpointAddress = null;
+          this.sendEvent(
+            new OutputEvent(
+              `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
+            )
+          );
+          this.sendEvent(new StoppedEvent('step', THREAD_ID));
+          return;
+        }
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  }
+
+  private async runUntilReturnAsync(baselineDepth: number): Promise<void> {
+    if (this.runtime === undefined) {
+      return;
+    }
+    const CHUNK = 1000;
+    const maxInstructions = this.stepOutMaxInstructions;
+    const trace: StepInfo = { taken: false };
+    let executed = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      for (let i = 0; i < CHUNK; i += 1) {
+        if (this.runtime === undefined) {
+          return;
+        }
+        if (this.pauseRequested) {
+          this.pauseRequested = false;
+          this.haltNotified = false;
+          this.lastStopReason = 'pause';
+          this.lastBreakpointAddress = null;
+          this.sendEvent(new StoppedEvent('pause', THREAD_ID));
+          return;
+        }
+        if (
+          this.skipBreakpointOnce !== null &&
+          this.runtime.getPC() === this.skipBreakpointOnce
+        ) {
+          this.skipBreakpointOnce = null;
+          const stepped = this.runtime.step({ trace });
+          this.applyStepInfo(trace);
+          executed += 1;
+          if (stepped.halted) {
+            this.handleHaltStop();
+            return;
+          }
+        } else {
+          const pc = this.runtime.getPC();
+          if (this.breakpoints.has(pc)) {
+            this.haltNotified = false;
+            this.lastStopReason = 'breakpoint';
+            this.lastBreakpointAddress = pc;
+            this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
+            return;
+          }
+          const result = this.runtime.step({ trace });
+          this.applyStepInfo(trace);
+          executed += 1;
+          if (result.halted) {
+            this.handleHaltStop();
+            return;
+          }
+        }
+
+        if (trace.kind === 'ret' && trace.taken) {
+          if (baselineDepth === 0 || this.callDepth < baselineDepth) {
+            this.haltNotified = false;
+            this.lastStopReason = 'step';
+            this.lastBreakpointAddress = null;
+            this.sendEvent(new StoppedEvent('step', THREAD_ID));
+            return;
+          }
+        }
+
+        if (maxInstructions > 0 && executed >= maxInstructions) {
+          this.haltNotified = false;
+          this.lastStopReason = 'step';
+          this.lastBreakpointAddress = null;
+          this.sendEvent(
+            new OutputEvent(
+              `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
+            )
+          );
+          this.sendEvent(new StoppedEvent('step', THREAD_ID));
           return;
         }
       }
@@ -744,6 +948,22 @@ export class Z80DebugSession extends DebugSession {
         merged.sourceRoots = sourceRootsResolved;
       }
 
+      const stepOverResolved =
+        args.stepOverMaxInstructions ??
+        targetCfg?.stepOverMaxInstructions ??
+        cfg.stepOverMaxInstructions;
+      if (stepOverResolved !== undefined) {
+        merged.stepOverMaxInstructions = stepOverResolved;
+      }
+
+      const stepOutResolved =
+        args.stepOutMaxInstructions ??
+        targetCfg?.stepOutMaxInstructions ??
+        cfg.stepOutMaxInstructions;
+      if (stepOutResolved !== undefined) {
+        merged.stepOutMaxInstructions = stepOutResolved;
+      }
+
       const targetResolved = targetName ?? args.target;
       if (targetResolved !== undefined) {
         merged.target = targetResolved;
@@ -753,6 +973,19 @@ export class Z80DebugSession extends DebugSession {
     } catch {
       return args;
     }
+  }
+
+  private normalizeStepLimit(value: number | undefined, fallback: number): number {
+    if (value === undefined) {
+      return fallback;
+    }
+    if (!Number.isFinite(value)) {
+      return fallback;
+    }
+    if (value <= 0) {
+      return 0;
+    }
+    return Math.floor(value);
   }
 
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
