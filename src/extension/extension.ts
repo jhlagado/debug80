@@ -8,6 +8,9 @@ let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
 let terminalSession: vscode.DebugSession | undefined;
 let terminalAnsiCarry = '';
+let enforceSourceColumn = false;
+let movingEditor = false;
+const activeZ80Sessions = new Set<string>();
 
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
@@ -15,8 +18,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory)
   );
-
-  openTerminalPanel(); // create panel early
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.createProject', async () => {
@@ -51,17 +52,19 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTerminal', async () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        openTerminalPanel();
+        openTerminalPanel(undefined, { focus: true });
         return;
       }
-      openTerminalPanel(session);
+      openTerminalPanel(session, { focus: true });
     })
   );
 
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
-        openTerminalPanel(session);
+        activeZ80Sessions.add(session.id);
+        enforceSourceColumn = true;
+        openTerminalPanel(session, { focus: false });
         clearTerminal();
       }
     })
@@ -72,6 +75,12 @@ export function activate(context: vscode.ExtensionContext): void {
       if (terminalSession?.id === session.id) {
         terminalSession = undefined;
       }
+      if (session.type === 'z80') {
+        activeZ80Sessions.delete(session.id);
+        if (activeZ80Sessions.size === 0) {
+          enforceSourceColumn = false;
+        }
+      }
     })
   );
 
@@ -81,8 +90,42 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const text = (evt.body as { text?: string } | undefined)?.text ?? '';
-      openTerminalPanel(evt.session);
+      if (terminalPanel === undefined) {
+        openTerminalPanel(evt.session, { focus: false, reveal: true });
+      }
       appendTerminalOutput(text);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (!enforceSourceColumn || movingEditor || editor === undefined) {
+        return;
+      }
+      if (!isSourceDocument(editor.document)) {
+        return;
+      }
+      const primary = getPrimaryEditorColumn();
+      const column = editor.viewColumn;
+      if (column === undefined || column === primary) {
+        return;
+      }
+      movingEditor = true;
+      void vscode.window
+        .showTextDocument(editor.document, {
+          viewColumn: primary,
+          preserveFocus: true,
+          preview: false,
+        })
+        .then(() => closeDocumentTabsInOtherGroups(editor.document.uri, primary))
+        .then(
+          () => {
+            movingEditor = false;
+          },
+          () => {
+            movingEditor = false;
+          }
+        );
     })
   );
 }
@@ -197,12 +240,67 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   return created;
 }
 
-function openTerminalPanel(session?: vscode.DebugSession): void {
+function getPrimaryEditorColumn(): vscode.ViewColumn {
+  const columns = vscode.window.visibleTextEditors
+    .map((editor) => editor.viewColumn)
+    .filter((column): column is vscode.ViewColumn => column !== undefined);
+  if (columns.length === 0) {
+    return vscode.ViewColumn.One;
+  }
+  const first = columns[0];
+  if (first === undefined) {
+    return vscode.ViewColumn.One;
+  }
+  return columns.reduce((min, col) => (col < min ? col : min), first);
+}
+
+function getTerminalColumn(): vscode.ViewColumn {
+  const primary = getPrimaryEditorColumn();
+  const candidate = primary + 1;
+  if (candidate <= vscode.ViewColumn.Nine) {
+    return candidate as vscode.ViewColumn;
+  }
+  return vscode.ViewColumn.Beside;
+}
+
+function isSourceDocument(doc: vscode.TextDocument): boolean {
+  if (doc.uri.scheme !== 'file') {
+    return false;
+  }
+  const ext = path.extname(doc.fileName).toLowerCase();
+  return ext === '.asm' || ext === '.lst';
+}
+
+function closeDocumentTabsInOtherGroups(
+  uri: vscode.Uri,
+  keepColumn: vscode.ViewColumn
+): void {
+  const target = uri.toString();
+  for (const group of vscode.window.tabGroups.all) {
+    if (group.viewColumn === keepColumn) {
+      continue;
+    }
+    for (const tab of group.tabs) {
+      const input = tab.input;
+      if (input instanceof vscode.TabInputText && input.uri.toString() === target) {
+        void vscode.window.tabGroups.close(tab, true);
+      }
+    }
+  }
+}
+
+function openTerminalPanel(
+  session?: vscode.DebugSession,
+  options?: { focus?: boolean; reveal?: boolean }
+): void {
+  const focus = options?.focus ?? false;
+  const reveal = options?.reveal ?? true;
+  const targetColumn = getTerminalColumn();
   if (terminalPanel === undefined) {
     terminalPanel = vscode.window.createWebviewPanel(
       'debug80Terminal',
       'Debug80 Terminal',
-      vscode.ViewColumn.Two,
+      targetColumn,
       { enableScripts: true, retainContextWhenHidden: true }
     );
     terminalPanel.onDidDispose(() => {
@@ -238,7 +336,9 @@ function openTerminalPanel(session?: vscode.DebugSession): void {
   if (session !== undefined) {
     terminalSession = session;
   }
-  terminalPanel.reveal(vscode.ViewColumn.Two, false);
+  if (reveal) {
+    terminalPanel.reveal(targetColumn, !focus);
+  }
   terminalPanel.webview.html = getTerminalHtml(terminalBuffer);
 }
 
