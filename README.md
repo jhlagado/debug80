@@ -44,6 +44,19 @@ Fields per target:
 - `stepOutMaxInstructions`: optional max instructions for Step Out (`0` disables the cap)
 - You can define multiple targets (e.g., `app`, `unit`, `integration`) and set `defaultTarget`.
 
+## Create a Debug80 project (scaffold)
+
+To make a folder debuggable quickly in VS Code:
+
+1) Press `Cmd-Shift-P` (macOS) or `Ctrl-Shift-P` (Windows/Linux) to open the Command Palette.
+2) Type “Debug80: Create Project (config + launch)” and press Enter.
+
+This command:
+- Creates `.vscode/debug80.json` with a default target (tries `src/main.asm`, or the first `.asm` it finds).
+- Creates `.vscode/launch.json` with a Debug80 launch configuration.
+
+After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as needed, then press F5.
+
 ## Z80 workflow
 
 1) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode/debug80.json` (defaults to `targets.app` with `src/main.asm`) and `.vscode/launch.json`.
