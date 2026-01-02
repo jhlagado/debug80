@@ -1,5 +1,7 @@
 This specification defines a deterministic way to extract source mapping from an assembler `.LST` file and (optionally) refine it using `.asm` sources. It is conservative and explicit about uncertainty.
 
+For debugger runtime behavior (stepping, pause, limits), see `docs/specs/debugger-controls.md`.
+
 ---
 
 # Specification: LST-Based Source Map Extraction
@@ -285,8 +287,47 @@ When a breakpoint is set in the listing file, use the existing `lineToAddress` l
 
 Stepping should operate on addresses but report source locations using the mapping.
 
-* Step-in/step-over must update the stack frame location as per Section 14.2.
+* Step-in/step-over/step-out must update the stack frame location as per Section 14.2.
 * If a step lands on a low-confidence or null `loc.line`, the debugger should still show the file when available and may display the listing line in the UI (adapter-specific).
+
+### 14.4.1 Step Over (CALL/RST-aware)
+
+Step Over must not alter instruction semantics. It should:
+
+1. Execute a single instruction.
+2. If the instruction was a taken `CALL` or `RST`, run until the return address is reached.
+3. Stop early if a user breakpoint is hit or the user pauses execution.
+
+The return address is deterministic:
+
+* `CALL nn` or conditional `CALL cc,nn`: `pc + 3`
+* `RST n`: `pc + 1`
+
+The debugger may derive this from opcode/flags at the pre-execution PC (no decoder changes required).
+
+If a safety cap is configured (see Section 14.4.3), stop after the cap and leave the session running at the current PC.
+
+### 14.4.2 Step Out (RET-aware, stack-safe)
+
+Step Out must respect valid stack manipulation. It should:
+
+1. Track a logical call depth based on executed control-flow:
+   * Increment on taken `CALL` / `RST`
+   * Decrement on taken `RET`, `RETI`, or `RETN`
+2. On Step Out request, capture `baselineDepth`.
+3. Run until a taken return causes `callDepth < baselineDepth` (or the first taken `RET` if `baselineDepth` is zero).
+4. Stop early if a user breakpoint is hit or the user pauses execution.
+
+This avoids guessing return addresses from raw stack memory and works even when routines pop/repush return values.
+
+### 14.4.3 Step Limits and Pause
+
+The debugger may enforce optional instruction caps for Step Over/Out:
+
+* `stepOverMaxInstructions` and `stepOutMaxInstructions`
+* `0` means no cap; rely on Pause to interrupt long-running loops
+
+When a cap is reached, the debugger should stop at the current PC and log a clear message to the Debug Console. The session must remain active so the user can continue stepping.
 
 ## 14.5 Breakpoint Verification and Messaging
 

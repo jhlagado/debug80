@@ -23,6 +23,10 @@
 4) Assemble: if `assemble !== false`, run `asm80` in the asm directory; otherwise expect existing HEX/LST.
 5) Load HEX/LST, create runtime, honor `stopOnEntry`, and run.
 
+## Debug execution controls
+- `stepOverMaxInstructions`: maximum instructions to execute during Step Over before stopping; `0` disables the cap.
+- `stepOutMaxInstructions`: maximum instructions to execute during Step Out before stopping; `0` disables the cap.
+
 ## Scaffolding command (`debug80.createProject`)
 - Writes `.vscode/debug80.json` with inferred defaults (e.g., `src/main.asm`, `build/`, `artifactBase` from file stem).
 - Writes `.vscode/launch.json` pointing to `${workspaceFolder}/.vscode/debug80.json` if absent.

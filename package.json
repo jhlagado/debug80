@@ -117,6 +117,14 @@
                   "type": "string"
                 }
               },
+              "stepOverMaxInstructions": {
+                "type": "number",
+                "description": "Maximum instructions to execute during Step Over before stopping (0 disables the cap)."
+              },
+              "stepOutMaxInstructions": {
+                "type": "number",
+                "description": "Maximum instructions to execute during Step Out before stopping (0 disables the cap)."
+              },
               "terminal": {
                 "type": "object",
                 "description": "Optional terminal device port mapping",
