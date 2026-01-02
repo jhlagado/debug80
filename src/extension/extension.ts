@@ -8,6 +8,11 @@ let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
 let terminalSession: vscode.DebugSession | undefined;
 let terminalAnsiCarry = '';
+let terminalPendingOutput = '';
+let terminalFlushTimer: ReturnType<typeof setTimeout> | undefined;
+let terminalNeedsFullRefresh = false;
+const TERMINAL_BUFFER_MAX = 50_000;
+const TERMINAL_FLUSH_MS = 50;
 let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
@@ -340,6 +345,8 @@ function openTerminalPanel(
     terminalPanel.reveal(targetColumn, !focus);
   }
   terminalPanel.webview.html = getTerminalHtml(terminalBuffer);
+  terminalPendingOutput = '';
+  terminalNeedsFullRefresh = false;
 }
 
 function appendTerminalOutput(text: string): void {
@@ -351,13 +358,29 @@ function appendTerminalOutput(text: string): void {
     return;
   }
   terminalBuffer += remaining;
+  if (terminalBuffer.length > TERMINAL_BUFFER_MAX) {
+    terminalBuffer = terminalBuffer.slice(terminalBuffer.length - TERMINAL_BUFFER_MAX);
+    terminalNeedsFullRefresh = true;
+    terminalPendingOutput = '';
+  }
   if (terminalPanel !== undefined) {
-    terminalPanel.webview.postMessage({ type: 'output', text: remaining });
+    if (terminalNeedsFullRefresh) {
+      scheduleTerminalFlush();
+      return;
+    }
+    terminalPendingOutput += remaining;
+    scheduleTerminalFlush();
   }
 }
 
 function clearTerminal(): void {
   terminalBuffer = '';
+  terminalPendingOutput = '';
+  terminalNeedsFullRefresh = false;
+  if (terminalFlushTimer !== undefined) {
+    clearTimeout(terminalFlushTimer);
+    terminalFlushTimer = undefined;
+  }
   if (terminalPanel !== undefined) {
     terminalPanel.webview.postMessage({ type: 'clear' });
   }
@@ -410,6 +433,29 @@ function getTerminalHtml(initial: string): string {
   </script>
 </body>
 </html>`;
+}
+
+function scheduleTerminalFlush(): void {
+  if (terminalFlushTimer !== undefined) {
+    return;
+  }
+  terminalFlushTimer = setTimeout(() => {
+    terminalFlushTimer = undefined;
+    if (terminalPanel === undefined) {
+      return;
+    }
+    if (terminalNeedsFullRefresh) {
+      terminalPanel.webview.postMessage({ type: 'clear' });
+      terminalPanel.webview.postMessage({ type: 'output', text: terminalBuffer });
+      terminalNeedsFullRefresh = false;
+      terminalPendingOutput = '';
+      return;
+    }
+    if (terminalPendingOutput.length > 0) {
+      terminalPanel.webview.postMessage({ type: 'output', text: terminalPendingOutput });
+      terminalPendingOutput = '';
+    }
+  }, TERMINAL_FLUSH_MS);
 }
 
 function stripAndDetectClear(text: string): { remaining: string; shouldClear: boolean } {
