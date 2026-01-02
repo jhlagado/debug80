@@ -1,11 +1,34 @@
 import { HexProgram } from './loaders';
 import { Cpu, execute, initCpu, resetCpu, interrupt as triggerInterrupt } from './cpu';
-import { HardwareContext } from './types';
+import { HardwareContext, StepInfo } from './types';
+import {
+  OP_CALL_C,
+  OP_CALL_M,
+  OP_CALL_NC,
+  OP_CALL_NN,
+  OP_CALL_NZ,
+  OP_CALL_P,
+  OP_CALL_PE,
+  OP_CALL_PO,
+  OP_CALL_Z,
+  OP_PREFIX_ED,
+  OP_RET,
+  OP_RET_C,
+  OP_RET_M,
+  OP_RET_NC,
+  OP_RET_NZ,
+  OP_RET_P,
+  OP_RET_PE,
+  OP_RET_PO,
+  OP_RET_Z,
+  ED_RET_OPCODES,
+  RST_OPCODES,
+} from './opcodes';
 
 export interface Z80Runtime {
   readonly cpu: Cpu;
   readonly hardware: HardwareContext;
-  step: () => RunResult;
+  step: (options?: { trace?: StepInfo }) => RunResult;
   runUntilStop: (breakpoints: Set<number>) => RunResult;
   getRegisters: () => Cpu;
   isHalted: () => boolean;
@@ -91,11 +114,86 @@ function loadProgram(
   cpu.halted = false;
 }
 
-function stepRuntime(this: Z80RuntimeImpl): RunResult {
+function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
+  const pc = cpu.pc & 0xffff;
+  const opcode = memory[pc] ?? 0;
+  const returnAddressCall = (pc + 3) & 0xffff;
+  const returnAddressRst = (pc + 1) & 0xffff;
+
+  switch (opcode) {
+    case OP_CALL_NN:
+      return { kind: 'call', taken: true, returnAddress: returnAddressCall };
+    case OP_CALL_NZ:
+      return { kind: 'call', taken: !cpu.flags.Z, returnAddress: returnAddressCall };
+    case OP_CALL_Z:
+      return { kind: 'call', taken: !!cpu.flags.Z, returnAddress: returnAddressCall };
+    case OP_CALL_NC:
+      return { kind: 'call', taken: !cpu.flags.C, returnAddress: returnAddressCall };
+    case OP_CALL_C:
+      return { kind: 'call', taken: !!cpu.flags.C, returnAddress: returnAddressCall };
+    case OP_CALL_PO:
+      return { kind: 'call', taken: !cpu.flags.P, returnAddress: returnAddressCall };
+    case OP_CALL_PE:
+      return { kind: 'call', taken: !!cpu.flags.P, returnAddress: returnAddressCall };
+    case OP_CALL_P:
+      return { kind: 'call', taken: !cpu.flags.S, returnAddress: returnAddressCall };
+    case OP_CALL_M:
+      return { kind: 'call', taken: !!cpu.flags.S, returnAddress: returnAddressCall };
+    default:
+      break;
+  }
+
+  if (RST_OPCODES.has(opcode)) {
+    return { kind: 'rst', taken: true, returnAddress: returnAddressRst };
+  }
+
+  switch (opcode) {
+    case OP_RET:
+      return { kind: 'ret', taken: true };
+    case OP_RET_NZ:
+      return { kind: 'ret', taken: !cpu.flags.Z };
+    case OP_RET_Z:
+      return { kind: 'ret', taken: !!cpu.flags.Z };
+    case OP_RET_NC:
+      return { kind: 'ret', taken: !cpu.flags.C };
+    case OP_RET_C:
+      return { kind: 'ret', taken: !!cpu.flags.C };
+    case OP_RET_PO:
+      return { kind: 'ret', taken: !cpu.flags.P };
+    case OP_RET_PE:
+      return { kind: 'ret', taken: !!cpu.flags.P };
+    case OP_RET_P:
+      return { kind: 'ret', taken: !cpu.flags.S };
+    case OP_RET_M:
+      return { kind: 'ret', taken: !!cpu.flags.S };
+    default:
+      break;
+  }
+
+  if (opcode === OP_PREFIX_ED) {
+    const opcode2 = memory[(pc + 1) & 0xffff] ?? 0;
+    if (ED_RET_OPCODES.has(opcode2)) {
+      return { kind: 'ret', taken: true };
+    }
+  }
+
+  return null;
+}
+
+function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
   const cpu = this.cpu;
   const hardware = this.hardware;
   if (cpu.halted) {
     return { halted: true, pc: cpu.pc, reason: 'halt' };
+  }
+  if (options?.trace) {
+    delete options.trace.kind;
+    options.trace.taken = false;
+    delete options.trace.returnAddress;
+    const stepInfo = classifyStepOver(cpu, hardware.memory);
+    if (stepInfo) {
+      Object.assign(options.trace, stepInfo);
+    }
   }
 
   execute(cpu, {
