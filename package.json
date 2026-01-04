@@ -125,15 +125,6 @@
                 "type": "number",
                 "description": "Maximum instructions to execute during Step Out before stopping (0 disables the cap)."
               },
-              "emitDebugMap": {
-                "type": "boolean",
-                "description": "Write a D8 debug map (.d8dbg.json) alongside the build artifacts.",
-                "default": false
-              },
-              "debugMapPath": {
-                "type": "string",
-                "description": "Explicit path for the D8 debug map output (overrides emitDebugMap path)."
-              },
               "terminal": {
                 "type": "object",
                 "description": "Optional terminal device port mapping",
