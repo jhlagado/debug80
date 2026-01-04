@@ -56,15 +56,15 @@ test('D8 map uses defaults and lstText table', () => {
   assert.ok(fileEntry);
   assert.ok(fileEntry.segments);
   const segments = fileEntry.segments as Array<{
-    file?: string;
     confidence?: string;
-    lst?: { text?: string; textId?: number };
+    lstLine?: number;
+    lstText?: string;
+    lstTextId?: number;
   }>;
-  assert.equal(segments[0]?.file, undefined);
   assert.equal(segments[0]?.confidence, undefined);
   assert.equal(segments[2]?.confidence, 'low');
-  assert.equal(segments[0]?.lst?.text, undefined);
-  assert.equal(typeof segments[0]?.lst?.textId, 'number');
+  assert.equal(segments[0]?.lstText, undefined);
+  assert.equal(typeof segments[0]?.lstTextId, 'number');
 
   const { map: parsed, error } = parseD8DebugMap(JSON.stringify(map));
   assert.equal(error, undefined);

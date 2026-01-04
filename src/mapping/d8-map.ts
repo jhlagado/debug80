@@ -12,12 +12,10 @@ export interface D8DebugMap {
   arch: string;
   addressWidth: number;
   endianness: D8Endianness;
-  files: Record<string, D8FileEntry> | D8SourceFile[];
+  files: Record<string, D8FileEntry>;
   lstText?: string[];
   segmentDefaults?: D8SegmentDefaults;
-  segments?: D8Segment[];
   symbolDefaults?: D8SymbolDefaults;
-  symbols?: D8Symbol[];
   memory?: D8MemoryLayout;
   generator?: D8Generator;
   diagnostics?: D8Diagnostics;
@@ -34,14 +32,7 @@ export interface D8FileMeta {
   lineCount?: number;
 }
 
-export interface D8SourceFile {
-  path: string;
-  sha256?: string;
-  lineCount?: number;
-}
-
 export interface D8SegmentDefaults {
-  file?: string;
   kind?: D8SegmentKind;
   confidence?: D8Confidence;
 }
@@ -49,12 +40,13 @@ export interface D8SegmentDefaults {
 export interface D8Segment {
   start: number;
   end: number;
-  file?: string | null;
   line?: number | null;
   column?: number;
   kind?: D8SegmentKind;
   confidence?: D8Confidence;
-  lst?: { line: number; text?: string; textId?: number };
+  lstLine: number;
+  lstText?: string;
+  lstTextId?: number;
   includeChain?: string[];
   macro?: { name: string; callsite: { file: string; line: number; column?: number } };
 }
@@ -67,7 +59,6 @@ export interface D8SymbolDefaults {
 export interface D8Symbol {
   name: string;
   address: number;
-  file?: string;
   line?: number;
   kind?: D8SymbolKind;
   scope?: D8SymbolScope;
@@ -151,7 +142,7 @@ export function buildD8DebugMap(
     const seg: D8Segment = {
       start: segment.start,
       end: segment.end,
-      lst: { line: segment.lst.line },
+      lstLine: segment.lst.line,
     };
 
     if (line !== null && line !== undefined) {
@@ -173,9 +164,7 @@ export function buildD8DebugMap(
       lstText.push(text);
       lstIndex.set(text, textIndex);
     }
-    if (seg.lst) {
-      seg.lst.textId = textIndex;
-    }
+    seg.lstTextId = textIndex;
 
     if (!entry.segments) {
       entry.segments = [];
@@ -222,71 +211,7 @@ export function buildD8DebugMap(
 }
 
 export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult {
-  if (Array.isArray(map.files)) {
-    return buildMappingFromLegacyDebugMap(map);
-  }
   return buildMappingFromGroupedDebugMap(map);
-}
-
-function buildMappingFromLegacyDebugMap(map: D8DebugMap): MappingParseResult {
-  const defaults = map.segmentDefaults ?? {};
-  const defaultFile = defaults.file;
-  const defaultConfidence = defaults.confidence ?? 'low';
-  const lstText = map.lstText ?? [];
-
-  const segments: SourceMapSegment[] = (map.segments ?? []).map((segment) => {
-    let file: string | null = null;
-    if (segment.file === undefined) {
-      file = defaultFile ?? null;
-    } else {
-      file = segment.file;
-    }
-
-    const line = segment.line ?? null;
-    const confidence = segment.confidence ?? defaultConfidence;
-
-    let lstLine = 0;
-    let lstTextValue = '';
-    if (segment.lst) {
-      lstLine = segment.lst.line;
-      if (segment.lst.text !== undefined) {
-        lstTextValue = segment.lst.text;
-      } else if (segment.lst.textId !== undefined) {
-        lstTextValue = lstText[segment.lst.textId] ?? '';
-      }
-    }
-
-    return {
-      start: segment.start,
-      end: segment.end,
-      loc: {
-        file,
-        line,
-      },
-      lst: {
-        line: lstLine,
-        text: lstTextValue,
-      },
-      confidence: CONFIDENCE_FROM_D8[confidence],
-    };
-  });
-
-  const anchors: SourceMapAnchor[] = (map.symbols ?? [])
-    .filter(
-      (symbol) =>
-        symbol.file !== undefined &&
-        symbol.file !== null &&
-        symbol.line !== undefined &&
-        symbol.line !== null
-    )
-    .map((symbol) => ({
-      address: symbol.address,
-      symbol: symbol.name,
-      file: symbol.file as string,
-      line: symbol.line as number,
-    }));
-
-  return { segments, anchors };
 }
 
 function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
@@ -302,15 +227,10 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
       const line = segment.line ?? null;
       const confidence = segment.confidence ?? defaultConfidence;
 
-      let lstLine = 0;
-      let lstTextValue = '';
-      if (segment.lst) {
-        lstLine = segment.lst.line;
-        if (segment.lst.text !== undefined) {
-          lstTextValue = segment.lst.text;
-        } else if (segment.lst.textId !== undefined) {
-          lstTextValue = lstText[segment.lst.textId] ?? '';
-        }
+      const lstLine = segment.lstLine;
+      let lstTextValue = segment.lstText ?? '';
+      if (segment.lstTextId !== undefined) {
+        lstTextValue = lstText[segment.lstTextId] ?? '';
       }
 
       segments.push({
@@ -381,19 +301,13 @@ function validateD8DebugMap(value: unknown): string | undefined {
   if (value.endianness !== 'little' && value.endianness !== 'big') {
     return 'Missing endianness.';
   }
-  if (!isRecord(value.files) && !Array.isArray(value.files)) {
+  if (!isRecord(value.files)) {
     return 'Missing files map.';
   }
 
   if (value.segmentDefaults !== undefined) {
     if (!isRecord(value.segmentDefaults)) {
       return 'segmentDefaults must be an object.';
-    }
-    if (
-      value.segmentDefaults.file !== undefined &&
-      typeof value.segmentDefaults.file !== 'string'
-    ) {
-      return 'segmentDefaults.file must be a string.';
     }
     if (
       value.segmentDefaults.kind !== undefined &&
@@ -440,9 +354,6 @@ function validateD8DebugMap(value: unknown): string | undefined {
     if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end)) {
       return 'Segment start/end must be numbers.';
     }
-    if (segment.file !== null && segment.file !== undefined && typeof segment.file !== 'string') {
-      return 'Segment file must be a string or null.';
-    }
     if (segment.line !== null && segment.line !== undefined && !Number.isFinite(segment.line)) {
       return 'Segment line must be a number or null.';
     }
@@ -455,27 +366,21 @@ function validateD8DebugMap(value: unknown): string | undefined {
     ) {
       return 'Segment confidence is invalid.';
     }
-    if (segment.lst !== undefined) {
-      if (!isRecord(segment.lst)) {
-        return 'Segment lst must be an object.';
+    if (!Number.isFinite(segment.lstLine)) {
+      return 'Segment lstLine must be a number.';
+    }
+    if (segment.lstText !== undefined && typeof segment.lstText !== 'string') {
+      return 'Segment lstText must be a string.';
+    }
+    const textId = segment.lstTextId;
+    if (textId !== undefined && textId !== null) {
+      if (!Number.isFinite(textId)) {
+        return 'Segment lstTextId must be a number.';
       }
-      if (!Number.isFinite(segment.lst.line)) {
-        return 'Segment lst.line must be a number.';
-      }
-      if (segment.lst.text !== undefined && typeof segment.lst.text !== 'string') {
-        return 'Segment lst.text must be a string.';
-      }
-      const lst = segment.lst as Record<string, unknown>;
-      const textId = lst.textId;
-      if (textId !== undefined && textId !== null) {
-        if (!Number.isFinite(textId)) {
-          return 'Segment lst.textId must be a number.';
-        }
-        if (lstTextLength !== undefined) {
-          const idx = Number(textId);
-          if (idx < 0 || idx >= lstTextLength) {
-            return 'Segment lst.textId is out of range.';
-          }
+      if (lstTextLength !== undefined) {
+        const idx = Number(textId);
+        if (idx < 0 || idx >= lstTextLength) {
+          return 'Segment lstTextId is out of range.';
         }
       }
     }
@@ -492,13 +397,6 @@ function validateD8DebugMap(value: unknown): string | undefined {
     if (!Number.isFinite(symbol.address)) {
       return 'Symbol address must be a number.';
     }
-    if (
-      symbol.file !== undefined &&
-      symbol.file !== null &&
-      typeof symbol.file !== 'string'
-    ) {
-      return 'Symbol file must be a string or null.';
-    }
     if (symbol.line !== undefined && symbol.line !== null && !Number.isFinite(symbol.line)) {
       return 'Symbol line must be a number or null.';
     }
@@ -510,41 +408,6 @@ function validateD8DebugMap(value: unknown): string | undefined {
     }
     return undefined;
   };
-
-  if (Array.isArray(value.files)) {
-    for (const fileEntry of value.files) {
-      if (!isRecord(fileEntry) || typeof fileEntry.path !== 'string') {
-        return 'File entry must include a path string.';
-      }
-      if (fileEntry.sha256 !== undefined && typeof fileEntry.sha256 !== 'string') {
-        return 'File sha256 must be a string.';
-      }
-      if (fileEntry.lineCount !== undefined && !Number.isFinite(fileEntry.lineCount)) {
-        return 'File lineCount must be a number.';
-      }
-    }
-    if (!Array.isArray(value.segments)) {
-      return 'Missing segments array.';
-    }
-    for (const segment of value.segments) {
-      const error = validateSegment(segment);
-      if (error) {
-        return error;
-      }
-    }
-    if (value.symbols !== undefined) {
-      if (!Array.isArray(value.symbols)) {
-        return 'Symbols must be an array.';
-      }
-      for (const symbol of value.symbols) {
-        const error = validateSymbol(symbol);
-        if (error) {
-          return error;
-        }
-      }
-    }
-    return undefined;
-  }
 
   for (const entry of Object.values(value.files)) {
     if (!isRecord(entry)) {

@@ -68,7 +68,7 @@ Example:
         "lineCount": 120
       },
       "segments": [
-        { "start": 2304, "end": 2307, "line": 12, "lst": { "line": 87, "textId": 0 } }
+        { "start": 2304, "end": 2307, "line": 12, "lstLine": 87, "lstTextId": 0 }
       ],
       "symbols": [
         { "name": "START", "address": 2304, "line": 12 }
@@ -89,16 +89,15 @@ Each segment maps a byte range to a source location.
 Required fields:
 - `start`: number, start address (0..65535)
 - `end`: number, end address (exclusive)
+- `lstLine`: number, listing line number
 
 Optional fields:
 - `line`: number (or null when unknown), 1-based line number
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
 - `confidence`: string enum: `high`, `medium`, `low`
-- `lst`: object with listing provenance:
-  - `line`: number, listing line number
-  - `text`: string, listing asm text (optional)
-  - `textId`: number, index into `lstText` (optional)
+- `lstText`: string, listing asm text (optional)
+- `lstTextId`: number, index into `lstText` (optional)
 - `includeChain`: array of strings, include path stack
 - `macro`: object with expansion details:
   - `name`: string
@@ -116,14 +115,15 @@ Example:
   "line": 12,
   "kind": "code",
   "confidence": "high",
-  "lst": { "line": 87, "textId": 0 }
+  "lstLine": 87,
+  "lstTextId": 0
 }
 ```
 
 ### 2a) `lstText` (optional)
 
 `lstText` is a string table for listing text. When present, segments can
-reference `lst.textId` instead of repeating `lst.text` inline.
+reference `lstTextId` instead of repeating `lstText` inline.
 
 Example:
 ```json
@@ -137,7 +137,6 @@ Example:
 Defaults applied when a segment omits the field.
 
 Fields:
-- `file`: string (legacy row-wise maps only; ignored in file-grouped layout)
 - `kind`: string enum (default segment kind)
 - `confidence`: string enum (default confidence)
 
@@ -192,12 +191,6 @@ Fields:
 - `warnings`: array of strings
 - `errors`: array of strings
 
-## Legacy v1 layout
-
-Earlier v1 maps used a `files` array with top-level `segments` and `symbols`
-entries that repeated `file` on each record. Debug80 still accepts that layout
-for backward compatibility, but it now writes the file-grouped layout described
-above.
 
 ## Integration with Debug80
 
