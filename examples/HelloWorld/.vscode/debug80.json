@@ -6,7 +6,7 @@
       "sourceRoots": ["src"],
       "outputDir": "build",
       "artifactBase": "main",
-      "entry": 0,
+      "platform": "simple",
       "terminal": {
         "txPort": 0,
         "rxPort": 1,

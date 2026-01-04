@@ -12,7 +12,7 @@ provide a platform-specific config block. No feature flags.
 
 - Support multiple Z80 target environments without changing the core debugger.
 - Keep launch config minimal by using the existing target selection.
-- Make the terminal-only environment configurable.
+- Make the current simple environment configurable.
 - Allow machine profiles (CP/M, Microbee, TEC-1) to be added incrementally.
 
 ## Selection and configuration
@@ -27,7 +27,7 @@ Platform selection is per target in `debug80.json`:
       "asm": "src/main.asm",
       "outputDir": "build",
       "artifactBase": "main",
-      "platform": "terminal",
+      "platform": "simple",
       "terminal": {
         "rxPort": 16,
         "txPort": 17,
@@ -40,7 +40,7 @@ Platform selection is per target in `debug80.json`:
 ```
 
 `platform` is a string id. The matching config object uses the same key as the
-platform id (e.g. `terminal`, `cpm`, `microbee`, `tec1`).
+platform id (e.g. `simple`, `cpm`, `microbee`, `tec1`).
 
 ## Folder structure
 
@@ -49,7 +49,7 @@ Platforms live under `src/platforms/`:
 ```
 src/
   platforms/
-    terminal/
+    simple/
       index.ts
       devices/
     cpm/
@@ -160,13 +160,18 @@ export interface PlatformContext {
 
 ## Platform configs (v0.1)
 
-### Terminal platform
+### Simple platform
 
-The current terminal implementation becomes a configurable platform.
+The current environment becomes the `simple` platform:
+- ROM region `0x0000`–`0x07ff` (system layer).
+- RAM region `0x0800`–`0xffff` (program + data).
+- CPU starts at `0x0000`, system init runs, then jumps to `0x0900`.
+
+Terminal I/O is still configurable via the `terminal` block.
 
 ```json
 {
-  "platform": "terminal",
+  "platform": "simple",
   "terminal": {
     "rxPort": 16,
     "txPort": 17,

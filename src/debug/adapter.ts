@@ -28,6 +28,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stopOnEntry?: boolean;
   projectConfig?: string;
   target?: string;
+  platform?: string;
   assemble?: boolean;
   sourceRoots?: string[];
   stepOverMaxInstructions?: number;
@@ -152,6 +153,11 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
 
+      const platform = this.normalizePlatformName(merged);
+      if (platform === 'simple') {
+        merged.entry = 0;
+      }
+
       const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
       const { hexPath, listingPath, asmPath } = this.resolveArtifacts(merged, baseDir);
@@ -216,7 +222,9 @@ export class Z80DebugSession extends DebugSession {
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
 
       const ioHandlers = this.buildIoHandlers(merged);
-      this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
+      const runtimeOptions =
+        platform === 'simple' ? { romRanges: [{ start: 0x0000, end: 0x07ff }] } : undefined;
+      this.runtime = createZ80Runtime(program, merged.entry, ioHandlers, runtimeOptions);
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
         merged.stepOverMaxInstructions,
@@ -952,6 +960,11 @@ export class Z80DebugSession extends DebugSession {
         merged.entry = entryResolved;
       }
 
+      const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
+      if (platformResolved !== undefined) {
+        merged.platform = platformResolved;
+      }
+
       const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
       if (stopOnEntryResolved !== undefined) {
         merged.stopOnEntry = stopOnEntryResolved;
@@ -992,6 +1005,18 @@ export class Z80DebugSession extends DebugSession {
     } catch {
       return args;
     }
+  }
+
+  private normalizePlatformName(args: LaunchRequestArguments): string {
+    const raw = args.platform ?? 'simple';
+    const name = raw.trim().toLowerCase();
+    if (name === '') {
+      return 'simple';
+    }
+    if (name !== 'simple') {
+      throw new Error(`Unsupported platform "${raw}".`);
+    }
+    return name;
   }
 
   private normalizeStepLimit(value: number | undefined, fallback: number): number {
