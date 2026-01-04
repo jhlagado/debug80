@@ -143,4 +143,5 @@ Fields:
 ## Legacy v1 (row-wise)
 
 Version 1 stores `segments` as an array of objects with repeated fields. Debug80
-accepts v1 maps for compatibility, but writes v2 by default.
+accepts v1 maps for compatibility, but writes v2 by default. When Debug80 finds
+a v1 map on disk, it regenerates a v2 map from the listing on the next launch.

@@ -1322,6 +1322,15 @@ export class Z80DebugSession extends DebugSession {
         );
         return undefined;
       }
+      if (map.version === 1) {
+        this.sendEvent(
+          new OutputEvent(
+            `Debug80: D8 map v1 detected at "${mapPath}". Regenerating v2 map from LST.\n`,
+            'console'
+          )
+        );
+        return undefined;
+      }
       return map;
     } catch (err) {
       this.sendEvent(
