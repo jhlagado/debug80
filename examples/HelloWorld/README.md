@@ -6,7 +6,7 @@ Z80 sample wired for the debug80 extension. The adapter runs asm80 for you and d
 - `src/constants.asm`, `macros.asm`, `system.asm` — tiny ROM layer and RST 10H service macros.
 - `src/lib/readline.asm`, `src/lib/ui.asm` — reusable routines pulled in via `.include`.
 - `src/data/messages.asm` — shared strings/constants referenced by multiple files.
-- `src/main.asm` — prints a greeting, then echoes input lines until you press Enter on an empty line.
+- `src/main.asm` — prints a greeting, then reads input lines until you press Enter on an empty line.
 - `.vscode/debug80.json` — target config (`src/main.asm` → `build/main`).
 - `.vscode/launch.json` — “Debug (debug80)” launch config.
 

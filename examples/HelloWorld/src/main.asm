@@ -19,8 +19,6 @@ READLOOP:
         CP      0x20
         JR      C,DONE         ; empty or control -> exit
 
-        LD      HL,BUF
-        CALL    printLine
         JR      READLOOP
 
 DONE:   LD      HL,DONE_MSG

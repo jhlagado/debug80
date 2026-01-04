@@ -1,5 +1,6 @@
 ; readLn: HL buffer, B = buffer length (including terminator)
-; Reads until newline (0x0A) or buffer full-1, echoes as it reads,
+; Reads until newline (0x0A) or buffer full-1. Input echo is handled by
+; the host terminal.
 ; zero-terminates. Returns with A holding last read (newline).
 readLn:
         DEC     B               ; reserve space for terminator
