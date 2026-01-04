@@ -194,6 +194,12 @@ preserving the existing LST-derived confidence data.
 
 Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
 
+### 9.5 Platforms
+
+The debugger core runs against a platform abstraction that supplies memory and
+I/O devices. Platform selection is per target in `debug80.json`. The platform
+spec and configuration layout are defined in `docs/PLATFORMS.md`.
+
 ## 10. Breakpoints and stack frames
 
 ### 10.1 Breakpoint resolution
