@@ -9,7 +9,7 @@ import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
 import { parseMapping, MappingParseResult } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
-import { buildD8DebugMap } from '../mapping/d8-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap } from '../mapping/d8-map';
 import {
   createZ80Runtime,
   Z80Runtime,
@@ -33,8 +33,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stepOverMaxInstructions?: number;
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
-  emitDebugMap?: boolean;
-  debugMapPath?: string;
 }
 
 interface TerminalConfig {
@@ -186,8 +184,8 @@ export class Z80DebugSession extends DebugSession {
       this.listingPath = listingPath;
       this.sourceFile = listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
-      this.mapping = parseMapping(listingContent);
-      const layer2 = applyLayer2(this.mapping, { resolvePath: (file) => this.resolveMappedPath(file) });
+      const baseMapping = parseMapping(listingContent);
+      const layer2 = applyLayer2(baseMapping, { resolvePath: (file) => this.resolveMappedPath(file) });
       if (layer2.missingSources.length > 0) {
         const unique = Array.from(new Set(layer2.missingSources));
         this.sendEvent(
@@ -197,8 +195,17 @@ export class Z80DebugSession extends DebugSession {
           )
         );
       }
+      const debugMap = buildD8DebugMap(baseMapping, {
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        generator: {
+          name: 'debug80',
+        },
+      });
+      this.writeDebugMap(debugMap, merged, baseDir, asmPath, listingPath);
+      this.mapping = buildMappingFromD8DebugMap(debugMap);
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
-      this.emitDebugMapIfRequested(merged, baseDir, asmPath, listingPath, hexPath);
 
       const ioHandlers = this.buildIoHandlers(merged);
       this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
@@ -968,18 +975,6 @@ export class Z80DebugSession extends DebugSession {
         merged.stepOutMaxInstructions = stepOutResolved;
       }
 
-      const emitDebugMapResolved =
-        args.emitDebugMap ?? targetCfg?.emitDebugMap ?? cfg.emitDebugMap;
-      if (emitDebugMapResolved !== undefined) {
-        merged.emitDebugMap = emitDebugMapResolved;
-      }
-
-      const debugMapPathResolved =
-        args.debugMapPath ?? targetCfg?.debugMapPath ?? cfg.debugMapPath;
-      if (debugMapPathResolved !== undefined) {
-        merged.debugMapPath = debugMapPathResolved;
-      }
-
       const targetResolved = targetName ?? args.target;
       if (targetResolved !== undefined) {
         merged.target = targetResolved;
@@ -1298,35 +1293,26 @@ export class Z80DebugSession extends DebugSession {
     return roots.map((root) => this.resolveRelative(root, baseDir));
   }
 
-  private emitDebugMapIfRequested(
+  private writeDebugMap(
+    map: ReturnType<typeof buildD8DebugMap>,
     args: LaunchRequestArguments,
     baseDir: string,
     asmPath: string | undefined,
-    listingPath: string,
-    hexPath: string
+    listingPath: string
   ): void {
-    if (!this.mapping) {
-      return;
-    }
     const mapPath = this.resolveDebugMapPath(args, baseDir, asmPath, listingPath);
-    if (!mapPath) {
-      return;
-    }
     try {
       fs.mkdirSync(path.dirname(mapPath), { recursive: true });
-      const map = buildD8DebugMap(this.mapping, {
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
+      const enriched = {
+        ...map,
         generator: {
-          name: 'debug80',
+          ...map.generator,
           inputs: {
-            hex: this.relativeIfPossible(hexPath, baseDir),
             listing: this.relativeIfPossible(listingPath, baseDir),
           },
         },
-      });
-      fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
+      };
+      fs.writeFileSync(mapPath, JSON.stringify(enriched, null, 2));
     } catch (err) {
       this.sendEvent(
         new OutputEvent(`Debug80: Failed to write D8 debug map: ${String(err)}\n`, 'console')
@@ -1339,15 +1325,7 @@ export class Z80DebugSession extends DebugSession {
     baseDir: string,
     asmPath: string | undefined,
     listingPath: string
-  ): string | undefined {
-    const explicit = args.debugMapPath;
-    if (explicit && explicit !== '') {
-      return this.resolveRelative(explicit, baseDir);
-    }
-    if (!args.emitDebugMap) {
-      return undefined;
-    }
-
+  ): string {
     const artifactBase =
       args.artifactBase ??
       (asmPath ? path.basename(asmPath, path.extname(asmPath)) : path.basename(listingPath, '.lst'));
