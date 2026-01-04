@@ -12,7 +12,7 @@ provide a platform-specific config block. No feature flags.
 
 - Support multiple Z80 target environments without changing the core debugger.
 - Keep launch config minimal by using the existing target selection.
-- Make the terminal-only environment configurable.
+- Make the current simple environment configurable.
 - Allow machine profiles (CP/M, Microbee, TEC-1) to be added incrementally.
 
 ## Selection and configuration
@@ -27,7 +27,7 @@ Platform selection is per target in `debug80.json`:
       "asm": "src/main.asm",
       "outputDir": "build",
       "artifactBase": "main",
-      "platform": "terminal",
+      "platform": "simple",
       "terminal": {
         "rxPort": 16,
         "txPort": 17,
@@ -40,7 +40,7 @@ Platform selection is per target in `debug80.json`:
 ```
 
 `platform` is a string id. The matching config object uses the same key as the
-platform id (e.g. `terminal`, `cpm`, `microbee`, `tec1`).
+platform id (e.g. `simple`, `cpm`, `microbee`, `tec1`).
 
 ## Folder structure
 
@@ -49,7 +49,7 @@ Platforms live under `src/platforms/`:
 ```
 src/
   platforms/
-    terminal/
+    simple/
       index.ts
       devices/
     cpm/
@@ -160,13 +160,28 @@ export interface PlatformContext {
 
 ## Platform configs (v0.1)
 
-### Terminal platform
+### Simple platform
 
-The current terminal implementation becomes a configurable platform.
+The current environment becomes the `simple` platform:
+- ROM region `0x0000`–`0x07ff` (`0`–`2047`) (system layer).
+- RAM region `0x0800`–`0xffff` (`2048`–`65535`) (program + data).
+- CPU starts at `0x0000` (`0`), system init runs, then jumps to `0x0900` (`2304`).
+
+Terminal I/O is still configurable via the `terminal` block.
 
 ```json
 {
-  "platform": "terminal",
+  "platform": "simple",
+  "simple": {
+    "regions": [
+      { "start": 0, "end": 2047, "kind": "rom" },
+      { "start": 2048, "end": 65535, "kind": "ram" }
+    ],
+    "appStart": 2304,
+    "entry": 0,
+    "binFrom": 2304,
+    "binTo": 65535
+  },
   "terminal": {
     "rxPort": 16,
     "txPort": 17,
@@ -184,10 +199,16 @@ Notes:
 - `newline` defines what the terminal sends for Enter.
 - `echo` controls local echo in the webview terminal.
 - `statusBits` allows different bit conventions per platform.
+- `simple.regions` define memory ranges (inclusive start/end).
+- `simple.regions[].kind` can be `rom`, `ram`, `unknown`.
+- `simple.regions[].readOnly` forces read-only for non-ROM regions (optional).
+- `simple.appStart` is the expected entry address for user code (ORG).
+- `simple.entry` is the CPU start address (default first ROM region start).
+- `simple.binFrom`/`simple.binTo` optionally trigger an extra asm80 pass that emits `.bin`.
 
 ### CP/M (draft)
 
-CP/M is a well-known Z80 environment with a TPA that usually starts at 0x0100.
+CP/M is a well-known Z80 environment with a TPA that usually starts at 0x0100 (256).
 Exact BIOS/BDOS wiring varies by machine, so the platform keeps these as
 configurable values.
 
@@ -209,7 +230,7 @@ configurable values.
 ```
 
 Notes:
-- `entry` is the program start address (default 0x0100).
+- `entry` is the program start address (default 0x0100 / 256).
 - `biosEntry` and `bdosEntry` are optional and can be ignored until a BDOS
   emulation layer is implemented.
 
@@ -235,8 +256,8 @@ map and port allocation left as configurable values.
 ### TEC-1 (draft)
 
 TEC-1 is simple and well suited for early emulation:
-- ROM: 0x0000 - 0x07ff
-- RAM: 0x0800 - 0x0fff (2 KB)
+- ROM: 0x0000 - 0x07ff (0 - 2047)
+- RAM: 0x0800 - 0x0fff (2048 - 4095, 2 KB)
 
 ```json
 {

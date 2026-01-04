@@ -28,11 +28,13 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stopOnEntry?: boolean;
   projectConfig?: string;
   target?: string;
+  platform?: string;
   assemble?: boolean;
   sourceRoots?: string[];
   stepOverMaxInstructions?: number;
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
+  simple?: SimplePlatformConfig;
 }
 
 interface TerminalConfig {
@@ -40,6 +42,30 @@ interface TerminalConfig {
   rxPort?: number;
   statusPort?: number;
   interrupt?: boolean;
+}
+
+interface SimplePlatformConfig {
+  regions?: SimpleMemoryRegion[];
+  appStart?: number;
+  entry?: number;
+  binFrom?: number;
+  binTo?: number;
+}
+
+interface SimpleMemoryRegion {
+  start: number;
+  end: number;
+  kind?: 'rom' | 'ram' | 'unknown';
+  readOnly?: boolean;
+}
+
+interface SimplePlatformConfigNormalized {
+  regions: SimpleMemoryRegion[];
+  romRanges: Array<{ start: number; end: number }>;
+  appStart: number;
+  entry: number;
+  binFrom: number | undefined;
+  binTo: number | undefined;
 }
 
 interface TerminalState {
@@ -152,11 +178,15 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
 
+      const platform = this.normalizePlatformName(merged);
+      const simpleConfig =
+        platform === 'simple' ? this.normalizeSimpleConfig(merged) : undefined;
+
       const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
       const { hexPath, listingPath, asmPath } = this.resolveArtifacts(merged, baseDir);
 
-      this.assembleIfRequested(merged, asmPath, hexPath, listingPath);
+      this.assembleIfRequested(merged, asmPath, hexPath, listingPath, platform, simpleConfig);
 
       if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
         const created = await this.promptForConfigCreation(args);
@@ -216,7 +246,12 @@ export class Z80DebugSession extends DebugSession {
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
 
       const ioHandlers = this.buildIoHandlers(merged);
-      this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
+      const runtimeOptions =
+        platform === 'simple' && simpleConfig
+          ? { romRanges: simpleConfig.romRanges }
+          : undefined;
+      const entry = platform === 'simple' ? simpleConfig?.entry : merged.entry;
+      this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
         merged.stepOverMaxInstructions,
@@ -952,6 +987,16 @@ export class Z80DebugSession extends DebugSession {
         merged.entry = entryResolved;
       }
 
+      const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
+      if (platformResolved !== undefined) {
+        merged.platform = platformResolved;
+      }
+
+      const simpleResolved = args.simple ?? targetCfg?.simple ?? cfg.simple;
+      if (simpleResolved !== undefined) {
+        merged.simple = simpleResolved;
+      }
+
       const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
       if (stopOnEntryResolved !== undefined) {
         merged.stopOnEntry = stopOnEntryResolved;
@@ -994,6 +1039,129 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
+  private normalizePlatformName(args: LaunchRequestArguments): string {
+    const raw = args.platform ?? 'simple';
+    const name = raw.trim().toLowerCase();
+    if (name === '') {
+      return 'simple';
+    }
+    if (name !== 'simple') {
+      throw new Error(`Unsupported platform "${raw}".`);
+    }
+    return name;
+  }
+
+  private normalizeSimpleConfig(args: LaunchRequestArguments): SimplePlatformConfigNormalized {
+    const cfg = args.simple ?? {};
+    const regions = this.normalizeSimpleRegions(cfg.regions);
+    const romRanges = regions
+      .filter((region) => region.kind === 'rom' || region.readOnly === true)
+      .map((region) => ({ start: region.start, end: region.end }));
+    const appStart =
+      Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0900;
+    const entry =
+      Number.isFinite(cfg.entry) && cfg.entry !== undefined
+        ? cfg.entry
+        : romRanges[0]?.start ?? 0x0000;
+    const binFrom =
+      Number.isFinite(cfg.binFrom) && cfg.binFrom !== undefined ? cfg.binFrom : undefined;
+    const binTo = Number.isFinite(cfg.binTo) && cfg.binTo !== undefined ? cfg.binTo : undefined;
+    return {
+      regions,
+      romRanges,
+      appStart: Math.max(0, Math.min(0xffff, appStart)),
+      entry: Math.max(0, Math.min(0xffff, entry)),
+      binFrom: binFrom !== undefined ? Math.max(0, Math.min(0xffff, binFrom)) : undefined,
+      binTo: binTo !== undefined ? Math.max(0, Math.min(0xffff, binTo)) : undefined,
+    };
+  }
+
+  private assembleBin(
+    asm80: { command: string; argsPrefix: string[] },
+    asmDir: string,
+    asmPath: string,
+    hexPath: string,
+    binFrom: number,
+    binTo: number
+  ): void {
+    const outDir = path.dirname(hexPath);
+    const binPath = path.join(outDir, `${path.basename(hexPath, path.extname(hexPath))}.bin`);
+    const wrapperName = `.${path.basename(asmPath, path.extname(asmPath))}.bin.asm`;
+    const wrapperPath = path.join(asmDir, wrapperName);
+    const wrapper = `.BINFROM ${binFrom}\n.BINTO ${binTo}\n.INCLUDE "${path.basename(
+      asmPath
+    )}"\n`;
+    fs.writeFileSync(wrapperPath, wrapper);
+
+    const outArg = path.relative(asmDir, binPath);
+    const wrapperArg = path.relative(asmDir, wrapperPath);
+    const result = cp.spawnSync(
+      asm80.command,
+      [...asm80.argsPrefix, '-m', 'Z80', '-t', 'bin', '-o', outArg, wrapperArg],
+      {
+        cwd: asmDir,
+        encoding: 'utf-8',
+      }
+    );
+
+    try {
+      fs.unlinkSync(wrapperPath);
+    } catch {
+      /* ignore */
+    }
+
+    if (result.error) {
+      const message = `asm80 bin failed to start: ${result.error.message ?? String(result.error)}`;
+      this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
+      throw new Error(message);
+    }
+
+    if (result.status !== 0) {
+      if (result.stdout) {
+        this.sendEvent(new OutputEvent(`asm80 stdout:\n${result.stdout}\n`, 'console'));
+      }
+      if (result.stderr) {
+        this.sendEvent(new OutputEvent(`asm80 stderr:\n${result.stderr}\n`, 'console'));
+      }
+      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+      const suffix = output.length > 0 ? `: ${output}` : '';
+      throw new Error(`asm80 bin exited with code ${result.status}${suffix}`);
+    }
+  }
+
+  private normalizeSimpleRegions(regions?: SimpleMemoryRegion[]): SimpleMemoryRegion[] {
+    if (!Array.isArray(regions) || regions.length === 0) {
+      return [
+        { start: 0x0000, end: 0x07ff, kind: 'rom' },
+        { start: 0x0800, end: 0xffff, kind: 'ram' },
+      ];
+    }
+
+    const normalized: SimpleMemoryRegion[] = [];
+    for (const region of regions) {
+      if (!region || !Number.isFinite(region.start) || !Number.isFinite(region.end)) {
+        continue;
+      }
+      let start = Math.max(0, Math.min(0xffff, region.start));
+      let end = Math.max(0, Math.min(0xffff, region.end));
+      if (end < start) {
+        [start, end] = [end, start];
+      }
+      const entry: SimpleMemoryRegion = { start, end, kind: region.kind ?? 'unknown' };
+      if (region.readOnly !== undefined) {
+        entry.readOnly = region.readOnly;
+      }
+      normalized.push(entry);
+    }
+    if (normalized.length === 0) {
+      return [
+        { start: 0x0000, end: 0x07ff, kind: 'rom' },
+        { start: 0x0800, end: 0xffff, kind: 'ram' },
+      ];
+    }
+    return normalized;
+  }
+
   private normalizeStepLimit(value: number | undefined, fallback: number): number {
     if (value === undefined) {
       return fallback;
@@ -1016,7 +1184,9 @@ export class Z80DebugSession extends DebugSession {
     args: LaunchRequestArguments,
     asmPath: string | undefined,
     hexPath: string,
-    listingPath: string
+    listingPath: string,
+    platform: string,
+    simpleConfig?: SimplePlatformConfigNormalized
   ): void {
     if (asmPath === undefined || asmPath === '' || args.assemble === false) {
       return;
@@ -1070,6 +1240,21 @@ export class Z80DebugSession extends DebugSession {
         fs.mkdirSync(listingDir, { recursive: true });
       }
       fs.copyFileSync(producedListing, listingPath);
+    }
+
+    if (
+      platform === 'simple' &&
+      simpleConfig?.binFrom !== undefined &&
+      simpleConfig.binTo !== undefined
+    ) {
+      this.assembleBin(
+        asm80,
+        asmDir,
+        asmPath,
+        hexPath,
+        simpleConfig.binFrom,
+        simpleConfig.binTo
+      );
     }
   }
 
