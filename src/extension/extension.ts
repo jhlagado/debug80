@@ -415,7 +415,7 @@ function getTerminalHtml(initial: string): string {
     function sendInput() {
       const text = input.value;
       const payload = text + "\\n";
-      out.textContent += text.length === 0 ? "\\n" : text;
+      out.textContent += payload;
       window.scrollTo(0, document.body.scrollHeight);
       vscode.postMessage({ type: 'input', text: payload });
       input.value = '';
