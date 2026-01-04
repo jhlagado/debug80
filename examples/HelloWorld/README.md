@@ -13,5 +13,5 @@ Z80 sample wired for the debug80 extension. The adapter runs asm80 for you and d
 ## Usage
 1) Open `examples/HelloWorld` in VS Code with debug80 installed.
 2) Press F5 and pick “Debug (debug80)”. The adapter assembles to `build/main.hex` + `build/main.lst`.
-3) The example enables D8 map output, so `build/main.d8dbg.json` is also written.
+3) Debug80 writes `build/main.d8dbg.json` alongside the build artifacts.
 4) Set breakpoints in the `.asm` files and run. Use the Debug80 Terminal panel for input/output.

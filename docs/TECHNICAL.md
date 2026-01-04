@@ -106,9 +106,9 @@ Common fields:
 - hex / listing (override)
 - sourceRoots (list of extra source folders)
 - stepOverMaxInstructions / stepOutMaxInstructions
-- emitDebugMap (writes a .d8dbg.json mapping artifact)
-- debugMapPath (explicit output path for the D8 map)
 - terminal (I/O bridge config)
+
+Debug80 always writes a D8 debug map to `<artifactBase>.d8dbg.json` in outputDir.
 
 ### 6.3 Scaffold command
 
@@ -185,12 +185,12 @@ Indexes built at launch:
 
 ### 9.4 D8 Debug Map (D8M) format
 
-Debug80 currently builds the mapping in memory from the .lst. The proposed
-on-disk standard is documented in `docs/D8_DEBUG_MAP.md` and is designed to be
+Debug80 builds the mapping from the .lst, serializes it as a D8 debug map, then
+uses the D8 map as the canonical representation for debugging. The on-disk
+standard is documented in `docs/D8_DEBUG_MAP.md` and is designed to be
 assembler-agnostic while preserving the existing LST-derived confidence data.
 
-When `emitDebugMap` is true (or `debugMapPath` is set), Debug80 writes a
-`*.d8dbg.json` file alongside the build artifacts.
+Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
 
 ## 10. Breakpoints and stack frames
 

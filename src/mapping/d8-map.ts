@@ -78,9 +78,15 @@ export interface BuildD8MapOptions {
 
 const CONFIDENCE_MAP: Record<SourceMapSegment['confidence'], NonNullable<D8Segment['confidence']>> =
   {
-  HIGH: 'high',
-  MEDIUM: 'medium',
-  LOW: 'low',
+    HIGH: 'high',
+    MEDIUM: 'medium',
+    LOW: 'low',
+  };
+const CONFIDENCE_FROM_D8: Record<NonNullable<D8Segment['confidence']>, SourceMapSegment['confidence']> =
+  {
+    high: 'HIGH',
+    medium: 'MEDIUM',
+    low: 'LOW',
   };
 
 export function buildD8DebugMap(
@@ -111,6 +117,33 @@ export function buildD8DebugMap(
     ...(options.generator ? { generator: options.generator } : {}),
     ...(options.diagnostics ? { diagnostics: options.diagnostics } : {}),
   };
+}
+
+export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult {
+  const segments: SourceMapSegment[] = map.segments.map((segment) => ({
+    start: segment.start,
+    end: segment.end,
+    loc: {
+      file: segment.file ?? null,
+      line: segment.line ?? null,
+    },
+    lst: {
+      line: segment.lst?.line ?? 0,
+      text: segment.lst?.text ?? '',
+    },
+    confidence: CONFIDENCE_FROM_D8[segment.confidence ?? 'low'],
+  }));
+
+  const anchors: SourceMapAnchor[] = (map.symbols ?? [])
+    .filter((symbol) => symbol.file !== undefined && symbol.line !== undefined)
+    .map((symbol) => ({
+      address: symbol.address,
+      symbol: symbol.name,
+      file: symbol.file as string,
+      line: symbol.line as number,
+    }));
+
+  return { segments, anchors };
 }
 
 function collectFiles(mapping: MappingParseResult): D8SourceFile[] {
