@@ -27,7 +27,13 @@ Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80
       "sourceFile": "examples/echo.asm",
       "outputDir": "build",
       "artifactBase": "echo",
-      "platform": "simple"
+      "platform": "simple",
+      "simple": {
+        "romStart": 0,
+        "romEnd": 2047,
+        "appStart": 2304,
+        "entry": 0
+      }
     }
   }
 }
@@ -36,10 +42,11 @@ Fields per target:
 - `sourceFile`: root asm file to assemble
 - `outputDir`: where artifacts go
 - `artifactBase`: basename for artifacts
-- `platform`: currently `simple` (ROM 0x0000–0x07ff, CPU starts at 0x0000, app at 0x0900)
+- `platform`: currently `simple`
+- `simple`: platform config (ROM 0x0000–0x07ff, CPU starts at 0x0000, app at 0x0900)
 - `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).
 - `hex`, `listing`: optional explicit paths (override defaults)
-- `entry`: optional entry point override (ignored by `simple`)
+- `entry`: optional entry point override (non-simple platforms)
 - `sourceRoots`: optional list of directories to resolve `.asm` files referenced by the LST
 - `stepOverMaxInstructions`: optional max instructions for Step Over (`0` disables the cap)
 - `stepOutMaxInstructions`: optional max instructions for Step Out (`0` disables the cap)

@@ -172,6 +172,12 @@ Terminal I/O is still configurable via the `terminal` block.
 ```json
 {
   "platform": "simple",
+  "simple": {
+    "romStart": 0,
+    "romEnd": 2047,
+    "appStart": 2304,
+    "entry": 0
+  },
   "terminal": {
     "rxPort": 16,
     "txPort": 17,
@@ -189,6 +195,9 @@ Notes:
 - `newline` defines what the terminal sends for Enter.
 - `echo` controls local echo in the webview terminal.
 - `statusBits` allows different bit conventions per platform.
+- `simple.romStart`/`simple.romEnd` define the read-only ROM window.
+- `simple.appStart` is the expected entry address for user code (ORG).
+- `simple.entry` is the CPU start address (default `romStart`).
 
 ### CP/M (draft)
 

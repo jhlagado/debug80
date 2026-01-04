@@ -34,6 +34,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stepOverMaxInstructions?: number;
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
+  simple?: SimplePlatformConfig;
 }
 
 interface TerminalConfig {
@@ -41,6 +42,20 @@ interface TerminalConfig {
   rxPort?: number;
   statusPort?: number;
   interrupt?: boolean;
+}
+
+interface SimplePlatformConfig {
+  romStart?: number;
+  romEnd?: number;
+  appStart?: number;
+  entry?: number;
+}
+
+interface SimplePlatformConfigNormalized {
+  romStart: number;
+  romEnd: number;
+  appStart: number;
+  entry: number;
 }
 
 interface TerminalState {
@@ -154,9 +169,8 @@ export class Z80DebugSession extends DebugSession {
       }
 
       const platform = this.normalizePlatformName(merged);
-      if (platform === 'simple') {
-        merged.entry = 0;
-      }
+      const simpleConfig =
+        platform === 'simple' ? this.normalizeSimpleConfig(merged) : undefined;
 
       const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
@@ -223,8 +237,11 @@ export class Z80DebugSession extends DebugSession {
 
       const ioHandlers = this.buildIoHandlers(merged);
       const runtimeOptions =
-        platform === 'simple' ? { romRanges: [{ start: 0x0000, end: 0x07ff }] } : undefined;
-      this.runtime = createZ80Runtime(program, merged.entry, ioHandlers, runtimeOptions);
+        platform === 'simple' && simpleConfig
+          ? { romRanges: [{ start: simpleConfig.romStart, end: simpleConfig.romEnd }] }
+          : undefined;
+      const entry = platform === 'simple' ? simpleConfig?.entry : merged.entry;
+      this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
         merged.stepOverMaxInstructions,
@@ -965,6 +982,11 @@ export class Z80DebugSession extends DebugSession {
         merged.platform = platformResolved;
       }
 
+      const simpleResolved = args.simple ?? targetCfg?.simple ?? cfg.simple;
+      if (simpleResolved !== undefined) {
+        merged.simple = simpleResolved;
+      }
+
       const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
       if (stopOnEntryResolved !== undefined) {
         merged.stopOnEntry = stopOnEntryResolved;
@@ -1017,6 +1039,24 @@ export class Z80DebugSession extends DebugSession {
       throw new Error(`Unsupported platform "${raw}".`);
     }
     return name;
+  }
+
+  private normalizeSimpleConfig(args: LaunchRequestArguments): SimplePlatformConfigNormalized {
+    const cfg = args.simple ?? {};
+    const romStart =
+      Number.isFinite(cfg.romStart) && cfg.romStart !== undefined ? cfg.romStart : 0x0000;
+    const romEnd =
+      Number.isFinite(cfg.romEnd) && cfg.romEnd !== undefined ? cfg.romEnd : 0x07ff;
+    const appStart =
+      Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0900;
+    const entry =
+      Number.isFinite(cfg.entry) && cfg.entry !== undefined ? cfg.entry : romStart;
+    return {
+      romStart: Math.max(0, Math.min(0xffff, romStart)),
+      romEnd: Math.max(0, Math.min(0xffff, romEnd)),
+      appStart: Math.max(0, Math.min(0xffff, appStart)),
+      entry: Math.max(0, Math.min(0xffff, entry)),
+    };
   }
 
   private normalizeStepLimit(value: number | undefined, fallback: number): number {

@@ -188,6 +188,12 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
           outputDir: inferred.outputDir,
           artifactBase: inferred.artifactBase,
           platform: 'simple',
+          simple: {
+            romStart: 0,
+            romEnd: 0x07ff,
+            appStart: 0x0900,
+            entry: 0,
+          },
         },
       },
     };
