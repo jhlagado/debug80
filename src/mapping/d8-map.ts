@@ -76,18 +76,19 @@ export interface BuildD8MapOptions {
   diagnostics?: D8Diagnostics;
 }
 
-const CONFIDENCE_MAP: Record<SourceMapSegment['confidence'], D8Segment['confidence']> = {
+const CONFIDENCE_MAP: Record<SourceMapSegment['confidence'], NonNullable<D8Segment['confidence']>> =
+  {
   HIGH: 'high',
   MEDIUM: 'medium',
   LOW: 'low',
-};
+  };
 
 export function buildD8DebugMap(
   mapping: MappingParseResult,
   options: BuildD8MapOptions
 ): D8DebugMap {
   const files = collectFiles(mapping);
-  const segments = mapping.segments.map((segment) => ({
+  const segments: D8Segment[] = mapping.segments.map((segment): D8Segment => ({
     start: segment.start,
     end: segment.end,
     file: segment.loc.file,
@@ -107,8 +108,8 @@ export function buildD8DebugMap(
     files,
     segments,
     symbols,
-    generator: options.generator,
-    diagnostics: options.diagnostics,
+    ...(options.generator ? { generator: options.generator } : {}),
+    ...(options.diagnostics ? { diagnostics: options.diagnostics } : {}),
   };
 }
 
