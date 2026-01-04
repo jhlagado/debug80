@@ -9,6 +9,7 @@ import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
 import { parseMapping, MappingParseResult } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
+import { buildD8DebugMap } from '../mapping/d8-map';
 import {
   createZ80Runtime,
   Z80Runtime,
@@ -32,6 +33,8 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stepOverMaxInstructions?: number;
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
+  emitDebugMap?: boolean;
+  debugMapPath?: string;
 }
 
 interface TerminalConfig {
@@ -195,6 +198,7 @@ export class Z80DebugSession extends DebugSession {
         );
       }
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
+      this.emitDebugMapIfRequested(merged, baseDir, asmPath, listingPath, hexPath);
 
       const ioHandlers = this.buildIoHandlers(merged);
       this.runtime = createZ80Runtime(program, merged.entry, ioHandlers);
@@ -964,6 +968,18 @@ export class Z80DebugSession extends DebugSession {
         merged.stepOutMaxInstructions = stepOutResolved;
       }
 
+      const emitDebugMapResolved =
+        args.emitDebugMap ?? targetCfg?.emitDebugMap ?? cfg.emitDebugMap;
+      if (emitDebugMapResolved !== undefined) {
+        merged.emitDebugMap = emitDebugMapResolved;
+      }
+
+      const debugMapPathResolved =
+        args.debugMapPath ?? targetCfg?.debugMapPath ?? cfg.debugMapPath;
+      if (debugMapPathResolved !== undefined) {
+        merged.debugMapPath = debugMapPathResolved;
+      }
+
       const targetResolved = targetName ?? args.target;
       if (targetResolved !== undefined) {
         merged.target = targetResolved;
@@ -1280,6 +1296,73 @@ export class Z80DebugSession extends DebugSession {
   private resolveSourceRoots(args: LaunchRequestArguments, baseDir: string): string[] {
     const roots = args.sourceRoots ?? [];
     return roots.map((root) => this.resolveRelative(root, baseDir));
+  }
+
+  private emitDebugMapIfRequested(
+    args: LaunchRequestArguments,
+    baseDir: string,
+    asmPath: string | undefined,
+    listingPath: string,
+    hexPath: string
+  ): void {
+    if (!this.mapping) {
+      return;
+    }
+    const mapPath = this.resolveDebugMapPath(args, baseDir, asmPath, listingPath);
+    if (!mapPath) {
+      return;
+    }
+    try {
+      fs.mkdirSync(path.dirname(mapPath), { recursive: true });
+      const map = buildD8DebugMap(this.mapping, {
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        generator: {
+          name: 'debug80',
+          inputs: {
+            hex: this.relativeIfPossible(hexPath, baseDir),
+            listing: this.relativeIfPossible(listingPath, baseDir),
+          },
+        },
+      });
+      fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
+    } catch (err) {
+      this.sendEvent(
+        new OutputEvent(`Debug80: Failed to write D8 debug map: ${String(err)}\n`, 'console')
+      );
+    }
+  }
+
+  private resolveDebugMapPath(
+    args: LaunchRequestArguments,
+    baseDir: string,
+    asmPath: string | undefined,
+    listingPath: string
+  ): string | undefined {
+    const explicit = args.debugMapPath;
+    if (explicit && explicit !== '') {
+      return this.resolveRelative(explicit, baseDir);
+    }
+    if (!args.emitDebugMap) {
+      return undefined;
+    }
+
+    const artifactBase =
+      args.artifactBase ??
+      (asmPath ? path.basename(asmPath, path.extname(asmPath)) : path.basename(listingPath, '.lst'));
+    const outDirRaw = args.outputDir ?? path.dirname(listingPath);
+    const outDir = this.resolveRelative(outDirRaw, baseDir);
+    return path.join(outDir, `${artifactBase}.d8dbg.json`);
+  }
+
+  private relativeIfPossible(filePath: string, baseDir: string): string {
+    const normalizedBase = path.resolve(baseDir);
+    const normalizedPath = path.resolve(filePath);
+    if (normalizedPath.startsWith(normalizedBase)) {
+      return path.relative(normalizedBase, normalizedPath) || normalizedPath;
+    }
+    return normalizedPath;
   }
 
   private resolveBundledAsm80(): string | undefined {

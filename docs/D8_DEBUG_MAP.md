@@ -69,10 +69,11 @@ Each segment maps a byte range to a source location.
 Required fields:
 - `start`: number, start address (0..65535)
 - `end`: number, end address (exclusive)
-- `file`: string, must match a `files[].path`
-- `line`: number, 1-based line number
 
 Optional fields:
+- `file`: string (or null when unknown), should match a `files[].path` when present
+- `line`: number (or null when unknown), 1-based line number
+
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
 - `confidence`: string enum: `high`, `medium`, `low`
