@@ -7,6 +7,12 @@
       "outputDir": "build",
       "artifactBase": "main",
       "platform": "simple",
+      "simple": {
+        "romStart": 0,
+        "romEnd": 2047,
+        "appStart": 2304,
+        "entry": 0
+      },
       "terminal": {
         "txPort": 0,
         "rxPort": 1,

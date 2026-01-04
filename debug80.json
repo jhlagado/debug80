@@ -5,7 +5,13 @@
       "sourceFile": "examples/echo.asm",
       "outputDir": "build",
       "artifactBase": "echo",
-      "platform": "simple"
+      "platform": "simple",
+      "simple": {
+        "romStart": 0,
+        "romEnd": 2047,
+        "appStart": 2304,
+        "entry": 0
+      }
     }
   }
 }

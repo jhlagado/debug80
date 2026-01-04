@@ -136,9 +136,9 @@ function loadProgram(
   cpu.halted = false;
 }
 
-function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
+function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo | null {
   const pc = cpu.pc & 0xffff;
-  const opcode = memory[pc] ?? 0;
+  const opcode = memRead(pc) ?? 0;
   const returnAddressCall = (pc + 3) & 0xffff;
   const returnAddressRst = (pc + 1) & 0xffff;
 
@@ -193,7 +193,7 @@ function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
   }
 
   if (opcode === OP_PREFIX_ED) {
-    const opcode2 = memory[(pc + 1) & 0xffff] ?? 0;
+    const opcode2 = memRead((pc + 1) & 0xffff) ?? 0;
     if (ED_RET_OPCODES.has(opcode2)) {
       return { kind: 'ret', taken: true };
     }
@@ -218,7 +218,7 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
     delete options.trace.kind;
     options.trace.taken = false;
     delete options.trace.returnAddress;
-    const stepInfo = classifyStepOver(cpu, hardware.memory);
+    const stepInfo = classifyStepOver(cpu, memRead);
     if (stepInfo) {
       Object.assign(options.trace, stepInfo);
     }
