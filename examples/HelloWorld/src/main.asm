@@ -15,10 +15,6 @@ READLOOP:
         LD      HL,BUF
         LD      B,32           ; buffer length including terminator
         CALL    readLn
-        CP      0x0A           ; host terminals may not echo newline
-        JR      NZ,NO_LF
-        SYS_PUTC
-NO_LF:
         LD      A,(BUF)        ; treat control/empty as termination
         CP      0x20
         JR      C,DONE         ; empty or control -> exit
