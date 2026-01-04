@@ -10,6 +10,8 @@ export interface HardwareContext {
   ioRead: (port: number) => number;
   ioWrite: (port: number, value: number) => void;
   ioTick?: () => unknown;
+  memRead?: (addr: number) => number;
+  memWrite?: (addr: number, value: number) => void;
   cpu?: Cpu;
 }
 

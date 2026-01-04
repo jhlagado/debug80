@@ -36,6 +36,10 @@ export interface Z80Runtime {
   reset: (program?: HexProgram, entry?: number) => void;
 }
 
+export interface RuntimeOptions {
+  romRanges?: Array<{ start: number; end: number }>;
+}
+
 export interface RunResult {
   halted: boolean;
   pc: number;
@@ -61,10 +65,20 @@ interface TickResult {
 export function createZ80Runtime(
   program: HexProgram,
   entry?: number,
-  ioHandlers?: IoHandlers
+  ioHandlers?: IoHandlers,
+  options?: RuntimeOptions
 ): Z80Runtime {
   const cpu = initCpu();
   const memory = new Uint8Array(0x10000);
+  const romRanges = options?.romRanges ?? [];
+  const isRomAddress = (addr: number): boolean => {
+    for (const range of romRanges) {
+      if (addr >= range.start && addr <= range.end) {
+        return true;
+      }
+    }
+    return false;
+  };
   const io: Required<IoHandlers> = {
     read: ioHandlers?.read ?? ((_port: number): number => 0),
     write:
@@ -82,6 +96,14 @@ export function createZ80Runtime(
       io.write(port & 0xffff, value & 0xff);
     },
     ioTick: (): TickResult | void => io.tick(),
+  };
+  hardware.memRead = (addr: number): number => memory[addr & 0xffff] ?? 0;
+  hardware.memWrite = (addr: number, value: number): void => {
+    const masked = addr & 0xffff;
+    if (isRomAddress(masked)) {
+      return;
+    }
+    memory[masked] = value & 0xff;
   };
   cpu.hardware = hardware;
   hardware.cpu = cpu;
@@ -114,9 +136,9 @@ function loadProgram(
   cpu.halted = false;
 }
 
-function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
+function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo | null {
   const pc = cpu.pc & 0xffff;
-  const opcode = memory[pc] ?? 0;
+  const opcode = memRead(pc) ?? 0;
   const returnAddressCall = (pc + 3) & 0xffff;
   const returnAddressRst = (pc + 1) & 0xffff;
 
@@ -171,7 +193,7 @@ function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
   }
 
   if (opcode === OP_PREFIX_ED) {
-    const opcode2 = memory[(pc + 1) & 0xffff] ?? 0;
+    const opcode2 = memRead((pc + 1) & 0xffff) ?? 0;
     if (ED_RET_OPCODES.has(opcode2)) {
       return { kind: 'ret', taken: true };
     }
@@ -183,6 +205,12 @@ function classifyStepOver(cpu: Cpu, memory: Uint8Array): StepInfo | null {
 function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
   const cpu = this.cpu;
   const hardware = this.hardware;
+  const memRead = hardware.memRead ?? ((addr: number) => hardware.memory[addr & 0xffff] ?? 0);
+  const memWrite =
+    hardware.memWrite ??
+    ((addr: number, value: number) => {
+      hardware.memory[addr & 0xffff] = value & 0xff;
+    });
   if (cpu.halted) {
     return { halted: true, pc: cpu.pc, reason: 'halt' };
   }
@@ -190,17 +218,15 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
     delete options.trace.kind;
     options.trace.taken = false;
     delete options.trace.returnAddress;
-    const stepInfo = classifyStepOver(cpu, hardware.memory);
+    const stepInfo = classifyStepOver(cpu, memRead);
     if (stepInfo) {
       Object.assign(options.trace, stepInfo);
     }
   }
 
   execute(cpu, {
-    mem_read: (addr: number) => hardware.memory[addr & 0xffff] ?? 0,
-    mem_write: (addr: number, value: number) => {
-      hardware.memory[addr & 0xffff] = value & 0xff;
-    },
+    mem_read: memRead,
+    mem_write: memWrite,
     io_read: (port: number) => hardware.ioRead(port & 0xffff),
     io_write: (port: number, value: number) => {
       hardware.ioWrite(port & 0xffff, value & 0xff);
@@ -213,10 +239,8 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
   if (tickResult?.interrupt !== undefined) {
     const irq = tickResult.interrupt;
     triggerInterrupt(cpu, {
-      mem_read: (addr: number) => hardware.memory[addr & 0xffff] ?? 0,
-      mem_write: (addr: number, value: number) => {
-        hardware.memory[addr & 0xffff] = value & 0xff;
-      },
+      mem_read: memRead,
+      mem_write: memWrite,
       io_read: (port: number) => hardware.ioRead(port & 0xffff),
       io_write: (port: number, value: number) => {
         hardware.ioWrite(port & 0xffff, value & 0xff);

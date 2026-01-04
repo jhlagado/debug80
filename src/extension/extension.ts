@@ -187,7 +187,15 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
           sourceFile: inferred.sourceFile,
           outputDir: inferred.outputDir,
           artifactBase: inferred.artifactBase,
-          entry: 0,
+          platform: 'simple',
+          simple: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 65535, kind: 'ram' },
+            ],
+            appStart: 0x0900,
+            entry: 0,
+          },
         },
       },
     };
