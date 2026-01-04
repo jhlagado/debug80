@@ -37,6 +37,9 @@ Required:
 - `segments`: array of mapping segments
 
 Optional:
+- `lstText`: string table for listing text
+- `segmentDefaults`: defaults applied to segments when fields are omitted
+- `symbolDefaults`: defaults applied to symbols when fields are omitted
 - `symbols`: array of symbol entries
 - `memory`: memory layout information
 - `generator`: toolchain metadata
@@ -79,7 +82,8 @@ Optional fields:
 - `confidence`: string enum: `high`, `medium`, `low`
 - `lst`: object with listing provenance:
   - `line`: number, listing line number
-  - `text`: string, listing asm text
+  - `text`: string, listing asm text (optional)
+  - `textId`: number, index into `lstText` (optional)
 - `includeChain`: array of strings, include path stack
 - `macro`: object with expansion details:
   - `name`: string
@@ -98,9 +102,30 @@ Example:
   "line": 12,
   "kind": "code",
   "confidence": "high",
-  "lst": { "line": 87, "text": "JP      APPSTART" }
+  "lst": { "line": 87, "textId": 0 }
 }
 ```
+
+### 2a) `lstText` (optional)
+
+`lstText` is a string table for listing text. When present, segments can
+reference `lst.textId` instead of repeating `lst.text` inline.
+
+Example:
+```json
+{
+  "lstText": ["JP      APPSTART"]
+}
+```
+
+### 2b) `segmentDefaults` (optional)
+
+Defaults applied when a segment omits the field.
+
+Fields:
+- `file`: string (default file for segments without `file`)
+- `kind`: string enum (default segment kind)
+- `confidence`: string enum (default confidence)
 
 ### 3) `symbols`
 
@@ -114,6 +139,14 @@ Fields:
 - `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
 - `scope`: string enum: `global`, `local`
 - `size`: number (optional, bytes)
+
+### 3a) `symbolDefaults` (optional)
+
+Defaults applied when a symbol omits the field.
+
+Fields:
+- `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
+- `scope`: string enum: `global`, `local`
 
 ### 4) `memory`
 
@@ -146,18 +179,17 @@ Fields:
 - `warnings`: array of strings
 - `errors`: array of strings
 
-## Integration with Debug80 (current)
+## Integration with Debug80
 
-- Debug80 currently parses `.lst` directly into in-memory segments and anchors.
-- No map file is emitted yet.
-- The in-memory structures correspond to this format and can be serialized.
+- Debug80 writes `build/main.d8dbg.json` alongside the build artifacts.
+- On launch, Debug80 loads the map if present; if missing or invalid, it
+  regenerates the map from the `.lst`.
 
-## Proposed workflow
+## Workflow
 
 1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
-2) Generate a map file (future):
-   - `build/main.d8dbg.json`
-3) Debug80 loads the map file if provided; otherwise it parses `.lst`.
+2) Debug80 writes `build/main.d8dbg.json`.
+3) Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not
 expected to be committed by default.
