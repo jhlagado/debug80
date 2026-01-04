@@ -187,7 +187,7 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
           sourceFile: inferred.sourceFile,
           outputDir: inferred.outputDir,
           artifactBase: inferred.artifactBase,
-          entry: 0,
+          platform: 'simple',
         },
       },
     };

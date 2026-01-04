@@ -5,7 +5,7 @@
       "sourceFile": "examples/echo.asm",
       "outputDir": "build",
       "artifactBase": "echo",
-      "entry": 0
+      "platform": "simple"
     }
   }
 }
