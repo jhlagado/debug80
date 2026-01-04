@@ -12,15 +12,26 @@ export interface D8DebugMap {
   arch: string;
   addressWidth: number;
   endianness: D8Endianness;
-  files: D8SourceFile[];
+  files: Record<string, D8FileEntry> | D8SourceFile[];
   lstText?: string[];
   segmentDefaults?: D8SegmentDefaults;
-  segments: D8Segment[];
+  segments?: D8Segment[];
   symbolDefaults?: D8SymbolDefaults;
   symbols?: D8Symbol[];
   memory?: D8MemoryLayout;
   generator?: D8Generator;
   diagnostics?: D8Diagnostics;
+}
+
+export interface D8FileEntry {
+  meta?: D8FileMeta;
+  segments?: D8Segment[];
+  symbols?: D8Symbol[];
+}
+
+export interface D8FileMeta {
+  sha256?: string;
+  lineCount?: number;
 }
 
 export interface D8SourceFile {
@@ -108,21 +119,33 @@ const KIND_SET = new Set<D8SegmentKind>(['code', 'data', 'directive', 'label', '
 const CONFIDENCE_SET = new Set<D8Confidence>(['high', 'medium', 'low']);
 const SYMBOL_KIND_SET = new Set<D8SymbolKind>(['label', 'constant', 'data', 'macro', 'unknown']);
 const SYMBOL_SCOPE_SET = new Set<D8SymbolScope>(['global', 'local']);
+const UNKNOWN_FILE_KEY = '';
 
 export function buildD8DebugMap(
   mapping: MappingParseResult,
   options: BuildD8MapOptions
 ): D8DebugMap {
-  const files = collectFiles(mapping);
   const segmentDefaults = buildSegmentDefaults(mapping);
   const symbolDefaults: D8SymbolDefaults = { kind: 'label', scope: 'global' };
 
   const lstText: string[] = [];
   const lstIndex = new Map<string, number>();
 
-  const segments: D8Segment[] = mapping.segments.map((segment) => {
+  const files: Record<string, D8FileEntry> = Object.create(null);
+
+  const ensureFileEntry = (file: string | null | undefined): D8FileEntry => {
+    const key = toFileKey(file);
+    let entry = files[key];
+    if (!entry) {
+      entry = {};
+      files[key] = entry;
+    }
+    return entry;
+  };
+
+  for (const segment of mapping.segments) {
+    const entry = ensureFileEntry(segment.loc.file);
     const conf = CONFIDENCE_MAP[segment.confidence];
-    const file = segment.loc.file;
     const line = segment.loc.line;
 
     const seg: D8Segment = {
@@ -130,12 +153,6 @@ export function buildD8DebugMap(
       end: segment.end,
       lst: { line: segment.lst.line },
     };
-
-    if (file === null) {
-      seg.file = null;
-    } else if (file !== undefined && file !== segmentDefaults.file) {
-      seg.file = file;
-    }
 
     if (line !== null && line !== undefined) {
       seg.line = line;
@@ -160,16 +177,21 @@ export function buildD8DebugMap(
       seg.lst.textId = textIndex;
     }
 
-    return seg;
-  });
+    if (!entry.segments) {
+      entry.segments = [];
+    }
+    entry.segments.push(seg);
+  }
 
-  const symbols = mapping.anchors.map((anchor) => {
+  for (const anchor of mapping.anchors) {
+    const entry = ensureFileEntry(anchor.file);
     const symbol: D8Symbol = {
       name: anchor.symbol,
       address: anchor.address,
-      file: anchor.file,
-      line: anchor.line,
     };
+    if (anchor.line !== undefined) {
+      symbol.line = anchor.line;
+    }
 
     if (symbolDefaults.kind && symbolDefaults.kind !== 'label') {
       symbol.kind = 'label';
@@ -178,8 +200,11 @@ export function buildD8DebugMap(
       symbol.scope = 'global';
     }
 
-    return symbol;
-  });
+    if (!entry.symbols) {
+      entry.symbols = [];
+    }
+    entry.symbols.push(symbol);
+  }
 
   return {
     format: 'd8-debug-map',
@@ -190,21 +215,26 @@ export function buildD8DebugMap(
     files,
     lstText,
     segmentDefaults,
-    segments,
     symbolDefaults,
-    symbols,
     ...(options.generator ? { generator: options.generator } : {}),
     ...(options.diagnostics ? { diagnostics: options.diagnostics } : {}),
   };
 }
 
 export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult {
+  if (Array.isArray(map.files)) {
+    return buildMappingFromLegacyDebugMap(map);
+  }
+  return buildMappingFromGroupedDebugMap(map);
+}
+
+function buildMappingFromLegacyDebugMap(map: D8DebugMap): MappingParseResult {
   const defaults = map.segmentDefaults ?? {};
   const defaultFile = defaults.file;
   const defaultConfidence = defaults.confidence ?? 'low';
   const lstText = map.lstText ?? [];
 
-  const segments: SourceMapSegment[] = map.segments.map((segment) => {
+  const segments: SourceMapSegment[] = (map.segments ?? []).map((segment) => {
     let file: string | null = null;
     if (segment.file === undefined) {
       file = defaultFile ?? null;
@@ -242,13 +272,76 @@ export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult 
   });
 
   const anchors: SourceMapAnchor[] = (map.symbols ?? [])
-    .filter((symbol) => symbol.file !== undefined && symbol.line !== undefined)
+    .filter(
+      (symbol) =>
+        symbol.file !== undefined &&
+        symbol.file !== null &&
+        symbol.line !== undefined &&
+        symbol.line !== null
+    )
     .map((symbol) => ({
       address: symbol.address,
       symbol: symbol.name,
       file: symbol.file as string,
       line: symbol.line as number,
     }));
+
+  return { segments, anchors };
+}
+
+function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
+  const defaultConfidence = map.segmentDefaults?.confidence ?? 'low';
+  const lstText = map.lstText ?? [];
+  const segments: SourceMapSegment[] = [];
+  const anchors: SourceMapAnchor[] = [];
+
+  const files = map.files as Record<string, D8FileEntry>;
+  for (const [fileKey, entry] of Object.entries(files)) {
+    const file = fromFileKey(fileKey);
+    for (const segment of entry.segments ?? []) {
+      const line = segment.line ?? null;
+      const confidence = segment.confidence ?? defaultConfidence;
+
+      let lstLine = 0;
+      let lstTextValue = '';
+      if (segment.lst) {
+        lstLine = segment.lst.line;
+        if (segment.lst.text !== undefined) {
+          lstTextValue = segment.lst.text;
+        } else if (segment.lst.textId !== undefined) {
+          lstTextValue = lstText[segment.lst.textId] ?? '';
+        }
+      }
+
+      segments.push({
+        start: segment.start,
+        end: segment.end,
+        loc: {
+          file,
+          line,
+        },
+        lst: {
+          line: lstLine,
+          text: lstTextValue,
+        },
+        confidence: CONFIDENCE_FROM_D8[confidence],
+      });
+    }
+
+    if (file !== null) {
+      for (const symbol of entry.symbols ?? []) {
+        if (symbol.line === undefined || symbol.line === null) {
+          continue;
+        }
+        anchors.push({
+          address: symbol.address,
+          symbol: symbol.name,
+          file,
+          line: symbol.line,
+        });
+      }
+    }
+  }
 
   return { segments, anchors };
 }
@@ -288,11 +381,8 @@ function validateD8DebugMap(value: unknown): string | undefined {
   if (value.endianness !== 'little' && value.endianness !== 'big') {
     return 'Missing endianness.';
   }
-  if (!Array.isArray(value.files)) {
-    return 'Missing files array.';
-  }
-  if (!Array.isArray(value.segments)) {
-    return 'Missing segments array.';
+  if (!isRecord(value.files) && !Array.isArray(value.files)) {
+    return 'Missing files map.';
   }
 
   if (value.segmentDefaults !== undefined) {
@@ -341,7 +431,9 @@ function validateD8DebugMap(value: unknown): string | undefined {
     return 'lstText must be an array when present.';
   }
 
-  for (const segment of value.segments) {
+  const lstTextLength = Array.isArray(value.lstText) ? value.lstText.length : undefined;
+
+  const validateSegment = (segment: unknown): string | undefined => {
     if (!isRecord(segment)) {
       return 'Segment entry must be an object.';
     }
@@ -379,11 +471,115 @@ function validateD8DebugMap(value: unknown): string | undefined {
         if (!Number.isFinite(textId)) {
           return 'Segment lst.textId must be a number.';
         }
-        const idx = Number(textId);
-        if (Array.isArray(value.lstText)) {
-          if (idx < 0 || idx >= value.lstText.length) {
+        if (lstTextLength !== undefined) {
+          const idx = Number(textId);
+          if (idx < 0 || idx >= lstTextLength) {
             return 'Segment lst.textId is out of range.';
           }
+        }
+      }
+    }
+    return undefined;
+  };
+
+  const validateSymbol = (symbol: unknown): string | undefined => {
+    if (!isRecord(symbol)) {
+      return 'Symbol entry must be an object.';
+    }
+    if (typeof symbol.name !== 'string' || symbol.name.length === 0) {
+      return 'Symbol name must be a string.';
+    }
+    if (!Number.isFinite(symbol.address)) {
+      return 'Symbol address must be a number.';
+    }
+    if (
+      symbol.file !== undefined &&
+      symbol.file !== null &&
+      typeof symbol.file !== 'string'
+    ) {
+      return 'Symbol file must be a string or null.';
+    }
+    if (symbol.line !== undefined && symbol.line !== null && !Number.isFinite(symbol.line)) {
+      return 'Symbol line must be a number or null.';
+    }
+    if (symbol.kind !== undefined && !SYMBOL_KIND_SET.has(symbol.kind as D8SymbolKind)) {
+      return 'Symbol kind is invalid.';
+    }
+    if (symbol.scope !== undefined && !SYMBOL_SCOPE_SET.has(symbol.scope as D8SymbolScope)) {
+      return 'Symbol scope is invalid.';
+    }
+    return undefined;
+  };
+
+  if (Array.isArray(value.files)) {
+    for (const fileEntry of value.files) {
+      if (!isRecord(fileEntry) || typeof fileEntry.path !== 'string') {
+        return 'File entry must include a path string.';
+      }
+      if (fileEntry.sha256 !== undefined && typeof fileEntry.sha256 !== 'string') {
+        return 'File sha256 must be a string.';
+      }
+      if (fileEntry.lineCount !== undefined && !Number.isFinite(fileEntry.lineCount)) {
+        return 'File lineCount must be a number.';
+      }
+    }
+    if (!Array.isArray(value.segments)) {
+      return 'Missing segments array.';
+    }
+    for (const segment of value.segments) {
+      const error = validateSegment(segment);
+      if (error) {
+        return error;
+      }
+    }
+    if (value.symbols !== undefined) {
+      if (!Array.isArray(value.symbols)) {
+        return 'Symbols must be an array.';
+      }
+      for (const symbol of value.symbols) {
+        const error = validateSymbol(symbol);
+        if (error) {
+          return error;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  for (const entry of Object.values(value.files)) {
+    if (!isRecord(entry)) {
+      return 'File entry must be an object.';
+    }
+    if (entry.meta !== undefined) {
+      if (!isRecord(entry.meta)) {
+        return 'File meta must be an object.';
+      }
+      if (entry.meta.sha256 !== undefined && typeof entry.meta.sha256 !== 'string') {
+        return 'File meta sha256 must be a string.';
+      }
+      if (entry.meta.lineCount !== undefined && !Number.isFinite(entry.meta.lineCount)) {
+        return 'File meta lineCount must be a number.';
+      }
+    }
+    if (entry.segments !== undefined) {
+      if (!Array.isArray(entry.segments)) {
+        return 'File segments must be an array.';
+      }
+      for (const segment of entry.segments) {
+        const error = validateSegment(segment);
+        if (error) {
+          return error;
+        }
+      }
+    }
+    if (entry.symbols !== undefined) {
+      if (!Array.isArray(entry.symbols)) {
+        return 'File symbols must be an array.';
+      }
+      for (const symbol of entry.symbols) {
+        const error = validateSymbol(symbol);
+        if (error) {
+          return error;
         }
       }
     }
@@ -393,24 +589,16 @@ function validateD8DebugMap(value: unknown): string | undefined {
 }
 
 function buildSegmentDefaults(mapping: MappingParseResult): D8SegmentDefaults {
-  const fileCounts = new Map<string, number>();
   const confidenceCounts = new Map<D8Confidence, number>();
 
   for (const segment of mapping.segments) {
-    if (segment.loc.file) {
-      fileCounts.set(segment.loc.file, (fileCounts.get(segment.loc.file) ?? 0) + 1);
-    }
     const conf = CONFIDENCE_MAP[segment.confidence];
     confidenceCounts.set(conf, (confidenceCounts.get(conf) ?? 0) + 1);
   }
 
-  const fileDefault = pickMostCommon(fileCounts, mapping.segments.length, true);
   const confidenceDefault = pickMostCommon(confidenceCounts, mapping.segments.length, false);
 
   const defaults: D8SegmentDefaults = { kind: 'unknown' };
-  if (fileDefault !== undefined) {
-    defaults.file = fileDefault;
-  }
   if (confidenceDefault !== undefined) {
     defaults.confidence = confidenceDefault;
   }
@@ -439,26 +627,12 @@ function pickMostCommon<T>(
   return best;
 }
 
-function collectFiles(mapping: MappingParseResult): D8SourceFile[] {
-  const seen = new Set<string>();
-  const files: D8SourceFile[] = [];
+function toFileKey(file: string | null | undefined): string {
+  return file ? file : UNKNOWN_FILE_KEY;
+}
 
-  const add = (file: string | null | undefined): void => {
-    if (!file || seen.has(file)) {
-      return;
-    }
-    seen.add(file);
-    files.push({ path: file });
-  };
-
-  for (const anchor of mapping.anchors) {
-    add(anchor.file);
-  }
-  for (const segment of mapping.segments) {
-    add(segment.loc.file);
-  }
-
-  return files;
+function fromFileKey(fileKey: string): string | null {
+  return fileKey === UNKNOWN_FILE_KEY ? null : fileKey;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
