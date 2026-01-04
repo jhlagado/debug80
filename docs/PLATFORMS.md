@@ -253,24 +253,42 @@ map and port allocation left as configurable values.
 }
 ```
 
-### TEC-1 (draft)
+### TEC-1 (v0.1)
 
-TEC-1 is simple and well suited for early emulation:
+TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
 - ROM: 0x0000 - 0x07ff (0 - 2047)
 - RAM: 0x0800 - 0x0fff (2048 - 4095, 2 KB)
+- Entry: 0x0000 (0), user programs start at 0x0800 (2048)
 
 ```json
 {
   "platform": "tec1",
   "tec1": {
-    "rom": "roms/tec1.rom",
-    "ramStart": 2048,
-    "ramEnd": 4096,
-    "keypad": { "port": 0 },
-    "display": { "port": 1 }
+    "regions": [
+      { "start": 0, "end": 2047, "kind": "rom" },
+      { "start": 2048, "end": 4095, "kind": "ram" }
+    ],
+    "appStart": 2048,
+    "entry": 0
   }
 }
 ```
+
+I/O map:
+- IN 0x00: keycode (0x00–0x0f hex digits, 0x10 ADDRESS, 0x11 UP, 0x12 GO, 0x13 DOWN)
+- OUT 0x01: digit select (bits 0–5, one-hot) + speaker on bit 7 (latched)
+- OUT 0x02: segment bits (latched)
+- NMI at 0x0066 on keypress
+
+Segment bit mapping (PORTSEGS):
+- 0x01 = a (top)
+- 0x02 = f (upper-left)
+- 0x04 = g (middle)
+- 0x08 = b (upper-right)
+- 0x10 = dp (decimal point)
+- 0x20 = c (lower-right)
+- 0x40 = e (lower-left)
+- 0x80 = d (bottom)
 
 ## Build and launch flow
 

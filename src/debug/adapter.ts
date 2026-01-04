@@ -35,6 +35,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
   simple?: SimplePlatformConfig;
+  tec1?: Tec1PlatformConfig;
 }
 
 interface TerminalConfig {
@@ -68,6 +69,19 @@ interface SimplePlatformConfigNormalized {
   binTo: number | undefined;
 }
 
+interface Tec1PlatformConfig {
+  regions?: SimpleMemoryRegion[];
+  appStart?: number;
+  entry?: number;
+}
+
+interface Tec1PlatformConfigNormalized {
+  regions: SimpleMemoryRegion[];
+  romRanges: Array<{ start: number; end: number }>;
+  appStart: number;
+  entry: number;
+}
+
 interface TerminalState {
   config: TerminalConfigNormalized;
   input: number[];
@@ -79,6 +93,17 @@ interface TerminalConfigNormalized {
   rxPort: number;
   statusPort: number;
   interrupt: boolean;
+}
+
+interface Tec1State {
+  digits: number[];
+  digitLatch: number;
+  segmentLatch: number;
+  speaker: boolean;
+  keyValue: number;
+  nmiPending: boolean;
+  lastUpdateMs: number;
+  pendingUpdate: boolean;
 }
 
 const THREAD_ID = 1;
@@ -105,6 +130,7 @@ export class Z80DebugSession extends DebugSession {
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
+  private tec1State: Tec1State | undefined;
 
   public constructor() {
     super();
@@ -145,6 +171,7 @@ export class Z80DebugSession extends DebugSession {
     this.sourceRoots = [];
     this.baseDir = process.cwd();
     this.terminalState = undefined;
+    this.tec1State = undefined;
     this.lastStopReason = undefined;
     this.lastBreakpointAddress = null;
     this.skipBreakpointOnce = null;
@@ -181,6 +208,9 @@ export class Z80DebugSession extends DebugSession {
       const platform = this.normalizePlatformName(merged);
       const simpleConfig =
         platform === 'simple' ? this.normalizeSimpleConfig(merged) : undefined;
+      const tec1Config =
+        platform === 'tec1' ? this.normalizeTec1Config(merged) : undefined;
+      this.sendEvent(new DapEvent('debug80/platform', { id: platform }));
 
       const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
@@ -245,12 +275,17 @@ export class Z80DebugSession extends DebugSession {
       this.mapping = buildMappingFromD8DebugMap(debugMap);
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
 
-      const ioHandlers = this.buildIoHandlers(merged);
+      const ioHandlers = this.buildIoHandlers(platform, merged);
       const runtimeOptions =
-        platform === 'simple' && simpleConfig
-          ? { romRanges: simpleConfig.romRanges }
+        (platform === 'simple' && simpleConfig) || (platform === 'tec1' && tec1Config)
+          ? { romRanges: (simpleConfig ?? tec1Config)?.romRanges ?? [] }
           : undefined;
-      const entry = platform === 'simple' ? simpleConfig?.entry : merged.entry;
+      const entry =
+        platform === 'simple'
+          ? simpleConfig?.entry
+          : platform === 'tec1'
+            ? tec1Config?.entry
+            : merged.entry;
       this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
@@ -601,6 +636,7 @@ export class Z80DebugSession extends DebugSession {
     this.runtime = undefined;
     this.haltNotified = false;
     this.terminalState = undefined;
+    this.tec1State = undefined;
     this.sendResponse(response);
   }
 
@@ -627,6 +663,24 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       this.terminalState.breakRequested = true;
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1Key') {
+      if (this.tec1State === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
+        return;
+      }
+      const payload = args as { code?: unknown };
+      const code = Number.isFinite(payload.code as number)
+        ? (payload.code as number)
+        : undefined;
+      if (code === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
+        return;
+      }
+      this.tec1State.keyValue = code & 0xff;
+      this.tec1State.nmiPending = true;
       this.sendResponse(response);
       return;
     }
@@ -1045,7 +1099,7 @@ export class Z80DebugSession extends DebugSession {
     if (name === '') {
       return 'simple';
     }
-    if (name !== 'simple') {
+    if (name !== 'simple' && name !== 'tec1') {
       throw new Error(`Unsupported platform "${raw}".`);
     }
     return name;
@@ -1129,12 +1183,17 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private normalizeSimpleRegions(regions?: SimpleMemoryRegion[]): SimpleMemoryRegion[] {
-    if (!Array.isArray(regions) || regions.length === 0) {
-      return [
+  private normalizeSimpleRegions(
+    regions?: SimpleMemoryRegion[],
+    fallback?: SimpleMemoryRegion[]
+  ): SimpleMemoryRegion[] {
+    const defaults =
+      fallback ?? [
         { start: 0x0000, end: 0x07ff, kind: 'rom' },
         { start: 0x0800, end: 0xffff, kind: 'ram' },
       ];
+    if (!Array.isArray(regions) || regions.length === 0) {
+      return defaults;
     }
 
     const normalized: SimpleMemoryRegion[] = [];
@@ -1154,12 +1213,32 @@ export class Z80DebugSession extends DebugSession {
       normalized.push(entry);
     }
     if (normalized.length === 0) {
-      return [
-        { start: 0x0000, end: 0x07ff, kind: 'rom' },
-        { start: 0x0800, end: 0xffff, kind: 'ram' },
-      ];
+      return defaults;
     }
     return normalized;
+  }
+
+  private normalizeTec1Config(args: LaunchRequestArguments): Tec1PlatformConfigNormalized {
+    const cfg = args.tec1 ?? {};
+    const regions = this.normalizeSimpleRegions(cfg.regions, [
+      { start: 0x0000, end: 0x07ff, kind: 'rom' },
+      { start: 0x0800, end: 0x0fff, kind: 'ram' },
+    ]);
+    const romRanges = regions
+      .filter((region) => region.kind === 'rom' || region.readOnly === true)
+      .map((region) => ({ start: region.start, end: region.end }));
+    const appStart =
+      Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0800;
+    const entry =
+      Number.isFinite(cfg.entry) && cfg.entry !== undefined
+        ? cfg.entry
+        : romRanges[0]?.start ?? 0x0000;
+    return {
+      regions,
+      romRanges,
+      appStart: Math.max(0, Math.min(0xffff, appStart)),
+      entry: Math.max(0, Math.min(0xffff, entry)),
+    };
   }
 
   private normalizeStepLimit(value: number | undefined, fallback: number): number {
@@ -1258,7 +1337,14 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private buildIoHandlers(args: LaunchRequestArguments): IoHandlers | undefined {
+  private buildIoHandlers(
+    platform: string,
+    args: LaunchRequestArguments
+  ): IoHandlers | undefined {
+    if (platform === 'tec1') {
+      return this.buildTec1IoHandlers();
+    }
+
     const cfg = args.terminal;
     if (cfg === undefined) {
       return undefined;
@@ -1307,6 +1393,120 @@ export class Z80DebugSession extends DebugSession {
     };
 
     return ioHandlers;
+  }
+
+  private buildTec1IoHandlers(): IoHandlers {
+    this.tec1State = {
+      digits: Array.from({ length: 6 }, () => 0),
+      digitLatch: 0,
+      segmentLatch: 0,
+      speaker: false,
+      keyValue: 0xff,
+      nmiPending: false,
+      lastUpdateMs: 0,
+      pendingUpdate: false,
+    };
+
+    const updateDisplay = (): void => {
+      const state = this.tec1State;
+      if (!state) {
+        return;
+      }
+      const mask = state.digitLatch & 0x3f;
+      if (mask === 0) {
+        return;
+      }
+      for (let i = 0; i < state.digits.length; i += 1) {
+        if (mask & (1 << i)) {
+          state.digits[i] = state.segmentLatch & 0xff;
+        }
+      }
+      this.queueTec1Update();
+    };
+
+    const ioHandlers: IoHandlers = {
+      read: (port: number): number => {
+        const p = port & 0xff;
+        const state = this.tec1State;
+        if (!state) {
+          return 0xff;
+        }
+        if (p === 0x00) {
+          return state.keyValue & 0xff;
+        }
+        return 0xff;
+      },
+      write: (port: number, value: number): void => {
+        const p = port & 0xff;
+        const state = this.tec1State;
+        if (!state) {
+          return;
+        }
+        if (p === 0x01) {
+          state.digitLatch = value & 0xff;
+          state.speaker = (value & 0x80) !== 0;
+          updateDisplay();
+          return;
+        }
+        if (p === 0x02) {
+          state.segmentLatch = value & 0xff;
+          updateDisplay();
+        }
+      },
+      tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
+        const state = this.tec1State;
+        if (!state) {
+          return undefined;
+        }
+        this.flushTec1Update();
+        if (state.nmiPending) {
+          state.nmiPending = false;
+          return { interrupt: { nonMaskable: true, data: 0x66 } };
+        }
+        return undefined;
+      },
+    };
+
+    return ioHandlers;
+  }
+
+  private queueTec1Update(): void {
+    const state = this.tec1State;
+    if (!state) {
+      return;
+    }
+    const now = Date.now();
+    if (now - state.lastUpdateMs >= 16) {
+      state.lastUpdateMs = now;
+      state.pendingUpdate = false;
+      this.sendEvent(
+        new DapEvent('debug80/tec1Update', {
+          digits: [...state.digits],
+          speaker: state.speaker ? 1 : 0,
+        })
+      );
+      return;
+    }
+    state.pendingUpdate = true;
+  }
+
+  private flushTec1Update(): void {
+    const state = this.tec1State;
+    if (!state || !state.pendingUpdate) {
+      return;
+    }
+    const now = Date.now();
+    if (now - state.lastUpdateMs < 16) {
+      return;
+    }
+    state.lastUpdateMs = now;
+    state.pendingUpdate = false;
+    this.sendEvent(
+      new DapEvent('debug80/tec1Update', {
+        digits: [...state.digits],
+        speaker: state.speaker ? 1 : 0,
+      })
+    );
   }
 
   private findAsm80Binary(startDir: string): string | undefined {
