@@ -178,7 +178,9 @@ Terminal I/O is still configurable via the `terminal` block.
       { "start": 2048, "end": 65535, "kind": "ram" }
     ],
     "appStart": 2304,
-    "entry": 0
+    "entry": 0,
+    "binFrom": 2304,
+    "binTo": 65535
   },
   "terminal": {
     "rxPort": 16,
@@ -202,6 +204,7 @@ Notes:
 - `simple.regions[].readOnly` forces read-only for non-ROM regions (optional).
 - `simple.appStart` is the expected entry address for user code (ORG).
 - `simple.entry` is the CPU start address (default first ROM region start).
+- `simple.binFrom`/`simple.binTo` optionally trigger an extra asm80 pass that emits `.bin`.
 
 ### CP/M (draft)
 

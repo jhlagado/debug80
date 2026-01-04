@@ -34,7 +34,9 @@ Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80
           { "start": 2048, "end": 65535, "kind": "ram" }
         ],
         "appStart": 2304,
-        "entry": 0
+        "entry": 0,
+        "binFrom": 2304,
+        "binTo": 65535
       }
     }
   }
@@ -46,6 +48,7 @@ Fields per target:
 - `artifactBase`: basename for artifacts
 - `platform`: currently `simple`
 - `simple`: platform config (memory `regions` with `kind` + `readOnly`; CPU starts at 0x0000 / 0, app at 0x0900 / 2304)
+- `simple.binFrom`/`simple.binTo`: optional, emits a `.bin` via an extra asm80 pass
 - `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).
 - `hex`, `listing`: optional explicit paths (override defaults)
 - `entry`: optional entry point override (non-simple platforms)
