@@ -269,10 +269,15 @@ TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
       { "start": 2048, "end": 4095, "kind": "ram" }
     ],
     "appStart": 2048,
-    "entry": 0
+    "entry": 0,
+    "romHex": "roms/tec1/mon-1b.hex"
   }
 }
 ```
+
+`romHex` points at an Intel HEX file for the monitor ROM. If you already have a
+TypeScript module like `MON-1B.ts` that exports a template string, Debug80 will
+accept that file and extract the embedded HEX string.
 
 I/O map:
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x10 ADDRESS, 0x11 UP, 0x12 GO, 0x13 DOWN)
@@ -289,6 +294,22 @@ Segment bit mapping (PORTSEGS):
 - 0x20 = c (lower-right)
 - 0x40 = e (lower-left)
 - 0x80 = d (bottom)
+
+Minimal RAM program example (ORG 0x0800) that shows a single digit:
+
+```asm
+        ORG 0x0800
+
+loop:   LD  A, 0x01       ; select rightmost digit (bit 0)
+        OUT (0x01), A
+        LD  A, 0xEB       ; "0" segment pattern from HEXSEGTBL
+        OUT (0x02), A
+        JP  loop
+```
+
+Build it with asm80 (or let Debug80 assemble it), then run the ROM monitor and
+press ADDRESS to 0800 followed by GO. The ROM keeps scanning once your program
+takes over, so your code should refresh the display as needed.
 
 ## Build and launch flow
 
