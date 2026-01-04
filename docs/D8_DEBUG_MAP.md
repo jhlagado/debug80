@@ -33,34 +33,54 @@ Required:
 - `arch`: string (e.g. `z80`, `6502`, `6809`)
 - `addressWidth`: number of address bits (e.g. `16`, `24`)
 - `endianness`: `little` or `big`
-- `files`: array of source file entries
-- `segments`: array of mapping segments
+- `files`: object keyed by source file paths
 
 Optional:
-- `symbols`: array of symbol entries
+- `lstText`: string table for listing text
+- `segmentDefaults`: defaults applied to segments when fields are omitted
+- `symbolDefaults`: defaults applied to symbols when fields are omitted
 - `memory`: memory layout information
 - `generator`: toolchain metadata
 - `diagnostics`: warnings or errors recorded during map creation
 
 ### 1) `files`
 
-Each entry describes a source file referenced by the map.
+`files` is an object keyed by source path (project-relative, `/` separators).
+Each entry groups segments and symbols for that file, which removes repeated
+`file` fields.
 
-Required fields:
-- `path`: string. Prefer a project-relative path with `/` separators.
+File entry fields:
+- `segments`: array of mapping segments (optional)
+- `symbols`: array of symbol entries (optional)
+- `meta`: optional file metadata
 
-Optional fields:
+Meta fields:
 - `sha256`: string (hex), hash of file contents
 - `lineCount`: number, total lines in the file
 
 Example:
 ```json
 {
-  "path": "src/main.asm",
-  "sha256": "b6d81b360a5672d80c27430f39153e2c",
-  "lineCount": 120
+  "files": {
+    "src/main.asm": {
+      "meta": {
+        "sha256": "b6d81b360a5672d80c27430f39153e2c",
+        "lineCount": 120
+      },
+      "segments": [
+        { "start": 2304, "end": 2307, "line": 12, "lstLine": 87, "lstTextId": 0 }
+      ],
+      "symbols": [
+        { "name": "START", "address": 2304, "line": 12 }
+      ]
+    }
+  }
 }
 ```
+
+Notes:
+- The empty string key `""` is reserved for segments/symbols with no known
+  source file.
 
 ### 2) `segments`
 
@@ -69,17 +89,15 @@ Each segment maps a byte range to a source location.
 Required fields:
 - `start`: number, start address (0..65535)
 - `end`: number, end address (exclusive)
+- `lstLine`: number, listing line number
 
 Optional fields:
-- `file`: string (or null when unknown), should match a `files[].path` when present
 - `line`: number (or null when unknown), 1-based line number
-
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
 - `confidence`: string enum: `high`, `medium`, `low`
-- `lst`: object with listing provenance:
-  - `line`: number, listing line number
-  - `text`: string, listing asm text
+- `lstText`: string, listing asm text (optional)
+- `lstTextId`: number, index into `lstText` (optional)
 - `includeChain`: array of strings, include path stack
 - `macro`: object with expansion details:
   - `name`: string
@@ -94,13 +112,33 @@ Example:
 {
   "start": 2304,
   "end": 2307,
-  "file": "src/main.asm",
   "line": 12,
   "kind": "code",
   "confidence": "high",
-  "lst": { "line": 87, "text": "JP      APPSTART" }
+  "lstLine": 87,
+  "lstTextId": 0
 }
 ```
+
+### 2a) `lstText` (optional)
+
+`lstText` is a string table for listing text. When present, segments can
+reference `lstTextId` instead of repeating `lstText` inline.
+
+Example:
+```json
+{
+  "lstText": ["JP      APPSTART"]
+}
+```
+
+### 2b) `segmentDefaults` (optional)
+
+Defaults applied when a segment omits the field.
+
+Fields:
+- `kind`: string enum (default segment kind)
+- `confidence`: string enum (default confidence)
 
 ### 3) `symbols`
 
@@ -109,11 +147,18 @@ Symbols describe labels, constants, and data locations.
 Fields:
 - `name`: string
 - `address`: number (0..65535)
-- `file`: string (optional)
 - `line`: number (optional)
 - `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
 - `scope`: string enum: `global`, `local`
 - `size`: number (optional, bytes)
+
+### 3a) `symbolDefaults` (optional)
+
+Defaults applied when a symbol omits the field.
+
+Fields:
+- `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
+- `scope`: string enum: `global`, `local`
 
 ### 4) `memory`
 
@@ -146,18 +191,18 @@ Fields:
 - `warnings`: array of strings
 - `errors`: array of strings
 
-## Integration with Debug80 (current)
 
-- Debug80 currently parses `.lst` directly into in-memory segments and anchors.
-- No map file is emitted yet.
-- The in-memory structures correspond to this format and can be serialized.
+## Integration with Debug80
 
-## Proposed workflow
+- Debug80 writes `build/main.d8dbg.json` alongside the build artifacts.
+- On launch, Debug80 loads the map if present; if missing or invalid, it
+  regenerates the map from the `.lst`.
+
+## Workflow
 
 1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
-2) Generate a map file (future):
-   - `build/main.d8dbg.json`
-3) Debug80 loads the map file if provided; otherwise it parses `.lst`.
+2) Debug80 writes `build/main.d8dbg.json`.
+3) Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not
 expected to be committed by default.
