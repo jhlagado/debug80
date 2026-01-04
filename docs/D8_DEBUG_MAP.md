@@ -33,37 +33,54 @@ Required:
 - `arch`: string (e.g. `z80`, `6502`, `6809`)
 - `addressWidth`: number of address bits (e.g. `16`, `24`)
 - `endianness`: `little` or `big`
-- `files`: array of source file entries
-- `segments`: array of mapping segments
+- `files`: object keyed by source file paths
 
 Optional:
 - `lstText`: string table for listing text
 - `segmentDefaults`: defaults applied to segments when fields are omitted
 - `symbolDefaults`: defaults applied to symbols when fields are omitted
-- `symbols`: array of symbol entries
 - `memory`: memory layout information
 - `generator`: toolchain metadata
 - `diagnostics`: warnings or errors recorded during map creation
 
 ### 1) `files`
 
-Each entry describes a source file referenced by the map.
+`files` is an object keyed by source path (project-relative, `/` separators).
+Each entry groups segments and symbols for that file, which removes repeated
+`file` fields.
 
-Required fields:
-- `path`: string. Prefer a project-relative path with `/` separators.
+File entry fields:
+- `segments`: array of mapping segments (optional)
+- `symbols`: array of symbol entries (optional)
+- `meta`: optional file metadata
 
-Optional fields:
+Meta fields:
 - `sha256`: string (hex), hash of file contents
 - `lineCount`: number, total lines in the file
 
 Example:
 ```json
 {
-  "path": "src/main.asm",
-  "sha256": "b6d81b360a5672d80c27430f39153e2c",
-  "lineCount": 120
+  "files": {
+    "src/main.asm": {
+      "meta": {
+        "sha256": "b6d81b360a5672d80c27430f39153e2c",
+        "lineCount": 120
+      },
+      "segments": [
+        { "start": 2304, "end": 2307, "line": 12, "lst": { "line": 87, "textId": 0 } }
+      ],
+      "symbols": [
+        { "name": "START", "address": 2304, "line": 12 }
+      ]
+    }
+  }
 }
 ```
+
+Notes:
+- The empty string key `""` is reserved for segments/symbols with no known
+  source file.
 
 ### 2) `segments`
 
@@ -74,9 +91,7 @@ Required fields:
 - `end`: number, end address (exclusive)
 
 Optional fields:
-- `file`: string (or null when unknown), should match a `files[].path` when present
 - `line`: number (or null when unknown), 1-based line number
-
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
 - `confidence`: string enum: `high`, `medium`, `low`
@@ -98,7 +113,6 @@ Example:
 {
   "start": 2304,
   "end": 2307,
-  "file": "src/main.asm",
   "line": 12,
   "kind": "code",
   "confidence": "high",
@@ -123,7 +137,7 @@ Example:
 Defaults applied when a segment omits the field.
 
 Fields:
-- `file`: string (default file for segments without `file`)
+- `file`: string (legacy row-wise maps only; ignored in file-grouped layout)
 - `kind`: string enum (default segment kind)
 - `confidence`: string enum (default confidence)
 
@@ -134,7 +148,6 @@ Symbols describe labels, constants, and data locations.
 Fields:
 - `name`: string
 - `address`: number (0..65535)
-- `file`: string (optional)
 - `line`: number (optional)
 - `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
 - `scope`: string enum: `global`, `local`
@@ -178,6 +191,13 @@ Optional warnings/errors encountered during map creation.
 Fields:
 - `warnings`: array of strings
 - `errors`: array of strings
+
+## Legacy v1 layout
+
+Earlier v1 maps used a `files` array with top-level `segments` and `symbols`
+entries that repeated `file` on each record. Debug80 still accepts that layout
+for backward compatibility, but it now writes the file-grouped layout described
+above.
 
 ## Integration with Debug80
 

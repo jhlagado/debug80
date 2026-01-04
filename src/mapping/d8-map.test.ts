@@ -45,18 +45,26 @@ test('D8 map uses defaults and lstText table', () => {
   });
 
   assert.equal(map.version, 1);
-  assert.equal(map.segmentDefaults?.file, 'src/main.asm');
   assert.equal(map.segmentDefaults?.kind, 'unknown');
   assert.equal(map.segmentDefaults?.confidence, 'high');
   assert.equal(map.symbolDefaults?.kind, 'label');
   assert.equal(map.symbolDefaults?.scope, 'global');
   assert.equal(map.lstText?.length, 3);
 
-  assert.equal(map.segments[0]?.file, undefined);
-  assert.equal(map.segments[0]?.confidence, undefined);
-  assert.equal(map.segments[2]?.confidence, 'low');
-  assert.equal(map.segments[0]?.lst?.text, undefined);
-  assert.equal(typeof map.segments[0]?.lst?.textId, 'number');
+  assert.ok(!Array.isArray(map.files));
+  const fileEntry = (map.files as Record<string, { segments?: unknown[] }>)['src/main.asm'];
+  assert.ok(fileEntry);
+  assert.ok(fileEntry.segments);
+  const segments = fileEntry.segments as Array<{
+    file?: string;
+    confidence?: string;
+    lst?: { text?: string; textId?: number };
+  }>;
+  assert.equal(segments[0]?.file, undefined);
+  assert.equal(segments[0]?.confidence, undefined);
+  assert.equal(segments[2]?.confidence, 'low');
+  assert.equal(segments[0]?.lst?.text, undefined);
+  assert.equal(typeof segments[0]?.lst?.textId, 'number');
 
   const { map: parsed, error } = parseD8DebugMap(JSON.stringify(map));
   assert.equal(error, undefined);
