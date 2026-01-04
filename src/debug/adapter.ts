@@ -45,15 +45,21 @@ interface TerminalConfig {
 }
 
 interface SimplePlatformConfig {
-  romStart?: number;
-  romEnd?: number;
+  regions?: SimpleMemoryRegion[];
   appStart?: number;
   entry?: number;
 }
 
+interface SimpleMemoryRegion {
+  start: number;
+  end: number;
+  kind?: 'rom' | 'ram' | 'unknown';
+  readOnly?: boolean;
+}
+
 interface SimplePlatformConfigNormalized {
-  romStart: number;
-  romEnd: number;
+  regions: SimpleMemoryRegion[];
+  romRanges: Array<{ start: number; end: number }>;
   appStart: number;
   entry: number;
 }
@@ -238,7 +244,7 @@ export class Z80DebugSession extends DebugSession {
       const ioHandlers = this.buildIoHandlers(merged);
       const runtimeOptions =
         platform === 'simple' && simpleConfig
-          ? { romRanges: [{ start: simpleConfig.romStart, end: simpleConfig.romEnd }] }
+          ? { romRanges: simpleConfig.romRanges }
           : undefined;
       const entry = platform === 'simple' ? simpleConfig?.entry : merged.entry;
       this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
@@ -1043,20 +1049,55 @@ export class Z80DebugSession extends DebugSession {
 
   private normalizeSimpleConfig(args: LaunchRequestArguments): SimplePlatformConfigNormalized {
     const cfg = args.simple ?? {};
-    const romStart =
-      Number.isFinite(cfg.romStart) && cfg.romStart !== undefined ? cfg.romStart : 0x0000;
-    const romEnd =
-      Number.isFinite(cfg.romEnd) && cfg.romEnd !== undefined ? cfg.romEnd : 0x07ff;
+    const regions = this.normalizeSimpleRegions(cfg.regions);
+    const romRanges = regions
+      .filter((region) => region.kind === 'rom' || region.readOnly === true)
+      .map((region) => ({ start: region.start, end: region.end }));
     const appStart =
       Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0900;
     const entry =
-      Number.isFinite(cfg.entry) && cfg.entry !== undefined ? cfg.entry : romStart;
+      Number.isFinite(cfg.entry) && cfg.entry !== undefined
+        ? cfg.entry
+        : romRanges[0]?.start ?? 0x0000;
     return {
-      romStart: Math.max(0, Math.min(0xffff, romStart)),
-      romEnd: Math.max(0, Math.min(0xffff, romEnd)),
+      regions,
+      romRanges,
       appStart: Math.max(0, Math.min(0xffff, appStart)),
       entry: Math.max(0, Math.min(0xffff, entry)),
     };
+  }
+
+  private normalizeSimpleRegions(regions?: SimpleMemoryRegion[]): SimpleMemoryRegion[] {
+    if (!Array.isArray(regions) || regions.length === 0) {
+      return [
+        { start: 0x0000, end: 0x07ff, kind: 'rom' },
+        { start: 0x0800, end: 0xffff, kind: 'ram' },
+      ];
+    }
+
+    const normalized: SimpleMemoryRegion[] = [];
+    for (const region of regions) {
+      if (!region || !Number.isFinite(region.start) || !Number.isFinite(region.end)) {
+        continue;
+      }
+      let start = Math.max(0, Math.min(0xffff, region.start));
+      let end = Math.max(0, Math.min(0xffff, region.end));
+      if (end < start) {
+        [start, end] = [end, start];
+      }
+      const entry: SimpleMemoryRegion = { start, end, kind: region.kind ?? 'unknown' };
+      if (region.readOnly !== undefined) {
+        entry.readOnly = region.readOnly;
+      }
+      normalized.push(entry);
+    }
+    if (normalized.length === 0) {
+      return [
+        { start: 0x0000, end: 0x07ff, kind: 'rom' },
+        { start: 0x0800, end: 0xffff, kind: 'ram' },
+      ];
+    }
+    return normalized;
   }
 
   private normalizeStepLimit(value: number | undefined, fallback: number): number {

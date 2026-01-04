@@ -189,8 +189,10 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
           artifactBase: inferred.artifactBase,
           platform: 'simple',
           simple: {
-            romStart: 0,
-            romEnd: 0x07ff,
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 65535, kind: 'ram' },
+            ],
             appStart: 0x0900,
             entry: 0,
           },
