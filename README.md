@@ -43,7 +43,7 @@ Fields per target:
 - `outputDir`: where artifacts go
 - `artifactBase`: basename for artifacts
 - `platform`: currently `simple`
-- `simple`: platform config (ROM 0x0000–0x07ff, CPU starts at 0x0000, app at 0x0900)
+- `simple`: platform config (ROM 0x0000–0x07ff / 0–2047, CPU starts at 0x0000 / 0, app at 0x0900 / 2304)
 - `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).
 - `hex`, `listing`: optional explicit paths (override defaults)
 - `entry`: optional entry point override (non-simple platforms)
