@@ -185,10 +185,12 @@ Indexes built at launch:
 
 ### 9.4 D8 Debug Map (D8M) format
 
-Debug80 builds the mapping from the .lst, serializes it as a D8 debug map, then
-uses the D8 map as the canonical representation for debugging. The on-disk
-standard is documented in `docs/D8_DEBUG_MAP.md` and is designed to be
-assembler-agnostic while preserving the existing LST-derived confidence data.
+Debug80 uses the D8 map as the canonical mapping source for debugging. On
+launch it attempts to load `<artifactBase>.d8dbg.json`; if the map is missing or
+invalid, it regenerates the map from the .lst and writes it to disk, then uses
+the regenerated map for the session. The on-disk standard is documented in
+`docs/D8_DEBUG_MAP.md` and is designed to be assembler-agnostic while
+preserving the existing LST-derived confidence data.
 
 Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
 
