@@ -88,6 +88,8 @@ const CONFIDENCE_FROM_D8: Record<NonNullable<D8Segment['confidence']>, SourceMap
     medium: 'MEDIUM',
     low: 'LOW',
   };
+const KIND_SET = new Set<D8Segment['kind']>(['code', 'data', 'directive', 'label', 'macro', 'unknown']);
+const CONFIDENCE_SET = new Set<D8Segment['confidence']>(['high', 'medium', 'low']);
 
 export function buildD8DebugMap(
   mapping: MappingParseResult,
@@ -144,6 +146,77 @@ export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult 
     }));
 
   return { segments, anchors };
+}
+
+export function parseD8DebugMap(content: string): { map?: D8DebugMap; error?: string } {
+  let data: unknown;
+  try {
+    data = JSON.parse(content);
+  } catch (err) {
+    return { error: `Invalid JSON: ${String(err)}` };
+  }
+
+  const error = validateD8DebugMap(data);
+  if (error) {
+    return { error };
+  }
+
+  return { map: data as D8DebugMap };
+}
+
+function validateD8DebugMap(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return 'Expected a JSON object.';
+  }
+  if (value.format !== 'd8-debug-map') {
+    return 'Missing or invalid format field.';
+  }
+  if (value.version !== 1) {
+    return 'Unsupported D8 map version.';
+  }
+  if (typeof value.arch !== 'string' || value.arch.length === 0) {
+    return 'Missing arch.';
+  }
+  if (!Number.isFinite(value.addressWidth)) {
+    return 'Missing addressWidth.';
+  }
+  if (value.endianness !== 'little' && value.endianness !== 'big') {
+    return 'Missing endianness.';
+  }
+  if (!Array.isArray(value.files)) {
+    return 'Missing files array.';
+  }
+  if (!Array.isArray(value.segments)) {
+    return 'Missing segments array.';
+  }
+  for (const segment of value.segments) {
+    if (!isRecord(segment)) {
+      return 'Segment entry must be an object.';
+    }
+    if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end)) {
+      return 'Segment start/end must be numbers.';
+    }
+    if (segment.file !== null && segment.file !== undefined && typeof segment.file !== 'string') {
+      return 'Segment file must be a string or null.';
+    }
+    if (segment.line !== null && segment.line !== undefined && !Number.isFinite(segment.line)) {
+      return 'Segment line must be a number or null.';
+    }
+    if (segment.kind !== undefined && !KIND_SET.has(segment.kind as D8Segment['kind'])) {
+      return 'Segment kind is invalid.';
+    }
+    if (
+      segment.confidence !== undefined &&
+      !CONFIDENCE_SET.has(segment.confidence as D8Segment['confidence'])
+    ) {
+      return 'Segment confidence is invalid.';
+    }
+  }
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function collectFiles(mapping: MappingParseResult): D8SourceFile[] {
