@@ -163,9 +163,9 @@ export interface PlatformContext {
 ### Simple platform
 
 The current environment becomes the `simple` platform:
-- ROM region `0x0000`–`0x07ff` (system layer).
-- RAM region `0x0800`–`0xffff` (program + data).
-- CPU starts at `0x0000`, system init runs, then jumps to `0x0900`.
+- ROM region `0x0000`–`0x07ff` (`0`–`2047`) (system layer).
+- RAM region `0x0800`–`0xffff` (`2048`–`65535`) (program + data).
+- CPU starts at `0x0000` (`0`), system init runs, then jumps to `0x0900` (`2304`).
 
 Terminal I/O is still configurable via the `terminal` block.
 
@@ -201,7 +201,7 @@ Notes:
 
 ### CP/M (draft)
 
-CP/M is a well-known Z80 environment with a TPA that usually starts at 0x0100.
+CP/M is a well-known Z80 environment with a TPA that usually starts at 0x0100 (256).
 Exact BIOS/BDOS wiring varies by machine, so the platform keeps these as
 configurable values.
 
@@ -223,7 +223,7 @@ configurable values.
 ```
 
 Notes:
-- `entry` is the program start address (default 0x0100).
+- `entry` is the program start address (default 0x0100 / 256).
 - `biosEntry` and `bdosEntry` are optional and can be ignored until a BDOS
   emulation layer is implemented.
 
@@ -249,8 +249,8 @@ map and port allocation left as configurable values.
 ### TEC-1 (draft)
 
 TEC-1 is simple and well suited for early emulation:
-- ROM: 0x0000 - 0x07ff
-- RAM: 0x0800 - 0x0fff (2 KB)
+- ROM: 0x0000 - 0x07ff (0 - 2047)
+- RAM: 0x0800 - 0x0fff (2048 - 4095, 2 KB)
 
 ```json
 {
