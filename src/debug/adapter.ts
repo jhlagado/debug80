@@ -73,6 +73,7 @@ interface Tec1PlatformConfig {
   regions?: SimpleMemoryRegion[];
   appStart?: number;
   entry?: number;
+  romHex?: string;
 }
 
 interface Tec1PlatformConfigNormalized {
@@ -80,6 +81,7 @@ interface Tec1PlatformConfigNormalized {
   romRanges: Array<{ start: number; end: number }>;
   appStart: number;
   entry: number;
+  romHex?: string;
 }
 
 interface TerminalState {
@@ -238,6 +240,18 @@ export class Z80DebugSession extends DebugSession {
 
       const hexContent = fs.readFileSync(hexPath, 'utf-8');
       const program = parseIntelHex(hexContent);
+      if (platform === 'tec1' && tec1Config?.romHex) {
+        const romPath = this.resolveRelative(tec1Config.romHex, baseDir);
+        if (!fs.existsSync(romPath)) {
+          this.sendEvent(
+            new OutputEvent(`Debug80: TEC-1 ROM not found at "${romPath}".\n`, 'console')
+          );
+        } else {
+          const romContent = fs.readFileSync(romPath, 'utf-8');
+          const romHex = this.extractRomHex(romContent, romPath);
+          this.applyIntelHexToMemory(romHex, program.memory);
+        }
+      }
 
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
       this.listing = parseListing(listingContent);
@@ -1233,11 +1247,14 @@ export class Z80DebugSession extends DebugSession {
       Number.isFinite(cfg.entry) && cfg.entry !== undefined
         ? cfg.entry
         : romRanges[0]?.start ?? 0x0000;
+    const romHex =
+      typeof cfg.romHex === 'string' && cfg.romHex !== '' ? cfg.romHex : undefined;
     return {
       regions,
       romRanges,
       appStart: Math.max(0, Math.min(0xffff, appStart)),
       entry: Math.max(0, Math.min(0xffff, entry)),
+      ...(romHex ? { romHex } : {}),
     };
   }
 
@@ -1252,6 +1269,51 @@ export class Z80DebugSession extends DebugSession {
       return 0;
     }
     return Math.floor(value);
+  }
+
+  private applyIntelHexToMemory(content: string, memory: Uint8Array): void {
+    const lines = content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    for (const line of lines) {
+      if (!line.startsWith(':') || line.length < 11) {
+        continue;
+      }
+      const byteCount = parseInt(line.slice(1, 3), 16);
+      const address = parseInt(line.slice(3, 7), 16);
+      const recordType = parseInt(line.slice(7, 9), 16);
+      const dataString = line.slice(9, 9 + byteCount * 2);
+
+      if (recordType === 1) {
+        break;
+      }
+      if (recordType !== 0) {
+        continue;
+      }
+      for (let i = 0; i < byteCount; i += 1) {
+        const byteHex = dataString.slice(i * 2, i * 2 + 2);
+        const value = parseInt(byteHex, 16);
+        const loc = address + i;
+        if (loc >= 0 && loc < memory.length) {
+          memory[loc] = value & 0xff;
+        }
+      }
+    }
+  }
+
+  private extractRomHex(content: string, filePath: string): string {
+    const lower = filePath.toLowerCase();
+    if (lower.endsWith('.ts') || lower.endsWith('.js')) {
+      const match =
+        content.match(/ROM\s*=\s*`([\s\S]*?)`/) ??
+        content.match(/`([\s\S]*?)`/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return content;
   }
 
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
