@@ -83,6 +83,7 @@ export interface PlatformRuntime {
   io: IODeviceBus;
   onLoad?(ctx: PlatformContext): Promise<void> | void;
   onReset?(ctx: PlatformContext): void;
+  onStop?(): void;
   interrupts?: InterruptModel;
   memoryMap?: MemoryRegion[];
 }
@@ -98,6 +99,7 @@ export interface MemoryModel {
   write8(addr: number, value: number): void;
   load?(addr: number, bytes: Uint8Array): void;
   reset?(): void;
+  switchBank?(bank: number, slot?: number): void;
 }
 ```
 
@@ -123,6 +125,15 @@ export interface IODeviceBus {
   readPort(port: number): number;
   writePort(port: number, value: number): void;
   tick?(): void;
+  register?(device: IODevice): void;
+}
+
+export interface IODevice {
+  name: string;
+  ports: number[];
+  read(port: number): number;
+  write(port: number, value: number): void;
+  tick?(): void;
 }
 ```
 
@@ -138,6 +149,12 @@ export interface InterruptModel {
   raiseINT(): void;
   raiseNMI(): void;
   clearINT(): void;
+}
+
+export interface PlatformContext {
+  sendOutput(text: string, category: 'console' | 'terminal'): void;
+  raiseError(message: string): void;
+  getPC(): number;
 }
 ```
 
@@ -240,6 +257,11 @@ TEC-1 is simple and well suited for early emulation:
 2) Debug80 reads `platform` and instantiates the platform runtime.
 3) Platform sets up memory and devices, then the CPU runs normally.
 4) Mapping, breakpoints, and stepping are unchanged.
+
+Reset behavior:
+- A reset clears CPU and device state.
+- Debug80 reloads the HEX into memory after reset.
+- Platform `onReset` should reset device state and bank selection.
 
 ## v0.1 expectations
 
