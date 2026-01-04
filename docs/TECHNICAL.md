@@ -181,6 +181,12 @@ Indexes built at launch:
 - segmentsByFileLine (for breakpoint resolution)
 - anchorsByFile (for fallback when no exact line match exists)
 
+### 9.4 D8 Debug Map (D8M) format
+
+Debug80 currently builds the mapping in memory from the .lst. The proposed
+on-disk standard is documented in `docs/D8_DEBUG_MAP.md` and is designed to be
+assembler-agnostic while preserving the existing LST-derived confidence data.
+
 ## 10. Breakpoints and stack frames
 
 ### 10.1 Breakpoint resolution
