@@ -9,12 +9,7 @@ import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
 import { parseMapping, MappingParseResult } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
-import {
-  buildD8DebugMap,
-  buildMappingFromD8DebugMap,
-  parseD8DebugMap,
-  D8DebugMap,
-} from '../mapping/d8-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import {
   createZ80Runtime,
   Z80Runtime,
@@ -1306,7 +1301,7 @@ export class Z80DebugSession extends DebugSession {
     return roots.map((root) => this.resolveRelative(root, baseDir));
   }
 
-  private loadDebugMap(mapPath: string): D8DebugMap | undefined {
+  private loadDebugMap(mapPath: string): ReturnType<typeof buildD8DebugMap> | undefined {
     if (!fs.existsSync(mapPath)) {
       return undefined;
     }
