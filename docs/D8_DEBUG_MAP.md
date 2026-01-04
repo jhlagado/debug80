@@ -1,12 +1,8 @@
-# D8 Debug Map (D8M) v2
+# D8 Debug Map (D8M) v1
 
 This document defines a JSON mapping format for Z80 debugging. The intent is to
 support deterministic address-to-source mapping across assemblers, while still
 allowing best-effort maps derived from listings.
-
-Version 2 stores segment data in columnar arrays to reduce file size. Version 1
-(row-wise segments) is considered legacy but is still accepted for backwards
-compatibility.
 
 ## Naming
 
@@ -15,11 +11,15 @@ Format name: D8 Debug Map (D8M)
 Canonical file name:
 `<artifactBase>.d8dbg.json`
 
+Rationale: the name is explicit and namespaced to avoid collisions with other
+formats.
+
 ## Goals
 
 - Map instruction address ranges to source locations.
 - Capture symbol definitions for labels, constants, and data.
 - Represent data regions distinctly from executable code.
+- Support macro expansions and include chains where available.
 - Allow confidence flags when mappings are inferred.
 - Remain assembler-agnostic and stable across projects.
 
@@ -29,15 +29,14 @@ Top-level JSON object:
 
 Required:
 - `format`: string, must be `d8-debug-map`
-- `version`: number, must be `2`
+- `version`: number, must be `1`
 - `arch`: string (e.g. `z80`, `6502`, `6809`)
 - `addressWidth`: number of address bits (e.g. `16`, `24`)
 - `endianness`: `little` or `big`
 - `files`: array of source file entries
-- `segments`: columnar segment data
+- `segments`: array of mapping segments
 
 Optional:
-- `lstText`: array of listing text strings (string table)
 - `symbols`: array of symbol entries
 - `memory`: memory layout information
 - `generator`: toolchain metadata
@@ -54,23 +53,37 @@ Optional fields:
 - `sha256`: string (hex), hash of file contents
 - `lineCount`: number, total lines in the file
 
-### 2) `segments` (columnar)
+Example:
+```json
+{
+  "path": "src/main.asm",
+  "sha256": "b6d81b360a5672d80c27430f39153e2c",
+  "lineCount": 120
+}
+```
 
-`segments` is an object of parallel arrays. All arrays must be the same length.
-Each index maps one segment across all arrays.
+### 2) `segments`
 
-Required arrays:
-- `start`: number[] start address (0..65535)
-- `end`: number[] end address (exclusive)
-- `file`: (number|null)[] index into `files[]` or null
-- `line`: (number|null)[] 1-based line number or null
+Each segment maps a byte range to a source location.
 
-Optional arrays:
-- `column`: (number|null)[] 1-based column number
-- `kind`: (string|null)[] enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
-- `confidence`: (string|null)[] enum: `high`, `medium`, `low`
-- `lstLine`: (number|null)[] listing line number
-- `lstText`: (number|null)[] index into `lstText[]`
+Required fields:
+- `start`: number, start address (0..65535)
+- `end`: number, end address (exclusive)
+
+Optional fields:
+- `file`: string (or null when unknown), should match a `files[].path` when present
+- `line`: number (or null when unknown), 1-based line number
+
+- `column`: number, 1-based column number
+- `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
+- `confidence`: string enum: `high`, `medium`, `low`
+- `lst`: object with listing provenance:
+  - `line`: number, listing line number
+  - `text`: string, listing asm text
+- `includeChain`: array of strings, include path stack
+- `macro`: object with expansion details:
+  - `name`: string
+  - `callsite`: `{ file, line, column }`
 
 Notes:
 - `end` is exclusive. Length is `end - start`.
@@ -79,20 +92,13 @@ Notes:
 Example:
 ```json
 {
-  "segments": {
-    "start": [2304, 2307],
-    "end": [2307, 2310],
-    "file": [0, 0],
-    "line": [12, 13],
-    "kind": ["code", "code"],
-    "confidence": ["high", "high"],
-    "lstLine": [87, 88],
-    "lstText": [0, 1]
-  },
-  "lstText": [
-    "JP      APPSTART",
-    "LD      A,0"
-  ]
+  "start": 2304,
+  "end": 2307,
+  "file": "src/main.asm",
+  "line": 12,
+  "kind": "code",
+  "confidence": "high",
+  "lst": { "line": 87, "text": "JP      APPSTART" }
 }
 ```
 
@@ -140,7 +146,18 @@ Fields:
 - `warnings`: array of strings
 - `errors`: array of strings
 
-## Legacy v1 (row-wise)
+## Integration with Debug80 (current)
 
-Version 1 stores `segments` as an array of objects with repeated fields. Debug80
-accepts v1 maps for compatibility, but writes v2 by default.
+- Debug80 currently parses `.lst` directly into in-memory segments and anchors.
+- No map file is emitted yet.
+- The in-memory structures correspond to this format and can be serialized.
+
+## Proposed workflow
+
+1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
+2) Generate a map file (future):
+   - `build/main.d8dbg.json`
+3) Debug80 loads the map file if provided; otherwise it parses `.lst`.
+
+The map file can be treated as a build artifact in `build/` and is not
+expected to be committed by default.
