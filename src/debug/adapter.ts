@@ -9,7 +9,7 @@ import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
 import { parseMapping, MappingParseResult } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
-import { buildD8DebugMap, buildMappingFromD8DebugMap } from '../mapping/d8-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import {
   createZ80Runtime,
   Z80Runtime,
@@ -184,26 +184,34 @@ export class Z80DebugSession extends DebugSession {
       this.listingPath = listingPath;
       this.sourceFile = listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
-      const baseMapping = parseMapping(listingContent);
-      const layer2 = applyLayer2(baseMapping, { resolvePath: (file) => this.resolveMappedPath(file) });
-      if (layer2.missingSources.length > 0) {
-        const unique = Array.from(new Set(layer2.missingSources));
-        this.sendEvent(
-          new OutputEvent(
-            `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}\n`,
-            'console'
-          )
-        );
+
+      const mapPath = this.resolveDebugMapPath(merged, baseDir, asmPath, listingPath);
+      let debugMap = this.loadDebugMap(mapPath);
+      if (!debugMap) {
+        const baseMapping = parseMapping(listingContent);
+        const layer2 = applyLayer2(baseMapping, {
+          resolvePath: (file) => this.resolveMappedPath(file),
+        });
+        if (layer2.missingSources.length > 0) {
+          const unique = Array.from(new Set(layer2.missingSources));
+          this.sendEvent(
+            new OutputEvent(
+              `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}\n`,
+              'console'
+            )
+          );
+        }
+        debugMap = buildD8DebugMap(baseMapping, {
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          generator: {
+            name: 'debug80',
+          },
+        });
+        this.writeDebugMap(debugMap, mapPath, baseDir, listingPath);
       }
-      const debugMap = buildD8DebugMap(baseMapping, {
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        generator: {
-          name: 'debug80',
-        },
-      });
-      this.writeDebugMap(debugMap, merged, baseDir, asmPath, listingPath);
+
       this.mapping = buildMappingFromD8DebugMap(debugMap);
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
 
@@ -1293,14 +1301,40 @@ export class Z80DebugSession extends DebugSession {
     return roots.map((root) => this.resolveRelative(root, baseDir));
   }
 
+  private loadDebugMap(mapPath: string): ReturnType<typeof buildD8DebugMap> | undefined {
+    if (!fs.existsSync(mapPath)) {
+      return undefined;
+    }
+    try {
+      const raw = fs.readFileSync(mapPath, 'utf-8');
+      const { map, error } = parseD8DebugMap(raw);
+      if (!map) {
+        this.sendEvent(
+          new OutputEvent(
+            `Debug80: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})\n`,
+            'console'
+          )
+        );
+        return undefined;
+      }
+      return map;
+    } catch (err) {
+      this.sendEvent(
+        new OutputEvent(
+          `Debug80: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})\n`,
+          'console'
+        )
+      );
+      return undefined;
+    }
+  }
+
   private writeDebugMap(
     map: ReturnType<typeof buildD8DebugMap>,
-    args: LaunchRequestArguments,
+    mapPath: string,
     baseDir: string,
-    asmPath: string | undefined,
     listingPath: string
   ): void {
-    const mapPath = this.resolveDebugMapPath(args, baseDir, asmPath, listingPath);
     try {
       fs.mkdirSync(path.dirname(mapPath), { recursive: true });
       const enriched = {
