@@ -1,0 +1,3 @@
+MSG_BANNER: DEFB    "HELLO, DEBUG80!",0x0A,0
+MSG_PROMPT: DEFB    "> ",0
+DONE_MSG:   DEFB    "Done.",0x0A,0
