@@ -173,8 +173,10 @@ Terminal I/O is still configurable via the `terminal` block.
 {
   "platform": "simple",
   "simple": {
-    "romStart": 0,
-    "romEnd": 2047,
+    "regions": [
+      { "start": 0, "end": 2047, "kind": "rom" },
+      { "start": 2048, "end": 65535, "kind": "ram" }
+    ],
     "appStart": 2304,
     "entry": 0
   },
@@ -195,9 +197,11 @@ Notes:
 - `newline` defines what the terminal sends for Enter.
 - `echo` controls local echo in the webview terminal.
 - `statusBits` allows different bit conventions per platform.
-- `simple.romStart`/`simple.romEnd` define the read-only ROM window.
+- `simple.regions` define memory ranges (inclusive start/end).
+- `simple.regions[].kind` can be `rom`, `ram`, `unknown`.
+- `simple.regions[].readOnly` forces read-only for non-ROM regions (optional).
 - `simple.appStart` is the expected entry address for user code (ORG).
-- `simple.entry` is the CPU start address (default `romStart`).
+- `simple.entry` is the CPU start address (default first ROM region start).
 
 ### CP/M (draft)
 
