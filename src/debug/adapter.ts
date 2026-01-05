@@ -102,6 +102,10 @@ interface Tec1State {
   digitLatch: number;
   segmentLatch: number;
   speaker: boolean;
+  speakerHz: number;
+  totalCycles: number;
+  lastSpeakerEdgeCycles: number | null;
+  speakerEdgePending: boolean;
   keyValue: number;
   nmiPending: boolean;
   lastUpdateMs: number;
@@ -412,6 +416,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
+    this.recordTec1Cycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -449,6 +454,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
+    this.recordTec1Cycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -946,6 +952,7 @@ export class Z80DebugSession extends DebugSession {
           this.applyStepInfo(trace);
           executed += 1;
           cyclesSinceThrottle += stepped.cycles ?? 0;
+          this.recordTec1Cycles(stepped.cycles ?? 0);
           if (stepped.halted) {
             this.handleHaltStop();
             return;
@@ -971,6 +978,7 @@ export class Z80DebugSession extends DebugSession {
         this.applyStepInfo(trace);
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
+        this.recordTec1Cycles(result.cycles ?? 0);
         if (result.halted) {
           this.handleHaltStop();
           return;
@@ -1061,6 +1069,7 @@ export class Z80DebugSession extends DebugSession {
           this.applyStepInfo(trace);
           executed += 1;
           cyclesSinceThrottle += result.cycles ?? 0;
+          this.recordTec1Cycles(result.cycles ?? 0);
           if (result.halted) {
             this.handleHaltStop();
             return;
@@ -1663,6 +1672,10 @@ export class Z80DebugSession extends DebugSession {
       digitLatch: 0,
       segmentLatch: 0,
       speaker: false,
+      speakerHz: 0,
+      totalCycles: 0,
+      lastSpeakerEdgeCycles: null,
+      speakerEdgePending: false,
       keyValue: 0xff,
       nmiPending: false,
       lastUpdateMs: 0,
@@ -1708,7 +1721,11 @@ export class Z80DebugSession extends DebugSession {
         }
         if (p === 0x01) {
           state.digitLatch = value & 0xff;
-          state.speaker = (value & 0x80) !== 0;
+          const speaker = (value & 0x80) !== 0;
+          if (speaker !== state.speaker) {
+            state.speaker = speaker;
+            state.speakerEdgePending = true;
+          }
           updateDisplay();
           return;
         }
@@ -1748,6 +1765,7 @@ export class Z80DebugSession extends DebugSession {
           digits: [...state.digits],
           speaker: state.speaker ? 1 : 0,
           speedMode: state.speedMode,
+          speakerHz: state.speakerHz,
         })
       );
       return;
@@ -1771,8 +1789,30 @@ export class Z80DebugSession extends DebugSession {
         digits: [...state.digits],
         speaker: state.speaker ? 1 : 0,
         speedMode: state.speedMode,
+        speakerHz: state.speakerHz,
       })
     );
+  }
+
+  private recordTec1Cycles(cycles: number): void {
+    const state = this.tec1State;
+    if (!state || cycles <= 0) {
+      return;
+    }
+    state.totalCycles += cycles;
+    if (!state.speakerEdgePending) {
+      return;
+    }
+    const edgeCycle = state.totalCycles;
+    if (state.lastSpeakerEdgeCycles !== null) {
+      const delta = edgeCycle - state.lastSpeakerEdgeCycles;
+      if (delta > 0 && state.clockHz > 0) {
+        state.speakerHz = Math.round(state.clockHz / (2 * delta));
+      }
+    }
+    state.lastSpeakerEdgeCycles = edgeCycle;
+    state.speakerEdgePending = false;
+    this.queueTec1Update();
   }
 
   private findAsm80Binary(startDir: string): string | undefined {
