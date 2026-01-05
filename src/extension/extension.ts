@@ -140,12 +140,18 @@ export function activate(context: vscode.ExtensionContext): void {
         const payload = evt.body as {
           digits?: number[];
           speaker?: number;
+          speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
         if (!payload?.digits) {
           return;
         }
-        updateTec1Display(payload.digits, payload.speaker === 1, payload.speedMode);
+        updateTec1Display(
+          payload.digits,
+          payload.speaker === 1,
+          payload.speedMode,
+          payload.speakerHz
+        );
       }
     })
   );
@@ -473,7 +479,8 @@ function openTec1Panel(
 function updateTec1Display(
   digits: number[],
   speaker: boolean,
-  speedMode?: 'slow' | 'fast'
+  speedMode?: 'slow' | 'fast',
+  speakerHz?: number
 ): void {
   tec1Digits = digits.slice(0, 6);
   tec1Speaker = speaker;
@@ -486,6 +493,7 @@ function updateTec1Display(
       digits: tec1Digits,
       speaker: tec1Speaker,
       speedMode: tec1SpeedMode,
+      speakerHz,
     });
   }
 }
@@ -630,6 +638,9 @@ function getTec1Html(): string {
       background: #333;
       font-size: 12px;
       letter-spacing: 0.08em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
     .speaker.on {
       background: #ffb000;
@@ -680,7 +691,10 @@ function getTec1Html(): string {
   <div id="app" tabindex="0">
     <div class="display" id="display"></div>
     <div class="status">
-      <div class="speaker" id="speaker">SPEAKER</div>
+      <div class="speaker" id="speaker">
+        <span>SPEAKER</span>
+        <span id="speakerHz"></span>
+      </div>
       <div class="key speed" id="speed">FAST</div>
     </div>
     <div class="keypad" id="keypad"></div>
@@ -690,6 +704,7 @@ function getTec1Html(): string {
     const displayEl = document.getElementById('display');
     const keypadEl = document.getElementById('keypad');
     const speakerEl = document.getElementById('speaker');
+    const speakerHzEl = document.getElementById('speakerHz');
     const speedEl = document.getElementById('speed');
     const DIGITS = 6;
     const SEGMENTS = [
@@ -806,6 +821,13 @@ function getTec1Html(): string {
         speakerEl.classList.add('on');
       } else {
         speakerEl.classList.remove('on');
+      }
+      if (speakerHzEl) {
+        if (typeof payload.speakerHz === 'number' && payload.speakerHz > 0) {
+          speakerHzEl.textContent = payload.speakerHz + ' Hz';
+        } else {
+          speakerHzEl.textContent = '';
+        }
       }
       if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
         applySpeed(payload.speedMode);
