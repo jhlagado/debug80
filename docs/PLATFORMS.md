@@ -275,9 +275,10 @@ TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
 }
 ```
 
-`romHex` points at an Intel HEX file for the monitor ROM. If you already have a
-TypeScript module like `MON-1B.ts` that exports a template string, Debug80 will
-accept that file and extract the embedded HEX string.
+`romHex` points at an Intel HEX file for the monitor ROM. If omitted, Debug80
+uses the bundled `roms/tec1/mon-1b.hex`. If you already have a TypeScript module
+like `MON-1B.ts` that exports a template string, Debug80 will accept that file
+and extract the embedded HEX string.
 
 I/O map:
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x10 ADDRESS, 0x11 UP, 0x12 GO, 0x13 DOWN)
