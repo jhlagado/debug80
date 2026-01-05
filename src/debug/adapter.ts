@@ -1680,8 +1680,8 @@ export class Z80DebugSession extends DebugSession {
       nmiPending: false,
       lastUpdateMs: 0,
       pendingUpdate: false,
-      clockHz: TEC1_FAST_HZ,
-      speedMode: 'fast',
+      clockHz: TEC1_SLOW_HZ,
+      speedMode: 'slow',
     };
 
     const updateDisplay = (): void => {
