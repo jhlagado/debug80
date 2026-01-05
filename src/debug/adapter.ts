@@ -117,6 +117,7 @@ interface Tec1State {
 const THREAD_ID = 1;
 const TEC1_SLOW_HZ = 100000;
 const TEC1_FAST_HZ = 4000000;
+const TEC1_SILENCE_MS = 50;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -737,6 +738,13 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       this.runtime.reset(this.loadedProgram, this.loadedEntry);
+      if (this.tec1State) {
+        this.tec1State.speaker = false;
+        this.tec1State.speakerHz = 0;
+        this.tec1State.lastSpeakerEdgeCycles = null;
+        this.tec1State.speakerEdgePending = false;
+        this.queueTec1Update();
+      }
       this.sendResponse(response);
       return;
     }
@@ -940,6 +948,7 @@ export class Z80DebugSession extends DebugSession {
           this.haltNotified = false;
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
+          this.silenceTec1Speaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -1040,6 +1049,7 @@ export class Z80DebugSession extends DebugSession {
           this.haltNotified = false;
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
+          this.silenceTec1Speaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -1800,6 +1810,13 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
     state.totalCycles += cycles;
+    if (state.speakerHz > 0 && state.lastSpeakerEdgeCycles !== null && state.clockHz > 0) {
+      const silenceCycles = Math.floor((state.clockHz * TEC1_SILENCE_MS) / 1000);
+      if (state.totalCycles - state.lastSpeakerEdgeCycles > silenceCycles) {
+        state.speakerHz = 0;
+        this.queueTec1Update();
+      }
+    }
     if (!state.speakerEdgePending) {
       return;
     }
@@ -1813,6 +1830,20 @@ export class Z80DebugSession extends DebugSession {
     state.lastSpeakerEdgeCycles = edgeCycle;
     state.speakerEdgePending = false;
     this.queueTec1Update();
+  }
+
+  private silenceTec1Speaker(): void {
+    const state = this.tec1State;
+    if (!state) {
+      return;
+    }
+    if (state.speakerHz !== 0 || state.speaker) {
+      state.speakerHz = 0;
+      state.speaker = false;
+      state.lastSpeakerEdgeCycles = null;
+      state.speakerEdgePending = false;
+      this.queueTec1Update();
+    }
   }
 
   private findAsm80Binary(startDir: string): string | undefined {
