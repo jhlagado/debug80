@@ -18,7 +18,8 @@
   "activationEvents": [
     "onDebugResolve:z80",
     "onCommand:debug80.terminalInput",
-    "onCommand:debug80.openTerminal"
+    "onCommand:debug80.openTerminal",
+    "onCommand:debug80.openTec1"
   ],
   "extensionPack": [
     "imanolea.z80-asm"
@@ -57,6 +58,10 @@
       {
         "command": "debug80.openTerminal",
         "title": "Debug80: Show Terminal Panel"
+      },
+      {
+        "command": "debug80.openTec1",
+        "title": "Debug80: Show TEC-1 Panel"
       }
     ],
     "debuggers": [
