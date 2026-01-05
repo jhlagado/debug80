@@ -44,6 +44,7 @@ export interface RunResult {
   halted: boolean;
   pc: number;
   reason: 'halt' | 'breakpoint';
+  cycles?: number;
 }
 
 export interface IoHandlers {
@@ -212,7 +213,7 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
       hardware.memory[addr & 0xffff] = value & 0xff;
     });
   if (cpu.halted) {
-    return { halted: true, pc: cpu.pc, reason: 'halt' };
+    return { halted: true, pc: cpu.pc, reason: 'halt', cycles: 0 };
   }
   if (options?.trace) {
     delete options.trace.kind;
@@ -224,7 +225,7 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
     }
   }
 
-  execute(cpu, {
+  const cycles = execute(cpu, {
     mem_read: memRead,
     mem_write: memWrite,
     io_read: (port: number) => hardware.ioRead(port & 0xffff),
@@ -248,15 +249,15 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
     }, irq.nonMaskable === true, irq.data ?? 0);
   }
   if (tickResult?.stop) {
-    return { halted: false, pc: cpu.pc, reason: 'breakpoint' };
+    return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles };
   }
 
   if (cpu.pc >= hardware.memory.length || cpu.halted) {
     cpu.halted = true;
-    return { halted: true, pc: cpu.pc, reason: 'halt' };
+    return { halted: true, pc: cpu.pc, reason: 'halt', cycles };
   }
 
-  return { halted: false, pc: cpu.pc, reason: 'breakpoint' };
+  return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles };
 }
 
 function runUntilStopRuntime(this: Z80RuntimeImpl, breakpoints: Set<number>): RunResult {

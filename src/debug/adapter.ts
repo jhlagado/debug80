@@ -106,9 +106,13 @@ interface Tec1State {
   nmiPending: boolean;
   lastUpdateMs: number;
   pendingUpdate: boolean;
+  clockHz: number;
+  speedMode: 'slow' | 'fast';
 }
 
 const THREAD_ID = 1;
+const TEC1_SLOW_HZ = 100000;
+const TEC1_FAST_HZ = 4000000;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -730,6 +734,29 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/tec1Speed') {
+      if (this.tec1State === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
+        return;
+      }
+      const payload = args as { mode?: unknown };
+      const mode = payload.mode === 'slow' || payload.mode === 'fast' ? payload.mode : undefined;
+      if (!mode) {
+        this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
+        return;
+      }
+      this.tec1State.speedMode = mode;
+      this.tec1State.clockHz = mode === 'slow' ? TEC1_SLOW_HZ : TEC1_FAST_HZ;
+      this.sendEvent(
+        new DapEvent('debug80/tec1Update', {
+          digits: [...this.tec1State.digits],
+          speaker: this.tec1State.speaker ? 1 : 0,
+          speedMode: this.tec1State.speedMode,
+        })
+      );
+      this.sendResponse(response);
+      return;
+    }
 
     super.customRequest(command, response, args);
   }
@@ -894,6 +921,8 @@ export class Z80DebugSession extends DebugSession {
     const CHUNK = 1000;
     const trace: StepInfo = { taken: false };
     let executed = 0;
+    let cyclesSinceThrottle = 0;
+    let lastThrottleMs = Date.now();
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -916,6 +945,7 @@ export class Z80DebugSession extends DebugSession {
           const stepped = this.runtime.step({ trace });
           this.applyStepInfo(trace);
           executed += 1;
+          cyclesSinceThrottle += stepped.cycles ?? 0;
           if (stepped.halted) {
             this.handleHaltStop();
             return;
@@ -940,6 +970,7 @@ export class Z80DebugSession extends DebugSession {
         const result = this.runtime.step({ trace });
         this.applyStepInfo(trace);
         executed += 1;
+        cyclesSinceThrottle += result.cycles ?? 0;
         if (result.halted) {
           this.handleHaltStop();
           return;
@@ -957,12 +988,23 @@ export class Z80DebugSession extends DebugSession {
           return;
         }
       }
-      const delay = this.activePlatform === 'tec1' ? 5 : 0;
-      if (delay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } else {
-        await new Promise((resolve) => setImmediate(resolve));
+      if (this.activePlatform === 'tec1') {
+        const clockHz = this.tec1State?.clockHz ?? 0;
+        if (clockHz > 0) {
+          const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
+          const now = Date.now();
+          const elapsed = now - lastThrottleMs;
+          if (targetMs > elapsed) {
+            await new Promise((resolve) => setTimeout(resolve, targetMs - elapsed));
+          }
+          lastThrottleMs = Date.now();
+          cyclesSinceThrottle = 0;
+          continue;
+        }
       }
+      cyclesSinceThrottle = 0;
+      lastThrottleMs = Date.now();
+      await new Promise((resolve) => setImmediate(resolve));
     }
   }
 
@@ -974,6 +1016,8 @@ export class Z80DebugSession extends DebugSession {
     const maxInstructions = this.stepOutMaxInstructions;
     const trace: StepInfo = { taken: false };
     let executed = 0;
+    let cyclesSinceThrottle = 0;
+    let lastThrottleMs = Date.now();
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -996,6 +1040,7 @@ export class Z80DebugSession extends DebugSession {
           const stepped = this.runtime.step({ trace });
           this.applyStepInfo(trace);
           executed += 1;
+          cyclesSinceThrottle += stepped.cycles ?? 0;
           if (stepped.halted) {
             this.handleHaltStop();
             return;
@@ -1012,6 +1057,7 @@ export class Z80DebugSession extends DebugSession {
           const result = this.runtime.step({ trace });
           this.applyStepInfo(trace);
           executed += 1;
+          cyclesSinceThrottle += result.cycles ?? 0;
           if (result.halted) {
             this.handleHaltStop();
             return;
@@ -1041,6 +1087,22 @@ export class Z80DebugSession extends DebugSession {
           return;
         }
       }
+      if (this.activePlatform === 'tec1') {
+        const clockHz = this.tec1State?.clockHz ?? 0;
+        if (clockHz > 0) {
+          const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
+          const now = Date.now();
+          const elapsed = now - lastThrottleMs;
+          if (targetMs > elapsed) {
+            await new Promise((resolve) => setTimeout(resolve, targetMs - elapsed));
+          }
+          lastThrottleMs = Date.now();
+          cyclesSinceThrottle = 0;
+          continue;
+        }
+      }
+      cyclesSinceThrottle = 0;
+      lastThrottleMs = Date.now();
       await new Promise((resolve) => setImmediate(resolve));
     }
   }
@@ -1599,6 +1661,8 @@ export class Z80DebugSession extends DebugSession {
       nmiPending: false,
       lastUpdateMs: 0,
       pendingUpdate: false,
+      clockHz: TEC1_FAST_HZ,
+      speedMode: 'fast',
     };
 
     const updateDisplay = (): void => {
@@ -1677,6 +1741,7 @@ export class Z80DebugSession extends DebugSession {
         new DapEvent('debug80/tec1Update', {
           digits: [...state.digits],
           speaker: state.speaker ? 1 : 0,
+          speedMode: state.speedMode,
         })
       );
       return;
@@ -1699,6 +1764,7 @@ export class Z80DebugSession extends DebugSession {
       new DapEvent('debug80/tec1Update', {
         digits: [...state.digits],
         speaker: state.speaker ? 1 : 0,
+        speedMode: state.speedMode,
       })
     );
   }
