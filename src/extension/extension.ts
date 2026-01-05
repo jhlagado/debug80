@@ -659,6 +659,12 @@ function getTec1Html(): string {
       letter-spacing: 0.08em;
       min-width: 60px;
     }
+    .key.mute {
+      padding: 4px 10px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      min-width: 80px;
+    }
     .keypad {
       margin-top: 16px;
       display: grid;
@@ -697,6 +703,7 @@ function getTec1Html(): string {
         <span id="speakerHz"></span>
       </div>
       <div class="key speed" id="speed">FAST</div>
+      <div class="key mute" id="mute">MUTED</div>
     </div>
     <div class="keypad" id="keypad"></div>
   </div>
@@ -707,6 +714,7 @@ function getTec1Html(): string {
     const speakerEl = document.getElementById('speaker');
     const speakerHzEl = document.getElementById('speakerHz');
     const speedEl = document.getElementById('speed');
+    const muteEl = document.getElementById('mute');
     const DIGITS = 6;
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
@@ -764,12 +772,53 @@ function getTec1Html(): string {
     ];
 
     let speedMode = 'fast';
+    let muted = true;
+    let lastSpeakerOn = false;
+    let lastSpeakerHz = 0;
+    let audioCtx = null;
+    let osc = null;
+    let gain = null;
 
     function applySpeed(mode) {
       speedMode = mode;
       speedEl.textContent = mode.toUpperCase();
       speedEl.classList.toggle('slow', mode === 'slow');
       speedEl.classList.toggle('fast', mode === 'fast');
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new Ctx();
+        osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        gain = audioCtx.createGain();
+        gain.gain.value = 0;
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function updateAudio() {
+      if (!gain || muted || !lastSpeakerOn || lastSpeakerHz <= 0) {
+        if (gain) {
+          gain.gain.value = 0;
+        }
+        return;
+      }
+      osc.frequency.setValueAtTime(lastSpeakerHz, audioCtx.currentTime);
+      gain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.01);
+    }
+
+    function applyMuteState() {
+      muteEl.textContent = muted ? 'MUTED' : 'SOUND';
+      if (muted && gain) {
+        gain.gain.value = 0;
+      }
+      updateAudio();
     }
 
     function sendKey(code) {
@@ -800,6 +849,13 @@ function getTec1Html(): string {
       applySpeed(next);
       vscode.postMessage({ type: 'speed', mode: next });
     });
+    muteEl.addEventListener('click', () => {
+      muted = !muted;
+      if (!muted) {
+        ensureAudio();
+      }
+      applyMuteState();
+    });
 
     function updateDigit(el, value) {
       const segments = el.querySelectorAll('[data-mask]');
@@ -826,10 +882,14 @@ function getTec1Html(): string {
       if (speakerHzEl) {
         if (typeof payload.speakerHz === 'number' && payload.speakerHz > 0) {
           speakerHzEl.textContent = payload.speakerHz + ' Hz';
+          lastSpeakerHz = payload.speakerHz;
         } else {
           speakerHzEl.textContent = '';
+          lastSpeakerHz = 0;
         }
       }
+      lastSpeakerOn = !!payload.speaker;
+      updateAudio();
       if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
         applySpeed(payload.speedMode);
       }
@@ -841,6 +901,8 @@ function getTec1Html(): string {
       }
     });
 
+    applySpeed(speedMode);
+    applyMuteState();
     document.getElementById('app').focus();
 
     window.addEventListener('keydown', event => {
