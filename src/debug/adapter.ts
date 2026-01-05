@@ -240,11 +240,14 @@ export class Z80DebugSession extends DebugSession {
 
       const hexContent = fs.readFileSync(hexPath, 'utf-8');
       const program = parseIntelHex(hexContent);
-      if (platform === 'tec1' && tec1Config?.romHex) {
-        const romPath = this.resolveRelative(tec1Config.romHex, baseDir);
-        if (!fs.existsSync(romPath)) {
+      if (platform === 'tec1') {
+        const romPath = tec1Config?.romHex
+          ? this.resolveRelative(tec1Config.romHex, baseDir)
+          : this.resolveBundledTec1Rom();
+        if (!romPath || !fs.existsSync(romPath)) {
+          const target = romPath ?? '(missing bundled ROM)';
           this.sendEvent(
-            new OutputEvent(`Debug80: TEC-1 ROM not found at "${romPath}".\n`, 'console')
+            new OutputEvent(`Debug80: TEC-1 ROM not found at "${target}".\n`, 'console')
           );
         } else {
           const romContent = fs.readFileSync(romPath, 'utf-8');
@@ -1851,6 +1854,18 @@ export class Z80DebugSession extends DebugSession {
       }
     }
 
+    return undefined;
+  }
+
+  private resolveBundledTec1Rom(): string | undefined {
+    const extension = vscode.extensions.getExtension('jhlagado.debug80');
+    if (!extension) {
+      return undefined;
+    }
+    const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b.hex');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
     return undefined;
   }
 

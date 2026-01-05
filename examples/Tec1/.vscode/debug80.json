@@ -1,0 +1,19 @@
+{
+  "defaultTarget": "app",
+  "targets": {
+    "app": {
+      "asm": "src/main.asm",
+      "outputDir": "build",
+      "artifactBase": "main",
+      "platform": "tec1",
+      "tec1": {
+        "regions": [
+          { "start": 0, "end": 2047, "kind": "rom" },
+          { "start": 2048, "end": 4095, "kind": "ram" }
+        ],
+        "appStart": 2048,
+        "entry": 0
+      }
+    }
+  }
+}
