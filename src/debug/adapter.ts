@@ -433,11 +433,21 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
 
+    const unmappedReturn = this.getUnmappedCallReturnAddress();
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
     this.pauseRequested = false;
     this.sendResponse(response);
+
+    if (unmappedReturn !== null && trace.kind && trace.taken) {
+      const returnAddress = trace.returnAddress ?? unmappedReturn;
+      this.haltNotified = false;
+      this.lastStopReason = 'step';
+      this.lastBreakpointAddress = null;
+      this.runUntilStop(new Set([returnAddress]), this.stepOverMaxInstructions, 'step over');
+      return;
+    }
 
     if (result.halted) {
       this.handleHaltStop();
@@ -757,6 +767,101 @@ export class Z80DebugSession extends DebugSession {
     if (trace.kind === 'ret') {
       this.callDepth = Math.max(0, this.callDepth - 1);
     }
+  }
+
+  private getUnmappedCallReturnAddress(): number | null {
+    if (this.runtime === undefined || this.mappingIndex === undefined) {
+      return null;
+    }
+    const cpu = this.runtime.getRegisters();
+    const memRead =
+      this.runtime.hardware.memRead ??
+      ((addr: number) => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+    const pc = cpu.pc & 0xffff;
+    const opcode = memRead(pc) & 0xff;
+
+    const read16 = (addr: number): number => {
+      const lo = memRead(addr & 0xffff) & 0xff;
+      const hi = memRead((addr + 1) & 0xffff) & 0xff;
+      return lo | (hi << 8);
+    };
+
+    let taken = false;
+    let target: number | null = null;
+    let returnAddress: number | null = null;
+
+    switch (opcode) {
+      case 0xCD: // CALL nn
+        taken = true;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xC4: // CALL NZ
+        taken = !cpu.flags.Z;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xCC: // CALL Z
+        taken = !!cpu.flags.Z;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xD4: // CALL NC
+        taken = !cpu.flags.C;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xDC: // CALL C
+        taken = !!cpu.flags.C;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xE4: // CALL PO
+        taken = !cpu.flags.P;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xEC: // CALL PE
+        taken = !!cpu.flags.P;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xF4: // CALL P
+        taken = !cpu.flags.S;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xFC: // CALL M
+        taken = !!cpu.flags.S;
+        target = read16(pc + 1);
+        returnAddress = (pc + 3) & 0xffff;
+        break;
+      case 0xC7:
+      case 0xCF:
+      case 0xD7:
+      case 0xDF:
+      case 0xE7:
+      case 0xEF:
+      case 0xF7:
+      case 0xFF:
+        taken = true;
+        target = opcode & 0x38;
+        returnAddress = (pc + 1) & 0xffff;
+        break;
+      default:
+        break;
+    }
+
+    if (!taken || target === null || returnAddress === null) {
+      return null;
+    }
+
+    const segment = findSegmentForAddress(this.mappingIndex, target);
+    if (segment && segment.loc.file !== null) {
+      return null;
+    }
+
+    return returnAddress;
   }
 
   private async runUntilStopAsync(
