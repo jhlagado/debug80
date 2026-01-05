@@ -692,6 +692,18 @@ function getTec1Html(): string {
     .key:active {
       background: #3a3a3a;
     }
+    .key.active {
+      background: #505050;
+      border-color: #6a6a6a;
+    }
+    .key.spacer {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+    }
+    .key.shift {
+      letter-spacing: 0.08em;
+    }
   </style>
 </head>
 <body>
@@ -715,6 +727,7 @@ function getTec1Html(): string {
     const speakerHzEl = document.getElementById('speakerHz');
     const speedEl = document.getElementById('speed');
     const muteEl = document.getElementById('mute');
+    const SHIFT_BIT = 0x20;
     const DIGITS = 6;
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
@@ -775,6 +788,7 @@ function getTec1Html(): string {
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
+    let shiftLatched = false;
     let audioCtx = null;
     let osc = null;
     let gain = null;
@@ -784,6 +798,11 @@ function getTec1Html(): string {
       speedEl.textContent = mode.toUpperCase();
       speedEl.classList.toggle('slow', mode === 'slow');
       speedEl.classList.toggle('fast', mode === 'fast');
+    }
+
+    function setShiftLatched(value) {
+      shiftLatched = value;
+      shiftButton.classList.toggle('active', shiftLatched);
     }
 
     function ensureAudio() {
@@ -822,15 +841,32 @@ function getTec1Html(): string {
     }
 
     function sendKey(code) {
-      vscode.postMessage({ type: 'key', code });
+      let adjusted = code;
+      if (shiftLatched) {
+        adjusted = code & ~SHIFT_BIT;
+      } else {
+        adjusted = code | SHIFT_BIT;
+      }
+      vscode.postMessage({ type: 'key', code: adjusted });
+      if (shiftLatched) {
+        setShiftLatched(false);
+      }
     }
 
-    function addButton(label, action) {
+    function addButton(label, action, className) {
       const button = document.createElement('div');
-      button.className = 'key';
+      button.className = className ? 'key ' + className : 'key';
       button.textContent = label;
       button.addEventListener('click', action);
       keypadEl.appendChild(button);
+      return button;
+    }
+
+    const shiftButton = addButton('SHIFT', () => {
+      setShiftLatched(!shiftLatched);
+    }, 'shift');
+    for (let i = 0; i < 4; i += 1) {
+      addButton('', () => {}, 'spacer');
     }
 
     for (let row = 0; row < 4; row += 1) {
@@ -843,7 +879,10 @@ function getTec1Html(): string {
       }
     }
 
-    addButton('RST', () => vscode.postMessage({ type: 'reset' }));
+    addButton('RST', () => {
+      setShiftLatched(false);
+      vscode.postMessage({ type: 'reset' });
+    });
     speedEl.addEventListener('click', () => {
       const next = speedMode === 'fast' ? 'slow' : 'fast';
       applySpeed(next);
