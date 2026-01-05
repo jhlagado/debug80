@@ -133,6 +133,7 @@ export class Z80DebugSession extends DebugSession {
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
   private tec1State: Tec1State | undefined;
+  private activePlatform = 'simple';
 
   public constructor() {
     super();
@@ -208,6 +209,7 @@ export class Z80DebugSession extends DebugSession {
       }
 
       const platform = this.normalizePlatformName(merged);
+      this.activePlatform = platform;
       const simpleConfig =
         platform === 'simple' ? this.normalizeSimpleConfig(merged) : undefined;
       const tec1Config =
@@ -938,7 +940,12 @@ export class Z80DebugSession extends DebugSession {
           return;
         }
       }
-      await new Promise((resolve) => setImmediate(resolve));
+      const delay = this.activePlatform === 'tec1' ? 5 : 0;
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
   }
 

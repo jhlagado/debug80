@@ -674,7 +674,7 @@ function getTec1Html(): string {
       '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
       '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
       'A': 0x0A, 'B': 0x0B, 'C': 0x0C, 'D': 0x0D, 'E': 0x0E, 'F': 0x0F,
-      'AD': 0x10, 'UP': 0x11, 'GO': 0x12, 'DOWN': 0x13
+      'AD': 0x13, 'UP': 0x10, 'GO': 0x12, 'DOWN': 0x11
     };
 
     const keyOrder = [
@@ -740,13 +740,13 @@ function getTec1Html(): string {
         sendKey(0x12);
         event.preventDefault();
       } else if (event.key === 'ArrowUp') {
-        sendKey(0x11);
+        sendKey(0x10);
         event.preventDefault();
       } else if (event.key === 'ArrowDown') {
-        sendKey(0x13);
+        sendKey(0x11);
         event.preventDefault();
       } else if (event.key === 'Tab') {
-        sendKey(0x10);
+        sendKey(0x13);
         event.preventDefault();
       }
     });
