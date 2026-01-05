@@ -431,6 +431,16 @@ function openTec1Panel(
           }
         }
       }
+      if (msg.type === 'reset') {
+        const targetSession = tec1Session ?? vscode.debug.activeDebugSession;
+        if (targetSession?.type === 'z80') {
+          try {
+            await targetSession.customRequest('debug80/tec1Reset', {});
+          } catch {
+            /* ignore */
+          }
+        }
+      }
     });
   }
   if (session !== undefined) {
@@ -599,8 +609,15 @@ function getTec1Html(): string {
     .keypad {
       margin-top: 16px;
       display: grid;
-      grid-template-columns: repeat(5, 48px);
+      grid-template-columns: 56px repeat(4, 48px);
       gap: 8px;
+      align-items: center;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-right: 8px;
     }
     .key {
       background: #2b2b2b;
@@ -677,24 +694,37 @@ function getTec1Html(): string {
       'AD': 0x13, 'UP': 0x10, 'GO': 0x12, 'DOWN': 0x11
     };
 
-    const keyOrder = [
-      'F', 'E', 'D', 'C', 'B',
-      'A', '9', '8', '7', '6',
-      '5', '4', '3', '2', '1',
-      '0', 'AD', 'GO', 'UP', 'DOWN'
+    const controlOrder = ['AD', 'GO', 'UP', 'DOWN'];
+    const hexOrder = [
+      'F', 'E', 'D', 'C',
+      'B', 'A', '9', '8',
+      '7', '6', '5', '4',
+      '3', '2', '1', '0'
     ];
 
     function sendKey(code) {
       vscode.postMessage({ type: 'key', code });
     }
 
-    keyOrder.forEach(label => {
+    function addButton(label, action) {
       const button = document.createElement('div');
       button.className = 'key';
       button.textContent = label;
-      button.addEventListener('click', () => sendKey(keyMap[label]));
+      button.addEventListener('click', action);
       keypadEl.appendChild(button);
-    });
+    }
+
+    for (let row = 0; row < 4; row += 1) {
+      const control = controlOrder[row];
+      addButton(control, () => sendKey(keyMap[control]));
+      const rowStart = row * 4;
+      for (let col = 0; col < 4; col += 1) {
+        const label = hexOrder[rowStart + col];
+        addButton(label, () => sendKey(keyMap[label]));
+      }
+    }
+
+    addButton('RST', () => vscode.postMessage({ type: 'reset' }));
 
     function updateDigit(el, value) {
       const segments = el.querySelectorAll('[data-mask]');

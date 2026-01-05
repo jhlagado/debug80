@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
 import { Event as DapEvent } from '@vscode/debugadapter';
-import { parseIntelHex, parseListing, ListingInfo } from '../z80/loaders';
+import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
 import { parseMapping, MappingParseResult } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
@@ -134,6 +134,8 @@ export class Z80DebugSession extends DebugSession {
   private terminalState: TerminalState | undefined;
   private tec1State: Tec1State | undefined;
   private activePlatform = 'simple';
+  private loadedProgram: HexProgram | undefined;
+  private loadedEntry: number | undefined;
 
   public constructor() {
     super();
@@ -175,6 +177,8 @@ export class Z80DebugSession extends DebugSession {
     this.baseDir = process.cwd();
     this.terminalState = undefined;
     this.tec1State = undefined;
+    this.loadedProgram = undefined;
+    this.loadedEntry = undefined;
     this.lastStopReason = undefined;
     this.lastBreakpointAddress = null;
     this.skipBreakpointOnce = null;
@@ -305,6 +309,8 @@ export class Z80DebugSession extends DebugSession {
           : platform === 'tec1'
             ? tec1Config?.entry
             : merged.entry;
+      this.loadedProgram = program;
+      this.loadedEntry = entry;
       this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
@@ -666,6 +672,8 @@ export class Z80DebugSession extends DebugSession {
     this.haltNotified = false;
     this.terminalState = undefined;
     this.tec1State = undefined;
+    this.loadedProgram = undefined;
+    this.loadedEntry = undefined;
     this.sendResponse(response);
   }
 
@@ -710,6 +718,15 @@ export class Z80DebugSession extends DebugSession {
       }
       this.tec1State.keyValue = code & 0xff;
       this.tec1State.nmiPending = true;
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1Reset') {
+      if (this.runtime === undefined || this.loadedProgram === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
+        return;
+      }
+      this.runtime.reset(this.loadedProgram, this.loadedEntry);
       this.sendResponse(response);
       return;
     }
