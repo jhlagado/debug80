@@ -115,7 +115,7 @@ interface Tec1State {
 const THREAD_ID = 1;
 const TEC1_SLOW_HZ = 200000;
 const TEC1_FAST_HZ = 4000000;
-const TEC1_SILENCE_CYCLES = 6000;
+const TEC1_SILENCE_CYCLES = 10000;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
