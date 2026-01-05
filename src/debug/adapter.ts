@@ -117,7 +117,6 @@ interface Tec1State {
 const THREAD_ID = 1;
 const TEC1_SLOW_HZ = 200000;
 const TEC1_FAST_HZ = 4000000;
-const TEC1_SILENCE_MS = 150;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -1810,13 +1809,6 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
     state.totalCycles += cycles;
-    if (state.speakerHz > 0 && state.lastSpeakerEdgeCycles !== null && state.clockHz > 0) {
-      const silenceCycles = Math.floor((state.clockHz * TEC1_SILENCE_MS) / 1000);
-      if (state.totalCycles - state.lastSpeakerEdgeCycles > silenceCycles) {
-        state.speakerHz = 0;
-        this.queueTec1Update();
-      }
-    }
     if (!state.speakerEdgePending) {
       return;
     }
