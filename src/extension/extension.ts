@@ -775,11 +775,9 @@ function getTec1Html(): string {
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
-    let lastHzUpdateMs = 0;
     let audioCtx = null;
     let osc = null;
     let gain = null;
-    const SILENCE_MS = 400;
 
     function applySpeed(mode) {
       speedMode = mode;
@@ -885,34 +883,15 @@ function getTec1Html(): string {
         if (payload.speakerHz > 0) {
           speakerHzEl.textContent = payload.speakerHz + ' Hz';
           lastSpeakerHz = payload.speakerHz;
-          lastHzUpdateMs = Date.now();
         } else {
           speakerHzEl.textContent = '';
           lastSpeakerHz = 0;
-          lastHzUpdateMs = 0;
         }
       }
       lastSpeakerOn = !!payload.speaker;
       updateAudio();
       if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
         applySpeed(payload.speedMode);
-      }
-    }
-
-    function checkSilence() {
-      if (lastSpeakerHz <= 0 || muted) {
-        return;
-      }
-      if (lastHzUpdateMs === 0) {
-        return;
-      }
-      if (Date.now() - lastHzUpdateMs > SILENCE_MS) {
-        lastSpeakerHz = 0;
-        lastHzUpdateMs = 0;
-        if (speakerHzEl) {
-          speakerHzEl.textContent = '';
-        }
-        updateAudio();
       }
     }
 
@@ -925,7 +904,6 @@ function getTec1Html(): string {
     applySpeed(speedMode);
     applyMuteState();
     document.getElementById('app').focus();
-    setInterval(checkSilence, 50);
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
