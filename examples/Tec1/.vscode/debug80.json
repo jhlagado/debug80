@@ -3,6 +3,8 @@
   "targets": {
     "app": {
       "asm": "src/main.asm",
+      "sourceFile": "src/main.asm",
+      "sourceRoots": ["src"],
       "outputDir": "build",
       "artifactBase": "main",
       "platform": "tec1",
