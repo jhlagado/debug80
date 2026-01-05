@@ -115,6 +115,7 @@ interface Tec1State {
 const THREAD_ID = 1;
 const TEC1_SLOW_HZ = 200000;
 const TEC1_FAST_HZ = 4000000;
+const TEC1_SILENCE_CYCLES = 6000;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -723,6 +724,9 @@ export class Z80DebugSession extends DebugSession {
       if (code === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
+      }
+      if (code === 0x12) {
+        this.silenceTec1Speaker();
       }
       this.tec1State.keyValue = code & 0xff;
       this.tec1State.nmiPending = true;
@@ -1809,7 +1813,7 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
     state.cyclesSinceEdge += cycles;
-    if (state.cyclesSinceEdge > 10000 && state.speakerHz !== 0) {
+    if (state.cyclesSinceEdge > TEC1_SILENCE_CYCLES && state.speakerHz !== 0) {
       state.speakerHz = 0;
       this.queueTec1Update();
     }
