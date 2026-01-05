@@ -994,8 +994,11 @@ export class Z80DebugSession extends DebugSession {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
           const elapsed = now - lastThrottleMs;
-          if (targetMs > elapsed) {
-            await new Promise((resolve) => setTimeout(resolve, targetMs - elapsed));
+          const waitMs = targetMs - elapsed;
+          if (waitMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+          } else {
+            await new Promise((resolve) => setImmediate(resolve));
           }
           lastThrottleMs = Date.now();
           cyclesSinceThrottle = 0;
@@ -1093,8 +1096,11 @@ export class Z80DebugSession extends DebugSession {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
           const elapsed = now - lastThrottleMs;
-          if (targetMs > elapsed) {
-            await new Promise((resolve) => setTimeout(resolve, targetMs - elapsed));
+          const waitMs = targetMs - elapsed;
+          if (waitMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+          } else {
+            await new Promise((resolve) => setImmediate(resolve));
           }
           lastThrottleMs = Date.now();
           cyclesSinceThrottle = 0;
