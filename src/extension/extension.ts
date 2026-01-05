@@ -17,6 +17,7 @@ let tec1Panel: vscode.WebviewPanel | undefined;
 let tec1Session: vscode.DebugSession | undefined;
 let tec1Digits = Array.from({ length: 6 }, () => 0);
 let tec1Speaker = false;
+let tec1SpeedMode: 'slow' | 'fast' = 'fast';
 let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
@@ -136,11 +137,15 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       if (evt.event === 'debug80/tec1Update') {
-        const payload = evt.body as { digits?: number[]; speaker?: number } | undefined;
+        const payload = evt.body as {
+          digits?: number[];
+          speaker?: number;
+          speedMode?: 'slow' | 'fast';
+        } | undefined;
         if (!payload?.digits) {
           return;
         }
-        updateTec1Display(payload.digits, payload.speaker === 1);
+        updateTec1Display(payload.digits, payload.speaker === 1, payload.speedMode);
       }
     })
   );
@@ -419,8 +424,10 @@ function openTec1Panel(
       tec1Session = undefined;
       tec1Digits = Array.from({ length: 6 }, () => 0);
       tec1Speaker = false;
+      tec1SpeedMode = 'fast';
     });
-    tec1Panel.webview.onDidReceiveMessage(async (msg: { type?: string; code?: number }) => {
+    tec1Panel.webview.onDidReceiveMessage(
+      async (msg: { type?: string; code?: number; mode?: 'slow' | 'fast' }) => {
       if (msg.type === 'key' && typeof msg.code === 'number') {
         const targetSession = tec1Session ?? vscode.debug.activeDebugSession;
         if (targetSession?.type === 'z80') {
@@ -441,6 +448,16 @@ function openTec1Panel(
           }
         }
       }
+      if (msg.type === 'speed' && (msg.mode === 'slow' || msg.mode === 'fast')) {
+        const targetSession = tec1Session ?? vscode.debug.activeDebugSession;
+        if (targetSession?.type === 'z80') {
+          try {
+            await targetSession.customRequest('debug80/tec1Speed', { mode: msg.mode });
+          } catch {
+            /* ignore */
+          }
+        }
+      }
     });
   }
   if (session !== undefined) {
@@ -453,14 +470,22 @@ function openTec1Panel(
   updateTec1Display(tec1Digits, tec1Speaker);
 }
 
-function updateTec1Display(digits: number[], speaker: boolean): void {
+function updateTec1Display(
+  digits: number[],
+  speaker: boolean,
+  speedMode?: 'slow' | 'fast'
+): void {
   tec1Digits = digits.slice(0, 6);
   tec1Speaker = speaker;
+  if (speedMode) {
+    tec1SpeedMode = speedMode;
+  }
   if (tec1Panel !== undefined) {
     tec1Panel.webview.postMessage({
       type: 'update',
       digits: tec1Digits,
       speaker: tec1Speaker,
+      speedMode: tec1SpeedMode,
     });
   }
 }
@@ -469,7 +494,12 @@ function clearTec1Display(): void {
   tec1Digits = Array.from({ length: 6 }, () => 0);
   tec1Speaker = false;
   if (tec1Panel !== undefined) {
-    tec1Panel.webview.postMessage({ type: 'update', digits: tec1Digits, speaker: false });
+    tec1Panel.webview.postMessage({
+      type: 'update',
+      digits: tec1Digits,
+      speaker: false,
+      speedMode: tec1SpeedMode,
+    });
   }
 }
 
@@ -594,7 +624,6 @@ function getTec1Html(): string {
       fill: #ff3b3b;
     }
     .speaker {
-      margin-top: 12px;
       display: inline-block;
       padding: 4px 8px;
       border-radius: 999px;
@@ -605,6 +634,18 @@ function getTec1Html(): string {
     .speaker.on {
       background: #ffb000;
       color: #000;
+    }
+    .status {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .key.speed {
+      padding: 4px 10px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      min-width: 60px;
     }
     .keypad {
       margin-top: 16px;
@@ -638,7 +679,10 @@ function getTec1Html(): string {
 <body>
   <div id="app" tabindex="0">
     <div class="display" id="display"></div>
-    <div class="speaker" id="speaker">SPEAKER</div>
+    <div class="status">
+      <div class="speaker" id="speaker">SPEAKER</div>
+      <div class="key speed" id="speed">FAST</div>
+    </div>
     <div class="keypad" id="keypad"></div>
   </div>
   <script>
@@ -646,6 +690,7 @@ function getTec1Html(): string {
     const displayEl = document.getElementById('display');
     const keypadEl = document.getElementById('keypad');
     const speakerEl = document.getElementById('speaker');
+    const speedEl = document.getElementById('speed');
     const DIGITS = 6;
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
@@ -702,6 +747,15 @@ function getTec1Html(): string {
       '3', '2', '1', '0'
     ];
 
+    let speedMode = 'fast';
+
+    function applySpeed(mode) {
+      speedMode = mode;
+      speedEl.textContent = mode.toUpperCase();
+      speedEl.classList.toggle('slow', mode === 'slow');
+      speedEl.classList.toggle('fast', mode === 'fast');
+    }
+
     function sendKey(code) {
       vscode.postMessage({ type: 'key', code });
     }
@@ -725,6 +779,11 @@ function getTec1Html(): string {
     }
 
     addButton('RST', () => vscode.postMessage({ type: 'reset' }));
+    speedEl.addEventListener('click', () => {
+      const next = speedMode === 'fast' ? 'slow' : 'fast';
+      applySpeed(next);
+      vscode.postMessage({ type: 'speed', mode: next });
+    });
 
     function updateDigit(el, value) {
       const segments = el.querySelectorAll('[data-mask]');
@@ -747,6 +806,9 @@ function getTec1Html(): string {
         speakerEl.classList.add('on');
       } else {
         speakerEl.classList.remove('on');
+      }
+      if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
+        applySpeed(payload.speedMode);
       }
     }
 
