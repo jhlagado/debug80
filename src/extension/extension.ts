@@ -803,7 +803,7 @@ function getTec1Html(): string {
     }
 
     function updateAudio() {
-      if (!gain || muted || !lastSpeakerOn || lastSpeakerHz <= 0) {
+      if (!gain || muted || lastSpeakerHz <= 0) {
         if (gain) {
           gain.gain.value = 0;
         }
