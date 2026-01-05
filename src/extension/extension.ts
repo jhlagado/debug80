@@ -17,7 +17,7 @@ let tec1Panel: vscode.WebviewPanel | undefined;
 let tec1Session: vscode.DebugSession | undefined;
 let tec1Digits = Array.from({ length: 6 }, () => 0);
 let tec1Speaker = false;
-let tec1SpeedMode: 'slow' | 'fast' = 'fast';
+let tec1SpeedMode: 'slow' | 'fast' = 'slow';
 let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
