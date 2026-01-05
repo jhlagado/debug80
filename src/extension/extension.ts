@@ -100,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       if (tec1Session?.id === session.id) {
         tec1Session = undefined;
+        clearTec1Display();
       }
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
