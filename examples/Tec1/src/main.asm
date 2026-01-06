@@ -20,18 +20,20 @@ DONE:   JP      DONE
 ; BIT_DELAY is tuned for ~1336 cycles including CALL/RET overhead.
 SEND_BYTE:
         PUSH    AF
+        PUSH    BC
+        PUSH    DE
+        LD      D,A
         XOR     A
         OUT     (PORTSCAN),A ; start bit (low)
         CALL    BIT_DELAY
-        POP     AF
         LD      B,8
 BIT_LOOP:
-        RRCA
-        LD      C,0x00
+        RRC     D
+        LD      A,0x00
         JR      NC,BIT_ZERO
-        LD      C,SERIALMASK
+        LD      A,SERIALMASK
 BIT_ZERO:
-        OUT     (PORTSCAN),C
+        OUT     (PORTSCAN),A
         CALL    BIT_DELAY
         DJNZ    BIT_LOOP
 
@@ -40,11 +42,15 @@ BIT_ZERO:
         CALL    BIT_DELAY
         OUT     (PORTSCAN),A ; stop bit 2
         CALL    BIT_DELAY
+        POP     DE
+        POP     BC
+        POP     AF
         RET
 
 BIT_DELAY:
-        LD      B,99
-DELAY:  DJNZ    DELAY
+        LD      E,99
+DELAY:  DEC     E
+        JR      NZ,DELAY
         NOP
         NOP
         NOP
