@@ -1,5 +1,6 @@
         ORG     0x0800
 
+KEYBUF:     EQU     0x00
 PORTSCAN:   EQU     0x01
 SERIALMASK: EQU     0x40     ; bit 6 on PORTSCAN
 BAUD:       EQU     0x000B   ; 9600 baud at 4 MHz (from MINT bitbang constants)
@@ -10,14 +11,16 @@ START:  LD      A,SERIALMASK ; idle high
         LD      HL,MSG
 SEND:   LD      A,(HL)
         OR      A
-        JR      Z,DONE
+        JR      Z,ECHO
         CALL    SEND_BYTE
         INC     HL
         JR      SEND
 
-DONE:   JP      DONE
+ECHO:   CALL    RXCHAR
+        CALL    SEND_BYTE
+        JR      ECHO
 
-; Bit-banged 8N2 TX at 9600 baud when TEC-1 fast mode is 4 MHz.
+; Bit-banged 8N2 TX/RX at 9600 baud when TEC-1 fast mode is 4 MHz.
 ; Timing matches the MINT bitbang routine.
 SEND_BYTE:
         PUSH    AF
@@ -49,6 +52,39 @@ BIT_ZERO:
         POP     DE
         POP     BC
         POP     AF
+        RET
+
+; Receive one byte from serial input on bit 7 of KEYBUF.
+; Returns byte in A. Preserves BC/HL.
+RXCHAR:
+        PUSH    BC
+        PUSH    HL
+RXWAIT:
+        IN      A,(KEYBUF)
+        BIT     7,A
+        JR      NZ,RXWAIT
+
+        LD      HL,BAUD
+        SRL     H
+        RR      L
+        CALL    BITTIME
+        IN      A,(KEYBUF)
+        BIT     7,A
+        JR      NZ,RXWAIT
+
+        LD      B,8
+        LD      C,0
+RXLOOP:
+        LD      HL,BAUD
+        CALL    BITTIME
+        IN      A,(KEYBUF)
+        RL      A
+        RR      C
+        DJNZ    RXLOOP
+        LD      A,C
+        OR      A
+        POP     HL
+        POP     BC
         RET
 
 ; Delay for one bit time, HL holds the baud constant.
