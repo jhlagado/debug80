@@ -1,5 +1,6 @@
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
+import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
@@ -37,6 +38,7 @@ export interface Tec1Runtime {
 export const TEC1_SLOW_HZ = 400000;
 export const TEC1_FAST_HZ = 4000000;
 const TEC1_SILENCE_CYCLES = 10000;
+const TEC1_SERIAL_BAUD = 300;
 
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -74,7 +76,8 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
-  onUpdate: (payload: Tec1UpdatePayload) => void
+  onUpdate: (payload: Tec1UpdatePayload) => void,
+  onSerialByte?: (byte: number) => void
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
@@ -103,6 +106,21 @@ export function createTec1Runtime(
       speakerHz: state.speakerHz,
     });
   };
+
+  let serialLevel: 0 | 1 = 1;
+  const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
+    baud: TEC1_SERIAL_BAUD,
+    cyclesPerSecond: state.clockHz,
+    dataBits: 8,
+    stopBits: 2,
+    parity: 'none',
+    inverted: false,
+  });
+  serialDecoder.setByteHandler((event) => {
+    if (onSerialByte) {
+      onSerialByte(event.byte);
+    }
+  });
 
   const queueUpdate = (): void => {
     const now = Date.now();
@@ -168,6 +186,11 @@ export function createTec1Runtime(
       if (p === 0x01) {
         state.digitLatch = value & 0xff;
         const speaker = (value & 0x80) !== 0;
+        const nextSerial: 0 | 1 = (value & 0x40) !== 0 ? 1 : 0;
+        if (nextSerial !== serialLevel) {
+          serialLevel = nextSerial;
+          serialDecoder.recordLevel(serialLevel);
+        }
         if (speaker !== state.speaker) {
           const now = state.cycleClock.now();
           if (state.lastEdgeCycle !== null) {
@@ -227,6 +250,7 @@ export function createTec1Runtime(
   const setSpeed = (mode: Tec1SpeedMode): void => {
     state.speedMode = mode;
     state.clockHz = mode === 'slow' ? TEC1_SLOW_HZ : TEC1_FAST_HZ;
+    serialDecoder.setCyclesPerSecond(state.clockHz);
     sendUpdate();
   };
 
