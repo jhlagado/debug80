@@ -16,6 +16,14 @@ import {
   IoHandlers,
 } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
+import {
+  SimplePlatformConfig,
+  SimplePlatformConfigNormalized,
+  Tec1PlatformConfig,
+  Tec1PlatformConfigNormalized,
+} from '../platforms/types';
+import { normalizeSimpleConfig } from '../platforms/simple/runtime';
+import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -45,45 +53,6 @@ interface TerminalConfig {
   interrupt?: boolean;
 }
 
-interface SimplePlatformConfig {
-  regions?: SimpleMemoryRegion[];
-  appStart?: number;
-  entry?: number;
-  binFrom?: number;
-  binTo?: number;
-}
-
-interface SimpleMemoryRegion {
-  start: number;
-  end: number;
-  kind?: 'rom' | 'ram' | 'unknown';
-  readOnly?: boolean;
-}
-
-interface SimplePlatformConfigNormalized {
-  regions: SimpleMemoryRegion[];
-  romRanges: Array<{ start: number; end: number }>;
-  appStart: number;
-  entry: number;
-  binFrom: number | undefined;
-  binTo: number | undefined;
-}
-
-interface Tec1PlatformConfig {
-  regions?: SimpleMemoryRegion[];
-  appStart?: number;
-  entry?: number;
-  romHex?: string;
-}
-
-interface Tec1PlatformConfigNormalized {
-  regions: SimpleMemoryRegion[];
-  romRanges: Array<{ start: number; end: number }>;
-  appStart: number;
-  entry: number;
-  romHex?: string;
-}
-
 interface TerminalState {
   config: TerminalConfigNormalized;
   input: number[];
@@ -97,25 +66,7 @@ interface TerminalConfigNormalized {
   interrupt: boolean;
 }
 
-interface Tec1State {
-  digits: number[];
-  digitLatch: number;
-  segmentLatch: number;
-  speaker: boolean;
-  speakerHz: number;
-  cyclesSinceEdge: number;
-  keyValue: number;
-  nmiPending: boolean;
-  lastUpdateMs: number;
-  pendingUpdate: boolean;
-  clockHz: number;
-  speedMode: 'slow' | 'fast';
-}
-
 const THREAD_ID = 1;
-const TEC1_SLOW_HZ = 200000;
-const TEC1_FAST_HZ = 4000000;
-const TEC1_SILENCE_CYCLES = 10000;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -139,7 +90,8 @@ export class Z80DebugSession extends DebugSession {
   private variableHandles = new Handles<'registers'>();
   private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
-  private tec1State: Tec1State | undefined;
+  private tec1Runtime: Tec1Runtime | undefined;
+  private tec1Config: Tec1PlatformConfigNormalized | undefined;
   private activePlatform = 'simple';
   private loadedProgram: HexProgram | undefined;
   private loadedEntry: number | undefined;
@@ -183,7 +135,7 @@ export class Z80DebugSession extends DebugSession {
     this.sourceRoots = [];
     this.baseDir = process.cwd();
     this.terminalState = undefined;
-    this.tec1State = undefined;
+    this.tec1Runtime = undefined;
     this.loadedProgram = undefined;
     this.loadedEntry = undefined;
     this.lastStopReason = undefined;
@@ -222,9 +174,10 @@ export class Z80DebugSession extends DebugSession {
       const platform = this.normalizePlatformName(merged);
       this.activePlatform = platform;
       const simpleConfig =
-        platform === 'simple' ? this.normalizeSimpleConfig(merged) : undefined;
+        platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
       const tec1Config =
-        platform === 'tec1' ? this.normalizeTec1Config(merged) : undefined;
+        platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
+      this.tec1Config = tec1Config;
       this.sendEvent(new DapEvent('debug80/platform', { id: platform }));
 
       const baseDir = this.resolveBaseDir(merged);
@@ -415,7 +368,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
-    this.recordTec1Cycles(result.cycles ?? 0);
+    this.tec1Runtime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -453,7 +406,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
-    this.recordTec1Cycles(result.cycles ?? 0);
+    this.tec1Runtime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -677,10 +630,11 @@ export class Z80DebugSession extends DebugSession {
     response: DebugProtocol.DisconnectResponse,
     _args: DebugProtocol.DisconnectArguments
   ): void {
+    this.tec1Runtime?.silenceSpeaker();
     this.runtime = undefined;
     this.haltNotified = false;
     this.terminalState = undefined;
-    this.tec1State = undefined;
+    this.tec1Runtime = undefined;
     this.loadedProgram = undefined;
     this.loadedEntry = undefined;
     this.sendResponse(response);
@@ -713,7 +667,7 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
     if (command === 'debug80/tec1Key') {
-      if (this.tec1State === undefined) {
+      if (this.tec1Runtime === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
@@ -726,10 +680,9 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       if (code === 0x12) {
-        this.silenceTec1Speaker();
+        this.tec1Runtime.silenceSpeaker();
       }
-      this.tec1State.keyValue = code & 0xff;
-      this.tec1State.nmiPending = true;
+      this.tec1Runtime.applyKey(code);
       this.sendResponse(response);
       return;
     }
@@ -739,17 +692,12 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       this.runtime.reset(this.loadedProgram, this.loadedEntry);
-      if (this.tec1State) {
-        this.tec1State.speaker = false;
-        this.tec1State.speakerHz = 0;
-        this.tec1State.cyclesSinceEdge = 0;
-        this.queueTec1Update();
-      }
+      this.tec1Runtime?.resetState();
       this.sendResponse(response);
       return;
     }
     if (command === 'debug80/tec1Speed') {
-      if (this.tec1State === undefined) {
+      if (this.tec1Runtime === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
@@ -759,16 +707,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
         return;
       }
-      this.tec1State.speedMode = mode;
-      this.tec1State.clockHz = mode === 'slow' ? TEC1_SLOW_HZ : TEC1_FAST_HZ;
-      this.sendEvent(
-        new DapEvent('debug80/tec1Update', {
-          digits: [...this.tec1State.digits],
-          speaker: this.tec1State.speaker ? 1 : 0,
-          speedMode: this.tec1State.speedMode,
-          speakerHz: this.tec1State.speakerHz,
-        })
-      );
+      this.tec1Runtime.setSpeed(mode);
       this.sendResponse(response);
       return;
     }
@@ -814,6 +753,7 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
 
+    this.tec1Runtime?.silenceSpeaker();
     this.sendEvent(new TerminatedEvent());
   }
 
@@ -938,6 +878,8 @@ export class Z80DebugSession extends DebugSession {
     let executed = 0;
     let cyclesSinceThrottle = 0;
     let lastThrottleMs = Date.now();
+    const yieldMs =
+      this.activePlatform === 'tec1' ? this.tec1Runtime?.state.yieldMs ?? 0 : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -949,7 +891,7 @@ export class Z80DebugSession extends DebugSession {
           this.haltNotified = false;
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
-          this.silenceTec1Speaker();
+          this.tec1Runtime?.silenceSpeaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -962,7 +904,7 @@ export class Z80DebugSession extends DebugSession {
           this.applyStepInfo(trace);
           executed += 1;
           cyclesSinceThrottle += stepped.cycles ?? 0;
-          this.recordTec1Cycles(stepped.cycles ?? 0);
+          this.tec1Runtime?.recordCycles(stepped.cycles ?? 0);
           if (stepped.halted) {
             this.handleHaltStop();
             return;
@@ -988,7 +930,7 @@ export class Z80DebugSession extends DebugSession {
         this.applyStepInfo(trace);
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
-        this.recordTec1Cycles(result.cycles ?? 0);
+        this.tec1Runtime?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
           this.handleHaltStop();
           return;
@@ -1007,7 +949,7 @@ export class Z80DebugSession extends DebugSession {
         }
       }
       if (this.activePlatform === 'tec1') {
-        const clockHz = this.tec1State?.clockHz ?? 0;
+        const clockHz = this.tec1Runtime?.state.clockHz ?? 0;
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1015,6 +957,8 @@ export class Z80DebugSession extends DebugSession {
           const waitMs = targetMs - elapsed;
           if (waitMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, waitMs));
+          } else if (yieldMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, yieldMs));
           } else {
             await new Promise((resolve) => setImmediate(resolve));
           }
@@ -1025,7 +969,11 @@ export class Z80DebugSession extends DebugSession {
       }
       cyclesSinceThrottle = 0;
       lastThrottleMs = Date.now();
-      await new Promise((resolve) => setImmediate(resolve));
+      if (yieldMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      } else {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
   }
 
@@ -1039,6 +987,8 @@ export class Z80DebugSession extends DebugSession {
     let executed = 0;
     let cyclesSinceThrottle = 0;
     let lastThrottleMs = Date.now();
+    const yieldMs =
+      this.activePlatform === 'tec1' ? this.tec1Runtime?.state.yieldMs ?? 0 : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -1050,7 +1000,7 @@ export class Z80DebugSession extends DebugSession {
           this.haltNotified = false;
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
-          this.silenceTec1Speaker();
+          this.tec1Runtime?.silenceSpeaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -1080,7 +1030,7 @@ export class Z80DebugSession extends DebugSession {
           this.applyStepInfo(trace);
           executed += 1;
           cyclesSinceThrottle += result.cycles ?? 0;
-          this.recordTec1Cycles(result.cycles ?? 0);
+          this.tec1Runtime?.recordCycles(result.cycles ?? 0);
           if (result.halted) {
             this.handleHaltStop();
             return;
@@ -1111,7 +1061,7 @@ export class Z80DebugSession extends DebugSession {
         }
       }
       if (this.activePlatform === 'tec1') {
-        const clockHz = this.tec1State?.clockHz ?? 0;
+        const clockHz = this.tec1Runtime?.state.clockHz ?? 0;
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1119,6 +1069,8 @@ export class Z80DebugSession extends DebugSession {
           const waitMs = targetMs - elapsed;
           if (waitMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, waitMs));
+          } else if (yieldMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, yieldMs));
           } else {
             await new Promise((resolve) => setImmediate(resolve));
           }
@@ -1129,7 +1081,11 @@ export class Z80DebugSession extends DebugSession {
       }
       cyclesSinceThrottle = 0;
       lastThrottleMs = Date.now();
-      await new Promise((resolve) => setImmediate(resolve));
+      if (yieldMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      } else {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
   }
 
@@ -1339,31 +1295,6 @@ export class Z80DebugSession extends DebugSession {
     return name;
   }
 
-  private normalizeSimpleConfig(args: LaunchRequestArguments): SimplePlatformConfigNormalized {
-    const cfg = args.simple ?? {};
-    const regions = this.normalizeSimpleRegions(cfg.regions);
-    const romRanges = regions
-      .filter((region) => region.kind === 'rom' || region.readOnly === true)
-      .map((region) => ({ start: region.start, end: region.end }));
-    const appStart =
-      Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0900;
-    const entry =
-      Number.isFinite(cfg.entry) && cfg.entry !== undefined
-        ? cfg.entry
-        : romRanges[0]?.start ?? 0x0000;
-    const binFrom =
-      Number.isFinite(cfg.binFrom) && cfg.binFrom !== undefined ? cfg.binFrom : undefined;
-    const binTo = Number.isFinite(cfg.binTo) && cfg.binTo !== undefined ? cfg.binTo : undefined;
-    return {
-      regions,
-      romRanges,
-      appStart: Math.max(0, Math.min(0xffff, appStart)),
-      entry: Math.max(0, Math.min(0xffff, entry)),
-      binFrom: binFrom !== undefined ? Math.max(0, Math.min(0xffff, binFrom)) : undefined,
-      binTo: binTo !== undefined ? Math.max(0, Math.min(0xffff, binTo)) : undefined,
-    };
-  }
-
   private assembleBin(
     asm80: { command: string; argsPrefix: string[] },
     asmDir: string,
@@ -1415,67 +1346,6 @@ export class Z80DebugSession extends DebugSession {
       const suffix = output.length > 0 ? `: ${output}` : '';
       throw new Error(`asm80 bin exited with code ${result.status}${suffix}`);
     }
-  }
-
-  private normalizeSimpleRegions(
-    regions?: SimpleMemoryRegion[],
-    fallback?: SimpleMemoryRegion[]
-  ): SimpleMemoryRegion[] {
-    const defaults =
-      fallback ?? [
-        { start: 0x0000, end: 0x07ff, kind: 'rom' },
-        { start: 0x0800, end: 0xffff, kind: 'ram' },
-      ];
-    if (!Array.isArray(regions) || regions.length === 0) {
-      return defaults;
-    }
-
-    const normalized: SimpleMemoryRegion[] = [];
-    for (const region of regions) {
-      if (!region || !Number.isFinite(region.start) || !Number.isFinite(region.end)) {
-        continue;
-      }
-      let start = Math.max(0, Math.min(0xffff, region.start));
-      let end = Math.max(0, Math.min(0xffff, region.end));
-      if (end < start) {
-        [start, end] = [end, start];
-      }
-      const entry: SimpleMemoryRegion = { start, end, kind: region.kind ?? 'unknown' };
-      if (region.readOnly !== undefined) {
-        entry.readOnly = region.readOnly;
-      }
-      normalized.push(entry);
-    }
-    if (normalized.length === 0) {
-      return defaults;
-    }
-    return normalized;
-  }
-
-  private normalizeTec1Config(args: LaunchRequestArguments): Tec1PlatformConfigNormalized {
-    const cfg = args.tec1 ?? {};
-    const regions = this.normalizeSimpleRegions(cfg.regions, [
-      { start: 0x0000, end: 0x07ff, kind: 'rom' },
-      { start: 0x0800, end: 0x0fff, kind: 'ram' },
-    ]);
-    const romRanges = regions
-      .filter((region) => region.kind === 'rom' || region.readOnly === true)
-      .map((region) => ({ start: region.start, end: region.end }));
-    const appStart =
-      Number.isFinite(cfg.appStart) && cfg.appStart !== undefined ? cfg.appStart : 0x0800;
-    const entry =
-      Number.isFinite(cfg.entry) && cfg.entry !== undefined
-        ? cfg.entry
-        : romRanges[0]?.start ?? 0x0000;
-    const romHex =
-      typeof cfg.romHex === 'string' && cfg.romHex !== '' ? cfg.romHex : undefined;
-    return {
-      regions,
-      romRanges,
-      appStart: Math.max(0, Math.min(0xffff, appStart)),
-      entry: Math.max(0, Math.min(0xffff, entry)),
-      ...(romHex ? { romHex } : {}),
-    };
   }
 
   private normalizeStepLimit(value: number | undefined, fallback: number): number {
@@ -1624,7 +1494,13 @@ export class Z80DebugSession extends DebugSession {
     args: LaunchRequestArguments
   ): IoHandlers | undefined {
     if (platform === 'tec1') {
-      return this.buildTec1IoHandlers();
+      if (!this.tec1Config) {
+        return undefined;
+      }
+      this.tec1Runtime = createTec1Runtime(this.tec1Config, (payload) => {
+        this.sendEvent(new DapEvent('debug80/tec1Update', payload));
+      });
+      return this.tec1Runtime.ioHandlers;
     }
 
     const cfg = args.terminal;
@@ -1675,161 +1551,6 @@ export class Z80DebugSession extends DebugSession {
     };
 
     return ioHandlers;
-  }
-
-  private buildTec1IoHandlers(): IoHandlers {
-    this.tec1State = {
-      digits: Array.from({ length: 6 }, () => 0),
-      digitLatch: 0,
-      segmentLatch: 0,
-      speaker: false,
-      speakerHz: 0,
-      cyclesSinceEdge: 0,
-      keyValue: 0xff,
-      nmiPending: false,
-      lastUpdateMs: 0,
-      pendingUpdate: false,
-      clockHz: TEC1_SLOW_HZ,
-      speedMode: 'slow',
-    };
-
-    const updateDisplay = (): void => {
-      const state = this.tec1State;
-      if (!state) {
-        return;
-      }
-      const mask = state.digitLatch & 0x3f;
-      if (mask === 0) {
-        return;
-      }
-      for (let i = 0; i < state.digits.length; i += 1) {
-        if (mask & (1 << i)) {
-          state.digits[i] = state.segmentLatch & 0xff;
-        }
-      }
-      this.queueTec1Update();
-    };
-
-    const ioHandlers: IoHandlers = {
-      read: (port: number): number => {
-        const p = port & 0xff;
-        const state = this.tec1State;
-        if (!state) {
-          return 0xff;
-        }
-        if (p === 0x00) {
-          return state.keyValue & 0xff;
-        }
-        return 0xff;
-      },
-      write: (port: number, value: number): void => {
-        const p = port & 0xff;
-        const state = this.tec1State;
-        if (!state) {
-          return;
-        }
-        if (p === 0x01) {
-          state.digitLatch = value & 0xff;
-          const speaker = (value & 0x80) !== 0;
-          if (speaker && !state.speaker) {
-            if (state.cyclesSinceEdge > 0 && state.clockHz > 0) {
-              state.speakerHz = Math.round((state.clockHz / 2) / state.cyclesSinceEdge);
-              this.queueTec1Update();
-            }
-            state.cyclesSinceEdge = 0;
-          }
-          state.speaker = speaker;
-          updateDisplay();
-          return;
-        }
-        if (p === 0x02) {
-          state.segmentLatch = value & 0xff;
-          updateDisplay();
-        }
-      },
-      tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
-        const state = this.tec1State;
-        if (!state) {
-          return undefined;
-        }
-        this.flushTec1Update();
-        if (state.nmiPending) {
-          state.nmiPending = false;
-          return { interrupt: { nonMaskable: true, data: 0x66 } };
-        }
-        return undefined;
-      },
-    };
-
-    return ioHandlers;
-  }
-
-  private queueTec1Update(): void {
-    const state = this.tec1State;
-    if (!state) {
-      return;
-    }
-    const now = Date.now();
-    if (now - state.lastUpdateMs >= 16) {
-      state.lastUpdateMs = now;
-      state.pendingUpdate = false;
-      this.sendEvent(
-        new DapEvent('debug80/tec1Update', {
-          digits: [...state.digits],
-          speaker: state.speaker ? 1 : 0,
-          speedMode: state.speedMode,
-          speakerHz: state.speakerHz,
-        })
-      );
-      return;
-    }
-    state.pendingUpdate = true;
-  }
-
-  private flushTec1Update(): void {
-    const state = this.tec1State;
-    if (!state || !state.pendingUpdate) {
-      return;
-    }
-    const now = Date.now();
-    if (now - state.lastUpdateMs < 16) {
-      return;
-    }
-    state.lastUpdateMs = now;
-    state.pendingUpdate = false;
-    this.sendEvent(
-      new DapEvent('debug80/tec1Update', {
-        digits: [...state.digits],
-        speaker: state.speaker ? 1 : 0,
-        speedMode: state.speedMode,
-        speakerHz: state.speakerHz,
-      })
-    );
-  }
-
-  private recordTec1Cycles(cycles: number): void {
-    const state = this.tec1State;
-    if (!state || cycles <= 0) {
-      return;
-    }
-    state.cyclesSinceEdge += cycles;
-    if (state.cyclesSinceEdge > TEC1_SILENCE_CYCLES && state.speakerHz !== 0) {
-      state.speakerHz = 0;
-      this.queueTec1Update();
-    }
-  }
-
-  private silenceTec1Speaker(): void {
-    const state = this.tec1State;
-    if (!state) {
-      return;
-    }
-    if (state.speakerHz !== 0 || state.speaker) {
-      state.speakerHz = 0;
-      state.speaker = false;
-      state.cyclesSinceEdge = 0;
-      this.queueTec1Update();
-    }
   }
 
   private findAsm80Binary(startDir: string): string | undefined {
