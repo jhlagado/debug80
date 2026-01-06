@@ -112,6 +112,7 @@ export function createTec1Runtime(
   let serialRxLevel: 0 | 1 = 1;
   let serialRxBusy = false;
   let serialRxToken = 0;
+  let serialRxLeadCycles = 0;
   let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
   const serialRxQueue: number[] = [];
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
@@ -238,10 +239,20 @@ export function createTec1Runtime(
     serialRxLevel = level;
   };
 
-  const scheduleSerialRxByte = (byte: number): void => {
+  const scheduleSerialRxByte = (byte: number, leadCycles = 0): void => {
     const token = serialRxToken;
-    const start = state.cycleClock.now();
-    setSerialRxLevel(0);
+    const start = state.cycleClock.now() + leadCycles;
+    if (leadCycles <= 0) {
+      setSerialRxLevel(0);
+    } else {
+      setSerialRxLevel(1);
+      state.cycleClock.scheduleAt(start, () => {
+        if (serialRxToken !== token) {
+          return;
+        }
+        setSerialRxLevel(0);
+      });
+    }
 
     for (let i = 0; i < 8; i += 1) {
       const bit = ((byte >> i) & 1) as 0 | 1;
@@ -284,7 +295,9 @@ export function createTec1Runtime(
       setSerialRxLevel(1);
       return;
     }
-    scheduleSerialRxByte(next);
+    const leadCycles = serialRxLeadCycles;
+    serialRxLeadCycles = 0;
+    scheduleSerialRxByte(next, leadCycles);
   };
 
   const queueSerial = (bytes: number[]): void => {
@@ -295,6 +308,7 @@ export function createTec1Runtime(
       serialRxQueue.push(value & 0xff);
     }
     if (!serialRxBusy) {
+      serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
       startNextSerialRx();
     }
   };
