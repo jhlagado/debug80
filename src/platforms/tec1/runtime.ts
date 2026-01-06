@@ -1,4 +1,5 @@
 import { IoHandlers } from '../../z80/runtime';
+import { CycleClock } from '../cycle-clock';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
@@ -9,7 +10,9 @@ export interface Tec1State {
   segmentLatch: number;
   speaker: boolean;
   speakerHz: number;
-  cyclesSinceEdge: number;
+  cycleClock: CycleClock;
+  lastEdgeCycle: number | null;
+  silenceEventId: number | null;
   keyValue: number;
   nmiPending: boolean;
   lastUpdateMs: number;
@@ -79,7 +82,9 @@ export function createTec1Runtime(
     segmentLatch: 0,
     speaker: false,
     speakerHz: 0,
-    cyclesSinceEdge: 0,
+    cycleClock: new CycleClock(),
+    lastEdgeCycle: null,
+    silenceEventId: null,
     keyValue: 0xff,
     nmiPending: false,
     lastUpdateMs: 0,
@@ -138,6 +143,18 @@ export function createTec1Runtime(
     queueUpdate();
   };
 
+  const scheduleSilence = (): void => {
+    if (state.silenceEventId !== null) {
+      state.cycleClock.cancel(state.silenceEventId);
+    }
+    state.silenceEventId = state.cycleClock.scheduleIn(TEC1_SILENCE_CYCLES, () => {
+      if (state.speakerHz !== 0) {
+        state.speakerHz = 0;
+        queueUpdate();
+      }
+    });
+  };
+
   const ioHandlers: IoHandlers = {
     read: (port: number): number => {
       const p = port & 0xff;
@@ -152,11 +169,16 @@ export function createTec1Runtime(
         state.digitLatch = value & 0xff;
         const speaker = (value & 0x80) !== 0;
         if (speaker !== state.speaker) {
-          if (state.cyclesSinceEdge > 0 && state.clockHz > 0) {
-            state.speakerHz = Math.round((state.clockHz / 2) / state.cyclesSinceEdge);
-            queueUpdate();
+          const now = state.cycleClock.now();
+          if (state.lastEdgeCycle !== null) {
+            const delta = now - state.lastEdgeCycle;
+            if (delta > 0 && state.clockHz > 0) {
+              state.speakerHz = Math.round((state.clockHz / 2) / delta);
+              queueUpdate();
+            }
           }
-          state.cyclesSinceEdge = 0;
+          state.lastEdgeCycle = now;
+          scheduleSilence();
         }
         state.speaker = speaker;
         updateDisplay();
@@ -186,18 +208,18 @@ export function createTec1Runtime(
     if (cycles <= 0) {
       return;
     }
-    state.cyclesSinceEdge += cycles;
-    if (state.cyclesSinceEdge > TEC1_SILENCE_CYCLES && state.speakerHz !== 0) {
-      state.speakerHz = 0;
-      queueUpdate();
-    }
+    state.cycleClock.advance(cycles);
   };
 
   const silenceSpeaker = (): void => {
     if (state.speakerHz !== 0 || state.speaker) {
       state.speakerHz = 0;
       state.speaker = false;
-      state.cyclesSinceEdge = 0;
+      state.lastEdgeCycle = null;
+      if (state.silenceEventId !== null) {
+        state.cycleClock.cancel(state.silenceEventId);
+        state.silenceEventId = null;
+      }
       queueUpdate();
     }
   };
@@ -211,7 +233,11 @@ export function createTec1Runtime(
   const resetState = (): void => {
     state.speaker = false;
     state.speakerHz = 0;
-    state.cyclesSinceEdge = 0;
+    state.lastEdgeCycle = null;
+    if (state.silenceEventId !== null) {
+      state.cycleClock.cancel(state.silenceEventId);
+      state.silenceEventId = null;
+    }
     queueUpdate();
   };
 
