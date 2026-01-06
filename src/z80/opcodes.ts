@@ -43,10 +43,18 @@ export const OP_RETN_1 = 0x45;
 export const OP_RETI = 0x4d;
 export const OP_RETN_2 = 0x55;
 export const OP_RETN_3 = 0x5d;
+export const OP_RETN_4 = 0x65;
+export const OP_RETN_5 = 0x6d;
+export const OP_RETN_6 = 0x75;
+export const OP_RETN_7 = 0x7d;
 
 export const ED_RET_OPCODES = new Set<number>([
   OP_RETN_1,
   OP_RETN_2,
   OP_RETN_3,
+  OP_RETN_4,
+  OP_RETN_5,
+  OP_RETN_6,
+  OP_RETN_7,
   OP_RETI,
 ]);

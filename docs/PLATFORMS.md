@@ -8,6 +8,8 @@ unchanged; only the platform supplies the environment.
 The format is intentionally simple: select a `platform` in `debug80.json`, then
 provide a platform-specific config block. No feature flags.
 
+For per-platform details, see `src/platforms/README.md`.
+
 ## Goals
 
 - Support multiple Z80 target environments without changing the core debugger.
@@ -44,7 +46,7 @@ platform id (e.g. `simple`, `cpm`, `microbee`, `tec1`).
 
 ## Folder structure
 
-Platforms live under `src/platforms/`:
+Platform modules live under `src/platforms/`:
 
 ```
 src/
@@ -63,8 +65,9 @@ src/
       devices/
 ```
 
-Each platform can have its own dependencies. For now all platforms are loaded
-and registered on extension startup.
+Each platform can have its own dependencies. TEC-1 and Simple now have their
+runtime/panel modules under `src/platforms/`, while the adapter and extension
+still orchestrate wiring. ROMs live under `roms/`.
 
 ## Core interfaces
 
@@ -279,6 +282,10 @@ TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
 uses the bundled `roms/tec1/mon-1b.hex`. If you already have a TypeScript module
 like `MON-1B.ts` that exports a template string, Debug80 will accept that file
 and extract the embedded HEX string.
+
+Optional tuning fields:
+- `updateMs` (default 16): min milliseconds between TEC-1 panel updates.
+- `yieldMs` (default 0): extra yield delay when the emulator is ahead of real time.
 
 I/O map:
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x13 ADDRESS, 0x10 UP (+), 0x12 GO, 0x11 DOWN (-))
