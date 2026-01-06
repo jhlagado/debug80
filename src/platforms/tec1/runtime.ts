@@ -308,7 +308,7 @@ export function createTec1Runtime(
       serialRxQueue.push(value & 0xff);
     }
     if (!serialRxBusy) {
-      serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
+      serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 12));
       startNextSerialRx();
     }
   };
