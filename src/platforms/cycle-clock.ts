@@ -58,7 +58,10 @@ export class CycleClock {
     this.nowCycles += cycles;
     while (this.queue.length > 0) {
       const next = this.queue[0];
-      if (!next || next.at > this.nowCycles) {
+      if (!next) {
+        break;
+      }
+      if (next.at > this.nowCycles) {
         break;
       }
       this.queue.shift();
