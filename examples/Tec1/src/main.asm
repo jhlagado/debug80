@@ -91,6 +91,11 @@ BIT_ZERO:
 RXCHAR:
         PUSH    BC
         PUSH    HL
+RXIDLE:
+        IN      A,(KEYBUF)
+        BIT     7,A
+        JR      Z,RXIDLE
+
 RXWAIT:
         IN      A,(KEYBUF)
         BIT     7,A
@@ -102,7 +107,7 @@ RXWAIT:
         CALL    BITTIME
         IN      A,(KEYBUF)
         BIT     7,A
-        JR      NZ,RXWAIT
+        JR      NZ,RXIDLE
 
         LD      B,8
         LD      C,0
