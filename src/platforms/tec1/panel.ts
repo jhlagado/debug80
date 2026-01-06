@@ -43,7 +43,7 @@ export function createTec1PanelController(
         speedMode = 'slow';
       });
       panel.webview.onDidReceiveMessage(
-        async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode }) => {
+        async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode; text?: string }) => {
           if (msg.type === 'key' && typeof msg.code === 'number') {
             const target = session ?? getFallbackSession();
             if (target?.type === 'z80') {
@@ -69,6 +69,16 @@ export function createTec1PanelController(
             if (target?.type === 'z80') {
               try {
                 await target.customRequest('debug80/tec1Speed', { mode: msg.mode });
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+          if (msg.type === 'serialSend' && typeof msg.text === 'string') {
+            const target = session ?? getFallbackSession();
+            if (target?.type === 'z80') {
+              try {
+                await target.customRequest('debug80/tec1SerialInput', { text: msg.text });
               } catch {
                 /* ignore */
               }
@@ -276,6 +286,26 @@ function getTec1Html(): string {
       max-height: 160px;
       overflow-y: auto;
     }
+    .serial-input {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .serial-input input {
+      flex: 1;
+      background: #0b0b0b;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #f0f0f0;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+    }
+    .serial-input input:focus {
+      outline: 1px solid #555;
+    }
   </style>
 </head>
 <body>
@@ -293,6 +323,10 @@ function getTec1Html(): string {
     <div class="serial">
       <div class="serial-title">SERIAL (BIT 6)</div>
       <pre class="serial-body" id="serialOut"></pre>
+      <div class="serial-input">
+        <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
+        <div class="key" id="serialSend">SEND</div>
+      </div>
     </div>
   </div>
   <script>
@@ -304,6 +338,8 @@ function getTec1Html(): string {
     const speedEl = document.getElementById('speed');
     const muteEl = document.getElementById('mute');
     const serialOutEl = document.getElementById('serialOut');
+    const serialInputEl = document.getElementById('serialInput');
+    const serialSendEl = document.getElementById('serialSend');
     const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
@@ -523,6 +559,14 @@ function getTec1Html(): string {
       serialOutEl.scrollTop = serialOutEl.scrollHeight;
     }
 
+    function sendSerialInput() {
+      const text = (serialInputEl.value || '').trimEnd();
+      if (!text) return;
+      vscode.postMessage({ type: 'serialSend', text: text + '\\r' });
+      serialInputEl.value = '';
+      serialInputEl.focus();
+    }
+
     window.addEventListener('message', event => {
       if (!event.data) return;
       if (event.data.type === 'update') {
@@ -545,6 +589,16 @@ function getTec1Html(): string {
     applySpeed(speedMode);
     applyMuteState();
     document.getElementById('app').focus();
+
+    serialSendEl.addEventListener('click', () => {
+      sendSerialInput();
+    });
+    serialInputEl.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        sendSerialInput();
+        event.preventDefault();
+      }
+    });
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;

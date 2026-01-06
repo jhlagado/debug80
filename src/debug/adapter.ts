@@ -726,6 +726,18 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/tec1SerialInput') {
+      if (this.tec1Runtime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
+        return;
+      }
+      const payload = args as { text?: unknown };
+      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
+      this.tec1Runtime.queueSerial(bytes);
+      this.sendResponse(response);
+      return;
+    }
 
     super.customRequest(command, response, args);
   }

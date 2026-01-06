@@ -296,7 +296,9 @@ I/O map:
 
 Serial (bitbang):
 - TX on bit 6 of OUT 0x01 (idle high).
+- RX on bit 7 of IN 0x00 (idle high).
 - Debug80 decodes TX at 9600 baud assuming FAST = 4.0 MHz.
+- The TEC-1 panel can inject RX bytes (CR on send).
 
 Segment bit mapping (PORTSEGS):
 - 0x01 = a (top)
