@@ -1,0 +1,228 @@
+import { IoHandlers } from '../../z80/runtime';
+import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
+import { normalizeSimpleRegions } from '../simple/runtime';
+import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+
+export interface Tec1State {
+  digits: number[];
+  digitLatch: number;
+  segmentLatch: number;
+  speaker: boolean;
+  speakerHz: number;
+  cyclesSinceEdge: number;
+  keyValue: number;
+  nmiPending: boolean;
+  lastUpdateMs: number;
+  pendingUpdate: boolean;
+  clockHz: number;
+  speedMode: Tec1SpeedMode;
+  updateMs: number;
+  yieldMs: number;
+}
+
+export interface Tec1Runtime {
+  state: Tec1State;
+  ioHandlers: IoHandlers;
+  applyKey(code: number): void;
+  recordCycles(cycles: number): void;
+  silenceSpeaker(): void;
+  setSpeed(mode: Tec1SpeedMode): void;
+  resetState(): void;
+  queueUpdate(): void;
+}
+
+export const TEC1_SLOW_HZ = 400000;
+export const TEC1_FAST_HZ = 4000000;
+const TEC1_SILENCE_CYCLES = 10000;
+
+export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
+  const config = cfg ?? {};
+  const regions = normalizeSimpleRegions(config.regions, [
+    { start: 0x0000, end: 0x07ff, kind: 'rom' },
+    { start: 0x0800, end: 0x0fff, kind: 'ram' },
+  ]);
+  const romRanges = regions
+    .filter((region) => region.kind === 'rom' || region.readOnly === true)
+    .map((region) => ({ start: region.start, end: region.end }));
+  const appStart =
+    Number.isFinite(config.appStart) && config.appStart !== undefined
+      ? config.appStart
+      : 0x0800;
+  const entry =
+    Number.isFinite(config.entry) && config.entry !== undefined
+      ? config.entry
+      : romRanges[0]?.start ?? 0x0000;
+  const romHex =
+    typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
+  const updateMs =
+    Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
+  const yieldMs =
+    Number.isFinite(config.yieldMs) && config.yieldMs !== undefined ? config.yieldMs : 0;
+  return {
+    regions,
+    romRanges,
+    appStart: Math.max(0, Math.min(0xffff, appStart)),
+    entry: Math.max(0, Math.min(0xffff, entry)),
+    ...(romHex ? { romHex } : {}),
+    updateMs: Math.max(0, updateMs),
+    yieldMs: Math.max(0, yieldMs),
+  };
+}
+
+export function createTec1Runtime(
+  config: Tec1PlatformConfigNormalized,
+  onUpdate: (payload: Tec1UpdatePayload) => void
+): Tec1Runtime {
+  const state: Tec1State = {
+    digits: Array.from({ length: 6 }, () => 0),
+    digitLatch: 0,
+    segmentLatch: 0,
+    speaker: false,
+    speakerHz: 0,
+    cyclesSinceEdge: 0,
+    keyValue: 0xff,
+    nmiPending: false,
+    lastUpdateMs: 0,
+    pendingUpdate: false,
+    clockHz: TEC1_SLOW_HZ,
+    speedMode: 'slow',
+    updateMs: config.updateMs,
+    yieldMs: config.yieldMs,
+  };
+
+  const sendUpdate = (): void => {
+    onUpdate({
+      digits: [...state.digits],
+      speaker: state.speaker ? 1 : 0,
+      speedMode: state.speedMode,
+      speakerHz: state.speakerHz,
+    });
+  };
+
+  const queueUpdate = (): void => {
+    const now = Date.now();
+    const updateMs = state.updateMs;
+    if (updateMs <= 0 || now - state.lastUpdateMs >= updateMs) {
+      state.lastUpdateMs = now;
+      state.pendingUpdate = false;
+      sendUpdate();
+      return;
+    }
+    state.pendingUpdate = true;
+  };
+
+  const flushUpdate = (): void => {
+    if (!state.pendingUpdate) {
+      return;
+    }
+    const now = Date.now();
+    const updateMs = state.updateMs;
+    if (updateMs > 0 && now - state.lastUpdateMs < updateMs) {
+      return;
+    }
+    state.lastUpdateMs = now;
+    state.pendingUpdate = false;
+    sendUpdate();
+  };
+
+  const updateDisplay = (): void => {
+    const mask = state.digitLatch & 0x3f;
+    if (mask === 0) {
+      return;
+    }
+    for (let i = 0; i < state.digits.length; i += 1) {
+      if (mask & (1 << i)) {
+        state.digits[i] = state.segmentLatch & 0xff;
+      }
+    }
+    queueUpdate();
+  };
+
+  const ioHandlers: IoHandlers = {
+    read: (port: number): number => {
+      const p = port & 0xff;
+      if (p === 0x00) {
+        return state.keyValue & 0xff;
+      }
+      return 0xff;
+    },
+    write: (port: number, value: number): void => {
+      const p = port & 0xff;
+      if (p === 0x01) {
+        state.digitLatch = value & 0xff;
+        const speaker = (value & 0x80) !== 0;
+        if (speaker !== state.speaker) {
+          if (state.cyclesSinceEdge > 0 && state.clockHz > 0) {
+            state.speakerHz = Math.round((state.clockHz / 2) / state.cyclesSinceEdge);
+            queueUpdate();
+          }
+          state.cyclesSinceEdge = 0;
+        }
+        state.speaker = speaker;
+        updateDisplay();
+        return;
+      }
+      if (p === 0x02) {
+        state.segmentLatch = value & 0xff;
+        updateDisplay();
+      }
+    },
+    tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
+      flushUpdate();
+      if (state.nmiPending) {
+        state.nmiPending = false;
+        return { interrupt: { nonMaskable: true, data: 0x66 } };
+      }
+      return undefined;
+    },
+  };
+
+  const applyKey = (code: number): void => {
+    state.keyValue = code & 0xff;
+    state.nmiPending = true;
+  };
+
+  const recordCycles = (cycles: number): void => {
+    if (cycles <= 0) {
+      return;
+    }
+    state.cyclesSinceEdge += cycles;
+    if (state.cyclesSinceEdge > TEC1_SILENCE_CYCLES && state.speakerHz !== 0) {
+      state.speakerHz = 0;
+      queueUpdate();
+    }
+  };
+
+  const silenceSpeaker = (): void => {
+    if (state.speakerHz !== 0 || state.speaker) {
+      state.speakerHz = 0;
+      state.speaker = false;
+      state.cyclesSinceEdge = 0;
+      queueUpdate();
+    }
+  };
+
+  const setSpeed = (mode: Tec1SpeedMode): void => {
+    state.speedMode = mode;
+    state.clockHz = mode === 'slow' ? TEC1_SLOW_HZ : TEC1_FAST_HZ;
+    sendUpdate();
+  };
+
+  const resetState = (): void => {
+    state.speaker = false;
+    state.speakerHz = 0;
+    state.cyclesSinceEdge = 0;
+    queueUpdate();
+  };
+
+  return {
+    state,
+    ioHandlers,
+    applyKey,
+    recordCycles,
+    silenceSpeaker,
+    setSpeed,
+    resetState,
+    queueUpdate,
+  };
+}
