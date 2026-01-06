@@ -4,6 +4,7 @@ KEYBUF:     EQU     0x00
 PORTSCAN:   EQU     0x01
 SERIALMASK: EQU     0x40     ; bit 6 on PORTSCAN
 BAUD:       EQU     0x000B   ; 9600 baud at 4 MHz (from MINT bitbang constants)
+BUF_LEN:    EQU     64
 
 START:  LD      A,SERIALMASK ; idle high
         OUT     (PORTSCAN),A
@@ -16,8 +17,39 @@ SEND:   LD      A,(HL)
         INC     HL
         JR      SEND
 
+        LD      HL,BUF
+        LD      C,0
 ECHO:   CALL    RXCHAR
+        CP      0x0D
+        JR      Z,FLUSH
+        LD      D,A
+        LD      A,C
+        CP      BUF_LEN
+        JR      NC,ECHO
+        LD      A,D
+        LD      (HL),A
+        INC     HL
+        INC     C
+        JR      ECHO
+
+FLUSH:  LD      B,C
+        LD      HL,BUF
+SEND_BUF:
+        LD      A,B
+        OR      A
+        JR      Z,SEND_CRLF
+        LD      A,(HL)
         CALL    SEND_BYTE
+        INC     HL
+        DEC     B
+        JR      SEND_BUF
+SEND_CRLF:
+        LD      A,0x0D
+        CALL    SEND_BYTE
+        LD      A,0x0A
+        CALL    SEND_BYTE
+        LD      HL,BUF
+        LD      C,0
         JR      ECHO
 
 ; Bit-banged 8N2 TX/RX at 9600 baud when TEC-1 fast mode is 4 MHz.
@@ -101,3 +133,4 @@ BITIME1:
         RET
 
 MSG:    DB      "TEC1 SERIAL OK",0x0D,0x0A,0
+BUF:    DS      64,0
