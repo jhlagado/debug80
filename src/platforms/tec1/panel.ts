@@ -588,7 +588,9 @@ function getTec1Html(): string {
 
     applySpeed(speedMode);
     applyMuteState();
-    document.getElementById('app').focus();
+    if (document.activeElement !== serialInputEl) {
+      document.getElementById('app').focus();
+    }
 
     serialSendEl.addEventListener('click', () => {
       sendSerialInput();
@@ -602,6 +604,13 @@ function getTec1Html(): string {
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (target && target.isContentEditable) {
+        return;
+      }
       const key = event.key.toUpperCase();
       if (keyMap[key] !== undefined) {
         sendKey(keyMap[key]);
