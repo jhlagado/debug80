@@ -37,7 +37,7 @@ export function createTec1PanelController(
         session = undefined;
         digits = Array.from({ length: 6 }, () => 0);
         speaker = false;
-        speedMode = 'fast';
+        speedMode = 'slow';
       });
       panel.webview.onDidReceiveMessage(
         async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode }) => {
@@ -243,7 +243,7 @@ function getTec1Html(): string {
         <span>SPEAKER</span>
         <span id="speakerHz"></span>
       </div>
-      <div class="key speed" id="speed">FAST</div>
+      <div class="key speed" id="speed">SLOW</div>
       <div class="key mute" id="mute">MUTED</div>
     </div>
     <div class="keypad" id="keypad"></div>
@@ -313,7 +313,7 @@ function getTec1Html(): string {
       '3', '2', '1', '0'
     ];
 
-    let speedMode = 'fast';
+    let speedMode = 'slow';
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
