@@ -113,6 +113,7 @@ export function createTec1Runtime(
   let serialRxBusy = false;
   let serialRxToken = 0;
   let serialRxLeadCycles = 0;
+  let serialTxEdgeCycle: number | null = null;
   let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
   const serialRxQueue: number[] = [];
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
@@ -197,6 +198,7 @@ export function createTec1Runtime(
         const nextSerial: 0 | 1 = (value & 0x40) !== 0 ? 1 : 0;
         if (nextSerial !== serialLevel) {
           serialLevel = nextSerial;
+          serialTxEdgeCycle = state.cycleClock.now();
           serialDecoder.recordLevel(serialLevel);
         }
         if (speaker !== state.speaker) {
@@ -308,7 +310,15 @@ export function createTec1Runtime(
       serialRxQueue.push(value & 0xff);
     }
     if (!serialRxBusy) {
-      serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 12));
+      const idleTarget = serialCyclesPerBit * 12;
+      let leadCycles = idleTarget;
+      if (serialTxEdgeCycle !== null) {
+        const idleCycles = state.cycleClock.now() - serialTxEdgeCycle;
+        if (idleCycles < idleTarget) {
+          leadCycles += idleTarget - idleCycles;
+        }
+      }
+      serialRxLeadCycles = Math.max(1, Math.round(leadCycles));
       startNextSerialRx();
     }
   };
