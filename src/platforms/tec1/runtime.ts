@@ -38,7 +38,7 @@ export interface Tec1Runtime {
 export const TEC1_SLOW_HZ = 400000;
 export const TEC1_FAST_HZ = 4000000;
 const TEC1_SILENCE_CYCLES = 10000;
-const TEC1_SERIAL_BAUD = 300;
+const TEC1_SERIAL_BAUD = 9600;
 
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -92,8 +92,8 @@ export function createTec1Runtime(
     nmiPending: false,
     lastUpdateMs: 0,
     pendingUpdate: false,
-    clockHz: TEC1_SLOW_HZ,
-    speedMode: 'slow',
+    clockHz: TEC1_FAST_HZ,
+    speedMode: 'fast',
     updateMs: config.updateMs,
     yieldMs: config.yieldMs,
   };

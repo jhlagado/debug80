@@ -17,7 +17,7 @@ export function createTec1PanelController(
   let session: vscode.DebugSession | undefined;
   let digits = Array.from({ length: 6 }, () => 0);
   let speaker = false;
-  let speedMode: Tec1SpeedMode = 'slow';
+  let speedMode: Tec1SpeedMode = 'fast';
   let serialBuffer = '';
   const serialMaxChars = 8000;
 
@@ -362,7 +362,7 @@ function getTec1Html(): string {
       '3', '2', '1', '0'
     ];
 
-    let speedMode = 'slow';
+    let speedMode = 'fast';
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
