@@ -69,6 +69,11 @@ Notes:
 UI/webview refresh should remain throttled (e.g. 16-33 ms).
 That batching is separate from cycle-accurate device timing.
 
+## Current usage
+
+- TEC-1 speaker timing is now driven by the cycle clock (edge timestamping +
+  cycle-scheduled silence).
+
 ## Next steps
 
 - Wire the UART decoder into TEC-1 (bit 6) or future platforms.
