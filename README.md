@@ -2,6 +2,14 @@
 
 Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in the examples below.
 
+<table>
+  <tr>
+    <td bgcolor="#0b0b0b" align="center">
+      <img src="assets/debug80_pixel_art_flat.svg" width="360" alt="Debug80 pixel art logo">
+    </td>
+  </tr>
+</table>
+
 ## Prerequisites
 
 - Node 18+ (Node 20+ recommended)
