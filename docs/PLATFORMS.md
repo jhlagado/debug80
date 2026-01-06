@@ -290,9 +290,13 @@ Optional tuning fields:
 
 I/O map:
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x13 ADDRESS, 0x10 UP (+), 0x12 GO, 0x11 DOWN (-))
-- OUT 0x01: digit select (bits 0–5, one-hot) + speaker on bit 7 (latched)
+- OUT 0x01: digit select (bits 0–5, one-hot) + serial TX on bit 6 + speaker on bit 7 (latched)
 - OUT 0x02: segment bits (latched)
 - NMI at 0x0066 on keypress
+
+Serial (bitbang):
+- TX on bit 6 of OUT 0x01 (idle high).
+- Debug80 decodes TX at 9600 baud assuming FAST = 4.0 MHz.
 
 Segment bit mapping (PORTSEGS):
 - 0x01 = a (top)

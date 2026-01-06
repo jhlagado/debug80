@@ -2,6 +2,7 @@
 
 PORTSCAN:   EQU     0x01
 SERIALMASK: EQU     0x40     ; bit 6 on PORTSCAN
+BAUD:       EQU     0x000B   ; 9600 baud at 4 MHz (from MINT bitbang constants)
 
 START:  LD      A,SERIALMASK ; idle high
         OUT     (PORTSCAN),A
@@ -16,16 +17,18 @@ SEND:   LD      A,(HL)
 
 DONE:   JP      DONE
 
-; Bit-banged 8N2 TX at ~300 baud when TEC-1 slow mode is 400 kHz.
-; BIT_DELAY is tuned for ~1336 cycles including CALL/RET overhead.
+; Bit-banged 8N2 TX at 9600 baud when TEC-1 fast mode is 4 MHz.
+; Timing matches the MINT bitbang routine.
 SEND_BYTE:
         PUSH    AF
         PUSH    BC
         PUSH    DE
+        PUSH    HL
         LD      D,A
+        LD      HL,BAUD
         XOR     A
         OUT     (PORTSCAN),A ; start bit (low)
-        CALL    BIT_DELAY
+        CALL    BITTIME
         LD      B,8
 BIT_LOOP:
         RRC     D
@@ -34,28 +37,31 @@ BIT_LOOP:
         LD      A,SERIALMASK
 BIT_ZERO:
         OUT     (PORTSCAN),A
-        CALL    BIT_DELAY
+        CALL    BITTIME
         DJNZ    BIT_LOOP
 
         LD      A,SERIALMASK ; stop bit 1
         OUT     (PORTSCAN),A
-        CALL    BIT_DELAY
+        CALL    BITTIME
         OUT     (PORTSCAN),A ; stop bit 2
-        CALL    BIT_DELAY
+        CALL    BITTIME
+        POP     HL
         POP     DE
         POP     BC
         POP     AF
         RET
 
-BIT_DELAY:
-        LD      E,99
-DELAY:  DEC     E
-        JR      NZ,DELAY
-        NOP
-        NOP
-        NOP
-        NOP
-        NOP
+; Delay for one bit time, HL holds the baud constant.
+; Preserves all registers (MINT-compatible).
+BITTIME:
+        PUSH    HL
+        PUSH    DE
+        LD      DE,0x0001
+BITIME1:
+        SBC     HL,DE
+        JP      NC,BITIME1
+        POP     DE
+        POP     HL
         RET
 
 MSG:    DB      "TEC1 SERIAL OK",0x0D,0x0A,0
