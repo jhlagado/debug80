@@ -225,13 +225,26 @@ export class Z80DebugSession extends DebugSession {
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
       this.listing = parseListing(listingContent);
       this.listingPath = listingPath;
-      this.sourceFile = listingPath;
+      const sourcePath =
+        asmPath ??
+        (merged.sourceFile ? this.resolveRelative(merged.sourceFile, baseDir) : undefined);
+      this.sourceFile = sourcePath ?? listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
 
       const mapPath = this.resolveDebugMapPath(merged, baseDir, asmPath, listingPath);
-      let debugMap = this.loadDebugMap(mapPath);
+      const mapStale = this.isDebugMapStale(mapPath, listingPath);
+      if (mapStale) {
+        this.sendEvent(
+          new OutputEvent(
+            `Debug80: D8 debug map is older than the LST. Regenerating from LST.\n`,
+            'console'
+          )
+        );
+      }
+      let debugMap = mapStale ? undefined : this.loadDebugMap(mapPath);
       if (!debugMap) {
         const baseMapping = parseMapping(listingContent);
+        this.applySourceFallback(baseMapping, merged.sourceFile, baseDir);
         const layer2 = applyLayer2(baseMapping, {
           resolvePath: (file) => this.resolveMappedPath(file),
         });
@@ -483,9 +496,11 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private resolveSourceForAddress(address: number): { path: string; line: number } {
-    const listingPath = this.listingPath ?? this.sourceFile;
+    const listingPath = this.listingPath;
     const listingLine = this.listing?.addressToLine.get(address) ?? 1;
-    const fallback = { path: listingPath, line: listingLine };
+    const sourcePath = this.sourceFile || listingPath || '';
+    const fallbackLine = listingPath && sourcePath === listingPath ? listingLine : 1;
+    const fallback = { path: sourcePath, line: fallbackLine };
 
     const index = this.mappingIndex;
     if (!index) {
@@ -708,6 +723,18 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       this.tec1Runtime.setSpeed(mode);
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1SerialInput') {
+      if (this.tec1Runtime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
+        return;
+      }
+      const payload = args as { text?: unknown };
+      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
+      this.tec1Runtime.queueSerial(bytes);
       this.sendResponse(response);
       return;
     }
@@ -1499,6 +1526,10 @@ export class Z80DebugSession extends DebugSession {
       }
       this.tec1Runtime = createTec1Runtime(this.tec1Config, (payload) => {
         this.sendEvent(new DapEvent('debug80/tec1Update', payload));
+      }, (byte) => {
+        const value = byte & 0xff;
+        const text = String.fromCharCode(value);
+        this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
       });
       return this.tec1Runtime.ioHandlers;
     }
@@ -1728,6 +1759,54 @@ export class Z80DebugSession extends DebugSession {
   private resolveSourceRoots(args: LaunchRequestArguments, baseDir: string): string[] {
     const roots = args.sourceRoots ?? [];
     return roots.map((root) => this.resolveRelative(root, baseDir));
+  }
+
+  private isDebugMapStale(mapPath: string, listingPath: string): boolean {
+    if (!fs.existsSync(mapPath) || !fs.existsSync(listingPath)) {
+      return false;
+    }
+    try {
+      const mapStat = fs.statSync(mapPath);
+      const listingStat = fs.statSync(listingPath);
+      return listingStat.mtimeMs > mapStat.mtimeMs;
+    } catch {
+      return false;
+    }
+  }
+
+  private applySourceFallback(
+    mapping: MappingParseResult,
+    sourceFile: string | undefined,
+    baseDir: string
+  ): void {
+    if (!sourceFile) {
+      return;
+    }
+    if (mapping.anchors.length > 0) {
+      return;
+    }
+    const hasFile = mapping.segments.some((segment) => segment.loc.file !== null);
+    if (hasFile) {
+      return;
+    }
+    const fallback = this.resolveFallbackSourceFile(sourceFile, baseDir);
+    if (!fallback) {
+      return;
+    }
+    for (const segment of mapping.segments) {
+      segment.loc.file = fallback;
+    }
+  }
+
+  private resolveFallbackSourceFile(sourceFile: string, baseDir: string): string | undefined {
+    const resolved = this.resolveRelative(sourceFile, baseDir);
+    for (const root of this.sourceRoots) {
+      const rel = path.relative(root, resolved);
+      if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+        return rel;
+      }
+    }
+    return resolved;
   }
 
   private loadDebugMap(mapPath: string): ReturnType<typeof buildD8DebugMap> | undefined {

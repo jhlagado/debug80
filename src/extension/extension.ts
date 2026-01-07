@@ -154,6 +154,16 @@ export function activate(context: vscode.ExtensionContext): void {
         } else {
           tec1PanelController.update(update);
         }
+        return;
+      }
+      if (evt.event === 'debug80/tec1Serial') {
+        const payload = evt.body as { text?: string } | undefined;
+        const text = payload?.text ?? '';
+        if (text.length === 0) {
+          return;
+        }
+        tec1PanelController.appendSerial(text);
+        return;
       }
     })
   );
