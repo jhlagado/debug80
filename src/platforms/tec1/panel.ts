@@ -4,6 +4,7 @@ import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
 export interface Tec1PanelController {
   open(session?: vscode.DebugSession, options?: { focus?: boolean; reveal?: boolean }): void;
   update(payload: Tec1UpdatePayload): void;
+  appendSerial(text: string): void;
   clear(): void;
   handleSessionTerminated(sessionId: string): void;
 }
@@ -16,7 +17,9 @@ export function createTec1PanelController(
   let session: vscode.DebugSession | undefined;
   let digits = Array.from({ length: 6 }, () => 0);
   let speaker = false;
-  let speedMode: Tec1SpeedMode = 'slow';
+  let speedMode: Tec1SpeedMode = 'fast';
+  let serialBuffer = '';
+  const serialMaxChars = 8000;
 
   const open = (
     targetSession?: vscode.DebugSession,
@@ -40,7 +43,7 @@ export function createTec1PanelController(
         speedMode = 'slow';
       });
       panel.webview.onDidReceiveMessage(
-        async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode }) => {
+        async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode; text?: string }) => {
           if (msg.type === 'key' && typeof msg.code === 'number') {
             const target = session ?? getFallbackSession();
             if (target?.type === 'z80') {
@@ -71,6 +74,16 @@ export function createTec1PanelController(
               }
             }
           }
+          if (msg.type === 'serialSend' && typeof msg.text === 'string') {
+            const target = session ?? getFallbackSession();
+            if (target?.type === 'z80') {
+              try {
+                await target.customRequest('debug80/tec1SerialInput', { text: msg.text });
+              } catch {
+                /* ignore */
+              }
+            }
+          }
         }
       );
     }
@@ -82,6 +95,9 @@ export function createTec1PanelController(
     }
     panel.webview.html = getTec1Html();
     update({ digits, speaker: speaker ? 1 : 0, speedMode });
+    if (serialBuffer.length > 0) {
+      panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
+    }
   };
 
   const update = (payload: Tec1UpdatePayload): void => {
@@ -99,9 +115,23 @@ export function createTec1PanelController(
     }
   };
 
+  const appendSerial = (text: string): void => {
+    if (!text) {
+      return;
+    }
+    serialBuffer += text;
+    if (serialBuffer.length > serialMaxChars) {
+      serialBuffer = serialBuffer.slice(serialBuffer.length - serialMaxChars);
+    }
+    if (panel !== undefined) {
+      panel.webview.postMessage({ type: 'serial', text });
+    }
+  };
+
   const clear = (): void => {
     digits = Array.from({ length: 6 }, () => 0);
     speaker = false;
+    serialBuffer = '';
     if (panel !== undefined) {
       panel.webview.postMessage({
         type: 'update',
@@ -109,6 +139,7 @@ export function createTec1PanelController(
         speaker: false,
         speedMode,
       });
+      panel.webview.postMessage({ type: 'serialClear' });
     }
   };
 
@@ -122,6 +153,7 @@ export function createTec1PanelController(
   return {
     open,
     update,
+    appendSerial,
     clear,
     handleSessionTerminated,
   };
@@ -233,6 +265,47 @@ function getTec1Html(): string {
     .key.shift {
       letter-spacing: 0.08em;
     }
+    .serial {
+      margin-top: 16px;
+      background: #101010;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .serial-title {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #c0c0c0;
+      margin-bottom: 6px;
+    }
+    .serial-body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .serial-input {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .serial-input input {
+      flex: 1;
+      background: #0b0b0b;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #f0f0f0;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+    }
+    .serial-input input:focus {
+      outline: 1px solid #555;
+    }
   </style>
 </head>
 <body>
@@ -247,6 +320,14 @@ function getTec1Html(): string {
       <div class="key mute" id="mute">MUTED</div>
     </div>
     <div class="keypad" id="keypad"></div>
+    <div class="serial">
+      <div class="serial-title">SERIAL (BIT 6)</div>
+      <pre class="serial-body" id="serialOut"></pre>
+      <div class="serial-input">
+        <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
+        <div class="key" id="serialSend">SEND</div>
+      </div>
+    </div>
   </div>
   <script>
     const vscode = acquireVsCodeApi();
@@ -256,6 +337,10 @@ function getTec1Html(): string {
     const speakerHzEl = document.getElementById('speakerHz');
     const speedEl = document.getElementById('speed');
     const muteEl = document.getElementById('mute');
+    const serialOutEl = document.getElementById('serialOut');
+    const serialInputEl = document.getElementById('serialInput');
+    const serialSendEl = document.getElementById('serialSend');
+    const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
     const SEGMENTS = [
@@ -313,7 +398,7 @@ function getTec1Html(): string {
       '3', '2', '1', '0'
     ];
 
-    let speedMode = 'slow';
+    let speedMode = 'fast';
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
@@ -463,18 +548,69 @@ function getTec1Html(): string {
       }
     }
 
+    function appendSerial(text) {
+      if (!text) return;
+      const next = (serialOutEl.textContent || '') + text;
+      if (next.length > SERIAL_MAX) {
+        serialOutEl.textContent = next.slice(next.length - SERIAL_MAX);
+      } else {
+        serialOutEl.textContent = next;
+      }
+      serialOutEl.scrollTop = serialOutEl.scrollHeight;
+    }
+
+    function sendSerialInput() {
+      const text = (serialInputEl.value || '').trimEnd();
+      if (!text) return;
+      vscode.postMessage({ type: 'serialSend', text: text + '\\r' });
+      serialInputEl.value = '';
+      serialInputEl.focus();
+    }
+
     window.addEventListener('message', event => {
-      if (event.data && event.data.type === 'update') {
+      if (!event.data) return;
+      if (event.data.type === 'update') {
         applyUpdate(event.data);
+        return;
+      }
+      if (event.data.type === 'serial') {
+        appendSerial(event.data.text || '');
+        return;
+      }
+      if (event.data.type === 'serialInit') {
+        serialOutEl.textContent = event.data.text || '';
+        return;
+      }
+      if (event.data.type === 'serialClear') {
+        serialOutEl.textContent = '';
       }
     });
 
     applySpeed(speedMode);
     applyMuteState();
-    document.getElementById('app').focus();
+    if (document.activeElement !== serialInputEl) {
+      document.getElementById('app').focus();
+    }
+
+    serialSendEl.addEventListener('click', () => {
+      sendSerialInput();
+    });
+    serialInputEl.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        sendSerialInput();
+        event.preventDefault();
+      }
+    });
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (target && target.isContentEditable) {
+        return;
+      }
       const key = event.key.toUpperCase();
       if (keyMap[key] !== undefined) {
         sendKey(keyMap[key]);

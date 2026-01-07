@@ -97,6 +97,9 @@ Protocol details (from MINT1.2 ROM):
 - 2 stop bits.
 - Timing derived from a software delay loop (BAUD value).
 
+Debug80 decodes TX (bit 6) into the TEC-1 panel’s serial monitor.
+This is output-only for now; RX will be wired later.
+
 Side effect: during serial TX, the ROM writes `OUT 0x01` with only bit 6 set,
 so digit scanning is paused and the display can blank. This is expected.
 When writing SCAN for display, avoid toggling bit 6 to prevent spurious serial

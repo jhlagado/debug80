@@ -1,5 +1,6 @@
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
+import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
@@ -27,6 +28,7 @@ export interface Tec1Runtime {
   state: Tec1State;
   ioHandlers: IoHandlers;
   applyKey(code: number): void;
+  queueSerial(bytes: number[]): void;
   recordCycles(cycles: number): void;
   silenceSpeaker(): void;
   setSpeed(mode: Tec1SpeedMode): void;
@@ -37,6 +39,7 @@ export interface Tec1Runtime {
 export const TEC1_SLOW_HZ = 400000;
 export const TEC1_FAST_HZ = 4000000;
 const TEC1_SILENCE_CYCLES = 10000;
+const TEC1_SERIAL_BAUD = 9600;
 
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -74,7 +77,8 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
-  onUpdate: (payload: Tec1UpdatePayload) => void
+  onUpdate: (payload: Tec1UpdatePayload) => void,
+  onSerialByte?: (byte: number) => void
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
@@ -85,12 +89,12 @@ export function createTec1Runtime(
     cycleClock: new CycleClock(),
     lastEdgeCycle: null,
     silenceEventId: null,
-    keyValue: 0xff,
+    keyValue: 0x7f,
     nmiPending: false,
     lastUpdateMs: 0,
     pendingUpdate: false,
-    clockHz: TEC1_SLOW_HZ,
-    speedMode: 'slow',
+    clockHz: TEC1_FAST_HZ,
+    speedMode: 'fast',
     updateMs: config.updateMs,
     yieldMs: config.yieldMs,
   };
@@ -103,6 +107,28 @@ export function createTec1Runtime(
       speakerHz: state.speakerHz,
     });
   };
+
+  let serialLevel: 0 | 1 = 1;
+  let serialRxLevel: 0 | 1 = 1;
+  let serialRxBusy = false;
+  let serialRxToken = 0;
+  let serialRxLeadCycles = 0;
+  let serialRxPending = false;
+  let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
+  const serialRxQueue: number[] = [];
+  const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
+    baud: TEC1_SERIAL_BAUD,
+    cyclesPerSecond: state.clockHz,
+    dataBits: 8,
+    stopBits: 2,
+    parity: 'none',
+    inverted: false,
+  });
+  serialDecoder.setByteHandler((event) => {
+    if (onSerialByte) {
+      onSerialByte(event.byte);
+    }
+  });
 
   const queueUpdate = (): void => {
     const now = Date.now();
@@ -159,7 +185,13 @@ export function createTec1Runtime(
     read: (port: number): number => {
       const p = port & 0xff;
       if (p === 0x00) {
-        return state.keyValue & 0xff;
+        if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
+          serialRxPending = false;
+          serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
+          startNextSerialRx();
+        }
+        const base = state.keyValue & 0x7f;
+        return base | (serialRxLevel ? 0x80 : 0);
       }
       return 0xff;
     },
@@ -168,6 +200,11 @@ export function createTec1Runtime(
       if (p === 0x01) {
         state.digitLatch = value & 0xff;
         const speaker = (value & 0x80) !== 0;
+        const nextSerial: 0 | 1 = (value & 0x40) !== 0 ? 1 : 0;
+        if (nextSerial !== serialLevel) {
+          serialLevel = nextSerial;
+          serialDecoder.recordLevel(serialLevel);
+        }
         if (speaker !== state.speaker) {
           const now = state.cycleClock.now();
           if (state.lastEdgeCycle !== null) {
@@ -200,8 +237,85 @@ export function createTec1Runtime(
   };
 
   const applyKey = (code: number): void => {
-    state.keyValue = code & 0xff;
+    state.keyValue = code & 0x7f;
     state.nmiPending = true;
+  };
+
+  const setSerialRxLevel = (level: 0 | 1): void => {
+    serialRxLevel = level;
+  };
+
+  const scheduleSerialRxByte = (byte: number, leadCycles = 0): void => {
+    const token = serialRxToken;
+    const start = state.cycleClock.now() + leadCycles;
+    if (leadCycles <= 0) {
+      setSerialRxLevel(0);
+    } else {
+      setSerialRxLevel(1);
+      state.cycleClock.scheduleAt(start, () => {
+        if (serialRxToken !== token) {
+          return;
+        }
+        setSerialRxLevel(0);
+      });
+    }
+
+    for (let i = 0; i < 8; i += 1) {
+      const bit = ((byte >> i) & 1) as 0 | 1;
+      const at = start + serialCyclesPerBit * (i + 1);
+      state.cycleClock.scheduleAt(at, () => {
+        if (serialRxToken !== token) {
+          return;
+        }
+        setSerialRxLevel(bit);
+      });
+    }
+
+    const stopAt = start + serialCyclesPerBit * (1 + 8);
+    state.cycleClock.scheduleAt(stopAt, () => {
+      if (serialRxToken !== token) {
+        return;
+      }
+      setSerialRxLevel(1);
+    });
+
+    const doneAt = start + serialCyclesPerBit * (1 + 8 + 2);
+    state.cycleClock.scheduleAt(doneAt, () => {
+      if (serialRxToken !== token) {
+        return;
+      }
+      startNextSerialRx();
+    });
+  };
+
+  const startNextSerialRx = (): void => {
+    if (serialRxQueue.length === 0) {
+      serialRxBusy = false;
+      setSerialRxLevel(1);
+      return;
+    }
+    serialRxBusy = true;
+    const next = serialRxQueue.shift();
+    if (next === undefined) {
+      serialRxBusy = false;
+      setSerialRxLevel(1);
+      return;
+    }
+    const leadCycles = serialRxLeadCycles;
+    serialRxLeadCycles = 0;
+    scheduleSerialRxByte(next, leadCycles);
+  };
+
+  const queueSerial = (bytes: number[]): void => {
+    if (!bytes.length) {
+      return;
+    }
+    for (const value of bytes) {
+      serialRxQueue.push(value & 0xff);
+    }
+    if (!serialRxBusy) {
+      serialRxPending = true;
+    }
   };
 
   const recordCycles = (cycles: number): void => {
@@ -227,6 +341,8 @@ export function createTec1Runtime(
   const setSpeed = (mode: Tec1SpeedMode): void => {
     state.speedMode = mode;
     state.clockHz = mode === 'slow' ? TEC1_SLOW_HZ : TEC1_FAST_HZ;
+    serialDecoder.setCyclesPerSecond(state.clockHz);
+    serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
     sendUpdate();
   };
 
@@ -238,6 +354,10 @@ export function createTec1Runtime(
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
     }
+    serialRxQueue.length = 0;
+    serialRxBusy = false;
+    serialRxToken += 1;
+    setSerialRxLevel(1);
     queueUpdate();
   };
 
@@ -245,6 +365,7 @@ export function createTec1Runtime(
     state,
     ioHandlers,
     applyKey,
+    queueSerial,
     recordCycles,
     silenceSpeaker,
     setSpeed,
