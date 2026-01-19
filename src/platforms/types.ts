@@ -27,6 +27,7 @@ export interface Tec1PlatformConfig {
   appStart?: number;
   entry?: number;
   romHex?: string;
+  ramInitHex?: string;
   updateMs?: number;
   yieldMs?: number;
 }
@@ -37,6 +38,7 @@ export interface Tec1PlatformConfigNormalized {
   appStart: number;
   entry: number;
   romHex?: string;
+  ramInitHex?: string;
   updateMs: number;
   yieldMs: number;
 }
