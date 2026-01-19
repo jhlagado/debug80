@@ -1,3 +1,7 @@
+        ; HelloWorld example program (terminal UI).
+        ; - Target platform: Simple (debug80 "simple")
+        ; - Demonstrates source-level stepping, basic I/O, and readLn usage.
+        ; - Uses the Simple platform terminal services via SYS_PUTS/readLn.
         .include "constants.asm"
         .include "macros.asm"
         .include "system.asm"
