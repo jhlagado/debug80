@@ -125,6 +125,7 @@ export function createTec1Runtime(
   let serialDebugLeadCycles = 0;
   let serialDebugPollLogged = false;
   let serialDebugDone = false;
+  let serialRxPrimed = false;
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
     baud: TEC1_SERIAL_BAUD,
     cyclesPerSecond: state.clockHz,
@@ -405,6 +406,10 @@ export function createTec1Runtime(
           queueLen: bytes.length,
         });
       }
+    }
+    if (!serialRxPrimed) {
+      serialRxQueue.push(0x00);
+      serialRxPrimed = true;
     }
     for (const value of bytes) {
       serialRxQueue.push(value & 0xff);
