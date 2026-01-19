@@ -346,9 +346,13 @@ export function createTec1Runtime(
       return;
     }
     if (!serialDebugDone && !serialDebugArmed) {
+      const first = bytes[0];
+      if (first === undefined) {
+        return;
+      }
       serialDebugArmed = true;
       serialDebugFirstSendCycle = state.cycleClock.now();
-      serialDebugFirstByte = bytes[0] & 0xff;
+      serialDebugFirstByte = first & 0xff;
       serialDebugFirstReadCycle = null;
       serialDebugFirstStartCycle = null;
       serialDebugLeadCycles = 0;
