@@ -1554,6 +1554,9 @@ export class Z80DebugSession extends DebugSession {
           if (debug.queueLen !== undefined) {
             parts.push(`queue=${debug.queueLen}`);
           }
+          if (debug.pending !== undefined) {
+            parts.push(`pending=${debug.pending ? '1' : '0'}`);
+          }
           if (debug.readCycle !== undefined && debug.startCycle !== undefined) {
             parts.push(`delta=${debug.startCycle - debug.readCycle}`);
           }
