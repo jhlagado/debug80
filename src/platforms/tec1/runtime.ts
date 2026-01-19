@@ -195,6 +195,13 @@ export function createTec1Runtime(
       if (p === 0x00) {
         if (serialDebugArmed && serialDebugFirstReadCycle === null) {
           serialDebugFirstReadCycle = state.cycleClock.now();
+          if (onSerialDebug) {
+            onSerialDebug({
+              stage: 'read',
+              firstByte: serialDebugFirstByte ?? undefined,
+              readCycle: serialDebugFirstReadCycle,
+            });
+          }
         }
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
@@ -273,6 +280,14 @@ export function createTec1Runtime(
     if (serialDebugArmed && serialDebugFirstStartCycle === null) {
       serialDebugFirstStartCycle = start;
       serialDebugLeadCycles = leadCycles;
+      if (onSerialDebug) {
+        onSerialDebug({
+          stage: 'start',
+          firstByte: serialDebugFirstByte ?? undefined,
+          startCycle: serialDebugFirstStartCycle ?? undefined,
+          leadCycles: serialDebugLeadCycles,
+        });
+      }
     }
 
     for (let i = 0; i < 8; i += 1) {
@@ -331,6 +346,7 @@ export function createTec1Runtime(
       serialDebugDone = true;
       serialDebugArmed = false;
       onSerialDebug({
+        stage: 'summary',
         firstByte: serialDebugFirstByte,
         sendCycle: serialDebugFirstSendCycle,
         readCycle: serialDebugFirstReadCycle,
@@ -356,6 +372,14 @@ export function createTec1Runtime(
       serialDebugFirstReadCycle = null;
       serialDebugFirstStartCycle = null;
       serialDebugLeadCycles = 0;
+      if (onSerialDebug) {
+        onSerialDebug({
+          stage: 'send',
+          firstByte: serialDebugFirstByte,
+          sendCycle: serialDebugFirstSendCycle,
+          queueLen: bytes.length,
+        });
+      }
     }
     for (const value of bytes) {
       serialRxQueue.push(value & 0xff);
