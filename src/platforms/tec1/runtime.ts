@@ -311,6 +311,7 @@ export function createTec1Runtime(
       return;
     }
     if (!serialRxPrimed) {
+      // Prime RX once so the first real byte is aligned to the ROM's bitbang receiver.
       serialRxQueue.push(0x00);
       serialRxPrimed = true;
     }
@@ -360,6 +361,7 @@ export function createTec1Runtime(
     }
     serialRxQueue.length = 0;
     serialRxBusy = false;
+    serialRxPrimed = false;
     serialRxToken += 1;
     setSerialRxLevel(1);
     queueUpdate();
