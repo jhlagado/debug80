@@ -1536,7 +1536,7 @@ export class Z80DebugSession extends DebugSession {
         },
         (debug) => {
           const parts: string[] = [`[tec1-serial:${debug.stage}]`];
-          if (debug.firstByte !== undefined) {
+          if (debug.firstByte !== null && debug.firstByte !== undefined) {
             parts.push(`first=0x${debug.firstByte.toString(16).padStart(2, '0')}`);
           }
           if (debug.sendCycle !== undefined) {
