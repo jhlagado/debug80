@@ -9,7 +9,7 @@ export interface Tec1UpdatePayload {
 
 export interface Tec1SerialDebugPayload {
   stage: 'send' | 'read' | 'start' | 'summary';
-  firstByte?: number;
+  firstByte: number | null;
   sendCycle?: number;
   readCycle?: number;
   startCycle?: number;
