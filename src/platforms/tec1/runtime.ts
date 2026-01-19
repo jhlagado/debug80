@@ -116,6 +116,7 @@ export function createTec1Runtime(
   let serialRxPending = false;
   let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
   const serialRxQueue: number[] = [];
+  let serialRxPrimed = false;
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
     baud: TEC1_SERIAL_BAUD,
     cyclesPerSecond: state.clockHz,
@@ -259,7 +260,6 @@ export function createTec1Runtime(
         setSerialRxLevel(0);
       });
     }
-
     for (let i = 0; i < 8; i += 1) {
       const bit = ((byte >> i) & 1) as 0 | 1;
       const at = start + serialCyclesPerBit * (i + 1);
@@ -310,6 +310,11 @@ export function createTec1Runtime(
     if (!bytes.length) {
       return;
     }
+    if (!serialRxPrimed) {
+      // Prime RX once so the first real byte is aligned to the ROM's bitbang receiver.
+      serialRxQueue.push(0x00);
+      serialRxPrimed = true;
+    }
     for (const value of bytes) {
       serialRxQueue.push(value & 0xff);
     }
@@ -356,6 +361,7 @@ export function createTec1Runtime(
     }
     serialRxQueue.length = 0;
     serialRxBusy = false;
+    serialRxPrimed = false;
     serialRxToken += 1;
     setSerialRxLevel(1);
     queueUpdate();
