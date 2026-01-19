@@ -114,7 +114,8 @@ Not every ROM uses RAM the same way:
 - MINT: uses RAM as data only and does not require an initial program in RAM.
 
 In Debug80, set `appStart` per ROM so that assembled programs do not overwrite
-reserved RAM.
+reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
+(useful for shipping a small starter program at the correct address).
 
 ## ROMs
 
@@ -137,6 +138,7 @@ You can override with `romHex` in the platform config.
     "appStart": 2048,
     "entry": 0,
     "romHex": "roms/tec1/mon-1b.hex",
+    "ramInitHex": "build/main.hex",
     "updateMs": 16,
     "yieldMs": 0
   }

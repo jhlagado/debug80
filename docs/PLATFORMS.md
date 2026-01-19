@@ -288,6 +288,11 @@ extract the embedded HEX string.
 Optional tuning fields:
 - `updateMs` (default 16): min milliseconds between TEC-1 panel updates.
 - `yieldMs` (default 0): extra yield delay when the emulator is ahead of real time.
+- `ramInitHex`: optional Intel HEX file to preload RAM (e.g. a starter program).
+
+ROM-specific RAM usage:
+- MON-1 user programs start at 0x0800.
+- MON-2 user programs start at 0x0900 (0x0800–0x08ff reserved for variables).
 
 I/O map:
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x13 ADDRESS, 0x10 UP (+), 0x12 GO, 0x11 DOWN (-))
@@ -329,6 +334,23 @@ loop:   LD  A, 0x01       ; select rightmost digit (bit 0)
 Build it with asm80 (or let Debug80 assemble it), then run the ROM monitor and
 press ADDRESS to 0800 followed by GO. The ROM keeps scanning once your program
 takes over, so your code should refresh the display as needed.
+
+Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
+
+```json
+{
+  "platform": "tec1",
+  "tec1": {
+    "romHex": "roms/tec1/mon-2.hex",
+    "regions": [
+      { "start": 0, "end": 2047, "kind": "rom" },
+      { "start": 2048, "end": 4095, "kind": "ram" }
+    ],
+    "appStart": 2304,
+    "entry": 0
+  }
+}
+```
 
 ## Build and launch flow
 
