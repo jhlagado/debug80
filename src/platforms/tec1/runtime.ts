@@ -3,7 +3,7 @@ import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
-import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+import { Tec1SerialDebugPayload, Tec1SpeedMode, Tec1UpdatePayload } from './types';
 
 export interface Tec1State {
   digits: number[];
@@ -78,7 +78,8 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
   onUpdate: (payload: Tec1UpdatePayload) => void,
-  onSerialByte?: (byte: number) => void
+  onSerialByte?: (byte: number) => void,
+  onSerialDebug?: (payload: Tec1SerialDebugPayload) => void
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
@@ -116,6 +117,13 @@ export function createTec1Runtime(
   let serialRxPending = false;
   let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
   const serialRxQueue: number[] = [];
+  let serialDebugArmed = false;
+  let serialDebugFirstSendCycle: number | null = null;
+  let serialDebugFirstReadCycle: number | null = null;
+  let serialDebugFirstStartCycle: number | null = null;
+  let serialDebugFirstByte: number | null = null;
+  let serialDebugLeadCycles = 0;
+  let serialDebugDone = false;
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
     baud: TEC1_SERIAL_BAUD,
     cyclesPerSecond: state.clockHz,
@@ -185,6 +193,9 @@ export function createTec1Runtime(
     read: (port: number): number => {
       const p = port & 0xff;
       if (p === 0x00) {
+        if (serialDebugArmed && serialDebugFirstReadCycle === null) {
+          serialDebugFirstReadCycle = state.cycleClock.now();
+        }
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
@@ -259,6 +270,10 @@ export function createTec1Runtime(
         setSerialRxLevel(0);
       });
     }
+    if (serialDebugArmed && serialDebugFirstStartCycle === null) {
+      serialDebugFirstStartCycle = start;
+      serialDebugLeadCycles = leadCycles;
+    }
 
     for (let i = 0; i < 8; i += 1) {
       const bit = ((byte >> i) & 1) as 0 | 1;
@@ -304,11 +319,39 @@ export function createTec1Runtime(
     const leadCycles = serialRxLeadCycles;
     serialRxLeadCycles = 0;
     scheduleSerialRxByte(next, leadCycles);
+    if (
+      serialDebugArmed &&
+      !serialDebugDone &&
+      serialDebugFirstReadCycle !== null &&
+      serialDebugFirstStartCycle !== null &&
+      serialDebugFirstSendCycle !== null &&
+      serialDebugFirstByte !== null &&
+      onSerialDebug
+    ) {
+      serialDebugDone = true;
+      serialDebugArmed = false;
+      onSerialDebug({
+        firstByte: serialDebugFirstByte,
+        sendCycle: serialDebugFirstSendCycle,
+        readCycle: serialDebugFirstReadCycle,
+        startCycle: serialDebugFirstStartCycle,
+        leadCycles: serialDebugLeadCycles,
+        queueLen: serialRxQueue.length,
+      });
+    }
   };
 
   const queueSerial = (bytes: number[]): void => {
     if (!bytes.length) {
       return;
+    }
+    if (!serialDebugDone && !serialDebugArmed) {
+      serialDebugArmed = true;
+      serialDebugFirstSendCycle = state.cycleClock.now();
+      serialDebugFirstByte = bytes[0] & 0xff;
+      serialDebugFirstReadCycle = null;
+      serialDebugFirstStartCycle = null;
+      serialDebugLeadCycles = 0;
     }
     for (const value of bytes) {
       serialRxQueue.push(value & 0xff);

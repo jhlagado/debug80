@@ -1524,13 +1524,36 @@ export class Z80DebugSession extends DebugSession {
       if (!this.tec1Config) {
         return undefined;
       }
-      this.tec1Runtime = createTec1Runtime(this.tec1Config, (payload) => {
-        this.sendEvent(new DapEvent('debug80/tec1Update', payload));
-      }, (byte) => {
-        const value = byte & 0xff;
-        const text = String.fromCharCode(value);
-        this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
-      });
+      this.tec1Runtime = createTec1Runtime(
+        this.tec1Config,
+        (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1Update', payload));
+        },
+        (byte) => {
+          const value = byte & 0xff;
+          const text = String.fromCharCode(value);
+          this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
+        },
+        (debug) => {
+          const readCycle = debug.readCycle ?? -1;
+          const startCycle = debug.startCycle ?? -1;
+          const delta = readCycle >= 0 && startCycle >= 0 ? startCycle - readCycle : undefined;
+          const parts = [
+            `[tec1-serial] first send byte=0x${debug.firstByte
+              .toString(16)
+              .padStart(2, '0')}`,
+            `send=${debug.sendCycle}`,
+            `read=${readCycle}`,
+            `start=${startCycle}`,
+            `lead=${debug.leadCycles}`,
+            `queue=${debug.queueLen}`,
+          ];
+          if (delta !== undefined) {
+            parts.push(`delta=${delta}`);
+          }
+          this.sendEvent(new OutputEvent(`${parts.join(' ')}\n`, 'console'));
+        }
+      );
       return this.tec1Runtime.ioHandlers;
     }
 

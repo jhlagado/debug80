@@ -6,3 +6,12 @@ export interface Tec1UpdatePayload {
   speedMode: Tec1SpeedMode;
   speakerHz?: number;
 }
+
+export interface Tec1SerialDebugPayload {
+  firstByte: number;
+  sendCycle: number;
+  readCycle: number | null;
+  startCycle: number | null;
+  leadCycles: number;
+  queueLen: number;
+}
