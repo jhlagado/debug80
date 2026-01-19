@@ -198,7 +198,7 @@ export function createTec1Runtime(
           if (onSerialDebug) {
             onSerialDebug({
               stage: 'read',
-              firstByte: serialDebugFirstByte ?? undefined,
+              firstByte: serialDebugFirstByte ?? null,
               readCycle: serialDebugFirstReadCycle,
             });
           }
@@ -283,7 +283,7 @@ export function createTec1Runtime(
       if (onSerialDebug) {
         onSerialDebug({
           stage: 'start',
-          firstByte: serialDebugFirstByte ?? undefined,
+          firstByte: serialDebugFirstByte ?? null,
           startCycle: serialDebugFirstStartCycle ?? undefined,
           leadCycles: serialDebugLeadCycles,
         });
@@ -347,7 +347,7 @@ export function createTec1Runtime(
       serialDebugArmed = false;
       onSerialDebug({
         stage: 'summary',
-        firstByte: serialDebugFirstByte,
+        firstByte: serialDebugFirstByte ?? null,
         sendCycle: serialDebugFirstSendCycle,
         readCycle: serialDebugFirstReadCycle,
         startCycle: serialDebugFirstStartCycle,
@@ -375,7 +375,7 @@ export function createTec1Runtime(
       if (onSerialDebug) {
         onSerialDebug({
           stage: 'send',
-          firstByte: serialDebugFirstByte,
+          firstByte: serialDebugFirstByte ?? null,
           sendCycle: serialDebugFirstSendCycle,
           queueLen: bytes.length,
         });
