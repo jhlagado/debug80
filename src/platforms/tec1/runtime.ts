@@ -123,6 +123,7 @@ export function createTec1Runtime(
   let serialDebugFirstStartCycle: number | null = null;
   let serialDebugFirstByte: number | null = null;
   let serialDebugLeadCycles = 0;
+  let serialDebugPollLogged = false;
   let serialDebugDone = false;
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
     baud: TEC1_SERIAL_BAUD,
@@ -203,9 +204,26 @@ export function createTec1Runtime(
             });
           }
         }
+        if (serialDebugArmed && !serialDebugPollLogged && onSerialDebug) {
+          serialDebugPollLogged = true;
+          onSerialDebug({
+            stage: 'poll',
+            firstByte: serialDebugFirstByte ?? null,
+            queueLen: serialRxQueue.length,
+            pending: serialRxPending,
+          });
+        }
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
+          if (serialDebugArmed && onSerialDebug) {
+            onSerialDebug({
+              stage: 'arm',
+              firstByte: serialDebugFirstByte ?? null,
+              leadCycles: serialRxLeadCycles,
+              queueLen: serialRxQueue.length,
+            });
+          }
           startNextSerialRx();
         }
         const base = state.keyValue & 0x7f;
@@ -322,6 +340,13 @@ export function createTec1Runtime(
     if (serialRxQueue.length === 0) {
       serialRxBusy = false;
       setSerialRxLevel(1);
+      if (serialDebugArmed && onSerialDebug && !serialDebugDone) {
+        onSerialDebug({
+          stage: 'empty',
+          firstByte: serialDebugFirstByte ?? null,
+          queueLen: serialRxQueue.length,
+        });
+      }
       return;
     }
     serialRxBusy = true;
