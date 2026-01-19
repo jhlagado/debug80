@@ -1535,21 +1535,27 @@ export class Z80DebugSession extends DebugSession {
           this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
         },
         (debug) => {
-          const readCycle = debug.readCycle ?? -1;
-          const startCycle = debug.startCycle ?? -1;
-          const delta = readCycle >= 0 && startCycle >= 0 ? startCycle - readCycle : undefined;
-          const parts = [
-            `[tec1-serial] first send byte=0x${debug.firstByte
-              .toString(16)
-              .padStart(2, '0')}`,
-            `send=${debug.sendCycle}`,
-            `read=${readCycle}`,
-            `start=${startCycle}`,
-            `lead=${debug.leadCycles}`,
-            `queue=${debug.queueLen}`,
-          ];
-          if (delta !== undefined) {
-            parts.push(`delta=${delta}`);
+          const parts: string[] = [`[tec1-serial:${debug.stage}]`];
+          if (debug.firstByte !== undefined) {
+            parts.push(`first=0x${debug.firstByte.toString(16).padStart(2, '0')}`);
+          }
+          if (debug.sendCycle !== undefined) {
+            parts.push(`send=${debug.sendCycle}`);
+          }
+          if (debug.readCycle !== undefined) {
+            parts.push(`read=${debug.readCycle}`);
+          }
+          if (debug.startCycle !== undefined) {
+            parts.push(`start=${debug.startCycle}`);
+          }
+          if (debug.leadCycles !== undefined) {
+            parts.push(`lead=${debug.leadCycles}`);
+          }
+          if (debug.queueLen !== undefined) {
+            parts.push(`queue=${debug.queueLen}`);
+          }
+          if (debug.readCycle !== undefined && debug.startCycle !== undefined) {
+            parts.push(`delta=${debug.startCycle - debug.readCycle}`);
           }
           this.sendEvent(new OutputEvent(`${parts.join(' ')}\n`, 'console'));
         }
