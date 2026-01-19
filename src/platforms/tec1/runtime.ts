@@ -3,7 +3,7 @@ import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
-import { Tec1SerialDebugPayload, Tec1SpeedMode, Tec1UpdatePayload } from './types';
+import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
 
 export interface Tec1State {
   digits: number[];
@@ -78,8 +78,7 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
   onUpdate: (payload: Tec1UpdatePayload) => void,
-  onSerialByte?: (byte: number) => void,
-  onSerialDebug?: (payload: Tec1SerialDebugPayload) => void
+  onSerialByte?: (byte: number) => void
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
@@ -117,14 +116,6 @@ export function createTec1Runtime(
   let serialRxPending = false;
   let serialCyclesPerBit = state.clockHz / TEC1_SERIAL_BAUD;
   const serialRxQueue: number[] = [];
-  let serialDebugArmed = false;
-  let serialDebugFirstSendCycle: number | null = null;
-  let serialDebugFirstReadCycle: number | null = null;
-  let serialDebugFirstStartCycle: number | null = null;
-  let serialDebugFirstByte: number | null = null;
-  let serialDebugLeadCycles = 0;
-  let serialDebugPollLogged = false;
-  let serialDebugDone = false;
   let serialRxPrimed = false;
   const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
     baud: TEC1_SERIAL_BAUD,
@@ -195,36 +186,9 @@ export function createTec1Runtime(
     read: (port: number): number => {
       const p = port & 0xff;
       if (p === 0x00) {
-        if (serialDebugArmed && serialDebugFirstReadCycle === null) {
-          serialDebugFirstReadCycle = state.cycleClock.now();
-          if (onSerialDebug) {
-            onSerialDebug({
-              stage: 'read',
-              firstByte: serialDebugFirstByte ?? null,
-              readCycle: serialDebugFirstReadCycle,
-            });
-          }
-        }
-        if (serialDebugArmed && !serialDebugPollLogged && onSerialDebug) {
-          serialDebugPollLogged = true;
-          onSerialDebug({
-            stage: 'poll',
-            firstByte: serialDebugFirstByte ?? null,
-            queueLen: serialRxQueue.length,
-            pending: serialRxPending,
-          });
-        }
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
-          if (serialDebugArmed && onSerialDebug) {
-            onSerialDebug({
-              stage: 'arm',
-              firstByte: serialDebugFirstByte ?? null,
-              leadCycles: serialRxLeadCycles,
-              queueLen: serialRxQueue.length,
-            });
-          }
           startNextSerialRx();
         }
         const base = state.keyValue & 0x7f;
@@ -296,19 +260,6 @@ export function createTec1Runtime(
         setSerialRxLevel(0);
       });
     }
-    if (serialDebugArmed && serialDebugFirstStartCycle === null) {
-      serialDebugFirstStartCycle = start;
-      serialDebugLeadCycles = leadCycles;
-      if (onSerialDebug) {
-        onSerialDebug({
-          stage: 'start',
-          firstByte: serialDebugFirstByte ?? null,
-          startCycle: serialDebugFirstStartCycle ?? undefined,
-          leadCycles: serialDebugLeadCycles,
-        });
-      }
-    }
-
     for (let i = 0; i < 8; i += 1) {
       const bit = ((byte >> i) & 1) as 0 | 1;
       const at = start + serialCyclesPerBit * (i + 1);
@@ -341,13 +292,6 @@ export function createTec1Runtime(
     if (serialRxQueue.length === 0) {
       serialRxBusy = false;
       setSerialRxLevel(1);
-      if (serialDebugArmed && onSerialDebug && !serialDebugDone) {
-        onSerialDebug({
-          stage: 'empty',
-          firstByte: serialDebugFirstByte ?? null,
-          queueLen: serialRxQueue.length,
-        });
-      }
       return;
     }
     serialRxBusy = true;
@@ -360,52 +304,11 @@ export function createTec1Runtime(
     const leadCycles = serialRxLeadCycles;
     serialRxLeadCycles = 0;
     scheduleSerialRxByte(next, leadCycles);
-    if (
-      serialDebugArmed &&
-      !serialDebugDone &&
-      serialDebugFirstReadCycle !== null &&
-      serialDebugFirstStartCycle !== null &&
-      serialDebugFirstSendCycle !== null &&
-      serialDebugFirstByte !== null &&
-      onSerialDebug
-    ) {
-      serialDebugDone = true;
-      serialDebugArmed = false;
-      onSerialDebug({
-        stage: 'summary',
-        firstByte: serialDebugFirstByte ?? null,
-        sendCycle: serialDebugFirstSendCycle,
-        readCycle: serialDebugFirstReadCycle,
-        startCycle: serialDebugFirstStartCycle,
-        leadCycles: serialDebugLeadCycles,
-        queueLen: serialRxQueue.length,
-      });
-    }
   };
 
   const queueSerial = (bytes: number[]): void => {
     if (!bytes.length) {
       return;
-    }
-    if (!serialDebugDone && !serialDebugArmed) {
-      const first = bytes[0];
-      if (first === undefined) {
-        return;
-      }
-      serialDebugArmed = true;
-      serialDebugFirstSendCycle = state.cycleClock.now();
-      serialDebugFirstByte = first & 0xff;
-      serialDebugFirstReadCycle = null;
-      serialDebugFirstStartCycle = null;
-      serialDebugLeadCycles = 0;
-      if (onSerialDebug) {
-        onSerialDebug({
-          stage: 'send',
-          firstByte: serialDebugFirstByte ?? null,
-          sendCycle: serialDebugFirstSendCycle,
-          queueLen: bytes.length,
-        });
-      }
     }
     if (!serialRxPrimed) {
       serialRxQueue.push(0x00);
