@@ -298,7 +298,10 @@ Serial (bitbang):
 - TX on bit 6 of OUT 0x01 (idle high).
 - RX on bit 7 of IN 0x00 (idle high).
 - Debug80 decodes TX at 9600 baud assuming FAST = 4.0 MHz.
-- The TEC-1 panel can inject RX bytes (CR on send).
+- The TEC-1 panel can inject RX bytes (CR on send). To avoid the classic first-byte
+  drop in ROM bitbang receivers, Debug80 injects a one-time `0x00` sync byte on the
+  first SEND only. If you write your own ROM, ignore a single leading `0x00` on the
+  first receive or perform a one-byte flush at startup.
 
 Segment bit mapping (PORTSEGS):
 - 0x01 = a (top)

@@ -1524,13 +1524,17 @@ export class Z80DebugSession extends DebugSession {
       if (!this.tec1Config) {
         return undefined;
       }
-      this.tec1Runtime = createTec1Runtime(this.tec1Config, (payload) => {
-        this.sendEvent(new DapEvent('debug80/tec1Update', payload));
-      }, (byte) => {
-        const value = byte & 0xff;
-        const text = String.fromCharCode(value);
-        this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
-      });
+      this.tec1Runtime = createTec1Runtime(
+        this.tec1Config,
+        (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1Update', payload));
+        },
+        (byte) => {
+          const value = byte & 0xff;
+          const text = String.fromCharCode(value);
+          this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
+        }
+      );
       return this.tec1Runtime.ioHandlers;
     }
 
