@@ -11,6 +11,8 @@ export interface Tec1State {
   segmentLatch: number;
   speaker: boolean;
   speakerHz: number;
+  lcd: number[];
+  lcdAddr: number;
   cycleClock: CycleClock;
   lastEdgeCycle: number | null;
   silenceEventId: number | null;
@@ -93,6 +95,8 @@ export function createTec1Runtime(
     segmentLatch: 0,
     speaker: false,
     speakerHz: 0,
+    lcd: Array.from({ length: 32 }, () => 0x20),
+    lcdAddr: 0x80,
     cycleClock: new CycleClock(),
     lastEdgeCycle: null,
     silenceEventId: null,
@@ -112,6 +116,7 @@ export function createTec1Runtime(
       digits: [...state.digits],
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
+      lcd: [...state.lcd],
       speakerHz: state.speakerHz,
     });
   };
@@ -178,6 +183,35 @@ export function createTec1Runtime(
     queueUpdate();
   };
 
+  const lcdIndexForAddr = (addr: number): number | null => {
+    if (addr >= 0x80 && addr <= 0x8f) {
+      return addr - 0x80;
+    }
+    if (addr >= 0xc0 && addr <= 0xcf) {
+      return 16 + (addr - 0xc0);
+    }
+    return null;
+  };
+
+  const lcdSetAddr = (addr: number): void => {
+    state.lcdAddr = addr & 0xff;
+  };
+
+  const lcdWriteData = (value: number): void => {
+    const index = lcdIndexForAddr(state.lcdAddr);
+    if (index !== null) {
+      state.lcd[index] = value & 0xff;
+      queueUpdate();
+    }
+    state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+  };
+
+  const lcdClear = (): void => {
+    state.lcd.fill(0x20);
+    lcdSetAddr(0x80);
+    queueUpdate();
+  };
+
   const scheduleSilence = (): void => {
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
@@ -201,6 +235,12 @@ export function createTec1Runtime(
         }
         const base = state.keyValue & 0x7f;
         return base | (serialRxLevel ? 0x80 : 0);
+      }
+      if (p === 0x04) {
+        return 0x00;
+      }
+      if (p === 0x84) {
+        return 0x20;
       }
       if (p === 0x03) {
         // JMON polls P_DAT bit 6 for key-press detection.
@@ -238,6 +278,26 @@ export function createTec1Runtime(
       if (p === 0x02) {
         state.segmentLatch = value & 0xff;
         updateDisplay();
+        return;
+      }
+      if (p === 0x04) {
+        const instruction = value & 0xff;
+        if (instruction === 0x01) {
+          lcdClear();
+          return;
+        }
+        if (instruction === 0x02) {
+          lcdSetAddr(0x80);
+          return;
+        }
+        if ((instruction & 0x80) !== 0) {
+          lcdSetAddr(instruction);
+        }
+        return;
+      }
+      if (p === 0x84) {
+        lcdWriteData(value);
+        return;
       }
     },
     tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
@@ -376,6 +436,8 @@ export function createTec1Runtime(
     state.speaker = false;
     state.speakerHz = 0;
     state.lastEdgeCycle = null;
+    state.lcd.fill(0x20);
+    state.lcdAddr = 0x80;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;

@@ -120,9 +120,9 @@ reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
 ## ROMs
 
 Bundled ROMs:
-- `roms/tec1/mon-1b.hex` (MON-1B, RAM @ 0x0800)
-- `roms/tec1/mon-2.hex` (MON-2, RAM @ 0x0900)
-- `roms/tec1/jmon.hex` (JMON_SOURCE_01, RAM @ 0x0900, polled keypad)
+- `roms/tec1/mon-1b/mon-1b.hex` (MON-1B, RAM @ 0x0800)
+- `roms/tec1/mon-2/mon-2.hex` (MON-2, RAM @ 0x0900)
+- `roms/tec1/jmon/jmon.hex` (JMON_SOURCE_01, RAM @ 0x0900, polled keypad)
 
 You can override with `romHex` in the platform config.
 
@@ -138,7 +138,7 @@ You can override with `romHex` in the platform config.
     ],
     "appStart": 2048,
     "entry": 0,
-    "romHex": "roms/tec1/mon-1b.hex",
+    "romHex": "roms/tec1/mon-1b/mon-1b.hex",
     "ramInitHex": "build/main.hex",
     "updateMs": 16,
     "yieldMs": 0
@@ -150,4 +150,4 @@ You can override with `romHex` in the platform config.
 
 - Emulator and I/O: `src/debug/adapter.ts`
 - Webview panel UI: `src/extension/extension.ts`
-- Bundled ROM: `roms/tec1/mon-1b.hex`
+- Bundled ROM: `roms/tec1/mon-1b/mon-1b.hex`
