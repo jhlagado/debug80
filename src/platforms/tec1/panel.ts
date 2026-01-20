@@ -180,6 +180,18 @@ function getTec1Html(): string {
     #app {
       outline: none;
     }
+    .layout {
+      display: grid;
+      grid-template-columns: auto 260px;
+      gap: 16px;
+      align-items: start;
+    }
+    .left-col,
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .display {
       display: flex;
       flex-direction: row-reverse;
@@ -233,7 +245,6 @@ function getTec1Html(): string {
       min-width: 80px;
     }
     .keypad {
-      margin-top: 16px;
       display: grid;
       grid-template-columns: 56px repeat(4, 48px);
       gap: 8px;
@@ -336,19 +347,25 @@ function getTec1Html(): string {
 </head>
 <body>
   <div id="app" tabindex="0">
-    <div class="display" id="display"></div>
-    <div class="status">
-      <div class="speaker" id="speaker">
-        <span>SPEAKER</span>
-        <span id="speakerHz"></span>
+    <div class="layout">
+      <div class="left-col">
+        <div class="display" id="display"></div>
+        <div class="status">
+          <div class="speaker" id="speaker">
+            <span>SPEAKER</span>
+            <span id="speakerHz"></span>
+          </div>
+          <div class="key speed" id="speed">SLOW</div>
+          <div class="key mute" id="mute">MUTED</div>
+        </div>
+        <div class="keypad" id="keypad"></div>
       </div>
-      <div class="key speed" id="speed">SLOW</div>
-      <div class="key mute" id="mute">MUTED</div>
-    </div>
-    <div class="keypad" id="keypad"></div>
-    <div class="lcd">
-      <div class="lcd-title">LCD (HD44780 A00)</div>
-      <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+      <div class="right-col">
+        <div class="lcd">
+          <div class="lcd-title">LCD (HD44780 A00)</div>
+          <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+        </div>
+      </div>
     </div>
     <div class="serial">
       <div class="serial-title">SERIAL (BIT 6)</div>
