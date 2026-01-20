@@ -16,6 +16,14 @@
       "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
       "target": "mon2-serial",
       "stopOnEntry": true
+    },
+    {
+      "name": "Debug (TEC-1 JMON + Serial)",
+      "type": "z80",
+      "request": "launch",
+      "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
+      "target": "jmon-serial",
+      "stopOnEntry": true
     }
   ]
 }

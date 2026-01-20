@@ -34,6 +34,23 @@
         "entry": 0,
         "romHex": "../../roms/tec1/mon-2.hex"
       }
+    },
+    "jmon-serial": {
+      "asm": "src/serial_mon2.asm",
+      "sourceFile": "src/serial_mon2.asm",
+      "sourceRoots": ["src"],
+      "outputDir": "build",
+      "artifactBase": "jmon-serial",
+      "platform": "tec1",
+      "tec1": {
+        "regions": [
+          { "start": 0, "end": 2047, "kind": "rom" },
+          { "start": 2048, "end": 4095, "kind": "ram" }
+        ],
+        "appStart": 2304,
+        "entry": 0,
+        "romHex": "../../roms/tec1/jmon.hex"
+      }
     }
   }
 }
