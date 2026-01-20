@@ -7,7 +7,7 @@ Bundled TEC-1 monitor ROMs for Debug80.
 - File: `mon-1b.hex`
 - ASM (wrapper): `mon-1b.asm` (INCBIN of `mon-1b.bin`)
 - ASM (source): `mon-1b.source.asm`
-- Source: `/Users/johnhardy/Documents/projects/Software/monitors/Mon-1/Mon-1B/mon1B.asm`
+- Source: `Software/monitors/Mon-1/Mon-1B/mon1B.asm`
 - License: GPL-3.0
 
 ## MON-2
@@ -15,7 +15,7 @@ Bundled TEC-1 monitor ROMs for Debug80.
 - File: `mon-2.hex`
 - ASM (wrapper): `mon-2.asm` (INCBIN of `mon-2.bin`)
 - ASM (disassembly): `mon-2.disasm.asm`
-- Source: `/Users/johnhardy/Documents/projects/Software/monitors/Mon-2/Mon-2-original/mon2-orig.asm`
+- Source: `Software/monitors/Mon-2/Mon-2-original/mon2-orig.asm`
 - License: GPL-3.0
 
 Note: `mon-2.disasm.asm` is a direct disassembly listing and may need cleanup
