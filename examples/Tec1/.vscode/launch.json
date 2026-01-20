@@ -2,11 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug (debug80)",
+      "name": "Debug (TEC-1 MON-1B + Serial)",
       "type": "z80",
       "request": "launch",
       "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
-      "target": "app",
+      "target": "mon1-serial",
+      "stopOnEntry": true
+    },
+    {
+      "name": "Debug (TEC-1 MON-2 + Serial)",
+      "type": "z80",
+      "request": "launch",
+      "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
+      "target": "mon2-serial",
       "stopOnEntry": true
     }
   ]
