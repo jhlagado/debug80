@@ -21,5 +21,13 @@ Bundled TEC-1 monitor ROMs for Debug80.
 Note: `mon-2.disasm.asm` is a direct disassembly listing and may need cleanup
 to assemble cleanly with asm80.
 
+## JMON (JMON_SOURCE_01)
+
+- File: `jmon.hex`
+- ASM (wrapper): `jmon.asm` (INCBIN of `jmon.bin`)
+- ASM (source): `jmon.source.asm`
+- Source: `Software/monitors/JMon/JmonSource/JMON_SOURCE_01.asm`
+- License: GPL-3.0
+
 If you want to use a different ROM (MON-1A, JMON), set `tec1.romHex` in your
 project config to point at your chosen ROM file.
