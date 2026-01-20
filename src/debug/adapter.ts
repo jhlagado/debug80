@@ -207,6 +207,8 @@ export class Z80DebugSession extends DebugSession {
       const hexContent = fs.readFileSync(hexPath, 'utf-8');
       const program = parseIntelHex(hexContent);
       if (platform === 'tec1') {
+        const memory = new Uint8Array(0x10000);
+        memory.fill(0);
         const romPath = tec1Config?.romHex
           ? this.resolveRelative(tec1Config.romHex, baseDir)
           : this.resolveBundledTec1Rom();
@@ -218,8 +220,12 @@ export class Z80DebugSession extends DebugSession {
         } else {
           const romContent = fs.readFileSync(romPath, 'utf-8');
           const romHex = this.extractRomHex(romContent, romPath);
-          this.applyIntelHexToMemory(romHex, program.memory);
+          // Apply ROM first so any RAM init data is present before the user program.
+          this.applyIntelHexToMemory(romHex, memory);
         }
+        // Overlay the assembled program so it always wins over ROM/RAM init data.
+        this.applyIntelHexToMemory(hexContent, memory);
+        program.memory = memory;
       }
 
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
