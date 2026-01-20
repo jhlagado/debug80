@@ -60,6 +60,10 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
       : romRanges[0]?.start ?? 0x0000;
   const romHex =
     typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
+  const ramInitHex =
+    typeof config.ramInitHex === 'string' && config.ramInitHex !== ''
+      ? config.ramInitHex
+      : undefined;
   const updateMs =
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
@@ -70,6 +74,7 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     appStart: Math.max(0, Math.min(0xffff, appStart)),
     entry: Math.max(0, Math.min(0xffff, entry)),
     ...(romHex ? { romHex } : {}),
+    ...(ramInitHex ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
   };

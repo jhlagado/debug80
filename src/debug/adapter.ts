@@ -227,6 +227,24 @@ export class Z80DebugSession extends DebugSession {
             this.applyIntelHexToMemory(romHex, memory);
           }
         }
+<<<<<<< HEAD
+        const ramInitPath = tec1Config?.ramInitHex
+          ? this.resolveRelative(tec1Config.ramInitHex, baseDir)
+          : undefined;
+        if (ramInitPath) {
+          if (!fs.existsSync(ramInitPath)) {
+            this.sendEvent(
+              new OutputEvent(
+                `Debug80: TEC-1 RAM init not found at "${ramInitPath}".\n`,
+                'console'
+              )
+            );
+          } else {
+            const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
+            const ramInitHex = this.extractRomHex(ramInitContent, ramInitPath);
+            this.applyIntelHexToMemory(ramInitHex, memory);
+          }
+        }
         // Overlay user program after ROM/RAM init data.
         this.applyIntelHexToMemory(hexContent, memory);
         program.memory = memory;
