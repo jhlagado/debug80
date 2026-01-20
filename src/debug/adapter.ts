@@ -227,7 +227,6 @@ export class Z80DebugSession extends DebugSession {
             this.applyIntelHexToMemory(romHex, memory);
           }
         }
-<<<<<<< HEAD
         const ramInitPath = tec1Config?.ramInitHex
           ? this.resolveRelative(tec1Config.ramInitHex, baseDir)
           : undefined;
