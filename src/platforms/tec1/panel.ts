@@ -18,6 +18,7 @@ export function createTec1PanelController(
   let digits = Array.from({ length: 6 }, () => 0);
   let speaker = false;
   let speedMode: Tec1SpeedMode = 'fast';
+  let lcd = Array.from({ length: 32 }, () => 0x20);
   let serialBuffer = '';
   const serialMaxChars = 8000;
 
@@ -41,6 +42,7 @@ export function createTec1PanelController(
         digits = Array.from({ length: 6 }, () => 0);
         speaker = false;
         speedMode = 'slow';
+        lcd = Array.from({ length: 32 }, () => 0x20);
       });
       panel.webview.onDidReceiveMessage(
         async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode; text?: string }) => {
@@ -94,7 +96,7 @@ export function createTec1PanelController(
       panel.reveal(targetColumn, !focus);
     }
     panel.webview.html = getTec1Html();
-    update({ digits, speaker: speaker ? 1 : 0, speedMode });
+    update({ digits, speaker: speaker ? 1 : 0, speedMode, lcd });
     if (serialBuffer.length > 0) {
       panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
     }
@@ -104,12 +106,14 @@ export function createTec1PanelController(
     digits = payload.digits.slice(0, 6);
     speaker = payload.speaker === 1;
     speedMode = payload.speedMode;
+    lcd = payload.lcd.slice(0, 32);
     if (panel !== undefined) {
       panel.webview.postMessage({
         type: 'update',
         digits,
         speaker,
         speedMode,
+        lcd,
         speakerHz: payload.speakerHz,
       });
     }
@@ -131,6 +135,7 @@ export function createTec1PanelController(
   const clear = (): void => {
     digits = Array.from({ length: 6 }, () => 0);
     speaker = false;
+    lcd = Array.from({ length: 32 }, () => 0x20);
     serialBuffer = '';
     if (panel !== undefined) {
       panel.webview.postMessage({
@@ -138,6 +143,7 @@ export function createTec1PanelController(
         digits,
         speaker: false,
         speedMode,
+        lcd,
       });
       panel.webview.postMessage({ type: 'serialClear' });
     }
@@ -271,6 +277,26 @@ function getTec1Html(): string {
       border-radius: 8px;
       padding: 10px 12px;
     }
+    .lcd {
+      margin-top: 16px;
+      background: #0f1f13;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #213826;
+      width: fit-content;
+    }
+    .lcd-title {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #9bbfa0;
+      margin-bottom: 6px;
+    }
+    .lcd-canvas {
+      display: block;
+      background: #0b1a10;
+      border-radius: 4px;
+      image-rendering: pixelated;
+    }
     .serial-title {
       font-size: 12px;
       letter-spacing: 0.08em;
@@ -320,6 +346,10 @@ function getTec1Html(): string {
       <div class="key mute" id="mute">MUTED</div>
     </div>
     <div class="keypad" id="keypad"></div>
+    <div class="lcd">
+      <div class="lcd-title">LCD (HD44780 A00)</div>
+      <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+    </div>
     <div class="serial">
       <div class="serial-title">SERIAL (BIT 6)</div>
       <pre class="serial-body" id="serialOut"></pre>
@@ -340,9 +370,16 @@ function getTec1Html(): string {
     const serialOutEl = document.getElementById('serialOut');
     const serialInputEl = document.getElementById('serialInput');
     const serialSendEl = document.getElementById('serialSend');
+    const lcdCanvas = document.getElementById('lcdCanvas');
+    const lcdCtx = lcdCanvas && lcdCanvas.getContext ? lcdCanvas.getContext('2d') : null;
     const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
+    const LCD_COLS = 16;
+    const LCD_ROWS = 2;
+    const LCD_CELL_W = 14;
+    const LCD_CELL_H = 20;
+    let lcdBytes = new Array(LCD_COLS * LCD_ROWS).fill(0x20);
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
       { mask: 0x08, points: '9,1 10,2 10,8 9,9 8,8 8,2' },
@@ -412,6 +449,34 @@ function getTec1Html(): string {
       speedEl.textContent = mode.toUpperCase();
       speedEl.classList.toggle('slow', mode === 'slow');
       speedEl.classList.toggle('fast', mode === 'fast');
+    }
+
+    function lcdByteToChar(value) {
+      const code = value & 0xff;
+      if (code >= 0x20 && code <= 0x7e) {
+        return String.fromCharCode(code);
+      }
+      return ' ';
+    }
+
+    function drawLcd() {
+      if (!lcdCtx || !lcdCanvas) {
+        return;
+      }
+      lcdCanvas.width = LCD_COLS * LCD_CELL_W;
+      lcdCanvas.height = LCD_ROWS * LCD_CELL_H;
+      lcdCtx.fillStyle = '#0b1a10';
+      lcdCtx.fillRect(0, 0, lcdCanvas.width, lcdCanvas.height);
+      lcdCtx.font = '16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+      lcdCtx.textBaseline = 'top';
+      lcdCtx.fillStyle = '#b4f5b4';
+      for (let row = 0; row < LCD_ROWS; row += 1) {
+        for (let col = 0; col < LCD_COLS; col += 1) {
+          const idx = row * LCD_COLS + col;
+          const char = lcdByteToChar(lcdBytes[idx] || 0x20);
+          lcdCtx.fillText(char, col * LCD_CELL_W + 2, row * LCD_CELL_H + 2);
+        }
+      }
     }
 
     function setShiftLatched(value) {
@@ -546,6 +611,13 @@ function getTec1Html(): string {
       if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
         applySpeed(payload.speedMode);
       }
+      if (Array.isArray(payload.lcd)) {
+        lcdBytes = payload.lcd.slice(0, LCD_COLS * LCD_ROWS);
+        while (lcdBytes.length < LCD_COLS * LCD_ROWS) {
+          lcdBytes.push(0x20);
+        }
+        drawLcd();
+      }
     }
 
     function appendSerial(text) {
@@ -588,6 +660,7 @@ function getTec1Html(): string {
 
     applySpeed(speedMode);
     applyMuteState();
+    drawLcd();
     if (document.activeElement !== serialInputEl) {
       document.getElementById('app').focus();
     }
