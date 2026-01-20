@@ -274,14 +274,15 @@ TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
     ],
     "appStart": 2048,
     "entry": 0,
-    "romHex": "roms/tec1/mon-1b.hex"
+    "romHex": "roms/tec1/mon-1b/mon-1b.hex"
   }
 }
 ```
 
 `romHex` points at an Intel HEX file for the monitor ROM. If omitted, Debug80
-uses the bundled `roms/tec1/mon-1b.hex`. Debug80 also bundles `roms/tec1/mon-2.hex`
-and `roms/tec1/jmon.hex` (both use RAM @ 0x0900). If you already have a TypeScript module like
+uses the bundled `roms/tec1/mon-1b/mon-1b.hex`. Debug80 also bundles
+`roms/tec1/mon-2/mon-2.hex` and `roms/tec1/jmon/jmon.hex` (both use RAM @ 0x0900). If you
+already have a TypeScript module like
 `MON-1B.ts` that exports a template string, Debug80 will accept that file and
 extract the embedded HEX string.
 
@@ -341,7 +342,7 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 {
   "platform": "tec1",
   "tec1": {
-    "romHex": "roms/tec1/mon-2.hex",
+    "romHex": "roms/tec1/mon-2/mon-2.hex",
     "regions": [
       { "start": 0, "end": 2047, "kind": "rom" },
       { "start": 2048, "end": 4095, "kind": "ram" }
