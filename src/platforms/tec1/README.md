@@ -122,6 +122,7 @@ reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
 Bundled ROMs:
 - `roms/tec1/mon-1b.hex` (MON-1B, RAM @ 0x0800)
 - `roms/tec1/mon-2.hex` (MON-2, RAM @ 0x0900)
+- `roms/tec1/jmon.hex` (JMON_SOURCE_01, RAM @ 0x0900, polled keypad)
 
 You can override with `romHex` in the platform config.
 
