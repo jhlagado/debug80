@@ -137,16 +137,18 @@ export function activate(context: vscode.ExtensionContext): void {
       if (evt.event === 'debug80/tec1Update') {
         const payload = evt.body as {
           digits?: number[];
+          matrix?: number[];
           lcd?: number[];
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
-        if (!payload?.digits || !payload?.lcd) {
+        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
           return;
         }
         const update = {
           digits: payload.digits,
+          matrix: payload.matrix,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
