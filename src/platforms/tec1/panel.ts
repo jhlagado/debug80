@@ -289,7 +289,7 @@ function getTec1Html(): string {
       padding: 10px 12px;
     }
     .lcd {
-      margin-top: 16px;
+      margin-top: 0;
       background: #0f1f13;
       border-radius: 8px;
       padding: 10px 12px;
