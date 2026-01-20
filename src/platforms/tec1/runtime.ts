@@ -202,6 +202,11 @@ export function createTec1Runtime(
         const base = state.keyValue & 0x7f;
         return base | (serialRxLevel ? 0x80 : 0);
       }
+      if (p === 0x03) {
+        // JMON polls P_DAT bit 6 for key-press detection.
+        const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
+        return keyPressed ? 0x00 : 0x40;
+      }
       return 0xff;
     },
     write: (port: number, value: number): void => {
