@@ -7,8 +7,10 @@ import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
 
 export interface Tec1State {
   digits: number[];
+  matrix: number[];
   digitLatch: number;
   segmentLatch: number;
+  matrixLatch: number;
   speaker: boolean;
   speakerHz: number;
   lcd: number[];
@@ -91,8 +93,10 @@ export function createTec1Runtime(
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
+    matrix: Array.from({ length: 8 }, () => 0),
     digitLatch: 0,
     segmentLatch: 0,
+    matrixLatch: 0,
     speaker: false,
     speakerHz: 0,
     lcd: Array.from({ length: 32 }, () => 0x20),
@@ -114,6 +118,7 @@ export function createTec1Runtime(
   const sendUpdate = (): void => {
     onUpdate({
       digits: [...state.digits],
+      matrix: [...state.matrix],
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
       lcd: [...state.lcd],
@@ -212,6 +217,15 @@ export function createTec1Runtime(
     queueUpdate();
   };
 
+  const updateMatrix = (rowMask: number): void => {
+    const rowIndex = rowMask ? Math.log2(rowMask & 0xff) : -1;
+    if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex > 7) {
+      return;
+    }
+    state.matrix[rowIndex] = state.matrixLatch & 0xff;
+    queueUpdate();
+  };
+
   const scheduleSilence = (): void => {
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
@@ -278,6 +292,14 @@ export function createTec1Runtime(
       if (p === 0x02) {
         state.segmentLatch = value & 0xff;
         updateDisplay();
+        return;
+      }
+      if (p === 0x06) {
+        state.matrixLatch = value & 0xff;
+        return;
+      }
+      if (p === 0x05) {
+        updateMatrix(value & 0xff);
         return;
       }
       if (p === 0x04) {
@@ -438,6 +460,7 @@ export function createTec1Runtime(
     state.lastEdgeCycle = null;
     state.lcd.fill(0x20);
     state.lcdAddr = 0x80;
+    state.matrix.fill(0x00);
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;

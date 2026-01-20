@@ -16,6 +16,7 @@ export function createTec1PanelController(
   let panel: vscode.WebviewPanel | undefined;
   let session: vscode.DebugSession | undefined;
   let digits = Array.from({ length: 6 }, () => 0);
+  let matrix = Array.from({ length: 8 }, () => 0);
   let speaker = false;
   let speedMode: Tec1SpeedMode = 'fast';
   let lcd = Array.from({ length: 32 }, () => 0x20);
@@ -40,6 +41,7 @@ export function createTec1PanelController(
         panel = undefined;
         session = undefined;
         digits = Array.from({ length: 6 }, () => 0);
+        matrix = Array.from({ length: 8 }, () => 0);
         speaker = false;
         speedMode = 'slow';
         lcd = Array.from({ length: 32 }, () => 0x20);
@@ -96,7 +98,7 @@ export function createTec1PanelController(
       panel.reveal(targetColumn, !focus);
     }
     panel.webview.html = getTec1Html();
-    update({ digits, speaker: speaker ? 1 : 0, speedMode, lcd });
+    update({ digits, matrix, speaker: speaker ? 1 : 0, speedMode, lcd });
     if (serialBuffer.length > 0) {
       panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
     }
@@ -104,6 +106,7 @@ export function createTec1PanelController(
 
   const update = (payload: Tec1UpdatePayload): void => {
     digits = payload.digits.slice(0, 6);
+    matrix = payload.matrix.slice(0, 8);
     speaker = payload.speaker === 1;
     speedMode = payload.speedMode;
     lcd = payload.lcd.slice(0, 32);
@@ -111,6 +114,7 @@ export function createTec1PanelController(
       panel.webview.postMessage({
         type: 'update',
         digits,
+        matrix,
         speaker,
         speedMode,
         lcd,
@@ -134,6 +138,7 @@ export function createTec1PanelController(
 
   const clear = (): void => {
     digits = Array.from({ length: 6 }, () => 0);
+    matrix = Array.from({ length: 8 }, () => 0);
     speaker = false;
     lcd = Array.from({ length: 32 }, () => 0x20);
     serialBuffer = '';
@@ -141,6 +146,7 @@ export function createTec1PanelController(
       panel.webview.postMessage({
         type: 'update',
         digits,
+        matrix,
         speaker: false,
         speedMode,
         lcd,
@@ -296,6 +302,41 @@ function getTec1Html(): string {
       border: 1px solid #213826;
       width: fit-content;
     }
+    .matrix {
+      margin-top: 12px;
+      background: #1b0b0b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #3b1212;
+      width: fit-content;
+    }
+    .matrix-title {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #e0b0b0;
+      margin-bottom: 8px;
+    }
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 18px);
+      grid-template-rows: repeat(8, 18px);
+      gap: 6px;
+      background: #120707;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #2f1111;
+    }
+    .matrix-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #6b1515, #3a0a0a 70%);
+      box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.6);
+    }
+    .matrix-dot.on {
+      background: radial-gradient(circle at 30% 30%, #ff6b6b, #c01010 70%);
+      box-shadow: 0 0 8px rgba(255, 60, 60, 0.6);
+    }
     .lcd-title {
       font-size: 12px;
       letter-spacing: 0.08em;
@@ -365,6 +406,10 @@ function getTec1Html(): string {
           <div class="lcd-title">LCD (HD44780 A00)</div>
           <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
         </div>
+        <div class="matrix">
+          <div class="matrix-title">8x8 LED MATRIX</div>
+          <div class="matrix-grid" id="matrixGrid"></div>
+        </div>
       </div>
     </div>
     <div class="serial">
@@ -389,6 +434,7 @@ function getTec1Html(): string {
     const serialSendEl = document.getElementById('serialSend');
     const lcdCanvas = document.getElementById('lcdCanvas');
     const lcdCtx = lcdCanvas && lcdCanvas.getContext ? lcdCanvas.getContext('2d') : null;
+    const matrixGrid = document.getElementById('matrixGrid');
     const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
@@ -397,6 +443,7 @@ function getTec1Html(): string {
     const LCD_CELL_W = 14;
     const LCD_CELL_H = 20;
     let lcdBytes = new Array(LCD_COLS * LCD_ROWS).fill(0x20);
+    let matrixRows = new Array(8).fill(0);
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
       { mask: 0x08, points: '9,1 10,2 10,8 9,9 8,8 8,2' },
@@ -494,6 +541,35 @@ function getTec1Html(): string {
           lcdCtx.fillText(char, col * LCD_CELL_W + 2, row * LCD_CELL_H + 2);
         }
       }
+    }
+
+    function buildMatrix() {
+      if (!matrixGrid) return;
+      matrixGrid.innerHTML = '';
+      for (let row = 0; row < 8; row += 1) {
+        for (let col = 0; col < 8; col += 1) {
+          const dot = document.createElement('div');
+          dot.className = 'matrix-dot';
+          dot.dataset.row = String(row);
+          dot.dataset.col = String(col);
+          matrixGrid.appendChild(dot);
+        }
+      }
+    }
+
+    function drawMatrix() {
+      if (!matrixGrid) return;
+      const dots = matrixGrid.querySelectorAll('.matrix-dot');
+      dots.forEach(dot => {
+        const row = parseInt(dot.dataset.row || '0', 10);
+        const col = parseInt(dot.dataset.col || '0', 10);
+        const mask = 1 << col;
+        if (matrixRows[row] & mask) {
+          dot.classList.add('on');
+        } else {
+          dot.classList.remove('on');
+        }
+      });
     }
 
     function setShiftLatched(value) {
@@ -635,6 +711,13 @@ function getTec1Html(): string {
         }
         drawLcd();
       }
+      if (Array.isArray(payload.matrix)) {
+        matrixRows = payload.matrix.slice(0, 8);
+        while (matrixRows.length < 8) {
+          matrixRows.push(0);
+        }
+        drawMatrix();
+      }
     }
 
     function appendSerial(text) {
@@ -678,6 +761,8 @@ function getTec1Html(): string {
     applySpeed(speedMode);
     applyMuteState();
     drawLcd();
+    buildMatrix();
+    drawMatrix();
     if (document.activeElement !== serialInputEl) {
       document.getElementById('app').focus();
     }
