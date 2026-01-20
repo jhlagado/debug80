@@ -207,6 +207,8 @@ export class Z80DebugSession extends DebugSession {
       const hexContent = fs.readFileSync(hexPath, 'utf-8');
       const program = parseIntelHex(hexContent);
       if (platform === 'tec1') {
+        const memory = new Uint8Array(0x10000);
+        memory.fill(0);
         const romPath = tec1Config?.romHex
           ? this.resolveRelative(tec1Config.romHex, baseDir)
           : this.resolveBundledTec1Rom();
@@ -216,10 +218,18 @@ export class Z80DebugSession extends DebugSession {
             new OutputEvent(`Debug80: TEC-1 ROM not found at "${target}".\n`, 'console')
           );
         } else {
-          const romContent = fs.readFileSync(romPath, 'utf-8');
-          const romHex = this.extractRomHex(romContent, romPath);
-          this.applyIntelHexToMemory(romHex, program.memory);
+          const binPath = this.resolveRomBinPath(romPath);
+          if (binPath && fs.existsSync(binPath)) {
+            this.applyBinaryToMemory(binPath, memory);
+          } else {
+            const romContent = fs.readFileSync(romPath, 'utf-8');
+            const romHex = this.extractRomHex(romContent, romPath);
+            this.applyIntelHexToMemory(romHex, memory);
+          }
         }
+        // Overlay user program after ROM/RAM init data.
+        this.applyIntelHexToMemory(hexContent, memory);
+        program.memory = memory;
       }
 
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
@@ -1418,6 +1428,26 @@ export class Z80DebugSession extends DebugSession {
         }
       }
     }
+  }
+
+  private applyBinaryToMemory(filePath: string, memory: Uint8Array): void {
+    const data = fs.readFileSync(filePath);
+    const length = Math.min(data.length, memory.length);
+    for (let i = 0; i < length; i += 1) {
+      memory[i] = data[i] ?? 0;
+    }
+  }
+
+  private resolveRomBinPath(filePath: string): string | undefined {
+    const lower = filePath.toLowerCase();
+    if (lower.endsWith('.bin')) {
+      return filePath;
+    }
+    const parsed = path.parse(filePath);
+    if (parsed.ext === '') {
+      return undefined;
+    }
+    return path.join(parsed.dir, `${parsed.name}.bin`);
   }
 
   private extractRomHex(content: string, filePath: string): string {
