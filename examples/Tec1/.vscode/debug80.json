@@ -1,12 +1,12 @@
 {
-  "defaultTarget": "app",
+  "defaultTarget": "mon1-serial",
   "targets": {
-    "app": {
+    "mon1-serial": {
       "asm": "src/main.asm",
       "sourceFile": "src/main.asm",
       "sourceRoots": ["src"],
       "outputDir": "build",
-      "artifactBase": "main",
+      "artifactBase": "mon1-serial",
       "platform": "tec1",
       "tec1": {
         "regions": [
@@ -14,7 +14,25 @@
           { "start": 2048, "end": 4095, "kind": "ram" }
         ],
         "appStart": 2048,
-        "entry": 0
+        "entry": 0,
+        "romHex": "roms/tec1/mon-1b.hex"
+      }
+    },
+    "mon2-serial": {
+      "asm": "src/serial_mon2.asm",
+      "sourceFile": "src/serial_mon2.asm",
+      "sourceRoots": ["src"],
+      "outputDir": "build",
+      "artifactBase": "mon2-serial",
+      "platform": "tec1",
+      "tec1": {
+        "regions": [
+          { "start": 0, "end": 2047, "kind": "rom" },
+          { "start": 2048, "end": 4095, "kind": "ram" }
+        ],
+        "appStart": 2304,
+        "entry": 0,
+        "romHex": "roms/tec1/mon-2.hex"
       }
     }
   }
