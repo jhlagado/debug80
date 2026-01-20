@@ -24,6 +24,14 @@ yarn build
 yarn test
 ```
 
+## Quick start (examples)
+
+- Open `examples/HelloWorld` for the Simple platform terminal demo.
+- Open `examples/Tec1` for the TEC-1 monitor + serial demo.
+- Press F5 to start debugging.
+
+These example folders already include `.vscode` configs, so you can run them immediately.
+
 ## Project config (recommended)
 
 Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80.json` at the repo root also works). Example:
@@ -73,11 +81,16 @@ To make a folder debuggable quickly in VS Code:
 1) Press `Cmd-Shift-P` (macOS) or `Ctrl-Shift-P` (Windows/Linux) to open the Command Palette.
 2) Type “Debug80: Create Project (config + launch)” and press Enter.
 
-This command:
+This command scaffolds a Simple-platform config:
 - Creates `.vscode/debug80.json` with a default target (tries `src/main.asm`, or the first `.asm` it finds).
 - Creates `.vscode/launch.json` with a Debug80 launch configuration.
 
 After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as needed, then press F5.
+
+To target a different platform (e.g., `tec1`):
+- Set `platform: "tec1"` in `.vscode/debug80.json`.
+- Copy relevant fields from `examples/Tec1/.vscode/debug80.json` (e.g., memory regions, ROM, `ramInitHex`).
+- Update `sourceFile` to your program and build outputs.
 
 ## Z80 workflow
 
@@ -91,7 +104,16 @@ Notes:
 - Listing/HEX are required; ensure asm80 completes successfully or provide existing artifacts.
 - Step Over/Step Out can run for a long time in tight loops; use Pause to interrupt if needed.
 
+## External projects (e.g., caverns80)
+
+For external repos:
+1) Open the external project as your workspace (e.g., `caverns80`).
+2) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode`.
+3) Update `platform` and `sourceFile` to match the project and platform (Simple/TEC-1).
+4) Press F5.
+
+This keeps example configs inside Debug80 while letting external projects own their debug setup.
+
 ## Docs
 
 - `docs/TECHNICAL.md` — detailed developer guide to the extension, adapter, mapping, and stepping
-dddd
