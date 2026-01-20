@@ -1,3 +1,10 @@
+; TEC-1 example program (RAM @ 0x0800, MON-1 layout).
+; - Target platform: TEC-1 (debug80 "tec1")
+; - Demonstrates bit-banged 8N2 serial on PORTSCAN bit 6 at 9600 baud
+;   when fast mode is 4 MHz (MINT-compatible timing).
+; - Reads a CR-terminated line into a 64-byte buffer and echoes CR/LF.
+; - Intended to be preloaded via platform ramInitHex.
+; - For MON-2 (RAM @ 0x0900), change ORG accordingly.
         ORG     0x0800
 
 KEYBUF:     EQU     0x00
