@@ -218,7 +218,7 @@ export class Z80DebugSession extends DebugSession {
         } else {
           const romContent = fs.readFileSync(romPath, 'utf-8');
           const romHex = this.extractRomHex(romContent, romPath);
-          this.applyIntelHexToMemory(romHex, program.memory);
+          this.applyIntelHexToMemory(romHex, program.memory, tec1Config?.romRanges);
         }
       }
 
@@ -1388,7 +1388,11 @@ export class Z80DebugSession extends DebugSession {
     return Math.floor(value);
   }
 
-  private applyIntelHexToMemory(content: string, memory: Uint8Array): void {
+  private applyIntelHexToMemory(
+    content: string,
+    memory: Uint8Array,
+    ranges?: Array<{ start: number; end: number }>
+  ): void {
     const lines = content
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -1413,6 +1417,13 @@ export class Z80DebugSession extends DebugSession {
         const byteHex = dataString.slice(i * 2, i * 2 + 2);
         const value = parseInt(byteHex, 16);
         const loc = address + i;
+        if (
+          ranges &&
+          ranges.length > 0 &&
+          !ranges.some((range) => loc >= range.start && loc <= range.end)
+        ) {
+          continue;
+        }
         if (loc >= 0 && loc < memory.length) {
           memory[loc] = value & 0xff;
         }
