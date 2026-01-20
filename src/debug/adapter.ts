@@ -1971,7 +1971,13 @@ export class Z80DebugSession extends DebugSession {
     if (!extension) {
       return undefined;
     }
-    const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b.hex');
+    const candidate = path.join(
+      extension.extensionPath,
+      'roms',
+      'tec1',
+      'mon-1b',
+      'mon-1b.hex'
+    );
     if (fs.existsSync(candidate)) {
       return candidate;
     }

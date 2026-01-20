@@ -137,17 +137,19 @@ export function activate(context: vscode.ExtensionContext): void {
       if (evt.event === 'debug80/tec1Update') {
         const payload = evt.body as {
           digits?: number[];
+          lcd?: number[];
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
-        if (!payload?.digits) {
+        if (!payload?.digits || !payload?.lcd) {
           return;
         }
         const update = {
           digits: payload.digits,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
+          lcd: payload.lcd,
         };
         if (payload.speakerHz !== undefined) {
           tec1PanelController.update({ ...update, speakerHz: payload.speakerHz });
