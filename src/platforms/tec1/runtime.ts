@@ -15,6 +15,7 @@ export interface Tec1State {
   lastEdgeCycle: number | null;
   silenceEventId: number | null;
   keyValue: number;
+  keyReleaseEventId: number | null;
   nmiPending: boolean;
   lastUpdateMs: number;
   pendingUpdate: boolean;
@@ -40,6 +41,7 @@ export const TEC1_SLOW_HZ = 400000;
 export const TEC1_FAST_HZ = 4000000;
 const TEC1_SILENCE_CYCLES = 10000;
 const TEC1_SERIAL_BAUD = 9600;
+const TEC1_KEY_HOLD_MS = 30;
 
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -95,6 +97,7 @@ export function createTec1Runtime(
     lastEdgeCycle: null,
     silenceEventId: null,
     keyValue: 0x7f,
+    keyReleaseEventId: null,
     nmiPending: false,
     lastUpdateMs: 0,
     pendingUpdate: false,
@@ -199,6 +202,11 @@ export function createTec1Runtime(
         const base = state.keyValue & 0x7f;
         return base | (serialRxLevel ? 0x80 : 0);
       }
+      if (p === 0x03) {
+        // JMON polls P_DAT bit 6 for key-press detection.
+        const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
+        return keyPressed ? 0x00 : 0x40;
+      }
       return 0xff;
     },
     write: (port: number, value: number): void => {
@@ -245,6 +253,14 @@ export function createTec1Runtime(
   const applyKey = (code: number): void => {
     state.keyValue = code & 0x7f;
     state.nmiPending = true;
+    if (state.keyReleaseEventId !== null) {
+      state.cycleClock.cancel(state.keyReleaseEventId);
+    }
+    const holdCycles = Math.max(1, Math.round((state.clockHz * TEC1_KEY_HOLD_MS) / 1000));
+    state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
+      state.keyValue = 0x7f;
+      state.keyReleaseEventId = null;
+    });
   };
 
   const setSerialRxLevel = (level: 0 | 1): void => {
