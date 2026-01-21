@@ -39,6 +39,7 @@ export function createTec1PanelController(
   const serialMaxChars = 8000;
   let programs: Tec1ProgramSpec[] = [];
   let programById = new Map<string, Tec1ProgramSpec>();
+  let activeRomId: string | null = null;
 
   const parseProgramNumber = (value: unknown): number | undefined => {
     if (typeof value === 'number' && Number.isFinite(value)) {
@@ -59,6 +60,19 @@ export function createTec1PanelController(
       return undefined;
     }
     return extension.extensionPath;
+  };
+
+  const resolveRomIdFromSession = (target: vscode.DebugSession | undefined): string | null => {
+    const tec1Config = target?.configuration?.tec1 as { romId?: string; romHex?: string } | undefined;
+    if (tec1Config?.romId && tec1Config.romId.trim() !== '') {
+      return tec1Config.romId.trim().toLowerCase();
+    }
+    const romHex = typeof tec1Config?.romHex === 'string' ? tec1Config.romHex : '';
+    if (!romHex) {
+      return null;
+    }
+    const dir = path.basename(path.dirname(romHex));
+    return dir ? dir.toLowerCase() : null;
   };
 
   const loadProgramsFromRoot = (root: string, prefix: string): Tec1ProgramSpec[] => {
@@ -144,7 +158,17 @@ export function createTec1PanelController(
   };
 
   const updateProgramList = (): void => {
-    programs = loadTec1Programs();
+    const allPrograms = loadTec1Programs();
+    if (activeRomId) {
+      programs = allPrograms.filter((program) => {
+        if (!program.rom) {
+          return true;
+        }
+        return program.rom.toLowerCase() === activeRomId;
+      });
+    } else {
+      programs = allPrograms;
+    }
     programById = new Map(programs.map((program) => [program.id, program]));
   };
 
@@ -178,6 +202,7 @@ export function createTec1PanelController(
         artifactBase: program.id,
         sourceRoots: [program.dir],
       });
+      await target.customRequest('debug80/tec1Reset', {});
     } catch (err) {
       vscode.window.showErrorMessage(`Debug80: program load failed. ${String(err)}`);
     }
@@ -262,6 +287,7 @@ export function createTec1PanelController(
     }
     if (targetSession !== undefined) {
       session = targetSession;
+      activeRomId = resolveRomIdFromSession(targetSession);
     }
     if (reveal) {
       panel.reveal(targetColumn, !focus);
