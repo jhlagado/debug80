@@ -1,5 +1,20 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+
+interface Tec1ProgramSpec {
+  id: string;
+  name: string;
+  dir: string;
+  asm: string;
+  rom?: string;
+  romHex?: string;
+  org?: number;
+  entry?: number;
+  description?: string;
+}
 
 export interface Tec1PanelController {
   open(session?: vscode.DebugSession, options?: { focus?: boolean; reveal?: boolean }): void;
@@ -22,6 +37,151 @@ export function createTec1PanelController(
   let lcd = Array.from({ length: 32 }, () => 0x20);
   let serialBuffer = '';
   const serialMaxChars = 8000;
+  let programs: Tec1ProgramSpec[] = [];
+  let programById = new Map<string, Tec1ProgramSpec>();
+
+  const parseProgramNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  };
+
+  const resolveExtensionPath = (): string | undefined => {
+    const extension = vscode.extensions.getExtension('jhlagado.debug80');
+    if (!extension) {
+      return undefined;
+    }
+    return extension.extensionPath;
+  };
+
+  const loadProgramsFromRoot = (root: string, prefix: string): Tec1ProgramSpec[] => {
+    if (!fs.existsSync(root)) {
+      return [];
+    }
+    const entries = fs.readdirSync(root, { withFileTypes: true });
+    const programs: Tec1ProgramSpec[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const dir = path.join(root, entry.name);
+      const manifestPath = path.join(dir, 'program.json');
+      let manifest: Record<string, unknown> = {};
+      if (fs.existsSync(manifestPath)) {
+        try {
+          const raw = fs.readFileSync(manifestPath, 'utf-8');
+          manifest = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          manifest = {};
+        }
+      }
+      const id = `${prefix}-${entry.name}`;
+      const name = typeof manifest.name === 'string' ? manifest.name : entry.name;
+      const asm = typeof manifest.asm === 'string' ? manifest.asm : 'main.asm';
+      const resolvedAsm = path.isAbsolute(asm) ? asm : path.join(dir, asm);
+      if (!fs.existsSync(resolvedAsm)) {
+        continue;
+      }
+      const spec: Tec1ProgramSpec = {
+        id,
+        name,
+        dir,
+        asm: resolvedAsm,
+      };
+      const rom = typeof manifest.rom === 'string' ? manifest.rom : undefined;
+      if (rom) {
+        spec.rom = rom;
+      }
+      const romHex = typeof manifest.romHex === 'string' ? manifest.romHex : undefined;
+      if (romHex) {
+        spec.romHex = romHex;
+      }
+      const org = parseProgramNumber(manifest.org);
+      if (org !== undefined) {
+        spec.org = org;
+      }
+      const entryValue = parseProgramNumber(manifest.entry);
+      if (entryValue !== undefined) {
+        spec.entry = entryValue;
+      }
+      const description = typeof manifest.description === 'string' ? manifest.description : undefined;
+      if (description) {
+        spec.description = description;
+      }
+      programs.push(spec);
+    }
+    return programs;
+  };
+
+  const loadTec1Programs = (): Tec1ProgramSpec[] => {
+    const list: Tec1ProgramSpec[] = [];
+    const extensionRoot = resolveExtensionPath();
+    if (extensionRoot) {
+      list.push(
+        ...loadProgramsFromRoot(
+          path.join(extensionRoot, 'programs', 'tec1', 'bundled'),
+          'bundled'
+        )
+      );
+    }
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspaceRoot) {
+      list.push(
+        ...loadProgramsFromRoot(
+          path.join(workspaceRoot, 'programs', 'tec1', 'user'),
+          'user'
+        )
+      );
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const updateProgramList = (): void => {
+    programs = loadTec1Programs();
+    programById = new Map(programs.map((program) => [program.id, program]));
+  };
+
+  const resolveProgramOutputDir = (program: Tec1ProgramSpec): string => {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspaceRoot && program.dir.startsWith(workspaceRoot)) {
+      return path.join(program.dir, 'build');
+    }
+    if (workspaceRoot) {
+      return path.join(workspaceRoot, '.debug80', 'tec1-programs', program.id);
+    }
+    return path.join(os.tmpdir(), 'debug80', 'tec1-programs', program.id);
+  };
+
+  const loadProgramIntoSession = async (programId: string): Promise<void> => {
+    const program = programById.get(programId);
+    if (!program) {
+      vscode.window.showErrorMessage('Debug80: program not found.');
+      return;
+    }
+    const target = session ?? getFallbackSession();
+    if (target?.type !== 'z80') {
+      vscode.window.showErrorMessage('Debug80: no active TEC-1 debug session.');
+      return;
+    }
+    const outputDir = resolveProgramOutputDir(program);
+    try {
+      await target.customRequest('debug80/tec1LoadProgram', {
+        asmPath: program.asm,
+        outputDir,
+        artifactBase: program.id,
+        sourceRoots: [program.dir],
+      });
+    } catch (err) {
+      vscode.window.showErrorMessage(`Debug80: program load failed. ${String(err)}`);
+    }
+  };
 
   const open = (
     targetSession?: vscode.DebugSession,
@@ -47,7 +207,13 @@ export function createTec1PanelController(
         lcd = Array.from({ length: 32 }, () => 0x20);
       });
       panel.webview.onDidReceiveMessage(
-        async (msg: { type?: string; code?: number; mode?: Tec1SpeedMode; text?: string }) => {
+        async (msg: {
+          type?: string;
+          code?: number;
+          mode?: Tec1SpeedMode;
+          text?: string;
+          id?: string;
+        }) => {
           if (msg.type === 'key' && typeof msg.code === 'number') {
             const target = session ?? getFallbackSession();
             if (target?.type === 'z80') {
@@ -88,6 +254,9 @@ export function createTec1PanelController(
               }
             }
           }
+          if (msg.type === 'programLoad' && typeof msg.id === 'string') {
+            await loadProgramIntoSession(msg.id);
+          }
         }
       );
     }
@@ -97,11 +266,13 @@ export function createTec1PanelController(
     if (reveal) {
       panel.reveal(targetColumn, !focus);
     }
+    updateProgramList();
     panel.webview.html = getTec1Html();
     update({ digits, matrix, speaker: speaker ? 1 : 0, speedMode, lcd });
     if (serialBuffer.length > 0) {
       panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
     }
+    panel.webview.postMessage({ type: 'programs', programs });
   };
 
   const update = (payload: Tec1UpdatePayload): void => {
@@ -337,6 +508,38 @@ function getTec1Html(): string {
       background: radial-gradient(circle at 30% 30%, #ff6b6b, #c01010 70%);
       box-shadow: 0 0 8px rgba(255, 60, 60, 0.6);
     }
+    .programs-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f1012;
+      border-radius: 8px;
+      padding: 8px 12px;
+      border: 1px solid #2a2c30;
+      margin-bottom: 12px;
+      flex-wrap: nowrap;
+    }
+    .programs-title {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: #b4b4b4;
+      white-space: nowrap;
+    }
+    .programs-bar select {
+      min-width: 220px;
+      flex: 1 1 auto;
+      background: #141619;
+      border: 1px solid #2a2c30;
+      border-radius: 6px;
+      color: #f0f0f0;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .programs-meta {
+      font-size: 11px;
+      color: #8e8e8e;
+      white-space: nowrap;
+    }
     .lcd-title {
       font-size: 12px;
       letter-spacing: 0.08em;
@@ -388,6 +591,12 @@ function getTec1Html(): string {
 </head>
 <body>
   <div id="app" tabindex="0">
+    <div class="programs-bar">
+      <div class="programs-title">PROGRAM</div>
+      <select id="programSelect"></select>
+      <div class="programs-meta" id="programMeta"></div>
+      <div class="key" id="programLoad">LOAD</div>
+    </div>
     <div class="layout">
       <div class="left-col">
         <div class="display" id="display"></div>
@@ -435,6 +644,9 @@ function getTec1Html(): string {
     const lcdCanvas = document.getElementById('lcdCanvas');
     const lcdCtx = lcdCanvas && lcdCanvas.getContext ? lcdCanvas.getContext('2d') : null;
     const matrixGrid = document.getElementById('matrixGrid');
+    const programSelect = document.getElementById('programSelect');
+    const programLoad = document.getElementById('programLoad');
+    const programMeta = document.getElementById('programMeta');
     const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
@@ -444,6 +656,7 @@ function getTec1Html(): string {
     const LCD_CELL_H = 20;
     let lcdBytes = new Array(LCD_COLS * LCD_ROWS).fill(0x20);
     let matrixRows = new Array(8).fill(0);
+    let programs = [];
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
       { mask: 0x08, points: '9,1 10,2 10,8 9,9 8,8 8,2' },
@@ -570,6 +783,52 @@ function getTec1Html(): string {
           dot.classList.remove('on');
         }
       });
+    }
+
+    function formatHex(value) {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return '';
+      }
+      return '0x' + value.toString(16).padStart(4, '0');
+    }
+
+    function updateProgramMeta() {
+      if (!programMeta || !programSelect) return;
+      const selected = programs.find(p => p.id === programSelect.value);
+      if (!selected) {
+        programMeta.textContent = '';
+        return;
+      }
+      const org = formatHex(selected.org);
+      const rom = selected.rom ? selected.rom.toUpperCase() : 'MON-1B';
+      programMeta.textContent = 'ROM ' + rom + (org ? ' • ORG ' + org : '');
+    }
+
+    function renderPrograms(list) {
+      if (!programSelect) return;
+      programs = Array.isArray(list) ? list : [];
+      programSelect.innerHTML = '';
+      if (programs.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No programs found';
+        programSelect.appendChild(option);
+        if (programLoad) {
+          programLoad.classList.add('spacer');
+        }
+        updateProgramMeta();
+        return;
+      }
+      if (programLoad) {
+        programLoad.classList.remove('spacer');
+      }
+      programs.forEach(program => {
+        const option = document.createElement('option');
+        option.value = program.id;
+        option.textContent = program.name;
+        programSelect.appendChild(option);
+      });
+      updateProgramMeta();
     }
 
     function setShiftLatched(value) {
@@ -745,6 +1004,10 @@ function getTec1Html(): string {
         applyUpdate(event.data);
         return;
       }
+      if (event.data.type === 'programs') {
+        renderPrograms(event.data.programs || []);
+        return;
+      }
       if (event.data.type === 'serial') {
         appendSerial(event.data.text || '');
         return;
@@ -776,6 +1039,19 @@ function getTec1Html(): string {
         event.preventDefault();
       }
     });
+
+    if (programSelect) {
+      programSelect.addEventListener('change', () => {
+        updateProgramMeta();
+      });
+    }
+
+    if (programLoad) {
+      programLoad.addEventListener('click', () => {
+        if (!programSelect || !programSelect.value) return;
+        vscode.postMessage({ type: 'programLoad', id: programSelect.value });
+      });
+    }
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
