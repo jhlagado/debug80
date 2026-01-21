@@ -15,6 +15,7 @@
         ],
         "appStart": 2048,
         "entry": 0,
+        "romId": "mon-1b",
         "romHex": "../../roms/tec1/mon-1b/mon-1b.hex"
       }
     },
@@ -32,6 +33,7 @@
         ],
         "appStart": 2304,
         "entry": 0,
+        "romId": "mon-2",
         "romHex": "../../roms/tec1/mon-2/mon-2.hex"
       }
     },
@@ -49,6 +51,7 @@
         ],
         "appStart": 2304,
         "entry": 0,
+        "romId": "jmon",
         "romHex": "../../roms/tec1/jmon/jmon.hex"
       }
     }
