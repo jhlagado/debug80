@@ -1,6 +1,0 @@
-{
-  "name": "8x8 Matrix Test",
-  "rom": "mon-2",
-  "org": 2304,
-  "description": "Simple X pattern scan on the 8x8 LED matrix (ports 0x05/0x06)."
-}
