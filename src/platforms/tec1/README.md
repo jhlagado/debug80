@@ -68,6 +68,12 @@ The TEC-1 keypad is 20 keys:
 - Hex digits 0–F
 - ADDRESS, GO, UP, DOWN
 
+MON-1/2 rely on the NMI pulse on keypress. JMON instead polls port 0x03 (P_DAT)
+bit 6 to detect key activity. Many TEC-1D boards include the "JMON mod" (a
+resistor link between the key strobe D6 and the NMI pin) or the DAT board
+provides the same signal path, so both styles work on real hardware. Debug80
+emulates both behaviours so MON-1/2 and JMON work out of the box.
+
 Shift is a normal momentary push-button in hardware (not a latch). Debug80’s UI
 uses a latch for convenience; it clears after the next key press.
 
