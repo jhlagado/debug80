@@ -39,3 +39,9 @@ Fields:
 - `description`: optional detail shown in the loader.
 
 If `org` is omitted, Debug80 uses 0x0800 for MON-1B and 0x0900 for MON-2/JMON.
+
+## ROM filtering
+
+The program loader filters the list when the active TEC-1 debug session declares a ROM id.
+Add `romId` under `tec1` in your `debug80.json` target to enable filtering (for example,
+`"romId": "mon-1b"` or `"romId": "mon-2"`). Programs without a `rom` entry are always shown.
