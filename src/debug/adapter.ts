@@ -765,6 +765,76 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/tec1MemorySnapshot') {
+      if (this.runtime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
+        return;
+      }
+      const payload = args as {
+        before?: unknown;
+        after?: unknown;
+        rowSize?: unknown;
+        view?: unknown;
+        address?: unknown;
+      };
+      const before = this.clampMemoryWindow(payload.before, 16);
+      const after = this.clampMemoryWindow(payload.after, 16);
+      const rowSize = payload.rowSize === 8 ? 8 : 16;
+      const view = typeof payload.view === 'string' ? payload.view : 'hl';
+      const address =
+        Number.isFinite(payload.address as number) ? ((payload.address as number) & 0xffff) : null;
+      const regs = this.runtime.getRegisters();
+      const pc = regs.pc & 0xffff;
+      const sp = regs.sp & 0xffff;
+      const bc = ((regs.b & 0xff) << 8) | (regs.c & 0xff);
+      const de = ((regs.d & 0xff) << 8) | (regs.e & 0xff);
+      const hl = ((regs.h & 0xff) << 8) | (regs.l & 0xff);
+      const ix = regs.ix & 0xffff;
+      const iy = regs.iy & 0xffff;
+      const memRead =
+        this.runtime.hardware.memRead ??
+        ((addr: number) => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+      const pickMainAddress = (): number => {
+        switch (view) {
+          case 'bc':
+            return bc;
+          case 'de':
+            return de;
+          case 'hl':
+            return hl;
+          case 'ix':
+            return ix;
+          case 'iy':
+            return iy;
+          case 'absolute':
+            return address ?? hl;
+          default:
+            return hl;
+        }
+      };
+      const mainAddress = pickMainAddress();
+      const pcWindow = this.readMemoryWindow(pc, before, after, rowSize, memRead);
+      const spWindow = this.readMemoryWindow(sp, before, after, rowSize, memRead);
+      const mainWindow = this.readMemoryWindow(mainAddress, before, after, rowSize, memRead);
+      response.body = {
+        before,
+        rowSize,
+        pc,
+        sp,
+        pcStart: pcWindow.start,
+        pcBytes: pcWindow.bytes,
+        pcFocus: pcWindow.focus,
+        spStart: spWindow.start,
+        spBytes: spWindow.bytes,
+        spFocus: spWindow.focus,
+        mainAddress,
+        mainStart: mainWindow.start,
+        mainBytes: mainWindow.bytes,
+        mainFocus: mainWindow.focus,
+      };
+      this.sendResponse(response);
+      return;
+    }
     super.customRequest(command, response, args);
   }
 
@@ -1412,6 +1482,36 @@ export class Z80DebugSession extends DebugSession {
       return 0;
     }
     return Math.floor(value);
+  }
+
+  private clampMemoryWindow(value: unknown, fallback: number): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return fallback;
+    }
+    if (value <= 0) {
+      return fallback;
+    }
+    return Math.min(1024, Math.floor(value));
+  }
+
+  private readMemoryWindow(
+    center: number,
+    before: number,
+    after: number,
+    rowSize: number,
+    memRead: (addr: number) => number
+  ): { start: number; bytes: number[]; focus: number } {
+    const centerAddr = center & 0xffff;
+    const rawStart = (centerAddr - before) & 0xffff;
+    const alignedStart = rawStart - (rawStart % rowSize);
+    const windowSize = before + after + 1;
+    const paddedSize = Math.ceil(windowSize / rowSize) * rowSize;
+    const bytes = new Array<number>(paddedSize);
+    for (let i = 0; i < paddedSize; i += 1) {
+      bytes[i] = memRead((alignedStart + i) & 0xffff) & 0xff;
+    }
+    const focus = (centerAddr - alignedStart) & 0xffff;
+    return { start: alignedStart & 0xffff, bytes, focus };
   }
 
   private applyIntelHexToMemory(content: string, memory: Uint8Array): void {
