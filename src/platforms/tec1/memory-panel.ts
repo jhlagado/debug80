@@ -240,6 +240,11 @@ function getTec1MemoryHtml(): string {
       color: #7cc1ff;
       margin-left: 6px;
     }
+    .symbol {
+      color: #9aa0a6;
+      margin-left: 8px;
+      font-size: 11px;
+    }
     .dump {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
         "Courier New", monospace;
@@ -289,7 +294,7 @@ function getTec1MemoryHtml(): string {
     <h1>CPU Pointer View</h1>
     <div class="section">
       <div class="section-header">
-        <h2><span id="label-a">PC</span> <span class="addr" id="addr-a">0x0000</span></h2>
+        <h2><span id="label-a">PC</span> <span class="addr" id="addr-a">0x0000</span><span class="symbol" id="sym-a"></span></h2>
         <div class="controls">
           <select id="view-a">
             <option value="pc" selected>PC</option>
@@ -317,7 +322,7 @@ function getTec1MemoryHtml(): string {
     </div>
     <div class="section">
       <div class="section-header">
-        <h2><span id="label-b">SP</span> <span class="addr" id="addr-b">0x0000</span></h2>
+        <h2><span id="label-b">SP</span> <span class="addr" id="addr-b">0x0000</span><span class="symbol" id="sym-b"></span></h2>
         <div class="controls">
           <select id="view-b">
             <option value="pc">PC</option>
@@ -345,7 +350,7 @@ function getTec1MemoryHtml(): string {
     </div>
     <div class="section">
       <div class="section-header">
-        <h2><span id="label-c">HL</span> <span class="addr" id="addr-c">0x0000</span></h2>
+        <h2><span id="label-c">HL</span> <span class="addr" id="addr-c">0x0000</span><span class="symbol" id="sym-c"></span></h2>
         <div class="controls">
           <select id="view-c">
             <option value="pc">PC</option>
@@ -373,7 +378,7 @@ function getTec1MemoryHtml(): string {
     </div>
     <div class="section">
       <div class="section-header">
-        <h2><span id="label-d">DE</span> <span class="addr" id="addr-d">0x0000</span></h2>
+        <h2><span id="label-d">DE</span> <span class="addr" id="addr-d">0x0000</span><span class="symbol" id="sym-d"></span></h2>
         <div class="controls">
           <select id="view-d">
             <option value="pc">PC</option>
@@ -403,6 +408,8 @@ function getTec1MemoryHtml(): string {
   <script>
     const vscode = acquireVsCodeApi();
     const statusEl = document.getElementById('status');
+    const symbolMap = new Map();
+    let symbolsKey = '';
     const views = [
       {
         id: 'a',
@@ -411,6 +418,7 @@ function getTec1MemoryHtml(): string {
         after: document.getElementById('after-a'),
         label: document.getElementById('label-a'),
         addr: document.getElementById('addr-a'),
+        symbol: document.getElementById('sym-a'),
         dump: document.getElementById('dump-a'),
       },
       {
@@ -420,6 +428,7 @@ function getTec1MemoryHtml(): string {
         after: document.getElementById('after-b'),
         label: document.getElementById('label-b'),
         addr: document.getElementById('addr-b'),
+        symbol: document.getElementById('sym-b'),
         dump: document.getElementById('dump-b'),
       },
       {
@@ -429,6 +438,7 @@ function getTec1MemoryHtml(): string {
         after: document.getElementById('after-c'),
         label: document.getElementById('label-c'),
         addr: document.getElementById('addr-c'),
+        symbol: document.getElementById('sym-c'),
         dump: document.getElementById('dump-c'),
       },
       {
@@ -438,6 +448,7 @@ function getTec1MemoryHtml(): string {
         after: document.getElementById('after-d'),
         label: document.getElementById('label-d'),
         addr: document.getElementById('addr-d'),
+        symbol: document.getElementById('sym-d'),
         dump: document.getElementById('dump-d'),
       },
     ];
@@ -475,15 +486,71 @@ function getTec1MemoryHtml(): string {
       return Number.isFinite(value) ? value & 0xFFFF : undefined;
     }
 
+    function updateSymbolOptions(symbols) {
+      if (!Array.isArray(symbols)) {
+        return;
+      }
+      const nextKey = symbols
+        .map((sym) =>
+          sym && typeof sym.name === 'string' ? sym.name + ':' + String(sym.address) : ''
+        )
+        .join('|');
+      if (nextKey === symbolsKey) {
+        return;
+      }
+      symbolsKey = nextKey;
+      symbolMap.clear();
+      symbols.forEach((sym) => {
+        if (sym && typeof sym.name === 'string' && Number.isFinite(sym.address)) {
+          symbolMap.set(sym.name, sym.address & 0xffff);
+        }
+      });
+      views.forEach((entry) => {
+        const existing = entry.view.querySelector('optgroup[data-symbols="true"]');
+        if (existing) {
+          existing.remove();
+        }
+        if (symbolMap.size === 0) {
+          return;
+        }
+        const group = document.createElement('optgroup');
+        group.label = 'Symbols';
+        group.dataset.symbols = 'true';
+        symbols.forEach((sym) => {
+          if (!sym || typeof sym.name !== 'string' || !Number.isFinite(sym.address)) {
+            return;
+          }
+          const option = document.createElement('option');
+          option.value = 'symbol:' + sym.name;
+          option.textContent = sym.name;
+          group.appendChild(option);
+        });
+        entry.view.appendChild(group);
+      });
+    }
+
     function requestSnapshot() {
       const rowSize = 16;
       const payloadViews = views.map((entry) => {
         const viewValue = entry.view.value;
+        let viewMode = viewValue;
+        let addressValue;
+        if (viewValue.startsWith('symbol:')) {
+          const name = viewValue.slice(7);
+          const symAddress = symbolMap.get(name);
+          if (symAddress !== undefined) {
+            viewMode = 'absolute';
+            addressValue = symAddress;
+          }
+        }
+        if (viewMode === 'absolute' && addressValue === undefined) {
+          addressValue = parseAddress(entry.address.value);
+        }
         return {
           id: entry.id,
-          view: viewValue,
+          view: viewMode,
           after: parseInt(entry.after.value, 10),
-          address: viewValue === 'absolute' ? parseAddress(entry.address.value) : undefined,
+          address: addressValue,
         };
       });
       vscode.postMessage({
@@ -496,22 +563,45 @@ function getTec1MemoryHtml(): string {
 
     views.forEach((entry) => {
       entry.after.addEventListener('change', requestSnapshot);
-      entry.view.addEventListener('change', requestSnapshot);
+      entry.view.addEventListener('change', () => {
+        if (entry.view.value.startsWith('symbol:')) {
+          const name = entry.view.value.slice(7);
+          const address = symbolMap.get(name);
+          if (address !== undefined) {
+            entry.address.value = formatHex(address, 4);
+          }
+        }
+        requestSnapshot();
+      });
       entry.address.addEventListener('change', requestSnapshot);
     });
 
     window.addEventListener('message', (event) => {
       const msg = event.data;
       if (msg.type === 'snapshot') {
+        updateSymbolOptions(msg.symbols);
         if (Array.isArray(msg.views)) {
           msg.views.forEach((entry) => {
             const target = views.find((view) => view.id === entry.id);
             if (!target) {
               return;
             }
-            target.label.textContent = target.view.value.toUpperCase();
+            const labelValue = target.view.value.startsWith('symbol:')
+              ? target.view.value.slice(7)
+              : target.view.value.toUpperCase();
+            target.label.textContent = labelValue;
             target.addr.textContent = formatHex(entry.address ?? 0, 4);
             renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, 16);
+            if (entry.symbol) {
+              if (entry.symbolOffset) {
+                const offset = entry.symbolOffset.toString(16).toUpperCase();
+                target.symbol.textContent = entry.symbol + '+0x' + offset;
+              } else {
+                target.symbol.textContent = entry.symbol;
+              }
+            } else {
+              target.symbol.textContent = '';
+            }
           });
         }
         statusEl.textContent = 'Updated';
@@ -545,5 +635,8 @@ interface SnapshotPayload {
     bytes: number[];
     focus: number;
     after: number;
+    symbol?: string | null;
+    symbolOffset?: number | null;
   }>;
+  symbols?: Array<{ name: string; address: number }>;
 }
