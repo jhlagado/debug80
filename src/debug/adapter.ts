@@ -772,17 +772,11 @@ export class Z80DebugSession extends DebugSession {
       }
       const payload = args as {
         before?: unknown;
-        after?: unknown;
         rowSize?: unknown;
-        view?: unknown;
-        address?: unknown;
+        views?: Array<{ id?: unknown; view?: unknown; after?: unknown; address?: unknown }>;
       };
       const before = this.clampMemoryWindow(payload.before, 16);
-      const after = this.clampMemoryWindow(payload.after, 16);
       const rowSize = payload.rowSize === 8 ? 8 : 16;
-      const view = typeof payload.view === 'string' ? payload.view : 'hl';
-      const address =
-        Number.isFinite(payload.address as number) ? ((payload.address as number) & 0xffff) : null;
       const regs = this.runtime.getRegisters();
       const pc = regs.pc & 0xffff;
       const sp = regs.sp & 0xffff;
@@ -794,8 +788,12 @@ export class Z80DebugSession extends DebugSession {
       const memRead =
         this.runtime.hardware.memRead ??
         ((addr: number) => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-      const pickMainAddress = (): number => {
-        switch (view) {
+      const pickAddress = (viewValue: string, addressValue: number | null): number => {
+        switch (viewValue) {
+          case 'pc':
+            return pc;
+          case 'sp':
+            return sp;
           case 'bc':
             return bc;
           case 'de':
@@ -807,31 +805,31 @@ export class Z80DebugSession extends DebugSession {
           case 'iy':
             return iy;
           case 'absolute':
-            return address ?? hl;
+            return addressValue ?? hl;
           default:
             return hl;
         }
       };
-      const mainAddress = pickMainAddress();
-      const pcWindow = this.readMemoryWindow(pc, before, after, rowSize, memRead);
-      const spWindow = this.readMemoryWindow(sp, before, after, rowSize, memRead);
-      const mainWindow = this.readMemoryWindow(mainAddress, before, after, rowSize, memRead);
-      response.body = {
-        before,
-        rowSize,
-        pc,
-        sp,
-        pcStart: pcWindow.start,
-        pcBytes: pcWindow.bytes,
-        pcFocus: pcWindow.focus,
-        spStart: spWindow.start,
-        spBytes: spWindow.bytes,
-        spFocus: spWindow.focus,
-        mainAddress,
-        mainStart: mainWindow.start,
-        mainBytes: mainWindow.bytes,
-        mainFocus: mainWindow.focus,
-      };
+      const viewRequests = Array.isArray(payload.views) ? payload.views : [];
+      const views = viewRequests.map((entry) => {
+        const id = typeof entry.id === 'string' ? entry.id : 'view';
+        const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
+        const afterValue = this.clampMemoryWindow(entry.after, 16);
+        const addressValue =
+          Number.isFinite(entry.address as number) ? ((entry.address as number) & 0xffff) : null;
+        const target = pickAddress(viewValue, addressValue);
+        const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
+        return {
+          id,
+          view: viewValue,
+          address: target,
+          start: window.start,
+          bytes: window.bytes,
+          focus: window.focus,
+          after: afterValue,
+        };
+      });
+      response.body = { before, rowSize, views };
       this.sendResponse(response);
       return;
     }
