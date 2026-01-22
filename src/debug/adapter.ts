@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as cp from 'child_process';
 import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
-import { parseMapping, MappingParseResult } from '../mapping/parser';
+import { parseMapping, MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
 import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
@@ -74,6 +74,9 @@ export class Z80DebugSession extends DebugSession {
   private listingPath: string | undefined;
   private mapping: MappingParseResult | undefined;
   private mappingIndex: SourceMapIndex | undefined;
+  private symbolAnchors: SourceMapAnchor[] = [];
+  private symbolLookupAnchors: SourceMapAnchor[] = [];
+  private symbolList: Array<{ name: string; address: number }> = [];
   private pendingBreakpointsBySource: Map<string, DebugProtocol.SourceBreakpoint[]> = new Map();
   private sourceRoots: string[] = [];
   private baseDir = process.cwd();
@@ -132,6 +135,8 @@ export class Z80DebugSession extends DebugSession {
     this.listingPath = undefined;
     this.mapping = undefined;
     this.mappingIndex = undefined;
+    this.symbolAnchors = [];
+    this.symbolList = [];
     this.sourceRoots = [];
     this.baseDir = process.cwd();
     this.terminalState = undefined;
@@ -297,6 +302,7 @@ export class Z80DebugSession extends DebugSession {
 
       this.mapping = buildMappingFromD8DebugMap(debugMap);
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
+      this.rebuildSymbolIndex(this.mapping, listingContent);
 
       const ioHandlers = this.buildIoHandlers(platform, merged);
       const runtimeOptions =
@@ -819,6 +825,7 @@ export class Z80DebugSession extends DebugSession {
           Number.isFinite(entry.address as number) ? ((entry.address as number) & 0xffff) : null;
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
+        const nearest = this.findNearestSymbol(target);
         return {
           id,
           view: viewValue,
@@ -827,9 +834,11 @@ export class Z80DebugSession extends DebugSession {
           bytes: window.bytes,
           focus: window.focus,
           after: afterValue,
+          symbol: nearest?.name ?? null,
+          symbolOffset: nearest ? (target - nearest.address) & 0xffff : null,
         };
       });
-      response.body = { before, rowSize, views };
+      response.body = { before, rowSize, views, symbols: this.symbolList };
       this.sendResponse(response);
       return;
     }
@@ -1927,7 +1936,7 @@ export class Z80DebugSession extends DebugSession {
     sourceFile: string | undefined,
     baseDir: string
   ): void {
-    if (!sourceFile) {
+    if (sourceFile === undefined || sourceFile.length === 0) {
       return;
     }
     if (mapping.anchors.length > 0) {
@@ -1938,12 +1947,149 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
     const fallback = this.resolveFallbackSourceFile(sourceFile, baseDir);
-    if (!fallback) {
+    if (fallback === undefined || fallback.length === 0) {
       return;
     }
     for (const segment of mapping.segments) {
       segment.loc.file = fallback;
     }
+  }
+
+  private rebuildSymbolIndex(
+    mapping: MappingParseResult | undefined,
+    listingContent?: string
+  ): void {
+    const hasAnchors = mapping !== undefined && mapping.anchors.length > 0;
+    const hasListing = listingContent !== undefined && listingContent.length > 0;
+    const anchors = hasAnchors
+      ? mapping.anchors
+      : hasListing
+        ? this.extractAnchorsFromListing(listingContent, this.sourceFile)
+        : [];
+    if (anchors.length === 0) {
+      this.symbolAnchors = [];
+      this.symbolLookupAnchors = [];
+      this.symbolList = [];
+      return;
+    }
+    const sorted = [...anchors].sort(
+      (a, b) => a.address - b.address || a.symbol.localeCompare(b.symbol)
+    );
+    this.symbolAnchors = sorted;
+    const ranges = mapping ? this.buildSymbolRanges(mapping.segments) : [];
+    const lookupAnchors =
+      ranges.length > 0 ? sorted.filter((anchor) => this.isAddressInRanges(anchor.address, ranges)) : sorted;
+    this.symbolLookupAnchors = lookupAnchors.length > 0 ? lookupAnchors : sorted;
+    const seen = new Map<string, number>();
+    for (const anchor of sorted) {
+      if (!seen.has(anchor.symbol)) {
+        seen.set(anchor.symbol, anchor.address);
+      }
+    }
+    this.symbolList = Array.from(seen.entries())
+      .map(([name, address]) => ({ name, address }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private extractAnchorsFromListing(
+    listingContent: string,
+    defaultFile: string | undefined
+  ): SourceMapAnchor[] {
+    const anchors: SourceMapAnchor[] = [];
+    const lines = listingContent.split(/\r?\n/);
+    const fallbackFile =
+      typeof defaultFile === 'string' && defaultFile.length > 0 ? defaultFile : 'unknown.asm';
+    const anchorLine =
+      /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)(?:\s+IN\s+(.+))?$/;
+    for (const line of lines) {
+      if (!line.includes('DEFINED AT LINE') || line.includes('USED AT LINE')) {
+        continue;
+      }
+      const match = anchorLine.exec(line);
+      if (!match) {
+        continue;
+      }
+      const symbol = match[1];
+      const addressStr = match[2];
+      const lineStr = match[3];
+      const fileRaw = match[4] ?? '';
+      if (
+        symbol === undefined ||
+        addressStr === undefined ||
+        lineStr === undefined ||
+        symbol.length === 0 ||
+        addressStr.length === 0 ||
+        lineStr.length === 0
+      ) {
+        continue;
+      }
+      const address = Number.parseInt(addressStr, 16);
+      const lineNumber = Number.parseInt(lineStr, 10);
+      if (!Number.isFinite(lineNumber)) {
+        continue;
+      }
+      const file = fileRaw.trim().length > 0 ? fileRaw.trim() : fallbackFile;
+      anchors.push({
+        symbol,
+        address,
+        file,
+        line: lineNumber,
+      });
+    }
+    return anchors;
+  }
+
+  private findNearestSymbol(address: number): { name: string; address: number } | null {
+    const anchors = this.symbolLookupAnchors.length > 0 ? this.symbolLookupAnchors : this.symbolAnchors;
+    if (anchors.length === 0) {
+      return null;
+    }
+    let candidate: SourceMapAnchor | undefined;
+    for (const anchor of anchors) {
+      if (anchor.address > address) {
+        break;
+      }
+      candidate = anchor;
+    }
+    if (!candidate) {
+      return null;
+    }
+    return { name: candidate.symbol, address: candidate.address };
+  }
+
+  private buildSymbolRanges(segments: SourceMapSegment[]): Array<{ start: number; end: number }> {
+    const ranges = segments
+      .map((segment) => ({ start: segment.start, end: segment.end }))
+      .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end))
+      .map((range) =>
+        range.start <= range.end ? range : { start: range.end, end: range.start }
+      )
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged: Array<{ start: number; end: number }> = [];
+    for (const range of ranges) {
+      const last = merged[merged.length - 1];
+      if (last && range.start <= last.end) {
+        last.end = Math.max(last.end, range.end);
+      } else {
+        merged.push({ start: range.start, end: range.end });
+      }
+    }
+    return merged;
+  }
+
+  private isAddressInRanges(address: number, ranges: Array<{ start: number; end: number }>): boolean {
+    for (const range of ranges) {
+      if (range.end === range.start) {
+        if (address === range.start) {
+          return true;
+        }
+        continue;
+      }
+      if (address >= range.start && address < range.end) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private resolveFallbackSourceFile(sourceFile: string, baseDir: string): string | undefined {
@@ -2018,7 +2164,9 @@ export class Z80DebugSession extends DebugSession {
   ): string {
     const artifactBase =
       args.artifactBase ??
-      (asmPath ? path.basename(asmPath, path.extname(asmPath)) : path.basename(listingPath, '.lst'));
+      (asmPath === undefined
+        ? path.basename(listingPath, '.lst')
+        : path.basename(asmPath, path.extname(asmPath)));
     const outDirRaw = args.outputDir ?? path.dirname(listingPath);
     const outDir = this.resolveRelative(outDirRaw, baseDir);
     return path.join(outDir, `${artifactBase}.d8dbg.json`);
