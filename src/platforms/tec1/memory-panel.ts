@@ -595,7 +595,7 @@ function getTec1MemoryHtml(): string {
             if (entry.symbol) {
               if (entry.symbolOffset) {
                 const offset = entry.symbolOffset.toString(16).toUpperCase();
-                target.symbol.textContent = entry.symbol + '+0x' + offset;
+                target.symbol.textContent = entry.symbol + ' + 0x' + offset;
               } else {
                 target.symbol.textContent = entry.symbol;
               }
