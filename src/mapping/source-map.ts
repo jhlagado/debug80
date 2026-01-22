@@ -22,7 +22,7 @@ export function buildSourceMapIndex(
       continue;
     }
     const resolved = resolvePath(segment.loc.file);
-    if (!resolved) {
+    if (resolved === undefined || resolved.length === 0) {
       continue;
     }
     const fileMap = segmentsByFileLine.get(resolved) ?? new Map<number, SourceMapSegment[]>();
@@ -41,7 +41,7 @@ export function buildSourceMapIndex(
   const anchorsByFile = new Map<string, SourceMapAnchor[]>();
   for (const anchor of mapping.anchors) {
     const resolved = resolvePath(anchor.file);
-    if (!resolved) {
+    if (resolved === undefined || resolved.length === 0) {
       continue;
     }
     const list = anchorsByFile.get(resolved) ?? [];

@@ -15,7 +15,7 @@ export function normalizeSimpleRegions(
 
   const normalized: SimpleMemoryRegion[] = [];
   for (const region of regions) {
-    if (!region || !Number.isFinite(region.start) || !Number.isFinite(region.end)) {
+    if (region === undefined || !Number.isFinite(region.start) || !Number.isFinite(region.end)) {
       continue;
     }
     let start = Math.max(0, Math.min(0xffff, region.start));

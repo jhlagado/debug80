@@ -137,7 +137,7 @@ function loadSourceFiles(
 
   for (const file of files) {
     const resolved = resolvePath(file);
-    if (!resolved) {
+    if (resolved === undefined || resolved.length === 0) {
       missingSources.push(file);
       continue;
     }

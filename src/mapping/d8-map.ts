@@ -122,7 +122,7 @@ export function buildD8DebugMap(
   const lstText: string[] = [];
   const lstIndex = new Map<string, number>();
 
-  const files: Record<string, D8FileEntry> = Object.create(null);
+  const files: Record<string, D8FileEntry> = {};
 
   const ensureFileEntry = (file: string | null | undefined): D8FileEntry => {
     const key = toFileKey(file);
@@ -220,7 +220,10 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
   const segments: SourceMapSegment[] = [];
   const anchors: SourceMapAnchor[] = [];
 
-  const files = map.files as Record<string, D8FileEntry>;
+  const files = map.files;
+  if (files === undefined || Array.isArray(files)) {
+    return { segments: [], anchors: [] };
+  }
   for (const [fileKey, entry] of Object.entries(files)) {
     const file = fromFileKey(fileKey);
     for (const segment of entry.segments ?? []) {
@@ -275,7 +278,7 @@ export function parseD8DebugMap(content: string): { map?: D8DebugMap; error?: st
   }
 
   const error = validateD8DebugMap(data);
-  if (error) {
+  if (error !== undefined && error.length > 0) {
     return { error };
   }
 
@@ -430,7 +433,7 @@ function validateD8DebugMap(value: unknown): string | undefined {
       }
       for (const segment of entry.segments) {
         const error = validateSegment(segment);
-        if (error) {
+        if (error !== undefined && error.length > 0) {
           return error;
         }
       }
@@ -441,7 +444,7 @@ function validateD8DebugMap(value: unknown): string | undefined {
       }
       for (const symbol of entry.symbols) {
         const error = validateSymbol(symbol);
-        if (error) {
+        if (error !== undefined && error.length > 0) {
           return error;
         }
       }
@@ -491,7 +494,10 @@ function pickMostCommon<T>(
 }
 
 function toFileKey(file: string | null | undefined): string {
-  return file ? file : UNKNOWN_FILE_KEY;
+  if (file === null || file === undefined || file.length === 0) {
+    return UNKNOWN_FILE_KEY;
+  }
+  return file;
 }
 
 function fromFileKey(fileKey: string): string | null {

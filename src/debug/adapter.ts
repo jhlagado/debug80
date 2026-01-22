@@ -214,17 +214,19 @@ export class Z80DebugSession extends DebugSession {
       if (platform === 'tec1') {
         const memory = new Uint8Array(0x10000);
         memory.fill(0);
-        const romPath = tec1Config?.romHex
-          ? this.resolveRelative(tec1Config.romHex, baseDir)
-          : this.resolveBundledTec1Rom();
-        if (!romPath || !fs.existsSync(romPath)) {
+        const romHex = tec1Config?.romHex;
+        const romPath =
+          romHex !== undefined && romHex.length > 0
+            ? this.resolveRelative(romHex, baseDir)
+            : this.resolveBundledTec1Rom();
+        if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
           const target = romPath ?? '(missing bundled ROM)';
           this.sendEvent(
             new OutputEvent(`Debug80: TEC-1 ROM not found at "${target}".\n`, 'console')
           );
         } else {
           const binPath = this.resolveRomBinPath(romPath);
-          if (binPath && fs.existsSync(binPath)) {
+          if (binPath !== undefined && binPath.length > 0 && fs.existsSync(binPath)) {
             this.applyBinaryToMemory(binPath, memory);
           } else {
             const romContent = fs.readFileSync(romPath, 'utf-8');
@@ -232,10 +234,12 @@ export class Z80DebugSession extends DebugSession {
             this.applyIntelHexToMemory(romHex, memory);
           }
         }
-        const ramInitPath = tec1Config?.ramInitHex
-          ? this.resolveRelative(tec1Config.ramInitHex, baseDir)
-          : undefined;
-        if (ramInitPath) {
+        const ramInitHex = tec1Config?.ramInitHex;
+        const ramInitPath =
+          ramInitHex !== undefined && ramInitHex.length > 0
+            ? this.resolveRelative(ramInitHex, baseDir)
+            : undefined;
+        if (ramInitPath !== undefined && ramInitPath.length > 0) {
           if (!fs.existsSync(ramInitPath)) {
             this.sendEvent(
               new OutputEvent(
@@ -257,9 +261,12 @@ export class Z80DebugSession extends DebugSession {
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
       this.listing = parseListing(listingContent);
       this.listingPath = listingPath;
+      const mergedSourceFile = merged.sourceFile;
       const sourcePath =
         asmPath ??
-        (merged.sourceFile ? this.resolveRelative(merged.sourceFile, baseDir) : undefined);
+        (mergedSourceFile !== undefined && mergedSourceFile.length > 0
+          ? this.resolveRelative(mergedSourceFile, baseDir)
+          : undefined);
       this.sourceFile = sourcePath ?? listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
 
@@ -358,14 +365,17 @@ export class Z80DebugSession extends DebugSession {
   ): void {
     const sourcePath = args.source?.path;
     const breakpoints = args.breakpoints ?? [];
-    const normalized = sourcePath ? this.normalizeSourcePath(sourcePath) : undefined;
+    const normalized =
+      sourcePath === undefined || sourcePath.length === 0
+        ? undefined
+        : this.normalizeSourcePath(sourcePath);
 
-    if (normalized) {
+    if (normalized !== undefined) {
       this.pendingBreakpointsBySource.set(normalized, breakpoints);
     }
 
     const verified =
-      this.listing !== undefined && normalized
+      this.listing !== undefined && normalized !== undefined
         ? this.applyBreakpointsForSource(normalized, breakpoints)
         : breakpoints.map((bp) => ({ line: bp.line, verified: false }));
 
@@ -531,8 +541,9 @@ export class Z80DebugSession extends DebugSession {
   private resolveSourceForAddress(address: number): { path: string; line: number } {
     const listingPath = this.listingPath;
     const listingLine = this.listing?.addressToLine.get(address) ?? 1;
-    const sourcePath = this.sourceFile || listingPath || '';
-    const fallbackLine = listingPath && sourcePath === listingPath ? listingLine : 1;
+    const sourcePath = this.sourceFile ?? listingPath ?? '';
+    const fallbackLine =
+      listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
     const fallback = { path: sourcePath, line: fallbackLine };
 
     const index = this.mappingIndex;
@@ -540,12 +551,12 @@ export class Z80DebugSession extends DebugSession {
       return fallback;
     }
     const segment = findSegmentForAddress(index, address);
-    if (!segment || segment.loc.file === null) {
+    if (segment === undefined || segment.loc.file === null) {
       return fallback;
     }
 
     const resolvedPath = this.resolveMappedPath(segment.loc.file);
-    if (!resolvedPath) {
+    if (resolvedPath === undefined || resolvedPath.length === 0) {
       return fallback;
     }
 
@@ -566,7 +577,7 @@ export class Z80DebugSession extends DebugSession {
       return file;
     }
     const roots: string[] = [];
-    if (this.listingPath) {
+    if (this.listingPath !== undefined) {
       roots.push(path.dirname(this.listingPath));
     }
     roots.push(...this.sourceRoots);
@@ -619,9 +630,11 @@ export class Z80DebugSession extends DebugSession {
         (regs.flags_prime.N << 1) |
         regs.flags_prime.C;
 
-      const fmt16 = (v: number) => `0x${v.toString(16).padStart(4, '0')}`;
-      const fmt8 = (v: number) => `0x${v.toString(16).padStart(2, '0')}`;
-      const flagsStr = (f: { S: number; Z: number; Y: number; H: number; X: number; P: number; N: number; C: number }) => {
+      const fmt16 = (v: number): string => `0x${v.toString(16).padStart(4, '0')}`;
+      const fmt8 = (v: number): string => `0x${v.toString(16).padStart(2, '0')}`;
+      const flagsStr = (
+        f: { S: number; Z: number; Y: number; H: number; X: number; P: number; N: number; C: number }
+      ): string => {
         const letters: [keyof typeof f, string][] = [
           ['S', 's'],
           ['Z', 'z'],
@@ -793,7 +806,7 @@ export class Z80DebugSession extends DebugSession {
       const iy = regs.iy & 0xffff;
       const memRead =
         this.runtime.hardware.memRead ??
-        ((addr: number) => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+        ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
       const pickAddress = (viewValue: string, addressValue: number | null): number => {
         switch (viewValue) {
           case 'pc':
@@ -906,8 +919,8 @@ export class Z80DebugSession extends DebugSession {
     }
     const cpu = this.runtime.getRegisters();
     const memRead =
-      this.runtime.hardware.memRead ??
-      ((addr: number) => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+        this.runtime.hardware.memRead ??
+        ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
     const pc = cpu.pc & 0xffff;
     const opcode = memRead(pc) & 0xff;
 
@@ -1049,7 +1062,7 @@ export class Z80DebugSession extends DebugSession {
           this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
           return;
         }
-        if (extraBreakpoints?.has(pc)) {
+        if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
           this.haltNotified = false;
           this.lastStopReason = 'step';
           this.lastBreakpointAddress = null;
@@ -1579,7 +1592,7 @@ export class Z80DebugSession extends DebugSession {
       const match =
         content.match(/ROM\s*=\s*`([\s\S]*?)`/) ??
         content.match(/`([\s\S]*?)`/);
-      if (match && match[1]) {
+      if (match !== null && match[1] !== undefined && match[1] !== '') {
         return match[1];
       }
     }
@@ -1730,7 +1743,7 @@ export class Z80DebugSession extends DebugSession {
       },
       tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
         const term = this.terminalState;
-        if (term !== undefined && term.breakRequested) {
+        if (term !== undefined && term.breakRequested === true) {
           term.breakRequested = false;
           return { interrupt: { nonMaskable: false, data: 0x38 } };
         }

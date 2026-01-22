@@ -86,18 +86,18 @@ function parseListingLine(line: string, lstLineNumber: number): ListingEntry | u
     return undefined;
   }
   const addressStr = match[1];
-  if (!addressStr) {
+  if (addressStr === undefined || addressStr.length === 0) {
     return undefined;
   }
   const remainder = match[2] ?? '';
   const startAddr = parseInt(addressStr, 16);
 
-  let byteTokens: string[] = [];
+  const byteTokens: string[] = [];
   let asmText = '';
   const firstToken = remainder.match(/^([0-9A-Fa-f]{2})(?:\s+|$)/);
   if (firstToken) {
     let rest = remainder;
-    while (true) {
+    while (rest.length > 0) {
       const tokenMatch = rest.match(/^([0-9A-Fa-f]{2})(?:\s+|$)(.*)$/);
       if (!tokenMatch) {
         break;
@@ -138,7 +138,16 @@ function parseAnchorLine(line: string): SourceMapAnchor | undefined {
   const addressStr = match[2];
   const lineStr = match[3];
   const fileRaw = match[4];
-  if (!symbol || !addressStr || !lineStr || !fileRaw) {
+  if (
+    symbol === undefined ||
+    addressStr === undefined ||
+    lineStr === undefined ||
+    fileRaw === undefined ||
+    symbol.length === 0 ||
+    addressStr.length === 0 ||
+    lineStr.length === 0 ||
+    fileRaw.length === 0
+  ) {
     return undefined;
   }
   const address = parseInt(addressStr, 16);
