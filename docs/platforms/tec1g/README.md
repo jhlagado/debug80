@@ -75,7 +75,7 @@ From MON3:
 - `0x10` CART (cartridge present flag)
 - `0x80` CAPSLOCK (MON3 definition)
 
-Note: DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). This needs confirmation from MON3 code paths or schematics.
+Note: DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). Prefer MON3 (0x80) unless schematics prove otherwise.
 
 ### LCD row addresses
 - `0x80` row 1, `0xC0` row 2, `0x94` row 3, `0xD4` row 4.
@@ -96,6 +96,34 @@ From MON3 (`mon3.z80`):
 - `BASE_ADDR = 0xC000` (monitor base)
 
 These values imply a default RAM layout of 0x0800–0x7FFF (32K), with ROM mapped at 0xC000 and shadowed into 0x0000–0x07FF.
+
+## MON-3 API Expectations (RST 0x10)
+MON-3 exposes a ROM API via `RST 10h` with the call number in `C`. This is the primary contract for ROM-aware programs, so treat it as authoritative when it conflicts with DIAG docs.
+
+### LCD (20x4, HD44780)
+- `_LCDBusy` (C=0x0C): wait until LCD is ready.
+- `_stringToLCD` (C=0x0D): HL points at ASCIIZ string.
+- `_charToLCD` (C=0x0E): A is the character.
+- `_commandToLCD` (C=0x0F): A is the LCD command.
+- `_LCDConfirm` (C=0x37): UI helper (details in MON3 API doc).
+
+### Keypad / Matrix
+- `_scanKeys` (C=0x10): generic key scan (hex pad or matrix).
+- `_scanKeysWait` (C=0x11): blocking key scan.
+- `_matrixScan` (C=0x12): E is key (00h-3Fh), D is modifier (FF=no key, 00=shift, 01=ctrl, 02=fn).
+- `_matrixScanASCII` (C=0x35): converts matrix scan DE into ASCII.
+
+### Serial (FTDI bit-bang)
+- `_serialEnable` (C=0x14), `_serialDisable` (C=0x15).
+- `_txByte` (C=0x16) and `_rxByte` (C=0x17).
+- MON-3 assumes 4800-8-N-2 for bit-bang FTDI in the API doc.
+- `_intelHexLoad` (C=0x18), `_sendToSerial` (C=0x19), `_receiveFromSerial` (C=0x1A).
+
+### System Control
+- `_getCaps/_setCaps/_toggleCaps` (C=0x25/0x29/0x30) expect 0x80 for caps on.
+- `_getShadow/_setShadow` (C=0x26/0x2A) uses 0x01.
+- `_getProtect/_setProtect` (C=0x27/0x2B) uses 0x02.
+- `_getExpand/_setExpand` (C=0x28/0x2C) uses 0x04.
 
 ## Emulation Implications
 1. Memory is not flat. MMU, shadow, and write protect must be modeled.
