@@ -12,9 +12,15 @@ export function createTec1MemoryPanelController(
   let panel: vscode.WebviewPanel | undefined;
   let session: vscode.DebugSession | undefined;
   const windowBefore = 16;
-  let windowAfter = 16;
   const rowSize = 16;
-  let viewMode = 'hl';
+  const viewModes: Record<string, string> = { a: 'pc', b: 'sp', c: 'hl', d: 'de' };
+  const viewAfter: Record<string, number> = { a: 16, b: 16, c: 16, d: 16 };
+  const viewAddress: Record<string, number | undefined> = {
+    a: undefined,
+    b: undefined,
+    c: undefined,
+    d: undefined,
+  };
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let refreshInFlight = false;
   const autoRefreshMs = 150;
@@ -48,16 +54,29 @@ export function createTec1MemoryPanelController(
       panel.webview.onDidReceiveMessage(
         (msg: {
           type?: string;
-          after?: number;
-          rowSize?: number;
-          view?: string;
-          address?: number;
+          views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
         }) => {
           if (msg.type === 'refresh') {
-            const afterSize = Number.isFinite(msg.after) ? (msg.after as number) : windowAfter;
-            windowAfter = clampWindow(afterSize);
-            viewMode = typeof msg.view === 'string' ? msg.view : viewMode;
-            void refreshSnapshot(msg.address, true);
+            if (Array.isArray(msg.views)) {
+              for (const entry of msg.views) {
+                const id = typeof entry.id === 'string' ? entry.id : '';
+                if (id !== 'a' && id !== 'b' && id !== 'c' && id !== 'd') {
+                  continue;
+                }
+                const currentAfter = viewAfter[id] ?? 16;
+                const afterSize = Number.isFinite(entry.after)
+                  ? (entry.after as number)
+                  : currentAfter;
+                viewAfter[id] = clampWindow(afterSize);
+                const currentView = viewModes[id] ?? 'hl';
+                viewModes[id] = typeof entry.view === 'string' ? entry.view : currentView;
+                viewAddress[id] =
+                  typeof entry.address === 'number' && Number.isFinite(entry.address)
+                    ? (entry.address & 0xffff)
+                    : undefined;
+              }
+            }
+            void refreshSnapshot(true);
           }
         }
       );
@@ -71,7 +90,7 @@ export function createTec1MemoryPanelController(
       panel.reveal(targetColumn, !focus);
     }
     panel.webview.html = getTec1MemoryHtml();
-    void refreshSnapshot(undefined, true);
+    void refreshSnapshot(true);
     startAutoRefresh();
   };
 
@@ -86,7 +105,7 @@ export function createTec1MemoryPanelController(
     handleSessionTerminated,
   };
 
-  async function refreshSnapshot(address?: number, allowErrors?: boolean): Promise<void> {
+  async function refreshSnapshot(allowErrors?: boolean): Promise<void> {
     if (panel === undefined) {
       return;
     }
@@ -105,12 +124,16 @@ export function createTec1MemoryPanelController(
     }
     refreshInFlight = true;
     try {
+      const views = Object.keys(viewModes).map((id) => ({
+        id,
+        view: viewModes[id],
+        after: viewAfter[id],
+        address: viewModes[id] === 'absolute' ? viewAddress[id] : undefined,
+      }));
       const payload = (await target.customRequest('debug80/tec1MemorySnapshot', {
         before: windowBefore,
-        after: windowAfter,
         rowSize,
-        view: viewMode,
-        address,
+        views,
       })) as unknown;
       if (payload === null || payload === undefined || typeof payload !== 'object') {
         void panel.webview.postMessage({
@@ -137,7 +160,7 @@ export function createTec1MemoryPanelController(
       return;
     }
     refreshTimer = setInterval(() => {
-      void refreshSnapshot(undefined, false);
+      void refreshSnapshot(false);
     }, autoRefreshMs);
   }
 
@@ -265,28 +288,21 @@ function getTec1MemoryHtml(): string {
   <div class="shell">
     <h1>CPU Pointer View</h1>
     <div class="section">
-      <h2>PC <span class="addr" id="pc-addr">0x0000</span></h2>
-      <div class="dump" id="pc-dump"></div>
-    </div>
-    <div class="section">
-      <h2>SP <span class="addr" id="sp-addr">0x0000</span></h2>
-      <div class="dump" id="sp-dump"></div>
-    </div>
-    <div class="section">
       <div class="section-header">
-        <h2><span id="main-label">View (HL)</span> <span class="addr" id="main-addr">0x0000</span></h2>
+        <h2><span id="label-a">PC</span> <span class="addr" id="addr-a">0x0000</span></h2>
         <div class="controls">
-          <select id="view">
+          <select id="view-a">
+            <option value="pc" selected>PC</option>
+            <option value="sp">SP</option>
             <option value="bc">BC</option>
             <option value="de">DE</option>
-            <option value="hl" selected>HL</option>
+            <option value="hl">HL</option>
             <option value="ix">IX</option>
             <option value="iy">IY</option>
             <option value="absolute">Absolute</option>
           </select>
-          <input id="address" type="text" placeholder="0x8000" />
-          <label for="after">Ahead</label>
-          <select id="after">
+          <input id="address-a" type="text" placeholder="0x0000" />
+          <select id="after-a">
             <option value="16" selected>16</option>
             <option value="32">32</option>
             <option value="64">64</option>
@@ -297,22 +313,134 @@ function getTec1MemoryHtml(): string {
           </select>
         </div>
       </div>
-      <div class="dump" id="main-dump"></div>
+      <div class="dump" id="dump-a"></div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <h2><span id="label-b">SP</span> <span class="addr" id="addr-b">0x0000</span></h2>
+        <div class="controls">
+          <select id="view-b">
+            <option value="pc">PC</option>
+            <option value="sp" selected>SP</option>
+            <option value="bc">BC</option>
+            <option value="de">DE</option>
+            <option value="hl">HL</option>
+            <option value="ix">IX</option>
+            <option value="iy">IY</option>
+            <option value="absolute">Absolute</option>
+          </select>
+          <input id="address-b" type="text" placeholder="0x0000" />
+          <select id="after-b">
+            <option value="16" selected>16</option>
+            <option value="32">32</option>
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="512">512</option>
+            <option value="1024">1024</option>
+          </select>
+        </div>
+      </div>
+      <div class="dump" id="dump-b"></div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <h2><span id="label-c">HL</span> <span class="addr" id="addr-c">0x0000</span></h2>
+        <div class="controls">
+          <select id="view-c">
+            <option value="pc">PC</option>
+            <option value="sp">SP</option>
+            <option value="bc">BC</option>
+            <option value="de">DE</option>
+            <option value="hl" selected>HL</option>
+            <option value="ix">IX</option>
+            <option value="iy">IY</option>
+            <option value="absolute">Absolute</option>
+          </select>
+          <input id="address-c" type="text" placeholder="0x0000" />
+          <select id="after-c">
+            <option value="16" selected>16</option>
+            <option value="32">32</option>
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="512">512</option>
+            <option value="1024">1024</option>
+          </select>
+        </div>
+      </div>
+      <div class="dump" id="dump-c"></div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <h2><span id="label-d">DE</span> <span class="addr" id="addr-d">0x0000</span></h2>
+        <div class="controls">
+          <select id="view-d">
+            <option value="pc">PC</option>
+            <option value="sp">SP</option>
+            <option value="bc">BC</option>
+            <option value="de" selected>DE</option>
+            <option value="hl">HL</option>
+            <option value="ix">IX</option>
+            <option value="iy">IY</option>
+            <option value="absolute">Absolute</option>
+          </select>
+          <input id="address-d" type="text" placeholder="0x0000" />
+          <select id="after-d">
+            <option value="16" selected>16</option>
+            <option value="32">32</option>
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="512">512</option>
+            <option value="1024">1024</option>
+          </select>
+        </div>
+      </div>
+      <div class="dump" id="dump-d"></div>
     </div>
   </div>
   <script>
     const vscode = acquireVsCodeApi();
     const statusEl = document.getElementById('status');
-    const afterSelect = document.getElementById('after');
-    const viewSelect = document.getElementById('view');
-    const addressInput = document.getElementById('address');
-    const pcAddr = document.getElementById('pc-addr');
-    const spAddr = document.getElementById('sp-addr');
-    const mainAddr = document.getElementById('main-addr');
-    const mainLabel = document.getElementById('main-label');
-    const pcDump = document.getElementById('pc-dump');
-    const spDump = document.getElementById('sp-dump');
-    const mainDump = document.getElementById('main-dump');
+    const views = [
+      {
+        id: 'a',
+        view: document.getElementById('view-a'),
+        address: document.getElementById('address-a'),
+        after: document.getElementById('after-a'),
+        label: document.getElementById('label-a'),
+        addr: document.getElementById('addr-a'),
+        dump: document.getElementById('dump-a'),
+      },
+      {
+        id: 'b',
+        view: document.getElementById('view-b'),
+        address: document.getElementById('address-b'),
+        after: document.getElementById('after-b'),
+        label: document.getElementById('label-b'),
+        addr: document.getElementById('addr-b'),
+        dump: document.getElementById('dump-b'),
+      },
+      {
+        id: 'c',
+        view: document.getElementById('view-c'),
+        address: document.getElementById('address-c'),
+        after: document.getElementById('after-c'),
+        label: document.getElementById('label-c'),
+        addr: document.getElementById('addr-c'),
+        dump: document.getElementById('dump-c'),
+      },
+      {
+        id: 'd',
+        view: document.getElementById('view-d'),
+        address: document.getElementById('address-d'),
+        after: document.getElementById('after-d'),
+        label: document.getElementById('label-d'),
+        addr: document.getElementById('addr-d'),
+        dump: document.getElementById('dump-d'),
+      },
+    ];
 
     function formatHex(value, width) {
       return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
@@ -348,36 +476,43 @@ function getTec1MemoryHtml(): string {
     }
 
     function requestSnapshot() {
-      const afterSize = parseInt(afterSelect.value, 10);
       const rowSize = 16;
-      const view = viewSelect.value;
-      const address = view === 'absolute' ? parseAddress(addressInput.value) : undefined;
+      const payloadViews = views.map((entry) => {
+        const viewValue = entry.view.value;
+        return {
+          id: entry.id,
+          view: viewValue,
+          after: parseInt(entry.after.value, 10),
+          address: viewValue === 'absolute' ? parseAddress(entry.address.value) : undefined,
+        };
+      });
       vscode.postMessage({
         type: 'refresh',
-        after: afterSize,
         rowSize,
-        view,
-        address,
+        views: payloadViews,
       });
       statusEl.textContent = 'Refreshing…';
     }
 
-    afterSelect.addEventListener('change', requestSnapshot);
-    viewSelect.addEventListener('change', requestSnapshot);
-    addressInput.addEventListener('change', requestSnapshot);
+    views.forEach((entry) => {
+      entry.after.addEventListener('change', requestSnapshot);
+      entry.view.addEventListener('change', requestSnapshot);
+      entry.address.addEventListener('change', requestSnapshot);
+    });
 
     window.addEventListener('message', (event) => {
       const msg = event.data;
       if (msg.type === 'snapshot') {
-        pcAddr.textContent = formatHex(msg.pc, 4);
-        spAddr.textContent = formatHex(msg.sp, 4);
-        renderDump(pcDump, msg.pcStart, msg.pcBytes, msg.pcFocus, 16);
-        renderDump(spDump, msg.spStart, msg.spBytes, msg.spFocus, 16);
-        if (msg.mainStart !== undefined && msg.mainBytes) {
-          const viewLabel = viewSelect.value.toUpperCase();
-          mainLabel.textContent = 'View (' + viewLabel + ')';
-          mainAddr.textContent = formatHex(msg.mainAddress ?? 0, 4);
-          renderDump(mainDump, msg.mainStart, msg.mainBytes, msg.mainFocus ?? 0, 16);
+        if (Array.isArray(msg.views)) {
+          msg.views.forEach((entry) => {
+            const target = views.find((view) => view.id === entry.id);
+            if (!target) {
+              return;
+            }
+            target.label.textContent = target.view.value.toUpperCase();
+            target.addr.textContent = formatHex(entry.address ?? 0, 4);
+            renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, 16);
+          });
         }
         statusEl.textContent = 'Updated';
       }
@@ -402,16 +537,13 @@ function clampWindow(value: number): number {
 interface SnapshotPayload {
   before: number;
   rowSize: number;
-  pc: number;
-  sp: number;
-  pcStart: number;
-  pcBytes: number[];
-  pcFocus: number;
-  spStart: number;
-  spBytes: number[];
-  spFocus: number;
-  mainAddress?: number;
-  mainStart?: number;
-  mainBytes?: number[];
-  mainFocus?: number;
+  views: Array<{
+    id: string;
+    view: string;
+    address: number;
+    start: number;
+    bytes: number[];
+    focus: number;
+    after: number;
+  }>;
 }
