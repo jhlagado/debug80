@@ -87,7 +87,7 @@ export function createZ80Runtime(
       ((_port: number, _value: number): void => {
         /* noop */
       }),
-    tick: ioHandlers?.tick ?? (() => undefined),
+    tick: ioHandlers?.tick ?? ((): TickResult | void => undefined),
   };
 
   const hardware: HardwareContext = {
@@ -206,10 +206,11 @@ function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo
 function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
   const cpu = this.cpu;
   const hardware = this.hardware;
-  const memRead = hardware.memRead ?? ((addr: number) => hardware.memory[addr & 0xffff] ?? 0);
+  const memRead =
+    hardware.memRead ?? ((addr: number): number => hardware.memory[addr & 0xffff] ?? 0);
   const memWrite =
     hardware.memWrite ??
-    ((addr: number, value: number) => {
+    ((addr: number, value: number): void => {
       hardware.memory[addr & 0xffff] = value & 0xff;
     });
   if (cpu.halted) {
@@ -248,7 +249,7 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
       },
     }, irq.nonMaskable === true, irq.data ?? 0);
   }
-  if (tickResult?.stop) {
+  if (tickResult !== undefined && tickResult.stop === true) {
     return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles };
   }
 

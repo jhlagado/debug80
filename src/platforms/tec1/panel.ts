@@ -106,7 +106,7 @@ export function createTec1PanelController(
     panel.webview.html = getTec1Html();
     update({ digits, matrix, speaker: speaker ? 1 : 0, speedMode, lcd });
     if (serialBuffer.length > 0) {
-      panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
+      void panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
     }
   };
 
@@ -117,7 +117,7 @@ export function createTec1PanelController(
     speedMode = payload.speedMode;
     lcd = payload.lcd.slice(0, 32);
     if (panel !== undefined) {
-      panel.webview.postMessage({
+      void panel.webview.postMessage({
         type: 'update',
         digits,
         matrix,
@@ -130,7 +130,7 @@ export function createTec1PanelController(
   };
 
   const appendSerial = (text: string): void => {
-    if (!text) {
+    if (text.length === 0) {
       return;
     }
     serialBuffer += text;
@@ -138,7 +138,7 @@ export function createTec1PanelController(
       serialBuffer = serialBuffer.slice(serialBuffer.length - serialMaxChars);
     }
     if (panel !== undefined) {
-      panel.webview.postMessage({ type: 'serial', text });
+      void panel.webview.postMessage({ type: 'serial', text });
     }
   };
 
@@ -149,7 +149,7 @@ export function createTec1PanelController(
     lcd = Array.from({ length: 32 }, () => 0x20);
     serialBuffer = '';
     if (panel !== undefined) {
-      panel.webview.postMessage({
+      void panel.webview.postMessage({
         type: 'update',
         digits,
         matrix,
@@ -157,7 +157,7 @@ export function createTec1PanelController(
         speedMode,
         lcd,
       });
-      panel.webview.postMessage({ type: 'serialClear' });
+      void panel.webview.postMessage({ type: 'serialClear' });
     }
   };
 

@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTerminal', async () => {
+    vscode.commands.registerCommand('debug80.openTerminal', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
         openTerminalPanel(undefined, { focus: true });
@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTec1', async () => {
+    vscode.commands.registerCommand('debug80.openTec1', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
         tec1PanelController.open(undefined, { focus: true });
@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTec1Memory', async () => {
+    vscode.commands.registerCommand('debug80.openTec1Memory', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
         tec1MemoryPanelController.open(undefined, { focus: true });
@@ -133,7 +133,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       if (evt.event === 'debug80/platform') {
         const id = (evt.body as { id?: string } | undefined)?.id;
-        if (id) {
+        if (id !== undefined && id.length > 0) {
           sessionPlatforms.set(evt.session.id, id);
         }
         if (id === 'tec1') {
@@ -358,7 +358,7 @@ function getPrimaryEditorColumn(): vscode.ViewColumn {
 function getTerminalColumn(): vscode.ViewColumn {
   const primary = getPrimaryEditorColumn();
   const candidate = primary + 1;
-  if (candidate <= vscode.ViewColumn.Nine) {
+  if (candidate <= Number(vscode.ViewColumn.Nine)) {
     return candidate as vscode.ViewColumn;
   }
   return vscode.ViewColumn.Beside;
@@ -414,8 +414,6 @@ function openTerminalPanel(
         const targetSession = terminalSession ?? vscode.debug.activeDebugSession;
         if (targetSession?.type === 'z80') {
           try {
-            // Log to extension host console for verification
-            console.log(`[debug80] terminal input -> "${msg.text}"`);
             await targetSession.customRequest('debug80/terminalInput', { text: msg.text });
           } catch {
             // ignore
@@ -478,7 +476,7 @@ function clearTerminal(): void {
     terminalFlushTimer = undefined;
   }
   if (terminalPanel !== undefined) {
-    terminalPanel.webview.postMessage({ type: 'clear' });
+    void terminalPanel.webview.postMessage({ type: 'clear' });
   }
 }
 
@@ -541,14 +539,14 @@ function scheduleTerminalFlush(): void {
       return;
     }
     if (terminalNeedsFullRefresh) {
-      terminalPanel.webview.postMessage({ type: 'clear' });
-      terminalPanel.webview.postMessage({ type: 'output', text: terminalBuffer });
+      void terminalPanel.webview.postMessage({ type: 'clear' });
+      void terminalPanel.webview.postMessage({ type: 'output', text: terminalBuffer });
       terminalNeedsFullRefresh = false;
       terminalPendingOutput = '';
       return;
     }
     if (terminalPendingOutput.length > 0) {
-      terminalPanel.webview.postMessage({ type: 'output', text: terminalPendingOutput });
+      void terminalPanel.webview.postMessage({ type: 'output', text: terminalPendingOutput });
       terminalPendingOutput = '';
     }
   }, TERMINAL_FLUSH_MS);

@@ -66,7 +66,7 @@ export class CycleClock {
       }
       this.queue.shift();
       next.callback();
-      if (next.interval && next.interval > 0) {
+      if (next.interval !== undefined && next.interval > 0) {
         next.at += next.interval;
         this.insertEvent(next);
       }

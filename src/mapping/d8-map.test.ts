@@ -3,7 +3,7 @@ import test from 'node:test';
 import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from './d8-map';
 import { MappingParseResult } from './parser';
 
-test('D8 map uses defaults and lstText table', () => {
+void test('D8 map uses defaults and lstText table', () => {
   const mapping: MappingParseResult = {
     segments: [
       {
@@ -51,8 +51,9 @@ test('D8 map uses defaults and lstText table', () => {
   assert.equal(map.symbolDefaults?.scope, 'global');
   assert.equal(map.lstText?.length, 3);
 
-  assert.ok(!Array.isArray(map.files));
-  const fileEntry = (map.files as Record<string, { segments?: unknown[] }>)['src/main.asm'];
+  const files = map.files;
+  assert.ok(files !== undefined && !Array.isArray(files));
+  const fileEntry = files['src/main.asm'];
   assert.ok(fileEntry);
   assert.ok(fileEntry.segments);
   const segments = fileEntry.segments as Array<{
@@ -68,8 +69,8 @@ test('D8 map uses defaults and lstText table', () => {
 
   const { map: parsed, error } = parseD8DebugMap(JSON.stringify(map));
   assert.equal(error, undefined);
-  assert.ok(parsed);
+  assert.ok(parsed !== undefined);
 
-  const roundTrip = buildMappingFromD8DebugMap(parsed!);
+  const roundTrip = buildMappingFromD8DebugMap(parsed);
   assert.deepEqual(roundTrip, mapping);
 });

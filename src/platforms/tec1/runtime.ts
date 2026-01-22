@@ -79,8 +79,8 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     romRanges,
     appStart: Math.max(0, Math.min(0xffff, appStart)),
     entry: Math.max(0, Math.min(0xffff, entry)),
-    ...(romHex ? { romHex } : {}),
-    ...(ramInitHex ? { ramInitHex } : {}),
+    ...(romHex !== undefined ? { romHex } : {}),
+    ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
   };
