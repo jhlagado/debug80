@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/panel';
+import { createTec1MemoryPanelController } from '../platforms/tec1/memory-panel';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
@@ -19,6 +20,10 @@ let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
 const sessionPlatforms = new Map<string, string>();
 const tec1PanelController = createTec1PanelController(
+  getTerminalColumn,
+  () => vscode.debug.activeDebugSession
+);
+const tec1MemoryPanelController = createTec1MemoryPanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
@@ -82,6 +87,17 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openTec1Memory', async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session || session.type !== 'z80') {
+        tec1MemoryPanelController.open(undefined, { focus: true });
+        return;
+      }
+      tec1MemoryPanelController.open(session, { focus: true });
+    })
+  );
+
+  context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
         activeZ80Sessions.add(session.id);
@@ -99,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
         terminalSession = undefined;
       }
       tec1PanelController.handleSessionTerminated(session.id);
+      tec1MemoryPanelController.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
@@ -121,6 +138,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         if (id === 'tec1') {
           tec1PanelController.open(evt.session, { focus: false, reveal: true });
+          tec1MemoryPanelController.open(evt.session, { focus: false, reveal: true });
         } else {
           openTerminalPanel(evt.session, { focus: false, reveal: true });
         }
