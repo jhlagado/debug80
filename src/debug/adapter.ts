@@ -164,7 +164,7 @@ export class Z80DebugSession extends DebugSession {
 
     try {
       const merged = this.populateFromConfig(args);
-      this.stopOnEntry = merged.stopOnEntry !== false;
+      this.stopOnEntry = merged.stopOnEntry === true;
 
       if (
         (merged.asm === undefined || merged.asm === '') &&

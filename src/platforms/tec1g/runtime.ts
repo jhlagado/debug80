@@ -126,6 +126,19 @@ export function createTec1gRuntime(
     protectEnabled: false,
     expandEnabled: false,
   };
+  const lcdTest = 'ARROWS: ';
+  for (let i = 0; i < lcdTest.length && i < state.lcd.length; i += 1) {
+    state.lcd[i] = lcdTest.charCodeAt(i);
+  }
+  if (state.lcd.length > lcdTest.length) {
+    state.lcd[lcdTest.length] = 0x7f;
+  }
+  if (state.lcd.length > lcdTest.length + 1) {
+    state.lcd[lcdTest.length + 1] = 0x20;
+  }
+  if (state.lcd.length > lcdTest.length + 2) {
+    state.lcd[lcdTest.length + 2] = 0x7e;
+  }
 
   const sendUpdate = (): void => {
     onUpdate({
