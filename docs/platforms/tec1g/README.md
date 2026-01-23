@@ -75,7 +75,9 @@ From MON3:
 - `0x10` CART (cartridge present flag)
 - `0x80` CAPSLOCK (MON3 definition)
 
-Note: DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). Prefer MON3 (0x80) unless schematics prove otherwise.
+Notes:
+- DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). Prefer MON3 (0x80) unless schematics prove otherwise.
+- MON3 `getShadow` flips the bit, implying SHADOW is active-low in the latch (on=0). Treat SHADOW as active-low unless confirmed otherwise.
 
 ### LCD row addresses
 - `0x80` row 1, `0xC0` row 2, `0x94` row 3, `0xD4` row 4.
@@ -124,6 +126,7 @@ MON-3 exposes a ROM API via `RST 10h` with the call number in `C`. This is the p
 - `_getShadow/_setShadow` (C=0x26/0x2A) uses 0x01.
 - `_getProtect/_setProtect` (C=0x27/0x2B) uses 0x02.
 - `_getExpand/_setExpand` (C=0x28/0x2C) uses 0x04.
+ - MON3 `getShadow` flips the bit (active-low) and `setShadow` treats input as on/off then inverts before writing SYS_CTRL.
 
 ## Emulation Implications
 1. Memory is not flat. MMU, shadow, and write protect must be modeled.

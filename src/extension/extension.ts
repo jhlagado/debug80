@@ -5,6 +5,8 @@ import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/panel';
 import { createTec1MemoryPanelController } from '../platforms/tec1/memory-panel';
+import { createTec1gPanelController } from '../platforms/tec1g/panel';
+import { createTec1gMemoryPanelController } from '../platforms/tec1g/memory-panel';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
@@ -24,6 +26,14 @@ const tec1PanelController = createTec1PanelController(
   () => vscode.debug.activeDebugSession
 );
 const tec1MemoryPanelController = createTec1MemoryPanelController(
+  getTerminalColumn,
+  () => vscode.debug.activeDebugSession
+);
+const tec1gPanelController = createTec1gPanelController(
+  getTerminalColumn,
+  () => vscode.debug.activeDebugSession
+);
+const tec1gMemoryPanelController = createTec1gMemoryPanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
@@ -104,6 +114,7 @@ export function activate(context: vscode.ExtensionContext): void {
         enforceSourceColumn = true;
         clearTerminal();
         tec1PanelController.clear();
+        tec1gPanelController.clear();
         sessionPlatforms.delete(session.id);
       }
     })
@@ -116,6 +127,8 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       tec1PanelController.handleSessionTerminated(session.id);
       tec1MemoryPanelController.handleSessionTerminated(session.id);
+      tec1gPanelController.handleSessionTerminated(session.id);
+      tec1gMemoryPanelController.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
@@ -139,6 +152,9 @@ export function activate(context: vscode.ExtensionContext): void {
         if (id === 'tec1') {
           tec1PanelController.open(evt.session, { focus: false, reveal: true });
           tec1MemoryPanelController.open(evt.session, { focus: false, reveal: true });
+        } else if (id === 'tec1g') {
+          tec1gPanelController.open(evt.session, { focus: false, reveal: true });
+          tec1gMemoryPanelController.open(evt.session, { focus: false, reveal: true });
         } else {
           openTerminalPanel(evt.session, { focus: false, reveal: true });
         }
@@ -185,6 +201,41 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         tec1PanelController.appendSerial(text);
+        return;
+      }
+      if (evt.event === 'debug80/tec1gUpdate') {
+        const payload = evt.body as {
+          digits?: number[];
+          matrix?: number[];
+          lcd?: number[];
+          speaker?: number;
+          speakerHz?: number;
+          speedMode?: 'slow' | 'fast';
+        } | undefined;
+        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
+          return;
+        }
+        const update = {
+          digits: payload.digits,
+          matrix: payload.matrix,
+          speaker: payload.speaker ?? 0,
+          speedMode: payload.speedMode ?? 'slow',
+          lcd: payload.lcd,
+        };
+        if (payload.speakerHz !== undefined) {
+          tec1gPanelController.update({ ...update, speakerHz: payload.speakerHz });
+        } else {
+          tec1gPanelController.update(update);
+        }
+        return;
+      }
+      if (evt.event === 'debug80/tec1gSerial') {
+        const payload = evt.body as { text?: string } | undefined;
+        const text = payload?.text ?? '';
+        if (text.length === 0) {
+          return;
+        }
+        tec1gPanelController.appendSerial(text);
         return;
       }
     })

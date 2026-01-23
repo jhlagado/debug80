@@ -21,9 +21,16 @@ import {
   SimplePlatformConfigNormalized,
   Tec1PlatformConfig,
   Tec1PlatformConfigNormalized,
+  Tec1gPlatformConfig,
+  Tec1gPlatformConfigNormalized,
 } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
+import {
+  createTec1gRuntime,
+  normalizeTec1gConfig,
+  Tec1gRuntime,
+} from '../platforms/tec1g/runtime';
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -44,6 +51,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   terminal?: TerminalConfig;
   simple?: SimplePlatformConfig;
   tec1?: Tec1PlatformConfig;
+  tec1g?: Tec1gPlatformConfig;
 }
 
 interface TerminalConfig {
@@ -95,6 +103,8 @@ export class Z80DebugSession extends DebugSession {
   private terminalState: TerminalState | undefined;
   private tec1Runtime: Tec1Runtime | undefined;
   private tec1Config: Tec1PlatformConfigNormalized | undefined;
+  private tec1gRuntime: Tec1gRuntime | undefined;
+  private tec1gConfig: Tec1gPlatformConfigNormalized | undefined;
   private activePlatform = 'simple';
   private loadedProgram: HexProgram | undefined;
   private loadedEntry: number | undefined;
@@ -141,6 +151,8 @@ export class Z80DebugSession extends DebugSession {
     this.baseDir = process.cwd();
     this.terminalState = undefined;
     this.tec1Runtime = undefined;
+    this.tec1gRuntime = undefined;
+    this.tec1gConfig = undefined;
     this.loadedProgram = undefined;
     this.loadedEntry = undefined;
     this.lastStopReason = undefined;
@@ -182,7 +194,10 @@ export class Z80DebugSession extends DebugSession {
         platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
       const tec1Config =
         platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
+      const tec1gConfig =
+        platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
       this.tec1Config = tec1Config;
+      this.tec1gConfig = tec1gConfig;
       this.sendEvent(new DapEvent('debug80/platform', { id: platform }));
 
       const baseDir = this.resolveBaseDir(merged);
@@ -257,6 +272,51 @@ export class Z80DebugSession extends DebugSession {
         this.applyIntelHexToMemory(hexContent, memory);
         program.memory = memory;
       }
+      if (platform === 'tec1g') {
+        const memory = new Uint8Array(0x10000);
+        memory.fill(0);
+        const romHex = tec1gConfig?.romHex;
+        const romPath =
+          romHex !== undefined && romHex.length > 0
+            ? this.resolveRelative(romHex, baseDir)
+            : undefined;
+        if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
+          const target = romPath ?? '(missing TEC-1G ROM)';
+          this.sendEvent(
+            new OutputEvent(`Debug80: TEC-1G ROM not found at "${target}".\n`, 'console')
+          );
+        } else if (romPath.toLowerCase().endsWith('.bin')) {
+          this.applyBinaryToMemoryAtOffset(romPath, memory, 0xc000);
+        } else {
+          const romContent = fs.readFileSync(romPath, 'utf-8');
+          const romHex = this.extractRomHex(romContent, romPath);
+          this.applyIntelHexToMemory(romHex, memory);
+        }
+        if (this.shouldApplyShadowRom(memory)) {
+          this.applyShadowRom(memory);
+        }
+        const ramInitHex = tec1gConfig?.ramInitHex;
+        const ramInitPath =
+          ramInitHex !== undefined && ramInitHex.length > 0
+            ? this.resolveRelative(ramInitHex, baseDir)
+            : undefined;
+        if (ramInitPath !== undefined && ramInitPath.length > 0) {
+          if (!fs.existsSync(ramInitPath)) {
+            this.sendEvent(
+              new OutputEvent(
+                `Debug80: TEC-1G RAM init not found at "${ramInitPath}".\n`,
+                'console'
+              )
+            );
+          } else {
+            const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
+            const ramInitHex = this.extractRomHex(ramInitContent, ramInitPath);
+            this.applyIntelHexToMemory(ramInitHex, memory);
+          }
+        }
+        this.applyIntelHexToMemory(hexContent, memory);
+        program.memory = memory;
+      }
 
       const listingContent = fs.readFileSync(listingPath, 'utf-8');
       this.listing = parseListing(listingContent);
@@ -313,15 +373,19 @@ export class Z80DebugSession extends DebugSession {
 
       const ioHandlers = this.buildIoHandlers(platform, merged);
       const runtimeOptions =
-        (platform === 'simple' && simpleConfig) || (platform === 'tec1' && tec1Config)
-          ? { romRanges: (simpleConfig ?? tec1Config)?.romRanges ?? [] }
+        (platform === 'simple' && simpleConfig) ||
+        (platform === 'tec1' && tec1Config) ||
+        (platform === 'tec1g' && tec1gConfig)
+          ? { romRanges: (simpleConfig ?? tec1Config ?? tec1gConfig)?.romRanges ?? [] }
           : undefined;
       const entry =
         platform === 'simple'
           ? simpleConfig?.entry
           : platform === 'tec1'
             ? tec1Config?.entry
-            : merged.entry;
+            : platform === 'tec1g'
+              ? tec1gConfig?.entry
+              : merged.entry;
       this.loadedProgram = program;
       this.loadedEntry = entry;
       this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
@@ -425,6 +489,7 @@ export class Z80DebugSession extends DebugSession {
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
     this.tec1Runtime?.recordCycles(result.cycles ?? 0);
+    this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -463,6 +528,7 @@ export class Z80DebugSession extends DebugSession {
     const result = this.runtime.step({ trace });
     this.applyStepInfo(trace);
     this.tec1Runtime?.recordCycles(result.cycles ?? 0);
+    this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
     this.sendResponse(response);
 
@@ -692,10 +758,12 @@ export class Z80DebugSession extends DebugSession {
     _args: DebugProtocol.DisconnectArguments
   ): void {
     this.tec1Runtime?.silenceSpeaker();
+    this.tec1gRuntime?.silenceSpeaker();
     this.runtime = undefined;
     this.haltNotified = false;
     this.terminalState = undefined;
     this.tec1Runtime = undefined;
+    this.tec1gRuntime = undefined;
     this.loadedProgram = undefined;
     this.loadedEntry = undefined;
     this.sendResponse(response);
@@ -742,8 +810,29 @@ export class Z80DebugSession extends DebugSession {
       }
       if (code === 0x12) {
         this.tec1Runtime.silenceSpeaker();
+        this.tec1gRuntime?.silenceSpeaker();
       }
       this.tec1Runtime.applyKey(code);
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1gKey') {
+      if (this.tec1gRuntime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
+        return;
+      }
+      const payload = args as { code?: unknown };
+      const code = Number.isFinite(payload.code as number)
+        ? (payload.code as number)
+        : undefined;
+      if (code === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
+        return;
+      }
+      if (code === 0x12) {
+        this.tec1gRuntime.silenceSpeaker();
+      }
+      this.tec1gRuntime.applyKey(code);
       this.sendResponse(response);
       return;
     }
@@ -754,6 +843,16 @@ export class Z80DebugSession extends DebugSession {
       }
       this.runtime.reset(this.loadedProgram, this.loadedEntry);
       this.tec1Runtime?.resetState();
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1gReset') {
+      if (this.runtime === undefined || this.loadedProgram === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
+        return;
+      }
+      this.runtime.reset(this.loadedProgram, this.loadedEntry);
+      this.tec1gRuntime?.resetState();
       this.sendResponse(response);
       return;
     }
@@ -772,6 +871,21 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/tec1gSpeed') {
+      if (this.tec1gRuntime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
+        return;
+      }
+      const payload = args as { mode?: unknown };
+      const mode = payload.mode === 'slow' || payload.mode === 'fast' ? payload.mode : undefined;
+      if (!mode) {
+        this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
+        return;
+      }
+      this.tec1gRuntime.setSpeed(mode);
+      this.sendResponse(response);
+      return;
+    }
     if (command === 'debug80/tec1SerialInput') {
       if (this.tec1Runtime === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
@@ -781,6 +895,18 @@ export class Z80DebugSession extends DebugSession {
       const textValue = typeof payload.text === 'string' ? payload.text : '';
       const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
       this.tec1Runtime.queueSerial(bytes);
+      this.sendResponse(response);
+      return;
+    }
+    if (command === 'debug80/tec1gSerialInput') {
+      if (this.tec1gRuntime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
+        return;
+      }
+      const payload = args as { text?: unknown };
+      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
+      this.tec1gRuntime.queueSerial(bytes);
       this.sendResponse(response);
       return;
     }
@@ -855,6 +981,77 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/tec1gMemorySnapshot') {
+      if (this.runtime === undefined) {
+        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
+        return;
+      }
+      const payload = args as {
+        before?: unknown;
+        rowSize?: unknown;
+        views?: Array<{ id?: unknown; view?: unknown; after?: unknown; address?: unknown }>;
+      };
+      const before = this.clampMemoryWindow(payload.before, 16);
+      const rowSize = payload.rowSize === 8 ? 8 : 16;
+      const regs = this.runtime.getRegisters();
+      const pc = regs.pc & 0xffff;
+      const sp = regs.sp & 0xffff;
+      const bc = ((regs.b & 0xff) << 8) | (regs.c & 0xff);
+      const de = ((regs.d & 0xff) << 8) | (regs.e & 0xff);
+      const hl = ((regs.h & 0xff) << 8) | (regs.l & 0xff);
+      const ix = regs.ix & 0xffff;
+      const iy = regs.iy & 0xffff;
+      const memRead =
+        this.runtime.hardware.memRead ??
+        ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+      const pickAddress = (viewValue: string, addressValue: number | null): number => {
+        switch (viewValue) {
+          case 'pc':
+            return pc;
+          case 'sp':
+            return sp;
+          case 'bc':
+            return bc;
+          case 'de':
+            return de;
+          case 'hl':
+            return hl;
+          case 'ix':
+            return ix;
+          case 'iy':
+            return iy;
+          case 'absolute':
+            return addressValue ?? hl;
+          default:
+            return hl;
+        }
+      };
+      const viewRequests = Array.isArray(payload.views) ? payload.views : [];
+      const views = viewRequests.map((entry) => {
+        const id = typeof entry.id === 'string' ? entry.id : 'view';
+        const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
+        const afterValue = this.clampMemoryWindow(entry.after, 16);
+        const addressValue =
+          Number.isFinite(entry.address as number) ? ((entry.address as number) & 0xffff) : null;
+        const target = pickAddress(viewValue, addressValue);
+        const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
+        const nearest = this.findNearestSymbol(target);
+        return {
+          id,
+          view: viewValue,
+          address: target,
+          start: window.start,
+          bytes: window.bytes,
+          focus: window.focus,
+          after: afterValue,
+          symbol: nearest?.name ?? null,
+          symbolOffset: nearest ? (target - nearest.address) & 0xffff : null,
+        };
+      });
+      response.body = { views };
+      this.sendResponse(response);
+      return;
+    }
     super.customRequest(command, response, args);
   }
 
@@ -897,6 +1094,7 @@ export class Z80DebugSession extends DebugSession {
     }
 
     this.tec1Runtime?.silenceSpeaker();
+    this.tec1gRuntime?.silenceSpeaker();
     this.sendEvent(new TerminatedEvent());
   }
 
@@ -1022,7 +1220,11 @@ export class Z80DebugSession extends DebugSession {
     let cyclesSinceThrottle = 0;
     let lastThrottleMs = Date.now();
     const yieldMs =
-      this.activePlatform === 'tec1' ? this.tec1Runtime?.state.yieldMs ?? 0 : 0;
+      this.activePlatform === 'tec1'
+        ? this.tec1Runtime?.state.yieldMs ?? 0
+        : this.activePlatform === 'tec1g'
+          ? this.tec1gRuntime?.state.yieldMs ?? 0
+          : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -1035,6 +1237,7 @@ export class Z80DebugSession extends DebugSession {
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
           this.tec1Runtime?.silenceSpeaker();
+          this.tec1gRuntime?.silenceSpeaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -1048,6 +1251,7 @@ export class Z80DebugSession extends DebugSession {
           executed += 1;
           cyclesSinceThrottle += stepped.cycles ?? 0;
           this.tec1Runtime?.recordCycles(stepped.cycles ?? 0);
+          this.tec1gRuntime?.recordCycles(stepped.cycles ?? 0);
           if (stepped.halted) {
             this.handleHaltStop();
             return;
@@ -1074,6 +1278,7 @@ export class Z80DebugSession extends DebugSession {
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
         this.tec1Runtime?.recordCycles(result.cycles ?? 0);
+        this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
           this.handleHaltStop();
           return;
@@ -1091,8 +1296,11 @@ export class Z80DebugSession extends DebugSession {
           return;
         }
       }
-      if (this.activePlatform === 'tec1') {
-        const clockHz = this.tec1Runtime?.state.clockHz ?? 0;
+      if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
+        const clockHz =
+          this.activePlatform === 'tec1'
+            ? this.tec1Runtime?.state.clockHz ?? 0
+            : this.tec1gRuntime?.state.clockHz ?? 0;
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1131,7 +1339,11 @@ export class Z80DebugSession extends DebugSession {
     let cyclesSinceThrottle = 0;
     let lastThrottleMs = Date.now();
     const yieldMs =
-      this.activePlatform === 'tec1' ? this.tec1Runtime?.state.yieldMs ?? 0 : 0;
+      this.activePlatform === 'tec1'
+        ? this.tec1Runtime?.state.yieldMs ?? 0
+        : this.activePlatform === 'tec1g'
+          ? this.tec1gRuntime?.state.yieldMs ?? 0
+          : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       for (let i = 0; i < CHUNK; i += 1) {
@@ -1144,6 +1356,7 @@ export class Z80DebugSession extends DebugSession {
           this.lastStopReason = 'pause';
           this.lastBreakpointAddress = null;
           this.tec1Runtime?.silenceSpeaker();
+          this.tec1gRuntime?.silenceSpeaker();
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
@@ -1174,6 +1387,7 @@ export class Z80DebugSession extends DebugSession {
           executed += 1;
           cyclesSinceThrottle += result.cycles ?? 0;
           this.tec1Runtime?.recordCycles(result.cycles ?? 0);
+          this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
           if (result.halted) {
             this.handleHaltStop();
             return;
@@ -1203,8 +1417,11 @@ export class Z80DebugSession extends DebugSession {
           return;
         }
       }
-      if (this.activePlatform === 'tec1') {
-        const clockHz = this.tec1Runtime?.state.clockHz ?? 0;
+      if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
+        const clockHz =
+          this.activePlatform === 'tec1'
+            ? this.tec1Runtime?.state.clockHz ?? 0
+            : this.tec1gRuntime?.state.clockHz ?? 0;
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1432,7 +1649,7 @@ export class Z80DebugSession extends DebugSession {
     if (name === '') {
       return 'simple';
     }
-    if (name !== 'simple' && name !== 'tec1') {
+    if (name !== 'simple' && name !== 'tec1' && name !== 'tec1g') {
       throw new Error(`Unsupported platform "${raw}".`);
     }
     return name;
@@ -1574,6 +1791,49 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
+  private applyBinaryToMemoryAtOffset(
+    filePath: string,
+    memory: Uint8Array,
+    offset: number
+  ): void {
+    const base = Math.max(0, Math.min(0xffff, offset));
+    const data = fs.readFileSync(filePath);
+    const length = Math.min(data.length, memory.length - base);
+    for (let i = 0; i < length; i += 1) {
+      memory[base + i] = data[i] ?? 0;
+    }
+  }
+
+  private shouldApplyShadowRom(memory: Uint8Array): boolean {
+    const shadowSize = 0x800;
+    const hiBase = 0xc000;
+    if (hiBase + shadowSize > memory.length) {
+      return false;
+    }
+    for (let i = 0; i < shadowSize; i += 1) {
+      if (memory[i] !== 0) {
+        return false;
+      }
+    }
+    for (let i = 0; i < shadowSize; i += 1) {
+      if (memory[hiBase + i] !== 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private applyShadowRom(memory: Uint8Array): void {
+    const shadowSize = 0x800;
+    const hiBase = 0xc000;
+    if (hiBase + shadowSize > memory.length) {
+      return;
+    }
+    for (let i = 0; i < shadowSize; i += 1) {
+      memory[i] = memory[hiBase + i] ?? 0;
+    }
+  }
+
   private resolveRomBinPath(filePath: string): string | undefined {
     const lower = filePath.toLowerCase();
     if (lower.endsWith('.bin')) {
@@ -1702,6 +1962,30 @@ export class Z80DebugSession extends DebugSession {
         }
       );
       return this.tec1Runtime.ioHandlers;
+    }
+    if (platform === 'tec1g') {
+      if (!this.tec1gConfig) {
+        return undefined;
+      }
+      this.tec1gRuntime = createTec1gRuntime(
+        this.tec1gConfig,
+        (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1gUpdate', payload));
+        },
+        (byte) => {
+          const value = byte & 0xff;
+          const text = String.fromCharCode(value);
+          this.sendEvent(new DapEvent('debug80/tec1gSerial', { byte: value, text }));
+        },
+        ({ port, value }) => {
+          const portHex = `0x${port.toString(16).padStart(2, '0')}`;
+          const valueHex = `0x${value.toString(16).padStart(2, '0')}`;
+          this.sendEvent(
+            new OutputEvent(`Debug80: TEC-1G OUT ${portHex} <= ${valueHex}\n`, 'console')
+          );
+        }
+      );
+      return this.tec1gRuntime.ioHandlers;
     }
 
     const cfg = args.terminal;
