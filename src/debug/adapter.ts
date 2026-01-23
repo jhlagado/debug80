@@ -392,6 +392,7 @@ export class Z80DebugSession extends DebugSession {
       const tec1gRuntime = this.tec1gRuntime;
       if (platform === 'tec1g' && this.runtime !== undefined && tec1gRuntime !== undefined) {
         const baseMemory = this.runtime.hardware.memory;
+        const expandBank = new Uint8Array(0x4000);
         const romRanges = runtimeOptions?.romRanges ?? [];
         const isRomAddress = (addr: number): boolean =>
           romRanges.some((range) => addr >= range.start && addr <= range.end);
@@ -401,6 +402,12 @@ export class Z80DebugSession extends DebugSession {
           if (shadowEnabled && masked < 0x0800) {
             const shadowAddr = 0xc000 + masked;
             return baseMemory[shadowAddr] ?? 0;
+          }
+          if (masked >= 0x8000 && masked <= 0xbfff) {
+            const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
+            if (expandEnabled) {
+              return expandBank[masked - 0x8000] ?? 0;
+            }
           }
           return baseMemory[masked] ?? 0;
         };
@@ -412,6 +419,13 @@ export class Z80DebugSession extends DebugSession {
           const protectEnabled = (tec1gRuntime as Tec1gRuntime).state.protectEnabled === true;
           if (protectEnabled && masked >= 0x4000 && masked <= 0x7fff) {
             return;
+          }
+          if (masked >= 0x8000 && masked <= 0xbfff) {
+            const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
+            if (expandEnabled) {
+              expandBank[masked - 0x8000] = value & 0xff;
+              return;
+            }
           }
           baseMemory[masked] = value & 0xff;
         };

@@ -1,173 +1,268 @@
-# TEC-1G Platform Notes
+# TEC-1G and MON-3 — Platform and Philosophy
 
-This document consolidates current findings about the TEC-1G platform and what it implies for emulation in Debug80. It is based on the TEC-1G repo documentation (README and Functional Description).
+This document reorganises and consolidates the TEC-1G MON-3 documentation into a coherent technical and conceptual overview. It is intended both as a **platform reference** and as a **design brief** for emulation and tooling (e.g. Debug80), not as an introductory user manual.
 
-## Summary
-- Backward compatible with classic TEC-1 monitors.
-- Default memory: 16K ROM + 32K RAM (up to 64K RAM + 16K ROM).
-- Shadowed low 2K ROM into 0x0000-0x07FF when SHADOW is enabled.
-- Banked RAM with MMU control; bank 2 always mapped.
-- 20x4 LCD is the primary display, 7-seg display remains.
-- Keypad + matrix keyboard options; keypress status on port 0x03 bit 6.
-- Fast clock is a 4.0 MHz crystal; slow clock retained.
-- Expanded I/O decode in the 0xF8-0xFF range for new peripherals.
-- Serial via optional FTDI/FT232 module.
+---
 
-## Hardware Differences vs Classic TEC-1
-### Memory and MMU
-- Bank 0/1/3 controlled by MMU; bank 2 is always mapped.
-- Low 2K ROM is shadowed at 0x0000-0x07FF when SHADOW is active.
-- RAM write protection for bank 1 via PROTECT signal.
-- Expansion RAM socket (bank 2) supports 8K-32K devices.
+## 1. What This Document Is
 
-### Displays
-- 20x4 character LCD is primary display.
-- 7-seg display remains for compatibility.
-- GLCD support exists via external board (defer for initial emulation).
+This material is grounded primarily in:
 
-### Input
-- Hex keypad remains.
-- Matrix keyboard option + joystick options.
-- Keypress detection is built into hardware (bit 6 on port 0x03).
+- **MON3 User Guide v1.5** (Brian Chiha)
+- TEC-1G README and Functional Description
+- Historical TEC-1 design lineage
 
-### Clock and Timing
-- FAST clock is a 4.0 MHz crystal oscillator.
-- Slow clock retained for older monitors.
-- MON-3 timing assumes 4.0 MHz.
+MON-3 is explicitly positioned as the *heart* of the TEC-1G: the resident monitor and runtime environment that makes the board usable both as a beginner trainer and as a serious Z80 development system.
 
-### Serial and I/O
-- Optional FTDI/FT232 module (USB serial).
-- Classic I/O decode for 0x00-0x07 retained.
-- New decode for 0xF8-0xFF for modern peripherals.
+**Credits (as stated in the MON-3 guide):**
+- Mark Jelic — TEC-1G designer  
+- Brian Chiha — MON-3 programmer  
+- John Hardy & Ken Stone — original TEC-1 designers  
 
-## I/O Port Map (from MON3 + DIAG includes)
-These come from `ROMs/MON3/source/mon3.z80` and `ROMs/DIAGs/source/Diags_includes.asm`.
+---
 
-### Classic ports (0x00-0x07)
-- `0x00` KEYB: hex keypad encoder.
-- `0x01` DIGITS: 7‑seg digit select.
-- `0x02` SEGS: 7‑seg segment data.
-- `0x03` SYS_INPUT / SIMP3: system input (key‑press status on bit 6).
-- `0x04` LCDCMD / LCD_INST: LCD instruction.
-- `0x84` LCDDATA / LCD_DATA: LCD data.
-- `0x05` LED8X8H / ex8X: 8x8 LED horizontal.
-- `0x06` LED8X8V / ex8Y: 8x8 LED vertical.
-- `0x07` GLCD_INST: graphics LCD instruction.
-- `0x87` GLCD_DATA: graphics LCD data.
+## 2. What the TEC-1G Is
 
-### Expanded ports (0xF8-0xFF)
-- `0xFC` RTC: DS1302 RTC GPIO board.
-- `0xFD` SDIO / spiport: SD / SPI I/O (8‑bit GPIO board).
-- `0xFE` MATRIX: QWERTY keyboard matrix.
-- `0xFF` SYS_CTRL / SYSCTRL: system control latch.
+The TEC-1G is a **trainer-first Z80 single-board computer** that deliberately preserves the classic hex-keypad workflow while extending it into a more capable and recoverable development platform.
 
-### SYS_CTRL bits
-From DIAGs:
-- `0x01` SHADOW: shadow ROM enable.
-- `0x02` PROTECT: RAM write protection.
-- `0x04` EXPAND: expansion memory select.
-- `0x20` CAPSL: caps lock (DIAGs definition).
+Core characteristics:
+- Z80 CPU
+- Hex keypad and 7-segment LED display (classic trainer interface)
+- 20×4 character LCD (primary MON-3 user interface)
+- FTDI-based serial interface (Intel HEX load, binary transfer, disassembly export)
+- Expansion socket mapped into Z80 address space
+- General-purpose I/O header
 
-From MON3:
-- `0x01` SHADOW
-- `0x02` PROTECT
-- `0x04` EXPAND
-- `0x10` CART (cartridge present flag)
-- `0x80` CAPSLOCK (MON3 definition)
+Optional add-ons supported by MON-3:
+- Matrix keyboard
+- Real-time clock
+- Graphical LCD
+- Secure digital flash and general I/O modules
 
-Notes:
-- DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). Prefer MON3 (0x80) unless schematics prove otherwise.
-- MON3 `getShadow` flips the bit, implying SHADOW is active-low in the latch (on=0). Treat SHADOW as active-low unless confirmed otherwise.
-- Current emulation treats PROTECT as write-block for 0x4000-0x7FFF and applies SHADOW in memory reads (0x0000-0x07FF mirrors 0xC000-0xC7FF when enabled).
+**Key point:**  
+The TEC-1G is not merely a trainer. It is a small but extensible Z80 platform whose monitor deliberately exposes system services rather than hiding them.
 
-### LCD row addresses
-- `0x80` row 1, `0xC0` row 2, `0x94` row 3, `0xD4` row 4.
+---
 
-## Memory Map Constants (from DIAGs + MON3)
-From DIAGs (`Diags_includes.asm`):
-- `RAMST = 0x0800` (start of RAM)
-- `RAMBL1 = 0x4000` (bank 1)
-- `RAMEND = 0x7FFF` (end of base RAM)
-- `STAKLOC = 0x4000` (top of non‑protected RAM for stack)
-- `HIROM = 0xC000` (16K ROM area, bank 3)
-- `HIBASE = 0x0300` (high ROM code base)
+## 3. Memory Architecture
 
-From MON3 (`mon3.z80`):
-- `MON_RAM = 0x0800` (monitor RAM start)
-- `STACK_SIZE = 0x80`, `STACK_TOP = MON_RAM + 0x80`
-- `USER_ADDR = 0x4000` (user program start in MON3 context)
-- `BASE_ADDR = 0xC000` (monitor base)
+MON-3 documents and depends on a full 64 kilobyte address space with a fixed, intentional layout.
 
-These values imply a default RAM layout of 0x0800–0x7FFF (32K), with ROM mapped at 0xC000 and shadowed into 0x0000–0x07FF.
+### Default Memory Map
 
-## MON-3 API Expectations (RST 0x10)
-MON-3 exposes a ROM API via `RST 10h` with the call number in `C`. This is the primary contract for ROM-aware programs, so treat it as authoritative when it conflicts with DIAG docs.
+| Address Range | Type     | Purpose |
+|--------------|----------|---------|
+| 0x0000–0x00FF | RAM | Reserved Z80 instruction area |
+| 0x0100–0x07FF | RAM | Free RAM |
+| 0x0800–0x087F | RAM | Hardware stack |
+| 0x0880–0x0FFF | RAM | MON-3 working RAM |
+| 0x1000–0x3FFF | RAM | Free RAM |
+| 0x4000–0x7FFF | RAM | Free RAM (Protect-capable) |
+| 0x8000–0xBFFF | ROM/RAM | Expansion socket (banked) |
+| 0xC000–0xFFFF | ROM | Monitor ROM (MON-3) |
 
-### LCD (20x4, HD44780)
-- `_LCDBusy` (C=0x0C): wait until LCD is ready.
-- `_stringToLCD` (C=0x0D): HL points at ASCIIZ string.
-- `_charToLCD` (C=0x0E): A is the character.
-- `_commandToLCD` (C=0x0F): A is the LCD command.
-- `_LCDConfirm` (C=0x37): UI helper (details in MON3 API doc).
+MON-3 places its stack near 0x0800 and strongly encourages user code to live at **0x4000**.
 
-### Keypad / Matrix
-- `_scanKeys` (C=0x10): generic key scan (hex pad or matrix).
-- `_scanKeysWait` (C=0x11): blocking key scan.
-- `_matrixScan` (C=0x12): E is key (00h-3Fh), D is modifier (FF=no key, 00=shift, 01=ctrl, 02=fn).
-- `_matrixScanASCII` (C=0x35): converts matrix scan DE into ASCII.
+---
 
-### Serial (FTDI bit-bang)
-- `_serialEnable` (C=0x14), `_serialDisable` (C=0x15).
-- `_txByte` (C=0x16) and `_rxByte` (C=0x17).
-- MON-3 assumes 4800-8-N-2 for bit-bang FTDI in the API doc.
-- `_intelHexLoad` (C=0x18), `_sendToSerial` (C=0x19), `_receiveFromSerial` (C=0x1A).
+## 4. The Three Runtime Modes (System Latch)
 
-### System Control
-- `_getCaps/_setCaps/_toggleCaps` (C=0x25/0x29/0x30) expect 0x80 for caps on.
-- `_getShadow/_setShadow` (C=0x26/0x2A) uses 0x01.
-- `_getProtect/_setProtect` (C=0x27/0x2B) uses 0x02.
-- `_getExpand/_setExpand` (C=0x28/0x2C) uses 0x04.
- - MON3 `getShadow` flips the bit (active-low) and `setShadow` treats input as on/off then inverts before writing SYS_CTRL.
+Three latch-controlled modes define the personality of the TEC-1G. These are **runtime state**, not just jumpers.
 
-## Emulation Implications
-1. Memory is not flat. MMU, shadow, and write protect must be modeled.
-2. LCD is primary UI; 7-seg should remain for compatibility.
-3. Keypad polling should use port 0x03 bit 6 behavior (DAT-style).
-4. Timing must model slow/fast clock accurately for serial and LCD updates.
-5. I/O in 0xF8-0xFF range must be stubbed or implemented.
+### Shadow
+- Low memory (0x0000–0x07FF) mirrors ROM at 0xC000–0xC7FF
+- Used for compatibility with older monitors (MON-1, MON-2, JMON, BMON)
+- Active by default
 
-## Proposed Emulation Phases
-### Phase 1: Core Memory
-- Implement MMU bank mapping.
-- Implement SHADOW and PROTECT behaviors.
+### Protect
+- When enabled, writes to 0x4000–0x7FFF are blocked
+- Prevents runaway code from destroying user programs
+- Central to MON-3’s debugging workflow
 
-### Phase 2: Base I/O
-- Map classic ports (0x00-0x07).
-- Add port 0x03 bit 6 keypress behavior.
-- Stub 0xF8-0xFF with logging.
+### Expand
+- Expansion devices may be up to 32K
+- Only 16K visible at a time at 0x8000–0xBFFF
+- Bank selected via latch or software override (Fn-E)
 
-### Phase 3: LCD + 7-Seg
-- Implement 20x4 LCD (HD44780 style).
-- Keep 7-seg display active.
+Together, Shadow + Protect + Expand allow the TEC-1G to behave simultaneously as:
+- a learning machine
+- a safe development environment
+- a platform with multiple ROM personalities
 
-### Phase 4: Serial + Keyboard
-- FTDI serial port emulation (byte-based).
-- Matrix keyboard scan support.
+---
 
-### Phase 5: Expansion Modules (Later)
-- RTC, SD, GPIO, GLCD, etc.
+## 5. Front-Panel Workflow (MON-3’s Intended Use)
 
-## Open Questions
-- Exact MMU control sequencing and latch behavior (beyond SHADOW/PROTECT/EXPAND bits).
-- FTDI serial port numbers/handshake behavior (documented in MON3 user guide).
-- Default ROM mapping for different ROM sizes and Hi/Lo selection.
-- Confirmation of CAPSLOCK bit (0x20 vs 0x80) and CART flag behavior.
+MON-3 actively guides the user into a particular development habit:
 
-## Current Decisions
-- Initial target ROM: MON-3.
-- DIAG ROMs will be used as a reference for diagnostics and low-level behavior.
-- GLCD is deferred for v1.
+1. **Data Entry Mode defaults to 0x4000**
+   - This address lies inside the Protect-capable region
+2. **Protect is enabled before execution**
+   - Code becomes effectively read-only
+3. **Execution is controlled via breakpoints**
+   - Inspection happens after real execution, not single-step illusion
 
-## References
-- TEC-1G/README.md
-- TEC-1G/Documentation/Functional Description.md
+Mental model enforced by MON-3:
+> **0x4000–0x7FFF is the workbench.  
+Everything else is tools or infrastructure.**
+
+---
+
+## 6. Debugging Model: Literal Breakpoints
+
+Breakpoints in MON-3 are explicit machine instructions.
+
+- Breakpoint opcode: **RST 30H** (byte `F7`)
+- Inserted directly into code
+- On hit, MON-3 displays:
+  - AF, BC, DE, HL
+  - IX, IY
+  - SP, PC
+  - flags
+
+Convenience operations:
+- Fn-Plus inserts a NOP (used to patch in F7)
+- Fn-Minus deletes a byte
+
+Hardware escape hatch:
+- If `+` is connected to `D5` on the G.IMP header, breakpoints are ignored
+
+This design:
+- avoids emulation tricks
+- reinforces real Z80 semantics
+- assumes comfort with binary patching
+
+---
+
+## 7. Serial Tooling as a Core Workflow
+
+Serial I/O is not optional or auxiliary on the TEC-1G.
+
+MON-3 supports:
+- Intel HEX loading with PASS/FAIL verification
+- Binary memory import/export
+- Disassembly export as readable Z80 assembly text
+
+Serial parameters:
+- 4800 baud
+- 8 data bits
+- No parity
+- 2 stop bits
+
+TMON (terminal monitor) was removed from MON-3 in v1.5 and is now a standalone program.
+
+**Philosophical implication:**  
+The authoritative program is what is in RAM, not what exists on a host machine.
+
+---
+
+## 8. Ports: The Hardware Contract
+
+The TEC-1G is intentionally “bare-metal honest”. MON-3 sits directly on a simple, documented port-mapped machine.
+
+### Core I/O Ports
+
+| Port | Dir | Function |
+|------|-----|----------|
+| 0x00 | In  | Hex keypad encoder (bits 0–4), Fn key (bit 5, active low) |
+| 0x01 | Out | 7-seg digit select, speaker, FTDI RX / disco LEDs |
+| 0x02 | Out | 7-seg segment data (A–G, DP) |
+| 0x03 | In  | System inputs (keypress flag on bit 6, mode switches) |
+| 0x04 | Out | LCD instruction |
+| 0x84 | Out | LCD data |
+| 0x05 | Out | 8×8 LED matrix horizontal |
+| 0x06 | Out | 8×8 LED matrix vertical |
+| 0x07 | Out | GLCD instruction |
+| 0x87 | Out | GLCD data |
+| 0xFE | In  | Matrix keyboard |
+| 0xFF | Out | SYS_CTRL latch |
+
+Ports 0xF8–0xFD are reserved for RTC, SD, and general I/O modules.
+
+---
+
+## 9. SYS_CTRL Latch (Port 0xFF)
+
+| Bit | Meaning | Notes |
+|-----|---------|-------|
+| 0x01 | Shadow | Active-low in MON-3 |
+| 0x02 | Protect | Blocks writes to 0x4000–0x7FFF |
+| 0x04 | Expand | Selects expansion bank |
+| 0x10 | Cartridge flag | Reported by MON-3 |
+| 0x80 | Caps lock | MON-3 uses 0x80 |
+
+When documentation conflicts, **MON-3 behaviour is authoritative** unless schematics prove otherwise.
+
+---
+
+## 10. Add-On Devices
+
+### Real-Time Clock
+- DS1302 on port 0xFC
+- 12/24 hour clock
+- Calendar to 2099 with leap year support
+- 31 bytes of battery-backed PRAM
+- MON-3 stores configuration in PRAM
+
+### Graphical LCD
+- Dedicated instruction/data ports
+- MON-3 provides a terminal emulation layer
+- Supports scrolling history and control characters
+
+These add-ons extend the machine without changing its core mental model.
+
+---
+
+## 11. TEC-1G Philosophy
+
+The TEC-1G is designed around a single disciplined idea:
+
+> **Make the machine legible, controllable, and honest.**
+
+It does not abstract the Z80 away. Instead, it structures interaction so direct contact with the hardware is safe, repeatable, and productive.
+
+### Key Principles
+
+1. **Visibility over abstraction**  
+   Code location, writable memory, and executing instructions are always knowable.
+
+2. **Protection without illusion**  
+   Coarse-grained containment replaces virtual memory or process models.
+
+3. **Reset as a first-class operation**  
+   Reset is expected, safe, and central to iteration.
+
+4. **The monitor as collaborator**  
+   MON-3 provides services but does not own the machine.
+
+5. **Constraints as discipline**  
+   Fixed windows, banked expansion, and instruction-level breakpoints shape better software habits.
+
+6. **Recoverability over convenience**  
+   Disassembly from live memory and serial round-tripping acknowledge that binaries drift and source is not sacred.
+
+---
+
+## 12. Emulation Priorities (Debug80)
+
+For faithful emulation:
+
+1. Correct Shadow / Protect / Expand memory behaviour
+2. Stable LCD + 7-segment output with correct addressing
+3. Accurate keypad and matrix keyboard input (keypress flag)
+4. FTDI serial bit-bang at 4800-8-N-2
+5. Expansion modules once the base platform is stable
+
+### Open Questions
+- Confirm caps lock bit (0x80 vs 0x20) against schematics
+- Clarify cartridge flag behaviour
+- Confirm expansion banking semantics for larger devices
+
+---
+
+## 13. Summary
+
+The TEC-1G is neither a retro toy nor a modern abstraction.  
+It is a **controlled Z80 environment** whose purpose is to teach and reward correct mental models of real machines.
+
+That philosophy aligns directly with tooling like Debug80: both aim to make the machine explicit, not hidden.
