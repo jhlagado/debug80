@@ -366,7 +366,7 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
             request: 'launch',
             projectConfig: '${workspaceFolder}/.vscode/debug80.json',
             target: 'app',
-            stopOnEntry: true,
+            stopOnEntry: false,
           },
         ],
       };

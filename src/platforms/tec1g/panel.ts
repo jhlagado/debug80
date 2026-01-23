@@ -194,7 +194,7 @@ function getTec1gHtml(): string {
     }
     .layout {
       display: grid;
-      grid-template-columns: auto 260px;
+      grid-template-columns: auto 300px;
       gap: 16px;
       align-items: start;
     }
@@ -258,15 +258,11 @@ function getTec1gHtml(): string {
     }
     .keypad {
       display: grid;
-      grid-template-columns: 56px repeat(4, 48px);
+      grid-template-columns: 48px 56px repeat(4, 48px);
+      grid-template-rows: repeat(4, 44px);
       gap: 8px;
       align-items: center;
-    }
-    .controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-right: 8px;
+      width: fit-content;
     }
     .key {
       background: #2b2b2b;
@@ -396,22 +392,21 @@ function getTec1gHtml(): string {
   <div id="app" tabindex="0">
     <div class="layout">
       <div class="left-col">
-        <div class="display" id="display"></div>
-        <div class="status">
-          <div class="speaker" id="speaker">
-            <span>SPEAKER</span>
-            <span id="speakerHz"></span>
-          </div>
-          <div class="key speed" id="speed">SLOW</div>
-          <div class="key mute" id="mute">MUTED</div>
-        </div>
-        <div class="keypad" id="keypad"></div>
-      </div>
-      <div class="right-col">
         <div class="lcd">
           <div class="lcd-title">LCD (HD44780 A00)</div>
           <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
         </div>
+        <div class="display" id="display"></div>
+        <div class="status">
+          <div class="key speed" id="speed">SLOW</div>
+          <div class="key mute" id="mute">MUTED</div>
+          <div class="speaker" id="speaker">
+            <span id="speakerLabel">SPEAKER</span>
+          </div>
+        </div>
+      </div>
+      <div class="right-col">
+        <div class="keypad" id="keypad"></div>
         <div class="matrix">
           <div class="matrix-title">8x8 LED MATRIX</div>
           <div class="matrix-grid" id="matrixGrid"></div>
@@ -432,7 +427,7 @@ function getTec1gHtml(): string {
     const displayEl = document.getElementById('display');
     const keypadEl = document.getElementById('keypad');
     const speakerEl = document.getElementById('speaker');
-    const speakerHzEl = document.getElementById('speakerHz');
+    const speakerLabel = document.getElementById('speakerLabel');
     const speedEl = document.getElementById('speed');
     const muteEl = document.getElementById('mute');
     const serialOutEl = document.getElementById('serialOut');
@@ -498,12 +493,12 @@ function getTec1gHtml(): string {
       'AD': 0x13, 'UP': 0x10, 'GO': 0x12, 'DOWN': 0x11
     };
 
-    const controlOrder = ['AD', 'GO', 'UP', 'DOWN'];
+    const controlOrder = ['AD', 'GO', 'DOWN', 'UP'];
     const hexOrder = [
-      'F', 'E', 'D', 'C',
-      'B', 'A', '9', '8',
-      '7', '6', '5', '4',
-      '3', '2', '1', '0'
+      'C', 'D', 'E', 'F',
+      '8', '9', 'A', 'B',
+      '4', '5', '6', '7',
+      '0', '1', '2', '3'
     ];
 
     let speedMode = 'fast';
@@ -526,6 +521,12 @@ function getTec1gHtml(): string {
       const code = value & 0xff;
       if (code === 0x5c) {
         return '¥';
+      }
+      if (code === 0x7e) {
+        return '▶';
+      }
+      if (code === 0x7f) {
+        return '◀';
       }
       if (code >= 0x20 && code <= 0x7e) {
         return String.fromCharCode(code);
@@ -636,36 +637,42 @@ function getTec1gHtml(): string {
       }
     }
 
-    function addButton(label, action, className) {
+    function addButton(label, action, className, col, row) {
       const button = document.createElement('div');
       button.className = className ? 'key ' + className : 'key';
       button.textContent = label;
+      if (col) {
+        button.style.gridColumn = String(col);
+      }
+      if (row) {
+        button.style.gridRow = String(row);
+      }
       button.addEventListener('click', action);
       keypadEl.appendChild(button);
       return button;
     }
 
-    addButton('RST', () => {
+    addButton('RESET', () => {
       setShiftLatched(false);
       vscode.postMessage({ type: 'reset' });
-    });
-    for (let i = 0; i < 4; i += 1) {
-      addButton('', () => {}, 'spacer');
-    }
+    }, undefined, 1, 1);
+    addButton('', () => {}, 'spacer', 1, 2);
+    addButton('', () => {}, 'spacer', 1, 3);
 
     for (let row = 0; row < 4; row += 1) {
       const control = controlOrder[row];
-      addButton(control, () => sendKey(keyMap[control]));
+      const rowNum = row + 1;
+      addButton(control, () => sendKey(keyMap[control]), undefined, 2, rowNum);
       const rowStart = row * 4;
       for (let col = 0; col < 4; col += 1) {
         const label = hexOrder[rowStart + col];
-        addButton(label, () => sendKey(keyMap[label]));
+        addButton(label, () => sendKey(keyMap[label]), undefined, 3 + col, rowNum);
       }
     }
 
-    const shiftButton = addButton('SHIFT', () => {
+    const shiftButton = addButton('FN', () => {
       setShiftLatched(!shiftLatched);
-    }, 'shift');
+    }, 'shift', 1, 4);
     speedEl.addEventListener('click', () => {
       const next = speedMode === 'fast' ? 'slow' : 'fast';
       applySpeed(next);
@@ -701,12 +708,12 @@ function getTec1gHtml(): string {
       } else {
         speakerEl.classList.remove('on');
       }
-      if (speakerHzEl && typeof payload.speakerHz === 'number') {
-        if (payload.speakerHz > 0) {
-          speakerHzEl.textContent = payload.speakerHz + ' Hz';
+      if (speakerLabel) {
+        if (typeof payload.speakerHz === 'number' && payload.speakerHz > 0) {
+          speakerLabel.textContent = payload.speakerHz + ' Hz';
           lastSpeakerHz = payload.speakerHz;
         } else {
-          speakerHzEl.textContent = '';
+          speakerLabel.textContent = 'SPEAKER';
           lastSpeakerHz = 0;
         }
       }
