@@ -78,6 +78,7 @@ From MON3:
 Notes:
 - DIAGs and MON3 disagree on the caps lock bit (0x20 vs 0x80). Prefer MON3 (0x80) unless schematics prove otherwise.
 - MON3 `getShadow` flips the bit, implying SHADOW is active-low in the latch (on=0). Treat SHADOW as active-low unless confirmed otherwise.
+- Current emulation treats PROTECT as write-block for 0x4000-0x7FFF and applies SHADOW in memory reads (0x0000-0x07FF mirrors 0xC000-0xC7FF when enabled).
 
 ### LCD row addresses
 - `0x80` row 1, `0xC0` row 2, `0x94` row 3, `0xD4` row 4.

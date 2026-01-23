@@ -107,7 +107,7 @@ export function createTec1gRuntime(
     matrixLatch: 0,
     speaker: false,
     speakerHz: 0,
-    lcd: Array.from({ length: 32 }, () => 0x20),
+    lcd: Array.from({ length: 80 }, () => 0x20),
     lcdAddr: 0x80,
     cycleClock: new CycleClock(),
     lastEdgeCycle: null,
@@ -212,11 +212,17 @@ export function createTec1gRuntime(
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
-    if (addr >= 0x80 && addr <= 0x8f) {
+    if (addr >= 0x80 && addr <= 0x93) {
       return addr - 0x80;
     }
-    if (addr >= 0xc0 && addr <= 0xcf) {
-      return 16 + (addr - 0xc0);
+    if (addr >= 0xc0 && addr <= 0xd3) {
+      return 20 + (addr - 0xc0);
+    }
+    if (addr >= 0x94 && addr <= 0xa7) {
+      return 40 + (addr - 0x94);
+    }
+    if (addr >= 0xd4 && addr <= 0xe7) {
+      return 60 + (addr - 0xd4);
     }
     return null;
   };
