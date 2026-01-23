@@ -389,6 +389,33 @@ export class Z80DebugSession extends DebugSession {
       this.loadedProgram = program;
       this.loadedEntry = entry;
       this.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
+      const tec1gRuntime = this.tec1gRuntime;
+      if (platform === 'tec1g' && this.runtime !== undefined && tec1gRuntime !== undefined) {
+        const baseMemory = this.runtime.hardware.memory;
+        const romRanges = runtimeOptions?.romRanges ?? [];
+        const isRomAddress = (addr: number): boolean =>
+          romRanges.some((range) => addr >= range.start && addr <= range.end);
+        this.runtime.hardware.memRead = (addr: number): number => {
+          const masked = addr & 0xffff;
+          const shadowEnabled = (tec1gRuntime as Tec1gRuntime).state.shadowEnabled === true;
+          if (shadowEnabled && masked < 0x0800) {
+            const shadowAddr = 0xc000 + masked;
+            return baseMemory[shadowAddr] ?? 0;
+          }
+          return baseMemory[masked] ?? 0;
+        };
+        this.runtime.hardware.memWrite = (addr: number, value: number): void => {
+          const masked = addr & 0xffff;
+          if (isRomAddress(masked)) {
+            return;
+          }
+          const protectEnabled = (tec1gRuntime as Tec1gRuntime).state.protectEnabled === true;
+          if (protectEnabled && masked >= 0x4000 && masked <= 0x7fff) {
+            return;
+          }
+          baseMemory[masked] = value & 0xff;
+        };
+      }
       this.callDepth = 0;
       this.stepOverMaxInstructions = this.normalizeStepLimit(
         merged.stepOverMaxInstructions,

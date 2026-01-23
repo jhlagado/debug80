@@ -19,7 +19,7 @@ export function createTec1gPanelController(
   let matrix = Array.from({ length: 8 }, () => 0);
   let speaker = false;
   let speedMode: Tec1gSpeedMode = 'fast';
-  let lcd = Array.from({ length: 32 }, () => 0x20);
+  let lcd = Array.from({ length: 80 }, () => 0x20);
   let serialBuffer = '';
   const serialMaxChars = 8000;
 
@@ -44,7 +44,7 @@ export function createTec1gPanelController(
         matrix = Array.from({ length: 8 }, () => 0);
         speaker = false;
         speedMode = 'slow';
-        lcd = Array.from({ length: 32 }, () => 0x20);
+        lcd = Array.from({ length: 80 }, () => 0x20);
       });
       panel.webview.onDidReceiveMessage(
         async (msg: {
@@ -115,7 +115,7 @@ export function createTec1gPanelController(
     matrix = payload.matrix.slice(0, 8);
     speaker = payload.speaker === 1;
     speedMode = payload.speedMode;
-    lcd = payload.lcd.slice(0, 32);
+    lcd = payload.lcd.slice(0, 80);
     if (panel !== undefined) {
       void panel.webview.postMessage({
         type: 'update',
@@ -146,7 +146,7 @@ export function createTec1gPanelController(
     digits = Array.from({ length: 6 }, () => 0);
     matrix = Array.from({ length: 8 }, () => 0);
     speaker = false;
-    lcd = Array.from({ length: 32 }, () => 0x20);
+        lcd = Array.from({ length: 80 }, () => 0x20);
     serialBuffer = '';
     if (panel !== undefined) {
       void panel.webview.postMessage({
@@ -444,11 +444,12 @@ function getTec1gHtml(): string {
     const SERIAL_MAX = 8000;
     const SHIFT_BIT = 0x20;
     const DIGITS = 6;
-    const LCD_COLS = 16;
-    const LCD_ROWS = 2;
-    const LCD_CELL_W = 14;
-    const LCD_CELL_H = 20;
-    let lcdBytes = new Array(LCD_COLS * LCD_ROWS).fill(0x20);
+    const LCD_COLS = 20;
+    const LCD_ROWS = 4;
+    const LCD_CELL_W = 12;
+    const LCD_CELL_H = 18;
+    const LCD_BYTES = LCD_COLS * LCD_ROWS;
+    let lcdBytes = new Array(LCD_BYTES).fill(0x20);
     let matrixRows = new Array(8).fill(0);
     const SEGMENTS = [
       { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
@@ -523,6 +524,9 @@ function getTec1gHtml(): string {
 
     function lcdByteToChar(value) {
       const code = value & 0xff;
+      if (code === 0x5c) {
+        return '¥';
+      }
       if (code >= 0x20 && code <= 0x7e) {
         return String.fromCharCode(code);
       }
@@ -537,13 +541,14 @@ function getTec1gHtml(): string {
       lcdCanvas.height = LCD_ROWS * LCD_CELL_H;
       lcdCtx.fillStyle = '#0b1a10';
       lcdCtx.fillRect(0, 0, lcdCanvas.width, lcdCanvas.height);
-      lcdCtx.font = '16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+      lcdCtx.font = '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
       lcdCtx.textBaseline = 'top';
-      lcdCtx.fillStyle = '#b4f5b4';
       for (let row = 0; row < LCD_ROWS; row += 1) {
         for (let col = 0; col < LCD_COLS; col += 1) {
           const idx = row * LCD_COLS + col;
-          const char = lcdByteToChar(lcdBytes[idx] || 0x20);
+          const value = lcdBytes[idx] || 0x20;
+          const char = lcdByteToChar(value);
+          lcdCtx.fillStyle = '#b4f5b4';
           lcdCtx.fillText(char, col * LCD_CELL_W + 2, row * LCD_CELL_H + 2);
         }
       }
@@ -711,8 +716,8 @@ function getTec1gHtml(): string {
         applySpeed(payload.speedMode);
       }
       if (Array.isArray(payload.lcd)) {
-        lcdBytes = payload.lcd.slice(0, LCD_COLS * LCD_ROWS);
-        while (lcdBytes.length < LCD_COLS * LCD_ROWS) {
+        lcdBytes = payload.lcd.slice(0, LCD_BYTES);
+        while (lcdBytes.length < LCD_BYTES) {
           lcdBytes.push(0x20);
         }
         drawLcd();
