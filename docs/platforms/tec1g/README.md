@@ -1,8 +1,4 @@
-# MON-3 (TEC-1G) — Reorganised Notes (v1.5)
-
-Scope: This is a re-structured reading of the MON-3 User Guide v1.5 (Brian Chiha), oriented toward understanding the TEC-1G as a platform and toward emulation (for Debug80). It keeps the original intent: MON-3 is the “heart” of the TEC-1G and acts like a compact operating environment.
-
----
+# MON-3 (TEC-1G)]
 
 ## 1) What MON-3 is trying to be
 MON-3 sits between “trainer workflow” and “serious Z80 development”:
