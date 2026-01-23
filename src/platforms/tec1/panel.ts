@@ -523,6 +523,15 @@ function getTec1Html(): string {
 
     function lcdByteToChar(value) {
       const code = value & 0xff;
+      if (code === 0x5c) {
+        return '¥';
+      }
+      if (code === 0x7e) {
+        return '▶';
+      }
+      if (code === 0x7f) {
+        return '◀';
+      }
       if (code >= 0x20 && code <= 0x7e) {
         return String.fromCharCode(code);
       }
