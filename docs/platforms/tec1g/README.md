@@ -1,254 +1,239 @@
-# TEC-1G and MON-3 — Platform and Philosophy
+# MON-3 (TEC-1G) — Reorganised Notes (v1.5)
 
-This document reorganises and consolidates the TEC-1G MON-3 documentation into a coherent technical and conceptual overview. It is intended both as a **platform reference** and as a **design brief** for emulation and tooling (e.g. Debug80), not as an introductory user manual.
-
----
-
-## 1. What This Document Is
-
-This material is grounded primarily in:
-
-- **MON3 User Guide v1.5** (Brian Chiha)
-- TEC-1G README and Functional Description
-- Historical TEC-1 design lineage
-
-MON-3 is explicitly positioned as the *heart* of the TEC-1G: the resident monitor and runtime environment that makes the board usable both as a beginner trainer and as a serious Z80 development system.
-
-**Credits (as stated in the MON-3 guide):**
-- Mark Jelic — TEC-1G designer  
-- Brian Chiha — MON-3 programmer  
-- John Hardy & Ken Stone — original TEC-1 designers  
+Scope: This is a re-structured reading of the MON-3 User Guide v1.5 (Brian Chiha), oriented toward understanding the TEC-1G as a platform and toward emulation (for Debug80). It keeps the original intent: MON-3 is the “heart” of the TEC-1G and acts like a compact operating environment.
 
 ---
 
-## 2. What the TEC-1G Is
+## 1) What MON-3 is trying to be
+MON-3 sits between “trainer workflow” and “serious Z80 development”:
 
-The TEC-1G is a **trainer-first Z80 single-board computer** that deliberately preserves the classic hex-keypad workflow while extending it into a more capable and recoverable development platform.
-
-Core characteristics:
-- Z80 CPU
-- Hex keypad and 7-segment LED display (classic trainer interface)
-- 20×4 character LCD (primary MON-3 user interface)
-- FTDI-based serial interface (Intel HEX load, binary transfer, disassembly export)
-- Expansion socket mapped into Z80 address space
-- General-purpose I/O header
-
-Optional add-ons supported by MON-3:
-- Matrix keyboard
-- Real-time clock
-- Graphical LCD
-- Secure digital flash and general I/O modules
-
-**Key point:**  
-The TEC-1G is not merely a trainer. It is a small but extensible Z80 platform whose monitor deliberately exposes system services rather than hiding them.
+- Trainer-first: hex keypad entry, seven-segment feedback, safe defaults.
+- Serious workflows: serial loading, memory export, disassembly export, binary import/export, breakpoint tooling.
+- Expandable machine: add-ons (matrix keyboard, real time clock, graphical LCD) and an expansion memory window.
 
 ---
 
-## 3. Memory Architecture
+## 2) Boot, reset, and what “state” means
+MON-3 distinguishes reset modes (and treats reset as normal workflow, not failure):
 
-MON-3 documents and depends on a full 64 kilobyte address space with a fixed, intentional layout.
+- Cold reset: on power-up after power-down; shows banner + tune; resets monitor variables and initialises LCD.
+- Warm reset: (conceptually) a restart without full power-cycle; behaviour is “less destructive” than cold reset.
 
-### Default Memory Map
-
-| Address Range | Type     | Purpose |
-|--------------|----------|---------|
-| 0x0000–0x00FF | RAM | Reserved Z80 instruction area |
-| 0x0100–0x07FF | RAM | Free RAM |
-| 0x0800–0x087F | RAM | Hardware stack |
-| 0x0880–0x0FFF | RAM | MON-3 working RAM |
-| 0x1000–0x3FFF | RAM | Free RAM |
-| 0x4000–0x7FFF | RAM | Free RAM (Protect-capable) |
-| 0x8000–0xBFFF | ROM/RAM | Expansion socket (banked) |
-| 0xC000–0xFFFF | ROM | Monitor ROM (MON-3) |
-
-MON-3 places its stack near 0x0800 and strongly encourages user code to live at **0x4000**.
+Practical implication for emulation:
+- A cold reset should fully reinitialise monitor state and LCD state.
+- A warm reset should preserve what the monitor preserves (at least: behave differently than cold reset).
 
 ---
 
-## 4. The Three Runtime Modes (System Latch)
+## 3) Memory map and the “workbench” idea
+MON-3 makes the address space *feel* like it has a safe default zone:
 
-Three latch-controlled modes define the personality of the TEC-1G. These are **runtime state**, not just jumpers.
+- 0x4000–0x7FFF is the implied “workbench” (this is where MON-3 nudges you to put code).
+- Protect mode can make that zone read-only (so experimentation doesn’t erase your program).
+- Expansion space sits at 0x8000–0xBFFF with banking semantics (32K device, 16K window).
 
-### Shadow
-- Low memory (0x0000–0x07FF) mirrors ROM at 0xC000–0xC7FF
-- Used for compatibility with older monitors (MON-1, MON-2, JMON, BMON)
-- Active by default
-
-### Protect
-- When enabled, writes to 0x4000–0x7FFF are blocked
-- Prevents runaway code from destroying user programs
-- Central to MON-3’s debugging workflow
-
-### Expand
-- Expansion devices may be up to 32K
-- Only 16K visible at a time at 0x8000–0xBFFF
-- Bank selected via latch or software override (Fn-E)
-
-Together, Shadow + Protect + Expand allow the TEC-1G to behave simultaneously as:
-- a learning machine
-- a safe development environment
-- a platform with multiple ROM personalities
+Emulation priorities:
+- Correct mapping and write-blocking are more important than fancy peripherals.
 
 ---
 
-## 5. Front-Panel Workflow (MON-3’s Intended Use)
+## 4) Data Entry Mode (front-panel editing is not a gimmick)
+MON-3’s editor is very deliberate:
 
-MON-3 actively guides the user into a particular development habit:
+### 4.1 Auto-increment is a default (but configurable)
+- After you enter a byte, the address automatically advances.
+- You can disable that in Settings.
 
-1. **Data Entry Mode defaults to 0x4000**
-   - This address lies inside the Protect-capable region
-2. **Protect is enabled before execution**
-   - Code becomes effectively read-only
-3. **Execution is controlled via breakpoints**
-   - Inspection happens after real execution, not single-step illusion
+### 4.2 Nibble-awareness (this is a key UI cue)
+- Decimal points on the data display change to indicate whether one nibble or both nibbles have been entered.
+- “Press AD twice” resets the nibble counter so you can re-enter the byte cleanly.
 
-Mental model enforced by MON-3:
-> **0x4000–0x7FFF is the workbench.  
-Everything else is tools or infrastructure.**
+### 4.3 The LCD is doing triple-duty while you edit
+In Data Entry Mode the LCD shows:
+- A 12-byte window around the current edit location (4 bytes before, 8 bytes from current).
+- A right-arrow marking the current byte.
+- The current edit sub-mode (data vs address), the ASCII of the current byte, and the nibble counter.
+- **And critically:** the bottom line shows the **Z80 assembly interpretation of the current opcode(s)**.
+
+Emulation implication:
+- If you’re emulating MON-3 itself (not just the machine), this disassembly-on-edit is part of the feel.
+- Even if you are not emulating the monitor, this tells you what real users will be relying on.
 
 ---
 
-## 6. Debugging Model: Literal Breakpoints
+## 5) Function-key workflow (fast navigation is built-in)
+MON-3 assumes you jump around a lot while iterating.
 
-Breakpoints in MON-3 are explicit machine instructions.
+Key ideas:
+- Fn-AD: open the main menu.
+- Fn-0: save current editing address into one of three slots (press 1/2/3).
+- Fn-1/Fn-2/Fn-3: quick jump to saved addresses.
 
-- Breakpoint opcode: **RST 30H** (byte `F7`)
-- Inserted directly into code
-- On hit, MON-3 displays:
-  - AF, BC, DE, HL
-  - IX, IY
-  - SP, PC
-  - flags
+This matters because it reinforces the “edit / run / reset / return to the same spot” loop.
 
-Convenience operations:
-- Fn-Plus inserts a NOP (used to patch in F7)
-- Fn-Minus deletes a byte
+---
+
+## 6) Matrix keyboard mode (and a big gotcha)
+MON-3 supports optional QWERTY or mechanical matrix keyboards, but:
+
+- Enabling Matrix mode (via the 3-switch block) **disables the onboard hex keypad** (except Reset).
+- The matrix keyboard is *mapped* into the TEC-1G key concepts (not a free-for-all full keyboard).
+- For full key range, programs should use the matrixScan and matrixToASCII API routines.
+
+Emulation implication:
+- You must reflect the “keypad disabled except Reset” behaviour when matrix mode is active.
+
+---
+
+## 7) Breakpoints and debugging (explicit, instruction-level, and very “real Z80”)
+MON-3’s debugging model is intentionally simple:
+
+- Breakpoint byte is **RST 30H = 0xF7** inserted into your program.
+- On hit, MON-3 displays registers: AF, BC, DE, HL, IX, IY, PC, SP plus flags.
+- GO continues execution; AD quits back to monitor.
+- Fn-Plus inserts a NOP at current address (convenient for “insert then change to F7”).
+- Fn-Minus removes an inserted breakpoint byte and shifts code back.
 
 Hardware escape hatch:
-- If `+` is connected to `D5` on the G.IMP header, breakpoints are ignored
+- Breakpoints are ignored if + is connected to D5 on the G.IMP header.
 
-This design:
-- avoids emulation tricks
-- reinforces real Z80 semantics
-- assumes comfort with binary patching
+Emulation implication:
+- If you want Debug80 to “feel like MON-3,” you emulate this exact breakpoint habit, not source-level fantasy.
 
 ---
 
-## 7. Serial Tooling as a Core Workflow
+## 8) Terminal Monitor (TMON) and “bit-bang reality”
+In v1.5, TMON is removed from MON-3 and loaded separately as a standalone program.
 
-Serial I/O is not optional or auxiliary on the TEC-1G.
-
-MON-3 supports:
-- Intel HEX loading with PASS/FAIL verification
-- Binary memory import/export
-- Disassembly export as readable Z80 assembly text
-
-Serial parameters:
-- 4800 baud
-- 8 data bits
-- No parity
-- 2 stop bits
-
-TMON (terminal monitor) was removed from MON-3 in v1.5 and is now a standalone program.
-
-**Philosophical implication:**  
-The authoritative program is what is in RAM, not what exists on a host machine.
+Practical serial reality (important for emulation fidelity):
+- There are notes about needing an inter-byte delay (example: 20ms) to reliably handle multi-byte terminal sequences, due to bit-bang serial limitations.
 
 ---
 
-## 8. Ports: The Hardware Contract
+## 9) Using older TEC magazine programs (quietly important section)
+MON-3 explicitly addresses porting old Talking Electronics magazine programs:
 
-The TEC-1G is intentionally “bare-metal honest”. MON-3 sits directly on a simple, documented port-mapped machine.
+- Many start at 0x0800 or 0x0900, but MON-3 uses that region — so direct entry won’t work unchanged.
+- You must adjust 2-byte address references to the new load location (often 0x4000).
+- Old monitors used register I and non-maskable interrupt-based keypad capture; MON-3 uses polling plus restart/API calls.
+- There is a conversion table showing replacements like:
+  - HALT → RST 08H (wait-for-key and return key in A)
+  - LD A,I (polling) → scanKey API (via API entry)
 
-### Core I/O Ports
-
-| Port | Dir | Function |
-|------|-----|----------|
-| 0x00 | In  | Hex keypad encoder (bits 0–4), Fn key (bit 5, active low) |
-| 0x01 | Out | 7-seg digit select, speaker, FTDI RX / disco LEDs |
-| 0x02 | Out | 7-seg segment data (A–G, DP) |
-| 0x03 | In  | System inputs (keypress flag on bit 6, mode switches) |
-| 0x04 | Out | LCD instruction |
-| 0x84 | Out | LCD data |
-| 0x05 | Out | 8×8 LED matrix horizontal |
-| 0x06 | Out | 8×8 LED matrix vertical |
-| 0x07 | Out | GLCD instruction |
-| 0x87 | Out | GLCD data |
-| 0xFE | In  | Matrix keyboard |
-| 0xFF | Out | SYS_CTRL latch |
-
-Ports 0xF8–0xFD are reserved for RTC, SD, and general I/O modules.
+Emulation implication:
+- This explains why “legacy monitor compatibility” is a real user expectation, not a theoretical one.
 
 ---
 
-## 9. SYS_CTRL Latch (Port 0xFF)
+## 10) “Advanced Programming” = the real platform surface area
+MON-3 exposes a structured interface layer.
 
-| Bit | Meaning | Notes |
-|-----|---------|-------|
-| 0x01 | Shadow | Active-low in MON-3 |
-| 0x02 | Protect | Blocks writes to 0x4000–0x7FFF |
-| 0x04 | Expand | Selects expansion bank |
-| 0x10 | Cartridge flag | Reported by MON-3 |
-| 0x80 | Caps lock | MON-3 uses 0x80 |
+### 10.1 Restart vectors as conventions
+- RST 00H: monitor reset.
+- RST 08H: key-wait and keypress capture (HALT-like).
+- RST 10H: API entry call (MON-3’s service gateway).
+- (Other restart vectors exist and are documented as conventions.)
 
-When documentation conflicts, **MON-3 behaviour is authoritative** unless schematics prove otherwise.
+### 10.2 Serial data transfer is first-class (not optional)
+Key serial workflows exposed via API:
+- intelHexLoad: load Intel HEX via FTDI serial; shows progress on segments; PASS/FAIL at end.
+- sendToSerial: binary dump memory to serial.
+- receiveFromSerial: binary receive into memory from serial.
+- sendAssembly: disassemble memory and print assembly over serial.
+- sendHex: traditional hex dump as text.
 
----
+Serial parameters are treated as a fixed “hardware contract”:
+- 4800 baud, 8 data bits, no parity, 2 stop bits.
 
-## 10. Add-On Devices
-
-### Real-Time Clock
-- DS1302 on port 0xFC
-- 12/24 hour clock
-- Calendar to 2099 with leap year support
-- 31 bytes of battery-backed PRAM
-- MON-3 stores configuration in PRAM
-
-### Graphical LCD
-- Dedicated instruction/data ports
-- MON-3 provides a terminal emulation layer
-- Supports scrolling history and control characters
-
-These add-ons extend the machine without changing its core mental model.
+Emulation implication:
+- If Debug80 aims to emulate the “real workflow,” support Intel HEX load and memory export/import early.
 
 ---
 
-## 11. TEC-1G Philosophy
+## 11) Port map (the hardware contract)
+Core ports (minimum set you need correct very early):
 
-The TEC-1G is designed around a single disciplined idea:
+- 0x00 in: keypad encoder + function key flag.
+- 0x01 out: seven-seg digit select + speaker + FTDI receive/disco LEDs.
+- 0x02 out: seven-seg segment data.
+- 0x03 in: system input flags (matrix/protect/expand states, cartridge flag, keypress flag, FTDI transmit-in, etc.)
+- 0x04 / 0x84: LCD instruction/data.
+- 0x07 / 0x87: graphical LCD instruction/data.
+- 0xFE in: matrix keyboard.
+- 0xFF out: SYS_CTRL latch (Shadow/Protect/Expand + other latch bits + caps lock).
 
-> **Make the machine legible, controllable, and honest.**
-
-It does not abstract the Z80 away. Instead, it structures interaction so direct contact with the hardware is safe, repeatable, and productive.
-
-### Key Principles
-
-1. **Visibility over abstraction**  
-   Code location, writable memory, and executing instructions are always knowable.
-
-2. **Protection without illusion**  
-   Coarse-grained containment replaces virtual memory or process models.
-
-3. **Reset as a first-class operation**  
-   Reset is expected, safe, and central to iteration.
-
-4. **The monitor as collaborator**  
-   MON-3 provides services but does not own the machine.
-
-5. **Constraints as discipline**  
-   Fixed windows, banked expansion, and instruction-level breakpoints shape better software habits.
-
-6. **Recoverability over convenience**  
-   Disassembly from live memory and serial round-tripping acknowledge that binaries drift and source is not sacred.
+Notes:
+- SYS_CTRL latch documents extra “memory bus” bits beyond Shadow/Protect/Expand.
+- Caps lock bit is documented in the latch table, and there are notes about conflicting sources (treat MON-3 as primary unless schematics prove otherwise).
 
 ---
 
-## 12. Emulation Priorities (Debug80)
+## 12) LCD specifics (important for faithful display)
+- MON-3 provides LCD API routines that also check the LCD busy state.
+- If you use direct port access, you must check busy first:
+  - IN A,(0x04), busy if bit 7 is set; other bits are address counter.
+- There is a cheat example for cursor addressing (row/column → instruction byte).
+- Character tables and CGRAM/DDRAM examples are included (custom characters, etc.).
 
-For faithful emulation:
+Emulation implication:
+- Even a “simple” LCD emulation should preserve busy-flag semantics if you plan to run real firmware-level LCD code.
 
-1. Correct Shadow / Protect / Expand memory behaviour
-2. Stable LCD + 7-segment output with correct addressing
-3. Accurate keypad and matrix keyboard input (keypress flag)
-4. FTDI serial bit-bang at 4800-8-N-2
-5. Expansion modules once the base platform is stable
+---
+
+## 13) Graphical LCD (GLCD) and the terminal emulation layer
+MON-3’s GLCD section isn’t just “draw pixels” — it includes a terminal abstraction:
+
+- initTerminal: initialises GLCD terminal mode, sets up scroll buffers, clears graphics buffer, cursor management, and calls initLCD.
+- sendCharToLCD: prints ASCII and handles control characters; includes a 10-line scrollback history.
+  - Handles CR, ignores LF, FF clears terminal, backspace edits, tab is 4 spaces, plus “scroll up/down” control codes.
+- sendStringToLCD: prints until CR or until the stop character in C.
+- sendRegToLCD: prints a byte/register as ASCII hex.
+
+This turns the TEC-1G into a tiny terminal-capable machine when GLCD is installed.
+
+---
+
+## 14) Examples & Quick Start Programs (easy to overlook, very useful)
+The guide points to:
+- GLCD example programs in the TEC-1G repository (3D demo, “Mad” face, maze generator). These have specific load addresses and interactions.
+- Quick Start “HELLO” style programs:
+  - seven-seg “HELLO” via hardcoded segment bytes + RST 20 scanning
+  - ASCII-to-seven-seg conversion via API routine + RST 20 scanning
+  - LCD “HELLO” using commandToLCD + stringToLCD; AD exits
+
+These examples are “tiny,” but they encode MON-3’s assumed workflow.
+
+---
+
+## 15) Emulation priorities (Debug80 implementation order)
+1) Shadow / Protect / Expand mapping + write-blocking
+2) LCD + seven-seg output (and key UI flags)
+3) Keypad + keypress flag behaviour on port 0x03
+4) Serial (Intel HEX + binary in/out + disassembly export)
+5) Expansion modules (RTC / SD / GLCD) once base platform is stable
+
+Open questions to verify against schematics:
+- Caps lock latch bit semantics (documented inconsistently elsewhere).
+- Cartridge flag behaviour (latched vs sampled).
+- Expansion bank semantics if using larger memory devices.
+
+---
+
+## 16) References
+- MON3_User_Guide_v1.5.pdf
+- TEC-1G README and Functional Description (for cross-checking hardware)
+- Schematics (for resolving latch-bit ambiguities)
+```
+
+### What was actually missing / previously underplayed (now recovered)
+
+* **Data Entry Mode is richer than “keypad entry”**: auto-increment option, nibble indicator, AD-twice nibble reset, repeat-on-hold behaviour, and the LCD showing **live disassembly** of the current opcode(s). 
+* **Fn key navigation**: Fn-0 saves *three* jump addresses; Fn-1/2/3 jumps to them; default saved address is 4000H. 
+* **Matrix mode disables the onboard hex keypad (except Reset)** — important for emulation correctness. 
+* **Porting TE magazine code**: why old code fails at 0x0800/0x0900, plus the conversion logic from NMI/register-I keypad handling to MON-3 polling + restart/API calls. 
+* **Serial API depth**: intelHexLoad format, binary send/receive, assembly export, hex dump export (these are MON-3’s intended “serious” workflow, not an add-on). 
+* **LCD busy-flag / direct-port contract** (bit 7 busy on IN from port 0x04) and “cursor move” example. 
+* **SYS_CTRL latch exposes more than just Shadow/Protect/Expand**: extra latch bits are called out as memory bus lines, plus caps lock is documented at the latch. 
+* **GLCD terminal emulator is more substantial than we described**: scrollback, control character handling, plus explicit “initTerminal must be called first”. 
+* **GLCD + Quick Start material**: example programs, load address expectations, and tiny “HELLO” examples that encode the intended workflow. 
+* **Bit-bang serial limitations are explicitly acknowledged** (suggested inter-byte delay for terminal control sequences). 
