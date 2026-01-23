@@ -7,6 +7,10 @@ MON-3 sits between “trainer workflow” and “serious Z80 development”:
 - Serious workflows: serial loading, memory export, disassembly export, binary import/export, breakpoint tooling.
 - Expandable machine: add-ons (matrix keyboard, real time clock, graphical LCD) and an expansion memory window.
 
+MON-3 is not a tiny bootstrap stub; it is the lived environment of the machine. The guide credits Mark Jelic (TEC-1G designer), Brian Chiha (MON-3 programmer), and John Hardy / Ken Stone (original designers), which matters because the monitor behavior is part of the platform culture.
+
+This document is a working brief for emulation. When it contradicts other docs, MON-3 is the primary reference unless schematics prove otherwise.
+
 ---
 
 ## 2) Boot, reset, and what “state” means
@@ -21,6 +25,26 @@ Practical implication for emulation:
 
 ---
 
+## 2.1) Main menu at a glance
+MON-3 presents a menu on cold reset and expects the user to navigate with Plus/Minus and GO. AD exits back to data entry mode. Menus can be nested up to three levels.
+
+Core menu items in v1.5:
+- Intel HEX load
+- Smart block copy
+- Block backup
+- Export Z80 assembly
+- Export raw data
+- Export hex dump
+- Import binary file
+- Tiny Basic
+- Music routine
+- Settings
+- Credits
+
+The menu is not optional UX; it is part of how users learn the machine.
+
+---
+
 ## 3) Memory map and the “workbench” idea
 MON-3 makes the address space *feel* like it has a safe default zone:
 
@@ -30,6 +54,34 @@ MON-3 makes the address space *feel* like it has a safe default zone:
 
 Emulation priorities:
 - Correct mapping and write-blocking are more important than fancy peripherals.
+
+---
+
+## 3.1) Memory map (from MON-3 guide)
+
+| Range         | Type   | Notes |
+|---------------|--------|-------|
+| 0x0000-0x00FF | RAM    | Reserved for Z80 instructions |
+| 0x0100-0x07FF | RAM    | Free RAM |
+| 0x0800-0x087F | RAM    | Hardware stack |
+| 0x0880-0x0FFF | RAM    | Monitor RAM |
+| 0x1000-0x3FFF | RAM    | Free RAM |
+| 0x4000-0x7FFF | RAM    | Protect-capable user RAM |
+| 0x8000-0xBFFF | RAM/ROM | Expansion window (banked) |
+| 0xC000-0xFFFF | ROM    | Monitor ROM |
+
+Practical reading:
+if a user says “my code is disappearing”, assume Protect is off and a write has hit 0x4000-0x7FFF.
+if a legacy ROM boots at 0x0000, Shadow is likely active and the low 2K is ROM.
+
+---
+
+## 3.2) Protect, Expand, Shadow in practice
+Protect is a safety rail, not a developer annoyance. It is designed to stop a stray store instruction from erasing the program you just typed in. When it is on, 0x4000-0x7FFF behaves as read-only RAM.
+
+Expand is a banked window. The expansion socket can hold 32K but only 16K is visible at a time. The window is always 0x8000-0xBFFF; Expand selects which half is shown.
+
+Shadow is legacy compatibility. It mirrors the ROM into low memory for classic monitors and programs that expect to start at 0x0000.
 
 ---
 
@@ -170,6 +222,10 @@ Notes:
   - IN A,(0x04), busy if bit 7 is set; other bits are address counter.
 - There is a cheat example for cursor addressing (row/column → instruction byte).
 - Character tables and CGRAM/DDRAM examples are included (custom characters, etc.).
+
+HD44780 A00 character quirks worth emulating:
+- 0x5C is Yen (not backslash).
+- 0x7E and 0x7F are left/right arrows in the controller charset.
 
 Emulation implication:
 - Even a “simple” LCD emulation should preserve busy-flag semantics if you plan to run real firmware-level LCD code.
