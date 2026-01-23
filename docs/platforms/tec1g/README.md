@@ -252,17 +252,3 @@ For faithful emulation:
 3. Accurate keypad and matrix keyboard input (keypress flag)
 4. FTDI serial bit-bang at 4800-8-N-2
 5. Expansion modules once the base platform is stable
-
-### Open Questions
-- Confirm caps lock bit (0x80 vs 0x20) against schematics
-- Clarify cartridge flag behaviour
-- Confirm expansion banking semantics for larger devices
-
----
-
-## 13. Summary
-
-The TEC-1G is neither a retro toy nor a modern abstraction.  
-It is a **controlled Z80 environment** whose purpose is to teach and reward correct mental models of real machines.
-
-That philosophy aligns directly with tooling like Debug80: both aim to make the machine explicit, not hidden.
