@@ -1,4 +1,4 @@
-# MON-3 (TEC-1G)]
+# MON-3 (TEC-1G)
 
 ## 1) What MON-3 is trying to be
 MON-3 sits between “trainer workflow” and “serious Z80 development”:
@@ -219,17 +219,3 @@ Open questions to verify against schematics:
 - MON3_User_Guide_v1.5.pdf
 - TEC-1G README and Functional Description (for cross-checking hardware)
 - Schematics (for resolving latch-bit ambiguities)
-```
-
-### What was actually missing / previously underplayed (now recovered)
-
-* **Data Entry Mode is richer than “keypad entry”**: auto-increment option, nibble indicator, AD-twice nibble reset, repeat-on-hold behaviour, and the LCD showing **live disassembly** of the current opcode(s). 
-* **Fn key navigation**: Fn-0 saves *three* jump addresses; Fn-1/2/3 jumps to them; default saved address is 4000H. 
-* **Matrix mode disables the onboard hex keypad (except Reset)** — important for emulation correctness. 
-* **Porting TE magazine code**: why old code fails at 0x0800/0x0900, plus the conversion logic from NMI/register-I keypad handling to MON-3 polling + restart/API calls. 
-* **Serial API depth**: intelHexLoad format, binary send/receive, assembly export, hex dump export (these are MON-3’s intended “serious” workflow, not an add-on). 
-* **LCD busy-flag / direct-port contract** (bit 7 busy on IN from port 0x04) and “cursor move” example. 
-* **SYS_CTRL latch exposes more than just Shadow/Protect/Expand**: extra latch bits are called out as memory bus lines, plus caps lock is documented at the latch. 
-* **GLCD terminal emulator is more substantial than we described**: scrollback, control character handling, plus explicit “initTerminal must be called first”. 
-* **GLCD + Quick Start material**: example programs, load address expectations, and tiny “HELLO” examples that encode the intended workflow. 
-* **Bit-bang serial limitations are explicitly acknowledged** (suggested inter-byte delay for terminal control sequences). 
