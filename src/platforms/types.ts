@@ -42,3 +42,24 @@ export interface Tec1PlatformConfigNormalized {
   updateMs: number;
   yieldMs: number;
 }
+
+export interface Tec1gPlatformConfig {
+  regions?: SimpleMemoryRegion[];
+  appStart?: number;
+  entry?: number;
+  romHex?: string;
+  ramInitHex?: string;
+  updateMs?: number;
+  yieldMs?: number;
+}
+
+export interface Tec1gPlatformConfigNormalized {
+  regions: SimpleMemoryRegion[];
+  romRanges: Array<{ start: number; end: number }>;
+  appStart: number;
+  entry: number;
+  romHex?: string;
+  ramInitHex?: string;
+  updateMs: number;
+  yieldMs: number;
+}
