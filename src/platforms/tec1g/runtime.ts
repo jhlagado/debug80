@@ -50,6 +50,8 @@ export const TEC1G_FAST_HZ = 4000000;
 const TEC1G_SILENCE_CYCLES = 10000;
 const TEC1G_SERIAL_BAUD = 4800;
 const TEC1G_KEY_HOLD_MS = 30;
+const TEC1G_LCD_BUSY_US = 37;
+const TEC1G_LCD_BUSY_CLEAR_US = 1600;
 
 export function normalizeTec1gConfig(
   cfg?: Tec1gPlatformConfig
@@ -145,6 +147,8 @@ export function createTec1gRuntime(
   if (state.lcd.length > lcdTest.length + 2) {
     state.lcd[lcdTest.length + 2] = 0x7e;
   }
+
+  let lcdBusyUntil = 0;
 
   const sendUpdate = (): void => {
     onUpdate({
@@ -246,6 +250,21 @@ export function createTec1gRuntime(
     return null;
   };
 
+  const lcdSetBusy = (microseconds: number): void => {
+    const cycles = Math.max(1, Math.round((state.clockHz * microseconds) / 1_000_000));
+    const until = state.cycleClock.now() + cycles;
+    if (until > lcdBusyUntil) {
+      lcdBusyUntil = until;
+    }
+  };
+
+  const lcdIsBusy = (): boolean => state.cycleClock.now() < lcdBusyUntil;
+
+  const lcdReadStatus = (): number => {
+    const busy = lcdIsBusy() ? 0x80 : 0x00;
+    return busy | (state.lcdAddr & 0x7f);
+  };
+
   const lcdSetAddr = (addr: number): void => {
     state.lcdAddr = addr & 0xff;
   };
@@ -257,12 +276,14 @@ export function createTec1gRuntime(
       queueUpdate();
     }
     state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    lcdSetBusy(TEC1G_LCD_BUSY_US);
   };
 
   const lcdReadData = (): number => {
     const index = lcdIndexForAddr(state.lcdAddr);
     const value = index !== null ? (state.lcd[index] ?? 0x20) : 0x20;
     state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    lcdSetBusy(TEC1G_LCD_BUSY_US);
     return value & 0xff;
   };
 
@@ -270,6 +291,7 @@ export function createTec1gRuntime(
     state.lcd.fill(0x20);
     lcdSetAddr(0x80);
     queueUpdate();
+    lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
   };
 
   const updateMatrix = (rowMask: number): void => {
@@ -310,7 +332,7 @@ export function createTec1gRuntime(
         return 0xff;
       }
       if (p === 0x04) {
-        return 0x00;
+        return lcdReadStatus();
       }
       if (p === 0x84) {
         return lcdReadData();
@@ -385,11 +407,15 @@ export function createTec1gRuntime(
         }
         if (instruction === 0x02) {
           lcdSetAddr(0x80);
+          lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
           return;
         }
         if ((instruction & 0x80) !== 0) {
           lcdSetAddr(instruction);
+          lcdSetBusy(TEC1G_LCD_BUSY_US);
+          return;
         }
+        lcdSetBusy(TEC1G_LCD_BUSY_US);
         return;
       }
       if (p === 0x84) {
@@ -550,6 +576,7 @@ export function createTec1gRuntime(
     state.lastEdgeCycle = null;
     state.lcd.fill(0x20);
     state.lcdAddr = 0x80;
+    lcdBusyUntil = 0;
     state.matrix.fill(0x00);
     state.sysCtrl = 0x00;
     state.shadowEnabled = true;
