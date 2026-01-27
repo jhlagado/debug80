@@ -211,6 +211,7 @@ Core ports (minimum set you need correct very early):
 - 0xFF out: SYS_CTRL latch (Shadow/Protect/Expand + other latch bits + caps lock).
 
 Notes:
+- For MON-3 compatibility, the FTDI RX line is mirrored on bit 7 of 0x00 in (idle high).
 - SYS_CTRL latch documents extra “memory bus” bits beyond Shadow/Protect/Expand.
 - Caps lock bit is documented in the latch table, and there are notes about conflicting sources (treat MON-3 as primary unless schematics prove otherwise).
 

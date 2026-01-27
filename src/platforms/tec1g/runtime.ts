@@ -302,7 +302,8 @@ export function createTec1gRuntime(
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
           startNextSerialRx();
         }
-        return state.keyValue & 0x7f;
+        const key = state.keyValue & 0x7f;
+        return key | (serialRxLevel ? 0x80 : 0x00);
       }
       if (p === 0xfe) {
         // Matrix keyboard input (unwired for now).
