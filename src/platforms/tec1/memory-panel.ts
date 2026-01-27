@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 
 export interface Tec1MemoryPanelController {
-  open(session?: vscode.DebugSession, options?: { focus?: boolean; reveal?: boolean }): void;
+  open(
+    session?: vscode.DebugSession,
+    options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
+  ): void;
   handleSessionTerminated(sessionId: string): void;
 }
 
@@ -27,11 +30,11 @@ export function createTec1MemoryPanelController(
 
   const open = (
     targetSession?: vscode.DebugSession,
-    options?: { focus?: boolean; reveal?: boolean }
+    options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
   ): void => {
     const focus = options?.focus ?? false;
     const reveal = options?.reveal ?? true;
-    const targetColumn = getTargetColumn();
+    const targetColumn = options?.column ?? getTargetColumn();
     if (panel === undefined) {
       panel = vscode.window.createWebviewPanel(
         'debug80Tec1Memory',

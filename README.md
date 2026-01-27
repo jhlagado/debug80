@@ -77,6 +77,12 @@ Fields per target:
 - `terminal`: optional terminal port map for the `simple` platform
 - You can define multiple targets (e.g., `app`, `unit`, `integration`) and set `defaultTarget`.
 
+Launch config (`.vscode/launch.json`) option:
+- `openRomSourcesOnLaunch`: opens ROM listing/source files automatically when a session starts (default true).
+- `openMainSourceOnLaunch`: opens the primary source file automatically when a session starts.
+- `sourceColumn`: editor column (1-9) for source files opened on launch (default 1).
+- `panelColumn`: editor column (1-9) for Debug80 platform panels (default 2).
+
 ## Create a Debug80 project (scaffold)
 
 To make a folder debuggable quickly in VS Code:

@@ -329,6 +329,11 @@ export class Z80DebugSession extends DebugSession {
           ? this.resolveRelative(mergedSourceFile, baseDir)
           : undefined);
       this.sourceFile = sourcePath ?? listingPath;
+      this.sendEvent(
+        new DapEvent('debug80/mainSource', {
+          path: this.sourceFile,
+        })
+      );
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
       const extraListings = this.resolveExtraListings(
         platform,
@@ -855,28 +860,42 @@ export class Z80DebugSession extends DebugSession {
     const combined: MappingParseResult = { segments: [], anchors: [] };
     for (const listingPath of listingPaths) {
       try {
-        const fallbackSource = this.resolveListingSourcePath(listingPath);
-        if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-          const asmMapping = this.buildAsm80Mapping(fallbackSource);
-          if (asmMapping) {
-            combined.segments.push(...asmMapping.segments);
-            combined.anchors.push(...asmMapping.anchors);
-            continue;
-          }
+        const mapPath = this.resolveExtraDebugMapPath(listingPath);
+        const mapStale = this.isDebugMapStale(mapPath, listingPath);
+        if (mapStale) {
+          const prefix = `Debug80 [${this.activePlatform}]`;
+          this.sendEvent(
+            new OutputEvent(
+              `${prefix}: D8 debug map for extra listing is older than the LST. Regenerating (${listingPath}).\n`,
+              'console'
+            )
+          );
         }
-        const content = fs.readFileSync(listingPath, 'utf-8');
-        const parsed = parseMapping(content);
-        if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-          const hasFile = parsed.segments.some((segment) => segment.loc.file !== null);
-          if (!hasFile) {
-            for (const segment of parsed.segments) {
-              segment.loc.file = fallbackSource;
-              segment.loc.line = segment.lst.line;
-            }
-          }
+
+        let debugMap =
+          !mapStale && fs.existsSync(mapPath) ? this.loadDebugMap(mapPath) : undefined;
+        if (debugMap) {
+          const mapping = buildMappingFromD8DebugMap(debugMap);
+          combined.segments.push(...mapping.segments);
+          combined.anchors.push(...mapping.anchors);
+          continue;
         }
-        combined.segments.push(...parsed.segments);
-        combined.anchors.push(...parsed.anchors);
+
+        const mapping = this.buildExtraListingMapping(listingPath);
+        if (!mapping) {
+          continue;
+        }
+        combined.segments.push(...mapping.segments);
+        combined.anchors.push(...mapping.anchors);
+        debugMap = buildD8DebugMap(mapping, {
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          generator: {
+            name: 'debug80',
+          },
+        });
+        this.writeDebugMap(debugMap, mapPath, this.baseDir, listingPath);
       } catch (err) {
         const prefix = `Debug80 [${this.activePlatform}]`;
         this.sendEvent(
@@ -891,6 +910,28 @@ export class Z80DebugSession extends DebugSession {
       return undefined;
     }
     return combined;
+  }
+
+  private buildExtraListingMapping(listingPath: string): MappingParseResult | undefined {
+    const fallbackSource = this.resolveListingSourcePath(listingPath);
+    if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
+      const asmMapping = this.buildAsm80Mapping(fallbackSource);
+      if (asmMapping) {
+        return asmMapping;
+      }
+    }
+    const content = fs.readFileSync(listingPath, 'utf-8');
+    const parsed = parseMapping(content);
+    if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
+      const hasFile = parsed.segments.some((segment) => segment.loc.file !== null);
+      if (!hasFile) {
+        for (const segment of parsed.segments) {
+          segment.loc.file = fallbackSource;
+          segment.loc.line = segment.lst.line;
+        }
+      }
+    }
+    return parsed;
   }
 
   private mergeMappings(
@@ -2315,13 +2356,6 @@ export class Z80DebugSession extends DebugSession {
           const value = byte & 0xff;
           const text = String.fromCharCode(value);
           this.sendEvent(new DapEvent('debug80/tec1gSerial', { byte: value, text }));
-        },
-        ({ port, value }) => {
-          const portHex = `0x${port.toString(16).padStart(2, '0')}`;
-          const valueHex = `0x${value.toString(16).padStart(2, '0')}`;
-          this.sendEvent(
-            new OutputEvent(`Debug80: TEC-1G OUT ${portHex} <= ${valueHex}\n`, 'console')
-          );
         }
       );
       return this.tec1gRuntime.ioHandlers;
@@ -2747,9 +2781,10 @@ export class Z80DebugSession extends DebugSession {
       const raw = fs.readFileSync(mapPath, 'utf-8');
       const { map, error } = parseD8DebugMap(raw);
       if (!map) {
+        const prefix = `Debug80 [${this.activePlatform}]`;
         this.sendEvent(
           new OutputEvent(
-            `Debug80: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})\n`,
+            `${prefix}: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})\n`,
             'console'
           )
         );
@@ -2757,9 +2792,10 @@ export class Z80DebugSession extends DebugSession {
       }
       return map;
     } catch (err) {
+      const prefix = `Debug80 [${this.activePlatform}]`;
       this.sendEvent(
         new OutputEvent(
-          `Debug80: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})\n`,
+          `${prefix}: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})\n`,
           'console'
         )
       );
@@ -2806,6 +2842,12 @@ export class Z80DebugSession extends DebugSession {
     const outDirRaw = args.outputDir ?? path.dirname(listingPath);
     const outDir = this.resolveRelative(outDirRaw, baseDir);
     return path.join(outDir, `${artifactBase}.d8dbg.json`);
+  }
+
+  private resolveExtraDebugMapPath(listingPath: string): string {
+    const dir = path.dirname(listingPath);
+    const base = path.basename(listingPath, path.extname(listingPath));
+    return path.join(dir, `${base}.d8dbg.json`);
   }
 
   private relativeIfPossible(filePath: string, baseDir: string): string {

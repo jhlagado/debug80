@@ -120,6 +120,26 @@
                 "description": "Stop on the first instruction",
                 "default": true
               },
+              "openRomSourcesOnLaunch": {
+                "type": "boolean",
+                "description": "Open ROM listing/source files automatically on launch",
+                "default": true
+              },
+              "openMainSourceOnLaunch": {
+                "type": "boolean",
+                "description": "Open the primary source file automatically on launch",
+                "default": true
+              },
+              "sourceColumn": {
+                "type": "number",
+                "description": "Editor column (1-9) for source files opened on launch",
+                "default": 1
+              },
+              "panelColumn": {
+                "type": "number",
+                "description": "Editor column (1-9) for Debug80 platform panels",
+                "default": 2
+              },
               "assemble": {
                 "type": "boolean",
                 "description": "Run asm80 before launch when asm is provided",
