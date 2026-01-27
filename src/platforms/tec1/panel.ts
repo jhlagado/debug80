@@ -564,11 +564,6 @@ function getTec1Html(activeTab: Tec1PanelTab): string {
     #memoryPanel {
       margin-top: 4px;
     }
-    #memoryPanel .status-line {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 10px;
-    }
     #memoryPanel .shell {
       border: 1px solid #2c2c2c;
       border-radius: 10px;
@@ -660,10 +655,6 @@ function getTec1Html(activeTab: Tec1PanelTab): string {
       color: #cfcfcf;
       letter-spacing: 1px;
     }
-    #memoryPanel .status {
-      font-size: 12px;
-      color: #a0a0a0;
-    }
   </style>
 </head>
 <body>
@@ -708,9 +699,6 @@ function getTec1Html(activeTab: Tec1PanelTab): string {
     </div>
     <div class="panel panel-memory" id="panel-memory">
       <div class="memory-panel" id="memoryPanel">
-        <div class="status-line">
-          <span class="status" id="status">Waiting for snapshot…</span>
-        </div>
         <div class="shell">
           <h1>CPU Pointer View</h1>
           <div class="section">
