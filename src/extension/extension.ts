@@ -21,6 +21,7 @@ let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
 const sessionPlatforms = new Map<string, string>();
+const pendingRomSourceSessions = new Set<string>();
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
@@ -115,13 +116,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        const payload = (await session.customRequest('debug80/romSources')) as
-          | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
-          | undefined;
-        const sources =
-          payload?.sources?.filter(
-            (source) => typeof source.path === 'string' && source.path.length > 0
-          ) ?? [];
+        const sources = await fetchRomSources(session);
         if (sources.length === 0) {
           void vscode.window.showInformationMessage(
             'Debug80: No ROM sources available for this session.'
@@ -129,10 +124,10 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         const items = sources.map((source) => ({
-          label: source.label ?? path.basename(source.path ?? ''),
+          label: source.label,
           description: source.kind === 'listing' ? 'listing' : 'source',
-          detail: source.path ?? '',
-          path: source.path ?? '',
+          detail: source.path,
+          path: source.path,
         }));
         const picked = await vscode.window.showQuickPick(items, {
           placeHolder: 'Open ROM listing/source',
@@ -161,6 +156,9 @@ export function activate(context: vscode.ExtensionContext): void {
         tec1PanelController.clear();
         tec1gPanelController.clear();
         sessionPlatforms.delete(session.id);
+        if (session.configuration?.openRomSourcesOnLaunch === true) {
+          pendingRomSourceSessions.add(session.id);
+        }
       }
     })
   );
@@ -177,6 +175,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
+        pendingRomSourceSessions.delete(session.id);
         if (activeZ80Sessions.size === 0) {
           enforceSourceColumn = false;
         }
@@ -202,6 +201,10 @@ export function activate(context: vscode.ExtensionContext): void {
           tec1gMemoryPanelController.open(evt.session, { focus: false, reveal: true });
         } else {
           openTerminalPanel(evt.session, { focus: false, reveal: true });
+        }
+        if (pendingRomSourceSessions.has(evt.session.id)) {
+          pendingRomSourceSessions.delete(evt.session.id);
+          void openRomSourcesForSession(evt.session);
         }
         return;
       }
@@ -321,6 +324,47 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   // Nothing to clean up
+}
+
+type RomSource = { label: string; path: string; kind: 'listing' | 'source' };
+
+async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[]> {
+  const payload = (await session.customRequest('debug80/romSources')) as
+    | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
+    | undefined;
+  const sources =
+    payload?.sources?.filter(
+      (source) => typeof source.path === 'string' && source.path.length > 0
+    ) ?? [];
+  return sources.map((source) => ({
+    label: source.label ?? path.basename(source.path ?? ''),
+    path: source.path ?? '',
+    kind: source.kind === 'listing' ? 'listing' : 'source',
+  }));
+}
+
+async function openRomSourcesForSession(session: vscode.DebugSession): Promise<void> {
+  try {
+    const sources = await fetchRomSources(session);
+    if (sources.length === 0) {
+      return;
+    }
+    const preferred = sources.filter((source) => source.kind === 'source');
+    const targets = preferred.length > 0 ? preferred : sources;
+    const seen = new Set<string>();
+    for (const source of targets) {
+      if (source.path === '' || seen.has(source.path)) {
+        continue;
+      }
+      seen.add(source.path);
+      const doc = await vscode.workspace.openTextDocument(source.path);
+      await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: true });
+    }
+  } catch (err) {
+    void vscode.window.showErrorMessage(
+      `Debug80: Failed to open ROM sources: ${String(err)}`
+    );
+  }
 }
 
 async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
