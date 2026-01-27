@@ -1,0 +1,17 @@
+{
+  "defaultTarget": "mon3-serial",
+  "targets": {
+    "mon3-serial": {
+      "asm": "src/serial_echo.asm",
+      "sourceFile": "src/serial_echo.asm",
+      "sourceRoots": ["src"],
+      "outputDir": "build",
+      "artifactBase": "mon3-serial",
+      "platform": "tec1g",
+      "tec1g": {
+        "appStart": 16384,
+        "entry": 16384
+      }
+    }
+  }
+}
