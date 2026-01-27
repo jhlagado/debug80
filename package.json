@@ -120,6 +120,11 @@
                 "description": "Stop on the first instruction",
                 "default": true
               },
+              "openRomSourcesOnLaunch": {
+                "type": "boolean",
+                "description": "Open ROM listing/source files automatically on launch",
+                "default": false
+              },
               "assemble": {
                 "type": "boolean",
                 "description": "Run asm80 before launch when asm is provided",
