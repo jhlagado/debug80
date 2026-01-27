@@ -138,7 +138,7 @@
               "panelColumn": {
                 "type": "number",
                 "description": "Editor column (1-9) for Debug80 platform panels",
-                "default": 1
+                "default": 2
               },
               "assemble": {
                 "type": "boolean",
