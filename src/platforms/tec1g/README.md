@@ -1,159 +1,103 @@
-# TEC-1G Platform (Stub)
+# TEC-1G Platform (MON-3)
 
-This folder is a bootstrapped copy of the TEC-1 platform so we can start
-integrating TEC-1G behavior. It currently mirrors the TEC-1 UI/IO and will be
-updated with TEC-1G memory/port behavior as the emulation matures.
+This is Debug80's TEC-1G platform implementation. It targets the MON-3 monitor
+workflow and hardware contract. For full MON-3 behavior notes, see
+`docs/platforms/tec1g/README.md`.
 
-## Memory map
+## Current support
+- Keypad + NMI on keypress, seven-seg display, speaker.
+- LCD write emulation (HD44780-style), including display updates.
+- Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
+- Shadow/Protect/Expand memory behavior and the 0x8000-0xBFFF expansion window.
+- 8x8 LED matrix output (row select + column data).
 
-- ROM: 0x0000–0x07ff (0–2047)
-- RAM: 0x0800–0x0fff (2048–4095)
-- Reset/entry: 0x0000
-- User programs: see ROM-specific notes below
+## Not yet emulated
+- Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
+- LCD busy-flag semantics on `IN 0x04`.
+- GLCD (0x07/0x87) and the GLCD terminal layer.
+- SD card (0xFD) and RTC/PRAM add-ons.
+- Cartridge boot flag + cartridge ROM mapping.
+
+## Memory map (MON-3 view)
+- 0x0000-0x00FF: RAM (RST vectors).
+- 0x0100-0x07FF: RAM.
+- 0x0800-0x0FFF: monitor RAM.
+- 0x1000-0x3FFF: RAM.
+- 0x4000-0x7FFF: user RAM (protect-capable).
+- 0x8000-0xBFFF: expansion window (banked).
+- 0xC000-0xFFFF: ROM (MON-3).
+
+Shadow mode maps ROM 0xC000-0xC7FF into 0x0000-0x07FF for legacy monitors.
 
 ## Clock speeds
-
-Debug80 exposes two modes:
-- Slow: 400 kHz (default for MON-1 style timing)
+- Slow: 400 kHz
 - Fast: 4 MHz
 
-The TEC-1 panel has a toggle for slow/fast.
+The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 
 ## Ports
 
 ### Input
-- `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7.
-  - Keycode values:
-    - 0x00–0x0f: hex digits 0–F
-    - 0x10: ADDRESS
-    - 0x11: UP
-    - 0x12: GO
-    - 0x13: DOWN
-  - Shift latch:
-    - Bit 5 (0x20) is **high** when unshifted.
-    - Bit 5 is **low** when shift is latched.
-    - The shift latch clears after the next key press.
-  - Bit 7 (0x80) is serial RX (DIN).
+- `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
+  - Keycodes: 0x00-0x0f (hex), 0x10 (+), 0x11 (-), 0x12 (GO), 0x13 (AD), 0x02 (FN).
+- `IN 0x03` (SYS_INPUT): system flags (partial).
+  - Bit 1 (0x02): Protect enabled.
+  - Bit 2/3 (0x04/0x08): Expand enabled.
+  - Bit 6 (0x40): keypress flag (1 = no key).
+  - Bit 7 (0x80): serial RX (idle high).
+- `IN 0x04`: LCD busy/addr (not yet emulated; returns 0x00).
+- `IN 0x84`: LCD data read (supported).
+- `IN 0xFE`: matrix keyboard (not yet emulated).
 
 ### Output
 - `OUT 0x01` (SCAN): digit select + speaker + serial TX.
-  - Bits 0–5: digit select (one-hot). Bit 0 is rightmost digit, bit 5 is leftmost.
-  - Bit 6 (0x40): serial TX (DOUT), idle high.
+  - Bits 0-5: digit select (one-hot).
+  - Bit 6 (0x40): serial TX (idle high).
   - Bit 7 (0x80): speaker.
-- `OUT 0x02` (DISPLY): segment bits (latched).
+- `OUT 0x02` (SEGS): seven-seg segment data (latched).
+- `OUT 0x04/0x84`: LCD instruction/data.
+- `OUT 0x05`: LED matrix row select.
+- `OUT 0x06`: LED matrix column data.
+- `OUT 0x07/0x87`: GLCD instruction/data (not yet emulated).
+- `OUT 0xFF` (SYS_CTRL): latch for Shadow/Protect/Expand bits.
+- `OUT 0xFD`: SDIO (not yet emulated).
 
-### NMI
-- NMI vector at 0x0066 on keypress.
+## Serial (bitbang)
+- TX uses bit 6 on `OUT 0x01`; RX uses bit 7 on `IN 0x00` (mirrored on `IN 0x03`).
+- 4800 baud, 8 data bits, no parity, 2 stop bits.
+- Debug80 decodes TX into the panel serial view and can inject RX bytes.
 
-## 7-seg display
+## DIAG ROM expectations
+The TEC-1G DIAG ROM exercises several device behaviors directly:
+- LCD busy-flag polling: `IN 0x04` bit 7 is polled before each LCD write.
+- LCD data read: after init, the DIAG checks for a space (0x20) from `IN 0x84`.
+- FTDI loopback test: toggles TX on `OUT 0x01` bit 6 and expects RX state on `IN 0x03` bit 7.
+- Matrix keyboard scan: reads `IN 0xFE` while varying the high address lines (A8-A15). Emulation
+  should look at the full 16-bit port value, not just the low byte.
+- SD card SPI: bit-banged on `OUT 0xFD` with MOSI on bit 0, CLK on bit 1, and a CS mask
+  (see `Diags_sd.asm`). Reads shift the sampled input bit via `RLA`.
+- RTC (DS1302): bit-banged on `OUT/IN 0xFC` with CS on bit 4 and CLK on bit 6; data is shifted out
+  and read back on the data line (see `Diags_RTC.asm`).
 
-6 digits are multiplexed by rapid scanning (persistence of vision). A write to
-`OUT 0x01` selects which digit is active; `OUT 0x02` provides the segment pattern.
+## Shadow / Protect / Expand
+- Shadow mirrors ROM into 0x0000-0x07FF for legacy monitors; writes go to RAM.
+- Protect makes 0x4000-0x7FFF read-only.
+- Expand exposes a banked 16K window at 0x8000-0xBFFF.
 
-Segment bit mapping (PORTSEGS):
-- 0x01 = a (top)
-- 0x02 = f (upper-left)
-- 0x04 = g (middle)
-- 0x08 = b (upper-right)
-- 0x10 = dp (decimal point)
-- 0x20 = c (lower-right)
-- 0x40 = e (lower-left)
-- 0x80 = d (bottom)
-
-Decimal points are used to indicate whether the address or data field is active.
-
-## Keypad
-
-The TEC-1 keypad is 20 keys:
-- Hex digits 0–F
-- ADDRESS, GO, UP, DOWN
-
-MON-1/2 rely on the NMI pulse on keypress. JMON instead polls port 0x03 (P_DAT)
-bit 6 to detect key activity. Many TEC-1D boards include the "JMON mod" (a
-resistor link between the key strobe D6 and the NMI pin) or the DAT board
-provides the same signal path, so both styles work on real hardware. Debug80
-emulates both behaviours so MON-1/2 and JMON work out of the box.
-
-Shift is a normal momentary push-button in hardware (not a latch). Debug80’s UI
-uses a latch for convenience; it clears after the next key press.
-
-Shift affects bit 5 in the keycode:
-- Bit 5 (0x20) is **high** when unshifted.
-- Bit 5 is **low** when shift is held.
-
-## Speaker
-
-The speaker is controlled by bit 7 on `OUT 0x01`. The ROM toggles it rapidly to
-produce tones. Debug80 measures the cycles between rising edges and derives
-frequency from the current clock speed.
-
-## Serial (bitbang, always available)
-
-TEC-1 uses a simple async serial bitbang on the keypad/display ports:
-
-- TX (DOUT): bit 6 on `OUT 0x01` (SCAN)
-- RX (DIN): bit 7 on `IN 0x00` (KEYBUF)
-
-Debug80 only models the bitbang line for TEC-1 (no ACIA support).
-
-Protocol details (from MINT1.2 ROM):
-- Idle = high.
-- Start bit = low.
-- 8 data bits, LSB first.
-- 2 stop bits.
-- Timing derived from a software delay loop (BAUD value).
-
-Debug80 decodes TX (bit 6) into the TEC-1 panel’s serial monitor.
-This is output-only for now; RX will be wired later.
-
-Side effect: during serial TX, the ROM writes `OUT 0x01` with only bit 6 set,
-so digit scanning is paused and the display can blank. This is expected.
-When writing SCAN for display, avoid toggling bit 6 to prevent spurious serial
-activity.
-
-## ROM-specific RAM usage
-
-Not every ROM uses RAM the same way:
-- MON-1: user programs typically start at 0x0800.
-- Later ROMs (e.g. MON-2): user programs typically start at 0x0900 to leave
-  0x0800–0x08ff for variables/workspace.
-- MINT: uses RAM as data only and does not require an initial program in RAM.
-
-In Debug80, set `appStart` per ROM so that assembled programs do not overwrite
-reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
-(useful for shipping a small starter program at the correct address).
-
-## ROMs
-
-Bundled ROMs:
-- `roms/tec1/mon-1b/mon-1b.hex` (MON-1B, RAM @ 0x0800)
-- `roms/tec1/mon-2/mon-2.hex` (MON-2, RAM @ 0x0900)
-- `roms/tec1/jmon/jmon.hex` (JMON_SOURCE_01, RAM @ 0x0900, polled keypad)
-
-You can override with `romHex` in the platform config.
-
-## Debug80 config example
+## ROMs and config
+Debug80 does not bundle MON-3 ROM images. Provide `romHex` in the platform
+config (and optionally ROM listings via `extraListings`).
 
 ```json
 {
-  "platform": "tec1",
-  "tec1": {
-    "regions": [
-      { "start": 0, "end": 2047, "kind": "rom" },
-      { "start": 2048, "end": 4095, "kind": "ram" }
-    ],
-    "appStart": 2048,
-    "entry": 0,
-    "romHex": "roms/tec1/mon-1b/mon-1b.hex",
-    "ramInitHex": "build/main.hex",
-    "updateMs": 16,
-    "yieldMs": 0
+  "platform": "tec1g",
+  "tec1g": {
+    "romHex": "../roms/tec1g/mon-3/mon-3.hex",
+    "appStart": 16384,
+    "entry": 0
   }
 }
 ```
 
-## Where the platform lives in code
-
-- Emulator and I/O: `src/debug/adapter.ts`
-- Webview panel UI: `src/extension/extension.ts`
-- Bundled ROM: `roms/tec1/mon-1b/mon-1b.hex`
+## Examples
+- `examples/Tec1g` includes a 4800-baud serial echo program for MON-3.
