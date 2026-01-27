@@ -627,9 +627,10 @@ function resolveSessionColumns(session: vscode.DebugSession): {
   panel: vscode.ViewColumn;
 } {
   const config = session.configuration ?? {};
-  const source = normalizeColumn(config.sourceColumn, DEFAULT_SOURCE_COLUMN);
-  const panel = normalizeColumn(config.panelColumn, source);
-  return { source, panel };
+  return {
+    source: normalizeColumn(config.sourceColumn, DEFAULT_SOURCE_COLUMN),
+    panel: normalizeColumn(config.panelColumn, DEFAULT_PANEL_COLUMN),
+  };
 }
 
 function getSessionColumns(session: vscode.DebugSession): {
