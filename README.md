@@ -79,6 +79,7 @@ Fields per target:
 
 Launch config (`.vscode/launch.json`) option:
 - `openRomSourcesOnLaunch`: opens ROM listing/source files automatically when a session starts.
+- `openMainSourceOnLaunch`: opens the primary source file automatically when a session starts.
 
 ## Create a Debug80 project (scaffold)
 

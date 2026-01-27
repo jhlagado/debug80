@@ -329,6 +329,11 @@ export class Z80DebugSession extends DebugSession {
           ? this.resolveRelative(mergedSourceFile, baseDir)
           : undefined);
       this.sourceFile = sourcePath ?? listingPath;
+      this.sendEvent(
+        new DapEvent('debug80/mainSource', {
+          path: this.sourceFile,
+        })
+      );
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
       const extraListings = this.resolveExtraListings(
         platform,

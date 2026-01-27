@@ -125,6 +125,11 @@
                 "description": "Open ROM listing/source files automatically on launch",
                 "default": false
               },
+              "openMainSourceOnLaunch": {
+                "type": "boolean",
+                "description": "Open the primary source file automatically on launch",
+                "default": true
+              },
               "assemble": {
                 "type": "boolean",
                 "description": "Run asm80 before launch when asm is provided",
