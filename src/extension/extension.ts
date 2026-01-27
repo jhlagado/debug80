@@ -21,7 +21,7 @@ let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
 const sessionPlatforms = new Map<string, string>();
-const pendingRomSourceSessions = new Set<string>();
+const romSourcesOpenedSessions = new Set<string>();
 const mainSourceOpenedSessions = new Set<string>();
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
@@ -157,9 +157,6 @@ export function activate(context: vscode.ExtensionContext): void {
         tec1PanelController.clear();
         tec1gPanelController.clear();
         sessionPlatforms.delete(session.id);
-        if (session.configuration?.openRomSourcesOnLaunch === true) {
-          pendingRomSourceSessions.add(session.id);
-        }
       }
     })
   );
@@ -176,7 +173,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
-        pendingRomSourceSessions.delete(session.id);
+        romSourcesOpenedSessions.delete(session.id);
         mainSourceOpenedSessions.delete(session.id);
         if (activeZ80Sessions.size === 0) {
           enforceSourceColumn = false;
@@ -204,9 +201,18 @@ export function activate(context: vscode.ExtensionContext): void {
         } else {
           openTerminalPanel(evt.session, { focus: false, reveal: true });
         }
-        if (pendingRomSourceSessions.has(evt.session.id)) {
-          pendingRomSourceSessions.delete(evt.session.id);
-          void openRomSourcesForSession(evt.session);
+        const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch === true;
+        const openMainSource = evt.session.configuration?.openMainSourceOnLaunch !== false;
+        if (
+          openRomSources &&
+          !romSourcesOpenedSessions.has(evt.session.id) &&
+          (!openMainSource || mainSourceOpenedSessions.has(evt.session.id))
+        ) {
+          void openRomSourcesForSession(evt.session).then((opened) => {
+            if (opened) {
+              romSourcesOpenedSessions.add(evt.session.id);
+            }
+          });
         }
         return;
       }
@@ -299,9 +305,23 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         mainSourceOpenedSessions.add(evt.session.id);
+        const viewColumn = getPrimaryEditorColumn();
         void vscode.workspace
           .openTextDocument(sourcePath)
-          .then((doc) => vscode.window.showTextDocument(doc, { preview: false }));
+          .then((doc) =>
+            vscode.window.showTextDocument(doc, { preview: false, viewColumn })
+          )
+          .then(() => {
+            const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch === true;
+            if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
+              return;
+            }
+            return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
+              if (opened) {
+                romSourcesOpenedSessions.add(evt.session.id);
+              }
+            });
+          });
         return;
       }
     })
@@ -361,11 +381,14 @@ async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[
   }));
 }
 
-async function openRomSourcesForSession(session: vscode.DebugSession): Promise<void> {
+async function openRomSourcesForSession(
+  session: vscode.DebugSession,
+  viewColumn?: vscode.ViewColumn
+): Promise<boolean> {
   try {
     const sources = await fetchRomSources(session);
     if (sources.length === 0) {
-      return;
+      return false;
     }
     const preferred = sources.filter((source) => source.kind === 'source');
     const targets = preferred.length > 0 ? preferred : sources;
@@ -376,12 +399,18 @@ async function openRomSourcesForSession(session: vscode.DebugSession): Promise<v
       }
       seen.add(source.path);
       const doc = await vscode.workspace.openTextDocument(source.path);
-      await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: true });
+      await vscode.window.showTextDocument(doc, {
+        preview: false,
+        preserveFocus: true,
+        ...(viewColumn !== undefined ? { viewColumn } : {}),
+      });
     }
+    return true;
   } catch (err) {
     void vscode.window.showErrorMessage(
       `Debug80: Failed to open ROM sources: ${String(err)}`
     );
+    return false;
   }
 }
 
