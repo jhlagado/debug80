@@ -6,14 +6,13 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 
 ## Current support
 - Keypad + NMI on keypress, seven-seg display, speaker.
-- LCD write emulation (HD44780-style), including display updates.
+- LCD write/read emulation (HD44780-style), including busy-flag status.
 - Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
 - Shadow/Protect/Expand memory behavior and the 0x8000-0xBFFF expansion window.
 - 8x8 LED matrix output (row select + column data).
 
 ## Not yet emulated
 - Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
-- LCD busy-flag semantics on `IN 0x04`.
 - GLCD (0x07/0x87) and the GLCD terminal layer.
 - SD card (0xFD) and RTC/PRAM add-ons.
 - Cartridge boot flag + cartridge ROM mapping.
