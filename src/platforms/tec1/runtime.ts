@@ -74,6 +74,11 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
     Number.isFinite(config.yieldMs) && config.yieldMs !== undefined ? config.yieldMs : 0;
+  const extraListings = Array.isArray(config.extraListings)
+    ? config.extraListings
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => entry !== '')
+    : undefined;
   return {
     regions,
     romRanges,
@@ -83,6 +88,7 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
+    ...(extraListings ? { extraListings } : {}),
   };
 }
 

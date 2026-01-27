@@ -58,6 +58,11 @@ export function normalizeSimpleConfig(
     Number.isFinite(config.binFrom) && config.binFrom !== undefined ? config.binFrom : undefined;
   const binTo =
     Number.isFinite(config.binTo) && config.binTo !== undefined ? config.binTo : undefined;
+  const extraListings = Array.isArray(config.extraListings)
+    ? config.extraListings
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => entry !== '')
+    : undefined;
   return {
     regions,
     romRanges,
@@ -65,5 +70,6 @@ export function normalizeSimpleConfig(
     entry: Math.max(0, Math.min(0xffff, entry)),
     binFrom: binFrom !== undefined ? Math.max(0, Math.min(0xffff, binFrom)) : undefined,
     binTo: binTo !== undefined ? Math.max(0, Math.min(0xffff, binTo)) : undefined,
+    ...(extraListings ? { extraListings } : {}),
   };
 }

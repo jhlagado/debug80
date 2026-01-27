@@ -4,6 +4,8 @@ import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
+import * as asm80Module from 'asm80/asm.js';
+import * as asm80Monolith from 'asm80/monolith.js';
 import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
 import { parseMapping, MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
@@ -108,6 +110,7 @@ export class Z80DebugSession extends DebugSession {
   private activePlatform = 'simple';
   private loadedProgram: HexProgram | undefined;
   private loadedEntry: number | undefined;
+  private extraListingPaths: string[] = [];
 
   public constructor() {
     super();
@@ -155,6 +158,7 @@ export class Z80DebugSession extends DebugSession {
     this.tec1gConfig = undefined;
     this.loadedProgram = undefined;
     this.loadedEntry = undefined;
+    this.extraListingPaths = [];
     this.lastStopReason = undefined;
     this.lastBreakpointAddress = null;
     this.skipBreakpointOnce = null;
@@ -292,9 +296,6 @@ export class Z80DebugSession extends DebugSession {
           const romHex = this.extractRomHex(romContent, romPath);
           this.applyIntelHexToMemory(romHex, memory);
         }
-        if (this.shouldApplyShadowRom(memory)) {
-          this.applyShadowRom(memory);
-        }
         const ramInitHex = tec1gConfig?.ramInitHex;
         const ramInitPath =
           ramInitHex !== undefined && ramInitHex.length > 0
@@ -329,6 +330,19 @@ export class Z80DebugSession extends DebugSession {
           : undefined);
       this.sourceFile = sourcePath ?? listingPath;
       this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
+      const extraListings = this.resolveExtraListings(
+        platform,
+        simpleConfig,
+        tec1Config,
+        tec1gConfig
+      );
+      const extraListingPaths = this.resolveExtraListingPaths(
+        extraListings,
+        baseDir,
+        listingPath
+      );
+      this.extraListingPaths = extraListingPaths;
+      this.extendSourceRoots(extraListingPaths);
 
       const mapPath = this.resolveDebugMapPath(merged, baseDir, asmPath, listingPath);
       const mapStale = this.isDebugMapStale(mapPath, listingPath);
@@ -368,6 +382,10 @@ export class Z80DebugSession extends DebugSession {
       }
 
       this.mapping = buildMappingFromD8DebugMap(debugMap);
+      const extraMapping = this.loadExtraListingMapping(extraListingPaths);
+      if (extraMapping) {
+        this.mapping = this.mergeMappings(this.mapping, extraMapping);
+      }
       this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
       this.rebuildSymbolIndex(this.mapping, listingContent);
 
@@ -413,7 +431,7 @@ export class Z80DebugSession extends DebugSession {
         };
         this.runtime.hardware.memWrite = (addr: number, value: number): void => {
           const masked = addr & 0xffff;
-          if (isRomAddress(masked)) {
+          if (masked >= 0x0800 && isRomAddress(masked)) {
             return;
           }
           const protectEnabled = (tec1gRuntime as Tec1gRuntime).state.protectEnabled === true;
@@ -607,7 +625,7 @@ export class Z80DebugSession extends DebugSession {
       this.lastStopReason === 'breakpoint' &&
       this.runtime.getPC() === this.lastBreakpointAddress &&
       this.lastBreakpointAddress !== null &&
-      this.breakpoints.has(this.lastBreakpointAddress)
+      this.isBreakpointAddress(this.lastBreakpointAddress)
     ) {
       this.skipBreakpointOnce = this.lastBreakpointAddress;
     } else {
@@ -653,18 +671,40 @@ export class Z80DebugSession extends DebugSession {
       listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
     const fallback = { path: sourcePath, line: fallbackLine };
 
+    const resolved = this.resolveSourceForAddressInternal(address);
+    if (resolved) {
+      return resolved;
+    }
+
+    const aliases = this.getDebugAddressAliases(address);
+    for (const alias of aliases) {
+      if (alias === address) {
+        continue;
+      }
+      const resolvedAlias = this.resolveSourceForAddressInternal(alias);
+      if (resolvedAlias) {
+        return resolvedAlias;
+      }
+    }
+
+    return fallback;
+  }
+
+  private resolveSourceForAddressInternal(
+    address: number
+  ): { path: string; line: number } | null {
     const index = this.mappingIndex;
     if (!index) {
-      return fallback;
+      return null;
     }
     const segment = findSegmentForAddress(index, address);
     if (segment === undefined || segment.loc.file === null) {
-      return fallback;
+      return null;
     }
 
     const resolvedPath = this.resolveMappedPath(segment.loc.file);
     if (resolvedPath === undefined || resolvedPath.length === 0) {
-      return fallback;
+      return null;
     }
 
     if (segment.loc.line !== null) {
@@ -676,7 +716,42 @@ export class Z80DebugSession extends DebugSession {
       return { path: resolvedPath, line: anchorLine };
     }
 
-    return fallback;
+    return null;
+  }
+
+  private getDebugAddressAliases(address: number): number[] {
+    const masked = address & 0xffff;
+    const aliases = [masked];
+    const shadowAlias = this.getShadowAlias(masked);
+    if (shadowAlias !== null && shadowAlias !== masked) {
+      aliases.push(shadowAlias);
+    }
+    return aliases;
+  }
+
+  private getShadowAlias(address: number): number | null {
+    if (this.activePlatform !== 'tec1g') {
+      return null;
+    }
+    const runtime = this.tec1gRuntime;
+    if (!runtime || runtime.state.shadowEnabled !== true) {
+      return null;
+    }
+    if (address < 0x0800) {
+      return (0xc000 + address) & 0xffff;
+    }
+    return null;
+  }
+
+  private isBreakpointAddress(address: number | null): boolean {
+    if (address === null) {
+      return false;
+    }
+    if (this.breakpoints.has(address)) {
+      return true;
+    }
+    const shadowAlias = this.getShadowAlias(address);
+    return shadowAlias !== null && this.breakpoints.has(shadowAlias);
   }
 
   private resolveMappedPath(file: string): string | undefined {
@@ -697,6 +772,254 @@ export class Z80DebugSession extends DebugSession {
     }
 
     return undefined;
+  }
+
+  private resolveExtraListings(
+    platform: string,
+    simpleConfig?: SimplePlatformConfigNormalized,
+    tec1Config?: Tec1PlatformConfigNormalized,
+    tec1gConfig?: Tec1gPlatformConfigNormalized
+  ): string[] {
+    if (platform === 'simple') {
+      return simpleConfig?.extraListings ?? [];
+    }
+    if (platform === 'tec1') {
+      return tec1Config?.extraListings ?? [];
+    }
+    if (platform === 'tec1g') {
+      return tec1gConfig?.extraListings ?? [];
+    }
+    return [];
+  }
+
+  private resolveExtraListingPaths(
+    extraListings: string[],
+    baseDir: string,
+    primaryListingPath: string
+  ): string[] {
+    if (!Array.isArray(extraListings) || extraListings.length === 0) {
+      return [];
+    }
+    const resolved: string[] = [];
+    const seen = new Set<string>();
+    const primary = path.resolve(primaryListingPath);
+    for (const entry of extraListings) {
+      if (typeof entry !== 'string') {
+        continue;
+      }
+      const trimmed = entry.trim();
+      if (trimmed === '') {
+        continue;
+      }
+      const abs = this.resolveRelative(trimmed, baseDir);
+      const normalized = path.resolve(abs);
+      if (normalized === primary || seen.has(normalized)) {
+        continue;
+      }
+      if (!fs.existsSync(normalized)) {
+        const prefix = `Debug80 [${this.activePlatform}]`;
+        this.sendEvent(
+          new OutputEvent(
+            `${prefix}: extra listing not found at "${normalized}".\n`,
+            'console'
+          )
+        );
+        continue;
+      }
+      resolved.push(normalized);
+      seen.add(normalized);
+    }
+    return resolved;
+  }
+
+  private extendSourceRoots(listingPaths: string[]): void {
+    if (listingPaths.length === 0) {
+      return;
+    }
+    const roots = new Set(this.sourceRoots.map((root) => path.resolve(root)));
+    for (const listingPath of listingPaths) {
+      const root = path.resolve(path.dirname(listingPath));
+      if (!roots.has(root)) {
+        this.sourceRoots.push(root);
+        roots.add(root);
+      }
+    }
+  }
+
+  private loadExtraListingMapping(
+    listingPaths: string[]
+  ): MappingParseResult | undefined {
+    if (listingPaths.length === 0) {
+      return undefined;
+    }
+    const combined: MappingParseResult = { segments: [], anchors: [] };
+    for (const listingPath of listingPaths) {
+      try {
+        const fallbackSource = this.resolveListingSourcePath(listingPath);
+        if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
+          const asmMapping = this.buildAsm80Mapping(fallbackSource);
+          if (asmMapping) {
+            combined.segments.push(...asmMapping.segments);
+            combined.anchors.push(...asmMapping.anchors);
+            continue;
+          }
+        }
+        const content = fs.readFileSync(listingPath, 'utf-8');
+        const parsed = parseMapping(content);
+        if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
+          const hasFile = parsed.segments.some((segment) => segment.loc.file !== null);
+          if (!hasFile) {
+            for (const segment of parsed.segments) {
+              segment.loc.file = fallbackSource;
+              segment.loc.line = segment.lst.line;
+            }
+          }
+        }
+        combined.segments.push(...parsed.segments);
+        combined.anchors.push(...parsed.anchors);
+      } catch (err) {
+        const prefix = `Debug80 [${this.activePlatform}]`;
+        this.sendEvent(
+          new OutputEvent(
+            `${prefix}: failed to read extra listing "${listingPath}": ${String(err)}\n`,
+            'console'
+          )
+        );
+      }
+    }
+    if (combined.segments.length === 0 && combined.anchors.length === 0) {
+      return undefined;
+    }
+    return combined;
+  }
+
+  private mergeMappings(
+    base: MappingParseResult,
+    extra: MappingParseResult
+  ): MappingParseResult {
+    return {
+      segments: [...base.segments, ...extra.segments],
+      anchors: [...base.anchors, ...extra.anchors],
+    };
+  }
+
+  private buildAsm80Mapping(sourcePath: string): MappingParseResult | undefined {
+    const baseDir = path.dirname(sourcePath);
+    const sourceText = fs.readFileSync(sourcePath, 'utf-8');
+    asm80Module.fileGet((file: string, binary?: boolean) => {
+      const resolved = path.resolve(baseDir, file);
+      if (!fs.existsSync(resolved)) {
+        return null;
+      }
+      return binary === true
+        ? fs.readFileSync(resolved)
+        : fs.readFileSync(resolved, 'utf-8');
+    });
+    const [err, compiled, symbols] = asm80Module.compile(sourceText, asm80Monolith.Z80);
+    if (err !== null && err !== undefined) {
+      const message = typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err);
+      this.sendEvent(
+        new OutputEvent(
+          `Debug80: asm80 failed to build ROM mapping for "${sourcePath}": ${message}\n`,
+          'console'
+        )
+      );
+      return undefined;
+    }
+    const lines = Array.isArray(compiled?.[0]) ? compiled[0] : [];
+    const segments: SourceMapSegment[] = [];
+    for (const entry of lines) {
+      if (typeof entry.addr !== 'number' || !Array.isArray(entry.lens) || entry.lens.length === 0) {
+        continue;
+      }
+      const start = entry.addr & 0xffff;
+      const end = Math.min(0x10000, start + entry.lens.length);
+      const file =
+        typeof entry.includedFile === 'string' && entry.includedFile.length > 0
+          ? path.resolve(baseDir, entry.includedFile)
+          : sourcePath;
+      const lineNumber =
+        typeof entry.numline === 'number' && Number.isFinite(entry.numline)
+          ? entry.numline
+          : null;
+      segments.push({
+        start,
+        end,
+        loc: { file, line: lineNumber },
+        lst: {
+          line: typeof entry.numline === 'number' ? entry.numline : 0,
+          text: typeof entry.line === 'string' ? entry.line : '',
+        },
+        confidence: 'HIGH',
+      });
+    }
+
+    const anchors: SourceMapAnchor[] = [];
+    if (symbols !== null && symbols !== undefined) {
+      for (const [name, entry] of Object.entries(symbols)) {
+        if (!name || name.endsWith('$') || (name[0] === '_' && name[1] === '_')) {
+          continue;
+        }
+        if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
+          continue;
+        }
+        const defined = entry.defined;
+        const fileRaw = defined?.file;
+        const file =
+          typeof fileRaw === 'string' && fileRaw !== '*main*' && fileRaw.length > 0
+            ? path.resolve(baseDir, fileRaw)
+            : sourcePath;
+        const lineNumber =
+          typeof defined?.line === 'number' && Number.isFinite(defined.line)
+            ? defined.line
+            : 1;
+        anchors.push({
+          symbol: name,
+          address: entry.value & 0xffff,
+          file,
+          line: lineNumber,
+        });
+      }
+    }
+
+    if (segments.length === 0 && anchors.length === 0) {
+      return undefined;
+    }
+    return { segments, anchors };
+  }
+
+  private resolveListingSourcePath(listingPath: string): string | undefined {
+    const dir = path.dirname(listingPath);
+    const base = path.basename(listingPath, path.extname(listingPath));
+    const candidates = [`${base}.source.asm`, `${base}.asm`];
+    for (const candidate of candidates) {
+      const candidatePath = path.join(dir, candidate);
+      if (fs.existsSync(candidatePath)) {
+        return candidatePath;
+      }
+    }
+    return undefined;
+  }
+
+  private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
+    const seen = new Set<string>();
+    return this.extraListingPaths.flatMap((listingPath) => {
+      const entries: Array<{ label: string; path: string; kind: 'listing' | 'source' }> = [];
+      const pushUnique = (entryPath: string, kind: 'listing' | 'source'): void => {
+        if (seen.has(entryPath)) {
+          return;
+        }
+        entries.push({ label: path.basename(entryPath), path: entryPath, kind });
+        seen.add(entryPath);
+      };
+
+      pushUnique(listingPath, 'listing');
+      const sourcePath = this.resolveListingSourcePath(listingPath);
+      if (typeof sourcePath === 'string' && sourcePath.length > 0) {
+        pushUnique(sourcePath, 'source');
+      }
+      return entries;
+    });
   }
 
   protected scopesRequest(
@@ -1093,6 +1416,11 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    if (command === 'debug80/romSources') {
+      response.body = { sources: this.collectRomSources() };
+      this.sendResponse(response);
+      return;
+    }
     super.customRequest(command, response, args);
   }
 
@@ -1108,7 +1436,7 @@ export class Z80DebugSession extends DebugSession {
       this.lastStopReason === 'breakpoint' &&
       this.runtime.getPC() === this.lastBreakpointAddress &&
       this.lastBreakpointAddress !== null &&
-      this.breakpoints.has(this.lastBreakpointAddress)
+      this.isBreakpointAddress(this.lastBreakpointAddress)
     ) {
       this.skipBreakpointOnce = this.lastBreakpointAddress;
     } else {
@@ -1300,7 +1628,7 @@ export class Z80DebugSession extends DebugSession {
           continue;
         }
         const pc = this.runtime.getPC();
-        if (this.breakpoints.has(pc)) {
+        if (this.isBreakpointAddress(pc)) {
           this.haltNotified = false;
           this.lastStopReason = 'breakpoint';
           this.lastBreakpointAddress = pc;
@@ -1416,7 +1744,7 @@ export class Z80DebugSession extends DebugSession {
           }
         } else {
           const pc = this.runtime.getPC();
-          if (this.breakpoints.has(pc)) {
+          if (this.isBreakpointAddress(pc)) {
             this.haltNotified = false;
             this.lastStopReason = 'breakpoint';
             this.lastBreakpointAddress = pc;
@@ -1842,36 +2170,6 @@ export class Z80DebugSession extends DebugSession {
     const length = Math.min(data.length, memory.length - base);
     for (let i = 0; i < length; i += 1) {
       memory[base + i] = data[i] ?? 0;
-    }
-  }
-
-  private shouldApplyShadowRom(memory: Uint8Array): boolean {
-    const shadowSize = 0x800;
-    const hiBase = 0xc000;
-    if (hiBase + shadowSize > memory.length) {
-      return false;
-    }
-    for (let i = 0; i < shadowSize; i += 1) {
-      if (memory[i] !== 0) {
-        return false;
-      }
-    }
-    for (let i = 0; i < shadowSize; i += 1) {
-      if (memory[hiBase + i] !== 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private applyShadowRom(memory: Uint8Array): void {
-    const shadowSize = 0x800;
-    const hiBase = 0xc000;
-    if (hiBase + shadowSize > memory.length) {
-      return;
-    }
-    for (let i = 0; i < shadowSize; i += 1) {
-      memory[i] = memory[hiBase + i] ?? 0;
     }
   }
 
