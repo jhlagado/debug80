@@ -23,7 +23,7 @@ const romSourcesOpenedSessions = new Set<string>();
 const mainSourceOpenedSessions = new Set<string>();
 const sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
-const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.One;
+const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession

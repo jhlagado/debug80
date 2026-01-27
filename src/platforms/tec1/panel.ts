@@ -669,7 +669,7 @@ function getTec1Html(activeTab: Tec1PanelTab): string {
 <body>
   <div id="app" tabindex="0">
     <div class="tabs">
-      <button class="tab" data-tab="ui">UI PANEL</button>
+      <button class="tab" data-tab="ui">UI</button>
       <button class="tab" data-tab="memory">MEMORY</button>
     </div>
     <div class="panel panel-ui" id="panel-ui">
