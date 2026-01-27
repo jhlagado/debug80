@@ -22,6 +22,7 @@ let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
 const sessionPlatforms = new Map<string, string>();
 const pendingRomSourceSessions = new Set<string>();
+const mainSourceOpenedSessions = new Set<string>();
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
@@ -176,6 +177,7 @@ export function activate(context: vscode.ExtensionContext): void {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
         pendingRomSourceSessions.delete(session.id);
+        mainSourceOpenedSessions.delete(session.id);
         if (activeZ80Sessions.size === 0) {
           enforceSourceColumn = false;
         }
@@ -284,6 +286,22 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         tec1gPanelController.appendSerial(text);
+        return;
+      }
+      if (evt.event === 'debug80/mainSource') {
+        const openOnLaunch = evt.session.configuration?.openMainSourceOnLaunch !== false;
+        const body = evt.body as { path?: string } | undefined;
+        const sourcePath = body?.path;
+        if (!openOnLaunch || sourcePath === undefined || sourcePath === '') {
+          return;
+        }
+        if (mainSourceOpenedSessions.has(evt.session.id)) {
+          return;
+        }
+        mainSourceOpenedSessions.add(evt.session.id);
+        void vscode.workspace
+          .openTextDocument(sourcePath)
+          .then((doc) => vscode.window.showTextDocument(doc, { preview: false }));
         return;
       }
     })
