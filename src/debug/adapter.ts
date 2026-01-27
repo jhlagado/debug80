@@ -2356,13 +2356,6 @@ export class Z80DebugSession extends DebugSession {
           const value = byte & 0xff;
           const text = String.fromCharCode(value);
           this.sendEvent(new DapEvent('debug80/tec1gSerial', { byte: value, text }));
-        },
-        ({ port, value }) => {
-          const portHex = `0x${port.toString(16).padStart(2, '0')}`;
-          const valueHex = `0x${value.toString(16).padStart(2, '0')}`;
-          this.sendEvent(
-            new OutputEvent(`Debug80: TEC-1G OUT ${portHex} <= ${valueHex}\n`, 'console')
-          );
         }
       );
       return this.tec1gRuntime.ioHandlers;
