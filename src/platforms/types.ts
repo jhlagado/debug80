@@ -11,6 +11,7 @@ export interface SimplePlatformConfig {
   entry?: number;
   binFrom?: number;
   binTo?: number;
+  extraListings?: string[];
 }
 
 export interface SimplePlatformConfigNormalized {
@@ -20,6 +21,7 @@ export interface SimplePlatformConfigNormalized {
   entry: number;
   binFrom: number | undefined;
   binTo: number | undefined;
+  extraListings?: string[];
 }
 
 export interface Tec1PlatformConfig {
@@ -30,6 +32,7 @@ export interface Tec1PlatformConfig {
   ramInitHex?: string;
   updateMs?: number;
   yieldMs?: number;
+  extraListings?: string[];
 }
 
 export interface Tec1PlatformConfigNormalized {
@@ -41,6 +44,7 @@ export interface Tec1PlatformConfigNormalized {
   ramInitHex?: string;
   updateMs: number;
   yieldMs: number;
+  extraListings?: string[];
 }
 
 export interface Tec1gPlatformConfig {
@@ -51,6 +55,7 @@ export interface Tec1gPlatformConfig {
   ramInitHex?: string;
   updateMs?: number;
   yieldMs?: number;
+  extraListings?: string[];
 }
 
 export interface Tec1gPlatformConfigNormalized {
@@ -62,4 +67,5 @@ export interface Tec1gPlatformConfigNormalized {
   ramInitHex?: string;
   updateMs: number;
   yieldMs: number;
+  extraListings?: string[];
 }

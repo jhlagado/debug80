@@ -81,6 +81,11 @@ export function normalizeTec1gConfig(
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
     Number.isFinite(config.yieldMs) && config.yieldMs !== undefined ? config.yieldMs : 0;
+  const extraListings = Array.isArray(config.extraListings)
+    ? config.extraListings
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => entry !== '')
+    : undefined;
   return {
     regions,
     romRanges,
@@ -90,6 +95,7 @@ export function normalizeTec1gConfig(
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
+    ...(extraListings ? { extraListings } : {}),
   };
 }
 
@@ -122,7 +128,7 @@ export function createTec1gRuntime(
     updateMs: config.updateMs,
     yieldMs: config.yieldMs,
     sysCtrl: 0x00,
-    shadowEnabled: false,
+    shadowEnabled: true,
     protectEnabled: false,
     expandEnabled: false,
   };
@@ -253,6 +259,13 @@ export function createTec1gRuntime(
     state.lcdAddr = (state.lcdAddr + 1) & 0xff;
   };
 
+  const lcdReadData = (): number => {
+    const index = lcdIndexForAddr(state.lcdAddr);
+    const value = index !== null ? (state.lcd[index] ?? 0x20) : 0x20;
+    state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    return value & 0xff;
+  };
+
   const lcdClear = (): void => {
     state.lcd.fill(0x20);
     lcdSetAddr(0x80);
@@ -289,22 +302,38 @@ export function createTec1gRuntime(
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
           startNextSerialRx();
         }
-        const base = state.keyValue & 0x7f;
-        return base | (serialRxLevel ? 0x80 : 0);
+        return state.keyValue & 0x7f;
+      }
+      if (p === 0xfe) {
+        // Matrix keyboard input (unwired for now).
+        return 0xff;
       }
       if (p === 0x04) {
         return 0x00;
       }
       if (p === 0x84) {
-        return 0x20;
+        return lcdReadData();
       }
       if (p === 0xff) {
         return state.sysCtrl & 0xff;
       }
       if (p === 0x03) {
-        // JMON polls P_DAT bit 6 for key-press detection.
         const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
-        return keyPressed ? 0x00 : 0x40;
+        let value = 0x00;
+        if (state.protectEnabled) {
+          value |= 0x02;
+        }
+        if (state.expandEnabled) {
+          value |= 0x04;
+          value |= 0x08;
+        }
+        if (!keyPressed) {
+          value |= 0x40;
+        }
+        if (serialRxLevel) {
+          value |= 0x80;
+        }
+        return value;
       }
       return 0xff;
     },
@@ -521,6 +550,10 @@ export function createTec1gRuntime(
     state.lcd.fill(0x20);
     state.lcdAddr = 0x80;
     state.matrix.fill(0x00);
+    state.sysCtrl = 0x00;
+    state.shadowEnabled = true;
+    state.protectEnabled = false;
+    state.expandEnabled = false;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
