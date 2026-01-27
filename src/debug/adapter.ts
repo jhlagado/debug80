@@ -817,9 +817,10 @@ export class Z80DebugSession extends DebugSession {
         continue;
       }
       if (!fs.existsSync(normalized)) {
+        const prefix = `Debug80 [${this.activePlatform}]`;
         this.sendEvent(
           new OutputEvent(
-            `Debug80: extra listing not found at "${normalized}".\n`,
+            `${prefix}: extra listing not found at "${normalized}".\n`,
             'console'
           )
         );
@@ -877,9 +878,10 @@ export class Z80DebugSession extends DebugSession {
         combined.segments.push(...parsed.segments);
         combined.anchors.push(...parsed.anchors);
       } catch (err) {
+        const prefix = `Debug80 [${this.activePlatform}]`;
         this.sendEvent(
           new OutputEvent(
-            `Debug80: failed to read extra listing "${listingPath}": ${String(err)}\n`,
+            `${prefix}: failed to read extra listing "${listingPath}": ${String(err)}\n`,
             'console'
           )
         );
@@ -902,14 +904,9 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private buildAsm80Mapping(sourcePath: string): MappingParseResult | undefined {
-    const ASM = asm80Module as unknown as {
-      compile: (content: string, machine: unknown) => [unknown, [unknown[], unknown] | null, unknown];
-      fileGet: (resolver: (file: string, binary?: boolean) => string | Buffer | null) => void;
-    };
-    const Monolith = asm80Monolith as unknown as { Z80: unknown };
     const baseDir = path.dirname(sourcePath);
     const sourceText = fs.readFileSync(sourcePath, 'utf-8');
-    ASM.fileGet((file: string, binary?: boolean) => {
+    asm80Module.fileGet((file: string, binary?: boolean) => {
       const resolved = path.resolve(baseDir, file);
       if (!fs.existsSync(resolved)) {
         return null;
@@ -918,7 +915,7 @@ export class Z80DebugSession extends DebugSession {
         ? fs.readFileSync(resolved)
         : fs.readFileSync(resolved, 'utf-8');
     });
-    const [err, compiled, symbols] = ASM.compile(sourceText, Monolith.Z80);
+    const [err, compiled, symbols] = asm80Module.compile(sourceText, asm80Monolith.Z80);
     if (err !== null && err !== undefined) {
       const message = typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err);
       this.sendEvent(
@@ -932,52 +929,37 @@ export class Z80DebugSession extends DebugSession {
     const lines = Array.isArray(compiled?.[0]) ? compiled[0] : [];
     const segments: SourceMapSegment[] = [];
     for (const entry of lines) {
-      const line = entry as {
-        addr?: number;
-        lens?: number[];
-        numline?: number;
-        includedFile?: string;
-        line?: string;
-      };
-      if (typeof line.addr !== 'number' || !Array.isArray(line.lens) || line.lens.length === 0) {
+      if (typeof entry.addr !== 'number' || !Array.isArray(entry.lens) || entry.lens.length === 0) {
         continue;
       }
-      const start = line.addr & 0xffff;
-      const end = Math.min(0x10000, start + line.lens.length);
+      const start = entry.addr & 0xffff;
+      const end = Math.min(0x10000, start + entry.lens.length);
       const file =
-        typeof line.includedFile === 'string' && line.includedFile.length > 0
-          ? path.resolve(baseDir, line.includedFile)
+        typeof entry.includedFile === 'string' && entry.includedFile.length > 0
+          ? path.resolve(baseDir, entry.includedFile)
           : sourcePath;
       const lineNumber =
-        typeof line.numline === 'number' && Number.isFinite(line.numline)
-          ? line.numline
+        typeof entry.numline === 'number' && Number.isFinite(entry.numline)
+          ? entry.numline
           : null;
       segments.push({
         start,
         end,
         loc: { file, line: lineNumber },
         lst: {
-          line: typeof line.numline === 'number' ? line.numline : 0,
-          text: typeof line.line === 'string' ? line.line : '',
+          line: typeof entry.numline === 'number' ? entry.numline : 0,
+          text: typeof entry.line === 'string' ? entry.line : '',
         },
         confidence: 'HIGH',
       });
     }
 
     const anchors: SourceMapAnchor[] = [];
-    const symbolTable =
-      symbols !== null && symbols !== undefined && typeof symbols === 'object'
-        ? (symbols as Record<string, unknown>)
-        : undefined;
-    if (symbolTable !== undefined) {
-      for (const [name, entryRaw] of Object.entries(symbolTable)) {
+    if (symbols !== null && symbols !== undefined) {
+      for (const [name, entry] of Object.entries(symbols)) {
         if (!name || name.endsWith('$') || (name[0] === '_' && name[1] === '_')) {
           continue;
         }
-        const entry = entryRaw as {
-          value?: number;
-          defined?: { line?: number; file?: string };
-        };
         if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
           continue;
         }
@@ -1020,25 +1002,24 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
-    const sources: Array<{ label: string; path: string; kind: 'listing' | 'source' }> = [];
     const seen = new Set<string>();
-    for (const listingPath of this.extraListingPaths) {
-      const listingLabel = path.basename(listingPath);
-      if (!seen.has(listingPath)) {
-        sources.push({ label: listingLabel, path: listingPath, kind: 'listing' });
-        seen.add(listingPath);
-      }
+    return this.extraListingPaths.flatMap((listingPath) => {
+      const entries: Array<{ label: string; path: string; kind: 'listing' | 'source' }> = [];
+      const pushUnique = (entryPath: string, kind: 'listing' | 'source'): void => {
+        if (seen.has(entryPath)) {
+          return;
+        }
+        entries.push({ label: path.basename(entryPath), path: entryPath, kind });
+        seen.add(entryPath);
+      };
+
+      pushUnique(listingPath, 'listing');
       const sourcePath = this.resolveListingSourcePath(listingPath);
-      if (typeof sourcePath === 'string' && sourcePath.length > 0 && !seen.has(sourcePath)) {
-        sources.push({
-          label: path.basename(sourcePath),
-          path: sourcePath,
-          kind: 'source',
-        });
-        seen.add(sourcePath);
+      if (typeof sourcePath === 'string' && sourcePath.length > 0) {
+        pushUnique(sourcePath, 'source');
       }
-    }
-    return sources;
+      return entries;
+    });
   }
 
   protected scopesRequest(

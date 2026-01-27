@@ -291,6 +291,25 @@ Optional tuning fields:
 - `updateMs` (default 16): min milliseconds between TEC-1 panel updates.
 - `yieldMs` (default 0): extra yield delay when the emulator is ahead of real time.
 - `ramInitHex`: optional Intel HEX file to preload RAM (e.g. a starter program).
+- `extraListings`: optional list of additional `.lst` files to load for ROM/debug mapping.
+
+Extra ROM listings:
+- Use `extraListings` to load ROM listings that live outside the project (for example, in a
+  platform repo). Paths are resolved relative to the `debug80.json` base directory; absolute
+  paths also work.
+- If a listing sits next to a `.source.asm` or `.asm`, Debug80 will offer that source in the
+  ROM source picker and use it for line-based breakpoints.
+- Missing listings emit a Debug Console message that includes the platform name.
+
+```json
+{
+  "platform": "tec1",
+  "tec1": {
+    "romHex": "roms/tec1/mon-1b/mon-1b.hex",
+    "extraListings": ["../platform/roms/tec1/mon-1b/mon-1b.lst"]
+  }
+}
+```
 
 ROM-specific RAM usage:
 - MON-1 user programs start at 0x0800.
