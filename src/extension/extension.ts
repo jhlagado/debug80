@@ -25,7 +25,7 @@ const romSourcesOpenedSessions = new Set<string>();
 const mainSourceOpenedSessions = new Set<string>();
 const sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
-const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
+const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.One;
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
@@ -165,7 +165,7 @@ export function activate(context: vscode.ExtensionContext): void {
         tec1gPanelController.clear();
         sessionPlatforms.delete(session.id);
         sessionColumns.set(session.id, resolveSessionColumns(session));
-        if (session.configuration?.openRomSourcesOnLaunch === true) {
+        if (session.configuration?.openRomSourcesOnLaunch !== false) {
           const sessionId = session.id;
           const column = getSessionColumns(session).source;
           setTimeout(() => {
@@ -180,7 +180,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 romSourcesOpenedSessions.add(sessionId);
               }
             });
-          }, 600);
+          }, 200);
         }
       }
     })
@@ -248,7 +248,7 @@ export function activate(context: vscode.ExtensionContext): void {
             column: columns.panel,
           });
         }
-        const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch === true;
+        const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
         const openMainSource = evt.session.configuration?.openMainSourceOnLaunch !== false;
         if (
           openRomSources &&
@@ -362,7 +362,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showTextDocument(doc, { preview: false, viewColumn })
           )
           .then(() => {
-            const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch === true;
+            const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
             if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
@@ -462,24 +462,27 @@ async function openRomSourcesForSession(
     return true;
   };
 
-  try {
-    const attemptDelays = [0, 150, 300];
-    for (const delay of attemptDelays) {
-      if (delay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
+  const attemptDelays = [0, 200, 400, 800, 1200, 1600];
+  let lastError: unknown;
+  for (const delay of attemptDelays) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
       const opened = await attemptOpen();
       if (opened) {
         return true;
       }
+    } catch (err) {
+      lastError = err;
     }
-    return false;
-  } catch (err) {
-    void vscode.window.showErrorMessage(
-      `Debug80: Failed to open ROM sources: ${String(err)}`
-    );
-    return false;
   }
+  if (lastError !== undefined) {
+    void vscode.window.showErrorMessage(
+      `Debug80: Failed to open ROM sources: ${String(lastError)}`
+    );
+  }
+  return false;
 }
 
 async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
@@ -636,10 +639,9 @@ function resolveSessionColumns(session: vscode.DebugSession): {
   panel: vscode.ViewColumn;
 } {
   const config = session.configuration ?? {};
-  return {
-    source: normalizeColumn(config.sourceColumn, DEFAULT_SOURCE_COLUMN),
-    panel: normalizeColumn(config.panelColumn, DEFAULT_PANEL_COLUMN),
-  };
+  const source = normalizeColumn(config.sourceColumn, DEFAULT_SOURCE_COLUMN);
+  const panel = normalizeColumn(config.panelColumn, source);
+  return { source, panel };
 }
 
 function getSessionColumns(session: vscode.DebugSession): {

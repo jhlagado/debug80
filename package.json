@@ -123,7 +123,7 @@
               "openRomSourcesOnLaunch": {
                 "type": "boolean",
                 "description": "Open ROM listing/source files automatically on launch",
-                "default": false
+                "default": true
               },
               "openMainSourceOnLaunch": {
                 "type": "boolean",
@@ -138,7 +138,7 @@
               "panelColumn": {
                 "type": "number",
                 "description": "Editor column (1-9) for Debug80 platform panels",
-                "default": 2
+                "default": 1
               },
               "assemble": {
                 "type": "boolean",
