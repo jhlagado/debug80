@@ -108,6 +108,51 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openRomSource', async () => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session || session.type !== 'z80') {
+        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
+        return;
+      }
+      try {
+        const payload = (await session.customRequest('debug80/romSources')) as
+          | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
+          | undefined;
+        const sources =
+          payload?.sources?.filter(
+            (source) => typeof source.path === 'string' && source.path.length > 0
+          ) ?? [];
+        if (sources.length === 0) {
+          void vscode.window.showInformationMessage(
+            'Debug80: No ROM sources available for this session.'
+          );
+          return;
+        }
+        const items = sources.map((source) => ({
+          label: source.label ?? path.basename(source.path ?? ''),
+          description: source.kind === 'listing' ? 'listing' : 'source',
+          detail: source.path ?? '',
+          path: source.path ?? '',
+        }));
+        const picked = await vscode.window.showQuickPick(items, {
+          placeHolder: 'Open ROM listing/source',
+          matchOnDescription: true,
+          matchOnDetail: true,
+        });
+        if (!picked) {
+          return;
+        }
+        const doc = await vscode.workspace.openTextDocument(picked.path);
+        await vscode.window.showTextDocument(doc, { preview: false });
+      } catch (err) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Failed to list ROM sources: ${String(err)}`
+        );
+      }
+    })
+  );
+
+  context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
         activeZ80Sessions.add(session.id);
