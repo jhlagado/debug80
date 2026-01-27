@@ -2,7 +2,10 @@ import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 
 export interface Tec1gPanelController {
-  open(session?: vscode.DebugSession, options?: { focus?: boolean; reveal?: boolean }): void;
+  open(
+    session?: vscode.DebugSession,
+    options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
+  ): void;
   update(payload: Tec1gUpdatePayload): void;
   appendSerial(text: string): void;
   clear(): void;
@@ -25,11 +28,11 @@ export function createTec1gPanelController(
 
   const open = (
     targetSession?: vscode.DebugSession,
-    options?: { focus?: boolean; reveal?: boolean }
+    options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
   ): void => {
     const focus = options?.focus ?? false;
     const reveal = options?.reveal ?? true;
-    const targetColumn = getTargetColumn();
+    const targetColumn = options?.column ?? getTargetColumn();
     if (panel === undefined) {
       panel = vscode.window.createWebviewPanel(
         'debug80Tec1g',
