@@ -20,7 +20,8 @@
     "onCommand:debug80.terminalInput",
     "onCommand:debug80.openTerminal",
     "onCommand:debug80.openTec1",
-    "onCommand:debug80.openTec1Memory"
+    "onCommand:debug80.openTec1Memory",
+    "onCommand:debug80.openRomSource"
   ],
   "extensionPack": [
     "imanolea.z80-asm"
@@ -67,6 +68,10 @@
       {
         "command": "debug80.openTec1Memory",
         "title": "Debug80: Show TEC-1 Memory Panel"
+      },
+      {
+        "command": "debug80.openRomSource",
+        "title": "Debug80: Open ROM Listing/Source"
       }
     ],
     "debuggers": [
