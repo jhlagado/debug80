@@ -316,7 +316,12 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
-            return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
+            const romColumn = viewColumn + 1;
+            const targetColumn =
+              romColumn <= Number(vscode.ViewColumn.Nine)
+                ? (romColumn as vscode.ViewColumn)
+                : vscode.ViewColumn.Beside;
+            return openRomSourcesForSession(evt.session, targetColumn).then((opened) => {
               if (opened) {
                 romSourcesOpenedSessions.add(evt.session.id);
               }
@@ -385,7 +390,7 @@ async function openRomSourcesForSession(
   session: vscode.DebugSession,
   viewColumn?: vscode.ViewColumn
 ): Promise<boolean> {
-  try {
+  const attemptOpen = async (): Promise<boolean> => {
     const sources = await fetchRomSources(session);
     if (sources.length === 0) {
       return false;
@@ -406,6 +411,20 @@ async function openRomSourcesForSession(
       });
     }
     return true;
+  };
+
+  try {
+    const attemptDelays = [0, 150, 300];
+    for (const delay of attemptDelays) {
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      const opened = await attemptOpen();
+      if (opened) {
+        return true;
+      }
+    }
+    return false;
   } catch (err) {
     void vscode.window.showErrorMessage(
       `Debug80: Failed to open ROM sources: ${String(err)}`
