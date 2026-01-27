@@ -208,7 +208,8 @@ export function activate(context: vscode.ExtensionContext): void {
           !romSourcesOpenedSessions.has(evt.session.id) &&
           (!openMainSource || mainSourceOpenedSessions.has(evt.session.id))
         ) {
-          void openRomSourcesForSession(evt.session).then((opened) => {
+          const sourceColumn = getPrimaryEditorColumn();
+          void openRomSourcesForSession(evt.session, sourceColumn).then((opened) => {
             if (opened) {
               romSourcesOpenedSessions.add(evt.session.id);
             }
@@ -316,12 +317,7 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
-            const romColumn = viewColumn + 1;
-            const targetColumn =
-              romColumn <= Number(vscode.ViewColumn.Nine)
-                ? (romColumn as vscode.ViewColumn)
-                : vscode.ViewColumn.Beside;
-            return openRomSourcesForSession(evt.session, targetColumn).then((opened) => {
+            return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
               if (opened) {
                 romSourcesOpenedSessions.add(evt.session.id);
               }
