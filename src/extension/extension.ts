@@ -4,9 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/panel';
-import { createTec1MemoryPanelController } from '../platforms/tec1/memory-panel';
 import { createTec1gPanelController } from '../platforms/tec1g/panel';
-import { createTec1gMemoryPanelController } from '../platforms/tec1g/memory-panel';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
@@ -21,19 +19,16 @@ let enforceSourceColumn = false;
 let movingEditor = false;
 const activeZ80Sessions = new Set<string>();
 const sessionPlatforms = new Map<string, string>();
+const romSourcesOpenedSessions = new Set<string>();
+const mainSourceOpenedSessions = new Set<string>();
+const sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
+const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
+const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
-const tec1MemoryPanelController = createTec1MemoryPanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
 const tec1gPanelController = createTec1gPanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
-const tec1gMemoryPanelController = createTec1gMemoryPanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
@@ -81,7 +76,8 @@ export function activate(context: vscode.ExtensionContext): void {
         openTerminalPanel(undefined, { focus: true });
         return;
       }
-      openTerminalPanel(session, { focus: true });
+      const columns = getSessionColumns(session);
+      openTerminalPanel(session, { focus: true, column: columns.panel });
     })
   );
 
@@ -89,10 +85,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTec1', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        tec1PanelController.open(undefined, { focus: true });
+        tec1PanelController.open(undefined, { focus: true, tab: 'ui' });
         return;
       }
-      tec1PanelController.open(session, { focus: true });
+      const columns = getSessionColumns(session);
+      tec1PanelController.open(session, {
+        focus: true,
+        column: columns.panel,
+        tab: 'ui',
+      });
     })
   );
 
@@ -100,10 +101,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTec1Memory', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        tec1MemoryPanelController.open(undefined, { focus: true });
+        tec1PanelController.open(undefined, { focus: true, tab: 'memory' });
         return;
       }
-      tec1MemoryPanelController.open(session, { focus: true });
+      const columns = getSessionColumns(session);
+      tec1PanelController.open(session, {
+        focus: true,
+        column: columns.panel,
+        tab: 'memory',
+      });
     })
   );
 
@@ -115,13 +121,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        const payload = (await session.customRequest('debug80/romSources')) as
-          | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
-          | undefined;
-        const sources =
-          payload?.sources?.filter(
-            (source) => typeof source.path === 'string' && source.path.length > 0
-          ) ?? [];
+        const sources = await fetchRomSources(session);
         if (sources.length === 0) {
           void vscode.window.showInformationMessage(
             'Debug80: No ROM sources available for this session.'
@@ -129,10 +129,10 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         const items = sources.map((source) => ({
-          label: source.label ?? path.basename(source.path ?? ''),
+          label: source.label,
           description: source.kind === 'listing' ? 'listing' : 'source',
-          detail: source.path ?? '',
-          path: source.path ?? '',
+          detail: source.path,
+          path: source.path,
         }));
         const picked = await vscode.window.showQuickPick(items, {
           placeHolder: 'Open ROM listing/source',
@@ -143,7 +143,8 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         const doc = await vscode.workspace.openTextDocument(picked.path);
-        await vscode.window.showTextDocument(doc, { preview: false });
+        const columns = getSessionColumns(session);
+        await vscode.window.showTextDocument(doc, { preview: false, viewColumn: columns.source });
       } catch (err) {
         void vscode.window.showErrorMessage(
           `Debug80: Failed to list ROM sources: ${String(err)}`
@@ -161,6 +162,24 @@ export function activate(context: vscode.ExtensionContext): void {
         tec1PanelController.clear();
         tec1gPanelController.clear();
         sessionPlatforms.delete(session.id);
+        sessionColumns.set(session.id, resolveSessionColumns(session));
+        if (session.configuration?.openRomSourcesOnLaunch !== false) {
+          const sessionId = session.id;
+          const column = getSessionColumns(session).source;
+          setTimeout(() => {
+            if (!activeZ80Sessions.has(sessionId)) {
+              return;
+            }
+            if (romSourcesOpenedSessions.has(sessionId)) {
+              return;
+            }
+            void openRomSourcesForSession(session, column).then((opened) => {
+              if (opened) {
+                romSourcesOpenedSessions.add(sessionId);
+              }
+            });
+          }, 200);
+        }
       }
     })
   );
@@ -171,12 +190,13 @@ export function activate(context: vscode.ExtensionContext): void {
         terminalSession = undefined;
       }
       tec1PanelController.handleSessionTerminated(session.id);
-      tec1MemoryPanelController.handleSessionTerminated(session.id);
       tec1gPanelController.handleSessionTerminated(session.id);
-      tec1gMemoryPanelController.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
+        romSourcesOpenedSessions.delete(session.id);
+        mainSourceOpenedSessions.delete(session.id);
+        sessionColumns.delete(session.id);
         if (activeZ80Sessions.size === 0) {
           enforceSourceColumn = false;
         }
@@ -194,21 +214,49 @@ export function activate(context: vscode.ExtensionContext): void {
         if (id !== undefined && id.length > 0) {
           sessionPlatforms.set(evt.session.id, id);
         }
+        const columns = getSessionColumns(evt.session);
         if (id === 'tec1') {
-          tec1PanelController.open(evt.session, { focus: false, reveal: true });
-          tec1MemoryPanelController.open(evt.session, { focus: false, reveal: true });
+          tec1PanelController.open(evt.session, {
+            focus: false,
+            reveal: true,
+            column: columns.panel,
+            tab: 'ui',
+          });
         } else if (id === 'tec1g') {
-          tec1gPanelController.open(evt.session, { focus: false, reveal: true });
-          tec1gMemoryPanelController.open(evt.session, { focus: false, reveal: true });
+          tec1gPanelController.open(evt.session, {
+            focus: false,
+            reveal: true,
+            column: columns.panel,
+            tab: 'ui',
+          });
         } else {
-          openTerminalPanel(evt.session, { focus: false, reveal: true });
+          openTerminalPanel(evt.session, {
+            focus: false,
+            reveal: true,
+            column: columns.panel,
+          });
+        }
+        const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
+        const openMainSource = evt.session.configuration?.openMainSourceOnLaunch !== false;
+        if (
+          openRomSources &&
+          !romSourcesOpenedSessions.has(evt.session.id) &&
+          (!openMainSource || mainSourceOpenedSessions.has(evt.session.id))
+        ) {
+          const sourceColumn = getSessionColumns(evt.session).source;
+          void openRomSourcesForSession(evt.session, sourceColumn).then((opened) => {
+            if (opened) {
+              romSourcesOpenedSessions.add(evt.session.id);
+            }
+          });
         }
         return;
       }
       if (evt.event === 'debug80/terminalOutput') {
         const text = (evt.body as { text?: string } | undefined)?.text ?? '';
         if (terminalPanel === undefined) {
-          openTerminalPanel(evt.session, { focus: false, reveal: true });
+          const column = getSessionColumns(evt.session).panel;
+          openTerminalPanel(evt.session, { focus: false, reveal: true, column });
         }
         appendTerminalOutput(text);
         return;
@@ -283,6 +331,37 @@ export function activate(context: vscode.ExtensionContext): void {
         tec1gPanelController.appendSerial(text);
         return;
       }
+      if (evt.event === 'debug80/mainSource') {
+        const openOnLaunch = evt.session.configuration?.openMainSourceOnLaunch !== false;
+        const body = evt.body as { path?: string } | undefined;
+        const sourcePath = body?.path;
+        if (!openOnLaunch || sourcePath === undefined || sourcePath === '') {
+          return;
+        }
+        if (mainSourceOpenedSessions.has(evt.session.id)) {
+          return;
+        }
+        mainSourceOpenedSessions.add(evt.session.id);
+        const columns = getSessionColumns(evt.session);
+        const viewColumn = columns.source;
+        void vscode.workspace
+          .openTextDocument(sourcePath)
+          .then((doc) =>
+            vscode.window.showTextDocument(doc, { preview: false, viewColumn })
+          )
+          .then(() => {
+            const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
+            if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
+              return;
+            }
+            return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
+              if (opened) {
+                romSourcesOpenedSessions.add(evt.session.id);
+              }
+            });
+          });
+        return;
+      }
     })
   );
 
@@ -294,19 +373,23 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!isSourceDocument(editor.document)) {
         return;
       }
-      const primary = getPrimaryEditorColumn();
+      const activeSession = vscode.debug.activeDebugSession;
+      const preferred =
+        activeSession && activeSession.type === 'z80'
+          ? getSessionColumns(activeSession).source
+          : getPrimaryEditorColumn();
       const column = editor.viewColumn;
-      if (column === undefined || column === primary) {
+      if (column === undefined || column === preferred) {
         return;
       }
       movingEditor = true;
       void vscode.window
         .showTextDocument(editor.document, {
-          viewColumn: primary,
+          viewColumn: preferred,
           preserveFocus: true,
           preview: false,
         })
-        .then(() => closeDocumentTabsInOtherGroups(editor.document.uri, primary))
+        .then(() => closeDocumentTabsInOtherGroups(editor.document.uri, preferred))
         .then(
           () => {
             movingEditor = false;
@@ -321,6 +404,73 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   // Nothing to clean up
+}
+
+type RomSource = { label: string; path: string; kind: 'listing' | 'source' };
+
+async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[]> {
+  const payload = (await session.customRequest('debug80/romSources')) as
+    | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
+    | undefined;
+  const sources =
+    payload?.sources?.filter(
+      (source) => typeof source.path === 'string' && source.path.length > 0
+    ) ?? [];
+  return sources.map((source) => ({
+    label: source.label ?? path.basename(source.path ?? ''),
+    path: source.path ?? '',
+    kind: source.kind === 'listing' ? 'listing' : 'source',
+  }));
+}
+
+async function openRomSourcesForSession(
+  session: vscode.DebugSession,
+  viewColumn?: vscode.ViewColumn
+): Promise<boolean> {
+  const attemptOpen = async (): Promise<boolean> => {
+    const sources = await fetchRomSources(session);
+    if (sources.length === 0) {
+      return false;
+    }
+    const preferred = sources.filter((source) => source.kind === 'source');
+    const targets = preferred.length > 0 ? preferred : sources;
+    const seen = new Set<string>();
+    for (const source of targets) {
+      if (source.path === '' || seen.has(source.path)) {
+        continue;
+      }
+      seen.add(source.path);
+      const doc = await vscode.workspace.openTextDocument(source.path);
+      await vscode.window.showTextDocument(doc, {
+        preview: false,
+        preserveFocus: true,
+        ...(viewColumn !== undefined ? { viewColumn } : {}),
+      });
+    }
+    return true;
+  };
+
+  const attemptDelays = [0, 200, 400, 800, 1200, 1600];
+  let lastError: unknown;
+  for (const delay of attemptDelays) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
+      const opened = await attemptOpen();
+      if (opened) {
+        return true;
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (lastError !== undefined) {
+    void vscode.window.showErrorMessage(
+      `Debug80: Failed to open ROM sources: ${String(lastError)}`
+    );
+  }
+  return false;
 }
 
 async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
@@ -452,12 +602,42 @@ function getPrimaryEditorColumn(): vscode.ViewColumn {
 }
 
 function getTerminalColumn(): vscode.ViewColumn {
-  const primary = getPrimaryEditorColumn();
-  const candidate = primary + 1;
-  if (candidate <= Number(vscode.ViewColumn.Nine)) {
-    return candidate as vscode.ViewColumn;
+  const activeSession = vscode.debug.activeDebugSession;
+  if (activeSession && activeSession.type === 'z80') {
+    return getSessionColumns(activeSession).panel;
   }
-  return vscode.ViewColumn.Beside;
+  return DEFAULT_PANEL_COLUMN;
+}
+
+function normalizeColumn(
+  value: unknown,
+  fallback: vscode.ViewColumn
+): vscode.ViewColumn {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const rounded = Math.trunc(value);
+    if (rounded >= 1 && rounded <= Number(vscode.ViewColumn.Nine)) {
+      return rounded as vscode.ViewColumn;
+    }
+  }
+  return fallback;
+}
+
+function resolveSessionColumns(session: vscode.DebugSession): {
+  source: vscode.ViewColumn;
+  panel: vscode.ViewColumn;
+} {
+  const config = session.configuration ?? {};
+  return {
+    source: normalizeColumn(config.sourceColumn, DEFAULT_SOURCE_COLUMN),
+    panel: normalizeColumn(config.panelColumn, DEFAULT_PANEL_COLUMN),
+  };
+}
+
+function getSessionColumns(session: vscode.DebugSession): {
+  source: vscode.ViewColumn;
+  panel: vscode.ViewColumn;
+} {
+  return sessionColumns.get(session.id) ?? resolveSessionColumns(session);
 }
 
 function isSourceDocument(doc: vscode.TextDocument): boolean {
@@ -488,11 +668,11 @@ function closeDocumentTabsInOtherGroups(
 
 function openTerminalPanel(
   session?: vscode.DebugSession,
-  options?: { focus?: boolean; reveal?: boolean }
+  options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
 ): void {
   const focus = options?.focus ?? false;
   const reveal = options?.reveal ?? true;
-  const targetColumn = getTerminalColumn();
+  const targetColumn = options?.column ?? getTerminalColumn();
   if (terminalPanel === undefined) {
     terminalPanel = vscode.window.createWebviewPanel(
       'debug80Terminal',

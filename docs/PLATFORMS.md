@@ -299,6 +299,8 @@ Extra ROM listings:
   paths also work.
 - If a listing sits next to a `.source.asm` or `.asm`, Debug80 will offer that source in the
   ROM source picker and use it for line-based breakpoints.
+- Debug80 caches a D8 debug map next to the listing as `<listing-base>.d8dbg.json`. If the
+  map is newer than the `.lst`, it is loaded directly to skip rebuilds.
 - Missing listings emit a Debug Console message that includes the platform name.
 
 ```json
