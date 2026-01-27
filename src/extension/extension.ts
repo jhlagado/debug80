@@ -4,9 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/panel';
-import { createTec1MemoryPanelController } from '../platforms/tec1/memory-panel';
 import { createTec1gPanelController } from '../platforms/tec1g/panel';
-import { createTec1gMemoryPanelController } from '../platforms/tec1g/memory-panel';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
@@ -30,15 +28,7 @@ const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
-const tec1MemoryPanelController = createTec1MemoryPanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
 const tec1gPanelController = createTec1gPanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
-const tec1gMemoryPanelController = createTec1gMemoryPanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
 );
@@ -95,11 +85,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTec1', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        tec1PanelController.open(undefined, { focus: true });
+        tec1PanelController.open(undefined, { focus: true, tab: 'ui' });
         return;
       }
       const columns = getSessionColumns(session);
-      tec1PanelController.open(session, { focus: true, column: columns.panel });
+      tec1PanelController.open(session, {
+        focus: true,
+        column: columns.panel,
+        tab: 'ui',
+      });
     })
   );
 
@@ -107,11 +101,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.openTec1Memory', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {
-        tec1MemoryPanelController.open(undefined, { focus: true });
+        tec1PanelController.open(undefined, { focus: true, tab: 'memory' });
         return;
       }
       const columns = getSessionColumns(session);
-      tec1MemoryPanelController.open(session, { focus: true, column: columns.panel });
+      tec1PanelController.open(session, {
+        focus: true,
+        column: columns.panel,
+        tab: 'memory',
+      });
     })
   );
 
@@ -192,9 +190,7 @@ export function activate(context: vscode.ExtensionContext): void {
         terminalSession = undefined;
       }
       tec1PanelController.handleSessionTerminated(session.id);
-      tec1MemoryPanelController.handleSessionTerminated(session.id);
       tec1gPanelController.handleSessionTerminated(session.id);
-      tec1gMemoryPanelController.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
         activeZ80Sessions.delete(session.id);
         sessionPlatforms.delete(session.id);
@@ -224,22 +220,14 @@ export function activate(context: vscode.ExtensionContext): void {
             focus: false,
             reveal: true,
             column: columns.panel,
-          });
-          tec1MemoryPanelController.open(evt.session, {
-            focus: false,
-            reveal: true,
-            column: columns.panel,
+            tab: 'ui',
           });
         } else if (id === 'tec1g') {
           tec1gPanelController.open(evt.session, {
             focus: false,
             reveal: true,
             column: columns.panel,
-          });
-          tec1gMemoryPanelController.open(evt.session, {
-            focus: false,
-            reveal: true,
-            column: columns.panel,
+            tab: 'ui',
           });
         } else {
           openTerminalPanel(evt.session, {
