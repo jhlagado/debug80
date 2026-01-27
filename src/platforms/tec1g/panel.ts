@@ -1254,11 +1254,17 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     function parseAddress(text) {
       const trimmed = text.trim();
       if (!trimmed) return undefined;
-      if (trimmed.startsWith('0x') || /[A-Fa-f]/.test(trimmed)) {
-        const value = parseInt(trimmed.replace(/^0x/i, ''), 16);
+      const lower = trimmed.toLowerCase();
+      if (lower.startsWith('d:')) {
+        const value = parseInt(lower.slice(2), 10);
         return Number.isFinite(value) ? value & 0xFFFF : undefined;
       }
-      const value = parseInt(trimmed, 10);
+      const hexText = lower.startsWith('0x')
+        ? lower.slice(2)
+        : lower.endsWith('h')
+          ? lower.slice(0, -1)
+          : lower;
+      const value = parseInt(hexText, 16);
       return Number.isFinite(value) ? value & 0xFFFF : undefined;
     }
 
