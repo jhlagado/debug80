@@ -57,7 +57,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0x04/0x84`: LCD instruction/data.
 - `OUT 0x05`: LED matrix row select.
 - `OUT 0x06`: LED matrix column data.
-- `OUT 0x07/0x87`: GLCD instruction/data (not yet emulated).
+- `OUT 0x07/0x87`: GLCD instruction/data (basic graphics GDRAM emulation).
 - `OUT 0xFF` (SYS_CTRL): latch for Shadow/Protect/Expand bits.
 - `OUT 0xFD`: SDIO (not yet emulated).
 
