@@ -3,6 +3,7 @@ import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, 
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import * as cp from 'child_process';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
@@ -33,6 +34,8 @@ import {
   normalizeTec1gConfig,
   Tec1gRuntime,
 } from '../platforms/tec1g/runtime';
+
+const CACHE_KEY_LENGTH = 12;
 
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
@@ -2839,15 +2842,51 @@ export class Z80DebugSession extends DebugSession {
       (asmPath === undefined
         ? path.basename(listingPath, '.lst')
         : path.basename(asmPath, path.extname(asmPath)));
+    const cacheDir = this.resolveCacheDir(baseDir);
+    if (cacheDir !== undefined) {
+      const key = this.buildListingCacheKey(listingPath);
+      return path.join(cacheDir, `${artifactBase}.${key}.d8dbg.json`);
+    }
     const outDirRaw = args.outputDir ?? path.dirname(listingPath);
     const outDir = this.resolveRelative(outDirRaw, baseDir);
     return path.join(outDir, `${artifactBase}.d8dbg.json`);
   }
 
   private resolveExtraDebugMapPath(listingPath: string): string {
-    const dir = path.dirname(listingPath);
     const base = path.basename(listingPath, path.extname(listingPath));
+    const cacheDir = this.resolveCacheDir(this.baseDir);
+    if (cacheDir !== undefined) {
+      const key = this.buildListingCacheKey(listingPath);
+      return path.join(cacheDir, `${base}.${key}.d8dbg.json`);
+    }
+    const dir = path.dirname(listingPath);
     return path.join(dir, `${base}.d8dbg.json`);
+  }
+
+  private resolveCacheDir(baseDir: string): string | undefined {
+    if (!baseDir || baseDir.length === 0) {
+      return undefined;
+    }
+    try {
+      const stat = fs.statSync(baseDir);
+      if (!stat.isDirectory()) {
+        return undefined;
+      }
+      const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
+      fs.mkdirSync(cacheDir, { recursive: true });
+      return cacheDir;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private buildListingCacheKey(listingPath: string): string {
+    const normalized = path.resolve(listingPath);
+    return crypto
+      .createHash('sha1')
+      .update(normalized)
+      .digest('hex')
+      .slice(0, CACHE_KEY_LENGTH);
   }
 
   private relativeIfPossible(filePath: string, baseDir: string): string {
