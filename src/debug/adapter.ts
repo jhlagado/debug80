@@ -35,6 +35,8 @@ import {
   Tec1gRuntime,
 } from '../platforms/tec1g/runtime';
 
+const CACHE_KEY_LENGTH = 12;
+
 interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   asm?: string;
   sourceFile?: string;
@@ -2870,15 +2872,21 @@ export class Z80DebugSession extends DebugSession {
       if (!stat.isDirectory()) {
         return undefined;
       }
+      const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
+      fs.mkdirSync(cacheDir, { recursive: true });
+      return cacheDir;
     } catch {
       return undefined;
     }
-    return path.resolve(baseDir, '.debug80', 'cache');
   }
 
   private buildListingCacheKey(listingPath: string): string {
     const normalized = path.resolve(listingPath);
-    return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, 12);
+    return crypto
+      .createHash('sha1')
+      .update(normalized)
+      .digest('hex')
+      .slice(0, CACHE_KEY_LENGTH);
   }
 
   private relativeIfPossible(filePath: string, baseDir: string): string {
