@@ -3,8 +3,8 @@ import { Z80DebugAdapterFactory } from '../debug/adapter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
-import { createTec1PanelController } from '../platforms/tec1/panel';
-import { createTec1gPanelController } from '../platforms/tec1g/panel';
+import { createTec1PanelController } from '../platforms/tec1/ui-panel';
+import { createTec1gPanelController } from '../platforms/tec1g/ui-panel';
 
 let terminalPanel: vscode.WebviewPanel | undefined;
 let terminalBuffer = '';
@@ -265,17 +265,19 @@ export function activate(context: vscode.ExtensionContext): void {
         const payload = evt.body as {
           digits?: number[];
           matrix?: number[];
+          glcd?: number[];
           lcd?: number[];
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
-        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
+        if (!payload?.digits || !payload?.lcd || !payload?.matrix || !payload?.glcd) {
           return;
         }
         const update = {
           digits: payload.digits,
           matrix: payload.matrix,
+          glcd: payload.glcd,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
@@ -300,17 +302,19 @@ export function activate(context: vscode.ExtensionContext): void {
         const payload = evt.body as {
           digits?: number[];
           matrix?: number[];
+          glcd?: number[];
           lcd?: number[];
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
-        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
+        if (!payload?.digits || !payload?.lcd || !payload?.matrix || !payload?.glcd) {
           return;
         }
         const update = {
           digits: payload.digits,
           matrix: payload.matrix,
+          glcd: payload.glcd,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,

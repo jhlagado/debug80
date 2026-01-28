@@ -11,6 +11,12 @@ export interface Tec1gState {
   digitLatch: number;
   segmentLatch: number;
   matrixLatch: number;
+  glcd: Uint8Array;
+  glcdRowAddr: number;
+  glcdRowBase: number;
+  glcdCol: number;
+  glcdExpectColumn: boolean;
+  glcdGraphics: boolean;
   speaker: boolean;
   speakerHz: number;
   lcd: number[];
@@ -113,6 +119,12 @@ export function createTec1gRuntime(
     digitLatch: 0,
     segmentLatch: 0,
     matrixLatch: 0,
+    glcd: new Uint8Array(1024),
+    glcdRowAddr: 0,
+    glcdRowBase: 0,
+    glcdCol: 0,
+    glcdExpectColumn: false,
+    glcdGraphics: false,
     speaker: false,
     speakerHz: 0,
     lcd: Array.from({ length: 80 }, () => 0x20),
@@ -154,11 +166,38 @@ export function createTec1gRuntime(
     onUpdate({
       digits: [...state.digits],
       matrix: [...state.matrix],
+      glcd: Array.from(state.glcd),
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
       lcd: [...state.lcd],
       speakerHz: state.speakerHz,
     });
+  };
+
+  const glcdSetRowAddr = (value: number): void => {
+    state.glcdRowAddr = value & 0x1f;
+    state.glcdExpectColumn = true;
+  };
+
+  const glcdSetColumn = (value: number): void => {
+    const bankSelected = (value & 0x08) !== 0;
+    state.glcdRowBase = bankSelected ? 32 : 0;
+    state.glcdCol = bankSelected ? 0 : (value & 0x0f);
+    state.glcdExpectColumn = false;
+  };
+
+  const glcdWriteData = (value: number): void => {
+    if (!state.glcdGraphics) {
+      return;
+    }
+    const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
+    const col = state.glcdCol & 0x0f;
+    const index = row * 16 + col;
+    if (index >= 0 && index < state.glcd.length) {
+      state.glcd[index] = value & 0xff;
+      queueUpdate();
+    }
+    state.glcdCol = (state.glcdCol + 1) & 0x0f;
   };
 
   let serialLevel: 0 | 1 = 1;
@@ -422,7 +461,35 @@ export function createTec1gRuntime(
         lcdWriteData(value);
         return;
       }
-      if (p === 0x07 || p === 0x87 || (p >= 0xfc && p <= 0xfe)) {
+      if (p === 0x07) {
+        const instruction = value & 0xff;
+        if (instruction === 0x30) {
+          state.glcdGraphics = false;
+          return;
+        }
+        if (instruction === 0x34) {
+          return;
+        }
+        if (instruction === 0x36) {
+          state.glcdGraphics = true;
+          return;
+        }
+        if ((instruction & 0x80) !== 0) {
+          if (state.glcdExpectColumn) {
+            glcdSetColumn(instruction);
+          } else {
+            glcdSetRowAddr(instruction);
+          }
+          return;
+        }
+        logPortWrite(p, value);
+        return;
+      }
+      if (p === 0x87) {
+        glcdWriteData(value);
+        return;
+      }
+      if (p >= 0xfc && p <= 0xfe) {
         logPortWrite(p, value);
         return;
       }
@@ -578,6 +645,12 @@ export function createTec1gRuntime(
     state.lcdAddr = 0x80;
     lcdBusyUntil = 0;
     state.matrix.fill(0x00);
+    state.glcd.fill(0x00);
+    state.glcdRowAddr = 0;
+    state.glcdRowBase = 0;
+    state.glcdCol = 0;
+    state.glcdExpectColumn = false;
+    state.glcdGraphics = false;
     state.sysCtrl = 0x00;
     state.shadowEnabled = true;
     state.protectEnabled = false;

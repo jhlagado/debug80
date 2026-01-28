@@ -2843,7 +2843,7 @@ export class Z80DebugSession extends DebugSession {
         ? path.basename(listingPath, '.lst')
         : path.basename(asmPath, path.extname(asmPath)));
     const cacheDir = this.resolveCacheDir(baseDir);
-    if (cacheDir !== undefined) {
+    if (cacheDir !== undefined && cacheDir.length > 0) {
       const key = this.buildListingCacheKey(listingPath);
       return path.join(cacheDir, `${artifactBase}.${key}.d8dbg.json`);
     }
@@ -2855,7 +2855,7 @@ export class Z80DebugSession extends DebugSession {
   private resolveExtraDebugMapPath(listingPath: string): string {
     const base = path.basename(listingPath, path.extname(listingPath));
     const cacheDir = this.resolveCacheDir(this.baseDir);
-    if (cacheDir !== undefined) {
+    if (cacheDir !== undefined && cacheDir.length > 0) {
       const key = this.buildListingCacheKey(listingPath);
       return path.join(cacheDir, `${base}.${key}.d8dbg.json`);
     }
