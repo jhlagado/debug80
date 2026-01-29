@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import { getHD44780A00RomData } from './hd44780-a00';
 
 type Tec1gPanelTab = 'ui' | 'memory';
 
@@ -811,6 +812,8 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
         <label><input type="checkbox" data-section="matrix" /> 8x8 MATRIX</label>
         <label><input type="checkbox" data-section="glcd" /> GLCD</label>
         <label><input type="checkbox" data-section="serial" checked /> SERIAL</label>
+        <span style="border-left:1px solid #333;margin:0 2px"></span>
+        <label><input type="checkbox" id="lcdBitmapToggle" /> BITMAP LCD</label>
       </div>
       <div class="layout">
         <div class="left-col">
@@ -1006,6 +1009,8 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     const GLCD_HEIGHT = 64;
     const GLCD_BYTES = 1024;
     let lcdBytes = new Array(LCD_BYTES).fill(0x20);
+    let lcdBitmapMode = false;
+    ${getHD44780A00RomData()}
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
@@ -1163,6 +1168,21 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       });
     }
 
+    const bitmapToggle = document.getElementById('lcdBitmapToggle');
+    if (bitmapToggle) {
+      const stored = vscode.getState() || {};
+      if (stored.lcdBitmapMode) {
+        lcdBitmapMode = true;
+        bitmapToggle.checked = true;
+      }
+      bitmapToggle.addEventListener('change', function() {
+        lcdBitmapMode = bitmapToggle.checked;
+        const s = vscode.getState() || {};
+        vscode.setState({ ...s, lcdBitmapMode: lcdBitmapMode });
+        drawLcd();
+      });
+    }
+
     const keyMap = {
       '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
       '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
@@ -1224,11 +1244,17 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     }
 
     function drawLcd() {
+      if (lcdBitmapMode) {
+        drawLcdBitmap();
+        return;
+      }
       if (!lcdCtx || !lcdCanvas) {
         return;
       }
       lcdCanvas.width = LCD_COLS * LCD_CELL_W;
       lcdCanvas.height = LCD_ROWS * LCD_CELL_H;
+      lcdCanvas.style.width = '';
+      lcdCanvas.style.height = '';
       lcdCtx.fillStyle = '#0b1a10';
       lcdCtx.fillRect(0, 0, lcdCanvas.width, lcdCanvas.height);
       lcdCtx.font = '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
@@ -1242,6 +1268,56 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
           lcdCtx.fillText(char, col * LCD_CELL_W + 2, row * LCD_CELL_H + 2);
         }
       }
+    }
+
+    function drawLcdBitmap() {
+      if (!lcdCtx || !lcdCanvas) {
+        return;
+      }
+      const dot = 2;
+      const cellW = 5 * dot + 2;
+      const cellH = 8 * dot + 2;
+      const w = LCD_COLS * cellW;
+      const h = LCD_ROWS * cellH;
+      lcdCanvas.width = w;
+      lcdCanvas.height = h;
+      lcdCanvas.style.width = '';
+      lcdCanvas.style.height = '';
+      const img = lcdCtx.createImageData(w, h);
+      const d = img.data;
+      const bgR = 11, bgG = 26, bgB = 16;
+      const onR = 180, onG = 245, onB = 180;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i] = bgR; d[i + 1] = bgG; d[i + 2] = bgB; d[i + 3] = 255;
+      }
+      for (let row = 0; row < LCD_ROWS; row++) {
+        for (let col = 0; col < LCD_COLS; col++) {
+          const charCode = (lcdBytes[row * LCD_COLS + col] || 0x20) & 0xFF;
+          const romBase = charCode * 8;
+          const ox = col * cellW + 1;
+          const oy = row * cellH + 1;
+          for (let dy = 0; dy < 8; dy++) {
+            const bits = A00[romBase + dy] || 0;
+            for (let dx = 0; dx < 5; dx++) {
+              if (bits & (0x10 >> dx)) {
+                const sx = ox + dx * dot;
+                const sy = oy + dy * dot;
+                for (let py = 0; py < dot; py++) {
+                  for (let px = 0; px < dot; px++) {
+                    const idx = ((sy + py) * w + (sx + px)) * 4;
+                    if (idx >= 0 && idx < d.length - 3) {
+                      d[idx] = onR;
+                      d[idx + 1] = onG;
+                      d[idx + 2] = onB;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      lcdCtx.putImageData(img, 0, 0);
     }
 
     function drawGlcd() {
