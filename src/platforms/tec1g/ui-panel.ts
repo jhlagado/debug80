@@ -812,8 +812,6 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
         <label><input type="checkbox" data-section="matrix" /> 8x8 MATRIX</label>
         <label><input type="checkbox" data-section="glcd" /> GLCD</label>
         <label><input type="checkbox" data-section="serial" checked /> SERIAL</label>
-        <span style="border-left:1px solid #333;margin:0 2px"></span>
-        <label><input type="checkbox" id="lcdBitmapToggle" /> BITMAP LCD</label>
       </div>
       <div class="layout">
         <div class="left-col">
@@ -1002,14 +1000,11 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     const DIGITS = 6;
     const LCD_COLS = 20;
     const LCD_ROWS = 4;
-    const LCD_CELL_W = 12;
-    const LCD_CELL_H = 18;
     const LCD_BYTES = LCD_COLS * LCD_ROWS;
     const GLCD_WIDTH = 128;
     const GLCD_HEIGHT = 64;
     const GLCD_BYTES = 1024;
     let lcdBytes = new Array(LCD_BYTES).fill(0x20);
-    let lcdBitmapMode = false;
     ${getHD44780A00RomData()}
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
     if (glcdBaseCanvas) {
@@ -1168,21 +1163,6 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       });
     }
 
-    const bitmapToggle = document.getElementById('lcdBitmapToggle');
-    if (bitmapToggle) {
-      const stored = vscode.getState() || {};
-      if (stored.lcdBitmapMode) {
-        lcdBitmapMode = true;
-        bitmapToggle.checked = true;
-      }
-      bitmapToggle.addEventListener('change', function() {
-        lcdBitmapMode = bitmapToggle.checked;
-        const s = vscode.getState() || {};
-        vscode.setState({ ...s, lcdBitmapMode: lcdBitmapMode });
-        drawLcd();
-      });
-    }
-
     const keyMap = {
       '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
       '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
@@ -1220,54 +1200,8 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       speedEl.classList.toggle('fast', mode === 'fast');
     }
 
-    function lcdByteToChar(value) {
-      const code = value & 0xff;
-      if (code === 0x5c) {
-        return '¥';
-      }
-      if (code === 0x7e) {
-        return '▶';
-      }
-      if (code === 0x7f) {
-        return '◀';
-      }
-      if (code === 0xa5) {
-        return '•';
-      }
-      if (code === 0xf4) {
-        return 'Ω';
-      }
-      if (code >= 0x20 && code <= 0x7e) {
-        return String.fromCharCode(code);
-      }
-      return ' ';
-    }
-
     function drawLcd() {
-      if (lcdBitmapMode) {
-        drawLcdBitmap();
-        return;
-      }
-      if (!lcdCtx || !lcdCanvas) {
-        return;
-      }
-      lcdCanvas.width = LCD_COLS * LCD_CELL_W;
-      lcdCanvas.height = LCD_ROWS * LCD_CELL_H;
-      lcdCanvas.style.width = '';
-      lcdCanvas.style.height = '';
-      lcdCtx.fillStyle = '#0b1a10';
-      lcdCtx.fillRect(0, 0, lcdCanvas.width, lcdCanvas.height);
-      lcdCtx.font = '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
-      lcdCtx.textBaseline = 'top';
-      for (let row = 0; row < LCD_ROWS; row += 1) {
-        for (let col = 0; col < LCD_COLS; col += 1) {
-          const idx = row * LCD_COLS + col;
-          const value = lcdBytes[idx] || 0x20;
-          const char = lcdByteToChar(value);
-          lcdCtx.fillStyle = '#b4f5b4';
-          lcdCtx.fillText(char, col * LCD_CELL_W + 2, row * LCD_CELL_H + 2);
-        }
-      }
+      drawLcdBitmap();
     }
 
     function drawLcdBitmap() {
