@@ -210,7 +210,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       if (evt.event === 'debug80/platform') {
-        const id = (evt.body as { id?: string } | undefined)?.id;
+        const body = evt.body as { id?: string; uiVisibility?: Record<string, boolean> } | undefined;
+        const id = body?.id;
         if (id !== undefined && id.length > 0) {
           sessionPlatforms.set(evt.session.id, id);
         }
@@ -229,6 +230,9 @@ export function activate(context: vscode.ExtensionContext): void {
             column: columns.panel,
             tab: 'ui',
           });
+          if (body?.uiVisibility) {
+            tec1gPanelController.setUiVisibility(body.uiVisibility, false);
+          }
         } else {
           openTerminalPanel(evt.session, {
             focus: false,

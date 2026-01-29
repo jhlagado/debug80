@@ -56,6 +56,14 @@ export interface Tec1gPlatformConfig {
   updateMs?: number;
   yieldMs?: number;
   extraListings?: string[];
+  uiVisibility?: {
+    lcd?: boolean;
+    display?: boolean;
+    keypad?: boolean;
+    matrix?: boolean;
+    glcd?: boolean;
+    serial?: boolean;
+  };
 }
 
 export interface Tec1gPlatformConfigNormalized {
@@ -68,4 +76,12 @@ export interface Tec1gPlatformConfigNormalized {
   updateMs: number;
   yieldMs: number;
   extraListings?: string[];
+  uiVisibility?: {
+    lcd?: boolean;
+    display?: boolean;
+    keypad?: boolean;
+    matrix?: boolean;
+    glcd?: boolean;
+    serial?: boolean;
+  };
 }

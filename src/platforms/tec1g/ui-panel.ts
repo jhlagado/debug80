@@ -10,6 +10,7 @@ export interface Tec1gPanelController {
   ): void;
   update(payload: Tec1gUpdatePayload): void;
   appendSerial(text: string): void;
+  setUiVisibility(visibility: Record<string, boolean> | undefined, persist?: boolean): void;
   clear(): void;
   handleSessionTerminated(sessionId: string): void;
 }
@@ -42,6 +43,7 @@ export function createTec1gPanelController(
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let refreshInFlight = false;
   const autoRefreshMs = 150;
+  let uiVisibilityOverride: Record<string, boolean> | undefined;
 
   const open = (
     targetSession?: vscode.DebugSession,
@@ -158,6 +160,13 @@ export function createTec1gPanelController(
     }
     panel.webview.html = getTec1gHtml(activeTab);
     update({ digits, matrix, glcd, speaker: speaker ? 1 : 0, speedMode, lcd });
+    if (uiVisibilityOverride) {
+      void panel.webview.postMessage({
+        type: 'uiVisibility',
+        visibility: uiVisibilityOverride,
+        persist: false,
+      });
+    }
     if (serialBuffer.length > 0) {
       void panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
     }
@@ -204,6 +213,23 @@ export function createTec1gPanelController(
     }
   };
 
+  const setUiVisibility = (
+    visibility: Record<string, boolean> | undefined,
+    persist = false
+  ): void => {
+    if (!visibility) {
+      return;
+    }
+    uiVisibilityOverride = { ...visibility };
+    if (panel !== undefined) {
+      void panel.webview.postMessage({
+        type: 'uiVisibility',
+        visibility: uiVisibilityOverride,
+        persist,
+      });
+    }
+  };
+
   const clear = (): void => {
     digits = Array.from({ length: 6 }, () => 0);
     matrix = Array.from({ length: 8 }, () => 0);
@@ -237,6 +263,7 @@ export function createTec1gPanelController(
     open,
     update,
     appendSerial,
+    setUiVisibility,
     clear,
     handleSessionTerminated,
   };
@@ -1107,6 +1134,17 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       vscode.setState({ ...stored, uiVisibility: visibility });
     }
 
+    function applyVisibilityOverride(visibility, persist) {
+      if (!visibility || typeof visibility !== 'object') {
+        return;
+      }
+      uiVisibility = { ...defaultVisibility, ...visibility };
+      applyVisibility(uiVisibility);
+      if (persist) {
+        saveVisibility(uiVisibility);
+      }
+    }
+
     let uiVisibility = loadVisibility();
 
     if (uiControls) {
@@ -1172,6 +1210,12 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       }
       if (code === 0x7f) {
         return '◀';
+      }
+      if (code === 0xa5) {
+        return '•';
+      }
+      if (code === 0xf4) {
+        return 'Ω';
       }
       if (code >= 0x20 && code <= 0x7e) {
         return String.fromCharCode(code);
@@ -1632,6 +1676,10 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       if (!event.data) return;
       if (event.data.type === 'selectTab') {
         setTab(event.data.tab, false);
+        return;
+      }
+      if (event.data.type === 'uiVisibility') {
+        applyVisibilityOverride(event.data.visibility, event.data.persist === true);
         return;
       }
       if (event.data.type === 'update') {

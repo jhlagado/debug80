@@ -104,6 +104,7 @@ export function normalizeTec1gConfig(
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
     ...(extraListings ? { extraListings } : {}),
+    ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
 }
 
@@ -314,14 +315,14 @@ export function createTec1gRuntime(
       state.lcd[index] = value & 0xff;
       queueUpdate();
     }
-    state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    state.lcdAddr = lcdAdvanceAddr(state.lcdAddr);
     lcdSetBusy(TEC1G_LCD_BUSY_US);
   };
 
   const lcdReadData = (): number => {
     const index = lcdIndexForAddr(state.lcdAddr);
     const value = index !== null ? (state.lcd[index] ?? 0x20) : 0x20;
-    state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    state.lcdAddr = lcdAdvanceAddr(state.lcdAddr);
     lcdSetBusy(TEC1G_LCD_BUSY_US);
     return value & 0xff;
   };
@@ -331,6 +332,23 @@ export function createTec1gRuntime(
     lcdSetAddr(0x80);
     queueUpdate();
     lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
+  };
+
+  const lcdAdvanceAddr = (addr: number): number => {
+    const masked = addr & 0xff;
+    if (masked >= 0x80 && masked <= 0x93) {
+      return masked === 0x93 ? 0x94 : masked + 1;
+    }
+    if (masked >= 0xc0 && masked <= 0xd3) {
+      return masked === 0xd3 ? 0xd4 : masked + 1;
+    }
+    if (masked >= 0x94 && masked <= 0xa7) {
+      return masked === 0xa7 ? 0xc0 : masked + 1;
+    }
+    if (masked >= 0xd4 && masked <= 0xe7) {
+      return masked === 0xe7 ? 0x80 : masked + 1;
+    }
+    return (masked + 1) & 0xff;
   };
 
   const updateMatrix = (rowMask: number): void => {

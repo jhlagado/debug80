@@ -205,7 +205,12 @@ export class Z80DebugSession extends DebugSession {
         platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
       this.tec1Config = tec1Config;
       this.tec1gConfig = tec1gConfig;
-      this.sendEvent(new DapEvent('debug80/platform', { id: platform }));
+      const platformPayload: { id: string; uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'] } =
+        { id: platform };
+      if (platform === 'tec1g' && tec1gConfig?.uiVisibility) {
+        platformPayload.uiVisibility = tec1gConfig.uiVisibility;
+      }
+      this.sendEvent(new DapEvent('debug80/platform', platformPayload));
 
       const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
