@@ -36,7 +36,6 @@ import { ensureTec1gShadowRom } from './tec1g-shadow';
 import { resetSessionState, StopReason } from './session-state';
 import type { SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
-import type { PlatformKind } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
@@ -73,7 +72,6 @@ import {
   extractViewEntry,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
-import { isPathWithin } from './path-utils';
 import {
   applySerialInput,
   applySpeedChange,
@@ -81,6 +79,18 @@ import {
   applyTerminalInput,
 } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
+import {
+  normalizePlatformName,
+  populateFromConfig,
+  resolveArtifacts,
+  resolveDebugMapPath,
+  resolveExtraDebugMapPath,
+  resolveRelative,
+  resolveAsmPath,
+  normalizeSourcePath,
+  relativeIfPossible,
+  type LaunchArgsHelpers,
+} from './launch-args';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -153,7 +163,9 @@ export class Z80DebugSession extends DebugSession {
     this.breakpointManager.reset();
 
     try {
-      const merged = this.populateFromConfig(args);
+      const merged = populateFromConfig(args, {
+        resolveBaseDir: (requestArgs) => this.resolveBaseDir(requestArgs),
+      });
       this.stopOnEntry = merged.stopOnEntry === true;
 
       if (
@@ -178,7 +190,7 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
 
-      const platform = this.normalizePlatformName(merged);
+      const platform = normalizePlatformName(merged);
       this.activePlatform = platform;
       const simpleConfig = platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
       const tec1Config = platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
@@ -192,9 +204,12 @@ export class Z80DebugSession extends DebugSession {
       }
       this.sendEvent(new DapEvent('debug80/platform', platformPayload));
 
-      const baseDir = this.resolveBaseDir(merged);
+    const baseDir = this.resolveBaseDir(merged);
       this.baseDir = baseDir;
-      const { hexPath, listingPath, asmPath } = this.resolveArtifacts(merged, baseDir);
+      const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir, {
+        resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
+        resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
+      });
 
       this.assembleIfRequested(merged, asmPath, hexPath, listingPath, platform, simpleConfig);
 
@@ -221,7 +236,7 @@ export class Z80DebugSession extends DebugSession {
         baseDir,
         hexPath,
         listingPath,
-        resolveRelative: (p, dir) => this.resolveRelative(p, dir),
+          resolveRelative: (p, dir) => resolveRelative(p, dir),
         resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
         log: (message: string): void => {
           emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
@@ -241,12 +256,18 @@ export class Z80DebugSession extends DebugSession {
       this.sourceManager = new SourceManager({
         platform,
         baseDir,
-        resolveRelative: (p, dir) => this.resolveRelative(p, dir),
+        resolveRelative: (p, dir) => resolveRelative(p, dir),
         resolveMappedPath: (file) => this.resolveMappedPath(file),
-        relativeIfPossible: (filePath, dir) => this.relativeIfPossible(filePath, dir),
-        resolveExtraDebugMapPath: (p) => this.resolveExtraDebugMapPath(p),
+        relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
+        resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, this.getLaunchArgsHelpers()),
         resolveDebugMapPath: (args, dir, asm, listing) =>
-          this.resolveDebugMapPath(args as LaunchRequestArguments, dir, asm, listing),
+          resolveDebugMapPath(
+            args as LaunchRequestArguments,
+            dir,
+            asm,
+            listing,
+            this.getLaunchArgsHelpers()
+          ),
         resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
         log: (message: string): void => {
           emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
@@ -410,10 +431,10 @@ export class Z80DebugSession extends DebugSession {
   ): void {
     const sourcePath = args.source?.path;
     const breakpoints = args.breakpoints ?? [];
-    const normalized =
-      sourcePath === undefined || sourcePath.length === 0
-        ? undefined
-        : this.normalizeSourcePath(sourcePath);
+      const normalized =
+        sourcePath === undefined || sourcePath.length === 0
+          ? undefined
+          : normalizeSourcePath(sourcePath, this.baseDir);
 
     if (normalized !== undefined) {
       this.breakpointManager.setPending(normalized, breakpoints);
@@ -1176,212 +1197,6 @@ export class Z80DebugSession extends DebugSession {
     };
   }
 
-  private populateFromConfig(args: LaunchRequestArguments): LaunchRequestArguments {
-    const configCandidates: string[] = [];
-
-    if (args.projectConfig !== undefined && args.projectConfig !== '') {
-      configCandidates.push(args.projectConfig);
-    }
-    configCandidates.push('debug80.json');
-    configCandidates.push('.debug80.json');
-    configCandidates.push(path.join('.vscode', 'debug80.json'));
-
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const startDir =
-      args.asm !== undefined && args.asm !== ''
-        ? path.dirname(args.asm)
-        : args.sourceFile !== undefined && args.sourceFile !== ''
-          ? path.dirname(args.sourceFile)
-          : (workspaceRoot ?? process.cwd());
-
-    const dirsToCheck: string[] = [];
-    for (let dir = startDir; ; ) {
-      dirsToCheck.push(dir);
-      const parent = path.dirname(dir);
-      if (parent === dir) {
-        break;
-      }
-      dir = parent;
-    }
-
-    let configPath: string | undefined;
-    for (const dir of dirsToCheck) {
-      for (const candidate of configCandidates) {
-        const full = path.isAbsolute(candidate) ? candidate : path.join(dir, candidate);
-        if (fs.existsSync(full)) {
-          configPath = full;
-          break;
-        }
-      }
-      if (configPath !== undefined) {
-        break;
-      }
-      const pkgPath = path.join(dir, 'package.json');
-      if (fs.existsSync(pkgPath)) {
-        try {
-          const pkgRaw = fs.readFileSync(pkgPath, 'utf-8');
-          const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
-          if (pkg.debug80 !== undefined) {
-            configPath = pkgPath;
-            break;
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    if (configPath === undefined) {
-      return args;
-    }
-
-    try {
-      let cfg: {
-        defaultTarget?: string;
-        targets?: Record<
-          string,
-          Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string }
-        >;
-      } & (Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string });
-
-      if (configPath.endsWith('package.json')) {
-        const pkgRaw = fs.readFileSync(configPath, 'utf-8');
-        const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
-        cfg =
-          (pkg.debug80 as typeof cfg) ??
-          ({
-            targets: {},
-          } as typeof cfg);
-      } else {
-        const raw = fs.readFileSync(configPath, 'utf-8');
-        cfg = JSON.parse(raw) as typeof cfg;
-      }
-
-      const targets = cfg.targets ?? {};
-      const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-      const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
-
-      const merged: LaunchRequestArguments = {
-        ...cfg,
-        ...targetCfg,
-        ...args,
-      };
-
-      const asmResolved =
-        args.asm ??
-        args.sourceFile ??
-        targetCfg?.asm ??
-        targetCfg?.sourceFile ??
-        targetCfg?.source ??
-        cfg.asm ??
-        cfg.sourceFile ??
-        cfg.source;
-      if (asmResolved !== undefined) {
-        merged.asm = asmResolved;
-      }
-
-      const sourceResolved =
-        args.sourceFile ??
-        args.asm ??
-        targetCfg?.sourceFile ??
-        targetCfg?.asm ??
-        targetCfg?.source ??
-        cfg.sourceFile ??
-        cfg.asm ??
-        cfg.source;
-      if (sourceResolved !== undefined) {
-        merged.sourceFile = sourceResolved;
-      }
-
-      const hexResolved = args.hex ?? targetCfg?.hex ?? cfg.hex;
-      if (hexResolved !== undefined) {
-        merged.hex = hexResolved;
-      }
-
-      const listingResolved = args.listing ?? targetCfg?.listing ?? cfg.listing;
-      if (listingResolved !== undefined) {
-        merged.listing = listingResolved;
-      }
-
-      const outputDirResolved = args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir;
-      if (outputDirResolved !== undefined) {
-        merged.outputDir = outputDirResolved;
-      }
-
-      const artifactResolved = args.artifactBase ?? targetCfg?.artifactBase ?? cfg.artifactBase;
-      if (artifactResolved !== undefined) {
-        merged.artifactBase = artifactResolved;
-      }
-
-      const entryResolved = args.entry ?? targetCfg?.entry ?? cfg.entry;
-      if (entryResolved !== undefined) {
-        merged.entry = entryResolved;
-      }
-
-      const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
-      if (platformResolved !== undefined) {
-        merged.platform = platformResolved;
-      }
-
-      const simpleResolved = args.simple ?? targetCfg?.simple ?? cfg.simple;
-      if (simpleResolved !== undefined) {
-        merged.simple = simpleResolved;
-      }
-
-      const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
-      if (stopOnEntryResolved !== undefined) {
-        merged.stopOnEntry = stopOnEntryResolved;
-      }
-
-      const assembleResolved = args.assemble ?? targetCfg?.assemble ?? cfg.assemble;
-      if (assembleResolved !== undefined) {
-        merged.assemble = assembleResolved;
-      }
-
-      const sourceRootsResolved = args.sourceRoots ?? targetCfg?.sourceRoots ?? cfg.sourceRoots;
-      if (sourceRootsResolved !== undefined) {
-        merged.sourceRoots = sourceRootsResolved;
-      }
-
-      const stepOverResolved =
-        args.stepOverMaxInstructions ??
-        targetCfg?.stepOverMaxInstructions ??
-        cfg.stepOverMaxInstructions;
-      if (stepOverResolved !== undefined) {
-        merged.stepOverMaxInstructions = stepOverResolved;
-      }
-
-      const stepOutResolved =
-        args.stepOutMaxInstructions ??
-        targetCfg?.stepOutMaxInstructions ??
-        cfg.stepOutMaxInstructions;
-      if (stepOutResolved !== undefined) {
-        merged.stepOutMaxInstructions = stepOutResolved;
-      }
-
-      const targetResolved = targetName ?? args.target;
-      if (targetResolved !== undefined) {
-        merged.target = targetResolved;
-      }
-
-      return merged;
-    } catch {
-      return args;
-    }
-  }
-
-  private normalizePlatformName(args: LaunchRequestArguments): PlatformKind {
-    const raw = args.platform ?? 'simple';
-    const name = raw.trim().toLowerCase();
-    if (name === '') {
-      return 'simple';
-    }
-    if (name !== 'simple' && name !== 'tec1' && name !== 'tec1g') {
-      throw new Error(`Unsupported platform "${raw}".`);
-    }
-    return name;
-  }
-
   private assembleIfRequested(
     args: LaunchRequestArguments,
     asmPath: string | undefined,
@@ -1443,74 +1258,16 @@ export class Z80DebugSession extends DebugSession {
     return Boolean(created);
   }
 
-  private normalizeSourcePath(sourcePath: string): string {
-    if (path.isAbsolute(sourcePath)) {
-      return path.resolve(sourcePath);
-    }
-    return path.resolve(this.baseDir, sourcePath);
-  }
-
-  private resolveDebugMapPath(
-    args: LaunchRequestArguments,
-    baseDir: string,
-    asmPath: string | undefined,
-    listingPath: string
-  ): string {
-    const artifactBase =
-      args.artifactBase ??
-      (asmPath === undefined
-        ? path.basename(listingPath, '.lst')
-        : path.basename(asmPath, path.extname(asmPath)));
-    const cacheDir = this.resolveCacheDir(baseDir);
-    if (cacheDir !== undefined && cacheDir.length > 0) {
-      const key = this.buildListingCacheKey(listingPath);
-      return path.join(cacheDir, `${artifactBase}.${key}.d8dbg.json`);
-    }
-    const outDirRaw = args.outputDir ?? path.dirname(listingPath);
-    const outDir = this.resolveRelative(outDirRaw, baseDir);
-    return path.join(outDir, `${artifactBase}.d8dbg.json`);
-  }
-
-  private resolveExtraDebugMapPath(listingPath: string): string {
-    const base = path.basename(listingPath, path.extname(listingPath));
-    const cacheDir = this.resolveCacheDir(this.baseDir);
-    if (cacheDir !== undefined && cacheDir.length > 0) {
-      const key = this.buildListingCacheKey(listingPath);
-      return path.join(cacheDir, `${base}.${key}.d8dbg.json`);
-    }
-    const dir = path.dirname(listingPath);
-    return path.join(dir, `${base}.d8dbg.json`);
-  }
-
-  private resolveCacheDir(baseDir: string): string | undefined {
-    if (!baseDir || baseDir.length === 0) {
-      return undefined;
-    }
-    try {
-      const stat = fs.statSync(baseDir);
-      if (!stat.isDirectory()) {
-        return undefined;
-      }
-      const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
-      fs.mkdirSync(cacheDir, { recursive: true });
-      return cacheDir;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private buildListingCacheKey(listingPath: string): string {
-    const normalized = path.resolve(listingPath);
-    return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
-  }
-
-  private relativeIfPossible(filePath: string, baseDir: string): string {
-    const normalizedBase = path.resolve(baseDir);
-    const normalizedPath = path.resolve(filePath);
-    if (isPathWithin(normalizedPath, normalizedBase)) {
-      return path.relative(normalizedBase, normalizedPath) || normalizedPath;
-    }
-    return normalizedPath;
+  private getLaunchArgsHelpers(): LaunchArgsHelpers {
+    return {
+      resolveBaseDir: (args: LaunchRequestArguments) => this.resolveBaseDir(args),
+      resolveAsmPath: (asm: string | undefined, baseDir: string) => resolveAsmPath(asm, baseDir),
+      resolveRelative: (filePath: string, baseDir: string) => resolveRelative(filePath, baseDir),
+      resolveCacheDir: (baseDir: string) => this.resolveCacheDir(baseDir),
+      buildListingCacheKey: (listingPath: string) => this.buildListingCacheKey(listingPath),
+      relativeIfPossible: (filePath: string, baseDir: string) =>
+        relativeIfPossible(filePath, baseDir),
+    };
   }
 
   private resolveBaseDir(args: LaunchRequestArguments): string {
@@ -1535,62 +1292,29 @@ export class Z80DebugSession extends DebugSession {
     return workspace ?? process.cwd();
   }
 
-  private resolveAsmPath(asm: string | undefined, baseDir: string): string | undefined {
-    if (asm === undefined || asm === '') {
+
+  private resolveCacheDir(baseDir: string): string | undefined {
+    if (!baseDir || baseDir.length === 0) {
       return undefined;
     }
-    if (path.isAbsolute(asm)) {
-      return asm;
-    }
-    return path.resolve(baseDir, asm);
-  }
-
-  private resolveRelative(p: string, baseDir: string): string {
-    if (path.isAbsolute(p)) {
-      return p;
-    }
-    return path.resolve(baseDir, p);
-  }
-
-  private resolveArtifacts(
-    args: LaunchRequestArguments,
-    baseDir: string
-  ): { hexPath: string; listingPath: string; asmPath?: string | undefined } {
-    const asmPath = this.resolveAsmPath(args.asm, baseDir);
-
-    let hexPath = args.hex;
-    let listingPath = args.listing;
-
-    const hexMissing = hexPath === undefined || hexPath === '';
-    const listingMissing = listingPath === undefined || listingPath === '';
-
-    if (hexMissing || listingMissing) {
-      if (asmPath === undefined || asmPath === '') {
-        throw new Error(
-          'Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.'
-        );
+    try {
+      const stat = fs.statSync(baseDir);
+      if (!stat.isDirectory()) {
+        return undefined;
       }
-      const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
-      const outDirRaw = args.outputDir ?? path.dirname(asmPath);
-      const outDir = this.resolveRelative(outDirRaw, baseDir);
-      hexPath = path.join(outDir, `${artifactBase}.hex`);
-      listingPath = path.join(outDir, `${artifactBase}.lst`);
+      const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
+      fs.mkdirSync(cacheDir, { recursive: true });
+      return cacheDir;
+    } catch {
+      return undefined;
     }
-
-    if (
-      hexPath === undefined ||
-      listingPath === undefined ||
-      hexPath === '' ||
-      listingPath === ''
-    ) {
-      throw new Error('Z80 runtime requires resolvable HEX and LST paths.');
-    }
-
-    const hexAbs = this.resolveRelative(hexPath, baseDir);
-    const listingAbs = this.resolveRelative(listingPath, baseDir);
-
-    return { hexPath: hexAbs, listingPath: listingAbs, asmPath };
   }
+
+  private buildListingCacheKey(listingPath: string): string {
+    const normalized = path.resolve(listingPath);
+    return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
+  }
+
 }
 
 export class Z80DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
