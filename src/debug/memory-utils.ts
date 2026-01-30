@@ -5,11 +5,7 @@
 
 import * as fs from 'fs';
 import { MemoryWindow } from './types';
-import {
-  Z80_ADDRESS_SPACE,
-  BYTE_MASK,
-  ADDR_MASK,
-} from '../platforms/tec-common';
+import { Z80_ADDRESS_SPACE, BYTE_MASK, ADDR_MASK } from '../platforms/tec-common';
 
 // Re-export for backward compatibility
 export { Z80_ADDRESS_SPACE };
