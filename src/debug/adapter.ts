@@ -46,6 +46,12 @@ import { SourceManager } from './source-manager';
 import { buildStackFrames } from './stack-service';
 import { buildMemorySnapshotViews, clampMemoryWindow } from './memory-view';
 import {
+  applyStepInfo,
+  runUntilReturnAsync,
+  runUntilStopAsync,
+  RuntimeControlContext,
+} from './runtime-control';
+import {
   BYTE_MASK,
   ADDR_MASK,
   TEC1G_SHADOW_START,
@@ -472,7 +478,7 @@ export class Z80DebugSession extends DebugSession {
 
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
-    this.applyStepInfo(trace);
+    applyStepInfo(this.getRuntimeControlContext(), trace);
     this.tec1Runtime?.recordCycles(result.cycles ?? 0);
     this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
@@ -511,7 +517,7 @@ export class Z80DebugSession extends DebugSession {
     const unmappedReturn = this.getUnmappedCallReturnAddress();
     const trace: StepInfo = { taken: false };
     const result = this.runtime.step({ trace });
-    this.applyStepInfo(trace);
+    applyStepInfo(this.getRuntimeControlContext(), trace);
     this.tec1Runtime?.recordCycles(result.cycles ?? 0);
     this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
     this.pauseRequested = false;
@@ -557,7 +563,7 @@ export class Z80DebugSession extends DebugSession {
     } else {
       this.skipBreakpointOnce = null;
     }
-    void this.runUntilReturnAsync(baseline);
+    void runUntilReturnAsync(this.getRuntimeControlContext(), baseline, this.stepOutMaxInstructions);
   }
 
   protected pauseRequest(
@@ -1014,7 +1020,18 @@ export class Z80DebugSession extends DebugSession {
     maxInstructions?: number,
     limitLabel = 'step'
   ): void {
-    void this.runUntilStopAsync(extraBreakpoints, maxInstructions, limitLabel);
+    const options: {
+      extraBreakpoints?: Set<number>;
+      maxInstructions?: number;
+      limitLabel?: string;
+    } = { limitLabel };
+    if (extraBreakpoints !== undefined) {
+      options.extraBreakpoints = extraBreakpoints;
+    }
+    if (maxInstructions !== undefined) {
+      options.maxInstructions = maxInstructions;
+    }
+    void runUntilStopAsync(this.getRuntimeControlContext(), options);
   }
 
   private handleHaltStop(): void {
@@ -1029,19 +1046,6 @@ export class Z80DebugSession extends DebugSession {
     this.tec1Runtime?.silenceSpeaker();
     this.tec1gRuntime?.silenceSpeaker();
     this.sendEvent(new TerminatedEvent());
-  }
-
-  private applyStepInfo(trace: StepInfo): void {
-    if (!trace.kind || !trace.taken) {
-      return;
-    }
-    if (trace.kind === 'call' || trace.kind === 'rst') {
-      this.callDepth += 1;
-      return;
-    }
-    if (trace.kind === 'ret') {
-      this.callDepth = Math.max(0, this.callDepth - 1);
-    }
   }
 
   private getUnmappedCallReturnAddress(): number | null {
@@ -1139,241 +1143,41 @@ export class Z80DebugSession extends DebugSession {
     return returnAddress;
   }
 
-  private async runUntilStopAsync(
-    extraBreakpoints?: Set<number>,
-    maxInstructions?: number,
-    limitLabel = 'step'
-  ): Promise<void> {
-    if (this.runtime === undefined) {
-      return;
-    }
-    const CHUNK = 1000;
-    const trace: StepInfo = { taken: false };
-    let executed = 0;
-    let cyclesSinceThrottle = 0;
-    let lastThrottleMs = Date.now();
-    const yieldMs =
-      this.activePlatform === 'tec1'
-        ? (this.tec1Runtime?.state.yieldMs ?? 0)
-        : this.activePlatform === 'tec1g'
-          ? (this.tec1gRuntime?.state.yieldMs ?? 0)
-          : 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      for (let i = 0; i < CHUNK; i += 1) {
-        if (this.runtime === undefined) {
-          return;
-        }
-        if (this.pauseRequested) {
-          this.pauseRequested = false;
-          this.haltNotified = false;
-          this.lastStopReason = 'pause';
-          this.lastBreakpointAddress = null;
-          this.tec1Runtime?.silenceSpeaker();
-          this.tec1gRuntime?.silenceSpeaker();
-          this.sendEvent(new StoppedEvent('pause', THREAD_ID));
-          return;
-        }
-        if (this.skipBreakpointOnce !== null && this.runtime.getPC() === this.skipBreakpointOnce) {
-          this.skipBreakpointOnce = null;
-          const stepped = this.runtime.step({ trace });
-          this.applyStepInfo(trace);
-          executed += 1;
-          cyclesSinceThrottle += stepped.cycles ?? 0;
-          this.tec1Runtime?.recordCycles(stepped.cycles ?? 0);
-          this.tec1gRuntime?.recordCycles(stepped.cycles ?? 0);
-          if (stepped.halted) {
-            this.handleHaltStop();
-            return;
-          }
-          continue;
-        }
-        const pc = this.runtime.getPC();
-        if (this.isBreakpointAddress(pc)) {
-          this.haltNotified = false;
-          this.lastStopReason = 'breakpoint';
-          this.lastBreakpointAddress = pc;
-          this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
-          return;
-        }
-        if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
-          this.haltNotified = false;
-          this.lastStopReason = 'step';
-          this.lastBreakpointAddress = null;
-          this.sendEvent(new StoppedEvent('step', THREAD_ID));
-          return;
-        }
-        const result = this.runtime.step({ trace });
-        this.applyStepInfo(trace);
-        executed += 1;
-        cyclesSinceThrottle += result.cycles ?? 0;
-        this.tec1Runtime?.recordCycles(result.cycles ?? 0);
-        this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
-        if (result.halted) {
-          this.handleHaltStop();
-          return;
-        }
-        if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
-          this.haltNotified = false;
-          this.lastStopReason = 'step';
-          this.lastBreakpointAddress = null;
-          this.sendEvent(
-            new OutputEvent(
-              `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
-            )
-          );
-          this.sendEvent(new StoppedEvent('step', THREAD_ID));
-          return;
-        }
-      }
-      if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
-        const clockHz =
-          this.activePlatform === 'tec1'
-            ? (this.tec1Runtime?.state.clockHz ?? 0)
-            : (this.tec1gRuntime?.state.clockHz ?? 0);
-        if (clockHz > 0) {
-          const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
-          const now = Date.now();
-          const elapsed = now - lastThrottleMs;
-          const waitMs = targetMs - elapsed;
-          if (waitMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, waitMs));
-          } else if (yieldMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, yieldMs));
-          } else {
-            await new Promise((resolve) => setImmediate(resolve));
-          }
-          lastThrottleMs = Date.now();
-          cyclesSinceThrottle = 0;
-          continue;
-        }
-      }
-      cyclesSinceThrottle = 0;
-      lastThrottleMs = Date.now();
-      if (yieldMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, yieldMs));
-      } else {
-        await new Promise((resolve) => setImmediate(resolve));
-      }
-    }
-  }
-
-  private async runUntilReturnAsync(baselineDepth: number): Promise<void> {
-    if (this.runtime === undefined) {
-      return;
-    }
-    const CHUNK = 1000;
-    const maxInstructions = this.stepOutMaxInstructions;
-    const trace: StepInfo = { taken: false };
-    let executed = 0;
-    let cyclesSinceThrottle = 0;
-    let lastThrottleMs = Date.now();
-    const yieldMs =
-      this.activePlatform === 'tec1'
-        ? (this.tec1Runtime?.state.yieldMs ?? 0)
-        : this.activePlatform === 'tec1g'
-          ? (this.tec1gRuntime?.state.yieldMs ?? 0)
-          : 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      for (let i = 0; i < CHUNK; i += 1) {
-        if (this.runtime === undefined) {
-          return;
-        }
-        if (this.pauseRequested) {
-          this.pauseRequested = false;
-          this.haltNotified = false;
-          this.lastStopReason = 'pause';
-          this.lastBreakpointAddress = null;
-          this.tec1Runtime?.silenceSpeaker();
-          this.tec1gRuntime?.silenceSpeaker();
-          this.sendEvent(new StoppedEvent('pause', THREAD_ID));
-          return;
-        }
-        if (this.skipBreakpointOnce !== null && this.runtime.getPC() === this.skipBreakpointOnce) {
-          this.skipBreakpointOnce = null;
-          const stepped = this.runtime.step({ trace });
-          this.applyStepInfo(trace);
-          executed += 1;
-          cyclesSinceThrottle += stepped.cycles ?? 0;
-          if (stepped.halted) {
-            this.handleHaltStop();
-            return;
-          }
-        } else {
-          const pc = this.runtime.getPC();
-          if (this.isBreakpointAddress(pc)) {
-            this.haltNotified = false;
-            this.lastStopReason = 'breakpoint';
-            this.lastBreakpointAddress = pc;
-            this.sendEvent(new StoppedEvent('breakpoint', THREAD_ID));
-            return;
-          }
-          const result = this.runtime.step({ trace });
-          this.applyStepInfo(trace);
-          executed += 1;
-          cyclesSinceThrottle += result.cycles ?? 0;
-          this.tec1Runtime?.recordCycles(result.cycles ?? 0);
-          this.tec1gRuntime?.recordCycles(result.cycles ?? 0);
-          if (result.halted) {
-            this.handleHaltStop();
-            return;
-          }
-        }
-
-        if (trace.kind === 'ret' && trace.taken) {
-          if (baselineDepth === 0 || this.callDepth < baselineDepth) {
-            this.haltNotified = false;
-            this.lastStopReason = 'step';
-            this.lastBreakpointAddress = null;
-            this.sendEvent(new StoppedEvent('step', THREAD_ID));
-            return;
-          }
-        }
-
-        if (maxInstructions > 0 && executed >= maxInstructions) {
-          this.haltNotified = false;
-          this.lastStopReason = 'step';
-          this.lastBreakpointAddress = null;
-          this.sendEvent(
-            new OutputEvent(
-              `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
-            )
-          );
-          this.sendEvent(new StoppedEvent('step', THREAD_ID));
-          return;
-        }
-      }
-      if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
-        const clockHz =
-          this.activePlatform === 'tec1'
-            ? (this.tec1Runtime?.state.clockHz ?? 0)
-            : (this.tec1gRuntime?.state.clockHz ?? 0);
-        if (clockHz > 0) {
-          const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
-          const now = Date.now();
-          const elapsed = now - lastThrottleMs;
-          const waitMs = targetMs - elapsed;
-          if (waitMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, waitMs));
-          } else if (yieldMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, yieldMs));
-          } else {
-            await new Promise((resolve) => setImmediate(resolve));
-          }
-          lastThrottleMs = Date.now();
-          cyclesSinceThrottle = 0;
-          continue;
-        }
-      }
-      cyclesSinceThrottle = 0;
-      lastThrottleMs = Date.now();
-      if (yieldMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, yieldMs));
-      } else {
-        await new Promise((resolve) => setImmediate(resolve));
-      }
-    }
+  private getRuntimeControlContext(): RuntimeControlContext {
+    return {
+      getRuntime: () => this.runtime,
+      getTec1Runtime: () => this.tec1Runtime,
+      getTec1gRuntime: () => this.tec1gRuntime,
+      getActivePlatform: () => this.activePlatform,
+      getCallDepth: () => this.callDepth,
+      setCallDepth: (value: number): void => {
+        this.callDepth = value;
+      },
+      getPauseRequested: () => this.pauseRequested,
+      setPauseRequested: (value: boolean): void => {
+        this.pauseRequested = value;
+      },
+      getSkipBreakpointOnce: () => this.skipBreakpointOnce,
+      setSkipBreakpointOnce: (value: number | null): void => {
+        this.skipBreakpointOnce = value;
+      },
+      getHaltNotified: () => this.haltNotified,
+      setHaltNotified: (value: boolean): void => {
+        this.haltNotified = value;
+      },
+      setLastStopReason: (reason: StopReason): void => {
+        this.lastStopReason = reason;
+      },
+      setLastBreakpointAddress: (address: number | null): void => {
+        this.lastBreakpointAddress = address;
+      },
+      isBreakpointAddress: (address: number | null): boolean =>
+        this.isBreakpointAddress(address),
+      handleHaltStop: (): void => this.handleHaltStop(),
+      sendEvent: (event: unknown): void => {
+        this.sendEvent(event as DebugProtocol.Event);
+      },
+    };
   }
 
   private populateFromConfig(args: LaunchRequestArguments): LaunchRequestArguments {
