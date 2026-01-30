@@ -37,6 +37,8 @@ export default defineConfig({
         'src/z80/runtime.ts',
         'src/z80/types.ts',
         'src/z80/opcode-types.ts',
+        // Type-only files (no runtime code)
+        'src/z80/decode-types.ts',
       ],
       lines: 80,
       functions: 80,
