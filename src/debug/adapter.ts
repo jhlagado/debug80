@@ -739,7 +739,6 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-
   private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
     const seen = new Set<string>();
     return this.extraListingPaths.flatMap((listingPath) => {
