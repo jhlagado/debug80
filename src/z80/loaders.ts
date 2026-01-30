@@ -1,16 +1,48 @@
+/**
+ * @fileoverview Loaders for Intel HEX and assembler listing files.
+ * Provides parsing utilities for loading Z80 programs and debug information.
+ */
+
+/**
+ * Parsed Intel HEX program data.
+ */
 export interface HexProgram {
+  /** 64K memory image with loaded program data */
   memory: Uint8Array;
+  /** Lowest address with data (entry point hint) */
   startAddress: number;
 }
 
+/**
+ * Parsed listing file information for debugging.
+ */
 export interface ListingInfo {
+  /** Map from listing line number to memory address */
   lineToAddress: Map<number, number>;
+  /** Map from memory address to listing line number */
   addressToLine: Map<number, number>;
+  /** Detailed entries with line, address, and byte count */
   entries: Array<{ line: number; address: number; length: number }>;
 }
 
 /**
- * Parse Intel HEX content into a flat 64K memory image.
+ * Parses Intel HEX format content into a 64K memory image.
+ *
+ * Supports standard Intel HEX records:
+ * - Type 00: Data records (loaded into memory)
+ * - Type 01: End of file (terminates parsing)
+ * - Other types: Silently ignored
+ *
+ * @param content - Intel HEX file content
+ * @returns Program data with memory image and start address
+ * @throws Error if HEX format is invalid
+ *
+ * @example
+ * ```typescript
+ * const hex = fs.readFileSync('program.hex', 'utf-8');
+ * const program = parseIntelHex(hex);
+ * console.log(`Entry: 0x${program.startAddress.toString(16)}`);
+ * ```
  */
 export function parseIntelHex(content: string): HexProgram {
   const memory = new Uint8Array(0x10000);
@@ -62,7 +94,24 @@ export function parseIntelHex(content: string): HexProgram {
 }
 
 /**
- * Build maps between listing lines and addresses.
+ * Parses assembler listing file to build address-to-line mappings.
+ *
+ * Extracts lines with format: `ADDR BYTES... TEXT`
+ * - ADDR: 4-digit hex address
+ * - BYTES: Space-separated hex bytes
+ * - TEXT: Assembly instruction text
+ *
+ * Lines without bytes (comments, directives) are skipped.
+ *
+ * @param content - Listing file content
+ * @returns Listing info with bidirectional line/address mappings
+ *
+ * @example
+ * ```typescript
+ * const lst = fs.readFileSync('program.lst', 'utf-8');
+ * const info = parseListing(lst);
+ * const addr = info.lineToAddress.get(10); // Get address at line 10
+ * ```
  */
 export function parseListing(content: string): ListingInfo {
   const lineToAddress = new Map<number, number>();

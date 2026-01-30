@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Z80 opcode constants.
+ * Defines opcode values for control flow instructions used in stepping logic.
+ */
+
+// CALL instructions (conditional and unconditional)
 export const OP_CALL_NZ = 0xc4;
 export const OP_CALL_Z = 0xcc;
 export const OP_CALL_NC = 0xd4;
@@ -8,6 +14,7 @@ export const OP_CALL_P = 0xf4;
 export const OP_CALL_M = 0xfc;
 export const OP_CALL_NN = 0xcd;
 
+// RST (restart) instructions - single-byte calls to fixed addresses
 export const OP_RST_00 = 0xc7;
 export const OP_RST_08 = 0xcf;
 export const OP_RST_10 = 0xd7;
@@ -28,6 +35,7 @@ export const RST_OPCODES = new Set<number>([
   OP_RST_38,
 ]);
 
+// RET instructions (conditional and unconditional)
 export const OP_RET_NZ = 0xc0;
 export const OP_RET_Z = 0xc8;
 export const OP_RET = 0xc9;
@@ -38,6 +46,7 @@ export const OP_RET_PE = 0xe8;
 export const OP_RET_P = 0xf0;
 export const OP_RET_M = 0xf8;
 
+// ED prefix and extended return instructions
 export const OP_PREFIX_ED = 0xed;
 export const OP_RETN_1 = 0x45;
 export const OP_RETI = 0x4d;

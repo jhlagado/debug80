@@ -1,32 +1,73 @@
+/**
+ * @fileoverview Parser for Z80 assembler listing files.
+ * Extracts address mappings and symbol anchors from listing output.
+ */
+
+/**
+ * Confidence level for source mapping accuracy.
+ * - HIGH: Exact match from symbol anchor
+ * - MEDIUM: Inferred from context or has duplicate addresses
+ * - LOW: Unable to determine source location
+ */
 export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
+/**
+ * Source file location reference.
+ */
 export interface SourceLocation {
+  /** Source file path (null if unknown) */
   file: string | null;
+  /** Line number in source file (null if unknown) */
   line: number | null;
 }
 
+/**
+ * Listing file information for a segment.
+ */
 export interface LstInfo {
+  /** Line number in the listing file */
   line: number;
+  /** Assembly text from the listing */
   text: string;
 }
 
+/**
+ * A contiguous segment of memory with source mapping.
+ */
 export interface SourceMapSegment {
+  /** Start address (inclusive) */
   start: number;
+  /** End address (exclusive) */
   end: number;
+  /** Source location reference */
   loc: SourceLocation;
+  /** Listing file information */
   lst: LstInfo;
+  /** Confidence level of the mapping */
   confidence: Confidence;
 }
 
+/**
+ * A symbol anchor linking an address to source location.
+ */
 export interface SourceMapAnchor {
+  /** Memory address of the symbol */
   address: number;
+  /** Symbol name */
   symbol: string;
+  /** Source file containing the symbol */
   file: string;
+  /** Line number in the source file */
   line: number;
 }
 
+/**
+ * Result of parsing a listing file.
+ */
 export interface MappingParseResult {
+  /** Memory segments with source mappings */
   segments: SourceMapSegment[];
+  /** Symbol anchors for address-to-source lookup */
   anchors: SourceMapAnchor[];
 }
 
@@ -44,10 +85,31 @@ interface AnchorParseResult {
   anchorByAddress: Map<number, SourceMapAnchor>;
 }
 
+/** Pattern to match a single hex byte token */
 const BYTE_TOKEN = /^[0-9A-Fa-f]{2}$/;
+/** Pattern to match a listing line with address */
 const LISTING_LINE = /^([0-9A-Fa-f]{4})\s+(.*)$/;
+/** Pattern to match symbol definition anchor lines */
 const ANCHOR_LINE = /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)\s+IN\s+(.+)$/;
 
+/**
+ * Parses assembler listing content into source map segments and anchors.
+ *
+ * The parser extracts:
+ * - Memory address mappings from listing lines
+ * - Symbol anchors from "DEFINED AT LINE" entries
+ * - Byte counts for each instruction/data segment
+ *
+ * @param content - Raw listing file content
+ * @returns Parsed mapping result with segments and anchors
+ *
+ * @example
+ * ```typescript
+ * const content = fs.readFileSync('program.lst', 'utf-8');
+ * const mapping = parseMapping(content);
+ * console.log(`Found ${mapping.segments.length} segments`);
+ * ```
+ */
 export function parseMapping(content: string): MappingParseResult {
   const entries: ListingEntry[] = [];
   const anchors: SourceMapAnchor[] = [];

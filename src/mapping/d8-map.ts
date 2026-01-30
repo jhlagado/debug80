@@ -1,82 +1,170 @@
+/**
+ * @fileoverview D8 Debug Map format support.
+ * Implements the D8 debug map specification for portable debug information.
+ * @see docs/D8_DEBUG_MAP.md for format specification
+ */
+
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 
+/** Byte order for multi-byte values */
 export type D8Endianness = 'little' | 'big';
+
+/** Type of code segment */
 export type D8SegmentKind = 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
+
+/** Confidence level for mapping accuracy */
 export type D8Confidence = 'high' | 'medium' | 'low';
+
+/** Type of symbol definition */
 export type D8SymbolKind = 'label' | 'constant' | 'data' | 'macro' | 'unknown';
+
+/** Visibility scope of symbol */
 export type D8SymbolScope = 'global' | 'local';
 
+/**
+ * Root structure of a D8 Debug Map file.
+ */
 export interface D8DebugMap {
+  /** Format identifier, always 'd8-debug-map' */
   format: 'd8-debug-map';
+  /** Format version number */
   version: 1;
+  /** Target architecture (e.g., 'z80') */
   arch: string;
+  /** Address width in bits */
   addressWidth: number;
+  /** Byte order for addresses */
   endianness: D8Endianness;
+  /** Source files with their segments and symbols */
   files: Record<string, D8FileEntry>;
+  /** Shared listing text table for deduplication */
   lstText?: string[];
+  /** Default values for segment properties */
   segmentDefaults?: D8SegmentDefaults;
+  /** Default values for symbol properties */
   symbolDefaults?: D8SymbolDefaults;
+  /** Memory layout description */
   memory?: D8MemoryLayout;
+  /** Information about the generating tool */
   generator?: D8Generator;
+  /** Diagnostic information from assembly */
   diagnostics?: D8Diagnostics;
 }
 
+/**
+ * Entry for a single source file in the debug map.
+ */
 export interface D8FileEntry {
+  /** File metadata */
   meta?: D8FileMeta;
+  /** Code/data segments in this file */
   segments?: D8Segment[];
+  /** Symbols defined in this file */
   symbols?: D8Symbol[];
 }
 
+/**
+ * Metadata about a source file.
+ */
 export interface D8FileMeta {
+  /** SHA-256 hash of file contents for verification */
   sha256?: string;
+  /** Total number of lines in the file */
   lineCount?: number;
 }
 
+/**
+ * Default property values for segments.
+ */
 export interface D8SegmentDefaults {
+  /** Default segment kind */
   kind?: D8SegmentKind;
+  /** Default confidence level */
   confidence?: D8Confidence;
 }
 
+/**
+ * A code or data segment with source mapping.
+ */
 export interface D8Segment {
+  /** Start address (inclusive) */
   start: number;
+  /** End address (exclusive) */
   end: number;
+  /** Source line number (null if unknown) */
   line?: number | null;
+  /** Source column number */
   column?: number;
+  /** Segment type */
   kind?: D8SegmentKind;
+  /** Mapping confidence */
   confidence?: D8Confidence;
+  /** Listing file line number */
   lstLine: number;
+  /** Listing text (inline) */
   lstText?: string;
+  /** Index into lstText table (for deduplication) */
   lstTextId?: number;
+  /** Include chain for nested includes */
   includeChain?: string[];
+  /** Macro expansion information */
   macro?: { name: string; callsite: { file: string; line: number; column?: number } };
 }
 
+/**
+ * Default property values for symbols.
+ */
 export interface D8SymbolDefaults {
+  /** Default symbol kind */
   kind?: D8SymbolKind;
+  /** Default symbol scope */
   scope?: D8SymbolScope;
 }
 
+/**
+ * A symbol definition.
+ */
 export interface D8Symbol {
+  /** Symbol name */
   name: string;
+  /** Symbol address */
   address: number;
+  /** Definition line number */
   line?: number;
+  /** Symbol type */
   kind?: D8SymbolKind;
+  /** Symbol visibility */
   scope?: D8SymbolScope;
+  /** Size in bytes (for data symbols) */
   size?: number;
 }
 
+/**
+ * Memory layout description.
+ */
 export interface D8MemoryLayout {
+  /** Memory region definitions */
   segments: Array<{
+    /** Region name */
     name: string;
+    /** Start address */
     start: number;
+    /** End address */
     end: number;
+    /** Region type */
     kind?: 'rom' | 'ram' | 'io' | 'banked' | 'unknown';
+    /** Bank number for banked memory */
     bank?: number;
   }>;
 }
 
+/**
+ * Information about the tool that generated the debug map.
+ */
 export interface D8Generator {
+  /** Generator tool name */
   name: string;
+  /** Generator version */
   version?: string;
   args?: string[];
   createdAt?: string;
