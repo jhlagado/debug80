@@ -1,16 +1,43 @@
+/**
+ * @fileoverview Configuration utility functions.
+ * Provides helpers for project configuration discovery and directory management.
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Result of inferring a default build target.
+ */
 export interface InferredTarget {
+  /** Relative path to the source file */
   sourceFile: string;
+  /** Output directory for build artifacts */
   outputDir: string;
+  /** Base name for output files (without extension) */
   artifactBase: string;
+  /** Whether the source file was actually found */
   found: boolean;
 }
 
+/** Default source file location */
 const DEFAULT_SOURCE = 'src/main.asm';
+/** Default output directory */
 const DEFAULT_OUTPUT_DIR = 'build';
 
+/**
+ * Infers a default build target by searching for assembly files.
+ *
+ * Search order:
+ * 1. src/main.asm (preferred)
+ * 2. main.asm in root
+ * 3. First .asm file in src/
+ * 4. First .asm file in root
+ * 5. Falls back to src/main.asm (not found)
+ *
+ * @param root - Project root directory
+ * @returns Inferred target with source file and output paths
+ */
 export function inferDefaultTarget(root: string): InferredTarget {
   const rootDir = root ?? process.cwd();
   const preferred = path.join(rootDir, 'src', 'main.asm');
@@ -36,6 +63,12 @@ export function inferDefaultTarget(root: string): InferredTarget {
   };
 }
 
+/**
+ * Ensures a directory exists, creating it recursively if needed.
+ * No-op for empty string or '.' paths.
+ *
+ * @param dir - Directory path to create
+ */
 export function ensureDirExists(dir: string): void {
   if (dir === '' || dir === '.') {
     return;

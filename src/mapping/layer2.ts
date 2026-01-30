@@ -1,22 +1,62 @@
+/**
+ * @fileoverview Layer 2 source mapping refinement.
+ * Improves mapping accuracy by matching listing text to source file content.
+ */
+
 import * as fs from 'fs';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 
+/**
+ * Options for Layer 2 processing.
+ */
 export interface Layer2Options {
+  /** Function to resolve file paths to absolute paths */
   resolvePath: (file: string) => string | undefined;
 }
 
+/**
+ * Result of Layer 2 processing.
+ */
 export interface Layer2Result {
+  /** Source files that could not be loaded */
   missingSources: string[];
 }
 
+/** Internal representation of loaded source file */
 interface SourceFileData {
   path: string;
   lines: string[];
   normLines: string[];
 }
 
+/** Pattern to detect data directives (DB, DW, etc.) */
 const DATA_DIRECTIVE = /^(DB|DW|DS|DEFB|DEFW|DEFS|INCBIN)\b/;
 
+/**
+ * Applies Layer 2 refinement to improve source mapping accuracy.
+ *
+ * Layer 2 processing:
+ * 1. Loads source files referenced by the mapping
+ * 2. Matches listing text to source lines using normalized comparison
+ * 3. Adjusts confidence levels based on match quality
+ * 4. Handles macro blocks and data directives specially
+ *
+ * The mapping object is modified in place.
+ *
+ * @param mapping - Mapping to refine (modified in place)
+ * @param options - Layer 2 options including path resolver
+ * @returns Result indicating any missing source files
+ *
+ * @example
+ * ```typescript
+ * const result = applyLayer2(mapping, {
+ *   resolvePath: (file) => path.resolve(srcDir, file)
+ * });
+ * if (result.missingSources.length > 0) {
+ *   console.warn('Missing:', result.missingSources);
+ * }
+ * ```
+ */
 export function applyLayer2(mapping: MappingParseResult, options: Layer2Options): Layer2Result {
   const files = collectSourceFiles(mapping);
   const { fileData, missingSources } = loadSourceFiles(files, options.resolvePath);
