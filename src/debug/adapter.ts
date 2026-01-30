@@ -63,15 +63,18 @@ import {
 import {
   LaunchRequestArguments,
   TerminalState,
-  extractTerminalText,
   extractKeyCode,
-  extractSpeedMode,
-  extractSerialText,
   extractMemorySnapshotPayload,
   extractViewEntry,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { isPathWithin } from './path-utils';
+import {
+  applySerialInput,
+  applySpeedChange,
+  applyTerminalBreak,
+  applyTerminalInput,
+} from './io-requests';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -789,9 +792,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
         return;
       }
-      const textValue = extractTerminalText(args);
-      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
-      this.terminalState.input.push(...bytes);
+      applyTerminalInput(args, this.terminalState);
       this.sendResponse(response);
       return;
     }
@@ -800,7 +801,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
         return;
       }
-      this.terminalState.breakRequested = true;
+      applyTerminalBreak(this.terminalState);
       this.sendResponse(response);
       return;
     }
@@ -864,12 +865,11 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
-      const mode = extractSpeedMode(args);
-      if (mode === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
+      const error = applySpeedChange(args, this.tec1Runtime);
+      if (typeof error === 'string' && error.length > 0) {
+        this.sendErrorResponse(response, 1, error);
         return;
       }
-      this.tec1Runtime.setSpeed(mode);
       this.sendResponse(response);
       return;
     }
@@ -878,12 +878,11 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
         return;
       }
-      const mode = extractSpeedMode(args);
-      if (mode === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
+      const error = applySpeedChange(args, this.tec1gRuntime);
+      if (typeof error === 'string' && error.length > 0) {
+        this.sendErrorResponse(response, 1, error);
         return;
       }
-      this.tec1gRuntime.setSpeed(mode);
       this.sendResponse(response);
       return;
     }
@@ -892,9 +891,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
-      const textValue = extractSerialText(args);
-      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
-      this.tec1Runtime.queueSerial(bytes);
+      applySerialInput(args, this.tec1Runtime);
       this.sendResponse(response);
       return;
     }
@@ -903,9 +900,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
         return;
       }
-      const textValue = extractSerialText(args);
-      const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
-      this.tec1gRuntime.queueSerial(bytes);
+      applySerialInput(args, this.tec1gRuntime);
       this.sendResponse(response);
       return;
     }
