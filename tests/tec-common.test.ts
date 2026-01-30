@@ -3,7 +3,7 @@
  * @description Tests for shared TEC platform utilities
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
@@ -17,7 +17,9 @@ import {
   microsecondsToClocks,
   millisecondsToClocks,
   createSerialState,
+  createTecSerialDecoder,
 } from '../src/platforms/tec-common';
+import { CycleClock } from '../src/platforms/cycle-clock';
 
 describe('TEC Common Constants', () => {
   it('should have correct clock frequencies', () => {
@@ -170,5 +172,37 @@ describe('createSerialState', () => {
     expect(state.rxToken).toBe(0);
     expect(state.rxQueue).toEqual([]);
     expect(state.cyclesPerBit).toBeCloseTo(4000000 / 9600, 2);
+  });
+
+  it('should handle different baud rates', () => {
+    const state4800 = createSerialState(4000000, 4800);
+    const state9600 = createSerialState(4000000, 9600);
+    expect(state4800.cyclesPerBit).toBeCloseTo(4000000 / 4800, 2);
+    expect(state9600.cyclesPerBit).toBeCloseTo(4000000 / 9600, 2);
+    expect(state4800.cyclesPerBit).toBeGreaterThan(state9600.cyclesPerBit);
+  });
+});
+
+describe('createTecSerialDecoder', () => {
+  it('should create a decoder with basic config', () => {
+    const clock = new CycleClock();
+    const decoder = createTecSerialDecoder({
+      cycleClock: clock,
+      baud: 9600,
+      clockHz: 4000000,
+    });
+    expect(decoder).toBeDefined();
+  });
+
+  it('should create a decoder with onByte callback', () => {
+    const clock = new CycleClock();
+    const receivedBytes: number[] = [];
+    const decoder = createTecSerialDecoder({
+      cycleClock: clock,
+      baud: 9600,
+      clockHz: 4000000,
+      onByte: (byte) => receivedBytes.push(byte),
+    });
+    expect(decoder).toBeDefined();
   });
 });
