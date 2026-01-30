@@ -83,15 +83,12 @@ describe('mapping-parser', () => {
 
   it('handles segments with no anchors (currentFile null)', () => {
     // Test case where segments exist but no anchors provide file context
-    const content = [
-      '0000 00       NOP',
-      '0001 C9       RET',
-    ].join('\n');
+    const content = ['0000 00       NOP', '0001 C9       RET'].join('\n');
     const mapping = parseMapping(content);
 
     assert.equal(mapping.segments.length, 2);
     assert.equal(mapping.anchors.length, 0);
-    
+
     // Without anchors, segments should have null file/line with LOW confidence
     const nopSeg = mapping.segments[0];
     assert.ok(nopSeg);
@@ -112,7 +109,7 @@ describe('mapping-parser', () => {
     // Should have 1 segment from line 1
     assert.equal(mapping.segments.length, 1);
     assert.equal(mapping.anchors.length, 1);
-    
+
     // First segment should use anchor
     const nopSeg = mapping.segments[0];
     assert.ok(nopSeg);

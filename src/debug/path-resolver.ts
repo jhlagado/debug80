@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './types';
+import { FileResolutionError } from './errors';
 
 /**
  * Length of cache key hash (hex digits).
@@ -105,9 +106,7 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
 
   if (hexMissing || listingMissing) {
     if (asmPath === undefined || asmPath === '') {
-      throw new Error(
-        'Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.'
-      );
+      throw FileResolutionError.missingSource();
     }
 
     const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
@@ -119,7 +118,7 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
   }
 
   if (hexPath === undefined || listingPath === undefined || hexPath === '' || listingPath === '') {
-    throw new Error('Z80 runtime requires resolvable HEX and LST paths.');
+    throw FileResolutionError.missingArtifacts();
   }
 
   const hexAbs = resolveRelative(hexPath, baseDir);
