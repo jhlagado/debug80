@@ -7,6 +7,7 @@ export interface Tec1gUpdatePayload {
   speaker: number;
   speedMode: Tec1gSpeedMode;
   lcd: number[];
+  sysCtrl?: number;
   glcdDdram?: number[];
   glcdState?: {
     displayOn?: boolean;

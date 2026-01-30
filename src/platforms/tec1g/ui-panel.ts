@@ -39,6 +39,7 @@ export function createTec1gPanelController(
     scroll: 0,
     reverseMask: 0,
   };
+  let sysCtrlValue = 0x00;
   let speaker = false;
   let speedMode: Tec1gSpeedMode = 'fast';
   let lcd = Array.from({ length: 80 }, () => 0x20);
@@ -195,6 +196,7 @@ export function createTec1gPanelController(
       glcdState,
       speaker: speaker ? 1 : 0,
       speedMode,
+      sysCtrl: sysCtrlValue,
       lcd,
     });
     if (uiVisibilityOverride) {
@@ -220,6 +222,9 @@ export function createTec1gPanelController(
     digits = payload.digits.slice(0, 6);
     matrix = payload.matrix.slice(0, 8);
     glcd = payload.glcd.slice(0, 1024);
+    if (typeof payload.sysCtrl === 'number') {
+      sysCtrlValue = payload.sysCtrl & 0xff;
+    }
     if (Array.isArray(payload.glcdDdram)) {
       glcdDdram = payload.glcdDdram.slice(0, 64);
       while (glcdDdram.length < 64) {
@@ -253,6 +258,7 @@ export function createTec1gPanelController(
         glcdState,
         speaker,
         speedMode,
+        sysCtrl: sysCtrlValue,
         lcd,
         speakerHz: payload.speakerHz,
       });
@@ -575,6 +581,26 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     }
     .keycap.spacer::before {
       display: none;
+    }
+    .sysctrl {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 2px;
+      padding: 6px;
+      background: #232323;
+      border-radius: 6px;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+    }
+    .sysctrl-seg {
+      width: 100%;
+      height: 12px;
+      border-radius: 2px;
+      background: #454545;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .sysctrl-seg.on {
+      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
     }
     .key.active {
       background: #505050;
@@ -1080,6 +1106,7 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     let glcdReverseMask = 0;
     let glcdBlinkVisible = true;
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
+    let sysCtrlSegs = [];
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
       glcdBaseCanvas.height = GLCD_HEIGHT;
@@ -1245,10 +1272,10 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
 
     const controlOrder = ['AD', 'GO', 'DOWN', 'UP'];
     const controlLabels = {
-      AD: '△',
-      GO: '▶',
-      DOWN: 'DOWN',
-      UP: 'UP',
+      AD: 'AD',
+      GO: 'GO',
+      DOWN: '-',
+      UP: '+',
     };
     const hexOrder = [
       'C', 'D', 'E', 'F',
@@ -1544,12 +1571,38 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       return button;
     }
 
-    addButton('HOME', () => {
+    function addSysCtrlBar(col, row, rowSpan) {
+      const bar = document.createElement('div');
+      bar.className = 'sysctrl';
+      for (let i = 0; i < 8; i += 1) {
+        const seg = document.createElement('div');
+        seg.className = 'sysctrl-seg';
+        bar.appendChild(seg);
+      }
+      bar.style.gridColumn = String(col);
+      bar.style.gridRow = rowSpan ? row + ' / span ' + rowSpan : String(row);
+      keypadEl.appendChild(bar);
+      sysCtrlSegs = Array.from(bar.querySelectorAll('.sysctrl-seg'));
+    }
+
+    function updateSysCtrl() {
+      if (!sysCtrlSegs.length) {
+        return;
+      }
+      for (let i = 0; i < 8; i += 1) {
+        const on = (sysCtrlValue & (1 << i)) !== 0;
+        const seg = sysCtrlSegs[7 - i];
+        if (seg) {
+          seg.classList.toggle('on', on);
+        }
+      }
+    }
+
+    addButton('RESET', () => {
       setShiftLatched(false);
       vscode.postMessage({ type: 'reset' });
     }, 'keycap-light', 1, 1, true);
-    addButton('', () => {}, 'spacer', 1, 2, true);
-    addButton('', () => {}, 'spacer', 1, 3, true);
+    addSysCtrlBar(1, 2, 2);
 
     for (let row = 0; row < 4; row += 1) {
       const control = controlOrder[row];
@@ -1633,6 +1686,10 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
           matrixRows.push(0);
         }
         drawMatrix();
+      }
+      if (typeof data.sysCtrl === 'number') {
+        sysCtrlValue = data.sysCtrl & 0xff;
+        updateSysCtrl();
       }
       if (Array.isArray(data.glcdDdram)) {
         glcdDdram = data.glcdDdram.slice(0, GLCD_DDRAM_SIZE);
@@ -1984,10 +2041,10 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
         sendKey(0x12);
         event.preventDefault();
       } else if (event.key === 'ArrowUp') {
-        sendKey(0x10);
+        sendKey(0x11);
         event.preventDefault();
       } else if (event.key === 'ArrowDown') {
-        sendKey(0x11);
+        sendKey(0x10);
         event.preventDefault();
       } else if (event.key === 'Tab') {
         sendKey(0x13);

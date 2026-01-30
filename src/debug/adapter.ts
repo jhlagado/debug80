@@ -427,6 +427,17 @@ export class Z80DebugSession extends DebugSession {
         const romRanges = runtimeOptions?.romRanges ?? [];
         const isRomAddress = (addr: number): boolean =>
           romRanges.some((range) => addr >= range.start && addr <= range.end);
+        const hasLowRom = romRanges.some(
+          (range) => range.start <= 0x0000 && range.end >= 0x07ff
+        );
+        const hasShadowRom = romRanges.some(
+          (range) => range.start <= 0xc000 && range.end >= 0xc7ff
+        );
+        if (hasLowRom && !hasShadowRom) {
+          // TEC-1G ROM is physically at 0xC000; shadow maps it to 0x0000.
+          baseMemory.set(baseMemory.subarray(0x0000, 0x0800), 0xc000);
+          baseMemory.fill(0x00, 0x0000, 0x0800);
+        }
         this.runtime.hardware.memRead = (addr: number): number => {
           const masked = addr & 0xffff;
           const shadowEnabled = (tec1gRuntime as Tec1gRuntime).state.shadowEnabled === true;

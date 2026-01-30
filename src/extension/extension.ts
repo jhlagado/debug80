@@ -284,6 +284,7 @@ export function activate(context: vscode.ExtensionContext): void {
             reverseMask?: number;
           };
           lcd?: number[];
+          sysCtrl?: number;
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
@@ -298,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): void {
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
+          ...(payload.sysCtrl !== undefined ? { sysCtrl: payload.sysCtrl } : {}),
           ...(payload.glcdDdram !== undefined ? { glcdDdram: payload.glcdDdram } : {}),
           ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
         };
