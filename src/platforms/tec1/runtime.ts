@@ -68,13 +68,11 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     .filter((region) => region.kind === 'rom' || region.readOnly === true)
     .map((region) => ({ start: region.start, end: region.end }));
   const appStart =
-    Number.isFinite(config.appStart) && config.appStart !== undefined
-      ? config.appStart
-      : 0x0800;
+    Number.isFinite(config.appStart) && config.appStart !== undefined ? config.appStart : 0x0800;
   const entry =
     Number.isFinite(config.entry) && config.entry !== undefined
       ? config.entry
-      : romRanges[0]?.start ?? 0x0000;
+      : (romRanges[0]?.start ?? 0x0000);
   const romHex =
     typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
   const ramInitHex =
