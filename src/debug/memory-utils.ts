@@ -5,6 +5,14 @@
 
 import * as fs from 'fs';
 import { MemoryWindow } from './types';
+import {
+  Z80_ADDRESS_SPACE,
+  BYTE_MASK,
+  ADDR_MASK,
+} from '../platforms/tec-common';
+
+// Re-export for backward compatibility
+export { Z80_ADDRESS_SPACE };
 
 /**
  * Default window size for memory viewing.
@@ -15,11 +23,6 @@ export const DEFAULT_MEMORY_WINDOW = 16;
  * Maximum memory window size.
  */
 export const MAX_MEMORY_WINDOW = 1024;
-
-/**
- * Z80 address space size (64KB).
- */
-export const Z80_ADDRESS_SPACE = 0x10000;
 
 /**
  * Clamps a memory window size to valid bounds.
@@ -55,19 +58,19 @@ export function readMemoryWindow(
   rowSize: number,
   memRead: (addr: number) => number
 ): MemoryWindow {
-  const centerAddr = center & 0xffff;
-  const rawStart = (centerAddr - before) & 0xffff;
+  const centerAddr = center & ADDR_MASK;
+  const rawStart = (centerAddr - before) & ADDR_MASK;
   const alignedStart = rawStart - (rawStart % rowSize);
   const windowSize = before + after + 1;
   const paddedSize = Math.ceil(windowSize / rowSize) * rowSize;
 
   const bytes = new Array<number>(paddedSize);
   for (let i = 0; i < paddedSize; i += 1) {
-    bytes[i] = memRead((alignedStart + i) & 0xffff) & 0xff;
+    bytes[i] = memRead((alignedStart + i) & ADDR_MASK) & BYTE_MASK;
   }
 
-  const focus = (centerAddr - alignedStart) & 0xffff;
-  return { start: alignedStart & 0xffff, bytes, focus };
+  const focus = (centerAddr - alignedStart) & ADDR_MASK;
+  return { start: alignedStart & ADDR_MASK, bytes, focus };
 }
 
 /**
@@ -107,7 +110,7 @@ export function applyIntelHexToMemory(content: string, memory: Uint8Array): void
       const value = parseInt(byteHex, 16);
       const loc = address + i;
       if (loc >= 0 && loc < memory.length) {
-        memory[loc] = value & 0xff;
+        memory[loc] = value & BYTE_MASK;
       }
     }
   }
@@ -139,7 +142,7 @@ export function applyBinaryToMemoryAtOffset(
   memory: Uint8Array,
   offset: number
 ): void {
-  const base = Math.max(0, Math.min(0xffff, offset));
+  const base = Math.max(0, Math.min(ADDR_MASK, offset));
   const data = fs.readFileSync(filePath);
   const length = Math.min(data.length, memory.length - base);
   for (let i = 0; i < length; i += 1) {

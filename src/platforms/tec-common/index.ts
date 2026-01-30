@@ -125,6 +125,56 @@ export const TEC_SILENCE_CYCLES = 10000;
 export const TEC_KEY_HOLD_MS = 30;
 
 // ============================================================================
+// Memory Map Constants
+// ============================================================================
+
+/** Z80 address space size (64KB) */
+export const Z80_ADDRESS_SPACE = 0x10000;
+
+/** Byte mask for 8-bit values */
+export const BYTE_MASK = 0xff;
+
+/** Address mask for 16-bit addresses */
+export const ADDR_MASK = 0xffff;
+
+/** TEC-1G shadow ROM start address */
+export const TEC1G_SHADOW_START = 0xc000;
+
+/** TEC-1G shadow ROM end address */
+export const TEC1G_SHADOW_END = 0xc7ff;
+
+/** TEC-1G shadow ROM size */
+export const TEC1G_SHADOW_SIZE = 0x0800;
+
+/** TEC-1G expansion memory start */
+export const TEC1G_EXPAND_START = 0x8000;
+
+/** TEC-1G expansion memory end */
+export const TEC1G_EXPAND_END = 0xbfff;
+
+/** TEC-1G expansion memory size (16KB) */
+export const TEC1G_EXPAND_SIZE = 0x4000;
+
+/** TEC-1G RAM protection start */
+export const TEC1G_PROTECT_START = 0x4000;
+
+/** TEC-1G RAM protection end */
+export const TEC1G_PROTECT_END = 0x7fff;
+
+/** TEC-1 ROM load address */
+export const TEC1_ROM_LOAD_ADDR = 0xc000;
+
+// ============================================================================
+// Key Codes
+// ============================================================================
+
+/** RESET key code (silences speaker) */
+export const KEY_RESET = 0x12;
+
+/** No key pressed value */
+export const KEY_NONE = 0x7f;
+
+// ============================================================================
 // Serial Communication
 // ============================================================================
 
