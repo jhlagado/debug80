@@ -126,11 +126,7 @@ export function findSegmentForAddress(
  * @param line - Line number in source file
  * @returns Array of memory addresses (may be empty)
  */
-export function resolveLocation(
-  index: SourceMapIndex,
-  filePath: string,
-  line: number
-): number[] {
+export function resolveLocation(index: SourceMapIndex, filePath: string, line: number): number[] {
   const fileMap = index.segmentsByFileLine.get(filePath);
   if (fileMap) {
     const segments = fileMap.get(line);

@@ -5,6 +5,19 @@ import { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
+import {
+  TEC_SLOW_HZ,
+  TEC_FAST_HZ,
+  TEC_SILENCE_CYCLES,
+  TEC_KEY_HOLD_MS,
+  updateDisplayDigits,
+  updateMatrixRow,
+  calculateSpeakerFrequency,
+  calculateKeyHoldCycles,
+  shouldUpdate,
+  microsecondsToClocks,
+  millisecondsToClocks,
+} from '../tec-common';
 
 export interface Tec1gState {
   digits: number[];
@@ -68,11 +81,11 @@ export interface Tec1gRuntime {
   queueUpdate(): void;
 }
 
-export const TEC1G_SLOW_HZ = 400000;
-export const TEC1G_FAST_HZ = 4000000;
-const TEC1G_SILENCE_CYCLES = 10000;
+export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
+export const TEC1G_FAST_HZ = TEC_FAST_HZ;
+const TEC1G_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1G_SERIAL_BAUD = 4800;
-const TEC1G_KEY_HOLD_MS = 30;
+const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 const TEC1G_LCD_BUSY_US = 37;
 const TEC1G_LCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BUSY_US = 72;
@@ -280,7 +293,7 @@ export function createTec1gRuntime(
   };
 
   const glcdSetBusy = (microseconds: number): void => {
-    const cycles = Math.max(1, Math.round((state.clockHz * microseconds) / 1_000_000));
+    const cycles = microsecondsToClocks(state.clockHz, microseconds);
     const until = state.cycleClock.now() + cycles;
     if (until > glcdBusyUntil) {
       glcdBusyUntil = until;
@@ -299,10 +312,7 @@ export function createTec1gRuntime(
       queueUpdate();
       return;
     }
-    const periodCycles = Math.max(
-      1,
-      Math.round((state.clockHz * TEC1G_GLCD_BLINK_MS) / 1000)
-    );
+    const periodCycles = millisecondsToClocks(state.clockHz, TEC1G_GLCD_BLINK_MS);
     const scheduleToggle = (): void => {
       if (!state.glcdCursorBlink) {
         state.glcdBlinkVisible = true;
@@ -428,10 +438,8 @@ export function createTec1gRuntime(
   };
 
   const queueUpdate = (): void => {
-    const now = Date.now();
-    const updateMs = state.updateMs;
-    if (updateMs <= 0 || now - state.lastUpdateMs >= updateMs) {
-      state.lastUpdateMs = now;
+    if (shouldUpdate(state.lastUpdateMs, state.updateMs)) {
+      state.lastUpdateMs = Date.now();
       state.pendingUpdate = false;
       sendUpdate();
       return;
@@ -443,27 +451,18 @@ export function createTec1gRuntime(
     if (!state.pendingUpdate) {
       return;
     }
-    const now = Date.now();
-    const updateMs = state.updateMs;
-    if (updateMs > 0 && now - state.lastUpdateMs < updateMs) {
+    if (!shouldUpdate(state.lastUpdateMs, state.updateMs)) {
       return;
     }
-    state.lastUpdateMs = now;
+    state.lastUpdateMs = Date.now();
     state.pendingUpdate = false;
     sendUpdate();
   };
 
   const updateDisplay = (): void => {
-    const mask = state.digitLatch & 0x3f;
-    if (mask === 0) {
-      return;
+    if (updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch)) {
+      queueUpdate();
     }
-    for (let i = 0; i < state.digits.length; i += 1) {
-      if (mask & (1 << i)) {
-        state.digits[i] = state.segmentLatch & 0xff;
-      }
-    }
-    queueUpdate();
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
@@ -483,7 +482,7 @@ export function createTec1gRuntime(
   };
 
   const lcdSetBusy = (microseconds: number): void => {
-    const cycles = Math.max(1, Math.round((state.clockHz * microseconds) / 1_000_000));
+    const cycles = microsecondsToClocks(state.clockHz, microseconds);
     const until = state.cycleClock.now() + cycles;
     if (until > lcdBusyUntil) {
       lcdBusyUntil = until;
@@ -544,12 +543,9 @@ export function createTec1gRuntime(
   };
 
   const updateMatrix = (rowMask: number): void => {
-    const rowIndex = rowMask ? Math.log2(rowMask & 0xff) : -1;
-    if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex > 7) {
-      return;
+    if (updateMatrixRow(state.matrix, rowMask, state.matrixLatch)) {
+      queueUpdate();
     }
-    state.matrix[rowIndex] = state.matrixLatch & 0xff;
-    queueUpdate();
   };
 
   const scheduleSilence = (): void => {
@@ -629,8 +625,8 @@ export function createTec1gRuntime(
           const now = state.cycleClock.now();
           if (state.lastEdgeCycle !== null) {
             const delta = now - state.lastEdgeCycle;
-            if (delta > 0 && state.clockHz > 0) {
-              state.speakerHz = Math.round((state.clockHz / 2) / delta);
+            state.speakerHz = calculateSpeakerFrequency(state.clockHz, delta);
+            if (state.speakerHz > 0) {
               queueUpdate();
             }
           }
@@ -817,10 +813,7 @@ export function createTec1gRuntime(
     if (state.keyReleaseEventId !== null) {
       state.cycleClock.cancel(state.keyReleaseEventId);
     }
-    const holdCycles = Math.max(
-      1,
-      Math.round((state.clockHz * TEC1G_KEY_HOLD_MS) / 1000)
-    );
+    const holdCycles = calculateKeyHoldCycles(state.clockHz, TEC1G_KEY_HOLD_MS);
     state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
       state.keyValue = 0x7f;
       state.keyReleaseEventId = null;
