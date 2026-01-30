@@ -16,7 +16,23 @@ export interface Tec1gState {
   glcdRowBase: number;
   glcdCol: number;
   glcdExpectColumn: boolean;
+  glcdRe: boolean;
   glcdGraphics: boolean;
+  glcdDisplayOn: boolean;
+  glcdCursorOn: boolean;
+  glcdCursorBlink: boolean;
+  glcdBlinkVisible: boolean;
+  glcdBlinkEventId: number | null;
+  glcdEntryIncrement: boolean;
+  glcdEntryShift: boolean;
+  glcdTextShift: number;
+  glcdScrollMode: boolean;
+  glcdScroll: number;
+  glcdReverseMask: number;
+  glcdGdramPhase: 0 | 1;
+  glcdDdram: Uint8Array;
+  glcdDdramAddr: number;
+  glcdDdramPhase: 0 | 1;
   speaker: boolean;
   speakerHz: number;
   lcd: number[];
@@ -58,6 +74,9 @@ const TEC1G_SERIAL_BAUD = 4800;
 const TEC1G_KEY_HOLD_MS = 30;
 const TEC1G_LCD_BUSY_US = 37;
 const TEC1G_LCD_BUSY_CLEAR_US = 1600;
+const TEC1G_GLCD_BUSY_US = 72;
+const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
+const TEC1G_GLCD_BLINK_MS = 400;
 
 export function normalizeTec1gConfig(
   cfg?: Tec1gPlatformConfig
@@ -125,7 +144,23 @@ export function createTec1gRuntime(
     glcdRowBase: 0,
     glcdCol: 0,
     glcdExpectColumn: false,
+    glcdRe: false,
     glcdGraphics: false,
+    glcdDisplayOn: true,
+    glcdCursorOn: false,
+    glcdCursorBlink: false,
+    glcdBlinkVisible: true,
+    glcdBlinkEventId: null,
+    glcdEntryIncrement: true,
+    glcdEntryShift: false,
+    glcdTextShift: 0,
+    glcdScrollMode: false,
+    glcdScroll: 0,
+    glcdReverseMask: 0,
+    glcdGdramPhase: 0,
+    glcdDdram: new Uint8Array(64),
+    glcdDdramAddr: 0x80,
+    glcdDdramPhase: 0,
     speaker: false,
     speakerHz: 0,
     lcd: Array.from({ length: 80 }, () => 0x20),
@@ -162,12 +197,26 @@ export function createTec1gRuntime(
   }
 
   let lcdBusyUntil = 0;
+  let glcdBusyUntil = 0;
 
   const sendUpdate = (): void => {
     onUpdate({
       digits: [...state.digits],
       matrix: [...state.matrix],
       glcd: Array.from(state.glcd),
+      glcdDdram: Array.from(state.glcdDdram),
+      glcdState: {
+        displayOn: state.glcdDisplayOn,
+        graphicsOn: state.glcdGraphics,
+        cursorOn: state.glcdCursorOn,
+        cursorBlink: state.glcdCursorBlink,
+        blinkVisible: state.glcdBlinkVisible,
+        ddramAddr: state.glcdDdramAddr,
+        ddramPhase: state.glcdDdramPhase,
+        textShift: state.glcdTextShift,
+        scroll: state.glcdScroll,
+        reverseMask: state.glcdReverseMask,
+      },
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
       lcd: [...state.lcd],
@@ -178,27 +227,170 @@ export function createTec1gRuntime(
   const glcdSetRowAddr = (value: number): void => {
     state.glcdRowAddr = value & 0x1f;
     state.glcdExpectColumn = true;
+    state.glcdGdramPhase = 0;
   };
 
   const glcdSetColumn = (value: number): void => {
     const bankSelected = (value & 0x08) !== 0;
     state.glcdRowBase = bankSelected ? 32 : 0;
-    state.glcdCol = bankSelected ? 0 : (value & 0x0f);
+    state.glcdCol = value & 0x07;
     state.glcdExpectColumn = false;
+    state.glcdGdramPhase = 0;
+  };
+
+  // ST7920 DDRAM row address to linear index mapping.
+  // Row addresses: 0x80=row0, 0x90=row1, 0x88=row2, 0x98=row3.
+  // Each row has 16 byte positions (8 character pairs).
+  const glcdDdramIndex = (addr: number): number => {
+    const a = addr & 0x7f; // strip bit 7
+    const row = ((a & 0x10) >> 4) | ((a & 0x08) >> 2); // bits: row1=bit4, row0=bit3
+    const col = a & 0x07;
+    return row * 16 + col * 2;
+  };
+
+  const glcdSetDdramAddr = (addr: number): void => {
+    state.glcdDdramAddr = addr & 0xff;
+    state.glcdDdramPhase = 0;
+    queueUpdate();
+  };
+
+  const glcdShiftDisplay = (delta: number): void => {
+    const next = Math.max(-15, Math.min(15, state.glcdTextShift + delta));
+    if (next !== state.glcdTextShift) {
+      state.glcdTextShift = next;
+      queueUpdate();
+    }
+  };
+
+  const glcdOffsetDdramAddr = (delta: number): void => {
+    const base = state.glcdDdramAddr & 0x7f;
+    const rowBits = base & 0x18;
+    const col = base & 0x07;
+    const nextCol = (col + delta + 0x08) & 0x07;
+    state.glcdDdramAddr = 0x80 | rowBits | nextCol;
+    state.glcdDdramPhase = 0;
+  };
+
+  const glcdAdvanceDdramAddr = (): void => {
+    const delta = state.glcdEntryIncrement ? 1 : -1;
+    glcdOffsetDdramAddr(delta);
+    if (state.glcdEntryShift) {
+      glcdShiftDisplay(delta);
+    }
+  };
+
+  const glcdSetBusy = (microseconds: number): void => {
+    const cycles = Math.max(1, Math.round((state.clockHz * microseconds) / 1_000_000));
+    const until = state.cycleClock.now() + cycles;
+    if (until > glcdBusyUntil) {
+      glcdBusyUntil = until;
+    }
+  };
+
+  const glcdIsBusy = (): boolean => state.cycleClock.now() < glcdBusyUntil;
+
+  const glcdRescheduleBlink = (): void => {
+    if (state.glcdBlinkEventId !== null) {
+      state.cycleClock.cancel(state.glcdBlinkEventId);
+      state.glcdBlinkEventId = null;
+    }
+    state.glcdBlinkVisible = true;
+    if (!state.glcdCursorBlink) {
+      queueUpdate();
+      return;
+    }
+    const periodCycles = Math.max(
+      1,
+      Math.round((state.clockHz * TEC1G_GLCD_BLINK_MS) / 1000)
+    );
+    const scheduleToggle = (): void => {
+      if (!state.glcdCursorBlink) {
+        state.glcdBlinkVisible = true;
+        state.glcdBlinkEventId = null;
+        queueUpdate();
+        return;
+      }
+      state.glcdBlinkVisible = !state.glcdBlinkVisible;
+      queueUpdate();
+      state.glcdBlinkEventId = state.cycleClock.scheduleIn(periodCycles, scheduleToggle);
+    };
+    state.glcdBlinkEventId = state.cycleClock.scheduleIn(periodCycles, scheduleToggle);
+    queueUpdate();
+  };
+
+  const glcdWriteDdram = (value: number): void => {
+    const idx = glcdDdramIndex(state.glcdDdramAddr);
+    const slot = idx + state.glcdDdramPhase;
+    if (slot >= 0 && slot < state.glcdDdram.length) {
+      state.glcdDdram[slot] = value & 0xff;
+    }
+    if (state.glcdDdramPhase === 0) {
+      state.glcdDdramPhase = 1;
+    } else {
+      state.glcdDdramPhase = 0;
+      glcdAdvanceDdramAddr();
+    }
+    queueUpdate();
+  };
+
+  const glcdReadDdram = (): number => {
+    const idx = glcdDdramIndex(state.glcdDdramAddr);
+    const slot = idx + state.glcdDdramPhase;
+    const value =
+      slot >= 0 && slot < state.glcdDdram.length ? (state.glcdDdram[slot] ?? 0x20) : 0x20;
+    if (state.glcdDdramPhase === 0) {
+      state.glcdDdramPhase = 1;
+    } else {
+      state.glcdDdramPhase = 0;
+      glcdAdvanceDdramAddr();
+    }
+    return value & 0xff;
   };
 
   const glcdWriteData = (value: number): void => {
     if (!state.glcdGraphics) {
+      glcdWriteDdram(value);
+      glcdSetBusy(TEC1G_GLCD_BUSY_US);
       return;
     }
     const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
-    const col = state.glcdCol & 0x0f;
-    const index = row * 16 + col;
+    const col = state.glcdCol & 0x07;
+    const index = row * 16 + col * 2 + state.glcdGdramPhase;
     if (index >= 0 && index < state.glcd.length) {
       state.glcd[index] = value & 0xff;
       queueUpdate();
     }
-    state.glcdCol = (state.glcdCol + 1) & 0x0f;
+    glcdSetBusy(TEC1G_GLCD_BUSY_US);
+    if (state.glcdGdramPhase === 0) {
+      state.glcdGdramPhase = 1;
+    } else {
+      state.glcdGdramPhase = 0;
+      state.glcdCol = (state.glcdCol + 1) & 0x07;
+    }
+  };
+
+  const glcdReadData = (): number => {
+    if (!state.glcdGraphics) {
+      return glcdReadDdram();
+    }
+    const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
+    const col = state.glcdCol & 0x07;
+    const index = row * 16 + col * 2 + state.glcdGdramPhase;
+    const value =
+      index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0x00) : 0x00;
+    if (state.glcdGdramPhase === 0) {
+      state.glcdGdramPhase = 1;
+    } else {
+      state.glcdGdramPhase = 0;
+      state.glcdCol = (state.glcdCol + 1) & 0x07;
+    }
+    return value & 0xff;
+  };
+
+  const glcdReadStatus = (): number => {
+    const busy = glcdIsBusy() ? 0x80 : 0x00;
+    const addr = state.glcdGraphics ? (state.glcdRowAddr & 0x3f) : (state.glcdDdramAddr & 0x7f);
+    return busy | addr;
   };
 
   let serialLevel: 0 | 1 = 1;
@@ -394,6 +586,12 @@ export function createTec1gRuntime(
       if (p === 0x84) {
         return lcdReadData();
       }
+      if (p === 0x07) {
+        return glcdReadStatus();
+      }
+      if (p === 0x87) {
+        return glcdReadData();
+      }
       if (p === 0xff) {
         return state.sysCtrl & 0xff;
       }
@@ -481,23 +679,105 @@ export function createTec1gRuntime(
       }
       if (p === 0x07) {
         const instruction = value & 0xff;
-        if (instruction === 0x30) {
-          state.glcdGraphics = false;
+        if ((instruction & 0xe0) === 0x20) {
+          const re = (instruction & 0x04) !== 0;
+          const g = re && (instruction & 0x02) !== 0;
+          state.glcdRe = re;
+          state.glcdGraphics = g;
+          state.glcdExpectColumn = false;
+          state.glcdGdramPhase = 0;
+          glcdSetBusy(TEC1G_GLCD_BUSY_US);
+          queueUpdate();
           return;
         }
-        if (instruction === 0x34) {
-          return;
-        }
-        if (instruction === 0x36) {
-          state.glcdGraphics = true;
-          return;
+        if (state.glcdRe) {
+          if (instruction === 0x01) {
+            // Standby: approximate as display off.
+            state.glcdDisplayOn = false;
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            queueUpdate();
+            return;
+          }
+          if ((instruction & 0xfe) === 0x02) {
+            state.glcdScrollMode = (instruction & 0x01) !== 0;
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            return;
+          }
+          if ((instruction & 0xfc) === 0x04) {
+            const line = instruction & 0x03;
+            state.glcdReverseMask ^= 1 << line;
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            queueUpdate();
+            return;
+          }
+          if ((instruction & 0xc0) === 0x40) {
+            if (state.glcdScrollMode) {
+              state.glcdScroll = instruction & 0x3f;
+              queueUpdate();
+            }
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            return;
+          }
+        } else {
+          if (instruction === 0x01) {
+            // Clear display: fill DDRAM with spaces, reset address
+            state.glcdDdram.fill(0x20);
+            glcdSetDdramAddr(0x80);
+            state.glcdEntryIncrement = true;
+            state.glcdEntryShift = false;
+            state.glcdTextShift = 0;
+            state.glcdReverseMask = 0;
+            glcdSetBusy(TEC1G_GLCD_BUSY_CLEAR_US);
+            queueUpdate();
+            return;
+          }
+          if (instruction === 0x02) {
+            glcdSetDdramAddr(0x80);
+            state.glcdTextShift = 0;
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            queueUpdate();
+            return;
+          }
+          if ((instruction & 0xf8) === 0x08) {
+            state.glcdDisplayOn = (instruction & 0x04) !== 0;
+            state.glcdCursorOn = (instruction & 0x02) !== 0;
+            state.glcdCursorBlink = (instruction & 0x01) !== 0;
+            glcdRescheduleBlink();
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            queueUpdate();
+            return;
+          }
+          if ((instruction & 0xfc) === 0x04) {
+            state.glcdEntryIncrement = (instruction & 0x02) !== 0;
+            state.glcdEntryShift = (instruction & 0x01) !== 0;
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            return;
+          }
+          if ((instruction & 0xf0) === 0x10) {
+            const displayShift = (instruction & 0x08) !== 0;
+            const shiftRight = (instruction & 0x04) !== 0;
+            if (displayShift) {
+              glcdShiftDisplay(shiftRight ? -1 : 1);
+            } else {
+              glcdOffsetDdramAddr(shiftRight ? 1 : -1);
+              queueUpdate();
+            }
+            glcdSetBusy(TEC1G_GLCD_BUSY_US);
+            return;
+          }
         }
         if ((instruction & 0x80) !== 0) {
-          if (state.glcdExpectColumn) {
-            glcdSetColumn(instruction);
+          if (state.glcdGraphics) {
+            if (state.glcdExpectColumn) {
+              glcdSetColumn(instruction);
+            } else {
+              glcdSetRowAddr(instruction);
+            }
           } else {
-            glcdSetRowAddr(instruction);
+            // Text mode: set DDRAM address
+            glcdSetDdramAddr(instruction);
           }
+          glcdSetBusy(TEC1G_GLCD_BUSY_US);
           return;
         }
         logPortWrite(p, value);
@@ -652,6 +932,7 @@ export function createTec1gRuntime(
     state.clockHz = mode === 'slow' ? TEC1G_SLOW_HZ : TEC1G_FAST_HZ;
     serialDecoder.setCyclesPerSecond(state.clockHz);
     serialCyclesPerBit = state.clockHz / TEC1G_SERIAL_BAUD;
+    glcdRescheduleBlink();
     sendUpdate();
   };
 
@@ -668,7 +949,26 @@ export function createTec1gRuntime(
     state.glcdRowBase = 0;
     state.glcdCol = 0;
     state.glcdExpectColumn = false;
+    state.glcdRe = false;
     state.glcdGraphics = false;
+    state.glcdDisplayOn = true;
+    state.glcdCursorOn = false;
+    state.glcdCursorBlink = false;
+    state.glcdBlinkVisible = true;
+    if (state.glcdBlinkEventId !== null) {
+      state.cycleClock.cancel(state.glcdBlinkEventId);
+      state.glcdBlinkEventId = null;
+    }
+    state.glcdEntryIncrement = true;
+    state.glcdEntryShift = false;
+    state.glcdTextShift = 0;
+    state.glcdScrollMode = false;
+    state.glcdScroll = 0;
+    state.glcdReverseMask = 0;
+    state.glcdGdramPhase = 0;
+    state.glcdDdram.fill(0x20);
+    glcdSetDdramAddr(0x80);
+    glcdBusyUntil = 0;
     state.sysCtrl = 0x00;
     state.shadowEnabled = true;
     state.protectEnabled = false;
