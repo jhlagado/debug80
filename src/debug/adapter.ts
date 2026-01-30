@@ -44,6 +44,7 @@ import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assemble
 import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
 import { SourceManager } from './source-manager';
 import { buildStackFrames } from './stack-service';
+import { buildMemorySnapshotViews, clampMemoryWindow } from './memory-view';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -914,7 +915,7 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       const payload = extractMemorySnapshotPayload(args);
-      const before = this.clampMemoryWindow(payload.before, 16);
+      const before = clampMemoryWindow(payload.before, 16);
       const rowSize = payload.rowSize === 8 ? 8 : 16;
       const regs = this.runtime.getRegisters();
       const pc = regs.pc & 0xffff;
@@ -927,53 +928,20 @@ export class Z80DebugSession extends DebugSession {
       const memRead =
         this.runtime.hardware.memRead ??
         ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-      const pickAddress = (viewValue: string, addressValue: number | null): number => {
-        switch (viewValue) {
-          case 'pc':
-            return pc;
-          case 'sp':
-            return sp;
-          case 'bc':
-            return bc;
-          case 'de':
-            return de;
-          case 'hl':
-            return hl;
-          case 'ix':
-            return ix;
-          case 'iy':
-            return iy;
-          case 'absolute':
-            return addressValue ?? hl;
-          default:
-            return hl;
-        }
-      };
       const viewRequests = payload.views ?? [];
-      const views = viewRequests.map((entry) => {
-        const {
-          id,
-          view: viewValue,
-          after: afterValue,
-          address: addressValue,
-        } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
-        const target = pickAddress(viewValue, addressValue);
-        const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
-        const nearest = findNearestSymbol(target, {
-          anchors: this.symbolAnchors,
-          lookupAnchors: this.symbolLookupAnchors,
-        });
-        return {
-          id,
-          view: viewValue,
-          address: target,
-          start: window.start,
-          bytes: window.bytes,
-          focus: window.focus,
-          after: afterValue,
-          symbol: nearest?.name ?? null,
-          symbolOffset: nearest ? (target - nearest.address) & 0xffff : null,
-        };
+      const views = buildMemorySnapshotViews({
+        before,
+        rowSize,
+        views: viewRequests.map((entry) =>
+          extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
+        ),
+        registers: { pc, sp, bc, de, hl, ix, iy },
+        memRead,
+        findNearestSymbol: (target) =>
+          findNearestSymbol(target, {
+            anchors: this.symbolAnchors,
+            lookupAnchors: this.symbolLookupAnchors,
+          }),
       });
       response.body = { before, rowSize, views, symbols: this.symbolList };
       this.sendResponse(response);
@@ -985,7 +953,7 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       const payload = extractMemorySnapshotPayload(args);
-      const before = this.clampMemoryWindow(payload.before, 16);
+      const before = clampMemoryWindow(payload.before, 16);
       const rowSize = payload.rowSize === 8 ? 8 : 16;
       const regs = this.runtime.getRegisters();
       const pc = regs.pc & 0xffff;
@@ -998,53 +966,20 @@ export class Z80DebugSession extends DebugSession {
       const memRead =
         this.runtime.hardware.memRead ??
         ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-      const pickAddress = (viewValue: string, addressValue: number | null): number => {
-        switch (viewValue) {
-          case 'pc':
-            return pc;
-          case 'sp':
-            return sp;
-          case 'bc':
-            return bc;
-          case 'de':
-            return de;
-          case 'hl':
-            return hl;
-          case 'ix':
-            return ix;
-          case 'iy':
-            return iy;
-          case 'absolute':
-            return addressValue ?? hl;
-          default:
-            return hl;
-        }
-      };
       const viewRequests = payload.views ?? [];
-      const views = viewRequests.map((entry) => {
-        const {
-          id,
-          view: viewValue,
-          after: afterValue,
-          address: addressValue,
-        } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
-        const target = pickAddress(viewValue, addressValue);
-        const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
-        const nearest = findNearestSymbol(target, {
-          anchors: this.symbolAnchors,
-          lookupAnchors: this.symbolLookupAnchors,
-        });
-        return {
-          id,
-          view: viewValue,
-          address: target,
-          start: window.start,
-          bytes: window.bytes,
-          focus: window.focus,
-          after: afterValue,
-          symbol: nearest?.name ?? null,
-          symbolOffset: nearest ? (target - nearest.address) & 0xffff : null,
-        };
+      const views = buildMemorySnapshotViews({
+        before,
+        rowSize,
+        views: viewRequests.map((entry) =>
+          extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
+        ),
+        registers: { pc, sp, bc, de, hl, ix, iy },
+        memRead,
+        findNearestSymbol: (target) =>
+          findNearestSymbol(target, {
+            anchors: this.symbolAnchors,
+            lookupAnchors: this.symbolLookupAnchors,
+          }),
       });
       response.body = { views };
       this.sendResponse(response);
@@ -1702,36 +1637,6 @@ export class Z80DebugSession extends DebugSession {
       return 0;
     }
     return Math.floor(value);
-  }
-
-  private clampMemoryWindow(value: unknown, fallback: number): number {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      return fallback;
-    }
-    if (value <= 0) {
-      return fallback;
-    }
-    return Math.min(1024, Math.floor(value));
-  }
-
-  private readMemoryWindow(
-    center: number,
-    before: number,
-    after: number,
-    rowSize: number,
-    memRead: (addr: number) => number
-  ): { start: number; bytes: number[]; focus: number } {
-    const centerAddr = center & 0xffff;
-    const rawStart = (centerAddr - before) & 0xffff;
-    const alignedStart = rawStart - (rawStart % rowSize);
-    const windowSize = before + after + 1;
-    const paddedSize = Math.ceil(windowSize / rowSize) * rowSize;
-    const bytes = new Array<number>(paddedSize);
-    for (let i = 0; i < paddedSize; i += 1) {
-      bytes[i] = memRead((alignedStart + i) & 0xffff) & 0xff;
-    }
-    const focus = (centerAddr - alignedStart) & 0xffff;
-    return { start: alignedStart & 0xffff, bytes, focus };
   }
 
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {

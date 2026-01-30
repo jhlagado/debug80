@@ -6,20 +6,20 @@ import { describe, it, expect } from 'vitest';
 import { BreakpointManager } from '../src/debug/breakpoint-manager';
 import type { ListingInfo } from '../src/z80/loaders';
 import type { SourceMapIndex } from '../src/mapping/source-map';
+import type { SourceMapSegment } from '../src/mapping/parser';
 
 function createMockListing(lineToAddress: Map<number, number>): ListingInfo {
   return {
     entries: [],
     lineToAddress,
     addressToLine: new Map(),
-    lastDataAddress: 0,
   };
 }
 
 function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMapIndex {
-  const segmentsByFileLine = new Map<string, Map<number, Array<{ start: number; end: number }>>>();
+  const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
   for (const [file, lines] of fileMap) {
-    const lineMap = new Map<number, Array<{ start: number; end: number }>>();
+    const lineMap = new Map<number, SourceMapSegment[]>();
     for (const [line, addrs] of lines) {
       lineMap.set(
         line,
