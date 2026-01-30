@@ -26,7 +26,7 @@ import * as cp from 'child_process';
 import { ListingInfo, HexProgram } from '../z80/loaders';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
-import { createZ80Runtime, Z80Runtime, IoHandlers } from '../z80/runtime';
+import { createZ80Runtime, Z80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
   SimplePlatformConfigNormalized,
@@ -34,8 +34,8 @@ import {
   Tec1gPlatformConfigNormalized,
 } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
-import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
-import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
+import { normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
+import { normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
 import { ensureTec1gShadowRom } from './tec1g-shadow';
 import { resetSessionState, StopReason } from './session-state';
 import type { SessionStateShape } from './session-state';
@@ -43,6 +43,7 @@ import { loadProgramArtifacts } from './program-loader';
 import type { PlatformKind } from './program-loader';
 import { buildMappingFromListing } from './mapping-service';
 import { BreakpointManager } from './breakpoint-manager';
+import { buildPlatformIoHandlers } from './platform-host';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -61,7 +62,6 @@ import {
 import {
   LaunchRequestArguments,
   TerminalState,
-  TerminalConfigNormalized,
   extractTerminalText,
   extractKeyCode,
   extractSpeedMode,
@@ -103,9 +103,7 @@ export class Z80DebugSession extends DebugSession {
   private variableHandles = new Handles<'registers'>();
   private terminalState: TerminalState | undefined;
   private tec1Runtime: Tec1Runtime | undefined;
-  private tec1Config: Tec1PlatformConfigNormalized | undefined;
   private tec1gRuntime: Tec1gRuntime | undefined;
-  private tec1gConfig: Tec1gPlatformConfigNormalized | undefined;
   private activePlatform = 'simple';
   private loadedProgram: HexProgram | undefined;
   private loadedEntry: number | undefined;
@@ -174,8 +172,6 @@ export class Z80DebugSession extends DebugSession {
       const simpleConfig = platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
       const tec1Config = platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
       const tec1gConfig = platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
-      this.tec1Config = tec1Config;
-      this.tec1gConfig = tec1gConfig;
       const platformPayload: {
         id: string;
         uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'];
@@ -282,7 +278,31 @@ export class Z80DebugSession extends DebugSession {
       this.mappingIndex = mappingResult.index;
       this.rebuildSymbolIndex(this.mapping, listingContent);
 
-      const ioHandlers = this.buildIoHandlers(platform, merged);
+      const platformIo = buildPlatformIoHandlers({
+        platform,
+        ...(merged.terminal !== undefined ? { terminal: merged.terminal } : {}),
+        ...(tec1Config !== undefined ? { tec1Config } : {}),
+        ...(tec1gConfig !== undefined ? { tec1gConfig } : {}),
+        onTec1Update: (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1Update', payload));
+        },
+        onTec1Serial: (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1Serial', payload));
+        },
+        onTec1gUpdate: (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1gUpdate', payload));
+        },
+        onTec1gSerial: (payload) => {
+          this.sendEvent(new DapEvent('debug80/tec1gSerial', payload));
+        },
+        onTerminalOutput: (payload) => {
+          this.sendEvent(new DapEvent('debug80/terminalOutput', payload));
+        },
+      });
+      this.tec1Runtime = platformIo.tec1Runtime;
+      this.tec1gRuntime = platformIo.tec1gRuntime;
+      this.terminalState = platformIo.terminalState;
+      const ioHandlers = platformIo.ioHandlers;
       const runtimeOptions =
         (platform === 'simple' && simpleConfig) ||
         (platform === 'tec1' && tec1Config) ||
@@ -1910,92 +1930,6 @@ export class Z80DebugSession extends DebugSession {
     ) {
       this.assembleBin(asm80, asmDir, asmPath, hexPath, simpleConfig.binFrom, simpleConfig.binTo);
     }
-  }
-
-  private buildIoHandlers(platform: string, args: LaunchRequestArguments): IoHandlers | undefined {
-    if (platform === 'tec1') {
-      if (!this.tec1Config) {
-        return undefined;
-      }
-      this.tec1Runtime = createTec1Runtime(
-        this.tec1Config,
-        (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1Update', payload));
-        },
-        (byte) => {
-          const value = byte & 0xff;
-          const text = String.fromCharCode(value);
-          this.sendEvent(new DapEvent('debug80/tec1Serial', { byte: value, text }));
-        }
-      );
-      return this.tec1Runtime.ioHandlers;
-    }
-    if (platform === 'tec1g') {
-      if (!this.tec1gConfig) {
-        return undefined;
-      }
-      this.tec1gRuntime = createTec1gRuntime(
-        this.tec1gConfig,
-        (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1gUpdate', payload));
-        },
-        (byte) => {
-          const value = byte & 0xff;
-          const text = String.fromCharCode(value);
-          this.sendEvent(new DapEvent('debug80/tec1gSerial', { byte: value, text }));
-        }
-      );
-      return this.tec1gRuntime.ioHandlers;
-    }
-
-    const cfg = args.terminal;
-    if (cfg === undefined) {
-      return undefined;
-    }
-    const config: TerminalConfigNormalized = {
-      txPort: cfg.txPort ?? 0,
-      rxPort: cfg.rxPort ?? 1,
-      statusPort: cfg.statusPort ?? 2,
-      interrupt: cfg.interrupt ?? false,
-    };
-    this.terminalState = { config, input: [] };
-    const ioHandlers: IoHandlers = {
-      read: (port: number): number => {
-        const p = port & 0xff;
-        const term = this.terminalState;
-        if (term !== undefined) {
-          if (p === term.config.rxPort) {
-            const value = term.input.shift();
-            return value ?? 0;
-          }
-          if (p === term.config.statusPort) {
-            const rxAvail = term.input.length > 0 ? 1 : 0;
-            const txReady = 0b10;
-            return rxAvail | txReady;
-          }
-        }
-        return 0;
-      },
-      write: (port: number, value: number): void => {
-        const p = port & 0xff;
-        const term = this.terminalState;
-        if (term !== undefined && p === term.config.txPort) {
-          const byte = value & 0xff;
-          const ch = String.fromCharCode(byte);
-          this.sendEvent(new DapEvent('debug80/terminalOutput', { text: ch }));
-        }
-      },
-      tick: (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
-        const term = this.terminalState;
-        if (term !== undefined && term.breakRequested === true) {
-          term.breakRequested = false;
-          return { interrupt: { nonMaskable: false, data: 0x38 } };
-        }
-        return undefined;
-      },
-    };
-
-    return ioHandlers;
   }
 
   private findAsm80Binary(startDir: string): string | undefined {
