@@ -40,9 +40,7 @@ export interface AssembleResult {
  */
 export function findAsm80Binary(startDir: string): string | undefined {
   const candidates =
-    process.platform === 'win32'
-      ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80']
-      : ['asm80'];
+    process.platform === 'win32' ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] : ['asm80'];
 
   for (let dir = startDir; ; ) {
     const binDir = path.join(dir, 'node_modules', '.bin');
@@ -339,13 +337,7 @@ export function resolveBundledTec1Rom(): string | undefined {
     return undefined;
   }
 
-  const candidate = path.join(
-    extension.extensionPath,
-    'roms',
-    'tec1',
-    'mon-1b',
-    'mon-1b.hex'
-  );
+  const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b', 'mon-1b.hex');
 
   if (fs.existsSync(candidate)) {
     return candidate;

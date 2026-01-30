@@ -4,11 +4,7 @@
  */
 
 import { DebugProtocol } from '@vscode/debugprotocol';
-import {
-  SimplePlatformConfig,
-  Tec1PlatformConfig,
-  Tec1gPlatformConfig,
-} from '../platforms/types';
+import { SimplePlatformConfig, Tec1PlatformConfig, Tec1gPlatformConfig } from '../platforms/types';
 
 /**
  * Terminal configuration for serial I/O emulation.

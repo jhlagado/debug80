@@ -26,7 +26,12 @@ import * as cp from 'child_process';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
 import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
-import { parseMapping, MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
+import {
+  parseMapping,
+  MappingParseResult,
+  SourceMapAnchor,
+  SourceMapSegment,
+} from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
 import {
   buildSourceMapIndex,
@@ -49,11 +54,7 @@ import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platf
 import { ensureTec1gShadowRom } from './tec1g-shadow';
 
 // Import from extracted modules - types only for now (gradual migration)
-import {
-  LaunchRequestArguments,
-  TerminalState,
-  TerminalConfigNormalized,
-} from './types';
+import { LaunchRequestArguments, TerminalState, TerminalConfigNormalized } from './types';
 
 const THREAD_ID = 1;
 const CACHE_KEY_LENGTH = 12;
@@ -174,16 +175,15 @@ export class Z80DebugSession extends DebugSession {
 
       const platform = this.normalizePlatformName(merged);
       this.activePlatform = platform;
-      const simpleConfig =
-        platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
-      const tec1Config =
-        platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
-      const tec1gConfig =
-        platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
+      const simpleConfig = platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
+      const tec1Config = platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
+      const tec1gConfig = platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
       this.tec1Config = tec1Config;
       this.tec1gConfig = tec1gConfig;
-      const platformPayload: { id: string; uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'] } =
-        { id: platform };
+      const platformPayload: {
+        id: string;
+        uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'];
+      } = { id: platform };
       if (platform === 'tec1g' && tec1gConfig?.uiVisibility) {
         platformPayload.uiVisibility = tec1gConfig.uiVisibility;
       }
@@ -246,10 +246,7 @@ export class Z80DebugSession extends DebugSession {
         if (ramInitPath !== undefined && ramInitPath.length > 0) {
           if (!fs.existsSync(ramInitPath)) {
             this.sendEvent(
-              new OutputEvent(
-                `Debug80: TEC-1 RAM init not found at "${ramInitPath}".\n`,
-                'console'
-              )
+              new OutputEvent(`Debug80: TEC-1 RAM init not found at "${ramInitPath}".\n`, 'console')
             );
           } else {
             const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
@@ -326,11 +323,7 @@ export class Z80DebugSession extends DebugSession {
         tec1Config,
         tec1gConfig
       );
-      const extraListingPaths = this.resolveExtraListingPaths(
-        extraListings,
-        baseDir,
-        listingPath
-      );
+      const extraListingPaths = this.resolveExtraListingPaths(extraListings, baseDir, listingPath);
       this.extraListingPaths = extraListingPaths;
       this.extendSourceRoots(extraListingPaths);
 
@@ -441,14 +434,8 @@ export class Z80DebugSession extends DebugSession {
         };
       }
       this.callDepth = 0;
-      this.stepOverMaxInstructions = this.normalizeStepLimit(
-        merged.stepOverMaxInstructions,
-        0
-      );
-      this.stepOutMaxInstructions = this.normalizeStepLimit(
-        merged.stepOutMaxInstructions,
-        0
-      );
+      this.stepOverMaxInstructions = this.normalizeStepLimit(merged.stepOverMaxInstructions, 0);
+      this.stepOutMaxInstructions = this.normalizeStepLimit(merged.stepOutMaxInstructions, 0);
       if (this.listing !== undefined) {
         const applied = this.applyAllBreakpoints();
         for (const bp of applied) {
@@ -659,8 +646,7 @@ export class Z80DebugSession extends DebugSession {
     const listingPath = this.listingPath;
     const listingLine = this.listing?.addressToLine.get(address) ?? 1;
     const sourcePath = this.sourceFile ?? listingPath ?? '';
-    const fallbackLine =
-      listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
+    const fallbackLine = listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
     const fallback = { path: sourcePath, line: fallbackLine };
 
     const resolved = this.resolveSourceForAddressInternal(address);
@@ -682,9 +668,7 @@ export class Z80DebugSession extends DebugSession {
     return fallback;
   }
 
-  private resolveSourceForAddressInternal(
-    address: number
-  ): { path: string; line: number } | null {
+  private resolveSourceForAddressInternal(address: number): { path: string; line: number } | null {
     const index = this.mappingIndex;
     if (!index) {
       return null;
@@ -811,10 +795,7 @@ export class Z80DebugSession extends DebugSession {
       if (!fs.existsSync(normalized)) {
         const prefix = `Debug80 [${this.activePlatform}]`;
         this.sendEvent(
-          new OutputEvent(
-            `${prefix}: extra listing not found at "${normalized}".\n`,
-            'console'
-          )
+          new OutputEvent(`${prefix}: extra listing not found at "${normalized}".\n`, 'console')
         );
         continue;
       }
@@ -838,9 +819,7 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private loadExtraListingMapping(
-    listingPaths: string[]
-  ): MappingParseResult | undefined {
+  private loadExtraListingMapping(listingPaths: string[]): MappingParseResult | undefined {
     if (listingPaths.length === 0) {
       return undefined;
     }
@@ -859,8 +838,7 @@ export class Z80DebugSession extends DebugSession {
           );
         }
 
-        let debugMap =
-          !mapStale && fs.existsSync(mapPath) ? this.loadDebugMap(mapPath) : undefined;
+        let debugMap = !mapStale && fs.existsSync(mapPath) ? this.loadDebugMap(mapPath) : undefined;
         if (debugMap) {
           const mapping = buildMappingFromD8DebugMap(debugMap);
           combined.segments.push(...mapping.segments);
@@ -921,10 +899,7 @@ export class Z80DebugSession extends DebugSession {
     return parsed;
   }
 
-  private mergeMappings(
-    base: MappingParseResult,
-    extra: MappingParseResult
-  ): MappingParseResult {
+  private mergeMappings(base: MappingParseResult, extra: MappingParseResult): MappingParseResult {
     return {
       segments: [...base.segments, ...extra.segments],
       anchors: [...base.anchors, ...extra.anchors],
@@ -939,9 +914,7 @@ export class Z80DebugSession extends DebugSession {
       if (!fs.existsSync(resolved)) {
         return null;
       }
-      return binary === true
-        ? fs.readFileSync(resolved)
-        : fs.readFileSync(resolved, 'utf-8');
+      return binary === true ? fs.readFileSync(resolved) : fs.readFileSync(resolved, 'utf-8');
     });
     const [err, compiled, symbols] = asm80Module.compile(sourceText, asm80Monolith.Z80);
     if (err !== null && err !== undefined) {
@@ -967,9 +940,7 @@ export class Z80DebugSession extends DebugSession {
           ? path.resolve(baseDir, entry.includedFile)
           : sourcePath;
       const lineNumber =
-        typeof entry.numline === 'number' && Number.isFinite(entry.numline)
-          ? entry.numline
-          : null;
+        typeof entry.numline === 'number' && Number.isFinite(entry.numline) ? entry.numline : null;
       segments.push({
         start,
         end,
@@ -998,9 +969,7 @@ export class Z80DebugSession extends DebugSession {
             ? path.resolve(baseDir, fileRaw)
             : sourcePath;
         const lineNumber =
-          typeof defined?.line === 'number' && Number.isFinite(defined.line)
-            ? defined.line
-            : 1;
+          typeof defined?.line === 'number' && Number.isFinite(defined.line) ? defined.line : 1;
         anchors.push({
           symbol: name,
           address: entry.value & 0xffff,
@@ -1090,9 +1059,16 @@ export class Z80DebugSession extends DebugSession {
 
       const fmt16 = (v: number): string => `0x${v.toString(16).padStart(4, '0')}`;
       const fmt8 = (v: number): string => `0x${v.toString(16).padStart(2, '0')}`;
-      const flagsStr = (
-        f: { S: number; Z: number; Y: number; H: number; X: number; P: number; N: number; C: number }
-      ): string => {
+      const flagsStr = (f: {
+        S: number;
+        Z: number;
+        Y: number;
+        H: number;
+        X: number;
+        P: number;
+        N: number;
+        C: number;
+      }): string => {
         const letters: [keyof typeof f, string][] = [
           ['S', 's'],
           ['Z', 'z'],
@@ -1161,11 +1137,7 @@ export class Z80DebugSession extends DebugSession {
     this.sendResponse(response);
   }
 
-  protected customRequest(
-    command: string,
-    response: DebugProtocol.Response,
-    args: unknown
-  ): void {
+  protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
     if (command === 'debug80/terminalInput') {
       if (this.terminalState === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
@@ -1193,9 +1165,7 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       const payload = args as { code?: unknown };
-      const code = Number.isFinite(payload.code as number)
-        ? (payload.code as number)
-        : undefined;
+      const code = Number.isFinite(payload.code as number) ? (payload.code as number) : undefined;
       if (code === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
@@ -1214,9 +1184,7 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
       const payload = args as { code?: unknown };
-      const code = Number.isFinite(payload.code as number)
-        ? (payload.code as number)
-        : undefined;
+      const code = Number.isFinite(payload.code as number) ? (payload.code as number) : undefined;
       if (code === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
@@ -1352,8 +1320,9 @@ export class Z80DebugSession extends DebugSession {
         const id = typeof entry.id === 'string' ? entry.id : 'view';
         const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
         const afterValue = this.clampMemoryWindow(entry.after, 16);
-        const addressValue =
-          Number.isFinite(entry.address as number) ? ((entry.address as number) & 0xffff) : null;
+        const addressValue = Number.isFinite(entry.address as number)
+          ? (entry.address as number) & 0xffff
+          : null;
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
@@ -1423,8 +1392,9 @@ export class Z80DebugSession extends DebugSession {
         const id = typeof entry.id === 'string' ? entry.id : 'view';
         const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
         const afterValue = this.clampMemoryWindow(entry.after, 16);
-        const addressValue =
-          Number.isFinite(entry.address as number) ? ((entry.address as number) & 0xffff) : null;
+        const addressValue = Number.isFinite(entry.address as number)
+          ? (entry.address as number) & 0xffff
+          : null;
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
@@ -1514,8 +1484,8 @@ export class Z80DebugSession extends DebugSession {
     }
     const cpu = this.runtime.getRegisters();
     const memRead =
-        this.runtime.hardware.memRead ??
-        ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+      this.runtime.hardware.memRead ??
+      ((addr: number): number => this.runtime?.hardware.memory[addr & 0xffff] ?? 0);
     const pc = cpu.pc & 0xffff;
     const opcode = memRead(pc) & 0xff;
 
@@ -1530,59 +1500,59 @@ export class Z80DebugSession extends DebugSession {
     let returnAddress: number | null = null;
 
     switch (opcode) {
-      case 0xCD: // CALL nn
+      case 0xcd: // CALL nn
         taken = true;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xC4: // CALL NZ
+      case 0xc4: // CALL NZ
         taken = !cpu.flags.Z;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xCC: // CALL Z
+      case 0xcc: // CALL Z
         taken = !!cpu.flags.Z;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xD4: // CALL NC
+      case 0xd4: // CALL NC
         taken = !cpu.flags.C;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xDC: // CALL C
+      case 0xdc: // CALL C
         taken = !!cpu.flags.C;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xE4: // CALL PO
+      case 0xe4: // CALL PO
         taken = !cpu.flags.P;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xEC: // CALL PE
+      case 0xec: // CALL PE
         taken = !!cpu.flags.P;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xF4: // CALL P
+      case 0xf4: // CALL P
         taken = !cpu.flags.S;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xFC: // CALL M
+      case 0xfc: // CALL M
         taken = !!cpu.flags.S;
         target = read16(pc + 1);
         returnAddress = (pc + 3) & 0xffff;
         break;
-      case 0xC7:
-      case 0xCF:
-      case 0xD7:
-      case 0xDF:
-      case 0xE7:
-      case 0xEF:
-      case 0xF7:
-      case 0xFF:
+      case 0xc7:
+      case 0xcf:
+      case 0xd7:
+      case 0xdf:
+      case 0xe7:
+      case 0xef:
+      case 0xf7:
+      case 0xff:
         taken = true;
         target = opcode & 0x38;
         returnAddress = (pc + 1) & 0xffff;
@@ -1618,9 +1588,9 @@ export class Z80DebugSession extends DebugSession {
     let lastThrottleMs = Date.now();
     const yieldMs =
       this.activePlatform === 'tec1'
-        ? this.tec1Runtime?.state.yieldMs ?? 0
+        ? (this.tec1Runtime?.state.yieldMs ?? 0)
         : this.activePlatform === 'tec1g'
-          ? this.tec1gRuntime?.state.yieldMs ?? 0
+          ? (this.tec1gRuntime?.state.yieldMs ?? 0)
           : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -1638,10 +1608,7 @@ export class Z80DebugSession extends DebugSession {
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
-        if (
-          this.skipBreakpointOnce !== null &&
-          this.runtime.getPC() === this.skipBreakpointOnce
-        ) {
+        if (this.skipBreakpointOnce !== null && this.runtime.getPC() === this.skipBreakpointOnce) {
           this.skipBreakpointOnce = null;
           const stepped = this.runtime.step({ trace });
           this.applyStepInfo(trace);
@@ -1696,8 +1663,8 @@ export class Z80DebugSession extends DebugSession {
       if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
         const clockHz =
           this.activePlatform === 'tec1'
-            ? this.tec1Runtime?.state.clockHz ?? 0
-            : this.tec1gRuntime?.state.clockHz ?? 0;
+            ? (this.tec1Runtime?.state.clockHz ?? 0)
+            : (this.tec1gRuntime?.state.clockHz ?? 0);
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1737,9 +1704,9 @@ export class Z80DebugSession extends DebugSession {
     let lastThrottleMs = Date.now();
     const yieldMs =
       this.activePlatform === 'tec1'
-        ? this.tec1Runtime?.state.yieldMs ?? 0
+        ? (this.tec1Runtime?.state.yieldMs ?? 0)
         : this.activePlatform === 'tec1g'
-          ? this.tec1gRuntime?.state.yieldMs ?? 0
+          ? (this.tec1gRuntime?.state.yieldMs ?? 0)
           : 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -1757,10 +1724,7 @@ export class Z80DebugSession extends DebugSession {
           this.sendEvent(new StoppedEvent('pause', THREAD_ID));
           return;
         }
-        if (
-          this.skipBreakpointOnce !== null &&
-          this.runtime.getPC() === this.skipBreakpointOnce
-        ) {
+        if (this.skipBreakpointOnce !== null && this.runtime.getPC() === this.skipBreakpointOnce) {
           this.skipBreakpointOnce = null;
           const stepped = this.runtime.step({ trace });
           this.applyStepInfo(trace);
@@ -1817,8 +1781,8 @@ export class Z80DebugSession extends DebugSession {
       if (this.activePlatform === 'tec1' || this.activePlatform === 'tec1g') {
         const clockHz =
           this.activePlatform === 'tec1'
-            ? this.tec1Runtime?.state.clockHz ?? 0
-            : this.tec1gRuntime?.state.clockHz ?? 0;
+            ? (this.tec1Runtime?.state.clockHz ?? 0)
+            : (this.tec1gRuntime?.state.clockHz ?? 0);
         if (clockHz > 0) {
           const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
           const now = Date.now();
@@ -1861,8 +1825,8 @@ export class Z80DebugSession extends DebugSession {
       args.asm !== undefined && args.asm !== ''
         ? path.dirname(args.asm)
         : args.sourceFile !== undefined && args.sourceFile !== ''
-        ? path.dirname(args.sourceFile)
-        : workspaceRoot ?? process.cwd();
+          ? path.dirname(args.sourceFile)
+          : (workspaceRoot ?? process.cwd());
 
     const dirsToCheck: string[] = [];
     for (let dir = startDir; ; ) {
@@ -1908,7 +1872,10 @@ export class Z80DebugSession extends DebugSession {
     try {
       let cfg: {
         defaultTarget?: string;
-        targets?: Record<string, Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string }>;
+        targets?: Record<
+          string,
+          Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string }
+        >;
       } & (Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string });
 
       if (configPath.endsWith('package.json')) {
@@ -1925,11 +1892,8 @@ export class Z80DebugSession extends DebugSession {
       }
 
       const targets = cfg.targets ?? {};
-      const targetName =
-        args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-      const targetCfg =
-        (targetName !== undefined ? targets[targetName] : undefined) ??
-        undefined;
+      const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
+      const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
 
       const merged: LaunchRequestArguments = {
         ...cfg,
@@ -2064,9 +2028,7 @@ export class Z80DebugSession extends DebugSession {
     const binPath = path.join(outDir, `${path.basename(hexPath, path.extname(hexPath))}.bin`);
     const wrapperName = `.${path.basename(asmPath, path.extname(asmPath))}.bin.asm`;
     const wrapperPath = path.join(asmDir, wrapperName);
-    const wrapper = `.BINFROM ${binFrom}\n.BINTO ${binTo}\n.INCLUDE "${path.basename(
-      asmPath
-    )}"\n`;
+    const wrapper = `.BINFROM ${binFrom}\n.BINTO ${binTo}\n.INCLUDE "${path.basename(asmPath)}"\n`;
     fs.writeFileSync(wrapperPath, wrapper);
 
     const outArg = path.relative(asmDir, binPath);
@@ -2188,11 +2150,7 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private applyBinaryToMemoryAtOffset(
-    filePath: string,
-    memory: Uint8Array,
-    offset: number
-  ): void {
+  private applyBinaryToMemoryAtOffset(filePath: string, memory: Uint8Array, offset: number): void {
     const base = Math.max(0, Math.min(0xffff, offset));
     const data = fs.readFileSync(filePath);
     const length = Math.min(data.length, memory.length - base);
@@ -2216,9 +2174,7 @@ export class Z80DebugSession extends DebugSession {
   private extractRomHex(content: string, filePath: string): string {
     const lower = filePath.toLowerCase();
     if (lower.endsWith('.ts') || lower.endsWith('.js')) {
-      const match =
-        content.match(/ROM\s*=\s*`([\s\S]*?)`/) ??
-        content.match(/`([\s\S]*?)`/);
+      const match = content.match(/ROM\s*=\s*`([\s\S]*?)`/) ?? content.match(/`([\s\S]*?)`/);
       if (match !== null && match[1] !== undefined && match[1] !== '') {
         return match[1];
       }
@@ -2298,21 +2254,11 @@ export class Z80DebugSession extends DebugSession {
       simpleConfig?.binFrom !== undefined &&
       simpleConfig.binTo !== undefined
     ) {
-      this.assembleBin(
-        asm80,
-        asmDir,
-        asmPath,
-        hexPath,
-        simpleConfig.binFrom,
-        simpleConfig.binTo
-      );
+      this.assembleBin(asm80, asmDir, asmPath, hexPath, simpleConfig.binFrom, simpleConfig.binTo);
     }
   }
 
-  private buildIoHandlers(
-    platform: string,
-    args: LaunchRequestArguments
-  ): IoHandlers | undefined {
+  private buildIoHandlers(platform: string, args: LaunchRequestArguments): IoHandlers | undefined {
     if (platform === 'tec1') {
       if (!this.tec1Config) {
         return undefined;
@@ -2400,9 +2346,7 @@ export class Z80DebugSession extends DebugSession {
 
   private findAsm80Binary(startDir: string): string | undefined {
     const candidates =
-      process.platform === 'win32'
-        ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80']
-        : ['asm80'];
+      process.platform === 'win32' ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] : ['asm80'];
 
     for (let dir = startDir; ; ) {
       const binDir = path.join(dir, 'node_modules', '.bin');
@@ -2428,9 +2372,7 @@ export class Z80DebugSession extends DebugSession {
     return undefined;
   }
 
-  private resolveAsm80Command(
-    asmDir: string
-  ): {
+  private resolveAsm80Command(asmDir: string): {
     command: string;
     argsPrefix: string[];
   } {
@@ -2498,9 +2440,7 @@ export class Z80DebugSession extends DebugSession {
     if (this.isListingSource(sourcePath)) {
       for (const bp of bps) {
         const line = bp.line ?? 0;
-        const address =
-          listing.lineToAddress.get(line) ??
-          listing.lineToAddress.get(line + 1); // tolerate 0-based incoming lines
+        const address = listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1); // tolerate 0-based incoming lines
         const ok = address !== undefined;
         verified.push({ line: bp.line, verified: ok });
       }
@@ -2528,8 +2468,7 @@ export class Z80DebugSession extends DebugSession {
         for (const bp of bps) {
           const line = bp.line ?? 0;
           const address =
-            this.listing.lineToAddress.get(line) ??
-            this.listing.lineToAddress.get(line + 1);
+            this.listing.lineToAddress.get(line) ?? this.listing.lineToAddress.get(line + 1);
           if (address !== undefined) {
             this.breakpoints.add(address);
           }
@@ -2635,7 +2574,9 @@ export class Z80DebugSession extends DebugSession {
     this.symbolAnchors = sorted;
     const ranges = mapping ? this.buildSymbolRanges(mapping.segments) : [];
     const lookupAnchors =
-      ranges.length > 0 ? sorted.filter((anchor) => this.isAddressInRanges(anchor.address, ranges)) : sorted;
+      ranges.length > 0
+        ? sorted.filter((anchor) => this.isAddressInRanges(anchor.address, ranges))
+        : sorted;
     this.symbolLookupAnchors = lookupAnchors.length > 0 ? lookupAnchors : sorted;
     const seen = new Map<string, number>();
     for (const anchor of sorted) {
@@ -2697,7 +2638,8 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private findNearestSymbol(address: number): { name: string; address: number } | null {
-    const anchors = this.symbolLookupAnchors.length > 0 ? this.symbolLookupAnchors : this.symbolAnchors;
+    const anchors =
+      this.symbolLookupAnchors.length > 0 ? this.symbolLookupAnchors : this.symbolAnchors;
     if (anchors.length === 0) {
       return null;
     }
@@ -2718,9 +2660,7 @@ export class Z80DebugSession extends DebugSession {
     const ranges = segments
       .map((segment) => ({ start: segment.start, end: segment.end }))
       .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end))
-      .map((range) =>
-        range.start <= range.end ? range : { start: range.end, end: range.start }
-      )
+      .map((range) => (range.start <= range.end ? range : { start: range.end, end: range.start }))
       .sort((a, b) => a.start - b.start || a.end - b.end);
     const merged: Array<{ start: number; end: number }> = [];
     for (const range of ranges) {
@@ -2734,7 +2674,10 @@ export class Z80DebugSession extends DebugSession {
     return merged;
   }
 
-  private isAddressInRanges(address: number, ranges: Array<{ start: number; end: number }>): boolean {
+  private isAddressInRanges(
+    address: number,
+    ranges: Array<{ start: number; end: number }>
+  ): boolean {
     for (const range of ranges) {
       if (range.end === range.start) {
         if (address === range.start) {
@@ -2866,11 +2809,7 @@ export class Z80DebugSession extends DebugSession {
 
   private buildListingCacheKey(listingPath: string): string {
     const normalized = path.resolve(listingPath);
-    return crypto
-      .createHash('sha1')
-      .update(normalized)
-      .digest('hex')
-      .slice(0, CACHE_KEY_LENGTH);
+    return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
   }
 
   private relativeIfPossible(filePath: string, baseDir: string): string {
@@ -2917,13 +2856,7 @@ export class Z80DebugSession extends DebugSession {
     if (!extension) {
       return undefined;
     }
-    const candidate = path.join(
-      extension.extensionPath,
-      'roms',
-      'tec1',
-      'mon-1b',
-      'mon-1b.hex'
-    );
+    const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b', 'mon-1b.hex');
     if (fs.existsSync(candidate)) {
       return candidate;
     }
@@ -2939,8 +2872,8 @@ export class Z80DebugSession extends DebugSession {
       const cfgPath = path.isAbsolute(args.projectConfig)
         ? args.projectConfig
         : workspace !== undefined
-        ? path.join(workspace, args.projectConfig)
-        : args.projectConfig;
+          ? path.join(workspace, args.projectConfig)
+          : args.projectConfig;
 
       if (workspace !== undefined && cfgPath.startsWith(workspace)) {
         return workspace;
@@ -2983,7 +2916,9 @@ export class Z80DebugSession extends DebugSession {
 
     if (hexMissing || listingMissing) {
       if (asmPath === undefined || asmPath === '') {
-        throw new Error('Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.');
+        throw new Error(
+          'Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.'
+        );
       }
       const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
       const outDirRaw = args.outputDir ?? path.dirname(asmPath);

@@ -123,9 +123,7 @@ export class SymbolManager {
    */
   public findNearestSymbol(address: number): DebugSymbol | null {
     const anchors =
-      this.symbolLookupAnchors.length > 0
-        ? this.symbolLookupAnchors
-        : this.symbolAnchors;
+      this.symbolLookupAnchors.length > 0 ? this.symbolLookupAnchors : this.symbolAnchors;
 
     if (anchors.length === 0) {
       return null;
@@ -160,9 +158,7 @@ export class SymbolManager {
     const anchors: SourceMapAnchor[] = [];
     const lines = listingContent.split(/\r?\n/);
     const fallbackFile =
-      typeof defaultFile === 'string' && defaultFile.length > 0
-        ? defaultFile
-        : 'unknown.asm';
+      typeof defaultFile === 'string' && defaultFile.length > 0 ? defaultFile : 'unknown.asm';
 
     const anchorLine =
       /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)(?:\s+IN\s+(.+))?$/;
@@ -217,15 +213,11 @@ export class SymbolManager {
    * @param segments - Source map segments
    * @returns Merged address ranges
    */
-  private buildSymbolRanges(
-    segments: SourceMapSegment[]
-  ): Array<{ start: number; end: number }> {
+  private buildSymbolRanges(segments: SourceMapSegment[]): Array<{ start: number; end: number }> {
     const ranges = segments
       .map((segment) => ({ start: segment.start, end: segment.end }))
       .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end))
-      .map((range) =>
-        range.start <= range.end ? range : { start: range.end, end: range.start }
-      )
+      .map((range) => (range.start <= range.end ? range : { start: range.end, end: range.start }))
       .sort((a, b) => a.start - b.start || a.end - b.end);
 
     const merged: Array<{ start: number; end: number }> = [];

@@ -16,10 +16,7 @@ import { LaunchRequestArguments, ProjectConfig } from './types';
  * @param configCandidates - List of config file names to look for
  * @returns The absolute path to the config file, or undefined if not found
  */
-export function findConfigFile(
-  startDir: string,
-  configCandidates: string[]
-): string | undefined {
+export function findConfigFile(startDir: string, configCandidates: string[]): string | undefined {
   const dirsToCheck: string[] = [];
   for (let dir = startDir; ; ) {
     dirsToCheck.push(dir);
@@ -126,10 +123,8 @@ export function mergeConfig(
   cfg: ProjectConfig
 ): LaunchRequestArguments {
   const targets = cfg.targets ?? {};
-  const targetName =
-    args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-  const targetCfg =
-    (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
+  const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
+  const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
 
   const merged: LaunchRequestArguments = {
     ...cfg,
@@ -176,7 +171,8 @@ export function mergeConfig(
     merged.listing = listingResolved;
   }
 
-  const outputDirResolved = args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir ?? merged.outputDir;
+  const outputDirResolved =
+    args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir ?? merged.outputDir;
   if (outputDirResolved !== undefined) {
     merged.outputDir = outputDirResolved;
   }

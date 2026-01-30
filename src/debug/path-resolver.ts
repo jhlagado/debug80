@@ -76,10 +76,7 @@ export function resolveRelative(p: string, baseDir: string): string {
  * @param baseDir - Base directory
  * @returns Absolute path, or undefined
  */
-export function resolveAsmPath(
-  asm: string | undefined,
-  baseDir: string
-): string | undefined {
+export function resolveAsmPath(asm: string | undefined, baseDir: string): string | undefined {
   if (asm === undefined || asm === '') {
     return undefined;
   }
@@ -97,10 +94,7 @@ export function resolveAsmPath(
  * @returns Resolved artifact paths
  * @throws If required paths cannot be resolved
  */
-export function resolveArtifacts(
-  args: LaunchRequestArguments,
-  baseDir: string
-): ResolvedArtifacts {
+export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string): ResolvedArtifacts {
   const asmPath = resolveAsmPath(args.asm, baseDir);
 
   let hexPath = args.hex;
@@ -116,8 +110,7 @@ export function resolveArtifacts(
       );
     }
 
-    const artifactBase =
-      args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
+    const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
     const outDirRaw = args.outputDir ?? path.dirname(asmPath);
     const outDir = resolveRelative(outDirRaw, baseDir);
 
@@ -125,12 +118,7 @@ export function resolveArtifacts(
     listingPath = path.join(outDir, `${artifactBase}.lst`);
   }
 
-  if (
-    hexPath === undefined ||
-    listingPath === undefined ||
-    hexPath === '' ||
-    listingPath === ''
-  ) {
+  if (hexPath === undefined || listingPath === undefined || hexPath === '' || listingPath === '') {
     throw new Error('Z80 runtime requires resolvable HEX and LST paths.');
   }
 
@@ -151,10 +139,7 @@ export function resolveArtifacts(
  * @param baseDir - Base directory
  * @returns Array of resolved source root paths
  */
-export function resolveSourceRoots(
-  args: LaunchRequestArguments,
-  baseDir: string
-): string[] {
+export function resolveSourceRoots(args: LaunchRequestArguments, baseDir: string): string[] {
   const roots = args.sourceRoots ?? [];
   return roots.map((root) => resolveRelative(root, baseDir));
 }
@@ -192,11 +177,7 @@ export function resolveCacheDir(baseDir: string): string | undefined {
  */
 export function buildListingCacheKey(listingPath: string): string {
   const normalized = path.resolve(listingPath);
-  return crypto
-    .createHash('sha1')
-    .update(normalized)
-    .digest('hex')
-    .slice(0, CACHE_KEY_LENGTH);
+  return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
 }
 
 /**
@@ -238,10 +219,7 @@ export function resolveDebugMapPath(
  * @param baseDir - Base directory
  * @returns Path to the debug map file
  */
-export function resolveExtraDebugMapPath(
-  listingPath: string,
-  baseDir: string
-): string {
+export function resolveExtraDebugMapPath(listingPath: string, baseDir: string): string {
   const base = path.basename(listingPath, path.extname(listingPath));
   const cacheDir = resolveCacheDir(baseDir);
 
