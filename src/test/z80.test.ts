@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { createZ80Runtime } from '../z80/runtime';
 import { parseIntelHex, parseListing } from '../z80/loaders';
 

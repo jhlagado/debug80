@@ -1,0 +1,47 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts', 'src/test/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: 'coverage',
+      all: true,
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/**/*.test.ts',
+        'src/**/ui-panel.ts',
+        'src/**/memory-panel.ts',
+        'src/extension/**',
+        'src/debug/adapter.ts',
+        // Extracted adapter modules (not yet integrated/tested)
+        'src/debug/assembler.ts',
+        'src/debug/breakpoint-manager.ts',
+        'src/debug/config-loader.ts',
+        'src/debug/memory-utils.ts',
+        'src/debug/path-resolver.ts',
+        'src/debug/symbol-manager.ts',
+        'src/debug/types.ts',
+        'src/debug/index.ts',
+        'src/platforms/**/runtime.ts',
+        'src/platforms/**/types.ts',
+        'src/platforms/serial/bitbang-uart.ts',
+        'src/platforms/cycle-clock.ts',
+        'src/platforms/tec1g/hd44780-a00.ts',
+        'src/platforms/tec1g/st7920-font.ts',
+        'src/z80/decode.ts',
+        'src/z80/cpu.ts',
+        'src/z80/runtime.ts',
+        'src/z80/types.ts',
+        'src/z80/opcode-types.ts',
+      ],
+      lines: 80,
+      functions: 80,
+      branches: 80,
+      statements: 80,
+    },
+  },
+});

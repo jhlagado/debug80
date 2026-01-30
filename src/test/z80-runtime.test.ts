@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { HexProgram } from '../z80/loaders';
 import { createZ80Runtime } from '../z80/runtime';
 

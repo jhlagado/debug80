@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import { parseIntelHex, parseListing } from '../z80/loaders';
 
 describe('z80-loaders', () => {

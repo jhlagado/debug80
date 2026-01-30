@@ -1,5 +1,23 @@
+/**
+ * @fileoverview Z80 Debug Adapter implementation.
+ * Provides DAP (Debug Adapter Protocol) support for Z80 assembly debugging.
+ */
+
 import * as vscode from 'vscode';
-import { DebugSession, InitializedEvent, StoppedEvent, TerminatedEvent, Thread, StackFrame, Scope, Source, Handles, BreakpointEvent, OutputEvent } from '@vscode/debugadapter';
+import {
+  DebugSession,
+  InitializedEvent,
+  StoppedEvent,
+  TerminatedEvent,
+  Thread,
+  StackFrame,
+  Scope,
+  Source,
+  Handles,
+  BreakpointEvent,
+  OutputEvent,
+  Event as DapEvent,
+} from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,79 +25,38 @@ import * as crypto from 'crypto';
 import * as cp from 'child_process';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
-import { Event as DapEvent } from '@vscode/debugadapter';
 import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
 import { parseMapping, MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
 import { applyLayer2 } from '../mapping/layer2';
-import { buildSourceMapIndex, findAnchorLine, findSegmentForAddress, resolveLocation, SourceMapIndex } from '../mapping/source-map';
-import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import {
-  createZ80Runtime,
-  Z80Runtime,
-  IoHandlers,
-} from '../z80/runtime';
+  buildSourceMapIndex,
+  findAnchorLine,
+  findSegmentForAddress,
+  resolveLocation,
+  SourceMapIndex,
+} from '../mapping/source-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
+import { createZ80Runtime, Z80Runtime, IoHandlers } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
-  SimplePlatformConfig,
   SimplePlatformConfigNormalized,
-  Tec1PlatformConfig,
   Tec1PlatformConfigNormalized,
-  Tec1gPlatformConfig,
   Tec1gPlatformConfigNormalized,
 } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
+import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
+import { ensureTec1gShadowRom } from './tec1g-shadow';
+
+// Import from extracted modules - types only for now (gradual migration)
 import {
-  createTec1gRuntime,
-  normalizeTec1gConfig,
-  Tec1gRuntime,
-} from '../platforms/tec1g/runtime';
-
-const CACHE_KEY_LENGTH = 12;
-
-interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
-  asm?: string;
-  sourceFile?: string;
-  hex?: string;
-  listing?: string;
-  outputDir?: string;
-  artifactBase?: string;
-  entry?: number;
-  stopOnEntry?: boolean;
-  projectConfig?: string;
-  target?: string;
-  platform?: string;
-  assemble?: boolean;
-  sourceRoots?: string[];
-  stepOverMaxInstructions?: number;
-  stepOutMaxInstructions?: number;
-  terminal?: TerminalConfig;
-  simple?: SimplePlatformConfig;
-  tec1?: Tec1PlatformConfig;
-  tec1g?: Tec1gPlatformConfig;
-}
-
-interface TerminalConfig {
-  txPort?: number;
-  rxPort?: number;
-  statusPort?: number;
-  interrupt?: boolean;
-}
-
-interface TerminalState {
-  config: TerminalConfigNormalized;
-  input: number[];
-  breakRequested?: boolean;
-}
-
-interface TerminalConfigNormalized {
-  txPort: number;
-  rxPort: number;
-  statusPort: number;
-  interrupt: boolean;
-}
+  LaunchRequestArguments,
+  TerminalState,
+  TerminalConfigNormalized,
+} from './types';
 
 const THREAD_ID = 1;
+const CACHE_KEY_LENGTH = 12;
 
 export class Z80DebugSession extends DebugSession {
   private runtime: Z80Runtime | undefined;
@@ -425,19 +402,10 @@ export class Z80DebugSession extends DebugSession {
         const baseMemory = this.runtime.hardware.memory;
         const expandBank = new Uint8Array(0x4000);
         const romRanges = runtimeOptions?.romRanges ?? [];
+        const shadowInfo = ensureTec1gShadowRom(baseMemory, romRanges);
         const isRomAddress = (addr: number): boolean =>
-          romRanges.some((range) => addr >= range.start && addr <= range.end);
-        const hasLowRom = romRanges.some(
-          (range) => range.start <= 0x0000 && range.end >= 0x07ff
-        );
-        const hasShadowRom = romRanges.some(
-          (range) => range.start <= 0xc000 && range.end >= 0xc7ff
-        );
-        if (hasLowRom && !hasShadowRom) {
-          // TEC-1G ROM is physically at 0xC000; shadow maps it to 0x0000.
-          baseMemory.set(baseMemory.subarray(0x0000, 0x0800), 0xc000);
-          baseMemory.fill(0x00, 0x0000, 0x0800);
-        }
+          romRanges.some((range) => addr >= range.start && addr <= range.end) ||
+          (shadowInfo.shadowCopied && addr >= 0xc000 && addr <= 0xc7ff);
         this.runtime.hardware.memRead = (addr: number): number => {
           const masked = addr & 0xffff;
           const shadowEnabled = (tec1gRuntime as Tec1gRuntime).state.shadowEnabled === true;
