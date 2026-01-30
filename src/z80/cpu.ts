@@ -174,12 +174,7 @@ export const execute = (cpu: Cpu, cb: Callbacks): number => {
 // @param non_maskable - true if this is a non-maskable interrupt
 // @param data - the value to be placed on the data bus, if needed
 // ////////////////////////////////////////////////////////////////////////////
-export const interrupt = (
-  cpu: Cpu,
-  cb: Callbacks,
-  non_maskable: boolean,
-  data: number
-): void => {
+export const interrupt = (cpu: Cpu, cb: Callbacks, non_maskable: boolean, data: number): void => {
   if (non_maskable) {
     // The high bit of R is not affected by this increment,
     //  it can only be changed using the LD R, A instruction.
@@ -223,9 +218,7 @@ export const interrupt = (
       //  but it doesn't appear that this is actually the case on the hardware,
       //  so we don't attempt to enforce that here.
       const vector_address = (cpu.i << 8) | data;
-      cpu.pc =
-        cb.mem_read(vector_address) |
-        (cb.mem_read((vector_address + 1) & 0xffff) << 8);
+      cpu.pc = cb.mem_read(vector_address) | (cb.mem_read((vector_address + 1) & 0xffff) << 8);
 
       cpu.cycle_counter += 19;
     }
