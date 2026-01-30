@@ -243,11 +243,7 @@ export function updateDisplayDigits(
  * @param matrixLatch - Current matrix latch value
  * @returns True if the matrix was updated
  */
-export function updateMatrixRow(
-  matrix: number[],
-  rowMask: number,
-  matrixLatch: number
-): boolean {
+export function updateMatrixRow(matrix: number[], rowMask: number, matrixLatch: number): boolean {
   const rowIndex = rowMask ? Math.log2(rowMask & 0xff) : -1;
   if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex > 7) {
     return false;
@@ -270,7 +266,7 @@ export function calculateSpeakerFrequency(clockHz: number, cycleDelta: number): 
   if (cycleDelta <= 0 || clockHz <= 0) {
     return 0;
   }
-  return Math.round((clockHz / 2) / cycleDelta);
+  return Math.round(clockHz / 2 / cycleDelta);
 }
 
 // ============================================================================

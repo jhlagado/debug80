@@ -92,9 +92,7 @@ const TEC1G_GLCD_BUSY_US = 72;
 const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BLINK_MS = 400;
 
-export function normalizeTec1gConfig(
-  cfg?: Tec1gPlatformConfig
-): Tec1gPlatformConfigNormalized {
+export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformConfigNormalized {
   const config = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
     { start: 0x0000, end: 0x07ff, kind: 'rom' },
@@ -105,13 +103,8 @@ export function normalizeTec1gConfig(
     .filter((region) => region.kind === 'rom' || region.readOnly === true)
     .map((region) => ({ start: region.start, end: region.end }));
   const appStart =
-    Number.isFinite(config.appStart) && config.appStart !== undefined
-      ? config.appStart
-      : 0x4000;
-  const entry =
-    Number.isFinite(config.entry) && config.entry !== undefined
-      ? config.entry
-      : 0x0000;
+    Number.isFinite(config.appStart) && config.appStart !== undefined ? config.appStart : 0x4000;
+  const entry = Number.isFinite(config.entry) && config.entry !== undefined ? config.entry : 0x0000;
   const romHex =
     typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
   const ramInitHex =
@@ -386,8 +379,7 @@ export function createTec1gRuntime(
     const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
     const col = state.glcdCol & 0x07;
     const index = row * 16 + col * 2 + state.glcdGdramPhase;
-    const value =
-      index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0x00) : 0x00;
+    const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0x00) : 0x00;
     if (state.glcdGdramPhase === 0) {
       state.glcdGdramPhase = 1;
     } else {
@@ -399,7 +391,7 @@ export function createTec1gRuntime(
 
   const glcdReadStatus = (): number => {
     const busy = glcdIsBusy() ? 0x80 : 0x00;
-    const addr = state.glcdGraphics ? (state.glcdRowAddr & 0x3f) : (state.glcdDdramAddr & 0x7f);
+    const addr = state.glcdGraphics ? state.glcdRowAddr & 0x3f : state.glcdDdramAddr & 0x7f;
     return busy | addr;
   };
 
