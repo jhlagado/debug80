@@ -1,3 +1,15 @@
+/**
+ * @file Z80 CPU core implementation
+ * @description Main CPU state and execution loop for Z80 emulation.
+ *
+ * NOTE: This module uses snake_case naming conventions for some properties
+ * (e.g., cycle_counter, do_delayed_ei, mem_read) as it was ported from the
+ * js8080 project. This naming is intentionally preserved to avoid breaking
+ * changes to the emulator core.
+ *
+ * @module z80/cpu
+ */
+
 import { decodeInstruction } from './decode';
 import { pushWord, setFlagsRegister } from './core-helpers';
 import { Callbacks, Cpu } from './types';

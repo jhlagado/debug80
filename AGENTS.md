@@ -28,6 +28,15 @@
 - Keep platform UI responsive; prefer lightweight DOM updates.
 - Maintain TEC-1 compatibility and verify ROM assumptions in docs.
 
+## Naming Conventions
+- **Constants**: SCREAMING_SNAKE_CASE (`THREAD_ID`, `PORT_MAX`, `KEY_RESET`)
+- **Interfaces/Types**: PascalCase (`LaunchRequestArguments`, `TerminalConfig`)
+- **Functions/Methods**: camelCase (`validatePlatform`, `resolveBaseDir`)
+- **File names**: kebab-case (`config-validation.ts`, `path-resolver.ts`)
+- **Z80 core (src/z80/)**: Uses snake_case internally (legacy from js8080 port)
+  - Do NOT refactor Z80 core naming to avoid breaking the emulator
+  - Examples: `cycle_counts`, `parity_bits`, `do_rlc`, `mem_read`
+
 ## Quality Checks
 - `yarn lint`
 - `yarn build`
