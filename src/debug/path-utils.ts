@@ -59,14 +59,10 @@ export function isPathWithin(filePath: string, baseDir: string): boolean {
     const pathLower = normalizedPath.toLowerCase();
     const baseLower = baseWithSep.toLowerCase();
     // Also check if paths are exactly equal (file is the base dir itself)
-    return (
-      pathLower === normalizedBase.toLowerCase() || pathLower.startsWith(baseLower)
-    );
+    return pathLower === normalizedBase.toLowerCase() || pathLower.startsWith(baseLower);
   }
 
-  return (
-    normalizedPath === normalizedBase || normalizedPath.startsWith(baseWithSep)
-  );
+  return normalizedPath === normalizedBase || normalizedPath.startsWith(baseWithSep);
 }
 
 /**
