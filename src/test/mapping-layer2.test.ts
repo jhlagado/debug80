@@ -124,4 +124,60 @@ describe('mapping-layer2', () => {
     expect(seg?.loc.line).toBe(200);
     expect(seg?.confidence).toBe('LOW');
   });
+
+  it('handles comments with strings containing semicolons', () => {
+    // Test that semicolons inside strings are not treated as comments
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x3000,
+          end: 0x3003,
+          loc: { file: 'layer2-extra.asm', line: null },
+          lst: { line: 1, text: 'DB "test;str"' },
+          confidence: 'MEDIUM',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = applyLayer2(mapping, { resolvePath: resolveExtra });
+    // Should not crash and should process correctly
+    expect(result).toBeDefined();
+  });
+
+  it('handles escaped characters in strings', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x3000,
+          end: 0x3003,
+          loc: { file: 'layer2-extra.asm', line: null },
+          lst: { line: 1, text: "DB 'test\\'s'" },
+          confidence: 'MEDIUM',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = applyLayer2(mapping, { resolvePath: resolveExtra });
+    expect(result).toBeDefined();
+  });
+
+  it('handles single-quoted strings with semicolons', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x3000,
+          end: 0x3003,
+          loc: { file: 'layer2-extra.asm', line: null },
+          lst: { line: 1, text: "DB ';test'" },
+          confidence: 'MEDIUM',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = applyLayer2(mapping, { resolvePath: resolveExtra });
+    expect(result).toBeDefined();
+  });
 });

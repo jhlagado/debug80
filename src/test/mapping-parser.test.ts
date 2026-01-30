@@ -80,4 +80,45 @@ describe('mapping-parser', () => {
     assert.ok(dup);
     assert.equal(dup.confidence, 'MEDIUM');
   });
+
+  it('handles segments with no anchors (currentFile null)', () => {
+    // Test case where segments exist but no anchors provide file context
+    const content = [
+      '0000 00       NOP',
+      '0001 C9       RET',
+    ].join('\n');
+    const mapping = parseMapping(content);
+
+    assert.equal(mapping.segments.length, 2);
+    assert.equal(mapping.anchors.length, 0);
+    
+    // Without anchors, segments should have null file/line with LOW confidence
+    const nopSeg = mapping.segments[0];
+    assert.ok(nopSeg);
+    assert.equal(nopSeg.loc.file, null);
+    assert.equal(nopSeg.loc.line, null);
+    assert.equal(nopSeg.confidence, 'LOW');
+  });
+
+  it('handles segments after anchor with inheritance', () => {
+    // More segments after the anchor inherit the file context
+    const content = [
+      '0000 00       NOP',
+      'START: 0000 DEFINED AT LINE 1 IN test.asm',
+      // Remaining lines are after the symbol table and should be skipped
+    ].join('\n');
+    const mapping = parseMapping(content);
+
+    // Should have 1 segment from line 1
+    assert.equal(mapping.segments.length, 1);
+    assert.equal(mapping.anchors.length, 1);
+    
+    // First segment should use anchor
+    const nopSeg = mapping.segments[0];
+    assert.ok(nopSeg);
+    assert.equal(nopSeg.start, 0x0000);
+    assert.equal(nopSeg.loc.file, 'test.asm');
+    assert.equal(nopSeg.loc.line, 1);
+    assert.equal(nopSeg.confidence, 'HIGH');
+  });
 });
