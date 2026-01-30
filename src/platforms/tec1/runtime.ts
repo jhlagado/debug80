@@ -4,6 +4,17 @@ import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+import {
+  TEC_SLOW_HZ,
+  TEC_FAST_HZ,
+  TEC_SILENCE_CYCLES,
+  TEC_KEY_HOLD_MS,
+  updateDisplayDigits,
+  updateMatrixRow,
+  calculateSpeakerFrequency,
+  calculateKeyHoldCycles,
+  shouldUpdate,
+} from '../tec-common';
 
 export interface Tec1State {
   digits: number[];
@@ -41,11 +52,11 @@ export interface Tec1Runtime {
   queueUpdate(): void;
 }
 
-export const TEC1_SLOW_HZ = 400000;
-export const TEC1_FAST_HZ = 4000000;
-const TEC1_SILENCE_CYCLES = 10000;
+export const TEC1_SLOW_HZ = TEC_SLOW_HZ;
+export const TEC1_FAST_HZ = TEC_FAST_HZ;
+const TEC1_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1_SERIAL_BAUD = 9600;
-const TEC1_KEY_HOLD_MS = 30;
+const TEC1_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -156,10 +167,8 @@ export function createTec1Runtime(
   });
 
   const queueUpdate = (): void => {
-    const now = Date.now();
-    const updateMs = state.updateMs;
-    if (updateMs <= 0 || now - state.lastUpdateMs >= updateMs) {
-      state.lastUpdateMs = now;
+    if (shouldUpdate(state.lastUpdateMs, state.updateMs)) {
+      state.lastUpdateMs = Date.now();
       state.pendingUpdate = false;
       sendUpdate();
       return;
@@ -171,27 +180,18 @@ export function createTec1Runtime(
     if (!state.pendingUpdate) {
       return;
     }
-    const now = Date.now();
-    const updateMs = state.updateMs;
-    if (updateMs > 0 && now - state.lastUpdateMs < updateMs) {
+    if (!shouldUpdate(state.lastUpdateMs, state.updateMs)) {
       return;
     }
-    state.lastUpdateMs = now;
+    state.lastUpdateMs = Date.now();
     state.pendingUpdate = false;
     sendUpdate();
   };
 
   const updateDisplay = (): void => {
-    const mask = state.digitLatch & 0x3f;
-    if (mask === 0) {
-      return;
+    if (updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch)) {
+      queueUpdate();
     }
-    for (let i = 0; i < state.digits.length; i += 1) {
-      if (mask & (1 << i)) {
-        state.digits[i] = state.segmentLatch & 0xff;
-      }
-    }
-    queueUpdate();
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
@@ -224,12 +224,9 @@ export function createTec1Runtime(
   };
 
   const updateMatrix = (rowMask: number): void => {
-    const rowIndex = rowMask ? Math.log2(rowMask & 0xff) : -1;
-    if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex > 7) {
-      return;
+    if (updateMatrixRow(state.matrix, rowMask, state.matrixLatch)) {
+      queueUpdate();
     }
-    state.matrix[rowIndex] = state.matrixLatch & 0xff;
-    queueUpdate();
   };
 
   const scheduleSilence = (): void => {
@@ -283,8 +280,8 @@ export function createTec1Runtime(
           const now = state.cycleClock.now();
           if (state.lastEdgeCycle !== null) {
             const delta = now - state.lastEdgeCycle;
-            if (delta > 0 && state.clockHz > 0) {
-              state.speakerHz = Math.round((state.clockHz / 2) / delta);
+            state.speakerHz = calculateSpeakerFrequency(state.clockHz, delta);
+            if (state.speakerHz > 0) {
               queueUpdate();
             }
           }
@@ -344,7 +341,7 @@ export function createTec1Runtime(
     if (state.keyReleaseEventId !== null) {
       state.cycleClock.cancel(state.keyReleaseEventId);
     }
-    const holdCycles = Math.max(1, Math.round((state.clockHz * TEC1_KEY_HOLD_MS) / 1000));
+    const holdCycles = calculateKeyHoldCycles(state.clockHz, TEC1_KEY_HOLD_MS);
     state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
       state.keyValue = 0x7f;
       state.keyReleaseEventId = null;

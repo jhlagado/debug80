@@ -215,7 +215,7 @@ function stripComment(line: string): string {
       i += 1;
       continue;
     }
-    if (ch === '\'' && !inDouble) {
+    if (ch === "'" && !inDouble) {
       inSingle = !inSingle;
       continue;
     }
@@ -247,7 +247,10 @@ function findMatches(normLines: string[], target: string, hintLine: number | nul
   return matches;
 }
 
-function chooseMatch(matches: number[], hintLine: number | null): { line: number | null; ambiguous: boolean } {
+function chooseMatch(
+  matches: number[],
+  hintLine: number | null
+): { line: number | null; ambiguous: boolean } {
   if (matches.length === 0) {
     return { line: null, ambiguous: false };
   }

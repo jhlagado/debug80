@@ -90,7 +90,8 @@ const BYTE_TOKEN = /^[0-9A-Fa-f]{2}$/;
 /** Pattern to match a listing line with address */
 const LISTING_LINE = /^([0-9A-Fa-f]{4})\s+(.*)$/;
 /** Pattern to match symbol definition anchor lines */
-const ANCHOR_LINE = /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)\s+IN\s+(.+)$/;
+const ANCHOR_LINE =
+  /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)\s+IN\s+(.+)$/;
 
 /**
  * Parses assembler listing content into source map segments and anchors.
