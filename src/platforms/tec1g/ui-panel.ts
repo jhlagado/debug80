@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { getHD44780A00RomData } from './hd44780-a00';
+import { getST7920FontData } from './st7920-font';
 
 type Tec1gPanelTab = 'ui' | 'memory';
 
@@ -25,6 +26,19 @@ export function createTec1gPanelController(
   let digits = Array.from({ length: 6 }, () => 0);
   let matrix = Array.from({ length: 8 }, () => 0);
   let glcd = Array.from({ length: 1024 }, () => 0);
+  let glcdDdram = Array.from({ length: 64 }, () => 0x20);
+  let glcdState = {
+    displayOn: true,
+    graphicsOn: true,
+    cursorOn: false,
+    cursorBlink: false,
+    blinkVisible: true,
+    ddramAddr: 0x80,
+    ddramPhase: 0,
+    textShift: 0,
+    scroll: 0,
+    reverseMask: 0,
+  };
   let speaker = false;
   let speedMode: Tec1gSpeedMode = 'fast';
   let lcd = Array.from({ length: 80 }, () => 0x20);
@@ -70,6 +84,19 @@ export function createTec1gPanelController(
         digits = Array.from({ length: 6 }, () => 0);
         matrix = Array.from({ length: 8 }, () => 0);
         glcd = Array.from({ length: 1024 }, () => 0);
+        glcdDdram = Array.from({ length: 64 }, () => 0x20);
+        glcdState = {
+          displayOn: true,
+          graphicsOn: true,
+          cursorOn: false,
+          cursorBlink: false,
+          blinkVisible: true,
+          ddramAddr: 0x80,
+          ddramPhase: 0,
+          textShift: 0,
+          scroll: 0,
+          reverseMask: 0,
+        };
         speaker = false;
         speedMode = 'slow';
         lcd = Array.from({ length: 80 }, () => 0x20);
@@ -160,7 +187,16 @@ export function createTec1gPanelController(
       panel.reveal(targetColumn, !focus);
     }
     panel.webview.html = getTec1gHtml(activeTab);
-    update({ digits, matrix, glcd, speaker: speaker ? 1 : 0, speedMode, lcd });
+    update({
+      digits,
+      matrix,
+      glcd,
+      glcdDdram,
+      glcdState,
+      speaker: speaker ? 1 : 0,
+      speedMode,
+      lcd,
+    });
     if (uiVisibilityOverride) {
       void panel.webview.postMessage({
         type: 'uiVisibility',
@@ -184,6 +220,26 @@ export function createTec1gPanelController(
     digits = payload.digits.slice(0, 6);
     matrix = payload.matrix.slice(0, 8);
     glcd = payload.glcd.slice(0, 1024);
+    if (Array.isArray(payload.glcdDdram)) {
+      glcdDdram = payload.glcdDdram.slice(0, 64);
+      while (glcdDdram.length < 64) {
+        glcdDdram.push(0x20);
+      }
+    }
+    if (payload.glcdState && typeof payload.glcdState === 'object') {
+      glcdState = {
+        displayOn: payload.glcdState.displayOn ?? glcdState.displayOn,
+        graphicsOn: payload.glcdState.graphicsOn ?? glcdState.graphicsOn,
+        cursorOn: payload.glcdState.cursorOn ?? glcdState.cursorOn,
+        cursorBlink: payload.glcdState.cursorBlink ?? glcdState.cursorBlink,
+        blinkVisible: payload.glcdState.blinkVisible ?? glcdState.blinkVisible,
+        ddramAddr: payload.glcdState.ddramAddr ?? glcdState.ddramAddr,
+        ddramPhase: payload.glcdState.ddramPhase ?? glcdState.ddramPhase,
+        textShift: payload.glcdState.textShift ?? glcdState.textShift,
+        scroll: payload.glcdState.scroll ?? glcdState.scroll,
+        reverseMask: payload.glcdState.reverseMask ?? glcdState.reverseMask,
+      };
+    }
     speaker = payload.speaker === 1;
     speedMode = payload.speedMode;
     lcd = payload.lcd.slice(0, 80);
@@ -193,6 +249,8 @@ export function createTec1gPanelController(
         digits,
         matrix,
         glcd,
+        glcdDdram,
+        glcdState,
         speaker,
         speedMode,
         lcd,
@@ -1006,6 +1064,21 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
     const GLCD_BYTES = 1024;
     let lcdBytes = new Array(LCD_BYTES).fill(0x20);
     ${getHD44780A00RomData()}
+    ${getST7920FontData()}
+    const GLCD_DDRAM_SIZE = 64;
+    const GLCD_TEXT_COLS = 16;
+    const GLCD_TEXT_ROWS = 4;
+    let glcdDdram = new Array(GLCD_DDRAM_SIZE).fill(0x20);
+    let glcdDisplayOn = true;
+    let glcdGraphicsOn = true;
+    let glcdCursorOn = false;
+    let glcdCursorBlink = false;
+    let glcdCursorAddr = 0x80;
+    let glcdCursorPhase = 0;
+    let glcdTextShift = 0;
+    let glcdScroll = 0;
+    let glcdReverseMask = 0;
+    let glcdBlinkVisible = true;
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
@@ -1265,16 +1338,103 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       const offR = 158;
       const offG = 182;
       const offB = 99;
+      const scroll = glcdScroll & 0x3f;
+      const shift = Math.max(-15, Math.min(15, Math.trunc(glcdTextShift || 0)));
       let ptr = 0;
-      for (let row = 0; row < GLCD_HEIGHT; row += 1) {
-        for (let colByte = 0; colByte < 16; colByte += 1) {
-          const value = glcdBytes[row * 16 + colByte] || 0;
-          for (let bit = 0; bit < 8; bit += 1) {
-            const on = (value & (0x80 >> bit)) !== 0;
-            data[ptr++] = on ? onR : offR;
-            data[ptr++] = on ? onG : offG;
-            data[ptr++] = on ? onB : offB;
-            data[ptr++] = 255;
+      if (!glcdDisplayOn) {
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = offR;
+          data[i + 1] = offG;
+          data[i + 2] = offB;
+          data[i + 3] = 255;
+        }
+      } else {
+        if (glcdGraphicsOn) {
+          for (let row = 0; row < GLCD_HEIGHT; row += 1) {
+            const srcRow = (row + scroll) & 0x3f;
+            for (let colByte = 0; colByte < 16; colByte += 1) {
+              const value = glcdBytes[srcRow * 16 + colByte] || 0;
+              for (let bit = 0; bit < 8; bit += 1) {
+                const on = (value & (0x80 >> bit)) !== 0;
+                data[ptr++] = on ? onR : offR;
+                data[ptr++] = on ? onG : offG;
+                data[ptr++] = on ? onB : offB;
+                data[ptr++] = 255;
+              }
+            }
+          }
+        } else {
+          for (let i = 0; i < data.length; i += 4) {
+            data[i] = offR;
+            data[i + 1] = offG;
+            data[i + 2] = offB;
+            data[i + 3] = 255;
+          }
+        }
+        // Overlay DDRAM text layer using ST7920 half-height font (8x16, 16 cols x 4 rows)
+        for (let tRow = 0; tRow < GLCD_TEXT_ROWS; tRow++) {
+          for (let tCol = 0; tCol < GLCD_TEXT_COLS; tCol++) {
+            const memCol = tCol + shift;
+            if (memCol < 0 || memCol >= GLCD_TEXT_COLS) {
+              continue;
+            }
+            const ch = glcdDdram[tRow * GLCD_TEXT_COLS + memCol] || 0x20;
+            if (ch === 0x20 || ch === 0x00) continue; // skip spaces
+            const romBase = (ch & 0x7F) * 16;
+            const px0 = tCol * 8;
+            const py0 = tRow * 16;
+            for (let dy = 0; dy < 16; dy++) {
+              const bits = ST7920_FONT[romBase + dy] || 0;
+              if (bits === 0) continue;
+              for (let dx = 0; dx < 8; dx++) {
+                if (bits & (0x80 >> dx)) {
+                  const px = px0 + dx;
+                  const py = (py0 + dy - scroll + GLCD_HEIGHT) & 0x3f;
+                  if (px < GLCD_WIDTH && py < GLCD_HEIGHT) {
+                    const idx = (py * GLCD_WIDTH + px) * 4;
+                    data[idx] = onR;
+                    data[idx + 1] = onG;
+                    data[idx + 2] = onB;
+                  }
+                }
+              }
+            }
+          }
+        }
+        if (glcdReverseMask) {
+          for (let tRow = 0; tRow < GLCD_TEXT_ROWS; tRow++) {
+            if ((glcdReverseMask & (1 << tRow)) === 0) continue;
+            for (let dy = 0; dy < 16; dy++) {
+              const py = (tRow * 16 + dy - scroll + GLCD_HEIGHT) & 0x3f;
+              for (let px = 0; px < GLCD_WIDTH; px++) {
+                const idx = (py * GLCD_WIDTH + px) * 4;
+                const isOn = data[idx] === onR && data[idx + 1] === onG && data[idx + 2] === onB;
+                data[idx] = isOn ? offR : onR;
+                data[idx + 1] = isOn ? offG : onG;
+                data[idx + 2] = isOn ? offB : onB;
+              }
+            }
+          }
+        }
+        const cursorVisible = glcdCursorOn || (glcdCursorBlink && glcdBlinkVisible);
+        if (cursorVisible) {
+          const addr = glcdCursorAddr & 0x7f;
+          const row = ((addr & 0x10) >> 4) | ((addr & 0x08) >> 2);
+          const col = addr & 0x07;
+          const memCol = col * 2 + (glcdCursorPhase ? 1 : 0);
+          const dispCol = memCol - shift;
+          if (dispCol >= 0 && dispCol < GLCD_TEXT_COLS) {
+            const px0 = dispCol * 8;
+            const py0 = (row * 16 - scroll + GLCD_HEIGHT) & 0x3f;
+            const underlineY = (py0 + 15) & 0x3f;
+            for (let dx = 0; dx < 8; dx++) {
+              const px = px0 + dx;
+              if (px >= GLCD_WIDTH) continue;
+              const idx = (underlineY * GLCD_WIDTH + px) * 4;
+              data[idx] = onR;
+              data[idx + 1] = onG;
+              data[idx + 2] = onB;
+            }
           }
         }
       }
@@ -1474,13 +1634,51 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
         }
         drawMatrix();
       }
+      if (Array.isArray(data.glcdDdram)) {
+        glcdDdram = data.glcdDdram.slice(0, GLCD_DDRAM_SIZE);
+        while (glcdDdram.length < GLCD_DDRAM_SIZE) {
+          glcdDdram.push(0x20);
+        }
+      }
+      if (data.glcdState && typeof data.glcdState === 'object') {
+        if (typeof data.glcdState.displayOn === 'boolean') {
+          glcdDisplayOn = data.glcdState.displayOn;
+        }
+        if (typeof data.glcdState.graphicsOn === 'boolean') {
+          glcdGraphicsOn = data.glcdState.graphicsOn;
+        }
+        if (typeof data.glcdState.cursorOn === 'boolean') {
+          glcdCursorOn = data.glcdState.cursorOn;
+        }
+        if (typeof data.glcdState.cursorBlink === 'boolean') {
+          glcdCursorBlink = data.glcdState.cursorBlink;
+        }
+        if (typeof data.glcdState.blinkVisible === 'boolean') {
+          glcdBlinkVisible = data.glcdState.blinkVisible;
+        }
+        if (typeof data.glcdState.ddramAddr === 'number') {
+          glcdCursorAddr = data.glcdState.ddramAddr & 0xFF;
+        }
+        if (typeof data.glcdState.ddramPhase === 'number') {
+          glcdCursorPhase = data.glcdState.ddramPhase ? 1 : 0;
+        }
+        if (typeof data.glcdState.textShift === 'number') {
+          glcdTextShift = data.glcdState.textShift;
+        }
+        if (typeof data.glcdState.scroll === 'number') {
+          glcdScroll = data.glcdState.scroll & 0x3F;
+        }
+        if (typeof data.glcdState.reverseMask === 'number') {
+          glcdReverseMask = data.glcdState.reverseMask & 0x0F;
+        }
+      }
       if (Array.isArray(data.glcd)) {
         glcdBytes = data.glcd.slice(0, GLCD_BYTES);
         while (glcdBytes.length < GLCD_BYTES) {
           glcdBytes.push(0);
         }
-        drawGlcd();
       }
+      drawGlcd();
     }
 
     function appendSerial(text) {

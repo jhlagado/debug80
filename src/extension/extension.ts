@@ -270,6 +270,19 @@ export function activate(context: vscode.ExtensionContext): void {
           digits?: number[];
           matrix?: number[];
           glcd?: number[];
+          glcdDdram?: number[];
+          glcdState?: {
+            displayOn?: boolean;
+            graphicsOn?: boolean;
+            cursorOn?: boolean;
+            cursorBlink?: boolean;
+            blinkVisible?: boolean;
+            ddramAddr?: number;
+            ddramPhase?: number;
+            textShift?: number;
+            scroll?: number;
+            reverseMask?: number;
+          };
           lcd?: number[];
           speaker?: number;
           speakerHz?: number;
@@ -285,6 +298,8 @@ export function activate(context: vscode.ExtensionContext): void {
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
+          ...(payload.glcdDdram !== undefined ? { glcdDdram: payload.glcdDdram } : {}),
+          ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
         };
         if (payload.speakerHz !== undefined) {
           tec1PanelController.update({ ...update, speakerHz: payload.speakerHz });
@@ -307,6 +322,19 @@ export function activate(context: vscode.ExtensionContext): void {
           digits?: number[];
           matrix?: number[];
           glcd?: number[];
+          glcdDdram?: number[];
+          glcdState?: {
+            displayOn?: boolean;
+            graphicsOn?: boolean;
+            cursorOn?: boolean;
+            cursorBlink?: boolean;
+            blinkVisible?: boolean;
+            ddramAddr?: number;
+            ddramPhase?: number;
+            textShift?: number;
+            scroll?: number;
+            reverseMask?: number;
+          };
           lcd?: number[];
           speaker?: number;
           speakerHz?: number;
@@ -322,6 +350,8 @@ export function activate(context: vscode.ExtensionContext): void {
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
+          ...(payload.glcdDdram !== undefined ? { glcdDdram: payload.glcdDdram } : {}),
+          ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
         };
         if (payload.speakerHz !== undefined) {
           tec1gPanelController.update({ ...update, speakerHz: payload.speakerHz });

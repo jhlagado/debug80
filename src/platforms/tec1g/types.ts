@@ -7,5 +7,18 @@ export interface Tec1gUpdatePayload {
   speaker: number;
   speedMode: Tec1gSpeedMode;
   lcd: number[];
+  glcdDdram?: number[];
+  glcdState?: {
+    displayOn?: boolean;
+    graphicsOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    blinkVisible?: boolean;
+    ddramAddr?: number;
+    ddramPhase?: number;
+    textShift?: number;
+    scroll?: number;
+    reverseMask?: number;
+  };
   speakerHz?: number;
 }
