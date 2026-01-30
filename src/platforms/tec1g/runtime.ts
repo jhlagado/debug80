@@ -217,6 +217,7 @@ export function createTec1gRuntime(
         scroll: state.glcdScroll,
         reverseMask: state.glcdReverseMask,
       },
+      sysCtrl: state.sysCtrl,
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
       lcd: [...state.lcd],
@@ -263,11 +264,9 @@ export function createTec1gRuntime(
   };
 
   const glcdOffsetDdramAddr = (delta: number): void => {
-    const base = state.glcdDdramAddr & 0x7f;
-    const rowBits = base & 0x18;
-    const col = base & 0x07;
-    const nextCol = (col + delta + 0x08) & 0x07;
-    state.glcdDdramAddr = 0x80 | rowBits | nextCol;
+    const base = state.glcdDdramAddr & 0x1f;
+    const next = (base + delta + 0x20) & 0x1f;
+    state.glcdDdramAddr = 0x80 | next;
     state.glcdDdramPhase = 0;
   };
 
