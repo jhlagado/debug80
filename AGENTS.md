@@ -1,11 +1,13 @@
 # Debug80 Agent Guide
 
 ## Core Workflow
+
 - Run `yarn lint` and `yarn build` after any code change. Report failures.
 - Prefer small, targeted edits; explain intent and impact.
 - Default to `apply_patch` for single-file edits.
 
 ## Repo Structure
+
 - Extension entry: `src/extension/extension.ts`
 - Debug adapter: `src/debug/adapter.ts`
 - Platforms:
@@ -23,12 +25,14 @@
   - `docs/TIMING_MODEL.md`
 
 ## Project Conventions
+
 - Keep file paths ASCII unless a file already uses Unicode.
 - Avoid adding new feature flags unless explicitly requested.
 - Keep platform UI responsive; prefer lightweight DOM updates.
 - Maintain TEC-1 compatibility and verify ROM assumptions in docs.
 
 ## Naming Conventions
+
 - **Constants**: SCREAMING_SNAKE_CASE (`THREAD_ID`, `PORT_MAX`, `KEY_RESET`)
 - **Interfaces/Types**: PascalCase (`LaunchRequestArguments`, `TerminalConfig`)
 - **Functions/Methods**: camelCase (`validatePlatform`, `resolveBaseDir`)
@@ -38,5 +42,6 @@
   - Examples: `cycle_counts`, `parity_bits`, `do_rlc`, `mem_read`
 
 ## Quality Checks
+
 - `yarn lint`
 - `yarn build`

@@ -21,7 +21,11 @@ import {
   assertHasSourcePaths,
   VALID_PLATFORMS,
 } from '../src/debug/config-validation';
-import { ConfigurationError, MissingConfigError, UnsupportedPlatformError } from '../src/debug/errors';
+import {
+  ConfigurationError,
+  MissingConfigError,
+  UnsupportedPlatformError,
+} from '../src/debug/errors';
 
 describe('config-validation', () => {
   // ==========================================================================
@@ -383,9 +387,7 @@ describe('config-validation', () => {
     });
 
     it('should not throw when hex and listing are provided', () => {
-      expect(() =>
-        assertHasSourcePaths({ hex: 'main.hex', listing: 'main.lst' })
-      ).not.toThrow();
+      expect(() => assertHasSourcePaths({ hex: 'main.hex', listing: 'main.lst' })).not.toThrow();
     });
 
     it('should throw MissingConfigError when no source paths', () => {

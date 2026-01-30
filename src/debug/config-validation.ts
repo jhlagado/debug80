@@ -175,9 +175,7 @@ export function validateInstructionLimit(value: unknown, fieldName: string): Val
   }
 
   if (value > INSTRUCTION_LIMIT_MAX) {
-    warnings.push(
-      `${fieldName} is very large (${value}). This may cause performance issues.`
-    );
+    warnings.push(`${fieldName} is very large (${value}). This may cause performance issues.`);
   }
 
   return { valid: true, errors, warnings };
