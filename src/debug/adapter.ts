@@ -1316,10 +1316,12 @@ export class Z80DebugSession extends DebugSession {
       };
       const viewRequests = payload.views ?? [];
       const views = viewRequests.map((entry) => {
-        const { id, view: viewValue, after: afterValue, address: addressValue } = extractViewEntry(
-          entry,
-          this.clampMemoryWindow.bind(this)
-        );
+        const {
+          id,
+          view: viewValue,
+          after: afterValue,
+          address: addressValue,
+        } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
@@ -1382,10 +1384,12 @@ export class Z80DebugSession extends DebugSession {
       };
       const viewRequests = payload.views ?? [];
       const views = viewRequests.map((entry) => {
-        const { id, view: viewValue, after: afterValue, address: addressValue } = extractViewEntry(
-          entry,
-          this.clampMemoryWindow.bind(this)
-        );
+        const {
+          id,
+          view: viewValue,
+          after: afterValue,
+          address: addressValue,
+        } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
