@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
 import * as vscode from 'vscode';
+import { toPortablePath } from './path-utils';
 
 /**
  * Represents the asm80 command and its arguments.
@@ -180,7 +181,8 @@ export function runAssembler(
   }
 
   const asm80 = resolveAsm80Command(asmDir);
-  const outArg = path.relative(asmDir, hexPath);
+  // Use forward slashes for cross-platform compatibility with asm80
+  const outArg = toPortablePath(path.relative(asmDir, hexPath));
 
   const result = cp.spawnSync(
     asm80.command,

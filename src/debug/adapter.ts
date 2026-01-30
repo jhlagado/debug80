@@ -25,12 +25,7 @@ import * as crypto from 'crypto';
 import * as cp from 'child_process';
 import { ListingInfo, HexProgram } from '../z80/loaders';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
-import {
-  findAnchorLine,
-  findSegmentForAddress,
-  resolveLocation,
-  SourceMapIndex,
-} from '../mapping/source-map';
+import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
 import { createZ80Runtime, Z80Runtime, IoHandlers } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
@@ -47,6 +42,7 @@ import type { SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import type { PlatformKind } from './program-loader';
 import { buildMappingFromListing } from './mapping-service';
+import { BreakpointManager } from './breakpoint-manager';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -74,6 +70,7 @@ import {
   extractViewEntry,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
+import { isPathWithin } from './path-utils';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -90,7 +87,7 @@ export class Z80DebugSession extends DebugSession {
   private symbolAnchors: SourceMapAnchor[] = [];
   private symbolLookupAnchors: SourceMapAnchor[] = [];
   private symbolList: Array<{ name: string; address: number }> = [];
-  private pendingBreakpointsBySource: Map<string, DebugProtocol.SourceBreakpoint[]> = new Map();
+  private breakpointManager = new BreakpointManager();
   private sourceRoots: string[] = [];
   private baseDir = process.cwd();
   private sourceFile = '';
@@ -104,7 +101,6 @@ export class Z80DebugSession extends DebugSession {
   private stepOutMaxInstructions = 0;
   private pauseRequested = false;
   private variableHandles = new Handles<'registers'>();
-  private breakpoints: Set<number> = new Set();
   private terminalState: TerminalState | undefined;
   private tec1Runtime: Tec1Runtime | undefined;
   private tec1Config: Tec1PlatformConfigNormalized | undefined;
@@ -145,6 +141,7 @@ export class Z80DebugSession extends DebugSession {
     args: LaunchRequestArguments
   ): Promise<void> {
     resetSessionState(this as unknown as SessionStateShape);
+    this.breakpointManager.reset();
 
     try {
       const merged = this.populateFromConfig(args);
@@ -350,7 +347,11 @@ export class Z80DebugSession extends DebugSession {
       this.stepOverMaxInstructions = this.normalizeStepLimit(merged.stepOverMaxInstructions, 0);
       this.stepOutMaxInstructions = this.normalizeStepLimit(merged.stepOutMaxInstructions, 0);
       if (this.listing !== undefined) {
-        const applied = this.applyAllBreakpoints();
+        const applied = this.breakpointManager.applyAll(
+          this.listing,
+          this.listingPath,
+          this.mappingIndex
+        );
         for (const bp of applied) {
           this.sendEvent(new BreakpointEvent('changed', bp));
         }
@@ -386,16 +387,22 @@ export class Z80DebugSession extends DebugSession {
         : this.normalizeSourcePath(sourcePath);
 
     if (normalized !== undefined) {
-      this.pendingBreakpointsBySource.set(normalized, breakpoints);
+      this.breakpointManager.setPending(normalized, breakpoints);
     }
 
     const verified =
       this.listing !== undefined && normalized !== undefined
-        ? this.applyBreakpointsForSource(normalized, breakpoints)
+        ? this.breakpointManager.applyForSource(
+            this.listing,
+            this.listingPath,
+            this.mappingIndex,
+            normalized,
+            breakpoints
+          )
         : breakpoints.map((bp) => ({ line: bp.line, verified: false }));
 
     if (this.listing !== undefined) {
-      this.rebuildBreakpoints();
+      this.breakpointManager.rebuild(this.listing, this.listingPath, this.mappingIndex);
     }
 
     response.body = { breakpoints: verified };
@@ -636,11 +643,11 @@ export class Z80DebugSession extends DebugSession {
     if (address === null) {
       return false;
     }
-    if (this.breakpoints.has(address)) {
+    if (this.breakpointManager.hasAddress(address)) {
       return true;
     }
     const shadowAlias = this.getShadowAlias(address);
-    return shadowAlias !== null && this.breakpoints.has(shadowAlias);
+    return shadowAlias !== null && this.breakpointManager.hasAddress(shadowAlias);
   }
 
   private resolveMappedPath(file: string): string | undefined {
@@ -2061,95 +2068,6 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private applyAllBreakpoints(): DebugProtocol.Breakpoint[] {
-    const applied: DebugProtocol.Breakpoint[] = [];
-    for (const [source, breakpoints] of this.pendingBreakpointsBySource.entries()) {
-      applied.push(...this.applyBreakpointsForSource(source, breakpoints));
-    }
-    this.rebuildBreakpoints();
-    return applied;
-  }
-
-  private applyBreakpointsForSource(
-    sourcePath: string,
-    bps: DebugProtocol.SourceBreakpoint[]
-  ): DebugProtocol.Breakpoint[] {
-    const listing = this.listing;
-    const listingPath = this.listingPath;
-    const verified: DebugProtocol.Breakpoint[] = [];
-
-    if (listing === undefined || listingPath === undefined) {
-      for (const bp of bps) {
-        verified.push({ line: bp.line, verified: false });
-      }
-      return verified;
-    }
-
-    if (this.isListingSource(sourcePath)) {
-      for (const bp of bps) {
-        const line = bp.line ?? 0;
-        const address = listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1); // tolerate 0-based incoming lines
-        const ok = address !== undefined;
-        verified.push({ line: bp.line, verified: ok });
-      }
-      return verified;
-    }
-
-    for (const bp of bps) {
-      const line = bp.line ?? 0;
-      const addresses = this.resolveSourceBreakpoint(sourcePath, line);
-      const ok = addresses.length > 0;
-      verified.push({ line: bp.line, verified: ok });
-    }
-
-    return verified;
-  }
-
-  private rebuildBreakpoints(): void {
-    this.breakpoints.clear();
-    if (this.listing === undefined || this.listingPath === undefined) {
-      return;
-    }
-
-    for (const [source, bps] of this.pendingBreakpointsBySource.entries()) {
-      if (this.isListingSource(source)) {
-        for (const bp of bps) {
-          const line = bp.line ?? 0;
-          const address =
-            this.listing.lineToAddress.get(line) ?? this.listing.lineToAddress.get(line + 1);
-          if (address !== undefined) {
-            this.breakpoints.add(address);
-          }
-        }
-        continue;
-      }
-
-      for (const bp of bps) {
-        const line = bp.line ?? 0;
-        const addresses = this.resolveSourceBreakpoint(source, line);
-        const [first] = addresses;
-        if (first !== undefined) {
-          this.breakpoints.add(first);
-        }
-      }
-    }
-  }
-
-  private resolveSourceBreakpoint(sourcePath: string, line: number): number[] {
-    const index = this.mappingIndex;
-    if (!index) {
-      return [];
-    }
-    return resolveLocation(index, sourcePath, line);
-  }
-
-  private isListingSource(sourcePath: string): boolean {
-    if (this.listingPath === undefined) {
-      return path.extname(sourcePath).toLowerCase() === '.lst';
-    }
-    return path.resolve(sourcePath) === path.resolve(this.listingPath);
-  }
-
   private normalizeSourcePath(sourcePath: string): string {
     if (path.isAbsolute(sourcePath)) {
       return path.resolve(sourcePath);
@@ -2360,7 +2278,7 @@ export class Z80DebugSession extends DebugSession {
   private relativeIfPossible(filePath: string, baseDir: string): string {
     const normalizedBase = path.resolve(baseDir);
     const normalizedPath = path.resolve(filePath);
-    if (normalizedPath.startsWith(normalizedBase)) {
+    if (isPathWithin(normalizedPath, normalizedBase)) {
       return path.relative(normalizedBase, normalizedPath) || normalizedPath;
     }
     return normalizedPath;

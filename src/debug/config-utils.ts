@@ -5,6 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { toPortableRelative } from './path-utils';
 
 /**
  * Result of inferring a default build target.
@@ -81,8 +82,7 @@ export function ensureDirExists(dir: string): void {
 const existing = (p: string): string | undefined => (fs.existsSync(p) ? p : undefined);
 
 function normalizeRelative(root: string, absolutePath: string): string {
-  const rel = path.relative(root, absolutePath) || path.basename(absolutePath);
-  return rel.split(path.sep).join('/');
+  return toPortableRelative(root, absolutePath);
 }
 
 function findFirstAsm(dir: string): string | undefined {

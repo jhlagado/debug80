@@ -21,7 +21,6 @@ export type StopReason = 'breakpoint' | 'step' | 'halt' | 'entry' | 'pause';
  */
 export interface SessionStateShape {
   haltNotified: boolean;
-  breakpoints: Set<number>;
   runtime: Z80Runtime | undefined;
   listing: ListingInfo | undefined;
   listingPath: string | undefined;
@@ -52,7 +51,6 @@ export interface SessionStateShape {
 export function createSessionState(): SessionStateShape {
   return {
     haltNotified: false,
-    breakpoints: new Set<number>(),
     runtime: undefined,
     listing: undefined,
     listingPath: undefined,

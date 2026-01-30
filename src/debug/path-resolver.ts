@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './types';
 import { FileResolutionError } from './errors';
+import { isPathWithin } from './path-utils';
 
 /**
  * Length of cache key hash (hex digits).
@@ -242,7 +243,7 @@ export function relativeIfPossible(filePath: string, baseDir: string): string {
   const normalizedBase = path.resolve(baseDir);
   const normalizedPath = path.resolve(filePath);
 
-  if (normalizedPath.startsWith(normalizedBase)) {
+  if (isPathWithin(normalizedPath, normalizedBase)) {
     return path.relative(normalizedBase, normalizedPath) || normalizedPath;
   }
 
