@@ -52,6 +52,8 @@ import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
 import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
 import { ensureTec1gShadowRom } from './tec1g-shadow';
+import { resetSessionState, StopReason } from './session-state';
+import type { SessionStateShape } from './session-state';
 import {
   Z80_ADDRESS_SPACE,
   BYTE_MASK,
@@ -102,7 +104,7 @@ export class Z80DebugSession extends DebugSession {
   private sourceFile = '';
   private stopOnEntry = false;
   private haltNotified = false;
-  private lastStopReason: 'breakpoint' | 'step' | 'halt' | 'entry' | 'pause' | undefined;
+  private lastStopReason: StopReason | undefined;
   private lastBreakpointAddress: number | null = null;
   private skipBreakpointOnce: number | null = null;
   private callDepth = 0;
@@ -150,30 +152,7 @@ export class Z80DebugSession extends DebugSession {
     response: DebugProtocol.LaunchResponse,
     args: LaunchRequestArguments
   ): Promise<void> {
-    this.haltNotified = false;
-    this.breakpoints.clear();
-    this.runtime = undefined;
-    this.listing = undefined;
-    this.listingPath = undefined;
-    this.mapping = undefined;
-    this.mappingIndex = undefined;
-    this.symbolAnchors = [];
-    this.symbolList = [];
-    this.sourceRoots = [];
-    this.baseDir = process.cwd();
-    this.terminalState = undefined;
-    this.tec1Runtime = undefined;
-    this.tec1gRuntime = undefined;
-    this.tec1gConfig = undefined;
-    this.loadedProgram = undefined;
-    this.loadedEntry = undefined;
-    this.extraListingPaths = [];
-    this.lastStopReason = undefined;
-    this.lastBreakpointAddress = null;
-    this.skipBreakpointOnce = null;
-    this.pauseRequested = false;
-    this.stepOverMaxInstructions = 0;
-    this.stepOutMaxInstructions = 0;
+    resetSessionState(this as unknown as SessionStateShape);
 
     try {
       const merged = this.populateFromConfig(args);
@@ -429,13 +408,13 @@ export class Z80DebugSession extends DebugSession {
           (shadowInfo.shadowCopied && addr >= TEC1G_SHADOW_START && addr <= TEC1G_SHADOW_END);
         this.runtime.hardware.memRead = (addr: number): number => {
           const masked = addr & ADDR_MASK;
-          const shadowEnabled = (tec1gRuntime as Tec1gRuntime).state.shadowEnabled === true;
+          const shadowEnabled = tec1gRuntime.state.shadowEnabled === true;
           if (shadowEnabled && masked < TEC1G_SHADOW_SIZE) {
             const shadowAddr = TEC1G_SHADOW_START + masked;
             return baseMemory[shadowAddr] ?? 0;
           }
           if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
-            const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
+            const expandEnabled = tec1gRuntime.state.expandEnabled === true;
             if (expandEnabled) {
               return expandBank[masked - TEC1G_EXPAND_START] ?? 0;
             }
@@ -447,12 +426,12 @@ export class Z80DebugSession extends DebugSession {
           if (masked >= TEC1G_SHADOW_SIZE && isRomAddress(masked)) {
             return;
           }
-          const protectEnabled = (tec1gRuntime as Tec1gRuntime).state.protectEnabled === true;
+          const protectEnabled = tec1gRuntime.state.protectEnabled === true;
           if (protectEnabled && masked >= TEC1G_PROTECT_START && masked <= TEC1G_PROTECT_END) {
             return;
           }
           if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
-            const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
+            const expandEnabled = tec1gRuntime.state.expandEnabled === true;
             if (expandEnabled) {
               expandBank[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
               return;
