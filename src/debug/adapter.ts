@@ -40,11 +40,11 @@ import { resetSessionState, StopReason } from './session-state';
 import type { SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import type { PlatformKind } from './program-loader';
-import { buildMappingFromListing } from './mapping-service';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
 import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
+import { SourceManager } from './source-manager';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -89,6 +89,7 @@ export class Z80DebugSession extends DebugSession {
   private symbolLookupAnchors: SourceMapAnchor[] = [];
   private symbolList: Array<{ name: string; address: number }> = [];
   private breakpointManager = new BreakpointManager();
+  private sourceManager: SourceManager | undefined;
   private sourceRoots: string[] = [];
   private baseDir = process.cwd();
   private sourceFile = '';
@@ -213,7 +214,7 @@ export class Z80DebugSession extends DebugSession {
         listingPath,
         resolveRelative: (p, dir) => this.resolveRelative(p, dir),
         resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
-        log: (message) => {
+        log: (message: string): void => {
           this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
         },
         ...(tec1Config ? { tec1Config } : {}),
@@ -222,37 +223,36 @@ export class Z80DebugSession extends DebugSession {
 
       this.listing = listingInfo;
       this.listingPath = listingPath;
-      const mergedSourceFile = merged.sourceFile;
-      const sourcePath =
-        asmPath ??
-        (mergedSourceFile !== undefined && mergedSourceFile.length > 0
-          ? this.resolveRelative(mergedSourceFile, baseDir)
-          : undefined);
-      this.sourceFile = sourcePath ?? listingPath;
-      this.sendEvent(
-        new DapEvent('debug80/mainSource', {
-          path: this.sourceFile,
-        })
-      );
-      this.sourceRoots = this.resolveSourceRoots(merged, baseDir);
       const extraListings = this.resolveExtraListings(
         platform,
         simpleConfig,
         tec1Config,
         tec1gConfig
       );
-      const extraListingPaths = this.resolveExtraListingPaths(extraListings, baseDir, listingPath);
-      this.extraListingPaths = extraListingPaths;
-      this.extendSourceRoots(extraListingPaths);
+      this.sourceManager = new SourceManager({
+        platform,
+        baseDir,
+        resolveRelative: (p, dir) => this.resolveRelative(p, dir),
+        resolveMappedPath: (file) => this.resolveMappedPath(file),
+        relativeIfPossible: (filePath, dir) => this.relativeIfPossible(filePath, dir),
+        resolveExtraDebugMapPath: (p) => this.resolveExtraDebugMapPath(p),
+        resolveDebugMapPath: (args, dir, asm, listing) =>
+          this.resolveDebugMapPath(args as LaunchRequestArguments, dir, asm, listing),
+        resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
+        log: (message: string): void => {
+          this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
+        },
+      });
 
-      const mappingResult = buildMappingFromListing({
+      const sourceState = this.sourceManager.buildState({
         listingContent,
         listingPath,
         ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
         ...(merged.sourceFile !== undefined && merged.sourceFile.length > 0
           ? { sourceFile: merged.sourceFile }
           : {}),
-        extraListingPaths,
+        sourceRoots: merged.sourceRoots ?? [],
+        extraListings,
         mapArgs: {
           ...(merged.artifactBase !== undefined && merged.artifactBase.length > 0
             ? { artifactBase: merged.artifactBase }
@@ -261,22 +261,18 @@ export class Z80DebugSession extends DebugSession {
             ? { outputDir: merged.outputDir }
             : {}),
         },
-        service: {
-          platform,
-          baseDir,
-          resolveMappedPath: (file) => this.resolveMappedPath(file),
-          relativeIfPossible: (filePath, dir) => this.relativeIfPossible(filePath, dir),
-          resolveExtraDebugMapPath: (p) => this.resolveExtraDebugMapPath(p),
-          resolveDebugMapPath: (args, dir, asm, listing) =>
-            this.resolveDebugMapPath(args as LaunchRequestArguments, dir, asm, listing),
-          log: (message) => {
-            this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
-          },
-        },
       });
 
-      this.mapping = mappingResult.mapping;
-      this.mappingIndex = mappingResult.index;
+      this.sourceFile = sourceState.sourceFile;
+      this.sourceRoots = sourceState.sourceRoots;
+      this.extraListingPaths = sourceState.extraListingPaths;
+      this.mapping = sourceState.mapping;
+      this.mappingIndex = sourceState.mappingIndex;
+      this.sendEvent(
+        new DapEvent('debug80/mainSource', {
+          path: this.sourceFile,
+        })
+      );
       const symbolIndex = buildSymbolIndex({
         mapping: this.mapping,
         listingContent,
@@ -716,76 +712,11 @@ export class Z80DebugSession extends DebugSession {
     return [];
   }
 
-  private resolveExtraListingPaths(
-    extraListings: string[],
-    baseDir: string,
-    primaryListingPath: string
-  ): string[] {
-    if (!Array.isArray(extraListings) || extraListings.length === 0) {
+  private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
+    if (!this.sourceManager) {
       return [];
     }
-    const resolved: string[] = [];
-    const seen = new Set<string>();
-    const primary = path.resolve(primaryListingPath);
-    for (const entry of extraListings) {
-      if (typeof entry !== 'string') {
-        continue;
-      }
-      const trimmed = entry.trim();
-      if (trimmed === '') {
-        continue;
-      }
-      const abs = this.resolveRelative(trimmed, baseDir);
-      const normalized = path.resolve(abs);
-      if (normalized === primary || seen.has(normalized)) {
-        continue;
-      }
-      if (!fs.existsSync(normalized)) {
-        const prefix = `Debug80 [${this.activePlatform}]`;
-        this.sendEvent(
-          new OutputEvent(`${prefix}: extra listing not found at "${normalized}".\n`, 'console')
-        );
-        continue;
-      }
-      resolved.push(normalized);
-      seen.add(normalized);
-    }
-    return resolved;
-  }
-
-  private extendSourceRoots(listingPaths: string[]): void {
-    if (listingPaths.length === 0) {
-      return;
-    }
-    const roots = new Set(this.sourceRoots.map((root) => path.resolve(root)));
-    for (const listingPath of listingPaths) {
-      const root = path.resolve(path.dirname(listingPath));
-      if (!roots.has(root)) {
-        this.sourceRoots.push(root);
-        roots.add(root);
-      }
-    }
-  }
-
-  private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
-    const seen = new Set<string>();
-    return this.extraListingPaths.flatMap((listingPath) => {
-      const entries: Array<{ label: string; path: string; kind: 'listing' | 'source' }> = [];
-      const pushUnique = (entryPath: string, kind: 'listing' | 'source'): void => {
-        if (seen.has(entryPath)) {
-          return;
-        }
-        entries.push({ label: path.basename(entryPath), path: entryPath, kind });
-        seen.add(entryPath);
-      };
-
-      pushUnique(listingPath, 'listing');
-      const sourcePath = resolveListingSourcePath(listingPath);
-      if (typeof sourcePath === 'string' && sourcePath.length > 0) {
-        pushUnique(sourcePath, 'source');
-      }
-      return entries;
-    });
+    return this.sourceManager.collectRomSources(this.extraListingPaths);
   }
 
   protected scopesRequest(
@@ -1868,11 +1799,6 @@ export class Z80DebugSession extends DebugSession {
       return path.resolve(sourcePath);
     }
     return path.resolve(this.baseDir, sourcePath);
-  }
-
-  private resolveSourceRoots(args: LaunchRequestArguments, baseDir: string): string[] {
-    const roots = args.sourceRoots ?? [];
-    return roots.map((root) => this.resolveRelative(root, baseDir));
   }
 
   private resolveDebugMapPath(
