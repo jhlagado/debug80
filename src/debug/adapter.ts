@@ -54,7 +54,17 @@ import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platf
 import { ensureTec1gShadowRom } from './tec1g-shadow';
 
 // Import from extracted modules - types only for now (gradual migration)
-import { LaunchRequestArguments, TerminalState, TerminalConfigNormalized } from './types';
+import {
+  LaunchRequestArguments,
+  TerminalState,
+  TerminalConfigNormalized,
+  extractTerminalText,
+  extractKeyCode,
+  extractSpeedMode,
+  extractSerialText,
+  extractMemorySnapshotPayload,
+  extractViewEntry,
+} from './types';
 
 const THREAD_ID = 1;
 const CACHE_KEY_LENGTH = 12;
@@ -1143,8 +1153,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
         return;
       }
-      const payload = args as { text?: unknown };
-      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const textValue = extractTerminalText(args);
       const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
       this.terminalState.input.push(...bytes);
       this.sendResponse(response);
@@ -1164,8 +1173,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
-      const payload = args as { code?: unknown };
-      const code = Number.isFinite(payload.code as number) ? (payload.code as number) : undefined;
+      const code = extractKeyCode(args);
       if (code === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
@@ -1183,8 +1191,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
         return;
       }
-      const payload = args as { code?: unknown };
-      const code = Number.isFinite(payload.code as number) ? (payload.code as number) : undefined;
+      const code = extractKeyCode(args);
       if (code === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
@@ -1221,9 +1228,8 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
-      const payload = args as { mode?: unknown };
-      const mode = payload.mode === 'slow' || payload.mode === 'fast' ? payload.mode : undefined;
-      if (!mode) {
+      const mode = extractSpeedMode(args);
+      if (mode === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
         return;
       }
@@ -1236,9 +1242,8 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
         return;
       }
-      const payload = args as { mode?: unknown };
-      const mode = payload.mode === 'slow' || payload.mode === 'fast' ? payload.mode : undefined;
-      if (!mode) {
+      const mode = extractSpeedMode(args);
+      if (mode === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Missing speed mode.');
         return;
       }
@@ -1251,8 +1256,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
         return;
       }
-      const payload = args as { text?: unknown };
-      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const textValue = extractSerialText(args);
       const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
       this.tec1Runtime.queueSerial(bytes);
       this.sendResponse(response);
@@ -1263,8 +1267,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
         return;
       }
-      const payload = args as { text?: unknown };
-      const textValue = typeof payload.text === 'string' ? payload.text : '';
+      const textValue = extractSerialText(args);
       const bytes = Array.from(textValue, (ch) => ch.charCodeAt(0) & 0xff);
       this.tec1gRuntime.queueSerial(bytes);
       this.sendResponse(response);
@@ -1275,11 +1278,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return;
       }
-      const payload = args as {
-        before?: unknown;
-        rowSize?: unknown;
-        views?: Array<{ id?: unknown; view?: unknown; after?: unknown; address?: unknown }>;
-      };
+      const payload = extractMemorySnapshotPayload(args);
       const before = this.clampMemoryWindow(payload.before, 16);
       const rowSize = payload.rowSize === 8 ? 8 : 16;
       const regs = this.runtime.getRegisters();
@@ -1315,14 +1314,12 @@ export class Z80DebugSession extends DebugSession {
             return hl;
         }
       };
-      const viewRequests = Array.isArray(payload.views) ? payload.views : [];
+      const viewRequests = payload.views ?? [];
       const views = viewRequests.map((entry) => {
-        const id = typeof entry.id === 'string' ? entry.id : 'view';
-        const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
-        const afterValue = this.clampMemoryWindow(entry.after, 16);
-        const addressValue = Number.isFinite(entry.address as number)
-          ? (entry.address as number) & 0xffff
-          : null;
+        const { id, view: viewValue, after: afterValue, address: addressValue } = extractViewEntry(
+          entry,
+          this.clampMemoryWindow.bind(this)
+        );
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
@@ -1347,11 +1344,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return;
       }
-      const payload = args as {
-        before?: unknown;
-        rowSize?: unknown;
-        views?: Array<{ id?: unknown; view?: unknown; after?: unknown; address?: unknown }>;
-      };
+      const payload = extractMemorySnapshotPayload(args);
       const before = this.clampMemoryWindow(payload.before, 16);
       const rowSize = payload.rowSize === 8 ? 8 : 16;
       const regs = this.runtime.getRegisters();
@@ -1387,14 +1380,12 @@ export class Z80DebugSession extends DebugSession {
             return hl;
         }
       };
-      const viewRequests = Array.isArray(payload.views) ? payload.views : [];
+      const viewRequests = payload.views ?? [];
       const views = viewRequests.map((entry) => {
-        const id = typeof entry.id === 'string' ? entry.id : 'view';
-        const viewValue = typeof entry.view === 'string' ? entry.view : 'hl';
-        const afterValue = this.clampMemoryWindow(entry.after, 16);
-        const addressValue = Number.isFinite(entry.address as number)
-          ? (entry.address as number) & 0xffff
-          : null;
+        const { id, view: viewValue, after: afterValue, address: addressValue } = extractViewEntry(
+          entry,
+          this.clampMemoryWindow.bind(this)
+        );
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
         const nearest = this.findNearestSymbol(target);
