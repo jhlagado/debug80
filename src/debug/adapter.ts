@@ -23,24 +23,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as cp from 'child_process';
-import * as asm80Module from 'asm80/asm.js';
-import * as asm80Monolith from 'asm80/monolith.js';
 import { ListingInfo, HexProgram } from '../z80/loaders';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
 import {
-  parseMapping,
-  MappingParseResult,
-  SourceMapAnchor,
-  SourceMapSegment,
-} from '../mapping/parser';
-import { applyLayer2 } from '../mapping/layer2';
-import {
-  buildSourceMapIndex,
   findAnchorLine,
   findSegmentForAddress,
   resolveLocation,
   SourceMapIndex,
 } from '../mapping/source-map';
-import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import { createZ80Runtime, Z80Runtime, IoHandlers } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
@@ -56,6 +46,7 @@ import { resetSessionState, StopReason } from './session-state';
 import type { SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import type { PlatformKind } from './program-loader';
+import { buildMappingFromListing } from './mapping-service';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -82,6 +73,7 @@ import {
   extractMemorySnapshotPayload,
   extractViewEntry,
 } from './types';
+import { resolveListingSourcePath } from './path-resolver';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -259,49 +251,38 @@ export class Z80DebugSession extends DebugSession {
       this.extraListingPaths = extraListingPaths;
       this.extendSourceRoots(extraListingPaths);
 
-      const mapPath = this.resolveDebugMapPath(merged, baseDir, asmPath, listingPath);
-      const mapStale = this.isDebugMapStale(mapPath, listingPath);
-      if (mapStale) {
-        this.sendEvent(
-          new OutputEvent(
-            `Debug80: D8 debug map is older than the LST. Regenerating from LST.\n`,
-            'console'
-          )
-        );
-      }
-      let debugMap = mapStale ? undefined : this.loadDebugMap(mapPath);
-      if (!debugMap) {
-        const baseMapping = parseMapping(listingContent);
-        this.applySourceFallback(baseMapping, merged.sourceFile, baseDir);
-        const layer2 = applyLayer2(baseMapping, {
-          resolvePath: (file) => this.resolveMappedPath(file),
-        });
-        if (layer2.missingSources.length > 0) {
-          const unique = Array.from(new Set(layer2.missingSources));
-          this.sendEvent(
-            new OutputEvent(
-              `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}\n`,
-              'console'
-            )
-          );
-        }
-        debugMap = buildD8DebugMap(baseMapping, {
-          arch: 'z80',
-          addressWidth: 16,
-          endianness: 'little',
-          generator: {
-            name: 'debug80',
+      const mappingResult = buildMappingFromListing({
+        listingContent,
+        listingPath,
+        ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
+        ...(merged.sourceFile !== undefined && merged.sourceFile.length > 0
+          ? { sourceFile: merged.sourceFile }
+          : {}),
+        extraListingPaths,
+        mapArgs: {
+          ...(merged.artifactBase !== undefined && merged.artifactBase.length > 0
+            ? { artifactBase: merged.artifactBase }
+            : {}),
+          ...(merged.outputDir !== undefined && merged.outputDir.length > 0
+            ? { outputDir: merged.outputDir }
+            : {}),
+        },
+        service: {
+          platform,
+          baseDir,
+          resolveMappedPath: (file) => this.resolveMappedPath(file),
+          relativeIfPossible: (filePath, dir) => this.relativeIfPossible(filePath, dir),
+          resolveExtraDebugMapPath: (p) => this.resolveExtraDebugMapPath(p),
+          resolveDebugMapPath: (args, dir, asm, listing) =>
+            this.resolveDebugMapPath(args as LaunchRequestArguments, dir, asm, listing),
+          log: (message) => {
+            this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
           },
-        });
-        this.writeDebugMap(debugMap, mapPath, baseDir, listingPath);
-      }
+        },
+      });
 
-      this.mapping = buildMappingFromD8DebugMap(debugMap);
-      const extraMapping = this.loadExtraListingMapping(extraListingPaths);
-      if (extraMapping) {
-        this.mapping = this.mergeMappings(this.mapping, extraMapping);
-      }
-      this.mappingIndex = buildSourceMapIndex(this.mapping, (file) => this.resolveMappedPath(file));
+      this.mapping = mappingResult.mapping;
+      this.mappingIndex = mappingResult.index;
       this.rebuildSymbolIndex(this.mapping, listingContent);
 
       const ioHandlers = this.buildIoHandlers(platform, merged);
@@ -751,184 +732,6 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private loadExtraListingMapping(listingPaths: string[]): MappingParseResult | undefined {
-    if (listingPaths.length === 0) {
-      return undefined;
-    }
-    const combined: MappingParseResult = { segments: [], anchors: [] };
-    for (const listingPath of listingPaths) {
-      try {
-        const mapPath = this.resolveExtraDebugMapPath(listingPath);
-        const mapStale = this.isDebugMapStale(mapPath, listingPath);
-        if (mapStale) {
-          const prefix = `Debug80 [${this.activePlatform}]`;
-          this.sendEvent(
-            new OutputEvent(
-              `${prefix}: D8 debug map for extra listing is older than the LST. Regenerating (${listingPath}).\n`,
-              'console'
-            )
-          );
-        }
-
-        let debugMap = !mapStale && fs.existsSync(mapPath) ? this.loadDebugMap(mapPath) : undefined;
-        if (debugMap) {
-          const mapping = buildMappingFromD8DebugMap(debugMap);
-          combined.segments.push(...mapping.segments);
-          combined.anchors.push(...mapping.anchors);
-          continue;
-        }
-
-        const mapping = this.buildExtraListingMapping(listingPath);
-        if (!mapping) {
-          continue;
-        }
-        combined.segments.push(...mapping.segments);
-        combined.anchors.push(...mapping.anchors);
-        debugMap = buildD8DebugMap(mapping, {
-          arch: 'z80',
-          addressWidth: 16,
-          endianness: 'little',
-          generator: {
-            name: 'debug80',
-          },
-        });
-        this.writeDebugMap(debugMap, mapPath, this.baseDir, listingPath);
-      } catch (err) {
-        const prefix = `Debug80 [${this.activePlatform}]`;
-        this.sendEvent(
-          new OutputEvent(
-            `${prefix}: failed to read extra listing "${listingPath}": ${String(err)}\n`,
-            'console'
-          )
-        );
-      }
-    }
-    if (combined.segments.length === 0 && combined.anchors.length === 0) {
-      return undefined;
-    }
-    return combined;
-  }
-
-  private buildExtraListingMapping(listingPath: string): MappingParseResult | undefined {
-    const fallbackSource = this.resolveListingSourcePath(listingPath);
-    if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-      const asmMapping = this.buildAsm80Mapping(fallbackSource);
-      if (asmMapping) {
-        return asmMapping;
-      }
-    }
-    const content = fs.readFileSync(listingPath, 'utf-8');
-    const parsed = parseMapping(content);
-    if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-      const hasFile = parsed.segments.some((segment) => segment.loc.file !== null);
-      if (!hasFile) {
-        for (const segment of parsed.segments) {
-          segment.loc.file = fallbackSource;
-          segment.loc.line = segment.lst.line;
-        }
-      }
-    }
-    return parsed;
-  }
-
-  private mergeMappings(base: MappingParseResult, extra: MappingParseResult): MappingParseResult {
-    return {
-      segments: [...base.segments, ...extra.segments],
-      anchors: [...base.anchors, ...extra.anchors],
-    };
-  }
-
-  private buildAsm80Mapping(sourcePath: string): MappingParseResult | undefined {
-    const baseDir = path.dirname(sourcePath);
-    const sourceText = fs.readFileSync(sourcePath, 'utf-8');
-    asm80Module.fileGet((file: string, binary?: boolean) => {
-      const resolved = path.resolve(baseDir, file);
-      if (!fs.existsSync(resolved)) {
-        return null;
-      }
-      return binary === true ? fs.readFileSync(resolved) : fs.readFileSync(resolved, 'utf-8');
-    });
-    const [err, compiled, symbols] = asm80Module.compile(sourceText, asm80Monolith.Z80);
-    if (err !== null && err !== undefined) {
-      const message = typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err);
-      this.sendEvent(
-        new OutputEvent(
-          `Debug80: asm80 failed to build ROM mapping for "${sourcePath}": ${message}\n`,
-          'console'
-        )
-      );
-      return undefined;
-    }
-    const lines = Array.isArray(compiled?.[0]) ? compiled[0] : [];
-    const segments: SourceMapSegment[] = [];
-    for (const entry of lines) {
-      if (typeof entry.addr !== 'number' || !Array.isArray(entry.lens) || entry.lens.length === 0) {
-        continue;
-      }
-      const start = entry.addr & 0xffff;
-      const end = Math.min(0x10000, start + entry.lens.length);
-      const file =
-        typeof entry.includedFile === 'string' && entry.includedFile.length > 0
-          ? path.resolve(baseDir, entry.includedFile)
-          : sourcePath;
-      const lineNumber =
-        typeof entry.numline === 'number' && Number.isFinite(entry.numline) ? entry.numline : null;
-      segments.push({
-        start,
-        end,
-        loc: { file, line: lineNumber },
-        lst: {
-          line: typeof entry.numline === 'number' ? entry.numline : 0,
-          text: typeof entry.line === 'string' ? entry.line : '',
-        },
-        confidence: 'HIGH',
-      });
-    }
-
-    const anchors: SourceMapAnchor[] = [];
-    if (symbols !== null && symbols !== undefined) {
-      for (const [name, entry] of Object.entries(symbols)) {
-        if (!name || name.endsWith('$') || (name[0] === '_' && name[1] === '_')) {
-          continue;
-        }
-        if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
-          continue;
-        }
-        const defined = entry.defined;
-        const fileRaw = defined?.file;
-        const file =
-          typeof fileRaw === 'string' && fileRaw !== '*main*' && fileRaw.length > 0
-            ? path.resolve(baseDir, fileRaw)
-            : sourcePath;
-        const lineNumber =
-          typeof defined?.line === 'number' && Number.isFinite(defined.line) ? defined.line : 1;
-        anchors.push({
-          symbol: name,
-          address: entry.value & 0xffff,
-          file,
-          line: lineNumber,
-        });
-      }
-    }
-
-    if (segments.length === 0 && anchors.length === 0) {
-      return undefined;
-    }
-    return { segments, anchors };
-  }
-
-  private resolveListingSourcePath(listingPath: string): string | undefined {
-    const dir = path.dirname(listingPath);
-    const base = path.basename(listingPath, path.extname(listingPath));
-    const candidates = [`${base}.source.asm`, `${base}.asm`];
-    for (const candidate of candidates) {
-      const candidatePath = path.join(dir, candidate);
-      if (fs.existsSync(candidatePath)) {
-        return candidatePath;
-      }
-    }
-    return undefined;
-  }
 
   private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
     const seen = new Set<string>();
@@ -943,7 +746,7 @@ export class Z80DebugSession extends DebugSession {
       };
 
       pushUnique(listingPath, 'listing');
-      const sourcePath = this.resolveListingSourcePath(listingPath);
+      const sourcePath = resolveListingSourcePath(listingPath);
       if (typeof sourcePath === 'string' && sourcePath.length > 0) {
         pushUnique(sourcePath, 'source');
       }
@@ -2359,43 +2162,6 @@ export class Z80DebugSession extends DebugSession {
     return roots.map((root) => this.resolveRelative(root, baseDir));
   }
 
-  private isDebugMapStale(mapPath: string, listingPath: string): boolean {
-    if (!fs.existsSync(mapPath) || !fs.existsSync(listingPath)) {
-      return false;
-    }
-    try {
-      const mapStat = fs.statSync(mapPath);
-      const listingStat = fs.statSync(listingPath);
-      return listingStat.mtimeMs > mapStat.mtimeMs;
-    } catch {
-      return false;
-    }
-  }
-
-  private applySourceFallback(
-    mapping: MappingParseResult,
-    sourceFile: string | undefined,
-    baseDir: string
-  ): void {
-    if (sourceFile === undefined || sourceFile.length === 0) {
-      return;
-    }
-    if (mapping.anchors.length > 0) {
-      return;
-    }
-    const hasFile = mapping.segments.some((segment) => segment.loc.file !== null);
-    if (hasFile) {
-      return;
-    }
-    const fallback = this.resolveFallbackSourceFile(sourceFile, baseDir);
-    if (fallback === undefined || fallback.length === 0) {
-      return;
-    }
-    for (const segment of mapping.segments) {
-      segment.loc.file = fallback;
-    }
-  }
-
   private rebuildSymbolIndex(
     mapping: MappingParseResult | undefined,
     listingContent?: string
@@ -2535,72 +2301,6 @@ export class Z80DebugSession extends DebugSession {
       }
     }
     return false;
-  }
-
-  private resolveFallbackSourceFile(sourceFile: string, baseDir: string): string | undefined {
-    const resolved = this.resolveRelative(sourceFile, baseDir);
-    for (const root of this.sourceRoots) {
-      const rel = path.relative(root, resolved);
-      if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) {
-        return rel;
-      }
-    }
-    return resolved;
-  }
-
-  private loadDebugMap(mapPath: string): ReturnType<typeof buildD8DebugMap> | undefined {
-    if (!fs.existsSync(mapPath)) {
-      return undefined;
-    }
-    try {
-      const raw = fs.readFileSync(mapPath, 'utf-8');
-      const { map, error } = parseD8DebugMap(raw);
-      if (!map) {
-        const prefix = `Debug80 [${this.activePlatform}]`;
-        this.sendEvent(
-          new OutputEvent(
-            `${prefix}: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})\n`,
-            'console'
-          )
-        );
-        return undefined;
-      }
-      return map;
-    } catch (err) {
-      const prefix = `Debug80 [${this.activePlatform}]`;
-      this.sendEvent(
-        new OutputEvent(
-          `${prefix}: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})\n`,
-          'console'
-        )
-      );
-      return undefined;
-    }
-  }
-
-  private writeDebugMap(
-    map: ReturnType<typeof buildD8DebugMap>,
-    mapPath: string,
-    baseDir: string,
-    listingPath: string
-  ): void {
-    try {
-      fs.mkdirSync(path.dirname(mapPath), { recursive: true });
-      const enriched = {
-        ...map,
-        generator: {
-          ...map.generator,
-          inputs: {
-            listing: this.relativeIfPossible(listingPath, baseDir),
-          },
-        },
-      };
-      fs.writeFileSync(mapPath, JSON.stringify(enriched, null, 2));
-    } catch (err) {
-      this.sendEvent(
-        new OutputEvent(`Debug80: Failed to write D8 debug map: ${String(err)}\n`, 'console')
-      );
-    }
   }
 
   private resolveDebugMapPath(
