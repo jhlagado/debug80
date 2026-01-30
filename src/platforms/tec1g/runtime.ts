@@ -4,6 +4,7 @@ import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import { decodeSysCtrl } from './sysctrl';
 
 export interface Tec1gState {
   digits: number[];
@@ -793,9 +794,10 @@ export function createTec1gRuntime(
       if (p === 0xff) {
         logPortWrite(p, value);
         state.sysCtrl = value & 0xff;
-        state.shadowEnabled = (state.sysCtrl & 0x01) === 0;
-        state.protectEnabled = (state.sysCtrl & 0x02) !== 0;
-        state.expandEnabled = (state.sysCtrl & 0x04) !== 0;
+        const decoded = decodeSysCtrl(state.sysCtrl);
+        state.shadowEnabled = decoded.shadowEnabled;
+        state.protectEnabled = decoded.protectEnabled;
+        state.expandEnabled = decoded.expandEnabled;
         return;
       }
     },
@@ -969,9 +971,10 @@ export function createTec1gRuntime(
     glcdSetDdramAddr(0x80);
     glcdBusyUntil = 0;
     state.sysCtrl = 0x00;
-    state.shadowEnabled = true;
-    state.protectEnabled = false;
-    state.expandEnabled = false;
+    const decoded = decodeSysCtrl(state.sysCtrl);
+    state.shadowEnabled = decoded.shadowEnabled;
+    state.protectEnabled = decoded.protectEnabled;
+    state.expandEnabled = decoded.expandEnabled;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;

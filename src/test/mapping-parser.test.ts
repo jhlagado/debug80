@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseMapping } from '../mapping/parser';
@@ -56,5 +56,28 @@ describe('mapping-parser', () => {
     assert.ok(equSeg);
     assert.equal(equSeg.start, 0x0003);
     assert.equal(equSeg.end, 0x0003);
+  });
+
+  it('handles non-byte listings and ignores USED AT anchors', () => {
+    const content = [
+      '0000 3E 01 LD A,1',
+      '0002 XX       NOP',
+      '0003        ORG 0003',
+      'FOO: 0000 DEFINED AT LINE 1 IN test.asm',
+      'BAR: 0000 DEFINED AT LINE 2 IN test.asm',
+      'BAZ: 0001 USED AT LINE 3 IN test.asm',
+    ].join('\n');
+    const mapping = parseMapping(content);
+
+    const orgSeg = mapping.segments.find((seg) => seg.lst.line === 3);
+    assert.ok(orgSeg);
+    assert.equal(orgSeg.start, 0x0003);
+    assert.equal(orgSeg.end, 0x0003);
+    assert.equal(orgSeg.lst.text, 'ORG 0003');
+
+    assert.equal(mapping.anchors.length, 2);
+    const dup = mapping.segments.find((seg) => seg.lst.line === 2);
+    assert.ok(dup);
+    assert.equal(dup.confidence, 'MEDIUM');
   });
 });
