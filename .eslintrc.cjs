@@ -28,8 +28,8 @@ module.exports = {
 
     // Code quality
     'no-console': 'warn',
-    'eqeqeq': ['error', 'always'],
-    'curly': ['error', 'all'],
+    eqeqeq: ['error', 'always'],
+    curly: ['error', 'all'],
     'prefer-const': 'error',
     'no-var': 'error',
   },
