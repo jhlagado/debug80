@@ -4,6 +4,7 @@
  */
 
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
+import { normalizePathForKey } from '../debug/path-utils';
 
 /**
  * Indexed source map for efficient lookups.
@@ -60,11 +61,13 @@ export function buildSourceMapIndex(
     if (resolved === undefined || resolved.length === 0) {
       continue;
     }
-    const fileMap = segmentsByFileLine.get(resolved) ?? new Map<number, SourceMapSegment[]>();
+    // Normalize path for case-insensitive matching on Windows
+    const key = normalizePathForKey(resolved);
+    const fileMap = segmentsByFileLine.get(key) ?? new Map<number, SourceMapSegment[]>();
     const list = fileMap.get(segment.loc.line) ?? [];
     list.push(segment);
     fileMap.set(segment.loc.line, list);
-    segmentsByFileLine.set(resolved, fileMap);
+    segmentsByFileLine.set(key, fileMap);
   }
 
   for (const fileMap of segmentsByFileLine.values()) {
@@ -79,9 +82,11 @@ export function buildSourceMapIndex(
     if (resolved === undefined || resolved.length === 0) {
       continue;
     }
-    const list = anchorsByFile.get(resolved) ?? [];
+    // Normalize path for case-insensitive matching on Windows
+    const key = normalizePathForKey(resolved);
+    const list = anchorsByFile.get(key) ?? [];
     list.push(anchor);
-    anchorsByFile.set(resolved, list);
+    anchorsByFile.set(key, list);
   }
   for (const list of anchorsByFile.values()) {
     list.sort((a, b) => a.line - b.line || a.address - b.address);
@@ -127,7 +132,9 @@ export function findSegmentForAddress(
  * @returns Array of memory addresses (may be empty)
  */
 export function resolveLocation(index: SourceMapIndex, filePath: string, line: number): number[] {
-  const fileMap = index.segmentsByFileLine.get(filePath);
+  // Normalize path for case-insensitive matching on Windows
+  const key = normalizePathForKey(filePath);
+  const fileMap = index.segmentsByFileLine.get(key);
   if (fileMap) {
     const segments = fileMap.get(line);
     if (segments && segments.length > 0) {
@@ -135,7 +142,7 @@ export function resolveLocation(index: SourceMapIndex, filePath: string, line: n
     }
   }
 
-  const anchors = index.anchorsByFile.get(filePath);
+  const anchors = index.anchorsByFile.get(key);
   if (!anchors || anchors.length === 0) {
     return [];
   }
@@ -164,7 +171,9 @@ export function findAnchorLine(
   filePath: string,
   address: number
 ): number | null {
-  const anchors = index.anchorsByFile.get(filePath);
+  // Normalize path for case-insensitive matching on Windows
+  const key = normalizePathForKey(filePath);
+  const anchors = index.anchorsByFile.get(key);
   if (!anchors || anchors.length === 0) {
     return null;
   }
