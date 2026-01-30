@@ -3,7 +3,7 @@
  * @description Tests for shared TEC platform utilities
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
