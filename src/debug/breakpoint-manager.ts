@@ -16,8 +16,7 @@ export class BreakpointManager {
   private breakpoints: Set<number> = new Set();
 
   /** Pending breakpoints by normalized source path */
-  private pendingBreakpointsBySource: Map<string, DebugProtocol.SourceBreakpoint[]> =
-    new Map();
+  private pendingBreakpointsBySource: Map<string, DebugProtocol.SourceBreakpoint[]> = new Map();
 
   /** Listing info for address resolution */
   private listing: ListingInfo | undefined;
@@ -176,8 +175,7 @@ export class BreakpointManager {
     if (this.isListingSource(sourcePath)) {
       for (const bp of bps) {
         const line = bp.line ?? 0;
-        const address =
-          listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1);
+        const address = listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1);
         const ok = address !== undefined;
         verified.push({ line: bp.line, verified: ok });
       }
@@ -208,8 +206,7 @@ export class BreakpointManager {
         for (const bp of bps) {
           const line = bp.line ?? 0;
           const address =
-            this.listing.lineToAddress.get(line) ??
-            this.listing.lineToAddress.get(line + 1);
+            this.listing.lineToAddress.get(line) ?? this.listing.lineToAddress.get(line + 1);
           if (address !== undefined) {
             this.breakpoints.add(address);
           }
