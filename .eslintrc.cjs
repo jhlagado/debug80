@@ -4,7 +4,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: './tsconfig.eslint.json',
   },
   plugins: ['@typescript-eslint'],
   extends: [
@@ -33,11 +33,18 @@ module.exports = {
     'prefer-const': 'error',
     'no-var': 'error',
   },
-  ignorePatterns: ['out/**', 'node_modules/**', '*.js'],
+  ignorePatterns: ['out/**', 'node_modules/**', '*.js', '**/*.d.ts'],
   overrides: [
     {
       files: ['src/test/**/*.ts'],
       rules: {
+        '@typescript-eslint/no-floating-promises': 'off',
+      },
+    },
+    {
+      files: ['tests/**/*.ts'],
+      rules: {
+        '@typescript-eslint/explicit-function-return-type': 'off',
         '@typescript-eslint/no-floating-promises': 'off',
       },
     },
