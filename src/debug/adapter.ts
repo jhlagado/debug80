@@ -23,7 +23,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { ListingInfo, HexProgram } from '../z80/loaders';
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
+import { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
 import { createZ80Runtime, Z80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
@@ -44,6 +44,7 @@ import { buildMappingFromListing } from './mapping-service';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
+import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -276,7 +277,14 @@ export class Z80DebugSession extends DebugSession {
 
       this.mapping = mappingResult.mapping;
       this.mappingIndex = mappingResult.index;
-      this.rebuildSymbolIndex(this.mapping, listingContent);
+      const symbolIndex = buildSymbolIndex({
+        mapping: this.mapping,
+        listingContent,
+        sourceFile: this.sourceFile,
+      });
+      this.symbolAnchors = symbolIndex.anchors;
+      this.symbolLookupAnchors = symbolIndex.lookupAnchors;
+      this.symbolList = symbolIndex.list;
 
       const platformIo = buildPlatformIoHandlers({
         platform,
@@ -1075,7 +1083,10 @@ export class Z80DebugSession extends DebugSession {
         } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
-        const nearest = this.findNearestSymbol(target);
+        const nearest = findNearestSymbol(target, {
+          anchors: this.symbolAnchors,
+          lookupAnchors: this.symbolLookupAnchors,
+        });
         return {
           id,
           view: viewValue,
@@ -1143,7 +1154,10 @@ export class Z80DebugSession extends DebugSession {
         } = extractViewEntry(entry, this.clampMemoryWindow.bind(this));
         const target = pickAddress(viewValue, addressValue);
         const window = this.readMemoryWindow(target, before, afterValue, rowSize, memRead);
-        const nearest = this.findNearestSymbol(target);
+        const nearest = findNearestSymbol(target, {
+          anchors: this.symbolAnchors,
+          lookupAnchors: this.symbolLookupAnchors,
+        });
         return {
           id,
           view: viewValue,
@@ -1859,147 +1873,6 @@ export class Z80DebugSession extends DebugSession {
   private resolveSourceRoots(args: LaunchRequestArguments, baseDir: string): string[] {
     const roots = args.sourceRoots ?? [];
     return roots.map((root) => this.resolveRelative(root, baseDir));
-  }
-
-  private rebuildSymbolIndex(
-    mapping: MappingParseResult | undefined,
-    listingContent?: string
-  ): void {
-    const hasAnchors = mapping !== undefined && mapping.anchors.length > 0;
-    const hasListing = listingContent !== undefined && listingContent.length > 0;
-    const anchors = hasAnchors
-      ? mapping.anchors
-      : hasListing
-        ? this.extractAnchorsFromListing(listingContent, this.sourceFile)
-        : [];
-    if (anchors.length === 0) {
-      this.symbolAnchors = [];
-      this.symbolLookupAnchors = [];
-      this.symbolList = [];
-      return;
-    }
-    const sorted = [...anchors].sort(
-      (a, b) => a.address - b.address || a.symbol.localeCompare(b.symbol)
-    );
-    this.symbolAnchors = sorted;
-    const ranges = mapping ? this.buildSymbolRanges(mapping.segments) : [];
-    const lookupAnchors =
-      ranges.length > 0
-        ? sorted.filter((anchor) => this.isAddressInRanges(anchor.address, ranges))
-        : sorted;
-    this.symbolLookupAnchors = lookupAnchors.length > 0 ? lookupAnchors : sorted;
-    const seen = new Map<string, number>();
-    for (const anchor of sorted) {
-      if (!seen.has(anchor.symbol)) {
-        seen.set(anchor.symbol, anchor.address);
-      }
-    }
-    this.symbolList = Array.from(seen.entries())
-      .map(([name, address]) => ({ name, address }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  private extractAnchorsFromListing(
-    listingContent: string,
-    defaultFile: string | undefined
-  ): SourceMapAnchor[] {
-    const anchors: SourceMapAnchor[] = [];
-    const lines = listingContent.split(/\r?\n/);
-    const fallbackFile =
-      typeof defaultFile === 'string' && defaultFile.length > 0 ? defaultFile : 'unknown.asm';
-    const anchorLine =
-      /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)(?:\s+IN\s+(.+))?$/;
-    for (const line of lines) {
-      if (!line.includes('DEFINED AT LINE') || line.includes('USED AT LINE')) {
-        continue;
-      }
-      const match = anchorLine.exec(line);
-      if (!match) {
-        continue;
-      }
-      const symbol = match[1];
-      const addressStr = match[2];
-      const lineStr = match[3];
-      const fileRaw = match[4] ?? '';
-      if (
-        symbol === undefined ||
-        addressStr === undefined ||
-        lineStr === undefined ||
-        symbol.length === 0 ||
-        addressStr.length === 0 ||
-        lineStr.length === 0
-      ) {
-        continue;
-      }
-      const address = Number.parseInt(addressStr, 16);
-      const lineNumber = Number.parseInt(lineStr, 10);
-      if (!Number.isFinite(lineNumber)) {
-        continue;
-      }
-      const file = fileRaw.trim().length > 0 ? fileRaw.trim() : fallbackFile;
-      anchors.push({
-        symbol,
-        address,
-        file,
-        line: lineNumber,
-      });
-    }
-    return anchors;
-  }
-
-  private findNearestSymbol(address: number): { name: string; address: number } | null {
-    const anchors =
-      this.symbolLookupAnchors.length > 0 ? this.symbolLookupAnchors : this.symbolAnchors;
-    if (anchors.length === 0) {
-      return null;
-    }
-    let candidate: SourceMapAnchor | undefined;
-    for (const anchor of anchors) {
-      if (anchor.address > address) {
-        break;
-      }
-      candidate = anchor;
-    }
-    if (!candidate) {
-      return null;
-    }
-    return { name: candidate.symbol, address: candidate.address };
-  }
-
-  private buildSymbolRanges(segments: SourceMapSegment[]): Array<{ start: number; end: number }> {
-    const ranges = segments
-      .map((segment) => ({ start: segment.start, end: segment.end }))
-      .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end))
-      .map((range) => (range.start <= range.end ? range : { start: range.end, end: range.start }))
-      .sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged: Array<{ start: number; end: number }> = [];
-    for (const range of ranges) {
-      const last = merged[merged.length - 1];
-      if (last && range.start <= last.end) {
-        last.end = Math.max(last.end, range.end);
-      } else {
-        merged.push({ start: range.start, end: range.end });
-      }
-    }
-    return merged;
-  }
-
-  private isAddressInRanges(
-    address: number,
-    ranges: Array<{ start: number; end: number }>
-  ): boolean {
-    for (const range of ranges) {
-      if (range.end === range.start) {
-        if (address === range.start) {
-          return true;
-        }
-        continue;
-      }
-      if (address >= range.start && address < range.end) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private resolveDebugMapPath(
