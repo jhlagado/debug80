@@ -10,9 +10,7 @@ import {
   StoppedEvent,
   TerminatedEvent,
   Thread,
-  StackFrame,
   Scope,
-  Source,
   Handles,
   BreakpointEvent,
   OutputEvent,
@@ -24,7 +22,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { ListingInfo, HexProgram } from '../z80/loaders';
 import { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
-import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
+import { findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
 import { createZ80Runtime, Z80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
@@ -45,6 +43,7 @@ import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
 import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
 import { SourceManager } from './source-manager';
+import { buildStackFrames } from './stack-service';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -574,79 +573,25 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return;
     }
+    const responseBody = buildStackFrames(this.runtime.getPC(), {
+      ...(this.listing !== undefined ? { listing: this.listing } : {}),
+      ...(this.listingPath !== undefined ? { listingPath: this.listingPath } : {}),
+      ...(this.mappingIndex !== undefined ? { mappingIndex: this.mappingIndex } : {}),
+      ...(this.sourceFile !== undefined ? { sourceFile: this.sourceFile } : {}),
+      resolveMappedPath: (file) => this.resolveMappedPath(file),
+      getAddressAliases: (address) => {
+        const masked = address & ADDR_MASK;
+        const aliases = [masked];
+        const shadowAlias = this.getShadowAlias(masked);
+        if (shadowAlias !== null && shadowAlias !== masked) {
+          aliases.push(shadowAlias);
+        }
+        return aliases;
+      },
+    });
 
-    const resolved = this.resolveSourceForAddress(this.runtime.getPC());
-    const source = new Source(path.basename(resolved.path), resolved.path);
-
-    response.body = {
-      stackFrames: [new StackFrame(0, 'main', source, resolved.line)],
-      totalFrames: 1,
-    };
-
+    response.body = responseBody;
     this.sendResponse(response);
-  }
-
-  private resolveSourceForAddress(address: number): { path: string; line: number } {
-    const listingPath = this.listingPath;
-    const listingLine = this.listing?.addressToLine.get(address) ?? 1;
-    const sourcePath = this.sourceFile ?? listingPath ?? '';
-    const fallbackLine = listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
-    const fallback = { path: sourcePath, line: fallbackLine };
-
-    const resolved = this.resolveSourceForAddressInternal(address);
-    if (resolved) {
-      return resolved;
-    }
-
-    const aliases = this.getDebugAddressAliases(address);
-    for (const alias of aliases) {
-      if (alias === address) {
-        continue;
-      }
-      const resolvedAlias = this.resolveSourceForAddressInternal(alias);
-      if (resolvedAlias) {
-        return resolvedAlias;
-      }
-    }
-
-    return fallback;
-  }
-
-  private resolveSourceForAddressInternal(address: number): { path: string; line: number } | null {
-    const index = this.mappingIndex;
-    if (!index) {
-      return null;
-    }
-    const segment = findSegmentForAddress(index, address);
-    if (segment === undefined || segment.loc.file === null) {
-      return null;
-    }
-
-    const resolvedPath = this.resolveMappedPath(segment.loc.file);
-    if (resolvedPath === undefined || resolvedPath.length === 0) {
-      return null;
-    }
-
-    if (segment.loc.line !== null) {
-      return { path: resolvedPath, line: segment.loc.line };
-    }
-
-    const anchorLine = findAnchorLine(index, resolvedPath, address);
-    if (anchorLine !== null) {
-      return { path: resolvedPath, line: anchorLine };
-    }
-
-    return null;
-  }
-
-  private getDebugAddressAliases(address: number): number[] {
-    const masked = address & ADDR_MASK;
-    const aliases = [masked];
-    const shadowAlias = this.getShadowAlias(masked);
-    if (shadowAlias !== null && shadowAlias !== masked) {
-      aliases.push(shadowAlias);
-    }
-    return aliases;
   }
 
   private getShadowAlias(address: number): number | null {
