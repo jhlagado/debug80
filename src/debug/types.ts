@@ -210,3 +210,146 @@ export interface RomSourceEntry {
   /** Type of source */
   kind: 'listing' | 'source';
 }
+
+// ============================================================================
+// Type Guards for Custom Request Payloads
+// ============================================================================
+
+/**
+ * Checks if value is a valid TerminalInputPayload.
+ */
+export function isTerminalInputPayload(value: unknown): value is TerminalInputPayload {
+  return typeof value === 'object' && value !== null && 'text' in value;
+}
+
+/**
+ * Extracts text from a TerminalInputPayload-like object.
+ * Returns empty string if invalid.
+ */
+export function extractTerminalText(value: unknown): string {
+  if (typeof value === 'object' && value !== null) {
+    const payload = value as { text?: unknown };
+    return typeof payload.text === 'string' ? payload.text : '';
+  }
+  return '';
+}
+
+/**
+ * Checks if value is a valid KeyPressPayload.
+ */
+export function isKeyPressPayload(value: unknown): value is KeyPressPayload {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'code' in value &&
+    typeof (value as KeyPressPayload).code === 'number'
+  );
+}
+
+/**
+ * Extracts key code from a KeyPressPayload-like object.
+ * Returns undefined if invalid.
+ */
+export function extractKeyCode(value: unknown): number | undefined {
+  if (typeof value === 'object' && value !== null) {
+    const payload = value as { code?: unknown };
+    return Number.isFinite(payload.code) ? (payload.code as number) : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Checks if value is a valid SpeedChangePayload.
+ */
+export function isSpeedChangePayload(value: unknown): value is SpeedChangePayload {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const mode = (value as SpeedChangePayload).mode;
+  return mode === 'slow' || mode === 'fast';
+}
+
+/**
+ * Extracts speed mode from a SpeedChangePayload-like object.
+ * Returns undefined if invalid.
+ */
+export function extractSpeedMode(value: unknown): 'slow' | 'fast' | undefined {
+  if (typeof value === 'object' && value !== null) {
+    const payload = value as { mode?: unknown };
+    return payload.mode === 'slow' || payload.mode === 'fast' ? payload.mode : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Checks if value is a valid SerialInputPayload.
+ */
+export function isSerialInputPayload(value: unknown): value is SerialInputPayload {
+  return typeof value === 'object' && value !== null && 'text' in value;
+}
+
+/**
+ * Extracts text from a SerialInputPayload-like object.
+ * Returns empty string if invalid.
+ */
+export function extractSerialText(value: unknown): string {
+  return extractTerminalText(value);
+}
+
+/**
+ * Checks if value is a valid MemoryViewRequest.
+ */
+export function isMemoryViewRequest(value: unknown): value is MemoryViewRequest {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Extracts memory snapshot payload from unknown value.
+ * Provides defaults for missing fields.
+ */
+export function extractMemorySnapshotPayload(value: unknown): MemorySnapshotPayload {
+  if (typeof value !== 'object' || value === null) {
+    return {};
+  }
+  const payload = value as Record<string, unknown>;
+  const result: MemorySnapshotPayload = {};
+
+  if (typeof payload.before === 'number') {
+    result.before = payload.before;
+  }
+  if (payload.rowSize === 8 || payload.rowSize === 16) {
+    result.rowSize = payload.rowSize;
+  }
+  if (Array.isArray(payload.views)) {
+    result.views = payload.views.filter(isMemoryViewRequest);
+  }
+  return result;
+}
+
+/**
+ * Normalized view entry with all fields resolved.
+ */
+export interface NormalizedViewEntry {
+  /** Unique identifier for this view */
+  id: string;
+  /** Register name or 'absolute' */
+  view: string;
+  /** Number of bytes to show after */
+  after: number;
+  /** Address value (only for 'absolute' views) */
+  address: number | null;
+}
+
+/**
+ * Extracts and normalizes a view entry from unknown value.
+ */
+export function extractViewEntry(
+  entry: MemoryViewRequest,
+  clampFn: (val: unknown, defaultVal: number) => number
+): NormalizedViewEntry {
+  const id = typeof entry.id === 'string' ? entry.id : 'view';
+  const view = typeof entry.view === 'string' ? entry.view : 'hl';
+  const after = clampFn(entry.after, 16);
+  const address = Number.isFinite(entry.address) ? (entry.address as number) & 0xffff : null;
+  return { id, view, after, address };
+}

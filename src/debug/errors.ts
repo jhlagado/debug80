@@ -364,7 +364,10 @@ export function isParseError(error: unknown): error is ParseError {
  * @param defaultMessage - Default message if error is not an Error
  * @returns A Debug80Error
  */
-export function wrapError(error: unknown, defaultMessage = 'An unknown error occurred'): Debug80Error {
+export function wrapError(
+  error: unknown,
+  defaultMessage = 'An unknown error occurred'
+): Debug80Error {
   if (isDebug80Error(error)) {
     return error;
   }
