@@ -106,7 +106,8 @@ export function pushWord(ctx: DecodeContext, value: number): void {
 export function doConditionalAbsoluteJump(ctx: DecodeContext, condition: boolean): void {
   if (condition) {
     ctx.cpu.pc =
-      ctx.cb.mem_read((ctx.cpu.pc + 1) & 0xffff) | (ctx.cb.mem_read((ctx.cpu.pc + 2) & 0xffff) << 8);
+      ctx.cb.mem_read((ctx.cpu.pc + 1) & 0xffff) |
+      (ctx.cb.mem_read((ctx.cpu.pc + 2) & 0xffff) << 8);
     ctx.cpu.pc = (ctx.cpu.pc - 1) & 0xffff;
   } else {
     ctx.cpu.pc = (ctx.cpu.pc + 2) & 0xffff;
@@ -134,7 +135,8 @@ export function doConditionalCall(ctx: DecodeContext, condition: boolean): void 
     ctx.cpu.cycle_counter += 7;
     pushWord(ctx, (ctx.cpu.pc + 3) & 0xffff);
     ctx.cpu.pc =
-      ctx.cb.mem_read((ctx.cpu.pc + 1) & 0xffff) | (ctx.cb.mem_read((ctx.cpu.pc + 2) & 0xffff) << 8);
+      ctx.cb.mem_read((ctx.cpu.pc + 1) & 0xffff) |
+      (ctx.cb.mem_read((ctx.cpu.pc + 2) & 0xffff) << 8);
     ctx.cpu.pc = (ctx.cpu.pc - 1) & 0xffff;
   } else {
     ctx.cpu.pc = (ctx.cpu.pc + 2) & 0xffff;
