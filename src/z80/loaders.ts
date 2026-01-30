@@ -3,6 +3,8 @@
  * Provides parsing utilities for loading Z80 programs and debug information.
  */
 
+import { HexParseError } from '../debug/errors';
+
 /**
  * Parsed Intel HEX program data.
  */
@@ -56,7 +58,7 @@ export function parseIntelHex(content: string): HexProgram {
 
   for (const line of lines) {
     if (!line.startsWith(':') || line.length < 11) {
-      throw new Error(`Invalid HEX line: ${line}`);
+      throw new HexParseError(line);
     }
 
     const byteCount = parseInt(line.slice(1, 3), 16);
