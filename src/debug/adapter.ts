@@ -25,7 +25,7 @@ import * as crypto from 'crypto';
 import * as cp from 'child_process';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
-import { parseIntelHex, parseListing, ListingInfo, HexProgram } from '../z80/loaders';
+import { ListingInfo, HexProgram } from '../z80/loaders';
 import {
   parseMapping,
   MappingParseResult,
@@ -54,8 +54,9 @@ import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platf
 import { ensureTec1gShadowRom } from './tec1g-shadow';
 import { resetSessionState, StopReason } from './session-state';
 import type { SessionStateShape } from './session-state';
+import { loadProgramArtifacts } from './program-loader';
+import type { PlatformKind } from './program-loader';
 import {
-  Z80_ADDRESS_SPACE,
   BYTE_MASK,
   ADDR_MASK,
   TEC1G_SHADOW_START,
@@ -66,7 +67,6 @@ import {
   TEC1G_EXPAND_SIZE,
   TEC1G_PROTECT_START,
   TEC1G_PROTECT_END,
-  TEC1_ROM_LOAD_ADDR,
   KEY_RESET,
 } from '../platforms/tec-common';
 
@@ -220,96 +220,21 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
 
-      const hexContent = fs.readFileSync(hexPath, 'utf-8');
-      const program = parseIntelHex(hexContent);
-      if (platform === 'tec1') {
-        const memory = new Uint8Array(Z80_ADDRESS_SPACE);
-        memory.fill(0);
-        const romHex = tec1Config?.romHex;
-        const romPath =
-          romHex !== undefined && romHex.length > 0
-            ? this.resolveRelative(romHex, baseDir)
-            : this.resolveBundledTec1Rom();
-        if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
-          const target = romPath ?? '(missing bundled ROM)';
-          this.sendEvent(
-            new OutputEvent(`Debug80: TEC-1 ROM not found at "${target}".\n`, 'console')
-          );
-        } else {
-          const binPath = this.resolveRomBinPath(romPath);
-          if (binPath !== undefined && binPath.length > 0 && fs.existsSync(binPath)) {
-            this.applyBinaryToMemory(binPath, memory);
-          } else {
-            const romContent = fs.readFileSync(romPath, 'utf-8');
-            const romHex = this.extractRomHex(romContent, romPath);
-            this.applyIntelHexToMemory(romHex, memory);
-          }
-        }
-        const ramInitHex = tec1Config?.ramInitHex;
-        const ramInitPath =
-          ramInitHex !== undefined && ramInitHex.length > 0
-            ? this.resolveRelative(ramInitHex, baseDir)
-            : undefined;
-        if (ramInitPath !== undefined && ramInitPath.length > 0) {
-          if (!fs.existsSync(ramInitPath)) {
-            this.sendEvent(
-              new OutputEvent(`Debug80: TEC-1 RAM init not found at "${ramInitPath}".\n`, 'console')
-            );
-          } else {
-            const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
-            const ramInitHex = this.extractRomHex(ramInitContent, ramInitPath);
-            this.applyIntelHexToMemory(ramInitHex, memory);
-          }
-        }
-        // Overlay user program after ROM/RAM init data.
-        this.applyIntelHexToMemory(hexContent, memory);
-        program.memory = memory;
-      }
-      if (platform === 'tec1g') {
-        const memory = new Uint8Array(Z80_ADDRESS_SPACE);
-        memory.fill(0);
-        const romHex = tec1gConfig?.romHex;
-        const romPath =
-          romHex !== undefined && romHex.length > 0
-            ? this.resolveRelative(romHex, baseDir)
-            : undefined;
-        if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
-          const target = romPath ?? '(missing TEC-1G ROM)';
-          this.sendEvent(
-            new OutputEvent(`Debug80: TEC-1G ROM not found at "${target}".\n`, 'console')
-          );
-        } else if (romPath.toLowerCase().endsWith('.bin')) {
-          this.applyBinaryToMemoryAtOffset(romPath, memory, TEC1_ROM_LOAD_ADDR);
-        } else {
-          const romContent = fs.readFileSync(romPath, 'utf-8');
-          const romHex = this.extractRomHex(romContent, romPath);
-          this.applyIntelHexToMemory(romHex, memory);
-        }
-        const ramInitHex = tec1gConfig?.ramInitHex;
-        const ramInitPath =
-          ramInitHex !== undefined && ramInitHex.length > 0
-            ? this.resolveRelative(ramInitHex, baseDir)
-            : undefined;
-        if (ramInitPath !== undefined && ramInitPath.length > 0) {
-          if (!fs.existsSync(ramInitPath)) {
-            this.sendEvent(
-              new OutputEvent(
-                `Debug80: TEC-1G RAM init not found at "${ramInitPath}".\n`,
-                'console'
-              )
-            );
-          } else {
-            const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
-            const ramInitHex = this.extractRomHex(ramInitContent, ramInitPath);
-            this.applyIntelHexToMemory(ramInitHex, memory);
-          }
-        }
-        this.applyIntelHexToMemory(hexContent, memory);
-        program.memory = memory;
-      }
+      const { program, listingInfo, listingContent } = loadProgramArtifacts({
+        platform,
+        baseDir,
+        hexPath,
+        listingPath,
+        resolveRelative: (p, dir) => this.resolveRelative(p, dir),
+        resolveBundledTec1Rom: () => this.resolveBundledTec1Rom(),
+        log: (message) => {
+          this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
+        },
+        ...(tec1Config ? { tec1Config } : {}),
+        ...(tec1gConfig ? { tec1gConfig } : {}),
+      });
 
-      const listingContent = fs.readFileSync(listingPath, 'utf-8');
-      this.listing = parseListing(listingContent);
+      this.listing = listingInfo;
       this.listingPath = listingPath;
       const mergedSourceFile = merged.sourceFile;
       const sourcePath =
@@ -1996,7 +1921,7 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  private normalizePlatformName(args: LaunchRequestArguments): string {
+  private normalizePlatformName(args: LaunchRequestArguments): PlatformKind {
     const raw = args.platform ?? 'simple';
     const name = raw.trim().toLowerCase();
     if (name === '') {
@@ -2100,78 +2025,6 @@ export class Z80DebugSession extends DebugSession {
     }
     const focus = (centerAddr - alignedStart) & 0xffff;
     return { start: alignedStart & 0xffff, bytes, focus };
-  }
-
-  private applyIntelHexToMemory(content: string, memory: Uint8Array): void {
-    const lines = content
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    for (const line of lines) {
-      if (!line.startsWith(':') || line.length < 11) {
-        continue;
-      }
-      const byteCount = parseInt(line.slice(1, 3), 16);
-      const address = parseInt(line.slice(3, 7), 16);
-      const recordType = parseInt(line.slice(7, 9), 16);
-      const dataString = line.slice(9, 9 + byteCount * 2);
-
-      if (recordType === 1) {
-        break;
-      }
-      if (recordType !== 0) {
-        continue;
-      }
-      for (let i = 0; i < byteCount; i += 1) {
-        const byteHex = dataString.slice(i * 2, i * 2 + 2);
-        const value = parseInt(byteHex, 16);
-        const loc = address + i;
-        if (loc >= 0 && loc < memory.length) {
-          memory[loc] = value & 0xff;
-        }
-      }
-    }
-  }
-
-  private applyBinaryToMemory(filePath: string, memory: Uint8Array): void {
-    const data = fs.readFileSync(filePath);
-    const length = Math.min(data.length, memory.length);
-    for (let i = 0; i < length; i += 1) {
-      memory[i] = data[i] ?? 0;
-    }
-  }
-
-  private applyBinaryToMemoryAtOffset(filePath: string, memory: Uint8Array, offset: number): void {
-    const base = Math.max(0, Math.min(0xffff, offset));
-    const data = fs.readFileSync(filePath);
-    const length = Math.min(data.length, memory.length - base);
-    for (let i = 0; i < length; i += 1) {
-      memory[base + i] = data[i] ?? 0;
-    }
-  }
-
-  private resolveRomBinPath(filePath: string): string | undefined {
-    const lower = filePath.toLowerCase();
-    if (lower.endsWith('.bin')) {
-      return filePath;
-    }
-    const parsed = path.parse(filePath);
-    if (parsed.ext === '') {
-      return undefined;
-    }
-    return path.join(parsed.dir, `${parsed.name}.bin`);
-  }
-
-  private extractRomHex(content: string, filePath: string): string {
-    const lower = filePath.toLowerCase();
-    if (lower.endsWith('.ts') || lower.endsWith('.js')) {
-      const match = content.match(/ROM\s*=\s*`([\s\S]*?)`/) ?? content.match(/`([\s\S]*?)`/);
-      if (match !== null && match[1] !== undefined && match[1] !== '') {
-        return match[1];
-      }
-    }
-    return content;
   }
 
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
