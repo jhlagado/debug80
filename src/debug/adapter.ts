@@ -52,6 +52,21 @@ import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { createTec1Runtime, normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
 import { createTec1gRuntime, normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
 import { ensureTec1gShadowRom } from './tec1g-shadow';
+import {
+  Z80_ADDRESS_SPACE,
+  BYTE_MASK,
+  ADDR_MASK,
+  TEC1G_SHADOW_START,
+  TEC1G_SHADOW_END,
+  TEC1G_SHADOW_SIZE,
+  TEC1G_EXPAND_START,
+  TEC1G_EXPAND_END,
+  TEC1G_EXPAND_SIZE,
+  TEC1G_PROTECT_START,
+  TEC1G_PROTECT_END,
+  TEC1_ROM_LOAD_ADDR,
+  KEY_RESET,
+} from '../platforms/tec-common';
 
 // Import from extracted modules - types only for now (gradual migration)
 import {
@@ -66,7 +81,10 @@ import {
   extractViewEntry,
 } from './types';
 
+/** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
+
+/** Length of cache key hash */
 const CACHE_KEY_LENGTH = 12;
 
 export class Z80DebugSession extends DebugSession {
@@ -226,7 +244,7 @@ export class Z80DebugSession extends DebugSession {
       const hexContent = fs.readFileSync(hexPath, 'utf-8');
       const program = parseIntelHex(hexContent);
       if (platform === 'tec1') {
-        const memory = new Uint8Array(0x10000);
+        const memory = new Uint8Array(Z80_ADDRESS_SPACE);
         memory.fill(0);
         const romHex = tec1Config?.romHex;
         const romPath =
@@ -269,7 +287,7 @@ export class Z80DebugSession extends DebugSession {
         program.memory = memory;
       }
       if (platform === 'tec1g') {
-        const memory = new Uint8Array(0x10000);
+        const memory = new Uint8Array(Z80_ADDRESS_SPACE);
         memory.fill(0);
         const romHex = tec1gConfig?.romHex;
         const romPath =
@@ -282,7 +300,7 @@ export class Z80DebugSession extends DebugSession {
             new OutputEvent(`Debug80: TEC-1G ROM not found at "${target}".\n`, 'console')
           );
         } else if (romPath.toLowerCase().endsWith('.bin')) {
-          this.applyBinaryToMemoryAtOffset(romPath, memory, 0xc000);
+          this.applyBinaryToMemoryAtOffset(romPath, memory, TEC1_ROM_LOAD_ADDR);
         } else {
           const romContent = fs.readFileSync(romPath, 'utf-8');
           const romHex = this.extractRomHex(romContent, romPath);
@@ -403,44 +421,44 @@ export class Z80DebugSession extends DebugSession {
       const tec1gRuntime = this.tec1gRuntime;
       if (platform === 'tec1g' && this.runtime !== undefined && tec1gRuntime !== undefined) {
         const baseMemory = this.runtime.hardware.memory;
-        const expandBank = new Uint8Array(0x4000);
+        const expandBank = new Uint8Array(TEC1G_EXPAND_SIZE);
         const romRanges = runtimeOptions?.romRanges ?? [];
         const shadowInfo = ensureTec1gShadowRom(baseMemory, romRanges);
         const isRomAddress = (addr: number): boolean =>
           romRanges.some((range) => addr >= range.start && addr <= range.end) ||
-          (shadowInfo.shadowCopied && addr >= 0xc000 && addr <= 0xc7ff);
+          (shadowInfo.shadowCopied && addr >= TEC1G_SHADOW_START && addr <= TEC1G_SHADOW_END);
         this.runtime.hardware.memRead = (addr: number): number => {
-          const masked = addr & 0xffff;
+          const masked = addr & ADDR_MASK;
           const shadowEnabled = (tec1gRuntime as Tec1gRuntime).state.shadowEnabled === true;
-          if (shadowEnabled && masked < 0x0800) {
-            const shadowAddr = 0xc000 + masked;
+          if (shadowEnabled && masked < TEC1G_SHADOW_SIZE) {
+            const shadowAddr = TEC1G_SHADOW_START + masked;
             return baseMemory[shadowAddr] ?? 0;
           }
-          if (masked >= 0x8000 && masked <= 0xbfff) {
+          if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
             const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
             if (expandEnabled) {
-              return expandBank[masked - 0x8000] ?? 0;
+              return expandBank[masked - TEC1G_EXPAND_START] ?? 0;
             }
           }
           return baseMemory[masked] ?? 0;
         };
         this.runtime.hardware.memWrite = (addr: number, value: number): void => {
-          const masked = addr & 0xffff;
-          if (masked >= 0x0800 && isRomAddress(masked)) {
+          const masked = addr & ADDR_MASK;
+          if (masked >= TEC1G_SHADOW_SIZE && isRomAddress(masked)) {
             return;
           }
           const protectEnabled = (tec1gRuntime as Tec1gRuntime).state.protectEnabled === true;
-          if (protectEnabled && masked >= 0x4000 && masked <= 0x7fff) {
+          if (protectEnabled && masked >= TEC1G_PROTECT_START && masked <= TEC1G_PROTECT_END) {
             return;
           }
-          if (masked >= 0x8000 && masked <= 0xbfff) {
+          if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
             const expandEnabled = (tec1gRuntime as Tec1gRuntime).state.expandEnabled === true;
             if (expandEnabled) {
-              expandBank[masked - 0x8000] = value & 0xff;
+              expandBank[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
               return;
             }
           }
-          baseMemory[masked] = value & 0xff;
+          baseMemory[masked] = value & BYTE_MASK;
         };
       }
       this.callDepth = 0;
@@ -706,7 +724,7 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private getDebugAddressAliases(address: number): number[] {
-    const masked = address & 0xffff;
+    const masked = address & ADDR_MASK;
     const aliases = [masked];
     const shadowAlias = this.getShadowAlias(masked);
     if (shadowAlias !== null && shadowAlias !== masked) {
@@ -723,8 +741,8 @@ export class Z80DebugSession extends DebugSession {
     if (!runtime || runtime.state.shadowEnabled !== true) {
       return null;
     }
-    if (address < 0x0800) {
-      return (0xc000 + address) & 0xffff;
+    if (address < TEC1G_SHADOW_SIZE) {
+      return (TEC1G_SHADOW_START + address) & ADDR_MASK;
     }
     return null;
   }
@@ -1178,7 +1196,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
       }
-      if (code === 0x12) {
+      if (code === KEY_RESET) {
         this.tec1Runtime.silenceSpeaker();
         this.tec1gRuntime?.silenceSpeaker();
       }
@@ -1196,7 +1214,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
         return;
       }
-      if (code === 0x12) {
+      if (code === KEY_RESET) {
         this.tec1gRuntime.silenceSpeaker();
       }
       this.tec1gRuntime.applyKey(code);

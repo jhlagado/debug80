@@ -9,6 +9,20 @@ import {
   TEC_FAST_HZ,
   TEC_SILENCE_CYCLES,
   TEC_KEY_HOLD_MS,
+  Z80_ADDRESS_SPACE,
+  BYTE_MASK,
+  ADDR_MASK,
+  TEC1G_SHADOW_START,
+  TEC1G_SHADOW_END,
+  TEC1G_SHADOW_SIZE,
+  TEC1G_EXPAND_START,
+  TEC1G_EXPAND_END,
+  TEC1G_EXPAND_SIZE,
+  TEC1G_PROTECT_START,
+  TEC1G_PROTECT_END,
+  TEC1_ROM_LOAD_ADDR,
+  KEY_RESET,
+  KEY_NONE,
   updateDisplayDigits,
   updateMatrixRow,
   calculateSpeakerFrequency,
@@ -30,6 +44,38 @@ describe('TEC Common Constants', () => {
   it('should have correct timing constants', () => {
     expect(TEC_SILENCE_CYCLES).toBe(10000);
     expect(TEC_KEY_HOLD_MS).toBe(30);
+  });
+
+  it('should have correct memory map constants', () => {
+    expect(Z80_ADDRESS_SPACE).toBe(0x10000);
+    expect(BYTE_MASK).toBe(0xff);
+    expect(ADDR_MASK).toBe(0xffff);
+  });
+
+  it('should have correct TEC-1G shadow ROM constants', () => {
+    expect(TEC1G_SHADOW_START).toBe(0xc000);
+    expect(TEC1G_SHADOW_END).toBe(0xc7ff);
+    expect(TEC1G_SHADOW_SIZE).toBe(0x0800);
+  });
+
+  it('should have correct TEC-1G expansion memory constants', () => {
+    expect(TEC1G_EXPAND_START).toBe(0x8000);
+    expect(TEC1G_EXPAND_END).toBe(0xbfff);
+    expect(TEC1G_EXPAND_SIZE).toBe(0x4000);
+  });
+
+  it('should have correct TEC-1G RAM protection constants', () => {
+    expect(TEC1G_PROTECT_START).toBe(0x4000);
+    expect(TEC1G_PROTECT_END).toBe(0x7fff);
+  });
+
+  it('should have correct ROM load address', () => {
+    expect(TEC1_ROM_LOAD_ADDR).toBe(0xc000);
+  });
+
+  it('should have correct key constants', () => {
+    expect(KEY_RESET).toBe(0x12);
+    expect(KEY_NONE).toBe(0x7f);
   });
 });
 
