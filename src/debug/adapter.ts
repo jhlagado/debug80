@@ -22,7 +22,6 @@ import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import * as cp from 'child_process';
 import { ListingInfo, HexProgram } from '../z80/loaders';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
@@ -44,6 +43,7 @@ import type { PlatformKind } from './program-loader';
 import { buildMappingFromListing } from './mapping-service';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
+import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -211,7 +211,7 @@ export class Z80DebugSession extends DebugSession {
         hexPath,
         listingPath,
         resolveRelative: (p, dir) => this.resolveRelative(p, dir),
-        resolveBundledTec1Rom: () => this.resolveBundledTec1Rom(),
+        resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
         log: (message) => {
           this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
         },
@@ -1762,54 +1762,42 @@ export class Z80DebugSession extends DebugSession {
     return name;
   }
 
-  private assembleBin(
-    asm80: { command: string; argsPrefix: string[] },
-    asmDir: string,
-    asmPath: string,
+  private assembleIfRequested(
+    args: LaunchRequestArguments,
+    asmPath: string | undefined,
     hexPath: string,
-    binFrom: number,
-    binTo: number
+    listingPath: string,
+    platform: string,
+    simpleConfig?: SimplePlatformConfigNormalized
   ): void {
-    const outDir = path.dirname(hexPath);
-    const binPath = path.join(outDir, `${path.basename(hexPath, path.extname(hexPath))}.bin`);
-    const wrapperName = `.${path.basename(asmPath, path.extname(asmPath))}.bin.asm`;
-    const wrapperPath = path.join(asmDir, wrapperName);
-    const wrapper = `.BINFROM ${binFrom}\n.BINTO ${binTo}\n.INCLUDE "${path.basename(asmPath)}"\n`;
-    fs.writeFileSync(wrapperPath, wrapper);
-
-    const outArg = path.relative(asmDir, binPath);
-    const wrapperArg = path.relative(asmDir, wrapperPath);
-    const result = cp.spawnSync(
-      asm80.command,
-      [...asm80.argsPrefix, '-m', 'Z80', '-t', 'bin', '-o', outArg, wrapperArg],
-      {
-        cwd: asmDir,
-        encoding: 'utf-8',
-      }
-    );
-
-    try {
-      fs.unlinkSync(wrapperPath);
-    } catch {
-      /* ignore */
+    if (asmPath === undefined || asmPath === '' || args.assemble === false) {
+      return;
     }
 
-    if (result.error) {
-      const message = `asm80 bin failed to start: ${result.error.message ?? String(result.error)}`;
-      this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
-      throw new Error(message);
+    const result = runAssembler(asmPath, hexPath, listingPath, (message) => {
+      this.sendEvent(new OutputEvent(message, 'console'));
+    });
+    if (!result.success) {
+      throw new Error(result.error ?? 'asm80 failed to assemble');
     }
 
-    if (result.status !== 0) {
-      if (result.stdout) {
-        this.sendEvent(new OutputEvent(`asm80 stdout:\n${result.stdout}\n`, 'console'));
+    if (
+      platform === 'simple' &&
+      simpleConfig?.binFrom !== undefined &&
+      simpleConfig.binTo !== undefined
+    ) {
+      const binResult = runAssemblerBin(
+        asmPath,
+        hexPath,
+        simpleConfig.binFrom,
+        simpleConfig.binTo,
+        (message) => {
+          this.sendEvent(new OutputEvent(message, 'console'));
+        }
+      );
+      if (!binResult.success) {
+        throw new Error(binResult.error ?? 'asm80 failed to build binary');
       }
-      if (result.stderr) {
-        this.sendEvent(new OutputEvent(`asm80 stderr:\n${result.stderr}\n`, 'console'));
-      }
-      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-      const suffix = output.length > 0 ? `: ${output}` : '';
-      throw new Error(`asm80 bin exited with code ${result.status}${suffix}`);
     }
   }
 
@@ -1859,146 +1847,6 @@ export class Z80DebugSession extends DebugSession {
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
     const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
     return Boolean(created);
-  }
-
-  private assembleIfRequested(
-    args: LaunchRequestArguments,
-    asmPath: string | undefined,
-    hexPath: string,
-    listingPath: string,
-    platform: string,
-    simpleConfig?: SimplePlatformConfigNormalized
-  ): void {
-    if (asmPath === undefined || asmPath === '' || args.assemble === false) {
-      return;
-    }
-
-    const asmDir = path.dirname(asmPath);
-    const outDir = path.dirname(hexPath);
-    if (!fs.existsSync(outDir)) {
-      fs.mkdirSync(outDir, { recursive: true });
-    }
-
-    const asm80 = this.resolveAsm80Command(asmDir);
-    const outArg = path.relative(asmDir, hexPath);
-    const result = cp.spawnSync(
-      asm80.command,
-      [...asm80.argsPrefix, '-m', 'Z80', '-t', 'hex', '-o', outArg, path.basename(asmPath)],
-      {
-        cwd: asmDir,
-        encoding: 'utf-8',
-      }
-    );
-
-    if (result.error) {
-      const enoent = (result.error as NodeJS.ErrnoException)?.code === 'ENOENT';
-      const message = enoent
-        ? 'asm80 not found. Install it with "npm install -D asm80" or ensure it is on PATH.'
-        : `asm80 failed to start: ${result.error.message ?? String(result.error)}`;
-      this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
-      throw new Error(message);
-    }
-
-    if (result.status !== 0) {
-      if (result.stdout) {
-        this.sendEvent(new OutputEvent(`asm80 stdout:\n${result.stdout}\n`, 'console'));
-      }
-      if (result.stderr) {
-        this.sendEvent(new OutputEvent(`asm80 stderr:\n${result.stderr}\n`, 'console'));
-      }
-      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-      const suffix = output.length > 0 ? `: ${output}` : '';
-      throw new Error(`asm80 exited with code ${result.status}${suffix}`);
-    }
-
-    const producedListing = path.join(
-      path.dirname(hexPath),
-      `${path.basename(hexPath, path.extname(hexPath))}.lst`
-    );
-    if (listingPath !== producedListing && fs.existsSync(producedListing)) {
-      const listingDir = path.dirname(listingPath);
-      if (!fs.existsSync(listingDir)) {
-        fs.mkdirSync(listingDir, { recursive: true });
-      }
-      fs.copyFileSync(producedListing, listingPath);
-    }
-
-    if (
-      platform === 'simple' &&
-      simpleConfig?.binFrom !== undefined &&
-      simpleConfig.binTo !== undefined
-    ) {
-      this.assembleBin(asm80, asmDir, asmPath, hexPath, simpleConfig.binFrom, simpleConfig.binTo);
-    }
-  }
-
-  private findAsm80Binary(startDir: string): string | undefined {
-    const candidates =
-      process.platform === 'win32' ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] : ['asm80'];
-
-    for (let dir = startDir; ; ) {
-      const binDir = path.join(dir, 'node_modules', '.bin');
-      for (const name of candidates) {
-        const candidate = path.join(binDir, name);
-        if (fs.existsSync(candidate)) {
-          return candidate;
-        }
-      }
-
-      const parent = path.dirname(dir);
-      if (parent === dir) {
-        break;
-      }
-      dir = parent;
-    }
-
-    const bundled = this.resolveBundledAsm80();
-    if (bundled !== undefined) {
-      return bundled;
-    }
-
-    return undefined;
-  }
-
-  private resolveAsm80Command(asmDir: string): {
-    command: string;
-    argsPrefix: string[];
-  } {
-    const resolved = this.findAsm80Binary(asmDir) ?? 'asm80';
-    if (this.shouldInvokeWithNode(resolved)) {
-      return { command: process.execPath, argsPrefix: [resolved] };
-    }
-    return { command: resolved, argsPrefix: [] };
-  }
-
-  private shouldInvokeWithNode(command: string): boolean {
-    const lower = command.toLowerCase();
-    if (
-      process.platform === 'win32' &&
-      (lower.endsWith('.cmd') || lower.endsWith('.exe') || lower.endsWith('.ps1'))
-    ) {
-      return false;
-    }
-
-    if (!(command.includes(path.sep) || command.includes('/'))) {
-      return false;
-    }
-
-    const ext = path.extname(command).toLowerCase();
-    if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
-      return true;
-    }
-
-    try {
-      const fd = fs.openSync(command, 'r');
-      const buffer = Buffer.alloc(160);
-      const bytes = fs.readSync(fd, buffer, 0, buffer.length, 0);
-      fs.closeSync(fd);
-      const firstLine = buffer.toString('utf-8', 0, bytes).split('\n')[0] ?? '';
-      return firstLine.startsWith('#!') && firstLine.includes('node');
-    } catch {
-      return false;
-    }
   }
 
   private normalizeSourcePath(sourcePath: string): string {
@@ -2215,48 +2063,6 @@ export class Z80DebugSession extends DebugSession {
       return path.relative(normalizedBase, normalizedPath) || normalizedPath;
     }
     return normalizedPath;
-  }
-
-  private resolveBundledAsm80(): string | undefined {
-    const tryResolve = (id: string): string | undefined => {
-      try {
-        return require.resolve(id);
-      } catch {
-        return undefined;
-      }
-    };
-
-    const direct = tryResolve('asm80/bin/asm80') ?? tryResolve('asm80/bin/asm80.js');
-    if (direct !== undefined) {
-      return direct;
-    }
-
-    const pkg = tryResolve('asm80/package.json');
-    if (pkg !== undefined) {
-      const root = path.dirname(pkg);
-      const bin = path.join(root, 'bin', 'asm80');
-      if (fs.existsSync(bin)) {
-        return bin;
-      }
-      const binJs = `${bin}.js`;
-      if (fs.existsSync(binJs)) {
-        return binJs;
-      }
-    }
-
-    return undefined;
-  }
-
-  private resolveBundledTec1Rom(): string | undefined {
-    const extension = vscode.extensions.getExtension('jhlagado.debug80');
-    if (!extension) {
-      return undefined;
-    }
-    const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b', 'mon-1b.hex');
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-    return undefined;
   }
 
   private resolveBaseDir(args: LaunchRequestArguments): string {
