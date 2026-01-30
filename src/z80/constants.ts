@@ -1,3 +1,14 @@
+/**
+ * @file Z80 CPU constant tables
+ * @description Pre-computed tables for parity bits and cycle counts.
+ *
+ * NOTE: This module uses snake_case naming conventions (e.g., parity_bits,
+ * cycle_counts) as it was ported from the js8080 project. This naming is
+ * intentionally preserved to avoid breaking changes to the emulator core.
+ *
+ * @module z80/constants
+ */
+
 /* eslint-disable max-lines */
 /* eslint-disable camelcase */
 

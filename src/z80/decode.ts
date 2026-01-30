@@ -1,3 +1,30 @@
+/**
+ * @fileoverview Z80 Instruction Decoder
+ *
+ * This module implements the complete Z80 instruction set decoder. The architecture
+ * uses a single function with nested handlers to share closure state (cpu, callbacks).
+ *
+ * ## Structure
+ * The file is organized into these logical sections:
+ * - **Utility Functions** (lines ~45-550): Signed bytes, flags, stack, ALU operations
+ * - **DD Prefix Table** (lines ~570-960): IX register instructions
+ * - **DDCB Prefix Handler** (lines ~964-1200): IX bit operations
+ * - **ED Prefix Table** (lines ~1200-1490): Extended instructions
+ * - **Main Instruction Table** (lines ~1492-2165): Primary opcode dispatch
+ * - **CB Prefix Handler** (lines ~1938-2163): Bit operations (inline)
+ * - **FD Prefix Handler** (line ~2337): IY instructions (reuses DD table)
+ * - **Register/ALU Decoder** (lines ~2368-2448): Uniform register operations
+ *
+ * ## Instruction Prefixes
+ * - **CB**: Bit manipulation, rotate, shift instructions
+ * - **DD**: IX index register variants
+ * - **ED**: Extended instructions (I/O, block transfers, etc.)
+ * - **FD**: IY index register variants (uses DD table with IX/IY swap)
+ * - **DDCB/FDCB**: Indexed bit operations
+ *
+ * @module z80/decode
+ */
+
 import {
   cycle_counts_cb,
   cycle_counts_dd,
@@ -24,27 +51,77 @@ import {
   do_srl as do_srl_base,
 } from './rotate';
 import { Callbacks, Cpu } from './types';
+
+/** Handler that transforms a byte value and returns the result */
 type ByteOpHandler = (value: number) => number;
+
+/** Handler that operates on a byte value without returning */
 type ByteOpVoid = (value: number) => void;
+
+/** No-op byte handler that returns the input unchanged */
 const noopByteOp: ByteOpHandler = (value: number): number => value;
+
+/** No-op void handler that does nothing */
 const noopVoidOp: ByteOpVoid = (_value: number): void => {
   // intentionally empty
 };
+
+/**
+ * Safely retrieves a byte operation handler from an array.
+ * @param ops - Array of byte operation handlers
+ * @param index - Index to retrieve
+ * @returns Handler at index or no-op if out of bounds
+ */
 const getByteOp = (ops: ByteOpHandler[], index: number): ByteOpHandler =>
   ops[index] ?? noopByteOp;
+
+/**
+ * Safely retrieves a void operation handler from an array.
+ * @param ops - Array of void operation handlers
+ * @param index - Index to retrieve
+ * @returns Handler at index or no-op if out of bounds
+ */
 const getVoidOp = (ops: ByteOpVoid[], index: number): ByteOpVoid =>
   ops[index] ?? noopVoidOp;
 
-// ////////////////////////////////////////////////////////////////////////////
-// The public API functions end here.
-//
-// What begins here are just general utility functions, used variously.
-// ////////////////////////////////////////////////////////////////////////////
+// ============================================================================
+// INSTRUCTION DECODER ENTRY POINT
+// ============================================================================
+
+/**
+ * Decodes and executes a single Z80 instruction.
+ *
+ * This function handles the complete Z80 instruction set including:
+ * - All standard opcodes (0x00-0xFF)
+ * - CB prefix (bit operations)
+ * - DD prefix (IX index register)
+ * - ED prefix (extended instructions)
+ * - FD prefix (IY index register)
+ * - DDCB/FDCB prefixes (indexed bit operations)
+ *
+ * @param cpu - CPU state object to modify
+ * @param cb - Callbacks for memory and I/O access
+ * @param opcode - The opcode byte to decode and execute
+ *
+ * @example
+ * ```typescript
+ * const opcode = callbacks.mem_read(cpu.pc);
+ * decodeInstruction(cpu, callbacks, opcode);
+ * ```
+ */
 export const decodeInstruction = (
   cpu: Cpu,
   cb: Callbacks,
   opcode: number
 ): void => {
+  // ==========================================================================
+  // UTILITY FUNCTIONS
+  // ==========================================================================
+
+  /**
+   * Converts an unsigned byte to a signed offset (-128 to 127).
+   * Used for relative jumps and indexed addressing.
+   */
   const get_signed_offset_byte = (value: number): number => {
     // This function requires some explanation.
     // We just use JavaScript Number variables for our registers,
@@ -552,6 +629,7 @@ export const decodeInstruction = (
 
   const do_srl = (operand: number): number => do_srl_base(cpu, operand);
 
+  /** ADD IX, operand - 16-bit addition to IX register */
   const do_ix_add = (operand: number): void => {
     cpu.flags.N = 0;
 
@@ -564,12 +642,12 @@ export const decodeInstruction = (
     cpu.ix = result;
   };
 
-  // ////////////////////////////////////////////////////////////////////////////
-  // Like ED, this table is quite sparse,
-  //  and many of the opcodes here are also undocumented.
-  // The undocumented instructions here are those that deal with only one byte
-  //  of the two-byte IX register; the bytes are designed IXH and IXL here.
-  // ////////////////////////////////////////////////////////////////////////////
+  // ==========================================================================
+  // DD PREFIX TABLE (IX INSTRUCTIONS)
+  // ==========================================================================
+  // The DD prefix provides access to the IX index register.
+  // Many undocumented instructions operate on IXH/IXL (high/low bytes of IX).
+  // ==========================================================================
   const dd_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
   // 0x09 : ADD IX, BC
   dd_instructions[0x09] = (): void => {
@@ -961,7 +1039,14 @@ export const decodeInstruction = (
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
     do_cp(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
-  // 0xcb : CB Prefix (IX bit instructions)
+
+  // ==========================================================================
+  // DDCB PREFIX HANDLER (IX BIT INSTRUCTIONS)
+  // ==========================================================================
+  // The DDCB prefix combines indexed addressing with bit operations.
+  // Format: DD CB offset opcode
+  // Most opcodes in this range are undocumented but functional.
+  // ==========================================================================
   dd_instructions[0xcb] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const offset = get_signed_offset_byte(cb.mem_read(cpu.pc));
@@ -969,10 +1054,9 @@ export const decodeInstruction = (
     const opcode1 = cb.mem_read(cpu.pc);
     let value;
 
-    // As with the "normal" CB prefix, we implement the DDCB prefix
-    //  by decoding the opcode directly, rather than using a table.
+    // DDCB prefix decoded directly rather than using a table
     if (opcode1 < 0x40) {
-      // Shift and rotate instructions.
+      // Shift and rotate instructions
       const ddcb_functions: ByteOpHandler[] = [
         do_rlc,
         do_rrc,
@@ -984,8 +1068,7 @@ export const decodeInstruction = (
         do_srl,
       ];
 
-      // Most of the opcodes in this range are not valid,
-      //  so we map this opcode onto one of the ones that is.
+      // Map opcode onto valid operations
       const func = getByteOp(ddcb_functions, (opcode1 & 0x38) >>> 3);
       value = func(cb.mem_read((cpu.ix + offset) & 0xffff));
 
@@ -1065,11 +1148,15 @@ export const decodeInstruction = (
     cpu.sp = cpu.ix;
   };
 
-  // ////////////////////////////////////////////////////////////////////////////
-  // This table of ED opcodes is pretty sparse;
-  //  there are not very many valid ED-prefixed opcodes in the Z80,
-  //  and many of the ones that are valid are not documented.
-  // ////////////////////////////////////////////////////////////////////////////
+  // ==========================================================================
+  // ED PREFIX TABLE (EXTENDED INSTRUCTIONS)
+  // ==========================================================================
+  // The ED prefix provides access to extended instructions including:
+  // - 16-bit I/O operations
+  // - Block transfer and search instructions (LDI, LDIR, CPI, CPIR, etc.)
+  // - Interrupt control
+  // - Some undocumented instructions
+  // ==========================================================================
   const ed_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
   // 0x40 : IN B, (C)
   ed_instructions[0x40] = (): void => {
@@ -1485,12 +1572,13 @@ export const decodeInstruction = (
     }
   };
 
-  // ////////////////////////////////////////////////////////////////////////////
-  // This table contains the implementations for the instructions that weren't
-  //  implemented directly in the decoder (everything but the 8-bit
-  //  register loads and the accumulator ALU instructions, in other words).
-  // Similar tables for the ED and DD/FD prefixes follow this one.
-  // ////////////////////////////////////////////////////////////////////////////
+  // ==========================================================================
+  // MAIN INSTRUCTION TABLE (PRIMARY OPCODES 0x00-0xFF)
+  // ==========================================================================
+  // This table contains implementations for instructions that aren't decoded
+  // directly (8-bit register loads 0x40-0x7F and ALU 0x80-0xBF are handled
+  // by the register/ALU decoder at the end of this function).
+  // ==========================================================================
   const instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
 
   // 0x00 : NOP
@@ -1935,16 +2023,21 @@ export const decodeInstruction = (
   instructions[0xca] = (): void => {
     do_conditional_absolute_jump(!!cpu.flags.Z);
   };
-  // 0xcb : CB Prefix
+
+  // ==========================================================================
+  // CB PREFIX HANDLER (BIT OPERATIONS)
+  // ==========================================================================
+  // The CB prefix provides bit manipulation instructions:
+  // - RLC, RRC, RL, RR, SLA, SRA, SLL, SRL (0x00-0x3F)
+  // - BIT (0x40-0x7F)
+  // - RES (0x80-0xBF)
+  // - SET (0xC0-0xFF)
+  // Decoded directly due to uniform structure.
+  // ==========================================================================
   instructions[0xcb] = (): void => {
-    // R is incremented at the start of the second instruction cycle,
-    //  before the instruction actually runs.
-    // The high bit of R is not affected by this increment,
-    //  it can only be changed using the LD R, A instruction.
+    // R is incremented at the start of the second instruction cycle
     cpu.r = (cpu.r & 0x80) | (((cpu.r & 0x7f) + 1) & 0x7f);
 
-    // We don't have a table for this prefix,
-    //  the instructions are all so uniform that we can directly decode them.
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const opcode1 = cb.mem_read(cpu.pc);
     const bit_number = (opcode1 & 0x38) >>> 3;
@@ -2334,18 +2427,23 @@ export const decodeInstruction = (
   instructions[0xfc] = (): void => {
     do_conditional_call(!!cpu.flags.S);
   };
-  // 0xfd : FD Prefix (IY instructions)
+
+  // ==========================================================================
+  // FD PREFIX HANDLER (IY INSTRUCTIONS)
+  // ==========================================================================
+  // The FD prefix provides access to the IY index register.
+  // Implementation: Swap IX↔IY, execute DD instruction, swap back.
+  // This elegant trick reuses the entire DD table for IY operations.
+  // ==========================================================================
   instructions[0xfd] = (): void => {
-    // R is incremented at the start of the second instruction cycle,
-    //  before the instruction actually runs.
-    // The high bit of R is not affected by this increment,
-    //  it can only be changed using the LD R, A instruction.
+    // R is incremented at the start of the second instruction cycle
     cpu.r = (cpu.r & 0x80) | (((cpu.r & 0x7f) + 1) & 0x7f);
 
     cpu.pc = (cpu.pc + 1) & 0xffff;
     const opcode1 = cb.mem_read(cpu.pc);
     const func = dd_instructions[opcode1] ?? noop;
 
+    // Swap IX and IY, execute the DD instruction, then swap back
     const temp = cpu.ix;
     cpu.ix = cpu.iy;
     func();
@@ -2365,10 +2463,18 @@ export const decodeInstruction = (
     do_reset(0x38);
   };
 
-  // The register-to-register loads and ALU instructions
-  //  are all so uniform that we can decode them directly
-  //  instead of going into the instruction array for them.
-  // This function gets the operand for all of these instructions.
+  // ==========================================================================
+  // REGISTER/ALU DECODER (0x40-0xBF)
+  // ==========================================================================
+  // The 8-bit register loads (0x40-0x7F) and ALU operations (0x80-0xBF)
+  // are so uniform that they're decoded directly rather than using the table.
+  // ==========================================================================
+
+  /**
+   * Gets the operand value for register-based instructions.
+   * Bits 0-2 of the opcode select the source register:
+   * 0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A
+   */
   // eslint-disable-next-line no-shadow
   const get_operand = (opcode: number): number => {
     return (opcode & 0x07) === 0
