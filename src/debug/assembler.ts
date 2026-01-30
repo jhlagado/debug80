@@ -274,8 +274,9 @@ export function runAssemblerBin(
   fs.writeFileSync(wrapperPath, wrapper);
 
   const asm80 = resolveAsm80Command(asmDir);
-  const outArg = path.relative(asmDir, binPath);
-  const wrapperArg = path.relative(asmDir, wrapperPath);
+  // Use forward slashes for cross-platform compatibility with asm80
+  const outArg = toPortablePath(path.relative(asmDir, binPath));
+  const wrapperArg = toPortablePath(path.relative(asmDir, wrapperPath));
 
   const result = cp.spawnSync(
     asm80.command,
