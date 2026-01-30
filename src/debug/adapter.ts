@@ -13,7 +13,6 @@ import {
   Scope,
   Handles,
   BreakpointEvent,
-  OutputEvent,
   Event as DapEvent,
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
@@ -81,6 +80,7 @@ import {
   applyTerminalBreak,
   applyTerminalInput,
 } from './io-requests';
+import { emitConsoleOutput, emitMainSource } from './adapter-ui';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -224,7 +224,7 @@ export class Z80DebugSession extends DebugSession {
         resolveRelative: (p, dir) => this.resolveRelative(p, dir),
         resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
         log: (message: string): void => {
-          this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
+          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
         },
         ...(tec1Config ? { tec1Config } : {}),
         ...(tec1gConfig ? { tec1gConfig } : {}),
@@ -249,7 +249,7 @@ export class Z80DebugSession extends DebugSession {
           this.resolveDebugMapPath(args as LaunchRequestArguments, dir, asm, listing),
         resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
         log: (message: string): void => {
-          this.sendEvent(new OutputEvent(`${message}\n`, 'console'));
+          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
         },
       });
 
@@ -277,11 +277,7 @@ export class Z80DebugSession extends DebugSession {
       this.extraListingPaths = sourceState.extraListingPaths;
       this.mapping = sourceState.mapping;
       this.mappingIndex = sourceState.mappingIndex;
-      this.sendEvent(
-        new DapEvent('debug80/mainSource', {
-          path: this.sourceFile,
-        })
-      );
+      emitMainSource((event) => this.sendEvent(event as DebugProtocol.Event), this.sourceFile);
       const symbolIndex = buildSymbolIndex({
         mapping: this.mapping,
         listingContent,
@@ -399,7 +395,7 @@ export class Z80DebugSession extends DebugSession {
       }
     } catch (err) {
       const detail = `Failed to load program: ${String(err)}`;
-      this.sendEvent(new OutputEvent(`${detail}\n`, 'console'));
+      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
       const short =
         detail.toLowerCase().includes('asm80') || detail.toLowerCase().includes('failed')
           ? 'Failed to load program (see Debug Console for asm80 output).'
@@ -1399,7 +1395,9 @@ export class Z80DebugSession extends DebugSession {
     }
 
     const result = runAssembler(asmPath, hexPath, listingPath, (message) => {
-      this.sendEvent(new OutputEvent(message, 'console'));
+      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message, {
+        newline: false,
+      });
     });
     if (!result.success) {
       throw new Error(result.error ?? 'asm80 failed to assemble');
@@ -1416,7 +1414,9 @@ export class Z80DebugSession extends DebugSession {
         simpleConfig.binFrom,
         simpleConfig.binTo,
         (message) => {
-          this.sendEvent(new OutputEvent(message, 'console'));
+          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message, {
+            newline: false,
+          });
         }
       );
       if (!binResult.success) {
