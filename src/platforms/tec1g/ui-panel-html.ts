@@ -857,15 +857,15 @@ export function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
       '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
       'A': 0x0A, 'B': 0x0B, 'C': 0x0C, 'D': 0x0D, 'E': 0x0E, 'F': 0x0F,
-      'AD': 0x13, 'UP': 0x10, 'GO': 0x12, 'DOWN': 0x11
+      'AD': 0x13, 'RIGHT': 0x10, 'GO': 0x12, 'LEFT': 0x11
     };
 
-    const controlOrder = ['AD', 'GO', 'DOWN', 'UP'];
+    const controlOrder = ['AD', 'GO', 'LEFT', 'RIGHT'];
     const controlLabels = {
       AD: 'AD',
       GO: 'GO',
-      DOWN: '-',
-      UP: '+',
+      LEFT: '◀',
+      RIGHT: '▶',
     };
     const hexOrder = [
       'C', 'D', 'E', 'F',
@@ -1630,10 +1630,10 @@ export function getTec1gHtml(activeTab: Tec1gPanelTab): string {
       if (event.key === 'Enter') {
         sendKey(0x12);
         event.preventDefault();
-      } else if (event.key === 'ArrowUp') {
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
         sendKey(0x11);
         event.preventDefault();
-      } else if (event.key === 'ArrowDown') {
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
         sendKey(0x10);
         event.preventDefault();
       } else if (event.key === 'Tab') {
