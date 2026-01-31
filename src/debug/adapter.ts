@@ -54,7 +54,6 @@ import {
   TEC1G_EXPAND_SIZE,
   TEC1G_PROTECT_START,
   TEC1G_PROTECT_END,
-  KEY_RESET,
 } from '../platforms/tec-common';
 
 // Import from extracted modules - types only for now (gradual migration)
@@ -65,13 +64,14 @@ import {
   extractViewEntry,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
-import {
-  applySerialInput,
-  applySpeedChange,
-  applyTerminalBreak,
-  applyTerminalInput,
-} from './io-requests';
+import { applyTerminalBreak, applyTerminalInput } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
+import {
+  handleKeyRequest,
+  handleResetRequest,
+  handleSerialRequest,
+  handleSpeedRequest,
+} from './platform-requests';
 import {
   normalizePlatformName,
   populateFromConfig,
@@ -677,205 +677,227 @@ export class Z80DebugSession extends DebugSession {
   }
 
   protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
+    if (this.handleTerminalRequest(command, response, args)) {
+      return;
+    }
+    if (this.handlePlatformRequest(command, response, args)) {
+      return;
+    }
+    if (this.handleMemoryRequest(command, response, args)) {
+      return;
+    }
+    if (this.handleRomRequest(command, response)) {
+      return;
+    }
+    super.customRequest(command, response, args);
+  }
+
+  private handleTerminalRequest(
+    command: string,
+    response: DebugProtocol.Response,
+    args: unknown
+  ): boolean {
     if (command === 'debug80/terminalInput') {
       if (this.sessionState.terminalState === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
-        return;
+        return true;
       }
       applyTerminalInput(args, this.sessionState.terminalState);
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/terminalBreak') {
       if (this.sessionState.terminalState === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
-        return;
+        return true;
       }
       applyTerminalBreak(this.sessionState.terminalState);
       this.sendResponse(response);
-      return;
+      return true;
     }
+    return false;
+  }
+
+  private handlePlatformRequest(
+    command: string,
+    response: DebugProtocol.Response,
+    args: unknown
+  ): boolean {
     if (command === 'debug80/tec1Key') {
-      if (this.sessionState.tec1Runtime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
-        return;
-      }
       const code = extractKeyCode(args);
-      if (code === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
-        return;
+      const error = handleKeyRequest(
+        this.sessionState.tec1Runtime,
+        code,
+        () => this.sessionState.tec1gRuntime?.silenceSpeaker()
+      );
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      if (code === KEY_RESET) {
-        this.sessionState.tec1Runtime.silenceSpeaker();
-        this.sessionState.tec1gRuntime?.silenceSpeaker();
-      }
-      this.sessionState.tec1Runtime.applyKey(code);
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1gKey') {
-      if (this.sessionState.tec1gRuntime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
-        return;
-      }
       const code = extractKeyCode(args);
-      if (code === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Missing key code.');
-        return;
+      const error = handleKeyRequest(this.sessionState.tec1gRuntime, code);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      if (code === KEY_RESET) {
-        this.sessionState.tec1gRuntime.silenceSpeaker();
-      }
-      this.sessionState.tec1gRuntime.applyKey(code);
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1Reset') {
-      if (this.sessionState.runtime === undefined || this.sessionState.loadedProgram === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return;
+      const error = handleResetRequest(
+        this.sessionState.runtime,
+        this.sessionState.loadedProgram,
+        this.sessionState.loadedEntry,
+        this.sessionState.tec1Runtime
+      );
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      this.sessionState.runtime.reset(this.sessionState.loadedProgram, this.sessionState.loadedEntry);
-      this.sessionState.tec1Runtime?.resetState();
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1gReset') {
-      if (this.sessionState.runtime === undefined || this.sessionState.loadedProgram === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return;
+      const error = handleResetRequest(
+        this.sessionState.runtime,
+        this.sessionState.loadedProgram,
+        this.sessionState.loadedEntry,
+        this.sessionState.tec1gRuntime
+      );
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      this.sessionState.runtime.reset(this.sessionState.loadedProgram, this.sessionState.loadedEntry);
-      this.sessionState.tec1gRuntime?.resetState();
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1Speed') {
-      if (this.sessionState.tec1Runtime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
-        return;
-      }
-      const error = applySpeedChange(args, this.sessionState.tec1Runtime);
-      if (typeof error === 'string' && error.length > 0) {
+      const error = handleSpeedRequest(this.sessionState.tec1Runtime, args);
+      if (error !== null) {
         this.sendErrorResponse(response, 1, error);
-        return;
+        return true;
       }
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1gSpeed') {
-      if (this.sessionState.tec1gRuntime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
-        return;
-      }
-      const error = applySpeedChange(args, this.sessionState.tec1gRuntime);
-      if (typeof error === 'string' && error.length > 0) {
+      const error = handleSpeedRequest(this.sessionState.tec1gRuntime, args);
+      if (error !== null) {
         this.sendErrorResponse(response, 1, error);
-        return;
+        return true;
       }
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1SerialInput') {
-      if (this.sessionState.tec1Runtime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1 platform not active.');
-        return;
+      const error = handleSerialRequest(this.sessionState.tec1Runtime, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      applySerialInput(args, this.sessionState.tec1Runtime);
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1gSerialInput') {
-      if (this.sessionState.tec1gRuntime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: TEC-1G platform not active.');
-        return;
+      const error = handleSerialRequest(this.sessionState.tec1gRuntime, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
       }
-      applySerialInput(args, this.sessionState.tec1gRuntime);
       this.sendResponse(response);
-      return;
+      return true;
     }
+    return false;
+  }
+
+  private handleMemoryRequest(
+    command: string,
+    response: DebugProtocol.Response,
+    args: unknown
+  ): boolean {
     if (command === 'debug80/tec1MemorySnapshot') {
       if (this.sessionState.runtime === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return;
+        return true;
       }
-      const payload = extractMemorySnapshotPayload(args);
-      const before = clampMemoryWindow(payload.before, 16);
-      const rowSize = payload.rowSize === 8 ? 8 : 16;
-      const regs = this.sessionState.runtime.getRegisters();
-      const pc = regs.pc & 0xffff;
-      const sp = regs.sp & 0xffff;
-      const bc = ((regs.b & 0xff) << 8) | (regs.c & 0xff);
-      const de = ((regs.d & 0xff) << 8) | (regs.e & 0xff);
-      const hl = ((regs.h & 0xff) << 8) | (regs.l & 0xff);
-      const ix = regs.ix & 0xffff;
-      const iy = regs.iy & 0xffff;
-      const memRead =
-        this.sessionState.runtime.hardware.memRead ??
-        ((addr: number): number => this.sessionState.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-      const viewRequests = payload.views ?? [];
-      const views = buildMemorySnapshotViews({
-        before,
-        rowSize,
-        views: viewRequests.map((entry) =>
-          extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
-        ),
-        registers: { pc, sp, bc, de, hl, ix, iy },
-        memRead,
-        findNearestSymbol: (target) =>
-          findNearestSymbol(target, {
-            anchors: this.sessionState.symbolAnchors,
-            lookupAnchors: this.sourceState.lookupAnchors,
-          }),
-      });
-      response.body = { before, rowSize, views, symbols: this.sessionState.symbolList };
+      const snapshot = this.buildMemorySnapshotResponse(args);
+      response.body = {
+        before: snapshot.before,
+        rowSize: snapshot.rowSize,
+        views: snapshot.views,
+        symbols: snapshot.symbols,
+      };
       this.sendResponse(response);
-      return;
+      return true;
     }
     if (command === 'debug80/tec1gMemorySnapshot') {
       if (this.sessionState.runtime === undefined) {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return;
+        return true;
       }
-      const payload = extractMemorySnapshotPayload(args);
-      const before = clampMemoryWindow(payload.before, 16);
-      const rowSize = payload.rowSize === 8 ? 8 : 16;
-      const regs = this.sessionState.runtime.getRegisters();
-      const pc = regs.pc & 0xffff;
-      const sp = regs.sp & 0xffff;
-      const bc = ((regs.b & 0xff) << 8) | (regs.c & 0xff);
-      const de = ((regs.d & 0xff) << 8) | (regs.e & 0xff);
-      const hl = ((regs.h & 0xff) << 8) | (regs.l & 0xff);
-      const ix = regs.ix & 0xffff;
-      const iy = regs.iy & 0xffff;
-      const memRead =
-        this.sessionState.runtime.hardware.memRead ??
-        ((addr: number): number => this.sessionState.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-      const viewRequests = payload.views ?? [];
-      const views = buildMemorySnapshotViews({
-        before,
-        rowSize,
-        views: viewRequests.map((entry) =>
-          extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
-        ),
-        registers: { pc, sp, bc, de, hl, ix, iy },
-        memRead,
-        findNearestSymbol: (target) =>
-          findNearestSymbol(target, {
-            anchors: this.sessionState.symbolAnchors,
-            lookupAnchors: this.sourceState.lookupAnchors,
-          }),
-      });
-      response.body = { views };
+      const snapshot = this.buildMemorySnapshotResponse(args);
+      response.body = { views: snapshot.views };
       this.sendResponse(response);
-      return;
+      return true;
     }
+    return false;
+  }
+
+  private handleRomRequest(command: string, response: DebugProtocol.Response): boolean {
     if (command === 'debug80/romSources') {
       response.body = { sources: this.collectRomSources() };
       this.sendResponse(response);
-      return;
+      return true;
     }
-    super.customRequest(command, response, args);
+    return false;
+  }
+
+  private buildMemorySnapshotResponse(args: unknown): {
+    before: number;
+    rowSize: 8 | 16;
+    views: ReturnType<typeof buildMemorySnapshotViews>;
+    symbols: Array<{ name: string; address: number }>;
+  } {
+    const payload = extractMemorySnapshotPayload(args);
+    const before = clampMemoryWindow(payload.before, 16);
+    const rowSize = payload.rowSize === 8 ? 8 : 16;
+    const regs = this.sessionState.runtime?.getRegisters();
+    const pc = regs?.pc ?? 0;
+    const sp = regs?.sp ?? 0;
+    const bc = ((regs?.b ?? 0) << 8) | (regs?.c ?? 0);
+    const de = ((regs?.d ?? 0) << 8) | (regs?.e ?? 0);
+    const hl = ((regs?.h ?? 0) << 8) | (regs?.l ?? 0);
+    const ix = regs?.ix ?? 0;
+    const iy = regs?.iy ?? 0;
+    const memRead =
+      this.sessionState.runtime?.hardware.memRead ??
+      ((addr: number): number =>
+        this.sessionState.runtime?.hardware.memory[addr & 0xffff] ?? 0);
+    const viewRequests = payload.views ?? [];
+    const views = buildMemorySnapshotViews({
+      before,
+      rowSize,
+      views: viewRequests.map((entry) =>
+        extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
+      ),
+      registers: { pc, sp, bc, de, hl, ix, iy },
+      memRead,
+      findNearestSymbol: (target) =>
+        findNearestSymbol(target, {
+          anchors: this.sessionState.symbolAnchors,
+          lookupAnchors: this.sourceState.lookupAnchors,
+        }),
+    });
+    return {
+      before,
+      rowSize,
+      views,
+      symbols: this.sessionState.symbolList,
+    };
   }
 
   private continueExecution(response: DebugProtocol.Response): void {
