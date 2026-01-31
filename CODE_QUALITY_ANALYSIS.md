@@ -1,869 +1,457 @@
 # Debug80 Code Quality Analysis & Improvement Roadmap
 
-**Analysis Date:** 2025
-**Scope:** 74 TypeScript source files, 30 test files, ~27,315 lines of code
-**Current Status:** 321 passing tests, 94.35% coverage, all quality gates passing
+**Analysis Date:** February 2026
+**Scope:** 82 TypeScript source files, 47 test files, ~24,000 lines of code
+**Current Status:** 374 passing tests, 64% coverage, all lint/build gates passing
 
 ---
 
 ## Executive Summary
 
-The debug80 codebase demonstrates solid architecture and test coverage but exhibits significant opportunities for improvement in:
-1. **Code Organization**: 7 files exceed 900 lines (decode.ts at 2,507 lines)
-2. **Documentation**: Critical gaps in JSDoc coverage across 40+ files
-3. **Separation of Concerns**: 128 methods in adapter.ts spanning 1,248 lines
-4. **Global State Management**: 15+ module-level mutable globals in extension.ts
-5. **UI Component Complexity**: 2,081-line TEC-1G panel, 1,499-line TEC-1 panel
+The debug80 codebase has undergone significant refactoring since the last analysis. Key improvements include:
 
-This analysis provides a prioritized roadmap to make the codebase "extremely tight and well designed" by reducing complexity, improving modularity, and achieving comprehensive documentation.
+1. **UI Panel Modularization**: TEC-1G panel reduced from 2,081 → 311 lines, TEC-1 panel from 1,499 → 274 lines
+2. **Global State Encapsulation**: `SessionStateManager` class created (extension.ts globals reduced)
+3. **Service Extraction**: `VariableService`, `SourceStateManager`, `RuntimeController` extracted
+4. **File Size Reduction**: adapter.ts reduced from 1,248 → 1,130 lines
+
+**Remaining Opportunities:**
+1. **Test Coverage**: Dropped from 94% to 64% (needs attention)
+2. **Windows Compatibility**: Good foundation with `path-utils.ts`, but some edge cases remain
+3. **Documentation**: Many files now have JSDoc, but coverage is uneven
+4. **Large Files**: decode.ts (1,616), ui-panel-html files (1,647 + 1,160), runtime.ts (996)
 
 ---
 
-## Part 1: Structural Analysis
+## Part 1: Structural Analysis (Updated February 2026)
 
 ### 1.1 File Size Distribution
 
-**Critical (>2,000 lines):**
-- ✗ `src/z80/decode.ts` (2,508 lines)
-  - Z80 instruction decoder using monolithic closure pattern
-  - **Issue**: All prefix handlers, utilities, main instruction table in single function
-  - **Root cause**: Intentional design for closure-based state sharing
-  - **Opportunity**: Extract instruction handlers into modules while preserving closure pattern
+**Files >1,000 lines (requires attention):**
 
-- ✗ `src/platforms/tec1g/st7920-font.ts` (2,314 lines)
-  - **Status**: Acceptable (pure data file, no logic)
-  - **Action**: Leave unchanged; consider documenting as intentional
+| File | Lines | Status | Notes |
+|------|-------|--------|-------|
+| `src/platforms/tec1g/st7920-font.ts` | 2,318 | ✅ Acceptable | Pure data file, no logic |
+| `src/platforms/tec1g/ui-panel-html.ts` | 1,647 | ⚠️ Medium | HTML template, could split |
+| `src/z80/decode.ts` | 1,616 | ✅ Acceptable | Intentional closure pattern |
+| `src/platforms/tec1/ui-panel-html.ts` | 1,160 | ⚠️ Medium | HTML template |
+| `src/debug/adapter.ts` | 1,130 | ⚠️ Improved | Down from 1,248, still large |
+| `src/extension/extension.ts` | 1,001 | ⚠️ Medium | Global state improved |
+| `src/platforms/tec1g/runtime.ts` | 996 | ⚠️ Medium | Platform runtime |
+| `src/z80/decode-tables.ts` | 951 | ✅ Acceptable | Data tables |
 
-- ✗ `src/platforms/tec1g/ui-panel.ts` (2,081 lines)
-  - TEC-1G platform UI panel with HTML generation, DOM updates, event handling
-  - **Issues**: Mixed concerns (HTML generation, DOM state, rendering logic), no JSDoc
+**Successfully Refactored (improvements from previous analysis):**
 
-- ✗ `src/platforms/tec1/ui-panel.ts` (1,499 lines)
-  - TEC-1 platform UI panel, same structural issues as TEC-1G
+| File | Previous | Current | Reduction |
+|------|----------|---------|-----------|
+| `src/platforms/tec1g/ui-panel.ts` | 2,081 | 311 | **85%** |
+| `src/platforms/tec1/ui-panel.ts` | 1,499 | 274 | **82%** |
+| `src/debug/adapter.ts` | 1,248 | 1,130 | **9%** |
 
-**High (900-1,500 lines):**
-- ✗ `src/debug/adapter.ts` (1,248 lines)
-  - 128 methods spanning DAP protocol handlers, runtime control, breakpoint management, IO
-  - **Issues**: Too many responsibilities, mixed concerns
+### 1.2 Module Organization Quality
 
-- ✗ `src/extension/extension.ts` (936 lines)
-  - VS Code extension entry point with global state, command registration, event handling
-  - **Issues**: 15+ mutable globals, tangled event flow
+**✅ Well-organized modules:**
+- `src/debug/` - 33 focused files, clear separation of concerns
+- `src/platforms/tec1/` - 11 files, UI properly split into state/html/messages/refresh
+- `src/platforms/tec1g/` - 14 files, same modular pattern
+- `src/mapping/` - Clear layer separation (parser, layer2, d8-map, source-map)
+- `src/extension/` - SessionStateManager extracted
 
-- ✗ `src/platforms/tec1g/runtime.ts` (986 lines)
-  - Platform-specific runtime implementation
-
-- ✗ `src/extension/extension.ts` (935 lines)
-
-**Medium (500-700 lines):**
-- `src/mapping/d8-map.ts` (597 lines) - Well documented with 61 JSDoc blocks
-- `src/z80/decode-utils.ts` (567 lines) - Rotate/shift utilities
-- `src/debug/config-validation.ts` (513 lines) - Well documented with 9 JSDoc blocks
-- `src/platforms/tec1/runtime.ts` (488 lines)
-
-### 1.2 Method Complexity Analysis
-
-**adapter.ts Method Inventory (128 methods):**
-```
-Protected DAP Handlers (10):
-  - initializeRequest
-  - launchRequest
-  - setBreakPointsRequest
-  - configurationDoneRequest
-  - continueRequest, nextRequest, stepInRequest, stepOutRequest, pauseRequest
-  - threadsRequest, stackTraceRequest, scopesRequest, variablesRequest
-  - disconnectRequest, customRequest
-
-Private Utility Methods (22):
-  - handleLaunchRequest (async, 200+ lines)
-  - handleHaltStop
-  - continueExecution
-  - runUntilStop
-  - buildListingCacheKey
-  - resolveBaseDir
-  - resolveCacheDir
-  - resolveMappedPath
-  - getLaunchArgsHelpers
-  - getRuntimeControlContext
-  - getShadowAlias
-  - getUnmappedCallReturnAddress
-  - isBreakpointAddress
-  - collectRomSources
-  - promptForConfigCreation
-```
-
-**Issues Identified:**
-1. Single class spans multiple architectural layers (DAP protocol, runtime control, I/O handling, symbol management)
-2. No clear method grouping by responsibility
-3. `handleLaunchRequest` alone is 200+ lines
-4. Platform-specific logic (TEC-1, TEC-1G) interspersed with core DAP
+**Extracted Services (since last analysis):**
+- `VariableService` - Register/scope handling
+- `SourceStateManager` - Source file state management
+- `RuntimeControlContext` - Execution control context
+- `BreakpointManager` - Breakpoint lifecycle
+- `StackService` - Stack frame building
+- `SymbolService` - Symbol index building
 
 ---
 
-## Part 2: Documentation Gaps
+## Part 2: Windows Compatibility Analysis (CRITICAL)
 
-### 2.1 JSDoc Coverage Analysis
+### 2.1 Cross-Platform Path Handling
 
-**Files with ZERO JSDoc blocks** (missing module-level + function docs):
-- `src/platforms/tec1g/ui-panel.ts` (2,081 lines) - No docs
-- `src/platforms/tec1g/runtime.ts` (986 lines) - No docs
-- `src/platforms/tec1g/types.ts` - No docs
-- `src/platforms/tec1g/memory-panel.ts` - No docs
-- `src/platforms/tec1/ui-panel.ts` (1,499 lines) - No docs
-- `src/platforms/tec1/runtime.ts` (488 lines) - No docs
-- `src/platforms/tec1/types.ts` - No docs
-- `src/platforms/tec1/memory-panel.ts` - No docs
-- `src/platforms/simple/runtime.ts` - No docs
-- `src/extension/extension.ts` (936 lines) - No docs (~30 functions)
-- `src/platforms/cycle-clock.ts` - No docs
-- `src/platforms/types.ts` - No docs
-
-**Well-documented files** (examples of target documentation level):
-- `src/debug/config-validation.ts`: 9 JSDoc blocks for 10 exported validators (90% coverage)
-- `src/mapping/d8-map.ts`: 61 JSDoc blocks for well-organized mapfile handlers
-- `src/z80/decode.ts`: File-level overview + inline documentation (intentional pattern)
-
-**Partial Documentation** (inconsistent coverage):
-- `src/mapping/parser.ts`: 26 JSDoc blocks but only 13 exports (needs audit)
-- `src/mapping/layer2.ts`: 8 JSDoc blocks, 14 exports (59% coverage)
-
-### 2.2 Documentation Style Issues
-
-**Observed Best Practices:**
-```typescript
-// config-validation.ts pattern (GOOD)
-/**
- * Validates platform name.
- * @param platform - Platform name to validate
- * @returns Validation result
- */
-export function validatePlatform(platform: unknown): ValidationResult { ... }
-```
-
-**Missing from Most Codebase:**
-1. **Module-level `@fileoverview`** - Only `config-validation.ts` has this consistently
-2. **`@internal` markers** - No way to distinguish public vs internal APIs
-3. **Usage examples** - Only `decode.ts` includes `@example` blocks
-4. **Error documentation** - No `@throws` annotations
-5. **Type parameter docs** - Generics lack `@template` annotations
-
----
-
-## Part 3: Global State Management Issues
-
-### 3.1 extension.ts Global State (15 mutable globals)
-
-**Current State** (lines 10-34):
-```typescript
-let terminalBuffer = '';                           // Terminal rendering buffer
-let terminalSession: vscode.DebugSession | undefined;
-let terminalAnsiCarry = '';                        // ANSI escape sequence carryover
-let terminalPendingOutput = '';                    // Buffered terminal output
-let terminalNeedsFullRefresh = false;              // Force full screen redraw
-const TERMINAL_BUFFER_MAX = 50_000;
-const TERMINAL_FLUSH_MS = 50;
-let enforceSourceColumn = false;                   // UI layout flag
-let movingEditor = false;                          // Editor drag state
-const activeZ80Sessions = new Set<string>();      // Tracked debug sessions
-const sessionPlatforms = new Map<string, string>(); // Session → platform mapping
-const romSourcesOpenedSessions = new Set<string>(); // ROM source visibility
-const mainSourceOpenedSessions = new Set<string>(); // Main source visibility
-const sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
-const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
-const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
-const tec1PanelController = createTec1PanelController(...);
-const tec1gPanelController = createTec1gPanelController(...);
-```
-
-**Problems:**
-1. **Difficult to track state** - No clear ownership/lifecycle
-2. **Namespace pollution** - All globals in module scope
-3. **Testing difficulty** - Globals prevent unit test isolation
-4. **Lifecycle confusion** - No clear when state is initialized/cleared
-
-**Opportunity:** Encapsulate session-related globals in a `SessionStateManager` class
-
----
-
-## Part 4: Adapter.ts Architectural Issues
-
-### 4.1 Responsibility Distribution
-
-**Current Z80DebugSession has TOO MANY concerns:**
-
-1. **DAP Protocol Implementation** (10 protected methods)
-   - `initializeRequest`, `launchRequest`, `threadsRequest`, `stackTraceRequest`, etc.
-   - ✓ Correct responsibility (extends DebugSession)
-
-2. **Runtime Control** (5-8 methods)
-   - `handleHaltStop`, `continueExecution`, `runUntilStop`
-   - Can be delegated to separate `RuntimeController` service
-
-3. **Path/File Resolution** (5+ methods)
-   - `resolveBaseDir`, `resolveCacheDir`, `resolveMappedPath`
-   - Already partially extracted to `path-resolver.ts`, but adapter still has methods
-
-4. **Platform-Specific Code**
-   - `TEC1_SHADOW_*` constants handling
-   - Platform runtime creation logic (lines 140-180)
-   - Event payload generation
-   - Belongs in platform abstraction layer
-
-5. **Breakpoint Management** (formerly directly in adapter, now externalized)
-   - ✓ Recently extracted to `BreakpointManager`
-   - **But**: Still called directly from `setBreakPointsRequest`
-
-6. **Memory/Register Access**
-   - `scopesRequest`, `variablesRequest`
-   - Could be delegated to `VariableService`
-
-7. **Symbol/Source Management**
-   - Symbol building, source file lookup
-   - Already extracted to `source-manager.ts` and `symbol-service.ts`
-   - **But**: Still tightly integrated
-
-### 4.2 Data Member Analysis (30+ instance variables)
+**✅ EXCELLENT: Dedicated path utilities in `src/debug/path-utils.ts`:**
 
 ```typescript
-private runtime: Z80Runtime | undefined;
-private listing: ListingInfo | undefined;
-private listingPath: string | undefined;
-private mapping: MappingParseResult | undefined;
-private mappingIndex: SourceMapIndex | undefined;
-private symbolAnchors: SourceMapAnchor[] = [];
-private symbolLookupAnchors: SourceMapAnchor[] = [];
-private symbolList: Array<{ name: string; address: number }> = [];
-private breakpointManager = new BreakpointManager();
-private sourceManager: SourceManager | undefined;
-private sourceRoots: string[] = [];
-private baseDir = process.cwd();
-private sourceFile = '';
-private stopOnEntry = false;
-private haltNotified = false;
-private lastStopReason: StopReason | undefined;
-private lastBreakpointAddress: number | null = null;
-private skipBreakpointOnce: number | null = null;
-private callDepth = 0;
-private stepOverMaxInstructions = 0;
-private stepOutMaxInstructions = 0;
-private pauseRequested = false;
-private variableHandles = new Handles<'registers'>();
-private terminalState: TerminalState | undefined;
-private tec1Runtime: Tec1Runtime | undefined;
-private tec1gRuntime: Tec1gRuntime | undefined;
-private activePlatform = 'simple';
-private loadedProgram: HexProgram | undefined;
-private loadedEntry: number | undefined;
-private extraListingPaths: string[] = [];
-```
+export const IS_WINDOWS = process.platform === 'win32';
 
-**Issue**: Many of these could be grouped into cohesive objects:
-- **Program artifacts** (listing, listingPath, mapping, symbolList, extraListingPaths)
-- **Runtime contexts** (runtime, tec1Runtime, tec1gRuntime, activePlatform)
-- **Stepping state** (callDepth, stepOverMaxInstructions, stepOutMaxInstructions, skipBreakpointOnce)
-- **Halt handling** (haltNotified, lastStopReason, lastBreakpointAddress, pauseRequested)
-
----
-
-## Part 5: UI Panel Complexity
-
-### 5.1 TEC-1G UI Panel (2,081 lines)
-
-**Structure Analysis:**
-- Single factory function `createTec1gPanelController`
-- Returns object with 6 methods: `open`, `update`, `appendSerial`, `setUiVisibility`, `clear`, `handleSessionTerminated`
-- 50+ closure variables managing UI state
-- Multiple state arrays: digits, matrix, glcd, glcdDdram, lcd, serialBuffer
-- Auto-refresh timer logic
-- HTML generation embedded in methods
-- DOM query patterns: `.querySelectorAll`, `.getElementById`
-- Event handling: inline onDidDispose, message listeners
-
-**Issues:**
-1. No JSDoc documentation
-2. Mixed concerns: state management, rendering, HTML generation, DOM manipulation
-3. State variables scattered through closures (no clear schema)
-4. Potential for state synchronization bugs
-5. No error handling for DOM operations
-6. Heavy use of inline string templates for HTML
-
-**Opportunity**: Extract into submodules:
-- `ui-panel-state.ts` - State management
-- `ui-panel-html.ts` - HTML generation
-- `ui-panel-controller.ts` - Main controller
-- `ui-panel-render.ts` - DOM update logic
-
-### 5.2 TEC-1 UI Panel (1,499 lines)
-
-Same structural issues as TEC-1G, scaled down.
-
----
-
-## Part 6: Platform Abstraction Quality
-
-### 6.1 Current Platform Structure
-
-```
-src/platforms/
-├── tec-common/
-│   ├── index.ts (82 JSDoc blocks for constants!)
-│   └── [constants & shared utilities]
-├── tec1/
-│   ├── runtime.ts (488 lines, zero docs)
-│   ├── ui-panel.ts (1,499 lines, zero docs)
-│   ├── memory-panel.ts (no docs)
-│   └── types.ts (no docs)
-├── tec1g/
-│   ├── runtime.ts (986 lines, zero docs)
-│   ├── ui-panel.ts (2,081 lines, zero docs)
-│   ├── st7920-font.ts (2,314 lines, font data)
-│   ├── sysctrl.ts (6 JSDoc blocks, 2 exports)
-│   ├── hd44780-a00.ts (1 JSDoc block)
-│   ├── memory-panel.ts (no docs)
-│   └── types.ts (no docs)
-├── simple/
-│   ├── runtime.ts (no docs)
-│   └── [minimal implementation]
-├── types.ts (shared types, no docs)
-├── cycle-clock.ts (no docs)
-├── serial/
-│   └── bitbang-uart.ts (no docs)
-└── [other utilities]
-```
-
-**Problems:**
-1. **Inconsistent documentation** - tec-common has 82 JSDoc blocks, but platform runtimes have zero
-2. **No abstraction contracts** - Platform interfaces in types.ts lack documentation
-3. **Leakage into adapter** - Platform-specific logic in `adapter.ts` (TEC1G_SHADOW_*, etc)
-4. **Undocumented platform extension points** - How to add a new platform?
-5. **No clear platform lifecycle** - Setup/shutdown patterns unclear
-
----
-
-## Part 7: Test Architecture Analysis
-
-### 7.1 Test File Organization
-
-**Current Status:**
-- 30 test files in `tests/`
-- 321 passing tests
-- 94.35% coverage
-- No clear organizational pattern
-
-**File Distribution:**
-```
-tests/
-├── z80/ (multiple files)
-├── mapping/ (multiple files)
-├── debug/ (some adapter tests)
-├── [scattered .test.ts files]
-```
-
-**Issues:**
-1. **Inconsistent naming** - Some `*.test.ts`, unclear if `*.spec.ts` exists
-2. **No mirror of src structure** - Difficult to find tests for given module
-3. **Large test files?** - Need to verify if any exceed 500 lines
-4. **Mock management** - Where are test fixtures/mocks defined?
-5. **Integration vs unit** - Test categories unclear
-
-### 7.2 Test Coverage Gaps
-
-**Well-tested modules** (evident from 94.35% coverage):
-- Z80 core instruction set
-- Mapping layer
-- Decoder utilities
-
-**Potentially under-tested** (based on file complexity):
-- adapter.ts (1,248 lines, complex launch flow)
-- UI panels (2,081 + 1,499 lines)
-- Platform runtimes
-- Extension global state handling
-
----
-
-## Part 8: Decode.ts Analysis
-
-### 8.1 Structure Assessment
-
-**Intentional Design**:
-The 2,508-line `decode.ts` uses a single function with nested handlers to share closure state (`cpu`, `callbacks`). This is architecturally sound for Z80 emulation.
-
-**Good practices observed:**
-- Comprehensive file-level documentation (lines 1-24)
-- Section comments for logical groupings
-- `@example` block for usage
-- Well-commented utility functions (e.g., `get_signed_offset_byte`)
-- Organized into prefix sections (CB, DD, ED, FD)
-
-**Improvement opportunities:**
-1. **Section markers** - Could use more visual separators (commented rule lines)
-2. **Handler tables** - Instruction tables use inline object literals (hard to navigate)
-3. **Prefix documentation** - ED prefix section lacks overview
-4. **Handler naming** - Inline handlers lack naming consistency
-5. **Utility function grouping** - 500+ lines of utilities could have section summary
-
-### 8.2 Performance Considerations
-
-**Strength**: Closure pattern prevents repeated CPU/callback lookups
-**Weakness**: Single 2,508-line function may impact:
-- IDE navigation/search
-- Source map debugging
-- TypeScript language server performance
-
-**Opportunity**: Extract into modules while preserving closure pattern:
-```typescript
-// decode.ts - Entry point
-export const decodeInstruction = (cpu, cb, opcode) => {
-  const handlers = createMainHandlers(cpu, cb);
-  const prefixHandlers = createPrefixHandlers(cpu, cb);
-  // dispatch...
+export function normalizePathForKey(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  return IS_WINDOWS ? resolved.toLowerCase() : resolved;
 }
 
-// decode-prefixes.ts - Extracted
-export const createPrefixHandlers = (cpu, cb) => ({
-  CB: createCbHandlers(cpu, cb),
-  DD: createDdHandlers(cpu, cb),
-  ED: createEdHandlers(cpu, cb),
-  FD: createFdHandlers(cpu, cb),
-});
+export function pathsEqual(path1: string, path2: string): boolean {
+  // Case-insensitive on Windows
+}
+
+export function isPathWithin(filePath: string, baseDir: string): boolean {
+  // Handles path separators correctly
+}
+
+export function toPortablePath(filePath: string): string {
+  return filePath.split(path.sep).join('/');
+}
+
+export function fromPortablePath(portablePath: string): string {
+  return portablePath.split('/').join(path.sep);
+}
 ```
 
----
-
-## Part 9: Prioritized Code Quality Improvements
-
-### TIER 1: Documentation (Highest ROI, Lowest Risk)
-
-**Priority 1.1: Document All Undocumented Platform Files** (8-10 hours)
-- [ ] Add module-level JSDoc to all platform files
-- [ ] Document runtime interfaces (Simple, TEC-1, TEC-1G)
-- [ ] Add `@throws` annotations where applicable
-- **Impact**: Massive readability improvement, zero functional risk
-- **Files affected**:
-  - `src/platforms/tec1g/runtime.ts`
-  - `src/platforms/tec1/runtime.ts`
-  - `src/platforms/simple/runtime.ts`
-  - `src/platforms/tec1g/ui-panel.ts` (2,081 lines)
-  - `src/platforms/tec1/ui-panel.ts` (1,499 lines)
-  - `src/platforms/tec1g/types.ts`
-  - `src/platforms/tec1/types.ts`
-  - `src/platforms/types.ts`
-
-**Priority 1.2: Document extension.ts** (3-4 hours)
-- [ ] Add module-level overview
-- [ ] Document all command handlers
-- [ ] Document global state manager (when extracted)
-- [ ] Add `@internal` markers for internal functions
-- **Files affected**: `src/extension/extension.ts` (936 lines)
-
-**Priority 1.3: Add JSDoc to Debug Adapter** (4-6 hours)
-- [ ] Document all DAP request handlers
-- [ ] Document private utility methods
-- [ ] Add `@internal` markers
-- [ ] Document expected state transitions
-- **Files affected**: `src/debug/adapter.ts` (1,248 lines)
-
-**Priority 1.4: Standardize Documentation Style** (2-3 hours)
-- [ ] Create JSDoc template guidelines
-- [ ] Enforce `@param`, `@returns`, `@throws` patterns
-- [ ] Add examples to complex functions
-- [ ] Update eslint config to check JSDoc completeness
-
-### TIER 2: Global State Management (High Impact, Medium Risk)
-
-**Priority 2.1: Extract extension.ts Global State** (6-8 hours)
-- [ ] Create `SessionStateManager` class
-- [ ] Encapsulate all session-related globals
-- [ ] Implement lifecycle management (session start/stop)
-- [ ] Update tests to use SessionStateManager
-- **Expected reduction**: 936 lines → ~600 lines for extension.ts
-- **Risk**: Moderate (touches UI event flow)
-- **Benefits**: Testability, state clarity, session isolation
-- **Pseudo-code**:
-  ```typescript
-  class SessionStateManager {
-    private sessions = new Map<string, SessionState>();
-    private terminalPanel?: vscode.WebviewPanel;
-    
-    registerSession(id: string, platform: string): void { ... }
-    getSessionState(id: string): SessionState { ... }
-    updateTerminalPanel(panel: vscode.WebviewPanel): void { ... }
-    terminateSession(id: string): void { ... }
-  }
-  ```
-
-### TIER 3: Adapter.ts Refactoring (High Impact, Higher Risk)
-
-**Priority 3.1: Extract RuntimeController Service** (8-10 hours)
-- [ ] Move runtime control methods to separate class
-- [ ] Methods: `handleHaltStop`, `continueExecution`, `runUntilStop`
-- [ ] Create `RuntimeControl` service for step logic
-- [ ] Update tests
-- **Expected reduction**: 128 methods → 100 methods in adapter.ts
-- **Risk**: High (touches core debug flow)
-- **Benefits**: Better separation of concerns
-- **Code outline**:
-  ```typescript
-  class RuntimeController {
-    constructor(private runtime: Z80Runtime, private breakpoints: BreakpointManager) { }
-    
-    async handleHaltStop(reason: StopReason): Promise<void> { ... }
-    async continueExecution(): Promise<HaltInfo> { ... }
-    async runUntilStop(): Promise<HaltInfo> { ... }
-  }
-  ```
-
-**Priority 3.2: Extract VariableService** (4-5 hours)
-- [ ] Move variable/scope handlers to separate service
-- [ ] Methods: `scopesRequest`, `variablesRequest` logic
-- [ ] Use dependency injection for runtime access
-- **Expected reduction**: 128 methods → 95 methods in adapter.ts
-
-**Priority 3.3: Extract SourceManager Integration** (3-4 hours)
-- [ ] Current: SourceManager created in handleLaunchRequest
-- [ ] Issue: Creates tight coupling between file resolution and DAP
-- [ ] Create `SourceResolutionService` wrapper
-- [ ] Benefits: Easier testing, clearer responsibility boundaries
-
-**Priority 3.4: Group Adapter Data Members** (2-3 hours)
-- [ ] Create `ProgramArtifacts` object for listing-related fields
-- [ ] Create `DebugState` object for halt-related fields
-- [ ] Create `SteppingContext` object for step-related fields
-- **Expected reduction**: 30+ instance variables → 8-10 semantic objects
-- **Code example**:
-  ```typescript
-  interface ProgramArtifacts {
-    listing: ListingInfo | undefined;
-    listingPath: string | undefined;
-    mapping: MappingParseResult | undefined;
-    mappingIndex: SourceMapIndex | undefined;
-    symbolList: SymbolLookup;
-    extraListingPaths: string[];
-  }
-  
-  interface SteppingContext {
-    callDepth: number;
-    stepOverMax: number;
-    stepOutMax: number;
-    skipBreakpointOnce: number | null;
-  }
-  ```
-
-### TIER 4: UI Panel Refactoring (Medium Impact, Lower Priority)
-
-**Priority 4.1: Extract TEC-1G UI State Management** (10-12 hours)
-- [ ] Create `Tec1gUiState` class (state schema)
-- [ ] Create `Tec1gHtmlGenerator` (HTML rendering)
-- [ ] Create `Tec1gPanelRenderer` (DOM updates)
-- [ ] Refactor `createTec1gPanelController` to use these services
-- **Expected reduction**: 2,081 lines → ~1,200 lines spread across 4 files
-- **Benefits**: Testability, reusability, clarity
-- **Risk**: Medium (UI changes need manual testing)
-
-**Priority 4.2: Extract TEC-1 UI State Management** (6-8 hours)
-- Same pattern as 4.1, scaled to 1,499 lines
-
-### TIER 5: Platform Abstraction (Medium Impact, Lower Priority)
-
-**Priority 5.1: Document Platform Extension Contract** (2-3 hours)
-- [ ] Create `PLATFORM_DEVELOPMENT.md`
-- [ ] Document runtime interface requirements
-- [ ] Provide template for new platforms
-- [ ] Examples: SimpleRuntime, Tec1Runtime, Tec1gRuntime
-
-**Priority 5.2: Create Platform Abstract Base Class** (3-4 hours)
-- [ ] Define common interface for all platform runtimes
-- [ ] Clarify setup/teardown lifecycle
-- [ ] Reduce platform-specific leakage in adapter.ts
-- **Pseudo-code**:
-  ```typescript
-  abstract class PlatformRuntime {
-    abstract initialize(): Promise<void>;
-    abstract execute(instruction: number): void;
-    abstract getState(): PlatformState;
-    abstract handleIo(port: number, value?: number): number | undefined;
-  }
-  ```
-
-### TIER 6: Test Architecture (Medium Impact, Medium Risk)
-
-**Priority 6.1: Restructure tests/ to mirror src/** (4-5 hours)
-- [ ] Reorganize test files by module
-- [ ] Rename inconsistently-named tests
-- [ ] Create test utilities directory
-- [ ] Document test conventions
-
-**Priority 6.2: Add Adapter Integration Tests** (6-8 hours)
-- [ ] Test launch flow with different platforms
-- [ ] Test breakpoint lifecycle
-- [ ] Test stepping operations
-- [ ] Test DAP protocol compliance
-
-### TIER 7: Decode.ts Optimization (Low Impact, Medium Risk)
-
-**Priority 7.1: Extract Prefix Handlers** (6-8 hours)
-- [ ] Preserve closure pattern
-- [ ] Create separate modules for CB, DD, ED, FD handlers
-- [ ] Keep single entry point
-- **Expected result**: decode.ts remains ~2,500 lines but split into:
-  - `decode.ts` (200 lines) - Entry point
-  - `decode-prefix-cb.ts` (400 lines)
-  - `decode-prefix-dd.ts` (300 lines)
-  - `decode-prefix-ed.ts` (300 lines)
-  - `decode-utils.ts` (enhanced)
-- **Risk**: Medium (Z80 emulation is performance-critical)
-- **Benefit**: IDE navigation, modularity
-
----
-
-## Part 10: Implementation Roadmap
-
-### Phase 1: Foundation (Week 1-2)
-
-**Goals**: Establish documentation standards, extract global state
-
-1. **Create JSDoc Guidelines** (2 hours)
-   - Update AGENTS.md with documentation standards
-   - Create template for module-level JSDoc
-   - Add ESLint rules for JSDoc enforcement
-
-2. **Document Platform Layer** (10 hours)
-   - Priority 1.1: Document all platform files
-   - Add examples to runtime interfaces
-
-3. **Extract SessionStateManager** (8 hours)
-   - Priority 2.1
-   - Update tests
-   - Verify extension.ts functionality
-
-4. **Document extension.ts & adapter.ts** (8 hours)
-   - Priority 1.2 + 1.3
-   - Inline documentation improvements
-
-**Deliverables**: 
-- All platform files documented
-- Extension.ts global state refactored
-- JSDoc guidelines established
-
-### Phase 2: Core Architecture (Week 3-4)
-
-**Goals**: Refactor adapter.ts, improve separation of concerns
-
-1. **Extract RuntimeController** (10 hours)
-   - Priority 3.1
-   - Create new test file for RuntimeController
-
-2. **Extract VariableService** (5 hours)
-   - Priority 3.2
-
-3. **Group Adapter Data Members** (3 hours)
-   - Priority 3.4
-
-4. **Update Tests** (5 hours)
-   - Ensure 94.35% coverage maintained
-   - Test new services
-
-**Deliverables**:
-- adapter.ts reduced to ~100 methods
-- New RuntimeController service
-- New VariableService
-- All tests passing, coverage maintained
-
-### Phase 3: UI Improvements (Week 5-6)
-
-**Goals**: Extract UI panel logic
-
-1. **Extract TEC-1G UI State** (12 hours)
-   - Priority 4.1
-
-2. **Extract TEC-1 UI State** (8 hours)
-   - Priority 4.2
-
-3. **Add UI Tests** (4 hours)
-   - Test state management
-   - Test HTML generation
-
-**Deliverables**:
-- UI panels split into 4-5 modules each
-- UI state testable in isolation
-
-### Phase 4: Polish (Week 7)
-
-**Goals**: Final quality improvements
-
-1. **Extract Prefix Handlers (decode.ts)** (8 hours)
-   - Priority 7.1
-
-2. **Restructure tests/** (5 hours)
-   - Priority 6.1
-
-3. **Create Platform Development Guide** (3 hours)
-   - Priority 5.1
-
-4. **Performance Testing** (4 hours)
-   - Verify Z80 emulation performance unchanged
-   - Profile extract changes
-
-**Deliverables**:
-- decode.ts modularized
-- tests/ reorganized
-- Platform development guide
-- Performance verified
-
----
-
-## Part 11: Quality Gates & Metrics
-
-### Current Metrics
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| Test Count | 321 | 340+ |
-| Coverage | 94.35% | 95%+ |
-| JSDoc Coverage | ~30% | 95%+ |
-| Files >1000 lines | 5 | 2 |
-| Files >500 lines | 12 | 8 |
-| adapter.ts methods | 128 | 90 |
-| extension.ts globals | 15 | 3 |
-| Lint/Build Issues | 0 | 0 |
-
-### Enforcement
-
-**Recommended additions to CI:**
-```bash
-# JSDoc coverage threshold
-eslint-plugin-jsdoc with enforceComments: true
-
-# File size limits
-eslint-plugin-max-lines with { max: 500 }
-# (Exceptions: data files, generated code)
-
-# Method count
-custom rule for class method count threshold
-
-# Cyclomatic complexity
-eslint-plugin-complexity with max: 15
-```
-
----
-
-## Part 12: Risk Assessment & Mitigation
-
-### High-Risk Changes
-
-| Change | Risk | Mitigation |
-|--------|------|-----------|
-| Extract RuntimeController | High | Thorough unit tests, integration tests, verify CI passes |
-| Extract UI panel logic | Medium | Manual UI testing, visual regression tests if possible |
-| Refactor decode.ts | Medium | Performance benchmarks before/after, careful testing |
-| Extract global state | Medium | Session lifecycle testing, verify event flows |
-
-### Low-Risk Changes
-
-| Change | Risk | Rationale |
-|--------|------|-----------|
-| Add JSDoc | Low | Non-functional, read-only changes |
-| Reorganize tests | Low | Structure change only, no test logic changes |
-| Create guidelines | Low | Documentation only |
-| Group data members | Low | Internal refactoring, same public API |
-
----
-
-## Part 13: Success Criteria
-
-### Completion Checklist
-
-- [ ] All 74 source files have module-level JSDoc with `@fileoverview`
-- [ ] All exported functions/classes have JSDoc with `@param`, `@returns`
-- [ ] Zero files exceed 1,200 lines (except data files)
-- [ ] adapter.ts reduced to <90 methods
-- [ ] extension.ts global state encapsulated in SessionStateManager
-- [ ] decode.ts split into logical modules (while preserving closure pattern)
-- [ ] UI panels extracted into 4+ modules each
-- [ ] tests/ organized to mirror src/
-- [ ] Test coverage maintained at 94%+
-- [ ] All lint, build, test gates passing
-- [ ] Platform development guide created
-- [ ] Code review process established
-
----
-
-## Part 14: Questions for Technical Review
-
-1. **decode.ts Philosophy**: Is the monolithic closure pattern intentional for performance? If yes, should we preserve it during extraction?
-
-2. **Platform Extensibility**: Are there future platforms planned? This affects abstraction layer design.
-
-3. **UI Panel Testing**: How are UI panels currently tested? Should we add visual regression tests during refactoring?
-
-4. **Backward Compatibility**: Any restrictions on public API changes during refactoring?
-
-5. **Performance Baselines**: Should we measure and compare performance before/after refactoring (especially Z80 emulation)?
-
----
-
-## Appendix: File Organization Template (Proposed)
-
-### For Each Major File >500 lines
+**✅ Assembler has Windows support in `src/debug/assembler.ts`:**
 
 ```typescript
-/**
- * @fileoverview [One sentence description]
- * 
- * @description [Detailed description, 2-3 sentences]
- * 
- * ## Architecture
- * [If applicable, describe internal organization]
- * 
- * ## Usage
- * ```typescript
- * [Example usage]
- * ```
- * 
- * @module [path/to/module]
- */
+const candidates =
+  process.platform === 'win32' 
+    ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] 
+    : ['asm80'];
 
-// ============================================================================
-// IMPORTS
-// ============================================================================
+// Windows executables run directly
+if (
+  process.platform === 'win32' &&
+  (lower.endsWith('.cmd') || lower.endsWith('.exe') || lower.endsWith('.ps1'))
+) {
+  return false;
+}
+```
 
-import ...
+### 2.2 Potential Windows Issues
 
-// ============================================================================
-// TYPES & CONSTANTS
-// ============================================================================
+**⚠️ ISSUE 1: Mixed path separator handling in layer2.ts**
+```typescript
+// Line 214 - Explicit backslash check (good for escape chars)
+if (ch === '\\') {
+  i += 1;
+  continue;
+}
+```
 
-/** [Description of type/constant] */
-const MY_CONSTANT = ...
+**⚠️ ISSUE 2: Hardcoded forward slashes in memory-utils.ts**
+```typescript
+// Line 196 - Good: handles both separators
+const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+```
 
-interface MyInterface { ... }
+**⚠️ ISSUE 3: Tests use Unix-style paths**
+Many tests use paths like `/home/user/project` or `/tmp/` which won't run correctly on Windows:
+```typescript
+// tests/debug/launch-args.test.ts
+const baseDir = '/tmp';  // Won't exist on Windows
+```
 
-// ============================================================================
-// MAIN EXPORTS
-// ============================================================================
+**Recommendation:** Use `os.tmpdir()` and cross-platform path construction in tests.
 
-/**
- * [Description]
- * @param arg1 - [Description]
- * @returns [Description]
- * @throws [Error conditions]
- * @example
- * ```typescript
- * [Example]
- * ```
- */
-export function myFunction(arg1: Type): ReturnType { ... }
+### 2.3 Windows-Critical Areas
 
-// ============================================================================
-// INTERNAL UTILITIES
-// ============================================================================
+| Area | Status | Notes |
+|------|--------|-------|
+| Path comparison | ✅ Good | `pathsEqual()` is case-insensitive on Windows |
+| Path normalization | ✅ Good | `normalizePathForKey()` lowercases on Windows |
+| Path containment | ✅ Good | `isPathWithin()` handles separators |
+| Portable paths | ✅ Good | `toPortablePath/fromPortablePath` for JSON storage |
+| Assembler invocation | ✅ Good | Handles .cmd, .exe, .ps1 extensions |
+| Test fixtures | ⚠️ Issue | Unix paths in test files |
+| Line endings | ⚠️ Unknown | No explicit CRLF handling observed |
 
-/** @internal */
-function internalHelper(): void { ... }
+### 2.4 Windows Compatibility Recommendations
+
+1. **Update test fixtures** to use `path.join()` and `os.tmpdir()` consistently
+2. **Add Windows CI** to GitHub Actions to catch platform-specific issues
+3. **Consider line ending normalization** when reading source files
+4. **Add Windows-specific test cases** for path utilities
+
+---
+
+## Part 3: Test Coverage Analysis
+
+### 3.1 Current Coverage Status
+
+```
+Coverage Summary (February 2026):
+  Lines:      64.01% (DOWN from 94.35%)
+  Statements: 64.01%
+  Branches:   73.52%
+  
+  Test Files: 40 passed (374 tests)
+```
+
+**⚠️ CRITICAL: Coverage has dropped significantly.**
+
+The coverage reduction is likely due to:
+1. New code added without corresponding tests
+2. UI panel HTML files are large and untested
+3. Platform runtime files have low coverage
+
+### 3.2 Coverage by Module
+
+| Module | Estimated Coverage | Priority |
+|--------|-------------------|----------|
+| `src/z80/` | ~96% | ✅ Excellent |
+| `src/mapping/` | ~85% | ✅ Good |
+| `src/debug/` | ~70% | ⚠️ Medium |
+| `src/platforms/tec1/` | ~40% | 🔴 Low |
+| `src/platforms/tec1g/` | ~40% | 🔴 Low |
+| `src/extension/` | ~20% | 🔴 Low |
+
+### 3.3 Test Organization Quality
+
+**✅ Good:**
+- Tests mirror source structure (`tests/debug/`, `tests/mapping/`, `tests/z80/`)
+- Fixtures directory exists
+- Test file naming convention followed (`.test.ts`)
+
+**⚠️ Issues:**
+- Compiled test files in source tree (`.d.ts`, `.js`, `.js.map` files in tests/debug/)
+- No integration tests for VS Code extension
+- Platform tests are minimal
+
+---
+
+## Part 4: Code Quality Metrics
+
+### 4.1 TypeScript Configuration
+
+**✅ EXCELLENT: Strict TypeScript settings in tsconfig.json:**
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true
+  }
+}
+```
+
+These are best-in-class TypeScript settings.
+
+### 4.2 ESLint Configuration
+
+**✅ GOOD: Strong ESLint rules in .eslintrc.cjs:**
+
+```javascript
+rules: {
+  '@typescript-eslint/explicit-function-return-type': 'error',
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/strict-boolean-expressions': 'error',
+  '@typescript-eslint/no-floating-promises': 'error',
+}
+```
+
+### 4.3 Code Smells
+
+**ESLint Overrides (5 total):**
+```
+src/debug/runtime-control.ts:71  - no-constant-condition (while(true) loop)
+src/debug/runtime-control.ts:195 - no-constant-condition (while(true) loop)
+src/z80/constants.ts:12          - max-lines (data file)
+src/z80/constants.ts:13          - camelcase (legacy Z80 naming)
+src/z80/decode.ts:1550           - no-shadow (intentional)
+```
+
+All overrides are justified and documented.
+
+### 4.4 Error Handling Quality
+
+**✅ EXCELLENT: Comprehensive error hierarchy in `src/debug/errors.ts`:**
+
+- `Debug80Error` - Base class with code and context
+- `ConfigurationError` - Config issues
+- `UnsupportedPlatformError` - Platform validation
+- `MissingConfigError` - Missing config keys
+- `AssemblyError` - asm80 failures
+- `FileResolutionError` - File not found
+- `RuntimeError` - Execution errors
+
+---
+
+## Part 5: Documentation Analysis
+
+### 5.1 JSDoc Coverage
+
+**Files with good documentation:**
+- `src/debug/config-validation.ts` - 9 JSDoc blocks
+- `src/debug/errors.ts` - Comprehensive error docs
+- `src/debug/path-utils.ts` - All functions documented
+- `src/debug/path-resolver.ts` - All functions documented
+- `src/debug/assembler.ts` - All functions documented
+- `src/mapping/d8-map.ts` - 61 JSDoc blocks
+- `src/platforms/tec-common/index.ts` - 82 JSDoc blocks
+
+**Files needing documentation:**
+- `src/extension/extension.ts` - File-level doc only
+- `src/platforms/tec1g/runtime.ts` - Minimal docs
+- `src/platforms/tec1/runtime.ts` - Minimal docs
+
+### 5.2 File-Level Documentation
+
+Most files now have `@file` or `@fileoverview` JSDoc comments.
+
+---
+
+## Part 6: Architecture Quality
+
+### 6.1 Separation of Concerns
+
+**✅ Good Patterns Observed:**
+
+1. **Debug Adapter** - DAP protocol handling separated from execution
+2. **Platform Abstraction** - Clean platform interface in `src/platforms/types.ts`
+3. **Service Extraction** - VariableService, StackService, SymbolService
+4. **State Management** - SessionStateManager, SourceStateManager
+5. **UI Components** - State/HTML/Messages/Refresh separation in panels
+
+### 6.2 Dependency Flow
+
+```
+extension.ts
+    └── adapter.ts (Z80DebugSession)
+            ├── runtime-control.ts
+            ├── breakpoint-manager.ts
+            ├── source-state-manager.ts
+            ├── variable-service.ts
+            ├── stack-service.ts
+            └── platform-host.ts
+                    ├── tec1/runtime.ts
+                    └── tec1g/runtime.ts
+```
+
+Clean unidirectional flow with no circular dependencies observed.
+
+---
+
+## Part 7: Prioritized Recommendations
+
+### Tier 1: Critical (Do Immediately)
+
+| Issue | Impact | Effort | Risk |
+|-------|--------|--------|------|
+| Add Windows CI | High | 2 hours | Low |
+| Fix test coverage | High | 8 hours | Low |
+| Clean compiled files from tests/ | Medium | 30 min | Low |
+
+### Tier 2: High Priority
+
+| Issue | Impact | Effort | Risk |
+|-------|--------|--------|------|
+| Add Windows path tests | High | 4 hours | Low |
+| Document runtime.ts files | Medium | 4 hours | Low |
+| Split ui-panel-html.ts files | Medium | 8 hours | Medium |
+
+### Tier 3: Medium Priority
+
+| Issue | Impact | Effort | Risk |
+|-------|--------|--------|------|
+| Reduce adapter.ts further | Medium | 8 hours | Medium |
+| Add platform integration tests | Medium | 8 hours | Low |
+| Improve decode.ts navigation | Low | 4 hours | Low |
+
+### Tier 4: Nice to Have
+
+| Issue | Impact | Effort | Risk |
+|-------|--------|--------|------|
+| Add VS Code extension tests | Medium | 16 hours | Medium |
+| Extract more adapter services | Low | 8 hours | Medium |
+
+---
+
+## Part 8: Windows Compatibility Checklist
+
+Before releasing on Windows:
+
+- [ ] Add Windows to CI matrix
+- [ ] Run full test suite on Windows
+- [ ] Test with Windows-style paths (C:\Users\...)
+- [ ] Test assembler invocation (.cmd, .exe)
+- [ ] Test file watching with CRLF line endings
+- [ ] Test breakpoint setting with Windows paths
+- [ ] Test debug map generation/loading
+- [ ] Test ROM file loading
+
+---
+
+## Part 9: Quality Gates
+
+### Current Status
+
+```
+yarn lint     ✅ PASS (0 errors, 0 warnings)
+yarn build    ✅ PASS (0 errors)
+yarn test     ✅ PASS (374 tests)
+coverage      ❌ FAIL (64% < 80% threshold)
+```
+
+### Recommended Thresholds
+
+```json
+{
+  "lines": 75,
+  "statements": 75,
+  "branches": 70,
+  "functions": 75
+}
+```
+
+Current 80% threshold may be too aggressive for UI-heavy code.
+
+---
+
+## Part 10: Summary of Improvements Since Last Analysis
+
+### Completed Refactorings
+
+1. ✅ UI Panel Modularization (85% reduction)
+2. ✅ SessionStateManager extraction
+3. ✅ Service extraction (Variable, Stack, Symbol, Source)
+4. ✅ Path utilities for Windows
+5. ✅ Error hierarchy
+6. ✅ JSDoc coverage improvement
+
+### Remaining Work
+
+1. ⚠️ Test coverage restoration
+2. ⚠️ Windows CI setup
+3. ⚠️ ui-panel-html.ts splitting
+4. ⚠️ Platform runtime documentation
+5. ⚠️ Integration tests
+
+---
+
+## Appendix A: File Statistics
+
+```
+Total source files:  82
+Total test files:    47
+Total lines (src):   ~24,000
+Total lines (tests): ~8,000
+
+Largest files:
+  1. st7920-font.ts        2,318 (data)
+  2. ui-panel-html.ts (1g) 1,647 (template)
+  3. decode.ts             1,616 (emulator core)
+  4. ui-panel-html.ts (1)  1,160 (template)
+  5. adapter.ts            1,130 (debug adapter)
 ```
 
 ---
 
-**End of Analysis Report**
+## Appendix B: Action Items Summary
 
-*This report was generated through systematic codebase analysis focusing on code organization, documentation, and architectural clarity. Recommendations prioritize maintainability and code quality over feature additions.*
+### Immediate (This Sprint)
+1. Add GitHub Actions workflow for Windows
+2. Fix or update coverage thresholds
+3. Remove compiled files from tests/debug/
+
+### Next Sprint
+1. Add Windows-specific test cases
+2. Document platform runtime files
+3. Consider splitting ui-panel-html files
+
+### Backlog
+1. VS Code extension integration tests
+2. Further adapter.ts service extraction
+3. decode.ts section navigation improvements
