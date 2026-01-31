@@ -1,5 +1,9 @@
 /**
  * @file TEC-1G runtime implementation and configuration.
+ * @fileoverview
+ *
+ * Normalizes TEC-1G configuration and builds IO handlers for LCD/GLCD,
+ * keypad, serial, and shadow/protection behavior.
  */
 
 import { IoHandlers } from '../../z80/runtime';
@@ -23,6 +27,9 @@ import {
   millisecondsToClocks,
 } from '../tec-common';
 
+/**
+ * Mutable runtime state for TEC-1G hardware emulation.
+ */
 export interface Tec1gState {
   digits: number[];
   matrix: number[];
@@ -73,6 +80,9 @@ export interface Tec1gState {
   expandEnabled: boolean;
 }
 
+/**
+ * Runtime facade for TEC-1G IO handlers and lifecycle controls.
+ */
 export interface Tec1gRuntime {
   state: Tec1gState;
   ioHandlers: IoHandlers;
@@ -97,7 +107,9 @@ const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BLINK_MS = 400;
 
 /**
- * Normalizes TEC-1G configuration with defaults.
+ * Normalizes TEC-1G configuration with defaults and bounds.
+ * @param cfg - Optional TEC-1G config from project settings.
+ * @returns Normalized config for runtime construction.
  */
 export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformConfigNormalized {
   const config = cfg ?? {};
@@ -143,6 +155,10 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
 
 /**
  * Builds the TEC-1G runtime IO handlers and state.
+ * @param config - Normalized TEC-1G configuration.
+ * @param onUpdate - Called with UI payloads when state changes.
+ * @param onSerialByte - Optional serial byte callback.
+ * @returns Runtime facade with IO handlers and control helpers.
  */
 export function createTec1gRuntime(
   config: Tec1gPlatformConfigNormalized,
