@@ -26,7 +26,7 @@ import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { normalizeTec1Config } from '../platforms/tec1/runtime';
 import { normalizeTec1gConfig } from '../platforms/tec1g/runtime';
 import { ensureTec1gShadowRom } from './tec1g-shadow';
-import { createSessionState, resetSessionState, StopReason } from './session-state';
+import { createSessionState, resetSessionState, StopReason, type SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
@@ -99,7 +99,7 @@ const CACHE_KEY_LENGTH = 12;
 export class Z80DebugSession extends DebugSession {
   private breakpointManager = new BreakpointManager();
   private sourceState = new SourceStateManager();
-  private sessionState = createSessionState();
+  private sessionState: SessionStateShape = createSessionState();
   private variableHandles = new Handles<'registers'>();
   private variableService = new VariableService(this.variableHandles);
   private platformState = {
@@ -139,7 +139,7 @@ export class Z80DebugSession extends DebugSession {
     this.breakpointManager.reset();
 
     try {
-      const merged = populateFromConfig(args, {
+      const merged: LaunchRequestArguments = populateFromConfig(args, {
         resolveBaseDir: (requestArgs) => this.resolveBaseDir(requestArgs),
       });
       this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
