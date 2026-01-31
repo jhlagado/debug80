@@ -1,5 +1,5 @@
 /**
- * @fileoverview TEC-1G system control register decoder.
+ * @file TEC-1G system control register decoder.
  * Port 0xFF controls memory mapping and protection features.
  */
 

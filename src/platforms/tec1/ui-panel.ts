@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1 platform UI panel controller.
+ */
+
 import * as vscode from 'vscode';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
 
@@ -14,6 +18,9 @@ export interface Tec1PanelController {
   handleSessionTerminated(sessionId: string): void;
 }
 
+/**
+ * Creates the TEC-1 panel controller.
+ */
 export function createTec1PanelController(
   getTargetColumn: () => vscode.ViewColumn,
   getFallbackSession: () => vscode.DebugSession | undefined
@@ -235,6 +242,9 @@ export function createTec1PanelController(
     handleSessionTerminated,
   };
 
+  /**
+   * Applies updated memory view selections from the webview.
+   */
   function applyMemoryViews(
     views: Array<{ id?: string; view?: string; after?: number; address?: number }>
   ): void {
@@ -255,6 +265,9 @@ export function createTec1PanelController(
     }
   }
 
+  /**
+   * Requests a memory snapshot and posts it to the webview.
+   */
   async function refreshSnapshot(allowErrors?: boolean): Promise<void> {
     if (panel === undefined) {
       return;
@@ -305,6 +318,9 @@ export function createTec1PanelController(
     }
   }
 
+  /**
+   * Starts periodic snapshot refresh.
+   */
   function startAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       return;
@@ -314,6 +330,9 @@ export function createTec1PanelController(
     }, autoRefreshMs);
   }
 
+  /**
+   * Stops periodic snapshot refresh.
+   */
   function stopAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       clearInterval(refreshTimer);
@@ -322,6 +341,9 @@ export function createTec1PanelController(
   }
 }
 
+/**
+ * Builds HTML for the TEC-1 panel.
+ */
 function getTec1Html(activeTab: Tec1PanelTab): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1474,6 +1496,9 @@ function getTec1Html(activeTab: Tec1PanelTab): string {
 </html>`;
 }
 
+/**
+ * Clamps memory window size to a safe range.
+ */
 function clampWindow(value: number): number {
   if (!Number.isFinite(value) || value < 1) {
     return 16;

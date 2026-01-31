@@ -1,3 +1,7 @@
+/**
+ * @file VS Code extension entry and UI wiring for Debug80.
+ */
+
 import * as vscode from 'vscode';
 import { Z80DebugAdapterFactory } from '../debug/adapter';
 import * as fs from 'fs';
@@ -33,6 +37,9 @@ const tec1gPanelController = createTec1gPanelController(
   () => vscode.debug.activeDebugSession
 );
 
+/**
+ * Activates the Debug80 extension and registers commands/providers.
+ */
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
 
@@ -442,12 +449,18 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
+/**
+ * Disposes extension resources on deactivation.
+ */
 export function deactivate(): void {
   // Nothing to clean up
 }
 
 type RomSource = { label: string; path: string; kind: 'listing' | 'source' };
 
+/**
+ * Queries the debug adapter for ROM listing/source paths.
+ */
 async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[]> {
   const payload = (await session.customRequest('debug80/romSources')) as
     | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
@@ -463,6 +476,9 @@ async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[
   }));
 }
 
+/**
+ * Opens ROM sources/listings associated with a debug session.
+ */
 async function openRomSourcesForSession(
   session: vscode.DebugSession,
   viewColumn?: vscode.ViewColumn
@@ -513,6 +529,9 @@ async function openRomSourcesForSession(
   return false;
 }
 
+/**
+ * Scaffolds a debug80 config (and optional launch config) in the workspace.
+ */
 async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
@@ -627,6 +646,9 @@ async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
   return created;
 }
 
+/**
+ * Returns the preferred editor column for source files.
+ */
 function getPrimaryEditorColumn(): vscode.ViewColumn {
   const columns = vscode.window.visibleTextEditors
     .map((editor) => editor.viewColumn)
@@ -641,6 +663,9 @@ function getPrimaryEditorColumn(): vscode.ViewColumn {
   return columns.reduce((min, col) => (col < min ? col : min), first);
 }
 
+/**
+ * Returns the preferred editor column for terminal panels.
+ */
 function getTerminalColumn(): vscode.ViewColumn {
   const activeSession = vscode.debug.activeDebugSession;
   if (activeSession && activeSession.type === 'z80') {
@@ -649,6 +674,9 @@ function getTerminalColumn(): vscode.ViewColumn {
   return DEFAULT_PANEL_COLUMN;
 }
 
+/**
+ * Normalizes a column number into a valid ViewColumn.
+ */
 function normalizeColumn(
   value: unknown,
   fallback: vscode.ViewColumn
@@ -662,6 +690,9 @@ function normalizeColumn(
   return fallback;
 }
 
+/**
+ * Resolves target columns for a debug session.
+ */
 function resolveSessionColumns(session: vscode.DebugSession): {
   source: vscode.ViewColumn;
   panel: vscode.ViewColumn;
@@ -673,6 +704,9 @@ function resolveSessionColumns(session: vscode.DebugSession): {
   };
 }
 
+/**
+ * Returns memoized columns for a debug session.
+ */
 function getSessionColumns(session: vscode.DebugSession): {
   source: vscode.ViewColumn;
   panel: vscode.ViewColumn;
@@ -680,6 +714,9 @@ function getSessionColumns(session: vscode.DebugSession): {
   return sessionColumns.get(session.id) ?? resolveSessionColumns(session);
 }
 
+/**
+ * Checks whether a document is a source-like file for Debug80.
+ */
 function isSourceDocument(doc: vscode.TextDocument): boolean {
   if (doc.uri.scheme !== 'file') {
     return false;
@@ -688,6 +725,9 @@ function isSourceDocument(doc: vscode.TextDocument): boolean {
   return ext === '.asm' || ext === '.lst';
 }
 
+/**
+ * Closes matching documents in editor groups other than the target column.
+ */
 function closeDocumentTabsInOtherGroups(
   uri: vscode.Uri,
   keepColumn: vscode.ViewColumn
@@ -706,6 +746,9 @@ function closeDocumentTabsInOtherGroups(
   }
 }
 
+/**
+ * Opens (or reveals) the Debug80 terminal webview.
+ */
 function openTerminalPanel(
   session?: vscode.DebugSession,
   options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
@@ -759,6 +802,9 @@ function openTerminalPanel(
   terminalNeedsFullRefresh = false;
 }
 
+/**
+ * Appends terminal output and schedules a UI refresh.
+ */
 function appendTerminalOutput(text: string): void {
   const { remaining, shouldClear } = stripAndDetectClear(text);
   if (shouldClear) {
@@ -783,6 +829,9 @@ function appendTerminalOutput(text: string): void {
   }
 }
 
+/**
+ * Clears the terminal buffer and forces a full refresh.
+ */
 function clearTerminal(): void {
   terminalBuffer = '';
   terminalPendingOutput = '';
@@ -796,6 +845,9 @@ function clearTerminal(): void {
   }
 }
 
+/**
+ * Builds the terminal webview HTML.
+ */
 function getTerminalHtml(initial: string): string {
   const escaped = initial.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<!DOCTYPE html>
@@ -845,6 +897,9 @@ function getTerminalHtml(initial: string): string {
 </html>`;
 }
 
+/**
+ * Schedules a batched terminal refresh.
+ */
 function scheduleTerminalFlush(): void {
   if (terminalFlushTimer !== undefined) {
     return;
@@ -868,6 +923,9 @@ function scheduleTerminalFlush(): void {
   }, TERMINAL_FLUSH_MS);
 }
 
+/**
+ * Strips clear-screen control sequences and returns remaining text.
+ */
 function stripAndDetectClear(text: string): { remaining: string; shouldClear: boolean } {
   // The adapter emits terminal output a byte at a time, so ANSI escape sequences
   // (e.g. ESC[2J ESC[H) can arrive split across multiple events. Track a small

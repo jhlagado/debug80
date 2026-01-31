@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1G runtime implementation and configuration.
+ */
+
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
@@ -92,6 +96,9 @@ const TEC1G_GLCD_BUSY_US = 72;
 const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BLINK_MS = 400;
 
+/**
+ * Normalizes TEC-1G configuration with defaults.
+ */
 export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformConfigNormalized {
   const config = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
@@ -134,6 +141,9 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   };
 }
 
+/**
+ * Builds the TEC-1G runtime IO handlers and state.
+ */
 export function createTec1gRuntime(
   config: Tec1gPlatformConfigNormalized,
   onUpdate: (payload: Tec1gUpdatePayload) => void,

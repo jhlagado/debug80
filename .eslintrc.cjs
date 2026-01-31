@@ -6,7 +6,7 @@ module.exports = {
     sourceType: 'module',
     project: './tsconfig.eslint.json',
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'jsdoc'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -35,6 +35,28 @@ module.exports = {
   },
   ignorePatterns: ['out/**', 'node_modules/**', '*.js', '**/*.d.ts'],
   overrides: [
+    {
+      files: [
+        'src/extension/extension.ts',
+        'src/platforms/cycle-clock.ts',
+        'src/platforms/types.ts',
+        'src/platforms/simple/runtime.ts',
+        'src/platforms/tec1/*.ts',
+        'src/platforms/tec1g/*.ts',
+      ],
+      rules: {
+        'jsdoc/require-file-overview': 'error',
+        'jsdoc/require-jsdoc': [
+          'error',
+          {
+            require: {
+              ClassDeclaration: true,
+              FunctionDeclaration: true,
+            },
+          },
+        ],
+      },
+    },
     {
       files: ['src/test/**/*.ts'],
       rules: {

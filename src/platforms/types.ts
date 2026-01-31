@@ -1,3 +1,7 @@
+/**
+ * @file Platform configuration types shared across runtimes.
+ */
+
 export interface SimpleMemoryRegion {
   start: number;
   end: number;

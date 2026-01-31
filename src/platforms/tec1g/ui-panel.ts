@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1G platform UI panel controller.
+ */
+
 import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { getHD44780A00RomData } from './hd44780-a00';
@@ -17,6 +21,9 @@ export interface Tec1gPanelController {
   handleSessionTerminated(sessionId: string): void;
 }
 
+/**
+ * Creates the TEC-1G panel controller.
+ */
 export function createTec1gPanelController(
   getTargetColumn: () => vscode.ViewColumn,
   getFallbackSession: () => vscode.DebugSession | undefined
@@ -333,6 +340,9 @@ export function createTec1gPanelController(
     handleSessionTerminated,
   };
 
+  /**
+   * Applies updated memory view selections from the webview.
+   */
   function applyMemoryViews(
     views: Array<{ id?: string; view?: string; after?: number; address?: number }>
   ): void {
@@ -353,6 +363,9 @@ export function createTec1gPanelController(
     }
   }
 
+  /**
+   * Requests a memory snapshot and posts it to the webview.
+   */
   async function refreshSnapshot(allowErrors?: boolean): Promise<void> {
     if (panel === undefined) {
       return;
@@ -403,6 +416,9 @@ export function createTec1gPanelController(
     }
   }
 
+  /**
+   * Starts periodic snapshot refresh.
+   */
   function startAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       return;
@@ -412,6 +428,9 @@ export function createTec1gPanelController(
     }, autoRefreshMs);
   }
 
+  /**
+   * Stops periodic snapshot refresh.
+   */
   function stopAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       clearInterval(refreshTimer);
@@ -420,6 +439,9 @@ export function createTec1gPanelController(
   }
 }
 
+/**
+ * Builds HTML for the TEC-1G panel.
+ */
 function getTec1gHtml(activeTab: Tec1gPanelTab): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -2056,6 +2078,9 @@ function getTec1gHtml(activeTab: Tec1gPanelTab): string {
 </html>`;
 }
 
+/**
+ * Clamps memory window size to a safe range.
+ */
 function clampWindow(value: number): number {
   if (!Number.isFinite(value) || value < 1) {
     return 16;

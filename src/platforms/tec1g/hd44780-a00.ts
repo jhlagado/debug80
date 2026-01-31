@@ -5,6 +5,13 @@
  *
  * Returns a JavaScript snippet suitable for embedding in a webview HTML template.
  */
+/**
+ * @file HD44780A00 ROM data helper.
+ */
+
+/**
+ * Returns the HD44780A00 ROM character data (hex string).
+ */
 export function getHD44780A00RomData(): string {
   return `const A00 = new Uint8Array([
     // 0x00-0x07: CG RAM slot 0-7 (all zeros, user-defined at runtime)
