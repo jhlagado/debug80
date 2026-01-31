@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { Tec1gPanelTab, getTec1gHtml } from './ui-panel-html';
 import { applyMemoryViews, createMemoryViewState } from './ui-panel-memory';
+import { appendSerialText, clearSerialBuffer, createSerialBuffer } from './ui-panel-serial';
 
 export interface Tec1gPanelController {
   open(
@@ -48,8 +49,7 @@ export function createTec1gPanelController(
   let speaker = false;
   let speedMode: Tec1gSpeedMode = 'fast';
   let lcd = Array.from({ length: 80 }, () => 0x20);
-  let serialBuffer = '';
-  const serialMaxChars = 8000;
+  const serialBuffer = createSerialBuffer();
   let activeTab: Tec1gPanelTab = 'ui';
   const windowBefore = 16;
   const rowSize = 16;
@@ -204,8 +204,8 @@ export function createTec1gPanelController(
         persist: false,
       });
     }
-    if (serialBuffer.length > 0) {
-      void panel.webview.postMessage({ type: 'serialInit', text: serialBuffer });
+    if (serialBuffer.text.length > 0) {
+      void panel.webview.postMessage({ type: 'serialInit', text: serialBuffer.text });
     }
     void panel.webview.postMessage({ type: 'selectTab', tab: activeTab });
     if (activeTab === 'memory') {
@@ -267,10 +267,7 @@ export function createTec1gPanelController(
     if (text.length === 0) {
       return;
     }
-    serialBuffer += text;
-    if (serialBuffer.length > serialMaxChars) {
-      serialBuffer = serialBuffer.slice(serialBuffer.length - serialMaxChars);
-    }
+    appendSerialText(serialBuffer, text);
     if (panel !== undefined) {
       void panel.webview.postMessage({ type: 'serial', text });
     }
@@ -299,7 +296,7 @@ export function createTec1gPanelController(
     glcd = Array.from({ length: 1024 }, () => 0);
     speaker = false;
     lcd = Array.from({ length: 80 }, () => 0x20);
-    serialBuffer = '';
+    clearSerialBuffer(serialBuffer);
     if (panel !== undefined) {
       void panel.webview.postMessage({
         type: 'update',
