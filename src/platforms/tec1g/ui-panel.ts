@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { Tec1gPanelTab, getTec1gHtml } from './ui-panel-html';
-import { applyMemoryViews, createMemoryViewState } from './ui-panel-memory';
+import { createMemoryViewState } from './ui-panel-memory';
 import { appendSerialText, clearSerialBuffer, createSerialBuffer } from './ui-panel-serial';
 import {
   createRefreshController,
@@ -13,6 +13,7 @@ import {
   startAutoRefresh,
   stopAutoRefresh,
 } from './ui-panel-refresh';
+import { handleTec1gMessage, Tec1gMessage } from './ui-panel-messages';
 
 export interface Tec1gPanelController {
   open(
@@ -125,90 +126,19 @@ export function createTec1gPanelController(
           );
         }
       });
-      panel.webview.onDidReceiveMessage(
-        async (msg: {
-          type?: string;
-          code?: number;
-          mode?: Tec1gSpeedMode;
-          text?: string;
-          id?: string;
-          tab?: string;
-          views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
-        }) => {
-          if (msg.type === 'tab' && (msg.tab === 'ui' || msg.tab === 'memory')) {
-            activeTab = msg.tab;
-            if (panel?.visible === true && activeTab === 'memory') {
-              startAutoRefresh(refreshController.state, autoRefreshMs, () => {
-                void refreshSnapshot(
-                  refreshController.state,
-                  refreshController.handlers,
-                  refreshController.snapshotPayload(),
-                  { allowErrors: false }
-                );
-              });
-              void refreshSnapshot(
-                refreshController.state,
-                refreshController.handlers,
-                refreshController.snapshotPayload(),
-                { allowErrors: true }
-              );
-            } else {
-              stopAutoRefresh(refreshController.state);
-            }
-            return;
-          }
-          if (msg.type === 'refresh' && Array.isArray(msg.views)) {
-            applyMemoryViews(memoryViews, msg.views);
-            void refreshSnapshot(
-              refreshController.state,
-              refreshController.handlers,
-              refreshController.snapshotPayload(),
-              { allowErrors: true }
-            );
-            return;
-          }
-          if (msg.type === 'key' && typeof msg.code === 'number') {
-            const target = session ?? getFallbackSession();
-            if (target?.type === 'z80') {
-              try {
-                await target.customRequest('debug80/tec1gKey', { code: msg.code });
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-          if (msg.type === 'reset') {
-            const target = session ?? getFallbackSession();
-            if (target?.type === 'z80') {
-              try {
-                await target.customRequest('debug80/tec1gReset', {});
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-          if (msg.type === 'speed' && (msg.mode === 'slow' || msg.mode === 'fast')) {
-            const target = session ?? getFallbackSession();
-            if (target?.type === 'z80') {
-              try {
-                await target.customRequest('debug80/tec1gSpeed', { mode: msg.mode });
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-          if (msg.type === 'serialSend' && typeof msg.text === 'string') {
-            const target = session ?? getFallbackSession();
-            if (target?.type === 'z80') {
-              try {
-                await target.customRequest('debug80/tec1gSerialInput', { text: msg.text });
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-        }
-      );
+      panel.webview.onDidReceiveMessage(async (msg: Tec1gMessage) => {
+        await handleTec1gMessage(msg, {
+          getSession: () => session ?? getFallbackSession(),
+          refreshController,
+          autoRefreshMs,
+          setActiveTab: (tab) => {
+            activeTab = tab;
+          },
+          getActiveTab: () => activeTab,
+          isPanelVisible: () => panel?.visible === true,
+          memoryViews,
+        });
+      });
     }
     if (targetSession !== undefined) {
       session = targetSession;
