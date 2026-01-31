@@ -16,13 +16,22 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onDebugResolve:z80"
+    "onDebugResolve:z80",
+    "onLanguage:asm",
+    "onLanguage:asm-collection",
+    "onLanguage:z80-asm",
+    "onLanguage:z80-macroasm"
   ],
   "extensionPack": [
     "imanolea.z80-asm"
   ],
   "main": "./out/extension/extension.js",
   "contributes": {
+    "configurationDefaults": {
+      "files.associations": {
+        "*.asm": "asm-collection"
+      }
+    },
     "languages": [
       {
         "id": "z80-lst",
@@ -45,6 +54,24 @@
     "breakpoints": [
       {
         "language": "z80-lst"
+      },
+      {
+        "language": "asm-collection"
+      },
+      {
+        "language": "asm-list-file"
+      },
+      {
+        "language": "z80-asm"
+      },
+      {
+        "language": "asm"
+      },
+      {
+        "language": "asm80"
+      },
+      {
+        "language": "z80"
       }
     ],
     "commands": [
@@ -77,7 +104,15 @@
       {
         "type": "z80",
         "label": "Z80 Debug",
-        "languages": [],
+        "languages": [
+          "asm-collection",
+          "asm-list-file",
+          "z80-asm",
+          "asm",
+          "asm80",
+          "z80",
+          "z80-lst"
+        ],
         "configurationAttributes": {
           "launch": {
             "required": [],

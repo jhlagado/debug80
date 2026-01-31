@@ -18,6 +18,7 @@ let enforceSourceColumn = false;
 let movingEditor = false;
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
+const ASM_LANGUAGE_ID = 'asm-collection';
 const tec1PanelController = createTec1PanelController(
   getTerminalColumn,
   () => vscode.debug.activeDebugSession
@@ -32,9 +33,42 @@ const tec1gPanelController = createTec1gPanelController(
  */
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
+  let supportsAsmCollection: boolean | undefined;
+
+  const ensureAsmLanguage = (doc: vscode.TextDocument): void => {
+    if (supportsAsmCollection === false) {
+      return;
+    }
+    if (!doc.uri.path.toLowerCase().endsWith('.asm')) {
+      return;
+    }
+    if (doc.languageId === ASM_LANGUAGE_ID) {
+      return;
+    }
+    const scheme = doc.uri.scheme;
+    if (scheme !== 'file' && scheme !== 'untitled') {
+      return;
+    }
+    void vscode.languages.setTextDocumentLanguage(doc, ASM_LANGUAGE_ID);
+  };
+
+  void vscode.languages.getLanguages().then((languages) => {
+    supportsAsmCollection = languages.includes(ASM_LANGUAGE_ID);
+    if (supportsAsmCollection) {
+      for (const doc of vscode.workspace.textDocuments) {
+        ensureAsmLanguage(doc);
+      }
+    }
+  });
 
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory)
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument((doc) => {
+      ensureAsmLanguage(doc);
+    })
   );
 
   context.subscriptions.push(
@@ -266,39 +300,21 @@ export function activate(context: vscode.ExtensionContext): void {
         const payload = evt.body as {
           digits?: number[];
           matrix?: number[];
-          glcd?: number[];
-          glcdDdram?: number[];
-          glcdState?: {
-            displayOn?: boolean;
-            graphicsOn?: boolean;
-            cursorOn?: boolean;
-            cursorBlink?: boolean;
-            blinkVisible?: boolean;
-            ddramAddr?: number;
-            ddramPhase?: number;
-            textShift?: number;
-            scroll?: number;
-            reverseMask?: number;
-          };
           lcd?: number[];
           sysCtrl?: number;
           speaker?: number;
           speakerHz?: number;
           speedMode?: 'slow' | 'fast';
         } | undefined;
-        if (!payload?.digits || !payload?.lcd || !payload?.matrix || !payload?.glcd) {
+        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
           return;
         }
         const update = {
           digits: payload.digits,
           matrix: payload.matrix,
-          glcd: payload.glcd,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',
           lcd: payload.lcd,
-          ...(payload.sysCtrl !== undefined ? { sysCtrl: payload.sysCtrl } : {}),
-          ...(payload.glcdDdram !== undefined ? { glcdDdram: payload.glcdDdram } : {}),
-          ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
         };
         if (payload.speakerHz !== undefined) {
           tec1PanelController.update({ ...update, speakerHz: payload.speakerHz });
