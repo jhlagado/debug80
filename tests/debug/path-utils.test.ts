@@ -4,8 +4,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
 import * as path from 'path';
 import {
+  IS_WINDOWS,
   pathsEqual,
   isPathWithin,
   relativeIfWithin,
@@ -33,35 +35,48 @@ describe('path-utils', () => {
 
   describe('isPathWithin', () => {
     it('should return true when path is within base', () => {
-      expect(isPathWithin('/home/user/project/src/file.ts', '/home/user/project')).toBe(true);
+      const base = path.join(os.homedir(), 'project');
+      const filePath = path.join(base, 'src', 'file.ts');
+      expect(isPathWithin(filePath, base)).toBe(true);
     });
 
     it('should return false when path is outside base', () => {
-      expect(isPathWithin('/home/user/other/file.ts', '/home/user/project')).toBe(false);
+      const base = path.join(os.homedir(), 'project');
+      const other = path.join(os.homedir(), 'other', 'file.ts');
+      expect(isPathWithin(other, base)).toBe(false);
     });
 
     it('should not match partial directory names', () => {
       // /home/user should not be "within" /home/use
-      expect(isPathWithin('/home/user', '/home/use')).toBe(false);
+      const root = path.join(os.homedir(), 'use');
+      const filePath = path.join(os.homedir(), 'user');
+      expect(isPathWithin(filePath, root)).toBe(false);
     });
 
     it('should return true when path equals base', () => {
-      expect(isPathWithin('/home/user/project', '/home/user/project')).toBe(true);
+      const base = path.join(os.homedir(), 'project');
+      expect(isPathWithin(base, base)).toBe(true);
     });
 
     it('should handle trailing separators', () => {
-      expect(isPathWithin('/home/user/project/file.ts', '/home/user/project/')).toBe(true);
+      const base = path.join(os.homedir(), 'project');
+      const filePath = path.join(base, 'file.ts');
+      expect(isPathWithin(filePath, `${base}${path.sep}`)).toBe(true);
     });
   });
 
   describe('relativeIfWithin', () => {
     it('should return relative path when within base', () => {
-      const result = relativeIfWithin('/home/user/project/src/file.ts', '/home/user/project');
+      const base = path.join(os.homedir(), 'project');
+      const filePath = path.join(base, 'src', 'file.ts');
+      const result = relativeIfWithin(filePath, base);
       expect(result).toBe(path.join('src', 'file.ts'));
     });
 
     it('should return absolute path when outside base', () => {
-      const result = relativeIfWithin('/home/other/file.ts', '/home/user/project');
+      const base = path.join(os.homedir(), 'project');
+      const filePath = path.join(os.homedir(), 'other', 'file.ts');
+      const result = relativeIfWithin(filePath, base);
       expect(path.isAbsolute(result)).toBe(true);
     });
   });
@@ -87,15 +102,15 @@ describe('path-utils', () => {
 
   describe('toPortableRelative', () => {
     it('should return portable relative path', () => {
-      const root = '/home/user/project';
-      const absPath = '/home/user/project/src/file.ts';
+      const root = path.join(os.homedir(), 'project');
+      const absPath = path.join(root, 'src', 'file.ts');
       const result = toPortableRelative(root, absPath);
       expect(result).toBe('src/file.ts');
     });
 
     it('should use basename for non-relative paths', () => {
       // When path equals root, relative returns '', so it uses basename
-      const root = '/home/user/project';
+      const root = path.join(os.homedir(), 'project');
       const result = toPortableRelative(root, root);
       expect(result).toBe('project');
     });
@@ -106,6 +121,22 @@ describe('path-utils', () => {
       const result = normalizePathForKey('./foo/../bar');
       expect(result).toContain('bar');
       expect(result).not.toContain('foo');
+    });
+  });
+
+  describe('windows-specific behavior', () => {
+    const maybeIt = IS_WINDOWS ? it : it.skip;
+
+    maybeIt('compares paths case-insensitively', () => {
+      expect(pathsEqual('C:\\Temp\\File.asm', 'c:\\temp\\file.asm')).toBe(true);
+    });
+
+    maybeIt('treats base path case-insensitively for containment', () => {
+      expect(isPathWithin('C:\\Temp\\Project\\src\\file.asm', 'c:\\temp\\project')).toBe(true);
+    });
+
+    maybeIt('converts backslashes to forward slashes for portable paths', () => {
+      expect(toPortablePath('C:\\Temp\\Project\\file.asm')).toBe('C:/Temp/Project/file.asm');
     });
   });
 });

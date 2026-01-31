@@ -3,6 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 import type { BuildSourceStateArgs, SourceManagerState } from '../../src/debug/source-manager';
 import type { SourceMapIndex } from '../../src/mapping/source-map';
 import { SourceStateManager, SourceManagerLike } from '../../src/debug/source-state-manager';
@@ -13,7 +15,7 @@ describe('SourceStateManager', () => {
     expect(() =>
       state.build({
         listingContent: '',
-        listingPath: '/tmp/test.lst',
+        listingPath: path.join(os.tmpdir(), 'test.lst'),
         sourceRoots: [],
         extraListings: [],
         mapArgs: {},
@@ -45,7 +47,7 @@ describe('SourceStateManager', () => {
     const state = new SourceStateManager();
     state.setManager(manager);
 
-    const listingPath = '/tmp/test.lst';
+    const listingPath = path.join(os.tmpdir(), 'test.lst');
     const extraListings = ['extra.lst'];
     const build = state.build({
       listingContent: '',

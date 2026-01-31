@@ -3,6 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 import { emitConsoleOutput, emitMainSource } from '../../src/debug/adapter-ui';
 
 describe('adapter-ui', () => {
@@ -14,7 +16,8 @@ describe('adapter-ui', () => {
 
   it('emits main source event payload', () => {
     const events: { body?: { path?: string } }[] = [];
-    emitMainSource((event) => events.push(event as { body?: { path?: string } }), '/tmp/main.asm');
-    expect(events[0]?.body?.path).toBe('/tmp/main.asm');
+    const mainPath = path.join(os.tmpdir(), 'main.asm');
+    emitMainSource((event) => events.push(event as { body?: { path?: string } }), mainPath);
+    expect(events[0]?.body?.path).toBe(mainPath);
   });
 });

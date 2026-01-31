@@ -44,4 +44,57 @@ describe('memory-view', () => {
     expect(views[0]?.symbol).toBe('START');
     expect(views[0]?.symbolOffset).toBe(0x10);
   });
+
+  it('handles absolute/default views without symbols', () => {
+    const memRead = (addr: number): number => addr & 0xff;
+    const views = buildMemorySnapshotViews({
+      before: 1,
+      rowSize: 8,
+      views: [
+        { view: 'absolute', after: 1, address: null },
+        { view: 'unknown', after: 1, address: 0x1234 },
+      ],
+      registers: {
+        pc: 0x1000,
+        sp: 0x2000,
+        bc: 0x3000,
+        de: 0x4000,
+        hl: 0x5000,
+        ix: 0x6000,
+        iy: 0x7000,
+      },
+      memRead,
+    });
+
+    expect(views[0]?.address).toBe(0x5000);
+    expect(views[0]?.symbol).toBeNull();
+    expect(views[1]?.address).toBe(0x5000);
+  });
+
+  it('uses register-based views', () => {
+    const memRead = (addr: number): number => addr & 0xff;
+    const views = buildMemorySnapshotViews({
+      before: 1,
+      rowSize: 8,
+      views: [
+        { view: 'sp', after: 1, address: null },
+        { view: 'ix', after: 1, address: null },
+        { view: 'iy', after: 1, address: null },
+      ],
+      registers: {
+        pc: 0x1000,
+        sp: 0x2000,
+        bc: 0x3000,
+        de: 0x4000,
+        hl: 0x5000,
+        ix: 0x6000,
+        iy: 0x7000,
+      },
+      memRead,
+    });
+
+    expect(views[0]?.address).toBe(0x2000);
+    expect(views[1]?.address).toBe(0x6000);
+    expect(views[2]?.address).toBe(0x7000);
+  });
 });

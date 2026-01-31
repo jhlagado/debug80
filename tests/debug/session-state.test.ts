@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
 import { createSessionState, resetSessionState } from '../../src/debug/session-state';
 
 describe('session-state', () => {
@@ -12,7 +13,7 @@ describe('session-state', () => {
     state.symbolAnchors.push({ symbol: 'X', address: 1, file: 'x', line: 1 });
     state.symbolList.push({ name: 'X', address: 1 });
     state.sourceRoots.push('tmp');
-    state.baseDir = '/tmp';
+    state.baseDir = os.tmpdir();
     state.runState.lastBreakpointAddress = 1234;
     state.runState.skipBreakpointOnce = 5678;
     state.runState.pauseRequested = true;

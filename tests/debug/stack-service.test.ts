@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
 import * as path from 'path';
 import { buildSourceMapIndex } from '../../src/mapping/source-map';
 import { MappingParseResult, SourceMapSegment } from '../../src/mapping/parser';
@@ -29,7 +30,7 @@ describe('stack-service', () => {
       segments: [makeSegment(0x1000, 0x1002, 'main.asm', 42)],
       anchors: [],
     };
-    const resolvedPath = path.resolve('/tmp/main.asm');
+    const resolvedPath = path.resolve(path.join(os.tmpdir(), 'main.asm'));
     const index = buildSourceMapIndex(mapping, () => resolvedPath);
 
     const result = resolveSourceForAddress(0x1000, {
@@ -56,7 +57,7 @@ describe('stack-service', () => {
       segments: [makeSegment(0x2000, 0x2002, 'main.asm', 7)],
       anchors: [],
     };
-    const resolvedPath = path.resolve('/tmp/main.asm');
+    const resolvedPath = path.resolve(path.join(os.tmpdir(), 'main.asm'));
     const index = buildSourceMapIndex(mapping, () => resolvedPath);
 
     const result = resolveSourceForAddress(0x1000, {
@@ -70,7 +71,7 @@ describe('stack-service', () => {
   });
 
   it('falls back to listing line when no mapping is available', () => {
-    const listingPath = path.resolve('/tmp/program.lst');
+    const listingPath = path.resolve(path.join(os.tmpdir(), 'program.lst'));
     const listing = makeListing(0x1234, 9);
     const result = resolveSourceForAddress(0x1234, {
       listing,
