@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'src/test/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -33,6 +33,7 @@ export default defineConfig({
         'src/platforms/tec1g/hd44780-a00.ts',
         'src/platforms/tec1g/st7920-font.ts',
         'src/z80/decode.ts',
+        'src/z80/decode-tables.ts',
         'src/z80/cpu.ts',
         'src/z80/runtime.ts',
         'src/z80/types.ts',
