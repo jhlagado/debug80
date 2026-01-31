@@ -1,5 +1,9 @@
 /**
  * @file TEC-1 runtime implementation and configuration.
+ * @fileoverview
+ *
+ * This module normalizes TEC-1 configuration, builds IO handlers, and maintains
+ * runtime state for display, keypad, and serial behavior.
  */
 
 import { IoHandlers } from '../../z80/runtime';
@@ -20,6 +24,9 @@ import {
   shouldUpdate,
 } from '../tec-common';
 
+/**
+ * Mutable runtime state for TEC-1 hardware emulation.
+ */
 export interface Tec1State {
   digits: number[];
   matrix: number[];
@@ -44,6 +51,9 @@ export interface Tec1State {
   yieldMs: number;
 }
 
+/**
+ * Runtime facade for TEC-1 IO handlers and lifecycle controls.
+ */
 export interface Tec1Runtime {
   state: Tec1State;
   ioHandlers: IoHandlers;
@@ -63,7 +73,9 @@ const TEC1_SERIAL_BAUD = 9600;
 const TEC1_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 
 /**
- * Normalizes TEC-1 configuration with defaults.
+ * Normalizes TEC-1 configuration with defaults and bounds.
+ * @param cfg - Optional TEC-1 config from project settings.
+ * @returns Normalized config for runtime construction.
  */
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
@@ -110,6 +122,10 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 
 /**
  * Builds the TEC-1 runtime IO handlers and state.
+ * @param config - Normalized TEC-1 configuration.
+ * @param onUpdate - Called with UI payloads when state changes.
+ * @param onSerialByte - Optional serial byte callback.
+ * @returns Runtime facade with IO handlers and control helpers.
  */
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
