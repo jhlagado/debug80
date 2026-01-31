@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1G memory panel webview controller.
+ */
+
 import * as vscode from 'vscode';
 
 export interface Tec1gMemoryPanelController {
@@ -8,6 +12,9 @@ export interface Tec1gMemoryPanelController {
   handleSessionTerminated(sessionId: string): void;
 }
 
+/**
+ * Creates the TEC-1G memory panel controller.
+ */
 export function createTec1gMemoryPanelController(
   getTargetColumn: () => vscode.ViewColumn,
   getFallbackSession: () => vscode.DebugSession | undefined
@@ -108,6 +115,9 @@ export function createTec1gMemoryPanelController(
     handleSessionTerminated,
   };
 
+  /**
+   * Requests a memory snapshot and posts it to the webview.
+   */
   async function refreshSnapshot(allowErrors?: boolean): Promise<void> {
     if (panel === undefined) {
       return;
@@ -158,6 +168,9 @@ export function createTec1gMemoryPanelController(
     }
   }
 
+  /**
+   * Starts periodic snapshot refresh.
+   */
   function startAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       return;
@@ -167,6 +180,9 @@ export function createTec1gMemoryPanelController(
     }, autoRefreshMs);
   }
 
+  /**
+   * Stops periodic snapshot refresh.
+   */
   function stopAutoRefresh(): void {
     if (refreshTimer !== undefined) {
       clearInterval(refreshTimer);
@@ -175,6 +191,9 @@ export function createTec1gMemoryPanelController(
   }
 }
 
+/**
+ * Builds HTML for the TEC-1G memory panel.
+ */
 function getTec1gMemoryHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -620,6 +639,9 @@ function getTec1gMemoryHtml(): string {
 </html>`;
 }
 
+/**
+ * Clamps memory window size to a safe range.
+ */
 function clampWindow(value: number): number {
   if (!Number.isFinite(value) || value < 1) {
     return 16;

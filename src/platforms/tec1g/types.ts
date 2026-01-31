@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1G platform type definitions.
+ */
+
 export type Tec1gSpeedMode = 'slow' | 'fast';
 
 export interface Tec1gUpdatePayload {

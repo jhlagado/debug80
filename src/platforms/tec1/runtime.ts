@@ -1,3 +1,7 @@
+/**
+ * @file TEC-1 runtime implementation and configuration.
+ */
+
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
@@ -58,6 +62,9 @@ const TEC1_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1_SERIAL_BAUD = 9600;
 const TEC1_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 
+/**
+ * Normalizes TEC-1 configuration with defaults.
+ */
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
@@ -101,6 +108,9 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
   };
 }
 
+/**
+ * Builds the TEC-1 runtime IO handlers and state.
+ */
 export function createTec1Runtime(
   config: Tec1PlatformConfigNormalized,
   onUpdate: (payload: Tec1UpdatePayload) => void,

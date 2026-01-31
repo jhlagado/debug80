@@ -1,5 +1,12 @@
+/**
+ * @file Simple platform configuration normalization.
+ */
+
 import { SimpleMemoryRegion, SimplePlatformConfig, SimplePlatformConfigNormalized } from '../types';
 
+/**
+ * Normalizes memory region definitions for the simple platform.
+ */
 export function normalizeSimpleRegions(
   regions?: SimpleMemoryRegion[],
   fallback?: SimpleMemoryRegion[]
@@ -35,6 +42,9 @@ export function normalizeSimpleRegions(
   return normalized;
 }
 
+/**
+ * Normalizes the simple platform config with defaults.
+ */
 export function normalizeSimpleConfig(
   cfg?: SimplePlatformConfig
 ): SimplePlatformConfigNormalized {

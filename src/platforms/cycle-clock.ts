@@ -1,3 +1,7 @@
+/**
+ * @file Simple cycle-based scheduler for platform runtimes.
+ */
+
 export type CycleCallback = () => void;
 
 interface CycleEvent {
@@ -7,6 +11,9 @@ interface CycleEvent {
   callback: CycleCallback;
 }
 
+/**
+ * Schedules callbacks to run at specific cycle counts.
+ */
 export class CycleClock {
   private nowCycles = 0;
   private nextId = 1;
