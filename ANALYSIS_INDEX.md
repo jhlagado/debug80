@@ -9,6 +9,7 @@ This document provides quick access to all code quality analysis documents for t
 ## 📄 Analysis Documents
 
 ### 1. [CODE_QUALITY_SUMMARY.md](CODE_QUALITY_SUMMARY.md)
+
 **Executive Summary** | ~150 lines | 5-minute read
 
 - Key findings at a glance
@@ -22,9 +23,11 @@ This document provides quick access to all code quality analysis documents for t
 ---
 
 ### 2. [CODE_QUALITY_ANALYSIS.md](CODE_QUALITY_ANALYSIS.md)
+
 **Full Technical Analysis** | ~500 lines | 15-minute read
 
 Contains 10 detailed sections:
+
 1. Structural Analysis - File sizes, module organization
 2. Windows Compatibility - Path handling, potential issues
 3. Test Coverage - Coverage status, gaps, organization
@@ -44,14 +47,14 @@ Contains 10 detailed sections:
 
 ### Current Status (February 2026)
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| Source Files | 82 | - |
-| Test Files | 47 | - |
-| Tests Passing | 374 | ✅ |
-| Line Coverage | 64% | ❌ Below 80% threshold |
-| Lint | 0 errors | ✅ |
-| Build | 0 errors | ✅ |
+| Metric        | Value    | Status                 |
+| ------------- | -------- | ---------------------- |
+| Source Files  | 82       | -                      |
+| Test Files    | 47       | -                      |
+| Tests Passing | 374      | ✅                     |
+| Line Coverage | 64%      | ❌ Below 80% threshold |
+| Lint          | 0 errors | ✅                     |
+| Build         | 0 errors | ✅                     |
 
 ### Top 3 Actions Needed
 
@@ -61,24 +64,26 @@ Contains 10 detailed sections:
 
 ### Windows Compatibility
 
-| Area | Status |
-|------|--------|
+| Area           | Status                              |
+| -------------- | ----------------------------------- |
 | Path utilities | ✅ Good - dedicated `path-utils.ts` |
-| Assembler | ✅ Good - handles .cmd/.exe |
-| Tests | ⚠️ Need Windows CI |
-| Line endings | ⚠️ Unknown |
+| Assembler      | ✅ Good - handles .cmd/.exe         |
+| Tests          | ⚠️ Need Windows CI                  |
+| Line endings   | ⚠️ Unknown                          |
 
 ---
 
 ## 📁 Related Documentation
 
 ### Project Documentation
+
 - [README.md](README.md) - Project overview
 - [AGENTS.md](AGENTS.md) - Agent workflow guide
 - [docs/TECHNICAL.md](docs/TECHNICAL.md) - Technical details
 - [docs/PLATFORMS.md](docs/PLATFORMS.md) - Platform documentation
 
 ### Platform Documentation
+
 - [docs/platforms/tec1/README.md](docs/platforms/tec1/README.md) - TEC-1 platform
 - [src/platforms/tec1/README.md](src/platforms/tec1/README.md) - TEC-1 implementation
 - [src/platforms/tec1g/README.md](src/platforms/tec1g/README.md) - TEC-1G implementation
@@ -87,10 +92,10 @@ Contains 10 detailed sections:
 
 ## 🔄 Analysis History
 
-| Date | Version | Key Changes |
-|------|---------|-------------|
-| Feb 2026 | 2.0 | Full re-analysis after refactoring |
-| 2025 | 1.0 | Initial comprehensive analysis |
+| Date     | Version | Key Changes                        |
+| -------- | ------- | ---------------------------------- |
+| Feb 2026 | 2.0     | Full re-analysis after refactoring |
+| 2025     | 1.0     | Initial comprehensive analysis     |
 
 ---
 
