@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import { Tec1gUpdatePayload } from './types';
 import { Tec1gPanelTab, getTec1gHtml } from './ui-panel-html';
 import { createMemoryViewState } from './ui-panel-memory';
 import { appendSerialText, clearSerialBuffer, createSerialBuffer } from './ui-panel-serial';
@@ -14,6 +14,11 @@ import {
   stopAutoRefresh,
 } from './ui-panel-refresh';
 import { handleTec1gMessage, Tec1gMessage } from './ui-panel-messages';
+import {
+  applyTec1gUpdate,
+  createTec1gUiState,
+  resetTec1gUiState,
+} from './ui-panel-state';
 
 export interface Tec1gPanelController {
   open(
@@ -36,26 +41,7 @@ export function createTec1gPanelController(
 ): Tec1gPanelController {
   let panel: vscode.WebviewPanel | undefined;
   let session: vscode.DebugSession | undefined;
-  let digits = Array.from({ length: 6 }, () => 0);
-  let matrix = Array.from({ length: 8 }, () => 0);
-  let glcd = Array.from({ length: 1024 }, () => 0);
-  let glcdDdram = Array.from({ length: 64 }, () => 0x20);
-  let glcdState = {
-    displayOn: true,
-    graphicsOn: true,
-    cursorOn: false,
-    cursorBlink: false,
-    blinkVisible: true,
-    ddramAddr: 0x80,
-    ddramPhase: 0,
-    textShift: 0,
-    scroll: 0,
-    reverseMask: 0,
-  };
-  let sysCtrlValue = 0x00;
-  let speaker = false;
-  let speedMode: Tec1gSpeedMode = 'fast';
-  let lcd = Array.from({ length: 80 }, () => 0x20);
+  const uiState = createTec1gUiState();
   const serialBuffer = createSerialBuffer();
   let activeTab: Tec1gPanelTab = 'ui';
   const memoryViews = createMemoryViewState();
@@ -83,25 +69,7 @@ export function createTec1gPanelController(
         stopAutoRefresh(refreshController.state);
         panel = undefined;
         session = undefined;
-        digits = Array.from({ length: 6 }, () => 0);
-        matrix = Array.from({ length: 8 }, () => 0);
-        glcd = Array.from({ length: 1024 }, () => 0);
-        glcdDdram = Array.from({ length: 64 }, () => 0x20);
-        glcdState = {
-          displayOn: true,
-          graphicsOn: true,
-          cursorOn: false,
-          cursorBlink: false,
-          blinkVisible: true,
-          ddramAddr: 0x80,
-          ddramPhase: 0,
-          textShift: 0,
-          scroll: 0,
-          reverseMask: 0,
-        };
-        speaker = false;
-        speedMode = 'slow';
-        lcd = Array.from({ length: 80 }, () => 0x20);
+        resetTec1gUiState(uiState);
         activeTab = 'ui';
       });
       panel.onDidChangeViewState((event) => {
@@ -148,15 +116,15 @@ export function createTec1gPanelController(
     }
     panel.webview.html = getTec1gHtml(activeTab);
     update({
-      digits,
-      matrix,
-      glcd,
-      glcdDdram,
-      glcdState,
-      speaker: speaker ? 1 : 0,
-      speedMode,
-      sysCtrl: sysCtrlValue,
-      lcd,
+      digits: uiState.digits,
+      matrix: uiState.matrix,
+      glcd: uiState.glcd,
+      glcdDdram: uiState.glcdDdram,
+      glcdState: uiState.glcdState,
+      speaker: uiState.speaker ? 1 : 0,
+      speedMode: uiState.speedMode,
+      sysCtrl: uiState.sysCtrlValue,
+      lcd: uiState.lcd,
     });
     if (uiVisibilityOverride) {
       void panel.webview.postMessage({
@@ -261,47 +229,19 @@ export function createTec1gPanelController(
   const refreshController = createRefreshController(buildSnapshotPayload, refreshHandlers);
 
   const update = (payload: Tec1gUpdatePayload): void => {
-    digits = payload.digits.slice(0, 6);
-    matrix = payload.matrix.slice(0, 8);
-    glcd = payload.glcd.slice(0, 1024);
-    if (typeof payload.sysCtrl === 'number') {
-      sysCtrlValue = payload.sysCtrl & 0xff;
-    }
-    if (Array.isArray(payload.glcdDdram)) {
-      glcdDdram = payload.glcdDdram.slice(0, 64);
-      while (glcdDdram.length < 64) {
-        glcdDdram.push(0x20);
-      }
-    }
-    if (payload.glcdState && typeof payload.glcdState === 'object') {
-      glcdState = {
-        displayOn: payload.glcdState.displayOn ?? glcdState.displayOn,
-        graphicsOn: payload.glcdState.graphicsOn ?? glcdState.graphicsOn,
-        cursorOn: payload.glcdState.cursorOn ?? glcdState.cursorOn,
-        cursorBlink: payload.glcdState.cursorBlink ?? glcdState.cursorBlink,
-        blinkVisible: payload.glcdState.blinkVisible ?? glcdState.blinkVisible,
-        ddramAddr: payload.glcdState.ddramAddr ?? glcdState.ddramAddr,
-        ddramPhase: payload.glcdState.ddramPhase ?? glcdState.ddramPhase,
-        textShift: payload.glcdState.textShift ?? glcdState.textShift,
-        scroll: payload.glcdState.scroll ?? glcdState.scroll,
-        reverseMask: payload.glcdState.reverseMask ?? glcdState.reverseMask,
-      };
-    }
-    speaker = payload.speaker === 1;
-    speedMode = payload.speedMode;
-    lcd = payload.lcd.slice(0, 80);
+    applyTec1gUpdate(uiState, payload);
     if (panel !== undefined) {
       void panel.webview.postMessage({
         type: 'update',
-        digits,
-        matrix,
-        glcd,
-        glcdDdram,
-        glcdState,
-        speaker,
-        speedMode,
-        sysCtrl: sysCtrlValue,
-        lcd,
+        digits: uiState.digits,
+        matrix: uiState.matrix,
+        glcd: uiState.glcd,
+        glcdDdram: uiState.glcdDdram,
+        glcdState: uiState.glcdState,
+        speaker: uiState.speaker,
+        speedMode: uiState.speedMode,
+        sysCtrl: uiState.sysCtrlValue,
+        lcd: uiState.lcd,
         speakerHz: payload.speakerHz,
       });
     }
@@ -335,21 +275,17 @@ export function createTec1gPanelController(
   };
 
   const clear = (): void => {
-    digits = Array.from({ length: 6 }, () => 0);
-    matrix = Array.from({ length: 8 }, () => 0);
-    glcd = Array.from({ length: 1024 }, () => 0);
-    speaker = false;
-    lcd = Array.from({ length: 80 }, () => 0x20);
+    resetTec1gUiState(uiState);
     clearSerialBuffer(serialBuffer);
     if (panel !== undefined) {
       void panel.webview.postMessage({
         type: 'update',
-        digits,
-        matrix,
-        glcd,
+        digits: uiState.digits,
+        matrix: uiState.matrix,
+        glcd: uiState.glcd,
         speaker: false,
-        speedMode,
-        lcd,
+        speedMode: uiState.speedMode,
+        lcd: uiState.lcd,
       });
       void panel.webview.postMessage({ type: 'serialClear' });
     }
