@@ -20,7 +20,6 @@ export type StopReason = 'breakpoint' | 'step' | 'halt' | 'entry' | 'pause';
  * Subset of Z80DebugSession fields that are reset per launch.
  */
 export interface SessionStateShape {
-  haltNotified: boolean;
   runtime: Z80Runtime | undefined;
   listing: ListingInfo | undefined;
   listingPath: string | undefined;
@@ -37,12 +36,22 @@ export interface SessionStateShape {
   loadedProgram: HexProgram | undefined;
   loadedEntry: number | undefined;
   extraListingPaths: string[];
+  runState: RunState;
+}
+
+/**
+ * Runtime control state for stepping/breakpoint flow.
+ */
+export interface RunState {
+  stopOnEntry: boolean;
+  haltNotified: boolean;
   lastStopReason: StopReason | undefined;
   lastBreakpointAddress: number | null;
   skipBreakpointOnce: number | null;
-  pauseRequested: boolean;
+  callDepth: number;
   stepOverMaxInstructions: number;
   stepOutMaxInstructions: number;
+  pauseRequested: boolean;
 }
 
 /**
@@ -50,7 +59,6 @@ export interface SessionStateShape {
  */
 export function createSessionState(): SessionStateShape {
   return {
-    haltNotified: false,
     runtime: undefined,
     listing: undefined,
     listingPath: undefined,
@@ -67,12 +75,17 @@ export function createSessionState(): SessionStateShape {
     loadedProgram: undefined,
     loadedEntry: undefined,
     extraListingPaths: [],
-    lastStopReason: undefined,
-    lastBreakpointAddress: null,
-    skipBreakpointOnce: null,
-    pauseRequested: false,
-    stepOverMaxInstructions: 0,
-    stepOutMaxInstructions: 0,
+    runState: {
+      stopOnEntry: false,
+      haltNotified: false,
+      lastStopReason: undefined,
+      lastBreakpointAddress: null,
+      skipBreakpointOnce: null,
+      callDepth: 0,
+      stepOverMaxInstructions: 0,
+      stepOutMaxInstructions: 0,
+      pauseRequested: false,
+    },
   };
 }
 

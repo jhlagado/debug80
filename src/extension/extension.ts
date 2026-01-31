@@ -9,23 +9,13 @@ import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/ui-panel';
 import { createTec1gPanelController } from '../platforms/tec1g/ui-panel';
+import { SessionStateManager } from './session-state-manager';
 
-let terminalPanel: vscode.WebviewPanel | undefined;
-let terminalBuffer = '';
-let terminalSession: vscode.DebugSession | undefined;
-let terminalAnsiCarry = '';
-let terminalPendingOutput = '';
-let terminalFlushTimer: ReturnType<typeof setTimeout> | undefined;
-let terminalNeedsFullRefresh = false;
+const sessionState = new SessionStateManager();
 const TERMINAL_BUFFER_MAX = 50_000;
 const TERMINAL_FLUSH_MS = 50;
 let enforceSourceColumn = false;
 let movingEditor = false;
-const activeZ80Sessions = new Set<string>();
-const sessionPlatforms = new Map<string, string>();
-const romSourcesOpenedSessions = new Set<string>();
-const mainSourceOpenedSessions = new Set<string>();
-const sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const tec1PanelController = createTec1PanelController(
@@ -163,26 +153,26 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
-        activeZ80Sessions.add(session.id);
+        sessionState.activeZ80Sessions.add(session.id);
         enforceSourceColumn = true;
         clearTerminal();
         tec1PanelController.clear();
         tec1gPanelController.clear();
-        sessionPlatforms.delete(session.id);
-        sessionColumns.set(session.id, resolveSessionColumns(session));
+        sessionState.sessionPlatforms.delete(session.id);
+        sessionState.sessionColumns.set(session.id, resolveSessionColumns(session));
         if (session.configuration?.openRomSourcesOnLaunch !== false) {
           const sessionId = session.id;
           const column = getSessionColumns(session).source;
           setTimeout(() => {
-            if (!activeZ80Sessions.has(sessionId)) {
+            if (!sessionState.activeZ80Sessions.has(sessionId)) {
               return;
             }
-            if (romSourcesOpenedSessions.has(sessionId)) {
+            if (sessionState.romSourcesOpenedSessions.has(sessionId)) {
               return;
             }
             void openRomSourcesForSession(session, column).then((opened) => {
               if (opened) {
-                romSourcesOpenedSessions.add(sessionId);
+                sessionState.romSourcesOpenedSessions.add(sessionId);
               }
             });
           }, 200);
@@ -193,18 +183,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.debug.onDidTerminateDebugSession((session) => {
-      if (terminalSession?.id === session.id) {
-        terminalSession = undefined;
+      if (sessionState.terminalSession?.id === session.id) {
+        sessionState.terminalSession = undefined;
       }
       tec1PanelController.handleSessionTerminated(session.id);
       tec1gPanelController.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
-        activeZ80Sessions.delete(session.id);
-        sessionPlatforms.delete(session.id);
-        romSourcesOpenedSessions.delete(session.id);
-        mainSourceOpenedSessions.delete(session.id);
-        sessionColumns.delete(session.id);
-        if (activeZ80Sessions.size === 0) {
+        sessionState.activeZ80Sessions.delete(session.id);
+        sessionState.sessionPlatforms.delete(session.id);
+        sessionState.romSourcesOpenedSessions.delete(session.id);
+        sessionState.mainSourceOpenedSessions.delete(session.id);
+        sessionState.sessionColumns.delete(session.id);
+        if (sessionState.activeZ80Sessions.size === 0) {
           enforceSourceColumn = false;
         }
       }
@@ -220,7 +210,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const body = evt.body as { id?: string; uiVisibility?: Record<string, boolean> } | undefined;
         const id = body?.id;
         if (id !== undefined && id.length > 0) {
-          sessionPlatforms.set(evt.session.id, id);
+          sessionState.sessionPlatforms.set(evt.session.id, id);
         }
         const columns = getSessionColumns(evt.session);
         if (id === 'tec1') {
@@ -251,13 +241,13 @@ export function activate(context: vscode.ExtensionContext): void {
         const openMainSource = evt.session.configuration?.openMainSourceOnLaunch !== false;
         if (
           openRomSources &&
-          !romSourcesOpenedSessions.has(evt.session.id) &&
-          (!openMainSource || mainSourceOpenedSessions.has(evt.session.id))
+          !sessionState.romSourcesOpenedSessions.has(evt.session.id) &&
+          (!openMainSource || sessionState.mainSourceOpenedSessions.has(evt.session.id))
         ) {
           const sourceColumn = getSessionColumns(evt.session).source;
           void openRomSourcesForSession(evt.session, sourceColumn).then((opened) => {
             if (opened) {
-              romSourcesOpenedSessions.add(evt.session.id);
+              sessionState.romSourcesOpenedSessions.add(evt.session.id);
             }
           });
         }
@@ -265,7 +255,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       if (evt.event === 'debug80/terminalOutput') {
         const text = (evt.body as { text?: string } | undefined)?.text ?? '';
-        if (terminalPanel === undefined) {
+        if (sessionState.terminalPanel === undefined) {
           const column = getSessionColumns(evt.session).panel;
           openTerminalPanel(evt.session, { focus: false, reveal: true, column });
         }
@@ -385,10 +375,10 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!openOnLaunch || sourcePath === undefined || sourcePath === '') {
           return;
         }
-        if (mainSourceOpenedSessions.has(evt.session.id)) {
+        if (sessionState.mainSourceOpenedSessions.has(evt.session.id)) {
           return;
         }
-        mainSourceOpenedSessions.add(evt.session.id);
+        sessionState.mainSourceOpenedSessions.add(evt.session.id);
         const columns = getSessionColumns(evt.session);
         const viewColumn = columns.source;
         void vscode.workspace
@@ -398,12 +388,12 @@ export function activate(context: vscode.ExtensionContext): void {
           )
           .then(() => {
             const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
-            if (!openRomSources || romSourcesOpenedSessions.has(evt.session.id)) {
+            if (!openRomSources || sessionState.romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
             return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
               if (opened) {
-                romSourcesOpenedSessions.add(evt.session.id);
+                sessionState.romSourcesOpenedSessions.add(evt.session.id);
               }
             });
           });
@@ -711,7 +701,7 @@ function getSessionColumns(session: vscode.DebugSession): {
   source: vscode.ViewColumn;
   panel: vscode.ViewColumn;
 } {
-  return sessionColumns.get(session.id) ?? resolveSessionColumns(session);
+  return sessionState.sessionColumns.get(session.id) ?? resolveSessionColumns(session);
 }
 
 /**
@@ -756,21 +746,25 @@ function openTerminalPanel(
   const focus = options?.focus ?? false;
   const reveal = options?.reveal ?? true;
   const targetColumn = options?.column ?? getTerminalColumn();
-  if (terminalPanel === undefined) {
-    terminalPanel = vscode.window.createWebviewPanel(
+  if (sessionState.terminalPanel === undefined) {
+    sessionState.terminalPanel = vscode.window.createWebviewPanel(
       'debug80Terminal',
       'Debug80 Terminal',
       targetColumn,
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    terminalPanel.onDidDispose(() => {
-      terminalPanel = undefined;
-      terminalSession = undefined;
-      terminalBuffer = '';
+    sessionState.terminalPanel.onDidDispose(() => {
+      sessionState.terminalPanel = undefined;
+      sessionState.terminalSession = undefined;
+      if (sessionState.terminalFlushTimer !== undefined) {
+        clearTimeout(sessionState.terminalFlushTimer);
+        sessionState.terminalFlushTimer = undefined;
+      }
+      sessionState.resetTerminalState();
     });
-    terminalPanel.webview.onDidReceiveMessage(async (msg: { type?: string; text?: string }) => {
+    sessionState.terminalPanel.webview.onDidReceiveMessage(async (msg: { type?: string; text?: string }) => {
       if (msg.type === 'input' && typeof msg.text === 'string') {
-        const targetSession = terminalSession ?? vscode.debug.activeDebugSession;
+        const targetSession = sessionState.terminalSession ?? vscode.debug.activeDebugSession;
         if (targetSession?.type === 'z80') {
           try {
             await targetSession.customRequest('debug80/terminalInput', { text: msg.text });
@@ -780,7 +774,7 @@ function openTerminalPanel(
         }
       }
       if (msg.type === 'break') {
-        const targetSession = terminalSession ?? vscode.debug.activeDebugSession;
+        const targetSession = sessionState.terminalSession ?? vscode.debug.activeDebugSession;
         if (targetSession?.type === 'z80') {
           try {
             await targetSession.customRequest('debug80/terminalBreak', {});
@@ -792,14 +786,14 @@ function openTerminalPanel(
     });
   }
   if (session !== undefined) {
-    terminalSession = session;
+    sessionState.terminalSession = session;
   }
   if (reveal) {
-    terminalPanel.reveal(targetColumn, !focus);
+    sessionState.terminalPanel.reveal(targetColumn, !focus);
   }
-  terminalPanel.webview.html = getTerminalHtml(terminalBuffer);
-  terminalPendingOutput = '';
-  terminalNeedsFullRefresh = false;
+  sessionState.terminalPanel.webview.html = getTerminalHtml(sessionState.terminalBuffer);
+  sessionState.terminalPendingOutput = '';
+  sessionState.terminalNeedsFullRefresh = false;
 }
 
 /**
@@ -813,18 +807,18 @@ function appendTerminalOutput(text: string): void {
   if (remaining.length === 0) {
     return;
   }
-  terminalBuffer += remaining;
-  if (terminalBuffer.length > TERMINAL_BUFFER_MAX) {
-    terminalBuffer = terminalBuffer.slice(terminalBuffer.length - TERMINAL_BUFFER_MAX);
-    terminalNeedsFullRefresh = true;
-    terminalPendingOutput = '';
+  sessionState.terminalBuffer += remaining;
+  if (sessionState.terminalBuffer.length > TERMINAL_BUFFER_MAX) {
+    sessionState.terminalBuffer = sessionState.terminalBuffer.slice(sessionState.terminalBuffer.length - TERMINAL_BUFFER_MAX);
+    sessionState.terminalNeedsFullRefresh = true;
+    sessionState.terminalPendingOutput = '';
   }
-  if (terminalPanel !== undefined) {
-    if (terminalNeedsFullRefresh) {
+  if (sessionState.terminalPanel !== undefined) {
+    if (sessionState.terminalNeedsFullRefresh) {
       scheduleTerminalFlush();
       return;
     }
-    terminalPendingOutput += remaining;
+    sessionState.terminalPendingOutput += remaining;
     scheduleTerminalFlush();
   }
 }
@@ -833,15 +827,13 @@ function appendTerminalOutput(text: string): void {
  * Clears the terminal buffer and forces a full refresh.
  */
 function clearTerminal(): void {
-  terminalBuffer = '';
-  terminalPendingOutput = '';
-  terminalNeedsFullRefresh = false;
-  if (terminalFlushTimer !== undefined) {
-    clearTimeout(terminalFlushTimer);
-    terminalFlushTimer = undefined;
+  sessionState.resetTerminalState();
+  if (sessionState.terminalFlushTimer !== undefined) {
+    clearTimeout(sessionState.terminalFlushTimer);
+    sessionState.terminalFlushTimer = undefined;
   }
-  if (terminalPanel !== undefined) {
-    void terminalPanel.webview.postMessage({ type: 'clear' });
+  if (sessionState.terminalPanel !== undefined) {
+    void sessionState.terminalPanel.webview.postMessage({ type: 'clear' });
   }
 }
 
@@ -901,24 +893,24 @@ function getTerminalHtml(initial: string): string {
  * Schedules a batched terminal refresh.
  */
 function scheduleTerminalFlush(): void {
-  if (terminalFlushTimer !== undefined) {
+  if (sessionState.terminalFlushTimer !== undefined) {
     return;
   }
-  terminalFlushTimer = setTimeout(() => {
-    terminalFlushTimer = undefined;
-    if (terminalPanel === undefined) {
+  sessionState.terminalFlushTimer = setTimeout(() => {
+    sessionState.terminalFlushTimer = undefined;
+    if (sessionState.terminalPanel === undefined) {
       return;
     }
-    if (terminalNeedsFullRefresh) {
-      void terminalPanel.webview.postMessage({ type: 'clear' });
-      void terminalPanel.webview.postMessage({ type: 'output', text: terminalBuffer });
-      terminalNeedsFullRefresh = false;
-      terminalPendingOutput = '';
+    if (sessionState.terminalNeedsFullRefresh) {
+      void sessionState.terminalPanel.webview.postMessage({ type: 'clear' });
+      void sessionState.terminalPanel.webview.postMessage({ type: 'output', text: sessionState.terminalBuffer });
+      sessionState.terminalNeedsFullRefresh = false;
+      sessionState.terminalPendingOutput = '';
       return;
     }
-    if (terminalPendingOutput.length > 0) {
-      void terminalPanel.webview.postMessage({ type: 'output', text: terminalPendingOutput });
-      terminalPendingOutput = '';
+    if (sessionState.terminalPendingOutput.length > 0) {
+      void sessionState.terminalPanel.webview.postMessage({ type: 'output', text: sessionState.terminalPendingOutput });
+      sessionState.terminalPendingOutput = '';
     }
   }, TERMINAL_FLUSH_MS);
 }
@@ -930,8 +922,8 @@ function stripAndDetectClear(text: string): { remaining: string; shouldClear: bo
   // The adapter emits terminal output a byte at a time, so ANSI escape sequences
   // (e.g. ESC[2J ESC[H) can arrive split across multiple events. Track a small
   // carry buffer so we can correctly consume them.
-  const input = terminalAnsiCarry + text;
-  terminalAnsiCarry = '';
+  const input = sessionState.terminalAnsiCarry + text;
+  sessionState.terminalAnsiCarry = '';
 
   let remaining = '';
   let shouldClear = false;
@@ -986,7 +978,7 @@ function stripAndDetectClear(text: string): { remaining: string; shouldClear: bo
 
   // If we ended mid-escape, carry it to the next chunk.
   if (esc.length > 0) {
-    terminalAnsiCarry = esc;
+    sessionState.terminalAnsiCarry = esc;
   }
 
   return { remaining, shouldClear };

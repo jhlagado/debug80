@@ -8,28 +8,28 @@ import { createSessionState, resetSessionState } from '../src/debug/session-stat
 describe('session-state', () => {
   it('resets mutable state to defaults', () => {
     const state = createSessionState();
-    state.haltNotified = true;
+    state.runState.haltNotified = true;
     state.symbolAnchors.push({ symbol: 'X', address: 1, file: 'x', line: 1 });
     state.symbolList.push({ name: 'X', address: 1 });
     state.sourceRoots.push('tmp');
     state.baseDir = '/tmp';
-    state.lastBreakpointAddress = 1234;
-    state.skipBreakpointOnce = 5678;
-    state.pauseRequested = true;
-    state.stepOverMaxInstructions = 99;
-    state.stepOutMaxInstructions = 88;
+    state.runState.lastBreakpointAddress = 1234;
+    state.runState.skipBreakpointOnce = 5678;
+    state.runState.pauseRequested = true;
+    state.runState.stepOverMaxInstructions = 99;
+    state.runState.stepOutMaxInstructions = 88;
 
     resetSessionState(state);
 
-    expect(state.haltNotified).toBe(false);
+    expect(state.runState.haltNotified).toBe(false);
     expect(state.symbolAnchors.length).toBe(0);
     expect(state.symbolList.length).toBe(0);
     expect(state.sourceRoots.length).toBe(0);
     expect(state.baseDir).toBe(process.cwd());
-    expect(state.lastBreakpointAddress).toBeNull();
-    expect(state.skipBreakpointOnce).toBeNull();
-    expect(state.pauseRequested).toBe(false);
-    expect(state.stepOverMaxInstructions).toBe(0);
-    expect(state.stepOutMaxInstructions).toBe(0);
+    expect(state.runState.lastBreakpointAddress).toBeNull();
+    expect(state.runState.skipBreakpointOnce).toBeNull();
+    expect(state.runState.pauseRequested).toBe(false);
+    expect(state.runState.stepOverMaxInstructions).toBe(0);
+    expect(state.runState.stepOutMaxInstructions).toBe(0);
   });
 });
