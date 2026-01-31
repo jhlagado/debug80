@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
 import { BreakpointManager } from '../../src/debug/breakpoint-manager';
+import { normalizePathForKey } from '../../src/debug/path-utils';
 import type { ListingInfo } from '../../src/z80/loaders';
 import type { SourceMapIndex } from '../../src/mapping/source-map';
 import type { SourceMapSegment } from '../../src/mapping/parser';
@@ -23,6 +24,7 @@ function createMockListing(lineToAddress: Map<number, number>): ListingInfo {
 function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMapIndex {
   const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
   for (const [file, lines] of fileMap) {
+    const key = normalizePathForKey(file);
     const lineMap = new Map<number, SourceMapSegment[]>();
     for (const [line, addrs] of lines) {
       lineMap.set(
@@ -36,7 +38,7 @@ function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMap
         }))
       );
     }
-    segmentsByFileLine.set(file, lineMap);
+    segmentsByFileLine.set(key, lineMap);
   }
   return {
     segmentsByAddress: [],
