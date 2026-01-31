@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as path from 'path';
 import { BreakpointManager } from '../../src/debug/breakpoint-manager';
 import type { ListingInfo } from '../../src/z80/loaders';
 import type { SourceMapIndex } from '../../src/mapping/source-map';
@@ -47,7 +48,8 @@ function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMap
 describe('BreakpointManager', () => {
   it('stores and clears pending breakpoints', () => {
     const mgr = new BreakpointManager();
-    mgr.setPending('/test/file.asm', [{ line: 10 }, { line: 20 }]);
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    mgr.setPending(path.join(baseDir, 'file.asm'), [{ line: 10 }, { line: 20 }]);
     mgr.reset();
     expect(mgr.hasAddress(0x100)).toBe(false);
   });
@@ -60,7 +62,7 @@ describe('BreakpointManager', () => {
         [20, 0x200],
       ])
     );
-    const listingPath = '/test/program.lst';
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
 
     mgr.setPending(listingPath, [{ line: 10 }, { line: 20 }]);
     const applied = mgr.applyAll(listing, listingPath, undefined);
@@ -74,7 +76,8 @@ describe('BreakpointManager', () => {
 
   it('marks breakpoints as unverified when listing is missing', () => {
     const mgr = new BreakpointManager();
-    mgr.setPending('/test/file.asm', [{ line: 10 }]);
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    mgr.setPending(path.join(baseDir, 'file.asm'), [{ line: 10 }]);
     const applied = mgr.applyAll(undefined, undefined, undefined);
 
     expect(applied.length).toBe(1);
@@ -84,8 +87,9 @@ describe('BreakpointManager', () => {
   it('applies breakpoints from source mapping', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
-    const listingPath = '/test/program.lst';
-    const sourcePath = '/test/file.asm';
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    const listingPath = path.join(baseDir, 'program.lst');
+    const sourcePath = path.resolve(baseDir, 'file.asm');
 
     const index = createMockIndex(new Map([[sourcePath, new Map([[15, [0x300]]])]]));
 
@@ -99,11 +103,12 @@ describe('BreakpointManager', () => {
   it('falls back to .source.asm when resolving breakpoints', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
-    const listingPath = '/test/program.lst';
-    const sourcePath = '/test/mon.asm';
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    const listingPath = path.join(baseDir, 'program.lst');
+    const sourcePath = path.resolve(baseDir, 'mon.asm');
 
     const index = createMockIndex(
-      new Map([['/test/mon.source.asm', new Map([[42, [0x400]]])]])
+      new Map([[path.resolve(baseDir, 'mon.source.asm'), new Map([[42, [0x400]]])]])
     );
 
     mgr.setPending(sourcePath, [{ line: 42 }]);
@@ -121,7 +126,7 @@ describe('BreakpointManager', () => {
         [20, 0x0200],
       ])
     );
-    const listingPath = '/test/program.lst';
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
 
     mgr.setPending(listingPath, [{ line: 1 }]);
     const applied = mgr.applyForSource(listing, listingPath, undefined, listingPath, [
@@ -136,8 +141,9 @@ describe('BreakpointManager', () => {
   it('handles missing mapping gracefully', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
-    const listingPath = '/test/program.lst';
-    const sourcePath = '/test/other.asm';
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    const listingPath = path.join(baseDir, 'program.lst');
+    const sourcePath = path.resolve(baseDir, 'other.asm');
 
     mgr.setPending(sourcePath, [{ line: 5 }]);
     const applied = mgr.applyForSource(listing, listingPath, undefined, sourcePath, [{ line: 5 }]);

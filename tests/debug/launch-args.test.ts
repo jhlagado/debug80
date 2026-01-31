@@ -123,10 +123,16 @@ describe('launch-args', () => {
   });
 
   it('normalizes source paths and relative paths', () => {
-    expect(normalizeSourcePath('main.asm', '/root')).toBe(path.join('/root', 'main.asm'));
-    expect(relativeIfPossible('/root/src/main.asm', '/root')).toBe(path.join('src', 'main.asm'));
-    expect(relativeIfPossible('/other/root/file.asm', '/root')).toBe(
-      path.resolve('/other/root/file.asm')
+    const root = path.parse(process.cwd()).root;
+    const baseDir = path.join(root, 'root');
+    const otherDir = path.join(root, 'other', 'root');
+
+    expect(normalizeSourcePath('main.asm', baseDir)).toBe(path.join(baseDir, 'main.asm'));
+    expect(relativeIfPossible(path.join(baseDir, 'src', 'main.asm'), baseDir)).toBe(
+      path.join('src', 'main.asm')
+    );
+    expect(relativeIfPossible(path.join(otherDir, 'file.asm'), baseDir)).toBe(
+      path.resolve(otherDir, 'file.asm')
     );
   });
 
