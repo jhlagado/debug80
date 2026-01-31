@@ -31,11 +31,10 @@ import { loadProgramArtifacts } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom } from './assembler';
-import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
+import { buildSymbolIndex } from './symbol-service';
 import { SourceManager } from './source-manager';
 import { SourceStateManager } from './source-state-manager';
 import { buildStackFrames } from './stack-service';
-import { buildMemorySnapshotViews, clampMemoryWindow } from './memory-view';
 import {
   applyStepInfo,
   runUntilReturnAsync,
@@ -43,6 +42,7 @@ import {
   RuntimeControlContext,
 } from './runtime-control';
 import { VariableService } from './variable-service';
+import { buildMemorySnapshotResponse } from './memory-snapshot';
 import {
   BYTE_MASK,
   ADDR_MASK,
@@ -60,8 +60,6 @@ import {
 import {
   LaunchRequestArguments,
   extractKeyCode,
-  extractMemorySnapshotPayload,
-  extractViewEntry,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
@@ -72,6 +70,7 @@ import {
   handleSerialRequest,
   handleSpeedRequest,
 } from './platform-requests';
+import { buildRomSourcesResponse } from './rom-requests';
 import {
   normalizePlatformName,
   populateFromConfig,
@@ -824,7 +823,12 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot = this.buildMemorySnapshotResponse(args);
+      const snapshot = buildMemorySnapshotResponse(args, {
+        runtime: this.sessionState.runtime,
+        symbolAnchors: this.sessionState.symbolAnchors,
+        lookupAnchors: this.sourceState.lookupAnchors,
+        symbolList: this.sessionState.symbolList,
+      });
       response.body = {
         before: snapshot.before,
         rowSize: snapshot.rowSize,
@@ -839,7 +843,12 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot = this.buildMemorySnapshotResponse(args);
+      const snapshot = buildMemorySnapshotResponse(args, {
+        runtime: this.sessionState.runtime,
+        symbolAnchors: this.sessionState.symbolAnchors,
+        lookupAnchors: this.sourceState.lookupAnchors,
+        symbolList: this.sessionState.symbolList,
+      });
       response.body = { views: snapshot.views };
       this.sendResponse(response);
       return true;
@@ -849,56 +858,13 @@ export class Z80DebugSession extends DebugSession {
 
   private handleRomRequest(command: string, response: DebugProtocol.Response): boolean {
     if (command === 'debug80/romSources') {
-      response.body = { sources: this.collectRomSources() };
+      response.body = buildRomSourcesResponse(this.collectRomSources());
       this.sendResponse(response);
       return true;
     }
     return false;
   }
 
-  private buildMemorySnapshotResponse(args: unknown): {
-    before: number;
-    rowSize: 8 | 16;
-    views: ReturnType<typeof buildMemorySnapshotViews>;
-    symbols: Array<{ name: string; address: number }>;
-  } {
-    const payload = extractMemorySnapshotPayload(args);
-    const before = clampMemoryWindow(payload.before, 16);
-    const rowSize = payload.rowSize === 8 ? 8 : 16;
-    const regs = this.sessionState.runtime?.getRegisters();
-    const pc = regs?.pc ?? 0;
-    const sp = regs?.sp ?? 0;
-    const bc = ((regs?.b ?? 0) << 8) | (regs?.c ?? 0);
-    const de = ((regs?.d ?? 0) << 8) | (regs?.e ?? 0);
-    const hl = ((regs?.h ?? 0) << 8) | (regs?.l ?? 0);
-    const ix = regs?.ix ?? 0;
-    const iy = regs?.iy ?? 0;
-    const memRead =
-      this.sessionState.runtime?.hardware.memRead ??
-      ((addr: number): number =>
-        this.sessionState.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-    const viewRequests = payload.views ?? [];
-    const views = buildMemorySnapshotViews({
-      before,
-      rowSize,
-      views: viewRequests.map((entry) =>
-        extractViewEntry(entry, (value, fallback) => clampMemoryWindow(value, fallback))
-      ),
-      registers: { pc, sp, bc, de, hl, ix, iy },
-      memRead,
-      findNearestSymbol: (target) =>
-        findNearestSymbol(target, {
-          anchors: this.sessionState.symbolAnchors,
-          lookupAnchors: this.sourceState.lookupAnchors,
-        }),
-    });
-    return {
-      before,
-      rowSize,
-      views,
-      symbols: this.sessionState.symbolList,
-    };
-  }
 
   private continueExecution(response: DebugProtocol.Response): void {
     if (this.sessionState.runtime === undefined) {
