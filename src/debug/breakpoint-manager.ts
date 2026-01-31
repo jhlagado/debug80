@@ -3,6 +3,7 @@
  */
 
 import { DebugProtocol } from '@vscode/debugprotocol';
+import * as path from 'path';
 import type { ListingInfo } from '../z80/loaders';
 import type { SourceMapIndex } from '../mapping/source-map';
 import { resolveLocation } from '../mapping/source-map';
@@ -52,7 +53,7 @@ export class BreakpointManager {
     if (this.isListingSource(listingPath, sourcePath)) {
       for (const bp of breakpoints) {
         const line = bp.line ?? 0;
-        const address = listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1);
+        const address = this.resolveListingLineAddress(listing, line);
         const ok = address !== undefined;
         verified.push({ line: bp.line, verified: ok });
       }
@@ -83,7 +84,7 @@ export class BreakpointManager {
       if (this.isListingSource(listingPath, source)) {
         for (const bp of bps) {
           const line = bp.line ?? 0;
-          const address = listing.lineToAddress.get(line) ?? listing.lineToAddress.get(line + 1);
+          const address = this.resolveListingLineAddress(listing, line);
           if (address !== undefined) {
             this.active.add(address);
           }
@@ -114,10 +115,50 @@ export class BreakpointManager {
     if (!mappingIndex) {
       return [];
     }
-    return resolveLocation(mappingIndex, sourcePath, line);
+    const direct = resolveLocation(mappingIndex, sourcePath, line);
+    if (direct.length > 0) {
+      return direct;
+    }
+    const alternate = this.resolveAlternateSourcePath(sourcePath);
+    if (alternate !== null) {
+      return resolveLocation(mappingIndex, alternate, line);
+    }
+    return [];
   }
 
   private isListingSource(listingPath: string, sourcePath: string): boolean {
     return pathsEqual(sourcePath, listingPath);
+  }
+
+  private resolveAlternateSourcePath(sourcePath: string): string | null {
+    const normalized = path.resolve(sourcePath);
+    const lower = normalized.toLowerCase();
+    if (lower.endsWith('.source.asm')) {
+      return normalized.slice(0, -'.source.asm'.length) + '.asm';
+    }
+    if (lower.endsWith('.asm')) {
+      return normalized.slice(0, -'.asm'.length) + '.source.asm';
+    }
+    return null;
+  }
+
+  private resolveListingLineAddress(listing: ListingInfo, line: number): number | undefined {
+    const direct = listing.lineToAddress.get(line);
+    if (direct !== undefined) {
+      return direct;
+    }
+    const next = listing.lineToAddress.get(line + 1);
+    if (next !== undefined) {
+      return next;
+    }
+    if (listing.entries.length === 0) {
+      return undefined;
+    }
+    for (const entry of listing.entries) {
+      if (entry.line >= line) {
+        return entry.address;
+      }
+    }
+    return undefined;
   }
 }

@@ -409,10 +409,10 @@ export class Z80DebugSession extends DebugSession {
   ): void {
     const sourcePath = args.source?.path;
     const breakpoints = args.breakpoints ?? [];
-      const normalized =
-        sourcePath === undefined || sourcePath.length === 0
-          ? undefined
-          : normalizeSourcePath(sourcePath, this.sessionState.baseDir);
+    const normalized =
+      sourcePath === undefined || sourcePath.length === 0
+        ? undefined
+        : normalizeSourcePath(sourcePath, this.sessionState.baseDir);
 
     if (normalized !== undefined) {
       this.breakpointManager.setPending(normalized, breakpoints);
@@ -435,6 +435,11 @@ export class Z80DebugSession extends DebugSession {
 
     response.body = { breakpoints: verified };
     this.sendResponse(response);
+
+    emitConsoleOutput(
+      (event) => this.sendEvent(event as DebugProtocol.Event),
+      `Debug80: setBreakpoints source="${sourcePath ?? ''}" normalized="${normalized ?? ''}" count=${breakpoints.length} verified=${verified.filter((bp) => bp.verified).length}`
+    );
   }
 
   protected configurationDoneRequest(
