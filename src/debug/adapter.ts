@@ -24,11 +24,7 @@ import { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
 import { findSegmentForAddress, SourceMapIndex } from '../mapping/source-map';
 import { createZ80Runtime, Z80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
-import {
-  SimplePlatformConfigNormalized,
-  Tec1PlatformConfigNormalized,
-  Tec1gPlatformConfigNormalized,
-} from '../platforms/types';
+import { Tec1gPlatformConfigNormalized } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { normalizeTec1Config, Tec1Runtime } from '../platforms/tec1/runtime';
 import { normalizeTec1gConfig, Tec1gRuntime } from '../platforms/tec1g/runtime';
@@ -38,7 +34,7 @@ import type { SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
-import { resolveBundledTec1Rom, runAssembler, runAssemblerBin } from './assembler';
+import { resolveBundledTec1Rom } from './assembler';
 import { buildSymbolIndex, findNearestSymbol } from './symbol-service';
 import { SourceManager } from './source-manager';
 import { buildStackFrames } from './stack-service';
@@ -91,6 +87,12 @@ import {
   relativeIfPossible,
   type LaunchArgsHelpers,
 } from './launch-args';
+import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
+import {
+  assembleIfRequested,
+  normalizeStepLimit,
+  resolveExtraListings,
+} from './launch-pipeline';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -211,7 +213,15 @@ export class Z80DebugSession extends DebugSession {
         resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
       });
 
-      this.assembleIfRequested(merged, asmPath, hexPath, listingPath, platform, simpleConfig);
+      assembleIfRequested({
+        args: merged,
+        asmPath,
+        hexPath,
+        listingPath,
+        platform,
+        ...(simpleConfig !== undefined ? { simpleConfig } : {}),
+        sendEvent: (event) => this.sendEvent(event as DebugProtocol.Event),
+      });
 
       if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
         const created = await this.promptForConfigCreation(args);
@@ -247,12 +257,7 @@ export class Z80DebugSession extends DebugSession {
 
       this.listing = listingInfo;
       this.listingPath = listingPath;
-      const extraListings = this.resolveExtraListings(
-        platform,
-        simpleConfig,
-        tec1Config,
-        tec1gConfig
-      );
+      const extraListings = resolveExtraListings(platform, simpleConfig, tec1Config, tec1gConfig);
       this.sourceManager = new SourceManager({
         platform,
         baseDir,
@@ -394,8 +399,8 @@ export class Z80DebugSession extends DebugSession {
         };
       }
       this.callDepth = 0;
-      this.stepOverMaxInstructions = this.normalizeStepLimit(merged.stepOverMaxInstructions, 0);
-      this.stepOutMaxInstructions = this.normalizeStepLimit(merged.stepOutMaxInstructions, 0);
+      this.stepOverMaxInstructions = normalizeStepLimit(merged.stepOverMaxInstructions, 0);
+      this.stepOutMaxInstructions = normalizeStepLimit(merged.stepOutMaxInstructions, 0);
       if (this.listing !== undefined) {
         const applied = this.breakpointManager.applyAll(
           this.listing,
@@ -622,28 +627,18 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private getShadowAlias(address: number): number | null {
-    if (this.activePlatform !== 'tec1g') {
-      return null;
-    }
-    const runtime = this.tec1gRuntime;
-    if (!runtime || runtime.state.shadowEnabled !== true) {
-      return null;
-    }
-    if (address < TEC1G_SHADOW_SIZE) {
-      return (TEC1G_SHADOW_START + address) & ADDR_MASK;
-    }
-    return null;
+    return getShadowAlias(address, {
+      activePlatform: this.activePlatform,
+      tec1gRuntime: this.tec1gRuntime,
+    });
   }
 
   private isBreakpointAddress(address: number | null): boolean {
-    if (address === null) {
-      return false;
-    }
-    if (this.breakpointManager.hasAddress(address)) {
-      return true;
-    }
-    const shadowAlias = this.getShadowAlias(address);
-    return shadowAlias !== null && this.breakpointManager.hasAddress(shadowAlias);
+    return isBreakpointAddress(address, {
+      hasBreakpoint: (addr) => this.breakpointManager.hasAddress(addr),
+      activePlatform: this.activePlatform,
+      tec1gRuntime: this.tec1gRuntime,
+    });
   }
 
   private resolveMappedPath(file: string): string | undefined {
@@ -664,24 +659,6 @@ export class Z80DebugSession extends DebugSession {
     }
 
     return undefined;
-  }
-
-  private resolveExtraListings(
-    platform: string,
-    simpleConfig?: SimplePlatformConfigNormalized,
-    tec1Config?: Tec1PlatformConfigNormalized,
-    tec1gConfig?: Tec1gPlatformConfigNormalized
-  ): string[] {
-    if (platform === 'simple') {
-      return simpleConfig?.extraListings ?? [];
-    }
-    if (platform === 'tec1') {
-      return tec1Config?.extraListings ?? [];
-    }
-    if (platform === 'tec1g') {
-      return tec1gConfig?.extraListings ?? [];
-    }
-    return [];
   }
 
   private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
@@ -1195,62 +1172,6 @@ export class Z80DebugSession extends DebugSession {
         this.sendEvent(event as DebugProtocol.Event);
       },
     };
-  }
-
-  private assembleIfRequested(
-    args: LaunchRequestArguments,
-    asmPath: string | undefined,
-    hexPath: string,
-    listingPath: string,
-    platform: string,
-    simpleConfig?: SimplePlatformConfigNormalized
-  ): void {
-    if (asmPath === undefined || asmPath === '' || args.assemble === false) {
-      return;
-    }
-
-    const result = runAssembler(asmPath, hexPath, listingPath, (message) => {
-      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message, {
-        newline: false,
-      });
-    });
-    if (!result.success) {
-      throw new Error(result.error ?? 'asm80 failed to assemble');
-    }
-
-    if (
-      platform === 'simple' &&
-      simpleConfig?.binFrom !== undefined &&
-      simpleConfig.binTo !== undefined
-    ) {
-      const binResult = runAssemblerBin(
-        asmPath,
-        hexPath,
-        simpleConfig.binFrom,
-        simpleConfig.binTo,
-        (message) => {
-          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message, {
-            newline: false,
-          });
-        }
-      );
-      if (!binResult.success) {
-        throw new Error(binResult.error ?? 'asm80 failed to build binary');
-      }
-    }
-  }
-
-  private normalizeStepLimit(value: number | undefined, fallback: number): number {
-    if (value === undefined) {
-      return fallback;
-    }
-    if (!Number.isFinite(value)) {
-      return fallback;
-    }
-    if (value <= 0) {
-      return 0;
-    }
-    return Math.floor(value);
   }
 
   private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
