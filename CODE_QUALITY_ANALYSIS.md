@@ -16,6 +16,7 @@ The debug80 codebase has undergone significant refactoring since the last analys
 4. **File Size Reduction**: adapter.ts reduced from 1,248 → 1,130 lines
 
 **Remaining Opportunities:**
+
 1. **Test Coverage**: Dropped from 94% to 64% (needs attention)
 2. **Windows Compatibility**: Good foundation with `path-utils.ts`, but some edge cases remain
 3. **Documentation**: Many files now have JSDoc, but coverage is uneven
@@ -29,28 +30,29 @@ The debug80 codebase has undergone significant refactoring since the last analys
 
 **Files >1,000 lines (requires attention):**
 
-| File | Lines | Status | Notes |
-|------|-------|--------|-------|
-| `src/platforms/tec1g/st7920-font.ts` | 2,318 | ✅ Acceptable | Pure data file, no logic |
-| `src/platforms/tec1g/ui-panel-html.ts` | 1,647 | ⚠️ Medium | HTML template, could split |
-| `src/z80/decode.ts` | 1,616 | ✅ Acceptable | Intentional closure pattern |
-| `src/platforms/tec1/ui-panel-html.ts` | 1,160 | ⚠️ Medium | HTML template |
-| `src/debug/adapter.ts` | 1,130 | ⚠️ Improved | Down from 1,248, still large |
-| `src/extension/extension.ts` | 1,001 | ⚠️ Medium | Global state improved |
-| `src/platforms/tec1g/runtime.ts` | 996 | ⚠️ Medium | Platform runtime |
-| `src/z80/decode-tables.ts` | 951 | ✅ Acceptable | Data tables |
+| File                                   | Lines | Status        | Notes                        |
+| -------------------------------------- | ----- | ------------- | ---------------------------- |
+| `src/platforms/tec1g/st7920-font.ts`   | 2,318 | ✅ Acceptable | Pure data file, no logic     |
+| `src/platforms/tec1g/ui-panel-html.ts` | 1,647 | ⚠️ Medium     | HTML template, could split   |
+| `src/z80/decode.ts`                    | 1,616 | ✅ Acceptable | Intentional closure pattern  |
+| `src/platforms/tec1/ui-panel-html.ts`  | 1,160 | ⚠️ Medium     | HTML template                |
+| `src/debug/adapter.ts`                 | 1,130 | ⚠️ Improved   | Down from 1,248, still large |
+| `src/extension/extension.ts`           | 1,001 | ⚠️ Medium     | Global state improved        |
+| `src/platforms/tec1g/runtime.ts`       | 996   | ⚠️ Medium     | Platform runtime             |
+| `src/z80/decode-tables.ts`             | 951   | ✅ Acceptable | Data tables                  |
 
 **Successfully Refactored (improvements from previous analysis):**
 
-| File | Previous | Current | Reduction |
-|------|----------|---------|-----------|
-| `src/platforms/tec1g/ui-panel.ts` | 2,081 | 311 | **85%** |
-| `src/platforms/tec1/ui-panel.ts` | 1,499 | 274 | **82%** |
-| `src/debug/adapter.ts` | 1,248 | 1,130 | **9%** |
+| File                              | Previous | Current | Reduction |
+| --------------------------------- | -------- | ------- | --------- |
+| `src/platforms/tec1g/ui-panel.ts` | 2,081    | 311     | **85%**   |
+| `src/platforms/tec1/ui-panel.ts`  | 1,499    | 274     | **82%**   |
+| `src/debug/adapter.ts`            | 1,248    | 1,130   | **9%**    |
 
 ### 1.2 Module Organization Quality
 
 **✅ Well-organized modules:**
+
 - `src/debug/` - 33 focused files, clear separation of concerns
 - `src/platforms/tec1/` - 11 files, UI properly split into state/html/messages/refresh
 - `src/platforms/tec1g/` - 14 files, same modular pattern
@@ -58,6 +60,7 @@ The debug80 codebase has undergone significant refactoring since the last analys
 - `src/extension/` - SessionStateManager extracted
 
 **Extracted Services (since last analysis):**
+
 - `VariableService` - Register/scope handling
 - `SourceStateManager` - Source file state management
 - `RuntimeControlContext` - Execution control context
@@ -102,9 +105,7 @@ export function fromPortablePath(portablePath: string): string {
 
 ```typescript
 const candidates =
-  process.platform === 'win32' 
-    ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] 
-    : ['asm80'];
+  process.platform === 'win32' ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] : ['asm80'];
 
 // Windows executables run directly
 if (
@@ -118,6 +119,7 @@ if (
 ### 2.2 Potential Windows Issues
 
 **⚠️ ISSUE 1: Mixed path separator handling in layer2.ts**
+
 ```typescript
 // Line 214 - Explicit backslash check (good for escape chars)
 if (ch === '\\') {
@@ -127,6 +129,7 @@ if (ch === '\\') {
 ```
 
 **⚠️ ISSUE 2: Hardcoded forward slashes in memory-utils.ts**
+
 ```typescript
 // Line 196 - Good: handles both separators
 const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
@@ -134,24 +137,25 @@ const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')
 
 **⚠️ ISSUE 3: Tests use Unix-style paths**
 Many tests use paths like `/home/user/project` or `/tmp/` which won't run correctly on Windows:
+
 ```typescript
 // tests/debug/launch-args.test.ts
-const baseDir = '/tmp';  // Won't exist on Windows
+const baseDir = '/tmp'; // Won't exist on Windows
 ```
 
 **Recommendation:** Use `os.tmpdir()` and cross-platform path construction in tests.
 
 ### 2.3 Windows-Critical Areas
 
-| Area | Status | Notes |
-|------|--------|-------|
-| Path comparison | ✅ Good | `pathsEqual()` is case-insensitive on Windows |
-| Path normalization | ✅ Good | `normalizePathForKey()` lowercases on Windows |
-| Path containment | ✅ Good | `isPathWithin()` handles separators |
-| Portable paths | ✅ Good | `toPortablePath/fromPortablePath` for JSON storage |
-| Assembler invocation | ✅ Good | Handles .cmd, .exe, .ps1 extensions |
-| Test fixtures | ⚠️ Issue | Unix paths in test files |
-| Line endings | ⚠️ Unknown | No explicit CRLF handling observed |
+| Area                 | Status     | Notes                                              |
+| -------------------- | ---------- | -------------------------------------------------- |
+| Path comparison      | ✅ Good    | `pathsEqual()` is case-insensitive on Windows      |
+| Path normalization   | ✅ Good    | `normalizePathForKey()` lowercases on Windows      |
+| Path containment     | ✅ Good    | `isPathWithin()` handles separators                |
+| Portable paths       | ✅ Good    | `toPortablePath/fromPortablePath` for JSON storage |
+| Assembler invocation | ✅ Good    | Handles .cmd, .exe, .ps1 extensions                |
+| Test fixtures        | ⚠️ Issue   | Unix paths in test files                           |
+| Line endings         | ⚠️ Unknown | No explicit CRLF handling observed                 |
 
 ### 2.4 Windows Compatibility Recommendations
 
@@ -171,36 +175,39 @@ Coverage Summary (February 2026):
   Lines:      64.01% (DOWN from 94.35%)
   Statements: 64.01%
   Branches:   73.52%
-  
+
   Test Files: 40 passed (374 tests)
 ```
 
 **⚠️ CRITICAL: Coverage has dropped significantly.**
 
 The coverage reduction is likely due to:
+
 1. New code added without corresponding tests
 2. UI panel HTML files are large and untested
 3. Platform runtime files have low coverage
 
 ### 3.2 Coverage by Module
 
-| Module | Estimated Coverage | Priority |
-|--------|-------------------|----------|
-| `src/z80/` | ~96% | ✅ Excellent |
-| `src/mapping/` | ~85% | ✅ Good |
-| `src/debug/` | ~70% | ⚠️ Medium |
-| `src/platforms/tec1/` | ~40% | 🔴 Low |
-| `src/platforms/tec1g/` | ~40% | 🔴 Low |
-| `src/extension/` | ~20% | 🔴 Low |
+| Module                 | Estimated Coverage | Priority     |
+| ---------------------- | ------------------ | ------------ |
+| `src/z80/`             | ~96%               | ✅ Excellent |
+| `src/mapping/`         | ~85%               | ✅ Good      |
+| `src/debug/`           | ~70%               | ⚠️ Medium    |
+| `src/platforms/tec1/`  | ~40%               | 🔴 Low       |
+| `src/platforms/tec1g/` | ~40%               | 🔴 Low       |
+| `src/extension/`       | ~20%               | 🔴 Low       |
 
 ### 3.3 Test Organization Quality
 
 **✅ Good:**
+
 - Tests mirror source structure (`tests/debug/`, `tests/mapping/`, `tests/z80/`)
 - Fixtures directory exists
 - Test file naming convention followed (`.test.ts`)
 
 **⚠️ Issues:**
+
 - Compiled test files in source tree (`.d.ts`, `.js`, `.js.map` files in tests/debug/)
 - No integration tests for VS Code extension
 - Platform tests are minimal
@@ -245,6 +252,7 @@ rules: {
 ### 4.3 Code Smells
 
 **ESLint Overrides (5 total):**
+
 ```
 src/debug/runtime-control.ts:71  - no-constant-condition (while(true) loop)
 src/debug/runtime-control.ts:195 - no-constant-condition (while(true) loop)
@@ -274,6 +282,7 @@ All overrides are justified and documented.
 ### 5.1 JSDoc Coverage
 
 **Files with good documentation:**
+
 - `src/debug/config-validation.ts` - 9 JSDoc blocks
 - `src/debug/errors.ts` - Comprehensive error docs
 - `src/debug/path-utils.ts` - All functions documented
@@ -283,6 +292,7 @@ All overrides are justified and documented.
 - `src/platforms/tec-common/index.ts` - 82 JSDoc blocks
 
 **Files needing documentation:**
+
 - `src/extension/extension.ts` - File-level doc only
 - `src/platforms/tec1g/runtime.ts` - Minimal docs
 - `src/platforms/tec1/runtime.ts` - Minimal docs
@@ -328,34 +338,34 @@ Clean unidirectional flow with no circular dependencies observed.
 
 ### Tier 1: Critical (Do Immediately)
 
-| Issue | Impact | Effort | Risk |
-|-------|--------|--------|------|
-| Add Windows CI | High | 2 hours | Low |
-| Fix test coverage | High | 8 hours | Low |
-| Clean compiled files from tests/ | Medium | 30 min | Low |
+| Issue                            | Impact | Effort  | Risk |
+| -------------------------------- | ------ | ------- | ---- |
+| Add Windows CI                   | High   | 2 hours | Low  |
+| Fix test coverage                | High   | 8 hours | Low  |
+| Clean compiled files from tests/ | Medium | 30 min  | Low  |
 
 ### Tier 2: High Priority
 
-| Issue | Impact | Effort | Risk |
-|-------|--------|--------|------|
-| Add Windows path tests | High | 4 hours | Low |
-| Document runtime.ts files | Medium | 4 hours | Low |
+| Issue                        | Impact | Effort  | Risk   |
+| ---------------------------- | ------ | ------- | ------ |
+| Add Windows path tests       | High   | 4 hours | Low    |
+| Document runtime.ts files    | Medium | 4 hours | Low    |
 | Split ui-panel-html.ts files | Medium | 8 hours | Medium |
 
 ### Tier 3: Medium Priority
 
-| Issue | Impact | Effort | Risk |
-|-------|--------|--------|------|
-| Reduce adapter.ts further | Medium | 8 hours | Medium |
-| Add platform integration tests | Medium | 8 hours | Low |
-| Improve decode.ts navigation | Low | 4 hours | Low |
+| Issue                          | Impact | Effort  | Risk   |
+| ------------------------------ | ------ | ------- | ------ |
+| Reduce adapter.ts further      | Medium | 8 hours | Medium |
+| Add platform integration tests | Medium | 8 hours | Low    |
+| Improve decode.ts navigation   | Low    | 4 hours | Low    |
 
 ### Tier 4: Nice to Have
 
-| Issue | Impact | Effort | Risk |
-|-------|--------|--------|------|
-| Add VS Code extension tests | Medium | 16 hours | Medium |
-| Extract more adapter services | Low | 8 hours | Medium |
+| Issue                         | Impact | Effort   | Risk   |
+| ----------------------------- | ------ | -------- | ------ |
+| Add VS Code extension tests   | Medium | 16 hours | Medium |
+| Extract more adapter services | Low    | 8 hours  | Medium |
 
 ---
 
@@ -442,16 +452,19 @@ Largest files:
 ## Appendix B: Action Items Summary
 
 ### Immediate (This Sprint)
+
 1. Add GitHub Actions workflow for Windows
 2. Fix or update coverage thresholds
 3. Remove compiled files from tests/debug/
 
 ### Next Sprint
+
 1. Add Windows-specific test cases
 2. Document platform runtime files
 3. Consider splitting ui-panel-html files
 
 ### Backlog
+
 1. VS Code extension integration tests
 2. Further adapter.ts service extraction
 3. decode.ts section navigation improvements

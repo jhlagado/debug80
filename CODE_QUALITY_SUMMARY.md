@@ -10,24 +10,24 @@ The debug80 codebase has been significantly refactored and is now in a **good st
 
 ### 📊 Current Metrics
 
-| Aspect | Status | Details |
-|--------|--------|---------|
-| **Build Health** | ✅ Excellent | All lint/TypeScript strict mode passing |
-| **Test Suite** | ✅ Good | 374 tests passing across 40 test files |
-| **Test Coverage** | ❌ Critical | 64% (threshold is 80%) |
-| **Code Organization** | ✅ Good | UI panels refactored from 2,081 → 311 lines |
-| **Windows Support** | ⚠️ Needs Work | Good foundation but needs CI verification |
-| **Documentation** | ⚠️ Mixed | Many files documented, some gaps remain |
+| Aspect                | Status        | Details                                     |
+| --------------------- | ------------- | ------------------------------------------- |
+| **Build Health**      | ✅ Excellent  | All lint/TypeScript strict mode passing     |
+| **Test Suite**        | ✅ Good       | 374 tests passing across 40 test files      |
+| **Test Coverage**     | ❌ Critical   | 64% (threshold is 80%)                      |
+| **Code Organization** | ✅ Good       | UI panels refactored from 2,081 → 311 lines |
+| **Windows Support**   | ⚠️ Needs Work | Good foundation but needs CI verification   |
+| **Documentation**     | ⚠️ Mixed      | Many files documented, some gaps remain     |
 
 ### 🎯 Major Improvements Completed
 
-| Area | Before | After | Improvement |
-|------|--------|-------|-------------|
-| TEC-1G UI Panel | 2,081 lines | 311 lines | **85% reduction** |
-| TEC-1 UI Panel | 1,499 lines | 274 lines | **82% reduction** |
-| adapter.ts | 1,248 lines | 1,130 lines | **9% reduction** |
-| Global State | 15 globals | SessionStateManager | **Encapsulated** |
-| Services | Monolithic | 6 extracted services | **Modular** |
+| Area            | Before      | After                | Improvement       |
+| --------------- | ----------- | -------------------- | ----------------- |
+| TEC-1G UI Panel | 2,081 lines | 311 lines            | **85% reduction** |
+| TEC-1 UI Panel  | 1,499 lines | 274 lines            | **82% reduction** |
+| adapter.ts      | 1,248 lines | 1,130 lines          | **9% reduction**  |
+| Global State    | 15 globals  | SessionStateManager  | **Encapsulated**  |
+| Services        | Monolithic  | 6 extracted services | **Modular**       |
 
 ### 🔴 Critical Issues
 
@@ -80,7 +80,7 @@ The debug80 codebase has been significantly refactored and is now in a **good st
 
 ```
 yarn lint     ✅ PASS
-yarn build    ✅ PASS  
+yarn build    ✅ PASS
 yarn test     ✅ PASS (374 tests)
 coverage      ❌ FAIL (64% < 80% threshold)
 ```
@@ -89,27 +89,27 @@ coverage      ❌ FAIL (64% < 80% threshold)
 
 ### Immediate (This Week)
 
-| Action | Impact | Effort |
-|--------|--------|--------|
-| Add Windows to CI | High | 2 hours |
-| Reduce coverage threshold to 75% | Medium | 15 min |
-| Clean compiled files from tests/ | Low | 30 min |
+| Action                           | Impact | Effort  |
+| -------------------------------- | ------ | ------- |
+| Add Windows to CI                | High   | 2 hours |
+| Reduce coverage threshold to 75% | Medium | 15 min  |
+| Clean compiled files from tests/ | Low    | 30 min  |
 
 ### Short-term (This Month)
 
-| Action | Impact | Effort |
-|--------|--------|--------|
-| Add Windows path test cases | High | 4 hours |
-| Increase platform test coverage | High | 8 hours |
-| Document runtime.ts files | Medium | 4 hours |
+| Action                          | Impact | Effort  |
+| ------------------------------- | ------ | ------- |
+| Add Windows path test cases     | High   | 4 hours |
+| Increase platform test coverage | High   | 8 hours |
+| Document runtime.ts files       | Medium | 4 hours |
 
 ### Medium-term (Next Month)
 
-| Action | Impact | Effort |
-|--------|--------|--------|
-| Split ui-panel-html.ts files | Medium | 8 hours |
-| Add VS Code extension tests | Medium | 16 hours |
-| Further adapter.ts extraction | Low | 8 hours |
+| Action                        | Impact | Effort   |
+| ----------------------------- | ------ | -------- |
+| Split ui-panel-html.ts files  | Medium | 8 hours  |
+| Add VS Code extension tests   | Medium | 16 hours |
+| Further adapter.ts extraction | Low    | 8 hours  |
 
 ## Architecture Quality
 
@@ -135,13 +135,13 @@ src/
 
 ## Files Requiring Attention
 
-| File | Lines | Issue |
-|------|-------|-------|
-| `src/platforms/tec1g/ui-panel-html.ts` | 1,647 | Could be split |
-| `src/platforms/tec1/ui-panel-html.ts` | 1,160 | Could be split |
-| `src/debug/adapter.ts` | 1,130 | Still large, more services could extract |
-| `src/extension/extension.ts` | 1,001 | Borderline, watch for growth |
-| `src/platforms/tec1g/runtime.ts` | 996 | Needs better documentation |
+| File                                   | Lines | Issue                                    |
+| -------------------------------------- | ----- | ---------------------------------------- |
+| `src/platforms/tec1g/ui-panel-html.ts` | 1,647 | Could be split                           |
+| `src/platforms/tec1/ui-panel-html.ts`  | 1,160 | Could be split                           |
+| `src/debug/adapter.ts`                 | 1,130 | Still large, more services could extract |
+| `src/extension/extension.ts`           | 1,001 | Borderline, watch for growth             |
+| `src/platforms/tec1g/runtime.ts`       | 996   | Needs better documentation               |
 
 ## Conclusion
 
@@ -156,5 +156,6 @@ The path utilities and assembler code show good Windows awareness. With Windows 
 ---
 
 **See Also:**
+
 - [CODE_QUALITY_ANALYSIS.md](CODE_QUALITY_ANALYSIS.md) - Full technical analysis
 - [ANALYSIS_INDEX.md](ANALYSIS_INDEX.md) - Document navigation
