@@ -436,10 +436,6 @@ export class Z80DebugSession extends DebugSession {
     response.body = { breakpoints: verified };
     this.sendResponse(response);
 
-    emitConsoleOutput(
-      (event) => this.sendEvent(event as DebugProtocol.Event),
-      `Debug80: setBreakpoints source="${sourcePath ?? ''}" normalized="${normalized ?? ''}" count=${breakpoints.length} verified=${verified.filter((bp) => bp.verified).length}`
-    );
   }
 
   protected configurationDoneRequest(
