@@ -43,6 +43,17 @@ Contains 10 detailed sections:
 
 ---
 
+### 3. [docs/LARGE_FILE_AUDIT.md](docs/LARGE_FILE_AUDIT.md)
+
+**Large File Audit** | 12 lines | 1-minute read
+
+- Snapshot of current large files
+- Suggested next steps for splitting templates and adapter logic
+
+**Best for:** Implementers tracking file-size refactors
+
+---
+
 ## 🎯 Quick Findings
 
 ### Current Status (February 2026)

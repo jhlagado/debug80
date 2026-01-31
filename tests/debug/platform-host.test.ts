@@ -94,12 +94,29 @@ describe('platform-host', () => {
     state.input.push(0x41);
     expect(handlers.read(5)).toBe(0x41);
     expect(handlers.read(6)).toBe(0b10);
+    expect(handlers.read(0)).toBe(0);
 
     handlers.write(4, 0x42);
+    expect(output.join('')).toBe('B');
+    handlers.write(1, 0x43);
     expect(output.join('')).toBe('B');
 
     state.breakRequested = true;
     const tickResult = handlers.tick?.();
     expect(tickResult?.interrupt?.data).toBe(0x38);
+  });
+
+  it('returns undefined handlers for simple platform without terminal', () => {
+    const result = buildPlatformIoHandlers({
+      platform: 'simple',
+      onTec1Update: () => undefined,
+      onTec1Serial: () => undefined,
+      onTec1gUpdate: () => undefined,
+      onTec1gSerial: () => undefined,
+      onTerminalOutput: () => undefined,
+    });
+
+    expect(result.ioHandlers).toBeUndefined();
+    expect(result.terminalState).toBeUndefined();
   });
 });

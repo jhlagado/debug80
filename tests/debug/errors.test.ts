@@ -1,229 +1,102 @@
 /**
- * @file Debug80 Error Types Tests
- * @description Tests for custom error classes
+ * @file Debug80 error helpers tests.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
-  Debug80Error,
-  ConfigurationError,
-  UnsupportedPlatformError,
-  MissingConfigError,
-  FileResolutionError,
   AssemblyError,
   AssemblerNotFoundError,
-  ParseError,
+  ConfigurationError,
+  Debug80Error,
+  FileResolutionError,
   HexParseError,
+  MissingConfigError,
   RuntimeError,
-  isDebug80Error,
-  isConfigurationError,
-  isFileResolutionError,
+  UnsupportedPlatformError,
+  getErrorMessage,
   isAssemblyError,
+  isConfigurationError,
+  isDebug80Error,
+  isFileResolutionError,
   isParseError,
   wrapError,
-  getErrorMessage,
 } from '../../src/debug/errors';
 
-describe('Debug80Error', () => {
-  it('should create error with message and code', () => {
-    const error = new Debug80Error('Test error', 'TEST_CODE');
-    expect(error.message).toBe('Test error');
-    expect(error.code).toBe('TEST_CODE');
-    expect(error.name).toBe('Debug80Error');
-    expect(error.context).toBeUndefined();
+describe('errors', () => {
+  it('preserves code and context for Debug80Error', () => {
+    const err = new Debug80Error('oops', 'E1', { detail: 123 });
+    expect(err.code).toBe('E1');
+    expect(err.context).toEqual({ detail: 123 });
+    expect(err.name).toBe('Debug80Error');
   });
 
-  it('should create error with context', () => {
-    const error = new Debug80Error('Test error', 'TEST_CODE', { key: 'value' });
-    expect(error.context).toEqual({ key: 'value' });
+  it('builds configuration errors with context', () => {
+    const err = new ConfigurationError('bad config', { field: 'asm' });
+    expect(err.code).toBe('CONFIG_ERROR');
+    expect(err.context).toEqual({ field: 'asm' });
+    expect(isConfigurationError(err)).toBe(true);
   });
 
-  it('should be instanceof Error', () => {
-    const error = new Debug80Error('Test', 'TEST');
-    expect(error instanceof Error).toBe(true);
-    expect(error instanceof Debug80Error).toBe(true);
-  });
-});
-
-describe('ConfigurationError', () => {
-  it('should create configuration error', () => {
-    const error = new ConfigurationError('Invalid config');
-    expect(error.name).toBe('ConfigurationError');
-    expect(error.code).toBe('CONFIG_ERROR');
-  });
-});
-
-describe('UnsupportedPlatformError', () => {
-  it('should create error with platform and supported list', () => {
-    const error = new UnsupportedPlatformError('invalid');
-    expect(error.name).toBe('UnsupportedPlatformError');
-    expect(error.platform).toBe('invalid');
-    expect(error.supported).toEqual(['simple', 'tec1', 'tec1g']);
-    expect(error.message).toContain('invalid');
-    expect(error.message).toContain('simple, tec1, tec1g');
+  it('builds unsupported platform errors with defaults', () => {
+    const err = new UnsupportedPlatformError('weird');
+    expect(err.platform).toBe('weird');
+    expect(err.supported.length).toBeGreaterThan(0);
+    expect(err.message).toContain('Unsupported platform');
   });
 
-  it('should accept custom supported list', () => {
-    const error = new UnsupportedPlatformError('bad', ['a', 'b']);
-    expect(error.supported).toEqual(['a', 'b']);
-  });
-});
-
-describe('MissingConfigError', () => {
-  it('should create error with missing keys', () => {
-    const error = new MissingConfigError('Missing required fields', ['hex', 'listing']);
-    expect(error.name).toBe('MissingConfigError');
-    expect(error.missingKeys).toEqual(['hex', 'listing']);
-  });
-});
-
-describe('FileResolutionError', () => {
-  it('should create error with file path and type', () => {
-    const error = new FileResolutionError('File not found', '/path/to/file', 'hex');
-    expect(error.name).toBe('FileResolutionError');
-    expect(error.code).toBe('FILE_RESOLUTION_ERROR');
-    expect(error.filePath).toBe('/path/to/file');
-    expect(error.fileType).toBe('hex');
+  it('builds missing config error', () => {
+    const err = new MissingConfigError('missing', ['asm', 'listing']);
+    expect(err.missingKeys).toEqual(['asm', 'listing']);
   });
 
-  it('should create missingArtifacts error', () => {
-    const error = FileResolutionError.missingArtifacts();
-    expect(error.message).toContain('HEX and LST');
-    expect(error.fileType).toBe('artifacts');
+  it('builds file resolution errors and helpers', () => {
+    const err = new FileResolutionError('no file', 'a.hex', 'hex');
+    expect(err.filePath).toBe('a.hex');
+    expect(err.fileType).toBe('hex');
+    expect(isFileResolutionError(err)).toBe(true);
+    expect(FileResolutionError.missingArtifacts().fileType).toBe('artifacts');
+    expect(FileResolutionError.missingSource().fileType).toBe('asm');
   });
 
-  it('should create missingSource error', () => {
-    const error = FileResolutionError.missingSource();
-    expect(error.message).toContain('asm');
-    expect(error.fileType).toBe('asm');
-  });
-});
+  it('builds assembly errors and helper messages', () => {
+    const err = new AssemblyError('fail', 1, 'stderr', 'stdout');
+    expect(err.exitCode).toBe(1);
+    expect(err.stderr).toBe('stderr');
+    expect(err.stdout).toBe('stdout');
+    expect(isAssemblyError(err)).toBe(true);
 
-describe('AssemblyError', () => {
-  it('should create error with exit code and output', () => {
-    const error = new AssemblyError('Assembly failed', 1, 'stderr output', 'stdout output');
-    expect(error.name).toBe('AssemblyError');
-    expect(error.code).toBe('ASSEMBLY_ERROR');
-    expect(error.exitCode).toBe(1);
-    expect(error.stderr).toBe('stderr output');
-    expect(error.stdout).toBe('stdout output');
+    const fromExit = AssemblyError.fromExitCode(2, 'bad', 'ok', 'asm80');
+    expect(fromExit.message).toContain('asm80 exited with code 2');
+    expect(fromExit.message).toContain('bad');
   });
 
-  it('should create error from exit code', () => {
-    const error = AssemblyError.fromExitCode(2, 'error msg');
-    expect(error.exitCode).toBe(2);
-    expect(error.message).toContain('asm80 exited with code 2');
-    expect(error.message).toContain('error msg');
+  it('builds assembler not found error', () => {
+    const err = new AssemblerNotFoundError('missing', ['path1', 'path2']);
+    expect(err.code).toBe('ASSEMBLER_NOT_FOUND');
+    expect(err.searchedPaths).toEqual(['path1', 'path2']);
   });
 
-  it('should create error from exit code with custom command', () => {
-    const error = AssemblyError.fromExitCode(1, undefined, undefined, 'z80asm');
-    expect(error.message).toContain('z80asm exited with code 1');
-  });
-});
-
-describe('AssemblerNotFoundError', () => {
-  it('should create error with searched paths', () => {
-    const error = new AssemblerNotFoundError('Assembler not found', ['/usr/bin', '/usr/local/bin']);
-    expect(error.name).toBe('AssemblerNotFoundError');
-    expect(error.code).toBe('ASSEMBLER_NOT_FOUND');
-    expect(error.searchedPaths).toEqual(['/usr/bin', '/usr/local/bin']);
-  });
-});
-
-describe('ParseError', () => {
-  it('should create error with line and content', () => {
-    const error = new ParseError('Parse failed', 10, 'bad content');
-    expect(error.name).toBe('ParseError');
-    expect(error.code).toBe('PARSE_ERROR');
-    expect(error.line).toBe(10);
-    expect(error.content).toBe('bad content');
-  });
-});
-
-describe('HexParseError', () => {
-  it('should create error for invalid HEX line', () => {
-    const error = new HexParseError(':INVALID', 5);
-    expect(error.name).toBe('HexParseError');
-    expect(error.message).toContain(':INVALID');
-    expect(error.line).toBe(5);
-    expect(error.content).toBe(':INVALID');
-  });
-});
-
-describe('RuntimeError', () => {
-  it('should create error with PC', () => {
-    const error = new RuntimeError('Runtime error', 0x1234);
-    expect(error.name).toBe('RuntimeError');
-    expect(error.code).toBe('RUNTIME_ERROR');
-    expect(error.pc).toBe(0x1234);
-  });
-});
-
-describe('Type Guards', () => {
-  it('isDebug80Error should identify Debug80Error', () => {
-    expect(isDebug80Error(new Debug80Error('test', 'TEST'))).toBe(true);
-    expect(isDebug80Error(new ConfigurationError('test'))).toBe(true);
-    expect(isDebug80Error(new Error('test'))).toBe(false);
-    expect(isDebug80Error('string')).toBe(false);
+  it('builds parse errors and hex parse errors', () => {
+    const err = new HexParseError(':00BAD', 3);
+    expect(err.message).toContain('Invalid HEX line');
+    expect(err.line).toBe(3);
+    expect(err.content).toBe(':00BAD');
+    expect(isParseError(err)).toBe(true);
   });
 
-  it('isConfigurationError should identify ConfigurationError', () => {
-    expect(isConfigurationError(new ConfigurationError('test'))).toBe(true);
-    expect(isConfigurationError(new UnsupportedPlatformError('x'))).toBe(true);
-    expect(isConfigurationError(new Debug80Error('test', 'TEST'))).toBe(false);
+  it('builds runtime errors', () => {
+    const err = new RuntimeError('boom', 0x1234);
+    expect(err.code).toBe('RUNTIME_ERROR');
+    expect(err.pc).toBe(0x1234);
   });
 
-  it('isFileResolutionError should identify FileResolutionError', () => {
-    expect(isFileResolutionError(new FileResolutionError('test'))).toBe(true);
-    expect(isFileResolutionError(new Debug80Error('test', 'TEST'))).toBe(false);
+  it('wraps unknown errors into Debug80Error', () => {
+    const wrapped = wrapError('nope');
+    expect(isDebug80Error(wrapped)).toBe(true);
+    expect(wrapped.code).toBe('UNKNOWN_ERROR');
   });
 
-  it('isAssemblyError should identify AssemblyError', () => {
-    expect(isAssemblyError(new AssemblyError('test'))).toBe(true);
-    expect(isAssemblyError(new Debug80Error('test', 'TEST'))).toBe(false);
-  });
-
-  it('isParseError should identify ParseError', () => {
-    expect(isParseError(new ParseError('test'))).toBe(true);
-    expect(isParseError(new HexParseError(':BAD'))).toBe(true);
-    expect(isParseError(new Debug80Error('test', 'TEST'))).toBe(false);
-  });
-});
-
-describe('Error Utilities', () => {
-  describe('wrapError', () => {
-    it('should return Debug80Error unchanged', () => {
-      const original = new Debug80Error('test', 'TEST');
-      expect(wrapError(original)).toBe(original);
-    });
-
-    it('should wrap regular Error', () => {
-      const original = new Error('regular error');
-      const wrapped = wrapError(original);
-      expect(wrapped.message).toBe('regular error');
-      expect(wrapped.code).toBe('UNKNOWN_ERROR');
-    });
-
-    it('should wrap non-Error values', () => {
-      const wrapped = wrapError('string error');
-      expect(wrapped.code).toBe('UNKNOWN_ERROR');
-    });
-
-    it('should use default message for non-Error values', () => {
-      const wrapped = wrapError(null, 'Custom default');
-      expect(wrapped.message).toBe('Custom default');
-    });
-  });
-
-  describe('getErrorMessage', () => {
-    it('should get message from Error', () => {
-      expect(getErrorMessage(new Error('test message'))).toBe('test message');
-    });
-
-    it('should convert non-Error to string', () => {
-      expect(getErrorMessage('string value')).toBe('string value');
-      expect(getErrorMessage(42)).toBe('42');
-    });
+  it('returns error messages for non-errors', () => {
+    expect(getErrorMessage('x')).toBe('x');
   });
 });

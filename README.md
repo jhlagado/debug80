@@ -1,5 +1,7 @@
 # Debug80 (Z80 debugger with HEX/LST + asm80)
 
+[![CI](https://github.com/jhlagado/debug80/actions/workflows/ci.yml/badge.svg)](https://github.com/jhlagado/debug80/actions/workflows/ci.yml)
+
 Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in the examples below.
 
 Machine-specific setups now live in separate repos. For TEC-1, see `debug80-tec1`:
