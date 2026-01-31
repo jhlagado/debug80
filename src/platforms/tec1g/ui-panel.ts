@@ -7,6 +7,12 @@ import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { Tec1gPanelTab, getTec1gHtml } from './ui-panel-html';
 import { applyMemoryViews, createMemoryViewState } from './ui-panel-memory';
 import { appendSerialText, clearSerialBuffer, createSerialBuffer } from './ui-panel-serial';
+import {
+  createRefreshController,
+  refreshSnapshot,
+  startAutoRefresh,
+  stopAutoRefresh,
+} from './ui-panel-refresh';
 
 export interface Tec1gPanelController {
   open(
@@ -51,11 +57,7 @@ export function createTec1gPanelController(
   let lcd = Array.from({ length: 80 }, () => 0x20);
   const serialBuffer = createSerialBuffer();
   let activeTab: Tec1gPanelTab = 'ui';
-  const windowBefore = 16;
-  const rowSize = 16;
   const memoryViews = createMemoryViewState();
-  let refreshTimer: ReturnType<typeof setInterval> | undefined;
-  let refreshInFlight = false;
   const autoRefreshMs = 150;
   let uiVisibilityOverride: Record<string, boolean> | undefined;
 
@@ -77,7 +79,7 @@ export function createTec1gPanelController(
         { enableScripts: true, retainContextWhenHidden: true }
       );
       panel.onDidDispose(() => {
-        stopAutoRefresh();
+        stopAutoRefresh(refreshController.state);
         panel = undefined;
         session = undefined;
         digits = Array.from({ length: 6 }, () => 0);
@@ -103,12 +105,24 @@ export function createTec1gPanelController(
       });
       panel.onDidChangeViewState((event) => {
         if (!event.webviewPanel.visible) {
-          stopAutoRefresh();
+          stopAutoRefresh(refreshController.state);
           return;
         }
         if (activeTab === 'memory') {
-          startAutoRefresh();
-          void refreshSnapshot(true);
+          startAutoRefresh(refreshController.state, autoRefreshMs, () => {
+            void refreshSnapshot(
+              refreshController.state,
+              refreshController.handlers,
+              refreshController.snapshotPayload(),
+              { allowErrors: false }
+            );
+          });
+          void refreshSnapshot(
+            refreshController.state,
+            refreshController.handlers,
+            refreshController.snapshotPayload(),
+            { allowErrors: true }
+          );
         }
       });
       panel.webview.onDidReceiveMessage(
@@ -124,16 +138,33 @@ export function createTec1gPanelController(
           if (msg.type === 'tab' && (msg.tab === 'ui' || msg.tab === 'memory')) {
             activeTab = msg.tab;
             if (panel?.visible === true && activeTab === 'memory') {
-              startAutoRefresh();
-              void refreshSnapshot(true);
+              startAutoRefresh(refreshController.state, autoRefreshMs, () => {
+                void refreshSnapshot(
+                  refreshController.state,
+                  refreshController.handlers,
+                  refreshController.snapshotPayload(),
+                  { allowErrors: false }
+                );
+              });
+              void refreshSnapshot(
+                refreshController.state,
+                refreshController.handlers,
+                refreshController.snapshotPayload(),
+                { allowErrors: true }
+              );
             } else {
-              stopAutoRefresh();
+              stopAutoRefresh(refreshController.state);
             }
             return;
           }
           if (msg.type === 'refresh' && Array.isArray(msg.views)) {
             applyMemoryViews(memoryViews, msg.views);
-            void refreshSnapshot(true);
+            void refreshSnapshot(
+              refreshController.state,
+              refreshController.handlers,
+              refreshController.snapshotPayload(),
+              { allowErrors: true }
+            );
             return;
           }
           if (msg.type === 'key' && typeof msg.code === 'number') {
@@ -209,12 +240,95 @@ export function createTec1gPanelController(
     }
     void panel.webview.postMessage({ type: 'selectTab', tab: activeTab });
     if (activeTab === 'memory') {
-      startAutoRefresh();
-      void refreshSnapshot(true);
+      startAutoRefresh(refreshController.state, autoRefreshMs, () => {
+        void refreshSnapshot(
+          refreshController.state,
+          refreshController.handlers,
+          refreshController.snapshotPayload(),
+          { allowErrors: false }
+        );
+      });
+      void refreshSnapshot(
+        refreshController.state,
+        refreshController.handlers,
+        refreshController.snapshotPayload(),
+        { allowErrors: true }
+      );
     } else {
-      stopAutoRefresh();
+      stopAutoRefresh(refreshController.state);
     }
   };
+
+
+  /**
+   * Snapshot payload posted to the webview.
+   */
+  interface SnapshotPayload {
+    before: number;
+    rowSize: number;
+    views: Array<{
+      id: string;
+      view: string;
+      address: number;
+      start: number;
+      bytes: number[];
+      focus: number;
+      after: number;
+      symbol?: string | null;
+      symbolOffset?: number | null;
+    }>;
+    symbols?: Array<{ name: string; address: number }>;
+  }
+
+  /**
+   * Builds the snapshot payload for the memory view request.
+   */
+  function buildSnapshotPayload(): { views: Array<{ id: string; view: string; after: number; address?: number | undefined }> } {
+    const views = Object.keys(memoryViews.viewModes).map((id) => ({
+      id,
+      view: memoryViews.viewModes[id] ?? 'hl',
+      after: memoryViews.viewAfter[id] ?? 16,
+      ...(memoryViews.viewModes[id] === 'absolute' && typeof memoryViews.viewAddress[id] === 'number'
+        ? { address: memoryViews.viewAddress[id] }
+        : {}),
+    }));
+    return { views };
+  }
+
+  const refreshHandlers = {
+    postSnapshot: async (payload: { views: Array<{ id: string; view: string; after: number; address?: number | undefined }> }): Promise<void> => {
+      if (panel === undefined) {
+        throw new Error('Debug80: panel unavailable');
+      }
+      const target = session ?? getFallbackSession();
+      if (!target || target.type !== 'z80') {
+        throw new Error('Debug80: No active z80 session.');
+      }
+      const snapshot = (await target.customRequest('debug80/tec1gMemorySnapshot', {
+        before: 16,
+        rowSize: 16,
+        views: payload.views,
+      })) as unknown;
+      if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object') {
+        throw new Error('Debug80: Invalid snapshot payload.');
+      }
+      void panel.webview.postMessage({ type: 'snapshot', ...(snapshot as SnapshotPayload) });
+    },
+    onSnapshotPosted: () => undefined,
+    /**
+     * Handles snapshot refresh failures.
+     */
+    onSnapshotFailed: (allowErrors: boolean): void => {
+      if (panel === undefined || !allowErrors) {
+        return;
+      }
+      void panel.webview.postMessage({
+        type: 'snapshotError',
+        message: 'No active z80 session.',
+      });
+    },
+  };
+  const refreshController = createRefreshController(buildSnapshotPayload, refreshHandlers);
 
   const update = (payload: Tec1gUpdatePayload): void => {
     digits = payload.digits.slice(0, 6);
@@ -314,7 +428,7 @@ export function createTec1gPanelController(
   const handleSessionTerminated = (sessionId: string): void => {
     if (session?.id === sessionId) {
       session = undefined;
-      stopAutoRefresh();
+      stopAutoRefresh(refreshController.state);
       clear();
     }
   };
@@ -328,106 +442,4 @@ export function createTec1gPanelController(
     handleSessionTerminated,
   };
 
-  /**
-   * Applies updated memory view selections from the webview.
-   */
-  /**
-   * Snapshot payload posted to the webview.
-   */
-  interface SnapshotPayload {
-    before: number;
-    rowSize: number;
-    views: Array<{
-      id: string;
-      view: string;
-      address: number;
-      start: number;
-      bytes: number[];
-      focus: number;
-      after: number;
-      symbol?: string | null;
-      symbolOffset?: number | null;
-    }>;
-    symbols?: Array<{ name: string; address: number }>;
-  }
-
-  /**
-   * Requests a memory snapshot and posts it to the webview.
-   */
-  async function refreshSnapshot(allowErrors?: boolean): Promise<void> {
-    if (panel === undefined) {
-      return;
-    }
-    if (refreshInFlight) {
-      return;
-    }
-    const target = session ?? getFallbackSession();
-    if (!target || target.type !== 'z80') {
-      if (allowErrors === true) {
-        void panel.webview.postMessage({
-          type: 'snapshotError',
-          message: 'No active z80 session.',
-        });
-      }
-      return;
-    }
-    refreshInFlight = true;
-    try {
-      const views = Object.keys(memoryViews.viewModes).map((id) => ({
-        id,
-        view: memoryViews.viewModes[id],
-        after: memoryViews.viewAfter[id],
-        address:
-          memoryViews.viewModes[id] === 'absolute' ? memoryViews.viewAddress[id] : undefined,
-      }));
-      const payload = (await target.customRequest('debug80/tec1gMemorySnapshot', {
-        before: windowBefore,
-        rowSize,
-        views,
-      })) as unknown;
-      if (payload === null || payload === undefined || typeof payload !== 'object') {
-        void panel.webview.postMessage({
-          type: 'snapshotError',
-          message: 'Invalid snapshot payload.',
-        });
-        return;
-      }
-      void panel.webview.postMessage({ type: 'snapshot', ...(payload as SnapshotPayload) });
-    } catch (err) {
-      if (allowErrors === true) {
-        void panel.webview.postMessage({
-          type: 'snapshotError',
-          message: `Failed to read memory: ${String(err)}`,
-        });
-      }
-    } finally {
-      refreshInFlight = false;
-    }
-  }
-
-  /**
-   * Starts periodic snapshot refresh.
-   */
-  function startAutoRefresh(): void {
-    if (refreshTimer !== undefined) {
-      return;
-    }
-    refreshTimer = setInterval(() => {
-      void refreshSnapshot(false);
-    }, autoRefreshMs);
-  }
-
-  /**
-   * Stops periodic snapshot refresh.
-   */
-  function stopAutoRefresh(): void {
-    if (refreshTimer !== undefined) {
-      clearInterval(refreshTimer);
-      refreshTimer = undefined;
-    }
-  }
 }
-
-/**
- * Builds HTML for the TEC-1G panel.
- */
