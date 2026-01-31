@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { Tec1gPanelTab, getTec1gHtml } from './ui-panel-html';
+import { applyMemoryViews, createMemoryViewState } from './ui-panel-memory';
 
 export interface Tec1gPanelController {
   open(
@@ -52,14 +53,7 @@ export function createTec1gPanelController(
   let activeTab: Tec1gPanelTab = 'ui';
   const windowBefore = 16;
   const rowSize = 16;
-  const viewModes: Record<string, string> = { a: 'pc', b: 'sp', c: 'hl', d: 'de' };
-  const viewAfter: Record<string, number> = { a: 16, b: 16, c: 16, d: 16 };
-  const viewAddress: Record<string, number | undefined> = {
-    a: undefined,
-    b: undefined,
-    c: undefined,
-    d: undefined,
-  };
+  const memoryViews = createMemoryViewState();
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let refreshInFlight = false;
   const autoRefreshMs = 150;
@@ -138,7 +132,7 @@ export function createTec1gPanelController(
             return;
           }
           if (msg.type === 'refresh' && Array.isArray(msg.views)) {
-            applyMemoryViews(msg.views);
+            applyMemoryViews(memoryViews, msg.views);
             void refreshSnapshot(true);
             return;
           }
@@ -341,16 +335,6 @@ export function createTec1gPanelController(
    * Applies updated memory view selections from the webview.
    */
   /**
-   * Clamps memory window size to a safe range.
-   */
-  function clampWindow(value: number): number {
-    if (!Number.isFinite(value) || value < 1) {
-      return 16;
-    }
-    return Math.min(1024, Math.max(1, Math.floor(value)));
-  }
-
-  /**
    * Snapshot payload posted to the webview.
    */
   interface SnapshotPayload {
@@ -368,29 +352,6 @@ export function createTec1gPanelController(
       symbolOffset?: number | null;
     }>;
     symbols?: Array<{ name: string; address: number }>;
-  }
-
-  /**
-   * Applies updated memory view selections from the webview.
-   */
-  function applyMemoryViews(
-    views: Array<{ id?: string; view?: string; after?: number; address?: number }>
-  ): void {
-    for (const entry of views) {
-      const id = typeof entry.id === 'string' ? entry.id : '';
-      if (id !== 'a' && id !== 'b' && id !== 'c' && id !== 'd') {
-        continue;
-      }
-      const currentAfter = viewAfter[id] ?? 16;
-      const afterSize = Number.isFinite(entry.after) ? (entry.after as number) : currentAfter;
-      viewAfter[id] = clampWindow(afterSize);
-      const currentView = viewModes[id] ?? 'hl';
-      viewModes[id] = typeof entry.view === 'string' ? entry.view : currentView;
-      viewAddress[id] =
-        typeof entry.address === 'number' && Number.isFinite(entry.address)
-          ? (entry.address & 0xffff)
-          : undefined;
-    }
   }
 
   /**
@@ -415,11 +376,12 @@ export function createTec1gPanelController(
     }
     refreshInFlight = true;
     try {
-      const views = Object.keys(viewModes).map((id) => ({
+      const views = Object.keys(memoryViews.viewModes).map((id) => ({
         id,
-        view: viewModes[id],
-        after: viewAfter[id],
-        address: viewModes[id] === 'absolute' ? viewAddress[id] : undefined,
+        view: memoryViews.viewModes[id],
+        after: memoryViews.viewAfter[id],
+        address:
+          memoryViews.viewModes[id] === 'absolute' ? memoryViews.viewAddress[id] : undefined,
       }));
       const payload = (await target.customRequest('debug80/tec1gMemorySnapshot', {
         before: windowBefore,
