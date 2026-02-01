@@ -25,13 +25,13 @@ describe('TEC-1G LCD instruction handling', () => {
     rt.state.lcdAddr = 0x80;
     rt.ioHandlers.write(0x04, 0x04); // entry mode: decrement, no shift
     rt.ioHandlers.write(0x84, 0x41);
-    expect(rt.state.lcdAddr).toBe(0xd4);
+    expect(rt.state.lcdAddr).toBe(0xe7);
   });
 
   it('entry mode shift updates display offset on write', () => {
     const rt = makeRuntime();
     rt.state.lcdDisplayShift = 0;
-    rt.ioHandlers.write(0x04, 0x06); // entry mode: increment + shift
+    rt.ioHandlers.write(0x04, 0x07); // entry mode: increment + shift
     rt.ioHandlers.write(0x84, 0x41);
     expect(rt.state.lcdDisplayShift).toBe(1);
   });
@@ -55,7 +55,7 @@ describe('TEC-1G LCD instruction handling', () => {
     const rt = makeRuntime();
     rt.state.lcdAddr = 0x80;
     rt.ioHandlers.write(0x04, 0x10); // cursor move left
-    expect(rt.state.lcdAddr).toBe(0xd4);
+    expect(rt.state.lcdAddr).toBe(0xe7);
   });
 
   it('display shift updates display offset', () => {
@@ -67,7 +67,7 @@ describe('TEC-1G LCD instruction handling', () => {
 
   it('function set updates stored state', () => {
     const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x28); // 8-bit, 2-line, 5x8
+    rt.ioHandlers.write(0x04, 0x38); // 8-bit, 2-line, 5x8
     expect(rt.state.lcdFunction.dataLength8).toBe(true);
     expect(rt.state.lcdFunction.lines2).toBe(true);
     expect(rt.state.lcdFunction.font5x8).toBe(true);
