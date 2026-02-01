@@ -69,11 +69,23 @@ ID. Events from ended or mismatched sessions are ignored. This guards against:
 - Updates arriving after a session has ended
 - Multiple sessions in a multi-root workspace
 
+Use the DAP session `id` (from `DebugSession.id`) as the canonical value. Reset to `undefined`
+on `onDidTerminateDebugSession` and whenever `debug80/platform` indicates a platform switch.
+
 ### 6. viewsWelcome for onboarding
 
 VS Code's built-in `viewsWelcome` contribution (declared in package.json) shows automatically
 when a context key (`debug80.hasProject`) is false. No custom HTML needed for the welcome
 state.
+
+Set the context key via `commands.executeCommand("setContext", ...)`. In multi-root, treat
+`debug80.hasProject = true` if any folder contains `.vscode/debug80.json`.
+
+### 7. Webview security and CSP
+
+Use a strict content security policy in the sidebar webview. Prefer `nonce`-based script tags,
+limit `img-src` to `webview.cspSource`, and avoid remote URLs. This keeps the sidebar view
+consistent with the existing panel security model.
 
 ## New Files
 
@@ -141,7 +153,8 @@ Existing panel behavior unchanged — this phase is purely additive.
     - Keep address column + hex + ASCII columns, reduce column count dynamically
     - Debounce resize handling; use hysteresis to avoid flicker when dragging
 14. Pause memory snapshot refresh when the Memory tab is not the active tab
-    (avoid wasting cycles on hidden content)
+    (avoid wasting cycles on hidden content). Track active tab via a webview
+    `postMessage` when the tab changes.
 15. Test memory tab readability at various panel widths
 
 ### Phase 4 — Polish + cleanup
