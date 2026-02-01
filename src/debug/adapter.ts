@@ -25,7 +25,7 @@ import { Tec1gPlatformConfigNormalized } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { normalizeTec1Config } from '../platforms/tec1/runtime';
 import { normalizeTec1gConfig } from '../platforms/tec1g/runtime';
-import { ensureTec1gShadowRom } from './tec1g-shadow';
+import { createTec1gMemoryHooks } from './tec1g-memory';
 import { createSessionState, resetSessionState, StopReason, type SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
@@ -43,18 +43,7 @@ import {
 } from './runtime-control';
 import { VariableService } from './variable-service';
 import { buildMemorySnapshotResponse } from './memory-snapshot';
-import {
-  BYTE_MASK,
-  ADDR_MASK,
-  TEC1G_SHADOW_START,
-  TEC1G_SHADOW_END,
-  TEC1G_SHADOW_SIZE,
-  TEC1G_EXPAND_START,
-  TEC1G_EXPAND_END,
-  TEC1G_EXPAND_SIZE,
-  TEC1G_PROTECT_START,
-  TEC1G_PROTECT_END,
-} from '../platforms/tec-common';
+import { ADDR_MASK } from '../platforms/tec-common';
 
 // Import from extracted modules - types only for now (gradual migration)
 import {
@@ -331,45 +320,10 @@ export class Z80DebugSession extends DebugSession {
       const tec1gRuntime = this.sessionState.tec1gRuntime;
       if (platform === 'tec1g' && this.sessionState.runtime !== undefined && tec1gRuntime !== undefined) {
         const baseMemory = this.sessionState.runtime.hardware.memory;
-        const expandBank = new Uint8Array(TEC1G_EXPAND_SIZE);
         const romRanges = runtimeOptions?.romRanges ?? [];
-        const shadowInfo = ensureTec1gShadowRom(baseMemory, romRanges);
-        const isRomAddress = (addr: number): boolean =>
-          romRanges.some((range) => addr >= range.start && addr <= range.end) ||
-          (shadowInfo.shadowCopied && addr >= TEC1G_SHADOW_START && addr <= TEC1G_SHADOW_END);
-        this.sessionState.runtime.hardware.memRead = (addr: number): number => {
-          const masked = addr & ADDR_MASK;
-          const shadowEnabled = tec1gRuntime.state.shadowEnabled === true;
-          if (shadowEnabled && masked < TEC1G_SHADOW_SIZE) {
-            const shadowAddr = TEC1G_SHADOW_START + masked;
-            return baseMemory[shadowAddr] ?? 0;
-          }
-          if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
-            const expandEnabled = tec1gRuntime.state.expandEnabled === true;
-            if (expandEnabled) {
-              return expandBank[masked - TEC1G_EXPAND_START] ?? 0;
-            }
-          }
-          return baseMemory[masked] ?? 0;
-        };
-        this.sessionState.runtime.hardware.memWrite = (addr: number, value: number): void => {
-          const masked = addr & ADDR_MASK;
-          if (masked >= TEC1G_SHADOW_SIZE && isRomAddress(masked)) {
-            return;
-          }
-          const protectEnabled = tec1gRuntime.state.protectEnabled === true;
-          if (protectEnabled && masked >= TEC1G_PROTECT_START && masked <= TEC1G_PROTECT_END) {
-            return;
-          }
-          if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
-            const expandEnabled = tec1gRuntime.state.expandEnabled === true;
-            if (expandEnabled) {
-              expandBank[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
-              return;
-            }
-          }
-          baseMemory[masked] = value & BYTE_MASK;
-        };
+        const hooks = createTec1gMemoryHooks(baseMemory, romRanges, tec1gRuntime.state);
+        this.sessionState.runtime.hardware.memRead = hooks.memRead;
+        this.sessionState.runtime.hardware.memWrite = hooks.memWrite;
       }
       this.sessionState.runState.callDepth = 0;
       this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(merged.stepOverMaxInstructions, 0);
