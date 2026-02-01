@@ -70,7 +70,8 @@ ID. Events from ended or mismatched sessions are ignored. This guards against:
 - Multiple sessions in a multi-root workspace
 
 Use the DAP session `id` (from `DebugSession.id`) as the canonical value. Reset to `undefined`
-on `onDidTerminateDebugSession` and whenever `debug80/platform` indicates a platform switch.
+on `onDidTerminateDebugSession`. On `debug80/platform`, update `currentPlatform` without
+resetting `sessionId`.
 
 ### 6. viewsWelcome for onboarding
 
@@ -154,7 +155,9 @@ Existing panel behavior unchanged — this phase is purely additive.
     - Debounce resize handling; use hysteresis to avoid flicker when dragging
 14. Pause memory snapshot refresh when the Memory tab is not the active tab
     (avoid wasting cycles on hidden content). Track active tab via a webview
-    `postMessage` when the tab changes.
+    `postMessage` when the tab changes. Suggested messages:
+    - `ui/tabChanged` with `{ tabId: "platform" | "serial" | "memory" }`
+    - `ui/visibility` with `{ visible: boolean }` (optional if using `onDidChangeVisibility`)
 15. Test memory tab readability at various panel widths
 
 ### Phase 4 — Polish + cleanup
@@ -165,6 +168,16 @@ Existing panel behavior unchanged — this phase is purely additive.
     listeners and memory leaks)
 18. Idle state view (project exists, no session): platform name, config summary
 19. Test hide/show cycles, session start/stop, platform switching
+
+### Migration Notes
+
+- Keep legacy commands (`debug80.openTec1`, `debug80.openTec1g`, `debug80.openSimple`) for
+  compatibility, but route them to `provider.reveal()` so the sidebar opens instead of an
+  editor tab.
+- Use stable view IDs and container IDs in `package.json` to avoid breaking existing user
+  layout preferences.
+- Ensure the webview view title is consistent with current panel titles to preserve user
+  expectations and reduce churn in docs/screenshots.
 
 ## Risks and Mitigations
 
