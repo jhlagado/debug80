@@ -19,29 +19,71 @@ function makeRuntime() {
 }
 
 describe('port 0x03 (SYS_INPUT)', () => {
+  it('bit 0 (SKEY) reflects shift key state', () => {
+    const rt = makeRuntime();
+    expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0);
+    rt.state.shiftKeyActive = true;
+    expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0x01);
+  });
+
+  it('bit 1 (PROTECT) reflects protect state', () => {
+    const rt = makeRuntime();
+    expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0);
+    rt.state.protectEnabled = true;
+    expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0x02);
+  });
+
+  it('bit 2 (EXPAND) reflects expand state', () => {
+    const rt = makeRuntime();
+    expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0);
+    rt.state.expandEnabled = true;
+    expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0x04);
+  });
+
   it('bit 3 (CART) is 0 when no cartridge present', () => {
     const rt = makeRuntime();
     rt.state.cartridgePresent = false;
-    const value = rt.ioHandlers.read(0x03);
-    expect(value & 0x08).toBe(0);
+    expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0);
   });
 
   it('bit 3 (CART) is 1 when cartridge present', () => {
     const rt = makeRuntime();
     rt.state.cartridgePresent = true;
-    const value = rt.ioHandlers.read(0x03);
-    expect(value & 0x08).toBe(0x08);
+    expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0x08);
+  });
+
+  it('bit 4 (RKEY) reflects raw key state', () => {
+    const rt = makeRuntime();
+    expect(rt.ioHandlers.read(0x03) & 0x10).toBe(0);
+    rt.state.rawKeyActive = true;
+    expect(rt.ioHandlers.read(0x03) & 0x10).toBe(0x10);
+  });
+
+  it('bit 5 (GIMP) reflects diagnostic signal', () => {
+    const rt = makeRuntime();
+    expect(rt.ioHandlers.read(0x03) & 0x20).toBe(0);
+    rt.state.gimpSignal = true;
+    expect(rt.ioHandlers.read(0x03) & 0x20).toBe(0x20);
+  });
+
+  it('bit 6 (KDA) is 1 when no key pressed', () => {
+    const rt = makeRuntime();
+    // default keyValue is 0x7f (no key)
+    expect(rt.ioHandlers.read(0x03) & 0x40).toBe(0x40);
+  });
+
+  it('bit 6 (KDA) is 0 when key pressed', () => {
+    const rt = makeRuntime();
+    rt.applyKey(0x05);
+    expect(rt.ioHandlers.read(0x03) & 0x40).toBe(0);
   });
 
   it('bit 3 (CART) is independent of expand state', () => {
     const rt = makeRuntime();
-
-    // expand on, no cartridge → bit 3 should be 0
     rt.state.expandEnabled = true;
     rt.state.cartridgePresent = false;
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0);
 
-    // expand off, cartridge present → bit 3 should be 1
     rt.state.expandEnabled = false;
     rt.state.cartridgePresent = true;
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0x08);
@@ -49,7 +91,6 @@ describe('port 0x03 (SYS_INPUT)', () => {
 
   it('bit 2 (EXPAND) is independent of cartridge state', () => {
     const rt = makeRuntime();
-
     rt.state.expandEnabled = true;
     rt.state.cartridgePresent = false;
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0x04);
