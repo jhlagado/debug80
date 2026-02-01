@@ -17,7 +17,7 @@ const getLanguages = vi.fn(() => Promise.resolve(['asm-collection']));
 
 vi.mock('vscode', () => ({
   ViewColumn: { One: 1, Two: 2, Nine: 9 },
-  commands: { registerCommand },
+  commands: { registerCommand, executeCommand: vi.fn() },
   debug: {
     registerDebugAdapterDescriptorFactory,
     onDidStartDebugSession,
@@ -32,6 +32,13 @@ vi.mock('vscode', () => ({
     ],
     workspaceFolders: undefined,
     openTextDocument: vi.fn(),
+    createFileSystemWatcher: vi.fn(() => ({
+      onDidCreate: vi.fn(),
+      onDidDelete: vi.fn(),
+      onDidChange: vi.fn(),
+      dispose: vi.fn(),
+    })),
+    onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
   },
   languages: { getLanguages, setTextDocumentLanguage },
   window: {
@@ -43,6 +50,7 @@ vi.mock('vscode', () => ({
     onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
     visibleTextEditors: [],
     tabGroups: { all: [] },
+    registerWebviewViewProvider: vi.fn(() => ({ dispose: vi.fn() })),
     createWebviewPanel: vi.fn(() => ({
       webview: { html: '' },
       onDidDispose: vi.fn(),

@@ -10,6 +10,7 @@ import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { createTec1PanelController } from '../platforms/tec1/ui-panel';
 import { createTec1gPanelController } from '../platforms/tec1g/ui-panel';
 import { SessionStateManager } from './session-state-manager';
+import { PlatformViewProvider } from './platform-view-provider';
 
 const sessionState = new SessionStateManager();
 const TERMINAL_BUFFER_MAX = 50_000;
@@ -75,6 +76,34 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('debug80.createProject', async () => {
       return scaffoldProject(true);
     })
+  );
+
+  // --- Sidebar platform view ---
+  const platformViewProvider = new PlatformViewProvider();
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      PlatformViewProvider.viewType,
+      platformViewProvider
+    )
+  );
+
+  // Set debug80.hasProject context key based on workspace contents.
+  const updateHasProject = (): void => {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    const hasProject = folders.some((folder) =>
+      fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'))
+    );
+    void vscode.commands.executeCommand('setContext', 'debug80.hasProject', hasProject);
+  };
+  updateHasProject();
+
+  const configWatcher = vscode.workspace.createFileSystemWatcher('**/.vscode/debug80.json');
+  configWatcher.onDidCreate(updateHasProject);
+  configWatcher.onDidDelete(updateHasProject);
+  context.subscriptions.push(configWatcher);
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(updateHasProject)
   );
 
   context.subscriptions.push(
