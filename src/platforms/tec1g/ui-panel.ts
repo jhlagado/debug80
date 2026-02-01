@@ -124,6 +124,8 @@ export function createTec1gPanelController(
       speaker: uiState.speaker ? 1 : 0,
       speedMode: uiState.speedMode,
       sysCtrl: uiState.sysCtrlValue,
+      bankA14: uiState.bankA14,
+      capsLock: uiState.capsLock,
       lcd: uiState.lcd,
     });
     if (uiVisibilityOverride) {
@@ -241,6 +243,8 @@ export function createTec1gPanelController(
         speaker: uiState.speaker,
         speedMode: uiState.speedMode,
         sysCtrl: uiState.sysCtrlValue,
+        bankA14: uiState.bankA14,
+        capsLock: uiState.capsLock,
         lcd: uiState.lcd,
         speakerHz: payload.speakerHz,
       });

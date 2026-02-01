@@ -12,6 +12,8 @@ export interface Tec1gUpdatePayload {
   speedMode: Tec1gSpeedMode;
   lcd: number[];
   sysCtrl?: number;
+  bankA14?: boolean;
+  capsLock?: boolean;
   glcdDdram?: number[];
   glcdState?: {
     displayOn?: boolean;

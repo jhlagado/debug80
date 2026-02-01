@@ -466,15 +466,6 @@ These tasks are independent and can be worked in parallel. No architectural risk
 - [x] Document stub ports: 0xFC (RTC), 0xFD (SD) return 0xFF
 - [x] Note matrix keyboard 0xFE returns 0xFF (stub)
 
-#### 1C — Delete or supersede TEC1G_EMULATION_STATUS.md
-
-**Files:** `docs/TEC1G_EMULATION_STATUS.md`
-**Effort:** Small
-**Tasks:**
-
-- [ ] Either delete the file or add a deprecation notice pointing to this review
-- [ ] Remove any cross-references from other docs
-
 ---
 
 ### Stage 2 — System register completeness
@@ -495,9 +486,9 @@ These tasks build the foundation for all later stages. 2A and 2B can be worked i
   - Bit 5: `capsLock`
   - Bit 6: `ffD5` (reserved, pass-through)
   - Bit 7: `ffD6` (reserved, pass-through)
-- [ ] Store decoded values in `Tec1gState`
+- [x] Store decoded values in `Tec1gState`
 - [x] Update `sysctrl.test.ts` with tests for all 8 bits
-- [ ] Include `capsLock` and `bankSelect` in UI update payload (for future status display)
+- [x] Include `capsLock` and `bankSelect` in UI update payload (for future status display)
 
 #### 2B — SYS_INPUT all 8 bits
 

@@ -263,6 +263,8 @@ export function createTec1gRuntime(
         reverseMask: state.glcdReverseMask,
       },
       sysCtrl: state.sysCtrl,
+      bankA14: state.bankA14,
+      capsLock: state.capsLock,
       speaker: state.speaker ? 1 : 0,
       speedMode: state.speedMode,
       lcd: [...state.lcd],
