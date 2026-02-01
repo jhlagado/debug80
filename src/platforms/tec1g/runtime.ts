@@ -118,7 +118,7 @@ const TEC1G_GLCD_BLINK_MS = 400;
  * @returns Normalized config for runtime construction.
  */
 export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformConfigNormalized {
-  const config = cfg ?? {};
+  const config: Tec1gPlatformConfig = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
     { start: 0x0000, end: 0x07ff, kind: 'rom' },
     { start: 0x0800, end: 0x7fff, kind: 'ram' },
@@ -146,6 +146,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
         .filter((entry) => entry !== '')
     : undefined;
   const gimpSignal = config.gimpSignal === true;
+  const expansionBankHi = config.expansionBankHi === true;
   return {
     regions,
     romRanges,
@@ -156,6 +157,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
     gimpSignal,
+    expansionBankHi,
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -174,6 +176,7 @@ export function createTec1gRuntime(
   onSerialByte?: (byte: number) => void,
   onPortWrite?: (payload: { port: number; value: number }) => void
 ): Tec1gRuntime {
+  const initialSysCtrl = config.expansionBankHi ? 0x08 : 0x00;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
@@ -218,11 +221,11 @@ export function createTec1gRuntime(
     speedMode: 'fast',
     updateMs: config.updateMs,
     yieldMs: config.yieldMs,
-    sysCtrl: 0x00,
+    sysCtrl: initialSysCtrl,
     shadowEnabled: true,
     protectEnabled: false,
     expandEnabled: false,
-    bankA14: false,
+    bankA14: config.expansionBankHi,
     capsLock: false,
     cartridgePresent: false,
     shiftKeyActive: false,
@@ -230,6 +233,7 @@ export function createTec1gRuntime(
     gimpSignal: config.gimpSignal,
   };
   const defaultGimpSignal = config.gimpSignal;
+  const defaultSysCtrl = initialSysCtrl;
   const lcdTest = 'ARROWS: ';
   for (let i = 0; i < lcdTest.length && i < state.lcd.length; i += 1) {
     state.lcd[i] = lcdTest.charCodeAt(i);
@@ -1015,7 +1019,7 @@ export function createTec1gRuntime(
     state.glcdDdram.fill(0x20);
     glcdSetDdramAddr(0x80);
     glcdBusyUntil = 0;
-    state.sysCtrl = 0x00;
+    state.sysCtrl = defaultSysCtrl;
     const decoded = decodeSysCtrl(state.sysCtrl);
     state.shadowEnabled = decoded.shadowEnabled;
     state.protectEnabled = decoded.protectEnabled;

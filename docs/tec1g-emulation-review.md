@@ -514,10 +514,13 @@ These tasks build the foundation for all later stages. 2A and 2B can be worked i
 - [x] Allocate 32K expansion buffer (two 16K banks) instead of current 16K
 - [x] On port 0xFF write: if `bankSelect` changes, swap which 16K bank is mapped at 0x8000-0xBFFF
 - [x] Update `adapter.ts` memory read/write to route 0x8000-0xBFFF through bank index
-- [ ] Handle bank swap during debug memory view (show correct bank contents)
-- [ ] Add CONFIG DIP switch 3 (expansion default bank) as a config option
+- [x] Handle bank swap during debug memory view (show correct bank contents)
+- [x] Add CONFIG DIP switch 3 (expansion default bank) as a config option
 - [x] Unit tests: write to bank 0, switch to bank 1, write different data, switch back, verify both banks
-- [ ] Unit tests: verify bank select survives reset correctly (respects CONFIG default)
+- [x] Unit tests: verify bank select survives reset correctly (respects CONFIG default)
+
+**Status:** Bank selection now switches between two 16K expansion banks using `bankA14`; hooks are centralized in
+`src/debug/tec1g-memory.ts`. Remaining work is default-bank config, reset behavior, and memory view bank awareness.
 
 ---
 
