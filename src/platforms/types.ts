@@ -60,6 +60,7 @@ export interface Tec1gPlatformConfig {
   updateMs?: number;
   yieldMs?: number;
   extraListings?: string[];
+  gimpSignal?: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
@@ -80,6 +81,7 @@ export interface Tec1gPlatformConfigNormalized {
   updateMs: number;
   yieldMs: number;
   extraListings?: string[];
+  gimpSignal: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;

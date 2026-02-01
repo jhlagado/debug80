@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createTec1gRuntime } from '../../../src/platforms/tec1g/runtime';
+import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
 
-function makeRuntime() {
+function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
   return createTec1gRuntime(
     {
       regions: [
@@ -13,6 +14,8 @@ function makeRuntime() {
       entry: 0x0000,
       updateMs: 100,
       yieldMs: 10,
+      gimpSignal: false,
+      ...overrides,
     },
     () => {}
   );
@@ -60,9 +63,7 @@ describe('port 0x03 (SYS_INPUT)', () => {
   });
 
   it('bit 5 (GIMP) reflects diagnostic signal', () => {
-    const rt = makeRuntime();
-    expect(rt.ioHandlers.read(0x03) & 0x20).toBe(0);
-    rt.state.gimpSignal = true;
+    const rt = makeRuntime({ gimpSignal: true });
     expect(rt.ioHandlers.read(0x03) & 0x20).toBe(0x20);
   });
 

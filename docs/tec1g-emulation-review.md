@@ -497,12 +497,12 @@ These tasks build the foundation for all later stages. 2A and 2B can be worked i
 **Depends on:** Stage 1A (cartridge fix)
 **Tasks:**
 
-- [ ] Bit 0 (SKEY): Add `shiftKeyActive: boolean` to state; set when FN modifier is held
+- [x] Bit 0 (SKEY): Add `shiftKeyActive: boolean` to state; set when FN modifier is held
 - [x] Bit 3 (CART): Already fixed in 1A — verify integration
-- [ ] Bit 4 (RKEY): Add raw key detection; set when `keyValue !== 0x7F` (key physically held)
-- [ ] Bit 5 (GIMP): Add `gimpEnabled: boolean` config option (default false)
+- [x] Bit 4 (RKEY): Add raw key detection; set when `keyValue !== 0x7F` (key physically held)
+- [x] Bit 5 (GIMP): Add `gimpEnabled: boolean` config option (default false)
 - [x] Verify bits 1, 2, 6, 7 are already correct
-- [ ] Add unit tests for every bit of port 0x03 in isolation and combination
+- [x] Add unit tests for every bit of port 0x03 in isolation and combination
 
 #### 2C — Expansion bank switching
 
