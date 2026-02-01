@@ -78,7 +78,12 @@ export interface Tec1gState {
   shadowEnabled: boolean;
   protectEnabled: boolean;
   expandEnabled: boolean;
+  bankA14: boolean;
+  capsLock: boolean;
   cartridgePresent: boolean;
+  shiftKeyActive: boolean;
+  rawKeyActive: boolean;
+  gimpSignal: boolean;
 }
 
 /**
@@ -215,7 +220,12 @@ export function createTec1gRuntime(
     shadowEnabled: true,
     protectEnabled: false,
     expandEnabled: false,
+    bankA14: false,
+    capsLock: false,
     cartridgePresent: false,
+    shiftKeyActive: false,
+    rawKeyActive: false,
+    gimpSignal: false,
   };
   const lcdTest = 'ARROWS: ';
   for (let i = 0; i < lcdTest.length && i < state.lcd.length; i += 1) {
@@ -614,6 +624,9 @@ export function createTec1gRuntime(
       if (p === 0x03) {
         const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
         let value = 0x00;
+        if (state.shiftKeyActive) {
+          value |= 0x01;
+        }
         if (state.protectEnabled) {
           value |= 0x02;
         }
@@ -622,6 +635,12 @@ export function createTec1gRuntime(
         }
         if (state.cartridgePresent) {
           value |= 0x08;
+        }
+        if (state.rawKeyActive) {
+          value |= 0x10;
+        }
+        if (state.gimpSignal) {
+          value |= 0x20;
         }
         if (!keyPressed) {
           value |= 0x40;
@@ -816,6 +835,8 @@ export function createTec1gRuntime(
         state.shadowEnabled = decoded.shadowEnabled;
         state.protectEnabled = decoded.protectEnabled;
         state.expandEnabled = decoded.expandEnabled;
+        state.bankA14 = decoded.bankA14;
+        state.capsLock = decoded.capsLock;
         return;
       }
     },
@@ -990,6 +1011,12 @@ export function createTec1gRuntime(
     state.shadowEnabled = decoded.shadowEnabled;
     state.protectEnabled = decoded.protectEnabled;
     state.expandEnabled = decoded.expandEnabled;
+    state.bankA14 = decoded.bankA14;
+    state.capsLock = decoded.capsLock;
+    state.cartridgePresent = false;
+    state.shiftKeyActive = false;
+    state.rawKeyActive = false;
+    state.gimpSignal = false;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
