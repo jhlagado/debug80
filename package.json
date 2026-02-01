@@ -27,6 +27,31 @@
   ],
   "main": "./out/extension/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "debug80",
+          "title": "Debug80",
+          "icon": "assets/debug80-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "debug80": [
+        {
+          "type": "webview",
+          "id": "debug80.platformView",
+          "name": "Platform"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "debug80.platformView",
+        "contents": "No Debug80 project found in this workspace.\n[Create Project](command:debug80.createProject)\nCreate a .vscode/debug80.json configuration file to get started.",
+        "when": "!debug80.hasProject"
+      }
+    ],
     "configurationDefaults": {
       "files.associations": {
         "*.asm": "asm-collection"
