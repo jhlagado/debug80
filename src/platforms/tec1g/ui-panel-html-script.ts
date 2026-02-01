@@ -43,6 +43,14 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const GLCD_HEIGHT = 64;
     const GLCD_BYTES = 1024;
     let lcdBytes = new Array(LCD_BYTES).fill(0x20);
+    let lcdCgram = new Array(64).fill(0x00);
+    let lcdDisplayOn = true;
+    let lcdCursorOn = false;
+    let lcdCursorBlink = false;
+    let lcdCursorAddr = 0x80;
+    let lcdDisplayShift = 0;
+    let lcdCursorBlinkVisible = true;
+    let lcdCursorBlinkTimer = null;
     ${getHD44780A00RomData()}
     ${getST7920FontData()}
     const GLCD_DDRAM_SIZE = 64;
@@ -278,14 +286,21 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       for (let i = 0; i < d.length; i += 4) {
         d[i] = bgR; d[i + 1] = bgG; d[i + 2] = bgB; d[i + 3] = 255;
       }
+      const cursorVisible = lcdDisplayOn && (lcdCursorOn || (lcdCursorBlink && lcdCursorBlinkVisible));
+      const cursorIndex = getLcdIndex(lcdCursorAddr);
       for (let row = 0; row < LCD_ROWS; row++) {
         for (let col = 0; col < LCD_COLS; col++) {
-          const charCode = (lcdBytes[row * LCD_COLS + col] || 0x20) & 0xFF;
+          const srcCol = (col + lcdDisplayShift + LCD_COLS) % LCD_COLS;
+          const index = row * LCD_COLS + srcCol;
+          const charCode = lcdDisplayOn ? ((lcdBytes[index] || 0x20) & 0xFF) : 0x20;
           const romBase = charCode * 8;
           const ox = col * cellW + 1;
           const oy = row * cellH + 1;
           for (let dy = 0; dy < 8; dy++) {
-            const bits = A00[romBase + dy] || 0;
+            let bits = A00[romBase + dy] || 0;
+            if (charCode < 0x08) {
+              bits = lcdCgram[charCode * 8 + dy] || 0;
+            }
             for (let dx = 0; dx < 5; dx++) {
               if (bits & (0x10 >> dx)) {
                 const sx = ox + dx * dot;
@@ -303,9 +318,50 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
               }
             }
           }
+          if (cursorVisible && cursorIndex === index) {
+            const dy = 7;
+            for (let dx = 0; dx < 5; dx++) {
+              const sx = ox + dx * dot;
+              const sy = oy + dy * dot;
+              for (let py = 0; py < dot; py++) {
+                for (let px = 0; px < dot; px++) {
+                  const idx = ((sy + py) * w + (sx + px)) * 4;
+                  if (idx >= 0 && idx < d.length - 3) {
+                    d[idx] = onR;
+                    d[idx + 1] = onG;
+                    d[idx + 2] = onB;
+                  }
+                }
+              }
+            }
+          }
         }
       }
       lcdCtx.putImageData(img, 0, 0);
+    }
+
+    function getLcdIndex(addr) {
+      const masked = addr & 0xFF;
+      if (masked >= 0x80 && masked <= 0x93) return masked - 0x80;
+      if (masked >= 0xC0 && masked <= 0xD3) return 20 + (masked - 0xC0);
+      if (masked >= 0x94 && masked <= 0xA7) return 40 + (masked - 0x94);
+      if (masked >= 0xD4 && masked <= 0xE7) return 60 + (masked - 0xD4);
+      return -1;
+    }
+
+    function updateLcdCursorBlink() {
+      if (lcdCursorBlinkTimer) {
+        clearInterval(lcdCursorBlinkTimer);
+        lcdCursorBlinkTimer = null;
+      }
+      lcdCursorBlinkVisible = true;
+      if (!lcdCursorBlink) {
+        return;
+      }
+      lcdCursorBlinkTimer = setInterval(() => {
+        lcdCursorBlinkVisible = !lcdCursorBlinkVisible;
+        drawLcd();
+      }, 500);
     }
 
     function drawGlcd() {
@@ -632,6 +688,33 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         while (lcdBytes.length < LCD_BYTES) {
           lcdBytes.push(0x20);
         }
+        drawLcd();
+      }
+      if (Array.isArray(data.lcdCgram)) {
+        lcdCgram = data.lcdCgram.slice(0, 64);
+        while (lcdCgram.length < 64) {
+          lcdCgram.push(0x00);
+        }
+        drawLcd();
+      }
+      if (data.lcdState && typeof data.lcdState === 'object') {
+        if (typeof data.lcdState.displayOn === 'boolean') {
+          lcdDisplayOn = data.lcdState.displayOn;
+        }
+        if (typeof data.lcdState.cursorOn === 'boolean') {
+          lcdCursorOn = data.lcdState.cursorOn;
+        }
+        if (typeof data.lcdState.cursorBlink === 'boolean') {
+          lcdCursorBlink = data.lcdState.cursorBlink;
+        }
+        if (typeof data.lcdState.cursorAddr === 'number') {
+          lcdCursorAddr = data.lcdState.cursorAddr & 0xFF;
+        }
+        if (typeof data.lcdState.displayShift === 'number') {
+          const shift = Math.trunc(data.lcdState.displayShift || 0);
+          lcdDisplayShift = ((shift % LCD_COLS) + LCD_COLS) % LCD_COLS;
+        }
+        updateLcdCursorBlink();
         drawLcd();
       }
       if (Array.isArray(data.matrix)) {

@@ -28,6 +28,14 @@ export type Tec1gUiState = {
   sysCtrlValue: number;
   bankA14: boolean;
   capsLock: boolean;
+  lcdState: {
+    displayOn: boolean;
+    cursorOn: boolean;
+    cursorBlink: boolean;
+    cursorAddr: number;
+    displayShift: number;
+  };
+  lcdCgram: number[];
   lcd: number[];
 };
 
@@ -57,6 +65,14 @@ export function createTec1gUiState(): Tec1gUiState {
     sysCtrlValue: 0x00,
     bankA14: false,
     capsLock: false,
+    lcdState: {
+      displayOn: true,
+      cursorOn: false,
+      cursorBlink: false,
+      cursorAddr: 0x80,
+      displayShift: 0,
+    },
+    lcdCgram: Array.from({ length: 64 }, () => 0x00),
     lcd: Array.from({ length: 80 }, () => 0x20),
   };
 }
@@ -76,6 +92,8 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
   state.sysCtrlValue = next.sysCtrlValue;
   state.bankA14 = next.bankA14;
   state.capsLock = next.capsLock;
+  state.lcdState = next.lcdState;
+  state.lcdCgram = next.lcdCgram;
   state.lcd = next.lcd;
 }
 
@@ -94,6 +112,21 @@ export function applyTec1gUpdate(state: Tec1gUiState, payload: Tec1gUpdatePayloa
   }
   if (typeof payload.capsLock === 'boolean') {
     state.capsLock = payload.capsLock;
+  }
+  if (payload.lcdState && typeof payload.lcdState === 'object') {
+    state.lcdState = {
+      displayOn: payload.lcdState.displayOn ?? state.lcdState.displayOn,
+      cursorOn: payload.lcdState.cursorOn ?? state.lcdState.cursorOn,
+      cursorBlink: payload.lcdState.cursorBlink ?? state.lcdState.cursorBlink,
+      cursorAddr: payload.lcdState.cursorAddr ?? state.lcdState.cursorAddr,
+      displayShift: payload.lcdState.displayShift ?? state.lcdState.displayShift,
+    };
+  }
+  if (Array.isArray(payload.lcdCgram)) {
+    state.lcdCgram = payload.lcdCgram.slice(0, 64);
+    while (state.lcdCgram.length < 64) {
+      state.lcdCgram.push(0x00);
+    }
   }
   if (Array.isArray(payload.glcdDdram)) {
     state.glcdDdram = payload.glcdDdram.slice(0, 64);

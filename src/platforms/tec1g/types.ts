@@ -14,6 +14,14 @@ export interface Tec1gUpdatePayload {
   sysCtrl?: number;
   bankA14?: boolean;
   capsLock?: boolean;
+  lcdState?: {
+    displayOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    cursorAddr?: number;
+    displayShift?: number;
+  };
+  lcdCgram?: number[];
   glcdDdram?: number[];
   glcdState?: {
     displayOn?: boolean;
