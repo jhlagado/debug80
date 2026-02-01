@@ -15,8 +15,8 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 - Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
 - SD card (0xFD) and RTC/PRAM add-ons (return 0xFF on read).
 - Cartridge boot flag + cartridge ROM mapping.
-- SYS_CTRL bits 3-7 (bank select, CAPS, reserved) — latched but not decoded.
-- SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP) — not emulated.
+- SYS_CTRL bits 3-7: latched and decoded but bank switching not yet wired to memory.
+- SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
 ## Memory map (MON-3 view)
