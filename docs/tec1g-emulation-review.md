@@ -535,14 +535,14 @@ group.
 **Effort:** Small
 **Tasks:**
 
-- [ ] Add `lcdEntryIncrement: boolean` and `lcdEntryShift: boolean` to state (defaults: increment=true,
+- [x] Add `lcdEntryIncrement: boolean` and `lcdEntryShift: boolean` to state (defaults: increment=true,
       shift=false)
-- [ ] Parse instruction: bit 1 = I/D (increment/decrement), bit 0 = S (shift)
-- [ ] Use `lcdEntryIncrement` in `lcdWriteData` and `lcdReadData` to control address direction
-- [ ] When shift enabled, shift entire display on each data write
-- [ ] Set busy timing (37us)
-- [ ] Unit tests: write sequence with decrement mode, verify addresses go backwards
-- [ ] Unit tests: write with shift enabled, verify display offset changes
+- [x] Parse instruction: bit 1 = I/D (increment/decrement), bit 0 = S (shift)
+- [x] Use `lcdEntryIncrement` in `lcdWriteData` and `lcdReadData` to control address direction
+- [x] When shift enabled, shift entire display on each data write
+- [x] Set busy timing (37us)
+- [x] Unit tests: write sequence with decrement mode, verify addresses go backwards
+- [x] Unit tests: write with shift enabled, verify display offset changes
 
 #### 3B — Display on/off control (0x08-0x0F)
 
@@ -550,12 +550,12 @@ group.
 **Effort:** Small
 **Tasks:**
 
-- [ ] Add `lcdDisplayOn: boolean`, `lcdCursorOn: boolean`, `lcdCursorBlink: boolean` to state
-- [ ] Parse instruction: bit 2 = D (display), bit 1 = C (cursor), bit 0 = B (blink)
-- [ ] Include display/cursor/blink state in UI update payload
-- [ ] Update webview rendering to show/hide cursor based on state
-- [ ] Set busy timing (37us)
-- [ ] Unit tests: toggle display on/off, verify state; toggle cursor/blink
+- [x] Add `lcdDisplayOn: boolean`, `lcdCursorOn: boolean`, `lcdCursorBlink: boolean` to state
+- [x] Parse instruction: bit 2 = D (display), bit 1 = C (cursor), bit 0 = B (blink)
+- [x] Include display/cursor/blink state in UI update payload
+- [x] Update webview rendering to show/hide cursor based on state
+- [x] Set busy timing (37us)
+- [x] Unit tests: toggle display on/off, verify state; toggle cursor/blink
 
 #### 3C — Cursor/display shift (0x10-0x1F)
 
@@ -563,11 +563,11 @@ group.
 **Effort:** Small
 **Tasks:**
 
-- [ ] Parse instruction: bit 3 = S/C (display shift vs cursor move), bit 2 = R/L (right vs left)
-- [ ] Display shift: adjust `lcdDisplayShift` offset (add to state)
-- [ ] Cursor move: adjust `lcdAddr` without writing data
-- [ ] Set busy timing (37us)
-- [ ] Unit tests: shift display left/right, verify offset; move cursor, verify address
+- [x] Parse instruction: bit 3 = S/C (display shift vs cursor move), bit 2 = R/L (right vs left)
+- [x] Display shift: adjust `lcdDisplayShift` offset (add to state)
+- [x] Cursor move: adjust `lcdAddr` without writing data
+- [x] Set busy timing (37us)
+- [x] Unit tests: shift display left/right, verify offset; move cursor, verify address
 
 #### 3D — Function set (0x20-0x3F)
 
@@ -575,23 +575,23 @@ group.
 **Effort:** Small
 **Tasks:**
 
-- [ ] Parse instruction: bit 4 = DL (data length), bit 3 = N (lines), bit 2 = F (font)
-- [ ] Store state but don't change behavior (LCD2004 is always 8-bit, 2-line, 5x8)
-- [ ] Set busy timing (37us)
-- [ ] Unit test: function set doesn't crash or corrupt state
+- [x] Parse instruction: bit 4 = DL (data length), bit 3 = N (lines), bit 2 = F (font)
+- [x] Store state but don't change behavior (LCD2004 is always 8-bit, 2-line, 5x8)
+- [x] Set busy timing (37us)
+- [x] Unit test: function set doesn't crash or corrupt state
 
 #### 3E — CGRAM support (optional)
 
-**Files:** `src/platforms/tec1g/runtime.ts`
+**Files:** `src/platforms/tec1g/runtime.ts`, `src/platforms/tec1g/ui-panel-html-script.ts`
 **Effort:** Small-Medium
 **Tasks:**
 
-- [ ] Add `lcdCgram: Uint8Array(64)` to state (8 characters x 8 bytes each)
-- [ ] Parse CGRAM address set instruction (0x40-0x7F): set CGRAM address
-- [ ] Route data writes to CGRAM when address is in CGRAM range
-- [ ] Route data reads from CGRAM when address is in CGRAM range
-- [ ] In UI rendering: for character codes 0x00-0x07, render from CGRAM instead of font ROM
-- [ ] Unit tests: write custom character, read it back, verify rendering lookup
+- [x] Add `lcdCgram: Uint8Array(64)` to state (8 characters x 8 bytes each)
+- [x] Parse CGRAM address set instruction (0x40-0x7F): set CGRAM address
+- [x] Route data writes to CGRAM when address is in CGRAM range
+- [x] Route data reads from CGRAM when address is in CGRAM range
+- [x] In UI rendering: for character codes 0x00-0x07, render from CGRAM instead of font ROM
+- [x] Unit tests: write custom character, read it back, verify rendering lookup
 
 ---
 
