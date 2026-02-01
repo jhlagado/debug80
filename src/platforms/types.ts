@@ -61,6 +61,7 @@ export interface Tec1gPlatformConfig {
   yieldMs?: number;
   extraListings?: string[];
   gimpSignal?: boolean;
+  expansionBankHi?: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
@@ -82,6 +83,7 @@ export interface Tec1gPlatformConfigNormalized {
   yieldMs: number;
   extraListings?: string[];
   gimpSignal: boolean;
+  expansionBankHi: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
