@@ -1011,6 +1011,12 @@ export function createTec1gRuntime(
     state.shadowEnabled = decoded.shadowEnabled;
     state.protectEnabled = decoded.protectEnabled;
     state.expandEnabled = decoded.expandEnabled;
+    state.bankA14 = decoded.bankA14;
+    state.capsLock = decoded.capsLock;
+    state.cartridgePresent = false;
+    state.shiftKeyActive = false;
+    state.rawKeyActive = false;
+    state.gimpSignal = false;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
