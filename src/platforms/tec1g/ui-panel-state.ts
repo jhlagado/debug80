@@ -26,6 +26,8 @@ export type Tec1gUiState = {
   speaker: boolean;
   speedMode: Tec1gSpeedMode;
   sysCtrlValue: number;
+  bankA14: boolean;
+  capsLock: boolean;
   lcd: number[];
 };
 
@@ -53,6 +55,8 @@ export function createTec1gUiState(): Tec1gUiState {
     speaker: false,
     speedMode: 'fast',
     sysCtrlValue: 0x00,
+    bankA14: false,
+    capsLock: false,
     lcd: Array.from({ length: 80 }, () => 0x20),
   };
 }
@@ -70,6 +74,8 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
   state.speaker = next.speaker;
   state.speedMode = 'slow';
   state.sysCtrlValue = next.sysCtrlValue;
+  state.bankA14 = next.bankA14;
+  state.capsLock = next.capsLock;
   state.lcd = next.lcd;
 }
 
@@ -82,6 +88,12 @@ export function applyTec1gUpdate(state: Tec1gUiState, payload: Tec1gUpdatePayloa
   state.glcd = payload.glcd.slice(0, 1024);
   if (typeof payload.sysCtrl === 'number') {
     state.sysCtrlValue = payload.sysCtrl & 0xff;
+  }
+  if (typeof payload.bankA14 === 'boolean') {
+    state.bankA14 = payload.bankA14;
+  }
+  if (typeof payload.capsLock === 'boolean') {
+    state.capsLock = payload.capsLock;
   }
   if (Array.isArray(payload.glcdDdram)) {
     state.glcdDdram = payload.glcdDdram.slice(0, 64);
