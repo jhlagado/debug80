@@ -145,6 +145,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
         .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
         .filter((entry) => entry !== '')
     : undefined;
+  const gimpSignal = config.gimpSignal === true;
   return {
     regions,
     romRanges,
@@ -154,6 +155,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
+    gimpSignal,
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -225,8 +227,9 @@ export function createTec1gRuntime(
     cartridgePresent: false,
     shiftKeyActive: false,
     rawKeyActive: false,
-    gimpSignal: false,
+    gimpSignal: config.gimpSignal,
   };
+  const defaultGimpSignal = config.gimpSignal;
   const lcdTest = 'ARROWS: ';
   for (let i = 0; i < lcdTest.length && i < state.lcd.length; i += 1) {
     state.lcd[i] = lcdTest.charCodeAt(i);
@@ -854,6 +857,8 @@ export function createTec1gRuntime(
 
   const applyKey = (code: number): void => {
     state.keyValue = code & 0x7f;
+    state.rawKeyActive = (state.keyValue & 0x7f) !== 0x7f;
+    state.shiftKeyActive = state.rawKeyActive && (state.keyValue & 0x20) === 0;
     state.nmiPending = true;
     if (state.keyReleaseEventId !== null) {
       state.cycleClock.cancel(state.keyReleaseEventId);
@@ -861,6 +866,8 @@ export function createTec1gRuntime(
     const holdCycles = calculateKeyHoldCycles(state.clockHz, TEC1G_KEY_HOLD_MS);
     state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
       state.keyValue = 0x7f;
+      state.rawKeyActive = false;
+      state.shiftKeyActive = false;
       state.keyReleaseEventId = null;
     });
   };
@@ -1015,6 +1022,9 @@ export function createTec1gRuntime(
     state.expandEnabled = decoded.expandEnabled;
     state.bankA14 = decoded.bankA14;
     state.capsLock = decoded.capsLock;
+    state.shiftKeyActive = false;
+    state.rawKeyActive = false;
+    state.gimpSignal = defaultGimpSignal;
     state.cartridgePresent = false;
     state.shiftKeyActive = false;
     state.rawKeyActive = false;
