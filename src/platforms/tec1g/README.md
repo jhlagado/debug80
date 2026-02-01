@@ -13,9 +13,11 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 
 ## Not yet emulated
 - Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
-- GLCD (0x07/0x87) and the GLCD terminal layer.
-- SD card (0xFD) and RTC/PRAM add-ons.
+- SD card (0xFD) and RTC/PRAM add-ons (return 0xFF on read).
 - Cartridge boot flag + cartridge ROM mapping.
+- SYS_CTRL bits 3-7 (bank select, CAPS, reserved) — latched but not decoded.
+- SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP) — not emulated.
+- LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
 ## Memory map (MON-3 view)
 - 0x0000-0x00FF: RAM (RST vectors).
@@ -39,14 +41,18 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 ### Input
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
   - Keycodes: 0x00-0x0f (hex), 0x10 (+), 0x11 (-), 0x12 (GO), 0x13 (AD), 0x02 (FN).
-- `IN 0x03` (SYS_INPUT): system flags (partial).
-  - Bit 1 (0x02): Protect enabled.
-  - Bit 2/3 (0x04/0x08): Expand enabled.
-  - Bit 6 (0x40): keypress flag (1 = no key).
-  - Bit 7 (0x80): serial RX (idle high).
-- `IN 0x04`: LCD busy/addr (not yet emulated; returns 0x00).
+- `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
+  - Bit 0 (0x01): SKEY — shift key (not yet emulated).
+  - Bit 1 (0x02): PROTECT — fed back from SYS_CTRL.
+  - Bit 2 (0x04): EXPAND — fed back from SYS_CTRL.
+  - Bit 3 (0x08): CART — cartridge present flag.
+  - Bit 4 (0x10): RKEY — raw key detection (not yet emulated).
+  - Bit 5 (0x20): GIMP — G.IMP diagnostic signal (not yet emulated).
+  - Bit 6 (0x40): KDA — key data available, inverted (1 = no key).
+  - Bit 7 (0x80): RX — serial receive (idle high).
+- `IN 0x04`: LCD busy flag + address counter (HD44780 status read).
 - `IN 0x84`: LCD data read (supported).
-- `IN 0xFE`: matrix keyboard (not yet emulated).
+- `IN 0xFE`: matrix keyboard (stub — returns 0xFF, not yet emulated).
 
 ### Output
 - `OUT 0x01` (SCAN): digit select + speaker + serial TX.
@@ -57,9 +63,17 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0x04/0x84`: LCD instruction/data.
 - `OUT 0x05`: LED matrix row select.
 - `OUT 0x06`: LED matrix column data.
-- `OUT 0x07/0x87`: GLCD instruction/data (basic graphics GDRAM emulation).
-- `OUT 0xFF` (SYS_CTRL): latch for Shadow/Protect/Expand bits.
-- `OUT 0xFD`: SDIO (not yet emulated).
+- `OUT 0x07/0x87`: GLCD instruction/data (ST7920 — text, graphics, busy flag all emulated).
+- `OUT 0xFF` (SYS_CTRL): system latch (U13 74HCT273).
+  - Bit 0: ~SHADOW (active low — 0 = shadow on).
+  - Bit 1: PROTECT (1 = write-protect 0x4000-0x7FFF).
+  - Bit 2: EXPAND (1 = expansion window at 0x8000-0xBFFF).
+  - Bit 3: FF-D3 / E_A14 (expansion bank select — not yet decoded).
+  - Bit 4: FF-D4 (reserved — not yet decoded).
+  - Bit 5: CAPS (caps lock — not yet decoded).
+  - Bits 6-7: FF-D5/FF-D6 (reserved — not yet decoded).
+- `OUT 0xFC`: RTC DS1302 (stub — not yet emulated, reads return 0xFF).
+- `OUT 0xFD`: SD card SPI (stub — not yet emulated, reads return 0xFF).
 
 ## Serial (bitbang)
 - TX uses bit 6 on `OUT 0x01`; RX uses bit 7 on `IN 0x00` (mirrored on `IN 0x03`).

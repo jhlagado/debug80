@@ -78,6 +78,7 @@ export interface Tec1gState {
   shadowEnabled: boolean;
   protectEnabled: boolean;
   expandEnabled: boolean;
+  cartridgePresent: boolean;
 }
 
 /**
@@ -214,6 +215,7 @@ export function createTec1gRuntime(
     shadowEnabled: true,
     protectEnabled: false,
     expandEnabled: false,
+    cartridgePresent: false,
   };
   const lcdTest = 'ARROWS: ';
   for (let i = 0; i < lcdTest.length && i < state.lcd.length; i += 1) {
@@ -617,6 +619,8 @@ export function createTec1gRuntime(
         }
         if (state.expandEnabled) {
           value |= 0x04;
+        }
+        if (state.cartridgePresent) {
           value |= 0x08;
         }
         if (!keyPressed) {
