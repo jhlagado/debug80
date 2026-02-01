@@ -5,8 +5,8 @@ function makeRuntime() {
   return createTec1gRuntime(
     {
       regions: [
-        { start: 0x0000, end: 0x7fff, type: 'ram' as const },
-        { start: 0xc000, end: 0xffff, type: 'rom' as const },
+        { start: 0x0000, end: 0x7fff, kind: 'ram' as const },
+        { start: 0xc000, end: 0xffff, kind: 'rom' as const },
       ],
       romRanges: [{ start: 0xc000, end: 0xffff }],
       appStart: 0x0000,

@@ -41,7 +41,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 ### Input
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
   - Keycodes: 0x00-0x0f (hex), 0x10 (+), 0x11 (-), 0x12 (GO), 0x13 (AD), 0x02 (FN).
-- `IN 0x03` (SYS_INPUT): system flags (U19 74HCT245).
+- `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
   - Bit 0 (0x01): SKEY — shift key (not yet emulated).
   - Bit 1 (0x02): PROTECT — fed back from SYS_CTRL.
   - Bit 2 (0x04): EXPAND — fed back from SYS_CTRL.
@@ -64,7 +64,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0x05`: LED matrix row select.
 - `OUT 0x06`: LED matrix column data.
 - `OUT 0x07/0x87`: GLCD instruction/data (ST7920 — text, graphics, busy flag all emulated).
-- `OUT 0xFF` (SYS_CTRL): system latch (U18 74HCT373).
+- `OUT 0xFF` (SYS_CTRL): system latch (U13 74HCT273).
   - Bit 0: ~SHADOW (active low — 0 = shadow on).
   - Bit 1: PROTECT (1 = write-protect 0x4000-0x7FFF).
   - Bit 2: EXPAND (1 = expansion window at 0x8000-0xBFFF).
