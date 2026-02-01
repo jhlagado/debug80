@@ -446,11 +446,11 @@ These tasks are independent and can be worked in parallel. No architectural risk
 **Effort:** Small
 **Tasks:**
 
-- [ ] Remove the `value |= 0x08` line from the expand block in port 0x03 read handler (line ~618-621)
-- [ ] Add `cartridgePresent: boolean` to `Tec1gState` (default `false`)
-- [ ] Set bit 3 based on `state.cartridgePresent` instead of `expandEnabled`
-- [ ] Add unit test: port 0x03 bit 3 is 0 when no cartridge, 1 when cartridge present
-- [ ] Add unit test: port 0x03 bit 3 is independent of expand state
+- [x] Remove the `value |= 0x08` line from the expand block in port 0x03 read handler (line ~618-621)
+- [x] Add `cartridgePresent: boolean` to `Tec1gState` (default `false`)
+- [x] Set bit 3 based on `state.cartridgePresent` instead of `expandEnabled`
+- [x] Add unit test: port 0x03 bit 3 is 0 when no cartridge, 1 when cartridge present
+- [x] Add unit test: port 0x03 bit 3 is independent of expand state
 
 #### 1B — Update stale platform README
 
@@ -458,13 +458,13 @@ These tasks are independent and can be worked in parallel. No architectural risk
 **Effort:** Small
 **Tasks:**
 
-- [ ] Replace "Not yet emulated" list — mark GLCD (text + graphics + busy flag) as implemented
-- [ ] Mark LCD busy flag + data read as implemented
-- [ ] Correct `IN 0x04` description (returns busy flag + address counter, not 0x00)
-- [ ] Add full SYS_CTRL bit map (all 8 bits, from schematic section of this review)
-- [ ] Add full SYS_INPUT bit map (all 8 bits, from schematic section of this review)
-- [ ] Document stub ports: 0xFC (RTC), 0xFD (SD) return 0xFF
-- [ ] Note matrix keyboard 0xFE returns 0xFF (stub)
+- [x] Replace "Not yet emulated" list — mark GLCD (text + graphics + busy flag) as implemented
+- [x] Mark LCD busy flag + data read as implemented
+- [x] Correct `IN 0x04` description (returns busy flag + address counter, not 0x00)
+- [x] Add full SYS_CTRL bit map (all 8 bits, from schematic section of this review)
+- [x] Add full SYS_INPUT bit map (all 8 bits, from schematic section of this review)
+- [x] Document stub ports: 0xFC (RTC), 0xFD (SD) return 0xFF
+- [x] Note matrix keyboard 0xFE returns 0xFF (stub)
 
 #### 1C — Delete or supersede TEC1G_EMULATION_STATUS.md
 
@@ -488,15 +488,15 @@ These tasks build the foundation for all later stages. 2A and 2B can be worked i
 **Depends on:** Nothing
 **Tasks:**
 
-- [ ] Expand `Tec1gSysCtrlState` type to add: `bankSelect`, `capsLock`, `ffD4`, `ffD5`, `ffD6`
-- [ ] Update `decodeSysCtrl` to decode all 8 bits:
+- [x] Expand `Tec1gSysCtrlState` type to add: `bankSelect`, `capsLock`, `ffD4`, `ffD5`, `ffD6`
+- [x] Update `decodeSysCtrl` to decode all 8 bits:
   - Bit 3: `bankSelect` (E_A14)
   - Bit 4: `ffD4` (reserved, pass-through)
   - Bit 5: `capsLock`
   - Bit 6: `ffD5` (reserved, pass-through)
   - Bit 7: `ffD6` (reserved, pass-through)
 - [ ] Store decoded values in `Tec1gState`
-- [ ] Update `sysctrl.test.ts` with tests for all 8 bits
+- [x] Update `sysctrl.test.ts` with tests for all 8 bits
 - [ ] Include `capsLock` and `bankSelect` in UI update payload (for future status display)
 
 #### 2B — SYS_INPUT all 8 bits
@@ -507,10 +507,10 @@ These tasks build the foundation for all later stages. 2A and 2B can be worked i
 **Tasks:**
 
 - [ ] Bit 0 (SKEY): Add `shiftKeyActive: boolean` to state; set when FN modifier is held
-- [ ] Bit 3 (CART): Already fixed in 1A — verify integration
+- [x] Bit 3 (CART): Already fixed in 1A — verify integration
 - [ ] Bit 4 (RKEY): Add raw key detection; set when `keyValue !== 0x7F` (key physically held)
 - [ ] Bit 5 (GIMP): Add `gimpEnabled: boolean` config option (default false)
-- [ ] Verify bits 1, 2, 6, 7 are already correct
+- [x] Verify bits 1, 2, 6, 7 are already correct
 - [ ] Add unit tests for every bit of port 0x03 in isolation and combination
 
 #### 2C — Expansion bank switching
