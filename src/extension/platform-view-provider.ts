@@ -52,6 +52,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private currentSession: vscode.DebugSession | undefined;
   private currentSessionId: string | undefined;
   private uiRevision = 0;
+  private selectedWorkspace: vscode.WorkspaceFolder | undefined;
+  private hasProject = false;
 
   private tec1ActiveTab: Tec1PanelTab = 'ui';
   private tec1UiState = createTec1UiState();
@@ -86,6 +88,20 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.view.show(!focus);
       }
     });
+  }
+
+  setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
+    this.selectedWorkspace = folder;
+    if (!this.currentPlatform) {
+      this.renderCurrentView(true);
+    }
+  }
+
+  setHasProject(value: boolean): void {
+    this.hasProject = value;
+    if (!this.currentPlatform) {
+      this.renderCurrentView(true);
+    }
   }
 
   setPlatform(
@@ -355,7 +371,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
-      this.view.webview.html = this.getPlaceholderHtml();
+      this.view.webview.html = this.getIdleHtml();
     }
   }
 
@@ -500,7 +516,29 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: 'snapshot', ...snapshotObject });
   }
 
-  private getPlaceholderHtml(): string {
+  private getIdleHtml(): string {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    const multiRoot = folders.length > 1;
+    if (!this.hasProject) {
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
+  <p>Debug80</p>
+  <p style="opacity: 0.7;">Create a Debug80 project to get started.</p>
+</body>
+</html>`;
+    }
+    const selectedLabel = this.selectedWorkspace?.name ?? 'Workspace';
+    const selectionHint =
+      multiRoot && !this.selectedWorkspace
+        ? 'Select a workspace folder with “Debug80: Select Workspace Folder”.'
+        : '';
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -511,7 +549,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Start a debug session to see the platform UI.</p>
+  <p style="opacity: 0.7;">Project detected (${selectedLabel}). Start a debug session to see the platform UI.</p>
+  ${selectionHint ? `<p style="opacity: 0.7;">${selectionHint}</p>` : ''}
 </body>
 </html>`;
   }
