@@ -63,6 +63,7 @@ export interface Tec1gPlatformConfig {
   gimpSignal?: boolean;
   expansionBankHi?: boolean;
   matrixMode?: boolean;
+  rtcEnabled?: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
@@ -87,6 +88,7 @@ export interface Tec1gPlatformConfigNormalized {
   gimpSignal: boolean;
   expansionBankHi: boolean;
   matrixMode: boolean;
+  rtcEnabled: boolean;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;

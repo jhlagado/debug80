@@ -180,11 +180,25 @@ export function getTec1Style(): string {
       border-radius: 4px;
       image-rendering: pixelated;
     }
+    .serial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
     .serial-title {
       font-size: 12px;
       letter-spacing: 0.08em;
       color: #c0c0c0;
-      margin-bottom: 6px;
+    }
+    .serial-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .key-small {
+      font-size: 9px;
+      padding: 4px 8px;
+      min-width: auto;
     }
     .serial-body {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',

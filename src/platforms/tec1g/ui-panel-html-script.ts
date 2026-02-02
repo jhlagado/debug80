@@ -21,6 +21,9 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const serialOutEl = document.getElementById('serialOut');
     const serialInputEl = document.getElementById('serialInput');
     const serialSendEl = document.getElementById('serialSend');
+    const serialSendFileEl = document.getElementById('serialSendFile');
+    const serialSaveEl = document.getElementById('serialSave');
+    const serialClearEl = document.getElementById('serialClear');
     const lcdCanvas = document.getElementById('lcdCanvas');
     const lcdCtx = lcdCanvas && lcdCanvas.getContext ? lcdCanvas.getContext('2d') : null;
     const glcdCanvas = document.getElementById('glcdCanvas');
@@ -1377,6 +1380,18 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         sendSerialInput();
         event.preventDefault();
       }
+    });
+
+    serialSendFileEl.addEventListener('click', () => {
+      vscode.postMessage({ type: 'serialSendFile' });
+    });
+    serialSaveEl.addEventListener('click', () => {
+      const text = serialOutEl.textContent || '';
+      vscode.postMessage({ type: 'serialSave', text });
+    });
+    serialClearEl.addEventListener('click', () => {
+      serialOutEl.textContent = '';
+      vscode.postMessage({ type: 'serialClear' });
     });
 
     window.addEventListener('keydown', event => {

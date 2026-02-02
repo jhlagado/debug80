@@ -13,6 +13,7 @@ import { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
+import { Ds1302 } from './ds1302';
 import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
@@ -166,6 +167,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
+  const rtcEnabled = config.rtcEnabled === true;
   return {
     regions,
     romRanges,
@@ -178,6 +180,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     gimpSignal,
     expansionBankHi,
     matrixMode,
+    rtcEnabled,
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -198,6 +201,8 @@ export function createTec1gRuntime(
 ): Tec1gRuntime {
   const initialSysCtrl = config.expansionBankHi ? 0x08 : 0x00;
   const matrixMode = config.matrixMode;
+  const rtcEnabled = config.rtcEnabled;
+  const rtc = rtcEnabled ? new Ds1302() : null;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
@@ -715,6 +720,9 @@ export function createTec1gRuntime(
       if (p === 0x84) {
         return lcdReadData();
       }
+      if (p === 0xfc) {
+        return rtcEnabled && rtc ? rtc.read() : 0xff;
+      }
       if (p === 0x07) {
         return glcdReadStatus();
       }
@@ -794,6 +802,12 @@ export function createTec1gRuntime(
       }
       if (p === 0x05) {
         updateMatrix(value & 0xff);
+        return;
+      }
+      if (p === 0xfc) {
+        if (rtcEnabled && rtc) {
+          rtc.write(value & 0xff);
+        }
         return;
       }
       if (p === 0x04) {
