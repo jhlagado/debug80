@@ -76,6 +76,7 @@ export function getTec1gStyle(): string {
       display: flex;
       gap: 8px;
       align-items: center;
+      flex-wrap: wrap;
     }
     .key.speed {
       padding: 4px 10px;
@@ -88,6 +89,35 @@ export function getTec1gStyle(): string {
       font-size: 12px;
       letter-spacing: 0.08em;
       min-width: 80px;
+    }
+    .status-leds {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #1f1f1f;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
+    }
+    .status-led {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: #cfcfcf;
+    }
+    .status-led-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #3f3f3f;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+      display: inline-block;
+    }
+    .status-led-light.on {
+      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
     }
     .keypad {
       display: grid;
