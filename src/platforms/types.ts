@@ -64,6 +64,8 @@ export interface Tec1gPlatformConfig {
   expansionBankHi?: boolean;
   matrixMode?: boolean;
   rtcEnabled?: boolean;
+  sdEnabled?: boolean;
+  sdImagePath?: string;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
@@ -89,6 +91,8 @@ export interface Tec1gPlatformConfigNormalized {
   expansionBankHi: boolean;
   matrixMode: boolean;
   rtcEnabled: boolean;
+  sdEnabled: boolean;
+  sdImagePath?: string;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;

@@ -14,6 +14,7 @@ import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
+import { SdSpi } from './sd-spi';
 import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
@@ -168,6 +169,11 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
   const rtcEnabled = config.rtcEnabled === true;
+  const sdEnabled = config.sdEnabled === true;
+  const sdImagePath =
+    typeof config.sdImagePath === 'string' && config.sdImagePath !== ''
+      ? config.sdImagePath
+      : undefined;
   return {
     regions,
     romRanges,
@@ -181,6 +187,8 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     expansionBankHi,
     matrixMode,
     rtcEnabled,
+    sdEnabled,
+    ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -203,6 +211,8 @@ export function createTec1gRuntime(
   const matrixMode = config.matrixMode;
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
+  const sdEnabled = config.sdEnabled;
+  const sdSpi = sdEnabled ? new SdSpi() : null;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
@@ -723,6 +733,9 @@ export function createTec1gRuntime(
       if (p === 0xfc) {
         return rtcEnabled && rtc ? rtc.read() : 0xff;
       }
+      if (p === 0xfd) {
+        return sdEnabled && sdSpi ? sdSpi.read() : 0xff;
+      }
       if (p === 0x07) {
         return glcdReadStatus();
       }
@@ -807,6 +820,12 @@ export function createTec1gRuntime(
       if (p === 0xfc) {
         if (rtcEnabled && rtc) {
           rtc.write(value & 0xff);
+        }
+        return;
+      }
+      if (p === 0xfd) {
+        if (sdEnabled && sdSpi) {
+          sdSpi.write(value & 0xff);
         }
         return;
       }

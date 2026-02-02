@@ -17,6 +17,7 @@ function makeRuntime(matrixMode = true) {
     expansionBankHi: false,
     matrixMode,
     rtcEnabled: false,
+    sdEnabled: false,
   };
   return createTec1gRuntime(config, () => {});
 }

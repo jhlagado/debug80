@@ -764,12 +764,12 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Stage 6A, 6B
 **Tasks:**
 
-- [ ] Add `sdEnabled: boolean` and optional `sdImagePath: string` config options
-- [ ] Instantiate `SdSpi` in runtime when enabled
-- [ ] Route port 0xFD writes to `sdSpi.write(value)`, reads to `sdSpi.read()`
+- [x] Add `sdEnabled: boolean` and optional `sdImagePath: string` config options
+- [x] Instantiate `SdSpi` in runtime when enabled
+- [x] Route port 0xFD writes to `sdSpi.write(value)`, reads to `sdSpi.read()`
 - [ ] If `sdImagePath` provided, load file as virtual disk image for block reads
 - [ ] Add SD presence indicator to SYS_INPUT (if applicable)
-- [ ] Unit tests: end-to-end port 0xFD initialization sequence
+- [x] Unit tests: end-to-end port 0xFD initialization sequence
 
 ---
 
