@@ -658,14 +658,14 @@ ASCII coverage and row/col bounds.
 **Tasks:**
 
 - [x] Add UI toggle for matrix keyboard mode (shows/hides matrix keyboard panel)
-- [ ] Option A: virtual QWERTY grid in webview (click to press)
+- [x] Option A: virtual QWERTY grid in webview (click to press)
 - [x] Option B: capture PC keyboard events and translate via keymap
 - [x] Send `applyMatrixKey` messages from webview to runtime
 - [x] Show CAPS state indicator from SYS_CTRL
-- [ ] Visual feedback on key press/release
+- [x] Visual feedback on key press/release
 
-**Status:** Implemented keyboard-capture mode with a matrix toggle + CAPS indicator. No virtual QWERTY grid yet and
-no per-key visual press feedback (optional polish).
+**Status:** Implemented keyboard-capture mode with a matrix toggle + CAPS indicator, plus a clickable QWERTY grid
+with per-key press feedback.
 
 ---
 

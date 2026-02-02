@@ -31,6 +31,10 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const matrixModeToggle = document.getElementById('matrixModeToggle');
     const matrixModeStatus = document.getElementById('matrixModeStatus');
     const matrixCapsStatus = document.getElementById('matrixCapsStatus');
+    const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid');
+    const matrixShift = document.getElementById('matrixShift');
+    const matrixCtrl = document.getElementById('matrixCtrl');
+    const matrixAlt = document.getElementById('matrixAlt');
     const tabButtons = Array.from(document.querySelectorAll('[data-tab]'));
     const panelUi = document.getElementById('panel-ui');
     const panelMemory = document.getElementById('panel-memory');
@@ -76,6 +80,12 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     let matrixModeEnabled = false;
     let capsLockEnabled = false;
     const matrixHeldKeys = new Set();
+    const matrixClickMods: { shift: boolean; ctrl: boolean; alt: boolean } = {
+      shift: false,
+      ctrl: false,
+      alt: false,
+    };
+    const matrixKeyElements = new Map<string, HTMLElement>();
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
       glcdBaseCanvas.height = GLCD_HEIGHT;
@@ -690,22 +700,24 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       );
     }
 
-    function handleMatrixKeyEvent(event, pressed) {
-      if (!matrixModeEnabled || activeTab !== 'ui' || shouldIgnoreKeyEvent(event)) {
-        return false;
-      }
-      const key = event.key;
+    function setMatrixKeyPressed(key, pressed) {
       if (!key) {
-        return false;
+        return;
       }
+      const direct = matrixKeyElements.get(key);
+      const fallback =
+        key.length === 1 ? matrixKeyElements.get(key.toLowerCase()) : undefined;
+      const el = direct ?? fallback;
+      if (el) {
+        el.classList.toggle('pressed', pressed);
+      }
+    }
+
+    function sendMatrixKey(key, pressed, mods) {
       const keyId =
-        key +
-        '|' +
-        (event.shiftKey ? '1' : '0') +
-        (event.ctrlKey ? '1' : '0') +
-        (event.altKey ? '1' : '0');
+        key + '|' + (mods.shift ? '1' : '0') + (mods.ctrl ? '1' : '0') + (mods.alt ? '1' : '0');
       if (pressed) {
-        if (event.repeat || matrixHeldKeys.has(keyId)) {
+        if (matrixHeldKeys.has(keyId)) {
           return true;
         }
         matrixHeldKeys.add(keyId);
@@ -719,11 +731,133 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         type: 'matrixKey',
         key: key,
         pressed: !!pressed,
+        shift: mods.shift,
+        ctrl: mods.ctrl,
+        alt: mods.alt,
+      });
+      return true;
+    }
+
+    function handleMatrixKeyEvent(event, pressed) {
+      if (!matrixModeEnabled || activeTab !== 'ui' || shouldIgnoreKeyEvent(event)) {
+        return false;
+      }
+      const key = event.key;
+      if (!key) {
+        return false;
+      }
+      if (pressed && event.repeat) {
+        return true;
+      }
+      setMatrixKeyPressed(key, pressed);
+      if (key.length === 1 && key !== key.toLowerCase()) {
+        setMatrixKeyPressed(key.toLowerCase(), pressed);
+      }
+      sendMatrixKey(key, pressed, {
         shift: event.shiftKey,
         ctrl: event.ctrlKey,
         alt: event.altKey,
       });
       return true;
+    }
+
+    function setMatrixMod(mod, active) {
+      matrixClickMods[mod] = active;
+      const el = mod === 'shift' ? matrixShift : mod === 'ctrl' ? matrixCtrl : matrixAlt;
+      if (el) {
+        el.classList.toggle('active', active);
+      }
+    }
+
+    function toggleMatrixMod(mod) {
+      setMatrixMod(mod, !matrixClickMods[mod]);
+    }
+
+    function buildMatrixKeyboard() {
+      if (!matrixKeyboardGrid) {
+        return;
+      }
+      const rows = [
+        ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
+        ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\\\'],
+        ['Caps', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
+        ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
+        ['Ctrl', 'Alt', 'Space', 'Alt', 'Ctrl'],
+      ];
+      const spans = {
+        Backspace: 2,
+        Tab: 2,
+        Caps: 2,
+        Enter: 2,
+        Shift: 2,
+        Ctrl: 2,
+        Alt: 2,
+        Space: 6,
+      };
+      matrixKeyboardGrid.innerHTML = '';
+      rows.forEach((row) => {
+        row.forEach((label) => {
+          const keyEl = document.createElement('div');
+          keyEl.className = 'matrix-key' + (spans[label] ? ' wide' : '');
+          const span = spans[label] ?? 1;
+          keyEl.style.gridColumn = 'span ' + span;
+          keyEl.textContent = label;
+          const keyValue =
+            label === 'Space'
+              ? ' '
+              : label === 'Backspace'
+              ? 'Backspace'
+              : label === 'Enter'
+              ? 'Enter'
+              : label === 'Esc'
+              ? 'Escape'
+              : label === 'Tab'
+              ? 'Tab'
+              : label === 'Caps'
+              ? 'CapsLock'
+              : label === 'Shift'
+              ? 'Shift'
+              : label === 'Ctrl'
+              ? 'Control'
+              : label === 'Alt'
+              ? 'Alt'
+              : label;
+          keyEl.dataset.key = keyValue;
+          if (keyValue !== 'Shift' && keyValue !== 'Control' && keyValue !== 'Alt' && keyValue !== 'CapsLock') {
+            matrixKeyElements.set(keyValue, keyEl);
+          }
+          keyEl.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            if (!matrixModeEnabled || activeTab !== 'ui') {
+              return;
+            }
+            if (keyValue === 'Shift') {
+              toggleMatrixMod('shift');
+              return;
+            }
+            if (keyValue === 'Control') {
+              toggleMatrixMod('ctrl');
+              return;
+            }
+            if (keyValue === 'Alt') {
+              toggleMatrixMod('alt');
+              return;
+            }
+            setMatrixKeyPressed(keyValue, true);
+            sendMatrixKey(keyValue, true, matrixClickMods);
+          });
+          const release = () => {
+            if (keyValue === 'Shift' || keyValue === 'Control' || keyValue === 'Alt') {
+              return;
+            }
+            setMatrixKeyPressed(keyValue, false);
+            sendMatrixKey(keyValue, false, matrixClickMods);
+          };
+          keyEl.addEventListener('mouseup', release);
+          keyEl.addEventListener('mouseleave', release);
+          matrixKeyboardGrid.appendChild(keyEl);
+        });
+      });
     }
 
     addButton('RESET', () => {
@@ -754,6 +888,15 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         applyMatrixMode(next);
         vscode.postMessage({ type: 'matrixMode', enabled: next });
       });
+    }
+    if (matrixShift) {
+      matrixShift.addEventListener('click', () => toggleMatrixMod('shift'));
+    }
+    if (matrixCtrl) {
+      matrixCtrl.addEventListener('click', () => toggleMatrixMod('ctrl'));
+    }
+    if (matrixAlt) {
+      matrixAlt.addEventListener('click', () => toggleMatrixMod('alt'));
     }
     speedEl.addEventListener('click', () => {
       const next = speedMode === 'fast' ? 'slow' : 'fast';
@@ -1213,6 +1356,7 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     applySpeed(speedMode);
     applyMuteState();
     applyMatrixMode(matrixModeEnabled);
+    buildMatrixKeyboard();
     applyCapsLock(capsLockEnabled);
     drawLcd();
     buildMatrix();
