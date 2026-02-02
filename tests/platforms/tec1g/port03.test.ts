@@ -18,6 +18,7 @@ function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
       expansionBankHi: false,
       matrixMode: false,
       rtcEnabled: false,
+      sdEnabled: false,
       ...overrides,
     },
     () => {}
