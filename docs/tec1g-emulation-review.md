@@ -820,9 +820,9 @@ Can be worked at any time, independently of feature stages.
 **Depends on:** Stage 2A (SYS_CTRL decode)
 **Tasks:**
 
-- [ ] Add status LED indicators to webview panel: SHADOW, PROTECT, EXPAND, CAPS
-- [ ] Update on each UI payload (already includes `sysCtrl` value)
-- [ ] Style to match BAR1 LED bar appearance from real hardware
+- [x] Add status LED indicators to webview panel: SHADOW, PROTECT, EXPAND, CAPS
+- [x] Update on each UI payload (already includes `sysCtrl` value)
+- [x] Style to match BAR1 LED bar appearance from real hardware
 
 #### 8B — Missing test coverage
 
@@ -831,11 +831,11 @@ Can be worked at any time, independently of feature stages.
 **Depends on:** Nothing (can be written against current code)
 **Tasks:**
 
-- [ ] LCD HD44780: busy flag timing, clear, home, DDRAM addressing, data read/write
-- [ ] GLCD ST7920: basic instruction set, GDRAM write/read, DDRAM addressing, busy timing
-- [ ] Serial bitbang: TX decode accuracy, RX injection timing, edge cases
-- [ ] Port 0x03: verify all 8 bits against schematic (current state before fixes)
-- [ ] Memory banking: SHADOW + PROTECT + EXPAND combinations, boundary conditions
+- [x] LCD HD44780: busy flag timing, clear, home, DDRAM addressing, data read/write
+- [x] GLCD ST7920: basic instruction set, GDRAM write/read, DDRAM addressing, busy timing
+- [x] Serial bitbang: TX decode accuracy, RX injection timing, edge cases
+- [x] Port 0x03: verify all 8 bits against schematic (current state before fixes)
+- [x] Memory banking: SHADOW + PROTECT + EXPAND combinations, boundary conditions
 
 ---
 

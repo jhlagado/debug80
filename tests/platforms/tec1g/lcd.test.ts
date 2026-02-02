@@ -91,4 +91,34 @@ describe('TEC-1G LCD instruction handling', () => {
     const high = rt.ioHandlers.read(0x1204);
     expect(high).toBe(low);
   });
+
+  it('clear command resets DDRAM and clears busy flag after time', () => {
+    const rt = makeRuntime();
+    rt.ioHandlers.write(0x04, 0x80); // set DDRAM addr
+    rt.ioHandlers.write(0x84, 0x41);
+    rt.ioHandlers.write(0x04, 0x01); // clear display
+    expect(rt.ioHandlers.read(0x04) & 0x80).toBe(0x80);
+    rt.recordCycles(rt.state.clockHz);
+    expect(rt.ioHandlers.read(0x04) & 0x80).toBe(0x00);
+    expect(rt.state.lcd[0]).toBe(0x20);
+    expect(rt.state.lcdAddr).toBe(0x80);
+  });
+
+  it('home command resets address and display shift', () => {
+    const rt = makeRuntime();
+    rt.state.lcdAddr = 0x94;
+    rt.state.lcdDisplayShift = 3;
+    rt.ioHandlers.write(0x04, 0x02); // home
+    expect(rt.state.lcdAddr).toBe(0x80);
+    expect(rt.state.lcdDisplayShift).toBe(0);
+  });
+
+  it('ddram read/write returns stored data', () => {
+    const rt = makeRuntime();
+    rt.ioHandlers.write(0x04, 0x80);
+    rt.ioHandlers.write(0x84, 0x5a);
+    rt.ioHandlers.write(0x04, 0x80);
+    const value = rt.ioHandlers.read(0x84);
+    expect(value).toBe(0x5a);
+  });
 });
