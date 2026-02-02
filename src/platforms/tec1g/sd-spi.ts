@@ -33,6 +33,11 @@ export class SdSpi {
   private commandBytes: number[] = [];
   private lastCommand: SdCommand | undefined;
   private outputQueue: number[] = [];
+  private pendingResponse: number[] | null = null;
+  private delayBytes = 0;
+  private appCommand = false;
+  private initTries = 0;
+  private ready = false;
 
   /**
    * Creates a new SD SPI bit-bang helper.
@@ -97,6 +102,9 @@ export class SdSpi {
     this.commandBytes = [];
     this.outputQueue = [];
     this.lastCommand = undefined;
+    this.appCommand = false;
+    this.pendingResponse = null;
+    this.delayBytes = 0;
     this.csActive = true;
   }
 
@@ -109,13 +117,22 @@ export class SdSpi {
     this.commandBytes = [];
     this.outputQueue = [];
     this.lastCommand = undefined;
+    this.appCommand = false;
+    this.pendingResponse = null;
+    this.delayBytes = 0;
   }
 
   private shiftIn(bit: number): void {
-    this.inShift |= (bit & 0x01) << this.inBitIndex;
+    this.inShift = ((this.inShift << 1) | (bit & 0x01)) & 0xff;
     this.inBitIndex += 1;
     if (this.inBitIndex >= 8) {
-      this.commandBytes.push(this.inShift & 0xff);
+      const byte = this.inShift & 0xff;
+      if (this.commandBytes.length === 0 && (byte & 0xc0) !== 0x40) {
+        this.inShift = 0;
+        this.inBitIndex = 0;
+        return;
+      }
+      this.commandBytes.push(byte);
       if (this.commandBytes.length >= 6) {
         this.captureCommand();
         this.commandBytes = [];
@@ -126,7 +143,15 @@ export class SdSpi {
   }
 
   private shiftOut(): void {
-    this.ioOut = (this.outShift >> this.outBitIndex) & 0x01;
+    if (this.outBitIndex === 0 && this.pendingResponse) {
+      if (this.delayBytes > 0) {
+        this.delayBytes -= 1;
+      } else {
+        this.enqueueResponse(this.pendingResponse);
+        this.pendingResponse = null;
+      }
+    }
+    this.ioOut = (this.outShift >> (7 - this.outBitIndex)) & 0x01;
     this.outBitIndex += 1;
     if (this.outBitIndex >= 8) {
       this.outBitIndex = 0;
@@ -151,5 +176,76 @@ export class SdSpi {
     }
     const arg = ((a3 << 24) | (a2 << 16) | (a1 << 8) | a0) >>> 0;
     this.lastCommand = { cmd: cmd & 0x3f, arg, crc };
+    this.handleCommand(this.lastCommand);
+  }
+
+  private enqueueResponse(bytes: number[]): void {
+    this.outputQueue.push(...bytes.map((value) => value & 0xff));
+    if (this.outputQueue.length > 0) {
+      this.outBitIndex = 0;
+      this.outShift = this.outputQueue.shift() ?? 0xff;
+    }
+  }
+
+  private handleCommand(command: SdCommand): void {
+    switch (command.cmd) {
+      case 0: {
+        this.ready = false;
+        this.initTries = 0;
+        this.appCommand = false;
+        this.pendingResponse = [0x01];
+        this.delayBytes = 1;
+        break;
+      }
+      case 8: {
+        this.pendingResponse = [0x01, 0x00, 0x00, 0x01, 0xaa];
+        this.delayBytes = 1;
+        break;
+      }
+      case 55: {
+        this.appCommand = true;
+        this.pendingResponse = [this.ready ? 0x00 : 0x01];
+        this.delayBytes = 1;
+        break;
+      }
+      case 41: {
+        if (!this.appCommand) {
+          this.pendingResponse = [0x05];
+          this.delayBytes = 1;
+          break;
+        }
+        this.appCommand = false;
+        this.initTries += 1;
+        if (this.initTries >= 2) {
+          this.ready = true;
+          this.pendingResponse = [0x00];
+        } else {
+          this.pendingResponse = [0x01];
+        }
+        this.delayBytes = 1;
+        break;
+      }
+      case 58: {
+        this.pendingResponse = [this.ready ? 0x00 : 0x01, 0x40, 0x00, 0x00, 0x00];
+        this.delayBytes = 1;
+        break;
+      }
+      case 17: {
+        if (!this.ready) {
+          this.pendingResponse = [0x01];
+          this.delayBytes = 1;
+          break;
+        }
+        const payload = new Array<number>(512).fill(0x00);
+        this.pendingResponse = [0x00, 0xfe, ...payload, 0xff, 0xff];
+        this.delayBytes = 1;
+        break;
+      }
+      default: {
+        this.pendingResponse = [this.ready ? 0x00 : 0x01];
+        this.delayBytes = 1;
+        break;
+      }
+    }
   }
 }

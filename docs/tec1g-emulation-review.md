@@ -750,12 +750,12 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Stage 6A
 **Tasks:**
 
-- [ ] CMD0 (GO_IDLE_STATE): respond with R1 = 0x01 (idle)
-- [ ] CMD8 (SEND_IF_COND): respond with R7 (voltage accepted)
-- [ ] ACMD41 (SD_SEND_OP_COND): respond with R1 = 0x00 (ready) after N retries
-- [ ] CMD58 (READ_OCR): respond with OCR register
-- [ ] CMD17 (READ_SINGLE_BLOCK): respond with data token + 512 bytes from virtual image
-- [ ] Unit tests: full initialization sequence (CMD0 -> CMD8 -> ACMD41 -> CMD58)
+- [x] CMD0 (GO_IDLE_STATE): respond with R1 = 0x01 (idle)
+- [x] CMD8 (SEND_IF_COND): respond with R7 (voltage accepted)
+- [x] ACMD41 (SD_SEND_OP_COND): respond with R1 = 0x00 (ready) after N retries
+- [x] CMD58 (READ_OCR): respond with OCR register
+- [x] CMD17 (READ_SINGLE_BLOCK): respond with data token + 512 bytes from virtual image
+- [x] Unit tests: full initialization sequence (CMD0 -> CMD8 -> ACMD41 -> CMD58)
 
 #### 6C — SD card integration with runtime
 
