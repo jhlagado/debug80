@@ -16,6 +16,7 @@ function makeRuntime() {
     gimpSignal: false,
     expansionBankHi: false,
     matrixMode: false,
+    rtcEnabled: false,
   };
   return createTec1gRuntime(config, () => {});
 }
