@@ -145,6 +145,7 @@ Existing panel behavior unchanged — this phase is purely additive.
     route to `provider.reveal()` instead of creating WebviewPanels
 
 **Result:** Platform UI renders in sidebar instead of editor tab.
+Simple/terminal remains on the existing terminal panel in Phase 2 (out of scope).
 
 ### Phase 3 — Responsive memory tab
 
