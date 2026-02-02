@@ -52,4 +52,31 @@ describe('z80-runtime', () => {
     // OUT uses (A << 8) | n for the port number in this implementation.
     assert.deepEqual(writes, [{ port: 0x1234, value: 0x12 }]);
   });
+
+  it('passes full 16-bit port to IO read handler on IN (n),A', () => {
+    const reads: number[] = [];
+    const program = makeProgram(
+      [
+        0x3e,
+        0x56, // LD A,0x56
+        0xdb,
+        0x04, // IN A,(0x04)
+        0x76, // HALT
+      ],
+      0x0000
+    );
+
+    const runtime = createZ80Runtime(program, undefined, {
+      read: (port) => {
+        reads.push(port);
+        return 0;
+      },
+    });
+
+    runtime.step(); // LD A, nn
+    runtime.step(); // IN A, (n)
+    runtime.step(); // HALT
+
+    assert.deepEqual(reads, [0x5604]);
+  });
 });

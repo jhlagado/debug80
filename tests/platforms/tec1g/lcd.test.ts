@@ -15,6 +15,7 @@ function makeRuntime() {
     yieldMs: 0,
     gimpSignal: false,
     expansionBankHi: false,
+    matrixMode: false,
   };
   return createTec1gRuntime(config, () => {});
 }
@@ -80,5 +81,12 @@ describe('TEC-1G LCD instruction handling', () => {
     rt.ioHandlers.write(0x04, 0x40); // reset addr
     const value = rt.ioHandlers.read(0x84);
     expect(value).toBe(0x1f);
+  });
+
+  it('lcd status read ignores high byte of port address', () => {
+    const rt = makeRuntime();
+    const low = rt.ioHandlers.read(0x0004);
+    const high = rt.ioHandlers.read(0x1204);
+    expect(high).toBe(low);
   });
 });

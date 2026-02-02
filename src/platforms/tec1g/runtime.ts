@@ -36,6 +36,8 @@ export interface Tec1gState {
   digitLatch: number;
   segmentLatch: number;
   matrixLatch: number;
+  matrixKeyStates: Uint8Array;
+  matrixModeEnabled: boolean;
   glcd: Uint8Array;
   glcdRowAddr: number;
   glcdRowBase: number;
@@ -107,6 +109,7 @@ export interface Tec1gRuntime {
   state: Tec1gState;
   ioHandlers: IoHandlers;
   applyKey(code: number): void;
+  applyMatrixKey(row: number, col: number, pressed: boolean): void;
   queueSerial(bytes: number[]): void;
   recordCycles(cycles: number): void;
   silenceSpeaker(): void;
@@ -161,6 +164,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     : undefined;
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
+  const matrixMode = config.matrixMode === true;
   return {
     regions,
     romRanges,
@@ -172,6 +176,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     yieldMs: Math.max(0, yieldMs),
     gimpSignal,
     expansionBankHi,
+    matrixMode,
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -191,12 +196,15 @@ export function createTec1gRuntime(
   onPortWrite?: (payload: { port: number; value: number }) => void
 ): Tec1gRuntime {
   const initialSysCtrl = config.expansionBankHi ? 0x08 : 0x00;
+  const matrixMode = config.matrixMode;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
     digitLatch: 0,
     segmentLatch: 0,
     matrixLatch: 0,
+    matrixKeyStates: new Uint8Array(16).fill(0xff),
+    matrixModeEnabled: matrixMode,
     glcd: new Uint8Array(1024),
     glcdRowAddr: 0,
     glcdRowBase: 0,
@@ -680,7 +688,9 @@ export function createTec1gRuntime(
 
   const ioHandlers: IoHandlers = {
     read: (port: number): number => {
-      const p = port & 0xff;
+      const fullPort = port & 0xffff;
+      const p = fullPort & 0xff;
+      const highByte = (fullPort >> 8) & 0xff;
       if (p === 0x00) {
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
@@ -691,8 +701,11 @@ export function createTec1gRuntime(
         return key | (serialRxLevel ? 0x80 : 0x00);
       }
       if (p === 0xfe) {
-        // Matrix keyboard input (unwired for now).
-        return 0xff;
+        if (!state.matrixModeEnabled) {
+          return 0xff;
+        }
+        const row = highByte & 0x0f;
+        return state.matrixKeyStates[row] ?? 0xff;
       }
       if (p === 0x04) {
         return lcdReadStatus();
@@ -741,7 +754,9 @@ export function createTec1gRuntime(
       return 0xff;
     },
     write: (port: number, value: number): void => {
-      const p = port & 0xff;
+      const fullPort = port & 0xffff;
+      const p = fullPort & 0xff;
+      void fullPort;
       if (p === 0x01) {
         state.digitLatch = value & 0xff;
         const speaker = (value & 0x80) !== 0;
@@ -981,6 +996,9 @@ export function createTec1gRuntime(
   };
 
   const applyKey = (code: number): void => {
+    if (state.matrixModeEnabled) {
+      return;
+    }
     state.keyValue = code & 0x7f;
     state.rawKeyActive = (state.keyValue & 0x7f) !== 0x7f;
     state.shiftKeyActive = state.rawKeyActive && (state.keyValue & 0x20) === 0;
@@ -995,6 +1013,17 @@ export function createTec1gRuntime(
       state.shiftKeyActive = false;
       state.keyReleaseEventId = null;
     });
+  };
+
+  const applyMatrixKey = (row: number, col: number, pressed: boolean): void => {
+    if (!Number.isFinite(row) || !Number.isFinite(col)) {
+      return;
+    }
+    const rowIndex = Math.max(0, Math.min(15, Math.trunc(row)));
+    const colIndex = Math.max(0, Math.min(7, Math.trunc(col)));
+    const mask = 1 << colIndex;
+    const current = state.matrixKeyStates[rowIndex] ?? 0xff;
+    state.matrixKeyStates[rowIndex] = pressed ? current & ~mask : current | mask;
   };
 
   const setSerialRxLevel = (level: 0 | 1): void => {
@@ -1129,6 +1158,8 @@ export function createTec1gRuntime(
     };
     lcdBusyUntil = 0;
     state.matrix.fill(0x00);
+    state.matrixKeyStates.fill(0xff);
+    state.matrixModeEnabled = matrixMode;
     state.glcd.fill(0x00);
     state.glcdRowAddr = 0;
     state.glcdRowBase = 0;
@@ -1184,6 +1215,7 @@ export function createTec1gRuntime(
     state,
     ioHandlers,
     applyKey,
+    applyMatrixKey,
     queueSerial,
     recordCycles,
     silenceSpeaker,

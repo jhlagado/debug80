@@ -52,6 +52,7 @@ describe('TEC-1G expand bank switching', () => {
       yieldMs: 0,
       gimpSignal: false,
       expansionBankHi: true,
+      matrixMode: false,
     };
     const runtime = createTec1gRuntime(config, () => {});
     runtime.state.bankA14 = false;

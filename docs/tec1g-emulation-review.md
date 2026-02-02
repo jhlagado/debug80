@@ -606,12 +606,15 @@ Larger feature requiring IO system changes and new UI. Can be worked independent
 **Depends on:** Nothing (but affects IO interface contract)
 **Tasks:**
 
-- [ ] Audit IO handler interface — currently `read(port: number)` masks to 8 bits
-- [ ] Change IO read handler to pass full 16-bit port value (or at least preserve high byte)
-- [ ] Ensure all existing port handlers still work with `port & 0xFF` for backward compat
-- [ ] Verify TEC-1 platform is unaffected by the interface change
-- [ ] Verify Simple platform is unaffected
-- [ ] Unit tests: confirm port 0x04 still matches whether accessed as 0x04 or 0x0004
+- [x] Audit IO handler interface — currently `read(port: number)` masks to 8 bits
+- [x] Change IO read handler to pass full 16-bit port value (or at least preserve high byte)
+- [x] Ensure all existing port handlers still work with `port & 0xFF` for backward compat
+- [x] Verify TEC-1 platform is unaffected by the interface change
+- [x] Verify Simple platform is unaffected
+- [x] Unit tests: confirm port 0x04 still matches whether accessed as 0x04 or 0x0004
+
+**Status:** IO handlers now preserve full port values while keeping low-byte compatibility; added unit coverage for
+IN port address width and LCD status reads with a non-zero high byte.
 
 #### 4B — Matrix scan state machine
 
@@ -620,13 +623,16 @@ Larger feature requiring IO system changes and new UI. Can be worked independent
 **Depends on:** Stage 4A
 **Tasks:**
 
-- [ ] Add `matrixKeyStates: Uint8Array(16)` to state — 16 rows x 8 column bits each
-- [ ] On `IN 0xFE`: extract high byte (A8-A15) as row address; return `matrixKeyStates[row]`
-- [ ] Default all rows to 0xFF (no keys pressed)
-- [ ] Add `applyMatrixKey(row: number, col: number, pressed: boolean)` method to runtime
-- [ ] Add `matrixModeEnabled: boolean` to state (from CONFIG switch or config option)
-- [ ] When matrix mode active, inhibit hex keypad NMI (except RESET)
-- [ ] Unit tests: set key in row 3 col 5, scan row 3, verify bit 5 is low; scan other rows, verify 0xFF
+- [x] Add `matrixKeyStates: Uint8Array(16)` to state — 16 rows x 8 column bits each
+- [x] On `IN 0xFE`: extract high byte (A8-A15) as row address; return `matrixKeyStates[row]`
+- [x] Default all rows to 0xFF (no keys pressed)
+- [x] Add `applyMatrixKey(row: number, col: number, pressed: boolean)` method to runtime
+- [x] Add `matrixModeEnabled: boolean` to state (from CONFIG switch or config option)
+- [x] When matrix mode active, inhibit hex keypad NMI (except RESET)
+- [x] Unit tests: set key in row 3 col 5, scan row 3, verify bit 5 is low; scan other rows, verify 0xFF
+
+**Status:** Matrix scan now uses the high port byte for row selection when enabled; keypad NMI is suppressed in
+matrix mode, and tests cover row reads plus the disabled-mode fallback.
 
 #### 4C — Matrix key mapping tables
 
