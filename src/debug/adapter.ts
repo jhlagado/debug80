@@ -778,7 +778,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot = buildMemorySnapshotResponse(args, {
+      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(args, {
         runtime: this.sessionState.runtime,
         symbolAnchors: this.sessionState.symbolAnchors,
         lookupAnchors: this.sourceState.lookupAnchors,
@@ -789,6 +789,7 @@ export class Z80DebugSession extends DebugSession {
         rowSize: snapshot.rowSize,
         views: snapshot.views,
         symbols: snapshot.symbols,
+        registers: snapshot.registers,
       };
       this.sendResponse(response);
       return true;
@@ -798,13 +799,19 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot = buildMemorySnapshotResponse(args, {
+      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(args, {
         runtime: this.sessionState.runtime,
         symbolAnchors: this.sessionState.symbolAnchors,
         lookupAnchors: this.sourceState.lookupAnchors,
         symbolList: this.sessionState.symbolList,
       });
-      response.body = { views: snapshot.views };
+      response.body = {
+        before: snapshot.before,
+        rowSize: snapshot.rowSize,
+        views: snapshot.views,
+        symbols: snapshot.symbols,
+        registers: snapshot.registers,
+      };
       this.sendResponse(response);
       return true;
     }

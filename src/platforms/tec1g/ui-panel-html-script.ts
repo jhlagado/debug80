@@ -31,6 +31,7 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const tabButtons = Array.from(document.querySelectorAll('[data-tab]'));
     const panelUi = document.getElementById('panel-ui');
     const panelMemory = document.getElementById('panel-memory');
+    const registerStrip = document.getElementById('registerStrip');
     const uiControls = document.getElementById('uiControls');
     const uiSectionNodes = Array.from(document.querySelectorAll('.ui-section'));
     const SERIAL_MAX = 8000;
@@ -848,8 +849,6 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         id: 'a',
         view: document.getElementById('view-a'),
         address: document.getElementById('address-a'),
-        after: document.getElementById('after-a'),
-        label: document.getElementById('label-a'),
         addr: document.getElementById('addr-a'),
         symbol: document.getElementById('sym-a'),
         dump: document.getElementById('dump-a'),
@@ -858,8 +857,6 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         id: 'b',
         view: document.getElementById('view-b'),
         address: document.getElementById('address-b'),
-        after: document.getElementById('after-b'),
-        label: document.getElementById('label-b'),
         addr: document.getElementById('addr-b'),
         symbol: document.getElementById('sym-b'),
         dump: document.getElementById('dump-b'),
@@ -868,8 +865,6 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         id: 'c',
         view: document.getElementById('view-c'),
         address: document.getElementById('address-c'),
-        after: document.getElementById('after-c'),
-        label: document.getElementById('label-c'),
         addr: document.getElementById('addr-c'),
         symbol: document.getElementById('sym-c'),
         dump: document.getElementById('dump-c'),
@@ -878,8 +873,6 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         id: 'd',
         view: document.getElementById('view-d'),
         address: document.getElementById('address-d'),
-        after: document.getElementById('after-d'),
-        label: document.getElementById('label-d'),
         addr: document.getElementById('addr-d'),
         symbol: document.getElementById('sym-d'),
         dump: document.getElementById('dump-d'),
@@ -888,6 +881,44 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
 
     function formatHex(value, width) {
       return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
+    }
+
+    function renderRegisters(data) {
+      if (!registerStrip || !data) {
+        return;
+      }
+      const items = [
+        { label: 'AF', value: formatHex(data.af || 0, 4) },
+        { label: 'BC', value: formatHex(data.bc || 0, 4) },
+        { label: 'DE', value: formatHex(data.de || 0, 4) },
+        { label: 'HL', value: formatHex(data.hl || 0, 4) },
+        { label: "AF'", value: formatHex(data.afp || 0, 4) },
+        { label: "BC'", value: formatHex(data.bcp || 0, 4) },
+        { label: "DE'", value: formatHex(data.dep || 0, 4) },
+        { label: "HL'", value: formatHex(data.hlp || 0, 4) },
+        { label: 'PC', value: formatHex(data.pc || 0, 4) },
+        { label: 'SP', value: formatHex(data.sp || 0, 4) },
+        { label: 'IX', value: formatHex(data.ix || 0, 4) },
+        { label: 'IY', value: formatHex(data.iy || 0, 4) },
+        { label: 'F', value: data.flags || '--', flags: true },
+        { label: "F'", value: data.flagsPrime || '--', flags: true },
+        { label: 'I', value: formatHex(data.i || 0, 2) },
+        { label: 'R', value: formatHex(data.r || 0, 2) },
+      ];
+      registerStrip.innerHTML = items
+        .map((item) => {
+          const valueClass = item.flags ? 'register-flags' : 'register-value';
+          return (
+            '<div class="register-item"><span class="register-label">' +
+            item.label +
+            '</span><span class="' +
+            valueClass +
+            '">' +
+            item.value +
+            '</span></div>'
+          );
+        })
+        .join('');
     }
 
     function renderDump(el, start, bytes, focusOffset, rowSize) {
@@ -988,10 +1019,14 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         if (viewMode === 'absolute' && addressValue === undefined) {
           addressValue = parseAddress(entry.address.value);
         }
+        const showAddress = viewMode === 'absolute';
+        if (entry.address) {
+          entry.address.style.display = showAddress ? 'inline-flex' : 'none';
+        }
         return {
           id: entry.id,
           view: viewMode,
-          after: parseInt(entry.after.value, 10),
+          after: 16,
           address: addressValue,
         };
       });
@@ -1006,7 +1041,6 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     }
 
     views.forEach((entry) => {
-      entry.after.addEventListener('change', requestSnapshot);
       entry.view.addEventListener('change', () => {
         if (entry.view.value.startsWith('symbol:')) {
           const name = entry.view.value.slice(7);
@@ -1038,6 +1072,9 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
           uiRevision = event.data.uiRevision;
         }
         applyUpdate(event.data);
+        if (activeTab === 'memory') {
+          requestSnapshot();
+        }
         return;
       }
       if (event.data.type === 'serial') {
@@ -1054,16 +1091,15 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       }
       if (event.data.type === 'snapshot') {
         updateSymbolOptions(event.data.symbols);
+        if (event.data.registers) {
+          renderRegisters(event.data.registers);
+        }
         if (Array.isArray(event.data.views)) {
           event.data.views.forEach((entry) => {
             const target = views.find((view) => view.id === entry.id);
             if (!target) {
               return;
             }
-            const labelValue = target.view.value.startsWith('symbol:')
-              ? target.view.value.slice(7)
-              : target.view.value.toUpperCase();
-            target.label.textContent = labelValue;
             target.addr.textContent = formatHex(entry.address ?? 0, 4);
             renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, memoryRowSize);
             if (entry.symbol) {

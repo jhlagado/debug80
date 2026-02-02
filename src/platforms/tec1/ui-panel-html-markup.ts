@@ -10,7 +10,7 @@ export function getTec1Markup(): string {
   <div id="app" tabindex="0">
     <div class="tabs">
       <button class="tab" data-tab="ui">UI</button>
-      <button class="tab" data-tab="memory">MEMORY</button>
+      <button class="tab" data-tab="memory">CPU</button>
     </div>
     <div class="panel panel-ui" id="panel-ui">
       <div class="layout">
@@ -49,115 +49,91 @@ export function getTec1Markup(): string {
     <div class="panel panel-memory" id="panel-memory">
       <div class="memory-panel" id="memoryPanel">
         <div class="shell">
-          <h1>CPU Pointer View</h1>
+          <div class="register-strip" id="registerStrip"></div>
           <div class="section">
             <div class="section-header">
-              <h2><span id="label-a">PC</span> <span class="addr" id="addr-a">0x0000</span><span class="symbol" id="sym-a"></span></h2>
               <div class="controls">
-                <select id="view-a">
-                  <option value="pc" selected>PC</option>
-                  <option value="sp">SP</option>
-                  <option value="bc">BC</option>
-                  <option value="de">DE</option>
-                  <option value="hl">HL</option>
-                  <option value="ix">IX</option>
-                  <option value="iy">IY</option>
-                  <option value="absolute">Absolute</option>
-                </select>
-                <input id="address-a" type="text" placeholder="0x0000" />
-                <select id="after-a">
-                  <option value="16" selected>16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                  <option value="128">128</option>
-                  <option value="256">256</option>
-                  <option value="512">512</option>
-                  <option value="1024">1024</option>
-                </select>
+                <div class="controls-left">
+                  <select id="view-a">
+                    <option value="pc" selected>PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                  </select>
+                  <span class="addr" id="addr-a">0x0000</span>
+                  <span class="symbol" id="sym-a"></span>
+                </div>
+                <input class="absolute-input" id="address-a" type="text" placeholder="0x0000" />
               </div>
             </div>
             <div class="dump" id="dump-a"></div>
           </div>
           <div class="section">
             <div class="section-header">
-              <h2><span id="label-b">SP</span> <span class="addr" id="addr-b">0x0000</span><span class="symbol" id="sym-b"></span></h2>
               <div class="controls">
-                <select id="view-b">
-                  <option value="pc">PC</option>
-                  <option value="sp" selected>SP</option>
-                  <option value="bc">BC</option>
-                  <option value="de">DE</option>
-                  <option value="hl">HL</option>
-                  <option value="ix">IX</option>
-                  <option value="iy">IY</option>
-                  <option value="absolute">Absolute</option>
-                </select>
-                <input id="address-b" type="text" placeholder="0x0000" />
-                <select id="after-b">
-                  <option value="16" selected>16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                  <option value="128">128</option>
-                  <option value="256">256</option>
-                  <option value="512">512</option>
-                  <option value="1024">1024</option>
-                </select>
+                <div class="controls-left">
+                  <select id="view-b">
+                    <option value="pc">PC</option>
+                    <option value="sp" selected>SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                  </select>
+                  <span class="addr" id="addr-b">0x0000</span>
+                  <span class="symbol" id="sym-b"></span>
+                </div>
+                <input class="absolute-input" id="address-b" type="text" placeholder="0x0000" />
               </div>
             </div>
             <div class="dump" id="dump-b"></div>
           </div>
           <div class="section">
             <div class="section-header">
-              <h2><span id="label-c">HL</span> <span class="addr" id="addr-c">0x0000</span><span class="symbol" id="sym-c"></span></h2>
               <div class="controls">
-                <select id="view-c">
-                  <option value="pc">PC</option>
-                  <option value="sp">SP</option>
-                  <option value="bc">BC</option>
-                  <option value="de">DE</option>
-                  <option value="hl" selected>HL</option>
-                  <option value="ix">IX</option>
-                  <option value="iy">IY</option>
-                  <option value="absolute">Absolute</option>
-                </select>
-                <input id="address-c" type="text" placeholder="0x0000" />
-                <select id="after-c">
-                  <option value="16" selected>16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                  <option value="128">128</option>
-                  <option value="256">256</option>
-                  <option value="512">512</option>
-                  <option value="1024">1024</option>
-                </select>
+                <div class="controls-left">
+                  <select id="view-c">
+                    <option value="pc">PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl" selected>HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                  </select>
+                  <span class="addr" id="addr-c">0x0000</span>
+                  <span class="symbol" id="sym-c"></span>
+                </div>
+                <input class="absolute-input" id="address-c" type="text" placeholder="0x0000" />
               </div>
             </div>
             <div class="dump" id="dump-c"></div>
           </div>
           <div class="section">
             <div class="section-header">
-              <h2><span id="label-d">DE</span> <span class="addr" id="addr-d">0x0000</span><span class="symbol" id="sym-d"></span></h2>
               <div class="controls">
-                <select id="view-d">
-                  <option value="pc">PC</option>
-                  <option value="sp">SP</option>
-                  <option value="bc">BC</option>
-                  <option value="de" selected>DE</option>
-                  <option value="hl">HL</option>
-                  <option value="ix">IX</option>
-                  <option value="iy">IY</option>
-                  <option value="absolute">Absolute</option>
-                </select>
-                <input id="address-d" type="text" placeholder="0x0000" />
-                <select id="after-d">
-                  <option value="16" selected>16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                  <option value="128">128</option>
-                  <option value="256">256</option>
-                  <option value="512">512</option>
-                  <option value="1024">1024</option>
-                </select>
+                <div class="controls-left">
+                  <select id="view-d">
+                    <option value="pc">PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de" selected>DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                  </select>
+                  <span class="addr" id="addr-d">0x0000</span>
+                  <span class="symbol" id="sym-d"></span>
+                </div>
+                <input class="absolute-input" id="address-d" type="text" placeholder="0x0000" />
               </div>
             </div>
             <div class="dump" id="dump-d"></div>

@@ -269,7 +269,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
     };
 
-    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage) => {
+    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string }) => {
+      if (msg?.type === 'startDebug') {
+        await vscode.commands.executeCommand('workbench.action.debug.start');
+        return;
+      }
       if (this.currentPlatform === 'tec1') {
         await handleTec1Message(msg as Tec1Message, {
           getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
@@ -516,7 +520,17 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: 'snapshot', ...snapshotObject });
   }
 
+  private getNonce(): string {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i += 1) {
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+  }
+
   private getIdleHtml(): string {
+    const nonce = this.getNonce();
     const folders = vscode.workspace.workspaceFolders ?? [];
     const multiRoot = folders.length > 1;
     if (!this.hasProject) {
@@ -525,7 +539,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline';">
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
@@ -544,13 +558,27 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline';">
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
   <p style="opacity: 0.7;">Project detected (${selectedLabel}). Start a debug session to see the platform UI.</p>
+  <button id="startDebug" style="margin-top: 8px; padding: 6px 10px; font-size: 12px;">
+    Start Debugging
+  </button>
   ${selectionHint ? `<p style="opacity: 0.7;">${selectionHint}</p>` : ''}
+  <script nonce="${nonce}">
+    (function () {
+      const vscode = acquireVsCodeApi();
+      const button = document.getElementById('startDebug');
+      if (button) {
+        button.addEventListener('click', () => {
+          vscode.postMessage({ type: 'startDebug' });
+        });
+      }
+    }());
+  </script>
 </body>
 </html>`;
   }
