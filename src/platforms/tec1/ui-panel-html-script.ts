@@ -121,6 +121,7 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
     ];
 
     let speedMode = 'fast';
+    let uiRevision = 0;
     let muted = true;
     let lastSpeakerOn = false;
     let lastSpeakerHz = 0;
@@ -556,6 +557,12 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
         return;
       }
       if (event.data.type === 'update') {
+        if (typeof event.data.uiRevision === 'number') {
+          if (event.data.uiRevision < uiRevision) {
+            return;
+          }
+          uiRevision = event.data.uiRevision;
+        }
         applyUpdate(event.data);
         return;
       }
