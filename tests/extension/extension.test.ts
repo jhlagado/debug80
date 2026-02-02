@@ -72,7 +72,10 @@ describe('extension activation', () => {
     const extension = (await import('../../src/extension/extension')) as {
       activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
     };
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      workspaceState: { get: vi.fn(), update: vi.fn() },
+    };
     extension.activate(context);
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
@@ -85,7 +88,10 @@ describe('extension activation', () => {
     const extension = (await import('../../src/extension/extension')) as {
       activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
     };
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      workspaceState: { get: vi.fn(), update: vi.fn() },
+    };
     extension.activate(context);
 
     await new Promise((resolve) => setImmediate(resolve));
