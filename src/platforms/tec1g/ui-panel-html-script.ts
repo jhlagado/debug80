@@ -18,6 +18,10 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const speakerLabel = document.getElementById('speakerLabel');
     const speedEl = document.getElementById('speed');
     const muteEl = document.getElementById('mute');
+    const statusShadow = document.getElementById('statusShadow');
+    const statusProtect = document.getElementById('statusProtect');
+    const statusExpand = document.getElementById('statusExpand');
+    const statusCaps = document.getElementById('statusCaps');
     const serialOutEl = document.getElementById('serialOut');
     const serialInputEl = document.getElementById('serialInput');
     const serialSendEl = document.getElementById('serialSend');
@@ -80,6 +84,7 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     let glcdBlinkVisible = true;
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
     let sysCtrlSegs = [];
+    let sysCtrlValue = 0;
     let matrixModeEnabled = false;
     let capsLockEnabled = false;
     const matrixHeldKeys = new Set();
@@ -675,6 +680,25 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       }
     }
 
+    function updateStatusLeds() {
+      const shadowOn = (sysCtrlValue & 0x01) === 0;
+      const protectOn = (sysCtrlValue & 0x02) !== 0;
+      const expandOn = (sysCtrlValue & 0x04) !== 0;
+      const capsOn = (sysCtrlValue & 0x20) !== 0;
+      if (statusShadow) {
+        statusShadow.classList.toggle('on', shadowOn);
+      }
+      if (statusProtect) {
+        statusProtect.classList.toggle('on', protectOn);
+      }
+      if (statusExpand) {
+        statusExpand.classList.toggle('on', expandOn);
+      }
+      if (statusCaps) {
+        statusCaps.classList.toggle('on', capsOn);
+      }
+    }
+
     function applyMatrixMode(enabled) {
       matrixModeEnabled = !!enabled;
       if (matrixModeToggle) {
@@ -998,6 +1022,7 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       if (typeof data.sysCtrl === 'number') {
         sysCtrlValue = data.sysCtrl & 0xff;
         updateSysCtrl();
+        updateStatusLeds();
       }
       if (typeof data.capsLock === 'boolean') {
         applyCapsLock(data.capsLock);
