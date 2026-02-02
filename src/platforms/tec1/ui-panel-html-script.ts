@@ -74,6 +74,51 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
     }
 
     let activeTab = DEFAULT_TAB === 'memory' ? 'memory' : 'ui';
+    let memoryRowSize = 16;
+    let resizeTimer = null;
+    const MEMORY_NARROW_MAX = 480;
+    const MEMORY_WIDE_MIN = 520;
+
+    function resolveMemoryRowSize(width) {
+      if (!Number.isFinite(width)) {
+        return memoryRowSize;
+      }
+      if (width <= MEMORY_NARROW_MAX) {
+        return 8;
+      }
+      if (width >= MEMORY_WIDE_MIN) {
+        return 16;
+      }
+      return memoryRowSize;
+    }
+
+    function updateMemoryLayout(forceRefresh) {
+      if (activeTab !== 'memory') {
+        return;
+      }
+      if (!memoryPanel) {
+        return;
+      }
+      const next = resolveMemoryRowSize(memoryPanel.clientWidth);
+      if (next !== memoryRowSize) {
+        memoryRowSize = next;
+        requestSnapshot();
+        return;
+      }
+      if (forceRefresh) {
+        requestSnapshot();
+      }
+    }
+
+    function scheduleMemoryResize() {
+      if (resizeTimer !== null) {
+        clearTimeout(resizeTimer);
+      }
+      resizeTimer = setTimeout(() => {
+        resizeTimer = null;
+        updateMemoryLayout(false);
+      }, 150);
+    }
 
     function setTab(tab, notify) {
       activeTab = tab === 'memory' ? 'memory' : 'ui';
@@ -91,7 +136,7 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
         vscode.postMessage({ type: 'tab', tab: activeTab });
       }
       if (activeTab === 'memory') {
-        requestSnapshot();
+        updateMemoryLayout(true);
       }
     }
 
@@ -502,7 +547,7 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
       if (activeTab !== 'memory') {
         return;
       }
-      const rowSize = 16;
+      const rowSize = memoryRowSize;
       const payloadViews = views.map((entry) => {
         const viewValue = entry.view.value;
         let viewMode = viewValue;
@@ -591,7 +636,7 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
               : target.view.value.toUpperCase();
             target.label.textContent = labelValue;
             target.addr.textContent = formatHex(entry.address ?? 0, 4);
-            renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, 16);
+            renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, memoryRowSize);
             if (entry.symbol) {
               if (entry.symbolOffset) {
                 const offset = entry.symbolOffset.toString(16).toUpperCase();
@@ -622,6 +667,8 @@ export function getTec1Script(activeTab: 'ui' | 'memory'): string {
     buildMatrix();
     drawMatrix();
     setTab(DEFAULT_TAB, false);
+    window.addEventListener('resize', scheduleMemoryResize);
+    updateMemoryLayout(false);
     if (document.activeElement !== serialInputEl) {
       document.getElementById('app').focus();
     }
