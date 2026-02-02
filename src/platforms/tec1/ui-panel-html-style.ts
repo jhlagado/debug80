@@ -305,22 +305,11 @@ export function getTec1Style(): string {
       color: #d8d8d8;
     }
     #memoryPanel .controls {
-      display: flex;
-      flex-direction: row;
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
-      gap: 6px;
-      flex-wrap: nowrap;
+      gap: 6px 10px;
       width: 100%;
-      justify-content: flex-start;
-      margin-right: 0;
-    }
-    #memoryPanel .controls-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: nowrap;
-      flex: 1 1 auto;
-      min-width: 0;
     }
     #memoryPanel .controls label {
       font-size: 11px;
@@ -339,9 +328,8 @@ export function getTec1Style(): string {
       width: 86px;
     }
     #memoryPanel .controls .absolute-input {
-      margin-left: auto;
+      justify-self: end;
       max-width: 120px;
-      flex: 0 0 auto;
     }
     #memoryPanel .addr {
       color: #7cc1ff;
@@ -355,6 +343,7 @@ export function getTec1Style(): string {
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 240px;
+      min-width: 0;
     }
     #memoryPanel .dump {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,

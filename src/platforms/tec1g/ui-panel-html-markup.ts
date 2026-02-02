@@ -76,20 +76,18 @@ export function getTec1gMarkup(): string {
           <div class="section">
             <div class="section-header">
               <div class="controls">
-                <div class="controls-left">
-                  <select id="view-a">
-                    <option value="pc" selected>PC</option>
-                    <option value="sp">SP</option>
-                    <option value="bc">BC</option>
-                    <option value="de">DE</option>
-                    <option value="hl">HL</option>
-                    <option value="ix">IX</option>
-                    <option value="iy">IY</option>
-                    <option value="absolute">Absolute</option>
-                  </select>
-                  <span class="addr" id="addr-a">0x0000</span>
-                  <span class="symbol" id="sym-a"></span>
-                </div>
+                <select id="view-a">
+                  <option value="pc" selected>PC</option>
+                  <option value="sp">SP</option>
+                  <option value="bc">BC</option>
+                  <option value="de">DE</option>
+                  <option value="hl">HL</option>
+                  <option value="ix">IX</option>
+                  <option value="iy">IY</option>
+                  <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-a">0x0000</span>
+                <span class="symbol" id="sym-a"></span>
                 <input class="absolute-input" id="address-a" type="text" placeholder="0x0000" />
               </div>
             </div>
@@ -98,20 +96,18 @@ export function getTec1gMarkup(): string {
           <div class="section">
             <div class="section-header">
               <div class="controls">
-                <div class="controls-left">
-                  <select id="view-b">
-                    <option value="pc">PC</option>
-                    <option value="sp" selected>SP</option>
-                    <option value="bc">BC</option>
-                    <option value="de">DE</option>
-                    <option value="hl">HL</option>
-                    <option value="ix">IX</option>
-                    <option value="iy">IY</option>
-                    <option value="absolute">Absolute</option>
-                  </select>
-                  <span class="addr" id="addr-b">0x0000</span>
-                  <span class="symbol" id="sym-b"></span>
-                </div>
+                <select id="view-b">
+                  <option value="pc">PC</option>
+                  <option value="sp" selected>SP</option>
+                  <option value="bc">BC</option>
+                  <option value="de">DE</option>
+                  <option value="hl">HL</option>
+                  <option value="ix">IX</option>
+                  <option value="iy">IY</option>
+                  <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-b">0x0000</span>
+                <span class="symbol" id="sym-b"></span>
                 <input class="absolute-input" id="address-b" type="text" placeholder="0x0000" />
               </div>
             </div>
@@ -120,20 +116,18 @@ export function getTec1gMarkup(): string {
           <div class="section">
             <div class="section-header">
               <div class="controls">
-                <div class="controls-left">
-                  <select id="view-c">
-                    <option value="pc">PC</option>
-                    <option value="sp">SP</option>
-                    <option value="bc">BC</option>
-                    <option value="de">DE</option>
-                    <option value="hl" selected>HL</option>
-                    <option value="ix">IX</option>
-                    <option value="iy">IY</option>
-                    <option value="absolute">Absolute</option>
-                  </select>
-                  <span class="addr" id="addr-c">0x0000</span>
-                  <span class="symbol" id="sym-c"></span>
-                </div>
+                <select id="view-c">
+                  <option value="pc">PC</option>
+                  <option value="sp">SP</option>
+                  <option value="bc">BC</option>
+                  <option value="de">DE</option>
+                  <option value="hl" selected>HL</option>
+                  <option value="ix">IX</option>
+                  <option value="iy">IY</option>
+                  <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-c">0x0000</span>
+                <span class="symbol" id="sym-c"></span>
                 <input class="absolute-input" id="address-c" type="text" placeholder="0x0000" />
               </div>
             </div>
@@ -142,20 +136,18 @@ export function getTec1gMarkup(): string {
           <div class="section">
             <div class="section-header">
               <div class="controls">
-                <div class="controls-left">
-                  <select id="view-d">
-                    <option value="pc">PC</option>
-                    <option value="sp">SP</option>
-                    <option value="bc">BC</option>
-                    <option value="de" selected>DE</option>
-                    <option value="hl">HL</option>
-                    <option value="ix">IX</option>
-                    <option value="iy">IY</option>
-                    <option value="absolute">Absolute</option>
-                  </select>
-                  <span class="addr" id="addr-d">0x0000</span>
-                  <span class="symbol" id="sym-d"></span>
-                </div>
+                <select id="view-d">
+                  <option value="pc">PC</option>
+                  <option value="sp">SP</option>
+                  <option value="bc">BC</option>
+                  <option value="de" selected>DE</option>
+                  <option value="hl">HL</option>
+                  <option value="ix">IX</option>
+                  <option value="iy">IY</option>
+                  <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-d">0x0000</span>
+                <span class="symbol" id="sym-d"></span>
                 <input class="absolute-input" id="address-d" type="text" placeholder="0x0000" />
               </div>
             </div>

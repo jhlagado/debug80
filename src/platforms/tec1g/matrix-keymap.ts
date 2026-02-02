@@ -152,6 +152,18 @@ export const MATRIX_ASCII_MAP: Record<string, MatrixKeyCombo[]> = ((): Record<
   for (const [ascii, combos] of map.entries()) {
     result[String.fromCharCode(ascii)] = combos;
   }
+  const fallbacks: Record<string, string> = {
+    ']': '[',
+    '}': '{',
+    '`': "'",
+    '~': '"',
+  };
+  for (const [target, source] of Object.entries(fallbacks)) {
+    if (!result[target]) {
+      const sourceCombos = result[source] ?? [];
+      result[target] = sourceCombos.map((combo) => ({ ...combo }));
+    }
+  }
   return result;
 })();
 

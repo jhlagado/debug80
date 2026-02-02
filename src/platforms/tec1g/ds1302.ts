@@ -37,6 +37,7 @@ export class Ds1302 {
   private address = 0;
   private dataShift = 0;
   private burst = false;
+  private timeFrozen = false;
 
   /**
    * Writes a new IO bus value (bit-bang).
@@ -96,9 +97,19 @@ export class Ds1302 {
       this.command |= (ioIn & 0x01) << this.bitIndex;
       this.bitIndex += 1;
       if (this.bitIndex >= 8) {
-        this.address = (this.command >> 1) & 0x1f;
-        this.burst = (this.command & 0xfe) === 0xbe;
-        const readMode = (this.command & 0x01) !== 0;
+        const rawCommand = this.command;
+        const readMode = (rawCommand & 0x01) !== 0;
+        let addr = (rawCommand >> 1) & 0x3f;
+        let burst = false;
+        if ((rawCommand & 0xfe) === 0xbe) {
+          burst = true;
+          addr = 0x01;
+        } else if ((rawCommand & 0xfe) === 0xfe) {
+          burst = true;
+          addr = RAM_OFFSET;
+        }
+        this.address = addr;
+        this.burst = burst;
         this.bitIndex = 0;
         this.dataShift = 0;
         this.command = 0;
@@ -143,7 +154,6 @@ export class Ds1302 {
         } else {
           this.mode = 'command';
           this.bitIndex = 0;
-          this.ioOut = 1;
         }
       }
     }
@@ -166,6 +176,7 @@ export class Ds1302 {
       }
       this.registers[addr] = value & 0xff;
       if (addr <= REG_YEAR) {
+        this.timeFrozen = true;
         this.applyTimeRegisterWrite();
       }
       return;
@@ -195,6 +206,9 @@ export class Ds1302 {
   }
 
   private refreshTimeRegisters(): void {
+    if (this.timeFrozen) {
+      return;
+    }
     const now = new Date();
     const seconds = this.toBcd(now.getSeconds());
     const minutes = this.toBcd(now.getMinutes());
