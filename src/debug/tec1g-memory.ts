@@ -23,6 +23,23 @@ export type Tec1gMemoryHooks = {
   memWrite: (addr: number, value: number) => void;
 };
 
+export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Array): void {
+  const bank0 = expandBanks[0];
+  const bank1 = expandBanks[1];
+  if (!bank0 || !bank1) {
+    return;
+  }
+  bank0.fill(0x00);
+  bank1.fill(0x00);
+  bank0.set(memory.slice(TEC1G_EXPAND_START, TEC1G_EXPAND_END + 1));
+  bank1.set(
+    memory.slice(
+      TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE,
+      TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2
+    )
+  );
+}
+
 export function createTec1gMemoryHooks(
   baseMemory: Uint8Array,
   romRanges: Array<{ start: number; end: number }>,

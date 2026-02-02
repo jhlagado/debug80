@@ -377,10 +377,11 @@ export function validateTec1gConfig(config: unknown): ValidationResult {
   const tc = config as Tec1gPlatformConfig;
 
   const romHexResult = validatePath(tc.romHex, 'tec1g.romHex');
+  const cartridgeHexResult = validatePath(tc.cartridgeHex, 'tec1g.cartridgeHex');
   const appStartResult = validateAddress(tc.appStart, 'tec1g.appStart');
   const entryResult = validateAddress(tc.entry, 'tec1g.entry');
 
-  return mergeResults([romHexResult, appStartResult, entryResult]);
+  return mergeResults([romHexResult, cartridgeHexResult, appStartResult, entryResult]);
 }
 
 // ============================================================================
