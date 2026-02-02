@@ -245,35 +245,82 @@ export function getTec1Style(): string {
       margin-top: 4px;
     }
     #memoryPanel .shell {
-      border: 1px solid #2c2c2c;
+      border: none;
       border-radius: 10px;
       padding: 12px;
       background: #121212;
     }
     #memoryPanel h1 {
-      font-size: 16px;
-      margin: 0 0 8px 0;
+      font-size: 14px;
+      margin: 0 0 6px 0;
+    }
+    #memoryPanel .register-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        'Liberation Mono', 'Courier New', monospace;
+      font-size: 11px;
+      color: #d8d8d8;
+      margin-bottom: 12px;
+    }
+    #memoryPanel .register-item {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      min-width: 92px;
+      justify-content: space-between;
+    }
+    #memoryPanel .register-label {
+      color: #9aa0a6;
+      font-size: 10px;
+      min-width: 3ch;
+      text-align: left;
+    }
+    #memoryPanel .register-value {
+      color: #cde6ff;
+      font-weight: 600;
+    }
+    #memoryPanel .register-flags {
+      color: #f5d08b;
+      font-weight: 600;
     }
     #memoryPanel .section {
-      margin-top: 12px;
+      margin-top: 8px;
     }
     #memoryPanel .section-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 12px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
     #memoryPanel .section h2 {
-      font-size: 13px;
-      margin: 0 0 6px 0;
+      font-size: 12px;
+      margin: 0 0 4px 0;
       color: #d8d8d8;
     }
     #memoryPanel .controls {
       display: flex;
+      flex-direction: row;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 6px;
+      flex-wrap: nowrap;
+      width: 100%;
+      justify-content: flex-start;
+      margin-right: 0;
+    }
+    #memoryPanel .controls-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+      flex: 1 1 auto;
+      min-width: 0;
     }
     #memoryPanel .controls label {
       font-size: 11px;
@@ -285,11 +332,16 @@ export function getTec1Style(): string {
       color: #f0f0f0;
       border: 1px solid #333;
       border-radius: 6px;
-      padding: 5px 8px;
-      font-size: 12px;
+      padding: 4px 6px;
+      font-size: 11px;
     }
     #memoryPanel .controls input {
-      width: 100px;
+      width: 86px;
+    }
+    #memoryPanel .controls .absolute-input {
+      margin-left: auto;
+      max-width: 120px;
+      flex: 0 0 auto;
     }
     #memoryPanel .addr {
       color: #7cc1ff;
@@ -299,6 +351,10 @@ export function getTec1Style(): string {
       color: #9aa0a6;
       margin-left: 8px;
       font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
     }
     #memoryPanel .dump {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -307,7 +363,7 @@ export function getTec1Style(): string {
       background: #0b0b0b;
       border: 1px solid #2c2c2c;
       border-radius: 8px;
-      padding: 8px;
+      padding: 6px;
       overflow-x: auto;
       white-space: pre;
     }

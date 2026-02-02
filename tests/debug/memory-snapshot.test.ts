@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildMemorySnapshotResponse } from '../../src/debug/memory-snapshot';
+import { init as initCpu } from '../../src/z80/cpu';
 
 describe('memory-snapshot', () => {
   it('builds snapshot views and forwards symbols', () => {
@@ -11,19 +12,19 @@ describe('memory-snapshot', () => {
     for (let i = 0; i < 256; i += 1) {
       memory[i] = i & 0xff;
     }
+    const cpu = initCpu();
+    cpu.pc = 0x10;
+    cpu.sp = 0x20;
+    cpu.b = 0x01;
+    cpu.c = 0x02;
+    cpu.d = 0x03;
+    cpu.e = 0x04;
+    cpu.h = 0x05;
+    cpu.l = 0x06;
+    cpu.ix = 0x30;
+    cpu.iy = 0x40;
     const runtime = {
-      getRegisters: () => ({
-        pc: 0x10,
-        sp: 0x20,
-        b: 0x01,
-        c: 0x02,
-        d: 0x03,
-        e: 0x04,
-        h: 0x05,
-        l: 0x06,
-        ix: 0x30,
-        iy: 0x40,
-      }),
+      getRegisters: () => cpu,
       hardware: { memory },
     };
 
