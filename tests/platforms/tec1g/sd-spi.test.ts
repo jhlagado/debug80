@@ -104,7 +104,9 @@ describe('SdSpi', () => {
   });
 
   it('responds to CMD17 with data token when ready', () => {
-    const spi = new SdSpi({ csMask: CS_BIT });
+    const image = new Uint8Array(1024);
+    image[0x0002] = 0x5a;
+    const spi = new SdSpi({ csMask: CS_BIT, image });
     writeSpi(spi, 0x00);
     sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
     readResponseByte(spi);
@@ -117,5 +119,8 @@ describe('SdSpi', () => {
     sendCommand(spi, [0x51, 0x00, 0x00, 0x00, 0x00, 0xff]);
     expect(readResponseByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0xfe);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x5a);
   });
 });

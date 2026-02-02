@@ -10,11 +10,11 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 - Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
 - Shadow/Protect/Expand memory behavior and the 0x8000-0xBFFF expansion window.
 - 8x8 LED matrix output (row select + column data).
+- RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
 
 ## Not yet emulated
 - Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
-- SD card (0xFD) and RTC/PRAM add-ons (return 0xFF on read).
-- Cartridge boot flag + cartridge ROM mapping.
+- Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
 - SYS_CTRL bits 3-7: latched and decoded but bank switching not yet wired to memory.
 - SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.

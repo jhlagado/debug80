@@ -11,6 +11,7 @@ type SdCommand = {
 export type SdSpiOptions = {
   csMask?: number;
   csActiveLow?: boolean;
+  image?: Uint8Array;
 };
 
 const MOSI_BIT = 0x01;
@@ -33,6 +34,7 @@ export class SdSpi {
   private commandBytes: number[] = [];
   private lastCommand: SdCommand | undefined;
   private outputQueue: number[] = [];
+  private image: Uint8Array | null = null;
   private pendingResponse: number[] | null = null;
   private delayBytes = 0;
   private appCommand = false;
@@ -45,6 +47,7 @@ export class SdSpi {
   public constructor(options: SdSpiOptions = {}) {
     this.csMask = options.csMask ?? DEFAULT_CS_MASK;
     this.csActiveLow = options.csActiveLow !== false;
+    this.image = options.image ?? null;
   }
 
   /**
@@ -236,7 +239,7 @@ export class SdSpi {
           this.delayBytes = 1;
           break;
         }
-        const payload = new Array<number>(512).fill(0x00);
+        const payload = this.readBlock(command.arg);
         this.pendingResponse = [0x00, 0xfe, ...payload, 0xff, 0xff];
         this.delayBytes = 1;
         break;
@@ -247,5 +250,20 @@ export class SdSpi {
         break;
       }
     }
+  }
+
+  private readBlock(arg: number): number[] {
+    const start = arg >>> 0;
+    const payload = new Array<number>(512).fill(0x00);
+    if (!this.image || this.image.length === 0) {
+      return payload;
+    }
+    for (let i = 0; i < 512; i += 1) {
+      const idx = start + i;
+      if (idx >= 0 && idx < this.image.length) {
+        payload[i] = this.image[idx] ?? 0x00;
+      }
+    }
+    return payload;
   }
 }
