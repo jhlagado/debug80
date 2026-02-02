@@ -269,9 +269,25 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
     };
 
-    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string }) => {
+    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string; text?: string }) => {
       if (msg?.type === 'startDebug') {
         await vscode.commands.executeCommand('workbench.action.debug.start');
+        return;
+      }
+      if (msg?.type === 'serialSendFile') {
+        await this.handleSerialSendFile();
+        return;
+      }
+      if (msg?.type === 'serialSave' && typeof msg.text === 'string') {
+        await this.handleSerialSave(msg.text);
+        return;
+      }
+      if (msg?.type === 'serialClear') {
+        if (this.currentPlatform === 'tec1') {
+          clearSerialBuffer(this.tec1SerialBuffer);
+        } else if (this.currentPlatform === 'tec1g') {
+          clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+        }
         return;
       }
       if (this.currentPlatform === 'tec1') {
@@ -490,6 +506,112 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return true;
     }
     return this.currentSessionId === sessionId;
+  }
+
+  private async handleSerialSendFile(): Promise<void> {
+    const uris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: {
+        'Intel HEX': ['hex'],
+        'Text Files': ['txt'],
+        'All Files': ['*'],
+      },
+      title: 'Select file to send',
+    });
+    if (!uris || uris.length === 0) {
+      return;
+    }
+    const fileUri = uris[0]!;
+    const fileName = fileUri.path.split('/').pop() ?? 'file';
+    const fileBytes = await vscode.workspace.fs.readFile(fileUri);
+    const fileText = new TextDecoder('utf-8').decode(fileBytes);
+
+    const session = this.currentSession ?? vscode.debug.activeDebugSession;
+    if (!session || session.type !== 'z80') {
+      void vscode.window.showErrorMessage('Debug80: No active debug session.');
+      return;
+    }
+
+    const command =
+      this.currentPlatform === 'tec1g' ? 'debug80/tec1gSerialInput' : 'debug80/tec1SerialInput';
+
+    // Stream characters with a small delay between each for reliable reception
+    const charDelayMs = 2;
+    const lineDelayMs = 10;
+
+    void vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Sending ${fileName}...`,
+        cancellable: true,
+      },
+      async (progress, token) => {
+        const lines = fileText.split(/\r?\n/);
+        let charsSent = 0;
+        const totalChars = fileText.length;
+
+        for (const line of lines) {
+          if (token.isCancellationRequested) {
+            void vscode.window.showWarningMessage('Debug80: File send cancelled.');
+            return;
+          }
+          for (const char of line) {
+            if (token.isCancellationRequested) {
+              return;
+            }
+            try {
+              await session.customRequest(command, { text: char });
+            } catch {
+              void vscode.window.showErrorMessage('Debug80: Failed to send character.');
+              return;
+            }
+            charsSent += 1;
+            if (charDelayMs > 0) {
+              await new Promise((r) => setTimeout(r, charDelayMs));
+            }
+          }
+          // Send CR at end of line
+          try {
+            await session.customRequest(command, { text: '\r' });
+          } catch {
+            /* ignore */
+          }
+          charsSent += 1;
+          progress.report({ increment: (100 * (line.length + 1)) / totalChars });
+          if (lineDelayMs > 0) {
+            await new Promise((r) => setTimeout(r, lineDelayMs));
+          }
+        }
+        void vscode.window.showInformationMessage(`Debug80: Sent ${charsSent} characters.`);
+      }
+    );
+  }
+
+  private async handleSerialSave(text: string): Promise<void> {
+    if (!text || text.length === 0) {
+      void vscode.window.showWarningMessage('Debug80: Serial buffer is empty.');
+      return;
+    }
+
+    // Detect if content is Intel HEX format
+    const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
+    const isHex = lines.length > 0 && lines.every((l) => l.startsWith(':') || l.trim() === '');
+
+    const filters: Record<string, string[]> = isHex
+      ? { 'Intel HEX': ['hex'], 'Text Files': ['txt'] }
+      : { 'Text Files': ['txt'], 'All Files': ['*'] };
+
+    const uri = await vscode.window.showSaveDialog({
+      filters,
+      title: 'Save serial output',
+    });
+    if (!uri) {
+      return;
+    }
+
+    const encoder = new TextEncoder();
+    await vscode.workspace.fs.writeFile(uri, encoder.encode(text));
+    void vscode.window.showInformationMessage(`Debug80: Saved to ${uri.path.split('/').pop()}`);
   }
 
   private nextUiRevision(): number {

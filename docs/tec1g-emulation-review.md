@@ -329,8 +329,8 @@ shows bit 3 is CART (cartridge), not expand. This should be a separate flag.
 
 ### 12. RTC (DS1302) — port 0xFC
 
-All features — **Missing**
-: External add-on via GPI/O (J10). Port 0xFC writes logged only, reads return 0xFF
+All features — **Complete**
+: External add-on via GPI/O (J10). When `rtcEnabled` is true, port 0xFC is fully emulated; otherwise reads return 0xFF.
 
 Schematic confirms: RTC is NOT on the main board. It connects through J10 pin ~{P}-FC.
 
@@ -404,7 +404,7 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | SYS_INPUT register (0x03) | Med  | **Partial**         | 50%  |
 | Matrix keyboard           | Med  | **Missing**         | 0%   |
 | CONFIG DIP switch         | Low  | **Missing**         | 0%   |
-| RTC (DS1302)              | Low  | **Missing**         | 0%   |
+| RTC (DS1302)              | Low  | **Complete**        | 100% |
 | SD card SPI               | Low  | **Missing**         | 0%   |
 | Cartridge                 | Low  | **Missing**         | 0%   |
 | Joystick                  | Low  | **Missing**         | 0%   |
@@ -716,11 +716,11 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Stage 5A, 5B
 **Tasks:**
 
-- [ ] Add `rtcEnabled: boolean` config option (default false)
-- [ ] Instantiate `DS1302` in runtime when enabled
-- [ ] Route port 0xFC writes to `ds1302.write(value)`, reads to `ds1302.read()`
+- [x] Add `rtcEnabled: boolean` config option (default false)
+- [x] Instantiate `DS1302` in runtime when enabled
+- [x] Route port 0xFC writes to `ds1302.write(value)`, reads to `ds1302.read()`
 - [ ] Add RTC presence indicator to SYS_INPUT (if applicable — verify with MON-3 source)
-- [ ] Unit tests: end-to-end port 0xFC write command + read response
+- [x] Unit tests: end-to-end port 0xFC write command + read response
 
 ---
 

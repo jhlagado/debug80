@@ -38,7 +38,14 @@ export function getTec1Markup(): string {
         </div>
       </div>
       <div class="serial">
-        <div class="serial-title">SERIAL (BIT 6)</div>
+        <div class="serial-header">
+          <div class="serial-title">SERIAL (BIT 6)</div>
+          <div class="serial-buttons">
+            <div class="key key-small" id="serialSendFile">SEND FILE</div>
+            <div class="key key-small" id="serialSave">SAVE</div>
+            <div class="key key-small" id="serialClear">CLEAR</div>
+          </div>
+        </div>
         <pre class="serial-body" id="serialOut"></pre>
         <div class="serial-input">
           <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
