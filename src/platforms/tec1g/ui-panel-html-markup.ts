@@ -36,6 +36,24 @@ export function getTec1gMarkup(): string {
               <div class="speaker" id="speaker">
                 <span id="speakerLabel">SPEAKER</span>
               </div>
+              <div class="status-leds" id="statusLeds">
+                <div class="status-led">
+                  <span class="status-led-light" id="statusShadow"></span>
+                  <span class="status-led-label">SHADOW</span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-light" id="statusProtect"></span>
+                  <span class="status-led-label">PROTECT</span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-light" id="statusExpand"></span>
+                  <span class="status-led-label">EXPAND</span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-light" id="statusCaps"></span>
+                  <span class="status-led-label">CAPS</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
