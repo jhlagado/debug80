@@ -7,8 +7,6 @@ import { Z80DebugAdapterFactory } from '../debug/adapter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
-import { createTec1PanelController } from '../platforms/tec1/ui-panel';
-import { createTec1gPanelController } from '../platforms/tec1g/ui-panel';
 import { SessionStateManager } from './session-state-manager';
 import { PlatformViewProvider } from './platform-view-provider';
 
@@ -20,14 +18,7 @@ let movingEditor = false;
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const ASM_LANGUAGE_ID = 'asm-collection';
-const tec1PanelController = createTec1PanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
-const tec1gPanelController = createTec1gPanelController(
-  getTerminalColumn,
-  () => vscode.debug.activeDebugSession
-);
+const platformViewProvider = new PlatformViewProvider();
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
@@ -79,7 +70,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // --- Sidebar platform view ---
-  const platformViewProvider = new PlatformViewProvider();
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       PlatformViewProvider.viewType,
@@ -144,14 +134,17 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.openTec1', () => {
       const session = vscode.debug.activeDebugSession;
-      if (!session || session.type !== 'z80') {
-        tec1PanelController.open(undefined, { focus: true, tab: 'ui' });
+      if (session && session.type === 'z80') {
+        platformViewProvider.setPlatform('tec1', session, {
+          focus: true,
+          reveal: true,
+          tab: 'ui',
+        });
         return;
       }
-      const columns = getSessionColumns(session);
-      tec1PanelController.open(session, {
+      platformViewProvider.setPlatform('tec1', undefined, {
         focus: true,
-        column: columns.panel,
+        reveal: true,
         tab: 'ui',
       });
     })
@@ -160,14 +153,17 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.openTec1Memory', () => {
       const session = vscode.debug.activeDebugSession;
-      if (!session || session.type !== 'z80') {
-        tec1PanelController.open(undefined, { focus: true, tab: 'memory' });
+      if (session && session.type === 'z80') {
+        platformViewProvider.setPlatform('tec1', session, {
+          focus: true,
+          reveal: true,
+          tab: 'memory',
+        });
         return;
       }
-      const columns = getSessionColumns(session);
-      tec1PanelController.open(session, {
+      platformViewProvider.setPlatform('tec1', undefined, {
         focus: true,
-        column: columns.panel,
+        reveal: true,
         tab: 'memory',
       });
     })
@@ -219,8 +215,7 @@ export function activate(context: vscode.ExtensionContext): void {
         sessionState.activeZ80Sessions.add(session.id);
         enforceSourceColumn = true;
         clearTerminal();
-        tec1PanelController.clear();
-        tec1gPanelController.clear();
+        platformViewProvider.clear();
         sessionState.sessionPlatforms.delete(session.id);
         sessionState.sessionColumns.set(session.id, resolveSessionColumns(session));
         if (session.configuration?.openRomSourcesOnLaunch !== false) {
@@ -249,8 +244,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (sessionState.terminalSession?.id === session.id) {
         sessionState.terminalSession = undefined;
       }
-      tec1PanelController.handleSessionTerminated(session.id);
-      tec1gPanelController.handleSessionTerminated(session.id);
+      platformViewProvider.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
         sessionState.activeZ80Sessions.delete(session.id);
         sessionState.sessionPlatforms.delete(session.id);
@@ -275,25 +269,23 @@ export function activate(context: vscode.ExtensionContext): void {
         if (id !== undefined && id.length > 0) {
           sessionState.sessionPlatforms.set(evt.session.id, id);
         }
-        const columns = getSessionColumns(evt.session);
         if (id === 'tec1') {
-          tec1PanelController.open(evt.session, {
+          platformViewProvider.setPlatform('tec1', evt.session, {
             focus: false,
             reveal: true,
-            column: columns.panel,
             tab: 'ui',
           });
         } else if (id === 'tec1g') {
-          tec1gPanelController.open(evt.session, {
+          platformViewProvider.setPlatform('tec1g', evt.session, {
             focus: false,
             reveal: true,
-            column: columns.panel,
             tab: 'ui',
           });
           if (body?.uiVisibility) {
-            tec1gPanelController.setUiVisibility(body.uiVisibility, false);
+            platformViewProvider.setTec1gUiVisibility(body.uiVisibility, false);
           }
         } else {
+          const columns = getSessionColumns(evt.session);
           openTerminalPanel(evt.session, {
             focus: false,
             reveal: true,
@@ -346,9 +338,9 @@ export function activate(context: vscode.ExtensionContext): void {
           lcd: payload.lcd,
         };
         if (payload.speakerHz !== undefined) {
-          tec1PanelController.update({ ...update, speakerHz: payload.speakerHz });
+          platformViewProvider.updateTec1({ ...update, speakerHz: payload.speakerHz }, evt.session.id);
         } else {
-          tec1PanelController.update(update);
+          platformViewProvider.updateTec1(update, evt.session.id);
         }
         return;
       }
@@ -358,7 +350,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (text.length === 0) {
           return;
         }
-        tec1PanelController.appendSerial(text);
+        platformViewProvider.appendTec1Serial(text, evt.session.id);
         return;
       }
       if (evt.event === 'debug80/tec1gUpdate') {
@@ -398,9 +390,9 @@ export function activate(context: vscode.ExtensionContext): void {
           ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
         };
         if (payload.speakerHz !== undefined) {
-          tec1gPanelController.update({ ...update, speakerHz: payload.speakerHz });
+          platformViewProvider.updateTec1g({ ...update, speakerHz: payload.speakerHz }, evt.session.id);
         } else {
-          tec1gPanelController.update(update);
+          platformViewProvider.updateTec1g(update, evt.session.id);
         }
         return;
       }
@@ -410,7 +402,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (text.length === 0) {
           return;
         }
-        tec1gPanelController.appendSerial(text);
+        platformViewProvider.appendTec1gSerial(text, evt.session.id);
         return;
       }
       if (evt.event === 'debug80/mainSource') {
