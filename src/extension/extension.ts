@@ -77,6 +77,8 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
+  const WORKSPACE_KEY = 'debug80.selectedWorkspace';
+
   // Set debug80.hasProject context key based on workspace contents.
   const updateHasProject = (): void => {
     const folders = vscode.workspace.workspaceFolders ?? [];
@@ -84,8 +86,24 @@ export function activate(context: vscode.ExtensionContext): void {
       fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'))
     );
     void vscode.commands.executeCommand('setContext', 'debug80.hasProject', hasProject);
+    platformViewProvider.setHasProject(hasProject);
+  };
+
+  const resolveSelectedWorkspace = (): vscode.WorkspaceFolder | undefined => {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    const storedPath = context.workspaceState.get<string>(WORKSPACE_KEY);
+    if (storedPath === undefined || storedPath === '') {
+      return undefined;
+    }
+    return folders.find((folder) => folder.uri.fsPath === storedPath);
+  };
+
+  const applySelectedWorkspace = (): void => {
+    const selected = resolveSelectedWorkspace();
+    platformViewProvider.setSelectedWorkspace(selected);
   };
   updateHasProject();
+  applySelectedWorkspace();
 
   const configWatcher = vscode.workspace.createFileSystemWatcher('**/.vscode/debug80.json');
   configWatcher.onDidCreate(updateHasProject);
@@ -93,7 +111,38 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(configWatcher);
 
   context.subscriptions.push(
-    vscode.workspace.onDidChangeWorkspaceFolders(updateHasProject)
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      updateHasProject();
+      applySelectedWorkspace();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.selectWorkspaceFolder', async () => {
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) {
+        void vscode.window.showInformationMessage('Debug80: No workspace folders to select.');
+        return;
+      }
+      if (folders.length === 1) {
+        void context.workspaceState.update(WORKSPACE_KEY, folders[0]?.uri.fsPath ?? '');
+        applySelectedWorkspace();
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(
+        folders.map((folder) => ({
+          label: folder.name,
+          description: folder.uri.fsPath,
+          folder,
+        })),
+        { placeHolder: 'Select workspace folder for Debug80' }
+      );
+      if (!picked) {
+        return;
+      }
+      void context.workspaceState.update(WORKSPACE_KEY, picked.folder.uri.fsPath);
+      applySelectedWorkspace();
+    })
   );
 
   context.subscriptions.push(
@@ -268,6 +317,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const id = body?.id;
         if (id !== undefined && id.length > 0) {
           sessionState.sessionPlatforms.set(evt.session.id, id);
+        }
+        if (evt.session.workspaceFolder) {
+          void context.workspaceState.update(WORKSPACE_KEY, evt.session.workspaceFolder.uri.fsPath);
+          platformViewProvider.setSelectedWorkspace(evt.session.workspaceFolder);
         }
         if (id === 'tec1') {
           platformViewProvider.setPlatform('tec1', evt.session, {

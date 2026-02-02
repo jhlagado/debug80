@@ -121,6 +121,10 @@
         "title": "Debug80: Show TEC-1 Memory Panel"
       },
       {
+        "command": "debug80.selectWorkspaceFolder",
+        "title": "Debug80: Select Workspace Folder"
+      },
+      {
         "command": "debug80.openRomSource",
         "title": "Debug80: Open ROM Listing/Source"
       }
