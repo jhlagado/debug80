@@ -52,7 +52,13 @@ export function getTec1gMarkup(): string {
               <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
               <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
             </div>
-            <div class="matrix-keyboard-hint">Type to send keys (Enter/Esc supported).</div>
+            <div class="matrix-keyboard-mods">
+              <div class="key" id="matrixShift">SHIFT</div>
+              <div class="key" id="matrixCtrl">CTRL</div>
+              <div class="key" id="matrixAlt">ALT</div>
+            </div>
+            <div class="matrix-keyboard-hint">Type or click keys to send input.</div>
+            <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
           </div>
           <div class="matrix ui-section" data-section="matrix">
             <div class="matrix-title">8x8 LED MATRIX</div>
