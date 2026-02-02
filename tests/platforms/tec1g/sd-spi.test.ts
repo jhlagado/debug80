@@ -17,9 +17,35 @@ function pulse(spi: SdSpi, bit: number): void {
 }
 
 function writeByte(spi: SdSpi, value: number): void {
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 7; i >= 0; i -= 1) {
     pulse(spi, (value >> i) & 1);
   }
+}
+
+function readByte(spi: SdSpi): number {
+  let value = 0;
+  for (let i = 0; i < 8; i += 1) {
+    writeSpi(spi, MOSI_BIT);
+    writeSpi(spi, MOSI_BIT | CLK_BIT);
+    const bit = spi.read() & 1;
+    writeSpi(spi, MOSI_BIT);
+    value = ((value << 1) | bit) & 0xff;
+  }
+  return value & 0xff;
+}
+
+function readResponseByte(spi: SdSpi): number {
+  for (let i = 0; i < 8; i += 1) {
+    const value = readByte(spi);
+    if (value !== 0xff) {
+      return value;
+    }
+  }
+  return 0xff;
+}
+
+function sendCommand(spi: SdSpi, bytes: number[]): void {
+  bytes.forEach((byte) => writeByte(spi, byte));
 }
 
 describe('SdSpi', () => {
@@ -43,5 +69,53 @@ describe('SdSpi', () => {
     expect(cmd?.cmd).toBe(0);
     expect(cmd?.arg).toBe(0);
     expect(cmd?.crc).toBe(0x95);
+  });
+
+  it('responds to CMD0 and CMD8 with R1/R7 bytes', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x40, 0x00, 0x00, 0x00, 0x00, 0x95]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x48, 0x00, 0x00, 0x01, 0xaa, 0x87]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x01);
+    expect(readByte(spi)).toBe(0xaa);
+  });
+
+  it('completes ACMD41 init sequence and supports CMD58', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    sendCommand(spi, [0x7a, 0x00, 0x00, 0x00, 0x00, 0xfd]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x40);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+  });
+
+  it('responds to CMD17 with data token when ready', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x51, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
   });
 });
