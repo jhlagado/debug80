@@ -329,8 +329,8 @@ shows bit 3 is CART (cartridge), not expand. This should be a separate flag.
 
 ### 12. RTC (DS1302) — port 0xFC
 
-All features — **Missing**
-: External add-on via GPI/O (J10). Port 0xFC writes logged only, reads return 0xFF
+All features — **Complete**
+: External add-on via GPI/O (J10). When `rtcEnabled` is true, port 0xFC is fully emulated; otherwise reads return 0xFF.
 
 Schematic confirms: RTC is NOT on the main board. It connects through J10 pin ~{P}-FC.
 
@@ -404,7 +404,7 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | SYS_INPUT register (0x03) | Med  | **Partial**         | 50%  |
 | Matrix keyboard           | Med  | **Missing**         | 0%   |
 | CONFIG DIP switch         | Low  | **Missing**         | 0%   |
-| RTC (DS1302)              | Low  | **Missing**         | 0%   |
+| RTC (DS1302)              | Low  | **Complete**        | 100% |
 | SD card SPI               | Low  | **Missing**         | 0%   |
 | Cartridge                 | Low  | **Missing**         | 0%   |
 | Joystick                  | Low  | **Missing**         | 0%   |
@@ -658,14 +658,14 @@ ASCII coverage and row/col bounds.
 **Tasks:**
 
 - [x] Add UI toggle for matrix keyboard mode (shows/hides matrix keyboard panel)
-- [ ] Option A: virtual QWERTY grid in webview (click to press)
+- [x] Option A: virtual QWERTY grid in webview (click to press)
 - [x] Option B: capture PC keyboard events and translate via keymap
 - [x] Send `applyMatrixKey` messages from webview to runtime
 - [x] Show CAPS state indicator from SYS_CTRL
-- [ ] Visual feedback on key press/release
+- [x] Visual feedback on key press/release
 
-**Status:** Implemented keyboard-capture mode with a matrix toggle + CAPS indicator. No virtual QWERTY grid yet and
-no per-key visual press feedback (optional polish).
+**Status:** Implemented keyboard-capture mode with a matrix toggle + CAPS indicator, plus a clickable QWERTY grid
+with per-key press feedback.
 
 ---
 
@@ -716,11 +716,11 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Stage 5A, 5B
 **Tasks:**
 
-- [ ] Add `rtcEnabled: boolean` config option (default false)
-- [ ] Instantiate `DS1302` in runtime when enabled
-- [ ] Route port 0xFC writes to `ds1302.write(value)`, reads to `ds1302.read()`
-- [ ] Add RTC presence indicator to SYS_INPUT (if applicable — verify with MON-3 source)
-- [ ] Unit tests: end-to-end port 0xFC write command + read response
+- [x] Add `rtcEnabled: boolean` config option (default false)
+- [x] Instantiate `DS1302` in runtime when enabled
+- [x] Route port 0xFC writes to `ds1302.write(value)`, reads to `ds1302.read()`
+- [x] Add RTC presence indicator to SYS_INPUT (not applicable — no dedicated bit in schematic)
+- [x] Unit tests: end-to-end port 0xFC write command + read response
 
 ---
 
@@ -735,13 +735,13 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Nothing
 **Tasks:**
 
-- [ ] Create `SdSpi` class with bit-bang interface:
+- [x] Create `SdSpi` class with bit-bang interface:
   - Track MOSI (bit 0), CLK (bit 1), CS state
   - Shift register: accumulate 8 bits on CLK edges -> command byte
   - Output shift register: provide 8 bits on CLK edges -> response byte
-- [ ] Implement idle state: respond with 0xFF when not selected
-- [ ] Implement command detection: 6-byte SD command format (0x40 | cmd, 4 args, CRC)
-- [ ] Unit tests: shift in CMD0 bytes, verify command detected
+- [x] Implement idle state: respond with 0xFF when not selected
+- [x] Implement command detection: 6-byte SD command format (0x40 | cmd, 4 args, CRC)
+- [x] Unit tests: shift in CMD0 bytes, verify command detected
 
 #### 6B — SD card command responses
 

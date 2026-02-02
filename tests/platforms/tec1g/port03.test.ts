@@ -15,7 +15,9 @@ function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
       updateMs: 100,
       yieldMs: 10,
       gimpSignal: false,
+      expansionBankHi: false,
       matrixMode: false,
+      rtcEnabled: false,
       ...overrides,
     },
     () => {}

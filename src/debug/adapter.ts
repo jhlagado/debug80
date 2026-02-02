@@ -50,8 +50,6 @@ import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g
 import {
   LaunchRequestArguments,
   extractKeyCode,
-  extractMatrixKeyPayload,
-  extractMatrixModeEnabled,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
@@ -87,6 +85,14 @@ const THREAD_ID = 1;
 
 /** Length of cache key hash */
 const CACHE_KEY_LENGTH = 12;
+
+type MatrixKeyPayload = {
+  key: string;
+  pressed: boolean;
+  shift?: boolean;
+  ctrl?: boolean;
+  alt?: boolean;
+};
 
 export class Z80DebugSession extends DebugSession {
   private breakpointManager = new BreakpointManager();
@@ -846,7 +852,7 @@ export class Z80DebugSession extends DebugSession {
     if (!runtime) {
       return 'Debug80: Platform not active.';
     }
-    const enabled = extractMatrixModeEnabled(args);
+    const enabled = this.parseMatrixModeEnabled(args);
     if (enabled === undefined) {
       return 'Debug80: Missing matrix mode flag.';
     }
@@ -862,7 +868,7 @@ export class Z80DebugSession extends DebugSession {
     if (!runtime) {
       return 'Debug80: Platform not active.';
     }
-    const payload = extractMatrixKeyPayload(args);
+    const payload = this.parseMatrixKeyPayload(args);
     if (!payload) {
       return 'Debug80: Missing matrix key payload.';
     }
@@ -896,6 +902,44 @@ export class Z80DebugSession extends DebugSession {
     return null;
   }
 
+  private parseMatrixModeEnabled(args: unknown): boolean | undefined {
+    if (typeof args !== 'object' || args === null) {
+      return undefined;
+    }
+    const candidate = (args as { enabled?: unknown }).enabled;
+    return typeof candidate === 'boolean' ? candidate : undefined;
+  }
+
+  private parseMatrixKeyPayload(args: unknown): MatrixKeyPayload | null {
+    if (typeof args !== 'object' || args === null) {
+      return null;
+    }
+    const candidate = args as {
+      key?: unknown;
+      pressed?: unknown;
+      shift?: unknown;
+      ctrl?: unknown;
+      alt?: unknown;
+    };
+    if (typeof candidate.key !== 'string' || typeof candidate.pressed !== 'boolean') {
+      return null;
+    }
+    const payload: MatrixKeyPayload = {
+      key: candidate.key,
+      pressed: candidate.pressed,
+    };
+    if (candidate.shift === true) {
+      payload.shift = true;
+    }
+    if (candidate.ctrl === true) {
+      payload.ctrl = true;
+    }
+    if (candidate.alt === true) {
+      payload.alt = true;
+    }
+    return payload;
+  }
+
   private resolveMatrixAscii(key: string): number | undefined {
     if (key.length === 1) {
       return key.charCodeAt(0);
@@ -909,7 +953,7 @@ export class Z80DebugSession extends DebugSession {
     return undefined;
   }
 
-  private buildMatrixKeyId(payload: { key: string; shift?: boolean; ctrl?: boolean; alt?: boolean }): string {
+  private buildMatrixKeyId(payload: MatrixKeyPayload): string {
     return (
       payload.key +
       '|' +
@@ -921,7 +965,7 @@ export class Z80DebugSession extends DebugSession {
 
   private selectMatrixCombo(
     combos: MatrixKeyCombo[],
-    payload: { shift?: boolean; ctrl?: boolean; alt?: boolean },
+    payload: MatrixKeyPayload,
     capsLock: boolean
   ): MatrixKeyCombo | undefined {
     const preferred =

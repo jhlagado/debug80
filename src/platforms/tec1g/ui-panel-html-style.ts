@@ -269,9 +269,54 @@ export function getTec1gStyle(): string {
       border-color: #6a6a6a;
       background: #2b2b2b;
     }
+    .matrix-keyboard-mods {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .matrix-keyboard-mods .key {
+      padding: 5px 10px;
+      font-size: 10px;
+    }
+    .matrix-keyboard-mods .key.active {
+      background: #2a2a2a;
+      color: #f5d08b;
+      border-color: #3a3a3a;
+    }
     .matrix-keyboard-hint {
       font-size: 11px;
       color: #9aa0a6;
+    }
+    .matrix-keyboard-grid {
+      display: grid;
+      grid-template-columns: repeat(14, minmax(20px, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .matrix-key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      background: #1f1f1f;
+      border: 1px solid #2d2d2d;
+      border-radius: 6px;
+      color: #e1e1e1;
+      font-size: 11px;
+      text-transform: uppercase;
+      user-select: none;
+      cursor: pointer;
+      transition: transform 0.06s ease, background 0.1s ease;
+    }
+    .matrix-key.wide {
+      font-size: 10px;
+    }
+    .matrix-key.pressed {
+      background: #3a3a3a;
+      color: #ffd05c;
+      transform: translateY(1px);
     }
     .matrix {
       margin-top: 12px;
@@ -320,11 +365,25 @@ export function getTec1gStyle(): string {
       border-radius: 4px;
       image-rendering: pixelated;
     }
+    .serial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
     .serial-title {
       font-size: 12px;
       letter-spacing: 0.08em;
       color: #c0c0c0;
-      margin-bottom: 6px;
+    }
+    .serial-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .key-small {
+      font-size: 9px;
+      padding: 4px 8px;
+      min-width: auto;
     }
     .serial-body {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
@@ -470,22 +529,11 @@ export function getTec1gStyle(): string {
       color: #d8d8d8;
     }
     #memoryPanel .controls {
-      display: flex;
-      flex-direction: row;
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
-      gap: 6px;
-      flex-wrap: nowrap;
+      gap: 6px 10px;
       width: 100%;
-      justify-content: flex-start;
-      margin-right: 0;
-    }
-    #memoryPanel .controls-left {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: nowrap;
-      flex: 1 1 auto;
-      min-width: 0;
     }
     #memoryPanel .controls label {
       font-size: 11px;
@@ -504,9 +552,8 @@ export function getTec1gStyle(): string {
       width: 86px;
     }
     #memoryPanel .controls .absolute-input {
-      margin-left: auto;
+      justify-self: end;
       max-width: 120px;
-      flex: 0 0 auto;
     }
     #memoryPanel .addr {
       color: #7cc1ff;
@@ -520,6 +567,7 @@ export function getTec1gStyle(): string {
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 240px;
+      min-width: 0;
     }
     #memoryPanel .dump {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
