@@ -51,6 +51,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private currentPlatform: PlatformId | undefined;
   private currentSession: vscode.DebugSession | undefined;
   private currentSessionId: string | undefined;
+  private uiRevision = 0;
 
   private tec1ActiveTab: Tec1PanelTab = 'ui';
   private tec1UiState = createTec1UiState();
@@ -133,6 +134,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     this.postMessage({
       type: 'update',
+      uiRevision: this.nextUiRevision(),
       digits: this.tec1UiState.digits,
       matrix: this.tec1UiState.matrix,
       speaker: this.tec1UiState.speaker,
@@ -152,6 +154,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     this.postMessage({
       type: 'update',
+      uiRevision: this.nextUiRevision(),
       digits: this.tec1gUiState.digits,
       matrix: this.tec1gUiState.matrix,
       glcd: this.tec1gUiState.glcd,
@@ -198,11 +201,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   clear(): void {
     resetTec1UiState(this.tec1UiState);
     clearSerialBuffer(this.tec1SerialBuffer);
+    this.tec1MemoryViews = createTec1MemoryViewState();
     resetTec1gUiState(this.tec1gUiState);
     clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+    this.tec1gMemoryViews = createTec1gMemoryViewState();
     if (this.currentPlatform === 'tec1') {
       this.postMessage({
         type: 'update',
+        uiRevision: this.nextUiRevision(),
         digits: this.tec1UiState.digits,
         matrix: this.tec1UiState.matrix,
         speaker: false,
@@ -213,6 +219,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     } else if (this.currentPlatform === 'tec1g') {
       this.postMessage({
         type: 'update',
+        uiRevision: this.nextUiRevision(),
         digits: this.tec1gUiState.digits,
         matrix: this.tec1gUiState.matrix,
         glcd: this.tec1gUiState.glcd,
@@ -300,6 +307,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.view.webview.html = getTec1Html(this.tec1ActiveTab);
       this.postMessage({
         type: 'update',
+        uiRevision: this.nextUiRevision(),
         digits: this.tec1UiState.digits,
         matrix: this.tec1UiState.matrix,
         speaker: this.tec1UiState.speaker,
@@ -317,6 +325,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.view.webview.html = getTec1gHtml(this.tec1gActiveTab);
       this.postMessage({
         type: 'update',
+        uiRevision: this.nextUiRevision(),
         digits: this.tec1gUiState.digits,
         matrix: this.tec1gUiState.matrix,
         glcd: this.tec1gUiState.glcd,
@@ -417,23 +426,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private async postTec1Snapshot(payload: {
     views: Array<{ id: string; view: string; after: number; address?: number | undefined }>;
   }): Promise<void> {
-    if (!this.view) {
-      throw new Error('Debug80: view unavailable');
-    }
-    const target = this.currentSession ?? vscode.debug.activeDebugSession;
-    if (!target || target.type !== 'z80') {
-      throw new Error('Debug80: No active z80 session.');
-    }
-    const snapshot = (await target.customRequest('debug80/tec1MemorySnapshot', {
-      before: 16,
-      rowSize: 16,
-      views: payload.views,
-    })) as unknown;
-    if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object') {
-      throw new Error('Debug80: Invalid snapshot payload.');
-    }
-    const snapshotObject = snapshot as Record<string, unknown>;
-    this.postMessage({ type: 'snapshot', ...snapshotObject });
+    await this.postSnapshot('debug80/tec1MemorySnapshot', payload);
   }
 
   private onTec1SnapshotFailed(allowErrors: boolean): void {
@@ -449,23 +442,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private async postTec1gSnapshot(payload: {
     views: Array<{ id: string; view: string; after: number; address?: number | undefined }>;
   }): Promise<void> {
-    if (!this.view) {
-      throw new Error('Debug80: view unavailable');
-    }
-    const target = this.currentSession ?? vscode.debug.activeDebugSession;
-    if (!target || target.type !== 'z80') {
-      throw new Error('Debug80: No active z80 session.');
-    }
-    const snapshot = (await target.customRequest('debug80/tec1gMemorySnapshot', {
-      before: 16,
-      rowSize: 16,
-      views: payload.views,
-    })) as unknown;
-    if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object') {
-      throw new Error('Debug80: Invalid snapshot payload.');
-    }
-    const snapshotObject = snapshot as Record<string, unknown>;
-    this.postMessage({ type: 'snapshot', ...snapshotObject });
+    await this.postSnapshot('debug80/tec1gMemorySnapshot', payload);
   }
 
   private onTec1gSnapshotFailed(allowErrors: boolean): void {
@@ -490,10 +467,37 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return true;
     }
     if (this.currentSessionId === undefined) {
-      this.currentSessionId = sessionId;
       return true;
     }
     return this.currentSessionId === sessionId;
+  }
+
+  private nextUiRevision(): number {
+    this.uiRevision += 1;
+    return this.uiRevision;
+  }
+
+  private async postSnapshot(
+    command: 'debug80/tec1MemorySnapshot' | 'debug80/tec1gMemorySnapshot',
+    payload: { views: Array<{ id: string; view: string; after: number; address?: number | undefined }> }
+  ): Promise<void> {
+    if (!this.view) {
+      throw new Error('Debug80: view unavailable');
+    }
+    const target = this.currentSession ?? vscode.debug.activeDebugSession;
+    if (!target || target.type !== 'z80') {
+      throw new Error('Debug80: No active z80 session.');
+    }
+    const snapshot = (await target.customRequest(command, {
+      before: 16,
+      rowSize: 16,
+      views: payload.views,
+    })) as unknown;
+    if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object') {
+      throw new Error('Debug80: Invalid snapshot payload.');
+    }
+    const snapshotObject = snapshot as Record<string, unknown>;
+    this.postMessage({ type: 'snapshot', ...snapshotObject });
   }
 
   private getPlaceholderHtml(): string {
