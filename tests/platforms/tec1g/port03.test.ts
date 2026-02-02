@@ -104,4 +104,22 @@ describe('port 0x03 (SYS_INPUT)', () => {
     rt.state.cartridgePresent = true;
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0);
   });
+
+  it('bit 7 (RX) tracks serial input level', () => {
+    const rt = makeRuntime();
+    const cyclesPerBit = rt.state.clockHz / 4800;
+    rt.queueSerial([0x55]);
+    rt.ioHandlers.read(0x00);
+    rt.recordCycles(Math.ceil(cyclesPerBit * 2));
+    expect(rt.ioHandlers.read(0x03) & 0x80).toBe(0x00);
+    let highSeen = false;
+    for (let i = 0; i < 200; i += 1) {
+      rt.recordCycles(Math.ceil(cyclesPerBit));
+      if (rt.ioHandlers.read(0x03) & 0x80) {
+        highSeen = true;
+        break;
+      }
+    }
+    expect(highSeen).toBe(true);
+  });
 });
