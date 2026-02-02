@@ -28,6 +28,9 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const glcdBaseCanvas = glcdCtx ? document.createElement('canvas') : null;
     const glcdBaseCtx = glcdBaseCanvas ? glcdBaseCanvas.getContext('2d') : null;
     const matrixGrid = document.getElementById('matrixGrid');
+    const matrixModeToggle = document.getElementById('matrixModeToggle');
+    const matrixModeStatus = document.getElementById('matrixModeStatus');
+    const matrixCapsStatus = document.getElementById('matrixCapsStatus');
     const tabButtons = Array.from(document.querySelectorAll('[data-tab]'));
     const panelUi = document.getElementById('panel-ui');
     const panelMemory = document.getElementById('panel-memory');
@@ -70,6 +73,9 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     let glcdBlinkVisible = true;
     let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
     let sysCtrlSegs = [];
+    let matrixModeEnabled = false;
+    let capsLockEnabled = false;
+    const matrixHeldKeys = new Set();
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
       glcdBaseCanvas.height = GLCD_HEIGHT;
@@ -200,6 +206,7 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       lcd: true,
       display: true,
       keypad: true,
+      matrixKeyboard: true,
       matrix: false,
       glcd: false,
       serial: true,
@@ -655,6 +662,70 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       }
     }
 
+    function applyMatrixMode(enabled) {
+      matrixModeEnabled = !!enabled;
+      if (matrixModeToggle) {
+        matrixModeToggle.classList.toggle('active', matrixModeEnabled);
+      }
+      if (matrixModeStatus) {
+        matrixModeStatus.textContent = matrixModeEnabled ? 'ON' : 'OFF';
+        matrixModeStatus.classList.toggle('on', matrixModeEnabled);
+      }
+    }
+
+    function applyCapsLock(enabled) {
+      capsLockEnabled = !!enabled;
+      if (matrixCapsStatus) {
+        matrixCapsStatus.classList.toggle('on', capsLockEnabled);
+      }
+    }
+
+    function shouldIgnoreKeyEvent(event) {
+      const target = event.target;
+      return (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT')
+      );
+    }
+
+    function handleMatrixKeyEvent(event, pressed) {
+      if (!matrixModeEnabled || activeTab !== 'ui' || shouldIgnoreKeyEvent(event)) {
+        return false;
+      }
+      const key = event.key;
+      if (!key) {
+        return false;
+      }
+      const keyId =
+        key +
+        '|' +
+        (event.shiftKey ? '1' : '0') +
+        (event.ctrlKey ? '1' : '0') +
+        (event.altKey ? '1' : '0');
+      if (pressed) {
+        if (event.repeat || matrixHeldKeys.has(keyId)) {
+          return true;
+        }
+        matrixHeldKeys.add(keyId);
+      } else {
+        if (!matrixHeldKeys.has(keyId)) {
+          return false;
+        }
+        matrixHeldKeys.delete(keyId);
+      }
+      vscode.postMessage({
+        type: 'matrixKey',
+        key: key,
+        pressed: !!pressed,
+        shift: event.shiftKey,
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+      });
+      return true;
+    }
+
     addButton('RESET', () => {
       setShiftLatched(false);
       vscode.postMessage({ type: 'reset' });
@@ -677,6 +748,13 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     const shiftButton = addButton('FN', () => {
       setShiftLatched(!shiftLatched);
     }, 'keycap-light', 1, 4, true);
+    if (matrixModeToggle) {
+      matrixModeToggle.addEventListener('click', () => {
+        const next = !matrixModeEnabled;
+        applyMatrixMode(next);
+        vscode.postMessage({ type: 'matrixMode', enabled: next });
+      });
+    }
     speedEl.addEventListener('click', () => {
       const next = speedMode === 'fast' ? 'slow' : 'fast';
       applySpeed(next);
@@ -774,6 +852,12 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
       if (typeof data.sysCtrl === 'number') {
         sysCtrlValue = data.sysCtrl & 0xff;
         updateSysCtrl();
+      }
+      if (typeof data.capsLock === 'boolean') {
+        applyCapsLock(data.capsLock);
+      }
+      if (typeof data.matrixMode === 'boolean') {
+        applyMatrixMode(data.matrixMode);
       }
       if (Array.isArray(data.glcdDdram)) {
         glcdDdram = data.glcdDdram.slice(0, GLCD_DDRAM_SIZE);
@@ -1128,6 +1212,8 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
 
     applySpeed(speedMode);
     applyMuteState();
+    applyMatrixMode(matrixModeEnabled);
+    applyCapsLock(capsLockEnabled);
     drawLcd();
     buildMatrix();
     drawMatrix();
@@ -1151,6 +1237,10 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
+      if (handleMatrixKeyEvent(event, true)) {
+        event.preventDefault();
+        return;
+      }
       const target = event.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         return;
@@ -1175,6 +1265,11 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
         event.preventDefault();
       } else if (event.key === 'Tab') {
         sendKey(0x13);
+        event.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', event => {
+      if (handleMatrixKeyEvent(event, false)) {
         event.preventDefault();
       }
     });

@@ -110,6 +110,7 @@ export interface Tec1gRuntime {
   ioHandlers: IoHandlers;
   applyKey(code: number): void;
   applyMatrixKey(row: number, col: number, pressed: boolean): void;
+  setMatrixMode(enabled: boolean): void;
   queueSerial(bytes: number[]): void;
   recordCycles(cycles: number): void;
   silenceSpeaker(): void;
@@ -291,6 +292,7 @@ export function createTec1gRuntime(
     onUpdate({
       digits: [...state.digits],
       matrix: [...state.matrix],
+      matrixMode: state.matrixModeEnabled,
       glcd: Array.from(state.glcd),
       glcdDdram: Array.from(state.glcdDdram),
       glcdState: {
@@ -1026,6 +1028,10 @@ export function createTec1gRuntime(
     state.matrixKeyStates[rowIndex] = pressed ? current & ~mask : current | mask;
   };
 
+  const setMatrixMode = (enabled: boolean): void => {
+    state.matrixModeEnabled = enabled;
+  };
+
   const setSerialRxLevel = (level: 0 | 1): void => {
     serialRxLevel = level;
   };
@@ -1216,6 +1222,7 @@ export function createTec1gRuntime(
     ioHandlers,
     applyKey,
     applyMatrixKey,
+    setMatrixMode,
     queueSerial,
     recordCycles,
     silenceSpeaker,

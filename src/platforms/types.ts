@@ -68,6 +68,7 @@ export interface Tec1gPlatformConfig {
     display?: boolean;
     keypad?: boolean;
     matrix?: boolean;
+    matrixKeyboard?: boolean;
     glcd?: boolean;
     serial?: boolean;
   };
@@ -91,6 +92,7 @@ export interface Tec1gPlatformConfigNormalized {
     display?: boolean;
     keypad?: boolean;
     matrix?: boolean;
+    matrixKeyboard?: boolean;
     glcd?: boolean;
     serial?: boolean;
   };

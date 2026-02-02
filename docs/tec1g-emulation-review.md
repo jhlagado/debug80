@@ -641,11 +641,14 @@ matrix mode, and tests cover row reads plus the disabled-mode fallback.
 **Depends on:** Stage 4B
 **Tasks:**
 
-- [ ] Create mapping from PC keyboard scancodes to matrix (row, col) pairs
-- [ ] Align with MON-3's `matrixScan` and `matrixToASCII` expected layout
-- [ ] Include shifted characters (using CAPS from SYS_CTRL bit 5)
-- [ ] Export mapping table for use by UI panel
-- [ ] Unit tests: verify all printable ASCII characters have a mapping
+- [x] Create mapping from PC keyboard scancodes to matrix (row, col) pairs
+- [x] Align with MON-3's `matrixScan` and `matrixToASCII` expected layout
+- [x] Include shifted characters (using CAPS from SYS_CTRL bit 5)
+- [x] Export mapping table for use by UI panel
+- [x] Unit tests: verify all printable ASCII characters have a mapping
+
+**Status:** Added MON-3-aligned matrix scan ASCII mapping tables with shift/caps variants, plus tests for printable
+ASCII coverage and row/col bounds.
 
 #### 4D — Matrix keyboard UI
 
@@ -654,12 +657,15 @@ matrix mode, and tests cover row reads plus the disabled-mode fallback.
 **Depends on:** Stage 4B, 4C
 **Tasks:**
 
-- [ ] Add UI toggle for matrix keyboard mode (shows/hides matrix keyboard panel)
+- [x] Add UI toggle for matrix keyboard mode (shows/hides matrix keyboard panel)
 - [ ] Option A: virtual QWERTY grid in webview (click to press)
-- [ ] Option B: capture PC keyboard events and translate via keymap
-- [ ] Send `applyMatrixKey` messages from webview to runtime
-- [ ] Show CAPS state indicator from SYS_CTRL
+- [x] Option B: capture PC keyboard events and translate via keymap
+- [x] Send `applyMatrixKey` messages from webview to runtime
+- [x] Show CAPS state indicator from SYS_CTRL
 - [ ] Visual feedback on key press/release
+
+**Status:** Implemented keyboard-capture mode with a matrix toggle + CAPS indicator. No virtual QWERTY grid yet and
+no per-key visual press feedback (optional polish).
 
 ---
 

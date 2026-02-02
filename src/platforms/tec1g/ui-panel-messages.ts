@@ -12,6 +12,12 @@ export type Tec1gMessage = {
   mode?: Tec1gSpeedMode;
   text?: string;
   tab?: string;
+  key?: string;
+  pressed?: boolean;
+  shift?: boolean;
+  ctrl?: boolean;
+  alt?: boolean;
+  enabled?: boolean;
   views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
 };
 
@@ -69,6 +75,34 @@ export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext)
     if (target?.type === 'z80') {
       try {
         await target.customRequest('debug80/tec1gKey', { code: msg.code });
+      } catch {
+        /* ignore */
+      }
+    }
+    return;
+  }
+  if (msg.type === 'matrixKey' && typeof msg.key === 'string' && typeof msg.pressed === 'boolean') {
+    const target = ctx.getSession();
+    if (target?.type === 'z80') {
+      try {
+        await target.customRequest('debug80/tec1gMatrixKey', {
+          key: msg.key,
+          pressed: msg.pressed,
+          shift: msg.shift,
+          ctrl: msg.ctrl,
+          alt: msg.alt,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+    return;
+  }
+  if (msg.type === 'matrixMode' && typeof msg.enabled === 'boolean') {
+    const target = ctx.getSession();
+    if (target?.type === 'z80') {
+      try {
+        await target.customRequest('debug80/tec1gMatrixMode', { enabled: msg.enabled });
       } catch {
         /* ignore */
       }
