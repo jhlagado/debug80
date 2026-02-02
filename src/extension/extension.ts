@@ -86,6 +86,7 @@ export function activate(context: vscode.ExtensionContext): void {
       fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'))
     );
     void vscode.commands.executeCommand('setContext', 'debug80.hasProject', hasProject);
+    platformViewProvider.setHasProject(hasProject);
   };
 
   const resolveSelectedWorkspace = (): vscode.WorkspaceFolder | undefined => {
