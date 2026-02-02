@@ -719,7 +719,7 @@ External add-on emulation. Fully independent of other stages.
 - [x] Add `rtcEnabled: boolean` config option (default false)
 - [x] Instantiate `DS1302` in runtime when enabled
 - [x] Route port 0xFC writes to `ds1302.write(value)`, reads to `ds1302.read()`
-- [ ] Add RTC presence indicator to SYS_INPUT (if applicable — verify with MON-3 source)
+- [x] Add RTC presence indicator to SYS_INPUT (not applicable — no dedicated bit in schematic)
 - [x] Unit tests: end-to-end port 0xFC write command + read response
 
 ---
@@ -735,13 +735,13 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Nothing
 **Tasks:**
 
-- [ ] Create `SdSpi` class with bit-bang interface:
+- [x] Create `SdSpi` class with bit-bang interface:
   - Track MOSI (bit 0), CLK (bit 1), CS state
   - Shift register: accumulate 8 bits on CLK edges -> command byte
   - Output shift register: provide 8 bits on CLK edges -> response byte
-- [ ] Implement idle state: respond with 0xFF when not selected
-- [ ] Implement command detection: 6-byte SD command format (0x40 | cmd, 4 args, CRC)
-- [ ] Unit tests: shift in CMD0 bytes, verify command detected
+- [x] Implement idle state: respond with 0xFF when not selected
+- [x] Implement command detection: 6-byte SD command format (0x40 | cmd, 4 args, CRC)
+- [x] Unit tests: shift in CMD0 bytes, verify command detected
 
 #### 6B — SD card command responses
 
