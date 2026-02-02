@@ -680,15 +680,17 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Nothing
 **Tasks:**
 
-- [ ] Create `DS1302` class with bit-bang interface:
+- [x] Create `DS1302` class with bit-bang interface:
   - Track CE (bit 4), CLK (bit 6), data line state
   - Detect CLK rising/falling edges
   - Shift in command byte (8 bits: address + R/W flag)
   - Shift in/out data byte (8 bits, LSB first)
-- [ ] Implement read mode: on rising CLK edges after command, shift out data bits
-- [ ] Implement write mode: on rising CLK edges after command, shift in data bits
-- [ ] Handle CE transitions (CE low -> reset protocol state)
-- [ ] Unit tests: full write-then-read cycle for a single register
+- [x] Implement read mode: on rising CLK edges after command, shift out data bits
+- [x] Implement write mode: on rising CLK edges after command, shift in data bits
+- [x] Handle CE transitions (CE low -> reset protocol state)
+- [x] Unit tests: full write-then-read cycle for a single register
+
+**Status:** Added a DS1302 bit-bang state machine with command/data shifting and a basic write/read test.
 
 #### 5B — DS1302 registers and PRAM
 
