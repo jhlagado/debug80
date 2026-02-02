@@ -3,8 +3,6 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { Tec1PanelTab, getTec1Html } from '../platforms/tec1/ui-panel-html';
 import {
   createMemoryViewState as createTec1MemoryViewState,
@@ -55,6 +53,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private currentSessionId: string | undefined;
   private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
+  private hasProject = false;
 
   private tec1ActiveTab: Tec1PanelTab = 'ui';
   private tec1UiState = createTec1UiState();
@@ -93,6 +92,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
     this.selectedWorkspace = folder;
+    if (!this.currentPlatform) {
+      this.renderCurrentView(true);
+    }
+  }
+
+  setHasProject(value: boolean): void {
+    this.hasProject = value;
     if (!this.currentPlatform) {
       this.renderCurrentView(true);
     }
@@ -512,11 +518,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   private getIdleHtml(): string {
     const folders = vscode.workspace.workspaceFolders ?? [];
-    const hasProject = folders.some((folder) =>
-      fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'))
-    );
     const multiRoot = folders.length > 1;
-    if (!hasProject) {
+    if (!this.hasProject) {
       return `<!DOCTYPE html>
 <html lang="en">
 <head>
