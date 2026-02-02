@@ -25,9 +25,10 @@ import { Tec1gPlatformConfigNormalized } from '../platforms/types';
 import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { normalizeTec1Config } from '../platforms/tec1/runtime';
 import { normalizeTec1gConfig } from '../platforms/tec1g/runtime';
-import { createTec1gMemoryHooks } from './tec1g-memory';
+import { applyCartridgeMemory, createTec1gMemoryHooks } from './tec1g-memory';
 import { createSessionState, resetSessionState, StopReason, type SessionStateShape } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
+import { loadTec1gCartridgeImage, type Tec1gCartridgeImage } from './tec1g-cartridge';
 import { BreakpointManager } from './breakpoint-manager';
 import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom } from './assembler';
@@ -316,13 +317,35 @@ export class Z80DebugSession extends DebugSession {
         (platform === 'tec1g' && tec1gConfig)
           ? { romRanges: (simpleConfig ?? tec1Config ?? tec1gConfig)?.romRanges ?? [] }
           : undefined;
+      let tec1gCartridgeImage: Tec1gCartridgeImage | null = null;
+      if (platform === 'tec1g' && tec1gConfig) {
+        const cartridgeHex = tec1gConfig.cartridgeHex;
+        if (cartridgeHex !== undefined && cartridgeHex !== '') {
+          const cartridgePath = resolveRelative(cartridgeHex, this.sessionState.baseDir);
+          if (!fs.existsSync(cartridgePath)) {
+            emitConsoleOutput(
+              (event) => this.sendEvent(event as DebugProtocol.Event),
+              `Debug80: TEC-1G cartridge not found at "${cartridgePath}".`
+            );
+          } else {
+            try {
+              tec1gCartridgeImage = loadTec1gCartridgeImage(cartridgePath);
+            } catch (err) {
+              emitConsoleOutput(
+                (event) => this.sendEvent(event as DebugProtocol.Event),
+                `Debug80: Failed to load cartridge "${cartridgePath}": ${String(err)}`
+              );
+            }
+          }
+        }
+      }
       const entry =
         platform === 'simple'
           ? simpleConfig?.entry
           : platform === 'tec1'
             ? tec1Config?.entry
             : platform === 'tec1g'
-              ? tec1gConfig?.entry
+              ? (tec1gCartridgeImage?.bootEntry ?? tec1gConfig?.entry)
               : merged.entry;
       this.sessionState.loadedProgram = program;
       this.sessionState.loadedEntry = entry;
@@ -334,6 +357,12 @@ export class Z80DebugSession extends DebugSession {
         const hooks = createTec1gMemoryHooks(baseMemory, romRanges, tec1gRuntime.state);
         this.sessionState.runtime.hardware.memRead = hooks.memRead;
         this.sessionState.runtime.hardware.memWrite = hooks.memWrite;
+        if (tec1gCartridgeImage) {
+          applyCartridgeMemory(hooks.expandBanks, tec1gCartridgeImage.memory);
+          tec1gRuntime.setCartridgePresent(true);
+        } else {
+          tec1gRuntime.setCartridgePresent(false);
+        }
       }
       this.sessionState.runState.callDepth = 0;
       this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(merged.stepOverMaxInstructions, 0);
