@@ -47,4 +47,78 @@ describe('Ds1302', () => {
     ds.write(0x00);
     expect(value).toBe(0xa5);
   });
+
+  it('returns BCD time values', () => {
+    const ds = new Ds1302();
+    ds.write(CE_BIT);
+    const cmdRead = (0x00 << 1) | 0x01;
+    writeByte(ds, cmdRead);
+    const value = readByte(ds);
+    ds.write(0x00);
+    const tens = (value >> 4) & 0x0f;
+    const ones = value & 0x0f;
+    expect(tens).toBeGreaterThanOrEqual(0);
+    expect(tens).toBeLessThan(6);
+    expect(ones).toBeGreaterThanOrEqual(0);
+    expect(ones).toBeLessThan(10);
+  });
+
+  it('writes and reads PRAM when not write protected', () => {
+    const ds = new Ds1302();
+    ds.write(CE_BIT);
+    const cmdWrite = (0x20 << 1) | 0x00;
+    writeByte(ds, cmdWrite);
+    writeByte(ds, 0x5a);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    const cmdRead = (0x20 << 1) | 0x01;
+    writeByte(ds, cmdRead);
+    const value = readByte(ds);
+    ds.write(0x00);
+    expect(value).toBe(0x5a);
+  });
+
+  it('honors write protect', () => {
+    const ds = new Ds1302();
+    ds.write(CE_BIT);
+    const cmdWp = (0x07 << 1) | 0x00;
+    writeByte(ds, cmdWp);
+    writeByte(ds, 0x80);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    const cmdWrite = (0x20 << 1) | 0x00;
+    writeByte(ds, cmdWrite);
+    writeByte(ds, 0x12);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    const cmdRead = (0x20 << 1) | 0x01;
+    writeByte(ds, cmdRead);
+    const value = readByte(ds);
+    ds.write(0x00);
+    expect(value).toBe(0x00);
+  });
+
+  it('supports burst read for sequential registers', () => {
+    const ds = new Ds1302();
+    ds.write(CE_BIT);
+    writeByte(ds, (0x01 << 1) | 0x00);
+    writeByte(ds, 0x11);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, (0x02 << 1) | 0x00);
+    writeByte(ds, 0x22);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0xbf);
+    const first = readByte(ds);
+    const second = readByte(ds);
+    ds.write(0x00);
+    expect(first).toBe(0x11);
+    expect(second).toBe(0x22);
+  });
 });

@@ -699,13 +699,15 @@ External add-on emulation. Fully independent of other stages.
 **Depends on:** Stage 5A
 **Tasks:**
 
-- [ ] Implement time registers (seconds, minutes, hours, day, month, year, day-of-week)
-- [ ] Source time from `Date.now()` on read; convert to BCD format
-- [ ] Implement write to time registers (store offsets from system time)
-- [ ] Implement 31-byte PRAM array with read/write by address
-- [ ] Implement burst read/write mode (sequential register access)
-- [ ] Handle write-protect register (bit 7 of register 0x07)
-- [ ] Unit tests: read time, verify BCD format; write PRAM, read back
+- [x] Implement time registers (seconds, minutes, hours, day, month, year, day-of-week)
+- [x] Source time from `Date.now()` on read; convert to BCD format
+- [x] Implement write to time registers (store offsets from system time)
+- [x] Implement 31-byte PRAM array with read/write by address
+- [x] Implement burst read/write mode (sequential register access)
+- [x] Handle write-protect register (bit 7 of register 0x07)
+- [x] Unit tests: read time, verify BCD format; write PRAM, read back
+
+**Status:** Added BCD time registers + PRAM storage with write-protect, plus burst read/write support.
 
 #### 5C — DS1302 integration with runtime
 
