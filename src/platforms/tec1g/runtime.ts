@@ -15,6 +15,7 @@ import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
 import { SdSpi } from './sd-spi';
+import * as fs from 'fs';
 import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
@@ -113,6 +114,7 @@ export interface Tec1gRuntime {
   applyKey(code: number): void;
   applyMatrixKey(row: number, col: number, pressed: boolean): void;
   setMatrixMode(enabled: boolean): void;
+  setCartridgePresent(enabled: boolean): void;
   queueSerial(bytes: number[]): void;
   recordCycles(cycles: number): void;
   silenceSpeaker(): void;
@@ -156,6 +158,10 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     typeof config.ramInitHex === 'string' && config.ramInitHex !== ''
       ? config.ramInitHex
       : undefined;
+  const cartridgeHex =
+    typeof config.cartridgeHex === 'string' && config.cartridgeHex !== ''
+      ? config.cartridgeHex
+      : undefined;
   const updateMs =
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
@@ -189,6 +195,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     rtcEnabled,
     sdEnabled,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
+    ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
     ...(extraListings ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
@@ -212,7 +219,17 @@ export function createTec1gRuntime(
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
   const sdEnabled = config.sdEnabled;
-  const sdSpi = sdEnabled ? new SdSpi() : null;
+  const sdImagePath = config.sdImagePath;
+  let sdImage: Uint8Array | undefined;
+  if (sdEnabled && typeof sdImagePath === 'string' && sdImagePath !== '') {
+    try {
+      sdImage = new Uint8Array(fs.readFileSync(sdImagePath));
+    } catch {
+      sdImage = undefined;
+    }
+  }
+  const sdSpi = sdEnabled ? new SdSpi(sdImage ? { image: sdImage } : undefined) : null;
+  let cartridgePresentDefault = config.cartridgeHex !== undefined;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
@@ -279,7 +296,7 @@ export function createTec1gRuntime(
     expandEnabled: false,
     bankA14: config.expansionBankHi,
     capsLock: false,
-    cartridgePresent: false,
+    cartridgePresent: cartridgePresentDefault,
     shiftKeyActive: false,
     rawKeyActive: false,
     gimpSignal: config.gimpSignal,
@@ -1234,7 +1251,7 @@ export function createTec1gRuntime(
     state.shiftKeyActive = false;
     state.rawKeyActive = false;
     state.gimpSignal = defaultGimpSignal;
-    state.cartridgePresent = false;
+    state.cartridgePresent = cartridgePresentDefault;
     state.shiftKeyActive = false;
     state.rawKeyActive = false;
     state.gimpSignal = false;
@@ -1256,6 +1273,10 @@ export function createTec1gRuntime(
     applyKey,
     applyMatrixKey,
     setMatrixMode,
+    setCartridgePresent: (enabled: boolean): void => {
+      cartridgePresentDefault = enabled;
+      state.cartridgePresent = enabled;
+    },
     queueSerial,
     recordCycles,
     silenceSpeaker,

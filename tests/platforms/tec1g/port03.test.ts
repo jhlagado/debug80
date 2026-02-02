@@ -55,7 +55,7 @@ describe('port 0x03 (SYS_INPUT)', () => {
 
   it('bit 3 (CART) is 1 when cartridge present', () => {
     const rt = makeRuntime();
-    rt.state.cartridgePresent = true;
+    rt.setCartridgePresent(true);
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0x08);
   });
 

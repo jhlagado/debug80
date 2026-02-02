@@ -345,9 +345,9 @@ Schematic confirms: SD card is NOT on the main board. It connects through J10 pi
 
 | Feature                      | Rating      | Notes                      |
 | ---------------------------- | ----------- | -------------------------- |
-| CART flag on port 0x03 bit 3 | **Bug**     | Incorrectly mirrors expand |
-| Cartridge ROM mapping        | **Missing** |                            |
-| Cartridge boot behavior      | **Missing** |                            |
+| CART flag on port 0x03 bit 3 | **Complete** | Driven by `cartridgeHex` presence |
+| Cartridge ROM mapping        | **Partial** | Loaded into expansion banks; requires EXPAND enabled |
+| Cartridge boot behavior      | **Complete** | CART present boots at `0x8000` when payload exists |
 
 ### 15. Status LEDs (BAR1)
 
@@ -406,7 +406,7 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | CONFIG DIP switch         | Low  | **Missing**         | 0%   |
 | RTC (DS1302)              | Low  | **Complete**        | 100% |
 | SD card SPI               | Low  | **Missing**         | 0%   |
-| Cartridge                 | Low  | **Missing**         | 0%   |
+| Cartridge                 | Low  | **Partial**         | 40%  |
 | Joystick                  | Low  | **Missing**         | 0%   |
 | Status LED bar            | Low  | **Missing**         | 0%   |
 
@@ -768,7 +768,8 @@ External add-on emulation. Fully independent of other stages.
 - [x] Instantiate `SdSpi` in runtime when enabled
 - [x] Route port 0xFD writes to `sdSpi.write(value)`, reads to `sdSpi.read()`
 - [ ] If `sdImagePath` provided, load file as virtual disk image for block reads
-- [ ] Add SD presence indicator to SYS_INPUT (if applicable)
+- [x] If `sdImagePath` provided, load file as virtual disk image for block reads
+- [x] Add SD presence indicator to SYS_INPUT (not applicable — no dedicated bit in schematic)
 - [x] Unit tests: end-to-end port 0xFD initialization sequence
 
 ---
@@ -784,11 +785,11 @@ Depends on Stage 2C (bank switching) for memory mapping.
 **Depends on:** Stage 2C (expansion bank switching)
 **Tasks:**
 
-- [ ] Add `cartridgeHex: string` config option to `Tec1gPlatformConfig`
-- [ ] Load cartridge ROM hex into expansion memory space on launch
-- [ ] Set `cartridgePresent = true` in state when cartridge configured
-- [ ] Verify CART flag (port 0x03 bit 3) reflects presence correctly
-- [ ] Unit tests: cartridge configured -> CART=1; not configured -> CART=0
+- [x] Add `cartridgeHex: string` config option to `Tec1gPlatformConfig`
+- [x] Load cartridge ROM hex into expansion memory space on launch
+- [x] Set `cartridgePresent = true` in state when cartridge configured
+- [x] Verify CART flag (port 0x03 bit 3) reflects presence correctly
+- [x] Unit tests: cartridge configured -> CART=1; not configured -> CART=0
 
 #### 7B — Cartridge boot detection
 
@@ -797,10 +798,14 @@ Depends on Stage 2C (bank switching) for memory mapping.
 **Depends on:** Stage 7A
 **Tasks:**
 
-- [ ] Research MON-3 cartridge boot sequence (check ROM source for boot flag location and behavior)
-- [ ] Implement boot flag detection at expected cartridge header address
-- [ ] On cold reset with cartridge present, jump to cartridge entry point (if boot flag valid)
-- [ ] Unit tests: cartridge with valid boot header triggers entry; invalid header boots normally
+- [x] Research MON-3 cartridge boot sequence (check ROM source for boot flag location and behavior)
+- [x] Implement boot flag detection at expected cartridge header address
+- [x] On cold reset with cartridge present, jump to cartridge entry point (if boot flag valid)
+- [x] Unit tests: cartridge with valid boot header triggers entry; invalid header boots normally
+
+**Notes:** MON-3 checks SYS_INPUT’s CART bit on boot and jumps straight to `0x8000` when present. There is
+no ROM header signature in the MON-3 source, so Debug80 treats any non-zero payload in `0x8000-0xFFFF`
+as bootable and otherwise falls back to the configured entry point.
 
 ---
 

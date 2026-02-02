@@ -66,6 +66,7 @@ export interface Tec1gPlatformConfig {
   rtcEnabled?: boolean;
   sdEnabled?: boolean;
   sdImagePath?: string;
+  cartridgeHex?: string;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;
@@ -93,6 +94,7 @@ export interface Tec1gPlatformConfigNormalized {
   rtcEnabled: boolean;
   sdEnabled: boolean;
   sdImagePath?: string;
+  cartridgeHex?: string;
   uiVisibility?: {
     lcd?: boolean;
     display?: boolean;

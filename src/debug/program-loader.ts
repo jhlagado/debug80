@@ -193,7 +193,7 @@ function resolveRomBinPath(filePath: string): string | undefined {
   return path.join(parsed.dir, `${parsed.name}.bin`);
 }
 
-function extractRomHex(content: string, filePath: string): string {
+export function extractRomHex(content: string, filePath: string): string {
   const lower = filePath.toLowerCase();
   if (lower.endsWith('.ts') || lower.endsWith('.js')) {
     const match = content.match(/ROM\s*=\s*`([\s\S]*?)`/) ?? content.match(/`([\s\S]*?)`/);
