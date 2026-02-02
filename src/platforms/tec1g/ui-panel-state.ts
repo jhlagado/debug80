@@ -20,6 +20,7 @@ export type GlcdState = {
 export type Tec1gUiState = {
   digits: number[];
   matrix: number[];
+  matrixMode: boolean;
   glcd: number[];
   glcdDdram: number[];
   glcdState: GlcdState;
@@ -46,6 +47,7 @@ export function createTec1gUiState(): Tec1gUiState {
   return {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
+    matrixMode: false,
     glcd: Array.from({ length: 1024 }, () => 0),
     glcdDdram: Array.from({ length: 64 }, () => 0x20),
     glcdState: {
@@ -84,6 +86,7 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
   const next = createTec1gUiState();
   state.digits = next.digits;
   state.matrix = next.matrix;
+  state.matrixMode = next.matrixMode;
   state.glcd = next.glcd;
   state.glcdDdram = next.glcdDdram;
   state.glcdState = next.glcdState;
@@ -103,6 +106,9 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
 export function applyTec1gUpdate(state: Tec1gUiState, payload: Tec1gUpdatePayload): void {
   state.digits = payload.digits.slice(0, 6);
   state.matrix = payload.matrix.slice(0, 8);
+  if (typeof payload.matrixMode === 'boolean') {
+    state.matrixMode = payload.matrixMode;
+  }
   state.glcd = payload.glcd.slice(0, 1024);
   if (typeof payload.sysCtrl === 'number') {
     state.sysCtrlValue = payload.sysCtrl & 0xff;

@@ -123,6 +123,8 @@ export type CustomRequestType =
   | 'debug80/terminalBreak'
   | 'debug80/tec1Key'
   | 'debug80/tec1gKey'
+  | 'debug80/tec1gMatrixKey'
+  | 'debug80/tec1gMatrixMode'
   | 'debug80/tec1Reset'
   | 'debug80/tec1gReset'
   | 'debug80/tec1Speed'
@@ -145,6 +147,24 @@ export interface TerminalInputPayload {
  */
 export interface KeyPressPayload {
   code: number;
+}
+
+/**
+ * Payload for matrix key press/release.
+ */
+export interface MatrixKeyPayload {
+  key: string;
+  pressed: boolean;
+  shift?: boolean;
+  ctrl?: boolean;
+  alt?: boolean;
+}
+
+/**
+ * Payload for matrix mode toggle.
+ */
+export interface MatrixModePayload {
+  enabled: boolean;
 }
 
 /**
@@ -256,6 +276,37 @@ export function extractKeyCode(value: unknown): number | undefined {
     return Number.isFinite(payload.code) ? (payload.code as number) : undefined;
   }
   return undefined;
+}
+
+/**
+ * Extracts matrix key payload from unknown value.
+ */
+export function extractMatrixKeyPayload(value: unknown): MatrixKeyPayload | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const payload = value as Partial<MatrixKeyPayload>;
+  if (typeof payload.key !== 'string' || typeof payload.pressed !== 'boolean') {
+    return undefined;
+  }
+  return {
+    key: payload.key,
+    pressed: payload.pressed,
+    ...(payload.shift !== undefined ? { shift: payload.shift === true } : {}),
+    ...(payload.ctrl !== undefined ? { ctrl: payload.ctrl === true } : {}),
+    ...(payload.alt !== undefined ? { alt: payload.alt === true } : {}),
+  };
+}
+
+/**
+ * Extracts matrix mode enabled flag from unknown value.
+ */
+export function extractMatrixModeEnabled(value: unknown): boolean | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const payload = value as Partial<MatrixModePayload>;
+  return typeof payload.enabled === 'boolean' ? payload.enabled : undefined;
 }
 
 /**

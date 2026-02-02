@@ -235,6 +235,44 @@ export function getTec1gStyle(): string {
       height: auto;
       box-shadow: inset 0 0 10px rgba(10, 20, 10, 0.5);
     }
+    .matrix-keyboard {
+      margin-top: 12px;
+      background: #151515;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #2b2b2b;
+    }
+    .matrix-keyboard-title {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: #bdbdbd;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .matrix-keyboard-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .matrix-keyboard-indicator {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      font-size: 11px;
+      color: #cfcfcf;
+      opacity: 0.55;
+    }
+    .matrix-keyboard-indicator.on {
+      opacity: 1;
+      border-color: #6a6a6a;
+      background: #2b2b2b;
+    }
+    .matrix-keyboard-hint {
+      font-size: 11px;
+      color: #9aa0a6;
+    }
     .matrix {
       margin-top: 12px;
       background: #1b0b0b;

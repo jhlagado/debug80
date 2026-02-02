@@ -44,11 +44,14 @@ import {
 import { VariableService } from './variable-service';
 import { buildMemorySnapshotResponse } from './memory-snapshot';
 import { ADDR_MASK } from '../platforms/tec-common';
+import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 
 // Import from extracted modules - types only for now (gradual migration)
 import {
   LaunchRequestArguments,
   extractKeyCode,
+  extractMatrixKeyPayload,
+  extractMatrixModeEnabled,
 } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
@@ -91,6 +94,7 @@ export class Z80DebugSession extends DebugSession {
   private sessionState: SessionStateShape = createSessionState();
   private variableHandles = new Handles<'registers'>();
   private variableService = new VariableService(this.variableHandles);
+  private matrixHeldKeys = new Map<string, MatrixKeyCombo[]>();
   private platformState = {
     active: 'simple',
   };
@@ -701,6 +705,24 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return true;
     }
+    if (command === 'debug80/tec1gMatrixKey') {
+      const error = this.handleMatrixKeyRequest(args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    }
+    if (command === 'debug80/tec1gMatrixMode') {
+      const error = this.handleMatrixModeRequest(args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    }
     if (command === 'debug80/tec1Reset') {
       const error = handleResetRequest(
         this.sessionState.runtime,
@@ -726,6 +748,7 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, error);
         return true;
       }
+      this.matrixHeldKeys.clear();
       this.sendResponse(response);
       return true;
     }
@@ -816,6 +839,119 @@ export class Z80DebugSession extends DebugSession {
       return true;
     }
     return false;
+  }
+
+  private handleMatrixModeRequest(args: unknown): string | null {
+    const runtime = this.sessionState.tec1gRuntime;
+    if (!runtime) {
+      return 'Debug80: Platform not active.';
+    }
+    const enabled = extractMatrixModeEnabled(args);
+    if (enabled === undefined) {
+      return 'Debug80: Missing matrix mode flag.';
+    }
+    runtime.setMatrixMode(enabled);
+    if (!enabled) {
+      this.matrixHeldKeys.clear();
+    }
+    return null;
+  }
+
+  private handleMatrixKeyRequest(args: unknown): string | null {
+    const runtime = this.sessionState.tec1gRuntime;
+    if (!runtime) {
+      return 'Debug80: Platform not active.';
+    }
+    const payload = extractMatrixKeyPayload(args);
+    if (!payload) {
+      return 'Debug80: Missing matrix key payload.';
+    }
+    if (!runtime.state.matrixModeEnabled) {
+      return null;
+    }
+    const ascii = this.resolveMatrixAscii(payload.key);
+    if (ascii === undefined) {
+      return null;
+    }
+    const combos = getMatrixCombosForAscii(ascii);
+    if (combos.length === 0) {
+      return null;
+    }
+    const keyId = this.buildMatrixKeyId(payload);
+    const combo = this.selectMatrixCombo(combos, payload, runtime.state.capsLock);
+    if (!combo) {
+      return null;
+    }
+    const applied = this.expandMatrixCombo(combo);
+    if (payload.pressed) {
+      if (!this.matrixHeldKeys.has(keyId)) {
+        this.matrixHeldKeys.set(keyId, applied);
+        applied.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, true));
+      }
+      return null;
+    }
+    const held = this.matrixHeldKeys.get(keyId) ?? applied;
+    held.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
+    this.matrixHeldKeys.delete(keyId);
+    return null;
+  }
+
+  private resolveMatrixAscii(key: string): number | undefined {
+    if (key.length === 1) {
+      return key.charCodeAt(0);
+    }
+    if (key === 'Enter') {
+      return 0x0d;
+    }
+    if (key === 'Escape') {
+      return 0x1b;
+    }
+    return undefined;
+  }
+
+  private buildMatrixKeyId(payload: { key: string; shift?: boolean; ctrl?: boolean; alt?: boolean }): string {
+    return (
+      payload.key +
+      '|' +
+      (payload.shift === true ? '1' : '0') +
+      (payload.ctrl === true ? '1' : '0') +
+      (payload.alt === true ? '1' : '0')
+    );
+  }
+
+  private selectMatrixCombo(
+    combos: MatrixKeyCombo[],
+    payload: { shift?: boolean; ctrl?: boolean; alt?: boolean },
+    capsLock: boolean
+  ): MatrixKeyCombo | undefined {
+    const preferred =
+      payload.ctrl === true ? 'ctrl' : payload.shift === true ? 'shift' : payload.alt === true ? 'fn' : undefined;
+    const matchesCaps = (combo: MatrixKeyCombo): boolean =>
+      combo.capsLock === undefined || combo.capsLock === capsLock;
+    if (preferred !== undefined) {
+      const preferredMatch = combos.find((combo) => combo.modifier === preferred && matchesCaps(combo));
+      if (preferredMatch) {
+        return preferredMatch;
+      }
+    }
+    const unmodified = combos.find((combo) => combo.modifier === undefined && matchesCaps(combo));
+    if (unmodified) {
+      return unmodified;
+    }
+    const capsMatch = combos.find(matchesCaps);
+    return capsMatch ?? combos[0];
+  }
+
+  private expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; col: number }> {
+    const entries = [{ row: combo.row, col: combo.col }];
+    if (combo.modifier === 'shift') {
+      entries.push({ row: 0, col: 0 });
+    } else if (combo.modifier === 'ctrl') {
+      entries.push({ row: 0, col: 1 });
+    } else if (combo.modifier === 'fn') {
+      entries.push({ row: 0, col: 2 });
+    }
+    return entries;
   }
 
   private handleRomRequest(command: string, response: DebugProtocol.Response): boolean {

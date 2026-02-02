@@ -52,7 +52,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
   - Bit 7 (0x80): RX — serial receive (idle high).
 - `IN 0x04`: LCD busy flag + address counter (HD44780 status read).
 - `IN 0x84`: LCD data read (supported).
-- `IN 0xFE`: matrix keyboard (stub — returns 0xFF, not yet emulated).
+- `IN 0xFE`: matrix keyboard rows (returns 0xFF when matrix mode is disabled).
 
 ### Output
 - `OUT 0x01` (SCAN): digit select + speaker + serial TX.

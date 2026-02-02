@@ -17,6 +17,7 @@ export function getTec1gMarkup(): string {
         <label><input type="checkbox" data-section="lcd" checked /> LCD</label>
         <label><input type="checkbox" data-section="display" checked /> 7-SEG</label>
         <label><input type="checkbox" data-section="keypad" checked /> KEYPAD</label>
+        <label><input type="checkbox" data-section="matrixKeyboard" checked /> MATRIX KBD</label>
         <label><input type="checkbox" data-section="matrix" /> 8x8 MATRIX</label>
         <label><input type="checkbox" data-section="glcd" /> GLCD</label>
         <label><input type="checkbox" data-section="serial" checked /> SERIAL</label>
@@ -44,6 +45,15 @@ export function getTec1gMarkup(): string {
             <canvas class="glcd-canvas" id="glcdCanvas" width="320" height="160"></canvas>
           </div>
           <div class="keypad ui-section" id="keypad" data-section="keypad"></div>
+          <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
+            <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+            <div class="matrix-keyboard-controls">
+              <div class="key" id="matrixModeToggle">MATRIX MODE</div>
+              <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
+              <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
+            </div>
+            <div class="matrix-keyboard-hint">Type to send keys (Enter/Esc supported).</div>
+          </div>
           <div class="matrix ui-section" data-section="matrix">
             <div class="matrix-title">8x8 LED MATRIX</div>
             <div class="matrix-grid" id="matrixGrid"></div>
