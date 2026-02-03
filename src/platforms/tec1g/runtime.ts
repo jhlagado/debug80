@@ -933,7 +933,7 @@ export function createTec1gRuntime(
         lcdSetBusy(TEC1G_LCD_BUSY_US);
         return;
       }
-      if (p === 0x84) {
+      if (p === TEC1G_PORT_LCD_DATA) {
         lcdWriteData(value);
         return;
       }
@@ -1043,15 +1043,15 @@ export function createTec1gRuntime(
         logPortWrite(p, value);
         return;
       }
-      if (p === 0x87) {
+      if (p === TEC1G_PORT_GLCD_DATA) {
         glcdWriteData(value);
         return;
       }
-      if (p >= 0xfc && p <= 0xfe) {
+      if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX) {
         logPortWrite(p, value);
         return;
       }
-      if (p === 0xff) {
+      if (p === TEC1G_PORT_SYSCTRL) {
         logPortWrite(p, value);
         state.sysCtrl = value & 0xff;
         const decoded = decodeSysCtrl(state.sysCtrl);
