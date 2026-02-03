@@ -101,6 +101,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Target:** No single decode file over 400 LOC. Each prefix group testable in isolation.
 
+**Status:** In progress (Phase 3). Primary opcode table + register/ALU decoder extracted to `decode-primary.ts`. CB, ED, DD, FD, and DDCB prefix handlers extracted to `decode-cb.ts`, `decode-ed.ts`, `decode-dd.ts`, `decode-fd.ts`, and `decode-ddcb.ts`. DD and ED opcode tables now live in `decode-dd.ts` and `decode-ed.ts` (removed from `decode.ts`).
+
 ---
 
 ### 4. Core Code Has No Automated Tests
