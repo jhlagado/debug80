@@ -25,6 +25,24 @@ describe('decode-utils special helpers', () => {
     expect(cpu.a).toBe(0x15);
   });
 
+  it('doDaa adjusts after addition when carry needed', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0x9a;
+    cpu.flags.N = 0;
+    doDaa(ctx);
+    expect(cpu.a).toBe(0x00);
+    expect(cpu.flags.C).toBe(1);
+  });
+
+  it('doDaa adjusts after subtraction', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0x15;
+    cpu.flags.N = 1;
+    cpu.flags.H = 1;
+    doDaa(ctx);
+    expect(cpu.a).toBe(0x0f);
+  });
+
   it('doNeg negates accumulator', () => {
     const { cpu, ctx } = initDecodeTestContext();
     cpu.a = 0x01;
