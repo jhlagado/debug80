@@ -66,6 +66,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Target:** adapter.ts under 500 LOC. Each platform owns its command handlers.
 
+**Status:** In progress (Phase 2). Audited custom requests, added `CommandRouter` + `PlatformRegistry`, and migrated TEC-1 + TEC-1G custom commands to the registry (adapter no longer routes platform-specific commands directly).
+
 ---
 
 ### 2. Embedded HTML/CSS/JavaScript in TypeScript (~3,300 LOC)
