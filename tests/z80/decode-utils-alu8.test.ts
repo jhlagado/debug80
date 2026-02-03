@@ -68,11 +68,30 @@ describe('decode-utils ALU 8-bit', () => {
     expect(cpu.flags.H).toBe(1);
   });
 
+  it('doAnd masks to 8-bit and sets parity/XY from result', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0xaa;
+    doAnd(ctx, 0x1ff);
+    expect(cpu.a).toBe(0xaa);
+    expect(cpu.flags.P).toBe(1);
+    expect(cpu.flags.X).toBe((cpu.a & 0x08) >>> 3);
+    expect(cpu.flags.Y).toBe((cpu.a & 0x02) >>> 1);
+  });
+
   it('doOr ORs accumulator', () => {
     const { cpu, ctx } = initDecodeTestContext();
     cpu.a = 0xf0;
     doOr(ctx, 0x0f);
     expect(cpu.a).toBe(0xff);
+  });
+
+  it('doOr masks to 8-bit and clears carry', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0x00;
+    cpu.flags.C = 1;
+    doOr(ctx, 0x1ff);
+    expect(cpu.a).toBe(0xff);
+    expect(cpu.flags.C).toBe(0);
   });
 
   it('doXor XORs accumulator', () => {
@@ -81,6 +100,14 @@ describe('decode-utils ALU 8-bit', () => {
     doXor(ctx, 0xff);
     expect(cpu.a).toBe(0x00);
     expect(cpu.flags.Z).toBe(1);
+  });
+
+  it('doXor masks to 8-bit and sets parity', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0x0f;
+    doXor(ctx, 0x1f0);
+    expect(cpu.a).toBe(0xff);
+    expect(cpu.flags.P).toBe(1);
   });
 
   it('doInc increments value and clears N', () => {
@@ -104,11 +131,27 @@ describe('decode-utils ALU 8-bit', () => {
     expect(cpu.flags.N).toBe(1);
   });
 
+  it('doDec sets overflow on 0x80', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    const result = doDec(ctx, 0x80);
+    expect(result).toBe(0x7f);
+    expect(cpu.flags.P).toBe(1);
+  });
+
   it('doCp compares without modifying A', () => {
     const { cpu, ctx } = initDecodeTestContext();
     cpu.a = 0x10;
     doCp(ctx, 0x10);
     expect(cpu.a).toBe(0x10);
     expect(cpu.flags.Z).toBe(1);
+  });
+
+  it('doCp updates carry and XY flags from operand', () => {
+    const { cpu, ctx } = initDecodeTestContext();
+    cpu.a = 0x10;
+    doCp(ctx, 0x28);
+    expect(cpu.flags.C).toBe(1);
+    expect(cpu.flags.X).toBe((0x28 & 0x08) >>> 3);
+    expect(cpu.flags.Y).toBe((0x28 & 0x20) >>> 5);
   });
 });
