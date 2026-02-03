@@ -206,7 +206,6 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     const temp = cpu.a;
     do_sub(operand);
     cpu.a = temp;
-    update_xy_flags(operand);
   };
 
   const do_and = (operand: number): void => {
@@ -507,7 +506,7 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     cpu.flags.H = ((cpu.ix & 0xfff) + (operand & 0xfff)) & 0x1000 ? 1 : 0;
     update_xy_flags((result & 0xff00) >>> 8);
 
-    cpu.ix = result;
+    cpu.ix = result & 0xffff;
   };
 
   return {

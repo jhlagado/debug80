@@ -34,6 +34,12 @@ import { buildFdHandler } from './decode-fd';
 import { buildDecoderHelpers } from './decode-helpers';
 import { buildPrimaryInstructions, executePrimaryOpcode } from './decode-primary';
 
+type Decoder = {
+  decode: (opcode: number) => void;
+};
+
+const decoderCache = new WeakMap<Cpu, { cb: Callbacks; decoder: Decoder }>();
+
 // ============================================================================
 // INSTRUCTION DECODER ENTRY POINT
 // ============================================================================
@@ -59,7 +65,7 @@ import { buildPrimaryInstructions, executePrimaryOpcode } from './decode-primary
  * decodeInstruction(cpu, callbacks, opcode);
  * ```
  */
-export const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number): void => {
+export const createDecoder = (cpu: Cpu, cb: Callbacks): Decoder => {
   // ==========================================================================
   // UTILITY FUNCTIONS
   // ==========================================================================
@@ -224,5 +230,19 @@ export const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number): void
   };
 
   const instructions = buildPrimaryInstructions(primaryContext);
-  executePrimaryOpcode(primaryContext, opcode, instructions);
+
+  return {
+    decode: (opcode: number): void => {
+      executePrimaryOpcode(primaryContext, opcode, instructions);
+    },
+  };
+};
+
+export const decodeInstruction = (cpu: Cpu, cb: Callbacks, opcode: number): void => {
+  const cached = decoderCache.get(cpu);
+  if (!cached || cached.cb !== cb) {
+    decoderCache.set(cpu, { cb, decoder: createDecoder(cpu, cb) });
+  }
+  const decoder = decoderCache.get(cpu);
+  decoder?.decoder.decode(opcode);
 };
