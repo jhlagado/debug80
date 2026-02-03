@@ -174,6 +174,8 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 
 **Target:** Zero raw hex literals in I/O handler logic. Every hardware value has a named constant with a comment referencing the schematic.
 
+**Status:** In progress (Phase 1). `src/platforms/tec1g/constants.ts` added and applied to TEC-1G I/O port handling.
+
 ---
 
 ### 8. Incomplete Module Extraction

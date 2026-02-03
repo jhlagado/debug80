@@ -15,6 +15,32 @@ import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
 import { SdSpi } from './sd-spi';
+import {
+  TEC1G_DIGIT_SERIAL_TX,
+  TEC1G_DIGIT_SPEAKER,
+  TEC1G_PORT_DIGIT,
+  TEC1G_PORT_GLCD_CMD,
+  TEC1G_PORT_GLCD_DATA,
+  TEC1G_PORT_KEYBOARD,
+  TEC1G_PORT_LCD_CMD,
+  TEC1G_PORT_LCD_DATA,
+  TEC1G_PORT_MATRIX,
+  TEC1G_PORT_MATRIX_LATCH,
+  TEC1G_PORT_MATRIX_STROBE,
+  TEC1G_PORT_RTC,
+  TEC1G_PORT_SD,
+  TEC1G_PORT_SEGMENT,
+  TEC1G_PORT_STATUS,
+  TEC1G_PORT_SYSCTRL,
+  TEC1G_STATUS_CARTRIDGE,
+  TEC1G_STATUS_EXPAND,
+  TEC1G_STATUS_GIMP,
+  TEC1G_STATUS_NO_KEY,
+  TEC1G_STATUS_PROTECT,
+  TEC1G_STATUS_RAW_KEY,
+  TEC1G_STATUS_SERIAL_RX,
+  TEC1G_STATUS_SHIFT,
+} from './constants';
 import * as fs from 'fs';
 import {
   TEC_SLOW_HZ,
@@ -725,7 +751,7 @@ export function createTec1gRuntime(
       const fullPort = port & 0xffff;
       const p = fullPort & 0xff;
       const highByte = (fullPort >> 8) & 0xff;
-      if (p === 0x00) {
+      if (p === TEC1G_PORT_KEYBOARD) {
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
@@ -734,60 +760,60 @@ export function createTec1gRuntime(
         const key = state.keyValue & 0x7f;
         return key | (serialRxLevel ? 0x80 : 0x00);
       }
-      if (p === 0xfe) {
+      if (p === TEC1G_PORT_MATRIX) {
         if (!state.matrixModeEnabled) {
           return 0xff;
         }
         const row = highByte & 0x0f;
         return state.matrixKeyStates[row] ?? 0xff;
       }
-      if (p === 0x04) {
+      if (p === TEC1G_PORT_LCD_CMD) {
         return lcdReadStatus();
       }
-      if (p === 0x84) {
+      if (p === TEC1G_PORT_LCD_DATA) {
         return lcdReadData();
       }
-      if (p === 0xfc) {
+      if (p === TEC1G_PORT_RTC) {
         return rtcEnabled && rtc ? rtc.read() : 0xff;
       }
-      if (p === 0xfd) {
+      if (p === TEC1G_PORT_SD) {
         return sdEnabled && sdSpi ? sdSpi.read() : 0xff;
       }
-      if (p === 0x07) {
+      if (p === TEC1G_PORT_GLCD_CMD) {
         return glcdReadStatus();
       }
-      if (p === 0x87) {
+      if (p === TEC1G_PORT_GLCD_DATA) {
         return glcdReadData();
       }
-      if (p === 0xff) {
+      if (p === TEC1G_PORT_SYSCTRL) {
         return state.sysCtrl & 0xff;
       }
-      if (p === 0x03) {
+      if (p === TEC1G_PORT_STATUS) {
         const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
         let value = 0x00;
         if (state.shiftKeyActive) {
-          value |= 0x01;
+          value |= TEC1G_STATUS_SHIFT;
         }
         if (state.protectEnabled) {
-          value |= 0x02;
+          value |= TEC1G_STATUS_PROTECT;
         }
         if (state.expandEnabled) {
-          value |= 0x04;
+          value |= TEC1G_STATUS_EXPAND;
         }
         if (state.cartridgePresent) {
-          value |= 0x08;
+          value |= TEC1G_STATUS_CARTRIDGE;
         }
         if (state.rawKeyActive) {
-          value |= 0x10;
+          value |= TEC1G_STATUS_RAW_KEY;
         }
         if (state.gimpSignal) {
-          value |= 0x20;
+          value |= TEC1G_STATUS_GIMP;
         }
         if (!keyPressed) {
-          value |= 0x40;
+          value |= TEC1G_STATUS_NO_KEY;
         }
         if (serialRxLevel) {
-          value |= 0x80;
+          value |= TEC1G_STATUS_SERIAL_RX;
         }
         return value;
       }
@@ -797,10 +823,10 @@ export function createTec1gRuntime(
       const fullPort = port & 0xffff;
       const p = fullPort & 0xff;
       void fullPort;
-      if (p === 0x01) {
+      if (p === TEC1G_PORT_DIGIT) {
         state.digitLatch = value & 0xff;
-        const speaker = (value & 0x80) !== 0;
-        const nextSerial: 0 | 1 = (value & 0x40) !== 0 ? 1 : 0;
+        const speaker = (value & TEC1G_DIGIT_SPEAKER) !== 0;
+        const nextSerial: 0 | 1 = (value & TEC1G_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
         if (nextSerial !== serialLevel) {
           serialLevel = nextSerial;
           serialDecoder.recordLevel(serialLevel);
@@ -821,32 +847,32 @@ export function createTec1gRuntime(
         updateDisplay();
         return;
       }
-      if (p === 0x02) {
+      if (p === TEC1G_PORT_SEGMENT) {
         state.segmentLatch = value & 0xff;
         updateDisplay();
         return;
       }
-      if (p === 0x06) {
+      if (p === TEC1G_PORT_MATRIX_LATCH) {
         state.matrixLatch = value & 0xff;
         return;
       }
-      if (p === 0x05) {
+      if (p === TEC1G_PORT_MATRIX_STROBE) {
         updateMatrix(value & 0xff);
         return;
       }
-      if (p === 0xfc) {
+      if (p === TEC1G_PORT_RTC) {
         if (rtcEnabled && rtc) {
           rtc.write(value & 0xff);
         }
         return;
       }
-      if (p === 0xfd) {
+      if (p === TEC1G_PORT_SD) {
         if (sdEnabled && sdSpi) {
           sdSpi.write(value & 0xff);
         }
         return;
       }
-      if (p === 0x04) {
+      if (p === TEC1G_PORT_LCD_CMD) {
         const instruction = value & 0xff;
         if (instruction === 0x01) {
           lcdClear();
