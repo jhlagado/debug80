@@ -1,12 +1,51 @@
 # Debug80 Codebase Improvement Plan
 
 Date: 2026-02-03
+Last Updated: 2026-02-03
 
 ## Current State Assessment
 
 Debug80 is a functional Z80 debug adapter for VS Code with TEC-1/TEC-1G platform emulation. The core Z80 emulation and source mapping systems are solid. The TypeScript config is strict, dependencies are minimal, and the documentation is above average. However, the codebase shows clear signs of organic growth without periodic refactoring. Several files have become load-bearing monoliths, the UI layer is architecturally problematic, test coverage has critical gaps, and platform-specific logic is tangled into the adapter core.
 
-This is a honest assessment — the project works, but scaling it (new platforms, new features, new contributors) will be painful without structural changes.
+This is an honest assessment — the project works, but scaling it (new platforms, new features, new contributors) will be painful without structural changes.
+
+### Current Line Counts (Critical Files)
+
+| File | Lines | Status |
+|------|-------|--------|
+| `src/debug/adapter.ts` | 1,296 | God file - needs splitting |
+| `src/extension/extension.ts` | 1,075 | Does too much |
+| `src/z80/decode.ts` | 1,616 | Monolithic decoder |
+| `src/platforms/tec1g/runtime.ts` | 1,287 | Complex, has bugs |
+| `src/platforms/tec1g/ui-panel-html-script.ts` | 1,461 | JS-in-strings |
+| `src/platforms/tec1/runtime.ts` | 514 | Simpler, OK for now |
+| `src/platforms/tec1/ui-panel-html-script.ts` | 767 | JS-in-strings |
+
+---
+
+## Immediate Bug Fix Required
+
+### BUG: Duplicate State Reset in TEC-1G Runtime
+
+**Location:** `src/platforms/tec1g/runtime.ts` lines 1251–1257
+
+**Problem:** The `resetState()` function has duplicate assignments that also incorrectly overwrite the configured `gimpSignal` value:
+
+```typescript
+// Lines 1251-1253: Correct initial assignments
+state.shiftKeyActive = false;
+state.rawKeyActive = false;
+state.gimpSignal = defaultGimpSignal;  // Uses config value ✓
+
+// Lines 1255-1257: Duplicate assignments that OVERWRITE correct values
+state.shiftKeyActive = false;          // Duplicate
+state.rawKeyActive = false;            // Duplicate
+state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
+```
+
+**Impact:** The `gimpSignal` configuration option (set in `debug80.json`) is ignored on reset. If a user configures `gimpSignal: true`, it will be reset to `false` every time the emulator resets.
+
+**Fix:** Delete lines 1255–1257. The correct assignments are already on lines 1251–1253.
 
 ---
 
@@ -211,6 +250,7 @@ The issues above have dependencies. This is the recommended sequence:
 
 | Phase | Issues | Rationale |
 |-------|--------|-----------|
+| **Phase 0: Bug Fix** | Duplicate state reset bug | Immediate fix, user-facing bug |
 | **Phase 1: Foundation** | #7 (constants), #8 (stalled extractions) | Low-risk cleanup that makes later work easier |
 | **Phase 2: Adapter** | #1 (split adapter), #6 (platform registry) | Unlocks testability and extensibility |
 | **Phase 3: Decoder** | #3 (split decode) | Independent of adapter work, enables instruction-level tests |
@@ -242,3 +282,87 @@ The refactoring is done when:
 4. Test coverage (including adapter and runtimes) exceeds 70%
 5. Zero magic numbers in I/O handler logic
 6. The coverage exclusion list contains only VS Code API boundary code
+
+---
+
+## Appendix A: External Platform Repositories
+
+The project has companion repositories for platform-specific test programs and ROMs:
+
+### debug80-tec1g (`/Users/johnhardy/Documents/projects/debug80-tec1g`)
+
+```
+debug80-tec1g/
+├── roms/
+│   ├── tec1/       # Classic TEC-1 ROM images for compatibility testing
+│   └── tec1g/      # TEC-1G ROM images (MON-3 BC24-15, etc.)
+├── tec1g-mon1/     # MON-1B compatibility setup (user program @ 0x0800)
+│   ├── .vscode/
+│   │   ├── debug80.json   # Platform configuration
+│   │   └── launch.json    # VS Code debug targets
+│   ├── .debug80/          # Generated debug artifacts
+│   ├── build/             # Assembled output
+│   └── src/               # Assembly source files
+└── tec1g-mon3/     # MON-3 configuration (user program @ 0x4000)
+```
+
+### debug80-tec1 (`/Users/johnhardy/Documents/projects/debug80-tec1`)
+
+```
+debug80-tec1/
+├── roms/
+│   └── tec1/       # TEC-1 ROM images
+├── tec1-mon1/      # MON-1 configuration (RAM starts @ 0x0800)
+│   └── .vscode/debug80.json
+└── tec1-mon2/      # MON-2 configuration (RAM starts @ 0x0900)
+    └── .vscode/debug80.json
+```
+
+**Purpose:** These are development/testing workspaces, not part of the debug80 codebase. They demonstrate:
+- How users structure debug80 projects
+- Real ROM configurations for regression testing
+- Example programs (serial, matrix, LCD tests)
+
+**Relationship to debug80:** These repos consume debug80 as a VS Code extension. They are useful for:
+- Manual testing during development
+- Understanding user-facing configuration patterns
+- Validating ROM compatibility
+
+---
+
+## Appendix B: Platform Architecture Complexity
+
+The TEC-1 and TEC-1G platforms have very different complexity levels:
+
+| Aspect | TEC-1 | TEC-1G | Notes |
+|--------|-------|--------|-------|
+| Runtime LOC | 514 | 1,287 | 2.5x larger |
+| UI Script LOC | 767 | 1,461 | 1.9x larger |
+| Display | 6-digit 7-seg | 6-digit 7-seg + 16x2 LCD + 128x64 GLCD | Much more complex |
+| Keyboard | 20-key hex pad | Hex pad + 8x8 matrix | Matrix adds state machine |
+| Peripherals | Speaker | Speaker + RTC (DS1302) + SD card (SPI) | Multiple device emulations |
+| Memory | Fixed map | Shadow RAM, bank switching, protection | Complex memory model |
+
+**Implication:** TEC-1G's runtime complexity is inherent to the hardware being emulated. The 1,287 LOC isn't necessarily bloated — it's emulating a lot of hardware. However:
+- The state machine is fragile (see bug above)
+- Magic numbers make it hard to verify correctness against schematic
+- No unit tests for any I/O handler paths
+
+**Recommendation:** Don't try to shrink tec1g/runtime.ts for the sake of LOC count. Instead:
+1. Add constants for all hardware addresses
+2. Add unit tests for each peripheral (LCD, GLCD, RTC, SD, matrix keyboard)
+3. Fix the state reset bug
+4. Consider splitting peripheral emulation into separate files (e.g., `glcd.ts`, `lcd.ts`, `matrix-keyboard.ts`) if the file continues to grow
+
+---
+
+## Appendix C: Test File Status
+
+Recent test files added (per git status):
+- `tests/platforms/tec1g/glcd.test.ts` (new, untracked)
+- `tests/platforms/tec1g/memory-banking.test.ts` (new, untracked)
+- `tests/platforms/tec1g/serial.test.ts` (new, untracked)
+- `tests/platforms/tec1g/lcd.test.ts` (modified)
+- `tests/platforms/tec1g/port03.test.ts` (modified)
+
+**Positive sign:** Active test development for TEC-1G platform. Ensure these get committed and the coverage exclusions are updated to include the tested code paths.
