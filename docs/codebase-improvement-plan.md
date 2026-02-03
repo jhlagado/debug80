@@ -174,7 +174,7 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 
 **Target:** Zero raw hex literals in I/O handler logic. Every hardware value has a named constant with a comment referencing the schematic.
 
-**Status:** In progress (Phase 1). `src/platforms/tec1g/constants.ts` added with port/status comments and applied to TEC-1G I/O port handling (including remaining LCD/GLCD/sysctrl ports).
+**Status:** Complete (Phase 1). Added `src/platforms/tec1g/constants.ts` and `src/platforms/tec1/constants.ts` with port/memory/mask/LCD/GLCD constants, replaced all raw hex literals in both runtimes, and normalized key masking to `*_MASK_LOW7`.
 
 ---
 
@@ -188,6 +188,8 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 - Write tests for each module and remove from the coverage exclusion list.
 
 **Target:** No "extracted but not integrated" modules. Everything is either used-and-tested or deleted.
+
+**Status:** Complete (Phase 1). Removed unused `config-loader`, `memory-utils`, and `symbol-manager` modules (and their exports). Added tests for `assembler` and `path-resolver`, kept `breakpoint-manager` under coverage, and removed the coverage exclusions for these modules.
 
 ---
 
