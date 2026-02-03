@@ -242,13 +242,13 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   dd_instructions[0x63] = (): void => {
     cpu.ix = (cpu.e << 8) | (cpu.ix & 0xff);
   };
-  // 0x64 : LD IXH, H (Undocumented)
+  // 0x64 : LD IXH, IXH (Undocumented)
   dd_instructions[0x64] = (): void => {
-    cpu.ix = (cpu.h << 8) | (cpu.ix & 0xff);
+    // No-op.
   };
-  // 0x65 : LD IXH, L (Undocumented)
+  // 0x65 : LD IXH, IXL (Undocumented)
   dd_instructions[0x65] = (): void => {
-    cpu.ix = (cpu.l << 8) | (cpu.ix & 0xff);
+    cpu.ix = (cpu.ix & 0xff) | ((cpu.ix & 0xff) << 8);
   };
   // 0x66 : LD H, (IX+n)
   dd_instructions[0x66] = (): void => {
@@ -276,13 +276,13 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   dd_instructions[0x6b] = (): void => {
     cpu.ix = (cpu.ix & 0xff00) | cpu.e;
   };
-  // 0x6c : LD IXL, H (Undocumented)
+  // 0x6c : LD IXL, IXH (Undocumented)
   dd_instructions[0x6c] = (): void => {
-    cpu.ix = (cpu.ix & 0xff00) | cpu.h;
+    cpu.ix = (cpu.ix & 0xff00) | (cpu.ix >>> 8);
   };
-  // 0x6d : LD IXL, L (Undocumented)
+  // 0x6d : LD IXL, IXL (Undocumented)
   dd_instructions[0x6d] = (): void => {
-    cpu.ix = (cpu.ix & 0xff00) | cpu.l;
+    // No-op.
   };
   // 0x6e : LD L, (IX+n)
   dd_instructions[0x6e] = (): void => {
