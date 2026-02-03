@@ -47,6 +47,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Fix:** Delete lines 1255–1257. The correct assignments are already on lines 1251–1253.
 
+**Status:** Done on branch `refactor/codebase-improvement-phase0` (commit 867f565).
+
 ---
 
 ## Critical Issues
