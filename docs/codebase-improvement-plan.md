@@ -66,7 +66,7 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Target:** adapter.ts under 500 LOC. Each platform owns its command handlers.
 
-**Status:** In progress (Phase 2). Audited custom requests, added `CommandRouter` + `PlatformRegistry`, and migrated TEC-1 + TEC-1G custom commands to the registry (adapter no longer routes platform-specific commands directly).
+**Status:** Structurally complete (Phase 2). Audited custom requests, added `CommandRouter` + `PlatformRegistry`, and migrated TEC-1 + TEC-1G custom commands to the registry (adapter no longer routes platform-specific commands directly). Platform command definitions still live in `adapter.ts` and launch still branches per platform (acceptable for now; extraction is optional follow‑up).
 
 ---
 
