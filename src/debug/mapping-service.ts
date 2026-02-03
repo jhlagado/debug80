@@ -105,6 +105,9 @@ export function buildMappingFromListing(options: {
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
   }
+  if (service.platform === 'tec1g') {
+    applyTec1gBootstrapAlias(mapping);
+  }
 
   const index = buildSourceMapIndex(mapping, (file) => service.resolveMappedPath(file));
   return { mapping, index, missingSources };
@@ -136,19 +139,20 @@ function applySourceFallback(
   if (sourceFile === undefined || sourceFile.length === 0) {
     return;
   }
-  if (mapping.anchors.length > 0) {
-    return;
-  }
-  const hasFile = mapping.segments.some((segment) => segment.loc.file !== null);
-  if (hasFile) {
-    return;
-  }
   const fallback = resolveMappedPath(sourceFile) ?? path.resolve(baseDir, sourceFile);
   if (fallback.length === 0) {
     return;
   }
   for (const segment of mapping.segments) {
-    segment.loc.file = fallback;
+    const current = segment.loc.file;
+    if (current === null) {
+      segment.loc.file = fallback;
+      continue;
+    }
+    const resolved = resolveMappedPath(current) ?? path.resolve(baseDir, current);
+    if (!fs.existsSync(resolved)) {
+      segment.loc.file = fallback;
+    }
   }
 }
 
@@ -283,6 +287,75 @@ function mergeMappings(base: MappingParseResult, extra: MappingParseResult): Map
     segments: [...base.segments, ...extra.segments],
     anchors: [...base.anchors, ...extra.anchors],
   };
+}
+
+function applyTec1gBootstrapAlias(mapping: MappingParseResult): void {
+  const shadowStart = 0xc000;
+  const shadowEnd = 0xc100;
+  const lowStart = 0x0000;
+  const lowEnd = 0x0100;
+
+  const lowRangeFiles = new Set<string>();
+  for (const segment of mapping.segments) {
+    if (segment.loc.file === null) {
+      continue;
+    }
+    if (segment.start < lowEnd && segment.end > lowStart) {
+      lowRangeFiles.add(segment.loc.file);
+    }
+  }
+
+  const aliasedSegments: SourceMapSegment[] = [];
+  for (const segment of mapping.segments) {
+    if (segment.loc.file === null) {
+      continue;
+    }
+    if (segment.start >= shadowEnd || segment.end <= shadowStart) {
+      continue;
+    }
+    if (lowRangeFiles.has(segment.loc.file)) {
+      continue;
+    }
+    const sliceStart = Math.max(segment.start, shadowStart);
+    const sliceEnd = Math.min(segment.end, shadowEnd);
+    if (sliceEnd <= sliceStart) {
+      continue;
+    }
+    aliasedSegments.push({
+      ...segment,
+      start: sliceStart - shadowStart,
+      end: sliceEnd - shadowStart,
+    });
+  }
+
+  if (aliasedSegments.length > 0) {
+    mapping.segments.push(...aliasedSegments);
+  }
+
+  const lowAnchorFiles = new Set<string>();
+  for (const anchor of mapping.anchors) {
+    if (anchor.address >= lowStart && anchor.address < lowEnd) {
+      lowAnchorFiles.add(anchor.file);
+    }
+  }
+
+  const aliasedAnchors: SourceMapAnchor[] = [];
+  for (const anchor of mapping.anchors) {
+    if (anchor.address < shadowStart || anchor.address >= shadowEnd) {
+      continue;
+    }
+    if (lowAnchorFiles.has(anchor.file)) {
+      continue;
+    }
+    aliasedAnchors.push({
+      ...anchor,
+      address: anchor.address - shadowStart,
+    });
+  }
+
+  if (aliasedAnchors.length > 0) {
+    mapping.anchors.push(...aliasedAnchors);
+  }
 }
 
 function buildAsm80Mapping(
