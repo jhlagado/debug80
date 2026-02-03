@@ -276,10 +276,12 @@
     ]
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && yarn build:webview",
+    "build:webview": "node scripts/build-webview.js",
+    "typecheck:webview": "tsc -p webview/tsconfig.json --noEmit",
     "watch": "tsc --watch",
-    "lint": "eslint src tests --ext .ts",
-    "lint:fix": "eslint src tests --ext .ts --fix",
+    "lint": "eslint src tests webview --ext .ts",
+    "lint:fix": "eslint src tests webview --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "pretest": "yarn build",
@@ -296,6 +298,7 @@
     "@typescript-eslint/parser": "^6.13.0",
     "@vitest/coverage-v8": "0.33.0",
     "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.20.2",
     "eslint": "^8.55.0",
     "eslint-plugin-jsdoc": "^48.2.3",
     "prettier": "^3.1.0",
