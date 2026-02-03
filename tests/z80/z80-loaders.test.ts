@@ -13,6 +13,17 @@ describe('z80-loaders', () => {
     assert.equal(program.memory[0], 0);
   });
 
+  it('ignores non-data records', () => {
+    const hex = [
+      ':020000020000FC', // extended segment address (type 02) - ignored
+      ':0100000001FE', // data at 0x0000
+      ':00000001FF',
+    ].join('\n');
+    const program = parseIntelHex(hex);
+    assert.equal(program.startAddress, 0);
+    assert.equal(program.memory[0], 0x01);
+  });
+
   it('parses listing entries and ignores comment-only lines', () => {
     const listing = `; comment\n0000   00      NOP\n0001   3E 05   LD A,05h`;
     const info = parseListing(listing);

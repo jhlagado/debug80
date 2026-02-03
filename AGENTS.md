@@ -18,11 +18,11 @@
   - Source map index: `src/mapping/source-map.ts`
 - Docs:
   - `README.md`
-  - `docs/TECHNICAL.md`
-  - `docs/D8_DEBUG_MAP.md`
-  - `docs/PLATFORMS.md`
-  - `docs/platforms/tec1/README.md`
-  - `docs/TIMING_MODEL.md`
+  - `docs/technical.md`
+  - `docs/d8-debug-map.md`
+  - `docs/platforms.md`
+  - `docs/platforms/tec1g/README.md`
+  - `docs/timing-model.md`
 
 ## Project Conventions
 

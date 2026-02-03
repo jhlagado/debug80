@@ -35,6 +35,8 @@ import { resolveBundledTec1Rom } from './assembler';
 import { buildSymbolIndex } from './symbol-service';
 import { SourceManager } from './source-manager';
 import { SourceStateManager } from './source-state-manager';
+import { CommandRouter } from './command-router';
+import { PlatformRegistry } from './platform-registry';
 import { buildStackFrames } from './stack-service';
 import {
   applyStepInfo,
@@ -102,6 +104,8 @@ export class Z80DebugSession extends DebugSession {
   private variableHandles = new Handles<'registers'>();
   private variableService = new VariableService(this.variableHandles);
   private matrixHeldKeys = new Map<string, MatrixKeyCombo[]>();
+  private commandRouter = new CommandRouter();
+  private platformRegistry = new PlatformRegistry();
   private platformState = {
     active: 'simple',
   };
@@ -110,6 +114,152 @@ export class Z80DebugSession extends DebugSession {
     super();
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
+    this.registerCommandHandlers();
+  }
+
+  private registerCommandHandlers(): void {
+    this.commandRouter.register('debug80/terminalInput', (response, args) =>
+      this.handleTerminalRequest('debug80/terminalInput', response, args)
+    );
+    this.commandRouter.register('debug80/terminalBreak', (response, args) =>
+      this.handleTerminalRequest('debug80/terminalBreak', response, args)
+    );
+    this.commandRouter.register('debug80/tec1MemorySnapshot', (response, args) =>
+      this.handleMemoryRequest('debug80/tec1MemorySnapshot', response, args)
+    );
+    this.commandRouter.register('debug80/tec1gMemorySnapshot', (response, args) =>
+      this.handleMemoryRequest('debug80/tec1gMemorySnapshot', response, args)
+    );
+    this.commandRouter.register('debug80/romSources', (response) =>
+      this.handleRomRequest('debug80/romSources', response)
+    );
+  }
+
+  private registerPlatformCommands(platform: string): void {
+    this.platformRegistry.clear();
+
+    if (platform === 'tec1') {
+      this.platformRegistry.register({
+        id: 'tec1',
+        commands: {
+          'debug80/tec1Key': (response, args) => {
+            const code = extractKeyCode(args);
+            const error = handleKeyRequest(
+              this.sessionState.tec1Runtime,
+              code,
+              () => this.sessionState.tec1gRuntime?.silenceSpeaker()
+            );
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1Reset': (response) => {
+            const error = handleResetRequest(
+              this.sessionState.runtime,
+              this.sessionState.loadedProgram,
+              this.sessionState.loadedEntry,
+              this.sessionState.tec1Runtime
+            );
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1Speed': (response, args) => {
+            const error = handleSpeedRequest(this.sessionState.tec1Runtime, args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1SerialInput': (response, args) => {
+            const error = handleSerialRequest(this.sessionState.tec1Runtime, args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+        },
+      });
+    }
+
+    if (platform === 'tec1g') {
+      this.platformRegistry.register({
+        id: 'tec1g',
+        commands: {
+          'debug80/tec1gKey': (response, args) => {
+            const code = extractKeyCode(args);
+            const error = handleKeyRequest(this.sessionState.tec1gRuntime, code);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1gMatrixKey': (response, args) => {
+            const error = this.handleMatrixKeyRequest(args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1gMatrixMode': (response, args) => {
+            const error = this.handleMatrixModeRequest(args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1gReset': (response) => {
+            const error = handleResetRequest(
+              this.sessionState.runtime,
+              this.sessionState.loadedProgram,
+              this.sessionState.loadedEntry,
+              this.sessionState.tec1gRuntime
+            );
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.matrixHeldKeys.clear();
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1gSpeed': (response, args) => {
+            const error = handleSpeedRequest(this.sessionState.tec1gRuntime, args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+          'debug80/tec1gSerialInput': (response, args) => {
+            const error = handleSerialRequest(this.sessionState.tec1gRuntime, args);
+            if (error !== null) {
+              this.sendErrorResponse(response, 1, error);
+              return true;
+            }
+            this.sendResponse(response);
+            return true;
+          },
+        },
+      });
+    }
   }
 
   protected initializeRequest(
@@ -168,6 +318,7 @@ export class Z80DebugSession extends DebugSession {
 
       const platform = normalizePlatformName(merged);
       this.platformState.active = platform;
+      this.registerPlatformCommands(platform);
       const simpleConfig = platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
       const tec1Config = platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
       const tec1gConfig = platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
@@ -666,20 +817,16 @@ export class Z80DebugSession extends DebugSession {
     this.sessionState.tec1gRuntime = undefined;
     this.sessionState.loadedProgram = undefined;
     this.sessionState.loadedEntry = undefined;
+    this.platformRegistry.clear();
     this.sendResponse(response);
   }
 
   protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
-    if (this.handleTerminalRequest(command, response, args)) {
+    if (this.commandRouter.handle(command, response, args)) {
       return;
     }
-    if (this.handlePlatformRequest(command, response, args)) {
-      return;
-    }
-    if (this.handleMemoryRequest(command, response, args)) {
-      return;
-    }
-    if (this.handleRomRequest(command, response)) {
+    const platformHandler = this.platformRegistry.getHandler(command);
+    if (platformHandler && platformHandler(response, args)) {
       return;
     }
     super.customRequest(command, response, args);
@@ -705,121 +852,6 @@ export class Z80DebugSession extends DebugSession {
         return true;
       }
       applyTerminalBreak(this.sessionState.terminalState);
-      this.sendResponse(response);
-      return true;
-    }
-    return false;
-  }
-
-  private handlePlatformRequest(
-    command: string,
-    response: DebugProtocol.Response,
-    args: unknown
-  ): boolean {
-    if (command === 'debug80/tec1Key') {
-      const code = extractKeyCode(args);
-      const error = handleKeyRequest(
-        this.sessionState.tec1Runtime,
-        code,
-        () => this.sessionState.tec1gRuntime?.silenceSpeaker()
-      );
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gKey') {
-      const code = extractKeyCode(args);
-      const error = handleKeyRequest(this.sessionState.tec1gRuntime, code);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gMatrixKey') {
-      const error = this.handleMatrixKeyRequest(args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gMatrixMode') {
-      const error = this.handleMatrixModeRequest(args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1Reset') {
-      const error = handleResetRequest(
-        this.sessionState.runtime,
-        this.sessionState.loadedProgram,
-        this.sessionState.loadedEntry,
-        this.sessionState.tec1Runtime
-      );
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gReset') {
-      const error = handleResetRequest(
-        this.sessionState.runtime,
-        this.sessionState.loadedProgram,
-        this.sessionState.loadedEntry,
-        this.sessionState.tec1gRuntime
-      );
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.matrixHeldKeys.clear();
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1Speed') {
-      const error = handleSpeedRequest(this.sessionState.tec1Runtime, args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gSpeed') {
-      const error = handleSpeedRequest(this.sessionState.tec1gRuntime, args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1SerialInput') {
-      const error = handleSerialRequest(this.sessionState.tec1Runtime, args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gSerialInput') {
-      const error = handleSerialRequest(this.sessionState.tec1gRuntime, args);
-      if (error !== null) {
-        this.sendErrorResponse(response, 1, error);
-        return true;
-      }
       this.sendResponse(response);
       return true;
     }

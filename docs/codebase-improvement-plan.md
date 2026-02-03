@@ -47,6 +47,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Fix:** Delete lines 1255–1257. The correct assignments are already on lines 1251–1253.
 
+**Status:** Done on branch `refactor/codebase-improvement-phase0` (commit 867f565).
+
 ---
 
 ## Critical Issues
@@ -63,6 +65,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 - Platform runtimes should register their own custom request handlers rather than the adapter knowing about every platform.
 
 **Target:** adapter.ts under 500 LOC. Each platform owns its command handlers.
+
+**Status:** Structurally complete (Phase 2). Audited custom requests, added `CommandRouter` + `PlatformRegistry`, and migrated TEC-1 + TEC-1G custom commands to the registry (adapter no longer routes platform-specific commands directly). Platform command definitions still live in `adapter.ts` and launch still branches per platform (acceptable for now; extraction is optional follow‑up).
 
 ---
 
@@ -96,6 +100,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 - Individual instruction handlers become independently testable.
 
 **Target:** No single decode file over 400 LOC. Each prefix group testable in isolation.
+
+**Status:** In progress (Phase 3). Primary opcode table + register/ALU decoder extracted to `decode-primary.ts`. CB, ED, DD, FD, and DDCB prefix handlers extracted to `decode-cb.ts`, `decode-ed.ts`, `decode-dd.ts`, `decode-fd.ts`, and `decode-ddcb.ts`. DD and ED opcode tables now live in `decode-dd.ts` and `decode-ed.ts` (removed from `decode.ts`). Common decode helpers are now centralized in `decode-helpers.ts`, and `decode.ts` delegates helper construction. Removed unused `decode-utils.ts`. Added decoder caching to eliminate per-instruction allocations, wrapped IX to 16-bit in `do_ix_add`, and aligned CP X/Y flags to the compare result.
 
 ---
 
@@ -172,6 +178,8 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 
 **Target:** Zero raw hex literals in I/O handler logic. Every hardware value has a named constant with a comment referencing the schematic.
 
+**Status:** Complete (Phase 1). Added `src/platforms/tec1g/constants.ts` and `src/platforms/tec1/constants.ts` with port/memory/mask/LCD/GLCD constants, replaced all raw hex literals in both runtimes, and normalized key masking to `*_MASK_LOW7`.
+
 ---
 
 ### 8. Incomplete Module Extraction
@@ -184,6 +192,8 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 - Write tests for each module and remove from the coverage exclusion list.
 
 **Target:** No "extracted but not integrated" modules. Everything is either used-and-tested or deleted.
+
+**Status:** Complete (Phase 1). Removed unused `config-loader`, `memory-utils`, and `symbol-manager` modules (and their exports). Added tests for `assembler` and `path-resolver`, kept `breakpoint-manager` under coverage, and removed the coverage exclusions for these modules.
 
 ---
 

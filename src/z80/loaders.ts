@@ -128,10 +128,7 @@ export function parseListing(content: string): ListingInfo {
     if (!match) {
       return;
     }
-    const addressStr = match[1];
-    if (addressStr === undefined || addressStr === '') {
-      return;
-    }
+    const addressStr = match[1]!;
 
     // Require at least one byte on the line; skip pure comments/directives.
     const remainder = line.slice(match[0].length);

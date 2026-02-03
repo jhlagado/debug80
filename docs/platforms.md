@@ -9,7 +9,7 @@ The format is intentionally simple: select a `platform` in `debug80.json`, then
 provide a platform-specific config block. No feature flags.
 
 For per-platform details, see `src/platforms/README.md`.
-For timing and time-series I/O, see `docs/TIMING_MODEL.md`.
+For timing and time-series I/O, see `docs/timing-model.md`.
 TEC-1G notes: `docs/platforms/tec1g/README.md`.
 
 ## Goals
