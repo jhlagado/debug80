@@ -13,6 +13,39 @@ import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
 import {
+  TEC1_ADDR_MAX,
+  TEC1_APP_START_DEFAULT,
+  TEC1_DIGIT_SERIAL_TX,
+  TEC1_DIGIT_SPEAKER,
+  TEC1_ENTRY_DEFAULT,
+  TEC1_LCD_CMD_CLEAR,
+  TEC1_LCD_CMD_DDRAM,
+  TEC1_LCD_CMD_HOME,
+  TEC1_LCD_ROW0_END,
+  TEC1_LCD_ROW0_START,
+  TEC1_LCD_ROW1_END,
+  TEC1_LCD_ROW1_OFFSET,
+  TEC1_LCD_ROW1_START,
+  TEC1_LCD_SPACE,
+  TEC1_MASK_BYTE,
+  TEC1_MASK_LOW7,
+  TEC1_NMI_VECTOR,
+  TEC1_PORT_DIGIT,
+  TEC1_PORT_KEYBOARD,
+  TEC1_PORT_LCD_CMD,
+  TEC1_PORT_LCD_DATA,
+  TEC1_PORT_MATRIX_LATCH,
+  TEC1_PORT_MATRIX_STROBE,
+  TEC1_PORT_SEGMENT,
+  TEC1_PORT_STATUS,
+  TEC1_RAM_END,
+  TEC1_RAM_START,
+  TEC1_ROM_END,
+  TEC1_ROM_START,
+  TEC1_STATUS_KEY_IDLE,
+  TEC1_STATUS_SERIAL_RX,
+} from './constants';
+import {
   TEC_SLOW_HZ,
   TEC_FAST_HZ,
   TEC_SILENCE_CYCLES,
@@ -80,18 +113,20 @@ const TEC1_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfigNormalized {
   const config = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
-    { start: 0x0000, end: 0x07ff, kind: 'rom' },
-    { start: 0x0800, end: 0x0fff, kind: 'ram' },
+    { start: TEC1_ROM_START, end: TEC1_ROM_END, kind: 'rom' },
+    { start: TEC1_RAM_START, end: TEC1_RAM_END, kind: 'ram' },
   ]);
   const romRanges = regions
     .filter((region) => region.kind === 'rom' || region.readOnly === true)
     .map((region) => ({ start: region.start, end: region.end }));
   const appStart =
-    Number.isFinite(config.appStart) && config.appStart !== undefined ? config.appStart : 0x0800;
+    Number.isFinite(config.appStart) && config.appStart !== undefined
+      ? config.appStart
+      : TEC1_APP_START_DEFAULT;
   const entry =
     Number.isFinite(config.entry) && config.entry !== undefined
       ? config.entry
-      : (romRanges[0]?.start ?? 0x0000);
+      : (romRanges[0]?.start ?? TEC1_ENTRY_DEFAULT);
   const romHex =
     typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
   const ramInitHex =
@@ -110,8 +145,8 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
   return {
     regions,
     romRanges,
-    appStart: Math.max(0, Math.min(0xffff, appStart)),
-    entry: Math.max(0, Math.min(0xffff, entry)),
+    appStart: Math.max(0, Math.min(TEC1_ADDR_MAX, appStart)),
+    entry: Math.max(0, Math.min(TEC1_ADDR_MAX, entry)),
     ...(romHex !== undefined ? { romHex } : {}),
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
@@ -140,12 +175,12 @@ export function createTec1Runtime(
     matrixLatch: 0,
     speaker: false,
     speakerHz: 0,
-    lcd: Array.from({ length: 32 }, () => 0x20),
-    lcdAddr: 0x80,
+    lcd: Array.from({ length: 32 }, () => TEC1_LCD_SPACE),
+    lcdAddr: TEC1_LCD_ROW0_START,
     cycleClock: new CycleClock(),
     lastEdgeCycle: null,
     silenceEventId: null,
-    keyValue: 0x7f,
+    keyValue: TEC1_MASK_LOW7,
     keyReleaseEventId: null,
     nmiPending: false,
     lastUpdateMs: 0,
@@ -219,31 +254,31 @@ export function createTec1Runtime(
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
-    if (addr >= 0x80 && addr <= 0x8f) {
-      return addr - 0x80;
+    if (addr >= TEC1_LCD_ROW0_START && addr <= TEC1_LCD_ROW0_END) {
+      return addr - TEC1_LCD_ROW0_START;
     }
-    if (addr >= 0xc0 && addr <= 0xcf) {
-      return 16 + (addr - 0xc0);
+    if (addr >= TEC1_LCD_ROW1_START && addr <= TEC1_LCD_ROW1_END) {
+      return TEC1_LCD_ROW1_OFFSET + (addr - TEC1_LCD_ROW1_START);
     }
     return null;
   };
 
   const lcdSetAddr = (addr: number): void => {
-    state.lcdAddr = addr & 0xff;
+    state.lcdAddr = addr & TEC1_MASK_BYTE;
   };
 
   const lcdWriteData = (value: number): void => {
     const index = lcdIndexForAddr(state.lcdAddr);
     if (index !== null) {
-      state.lcd[index] = value & 0xff;
+      state.lcd[index] = value & TEC1_MASK_BYTE;
       queueUpdate();
     }
-    state.lcdAddr = (state.lcdAddr + 1) & 0xff;
+    state.lcdAddr = (state.lcdAddr + 1) & TEC1_MASK_BYTE;
   };
 
   const lcdClear = (): void => {
-    state.lcd.fill(0x20);
-    lcdSetAddr(0x80);
+    state.lcd.fill(TEC1_LCD_SPACE);
+    lcdSetAddr(TEC1_LCD_ROW0_START);
     queueUpdate();
   };
 
@@ -267,35 +302,35 @@ export function createTec1Runtime(
 
   const ioHandlers: IoHandlers = {
     read: (port: number): number => {
-      const p = port & 0xff;
-      if (p === 0x00) {
+      const p = port & TEC1_MASK_BYTE;
+      if (p === TEC1_PORT_KEYBOARD) {
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
           startNextSerialRx();
         }
-        const base = state.keyValue & 0x7f;
-        return base | (serialRxLevel ? 0x80 : 0);
+        const base = state.keyValue & TEC1_MASK_LOW7;
+        return base | (serialRxLevel ? TEC1_STATUS_SERIAL_RX : 0);
       }
-      if (p === 0x04) {
-        return 0x00;
+      if (p === TEC1_PORT_LCD_CMD) {
+        return 0;
       }
-      if (p === 0x84) {
-        return 0x20;
+      if (p === TEC1_PORT_LCD_DATA) {
+        return TEC1_LCD_SPACE;
       }
-      if (p === 0x03) {
+      if (p === TEC1_PORT_STATUS) {
         // JMON polls P_DAT bit 6 for key-press detection.
-        const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
-        return keyPressed ? 0x00 : 0x40;
+        const keyPressed = (state.keyValue & TEC1_MASK_LOW7) !== TEC1_MASK_LOW7;
+        return keyPressed ? 0 : TEC1_STATUS_KEY_IDLE;
       }
-      return 0xff;
+      return TEC1_MASK_BYTE;
     },
     write: (port: number, value: number): void => {
-      const p = port & 0xff;
-      if (p === 0x01) {
-        state.digitLatch = value & 0xff;
-        const speaker = (value & 0x80) !== 0;
-        const nextSerial: 0 | 1 = (value & 0x40) !== 0 ? 1 : 0;
+      const p = port & TEC1_MASK_BYTE;
+      if (p === TEC1_PORT_DIGIT) {
+        state.digitLatch = value & TEC1_MASK_BYTE;
+        const speaker = (value & TEC1_DIGIT_SPEAKER) !== 0;
+        const nextSerial: 0 | 1 = (value & TEC1_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
         if (nextSerial !== serialLevel) {
           serialLevel = nextSerial;
           serialDecoder.recordLevel(serialLevel);
@@ -316,35 +351,35 @@ export function createTec1Runtime(
         updateDisplay();
         return;
       }
-      if (p === 0x02) {
-        state.segmentLatch = value & 0xff;
+      if (p === TEC1_PORT_SEGMENT) {
+        state.segmentLatch = value & TEC1_MASK_BYTE;
         updateDisplay();
         return;
       }
-      if (p === 0x06) {
-        state.matrixLatch = value & 0xff;
+      if (p === TEC1_PORT_MATRIX_LATCH) {
+        state.matrixLatch = value & TEC1_MASK_BYTE;
         return;
       }
-      if (p === 0x05) {
-        updateMatrix(value & 0xff);
+      if (p === TEC1_PORT_MATRIX_STROBE) {
+        updateMatrix(value & TEC1_MASK_BYTE);
         return;
       }
-      if (p === 0x04) {
-        const instruction = value & 0xff;
-        if (instruction === 0x01) {
+      if (p === TEC1_PORT_LCD_CMD) {
+        const instruction = value & TEC1_MASK_BYTE;
+        if (instruction === TEC1_LCD_CMD_CLEAR) {
           lcdClear();
           return;
         }
-        if (instruction === 0x02) {
-          lcdSetAddr(0x80);
+        if (instruction === TEC1_LCD_CMD_HOME) {
+          lcdSetAddr(TEC1_LCD_ROW0_START);
           return;
         }
-        if ((instruction & 0x80) !== 0) {
+        if ((instruction & TEC1_LCD_CMD_DDRAM) !== 0) {
           lcdSetAddr(instruction);
         }
         return;
       }
-      if (p === 0x84) {
+      if (p === TEC1_PORT_LCD_DATA) {
         lcdWriteData(value);
         return;
       }
@@ -353,21 +388,21 @@ export function createTec1Runtime(
       flushUpdate();
       if (state.nmiPending) {
         state.nmiPending = false;
-        return { interrupt: { nonMaskable: true, data: 0x66 } };
+        return { interrupt: { nonMaskable: true, data: TEC1_NMI_VECTOR } };
       }
       return undefined;
     },
   };
 
   const applyKey = (code: number): void => {
-    state.keyValue = code & 0x7f;
+    state.keyValue = code & TEC1_MASK_LOW7;
     state.nmiPending = true;
     if (state.keyReleaseEventId !== null) {
       state.cycleClock.cancel(state.keyReleaseEventId);
     }
     const holdCycles = calculateKeyHoldCycles(state.clockHz, TEC1_KEY_HOLD_MS);
     state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
-      state.keyValue = 0x7f;
+      state.keyValue = TEC1_MASK_LOW7;
       state.keyReleaseEventId = null;
     });
   };
@@ -442,11 +477,11 @@ export function createTec1Runtime(
     }
     if (!serialRxPrimed) {
       // Prime RX once so the first real byte is aligned to the ROM's bitbang receiver.
-      serialRxQueue.push(0x00);
+      serialRxQueue.push(0);
       serialRxPrimed = true;
     }
     for (const value of bytes) {
-      serialRxQueue.push(value & 0xff);
+      serialRxQueue.push(value & TEC1_MASK_BYTE);
     }
     if (!serialRxBusy) {
       serialRxPending = true;
@@ -485,9 +520,9 @@ export function createTec1Runtime(
     state.speaker = false;
     state.speakerHz = 0;
     state.lastEdgeCycle = null;
-    state.lcd.fill(0x20);
-    state.lcdAddr = 0x80;
-    state.matrix.fill(0x00);
+    state.lcd.fill(TEC1_LCD_SPACE);
+    state.lcdAddr = TEC1_LCD_ROW0_START;
+    state.matrix.fill(0);
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;

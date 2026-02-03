@@ -1,13 +1,13 @@
 /**
- * @file Z80 decoder instruction table builders.
+ * @fileoverview Z80 DD prefix decoder.
  */
 
-import { cycle_counts_cb, parity_bits } from './constants';
+import { cycle_counts, cycle_counts_dd } from './constants';
 import { pushWord } from './core-helpers';
 import { noop, OpcodeHandler, OpcodeTable } from './opcode-types';
+import { buildDdcbHandler } from './decode-ddcb';
 import { Callbacks, Cpu } from './types';
 
-type ByteOpHandler = (value: number) => number;
 
 export type DdContext = {
   cpu: Cpu;
@@ -35,23 +35,10 @@ export type DdContext = {
   pop_word: () => number;
 };
 
-export type EdContext = {
+export type DdHandlerContext = {
   cpu: Cpu;
   cb: Callbacks;
-  do_in: (value: number) => number;
-  do_hl_sbc: (value: number) => void;
-  do_hl_adc: (value: number) => void;
-  do_neg: () => void;
-  pop_word: () => number;
-  update_xy_flags: (value: number) => void;
-  do_ldi: () => void;
-  do_cpi: () => void;
-  do_ini: () => void;
-  do_outi: () => void;
-  do_ldd: () => void;
-  do_cpd: () => void;
-  do_ind: () => void;
-  do_outd: () => void;
+  ddInstructions: OpcodeTable;
 };
 
 /**
@@ -83,9 +70,6 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
     do_srl,
     pop_word,
   } = ctx;
-
-  const getByteOp = (ops: ByteOpHandler[], index: number): ByteOpHandler =>
-    ops[index] ?? ((v): number => v);
 
   const dd_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
   // 0x09 : ADD IX, BC
@@ -244,19 +228,19 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   };
   // 0x60 : LD IXH, B (Undocumented)
   dd_instructions[0x60] = (): void => {
-    cpu.ix = (cpu.ix & 0xff) | (cpu.b << 8);
+    cpu.ix = (cpu.b << 8) | (cpu.ix & 0xff);
   };
   // 0x61 : LD IXH, C (Undocumented)
   dd_instructions[0x61] = (): void => {
-    cpu.ix = (cpu.ix & 0xff) | (cpu.c << 8);
+    cpu.ix = (cpu.c << 8) | (cpu.ix & 0xff);
   };
   // 0x62 : LD IXH, D (Undocumented)
   dd_instructions[0x62] = (): void => {
-    cpu.ix = (cpu.ix & 0xff) | (cpu.d << 8);
+    cpu.ix = (cpu.d << 8) | (cpu.ix & 0xff);
   };
   // 0x63 : LD IXH, E (Undocumented)
   dd_instructions[0x63] = (): void => {
-    cpu.ix = (cpu.ix & 0xff) | (cpu.e << 8);
+    cpu.ix = (cpu.e << 8) | (cpu.ix & 0xff);
   };
   // 0x64 : LD IXH, IXH (Undocumented)
   dd_instructions[0x64] = (): void => {
@@ -274,7 +258,7 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   };
   // 0x67 : LD IXH, A (Undocumented)
   dd_instructions[0x67] = (): void => {
-    cpu.ix = (cpu.ix & 0xff) | (cpu.a << 8);
+    cpu.ix = (cpu.a << 8) | (cpu.ix & 0xff);
   };
   // 0x68 : LD IXL, B (Undocumented)
   dd_instructions[0x68] = (): void => {
@@ -366,11 +350,11 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
     const offset = getSignedOffsetByte(cb.mem_read(cpu.pc));
     cpu.a = cb.mem_read((cpu.ix + offset) & 0xffff);
   };
-  // 0x84 : ADD A, IXH (Undocumented)
+  // 0x84 : ADD IXH (Undocumented)
   dd_instructions[0x84] = (): void => {
     do_add((cpu.ix >>> 8) & 0xff);
   };
-  // 0x85 : ADD A, IXL (Undocumented)
+  // 0x85 : ADD IXL (Undocumented)
   dd_instructions[0x85] = (): void => {
     do_add(cpu.ix & 0xff);
   };
@@ -380,11 +364,11 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
     const offset = getSignedOffsetByte(cb.mem_read(cpu.pc));
     do_add(cb.mem_read((cpu.ix + offset) & 0xffff));
   };
-  // 0x8c : ADC A, IXH (Undocumented)
+  // 0x8c : ADC IXH (Undocumented)
   dd_instructions[0x8c] = (): void => {
     do_adc((cpu.ix >>> 8) & 0xff);
   };
-  // 0x8d : ADC A, IXL (Undocumented)
+  // 0x8d : ADC IXL (Undocumented)
   dd_instructions[0x8d] = (): void => {
     do_adc(cpu.ix & 0xff);
   };
@@ -482,67 +466,19 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   // ==========================================================================
   // DDCB PREFIX HANDLER (IX BIT INSTRUCTIONS)
   // ==========================================================================
-  dd_instructions[0xcb] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    const offset = getSignedOffsetByte(cb.mem_read(cpu.pc));
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    const opcode1 = cb.mem_read(cpu.pc);
-    let value;
-
-    if (opcode1 < 0x40) {
-      const ddcb_functions: ByteOpHandler[] = [
-        do_rlc,
-        do_rrc,
-        do_rl,
-        do_rr,
-        do_sla,
-        do_sra,
-        do_sll,
-        do_srl,
-      ];
-
-      const func = getByteOp(ddcb_functions, (opcode1 & 0x38) >>> 3);
-      value = func(cb.mem_read((cpu.ix + offset) & 0xffff));
-
-      cb.mem_write((cpu.ix + offset) & 0xffff, value);
-    } else {
-      const bit_number = (opcode1 & 0x38) >>> 3;
-
-      if (opcode1 < 0x80) {
-        cpu.flags.N = 0;
-        cpu.flags.H = 1;
-        cpu.flags.Z = !(cb.mem_read((cpu.ix + offset) & 0xffff) & (1 << bit_number)) ? 1 : 0;
-        cpu.flags.P = cpu.flags.Z;
-        cpu.flags.S = bit_number === 7 && !cpu.flags.Z ? 1 : 0;
-      } else if (opcode1 < 0xc0) {
-        value = cb.mem_read((cpu.ix + offset) & 0xffff) & ~(1 << bit_number) & 0xff;
-        cb.mem_write((cpu.ix + offset) & 0xffff, value);
-      } else {
-        value = cb.mem_read((cpu.ix + offset) & 0xffff) | (1 << bit_number);
-        cb.mem_write((cpu.ix + offset) & 0xffff, value);
-      }
-    }
-
-    if (value !== undefined) {
-      if ((opcode1 & 0x07) === 0) {
-        cpu.b = value;
-      } else if ((opcode1 & 0x07) === 1) {
-        cpu.c = value;
-      } else if ((opcode1 & 0x07) === 2) {
-        cpu.d = value;
-      } else if ((opcode1 & 0x07) === 3) {
-        cpu.e = value;
-      } else if ((opcode1 & 0x07) === 4) {
-        cpu.h = value;
-      } else if ((opcode1 & 0x07) === 5) {
-        cpu.l = value;
-      } else if ((opcode1 & 0x07) === 7) {
-        cpu.a = value;
-      }
-    }
-
-    cpu.cycle_counter += (cycle_counts_cb[opcode1] ?? 0) + 8;
-  };
+  dd_instructions[0xcb] = buildDdcbHandler({
+    cpu,
+    cb,
+    getSignedOffsetByte,
+    do_rlc,
+    do_rrc,
+    do_rl,
+    do_rr,
+    do_sla,
+    do_sra,
+    do_sll,
+    do_srl,
+  });
   // 0xe1 : POP IX
   dd_instructions[0xe1] = (): void => {
     cpu.ix = pop_word();
@@ -571,381 +507,22 @@ export function buildDdInstructions(ctx: DdContext): OpcodeTable {
   return dd_instructions;
 }
 
-/**
- * Builds the ED prefix instruction table (extended operations).
- */
-export function buildEdInstructions(ctx: EdContext): OpcodeTable {
-  const {
-    cpu,
-    cb,
-    do_in,
-    do_hl_sbc,
-    do_hl_adc,
-    do_neg,
-    pop_word,
-    update_xy_flags,
-    do_ldi,
-    do_cpi,
-    do_ini,
-    do_outi,
-    do_ldd,
-    do_cpd,
-    do_ind,
-    do_outd,
-  } = ctx;
+export const buildDdHandler = (ctx: DdHandlerContext): OpcodeHandler => {
+  const { cpu, cb, ddInstructions } = ctx;
 
-  const ed_instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
-  ed_instructions[0x40] = (): void => {
-    cpu.b = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x41] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.b);
-  };
-  ed_instructions[0x42] = (): void => {
-    do_hl_sbc(cpu.c | (cpu.b << 8));
-  };
-  ed_instructions[0x43] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
+  return (): void => {
+    // R is incremented at the start of the second instruction cycle,
+    //  before the instruction actually runs.
+    // The high bit of R is not affected by this increment,
+    //  it can only be changed using the LD R, A instruction.
+    cpu.r = (cpu.r & 0x80) | (((cpu.r & 0x7f) + 1) & 0x7f);
 
-    cb.mem_write(address, cpu.c);
-    cb.mem_write((address + 1) & 0xffff, cpu.b);
-  };
-  ed_instructions[0x44] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x45] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x46] = (): void => {
-    cpu.imode = 0;
-  };
-  ed_instructions[0x47] = (): void => {
-    cpu.i = cpu.a;
-  };
-  ed_instructions[0x48] = (): void => {
-    cpu.c = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x49] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.c);
-  };
-  ed_instructions[0x4a] = (): void => {
-    do_hl_adc(cpu.c | (cpu.b << 8));
-  };
-  ed_instructions[0x4b] = (): void => {
     cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
+    const opcode1 = cb.mem_read(cpu.pc);
+    const func = ddInstructions[opcode1] ?? noop;
 
-    cpu.c = cb.mem_read(address);
-    cpu.b = cb.mem_read((address + 1) & 0xffff);
-  };
-  ed_instructions[0x4c] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x4d] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-  };
-  ed_instructions[0x4e] = (): void => {
-    cpu.imode = 0;
-  };
-  ed_instructions[0x4f] = (): void => {
-    cpu.r = cpu.a;
-  };
-  ed_instructions[0x50] = (): void => {
-    cpu.d = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x51] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.d);
-  };
-  ed_instructions[0x52] = (): void => {
-    do_hl_sbc(cpu.e | (cpu.d << 8));
-  };
-  ed_instructions[0x53] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cb.mem_write(address, cpu.e);
-    cb.mem_write((address + 1) & 0xffff, cpu.d);
-  };
-  ed_instructions[0x54] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x55] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x56] = (): void => {
-    cpu.imode = 1;
-  };
-  ed_instructions[0x57] = (): void => {
-    cpu.a = cpu.i;
-    cpu.flags.S = cpu.i & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.i ? 0 : 1;
-    cpu.flags.H = 0;
-    cpu.flags.P = cpu.iff2;
-    cpu.flags.N = 0;
-  };
-  ed_instructions[0x58] = (): void => {
-    cpu.e = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x59] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.e);
-  };
-  ed_instructions[0x5a] = (): void => {
-    do_hl_adc(cpu.e | (cpu.d << 8));
-  };
-  ed_instructions[0x5b] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cpu.e = cb.mem_read(address);
-    cpu.d = cb.mem_read((address + 1) & 0xffff);
-  };
-  ed_instructions[0x5c] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x5d] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x5e] = (): void => {
-    cpu.imode = 2;
-  };
-  ed_instructions[0x5f] = (): void => {
-    cpu.a = cpu.r;
-    cpu.flags.P = cpu.iff2;
-  };
-  ed_instructions[0x60] = (): void => {
-    cpu.h = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x61] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.h);
-  };
-  ed_instructions[0x62] = (): void => {
-    do_hl_sbc(cpu.l | (cpu.h << 8));
-  };
-  ed_instructions[0x63] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cb.mem_write(address, cpu.l);
-    cb.mem_write((address + 1) & 0xffff, cpu.h);
-  };
-  ed_instructions[0x64] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x65] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x66] = (): void => {
-    cpu.imode = 0;
-  };
-  ed_instructions[0x67] = (): void => {
-    let hl_value = cb.mem_read(cpu.l | (cpu.h << 8));
-    const temp1 = hl_value & 0x0f;
-    const temp2 = cpu.a & 0x0f;
-    hl_value = ((hl_value & 0xf0) >>> 4) | (temp2 << 4);
-    cpu.a = (cpu.a & 0xf0) | temp1;
-    cb.mem_write(cpu.l | (cpu.h << 8), hl_value);
-
-    cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
-    cpu.flags.H = 0;
-    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
-    cpu.flags.N = 0;
-    update_xy_flags(cpu.a);
-  };
-  ed_instructions[0x68] = (): void => {
-    cpu.l = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x69] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.l);
-  };
-  ed_instructions[0x6a] = (): void => {
-    do_hl_adc(cpu.l | (cpu.h << 8));
-  };
-  ed_instructions[0x6b] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cpu.l = cb.mem_read(address);
-    cpu.h = cb.mem_read((address + 1) & 0xffff);
-  };
-  ed_instructions[0x6c] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x6d] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x6e] = (): void => {
-    cpu.imode = 0;
-  };
-  ed_instructions[0x6f] = (): void => {
-    let hl_value = cb.mem_read(cpu.l | (cpu.h << 8));
-    const temp1 = hl_value & 0xf0;
-    const temp2 = cpu.a & 0x0f;
-    hl_value = ((hl_value & 0x0f) << 4) | temp2;
-    cpu.a = (cpu.a & 0xf0) | (temp1 >>> 4);
-    cb.mem_write(cpu.l | (cpu.h << 8), hl_value);
-
-    cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
-    cpu.flags.H = 0;
-    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
-    cpu.flags.N = 0;
-    update_xy_flags(cpu.a);
-  };
-  ed_instructions[0x70] = (): void => {
-    do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x71] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, 0);
-  };
-  ed_instructions[0x72] = (): void => {
-    do_hl_sbc(cpu.sp);
-  };
-  ed_instructions[0x73] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cb.mem_write(address, cpu.sp & 0xff);
-    cb.mem_write((address + 1) & 0xffff, (cpu.sp >>> 8) & 0xff);
-  };
-  ed_instructions[0x74] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x75] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x76] = (): void => {
-    cpu.imode = 1;
-  };
-  ed_instructions[0x78] = (): void => {
-    cpu.a = do_in((cpu.b << 8) | cpu.c);
-  };
-  ed_instructions[0x79] = (): void => {
-    cb.io_write((cpu.b << 8) | cpu.c, cpu.a);
-  };
-  ed_instructions[0x7a] = (): void => {
-    do_hl_adc(cpu.sp);
-  };
-  ed_instructions[0x7b] = (): void => {
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    let address = cb.mem_read(cpu.pc);
-    cpu.pc = (cpu.pc + 1) & 0xffff;
-    address |= cb.mem_read(cpu.pc) << 8;
-
-    cpu.sp = cb.mem_read(address);
-    cpu.sp |= cb.mem_read((address + 1) & 0xffff) << 8;
-  };
-  ed_instructions[0x7c] = (): void => {
-    do_neg();
-  };
-  ed_instructions[0x7d] = (): void => {
-    cpu.pc = (pop_word() - 1) & 0xffff;
-    cpu.iff1 = cpu.iff2;
-  };
-  ed_instructions[0x7e] = (): void => {
-    cpu.imode = 2;
-  };
-  ed_instructions[0xa0] = (): void => {
-    do_ldi();
-  };
-  ed_instructions[0xa1] = (): void => {
-    do_cpi();
-  };
-  ed_instructions[0xa2] = (): void => {
-    do_ini();
-  };
-  ed_instructions[0xa3] = (): void => {
-    do_outi();
-  };
-  ed_instructions[0xa8] = (): void => {
-    do_ldd();
-  };
-  ed_instructions[0xa9] = (): void => {
-    do_cpd();
-  };
-  ed_instructions[0xaa] = (): void => {
-    do_ind();
-  };
-  ed_instructions[0xab] = (): void => {
-    do_outd();
-  };
-  ed_instructions[0xb0] = (): void => {
-    do_ldi();
-    if (cpu.b || cpu.c) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xb1] = (): void => {
-    do_cpi();
-    if (!cpu.flags.Z && (cpu.b || cpu.c)) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xb2] = (): void => {
-    do_ini();
-    if (cpu.b) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xb3] = (): void => {
-    do_outi();
-    if (cpu.b) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xb8] = (): void => {
-    do_ldd();
-    if (cpu.b || cpu.c) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xb9] = (): void => {
-    do_cpd();
-    if (!cpu.flags.Z && (cpu.b || cpu.c)) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xba] = (): void => {
-    do_ind();
-    if (cpu.b) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-  ed_instructions[0xbb] = (): void => {
-    do_outd();
-    if (cpu.b) {
-      cpu.cycle_counter += 5;
-      cpu.pc = (cpu.pc - 2) & 0xffff;
-    }
-  };
-
-  return ed_instructions;
-}
+    func();
+    const ddCycles = cycle_counts_dd[opcode1] ?? cycle_counts[0] ?? 0;
+    cpu.cycle_counter += ddCycles;
+  };
+};
