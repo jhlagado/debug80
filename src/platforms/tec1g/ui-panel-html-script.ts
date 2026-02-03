@@ -88,12 +88,12 @@ export function getTec1gScript(activeTab: 'ui' | 'memory'): string {
     let matrixModeEnabled = false;
     let capsLockEnabled = false;
     const matrixHeldKeys = new Set();
-    const matrixClickMods: { shift: boolean; ctrl: boolean; alt: boolean } = {
+    const matrixClickMods = {
       shift: false,
       ctrl: false,
       alt: false,
     };
-    const matrixKeyElements = new Map<string, HTMLElement>();
+    const matrixKeyElements = new Map();
     if (glcdBaseCanvas) {
       glcdBaseCanvas.width = GLCD_WIDTH;
       glcdBaseCanvas.height = GLCD_HEIGHT;
