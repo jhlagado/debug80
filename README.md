@@ -127,10 +127,8 @@ This keeps example configs inside Debug80 while letting external projects own th
 
 ## Docs
 
-- `docs/TECHNICAL.md` — detailed developer guide to the extension, adapter, mapping, and stepping
-- `docs/PLATFORMS.md` — platform architecture and config references
-- `docs/D8_DEBUG_MAP.md` — debug map format and generator notes
-- `docs/TIMING_MODEL.md` — timing and cycle model details
-- `docs/JSdoc.md` — JSDoc standards for the codebase
-- `docs/PLATFORM_DEVELOPMENT_GUIDE.md` — how to add a new platform runtime/UI
-- `docs/PERFORMANCE_VERIFICATION.md` — lightweight performance checks log
+- `docs/technical.md` — detailed developer guide to the extension, adapter, mapping, and stepping
+- `docs/platforms.md` — platform architecture and config references
+- `docs/d8-debug-map.md` — debug map format and generator notes
+- `docs/timing-model.md` — timing and cycle model details
+- `docs/platform-development-guide.md` — how to add a new platform runtime/UI

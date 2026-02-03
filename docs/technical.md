@@ -189,7 +189,7 @@ Debug80 uses the D8 map as the canonical mapping source for debugging. On
 launch it attempts to load `<artifactBase>.d8dbg.json`; if the map is missing or
 invalid, it regenerates the map from the .lst and writes it to disk, then uses
 the regenerated map for the session. The on-disk standard is documented in
-`docs/D8_DEBUG_MAP.md` and is designed to be assembler-agnostic while
+`docs/d8-debug-map.md` and is designed to be assembler-agnostic while
 preserving the existing LST-derived confidence data.
 
 Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
@@ -198,7 +198,7 @@ Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
 
 The debugger core runs against a platform abstraction that supplies memory and
 I/O devices. Platform selection is per target in `debug80.json`. The platform
-spec and configuration layout are defined in `docs/PLATFORMS.md`.
+spec and configuration layout are defined in `docs/platforms.md`.
 
 ## 10. Breakpoints and stack frames
 
