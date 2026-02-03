@@ -17,13 +17,6 @@ export default defineConfig({
         'src/**/memory-panel.ts',
         'src/extension/**',
         'src/debug/adapter.ts',
-        // Extracted adapter modules (not yet integrated/tested)
-        'src/debug/assembler.ts',
-        'src/debug/breakpoint-manager.ts',
-        'src/debug/config-loader.ts',
-        'src/debug/memory-utils.ts',
-        'src/debug/path-resolver.ts',
-        'src/debug/symbol-manager.ts',
         'src/debug/types.ts',
         'src/debug/index.ts',
         'src/platforms/**/runtime.ts',

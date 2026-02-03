@@ -18,6 +18,57 @@ import { SdSpi } from './sd-spi';
 import {
   TEC1G_DIGIT_SERIAL_TX,
   TEC1G_DIGIT_SPEAKER,
+  GLCD_BASIC_MASK,
+  GLCD_CMD_BASIC,
+  GLCD_CMD_CLEAR,
+  GLCD_CMD_DISPLAY_BASE,
+  GLCD_CMD_DISPLAY_MASK,
+  GLCD_CMD_ENTRY_BASE,
+  GLCD_CMD_ENTRY_MASK,
+  GLCD_CMD_HOME,
+  GLCD_CMD_REVERSE_BASE,
+  GLCD_CMD_REVERSE_MASK,
+  GLCD_CMD_SCROLL_ADDR_BASE,
+  GLCD_CMD_SCROLL_ADDR_MASK,
+  GLCD_CMD_SCROLL_BASE,
+  GLCD_CMD_SCROLL_MASK,
+  GLCD_CMD_SET_ADDR,
+  GLCD_CMD_SHIFT_BASE,
+  GLCD_CMD_SHIFT_MASK,
+  GLCD_CMD_STANDBY,
+  GLCD_CURSOR_ON,
+  GLCD_DISPLAY_ON,
+  GLCD_GRAPHICS_BIT,
+  GLCD_BLINK_ON,
+  GLCD_ENTRY_INCREMENT,
+  GLCD_ENTRY_SHIFT,
+  GLCD_RE_BIT,
+  GLCD_SHIFT_DISPLAY,
+  GLCD_SHIFT_RIGHT,
+  GLCD_STATUS_BUSY,
+  LCD_STATUS_BUSY,
+  LCD_CMD_CGRAM,
+  LCD_CMD_CLEAR,
+  LCD_CMD_DDRAM,
+  LCD_CMD_DISPLAY,
+  LCD_CMD_ENTRY_MODE,
+  LCD_DISPLAY_MASK,
+  LCD_ENTRY_MODE_MASK,
+  LCD_CMD_FUNCTION,
+  LCD_FUNCTION_MASK,
+  LCD_CMD_HOME,
+  LCD_CMD_SHIFT,
+  LCD_SHIFT_MASK,
+  LCD_BLINK_ON,
+  LCD_CURSOR_ON,
+  LCD_DISPLAY_ON,
+  LCD_ENTRY_INCREMENT,
+  LCD_ENTRY_SHIFT,
+  LCD_FUNC_2LINE,
+  LCD_FUNC_8BIT,
+  LCD_FUNC_FONT5X8,
+  LCD_SHIFT_DISPLAY,
+  LCD_SHIFT_RIGHT,
   TEC1G_PORT_DIGIT,
   TEC1G_PORT_GLCD_CMD,
   TEC1G_PORT_GLCD_DATA,
@@ -32,6 +83,49 @@ import {
   TEC1G_PORT_SEGMENT,
   TEC1G_PORT_STATUS,
   TEC1G_PORT_SYSCTRL,
+  TEC1G_ADDR_MAX,
+  TEC1G_SYSCTRL_BANK_A14,
+  TEC1G_KEY_SHIFT_MASK,
+  TEC1G_LCD_ARROW_LEFT,
+  TEC1G_LCD_ARROW_RIGHT,
+  TEC1G_ROM0_END,
+  TEC1G_ROM0_START,
+  TEC1G_ROM1_END,
+  TEC1G_ROM1_START,
+  TEC1G_RAM_END,
+  TEC1G_RAM_START,
+  TEC1G_APP_START_DEFAULT,
+  TEC1G_ENTRY_DEFAULT,
+  TEC1G_GLCD_COL_MASK,
+  TEC1G_GLCD_COL_BANK_BIT,
+  TEC1G_GLCD_DDRAM_BASE,
+  TEC1G_GLCD_DDRAM_MASK,
+  TEC1G_GLCD_DDRAM_ROW0_BIT,
+  TEC1G_GLCD_DDRAM_ROW1_BIT,
+  TEC1G_GLCD_DDRAM_STEP,
+  TEC1G_GLCD_ROW_BASE,
+  TEC1G_GLCD_ROW_MASK,
+  TEC1G_GLCD_ROW_STRIDE,
+  TEC1G_GLCD_COL_STRIDE,
+  TEC1G_LCD_ROW0_END,
+  TEC1G_LCD_ROW0_START,
+  TEC1G_LCD_ROW1_END,
+  TEC1G_LCD_ROW1_OFFSET,
+  TEC1G_LCD_ROW1_START,
+  TEC1G_LCD_ROW2_END,
+  TEC1G_LCD_ROW2_OFFSET,
+  TEC1G_LCD_ROW2_START,
+  TEC1G_LCD_ROW3_END,
+  TEC1G_LCD_ROW3_OFFSET,
+  TEC1G_LCD_ROW3_START,
+  TEC1G_LCD_SPACE,
+  TEC1G_MASK_BYTE,
+  TEC1G_MASK_LOW7,
+  TEC1G_MASK_LOW6,
+  TEC1G_MASK_LOW5,
+  TEC1G_MASK_LOW4,
+  TEC1G_MASK_LOW2,
+  TEC1G_NMI_VECTOR,
   TEC1G_STATUS_CARTRIDGE,
   TEC1G_STATUS_EXPAND,
   TEC1G_STATUS_GIMP,
@@ -168,16 +262,21 @@ const TEC1G_GLCD_BLINK_MS = 400;
 export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformConfigNormalized {
   const config: Tec1gPlatformConfig = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
-    { start: 0x0000, end: 0x07ff, kind: 'rom' },
-    { start: 0x0800, end: 0x7fff, kind: 'ram' },
-    { start: 0xc000, end: 0xffff, kind: 'rom' },
+    { start: TEC1G_ROM0_START, end: TEC1G_ROM0_END, kind: 'rom' },
+    { start: TEC1G_RAM_START, end: TEC1G_RAM_END, kind: 'ram' },
+    { start: TEC1G_ROM1_START, end: TEC1G_ROM1_END, kind: 'rom' },
   ]);
   const romRanges = regions
     .filter((region) => region.kind === 'rom' || region.readOnly === true)
     .map((region) => ({ start: region.start, end: region.end }));
   const appStart =
-    Number.isFinite(config.appStart) && config.appStart !== undefined ? config.appStart : 0x4000;
-  const entry = Number.isFinite(config.entry) && config.entry !== undefined ? config.entry : 0x0000;
+    Number.isFinite(config.appStart) && config.appStart !== undefined
+      ? config.appStart
+      : TEC1G_APP_START_DEFAULT;
+  const entry =
+    Number.isFinite(config.entry) && config.entry !== undefined
+      ? config.entry
+      : TEC1G_ENTRY_DEFAULT;
   const romHex =
     typeof config.romHex === 'string' && config.romHex !== '' ? config.romHex : undefined;
   const ramInitHex =
@@ -209,8 +308,8 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   return {
     regions,
     romRanges,
-    appStart: Math.max(0, Math.min(0xffff, appStart)),
-    entry: Math.max(0, Math.min(0xffff, entry)),
+    appStart: Math.max(0, Math.min(TEC1G_ADDR_MAX, appStart)),
+    entry: Math.max(0, Math.min(TEC1G_ADDR_MAX, entry)),
     ...(romHex !== undefined ? { romHex } : {}),
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
@@ -240,7 +339,7 @@ export function createTec1gRuntime(
   onSerialByte?: (byte: number) => void,
   onPortWrite?: (payload: { port: number; value: number }) => void
 ): Tec1gRuntime {
-  const initialSysCtrl = config.expansionBankHi ? 0x08 : 0x00;
+  const initialSysCtrl = config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0;
   const matrixMode = config.matrixMode;
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
@@ -262,7 +361,7 @@ export function createTec1gRuntime(
     digitLatch: 0,
     segmentLatch: 0,
     matrixLatch: 0,
-    matrixKeyStates: new Uint8Array(16).fill(0xff),
+    matrixKeyStates: new Uint8Array(16).fill(TEC1G_MASK_BYTE),
     matrixModeEnabled: matrixMode,
     glcd: new Uint8Array(1024),
     glcdRowAddr: 0,
@@ -284,12 +383,12 @@ export function createTec1gRuntime(
     glcdReverseMask: 0,
     glcdGdramPhase: 0,
     glcdDdram: new Uint8Array(64),
-    glcdDdramAddr: 0x80,
+    glcdDdramAddr: TEC1G_GLCD_DDRAM_BASE,
     glcdDdramPhase: 0,
     speaker: false,
     speakerHz: 0,
-    lcd: Array.from({ length: 80 }, () => 0x20),
-    lcdAddr: 0x80,
+    lcd: Array.from({ length: 80 }, () => TEC1G_LCD_SPACE),
+    lcdAddr: TEC1G_LCD_ROW0_START,
     lcdAddrMode: 'ddram',
     lcdEntryIncrement: true,
     lcdEntryShift: false,
@@ -298,7 +397,7 @@ export function createTec1gRuntime(
     lcdCursorBlink: false,
     lcdDisplayShift: 0,
     lcdCgram: new Uint8Array(64),
-    lcdCgramAddr: 0x00,
+    lcdCgramAddr: 0,
     lcdFunction: {
       dataLength8: true,
       lines2: true,
@@ -307,7 +406,7 @@ export function createTec1gRuntime(
     cycleClock: new CycleClock(),
     lastEdgeCycle: null,
     silenceEventId: null,
-    keyValue: 0x7f,
+    keyValue: TEC1G_MASK_LOW7,
     keyReleaseEventId: null,
     nmiPending: false,
     lastUpdateMs: 0,
@@ -334,13 +433,13 @@ export function createTec1gRuntime(
     state.lcd[i] = lcdTest.charCodeAt(i);
   }
   if (state.lcd.length > lcdTest.length) {
-    state.lcd[lcdTest.length] = 0x7f;
+    state.lcd[lcdTest.length] = TEC1G_LCD_ARROW_LEFT;
   }
   if (state.lcd.length > lcdTest.length + 1) {
-    state.lcd[lcdTest.length + 1] = 0x20;
+    state.lcd[lcdTest.length + 1] = TEC1G_LCD_SPACE;
   }
   if (state.lcd.length > lcdTest.length + 2) {
-    state.lcd[lcdTest.length + 2] = 0x7e;
+    state.lcd[lcdTest.length + 2] = TEC1G_LCD_ARROW_RIGHT;
   }
 
   let lcdBusyUntil = 0;
@@ -384,31 +483,32 @@ export function createTec1gRuntime(
   };
 
   const glcdSetRowAddr = (value: number): void => {
-    state.glcdRowAddr = value & 0x1f;
+    state.glcdRowAddr = value & TEC1G_MASK_LOW5;
     state.glcdExpectColumn = true;
     state.glcdGdramPhase = 0;
   };
 
   const glcdSetColumn = (value: number): void => {
-    const bankSelected = (value & 0x08) !== 0;
-    state.glcdRowBase = bankSelected ? 32 : 0;
-    state.glcdCol = value & 0x07;
+    const bankSelected = (value & TEC1G_GLCD_COL_BANK_BIT) !== 0;
+    state.glcdRowBase = bankSelected ? TEC1G_GLCD_ROW_BASE : 0;
+    state.glcdCol = value & TEC1G_GLCD_COL_MASK;
     state.glcdExpectColumn = false;
     state.glcdGdramPhase = 0;
   };
 
   // ST7920 DDRAM row address to linear index mapping.
-  // Row addresses: 0x80=row0, 0x90=row1, 0x88=row2, 0x98=row3.
+  // Row addresses use the DDRAM base with row bits set (row0..row3).
   // Each row has 16 byte positions (8 character pairs).
   const glcdDdramIndex = (addr: number): number => {
-    const a = addr & 0x7f; // strip bit 7
-    const row = ((a & 0x10) >> 4) | ((a & 0x08) >> 2); // bits: row1=bit4, row0=bit3
-    const col = a & 0x07;
-    return row * 16 + col * 2;
+    const a = addr & TEC1G_MASK_LOW7; // strip bit 7
+    const row =
+      ((a & TEC1G_GLCD_DDRAM_ROW1_BIT) >> 4) | ((a & TEC1G_GLCD_DDRAM_ROW0_BIT) >> 2);
+    const col = a & TEC1G_GLCD_COL_MASK;
+    return row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE;
   };
 
   const glcdSetDdramAddr = (addr: number): void => {
-    state.glcdDdramAddr = addr & 0xff;
+    state.glcdDdramAddr = addr & TEC1G_MASK_BYTE;
     state.glcdDdramPhase = 0;
     queueUpdate();
   };
@@ -422,9 +522,9 @@ export function createTec1gRuntime(
   };
 
   const glcdOffsetDdramAddr = (delta: number): void => {
-    const base = state.glcdDdramAddr & 0x1f;
-    const next = (base + delta + 0x20) & 0x1f;
-    state.glcdDdramAddr = 0x80 | next;
+    const base = state.glcdDdramAddr & TEC1G_GLCD_DDRAM_MASK;
+    const next = (base + delta + TEC1G_GLCD_DDRAM_STEP) & TEC1G_GLCD_DDRAM_MASK;
+    state.glcdDdramAddr = TEC1G_GLCD_DDRAM_BASE | next;
     state.glcdDdramPhase = 0;
   };
 
@@ -476,7 +576,7 @@ export function createTec1gRuntime(
     const idx = glcdDdramIndex(state.glcdDdramAddr);
     const slot = idx + state.glcdDdramPhase;
     if (slot >= 0 && slot < state.glcdDdram.length) {
-      state.glcdDdram[slot] = value & 0xff;
+      state.glcdDdram[slot] = value & TEC1G_MASK_BYTE;
     }
     if (state.glcdDdramPhase === 0) {
       state.glcdDdramPhase = 1;
@@ -491,14 +591,16 @@ export function createTec1gRuntime(
     const idx = glcdDdramIndex(state.glcdDdramAddr);
     const slot = idx + state.glcdDdramPhase;
     const value =
-      slot >= 0 && slot < state.glcdDdram.length ? (state.glcdDdram[slot] ?? 0x20) : 0x20;
+      slot >= 0 && slot < state.glcdDdram.length
+        ? (state.glcdDdram[slot] ?? TEC1G_LCD_SPACE)
+        : TEC1G_LCD_SPACE;
     if (state.glcdDdramPhase === 0) {
       state.glcdDdramPhase = 1;
     } else {
       state.glcdDdramPhase = 0;
       glcdAdvanceDdramAddr();
     }
-    return value & 0xff;
+    return value & TEC1G_MASK_BYTE;
   };
 
   const glcdWriteData = (value: number): void => {
@@ -507,11 +609,11 @@ export function createTec1gRuntime(
       glcdSetBusy(TEC1G_GLCD_BUSY_US);
       return;
     }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
-    const col = state.glcdCol & 0x07;
-    const index = row * 16 + col * 2 + state.glcdGdramPhase;
+    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
+    const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
+    const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
     if (index >= 0 && index < state.glcd.length) {
-      state.glcd[index] = value & 0xff;
+      state.glcd[index] = value & TEC1G_MASK_BYTE;
       queueUpdate();
     }
     glcdSetBusy(TEC1G_GLCD_BUSY_US);
@@ -519,7 +621,7 @@ export function createTec1gRuntime(
       state.glcdGdramPhase = 1;
     } else {
       state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & 0x07;
+      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
     }
   };
 
@@ -527,22 +629,24 @@ export function createTec1gRuntime(
     if (!state.glcdGraphics) {
       return glcdReadDdram();
     }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & 0x3f;
-    const col = state.glcdCol & 0x07;
-    const index = row * 16 + col * 2 + state.glcdGdramPhase;
-    const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0x00) : 0x00;
+    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
+    const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
+    const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
+    const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0) : 0;
     if (state.glcdGdramPhase === 0) {
       state.glcdGdramPhase = 1;
     } else {
       state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & 0x07;
+      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
     }
-    return value & 0xff;
+    return value & TEC1G_MASK_BYTE;
   };
 
   const glcdReadStatus = (): number => {
-    const busy = glcdIsBusy() ? 0x80 : 0x00;
-    const addr = state.glcdGraphics ? state.glcdRowAddr & 0x3f : state.glcdDdramAddr & 0x7f;
+    const busy = glcdIsBusy() ? GLCD_STATUS_BUSY : 0;
+    const addr = state.glcdGraphics
+      ? state.glcdRowAddr & TEC1G_GLCD_ROW_MASK
+      : state.glcdDdramAddr & TEC1G_MASK_LOW7;
     return busy | addr;
   };
 
@@ -609,17 +713,17 @@ export function createTec1gRuntime(
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
-    if (addr >= 0x80 && addr <= 0x93) {
-      return addr - 0x80;
+    if (addr >= TEC1G_LCD_ROW0_START && addr <= TEC1G_LCD_ROW0_END) {
+      return addr - TEC1G_LCD_ROW0_START;
     }
-    if (addr >= 0xc0 && addr <= 0xd3) {
-      return 20 + (addr - 0xc0);
+    if (addr >= TEC1G_LCD_ROW1_START && addr <= TEC1G_LCD_ROW1_END) {
+      return TEC1G_LCD_ROW1_OFFSET + (addr - TEC1G_LCD_ROW1_START);
     }
-    if (addr >= 0x94 && addr <= 0xa7) {
-      return 40 + (addr - 0x94);
+    if (addr >= TEC1G_LCD_ROW2_START && addr <= TEC1G_LCD_ROW2_END) {
+      return TEC1G_LCD_ROW2_OFFSET + (addr - TEC1G_LCD_ROW2_START);
     }
-    if (addr >= 0xd4 && addr <= 0xe7) {
-      return 60 + (addr - 0xd4);
+    if (addr >= TEC1G_LCD_ROW3_START && addr <= TEC1G_LCD_ROW3_END) {
+      return TEC1G_LCD_ROW3_OFFSET + (addr - TEC1G_LCD_ROW3_START);
     }
     return null;
   };
@@ -635,28 +739,30 @@ export function createTec1gRuntime(
   const lcdIsBusy = (): boolean => state.cycleClock.now() < lcdBusyUntil;
 
   const lcdReadStatus = (): number => {
-    const busy = lcdIsBusy() ? 0x80 : 0x00;
+    const busy = lcdIsBusy() ? LCD_STATUS_BUSY : 0;
     const addr =
-      state.lcdAddrMode === 'cgram' ? (state.lcdCgramAddr & 0x3f) : (state.lcdAddr & 0x7f);
+      state.lcdAddrMode === 'cgram'
+        ? state.lcdCgramAddr & TEC1G_MASK_LOW6
+        : state.lcdAddr & TEC1G_MASK_LOW7;
     return busy | addr;
   };
 
   const lcdSetAddr = (addr: number): void => {
-    state.lcdAddr = addr & 0xff;
+    state.lcdAddr = addr & TEC1G_MASK_BYTE;
     state.lcdAddrMode = 'ddram';
   };
 
   const lcdWriteData = (value: number): void => {
     if (state.lcdAddrMode === 'cgram') {
-      const addr = state.lcdCgramAddr & 0x3f;
-      state.lcdCgram[addr] = value & 0xff;
+      const addr = state.lcdCgramAddr & TEC1G_MASK_LOW6;
+      state.lcdCgram[addr] = value & TEC1G_MASK_BYTE;
       state.lcdCgramAddr = lcdAdvanceCgramAddr(state.lcdCgramAddr, state.lcdEntryIncrement);
       lcdSetBusy(TEC1G_LCD_BUSY_US);
       return;
     }
     const index = lcdIndexForAddr(state.lcdAddr);
     if (index !== null) {
-      state.lcd[index] = value & 0xff;
+      state.lcd[index] = value & TEC1G_MASK_BYTE;
       queueUpdate();
     }
     state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, state.lcdEntryIncrement);
@@ -668,56 +774,57 @@ export function createTec1gRuntime(
 
   const lcdReadData = (): number => {
     if (state.lcdAddrMode === 'cgram') {
-      const addr = state.lcdCgramAddr & 0x3f;
-      const value = state.lcdCgram[addr] ?? 0x00;
+      const addr = state.lcdCgramAddr & TEC1G_MASK_LOW6;
+      const value = state.lcdCgram[addr] ?? 0;
       state.lcdCgramAddr = lcdAdvanceCgramAddr(state.lcdCgramAddr, state.lcdEntryIncrement);
       lcdSetBusy(TEC1G_LCD_BUSY_US);
-      return value & 0xff;
+      return value & TEC1G_MASK_BYTE;
     }
     const index = lcdIndexForAddr(state.lcdAddr);
-    const value = index !== null ? (state.lcd[index] ?? 0x20) : 0x20;
+    const value =
+      index !== null ? (state.lcd[index] ?? TEC1G_LCD_SPACE) : TEC1G_LCD_SPACE;
     state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, state.lcdEntryIncrement);
     if (state.lcdEntryShift) {
       shiftLcdDisplay(state.lcdEntryIncrement ? 1 : -1);
     }
     lcdSetBusy(TEC1G_LCD_BUSY_US);
-    return value & 0xff;
+    return value & TEC1G_MASK_BYTE;
   };
 
   const lcdClear = (): void => {
-    state.lcd.fill(0x20);
-    lcdSetAddr(0x80);
+    state.lcd.fill(TEC1G_LCD_SPACE);
+    lcdSetAddr(TEC1G_LCD_ROW0_START);
     state.lcdDisplayShift = 0;
     queueUpdate();
     lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
   };
 
   const lcdAdvanceAddr = (addr: number, increment: boolean): number => {
-    const masked = addr & 0xff;
+    const masked = addr & TEC1G_MASK_BYTE;
     const index = lcdIndexForAddr(masked);
     if (index !== null) {
       const next = (index + (increment ? 1 : -1) + state.lcd.length) % state.lcd.length;
       return lcdAddrForIndex(next);
     }
-    return (masked + (increment ? 1 : -1)) & 0xff;
+    return (masked + (increment ? 1 : -1)) & TEC1G_MASK_BYTE;
   };
 
   const lcdAddrForIndex = (index: number): number => {
-    if (index < 20) {
-      return 0x80 + index;
+    if (index < TEC1G_LCD_ROW1_OFFSET) {
+      return TEC1G_LCD_ROW0_START + index;
     }
-    if (index < 40) {
-      return 0xc0 + (index - 20);
+    if (index < TEC1G_LCD_ROW2_OFFSET) {
+      return TEC1G_LCD_ROW1_START + (index - TEC1G_LCD_ROW1_OFFSET);
     }
-    if (index < 60) {
-      return 0x94 + (index - 40);
+    if (index < TEC1G_LCD_ROW3_OFFSET) {
+      return TEC1G_LCD_ROW2_START + (index - TEC1G_LCD_ROW2_OFFSET);
     }
-    return 0xd4 + (index - 60);
+    return TEC1G_LCD_ROW3_START + (index - TEC1G_LCD_ROW3_OFFSET);
   };
 
   const lcdAdvanceCgramAddr = (addr: number, increment: boolean): number => {
     const delta = increment ? 1 : -1;
-    return (addr + delta + 64) & 0x3f;
+    return (addr + delta + state.lcdCgram.length) & TEC1G_MASK_LOW6;
   };
 
   const shiftLcdDisplay = (delta: number): void => {
@@ -748,24 +855,24 @@ export function createTec1gRuntime(
 
   const ioHandlers: IoHandlers = {
     read: (port: number): number => {
-      const fullPort = port & 0xffff;
-      const p = fullPort & 0xff;
-      const highByte = (fullPort >> 8) & 0xff;
+      const fullPort = port & TEC1G_ADDR_MAX;
+      const p = fullPort & TEC1G_MASK_BYTE;
+      const highByte = (fullPort >> 8) & TEC1G_MASK_BYTE;
       if (p === TEC1G_PORT_KEYBOARD) {
         if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
           serialRxPending = false;
           serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
           startNextSerialRx();
         }
-        const key = state.keyValue & 0x7f;
-        return key | (serialRxLevel ? 0x80 : 0x00);
+        const key = state.keyValue & TEC1G_MASK_LOW7;
+        return key | (serialRxLevel ? TEC1G_STATUS_SERIAL_RX : 0);
       }
       if (p === TEC1G_PORT_MATRIX) {
         if (!state.matrixModeEnabled) {
-          return 0xff;
+          return TEC1G_MASK_BYTE;
         }
-        const row = highByte & 0x0f;
-        return state.matrixKeyStates[row] ?? 0xff;
+        const row = highByte & TEC1G_MASK_LOW4;
+        return state.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_LCD_CMD) {
         return lcdReadStatus();
@@ -774,10 +881,10 @@ export function createTec1gRuntime(
         return lcdReadData();
       }
       if (p === TEC1G_PORT_RTC) {
-        return rtcEnabled && rtc ? rtc.read() : 0xff;
+        return rtcEnabled && rtc ? rtc.read() : TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_SD) {
-        return sdEnabled && sdSpi ? sdSpi.read() : 0xff;
+        return sdEnabled && sdSpi ? sdSpi.read() : TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_GLCD_CMD) {
         return glcdReadStatus();
@@ -786,11 +893,11 @@ export function createTec1gRuntime(
         return glcdReadData();
       }
       if (p === TEC1G_PORT_SYSCTRL) {
-        return state.sysCtrl & 0xff;
+        return state.sysCtrl & TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_STATUS) {
-        const keyPressed = (state.keyValue & 0x7f) !== 0x7f;
-        let value = 0x00;
+        const keyPressed = (state.keyValue & TEC1G_MASK_LOW7) !== TEC1G_MASK_LOW7;
+        let value = 0;
         if (state.shiftKeyActive) {
           value |= TEC1G_STATUS_SHIFT;
         }
@@ -817,14 +924,14 @@ export function createTec1gRuntime(
         }
         return value;
       }
-      return 0xff;
+      return TEC1G_MASK_BYTE;
     },
     write: (port: number, value: number): void => {
-      const fullPort = port & 0xffff;
-      const p = fullPort & 0xff;
+      const fullPort = port & TEC1G_ADDR_MAX;
+      const p = fullPort & TEC1G_MASK_BYTE;
       void fullPort;
       if (p === TEC1G_PORT_DIGIT) {
-        state.digitLatch = value & 0xff;
+        state.digitLatch = value & TEC1G_MASK_BYTE;
         const speaker = (value & TEC1G_DIGIT_SPEAKER) !== 0;
         const nextSerial: 0 | 1 = (value & TEC1G_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
         if (nextSerial !== serialLevel) {
@@ -848,70 +955,70 @@ export function createTec1gRuntime(
         return;
       }
       if (p === TEC1G_PORT_SEGMENT) {
-        state.segmentLatch = value & 0xff;
+        state.segmentLatch = value & TEC1G_MASK_BYTE;
         updateDisplay();
         return;
       }
       if (p === TEC1G_PORT_MATRIX_LATCH) {
-        state.matrixLatch = value & 0xff;
+        state.matrixLatch = value & TEC1G_MASK_BYTE;
         return;
       }
       if (p === TEC1G_PORT_MATRIX_STROBE) {
-        updateMatrix(value & 0xff);
+        updateMatrix(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_RTC) {
         if (rtcEnabled && rtc) {
-          rtc.write(value & 0xff);
+          rtc.write(value & TEC1G_MASK_BYTE);
         }
         return;
       }
       if (p === TEC1G_PORT_SD) {
         if (sdEnabled && sdSpi) {
-          sdSpi.write(value & 0xff);
+          sdSpi.write(value & TEC1G_MASK_BYTE);
         }
         return;
       }
       if (p === TEC1G_PORT_LCD_CMD) {
-        const instruction = value & 0xff;
-        if (instruction === 0x01) {
+        const instruction = value & TEC1G_MASK_BYTE;
+        if (instruction === LCD_CMD_CLEAR) {
           lcdClear();
           return;
         }
-        if (instruction === 0x02) {
-          lcdSetAddr(0x80);
+        if (instruction === LCD_CMD_HOME) {
+          lcdSetAddr(LCD_CMD_DDRAM);
           state.lcdDisplayShift = 0;
           lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
           return;
         }
-        if ((instruction & 0x80) !== 0) {
+        if ((instruction & LCD_CMD_DDRAM) !== 0) {
           lcdSetAddr(instruction);
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
         }
-        if ((instruction & 0x40) !== 0) {
-          state.lcdCgramAddr = instruction & 0x3f;
+        if ((instruction & LCD_CMD_CGRAM) !== 0) {
+          state.lcdCgramAddr = instruction & TEC1G_MASK_LOW6;
           state.lcdAddrMode = 'cgram';
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
         }
-        if ((instruction & 0xfc) === 0x04) {
-          state.lcdEntryIncrement = (instruction & 0x02) !== 0;
-          state.lcdEntryShift = (instruction & 0x01) !== 0;
+        if ((instruction & LCD_ENTRY_MODE_MASK) === LCD_CMD_ENTRY_MODE) {
+          state.lcdEntryIncrement = (instruction & LCD_ENTRY_INCREMENT) !== 0;
+          state.lcdEntryShift = (instruction & LCD_ENTRY_SHIFT) !== 0;
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
         }
-        if ((instruction & 0xf8) === 0x08) {
-          state.lcdDisplayOn = (instruction & 0x04) !== 0;
-          state.lcdCursorOn = (instruction & 0x02) !== 0;
-          state.lcdCursorBlink = (instruction & 0x01) !== 0;
+        if ((instruction & LCD_DISPLAY_MASK) === LCD_CMD_DISPLAY) {
+          state.lcdDisplayOn = (instruction & LCD_DISPLAY_ON) !== 0;
+          state.lcdCursorOn = (instruction & LCD_CURSOR_ON) !== 0;
+          state.lcdCursorBlink = (instruction & LCD_BLINK_ON) !== 0;
           queueUpdate();
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
         }
-        if ((instruction & 0xf0) === 0x10) {
-          const displayShift = (instruction & 0x08) !== 0;
-          const shiftRight = (instruction & 0x04) !== 0;
+        if ((instruction & LCD_SHIFT_MASK) === LCD_CMD_SHIFT) {
+          const displayShift = (instruction & LCD_SHIFT_DISPLAY) !== 0;
+          const shiftRight = (instruction & LCD_SHIFT_RIGHT) !== 0;
           if (displayShift) {
             shiftLcdDisplay(shiftRight ? 1 : -1);
           } else {
@@ -921,11 +1028,11 @@ export function createTec1gRuntime(
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
         }
-        if ((instruction & 0xe0) === 0x20) {
+        if ((instruction & LCD_FUNCTION_MASK) === LCD_CMD_FUNCTION) {
           state.lcdFunction = {
-            dataLength8: (instruction & 0x10) !== 0,
-            lines2: (instruction & 0x08) !== 0,
-            font5x8: (instruction & 0x04) === 0,
+            dataLength8: (instruction & LCD_FUNC_8BIT) !== 0,
+            lines2: (instruction & LCD_FUNC_2LINE) !== 0,
+            font5x8: (instruction & LCD_FUNC_FONT5X8) === 0,
           };
           lcdSetBusy(TEC1G_LCD_BUSY_US);
           return;
@@ -937,11 +1044,11 @@ export function createTec1gRuntime(
         lcdWriteData(value);
         return;
       }
-      if (p === 0x07) {
-        const instruction = value & 0xff;
-        if ((instruction & 0xe0) === 0x20) {
-          const re = (instruction & 0x04) !== 0;
-          const g = re && (instruction & 0x02) !== 0;
+      if (p === TEC1G_PORT_GLCD_CMD) {
+        const instruction = value & TEC1G_MASK_BYTE;
+        if ((instruction & GLCD_BASIC_MASK) === GLCD_CMD_BASIC) {
+          const re = (instruction & GLCD_RE_BIT) !== 0;
+          const g = re && (instruction & GLCD_GRAPHICS_BIT) !== 0;
           state.glcdRe = re;
           state.glcdGraphics = g;
           state.glcdExpectColumn = false;
@@ -951,38 +1058,38 @@ export function createTec1gRuntime(
           return;
         }
         if (state.glcdRe) {
-          if (instruction === 0x01) {
+          if (instruction === GLCD_CMD_STANDBY) {
             // Standby: approximate as display off.
             state.glcdDisplayOn = false;
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             queueUpdate();
             return;
           }
-          if ((instruction & 0xfe) === 0x02) {
-            state.glcdScrollMode = (instruction & 0x01) !== 0;
+          if ((instruction & GLCD_CMD_SCROLL_MASK) === GLCD_CMD_SCROLL_BASE) {
+            state.glcdScrollMode = (instruction & GLCD_ENTRY_SHIFT) !== 0;
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             return;
           }
-          if ((instruction & 0xfc) === 0x04) {
-            const line = instruction & 0x03;
+          if ((instruction & GLCD_CMD_REVERSE_MASK) === GLCD_CMD_REVERSE_BASE) {
+            const line = instruction & TEC1G_MASK_LOW2;
             state.glcdReverseMask ^= 1 << line;
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             queueUpdate();
             return;
           }
-          if ((instruction & 0xc0) === 0x40) {
+          if ((instruction & GLCD_CMD_SCROLL_ADDR_MASK) === GLCD_CMD_SCROLL_ADDR_BASE) {
             if (state.glcdScrollMode) {
-              state.glcdScroll = instruction & 0x3f;
+              state.glcdScroll = instruction & TEC1G_MASK_LOW6;
               queueUpdate();
             }
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             return;
           }
         } else {
-          if (instruction === 0x01) {
+          if (instruction === GLCD_CMD_CLEAR) {
             // Clear display: fill DDRAM with spaces, reset address
-            state.glcdDdram.fill(0x20);
-            glcdSetDdramAddr(0x80);
+            state.glcdDdram.fill(TEC1G_LCD_SPACE);
+            glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
             state.glcdEntryIncrement = true;
             state.glcdEntryShift = false;
             state.glcdTextShift = 0;
@@ -991,31 +1098,31 @@ export function createTec1gRuntime(
             queueUpdate();
             return;
           }
-          if (instruction === 0x02) {
-            glcdSetDdramAddr(0x80);
+          if (instruction === GLCD_CMD_HOME) {
+            glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
             state.glcdTextShift = 0;
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             queueUpdate();
             return;
           }
-          if ((instruction & 0xf8) === 0x08) {
-            state.glcdDisplayOn = (instruction & 0x04) !== 0;
-            state.glcdCursorOn = (instruction & 0x02) !== 0;
-            state.glcdCursorBlink = (instruction & 0x01) !== 0;
+          if ((instruction & GLCD_CMD_DISPLAY_MASK) === GLCD_CMD_DISPLAY_BASE) {
+            state.glcdDisplayOn = (instruction & GLCD_DISPLAY_ON) !== 0;
+            state.glcdCursorOn = (instruction & GLCD_CURSOR_ON) !== 0;
+            state.glcdCursorBlink = (instruction & GLCD_BLINK_ON) !== 0;
             glcdRescheduleBlink();
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             queueUpdate();
             return;
           }
-          if ((instruction & 0xfc) === 0x04) {
-            state.glcdEntryIncrement = (instruction & 0x02) !== 0;
-            state.glcdEntryShift = (instruction & 0x01) !== 0;
+          if ((instruction & GLCD_CMD_ENTRY_MASK) === GLCD_CMD_ENTRY_BASE) {
+            state.glcdEntryIncrement = (instruction & GLCD_ENTRY_INCREMENT) !== 0;
+            state.glcdEntryShift = (instruction & GLCD_ENTRY_SHIFT) !== 0;
             glcdSetBusy(TEC1G_GLCD_BUSY_US);
             return;
           }
-          if ((instruction & 0xf0) === 0x10) {
-            const displayShift = (instruction & 0x08) !== 0;
-            const shiftRight = (instruction & 0x04) !== 0;
+          if ((instruction & GLCD_CMD_SHIFT_MASK) === GLCD_CMD_SHIFT_BASE) {
+            const displayShift = (instruction & GLCD_SHIFT_DISPLAY) !== 0;
+            const shiftRight = (instruction & GLCD_SHIFT_RIGHT) !== 0;
             if (displayShift) {
               glcdShiftDisplay(shiftRight ? -1 : 1);
             } else {
@@ -1026,7 +1133,7 @@ export function createTec1gRuntime(
             return;
           }
         }
-        if ((instruction & 0x80) !== 0) {
+        if ((instruction & GLCD_CMD_SET_ADDR) !== 0) {
           if (state.glcdGraphics) {
             if (state.glcdExpectColumn) {
               glcdSetColumn(instruction);
@@ -1053,7 +1160,7 @@ export function createTec1gRuntime(
       }
       if (p === TEC1G_PORT_SYSCTRL) {
         logPortWrite(p, value);
-        state.sysCtrl = value & 0xff;
+        state.sysCtrl = value & TEC1G_MASK_BYTE;
         const decoded = decodeSysCtrl(state.sysCtrl);
         state.shadowEnabled = decoded.shadowEnabled;
         state.protectEnabled = decoded.protectEnabled;
@@ -1067,7 +1174,7 @@ export function createTec1gRuntime(
       flushUpdate();
       if (state.nmiPending) {
         state.nmiPending = false;
-        return { interrupt: { nonMaskable: true, data: 0x66 } };
+        return { interrupt: { nonMaskable: true, data: TEC1G_NMI_VECTOR } };
       }
       return undefined;
     },
@@ -1077,16 +1184,16 @@ export function createTec1gRuntime(
     if (state.matrixModeEnabled) {
       return;
     }
-    state.keyValue = code & 0x7f;
-    state.rawKeyActive = (state.keyValue & 0x7f) !== 0x7f;
-    state.shiftKeyActive = state.rawKeyActive && (state.keyValue & 0x20) === 0;
+    state.keyValue = code & TEC1G_MASK_LOW7;
+    state.rawKeyActive = (state.keyValue & TEC1G_MASK_LOW7) !== TEC1G_MASK_LOW7;
+    state.shiftKeyActive = state.rawKeyActive && (state.keyValue & TEC1G_KEY_SHIFT_MASK) === 0;
     state.nmiPending = true;
     if (state.keyReleaseEventId !== null) {
       state.cycleClock.cancel(state.keyReleaseEventId);
     }
     const holdCycles = calculateKeyHoldCycles(state.clockHz, TEC1G_KEY_HOLD_MS);
     state.keyReleaseEventId = state.cycleClock.scheduleIn(holdCycles, () => {
-      state.keyValue = 0x7f;
+      state.keyValue = TEC1G_MASK_LOW7;
       state.rawKeyActive = false;
       state.shiftKeyActive = false;
       state.keyReleaseEventId = null;
@@ -1100,7 +1207,7 @@ export function createTec1gRuntime(
     const rowIndex = Math.max(0, Math.min(15, Math.trunc(row)));
     const colIndex = Math.max(0, Math.min(7, Math.trunc(col)));
     const mask = 1 << colIndex;
-    const current = state.matrixKeyStates[rowIndex] ?? 0xff;
+    const current = state.matrixKeyStates[rowIndex] ?? TEC1G_MASK_BYTE;
     state.matrixKeyStates[rowIndex] = pressed ? current & ~mask : current | mask;
   };
 
@@ -1178,11 +1285,11 @@ export function createTec1gRuntime(
     }
     if (!serialRxPrimed) {
       // Prime RX once so the first real byte is aligned to the ROM's bitbang receiver.
-      serialRxQueue.push(0x00);
+      serialRxQueue.push(0);
       serialRxPrimed = true;
     }
     for (const value of bytes) {
-      serialRxQueue.push(value & 0xff);
+      serialRxQueue.push(value & TEC1G_MASK_BYTE);
     }
     if (!serialRxBusy) {
       serialRxPending = true;
@@ -1222,8 +1329,8 @@ export function createTec1gRuntime(
     state.speaker = false;
     state.speakerHz = 0;
     state.lastEdgeCycle = null;
-    state.lcd.fill(0x20);
-    state.lcdAddr = 0x80;
+    state.lcd.fill(TEC1G_LCD_SPACE);
+    state.lcdAddr = TEC1G_LCD_ROW0_START;
     state.lcdAddrMode = 'ddram';
     state.lcdEntryIncrement = true;
     state.lcdEntryShift = false;
@@ -1231,18 +1338,18 @@ export function createTec1gRuntime(
     state.lcdCursorOn = false;
     state.lcdCursorBlink = false;
     state.lcdDisplayShift = 0;
-    state.lcdCgram.fill(0x00);
-    state.lcdCgramAddr = 0x00;
+    state.lcdCgram.fill(0);
+    state.lcdCgramAddr = 0;
     state.lcdFunction = {
       dataLength8: true,
       lines2: true,
       font5x8: true,
     };
     lcdBusyUntil = 0;
-    state.matrix.fill(0x00);
-    state.matrixKeyStates.fill(0xff);
+    state.matrix.fill(0);
+    state.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     state.matrixModeEnabled = matrixMode;
-    state.glcd.fill(0x00);
+    state.glcd.fill(0);
     state.glcdRowAddr = 0;
     state.glcdRowBase = 0;
     state.glcdCol = 0;
@@ -1264,8 +1371,8 @@ export function createTec1gRuntime(
     state.glcdScroll = 0;
     state.glcdReverseMask = 0;
     state.glcdGdramPhase = 0;
-    state.glcdDdram.fill(0x20);
-    glcdSetDdramAddr(0x80);
+    state.glcdDdram.fill(TEC1G_LCD_SPACE);
+    glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
     glcdBusyUntil = 0;
     state.sysCtrl = defaultSysCtrl;
     const decoded = decodeSysCtrl(state.sysCtrl);
