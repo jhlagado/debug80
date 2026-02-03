@@ -38,7 +38,7 @@ preserving TEC-1 compatibility and keeping the UI responsive.
 
 ## Documentation Checklist
 - Add `@fileoverview` to new platform modules.
-- Update `docs/PLATFORMS.md` for new platform summaries.
+- Update `docs/platforms.md` for new platform summaries.
 - If ROM layout changes, confirm in `docs/platforms/<platform>/README.md`.
 
 ## Quick Validation

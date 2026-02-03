@@ -3,31 +3,42 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { executeCbPrefix } from '../../src/z80/decode-cb';
-import { createDecodeUtils } from '../../src/z80/decode-utils';
+import { buildCbHandler } from '../../src/z80/decode-cb';
+import { buildDecoderHelpers } from '../../src/z80/decode-helpers';
 import { initDecodeTestContext } from './decode-test-helpers';
-import { Cpu } from '../../src/z80/types';
-import { DecodeContext } from '../../src/z80/decode-types';
+import { Callbacks, Cpu } from '../../src/z80/types';
 
 describe('decode-cb', () => {
   let cpu: Cpu;
   let memory: Uint8Array;
-  let ctx: DecodeContext;
-  let utils: ReturnType<typeof createDecodeUtils>;
+  let cb: Callbacks;
+  let handler: () => void;
 
   beforeEach(() => {
     const init = initDecodeTestContext();
     cpu = init.cpu;
     memory = init.memory;
-    ctx = init.ctx;
-    utils = createDecodeUtils();
+    cb = init.cb;
+    const helpers = buildDecoderHelpers(cpu, cb);
+    handler = buildCbHandler({
+      cpu,
+      cb,
+      do_rlc: helpers.do_rlc,
+      do_rrc: helpers.do_rrc,
+      do_rl: helpers.do_rl,
+      do_rr: helpers.do_rr,
+      do_sla: helpers.do_sla,
+      do_sra: helpers.do_sra,
+      do_sll: helpers.do_sll,
+      do_srl: helpers.do_srl,
+    });
   });
 
   it('handles RLC B (CB 00)', () => {
     cpu.b = 0x80;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x00;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.b).toBe(0x01);
     expect(cpu.flags.C).toBe(1);
   });
@@ -36,7 +47,7 @@ describe('decode-cb', () => {
     cpu.c = 0x01;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x09;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.c).toBe(0x80);
     expect(cpu.flags.C).toBe(1);
   });
@@ -45,7 +56,7 @@ describe('decode-cb', () => {
     cpu.a = 0x01;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x47;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.flags.Z).toBe(0);
   });
 
@@ -53,7 +64,7 @@ describe('decode-cb', () => {
     cpu.a = 0x00;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x7f;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.flags.Z).toBe(1);
   });
 
@@ -61,7 +72,7 @@ describe('decode-cb', () => {
     cpu.a = 0x80;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x7f;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.flags.Z).toBe(0);
     expect(cpu.flags.S).toBe(1);
   });
@@ -70,7 +81,7 @@ describe('decode-cb', () => {
     cpu.a = 0x20;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x6f;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.flags.Z).toBe(0);
     expect(cpu.flags.Y).toBe(1);
   });
@@ -79,7 +90,7 @@ describe('decode-cb', () => {
     cpu.a = 0x08;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x5f;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.flags.Z).toBe(0);
     expect(cpu.flags.X).toBe(1);
   });
@@ -88,7 +99,7 @@ describe('decode-cb', () => {
     cpu.b = 0xff;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x80;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.b).toBe(0xfe);
   });
 
@@ -96,7 +107,7 @@ describe('decode-cb', () => {
     cpu.a = 0x00;
     cpu.pc = 0x0000;
     memory[0x0001] = 0xff;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.a).toBe(0x80);
   });
 
@@ -106,7 +117,7 @@ describe('decode-cb', () => {
     memory[0x1000] = 0x80;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x06; // RLC (HL)
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(memory[0x1000]).toBe(0x01);
   });
 
@@ -114,7 +125,7 @@ describe('decode-cb', () => {
     cpu.r = 0x00;
     cpu.pc = 0x0000;
     memory[0x0001] = 0x00;
-    executeCbPrefix(ctx, utils);
+    handler();
     expect(cpu.r & 0x7f).toBe(0x01);
   });
 });
