@@ -203,95 +203,92 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
   };
 
   const do_cp = (operand: number): void => {
-    const result = cpu.a - operand;
-    const original_carry = cpu.flags.C;
-
-    cpu.flags.S = result & 0x80 ? 1 : 0;
-    cpu.flags.Z = !(result & 0xff) ? 1 : 0;
-    cpu.flags.H = ((cpu.a & 0x0f) - (operand & 0x0f)) & 0x10 ? 1 : 0;
-    cpu.flags.P =
-      (cpu.a & 0x80) !== (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
-    cpu.flags.N = 1;
-    cpu.flags.C = result & 0x100 ? 1 : 0;
-    update_xy_flags(result & 0xff);
-
-    cpu.flags.C = original_carry ? 1 : cpu.flags.C;
+    const temp = cpu.a;
+    do_sub(operand);
+    cpu.a = temp;
+    update_xy_flags(operand);
   };
 
   const do_and = (operand: number): void => {
-    cpu.a &= operand;
+    cpu.a &= operand & 0xff;
 
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
+    cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 1;
-    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
   const do_or = (operand: number): void => {
-    cpu.a |= operand;
+    cpu.a = (operand | cpu.a) & 0xff;
 
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
+    cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
   const do_xor = (operand: number): void => {
-    cpu.a ^= operand;
+    cpu.a = (operand ^ cpu.a) & 0xff;
 
     cpu.flags.S = cpu.a & 0x80 ? 1 : 0;
-    cpu.flags.Z = cpu.a === 0 ? 1 : 0;
+    cpu.flags.Z = !cpu.a ? 1 : 0;
     cpu.flags.H = 0;
-    cpu.flags.P = (parity_bits[cpu.a] ?? 0) === 1 ? 1 : 0;
+    cpu.flags.P = parity_bits[cpu.a] ?? 0;
     cpu.flags.N = 0;
     cpu.flags.C = 0;
     update_xy_flags(cpu.a);
   };
 
   const do_inc = (operand: number): number => {
-    const result = (operand + 1) & 0xff;
+    let result = operand + 1;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
-    cpu.flags.Z = result === 0 ? 1 : 0;
+    cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = (operand & 0x0f) === 0x0f ? 1 : 0;
-    cpu.flags.P = result === 0x80 ? 1 : 0;
+    cpu.flags.P = operand === 0x7f ? 1 : 0;
     cpu.flags.N = 0;
+
+    result &= 0xff;
     update_xy_flags(result);
 
     return result;
   };
 
   const do_dec = (operand: number): number => {
-    const result = (operand - 1) & 0xff;
+    let result = operand - 1;
 
     cpu.flags.S = result & 0x80 ? 1 : 0;
-    cpu.flags.Z = result === 0 ? 1 : 0;
+    cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = (operand & 0x0f) === 0x00 ? 1 : 0;
-    cpu.flags.P = result === 0x7f ? 1 : 0;
+    cpu.flags.P = operand === 0x80 ? 1 : 0;
     cpu.flags.N = 1;
+
+    result &= 0xff;
     update_xy_flags(result);
 
     return result;
   };
 
   const do_hl_add = (operand: number): void => {
-    cpu.flags.N = 0;
-
+    // The HL arithmetic instructions are the same as the A ones,
+    //  just with twice as many bits happening.
     const hl = cpu.l | (cpu.h << 8);
     const result = hl + operand;
 
+    cpu.flags.N = 0;
     cpu.flags.C = result & 0x10000 ? 1 : 0;
     cpu.flags.H = ((hl & 0x0fff) + (operand & 0x0fff)) & 0x1000 ? 1 : 0;
-    update_xy_flags((result >>> 8) & 0xff);
 
     cpu.l = result & 0xff;
-    cpu.h = (result >>> 8) & 0xff;
+    cpu.h = (result & 0xff00) >>> 8;
+
+    update_xy_flags(cpu.h);
   };
 
   const do_hl_adc = (operand: number): void => {
