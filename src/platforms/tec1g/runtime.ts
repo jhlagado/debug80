@@ -1252,9 +1252,6 @@ export function createTec1gRuntime(
     state.rawKeyActive = false;
     state.gimpSignal = defaultGimpSignal;
     state.cartridgePresent = cartridgePresentDefault;
-    state.shiftKeyActive = false;
-    state.rawKeyActive = false;
-    state.gimpSignal = false;
     if (state.silenceEventId !== null) {
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
