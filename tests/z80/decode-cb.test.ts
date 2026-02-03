@@ -57,6 +57,33 @@ describe('decode-cb', () => {
     expect(cpu.flags.Z).toBe(1);
   });
 
+  it('handles BIT 7,A (CB 7F) when bit set', () => {
+    cpu.a = 0x80;
+    cpu.pc = 0x0000;
+    memory[0x0001] = 0x7f;
+    executeCbPrefix(ctx, utils);
+    expect(cpu.flags.Z).toBe(0);
+    expect(cpu.flags.S).toBe(1);
+  });
+
+  it('handles BIT 5,A (CB 6F) setting Y flag', () => {
+    cpu.a = 0x20;
+    cpu.pc = 0x0000;
+    memory[0x0001] = 0x6f;
+    executeCbPrefix(ctx, utils);
+    expect(cpu.flags.Z).toBe(0);
+    expect(cpu.flags.Y).toBe(1);
+  });
+
+  it('handles BIT 3,A (CB 5F) setting X flag', () => {
+    cpu.a = 0x08;
+    cpu.pc = 0x0000;
+    memory[0x0001] = 0x5f;
+    executeCbPrefix(ctx, utils);
+    expect(cpu.flags.Z).toBe(0);
+    expect(cpu.flags.X).toBe(1);
+  });
+
   it('handles RES 0,B (CB 80)', () => {
     cpu.b = 0xff;
     cpu.pc = 0x0000;
