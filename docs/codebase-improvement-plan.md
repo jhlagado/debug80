@@ -101,7 +101,7 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Target:** No single decode file over 400 LOC. Each prefix group testable in isolation.
 
-**Status:** In progress (Phase 3). Primary opcode table + register/ALU decoder extracted to `decode-primary.ts`. CB, ED, DD, FD, and DDCB prefix handlers extracted to `decode-cb.ts`, `decode-ed.ts`, `decode-dd.ts`, `decode-fd.ts`, and `decode-ddcb.ts`. DD and ED opcode tables now live in `decode-dd.ts` and `decode-ed.ts` (removed from `decode.ts`). Common decode helpers are now centralized in `decode-helpers.ts`, and `decode.ts` delegates helper construction. Removed unused `decode-utils.ts`.
+**Status:** In progress (Phase 3). Primary opcode table + register/ALU decoder extracted to `decode-primary.ts`. CB, ED, DD, FD, and DDCB prefix handlers extracted to `decode-cb.ts`, `decode-ed.ts`, `decode-dd.ts`, `decode-fd.ts`, and `decode-ddcb.ts`. DD and ED opcode tables now live in `decode-dd.ts` and `decode-ed.ts` (removed from `decode.ts`). Common decode helpers are now centralized in `decode-helpers.ts`, and `decode.ts` delegates helper construction. Removed unused `decode-utils.ts`. Added decoder caching to eliminate per-instruction allocations, wrapped IX to 16-bit in `do_ix_add`, and aligned CP X/Y flags to the compare result.
 
 ---
 
