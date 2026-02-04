@@ -37,7 +37,7 @@ export class DapClient {
   constructor(input: Writable, output: Readable) {
     this.input = input;
     this.output = output;
-    this.output.on('data', (chunk) => this.onData(chunk));
+    this.output.on('data', (chunk: Buffer | string | Uint8Array) => this.onData(chunk));
   }
 
   async sendRequest<T = DapMessage>(
@@ -65,9 +65,7 @@ export class DapClient {
       try {
         this.writeMessage(request);
       } catch (err) {
-        if (timer) {
-          clearTimeout(timer);
-        }
+        clearTimeout(timer);
         this.pending.delete(seq);
         reject(err instanceof Error ? err : new Error(String(err)));
       }
@@ -132,9 +130,10 @@ export class DapClient {
     this.input.write(header + json, 'utf8');
   }
 
-  private onData(chunk: Buffer): void {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    while (true) {
+  private onData(chunk: Buffer | string | Uint8Array): void {
+    const next = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    this.buffer = Buffer.concat([this.buffer, next]);
+    while (this.buffer.length > 0) {
       const headerEnd = this.buffer.indexOf('\r\n\r\n');
       if (headerEnd === -1) {
         return;
