@@ -582,7 +582,7 @@ group.
 
 #### 3E — CGRAM support (optional)
 
-**Files:** `src/platforms/tec1g/runtime.ts`, `src/platforms/tec1g/ui-panel-html-script.ts`
+**Files:** `src/platforms/tec1g/runtime.ts`, `webview/tec1g/index.ts`
 **Effort:** Small-Medium
 **Tasks:**
 
@@ -652,7 +652,7 @@ ASCII coverage and row/col bounds.
 
 #### 4D — Matrix keyboard UI
 
-**Files:** `src/platforms/tec1g/ui-panel-*.ts`
+**Files:** `webview/tec1g/*`
 **Effort:** Medium
 **Depends on:** Stage 4B, 4C
 **Tasks:**
@@ -815,7 +815,7 @@ Can be worked at any time, independently of feature stages.
 
 #### 8A — System status indicators in UI
 
-**Files:** `src/platforms/tec1g/ui-panel-*.ts`
+**Files:** `webview/tec1g/*`
 **Effort:** Small
 **Depends on:** Stage 2A (SYS_CTRL decode)
 **Tasks:**
@@ -956,7 +956,7 @@ This document should be either updated or superseded by this review.
 
 ## UI panel status
 
-Current UI sections (from `src/platforms/tec1g/ui-panel-html-markup.ts`):
+Current UI sections (from `webview/tec1g/index.ts`):
 
 | Section    | Visibility |
 | ---------- | ---------- |

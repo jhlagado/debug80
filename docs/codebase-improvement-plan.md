@@ -1,7 +1,7 @@
 # Debug80 Codebase Improvement Plan
 
 Date: 2026-02-03
-Last Updated: 2026-02-03
+Last Updated: 2026-02-04
 
 ## Current State Assessment
 
@@ -13,13 +13,13 @@ This is an honest assessment — the project works, but scaling it (new platform
 
 | File | Lines | Status |
 |------|-------|--------|
-| `src/debug/adapter.ts` | 1,296 | God file - needs splitting |
+| `src/debug/adapter.ts` | 1,328 | God file - needs splitting |
 | `src/extension/extension.ts` | 1,075 | Does too much |
-| `src/z80/decode.ts` | 1,616 | Monolithic decoder |
-| `src/platforms/tec1g/runtime.ts` | 1,287 | Complex, has bugs |
-| `src/platforms/tec1g/ui-panel-html-script.ts` | 1,461 | JS-in-strings |
-| `src/platforms/tec1/runtime.ts` | 514 | Simpler, OK for now |
-| `src/platforms/tec1/ui-panel-html-script.ts` | 767 | JS-in-strings |
+| `src/z80/decode.ts` | 248 | Thin entry point |
+| `src/platforms/tec1g/runtime.ts` | 1,417 | Complex, has bugs |
+| `webview/tec1g/index.ts` | 1,210 | Webview UI (TypeScript) |
+| `src/platforms/tec1/runtime.ts` | 549 | Simpler, OK for now |
+| `webview/tec1/index.ts` | 526 | Webview UI (TypeScript) |
 
 ---
 
@@ -72,23 +72,23 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 ### 2. Embedded HTML/CSS/JavaScript in TypeScript (~3,300 LOC)
 
-**Problem:** The webview UI for TEC-1 and TEC-1G is built as template literal strings inside TypeScript files. `tec1g/ui-panel-html-script.ts` alone is 1,461 lines of JavaScript-inside-a-string. This code has no type checking, no IDE support, no testability, and no linting.
+**Problem:** The webview UI for TEC-1 and TEC-1G was built as template literal strings inside TypeScript files (JS-in-strings). This code had no type checking, no IDE support, no testability, and no linting.
 
-**Files affected:**
+**Files affected (pre-refactor):**
 - `src/platforms/tec1g/ui-panel-html-script.ts` (1461 LOC)
 - `src/platforms/tec1g/ui-panel-html-style.ts` (638 LOC)
 - `src/platforms/tec1/ui-panel-html-script.ts` (767 LOC)
 - `src/platforms/tec1/ui-panel-html-style.ts` (398 LOC)
 
 **Fix:**
-- Move webview code to actual `.html`, `.css`, and `.ts` files under a `webview/` directory per platform.
-- Use a bundler (esbuild) to compile webview TypeScript separately, with its own tsconfig targeting the browser.
-- Load compiled bundles as webview resources using VS Code's `asWebviewUri()` API.
-- This makes the UI code type-checked, lintable, testable, and IDE-supported.
+- Move webview code to real `.html`, `.css`, and `.ts` files under `webview/`.
+- Use a bundler (esbuild) to compile webview TypeScript with a browser-targeted tsconfig.
+- Load compiled bundles via VS Code `asWebviewUri()` with source fallback for tests.
+- Extract shared webview helpers and shared CSS.
 
 **Target:** Zero lines of JavaScript-in-strings. Webview code is real TypeScript with real tooling.
 
-**Status:** In progress (Phase 4). Added `webview/` sources (HTML/CSS/TS) for TEC-1 and TEC-1G, introduced an esbuild pipeline and webview tsconfig, updated HTML builders to load compiled assets (with source fallback for tests), extracted shared webview TS helpers and common CSS under `webview/common`, and trimmed platform CSS duplication. UI dedup remains.
+**Status:** Complete (Phase 4). Webview UI now lives under `webview/tec1` and `webview/tec1g`, shared webview helpers and shared CSS are in `webview/common`, platform HTML builders resolve compiled assets, and platform CSS is trimmed to platform-specific overrides.
 
 ---
 
@@ -144,7 +144,7 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 
 **Target:** Shared UI code in one place. Platform panels contain only platform-specific additions.
 
-**Status:** In progress (Phase 4). Shared webview helpers and base CSS are now centralized under `webview/common`. Remaining work is consolidating any overlapping markup and platform-specific layout differences where it still makes sense.
+**Status:** Complete (Phase 4). Shared webview helpers and base CSS live under `webview/common`, and platform styles are trimmed to platform-specific overrides. Markup still diverges where it should (GLCD/matrix/status), but the shared UI foundations are centralized.
 
 ---
 
