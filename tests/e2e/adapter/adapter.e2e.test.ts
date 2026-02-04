@@ -3,6 +3,7 @@ import { PassThrough } from 'stream';
 import path from 'path';
 import { Z80DebugSession } from '../../../src/debug/adapter';
 import { DapClient } from './dap-client';
+import { workspace } from './vscode-mock';
 
 const fixtureRoot = path.resolve(__dirname, '../fixtures/simple');
 const projectConfig = path.join(fixtureRoot, '.vscode', 'debug80.json');
@@ -37,10 +38,30 @@ async function initialize(client: DapClient): Promise<void> {
   await client.waitForEvent('initialized');
 }
 
+async function launchWithDiagnostics(
+  client: DapClient,
+  args: Record<string, unknown>
+): Promise<void> {
+  try {
+    await client.sendRequest('launch', args);
+  } catch (err) {
+    let output = '';
+    try {
+      const event = await client.waitForEvent<{ body?: { output?: string } }>('output', undefined, 1000);
+      output = event.body?.output?.trim() ?? '';
+    } catch {
+      // ignore missing output
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    const detail = output.length > 0 ? `${message}\n${output}` : message;
+    throw new Error(detail);
+  }
+}
 describe('Debug80 adapter e2e (in-process)', () => {
   let harness: SessionHarness | undefined;
 
   beforeEach(() => {
+    workspace.workspaceFolders = [{ uri: { fsPath: fixtureRoot } }];
     harness = createHarness();
   });
 
@@ -58,7 +79,7 @@ describe('Debug80 adapter e2e (in-process)', () => {
     const { client } = harness ?? createHarness();
 
     await initialize(client);
-    await client.sendRequest('launch', {
+    await launchWithDiagnostics(client, {
       projectConfig,
       target: 'app',
       stopOnEntry: true,
@@ -81,7 +102,7 @@ describe('Debug80 adapter e2e (in-process)', () => {
     const { client } = harness ?? createHarness();
 
     await initialize(client);
-    await client.sendRequest('launch', {
+    await launchWithDiagnostics(client, {
       projectConfig,
       target: 'app',
       stopOnEntry: false,
