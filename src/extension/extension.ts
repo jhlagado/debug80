@@ -18,7 +18,6 @@ let movingEditor = false;
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const ASM_LANGUAGE_ID = 'asm-collection';
-const platformViewProvider = new PlatformViewProvider();
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
@@ -26,6 +25,7 @@ const platformViewProvider = new PlatformViewProvider();
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
   let supportsAsmCollection: boolean | undefined;
+  const platformViewProvider = new PlatformViewProvider(context.extensionUri);
 
   const ensureAsmLanguage = (doc: vscode.TextDocument): void => {
     if (supportsAsmCollection === false) {

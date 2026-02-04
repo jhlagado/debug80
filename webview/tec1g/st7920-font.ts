@@ -1,17 +1,6 @@
-/**
- * @file ST7920 half-height font data for the TEC-1G GLCD.
- */
-
-/**
- * ST7920 half-height font (8x16 pixels per character).
- * 128 characters x 16 rows = 2048 bytes.
- * Each byte represents one row of an 8-pixel-wide character (bit 7 = leftmost).
- *
- * @returns JavaScript snippet suitable for embedding in a webview template.
- */
-export function getST7920FontData(): string {
-  return `const ST7920_FONT = new Uint8Array([
-    // 0x00
+// Auto-extracted from st7920-font.ts for webview use.
+export const ST7920_FONT = new Uint8Array([
+// 0x00
     0b00000000, // ........
     0b00000000, // ........
     0b00000000, // ........
@@ -2314,5 +2303,4 @@ export function getST7920FontData(): string {
     0b00000000, // ........
     0b00000000, // ........
     0b00000000, // ........
-  ]);`;
-}
+]);

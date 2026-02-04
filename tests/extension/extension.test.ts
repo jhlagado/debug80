@@ -60,7 +60,12 @@ vi.mock('vscode', () => ({
       visible: true,
     })),
   },
-  Uri: { file: (value: string) => ({ fsPath: value }) },
+  Uri: {
+    file: (value: string) => ({ fsPath: value }),
+    joinPath: (base: { fsPath: string }, ...parts: string[]) => ({
+      fsPath: [base.fsPath, ...parts].join('/'),
+    }),
+  },
 }));
 
 describe('extension activation', () => {
@@ -75,6 +80,7 @@ describe('extension activation', () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
+      extensionUri: { fsPath: '/tmp/debug80' },
     };
     extension.activate(context);
 
@@ -91,6 +97,7 @@ describe('extension activation', () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
+      extensionUri: { fsPath: '/tmp/debug80' },
     };
     extension.activate(context);
 

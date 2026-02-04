@@ -1,13 +1,4 @@
-/**
- * @file Tec1 panel HTML styles.
- */
-
-/**
- * Returns the TEC-1 panel style block.
- */
-export function getTec1Style(): string {
-  return `<style>
-    body {
+body {
       margin: 0;
       padding: 16px;
       font-family: system-ui, sans-serif;
@@ -19,7 +10,6 @@ export function getTec1Style(): string {
     }
     .layout {
       display: grid;
-      grid-template-columns: auto 260px;
       gap: 16px;
       align-items: start;
     }
@@ -81,18 +71,6 @@ export function getTec1Style(): string {
       letter-spacing: 0.08em;
       min-width: 80px;
     }
-    .keypad {
-      display: grid;
-      grid-template-columns: 56px repeat(4, 48px);
-      gap: 8px;
-      align-items: center;
-    }
-    .controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-right: 8px;
-    }
     .key {
       background: #2b2b2b;
       border: 1px solid #444;
@@ -133,6 +111,18 @@ export function getTec1Style(): string {
       border: 1px solid #213826;
       width: fit-content;
     }
+    .lcd-title {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #9bbfa0;
+      margin-bottom: 6px;
+    }
+    .lcd-canvas {
+      display: block;
+      background: #0b1a10;
+      border-radius: 4px;
+      image-rendering: pixelated;
+    }
     .matrix {
       margin-top: 12px;
       background: #1b0b0b;
@@ -167,18 +157,6 @@ export function getTec1Style(): string {
     .matrix-dot.on {
       background: radial-gradient(circle at 30% 30%, #ff6b6b, #c01010 70%);
       box-shadow: 0 0 8px rgba(255, 60, 60, 0.6);
-    }
-    .lcd-title {
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      color: #9bbfa0;
-      margin-bottom: 6px;
-    }
-    .lcd-canvas {
-      display: block;
-      background: #0b1a10;
-      border-radius: 4px;
-      image-rendering: pixelated;
     }
     .serial-header {
       display: flex;
@@ -394,5 +372,3 @@ export function getTec1Style(): string {
       color: #cfcfcf;
       letter-spacing: 1px;
     }
-  </style>`;
-}

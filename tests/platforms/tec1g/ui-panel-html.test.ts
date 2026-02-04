@@ -2,12 +2,32 @@
  * @file TEC-1G UI panel HTML tests.
  */
 
-import { describe, it, expect } from 'vitest';
+import path from 'path';
+import { describe, it, expect, vi } from 'vitest';
 import { getTec1gHtml } from '../../../src/platforms/tec1g/ui-panel-html';
 
+vi.mock('vscode', () => {
+  return {
+    Uri: {
+      file: (value: string) => ({ fsPath: value }),
+      joinPath: (...parts: Array<string | { fsPath: string }>) => ({
+        fsPath: path.join(...parts.map((part) => (typeof part === 'string' ? part : part.fsPath))),
+      }),
+    },
+  };
+});
+
 describe('tec1g ui-panel-html', () => {
+  const extensionUri = { fsPath: process.cwd() };
+  const webview = {
+    cspSource: 'vscode-resource://test',
+    asWebviewUri: (uri: { fsPath: string }) => ({
+      toString: () => uri.fsPath,
+    }),
+  };
+
   it('includes key UI sections', () => {
-    const html = getTec1gHtml('ui');
+    const html = getTec1gHtml('ui', webview, extensionUri);
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
@@ -16,7 +36,7 @@ describe('tec1g ui-panel-html', () => {
   });
 
   it('embeds the active tab', () => {
-    const html = getTec1gHtml('memory');
-    expect(html).toContain("const DEFAULT_TAB = 'memory'");
+    const html = getTec1gHtml('memory', webview, extensionUri);
+    expect(html).toContain('data-active-tab="memory"');
   });
 });
