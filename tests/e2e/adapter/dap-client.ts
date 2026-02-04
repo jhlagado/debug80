@@ -52,7 +52,6 @@ export class DapClient {
       command,
       ...(args ? { arguments: args } : {}),
     };
-    this.writeMessage(request);
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(seq);
@@ -63,6 +62,15 @@ export class DapClient {
         reject,
         timer,
       });
+      try {
+        this.writeMessage(request);
+      } catch (err) {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        this.pending.delete(seq);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     });
   }
 
