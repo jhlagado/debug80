@@ -88,6 +88,8 @@ state.gimpSignal = false;              // BUG: Overwrites defaultGimpSignal!
 
 **Target:** Zero lines of JavaScript-in-strings. Webview code is real TypeScript with real tooling.
 
+**Status:** In progress (Phase 4). Added `webview/` sources (HTML/CSS/TS) for TEC-1 and TEC-1G, introduced an esbuild pipeline and webview tsconfig, updated HTML builders to load compiled assets (with source fallback for tests), extracted shared webview TS helpers and common CSS under `webview/common`, and trimmed platform CSS duplication. UI dedup remains.
+
 ---
 
 ### 3. `decode.ts` is a Monolithic Function (1,616 LOC)
@@ -141,6 +143,8 @@ The 80% coverage threshold is meaningless when the hardest, most bug-prone code 
 - Platform-specific panels extend/compose the base with their additions (GLCD, matrix keyboard, status LEDs, etc.)
 
 **Target:** Shared UI code in one place. Platform panels contain only platform-specific additions.
+
+**Status:** In progress (Phase 4). Shared webview helpers and base CSS are now centralized under `webview/common`. Remaining work is consolidating any overlapping markup and platform-specific layout differences where it still makes sense.
 
 ---
 
