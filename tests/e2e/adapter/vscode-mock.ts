@@ -5,7 +5,7 @@ export const workspace: { workspaceFolders?: WorkspaceFolder[] } = {
 };
 
 export const commands = {
-  executeCommand: async (_command: string): Promise<boolean> => false,
+  executeCommand: (_command: string): Promise<boolean> => Promise.resolve(false),
 };
 
 export class DebugAdapterInlineImplementation {
