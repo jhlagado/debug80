@@ -1,0 +1,9 @@
+.layout {
+      grid-template-columns: auto 260px;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: 56px repeat(4, 48px);
+      gap: 8px;
+      align-items: center;
+    }

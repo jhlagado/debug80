@@ -54,6 +54,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
   private hasProject = false;
+  private readonly extensionUri: vscode.Uri;
+
+  constructor(extensionUri: vscode.Uri) {
+    this.extensionUri = extensionUri;
+  }
 
   private tec1ActiveTab: Tec1PanelTab = 'ui';
   private tec1UiState = createTec1UiState();
@@ -267,6 +272,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
     };
 
     webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string; text?: string }) => {
@@ -340,7 +346,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (this.currentPlatform === 'tec1') {
-      this.view.webview.html = getTec1Html(this.tec1ActiveTab);
+      this.view.webview.html = getTec1Html(this.tec1ActiveTab, this.view.webview, this.extensionUri);
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
@@ -358,7 +364,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (this.currentPlatform === 'tec1g') {
-      this.view.webview.html = getTec1gHtml(this.tec1gActiveTab);
+      this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),

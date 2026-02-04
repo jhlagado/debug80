@@ -1,0 +1,269 @@
+.layout {
+      grid-template-columns: auto 300px;
+      justify-items: start;
+      justify-content: start;
+      width: fit-content;
+      max-width: 100%;
+    }
+    .right-col {
+      align-items: stretch;
+      --keypad-width: 282px;
+    }
+    .status {
+      flex-wrap: wrap;
+    }
+    .status-leds {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #1f1f1f;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
+    }
+    .status-led {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: #cfcfcf;
+    }
+    .status-led-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #3f3f3f;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+      display: inline-block;
+    }
+    .status-led-light.on {
+      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(6, 42px);
+      grid-template-rows: repeat(4, 42px);
+      gap: 2px;
+      align-items: center;
+      width: var(--keypad-width);
+      background: #1c1c1c;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .keycap {
+      width: 42px;
+      height: 42px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      box-shadow:
+        0 4px 0 #0a0a0a,
+        0 4px 2px rgba(0, 0, 0, 0.6);
+    }
+    .keycap::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 10px;
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.5) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(0, 0, 0, 0.1) 100%
+      );
+      box-shadow:
+        inset 0 2px 4px rgba(255, 255, 255, 0.5),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .keycap:active {
+      transform: translateY(2px);
+      box-shadow:
+        0 2px 0 #0a0a0a,
+        0 2px 1px rgba(0, 0, 0, 0.6);
+    }
+    .keycap .label {
+      position: relative;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f1f1f;
+      text-transform: uppercase;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    .keycap .label.short {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+    }
+    .keycap .label.long {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+    .keycap-light {
+      background: #e3dac2;
+    }
+    .keycap-cream {
+      background: #f0e4c4;
+    }
+    .keycap.spacer {
+      background: transparent;
+      box-shadow: none;
+      cursor: default;
+    }
+    .keycap.spacer::before {
+      display: none;
+    }
+    .sysctrl {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      background: #1f1f1f;
+      padding: 4px 10px;
+      border-radius: 999px;
+      color: #c8c8c8;
+    }
+    .sysctrl-seg {
+      width: 12px;
+      height: 8px;
+      border-radius: 2px;
+      background: #454545;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .sysctrl-seg.on {
+      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
+    }
+    .glcd {
+      margin-top: 0;
+      background: #2f6b4a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #243528;
+      width: var(--keypad-width);
+    }
+    .glcd-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: #7fb88a;
+      margin-bottom: 6px;
+    }
+    .glcd-canvas {
+      display: block;
+      border: 1px solid #274334;
+      border-radius: 6px;
+      background: #9eb663;
+      image-rendering: pixelated;
+      width: 100%;
+      height: auto;
+      box-shadow: inset 0 0 10px rgba(10, 20, 10, 0.5);
+    }
+    .matrix-keyboard {
+      margin-top: 12px;
+      background: #151515;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #2b2b2b;
+    }
+    .matrix-keyboard-title {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: #bdbdbd;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .matrix-keyboard-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .matrix-keyboard-indicator {
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #1b1b1b;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+    .matrix-keyboard-indicator.on {
+      color: #121212;
+      background: #f1b500;
+    }
+    .matrix-keyboard-mods {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .matrix-keyboard-mods .key {
+      padding: 4px 8px;
+      font-size: 10px;
+      min-width: auto;
+    }
+    .matrix-keyboard-mods .key.active {
+      background: #f1b500;
+      border-color: #d69a00;
+      color: #121212;
+    }
+    .matrix-keyboard-hint {
+      font-size: 10px;
+      color: #7f7f7f;
+      letter-spacing: 0.1em;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+    .matrix-keyboard-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .matrix-key {
+      border: 1px solid #2f2f2f;
+      padding: 6px 0;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: #bfbfbf;
+      background: #1b1b1b;
+    }
+    .matrix-key.wide {
+      grid-column: span 2;
+    }
+    .matrix-key.pressed {
+      background: #f1b500;
+      color: #1f1f1f;
+      border-color: #d69a00;
+    }
+    .ui-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .ui-controls label {
+      font-size: 11px;
+      color: #9aa0a6;
+      letter-spacing: 0.08em;
+    }
+    .ui-controls input {
+      width: 36px;
+      text-align: center;
+      background: #1f1f1f;
+      color: #f0f0f0;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 11px;
+    }

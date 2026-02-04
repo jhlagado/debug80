@@ -1,13 +1,14 @@
-/**
- * @file Tec1 panel HTML markup.
- */
-
-/**
- * Returns the TEC-1 panel markup body.
- */
-export function getTec1Markup(): string {
-  return `
-  <div id="app" tabindex="0">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{cspSource}} data:; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';" />
+  <link rel="stylesheet" href="{{commonStyleUri}}" />
+  <link rel="stylesheet" href="{{styleUri}}" />
+</head>
+<body data-active-tab="{{activeTab}}">
+<div id="app" tabindex="0">
     <div class="tabs">
       <button class="tab" data-tab="ui">UI</button>
       <button class="tab" data-tab="memory">CPU</button>
@@ -140,5 +141,7 @@ export function getTec1Markup(): string {
         </div>
       </div>
     </div>
-  </div>`;
-}
+  </div>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

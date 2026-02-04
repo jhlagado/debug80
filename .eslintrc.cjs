@@ -70,5 +70,27 @@ module.exports = {
         '@typescript-eslint/no-floating-promises': 'off',
       },
     },
+    {
+      files: ['webview/**/*.ts'],
+      env: {
+        browser: true,
+        node: false,
+      },
+      parserOptions: {
+        project: './webview/tsconfig.json',
+      },
+      rules: {
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+        '@typescript-eslint/strict-boolean-expressions': 'off',
+        curly: 'off',
+      },
+    },
   ],
 };

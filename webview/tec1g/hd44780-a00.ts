@@ -1,20 +1,6 @@
-/**
- * HD44780 A00 ROM character set (Japanese version).
- * 256 characters x 8 rows = 2048 bytes.
- * Each byte represents one row of a 5-pixel-wide character (bits 4..0, bit 4 = leftmost).
- *
- * Returns a JavaScript snippet suitable for embedding in a webview HTML template.
- */
-/**
- * @file HD44780A00 ROM data helper.
- */
-
-/**
- * Returns the HD44780A00 ROM character data (hex string).
- */
-export function getHD44780A00RomData(): string {
-  return `const A00 = new Uint8Array([
-    // 0x00-0x07: CG RAM slot 0-7 (all zeros, user-defined at runtime)
+// Auto-extracted from hd44780-a00.ts for webview use.
+export const A00 = new Uint8Array([
+// 0x00-0x07: CG RAM slot 0-7 (all zeros, user-defined at runtime)
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     // 0x04-0x07
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
@@ -153,5 +139,4 @@ export function getHD44780A00RomData(): string {
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     // 0xFC-0xFF: (blank) divide (blank) block
     0,0,0,0,0,0,0,0, 0,4,0,31,0,4,0,0, 0,0,0,0,0,0,0,0, 31,31,31,31,31,31,31,31
-  ]);`;
-}
+]);
