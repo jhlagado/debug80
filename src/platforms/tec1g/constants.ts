@@ -59,6 +59,8 @@ export const TEC1G_ENTRY_DEFAULT = 0x0000;
 export const TEC1G_ADDR_MAX = 0xffff;
 
 // ===== System Control Bits =====
+/** Write protection enabled (sysctrl bit 1). */
+export const TEC1G_SYSCTRL_PROTECT = 0x02;
 /** Expansion bank A14 select (sysctrl bit 3). */
 export const TEC1G_SYSCTRL_BANK_A14 = 0x08;
 

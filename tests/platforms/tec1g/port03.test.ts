@@ -17,6 +17,7 @@ function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
       gimpSignal: false,
       expansionBankHi: false,
       matrixMode: false,
+      protectOnReset: false,
       rtcEnabled: false,
       sdEnabled: false,
       ...overrides,
@@ -121,5 +122,11 @@ describe('port 0x03 (SYS_INPUT)', () => {
       }
     }
     expect(highSeen).toBe(true);
+  });
+
+  it('sets protect on reset when configured', () => {
+    const rt = makeRuntime({ protectOnReset: true });
+    expect(rt.state.sysCtrl & 0x02).toBe(0x02);
+    expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0x02);
   });
 });
