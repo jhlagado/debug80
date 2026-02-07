@@ -13,7 +13,6 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 - RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
 
 ## Not yet emulated
-- Matrix keyboard input on `IN 0xFE` (and keypad-disable behavior when matrix mode is active).
 - Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
 - SYS_CTRL bits 3-7: latched and decoded but bank switching not yet wired to memory.
 - SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
@@ -107,10 +106,16 @@ config (and optionally ROM listings via `extraListings`).
   "tec1g": {
     "romHex": "../roms/tec1g/mon-3/mon-3.hex",
     "appStart": 16384,
-    "entry": 0
+    "entry": 0,
+    "matrixMode": false,
+    "protectOnReset": false,
+    "expansionBankHi": false
   }
 }
 ```
+
+`matrixMode`, `protectOnReset`, and `expansionBankHi` correspond to the CONFIG DIP
+switches (keyboard mode, protect on reset, expansion bank select).
 
 ## Examples
 - `examples/Tec1g` includes a 4800-baud serial echo program for MON-3.

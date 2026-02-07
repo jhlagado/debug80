@@ -63,6 +63,7 @@ export interface Tec1gPlatformConfig {
   gimpSignal?: boolean;
   expansionBankHi?: boolean;
   matrixMode?: boolean;
+  protectOnReset?: boolean;
   rtcEnabled?: boolean;
   sdEnabled?: boolean;
   sdImagePath?: string;
@@ -91,6 +92,7 @@ export interface Tec1gPlatformConfigNormalized {
   gimpSignal: boolean;
   expansionBankHi: boolean;
   matrixMode: boolean;
+  protectOnReset: boolean;
   rtcEnabled: boolean;
   sdEnabled: boolean;
   sdImagePath?: string;
