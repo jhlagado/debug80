@@ -372,11 +372,11 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 
 ### 17. CONFIG DIP switch
 
-| Feature                                   | Rating      | Notes                     |
-| ----------------------------------------- | ----------- | ------------------------- |
-| Switch 1: Keyboard mode (74C923 / Matrix) | **Missing** | Always in 74C923 mode     |
-| Switch 2: Protect on reset (OFF / ON)     | **Missing** | Protect always starts OFF |
-| Switch 3: Expansion bank (LO / HI)        | **Missing** | No bank select            |
+| Feature                                   | Rating       | Notes                                             |
+| ----------------------------------------- | ------------ | ------------------------------------------------- |
+| Switch 1: Keyboard mode (74C923 / Matrix) | **Complete** | Configurable via `matrixMode`                     |
+| Switch 2: Protect on reset (OFF / ON)     | **Complete** | Configurable via `protectOnReset`                 |
+| Switch 3: Expansion bank (LO / HI)        | **Complete** | Configurable via `expansionBankHi`                |
 
 ### 18. Joystick (J9)
 
@@ -402,8 +402,8 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | Expansion window          | Med  | **Partial**         | 60%  |
 | SYS_CTRL latch (0xFF)     | Med  | **Partial**         | 37%  |
 | SYS_INPUT register (0x03) | Med  | **Partial**         | 50%  |
-| Matrix keyboard           | Med  | **Missing**         | 0%   |
-| CONFIG DIP switch         | Low  | **Missing**         | 0%   |
+| Matrix keyboard           | Med  | **Complete**        | 100% |
+| CONFIG DIP switch         | Low  | **Complete**        | 100% |
 | RTC (DS1302)              | Low  | **Complete**        | 100% |
 | SD card SPI               | Low  | **Missing**         | 0%   |
 | Cartridge                 | Low  | **Partial**         | 40%  |

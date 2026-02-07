@@ -465,9 +465,17 @@ function drawGlcd() {
               const py = (py0 + dy - scroll + GLCD_HEIGHT) & 0x3f;
               if (px < GLCD_WIDTH && py < GLCD_HEIGHT) {
                 const idx = (py * GLCD_WIDTH + px) * 4;
-                data[idx] = onR;
-                data[idx + 1] = onG;
-                data[idx + 2] = onB;
+                if (glcdGraphicsOn) {
+                  const isOn =
+                    data[idx] === onR && data[idx + 1] === onG && data[idx + 2] === onB;
+                  data[idx] = isOn ? offR : onR;
+                  data[idx + 1] = isOn ? offG : onG;
+                  data[idx + 2] = isOn ? offB : onB;
+                } else {
+                  data[idx] = onR;
+                  data[idx + 1] = onG;
+                  data[idx + 2] = onB;
+                }
               }
             }
           }

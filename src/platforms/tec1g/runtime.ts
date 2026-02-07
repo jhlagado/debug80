@@ -84,6 +84,7 @@ import {
   TEC1G_PORT_STATUS,
   TEC1G_PORT_SYSCTRL,
   TEC1G_ADDR_MAX,
+  TEC1G_SYSCTRL_PROTECT,
   TEC1G_SYSCTRL_BANK_A14,
   TEC1G_KEY_SHIFT_MASK,
   TEC1G_LCD_ARROW_LEFT,
@@ -301,6 +302,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
+  const protectOnReset = config.protectOnReset === true;
   const rtcEnabled = config.rtcEnabled === true;
   const sdEnabled = config.sdEnabled === true;
   const sdImagePath =
@@ -319,6 +321,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     gimpSignal,
     expansionBankHi,
     matrixMode,
+    protectOnReset,
     rtcEnabled,
     sdEnabled,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
@@ -341,7 +344,9 @@ export function createTec1gRuntime(
   onSerialByte?: (byte: number) => void,
   onPortWrite?: (payload: { port: number; value: number }) => void
 ): Tec1gRuntime {
-  const initialSysCtrl = config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0;
+  const initialSysCtrl =
+    (config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0) |
+    (config.protectOnReset ? TEC1G_SYSCTRL_PROTECT : 0);
   const matrixMode = config.matrixMode;
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
