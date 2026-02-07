@@ -16,6 +16,7 @@ function makeRuntime(onByte: (byte: number) => void) {
     gimpSignal: false,
     expansionBankHi: false,
     matrixMode: false,
+    protectOnReset: false,
     rtcEnabled: false,
     sdEnabled: false,
   };

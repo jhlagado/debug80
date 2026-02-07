@@ -84,6 +84,7 @@ import {
   TEC1G_PORT_STATUS,
   TEC1G_PORT_SYSCTRL,
   TEC1G_ADDR_MAX,
+  TEC1G_SYSCTRL_PROTECT,
   TEC1G_SYSCTRL_BANK_A14,
   TEC1G_KEY_SHIFT_MASK,
   TEC1G_LCD_ARROW_LEFT,
@@ -168,6 +169,8 @@ export interface Tec1gState {
   glcdExpectColumn: boolean;
   glcdRe: boolean;
   glcdGraphics: boolean;
+  glcdReadPrimed: boolean;
+  glcdReadLatch: number;
   glcdDisplayOn: boolean;
   glcdCursorOn: boolean;
   glcdCursorBlink: boolean;
@@ -299,6 +302,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
+  const protectOnReset = config.protectOnReset === true;
   const rtcEnabled = config.rtcEnabled === true;
   const sdEnabled = config.sdEnabled === true;
   const sdImagePath =
@@ -317,6 +321,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     gimpSignal,
     expansionBankHi,
     matrixMode,
+    protectOnReset,
     rtcEnabled,
     sdEnabled,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
@@ -339,7 +344,9 @@ export function createTec1gRuntime(
   onSerialByte?: (byte: number) => void,
   onPortWrite?: (payload: { port: number; value: number }) => void
 ): Tec1gRuntime {
-  const initialSysCtrl = config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0;
+  const initialSysCtrl =
+    (config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0) |
+    (config.protectOnReset ? TEC1G_SYSCTRL_PROTECT : 0);
   const matrixMode = config.matrixMode;
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
@@ -370,6 +377,8 @@ export function createTec1gRuntime(
     glcdExpectColumn: false,
     glcdRe: false,
     glcdGraphics: false,
+    glcdReadPrimed: false,
+    glcdReadLatch: 0,
     glcdDisplayOn: true,
     glcdCursorOn: false,
     glcdCursorBlink: false,
@@ -486,6 +495,7 @@ export function createTec1gRuntime(
     state.glcdRowAddr = value & TEC1G_MASK_LOW5;
     state.glcdExpectColumn = true;
     state.glcdGdramPhase = 0;
+    state.glcdReadPrimed = false;
   };
 
   const glcdSetColumn = (value: number): void => {
@@ -494,6 +504,7 @@ export function createTec1gRuntime(
     state.glcdCol = value & TEC1G_GLCD_COL_MASK;
     state.glcdExpectColumn = false;
     state.glcdGdramPhase = 0;
+    state.glcdReadPrimed = false;
   };
 
   // ST7920 DDRAM row address to linear index mapping.
@@ -633,13 +644,26 @@ export function createTec1gRuntime(
     const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
     const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
     const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0) : 0;
+    if (!state.glcdReadPrimed) {
+      state.glcdReadPrimed = true;
+      state.glcdReadLatch = value & TEC1G_MASK_BYTE;
+      return 0;
+    }
+    const out = state.glcdReadLatch & TEC1G_MASK_BYTE;
     if (state.glcdGdramPhase === 0) {
       state.glcdGdramPhase = 1;
     } else {
       state.glcdGdramPhase = 0;
       state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
     }
-    return value & TEC1G_MASK_BYTE;
+    const nextIndex =
+      ((state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) *
+        TEC1G_GLCD_ROW_STRIDE +
+      (state.glcdCol & TEC1G_GLCD_COL_MASK) * TEC1G_GLCD_COL_STRIDE +
+      state.glcdGdramPhase;
+    state.glcdReadLatch =
+      nextIndex >= 0 && nextIndex < state.glcd.length ? (state.glcd[nextIndex] ?? 0) : 0;
+    return out;
   };
 
   const glcdReadStatus = (): number => {
@@ -1053,6 +1077,8 @@ export function createTec1gRuntime(
           state.glcdGraphics = g;
           state.glcdExpectColumn = false;
           state.glcdGdramPhase = 0;
+          state.glcdReadPrimed = false;
+          state.glcdReadLatch = 0;
           glcdSetBusy(TEC1G_GLCD_BUSY_US);
           queueUpdate();
           return;
@@ -1356,6 +1382,8 @@ export function createTec1gRuntime(
     state.glcdExpectColumn = false;
     state.glcdRe = false;
     state.glcdGraphics = false;
+    state.glcdReadPrimed = false;
+    state.glcdReadLatch = 0;
     state.glcdDisplayOn = true;
     state.glcdCursorOn = false;
     state.glcdCursorBlink = false;
