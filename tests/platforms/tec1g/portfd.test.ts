@@ -19,6 +19,7 @@ function makeRuntime(sdEnabled: boolean) {
     gimpSignal: false,
     expansionBankHi: false,
     matrixMode: false,
+    protectOnReset: false,
     rtcEnabled: false,
     sdEnabled,
   };

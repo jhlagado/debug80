@@ -16,6 +16,7 @@ function makeRuntime() {
     gimpSignal: false,
     expansionBankHi: false,
     matrixMode: false,
+    protectOnReset: false,
     rtcEnabled: false,
     sdEnabled: false,
   };
@@ -44,8 +45,20 @@ describe('TEC-1G GLCD instruction handling', () => {
     rt.state.glcdRowBase = 0;
     rt.state.glcdCol = 0;
     rt.state.glcdGdramPhase = 0;
+    const dummy = rt.ioHandlers.read(0x87);
     const value = rt.ioHandlers.read(0x87);
+    expect(dummy).toBe(0x00);
     expect(value).toBe(0xaa);
+  });
+
+  it('toggles reverse line mask in extended mode', () => {
+    const rt = makeRuntime();
+    rt.ioHandlers.write(0x07, 0x24); // function set: RE=1, G=0
+    rt.ioHandlers.write(0x07, 0x04); // reverse line 0
+    expect(rt.state.glcdReverseMask & 0x01).toBe(0x01);
+    rt.ioHandlers.write(0x07, 0x04); // toggle off
+    expect(rt.state.glcdReverseMask & 0x01).toBe(0x00);
+    rt.ioHandlers.write(0x07, 0x20); // back to basic
   });
 
   it('busy flag clears after cycles', () => {
