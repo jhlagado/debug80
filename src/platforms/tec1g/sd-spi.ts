@@ -357,7 +357,8 @@ export class SdSpi {
       }
     }
     // Data response token: 0bxxx00101 = 0x05 (accepted).
-    this.enqueueResponse([0x05, 0xff]);
+    this.pendingResponse = [0x05, 0xff];
+    this.delayBytes = 1;
     this.writeState = null;
   }
 }
