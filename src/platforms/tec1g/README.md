@@ -109,7 +109,10 @@ config (and optionally ROM listings via `extraListings`).
     "entry": 0,
     "matrixMode": false,
     "protectOnReset": false,
-    "expansionBankHi": false
+    "expansionBankHi": false,
+    "sdEnabled": false,
+    "sdHighCapacity": true,
+    "sdImagePath": ""
   }
 }
 ```
