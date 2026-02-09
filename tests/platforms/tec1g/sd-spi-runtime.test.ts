@@ -155,5 +155,8 @@ describe('TEC-1G SD SPI runtime', () => {
     expect(readByte(rt)).toBe(0xde);
     expect(readByte(rt)).toBe(0xad);
     expect(readByte(rt)).toBe(0xbe);
+    sendCommand(rt, [0x4d, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponse(rt)).toBe(0x00);
+    expect(readByte(rt)).toBe(0x00);
   });
 });
