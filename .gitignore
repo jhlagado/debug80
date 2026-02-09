@@ -30,3 +30,7 @@ tests/**/*.map
 *.tmp
 *.temp
 .debug80/
+
+# E2E fixtures
+!tests/e2e/fixtures/**/build/
+!tests/e2e/fixtures/**/build/*
