@@ -365,7 +365,21 @@ export function createTec1gRuntime(
     }
   }
   const sdSpi = sdEnabled
-    ? new SdSpi({ highCapacity: sdHighCapacity, ...(sdImage ? { image: sdImage } : {}) })
+    ? new SdSpi({
+        highCapacity: sdHighCapacity,
+        ...(sdImage ? { image: sdImage } : {}),
+        ...(sdImagePath && sdImage
+          ? {
+              onWrite: (image) => {
+                try {
+                  fs.writeFileSync(sdImagePath, image);
+                } catch {
+                  // Ignore persistence failures; runtime continues with in-memory image.
+                }
+              },
+            }
+          : {}),
+      })
     : null;
   let cartridgePresentDefault = config.cartridgeHex !== undefined;
   const state: Tec1gState = {

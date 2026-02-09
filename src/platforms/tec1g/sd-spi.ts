@@ -13,6 +13,7 @@ export type SdSpiOptions = {
   csActiveLow?: boolean;
   highCapacity?: boolean;
   image?: Uint8Array;
+  onWrite?: (image: Uint8Array) => void;
 };
 
 const MOSI_BIT = 0x01;
@@ -37,6 +38,7 @@ export class SdSpi {
   private lastCommand: SdCommand | undefined;
   private outputQueue: number[] = [];
   private image: Uint8Array | null = null;
+  private onWrite?: (image: Uint8Array) => void;
   private pendingResponse: number[] | null = null;
   private delayBytes = 0;
   private appCommand = false;
@@ -60,6 +62,9 @@ export class SdSpi {
     this.csActiveLow = options.csActiveLow !== false;
     this.highCapacity = options.highCapacity !== false;
     this.image = options.image ?? null;
+    if (options.onWrite !== undefined) {
+      this.onWrite = options.onWrite;
+    }
   }
 
   /**
@@ -354,6 +359,9 @@ export class SdSpi {
         if (idx >= 0 && idx < this.image.length && idx < end) {
           this.image[idx] = this.writeState.buffer[i] ?? 0x00;
         }
+      }
+      if (this.onWrite) {
+        this.onWrite(this.image);
       }
     }
     // Data response token: 0bxxx00101 = 0x05 (accepted).
