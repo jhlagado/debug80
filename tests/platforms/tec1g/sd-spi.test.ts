@@ -194,4 +194,12 @@ describe('SdSpi', () => {
     expect(readResponseByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x00);
   });
+
+  it('returns idle status for CMD13 before init', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x4d, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    expect(readByte(spi)).toBe(0x00);
+  });
 });
