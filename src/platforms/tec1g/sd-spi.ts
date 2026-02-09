@@ -42,6 +42,15 @@ export class SdSpi {
   private appCommand = false;
   private initTries = 0;
   private ready = false;
+  private writeState:
+    | {
+        start: number;
+        awaitingToken: boolean;
+        buffer: Uint8Array;
+        index: number;
+        crcRemaining: number;
+      }
+    | null = null;
 
   /**
    * Creates a new SD SPI bit-bang helper.
@@ -111,6 +120,7 @@ export class SdSpi {
     this.appCommand = false;
     this.pendingResponse = null;
     this.delayBytes = 0;
+    this.writeState = null;
     this.csActive = true;
   }
 
@@ -126,6 +136,7 @@ export class SdSpi {
     this.appCommand = false;
     this.pendingResponse = null;
     this.delayBytes = 0;
+    this.writeState = null;
   }
 
   private shiftIn(bit: number): void {
@@ -133,6 +144,12 @@ export class SdSpi {
     this.inBitIndex += 1;
     if (this.inBitIndex >= 8) {
       const byte = this.inShift & 0xff;
+      if (this.writeState) {
+        this.consumeWriteByte(byte);
+        this.inShift = 0;
+        this.inBitIndex = 0;
+        return;
+      }
       if (this.commandBytes.length === 0 && (byte & 0xc0) !== 0x40) {
         this.inShift = 0;
         this.inBitIndex = 0;
@@ -248,6 +265,24 @@ export class SdSpi {
         this.delayBytes = 1;
         break;
       }
+      case 24: {
+        if (!this.ready) {
+          this.pendingResponse = [0x01];
+          this.delayBytes = 1;
+          break;
+        }
+        const start = this.resolveAddress(command.arg);
+        this.writeState = {
+          start,
+          awaitingToken: true,
+          buffer: new Uint8Array(512),
+          index: 0,
+          crcRemaining: 0,
+        };
+        this.pendingResponse = [0x00];
+        this.delayBytes = 1;
+        break;
+      }
       default: {
         this.pendingResponse = [this.ready ? 0x00 : 0x01];
         this.delayBytes = 1;
@@ -256,9 +291,13 @@ export class SdSpi {
     }
   }
 
+  private resolveAddress(arg: number): number {
+    return this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : (arg >>> 0);
+  }
+
   private readBlock(arg: number): number[] {
     // SDHC uses block (LBA) addressing; SDSC uses byte addressing.
-    const start = this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : (arg >>> 0);
+    const start = this.resolveAddress(arg);
     const payload = new Array<number>(512).fill(0x00);
     if (!this.image || this.image.length === 0) {
       return payload;
@@ -270,5 +309,49 @@ export class SdSpi {
       }
     }
     return payload;
+  }
+
+  private consumeWriteByte(byte: number): void {
+    if (!this.writeState) {
+      return;
+    }
+    if (this.writeState.awaitingToken) {
+      if (byte === 0xfe) {
+        this.writeState.awaitingToken = false;
+      }
+      return;
+    }
+    if (this.writeState.index < 512) {
+      this.writeState.buffer[this.writeState.index] = byte & 0xff;
+      this.writeState.index += 1;
+      if (this.writeState.index >= 512) {
+        this.writeState.crcRemaining = 2;
+      }
+      return;
+    }
+    if (this.writeState.crcRemaining > 0) {
+      this.writeState.crcRemaining -= 1;
+      if (this.writeState.crcRemaining === 0) {
+        this.commitWrite();
+      }
+    }
+  }
+
+  private commitWrite(): void {
+    if (!this.writeState) {
+      return;
+    }
+    if (this.image && this.image.length > 0) {
+      const end = this.writeState.start + this.writeState.buffer.length;
+      for (let i = 0; i < this.writeState.buffer.length; i += 1) {
+        const idx = this.writeState.start + i;
+        if (idx >= 0 && idx < this.image.length && idx < end) {
+          this.image[idx] = this.writeState.buffer[i] ?? 0x00;
+        }
+      }
+    }
+    // Data response token: 0bxxx00101 = 0x05 (accepted).
+    this.enqueueResponse([0x05, 0xff]);
+    this.writeState = null;
   }
 }

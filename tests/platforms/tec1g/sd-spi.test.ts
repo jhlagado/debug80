@@ -48,6 +48,15 @@ function sendCommand(spi: SdSpi, bytes: number[]): void {
   bytes.forEach((byte) => writeByte(spi, byte));
 }
 
+function writeDataBlock(spi: SdSpi, payload: Uint8Array): void {
+  writeByte(spi, 0xfe);
+  for (let i = 0; i < payload.length; i += 1) {
+    writeByte(spi, payload[i] ?? 0x00);
+  }
+  writeByte(spi, 0xff);
+  writeByte(spi, 0xff);
+}
+
 describe('SdSpi', () => {
   it('returns 0xff when chip-select is inactive', () => {
     const spi = new SdSpi({ csMask: CS_BIT });
@@ -143,5 +152,30 @@ describe('SdSpi', () => {
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0xa5);
+  });
+
+  it('accepts CMD24 and writes a single data block', () => {
+    const image = new Uint8Array(1024);
+    const payload = new Uint8Array(512);
+    payload[0] = 0x12;
+    payload[1] = 0x34;
+    payload[2] = 0x56;
+    const spi = new SdSpi({ csMask: CS_BIT, image });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x58, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    writeDataBlock(spi, payload);
+    expect(readResponseByte(spi)).toBe(0x05);
+    expect(image[0]).toBe(0x12);
+    expect(image[1]).toBe(0x34);
+    expect(image[2]).toBe(0x56);
   });
 });
