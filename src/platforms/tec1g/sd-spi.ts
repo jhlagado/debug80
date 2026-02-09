@@ -11,6 +11,7 @@ type SdCommand = {
 export type SdSpiOptions = {
   csMask?: number;
   csActiveLow?: boolean;
+  highCapacity?: boolean;
   image?: Uint8Array;
 };
 
@@ -24,6 +25,7 @@ const DEFAULT_CS_MASK = 0x04;
 export class SdSpi {
   private csMask: number;
   private csActiveLow: boolean;
+  private highCapacity: boolean;
   private csActive = false;
   private clk = false;
   private inShift = 0;
@@ -47,6 +49,7 @@ export class SdSpi {
   public constructor(options: SdSpiOptions = {}) {
     this.csMask = options.csMask ?? DEFAULT_CS_MASK;
     this.csActiveLow = options.csActiveLow !== false;
+    this.highCapacity = options.highCapacity !== false;
     this.image = options.image ?? null;
   }
 
@@ -229,7 +232,8 @@ export class SdSpi {
         break;
       }
       case 58: {
-        this.pendingResponse = [this.ready ? 0x00 : 0x01, 0x40, 0x00, 0x00, 0x00];
+        const ocr = this.highCapacity ? 0x40 : 0x00;
+        this.pendingResponse = [this.ready ? 0x00 : 0x01, ocr, 0x00, 0x00, 0x00];
         this.delayBytes = 1;
         break;
       }
@@ -253,7 +257,7 @@ export class SdSpi {
   }
 
   private readBlock(arg: number): number[] {
-    const start = arg >>> 0;
+    const start = this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : (arg >>> 0);
     const payload = new Array<number>(512).fill(0x00);
     if (!this.image || this.image.length === 0) {
       return payload;

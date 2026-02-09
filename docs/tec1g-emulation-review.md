@@ -405,7 +405,7 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | Matrix keyboard           | Med  | **Complete**        | 100% |
 | CONFIG DIP switch         | Low  | **Complete**        | 100% |
 | RTC (DS1302)              | Low  | **Complete**        | 100% |
-| SD card SPI               | Low  | **Missing**         | 0%   |
+| SD card SPI               | Low  | **Complete**        | 95%  |
 | Cartridge                 | Low  | **Partial**         | 40%  |
 | Joystick                  | Low  | **Missing**         | 0%   |
 | Status LED bar            | Low  | **Missing**         | 0%   |
