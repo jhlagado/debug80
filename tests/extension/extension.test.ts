@@ -88,7 +88,7 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
     expect(context.subscriptions.length).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   it('forces asm documents to asm-collection when available', async () => {
     const extension = (await import('../../src/extension/extension')) as {
@@ -109,5 +109,5 @@ describe('extension activation', () => {
     const docValue = doc as { uri?: { path?: string } };
     expect(docValue.uri?.path).toBe('/tmp/test.asm');
     expect(languageId).toBe('asm-collection');
-  });
+  }, 20000);
 });

@@ -289,7 +289,9 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "perf:z80": "yarn build && node scripts/perf-z80.js",
-    "package": "vsce package"
+    "package": "vsce package",
+    "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",
+    "test:e2e": "yarn test:e2e:adapter"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

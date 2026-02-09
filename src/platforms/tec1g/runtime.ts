@@ -347,6 +347,7 @@ export function createTec1gRuntime(
   const initialSysCtrl =
     (config.expansionBankHi ? TEC1G_SYSCTRL_BANK_A14 : 0) |
     (config.protectOnReset ? TEC1G_SYSCTRL_PROTECT : 0);
+  const initialSysCtrlDecoded = decodeSysCtrl(initialSysCtrl);
   const matrixMode = config.matrixMode;
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
@@ -425,11 +426,11 @@ export function createTec1gRuntime(
     updateMs: config.updateMs,
     yieldMs: config.yieldMs,
     sysCtrl: initialSysCtrl,
-    shadowEnabled: true,
-    protectEnabled: false,
-    expandEnabled: false,
-    bankA14: config.expansionBankHi,
-    capsLock: false,
+    shadowEnabled: initialSysCtrlDecoded.shadowEnabled,
+    protectEnabled: initialSysCtrlDecoded.protectEnabled,
+    expandEnabled: initialSysCtrlDecoded.expandEnabled,
+    bankA14: initialSysCtrlDecoded.bankA14,
+    capsLock: initialSysCtrlDecoded.capsLock,
     cartridgePresent: cartridgePresentDefault,
     shiftKeyActive: false,
     rawKeyActive: false,
