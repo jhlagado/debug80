@@ -254,6 +254,12 @@ export class SdSpi {
         this.delayBytes = 1;
         break;
       }
+      case 13: {
+        const r1 = this.ready ? 0x00 : 0x01;
+        this.pendingResponse = [r1, 0x00];
+        this.delayBytes = 1;
+        break;
+      }
       case 17: {
         if (!this.ready) {
           this.pendingResponse = [0x01];

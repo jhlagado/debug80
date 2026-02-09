@@ -178,4 +178,20 @@ describe('SdSpi', () => {
     expect(image[1]).toBe(0x34);
     expect(image[2]).toBe(0x56);
   });
+
+  it('responds to CMD13 with status', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x4d, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+  });
 });
