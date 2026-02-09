@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SdSpi } from '../../../src/platforms/tec1g/sd-spi';
 
 const MOSI_BIT = 0x01;
@@ -177,6 +177,34 @@ describe('SdSpi', () => {
     expect(image[0]).toBe(0x12);
     expect(image[1]).toBe(0x34);
     expect(image[2]).toBe(0x56);
+  });
+
+  it('invokes onWrite callback after CMD24 completes', () => {
+    const image = new Uint8Array(1024);
+    const payload = new Uint8Array(512);
+    payload[0] = 0xde;
+    payload[1] = 0xad;
+    payload[2] = 0xbe;
+    const onWrite = vi.fn();
+    const spi = new SdSpi({ csMask: CS_BIT, image, onWrite });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x58, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    writeDataBlock(spi, payload);
+    expect(readResponseByte(spi)).toBe(0x05);
+    expect(image[0]).toBe(0xde);
+    expect(image[1]).toBe(0xad);
+    expect(image[2]).toBe(0xbe);
+    expect(onWrite).toHaveBeenCalledTimes(1);
+    expect(onWrite).toHaveBeenCalledWith(image);
   });
 
   it('responds to CMD13 with status', () => {
