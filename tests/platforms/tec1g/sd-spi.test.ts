@@ -123,4 +123,25 @@ describe('SdSpi', () => {
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x5a);
   });
+
+  it('treats CMD17 argument as block address for high capacity cards', () => {
+    const image = new Uint8Array(2048);
+    image[0x0202] = 0xa5;
+    const spi = new SdSpi({ csMask: CS_BIT, image, highCapacity: true });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x51, 0x00, 0x00, 0x00, 0x01, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xa5);
+  });
 });
