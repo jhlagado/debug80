@@ -71,8 +71,8 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
   - Bit 4: FF-D4 (reserved — not yet decoded).
   - Bit 5: CAPS (caps lock — not yet decoded).
   - Bits 6-7: FF-D5/FF-D6 (reserved — not yet decoded).
-- `OUT 0xFC`: RTC DS1302 (stub — not yet emulated, reads return 0xFF).
-- `OUT 0xFD`: SD card SPI (stub — not yet emulated, reads return 0xFF).
+- `OUT 0xFC`: RTC DS1302 (bit-banged emulation).
+- `OUT 0xFD`: SD card SPI (bit-banged emulation, SPI mode).
 
 ## Serial (bitbang)
 - TX uses bit 6 on `OUT 0x01`; RX uses bit 7 on `IN 0x00` (mirrored on `IN 0x03`).

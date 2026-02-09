@@ -405,7 +405,7 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | Matrix keyboard           | Med  | **Complete**        | 100% |
 | CONFIG DIP switch         | Low  | **Complete**        | 100% |
 | RTC (DS1302)              | Low  | **Complete**        | 100% |
-| SD card SPI               | Low  | **Missing**         | 0%   |
+| SD card SPI               | Low  | **Complete**        | 95%  |
 | Cartridge                 | Low  | **Partial**         | 40%  |
 | Joystick                  | Low  | **Missing**         | 0%   |
 | Status LED bar            | Low  | **Missing**         | 0%   |
@@ -767,7 +767,6 @@ External add-on emulation. Fully independent of other stages.
 - [x] Add `sdEnabled: boolean` and optional `sdImagePath: string` config options
 - [x] Instantiate `SdSpi` in runtime when enabled
 - [x] Route port 0xFD writes to `sdSpi.write(value)`, reads to `sdSpi.read()`
-- [ ] If `sdImagePath` provided, load file as virtual disk image for block reads
 - [x] If `sdImagePath` provided, load file as virtual disk image for block reads
 - [x] Add SD presence indicator to SYS_INPUT (not applicable — no dedicated bit in schematic)
 - [x] Unit tests: end-to-end port 0xFD initialization sequence
