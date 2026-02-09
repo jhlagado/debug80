@@ -20,6 +20,7 @@ function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
       protectOnReset: false,
       rtcEnabled: false,
       sdEnabled: false,
+      sdHighCapacity: true,
       ...overrides,
     },
     () => {}

@@ -22,6 +22,7 @@ function makeRuntime(sdEnabled: boolean) {
     protectOnReset: false,
     rtcEnabled: false,
     sdEnabled,
+    sdHighCapacity: true,
   };
   return createTec1gRuntime(config, () => {});
 }

@@ -305,6 +305,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
   const protectOnReset = config.protectOnReset === true;
   const rtcEnabled = config.rtcEnabled === true;
   const sdEnabled = config.sdEnabled === true;
+  const sdHighCapacity = config.sdHighCapacity !== false;
   const sdImagePath =
     typeof config.sdImagePath === 'string' && config.sdImagePath !== ''
       ? config.sdImagePath
@@ -324,6 +325,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     protectOnReset,
     rtcEnabled,
     sdEnabled,
+    sdHighCapacity,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
     ...(extraListings ? { extraListings } : {}),
@@ -353,6 +355,7 @@ export function createTec1gRuntime(
   const rtc = rtcEnabled ? new Ds1302() : null;
   const sdEnabled = config.sdEnabled;
   const sdImagePath = config.sdImagePath;
+  const sdHighCapacity = config.sdHighCapacity;
   let sdImage: Uint8Array | undefined;
   if (sdEnabled && typeof sdImagePath === 'string' && sdImagePath !== '') {
     try {
@@ -361,7 +364,9 @@ export function createTec1gRuntime(
       sdImage = undefined;
     }
   }
-  const sdSpi = sdEnabled ? new SdSpi(sdImage ? { image: sdImage } : undefined) : null;
+  const sdSpi = sdEnabled
+    ? new SdSpi({ highCapacity: sdHighCapacity, ...(sdImage ? { image: sdImage } : {}) })
+    : null;
   let cartridgePresentDefault = config.cartridgeHex !== undefined;
   const state: Tec1gState = {
     digits: Array.from({ length: 6 }, () => 0),
