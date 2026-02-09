@@ -756,6 +756,7 @@ External add-on emulation. Fully independent of other stages.
 - [x] CMD58 (READ_OCR): respond with OCR register
 - [x] CMD17 (READ_SINGLE_BLOCK): respond with data token + 512 bytes from virtual image
 - [x] CMD24 (WRITE_SINGLE_BLOCK): accept data token + 512 bytes and write into virtual image
+- [x] CMD13 (SEND_STATUS): respond with R2 status bytes
 - [x] Unit tests: full initialization sequence (CMD0 -> CMD8 -> ACMD41 -> CMD58)
 
 #### 6C — SD card integration with runtime
