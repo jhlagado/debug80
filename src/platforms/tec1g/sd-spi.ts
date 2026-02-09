@@ -257,6 +257,7 @@ export class SdSpi {
   }
 
   private readBlock(arg: number): number[] {
+    // SDHC uses block (LBA) addressing; SDSC uses byte addressing.
     const start = this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : (arg >>> 0);
     const payload = new Array<number>(512).fill(0x00);
     if (!this.image || this.image.length === 0) {
