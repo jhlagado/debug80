@@ -54,10 +54,22 @@
     ],
     "configurationDefaults": {
       "files.associations": {
-        "*.asm": "asm-collection"
+        "*.asm": "z80-asm",
+        "*.z80": "z80-asm",
+        "*.a80": "z80-asm",
+        "*.s": "z80-asm"
       }
     },
     "languages": [
+      {
+        "id": "z80-asm",
+        "extensions": [
+          ".asm",
+          ".z80",
+          ".a80",
+          ".s"
+        ]
+      },
       {
         "id": "z80-lst",
         "aliases": [
@@ -88,6 +100,12 @@
       },
       {
         "language": "z80-asm"
+      },
+      {
+        "language": "z80-macroasm"
+      },
+      {
+        "language": "wla-dx-asm"
       },
       {
         "language": "asm"
@@ -137,6 +155,8 @@
           "asm-collection",
           "asm-list-file",
           "z80-asm",
+          "z80-macroasm",
+          "wla-dx-asm",
           "asm",
           "asm80",
           "z80",

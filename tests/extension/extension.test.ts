@@ -13,7 +13,7 @@ const onDidReceiveDebugSessionCustomEvent = vi.fn(() => ({ dispose: vi.fn() }));
 const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
   Promise.resolve({ doc, languageId })
 );
-const getLanguages = vi.fn(() => Promise.resolve(['asm-collection']));
+const getLanguages = vi.fn(() => Promise.resolve(['z80-asm']));
 
 vi.mock('vscode', () => ({
   ViewColumn: { One: 1, Two: 2, Nine: 9 },
@@ -51,6 +51,7 @@ vi.mock('vscode', () => ({
     visibleTextEditors: [],
     tabGroups: { all: [] },
     registerWebviewViewProvider: vi.fn(() => ({ dispose: vi.fn() })),
+    createOutputChannel: vi.fn(() => ({ appendLine: vi.fn(), dispose: vi.fn() })),
     createWebviewPanel: vi.fn(() => ({
       webview: { html: '' },
       onDidDispose: vi.fn(),
@@ -90,7 +91,7 @@ describe('extension activation', () => {
     expect(context.subscriptions.length).toBeGreaterThan(0);
   }, 20000);
 
-  it('forces asm documents to asm-collection when available', async () => {
+  it('forces asm documents to z80-asm when available', async () => {
     const extension = (await import('../../src/extension/extension')) as {
       activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
     };
@@ -108,6 +109,6 @@ describe('extension activation', () => {
     const [doc, languageId] = calls[0] ?? [];
     const docValue = doc as { uri?: { path?: string } };
     expect(docValue.uri?.path).toBe('/tmp/test.asm');
-    expect(languageId).toBe('asm-collection');
+    expect(languageId).toBe('z80-asm');
   }, 20000);
 });

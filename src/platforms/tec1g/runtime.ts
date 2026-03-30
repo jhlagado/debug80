@@ -368,9 +368,9 @@ export function createTec1gRuntime(
     ? new SdSpi({
         highCapacity: sdHighCapacity,
         ...(sdImage ? { image: sdImage } : {}),
-        ...(sdImagePath && sdImage
+        ...(sdImagePath !== undefined && sdImagePath !== '' && sdImage
           ? {
-              onWrite: (image) => {
+              onWrite: (image): void => {
                 try {
                   fs.writeFileSync(sdImagePath, image);
                 } catch {
