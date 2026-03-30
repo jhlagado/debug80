@@ -31,3 +31,5 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn test
+      - name: Webview Tests
+        run: yarn test:webview
