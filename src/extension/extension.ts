@@ -17,20 +17,17 @@ let enforceSourceColumn = false;
 let movingEditor = false;
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
-const ASM_LANGUAGE_ID = 'asm-collection';
+const ASM_LANGUAGE_ID = 'z80-asm';
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
  */
 export function activate(context: vscode.ExtensionContext): void {
   const factory = new Z80DebugAdapterFactory();
-  let supportsAsmCollection: boolean | undefined;
+  const output = vscode.window.createOutputChannel('Debug80');
   const platformViewProvider = new PlatformViewProvider(context.extensionUri);
 
-  const ensureAsmLanguage = (doc: vscode.TextDocument): void => {
-    if (supportsAsmCollection === false) {
-      return;
-    }
+  const ensureAsmLanguage = async (doc: vscode.TextDocument): Promise<void> => {
     if (!doc.uri.path.toLowerCase().endsWith('.asm')) {
       return;
     }
@@ -41,14 +38,20 @@ export function activate(context: vscode.ExtensionContext): void {
     if (scheme !== 'file' && scheme !== 'untitled') {
       return;
     }
-    void vscode.languages.setTextDocumentLanguage(doc, ASM_LANGUAGE_ID);
+    try {
+      await vscode.languages.setTextDocumentLanguage(doc, ASM_LANGUAGE_ID);
+      output.appendLine(`Set ${doc.uri.fsPath} language to ${ASM_LANGUAGE_ID} (was ${doc.languageId})`);
+    } catch (err) {
+      output.appendLine(`Failed to set language for ${doc.uri.fsPath}: ${err}`);
+    }
   };
 
   void vscode.languages.getLanguages().then((languages) => {
-    supportsAsmCollection = languages.includes(ASM_LANGUAGE_ID);
-    if (supportsAsmCollection) {
+    const hasLang = languages.includes(ASM_LANGUAGE_ID);
+    output.appendLine(`Language ${ASM_LANGUAGE_ID} available: ${hasLang}`);
+    if (hasLang) {
       for (const doc of vscode.workspace.textDocuments) {
-        ensureAsmLanguage(doc);
+        void ensureAsmLanguage(doc);
       }
     }
   });
@@ -59,7 +62,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((doc) => {
-      ensureAsmLanguage(doc);
+      void ensureAsmLanguage(doc);
     })
   );
 
