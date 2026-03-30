@@ -7,6 +7,7 @@ import * as path from 'path';
 import { LaunchRequestArguments } from './types';
 import type { PlatformKind } from './program-loader';
 import { isPathWithin } from './path-utils';
+import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 
 export interface LaunchArgsHelpers {
   resolveBaseDir: (args: LaunchRequestArguments) => string;
@@ -241,11 +242,11 @@ export function resolveDebugMapPath(
   const cacheDir = helpers.resolveCacheDir(baseDir);
   if (cacheDir !== undefined && cacheDir.length > 0) {
     const key = helpers.buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${artifactBase}.${key}.d8dbg.json`);
+    return path.join(cacheDir, `${artifactBase}.${key}${D8_DEBUG_MAP_EXT}`);
   }
   const outDirRaw = args.outputDir ?? path.dirname(listingPath);
   const outDir = helpers.resolveRelative(outDirRaw, baseDir);
-  return path.join(outDir, `${artifactBase}.d8dbg.json`);
+  return path.join(outDir, `${artifactBase}${D8_DEBUG_MAP_EXT}`);
 }
 
 export function resolveExtraDebugMapPath(
@@ -256,10 +257,10 @@ export function resolveExtraDebugMapPath(
   const cacheDir = helpers.resolveCacheDir(path.dirname(listingPath));
   if (cacheDir !== undefined && cacheDir.length > 0) {
     const key = helpers.buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${base}.${key}.d8dbg.json`);
+    return path.join(cacheDir, `${base}.${key}${D8_DEBUG_MAP_EXT}`);
   }
   const dir = path.dirname(listingPath);
-  return path.join(dir, `${base}.d8dbg.json`);
+  return path.join(dir, `${base}${D8_DEBUG_MAP_EXT}`);
 }
 
 export function resolveRelative(filePath: string, baseDir: string): string {

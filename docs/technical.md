@@ -108,7 +108,7 @@ Common fields:
 - stepOverMaxInstructions / stepOutMaxInstructions
 - terminal (I/O bridge config)
 
-Debug80 always writes a D8 debug map to `<artifactBase>.d8dbg.json` in outputDir.
+Debug80 always writes a D8 debug map to `<artifactBase>.d8.json` in outputDir.
 
 ### 6.3 Scaffold command
 
@@ -186,13 +186,13 @@ Indexes built at launch:
 ### 9.4 D8 Debug Map (D8M) format
 
 Debug80 uses the D8 map as the canonical mapping source for debugging. On
-launch it attempts to load `<artifactBase>.d8dbg.json`; if the map is missing or
+launch it attempts to load `<artifactBase>.d8.json`; if the map is missing or
 invalid, it regenerates the map from the .lst and writes it to disk, then uses
 the regenerated map for the session. The on-disk standard is documented in
 `docs/d8-debug-map.md` and is designed to be assembler-agnostic while
 preserving the existing LST-derived confidence data.
 
-Debug80 always writes a `*.d8dbg.json` file alongside the build artifacts.
+Debug80 always writes a `*.d8.json` file alongside the build artifacts.
 
 ### 9.5 Platforms
 

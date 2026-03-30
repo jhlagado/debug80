@@ -51,9 +51,9 @@ describe('launch-args', () => {
       resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
     };
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath, helpers);
-    expect(mapPath).toContain(path.join(baseDir, 'main.d8dbg.json'));
+    expect(mapPath).toContain(path.join(baseDir, 'main.d8.json'));
     const extraPath = resolveExtraDebugMapPath(listingPath, helpers);
-    expect(extraPath).toContain(path.join(baseDir, 'main.d8dbg.json'));
+    expect(extraPath).toContain(path.join(baseDir, 'main.d8.json'));
   });
 
   it('builds debug map paths using cache directory', () => {
@@ -66,9 +66,9 @@ describe('launch-args', () => {
       resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
     };
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath, helpers);
-    expect(mapPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8dbg.json'));
+    expect(mapPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8.json'));
     const extraPath = resolveExtraDebugMapPath(listingPath, helpers);
-    expect(extraPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8dbg.json'));
+    expect(extraPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8.json'));
   });
 
   it('merges config file values', () => {
@@ -170,7 +170,7 @@ describe('launch-args', () => {
       resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
     };
     const mapPath = resolveDebugMapPath(args, baseDir, asmPath, listingPath, helpers);
-    expect(mapPath).toContain(path.join(baseDir, 'out', 'main.d8dbg.json'));
+    expect(mapPath).toContain(path.join(baseDir, 'out', 'main.d8.json'));
   });
 
   it('resolves asm paths for empty and absolute inputs', () => {
