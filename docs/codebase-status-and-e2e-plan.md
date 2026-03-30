@@ -163,9 +163,9 @@ If you want to keep dependencies minimal, the DAP client can be a small custom h
 
 ### 2.7 Proposed scripts
 
-- `yarn test:e2e:adapter` (Node, no VS Code)
-- `yarn test:e2e:vscode` (VS Code extension-host)
-- `yarn test:e2e` (runs both)
+- `npm run test:e2e:adapter` (Node, no VS Code)
+- `npm run test:e2e:vscode` (VS Code extension-host)
+- `npm run test:e2e` (runs both)
 
 ### 2.8 CI integration (GitHub Actions)
 
@@ -176,8 +176,8 @@ Add an e2e job or extend existing CI:
 - Keep timeouts generous but bounded (avoid flake-induced retries).
 
 Example approach:
-- `yarn test:e2e:adapter` (fast, always)
-- `xvfb-run -a yarn test:e2e:vscode` (slower, can be split by platform)
+- `npm run test:e2e:adapter` (fast, always)
+- `xvfb-run -a npm run test:e2e:vscode` (slower, can be split by platform)
 
 ### 2.9 Reliability and flake control
 
