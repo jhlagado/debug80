@@ -37,7 +37,7 @@ function makeRuntime(image?: Uint8Array): Tec1gRuntimeHandle {
     rtcEnabled: false,
     sdEnabled: true,
     sdHighCapacity: true,
-    ...(sdImagePath ? { sdImagePath } : {}),
+    ...(sdImagePath !== undefined ? { sdImagePath } : {}),
   };
   return { rt: createTec1gRuntime(config, () => {}), sdImagePath };
 }
