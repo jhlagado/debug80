@@ -246,6 +246,9 @@
       color: #1f1f1f;
       border-color: #d69a00;
     }
+    .ui-hidden {
+      display: none !important;
+    }
     .ui-controls {
       display: flex;
       gap: 8px;

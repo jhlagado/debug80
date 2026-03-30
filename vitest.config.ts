@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    exclude: ['tests/e2e/**', ...configDefaults.exclude],
+    exclude: ['tests/e2e/**', 'tests/webview/**', ...configDefaults.exclude],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
