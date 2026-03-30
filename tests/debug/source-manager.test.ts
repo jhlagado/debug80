@@ -41,7 +41,7 @@ describe('source-manager', () => {
       relativeIfPossible: (filePath, baseDir) =>
         path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_args, _baseDir, _asm, listing) =>
-        path.join(dir, `${path.basename(listing)}.d8dbg.json`),
+        path.join(dir, `${path.basename(listing)}.d8.json`),
       resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
       resolveListingSourcePath: (listing) =>
         listing.endsWith('.lst') ? listing.replace(/\.lst$/, '.asm') : undefined,

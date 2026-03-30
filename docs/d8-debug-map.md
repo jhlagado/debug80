@@ -9,7 +9,7 @@ allowing best-effort maps derived from listings.
 Format name: D8 Debug Map (D8M)
 
 Canonical file name:
-`<artifactBase>.d8dbg.json`
+`<artifactBase>.d8.json`
 
 Rationale: the name is explicit and namespaced to avoid collisions with other
 formats.
@@ -194,14 +194,14 @@ Fields:
 
 ## Integration with Debug80
 
-- Debug80 writes `build/main.d8dbg.json` alongside the build artifacts.
+- Debug80 writes `build/main.d8.json` alongside the build artifacts.
 - On launch, Debug80 loads the map if present; if missing or invalid, it
   regenerates the map from the `.lst`.
 
 ## Workflow
 
 1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
-2) Debug80 writes `build/main.d8dbg.json`.
+2) Debug80 writes `build/main.d8.json`.
 3) Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not

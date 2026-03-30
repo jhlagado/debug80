@@ -24,6 +24,7 @@ import {
   buildMappingFromD8DebugMap,
   parseD8DebugMap,
 } from '../mapping/d8-map';
+import { legacyDebugMapPath } from './d8-map-paths';
 
 export interface MappingServiceOptions {
   platform: string;
@@ -118,13 +119,21 @@ function parseListingMapping(listingContent: string): MappingParseResult {
 }
 
 function isDebugMapStale(mapPath: string, listingPath: string): boolean {
-  if (!fs.existsSync(mapPath) || !fs.existsSync(listingPath)) {
+  if (!fs.existsSync(listingPath)) {
+    return false;
+  }
+  const legacyPath = legacyDebugMapPath(mapPath);
+  const mapCandidates = [mapPath, legacyPath].filter((p): p is string => p !== null && fs.existsSync(p));
+  if (mapCandidates.length === 0) {
     return false;
   }
   try {
-    const mapStat = fs.statSync(mapPath);
     const listingStat = fs.statSync(listingPath);
-    return listingStat.mtimeMs > mapStat.mtimeMs;
+    let newestMapMs = 0;
+    for (const p of mapCandidates) {
+      newestMapMs = Math.max(newestMapMs, fs.statSync(p).mtimeMs);
+    }
+    return listingStat.mtimeMs > newestMapMs;
   } catch {
     return false;
   }
