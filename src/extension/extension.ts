@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.languages.setTextDocumentLanguage(doc, ASM_LANGUAGE_ID);
       output.appendLine(`Set ${doc.uri.fsPath} language to ${ASM_LANGUAGE_ID} (was ${doc.languageId})`);
     } catch (err) {
-      output.appendLine(`Failed to set language for ${doc.uri.fsPath}: ${err}`);
+      output.appendLine(`Failed to set language for ${doc.uri.fsPath}: ${String(err)}`);
     }
   };
 
