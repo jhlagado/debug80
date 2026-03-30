@@ -80,7 +80,7 @@ describe('path-resolver', () => {
     const args = { artifactBase: 'demo' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
     const key = buildListingCacheKey(listingPath);
-    expect(mapPath).toBe(path.join(cacheDir ?? '', `demo.${key}.d8dbg.json`));
+    expect(mapPath).toBe(path.join(cacheDir ?? '', `demo.${key}.d8.json`));
   });
 
   it('filters extra listings to existing unique paths', () => {
@@ -134,7 +134,7 @@ describe('path-resolver', () => {
 
   it('detects stale debug maps based on timestamps', () => {
     const listing = path.join(tmpDir, 'demo.lst');
-    const map = path.join(tmpDir, 'demo.d8dbg.json');
+    const map = path.join(tmpDir, 'demo.d8.json');
     fs.writeFileSync(listing, 'LIST');
     fs.writeFileSync(map, 'MAP');
 

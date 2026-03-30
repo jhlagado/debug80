@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './types';
 import { FileResolutionError } from './errors';
 import { isPathWithin } from './path-utils';
+import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 
 /**
  * Length of cache key hash (hex digits).
@@ -204,12 +205,12 @@ export function resolveDebugMapPath(
   const cacheDir = resolveCacheDir(baseDir);
   if (cacheDir !== undefined && cacheDir.length > 0) {
     const key = buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${artifactBase}.${key}.d8dbg.json`);
+    return path.join(cacheDir, `${artifactBase}.${key}${D8_DEBUG_MAP_EXT}`);
   }
 
   const outDirRaw = args.outputDir ?? path.dirname(listingPath);
   const outDir = resolveRelative(outDirRaw, baseDir);
-  return path.join(outDir, `${artifactBase}.d8dbg.json`);
+  return path.join(outDir, `${artifactBase}${D8_DEBUG_MAP_EXT}`);
 }
 
 /**
@@ -225,11 +226,11 @@ export function resolveExtraDebugMapPath(listingPath: string, baseDir: string): 
 
   if (cacheDir !== undefined && cacheDir.length > 0) {
     const key = buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${base}.${key}.d8dbg.json`);
+    return path.join(cacheDir, `${base}.${key}${D8_DEBUG_MAP_EXT}`);
   }
 
   const dir = path.dirname(listingPath);
-  return path.join(dir, `${base}.d8dbg.json`);
+  return path.join(dir, `${base}${D8_DEBUG_MAP_EXT}`);
 }
 
 /**

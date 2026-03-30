@@ -28,7 +28,7 @@ describe('mapping-service', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8dbg.json');
+    const mapPath = path.join(dir, 'simple.d8.json');
 
     writeFile(listingPath, listingContent);
     writeFile(asmPath, asmContent);
@@ -66,7 +66,7 @@ describe('mapping-service', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8dbg.json');
+    const mapPath = path.join(dir, 'simple.d8.json');
 
     writeFile(listingPath, listingContent);
     writeFile(asmPath, asmContent);
@@ -117,7 +117,7 @@ describe('mapping-service', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8dbg.json');
+    const mapPath = path.join(dir, 'simple.d8.json');
     const extraListingPath = path.join(dir, 'extra.lst');
 
     writeFile(listingPath, listingContent);

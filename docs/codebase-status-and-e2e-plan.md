@@ -118,7 +118,7 @@ tests/
         build/
           app.hex
           app.lst
-          app.d8dbg.json
+          app.d8.json
         src/
           app.asm
 ```
