@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { AssemblerBackend } from '../../src/debug/assembler-backend';
+import * as assemblerBackendModule from '../../src/debug/assembler-backend';
 
 const resolveListingSourcePathMock = vi.hoisted(() => vi.fn(() => undefined));
 
@@ -161,7 +162,7 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('Regenerating'))).toBe(true);
   });
 
-  it('uses backend in-process mapping for extra listings when available', () => {
+  it('uses a source-resolved backend for extra listings when available', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
@@ -192,6 +193,9 @@ describe('mapping-service', () => {
       assemble: () => ({ success: true }),
       compileMappingInProcess,
     };
+    const resolveAssemblerBackend = vi
+      .spyOn(assemblerBackendModule, 'resolveAssemblerBackend')
+      .mockReturnValue(backend);
 
     const result = buildMappingFromListing({
       listingContent,
@@ -200,7 +204,6 @@ describe('mapping-service', () => {
       sourceFile: asmPath,
       extraListingPaths: [extraListingPath],
       mapArgs: {},
-      backend,
       service: {
         platform: 'simple',
         baseDir: dir,
@@ -216,11 +219,13 @@ describe('mapping-service', () => {
       },
     });
 
+    expect(resolveAssemblerBackend).toHaveBeenCalledWith(undefined, extraSourcePath);
     expect(compileMappingInProcess).toHaveBeenCalledWith(extraSourcePath, path.dirname(extraSourcePath));
     expect(result.mapping.segments.some((segment) => segment.loc.file === extraSourcePath)).toBe(true);
+    resolveAssemblerBackend.mockRestore();
   });
 
-  it('falls back to listing parsing when backend in-process mapping is unavailable', () => {
+  it('falls back to listing parsing when the source-resolved backend lacks in-process mapping', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
@@ -238,6 +243,9 @@ describe('mapping-service', () => {
       id: 'mock-asm',
       assemble: () => ({ success: true }),
     };
+    const resolveAssemblerBackend = vi
+      .spyOn(assemblerBackendModule, 'resolveAssemblerBackend')
+      .mockReturnValue(backend);
 
     const result = buildMappingFromListing({
       listingContent,
@@ -246,7 +254,6 @@ describe('mapping-service', () => {
       sourceFile: asmPath,
       extraListingPaths: [extraListingPath],
       mapArgs: {},
-      backend,
       service: {
         platform: 'simple',
         baseDir: dir,
@@ -271,5 +278,7 @@ describe('mapping-service', () => {
           segment.loc.line === 1
       )
     ).toBe(true);
+    expect(resolveAssemblerBackend).toHaveBeenCalledWith(undefined, extraSourcePath);
+    resolveAssemblerBackend.mockRestore();
   });
 });
