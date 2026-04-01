@@ -206,6 +206,10 @@ the regenerated map for the session. The on-disk standard is documented in
 `docs/d8-debug-map.md` and is designed to be assembler-agnostic while
 preserving the existing LST-derived confidence data.
 
+For native producer-generated maps such as ZAX `.d8.json` output, Debug80 now
+prefers the existing D8 map directly and does not treat it as stale relative to
+the listing file or overwrite it with an LST-regenerated cache.
+
 Debug80 always writes a `*.d8.json` file alongside the build artifacts.
 
 ### 9.5 Platforms
