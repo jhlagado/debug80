@@ -14,7 +14,12 @@ import { resolveAssemblerBackend } from './assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn } from '../mapping/source-map';
-import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
+import {
+  buildD8DebugMap,
+  buildMappingFromD8DebugMap,
+  D8DebugMap,
+  parseD8DebugMap,
+} from '../mapping/d8-map';
 import { legacyDebugMapPath } from './d8-map-paths';
 
 export interface MappingServiceOptions {
@@ -64,12 +69,20 @@ export function buildMappingFromListing(options: {
   } = options;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
-  const mapStale = isDebugMapStale(mapPath, listingPath);
+  const loadedMap = loadDebugMap(mapPath, service);
+  const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
+  if (hasNativeMap) {
+    service.log(
+      `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
+    );
+  }
+
+  const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
   if (mapStale) {
     service.log('Debug80: D8 debug map is older than the LST. Regenerating from LST.');
   }
 
-  let debugMap = mapStale ? undefined : loadDebugMap(mapPath, service);
+  let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
   let missingSources: string[] = [];
 
   if (!debugMap) {
@@ -185,6 +198,16 @@ function loadDebugMap(
   }
 }
 
+function isNativeDebugMap(map: D8DebugMap): boolean {
+  const generatorName = map.generator?.name?.trim().toLowerCase();
+  return typeof generatorName === 'string' && generatorName.length > 0 && generatorName !== 'debug80';
+}
+
+function getDebugMapGeneratorLabel(map: D8DebugMap): string {
+  const generatorName = map.generator?.name?.trim();
+  return generatorName && generatorName.length > 0 ? generatorName : 'unknown generator';
+}
+
 function writeDebugMap(
   map: ReturnType<typeof buildD8DebugMap>,
   mapPath: string,
@@ -219,7 +242,15 @@ function loadExtraListingMapping(
   for (const listingPath of listingPaths) {
     try {
       const mapPath = service.resolveExtraDebugMapPath(listingPath);
-      const mapStale = isDebugMapStale(mapPath, listingPath);
+      const loadedMap = loadDebugMap(mapPath, service);
+      const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
+      if (hasNativeMap) {
+        service.log(
+          `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
+        );
+      }
+
+      const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
       if (mapStale) {
         const prefix = `Debug80 [${service.platform}]`;
         service.log(
@@ -227,8 +258,7 @@ function loadExtraListingMapping(
         );
       }
 
-      let debugMap =
-        !mapStale && fs.existsSync(mapPath) ? loadDebugMap(mapPath, service) : undefined;
+      let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
       if (debugMap) {
         const mapping = buildMappingFromD8DebugMap(debugMap);
         combined.segments.push(...mapping.segments);
