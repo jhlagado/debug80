@@ -118,6 +118,73 @@ describe('mapping-service', () => {
     expect(logs.find((line) => line.includes('Regenerating'))).toBeUndefined();
   });
 
+  it('prefers a stale native debug map without regenerating it', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'simple.lst');
+    const asmPath = path.join(dir, 'simple.asm');
+    const mapPath = path.join(dir, 'simple.d8.json');
+
+    writeFile(listingPath, listingContent);
+    writeFile(asmPath, asmContent);
+
+    const nativeMap = buildD8DebugMap(
+      {
+        segments: [
+          {
+            start: 0x2000,
+            end: 0x2001,
+            loc: { file: asmPath, line: 42 },
+            lst: { line: 12, text: 'NOP' },
+            confidence: 'HIGH',
+          },
+        ],
+        anchors: [],
+      },
+      {
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        generator: { name: 'zax' },
+      }
+    );
+    const originalContent = JSON.stringify(nativeMap, null, 2);
+    writeFile(mapPath, originalContent);
+
+    const past = new Date(Date.now() - 2000);
+    fs.utimesSync(mapPath, past, past);
+    const now = new Date();
+    fs.utimesSync(listingPath, now, now);
+
+    const logs: string[] = [];
+    const result = buildMappingFromListing({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [],
+      mapArgs: {},
+      service: {
+        platform: 'simple',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.resolve(dir, file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
+        resolveDebugMapPath: () => mapPath,
+        log: (message) => logs.push(message),
+      },
+    });
+
+    expect(result.mapping.segments).toHaveLength(1);
+    expect(result.mapping.segments[0]?.loc.line).toBe(42);
+    expect(logs.some((line) => line.includes('Using native D8 map from "zax"'))).toBe(true);
+    expect(logs.some((line) => line.includes('Regenerating'))).toBe(false);
+    expect(fs.readFileSync(mapPath, 'utf-8')).toBe(originalContent);
+  });
+
   it('regenerates when the debug map is stale and merges extra listings', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
@@ -280,5 +347,90 @@ describe('mapping-service', () => {
     ).toBe(true);
     expect(resolveAssemblerBackend).toHaveBeenCalledWith(undefined, extraSourcePath);
     resolveAssemblerBackend.mockRestore();
+  });
+
+  it('prefers a stale native debug map for extra listings without invoking backend regeneration', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'simple.lst');
+    const asmPath = path.join(dir, 'simple.asm');
+    const mapPath = path.join(dir, 'simple.d8.json');
+    const extraListingPath = path.join(dir, 'extra.lst');
+    const extraSourcePath = path.join(dir, 'extra.asm');
+    const extraMapPath = path.join(dir, 'extra.lst.extra.json');
+
+    writeFile(listingPath, listingContent);
+    writeFile(asmPath, asmContent);
+    writeFile(extraListingPath, '0100 00 NOP\n');
+    writeFile(extraSourcePath, asmContent);
+
+    const extraNativeMap = buildD8DebugMap(
+      {
+        segments: [
+          {
+            start: 0x100,
+            end: 0x101,
+            loc: { file: extraSourcePath, line: 7 },
+            lst: { line: 1, text: 'NOP' },
+            confidence: 'HIGH',
+          },
+        ],
+        anchors: [],
+      },
+      {
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        generator: { name: 'zax' },
+      }
+    );
+    const originalExtraMap = JSON.stringify(extraNativeMap, null, 2);
+    writeFile(extraMapPath, originalExtraMap);
+
+    const past = new Date(Date.now() - 2000);
+    fs.utimesSync(extraMapPath, past, past);
+    const now = new Date();
+    fs.utimesSync(extraListingPath, now, now);
+
+    resolveListingSourcePathMock.mockReturnValue(extraSourcePath);
+    const resolveAssemblerBackend = vi.spyOn(assemblerBackendModule, 'resolveAssemblerBackend');
+    const logs: string[] = [];
+
+    const result = buildMappingFromListing({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [extraListingPath],
+      mapArgs: {},
+      service: {
+        platform: 'simple',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.resolve(dir, file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: () => extraMapPath,
+        resolveDebugMapPath: () => mapPath,
+        log: (message) => logs.push(message),
+      },
+    });
+
+    expect(
+      result.mapping.segments.some(
+        (segment) =>
+          segment.start === 0x100 &&
+          segment.end === 0x101 &&
+          segment.loc.file === extraSourcePath &&
+          segment.loc.line === 7
+      )
+    ).toBe(true);
+    expect(logs.some((line) => line.includes('Using native D8 map from "zax"'))).toBe(true);
+    expect(resolveAssemblerBackend).not.toHaveBeenCalled();
+    expect(fs.readFileSync(extraMapPath, 'utf-8')).toBe(originalExtraMap);
+
+    resolveAssemblerBackend.mockRestore();
+    resolveListingSourcePathMock.mockReturnValue(undefined);
   });
 });
