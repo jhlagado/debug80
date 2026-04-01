@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import { createRequire } from 'module';
 import * as path from 'path';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
@@ -10,8 +11,10 @@ import type { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../m
 import type { AssembleResult } from './assembler';
 import type { AssembleBinOptions, AssembleOptions, AssemblerBackend } from './assembler-backend';
 
+const moduleRequire = createRequire(__filename);
+
 function loadAssemblerModule(): typeof import('./assembler') {
-  return require('./assembler') as typeof import('./assembler');
+  return moduleRequire('./assembler') as typeof import('./assembler');
 }
 
 export class Asm80Backend implements AssemblerBackend {
