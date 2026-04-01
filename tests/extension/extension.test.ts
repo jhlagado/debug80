@@ -10,10 +10,11 @@ const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidStartDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidTerminateDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidReceiveDebugSessionCustomEvent = vi.fn(() => ({ dispose: vi.fn() }));
+let onDidOpenHandler: ((doc: unknown) => void) | undefined;
 const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
   Promise.resolve({ doc, languageId })
 );
-const getLanguages = vi.fn(() => Promise.resolve(['z80-asm']));
+const getLanguages = vi.fn(() => Promise.resolve(['z80-asm', 'zax']));
 
 vi.mock('vscode', () => ({
   ViewColumn: { One: 1, Two: 2, Nine: 9 },
@@ -26,7 +27,10 @@ vi.mock('vscode', () => ({
     activeDebugSession: undefined,
   },
   workspace: {
-    onDidOpenTextDocument,
+    onDidOpenTextDocument: vi.fn((handler: (doc: unknown) => void) => {
+      onDidOpenHandler = handler;
+      return { dispose: vi.fn() };
+    }),
     textDocuments: [
       { uri: { path: '/tmp/test.asm', scheme: 'file' }, languageId: 'plaintext' },
     ],
@@ -72,6 +76,7 @@ vi.mock('vscode', () => ({
 describe('extension activation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    onDidOpenHandler = undefined;
   });
 
   it('registers commands and adapter factory', async () => {
@@ -110,5 +115,24 @@ describe('extension activation', () => {
     const docValue = doc as { uri?: { path?: string } };
     expect(docValue.uri?.path).toBe('/tmp/test.asm');
     expect(languageId).toBe('z80-asm');
+  }, 20000);
+
+  it('forces zax documents to zax when opened', async () => {
+    const extension = (await import('../../src/extension/extension')) as {
+      activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
+    };
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      workspaceState: { get: vi.fn(), update: vi.fn() },
+      extensionUri: { fsPath: '/tmp/debug80' },
+    };
+    extension.activate(context);
+
+    expect(onDidOpenHandler).toBeDefined();
+    const zaxDoc = { uri: { path: '/tmp/test.zax', scheme: 'file' }, languageId: 'plaintext' };
+    onDidOpenHandler?.(zaxDoc);
+    await Promise.resolve();
+
+    expect(setTextDocumentLanguage).toHaveBeenCalledWith(zaxDoc, 'zax');
   }, 20000);
 });

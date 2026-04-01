@@ -10,6 +10,7 @@ Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
 - Loads Intel HEX for runtime memory.
 - Reads an asm80 .lst listing for address-to-source mapping.
 - Optionally runs asm80 before each launch.
+- Recognizes both `.asm` and `.zax` files as debuggable source documents in VS Code.
 - Implements stepping, breakpoints, registers, and a simple terminal I/O bridge.
 
 ## 2. High-level architecture
@@ -59,6 +60,7 @@ Important behavior for new VS Code extension developers:
 - The debug adapter is created with vscode.DebugAdapterInlineImplementation.
 - Terminal output is sent from the adapter via a custom event name:
   `debug80/terminalOutput`.
+- Source-language enforcement currently normalizes `.asm` files to `z80-asm` and `.zax` files to `zax` when those languages are available.
 
 ## 5. Debug Adapter Protocol (DAP) flow
 

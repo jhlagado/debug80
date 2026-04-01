@@ -19,6 +19,7 @@
     "onDebugResolve:z80",
     "onLanguage:asm",
     "onLanguage:asm-collection",
+    "onLanguage:zax",
     "onLanguage:z80-asm",
     "onLanguage:z80-macroasm"
   ],
@@ -57,7 +58,8 @@
         "*.asm": "z80-asm",
         "*.z80": "z80-asm",
         "*.a80": "z80-asm",
-        "*.s": "z80-asm"
+        "*.s": "z80-asm",
+        "*.zax": "zax"
       }
     },
     "languages": [
@@ -77,6 +79,16 @@
         ],
         "extensions": [
           ".lst"
+        ],
+        "configuration": "./out/null-language.json"
+      },
+      {
+        "id": "zax",
+        "aliases": [
+          "ZAX"
+        ],
+        "extensions": [
+          ".zax"
         ],
         "configuration": "./out/null-language.json"
       }
@@ -115,6 +127,9 @@
       },
       {
         "language": "z80"
+      },
+      {
+        "language": "zax"
       }
     ],
     "commands": [
@@ -160,7 +175,8 @@
           "asm",
           "asm80",
           "z80",
-          "z80-lst"
+          "z80-lst",
+          "zax"
         ],
         "configurationAttributes": {
           "launch": {
