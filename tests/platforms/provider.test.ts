@@ -59,7 +59,9 @@ describe('platform providers', () => {
     expect(provider.payload).toEqual({ id: 'simple' });
     expect(provider.extraListings).toEqual(['rom.lst']);
     expect(provider.resolveEntry()).toBe(0x1234);
-    expect(provider.runtimeOptions).toEqual({ romRanges: [] });
+    expect(provider.runtimeOptions).toEqual({
+      romRanges: provider.simpleConfig?.romRanges ?? [],
+    });
 
     provider.buildIoHandlers({
       terminal: { txPort: 4 },
