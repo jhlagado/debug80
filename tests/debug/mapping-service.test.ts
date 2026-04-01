@@ -185,6 +185,56 @@ describe('mapping-service', () => {
     expect(fs.readFileSync(mapPath, 'utf-8')).toBe(originalContent);
   });
 
+  it('fills missing source lines from lstLine only for native debug maps', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'simple.lst');
+    const asmPath = path.join(dir, 'simple.asm');
+    const mapPath = path.join(dir, 'simple.d8.json');
+
+    writeFile(listingPath, listingContent);
+    writeFile(asmPath, asmContent);
+
+    const nativeMap = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      generator: { name: 'zax' },
+      files: {
+        [asmPath]: {
+          segments: [{ start: 0x2000, end: 0x2001, lstLine: 42, lstText: 'NOP' }],
+        },
+      },
+    };
+    writeFile(mapPath, JSON.stringify(nativeMap, null, 2));
+
+    const result = buildMappingFromListing({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [],
+      mapArgs: {},
+      service: {
+        platform: 'simple',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.resolve(dir, file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
+        resolveDebugMapPath: () => mapPath,
+        log: () => undefined,
+      },
+    });
+
+    expect(result.mapping.segments[0]?.loc.line).toBe(42);
+    expect(result.mapping.segments[0]?.lst.line).toBe(42);
+  });
+
   it('regenerates when the debug map is stale and merges extra listings', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');

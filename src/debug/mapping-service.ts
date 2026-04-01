@@ -105,7 +105,8 @@ export function buildMappingFromListing(options: {
     writeDebugMap(debugMap, mapPath, service, listingPath);
   }
 
-  let mapping = buildMappingFromD8DebugMap(debugMap);
+  const normalizedDebugMap = hasNativeMap ? normalizeNativeDebugMapForDebug80(debugMap) : debugMap;
+  let mapping = buildMappingFromD8DebugMap(normalizedDebugMap);
   const extraMapping = loadExtraListingMapping(extraListingPaths, service);
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
@@ -210,6 +211,35 @@ function getDebugMapGeneratorLabel(map: D8DebugMap): string {
     : 'unknown generator';
 }
 
+function normalizeNativeDebugMapForDebug80(map: D8DebugMap): D8DebugMap {
+  const files = map.files;
+  if (files === undefined || Array.isArray(files)) {
+    return map;
+  }
+
+  const normalizedFiles: D8DebugMap['files'] = {};
+  for (const [fileKey, entry] of Object.entries(files)) {
+    normalizedFiles[fileKey] = {
+      ...entry,
+      ...(entry.segments
+        ? {
+            segments: entry.segments.map((segment) => ({
+              ...segment,
+              ...(segment.line === undefined || segment.line === null
+                ? { line: segment.lstLine }
+                : {}),
+            })),
+          }
+        : {}),
+    };
+  }
+
+  return {
+    ...map,
+    files: normalizedFiles,
+  };
+}
+
 function writeDebugMap(
   map: ReturnType<typeof buildD8DebugMap>,
   mapPath: string,
@@ -262,7 +292,10 @@ function loadExtraListingMapping(
 
       let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
       if (debugMap) {
-        const mapping = buildMappingFromD8DebugMap(debugMap);
+        const normalizedDebugMap = hasNativeMap
+          ? normalizeNativeDebugMapForDebug80(debugMap)
+          : debugMap;
+        const mapping = buildMappingFromD8DebugMap(normalizedDebugMap);
         combined.segments.push(...mapping.segments);
         combined.anchors.push(...mapping.anchors);
         continue;
