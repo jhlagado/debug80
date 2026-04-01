@@ -296,7 +296,7 @@
     ]
   },
   "scripts": {
-    "build": "tsc && yarn build:webview",
+    "build": "tsc && npm run build:webview",
     "build:webview": "node scripts/build-webview.js",
     "typecheck:webview": "tsc -p webview/tsconfig.json --noEmit",
     "watch": "tsc --watch",
@@ -304,15 +304,15 @@
     "lint:fix": "eslint src tests webview --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "pretest": "yarn build",
+    "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "perf:z80": "yarn build && node scripts/perf-z80.js",
+    "perf:z80": "npm run build && node scripts/perf-z80.js",
     "package": "vsce package",
     "test:webview": "vitest run -c vitest.webview.config.ts",
     "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",
-    "test:e2e": "yarn test:e2e:adapter"
+    "test:e2e": "npm run test:e2e:adapter"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

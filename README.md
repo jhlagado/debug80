@@ -18,15 +18,15 @@ https://github.com/jhlagado/debug80-tec1
 ## Prerequisites
 
 - Node 18+ (Node 20+ recommended)
-- Yarn
-- asm80 installed locally: `yarn add -D asm80`
+- npm (ships with Node)
+- asm80 installed locally: `npm install -D asm80`
 
 ## Install & Build
 
 ```bash
-yarn install --ignore-engines
-yarn build
-yarn test
+npm install
+npm run build
+npm test
 ```
 
 ## Quick start (examples)

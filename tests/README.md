@@ -29,15 +29,15 @@ tests/
 ## Running Tests
 
 ```
-yarn test
+npm test
 ```
 
 For coverage:
 ```
-yarn coverage
+npm run coverage
 ```
 
 For performance smoke tests:
 ```
-yarn perf:z80
+npm run perf:z80
 ```
