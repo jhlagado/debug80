@@ -7,17 +7,23 @@ import * as path from 'path';
 import * as asm80Module from 'asm80/asm.js';
 import * as asm80Monolith from 'asm80/monolith.js';
 import type { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../mapping/parser';
-import { runAssembler, runAssemblerBin } from './assembler';
+import type { AssembleResult } from './assembler';
 import type { AssembleBinOptions, AssembleOptions, AssemblerBackend } from './assembler-backend';
+
+function loadAssemblerModule(): typeof import('./assembler') {
+  return require('./assembler') as typeof import('./assembler');
+}
 
 export class Asm80Backend implements AssemblerBackend {
   public readonly id = 'asm80';
 
-  assemble(options: AssembleOptions) {
+  public assemble(options: AssembleOptions): AssembleResult {
+    const { runAssembler } = loadAssemblerModule();
     return runAssembler(options.asmPath, options.hexPath, options.listingPath, options.onOutput);
   }
 
-  assembleBin(options: AssembleBinOptions) {
+  public assembleBin(options: AssembleBinOptions): AssembleResult {
+    const { runAssemblerBin } = loadAssemblerModule();
     return runAssemblerBin(
       options.asmPath,
       options.hexPath,
@@ -27,7 +33,10 @@ export class Asm80Backend implements AssemblerBackend {
     );
   }
 
-  compileMappingInProcess(sourcePath: string, _baseDir: string): MappingParseResult | undefined {
+  public compileMappingInProcess(
+    sourcePath: string,
+    _baseDir: string
+  ): MappingParseResult | undefined {
     const sourceDir = path.dirname(sourcePath);
     const sourceText = fs.readFileSync(sourcePath, 'utf-8');
 

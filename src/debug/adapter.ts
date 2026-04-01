@@ -405,7 +405,6 @@ export class Z80DebugSession extends DebugSession {
         log: (message: string): void => {
           emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
         },
-        backend: assemblerBackend,
       }));
 
       const sourceState = this.sourceState.build({
