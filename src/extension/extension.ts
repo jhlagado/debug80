@@ -18,6 +18,7 @@ let movingEditor = false;
 const DEFAULT_SOURCE_COLUMN = vscode.ViewColumn.One;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 const ASM_LANGUAGE_ID = 'z80-asm';
+const ZAX_LANGUAGE_ID = 'zax';
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
@@ -27,11 +28,15 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('Debug80');
   const platformViewProvider = new PlatformViewProvider(context.extensionUri);
 
-  const ensureAsmLanguage = async (doc: vscode.TextDocument): Promise<void> => {
-    if (!doc.uri.path.toLowerCase().endsWith('.asm')) {
+  const ensureLanguage = async (
+    doc: vscode.TextDocument,
+    extension: string,
+    languageId: string
+  ): Promise<void> => {
+    if (!doc.uri.path.toLowerCase().endsWith(extension)) {
       return;
     }
-    if (doc.languageId === ASM_LANGUAGE_ID) {
+    if (doc.languageId === languageId) {
       return;
     }
     const scheme = doc.uri.scheme;
@@ -39,19 +44,32 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     try {
-      await vscode.languages.setTextDocumentLanguage(doc, ASM_LANGUAGE_ID);
-      output.appendLine(`Set ${doc.uri.fsPath} language to ${ASM_LANGUAGE_ID} (was ${doc.languageId})`);
+      await vscode.languages.setTextDocumentLanguage(doc, languageId);
+      output.appendLine(`Set ${doc.uri.fsPath} language to ${languageId} (was ${doc.languageId})`);
     } catch (err) {
       output.appendLine(`Failed to set language for ${doc.uri.fsPath}: ${String(err)}`);
     }
   };
 
+  const ensureAsmLanguage = async (doc: vscode.TextDocument): Promise<void> =>
+    ensureLanguage(doc, '.asm', ASM_LANGUAGE_ID);
+
+  const ensureZaxLanguage = async (doc: vscode.TextDocument): Promise<void> =>
+    ensureLanguage(doc, '.zax', ZAX_LANGUAGE_ID);
+
   void vscode.languages.getLanguages().then((languages) => {
-    const hasLang = languages.includes(ASM_LANGUAGE_ID);
-    output.appendLine(`Language ${ASM_LANGUAGE_ID} available: ${hasLang}`);
-    if (hasLang) {
+    const hasAsmLang = languages.includes(ASM_LANGUAGE_ID);
+    const hasZaxLang = languages.includes(ZAX_LANGUAGE_ID);
+    output.appendLine(`Language ${ASM_LANGUAGE_ID} available: ${hasAsmLang}`);
+    output.appendLine(`Language ${ZAX_LANGUAGE_ID} available: ${hasZaxLang}`);
+    if (hasAsmLang || hasZaxLang) {
       for (const doc of vscode.workspace.textDocuments) {
-        void ensureAsmLanguage(doc);
+        if (hasAsmLang) {
+          void ensureAsmLanguage(doc);
+        }
+        if (hasZaxLang) {
+          void ensureZaxLanguage(doc);
+        }
       }
     }
   });
@@ -63,6 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((doc) => {
       void ensureAsmLanguage(doc);
+      void ensureZaxLanguage(doc);
     })
   );
 

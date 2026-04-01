@@ -39,10 +39,20 @@ function extractAsmLanguageId(): string {
   return match[1];
 }
 
+function extractZaxLanguageId(): string {
+  const src = fs.readFileSync(EXT_PATH, 'utf8');
+  const match = src.match(/const ZAX_LANGUAGE_ID\s*=\s*'([^']+)'/);
+  if (match === null || match[1] === undefined) {
+    throw new Error('Could not find ZAX_LANGUAGE_ID in extension.ts');
+  }
+  return match[1];
+}
+
 describe('package.json language contracts', () => {
   const pkg = loadPackageJson();
   const contributes = pkg.contributes;
   const asmLanguageId = extractAsmLanguageId();
+  const zaxLanguageId = extractZaxLanguageId();
 
   it('ASM_LANGUAGE_ID is a contributed language', () => {
     const ids = contributes.languages.map((l) => l.id);
@@ -63,6 +73,22 @@ describe('package.json language contracts', () => {
     const lang = contributes.languages.find((l) => l.id === asmLanguageId);
     expect(lang).toBeDefined();
     expect(lang!.extensions).toContain('.asm');
+  });
+
+  it('ZAX_LANGUAGE_ID is a contributed language', () => {
+    const ids = contributes.languages.map((l) => l.id);
+    expect(ids).toContain(zaxLanguageId);
+  });
+
+  it('.zax files are associated with ZAX_LANGUAGE_ID', () => {
+    const assoc = contributes.configurationDefaults['files.associations'];
+    expect(assoc['*.zax']).toBe(zaxLanguageId);
+  });
+
+  it('contributed language claims .zax extension', () => {
+    const lang = contributes.languages.find((l) => l.id === zaxLanguageId);
+    expect(lang).toBeDefined();
+    expect(lang!.extensions).toContain('.zax');
   });
 
   it('every contributed language has a breakpoint entry', () => {
