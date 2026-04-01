@@ -10,7 +10,7 @@ import {
   SourceMapSegment,
   parseMapping,
 } from '../mapping/parser';
-import type { AssemblerBackend } from './assembler-backend';
+import { resolveAssemblerBackend } from './assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyLayer2 } from '../mapping/layer2';
 import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn } from '../mapping/source-map';
@@ -52,7 +52,6 @@ export function buildMappingFromListing(options: {
   extraListingPaths: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
   service: MappingServiceOptions;
-  backend?: AssemblerBackend;
 }): MappingBuildResult {
   const {
     listingContent,
@@ -62,7 +61,6 @@ export function buildMappingFromListing(options: {
     extraListingPaths,
     mapArgs,
     service,
-    backend,
   } = options;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
@@ -95,7 +93,7 @@ export function buildMappingFromListing(options: {
   }
 
   let mapping = buildMappingFromD8DebugMap(debugMap);
-  const extraMapping = loadExtraListingMapping(extraListingPaths, service, backend);
+  const extraMapping = loadExtraListingMapping(extraListingPaths, service);
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
   }
@@ -212,8 +210,7 @@ function writeDebugMap(
 
 function loadExtraListingMapping(
   listingPaths: string[],
-  service: MappingServiceOptions,
-  backend?: AssemblerBackend
+  service: MappingServiceOptions
 ): MappingParseResult | undefined {
   if (listingPaths.length === 0) {
     return undefined;
@@ -239,7 +236,7 @@ function loadExtraListingMapping(
         continue;
       }
 
-      const mapping = buildExtraListingMapping(listingPath, service, backend);
+      const mapping = buildExtraListingMapping(listingPath, service);
       if (!mapping) {
         continue;
       }
@@ -265,13 +262,13 @@ function loadExtraListingMapping(
 
 function buildExtraListingMapping(
   listingPath: string,
-  service: MappingServiceOptions,
-  backend?: AssemblerBackend
+  service: MappingServiceOptions
 ): MappingParseResult | undefined {
   const fallbackSource = resolveListingSourcePath(listingPath);
   if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
     try {
-      const backendMapping = backend?.compileMappingInProcess?.(
+      const backend = resolveAssemblerBackend(undefined, fallbackSource);
+      const backendMapping = backend.compileMappingInProcess?.(
         fallbackSource,
         path.dirname(fallbackSource)
       );
@@ -280,10 +277,7 @@ function buildExtraListingMapping(
       }
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
-      const backendId = backend?.id ?? 'assembler';
-      service.log(
-        `${prefix}: ${backendId} failed to build ROM mapping for "${fallbackSource}": ${String(err)}`
-      );
+      service.log(`${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`);
     }
   }
   const content = fs.readFileSync(listingPath, 'utf-8');

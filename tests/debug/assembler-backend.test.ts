@@ -20,6 +20,10 @@ describe('assembler-backend', () => {
     expect(resolveAssemblerBackend('asm80', undefined)).toBeInstanceOf(Asm80Backend);
   });
 
+  it('returns asm80 for asm-family source paths', () => {
+    expect(resolveAssemblerBackend(undefined, '/tmp/program.asm')).toBeInstanceOf(Asm80Backend);
+  });
+
   it('matches asm80 case-insensitively', () => {
     expect(resolveAssemblerBackend('ASM80', undefined)).toBeInstanceOf(Asm80Backend);
   });
