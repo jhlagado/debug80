@@ -7,9 +7,9 @@ import type {
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
 } from '../platforms/types';
+import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from './types';
 import { emitConsoleOutput, type EventSender } from './adapter-ui';
-import { runAssembler, runAssemblerBin } from './assembler';
 
 export function resolveExtraListings(
   platform: string,
@@ -30,6 +30,7 @@ export function resolveExtraListings(
 }
 
 export function assembleIfRequested(options: {
+  backend: AssemblerBackend;
   args: LaunchRequestArguments;
   asmPath: string | undefined;
   hexPath: string;
@@ -38,16 +39,16 @@ export function assembleIfRequested(options: {
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent: EventSender;
 }): void {
-  const { args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } = options;
+  const { backend, args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } = options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }
 
-  const result = runAssembler(asmPath, hexPath, listingPath, (message) => {
+  const result = backend.assemble({ asmPath, hexPath, listingPath, onOutput: (message) => {
     emitConsoleOutput(sendEvent, message, { newline: false });
-  });
+  } });
   if (!result.success) {
-    throw new Error(result.error ?? 'asm80 failed to assemble');
+    throw new Error(result.error ?? `${backend.id} failed to assemble`);
   }
 
   if (
@@ -55,17 +56,17 @@ export function assembleIfRequested(options: {
     simpleConfig?.binFrom !== undefined &&
     simpleConfig.binTo !== undefined
   ) {
-    const binResult = runAssemblerBin(
+    const binResult = backend.assembleBin?.({
       asmPath,
       hexPath,
-      simpleConfig.binFrom,
-      simpleConfig.binTo,
-      (message) => {
+      binFrom: simpleConfig.binFrom,
+      binTo: simpleConfig.binTo,
+      onOutput: (message) => {
         emitConsoleOutput(sendEvent, message, { newline: false });
-      }
-    );
-    if (!binResult.success) {
-      throw new Error(binResult.error ?? 'asm80 failed to build binary');
+      },
+    });
+    if (binResult && !binResult.success) {
+      throw new Error(binResult.error ?? `${backend.id} failed to build binary`);
     }
   }
 }

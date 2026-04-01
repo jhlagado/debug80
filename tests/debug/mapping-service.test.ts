@@ -6,8 +6,12 @@ import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import type { AssemblerBackend } from '../../src/debug/assembler-backend';
+
+const resolveListingSourcePathMock = vi.hoisted(() => vi.fn(() => undefined));
+
 vi.mock('../../src/debug/path-resolver', () => ({
-  resolveListingSourcePath: () => undefined,
+  resolveListingSourcePath: resolveListingSourcePathMock,
 }));
 
 import { buildMappingFromListing } from '../../src/debug/mapping-service';
@@ -155,5 +159,118 @@ describe('mapping-service', () => {
 
     expect(result.mapping.segments.length).toBeGreaterThan(0);
     expect(logs.some((line) => line.includes('Regenerating'))).toBe(true);
+  });
+
+  it('uses backend in-process mapping for extra listings when available', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'simple.lst');
+    const asmPath = path.join(dir, 'simple.asm');
+    const extraListingPath = path.join(dir, 'extra.lst');
+    const extraSourcePath = path.join(dir, 'extra.asm');
+    const mapPath = path.join(dir, 'simple.d8.json');
+
+    writeFile(listingPath, listingContent);
+    writeFile(asmPath, asmContent);
+    writeFile(extraListingPath, listingContent.replace('0000', '0100'));
+    writeFile(extraSourcePath, asmContent);
+    resolveListingSourcePathMock.mockReturnValue(extraSourcePath);
+
+    const compileMappingInProcess = vi.fn(() => ({
+      segments: [
+        {
+          start: 0x100,
+          end: 0x101,
+          loc: { file: extraSourcePath, line: 1 },
+          lst: { line: 1, text: 'NOP' },
+          confidence: 'HIGH' as const,
+        },
+      ],
+      anchors: [],
+    }));
+    const backend: AssemblerBackend = {
+      id: 'mock-asm',
+      assemble: () => ({ success: true }),
+      compileMappingInProcess,
+    };
+
+    const result = buildMappingFromListing({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [extraListingPath],
+      mapArgs: {},
+      backend,
+      service: {
+        platform: 'simple',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.resolve(dir, file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
+        resolveDebugMapPath: () => mapPath,
+        log: () => undefined,
+      },
+    });
+
+    expect(compileMappingInProcess).toHaveBeenCalledWith(extraSourcePath, path.dirname(extraSourcePath));
+    expect(result.mapping.segments.some((segment) => segment.loc.file === extraSourcePath)).toBe(true);
+  });
+
+  it('falls back to listing parsing when backend lacks in-process mapping', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'simple.lst');
+    const asmPath = path.join(dir, 'simple.asm');
+    const extraListingPath = path.join(dir, 'extra.lst');
+    const extraSourcePath = path.join(dir, 'extra.asm');
+    const mapPath = path.join(dir, 'simple.d8.json');
+    const extraListingContent = '0100 00 NOP\n';
+
+    writeFile(listingPath, listingContent);
+    writeFile(asmPath, asmContent);
+    writeFile(extraListingPath, extraListingContent);
+    writeFile(extraSourcePath, asmContent);
+    resolveListingSourcePathMock.mockReturnValue(extraSourcePath);
+
+    const backend: AssemblerBackend = {
+      id: 'mock-asm',
+      assemble: () => ({ success: true }),
+    };
+
+    const result = buildMappingFromListing({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [extraListingPath],
+      mapArgs: {},
+      backend,
+      service: {
+        platform: 'simple',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.resolve(dir, file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
+        resolveDebugMapPath: () => mapPath,
+        log: () => undefined,
+      },
+    });
+
+    expect(
+      result.mapping.segments.some(
+        (segment) =>
+          segment.start === 0x100 &&
+          segment.end === 0x101 &&
+          segment.loc.file === extraSourcePath &&
+          segment.loc.line === 1
+      )
+    ).toBe(true);
   });
 });

@@ -76,13 +76,14 @@ describe('launch-args', () => {
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
-      JSON.stringify({ asm: 'a.asm', entry: 4660, target: 'default' })
+      JSON.stringify({ asm: 'a.asm', assembler: 'asm80', entry: 4660, target: 'default' })
     );
     const merged = populateFromConfig(
       { projectConfig: configPath } as LaunchRequestArguments,
       { resolveBaseDir: () => dir }
     );
     expect(merged.asm).toBe('a.asm');
+    expect(merged.assembler).toBe('asm80');
     expect(merged.entry).toBe(4660);
   });
 

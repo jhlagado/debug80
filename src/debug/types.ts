@@ -46,6 +46,8 @@ export interface TerminalState {
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   /** Path to the main assembly source file */
   asm?: string;
+  /** Assembler backend to use (default: asm80) */
+  assembler?: string;
   /** Alternative path to the source file (alias for asm) */
   sourceFile?: string;
   /** Path to the Intel HEX file */
@@ -96,6 +98,7 @@ export interface ProjectConfig {
   targets?: Record<string, Partial<LaunchRequestArguments> & { source?: string }>;
   /** Fields that can be specified at the root level */
   asm?: string;
+  assembler?: string;
   sourceFile?: string;
   source?: string;
   hex?: string;
