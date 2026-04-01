@@ -129,9 +129,10 @@ describe('platform providers', () => {
       state: { bank: 0 },
       setCartridgePresent: vi.fn(),
     } as never;
+    const runtimeMemory = new Uint8Array(0x10000);
     const runtime = {
       hardware: {
-        memory: new Uint8Array(0x10000),
+        memory: runtimeMemory,
       },
     } as never;
     const assets = {
@@ -155,7 +156,7 @@ describe('platform providers', () => {
     });
 
     expect(createTec1gMemoryHooks).toHaveBeenCalledWith(
-      runtime.hardware.memory,
+      runtimeMemory,
       provider.runtimeOptions?.romRanges ?? [],
       context.sessionState.tec1gRuntime?.state
     );
