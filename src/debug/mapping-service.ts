@@ -4,26 +4,17 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as asm80Module from 'asm80/asm.js';
-import * as asm80Monolith from 'asm80/monolith.js';
 import {
   MappingParseResult,
   SourceMapAnchor,
   SourceMapSegment,
   parseMapping,
 } from '../mapping/parser';
+import { resolveAssemblerBackend } from './assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyLayer2 } from '../mapping/layer2';
-import {
-  buildSourceMapIndex,
-  SourceMapIndex,
-  ResolvePathFn,
-} from '../mapping/source-map';
-import {
-  buildD8DebugMap,
-  buildMappingFromD8DebugMap,
-  parseD8DebugMap,
-} from '../mapping/d8-map';
+import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn } from '../mapping/source-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import { legacyDebugMapPath } from './d8-map-paths';
 
 export interface MappingServiceOptions {
@@ -123,7 +114,9 @@ function isDebugMapStale(mapPath: string, listingPath: string): boolean {
     return false;
   }
   const legacyPath = legacyDebugMapPath(mapPath);
-  const mapCandidates = [mapPath, legacyPath].filter((p): p is string => p !== null && fs.existsSync(p));
+  const mapCandidates = [mapPath, legacyPath].filter(
+    (p): p is string => p !== null && fs.existsSync(p)
+  );
   if (mapCandidates.length === 0) {
     return false;
   }
@@ -234,7 +227,8 @@ function loadExtraListingMapping(
         );
       }
 
-      let debugMap = !mapStale && fs.existsSync(mapPath) ? loadDebugMap(mapPath, service) : undefined;
+      let debugMap =
+        !mapStale && fs.existsSync(mapPath) ? loadDebugMap(mapPath, service) : undefined;
       if (debugMap) {
         const mapping = buildMappingFromD8DebugMap(debugMap);
         combined.segments.push(...mapping.segments);
@@ -272,9 +266,18 @@ function buildExtraListingMapping(
 ): MappingParseResult | undefined {
   const fallbackSource = resolveListingSourcePath(listingPath);
   if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-    const asmMapping = buildAsm80Mapping(fallbackSource, service);
-    if (asmMapping) {
-      return asmMapping;
+    try {
+      const backend = resolveAssemblerBackend(undefined, fallbackSource);
+      const backendMapping = backend.compileMappingInProcess?.(
+        fallbackSource,
+        path.dirname(fallbackSource)
+      );
+      if (backendMapping) {
+        return backendMapping;
+      }
+    } catch (err) {
+      const prefix = `Debug80 [${service.platform}]`;
+      service.log(`${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`);
     }
   }
   const content = fs.readFileSync(listingPath, 'utf-8');
@@ -365,81 +368,4 @@ function applyTec1gBootstrapAlias(mapping: MappingParseResult): void {
   if (aliasedAnchors.length > 0) {
     mapping.anchors.push(...aliasedAnchors);
   }
-}
-
-function buildAsm80Mapping(
-  sourcePath: string,
-  service: MappingServiceOptions
-): MappingParseResult | undefined {
-  const baseDir = path.dirname(sourcePath);
-  const sourceText = fs.readFileSync(sourcePath, 'utf-8');
-  asm80Module.fileGet((file: string, binary?: boolean) => {
-    const resolved = path.resolve(baseDir, file);
-    if (!fs.existsSync(resolved)) {
-      return null;
-    }
-    return binary === true ? fs.readFileSync(resolved) : fs.readFileSync(resolved, 'utf-8');
-  });
-  const [err, compiled, symbols] = asm80Module.compile(sourceText, asm80Monolith.Z80);
-  if (err !== null && err !== undefined) {
-    const message = typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err);
-    service.log(`Debug80: asm80 failed to build ROM mapping for "${sourcePath}": ${message}`);
-    return undefined;
-  }
-  const lines = Array.isArray(compiled?.[0]) ? compiled[0] : [];
-  const segments: SourceMapSegment[] = [];
-  for (const entry of lines) {
-    if (typeof entry.addr !== 'number' || !Array.isArray(entry.lens) || entry.lens.length === 0) {
-      continue;
-    }
-    const start = entry.addr & 0xffff;
-    const end = Math.min(0x10000, start + entry.lens.length);
-    const file =
-      typeof entry.includedFile === 'string' && entry.includedFile.length > 0
-        ? path.resolve(baseDir, entry.includedFile)
-        : sourcePath;
-    const lineNumber =
-      typeof entry.numline === 'number' && Number.isFinite(entry.numline) ? entry.numline : null;
-    segments.push({
-      start,
-      end,
-      loc: { file, line: lineNumber },
-      lst: {
-        line: typeof entry.numline === 'number' ? entry.numline : 0,
-        text: typeof entry.line === 'string' ? entry.line : '',
-      },
-      confidence: 'HIGH',
-    });
-  }
-
-  const anchors: SourceMapAnchor[] = [];
-  if (symbols !== null && symbols !== undefined) {
-    for (const [name, entry] of Object.entries(symbols)) {
-      if (!name || name.endsWith('$') || (name[0] === '_' && name[1] === '_')) {
-        continue;
-      }
-      if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
-        continue;
-      }
-      const defined = entry.defined;
-      const fileRaw = defined?.file;
-      const file =
-        typeof fileRaw === 'string' && fileRaw !== '*main*' && fileRaw.length > 0
-          ? path.resolve(baseDir, fileRaw)
-          : sourcePath;
-      const lineNumber =
-        typeof defined?.line === 'number' && Number.isFinite(defined.line) ? defined.line : 1;
-      anchors.push({
-        symbol: name,
-        address: entry.value & 0xffff,
-        file,
-        line: lineNumber,
-      });
-    }
-  }
-
-  if (segments.length === 0 && anchors.length === 0) {
-    return undefined;
-  }
-  return { segments, anchors };
 }

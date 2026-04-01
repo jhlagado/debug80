@@ -192,7 +192,15 @@
               },
               "asm": {
                 "type": "string",
-                "description": "Root asm file to assemble with asm80"
+                "description": "Root assembly source file"
+              },
+              "assembler": {
+                "type": "string",
+                "description": "Assembler backend to use (default: asm80)",
+                "enum": [
+                  "asm80"
+                ],
+                "default": "asm80"
               },
               "outputDir": {
                 "type": "string",
@@ -241,7 +249,7 @@
               },
               "assemble": {
                 "type": "boolean",
-                "description": "Run asm80 before launch when asm is provided",
+                "description": "Run the assembler before launch when asm is provided",
                 "default": true
               },
               "sourceRoots": {
@@ -297,7 +305,7 @@
         "configurationSnippets": [
           {
             "label": "Z80: Launch (HEX + LST)",
-            "description": "Launch and debug a Z80 program from HEX/LST (asm80-generated)",
+            "description": "Launch and debug a Z80 program from HEX/LST",
             "body": {
               "type": "z80",
               "request": "launch",

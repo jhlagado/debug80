@@ -79,10 +79,7 @@ export class SourceManager {
       args.listingPath
     );
     const sourceRoots = this.resolveSourceRoots(args.sourceRoots);
-    const extraListingPaths = this.resolveExtraListingPaths(
-      args.extraListings,
-      args.listingPath
-    );
+    const extraListingPaths = this.resolveExtraListingPaths(args.extraListings, args.listingPath);
     const mergedRoots = this.extendSourceRoots(sourceRoots, extraListingPaths);
 
     const mappingResult = this.buildMapping({
