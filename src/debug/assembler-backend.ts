@@ -6,8 +6,10 @@ import * as path from 'path';
 import type { MappingParseResult } from '../mapping/parser';
 import type { AssembleResult } from './assembler';
 import { Asm80Backend } from './asm80-backend';
+import { ZaxBackend } from './zax-backend';
 
 const asm80SourceExtensions = new Set(['.a80', '.asm', '.inc', '.s', '.z80']);
+const zaxSourceExtensions = new Set(['.zax']);
 
 export interface AssembleOptions {
   asmPath: string;
@@ -40,6 +42,9 @@ function inferAssemblerBackend(asmPath: string | undefined): string | undefined 
   if (asm80SourceExtensions.has(extension)) {
     return 'asm80';
   }
+  if (zaxSourceExtensions.has(extension)) {
+    return 'zax';
+  }
 
   return undefined;
 }
@@ -53,6 +58,9 @@ export function resolveAssemblerBackend(
 
   if (id === undefined || id === '' || id === 'asm80') {
     return new Asm80Backend();
+  }
+  if (id === 'zax') {
+    return new ZaxBackend();
   }
 
   throw new Error(`Unknown assembler backend: "${assembler}"`);
