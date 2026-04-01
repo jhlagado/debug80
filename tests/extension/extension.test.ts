@@ -6,7 +6,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const registerCommand = vi.fn(() => ({ dispose: vi.fn() }));
 const registerDebugAdapterDescriptorFactory = vi.fn(() => ({ dispose: vi.fn() }));
-const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidStartDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidTerminateDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidReceiveDebugSessionCustomEvent = vi.fn(() => ({ dispose: vi.fn() }));
