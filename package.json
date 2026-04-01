@@ -198,7 +198,8 @@
                 "type": "string",
                 "description": "Assembler backend to use (default: asm80)",
                 "enum": [
-                  "asm80"
+                  "asm80",
+                  "zax"
                 ],
                 "default": "asm80"
               },
@@ -354,6 +355,7 @@
     "vitest": "0.33.0"
   },
   "dependencies": {
+    "@jhlagado/zax": "^0.1.0",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0",
     "asm80": "^1.11.14"
