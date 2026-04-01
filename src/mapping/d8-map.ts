@@ -315,7 +315,7 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
   for (const [fileKey, entry] of Object.entries(files)) {
     const file = fromFileKey(fileKey);
     for (const segment of entry.segments ?? []) {
-      const line = segment.line ?? segment.lstLine ?? null;
+      const line = segment.line ?? null;
       const confidence = segment.confidence ?? defaultConfidence;
 
       const lstLine = segment.lstLine;

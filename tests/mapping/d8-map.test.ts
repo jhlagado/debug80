@@ -152,7 +152,7 @@ describe('d8-map', () => {
     expect(rebuilt.segments[0]?.confidence).toBe('LOW');
   });
 
-  it('falls back to lstLine when source line is omitted', () => {
+  it('keeps source line unknown when line is omitted', () => {
     const map = {
       format: 'd8-debug-map',
       version: 1,
@@ -167,7 +167,7 @@ describe('d8-map', () => {
     };
 
     const rebuilt = buildMappingFromD8DebugMap(map as never);
-    expect(rebuilt.segments[0]?.loc.line).toBe(99);
+    expect(rebuilt.segments[0]?.loc.line).toBeNull();
     expect(rebuilt.segments[0]?.lst.line).toBe(99);
   });
 

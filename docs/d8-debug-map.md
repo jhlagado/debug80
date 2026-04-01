@@ -194,14 +194,16 @@ Fields:
 
 ## Integration with Debug80
 
-- Debug80 writes `build/main.d8.json` alongside the build artifacts.
-- On launch, Debug80 loads the map if present; if missing or invalid, it
-  regenerates the map from the `.lst`.
+- Debug80 loads `build/main.d8.json` if present.
+- If the map is missing or invalid, Debug80 regenerates a map from the `.lst`
+  and writes that cache alongside the build artifacts.
+- For native producer-generated maps such as ZAX output, Debug80 preserves the
+  existing `.d8.json` even when it is older than the `.lst`.
 
 ## Workflow
 
 1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
-2) Debug80 writes `build/main.d8.json`.
+2) The assembler or Debug80 may provide `build/main.d8.json`.
 3) Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not
