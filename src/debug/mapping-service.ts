@@ -10,19 +10,11 @@ import {
   SourceMapSegment,
   parseMapping,
 } from '../mapping/parser';
-import { Asm80Backend } from './asm80-backend';
+import type { AssemblerBackend } from './assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyLayer2 } from '../mapping/layer2';
-import {
-  buildSourceMapIndex,
-  SourceMapIndex,
-  ResolvePathFn,
-} from '../mapping/source-map';
-import {
-  buildD8DebugMap,
-  buildMappingFromD8DebugMap,
-  parseD8DebugMap,
-} from '../mapping/d8-map';
+import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn } from '../mapping/source-map';
+import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../mapping/d8-map';
 import { legacyDebugMapPath } from './d8-map-paths';
 
 export interface MappingServiceOptions {
@@ -60,6 +52,7 @@ export function buildMappingFromListing(options: {
   extraListingPaths: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
   service: MappingServiceOptions;
+  backend?: AssemblerBackend;
 }): MappingBuildResult {
   const {
     listingContent,
@@ -69,6 +62,7 @@ export function buildMappingFromListing(options: {
     extraListingPaths,
     mapArgs,
     service,
+    backend,
   } = options;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
@@ -101,7 +95,7 @@ export function buildMappingFromListing(options: {
   }
 
   let mapping = buildMappingFromD8DebugMap(debugMap);
-  const extraMapping = loadExtraListingMapping(extraListingPaths, service);
+  const extraMapping = loadExtraListingMapping(extraListingPaths, service, backend);
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
   }
@@ -122,7 +116,9 @@ function isDebugMapStale(mapPath: string, listingPath: string): boolean {
     return false;
   }
   const legacyPath = legacyDebugMapPath(mapPath);
-  const mapCandidates = [mapPath, legacyPath].filter((p): p is string => p !== null && fs.existsSync(p));
+  const mapCandidates = [mapPath, legacyPath].filter(
+    (p): p is string => p !== null && fs.existsSync(p)
+  );
   if (mapCandidates.length === 0) {
     return false;
   }
@@ -216,7 +212,8 @@ function writeDebugMap(
 
 function loadExtraListingMapping(
   listingPaths: string[],
-  service: MappingServiceOptions
+  service: MappingServiceOptions,
+  backend?: AssemblerBackend
 ): MappingParseResult | undefined {
   if (listingPaths.length === 0) {
     return undefined;
@@ -233,7 +230,8 @@ function loadExtraListingMapping(
         );
       }
 
-      let debugMap = !mapStale && fs.existsSync(mapPath) ? loadDebugMap(mapPath, service) : undefined;
+      let debugMap =
+        !mapStale && fs.existsSync(mapPath) ? loadDebugMap(mapPath, service) : undefined;
       if (debugMap) {
         const mapping = buildMappingFromD8DebugMap(debugMap);
         combined.segments.push(...mapping.segments);
@@ -241,7 +239,7 @@ function loadExtraListingMapping(
         continue;
       }
 
-      const mapping = buildExtraListingMapping(listingPath, service);
+      const mapping = buildExtraListingMapping(listingPath, service, backend);
       if (!mapping) {
         continue;
       }
@@ -267,22 +265,24 @@ function loadExtraListingMapping(
 
 function buildExtraListingMapping(
   listingPath: string,
-  service: MappingServiceOptions
+  service: MappingServiceOptions,
+  backend?: AssemblerBackend
 ): MappingParseResult | undefined {
   const fallbackSource = resolveListingSourcePath(listingPath);
   if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
     try {
-      const asm80Mapping = new Asm80Backend().compileMappingInProcess(
+      const backendMapping = backend?.compileMappingInProcess?.(
         fallbackSource,
         path.dirname(fallbackSource)
       );
-      if (asm80Mapping) {
-        return asm80Mapping;
+      if (backendMapping) {
+        return backendMapping;
       }
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
+      const backendId = backend?.id ?? 'assembler';
       service.log(
-        `${prefix}: asm80 failed to build ROM mapping for "${fallbackSource}": ${String(err)}`
+        `${prefix}: ${backendId} failed to build ROM mapping for "${fallbackSource}": ${String(err)}`
       );
     }
   }
