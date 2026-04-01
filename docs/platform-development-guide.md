@@ -42,6 +42,6 @@ preserving TEC-1 compatibility and keeping the UI responsive.
 - If ROM layout changes, confirm in `docs/platforms/<platform>/README.md`.
 
 ## Quick Validation
-- `yarn lint`
-- `yarn build`
+- `npm run lint`
+- `npm run build`
 - Run a minimal debug session with the new platform target.
