@@ -1,35 +1,44 @@
 /**
- * @fileoverview Debug adapter provider for the TEC-1G platform.
+ * @file Debug adapter provider for the TEC-1G platform.
  */
 
-import * as fs from "fs";
-import type { DebugProtocol } from "@vscode/debugprotocol";
-import { applyCartridgeMemory, createTec1gMemoryHooks } from "../../debug/tec1g-memory";
+import * as fs from 'fs';
+import type { DebugProtocol } from '@vscode/debugprotocol';
+import {
+  applyCartridgeMemory,
+  createTec1gMemoryHooks,
+} from '../../debug/tec1g-memory';
 import {
   loadTec1gCartridgeImage,
   type Tec1gCartridgeImage,
-} from "../../debug/tec1g-cartridge";
-import { buildPlatformIoHandlers } from "../../debug/platform-host";
+} from '../../debug/tec1g-cartridge';
+import {
+  buildPlatformIoHandlers,
+  type PlatformIoBuildResult,
+} from '../../debug/platform-host';
 import {
   handleKeyRequest,
   handleResetRequest,
   handleSerialRequest,
   handleSpeedRequest,
-} from "../../debug/platform-requests";
-import type { PlatformContribution } from "../../debug/platform-registry";
-import { extractKeyCode, type LaunchRequestArguments } from "../../debug/types";
+} from '../../debug/platform-requests';
+import type { PlatformContribution } from '../../debug/platform-registry';
+import { extractKeyCode, type LaunchRequestArguments } from '../../debug/types';
 import type {
   PlatformAssetLoadContext,
   PlatformCommandContext,
   PlatformRuntimeFinalizeContext,
   ResolvedPlatformProvider,
-} from "../provider";
-import { normalizeTec1gConfig } from "./runtime";
+} from '../provider';
+import { normalizeTec1gConfig } from './runtime';
 
 type Tec1gPlatformAssets = {
   cartridgeImage: Tec1gCartridgeImage | null;
 };
 
+/**
+ * Sends a successful or failed custom request response.
+ */
 function sendPlatformResponse(
   response: DebugProtocol.Response,
   error: string | null,
@@ -45,21 +54,24 @@ function sendPlatformResponse(
   return true;
 }
 
+/**
+ * Builds the TEC-1G custom request contribution.
+ */
 function buildTec1gContribution(context: PlatformCommandContext): PlatformContribution {
   return {
-    id: "tec1g",
+    id: 'tec1g',
     commands: {
-      "debug80/tec1gKey": (response, args) =>
+      'debug80/tec1gKey': (response, args) =>
         sendPlatformResponse(
           response,
           handleKeyRequest(context.sessionState.tec1gRuntime, extractKeyCode(args)),
           context
         ),
-      "debug80/tec1gMatrixKey": (response, args) =>
+      'debug80/tec1gMatrixKey': (response, args) =>
         sendPlatformResponse(response, context.handleMatrixKeyRequest(args), context),
-      "debug80/tec1gMatrixMode": (response, args) =>
+      'debug80/tec1gMatrixMode': (response, args) =>
         sendPlatformResponse(response, context.handleMatrixModeRequest(args), context),
-      "debug80/tec1gReset": (response) =>
+      'debug80/tec1gReset': (response) =>
         sendPlatformResponse(
           response,
           handleResetRequest(
@@ -71,13 +83,13 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
           context,
           () => context.clearMatrixHeldKeys()
         ),
-      "debug80/tec1gSpeed": (response, args) =>
+      'debug80/tec1gSpeed': (response, args) =>
         sendPlatformResponse(
           response,
           handleSpeedRequest(context.sessionState.tec1gRuntime, args),
           context
         ),
-      "debug80/tec1gSerialInput": (response, args) =>
+      'debug80/tec1gSerialInput': (response, args) =>
         sendPlatformResponse(
           response,
           handleSerialRequest(context.sessionState.tec1gRuntime, args),
@@ -87,28 +99,34 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
   };
 }
 
+/**
+ * Loads optional TEC-1G launch assets.
+ */
 function loadTec1gAssets(
   cartridgeHex: string | undefined,
   context: PlatformAssetLoadContext
 ): Tec1gPlatformAssets {
-  if (cartridgeHex === undefined || cartridgeHex === "") {
+  if (cartridgeHex === undefined || cartridgeHex === '') {
     return { cartridgeImage: null };
   }
 
   const cartridgePath = context.resolveRelative(cartridgeHex, context.baseDir);
   if (!fs.existsSync(cartridgePath)) {
-    context.log("Debug80: TEC-1G cartridge not found at \"" + cartridgePath + "\".");
+    context.log('Debug80: TEC-1G cartridge not found at  + cartridgePath + .');
     return { cartridgeImage: null };
   }
 
   try {
     return { cartridgeImage: loadTec1gCartridgeImage(cartridgePath) };
   } catch (err) {
-    context.log("Debug80: Failed to load cartridge \"" + cartridgePath + "\": " + String(err));
+    context.log('Debug80: Failed to load cartridge  + cartridgePath + : ' + String(err));
     return { cartridgeImage: null };
   }
 }
 
+/**
+ * Applies TEC-1G runtime hooks after the core runtime is created.
+ */
 function finalizeTec1gRuntime(
   config: ReturnType<typeof normalizeTec1gConfig>,
   context: PlatformRuntimeFinalizeContext
@@ -131,25 +149,28 @@ function finalizeTec1gRuntime(
   tec1gRuntime.setCartridgePresent(false);
 }
 
+/**
+ * Creates the debug adapter provider for TEC-1G launches.
+ */
 export function createTec1gPlatformProvider(
   args: LaunchRequestArguments
 ): ResolvedPlatformProvider {
   const tec1gConfig = normalizeTec1gConfig(args.tec1g);
   return {
-    id: "tec1g",
+    id: 'tec1g',
     payload: {
-      id: "tec1g",
+      id: 'tec1g',
       ...(tec1gConfig.uiVisibility ? { uiVisibility: tec1gConfig.uiVisibility } : {}),
     },
     tec1gConfig,
     extraListings: tec1gConfig.extraListings ?? [],
     runtimeOptions: { romRanges: tec1gConfig.romRanges },
-    registerCommands: (registry, context) => {
+    registerCommands: (registry, context): void => {
       registry.register(buildTec1gContribution(context));
     },
-    buildIoHandlers: (callbacks) =>
+    buildIoHandlers: (callbacks): PlatformIoBuildResult =>
       buildPlatformIoHandlers({
-        platform: "tec1g",
+        platform: 'tec1g',
         tec1gConfig,
         ...(callbacks.terminal !== undefined ? { terminal: callbacks.terminal } : {}),
         onTec1Update: callbacks.onTec1Update,
@@ -158,10 +179,11 @@ export function createTec1gPlatformProvider(
         onTec1gSerial: callbacks.onTec1gSerial,
         onTerminalOutput: callbacks.onTerminalOutput,
       }),
-    loadAssets: (context) => loadTec1gAssets(tec1gConfig.cartridgeHex, context),
-    resolveEntry: (assets) =>
+    loadAssets: (context): Tec1gPlatformAssets =>
+      loadTec1gAssets(tec1gConfig.cartridgeHex, context),
+    resolveEntry: (assets): number | undefined =>
       ((assets as Tec1gPlatformAssets | undefined)?.cartridgeImage?.bootEntry ??
         tec1gConfig.entry),
-    finalizeRuntime: (context) => finalizeTec1gRuntime(tec1gConfig, context),
+    finalizeRuntime: (context): void => finalizeTec1gRuntime(tec1gConfig, context),
   };
 }
