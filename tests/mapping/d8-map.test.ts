@@ -152,6 +152,25 @@ describe('d8-map', () => {
     expect(rebuilt.segments[0]?.confidence).toBe('LOW');
   });
 
+  it('keeps source line unknown when line is omitted', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0, end: 1, lstLine: 99 }],
+        },
+      },
+    };
+
+    const rebuilt = buildMappingFromD8DebugMap(map as never);
+    expect(rebuilt.segments[0]?.loc.line).toBeNull();
+    expect(rebuilt.segments[0]?.lst.line).toBe(99);
+  });
+
   it('rejects invalid map shapes and field types', () => {
     const cases: Array<[string, unknown]> = [
       ['Expected a JSON object.', 'not-an-object'],
