@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MappingParseResult } from '../mapping/parser';
 import { SourceMapIndex } from '../mapping/source-map';
+import type { AssemblerBackend } from './assembler-backend';
 import { buildMappingFromListing, MappingBuildResult } from './mapping-service';
 
 export interface SourceManagerOptions {
@@ -23,6 +24,7 @@ export interface SourceManagerOptions {
   resolveExtraDebugMapPath: (listingPath: string) => string;
   resolveListingSourcePath: (listingPath: string) => string | undefined;
   log: (message: string) => void;
+  backend?: AssemblerBackend;
 }
 
 export interface SourceManagerState {
@@ -59,6 +61,7 @@ export class SourceManager {
   private resolveExtraDebugMapPath: (listingPath: string) => string;
   private resolveListingSourcePath: (listingPath: string) => string | undefined;
   private log: (message: string) => void;
+  private backend: AssemblerBackend | undefined;
 
   public constructor(options: SourceManagerOptions) {
     this.platform = options.platform;
@@ -70,6 +73,7 @@ export class SourceManager {
     this.resolveExtraDebugMapPath = options.resolveExtraDebugMapPath;
     this.resolveListingSourcePath = options.resolveListingSourcePath;
     this.log = options.log;
+    this.backend = options.backend;
   }
 
   public buildState(args: BuildSourceStateArgs): SourceManagerState {
@@ -79,10 +83,7 @@ export class SourceManager {
       args.listingPath
     );
     const sourceRoots = this.resolveSourceRoots(args.sourceRoots);
-    const extraListingPaths = this.resolveExtraListingPaths(
-      args.extraListings,
-      args.listingPath
-    );
+    const extraListingPaths = this.resolveExtraListingPaths(args.extraListings, args.listingPath);
     const mergedRoots = this.extendSourceRoots(sourceRoots, extraListingPaths);
 
     const mappingResult = this.buildMapping({
@@ -146,6 +147,7 @@ export class SourceManager {
         : {}),
       extraListingPaths: args.extraListingPaths,
       mapArgs: args.mapArgs,
+      ...(this.backend ? { backend: this.backend } : {}),
       service: {
         platform: this.platform,
         baseDir: this.baseDir,

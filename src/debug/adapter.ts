@@ -26,7 +26,12 @@ import { normalizeSimpleConfig } from '../platforms/simple/runtime';
 import { normalizeTec1Config } from '../platforms/tec1/runtime';
 import { normalizeTec1gConfig } from '../platforms/tec1g/runtime';
 import { applyCartridgeMemory, createTec1gMemoryHooks } from './tec1g-memory';
-import { createSessionState, resetSessionState, StopReason, type SessionStateShape } from './session-state';
+import {
+  createSessionState,
+  resetSessionState,
+  StopReason,
+  type SessionStateShape,
+} from './session-state';
 import { loadProgramArtifacts } from './program-loader';
 import { loadTec1gCartridgeImage, type Tec1gCartridgeImage } from './tec1g-cartridge';
 import { BreakpointManager } from './breakpoint-manager';
@@ -51,10 +56,7 @@ import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g
 import { resolveAssemblerBackend } from './assembler-backend';
 
 // Import from extracted modules - types only for now (gradual migration)
-import {
-  LaunchRequestArguments,
-  extractKeyCode,
-} from './types';
+import { LaunchRequestArguments, extractKeyCode } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
@@ -78,11 +80,7 @@ import {
   type LaunchArgsHelpers,
 } from './launch-args';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
-import {
-  assembleIfRequested,
-  normalizeStepLimit,
-  resolveExtraListings,
-} from './launch-pipeline';
+import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from './launch-pipeline';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -145,10 +143,8 @@ export class Z80DebugSession extends DebugSession {
         commands: {
           'debug80/tec1Key': (response, args) => {
             const code = extractKeyCode(args);
-            const error = handleKeyRequest(
-              this.sessionState.tec1Runtime,
-              code,
-              () => this.sessionState.tec1gRuntime?.silenceSpeaker()
+            const error = handleKeyRequest(this.sessionState.tec1Runtime, code, () =>
+              this.sessionState.tec1gRuntime?.silenceSpeaker()
             );
             if (error !== null) {
               this.sendErrorResponse(response, 1, error);
@@ -386,26 +382,29 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.listing = listingInfo;
       this.sessionState.listingPath = listingPath;
       const extraListings = resolveExtraListings(platform, simpleConfig, tec1Config, tec1gConfig);
-      this.sourceState.setManager(new SourceManager({
-        platform,
-        baseDir,
-        resolveRelative: (p, dir) => resolveRelative(p, dir),
-        resolveMappedPath: (file) => this.resolveMappedPath(file),
-        relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-        resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, this.getLaunchArgsHelpers()),
-        resolveDebugMapPath: (args, dir, asm, listing) =>
-          resolveDebugMapPath(
-            args as LaunchRequestArguments,
-            dir,
-            asm,
-            listing,
-            this.getLaunchArgsHelpers()
-          ),
-        resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
-        log: (message: string): void => {
-          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
-        },
-      }));
+      this.sourceState.setManager(
+        new SourceManager({
+          platform,
+          baseDir,
+          resolveRelative: (p, dir) => resolveRelative(p, dir),
+          resolveMappedPath: (file) => this.resolveMappedPath(file),
+          relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
+          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, this.getLaunchArgsHelpers()),
+          resolveDebugMapPath: (args, dir, asm, listing) =>
+            resolveDebugMapPath(
+              args as LaunchRequestArguments,
+              dir,
+              asm,
+              listing,
+              this.getLaunchArgsHelpers()
+            ),
+          resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
+          log: (message: string): void => {
+            emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
+          },
+          backend: assemblerBackend,
+        })
+      );
 
       const sourceState = this.sourceState.build({
         listingContent,
@@ -430,7 +429,10 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.extraListingPaths = sourceState.extraListingPaths;
       this.sessionState.mapping = sourceState.mapping;
       this.sessionState.mappingIndex = sourceState.mappingIndex;
-      emitMainSource((event) => this.sendEvent(event as DebugProtocol.Event), this.sourceState.file);
+      emitMainSource(
+        (event) => this.sendEvent(event as DebugProtocol.Event),
+        this.sourceState.file
+      );
       const symbolIndex = buildSymbolIndex({
         mapping: this.sessionState.mapping,
         listingContent,
@@ -505,7 +507,11 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.loadedEntry = entry;
       this.sessionState.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
       const tec1gRuntime = this.sessionState.tec1gRuntime;
-      if (platform === 'tec1g' && this.sessionState.runtime !== undefined && tec1gRuntime !== undefined) {
+      if (
+        platform === 'tec1g' &&
+        this.sessionState.runtime !== undefined &&
+        tec1gRuntime !== undefined
+      ) {
         const baseMemory = this.sessionState.runtime.hardware.memory;
         const romRanges = runtimeOptions?.romRanges ?? [];
         const hooks = createTec1gMemoryHooks(baseMemory, romRanges, tec1gRuntime.state);
@@ -519,8 +525,14 @@ export class Z80DebugSession extends DebugSession {
         }
       }
       this.sessionState.runState.callDepth = 0;
-      this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(merged.stepOverMaxInstructions, 0);
-      this.sessionState.runState.stepOutMaxInstructions = normalizeStepLimit(merged.stepOutMaxInstructions, 0);
+      this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(
+        merged.stepOverMaxInstructions,
+        0
+      );
+      this.sessionState.runState.stepOutMaxInstructions = normalizeStepLimit(
+        merged.stepOutMaxInstructions,
+        0
+      );
       if (this.sessionState.listing !== undefined) {
         const applied = this.breakpointManager.applyAll(
           this.sessionState.listing,
@@ -577,12 +589,15 @@ export class Z80DebugSession extends DebugSession {
         : breakpoints.map((bp) => ({ line: bp.line, verified: false }));
 
     if (this.sessionState.listing !== undefined) {
-      this.breakpointManager.rebuild(this.sessionState.listing, this.sessionState.listingPath, this.sessionState.mappingIndex);
+      this.breakpointManager.rebuild(
+        this.sessionState.listing,
+        this.sessionState.listingPath,
+        this.sessionState.mappingIndex
+      );
     }
 
     response.body = { breakpoints: verified };
     this.sendResponse(response);
-
   }
 
   protected configurationDoneRequest(
@@ -671,7 +686,11 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.runState.haltNotified = false;
       this.sessionState.runState.lastStopReason = 'step';
       this.sessionState.runState.lastBreakpointAddress = null;
-      this.runUntilStop(new Set([returnAddress]), this.sessionState.runState.stepOverMaxInstructions, 'step over');
+      this.runUntilStop(
+        new Set([returnAddress]),
+        this.sessionState.runState.stepOverMaxInstructions,
+        'step over'
+      );
       return;
     }
 
@@ -702,11 +721,16 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.runState.lastBreakpointAddress !== null &&
       this.isBreakpointAddress(this.sessionState.runState.lastBreakpointAddress)
     ) {
-      this.sessionState.runState.skipBreakpointOnce = this.sessionState.runState.lastBreakpointAddress;
+      this.sessionState.runState.skipBreakpointOnce =
+        this.sessionState.runState.lastBreakpointAddress;
     } else {
       this.sessionState.runState.skipBreakpointOnce = null;
     }
-    void runUntilReturnAsync(this.getRuntimeControlContext(), baseline, this.sessionState.runState.stepOutMaxInstructions);
+    void runUntilReturnAsync(
+      this.getRuntimeControlContext(),
+      baseline,
+      this.sessionState.runState.stepOutMaxInstructions
+    );
   }
 
   protected pauseRequest(
@@ -728,8 +752,12 @@ export class Z80DebugSession extends DebugSession {
     }
     const responseBody = buildStackFrames(this.sessionState.runtime.getPC(), {
       ...(this.sessionState.listing !== undefined ? { listing: this.sessionState.listing } : {}),
-      ...(this.sessionState.listingPath !== undefined ? { listingPath: this.sessionState.listingPath } : {}),
-      ...(this.sessionState.mappingIndex !== undefined ? { mappingIndex: this.sessionState.mappingIndex } : {}),
+      ...(this.sessionState.listingPath !== undefined
+        ? { listingPath: this.sessionState.listingPath }
+        : {}),
+      ...(this.sessionState.mappingIndex !== undefined
+        ? { mappingIndex: this.sessionState.mappingIndex }
+        : {}),
       ...(this.sourceState.file !== undefined ? { sourceFile: this.sourceState.file } : {}),
       resolveMappedPath: (file) => this.resolveMappedPath(file),
       getAddressAliases: (address) => {
@@ -801,7 +829,10 @@ export class Z80DebugSession extends DebugSession {
     args: DebugProtocol.VariablesArguments
   ): void {
     response.body = {
-      variables: this.variableService.resolveVariables(args.variablesReference, this.sessionState.runtime),
+      variables: this.variableService.resolveVariables(
+        args.variablesReference,
+        this.sessionState.runtime
+      ),
     };
 
     this.sendResponse(response);
@@ -871,12 +902,15 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(args, {
-        runtime: this.sessionState.runtime,
-        symbolAnchors: this.sessionState.symbolAnchors,
-        lookupAnchors: this.sourceState.lookupAnchors,
-        symbolList: this.sessionState.symbolList,
-      });
+      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(
+        args,
+        {
+          runtime: this.sessionState.runtime,
+          symbolAnchors: this.sessionState.symbolAnchors,
+          lookupAnchors: this.sourceState.lookupAnchors,
+          symbolList: this.sessionState.symbolList,
+        }
+      );
       response.body = {
         before: snapshot.before,
         rowSize: snapshot.rowSize,
@@ -892,12 +926,15 @@ export class Z80DebugSession extends DebugSession {
         this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
         return true;
       }
-      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(args, {
-        runtime: this.sessionState.runtime,
-        symbolAnchors: this.sessionState.symbolAnchors,
-        lookupAnchors: this.sourceState.lookupAnchors,
-        symbolList: this.sessionState.symbolList,
-      });
+      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(
+        args,
+        {
+          runtime: this.sessionState.runtime,
+          symbolAnchors: this.sessionState.symbolAnchors,
+          lookupAnchors: this.sourceState.lookupAnchors,
+          symbolList: this.sessionState.symbolList,
+        }
+      );
       response.body = {
         before: snapshot.before,
         rowSize: snapshot.rowSize,
@@ -1033,11 +1070,19 @@ export class Z80DebugSession extends DebugSession {
     capsLock: boolean
   ): MatrixKeyCombo | undefined {
     const preferred =
-      payload.ctrl === true ? 'ctrl' : payload.shift === true ? 'shift' : payload.alt === true ? 'fn' : undefined;
+      payload.ctrl === true
+        ? 'ctrl'
+        : payload.shift === true
+          ? 'shift'
+          : payload.alt === true
+            ? 'fn'
+            : undefined;
     const matchesCaps = (combo: MatrixKeyCombo): boolean =>
       combo.capsLock === undefined || combo.capsLock === capsLock;
     if (preferred !== undefined) {
-      const preferredMatch = combos.find((combo) => combo.modifier === preferred && matchesCaps(combo));
+      const preferredMatch = combos.find(
+        (combo) => combo.modifier === preferred && matchesCaps(combo)
+      );
       if (preferredMatch) {
         return preferredMatch;
       }
@@ -1071,7 +1116,6 @@ export class Z80DebugSession extends DebugSession {
     return false;
   }
 
-
   private continueExecution(response: DebugProtocol.Response): void {
     if (this.sessionState.runtime === undefined) {
       this.sendErrorResponse(response, 1, 'No program loaded');
@@ -1086,7 +1130,8 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.runState.lastBreakpointAddress !== null &&
       this.isBreakpointAddress(this.sessionState.runState.lastBreakpointAddress)
     ) {
-      this.sessionState.runState.skipBreakpointOnce = this.sessionState.runState.lastBreakpointAddress;
+      this.sessionState.runState.skipBreakpointOnce =
+        this.sessionState.runState.lastBreakpointAddress;
     } else {
       this.sessionState.runState.skipBreakpointOnce = null;
     }
@@ -1249,8 +1294,7 @@ export class Z80DebugSession extends DebugSession {
       setLastBreakpointAddress: (address: number | null): void => {
         this.sessionState.runState.lastBreakpointAddress = address;
       },
-      isBreakpointAddress: (address: number | null): boolean =>
-        this.isBreakpointAddress(address),
+      isBreakpointAddress: (address: number | null): boolean => this.isBreakpointAddress(address),
       handleHaltStop: (): void => this.handleHaltStop(),
       sendEvent: (event: unknown): void => {
         this.sendEvent(event as DebugProtocol.Event);
@@ -1297,7 +1341,6 @@ export class Z80DebugSession extends DebugSession {
     return workspace ?? process.cwd();
   }
 
-
   private resolveCacheDir(baseDir: string): string | undefined {
     if (!baseDir || baseDir.length === 0) {
       return undefined;
@@ -1319,7 +1362,6 @@ export class Z80DebugSession extends DebugSession {
     const normalized = path.resolve(listingPath);
     return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
   }
-
 }
 
 export class Z80DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
