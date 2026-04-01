@@ -109,7 +109,10 @@ describe('launch-pipeline', () => {
   });
 
   it('skips binary assembly when backend does not support it', () => {
-    const { assembleBin: _assembleBin, ...noBinBackend } = backend;
+    const noBinBackend: AssemblerBackend = {
+      id: backend.id,
+      assemble: backend.assemble,
+    };
     const args = {} as LaunchRequestArguments;
 
     expect(() =>
