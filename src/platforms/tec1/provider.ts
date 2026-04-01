@@ -1,20 +1,26 @@
 /**
- * @fileoverview Debug adapter provider for the TEC-1 platform.
+ * @file Debug adapter provider for the TEC-1 platform.
  */
 
-import type { DebugProtocol } from "@vscode/debugprotocol";
-import { buildPlatformIoHandlers } from "../../debug/platform-host";
+import type { DebugProtocol } from '@vscode/debugprotocol';
+import {
+  buildPlatformIoHandlers,
+  type PlatformIoBuildResult,
+} from '../../debug/platform-host';
 import {
   handleKeyRequest,
   handleResetRequest,
   handleSerialRequest,
   handleSpeedRequest,
-} from "../../debug/platform-requests";
-import type { PlatformContribution } from "../../debug/platform-registry";
-import { extractKeyCode, type LaunchRequestArguments } from "../../debug/types";
-import type { PlatformCommandContext, ResolvedPlatformProvider } from "../provider";
-import { normalizeTec1Config } from "./runtime";
+} from '../../debug/platform-requests';
+import type { PlatformContribution } from '../../debug/platform-registry';
+import { extractKeyCode, type LaunchRequestArguments } from '../../debug/types';
+import type { PlatformCommandContext, ResolvedPlatformProvider } from '../provider';
+import { normalizeTec1Config } from './runtime';
 
+/**
+ * Sends a successful or failed custom request response.
+ */
 function sendPlatformResponse(
   response: DebugProtocol.Response,
   error: string | null,
@@ -28,11 +34,14 @@ function sendPlatformResponse(
   return true;
 }
 
+/**
+ * Builds the TEC-1 custom request contribution.
+ */
 function buildTec1Contribution(context: PlatformCommandContext): PlatformContribution {
   return {
-    id: "tec1",
+    id: 'tec1',
     commands: {
-      "debug80/tec1Key": (response, args) =>
+      'debug80/tec1Key': (response, args) =>
         sendPlatformResponse(
           response,
           handleKeyRequest(
@@ -42,7 +51,7 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
           ),
           context
         ),
-      "debug80/tec1Reset": (response) =>
+      'debug80/tec1Reset': (response) =>
         sendPlatformResponse(
           response,
           handleResetRequest(
@@ -53,13 +62,13 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
           ),
           context
         ),
-      "debug80/tec1Speed": (response, args) =>
+      'debug80/tec1Speed': (response, args) =>
         sendPlatformResponse(
           response,
           handleSpeedRequest(context.sessionState.tec1Runtime, args),
           context
         ),
-      "debug80/tec1SerialInput": (response, args) =>
+      'debug80/tec1SerialInput': (response, args) =>
         sendPlatformResponse(
           response,
           handleSerialRequest(context.sessionState.tec1Runtime, args),
@@ -69,22 +78,25 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
   };
 }
 
+/**
+ * Creates the debug adapter provider for TEC-1 launches.
+ */
 export function createTec1PlatformProvider(
   args: LaunchRequestArguments
 ): ResolvedPlatformProvider {
   const tec1Config = normalizeTec1Config(args.tec1);
   return {
-    id: "tec1",
-    payload: { id: "tec1" },
+    id: 'tec1',
+    payload: { id: 'tec1' },
     tec1Config,
     extraListings: tec1Config.extraListings ?? [],
     runtimeOptions: { romRanges: tec1Config.romRanges },
-    registerCommands: (registry, context) => {
+    registerCommands: (registry, context): void => {
       registry.register(buildTec1Contribution(context));
     },
-    buildIoHandlers: (callbacks) =>
+    buildIoHandlers: (callbacks): PlatformIoBuildResult =>
       buildPlatformIoHandlers({
-        platform: "tec1",
+        platform: 'tec1',
         tec1Config,
         ...(callbacks.terminal !== undefined ? { terminal: callbacks.terminal } : {}),
         onTec1Update: callbacks.onTec1Update,
@@ -93,6 +105,6 @@ export function createTec1PlatformProvider(
         onTec1gSerial: callbacks.onTec1gSerial,
         onTerminalOutput: callbacks.onTerminalOutput,
       }),
-    resolveEntry: () => tec1Config.entry,
+    resolveEntry: (): number | undefined => tec1Config.entry,
   };
 }
