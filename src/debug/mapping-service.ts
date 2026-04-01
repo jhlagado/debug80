@@ -205,7 +205,9 @@ function isNativeDebugMap(map: D8DebugMap): boolean {
 
 function getDebugMapGeneratorLabel(map: D8DebugMap): string {
   const generatorName = map.generator?.name?.trim();
-  return generatorName && generatorName.length > 0 ? generatorName : 'unknown generator';
+  return typeof generatorName === 'string' && generatorName.length > 0
+    ? generatorName
+    : 'unknown generator';
 }
 
 function writeDebugMap(
