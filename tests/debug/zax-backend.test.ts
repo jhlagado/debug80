@@ -3,6 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as cp from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -44,12 +45,16 @@ describe('zax-backend', () => {
 
     expect(result.success).toBe(true);
     expect(spawnSync).toHaveBeenCalledTimes(1);
-    expect(spawnSync.mock.calls[0]?.[0]).toBe(process.execPath);
-    expect(spawnSync.mock.calls[0]?.[1]).toContain('--nobin');
-    expect(spawnSync.mock.calls[0]?.[1]).toContain('-o');
-    expect(spawnSync.mock.calls[0]?.[1]).toContain(path.join('build', 'prog.hex').replace(/\\/g, '/'));
-    expect(spawnSync.mock.calls[0]?.[1]).toContain(path.basename(asmPath));
-    expect(spawnSync.mock.calls[0]?.[2]).toMatchObject({
+    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
+    const firstCall = calls[0];
+    expect(firstCall).toBeDefined();
+    const [command, args, spawnOptions] = firstCall;
+    expect(command).toBe(process.execPath);
+    expect(args).toContain('--nobin');
+    expect(args).toContain('-o');
+    expect(args).toContain(path.join('build', 'prog.hex').replace(/\\/g, '/'));
+    expect(args).toContain(path.basename(asmPath));
+    expect(spawnOptions).toMatchObject({
       cwd: path.dirname(asmPath),
       encoding: 'utf-8',
     });
