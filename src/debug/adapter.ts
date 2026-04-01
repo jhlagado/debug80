@@ -48,6 +48,7 @@ import { VariableService } from './variable-service';
 import { buildMemorySnapshotResponse } from './memory-snapshot';
 import { ADDR_MASK } from '../platforms/tec-common';
 import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
+import { resolveAssemblerBackend } from './assembler-backend';
 
 // Import from extracted modules - types only for now (gradual migration)
 import {
@@ -337,8 +338,10 @@ export class Z80DebugSession extends DebugSession {
         resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
         resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
       });
+      const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 
       assembleIfRequested({
+        backend: assemblerBackend,
         args: merged,
         asmPath,
         hexPath,
@@ -402,6 +405,7 @@ export class Z80DebugSession extends DebugSession {
         log: (message: string): void => {
           emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
         },
+        backend: assemblerBackend,
       }));
 
       const sourceState = this.sourceState.build({

@@ -3,19 +3,22 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { AssemblerBackend } from '../../src/debug/assembler-backend';
 import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from '../../src/debug/launch-pipeline';
 import type { LaunchRequestArguments } from '../../src/debug/types';
-import * as assembler from '../../src/debug/assembler';
-
-vi.mock('../../src/debug/assembler', () => ({
-  runAssembler: vi.fn(() => ({ success: true })),
-  runAssemblerBin: vi.fn(() => ({ success: true })),
-}));
 
 describe('launch-pipeline', () => {
+  let backend: AssemblerBackend & {
+    assemble: ReturnType<typeof vi.fn>;
+    assembleBin: ReturnType<typeof vi.fn>;
+  };
+
   beforeEach(() => {
-    vi.mocked(assembler.runAssembler).mockReturnValue({ success: true });
-    vi.mocked(assembler.runAssemblerBin).mockReturnValue({ success: true });
+    backend = {
+      id: 'mock-asm',
+      assemble: vi.fn(() => ({ success: true })),
+      assembleBin: vi.fn(() => ({ success: true })),
+    };
   });
 
   it('normalizes step limits', () => {
@@ -36,6 +39,7 @@ describe('launch-pipeline', () => {
     const args = { assemble: false } as LaunchRequestArguments;
     expect(() =>
       assembleIfRequested({
+        backend,
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
@@ -47,13 +51,14 @@ describe('launch-pipeline', () => {
   });
 
   it('throws when assembler fails', () => {
-    vi.mocked(assembler.runAssembler).mockReturnValue({
+    backend.assemble.mockReturnValue({
       success: false,
       error: 'bad asm',
     });
     const args = {} as LaunchRequestArguments;
     expect(() =>
       assembleIfRequested({
+        backend,
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
@@ -68,6 +73,7 @@ describe('launch-pipeline', () => {
     const args = {} as LaunchRequestArguments;
     expect(() =>
       assembleIfRequested({
+        backend,
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
@@ -77,18 +83,20 @@ describe('launch-pipeline', () => {
         sendEvent: () => undefined,
       })
     ).not.toThrow();
-    expect(assembler.runAssemblerBin).toHaveBeenCalled();
+    expect(backend.assemble).toHaveBeenCalled();
+    expect(backend.assembleBin).toHaveBeenCalled();
   });
 
   it('throws when binary assembly fails', () => {
-    vi.mocked(assembler.runAssembler).mockReturnValue({ success: true });
-    vi.mocked(assembler.runAssemblerBin).mockReturnValue({
+    backend.assemble.mockReturnValue({ success: true });
+    backend.assembleBin.mockReturnValue({
       success: false,
       error: 'bad bin',
     });
     const args = {} as LaunchRequestArguments;
     expect(() =>
       assembleIfRequested({
+        backend,
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
@@ -98,5 +106,40 @@ describe('launch-pipeline', () => {
         sendEvent: () => undefined,
       })
     ).toThrow('bad bin');
+  });
+
+  it('skips binary assembly when backend does not support it', () => {
+    const { assembleBin: _assembleBin, ...noBinBackend } = backend;
+    const args = {} as LaunchRequestArguments;
+
+    expect(() =>
+      assembleIfRequested({
+        backend: noBinBackend,
+        args,
+        asmPath: 'a.asm',
+        hexPath: 'a.hex',
+        listingPath: 'a.lst',
+        platform: 'simple',
+        simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
+        sendEvent: () => undefined,
+      })
+    ).not.toThrow();
+  });
+
+  it('uses the backend id in fallback error messages', () => {
+    backend.assemble.mockReturnValue({ success: false });
+    const args = {} as LaunchRequestArguments;
+
+    expect(() =>
+      assembleIfRequested({
+        backend,
+        args,
+        asmPath: 'a.asm',
+        hexPath: 'a.hex',
+        listingPath: 'a.lst',
+        platform: 'simple',
+        sendEvent: () => undefined,
+      })
+    ).toThrow('mock-asm failed to assemble');
   });
 });

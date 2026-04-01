@@ -137,6 +137,11 @@ export function populateFromConfig(
       merged.asm = asmResolved;
     }
 
+    const assemblerResolved = args.assembler ?? targetCfg?.assembler ?? cfg.assembler;
+    if (assemblerResolved !== undefined) {
+      merged.assembler = assemblerResolved;
+    }
+
     const sourceResolved =
       args.sourceFile ??
       args.asm ??
