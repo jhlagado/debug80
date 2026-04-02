@@ -18,7 +18,7 @@ vi.mock('vscode', () => {
 
 import { Z80DebugSession } from '../../src/debug/adapter';
 import { DapClient } from '../e2e/adapter/dap-client';
-const { workspace } = vscodeMock;
+const { commands, workspace } = vscodeMock;
 
 const fixtureRoot = path.resolve(__dirname, '../e2e/fixtures/simple');
 const sourcePath = path.join(fixtureRoot, 'src', 'simple.asm');
@@ -80,6 +80,7 @@ describe('adapter integration', () => {
   let harness: SessionHarness | undefined;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     workspace.workspaceFolders = [{ uri: { fsPath: fixtureRoot } }];
     harness = createHarness();
   });
@@ -230,5 +231,23 @@ describe('adapter integration', () => {
     await client.sendRequest('configurationDone');
     await client.waitForEvent('stopped');
     await client.sendRequest('disconnect');
+  });
+
+  it('returns a launch error when config creation prompt rejects on missing artifacts', async () => {
+    const { client } = harness ?? createHarness();
+    vi.spyOn(commands, 'executeCommand').mockRejectedValueOnce(new Error('command failed'));
+
+    await initialize(client);
+
+    await expect(
+      launchWithDiagnostics(client, {
+        target: 'app',
+        hex: 'missing.hex',
+        listing: 'missing.lst',
+        stopOnEntry: true,
+        openRomSourcesOnLaunch: false,
+        openMainSourceOnLaunch: false,
+      })
+    ).rejects.toThrow('Debug80: Failed to create project config: Error: command failed');
   });
 });
