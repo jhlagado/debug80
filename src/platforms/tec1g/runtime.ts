@@ -16,37 +16,10 @@ import { Ds1302 } from './ds1302';
 import { SdSpi } from './sd-spi';
 import { createTec1gLcdController } from './lcd';
 import { createTec1gSerialController } from './serial';
+import { createGlcdController, createGlcdState, type GlcdState } from './glcd';
 import {
   TEC1G_DIGIT_SERIAL_TX,
   TEC1G_DIGIT_SPEAKER,
-  GLCD_BASIC_MASK,
-  GLCD_CMD_BASIC,
-  GLCD_CMD_CLEAR,
-  GLCD_CMD_DISPLAY_BASE,
-  GLCD_CMD_DISPLAY_MASK,
-  GLCD_CMD_ENTRY_BASE,
-  GLCD_CMD_ENTRY_MASK,
-  GLCD_CMD_HOME,
-  GLCD_CMD_REVERSE_BASE,
-  GLCD_CMD_REVERSE_MASK,
-  GLCD_CMD_SCROLL_ADDR_BASE,
-  GLCD_CMD_SCROLL_ADDR_MASK,
-  GLCD_CMD_SCROLL_BASE,
-  GLCD_CMD_SCROLL_MASK,
-  GLCD_CMD_SET_ADDR,
-  GLCD_CMD_SHIFT_BASE,
-  GLCD_CMD_SHIFT_MASK,
-  GLCD_CMD_STANDBY,
-  GLCD_CURSOR_ON,
-  GLCD_DISPLAY_ON,
-  GLCD_GRAPHICS_BIT,
-  GLCD_BLINK_ON,
-  GLCD_ENTRY_INCREMENT,
-  GLCD_ENTRY_SHIFT,
-  GLCD_RE_BIT,
-  GLCD_SHIFT_DISPLAY,
-  GLCD_SHIFT_RIGHT,
-  GLCD_STATUS_BUSY,
   TEC1G_PORT_DIGIT,
   TEC1G_PORT_GLCD_CMD,
   TEC1G_PORT_GLCD_DATA,
@@ -75,25 +48,11 @@ import {
   TEC1G_RAM_START,
   TEC1G_APP_START_DEFAULT,
   TEC1G_ENTRY_DEFAULT,
-  TEC1G_GLCD_COL_MASK,
-  TEC1G_GLCD_COL_BANK_BIT,
-  TEC1G_GLCD_DDRAM_BASE,
-  TEC1G_GLCD_DDRAM_MASK,
-  TEC1G_GLCD_DDRAM_ROW0_BIT,
-  TEC1G_GLCD_DDRAM_ROW1_BIT,
-  TEC1G_GLCD_DDRAM_STEP,
-  TEC1G_GLCD_ROW_BASE,
-  TEC1G_GLCD_ROW_MASK,
-  TEC1G_GLCD_ROW_STRIDE,
-  TEC1G_GLCD_COL_STRIDE,
   TEC1G_LCD_ROW0_START,
   TEC1G_LCD_SPACE,
   TEC1G_MASK_BYTE,
   TEC1G_MASK_LOW7,
-  TEC1G_MASK_LOW6,
-  TEC1G_MASK_LOW5,
   TEC1G_MASK_LOW4,
-  TEC1G_MASK_LOW2,
   TEC1G_NMI_VECTOR,
   TEC1G_STATUS_CARTRIDGE,
   TEC1G_STATUS_EXPAND,
@@ -115,8 +74,6 @@ import {
   calculateSpeakerFrequency,
   calculateKeyHoldCycles,
   shouldUpdate,
-  millisecondsToClocks,
-  microsecondsToClocks,
 } from '../tec-common';
 
 /**
@@ -130,30 +87,7 @@ export interface Tec1gState {
   matrixLatch: number;
   matrixKeyStates: Uint8Array;
   matrixModeEnabled: boolean;
-  glcd: Uint8Array;
-  glcdRowAddr: number;
-  glcdRowBase: number;
-  glcdCol: number;
-  glcdExpectColumn: boolean;
-  glcdRe: boolean;
-  glcdGraphics: boolean;
-  glcdReadPrimed: boolean;
-  glcdReadLatch: number;
-  glcdDisplayOn: boolean;
-  glcdCursorOn: boolean;
-  glcdCursorBlink: boolean;
-  glcdBlinkVisible: boolean;
-  glcdBlinkEventId: number | null;
-  glcdEntryIncrement: boolean;
-  glcdEntryShift: boolean;
-  glcdTextShift: number;
-  glcdScrollMode: boolean;
-  glcdScroll: number;
-  glcdReverseMask: number;
-  glcdGdramPhase: 0 | 1;
-  glcdDdram: Uint8Array;
-  glcdDdramAddr: number;
-  glcdDdramPhase: 0 | 1;
+  glcdCtrl: GlcdState;
   speaker: boolean;
   speakerHz: number;
   lcd: number[];
@@ -218,9 +152,6 @@ export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
-const TEC1G_GLCD_BUSY_US = 72;
-const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
-const TEC1G_GLCD_BLINK_MS = 400;
 
 /**
  * Normalizes TEC-1G configuration with defaults and bounds.
@@ -355,30 +286,7 @@ export function createTec1gRuntime(
     matrixLatch: 0,
     matrixKeyStates: new Uint8Array(16).fill(TEC1G_MASK_BYTE),
     matrixModeEnabled: matrixMode,
-    glcd: new Uint8Array(1024),
-    glcdRowAddr: 0,
-    glcdRowBase: 0,
-    glcdCol: 0,
-    glcdExpectColumn: false,
-    glcdRe: false,
-    glcdGraphics: false,
-    glcdReadPrimed: false,
-    glcdReadLatch: 0,
-    glcdDisplayOn: true,
-    glcdCursorOn: false,
-    glcdCursorBlink: false,
-    glcdBlinkVisible: true,
-    glcdBlinkEventId: null,
-    glcdEntryIncrement: true,
-    glcdEntryShift: false,
-    glcdTextShift: 0,
-    glcdScrollMode: false,
-    glcdScroll: 0,
-    glcdReverseMask: 0,
-    glcdGdramPhase: 0,
-    glcdDdram: new Uint8Array(64),
-    glcdDdramAddr: TEC1G_GLCD_DDRAM_BASE,
-    glcdDdramPhase: 0,
+    glcdCtrl: createGlcdState(),
     speaker: false,
     speakerHz: 0,
     lcd: Array.from({ length: 80 }, () => TEC1G_LCD_SPACE),
@@ -436,26 +344,24 @@ export function createTec1gRuntime(
     state.lcd[lcdTest.length + 2] = TEC1G_LCD_ARROW_RIGHT;
   }
 
-  let glcdBusyUntil = 0;
-
   const sendUpdate = (): void => {
     onUpdate({
       digits: [...state.digits],
       matrix: [...state.matrix],
       matrixMode: state.matrixModeEnabled,
-      glcd: Array.from(state.glcd),
-      glcdDdram: Array.from(state.glcdDdram),
+      glcd: Array.from(state.glcdCtrl.glcd),
+      glcdDdram: Array.from(state.glcdCtrl.glcdDdram),
       glcdState: {
-        displayOn: state.glcdDisplayOn,
-        graphicsOn: state.glcdGraphics,
-        cursorOn: state.glcdCursorOn,
-        cursorBlink: state.glcdCursorBlink,
-        blinkVisible: state.glcdBlinkVisible,
-        ddramAddr: state.glcdDdramAddr,
-        ddramPhase: state.glcdDdramPhase,
-        textShift: state.glcdTextShift,
-        scroll: state.glcdScroll,
-        reverseMask: state.glcdReverseMask,
+        displayOn: state.glcdCtrl.glcdDisplayOn,
+        graphicsOn: state.glcdCtrl.glcdGraphics,
+        cursorOn: state.glcdCtrl.glcdCursorOn,
+        cursorBlink: state.glcdCtrl.glcdCursorBlink,
+        blinkVisible: state.glcdCtrl.glcdBlinkVisible,
+        ddramAddr: state.glcdCtrl.glcdDdramAddr,
+        ddramPhase: state.glcdCtrl.glcdDdramPhase,
+        textShift: state.glcdCtrl.glcdTextShift,
+        scroll: state.glcdCtrl.glcdScroll,
+        reverseMask: state.glcdCtrl.glcdReverseMask,
       },
       sysCtrl: state.sysCtrl,
       bankA14: state.bankA14,
@@ -475,188 +381,7 @@ export function createTec1gRuntime(
     });
   };
 
-  const glcdSetRowAddr = (value: number): void => {
-    state.glcdRowAddr = value & TEC1G_MASK_LOW5;
-    state.glcdExpectColumn = true;
-    state.glcdGdramPhase = 0;
-    state.glcdReadPrimed = false;
-  };
-
-  const glcdSetColumn = (value: number): void => {
-    const bankSelected = (value & TEC1G_GLCD_COL_BANK_BIT) !== 0;
-    state.glcdRowBase = bankSelected ? TEC1G_GLCD_ROW_BASE : 0;
-    state.glcdCol = value & TEC1G_GLCD_COL_MASK;
-    state.glcdExpectColumn = false;
-    state.glcdGdramPhase = 0;
-    state.glcdReadPrimed = false;
-  };
-
-  // ST7920 DDRAM row address to linear index mapping.
-  // Row addresses use the DDRAM base with row bits set (row0..row3).
-  // Each row has 16 byte positions (8 character pairs).
-  const glcdDdramIndex = (addr: number): number => {
-    const a = addr & TEC1G_MASK_LOW7; // strip bit 7
-    const row =
-      ((a & TEC1G_GLCD_DDRAM_ROW1_BIT) >> 4) | ((a & TEC1G_GLCD_DDRAM_ROW0_BIT) >> 2);
-    const col = a & TEC1G_GLCD_COL_MASK;
-    return row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE;
-  };
-
-  const glcdSetDdramAddr = (addr: number): void => {
-    state.glcdDdramAddr = addr & TEC1G_MASK_BYTE;
-    state.glcdDdramPhase = 0;
-    queueUpdate();
-  };
-
-  const glcdShiftDisplay = (delta: number): void => {
-    const next = Math.max(-15, Math.min(15, state.glcdTextShift + delta));
-    if (next !== state.glcdTextShift) {
-      state.glcdTextShift = next;
-      queueUpdate();
-    }
-  };
-
-  const glcdOffsetDdramAddr = (delta: number): void => {
-    const base = state.glcdDdramAddr & TEC1G_GLCD_DDRAM_MASK;
-    const next = (base + delta + TEC1G_GLCD_DDRAM_STEP) & TEC1G_GLCD_DDRAM_MASK;
-    state.glcdDdramAddr = TEC1G_GLCD_DDRAM_BASE | next;
-    state.glcdDdramPhase = 0;
-  };
-
-  const glcdAdvanceDdramAddr = (): void => {
-    const delta = state.glcdEntryIncrement ? 1 : -1;
-    glcdOffsetDdramAddr(delta);
-    if (state.glcdEntryShift) {
-      glcdShiftDisplay(delta);
-    }
-  };
-
-  const glcdSetBusy = (microseconds: number): void => {
-    const cycles = microsecondsToClocks(state.clockHz, microseconds);
-    const until = state.cycleClock.now() + cycles;
-    if (until > glcdBusyUntil) {
-      glcdBusyUntil = until;
-    }
-  };
-
-  const glcdIsBusy = (): boolean => state.cycleClock.now() < glcdBusyUntil;
-
-  const glcdRescheduleBlink = (): void => {
-    if (state.glcdBlinkEventId !== null) {
-      state.cycleClock.cancel(state.glcdBlinkEventId);
-      state.glcdBlinkEventId = null;
-    }
-    state.glcdBlinkVisible = true;
-    if (!state.glcdCursorBlink) {
-      queueUpdate();
-      return;
-    }
-    const periodCycles = millisecondsToClocks(state.clockHz, TEC1G_GLCD_BLINK_MS);
-    const scheduleToggle = (): void => {
-      if (!state.glcdCursorBlink) {
-        state.glcdBlinkVisible = true;
-        state.glcdBlinkEventId = null;
-        queueUpdate();
-        return;
-      }
-      state.glcdBlinkVisible = !state.glcdBlinkVisible;
-      queueUpdate();
-      state.glcdBlinkEventId = state.cycleClock.scheduleIn(periodCycles, scheduleToggle);
-    };
-    state.glcdBlinkEventId = state.cycleClock.scheduleIn(periodCycles, scheduleToggle);
-    queueUpdate();
-  };
-
-  const glcdWriteDdram = (value: number): void => {
-    const idx = glcdDdramIndex(state.glcdDdramAddr);
-    const slot = idx + state.glcdDdramPhase;
-    if (slot >= 0 && slot < state.glcdDdram.length) {
-      state.glcdDdram[slot] = value & TEC1G_MASK_BYTE;
-    }
-    if (state.glcdDdramPhase === 0) {
-      state.glcdDdramPhase = 1;
-    } else {
-      state.glcdDdramPhase = 0;
-      glcdAdvanceDdramAddr();
-    }
-    queueUpdate();
-  };
-
-  const glcdReadDdram = (): number => {
-    const idx = glcdDdramIndex(state.glcdDdramAddr);
-    const slot = idx + state.glcdDdramPhase;
-    const value =
-      slot >= 0 && slot < state.glcdDdram.length
-        ? (state.glcdDdram[slot] ?? TEC1G_LCD_SPACE)
-        : TEC1G_LCD_SPACE;
-    if (state.glcdDdramPhase === 0) {
-      state.glcdDdramPhase = 1;
-    } else {
-      state.glcdDdramPhase = 0;
-      glcdAdvanceDdramAddr();
-    }
-    return value & TEC1G_MASK_BYTE;
-  };
-
-  const glcdWriteData = (value: number): void => {
-    if (!state.glcdGraphics) {
-      glcdWriteDdram(value);
-      glcdSetBusy(TEC1G_GLCD_BUSY_US);
-      return;
-    }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
-    const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
-    const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
-    if (index >= 0 && index < state.glcd.length) {
-      state.glcd[index] = value & TEC1G_MASK_BYTE;
-      queueUpdate();
-    }
-    glcdSetBusy(TEC1G_GLCD_BUSY_US);
-    if (state.glcdGdramPhase === 0) {
-      state.glcdGdramPhase = 1;
-    } else {
-      state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
-    }
-  };
-
-  const glcdReadData = (): number => {
-    if (!state.glcdGraphics) {
-      return glcdReadDdram();
-    }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
-    const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
-    const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
-    const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0) : 0;
-    if (!state.glcdReadPrimed) {
-      state.glcdReadPrimed = true;
-      state.glcdReadLatch = value & TEC1G_MASK_BYTE;
-      return 0;
-    }
-    const out = state.glcdReadLatch & TEC1G_MASK_BYTE;
-    if (state.glcdGdramPhase === 0) {
-      state.glcdGdramPhase = 1;
-    } else {
-      state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
-    }
-    const nextIndex =
-      ((state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) *
-        TEC1G_GLCD_ROW_STRIDE +
-      (state.glcdCol & TEC1G_GLCD_COL_MASK) * TEC1G_GLCD_COL_STRIDE +
-      state.glcdGdramPhase;
-    state.glcdReadLatch =
-      nextIndex >= 0 && nextIndex < state.glcd.length ? (state.glcd[nextIndex] ?? 0) : 0;
-    return out;
-  };
-
-  const glcdReadStatus = (): number => {
-    const busy = glcdIsBusy() ? GLCD_STATUS_BUSY : 0;
-    const addr = state.glcdGraphics
-      ? state.glcdRowAddr & TEC1G_GLCD_ROW_MASK
-      : state.glcdDdramAddr & TEC1G_MASK_LOW7;
-    return busy | addr;
-  };
+  const glcd = createGlcdController(state.glcdCtrl, state.cycleClock, state.clockHz, () => queueUpdate());
 
   const serial = createTec1gSerialController(state.cycleClock, state.clockHz, onSerialByte);
   const portWriteLog = new Map<number, number>();
@@ -749,10 +474,10 @@ export function createTec1gRuntime(
         return sdEnabled && sdSpi ? sdSpi.read() : TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_GLCD_CMD) {
-        return glcdReadStatus();
+        return glcd.readStatus();
       }
       if (p === TEC1G_PORT_GLCD_DATA) {
-        return glcdReadData();
+        return glcd.readData();
       }
       if (p === TEC1G_PORT_SYSCTRL) {
         return state.sysCtrl & TEC1G_MASK_BYTE;
@@ -847,115 +572,11 @@ export function createTec1gRuntime(
         return;
       }
       if (p === TEC1G_PORT_GLCD_CMD) {
-        const instruction = value & TEC1G_MASK_BYTE;
-        if ((instruction & GLCD_BASIC_MASK) === GLCD_CMD_BASIC) {
-          const re = (instruction & GLCD_RE_BIT) !== 0;
-          const g = re && (instruction & GLCD_GRAPHICS_BIT) !== 0;
-          state.glcdRe = re;
-          state.glcdGraphics = g;
-          state.glcdExpectColumn = false;
-          state.glcdGdramPhase = 0;
-          state.glcdReadPrimed = false;
-          state.glcdReadLatch = 0;
-          glcdSetBusy(TEC1G_GLCD_BUSY_US);
-          queueUpdate();
-          return;
-        }
-        if (state.glcdRe) {
-          if (instruction === GLCD_CMD_STANDBY) {
-            // Standby: approximate as display off.
-            state.glcdDisplayOn = false;
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            queueUpdate();
-            return;
-          }
-          if ((instruction & GLCD_CMD_SCROLL_MASK) === GLCD_CMD_SCROLL_BASE) {
-            state.glcdScrollMode = (instruction & GLCD_ENTRY_SHIFT) !== 0;
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            return;
-          }
-          if ((instruction & GLCD_CMD_REVERSE_MASK) === GLCD_CMD_REVERSE_BASE) {
-            const line = instruction & TEC1G_MASK_LOW2;
-            state.glcdReverseMask ^= 1 << line;
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            queueUpdate();
-            return;
-          }
-          if ((instruction & GLCD_CMD_SCROLL_ADDR_MASK) === GLCD_CMD_SCROLL_ADDR_BASE) {
-            if (state.glcdScrollMode) {
-              state.glcdScroll = instruction & TEC1G_MASK_LOW6;
-              queueUpdate();
-            }
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            return;
-          }
-        } else {
-          if (instruction === GLCD_CMD_CLEAR) {
-            // Clear display: fill DDRAM with spaces, reset address
-            state.glcdDdram.fill(TEC1G_LCD_SPACE);
-            glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
-            state.glcdEntryIncrement = true;
-            state.glcdEntryShift = false;
-            state.glcdTextShift = 0;
-            state.glcdReverseMask = 0;
-            glcdSetBusy(TEC1G_GLCD_BUSY_CLEAR_US);
-            queueUpdate();
-            return;
-          }
-          if (instruction === GLCD_CMD_HOME) {
-            glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
-            state.glcdTextShift = 0;
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            queueUpdate();
-            return;
-          }
-          if ((instruction & GLCD_CMD_DISPLAY_MASK) === GLCD_CMD_DISPLAY_BASE) {
-            state.glcdDisplayOn = (instruction & GLCD_DISPLAY_ON) !== 0;
-            state.glcdCursorOn = (instruction & GLCD_CURSOR_ON) !== 0;
-            state.glcdCursorBlink = (instruction & GLCD_BLINK_ON) !== 0;
-            glcdRescheduleBlink();
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            queueUpdate();
-            return;
-          }
-          if ((instruction & GLCD_CMD_ENTRY_MASK) === GLCD_CMD_ENTRY_BASE) {
-            state.glcdEntryIncrement = (instruction & GLCD_ENTRY_INCREMENT) !== 0;
-            state.glcdEntryShift = (instruction & GLCD_ENTRY_SHIFT) !== 0;
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            return;
-          }
-          if ((instruction & GLCD_CMD_SHIFT_MASK) === GLCD_CMD_SHIFT_BASE) {
-            const displayShift = (instruction & GLCD_SHIFT_DISPLAY) !== 0;
-            const shiftRight = (instruction & GLCD_SHIFT_RIGHT) !== 0;
-            if (displayShift) {
-              glcdShiftDisplay(shiftRight ? -1 : 1);
-            } else {
-              glcdOffsetDdramAddr(shiftRight ? 1 : -1);
-              queueUpdate();
-            }
-            glcdSetBusy(TEC1G_GLCD_BUSY_US);
-            return;
-          }
-        }
-        if ((instruction & GLCD_CMD_SET_ADDR) !== 0) {
-          if (state.glcdGraphics) {
-            if (state.glcdExpectColumn) {
-              glcdSetColumn(instruction);
-            } else {
-              glcdSetRowAddr(instruction);
-            }
-          } else {
-            // Text mode: set DDRAM address
-            glcdSetDdramAddr(instruction);
-          }
-          glcdSetBusy(TEC1G_GLCD_BUSY_US);
-          return;
-        }
-        logPortWrite(p, value);
+        glcd.writeCommand(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_GLCD_DATA) {
-        glcdWriteData(value);
+        glcd.writeData(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX) {
@@ -1048,7 +669,7 @@ export function createTec1gRuntime(
     state.clockHz = mode === 'slow' ? TEC1G_SLOW_HZ : TEC1G_FAST_HZ;
     serial.setClockHz(state.clockHz);
     lcd.setClockHz(state.clockHz);
-    glcdRescheduleBlink();
+    glcd.setClockHz(state.clockHz);
     sendUpdate();
   };
 
@@ -1060,33 +681,7 @@ export function createTec1gRuntime(
     state.matrix.fill(0);
     state.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     state.matrixModeEnabled = matrixMode;
-    state.glcd.fill(0);
-    state.glcdRowAddr = 0;
-    state.glcdRowBase = 0;
-    state.glcdCol = 0;
-    state.glcdExpectColumn = false;
-    state.glcdRe = false;
-    state.glcdGraphics = false;
-    state.glcdReadPrimed = false;
-    state.glcdReadLatch = 0;
-    state.glcdDisplayOn = true;
-    state.glcdCursorOn = false;
-    state.glcdCursorBlink = false;
-    state.glcdBlinkVisible = true;
-    if (state.glcdBlinkEventId !== null) {
-      state.cycleClock.cancel(state.glcdBlinkEventId);
-      state.glcdBlinkEventId = null;
-    }
-    state.glcdEntryIncrement = true;
-    state.glcdEntryShift = false;
-    state.glcdTextShift = 0;
-    state.glcdScrollMode = false;
-    state.glcdScroll = 0;
-    state.glcdReverseMask = 0;
-    state.glcdGdramPhase = 0;
-    state.glcdDdram.fill(TEC1G_LCD_SPACE);
-    glcdSetDdramAddr(TEC1G_GLCD_DDRAM_BASE);
-    glcdBusyUntil = 0;
+    glcd.reset();
     state.sysCtrl = defaultSysCtrl;
     const decoded = decodeSysCtrl(state.sysCtrl);
     state.shadowEnabled = decoded.shadowEnabled;
