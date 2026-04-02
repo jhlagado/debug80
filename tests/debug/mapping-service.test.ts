@@ -15,9 +15,9 @@ vi.mock('../../src/debug/path-resolver', () => ({
   resolveListingSourcePath: resolveListingSourcePathMock,
 }));
 
-import { buildMappingFromListing } from '../../src/debug/mapping-service';
+import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping-service';
 import { parseMapping } from '../../src/mapping/parser';
-import { buildD8DebugMap } from '../../src/mapping/d8-map';
+import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures');
 const listingContent = fs.readFileSync(path.join(fixturesDir, 'simple.lst'), 'utf-8');
@@ -29,6 +29,21 @@ const writeFile = (filePath: string, content: string): void => {
 };
 
 describe('mapping-service', () => {
+  it('detects native D8 maps from missing generator metadata or tool-only producers', () => {
+    const baseMap: Omit<D8DebugMap, 'generator'> = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {},
+    };
+
+    expect(isNativeDebugMap(baseMap)).toBe(true);
+    expect(isNativeDebugMap({ ...baseMap, generator: { tool: 'zax' } })).toBe(true);
+    expect(isNativeDebugMap({ ...baseMap, generator: { name: 'debug80' } })).toBe(false);
+  });
+
   it('generates a debug map and index from a listing', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
@@ -144,7 +159,7 @@ describe('mapping-service', () => {
         arch: 'z80',
         addressWidth: 16,
         endianness: 'little',
-        generator: { name: 'zax' },
+        generator: { tool: 'zax' },
       }
     );
     const originalContent = JSON.stringify(nativeMap, null, 2);
@@ -185,7 +200,7 @@ describe('mapping-service', () => {
     expect(fs.readFileSync(mapPath, 'utf-8')).toBe(originalContent);
   });
 
-  it('fills missing source lines from lstLine only for native debug maps', () => {
+  it('uses lstLine as a fallback source line when loading native D8 segments', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
@@ -200,7 +215,7 @@ describe('mapping-service', () => {
       arch: 'z80',
       addressWidth: 16,
       endianness: 'little',
-      generator: { name: 'zax' },
+      generator: { tool: 'zax' },
       files: {
         [asmPath]: {
           segments: [{ start: 0x2000, end: 0x2001, lstLine: 42, lstText: 'NOP' }],
@@ -430,7 +445,7 @@ describe('mapping-service', () => {
         arch: 'z80',
         addressWidth: 16,
         endianness: 'little',
-        generator: { name: 'zax' },
+        generator: { tool: 'zax' },
       }
     );
     const originalExtraMap = JSON.stringify(extraNativeMap, null, 2);

@@ -152,7 +152,7 @@ describe('d8-map', () => {
     expect(rebuilt.segments[0]?.confidence).toBe('LOW');
   });
 
-  it('keeps source line unknown when line is omitted', () => {
+  it('falls back to lstLine when the source line is omitted', () => {
     const map = {
       format: 'd8-debug-map',
       version: 1,
@@ -167,8 +167,45 @@ describe('d8-map', () => {
     };
 
     const rebuilt = buildMappingFromD8DebugMap(map as never);
-    expect(rebuilt.segments[0]?.loc.line).toBeNull();
+    expect(rebuilt.segments[0]?.loc.line).toBe(99);
     expect(rebuilt.segments[0]?.lst.line).toBe(99);
+  });
+
+  it('keeps the explicit source line when lstLine is also present', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0, end: 1, line: 10, lstLine: 42 }],
+        },
+      },
+    };
+
+    const rebuilt = buildMappingFromD8DebugMap(map as never);
+    expect(rebuilt.segments[0]?.loc.line).toBe(10);
+    expect(rebuilt.segments[0]?.lst.line).toBe(42);
+  });
+
+  it('keeps the source line unknown when both line and lstLine are absent', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0, end: 1, lstLine: undefined }],
+        },
+      },
+    };
+
+    const rebuilt = buildMappingFromD8DebugMap(map as never);
+    expect(rebuilt.segments[0]?.loc.line).toBeNull();
   });
 
   it('rejects invalid map shapes and field types', () => {
