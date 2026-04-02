@@ -7,11 +7,11 @@ import type { DebugProtocol } from '@vscode/debugprotocol';
 import {
   applyCartridgeMemory,
   createTec1gMemoryHooks,
-} from '../../debug/tec1g-memory';
+} from './tec1g-memory';
 import {
   loadTec1gCartridgeImage,
   type Tec1gCartridgeImage,
-} from '../../debug/tec1g-cartridge';
+} from './tec1g-cartridge';
 import {
   buildPlatformIoHandlers,
   type PlatformIoBuildResult,

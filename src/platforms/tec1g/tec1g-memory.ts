@@ -1,8 +1,8 @@
 /**
- * @fileoverview TEC-1G memory hook helpers for shadow/protect/expand behavior.
+ * @file TEC-1G memory hook helpers for shadow/protect/expand behavior.
  */
 
-import type { Tec1gState } from '../platforms/tec1g/runtime';
+import type { Tec1gState } from './runtime';
 import {
   ADDR_MASK,
   BYTE_MASK,
@@ -14,7 +14,7 @@ import {
   TEC1G_SHADOW_END,
   TEC1G_SHADOW_SIZE,
   TEC1G_SHADOW_START,
-} from '../platforms/tec-common';
+} from '../tec-common';
 import { ensureTec1gShadowRom } from './tec1g-shadow';
 
 export type Tec1gMemoryHooks = {
@@ -23,6 +23,9 @@ export type Tec1gMemoryHooks = {
   memWrite: (addr: number, value: number) => void;
 };
 
+/**
+ * Copies cartridge-backed expansion data into the active TEC-1G expand banks.
+ */
 export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Array): void {
   const bank0 = expandBanks[0];
   const bank1 = expandBanks[1];
@@ -40,6 +43,9 @@ export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Arr
   );
 }
 
+/**
+ * Builds memory read/write hooks that apply TEC-1G shadow, protect, and banked expansion logic.
+ */
 export function createTec1gMemoryHooks(
   baseMemory: Uint8Array,
   romRanges: Array<{ start: number; end: number }>,

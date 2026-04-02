@@ -1,17 +1,20 @@
 /**
- * @fileoverview TEC-1G cartridge loading helpers.
+ * @file TEC-1G cartridge loading helpers.
  */
 
 import fs from 'fs';
-import { TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START } from '../platforms/tec-common';
-import { extractRomHex } from './program-loader';
-import { parseIntelHex } from '../z80/loaders';
+import { TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START } from '../tec-common';
+import { extractRomHex } from '../../debug/program-loader';
+import { parseIntelHex } from '../../z80/loaders';
 
 export type Tec1gCartridgeImage = {
   memory: Uint8Array;
   bootEntry: number | null;
 };
 
+/**
+ * Returns whether the loaded image contains any non-zero data in the cartridge expansion region.
+ */
 export function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
   for (let addr = TEC1G_EXPAND_START; addr < 0x10000; addr += 1) {
     if (memory[addr] !== 0) {
@@ -21,6 +24,9 @@ export function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
   return false;
 }
 
+/**
+ * Loads a TEC-1G cartridge image from either raw binary or Intel HEX content.
+ */
 export function loadTec1gCartridgeImage(cartridgePath: string): Tec1gCartridgeImage {
   const lower = cartridgePath.toLowerCase();
   let memory: Uint8Array;

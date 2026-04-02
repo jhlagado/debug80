@@ -1,6 +1,5 @@
 /**
- * @fileoverview TEC-1G shadow ROM management.
- * Handles the ROM shadowing mechanism where ROM at 0xC000 is mirrored to 0x0000.
+ * @file TEC-1G shadow ROM management.
  */
 
 /**
