@@ -31,6 +31,7 @@ vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
 import { resolvePlatformProvider } from '../../src/platforms/provider';
 import { PlatformRegistry } from '../../src/debug/platform-registry';
 import { createSessionState } from '../../src/debug/session-state';
+import type { Tec1gRuntime } from '../../src/platforms/tec1g/runtime';
 
 function createCommandContext() {
   return {
@@ -127,10 +128,72 @@ describe('platform providers', () => {
       },
     });
     const context = createCommandContext();
+    const setCartridgePresent = vi.fn();
     context.sessionState.tec1gRuntime = {
-      state: { bank: 0 },
-      setCartridgePresent: vi.fn(),
-    } as never;
+      state: {
+        display: {
+          digits: [],
+          matrix: [],
+          digitLatch: 0,
+          segmentLatch: 0,
+          matrixLatch: 0,
+          glcdCtrl: {} as never,
+        },
+        input: {
+          matrixKeyStates: new Uint8Array(16),
+          matrixModeEnabled: false,
+          keyValue: 0x7f,
+          keyReleaseEventId: null,
+          nmiPending: false,
+          shiftKeyActive: false,
+          rawKeyActive: false,
+        },
+        audio: {
+          speaker: false,
+          speakerHz: 0,
+          lastEdgeCycle: null,
+          silenceEventId: null,
+        },
+        lcd: {
+          lcd: [],
+          lcdAddr: 0,
+          lcdAddrMode: 'ddram',
+          lcdEntryIncrement: true,
+          lcdEntryShift: false,
+          lcdDisplayOn: true,
+          lcdCursorOn: false,
+          lcdCursorBlink: false,
+          lcdDisplayShift: 0,
+          lcdCgram: new Uint8Array(),
+          lcdCgramAddr: 0,
+          lcdFunction: {
+            dataLength8: true,
+            lines2: true,
+            font5x8: true,
+          },
+        },
+        timing: {
+          cycleClock: {} as never,
+          lastUpdateMs: 0,
+          pendingUpdate: false,
+          clockHz: 0,
+          speedMode: 'fast',
+          updateMs: 0,
+          yieldMs: 0,
+        },
+        system: {
+          sysCtrl: 0,
+          shadowEnabled: false,
+          protectEnabled: false,
+          expandEnabled: false,
+          bankA14: false,
+          capsLock: false,
+          cartridgePresent: false,
+          gimpSignal: false,
+        },
+      },
+      setCartridgePresent,
+    } as Tec1gRuntime;
     const runtimeMemory = new Uint8Array(0x10000);
     const runtime = {
       hardware: {
@@ -157,12 +220,13 @@ describe('platform providers', () => {
       assets,
     });
 
+    const tec1gRuntime = context.sessionState.tec1gRuntime as Tec1gRuntime | undefined;
     expect(createTec1gMemoryHooks).toHaveBeenCalledWith(
       runtimeMemory,
       provider.runtimeOptions?.romRanges ?? [],
-      context.sessionState.tec1gRuntime?.state
+      tec1gRuntime?.state.system
     );
     expect(applyCartridgeMemory).toHaveBeenCalledWith(['bank'], assets.cartridgeImage.memory);
-    expect(context.sessionState.tec1gRuntime?.setCartridgePresent).toHaveBeenCalledWith(true);
+    expect(setCartridgePresent).toHaveBeenCalledWith(true);
   });
 });

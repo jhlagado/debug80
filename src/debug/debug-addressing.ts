@@ -17,7 +17,7 @@ export function getShadowAlias(
     return null;
   }
   const runtime = options.tec1gRuntime;
-  if (!runtime || runtime.state.shadowEnabled !== true) {
+  if (!runtime || runtime.state.system.shadowEnabled !== true) {
     return null;
   }
   if (address < TEC1G_SHADOW_SIZE) {

@@ -66,7 +66,7 @@ export async function runUntilStopAsync(
     context.getActivePlatform() === 'tec1'
       ? (context.getTec1Runtime()?.state.yieldMs ?? 0)
       : context.getActivePlatform() === 'tec1g'
-        ? (context.getTec1gRuntime()?.state.yieldMs ?? 0)
+        ? (context.getTec1gRuntime()?.state.timing.yieldMs ?? 0)
         : 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -144,7 +144,7 @@ export async function runUntilStopAsync(
       const clockHz =
         context.getActivePlatform() === 'tec1'
           ? (context.getTec1Runtime()?.state.clockHz ?? 0)
-          : (context.getTec1gRuntime()?.state.clockHz ?? 0);
+          : (context.getTec1gRuntime()?.state.timing.clockHz ?? 0);
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
@@ -190,7 +190,7 @@ export async function runUntilReturnAsync(
     context.getActivePlatform() === 'tec1'
       ? (context.getTec1Runtime()?.state.yieldMs ?? 0)
       : context.getActivePlatform() === 'tec1g'
-        ? (context.getTec1gRuntime()?.state.yieldMs ?? 0)
+        ? (context.getTec1gRuntime()?.state.timing.yieldMs ?? 0)
         : 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -270,7 +270,7 @@ export async function runUntilReturnAsync(
       const clockHz =
         context.getActivePlatform() === 'tec1'
           ? (context.getTec1Runtime()?.state.clockHz ?? 0)
-          : (context.getTec1gRuntime()?.state.clockHz ?? 0);
+          : (context.getTec1gRuntime()?.state.timing.clockHz ?? 0);
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
