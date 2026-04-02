@@ -8,13 +8,13 @@
 
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
-import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
 import { SdSpi } from './sd-spi';
+import { createTec1gSerialController } from './serial';
 import {
   TEC1G_DIGIT_SERIAL_TX,
   TEC1G_DIGIT_SPEAKER,
@@ -249,7 +249,6 @@ export interface Tec1gRuntime {
 export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
-const TEC1G_SERIAL_BAUD = 4800;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
 const TEC1G_LCD_BUSY_US = 37;
 const TEC1G_LCD_BUSY_CLEAR_US = 1600;
@@ -694,28 +693,7 @@ export function createTec1gRuntime(
     return busy | addr;
   };
 
-  let serialLevel: 0 | 1 = 1;
-  let serialRxLevel: 0 | 1 = 1;
-  let serialRxBusy = false;
-  let serialRxToken = 0;
-  let serialRxLeadCycles = 0;
-  let serialRxPending = false;
-  let serialCyclesPerBit = state.clockHz / TEC1G_SERIAL_BAUD;
-  const serialRxQueue: number[] = [];
-  let serialRxPrimed = false;
-  const serialDecoder = new BitbangUartDecoder(state.cycleClock, {
-    baud: TEC1G_SERIAL_BAUD,
-    cyclesPerSecond: state.clockHz,
-    dataBits: 8,
-    stopBits: 2,
-    parity: 'none',
-    inverted: false,
-  });
-  serialDecoder.setByteHandler((event) => {
-    if (onSerialByte) {
-      onSerialByte(event.byte);
-    }
-  });
+  const serial = createTec1gSerialController(state.cycleClock, state.clockHz, onSerialByte);
   const portWriteLog = new Map<number, number>();
   const logPortWrite = (port: number, value: number): void => {
     const prev = portWriteLog.get(port);
@@ -903,13 +881,9 @@ export function createTec1gRuntime(
       const p = fullPort & TEC1G_MASK_BYTE;
       const highByte = (fullPort >> 8) & TEC1G_MASK_BYTE;
       if (p === TEC1G_PORT_KEYBOARD) {
-        if (serialRxPending && !serialRxBusy && serialRxQueue.length > 0) {
-          serialRxPending = false;
-          serialRxLeadCycles = Math.max(1, Math.round(serialCyclesPerBit * 2));
-          startNextSerialRx();
-        }
+        serial.maybeStartQueuedRx();
         const key = state.keyValue & TEC1G_MASK_LOW7;
-        return key | (serialRxLevel ? TEC1G_STATUS_SERIAL_RX : 0);
+        return key | (serial.getRxLevel() ? TEC1G_STATUS_SERIAL_RX : 0);
       }
       if (p === TEC1G_PORT_MATRIX) {
         if (!state.matrixModeEnabled) {
@@ -963,7 +937,7 @@ export function createTec1gRuntime(
         if (!keyPressed) {
           value |= TEC1G_STATUS_NO_KEY;
         }
-        if (serialRxLevel) {
+        if (serial.getRxLevel()) {
           value |= TEC1G_STATUS_SERIAL_RX;
         }
         return value;
@@ -978,10 +952,7 @@ export function createTec1gRuntime(
         state.digitLatch = value & TEC1G_MASK_BYTE;
         const speaker = (value & TEC1G_DIGIT_SPEAKER) !== 0;
         const nextSerial: 0 | 1 = (value & TEC1G_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
-        if (nextSerial !== serialLevel) {
-          serialLevel = nextSerial;
-          serialDecoder.recordLevel(serialLevel);
-        }
+        serial.recordTxLevel(nextSerial);
         if (speaker !== state.speaker) {
           const now = state.cycleClock.now();
           if (state.lastEdgeCycle !== null) {
@@ -1261,85 +1232,8 @@ export function createTec1gRuntime(
     state.matrixModeEnabled = enabled;
   };
 
-  const setSerialRxLevel = (level: 0 | 1): void => {
-    serialRxLevel = level;
-  };
-
-  const scheduleSerialRxByte = (byte: number, leadCycles = 0): void => {
-    const token = serialRxToken;
-    const start = state.cycleClock.now() + leadCycles;
-    if (leadCycles <= 0) {
-      setSerialRxLevel(0);
-    } else {
-      setSerialRxLevel(1);
-      state.cycleClock.scheduleAt(start, () => {
-        if (serialRxToken !== token) {
-          return;
-        }
-        setSerialRxLevel(0);
-      });
-    }
-    for (let i = 0; i < 8; i += 1) {
-      const bit = ((byte >> i) & 1) as 0 | 1;
-      const at = start + serialCyclesPerBit * (i + 1);
-      state.cycleClock.scheduleAt(at, () => {
-        if (serialRxToken !== token) {
-          return;
-        }
-        setSerialRxLevel(bit);
-      });
-    }
-
-    const stopAt = start + serialCyclesPerBit * (1 + 8);
-    state.cycleClock.scheduleAt(stopAt, () => {
-      if (serialRxToken !== token) {
-        return;
-      }
-      setSerialRxLevel(1);
-    });
-
-    const doneAt = start + serialCyclesPerBit * (1 + 8 + 2);
-    state.cycleClock.scheduleAt(doneAt, () => {
-      if (serialRxToken !== token) {
-        return;
-      }
-      startNextSerialRx();
-    });
-  };
-
-  const startNextSerialRx = (): void => {
-    if (serialRxQueue.length === 0) {
-      serialRxBusy = false;
-      setSerialRxLevel(1);
-      return;
-    }
-    serialRxBusy = true;
-    const next = serialRxQueue.shift();
-    if (next === undefined) {
-      serialRxBusy = false;
-      setSerialRxLevel(1);
-      return;
-    }
-    const leadCycles = serialRxLeadCycles;
-    serialRxLeadCycles = 0;
-    scheduleSerialRxByte(next, leadCycles);
-  };
-
   const queueSerial = (bytes: number[]): void => {
-    if (!bytes.length) {
-      return;
-    }
-    if (!serialRxPrimed) {
-      // Prime RX once so the first real byte is aligned to the ROM's bitbang receiver.
-      serialRxQueue.push(0);
-      serialRxPrimed = true;
-    }
-    for (const value of bytes) {
-      serialRxQueue.push(value & TEC1G_MASK_BYTE);
-    }
-    if (!serialRxBusy) {
-      serialRxPending = true;
-    }
+    serial.queueSerial(bytes);
   };
 
   const recordCycles = (cycles: number): void => {
@@ -1365,8 +1259,7 @@ export function createTec1gRuntime(
   const setSpeed = (mode: Tec1gSpeedMode): void => {
     state.speedMode = mode;
     state.clockHz = mode === 'slow' ? TEC1G_SLOW_HZ : TEC1G_FAST_HZ;
-    serialDecoder.setCyclesPerSecond(state.clockHz);
-    serialCyclesPerBit = state.clockHz / TEC1G_SERIAL_BAUD;
+    serial.setClockHz(state.clockHz);
     glcdRescheduleBlink();
     sendUpdate();
   };
@@ -1437,11 +1330,7 @@ export function createTec1gRuntime(
       state.cycleClock.cancel(state.silenceEventId);
       state.silenceEventId = null;
     }
-    serialRxQueue.length = 0;
-    serialRxBusy = false;
-    serialRxPrimed = false;
-    serialRxToken += 1;
-    setSerialRxLevel(1);
+    serial.reset();
     queueUpdate();
   };
 
