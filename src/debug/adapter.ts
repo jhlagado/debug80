@@ -21,11 +21,6 @@ import * as crypto from 'crypto';
 import { findSegmentForAddress } from '../mapping/source-map';
 import { createZ80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
-import { Tec1gPlatformConfigNormalized } from '../platforms/types';
-import { normalizeSimpleConfig } from '../platforms/simple/runtime';
-import { normalizeTec1Config } from '../platforms/tec1/runtime';
-import { normalizeTec1gConfig } from '../platforms/tec1g/runtime';
-import { applyCartridgeMemory, createTec1gMemoryHooks } from './tec1g-memory';
 import {
   createSessionState,
   resetSessionState,
@@ -33,9 +28,7 @@ import {
   type SessionStateShape,
 } from './session-state';
 import { loadProgramArtifacts } from './program-loader';
-import { loadTec1gCartridgeImage, type Tec1gCartridgeImage } from './tec1g-cartridge';
 import { BreakpointManager } from './breakpoint-manager';
-import { buildPlatformIoHandlers } from './platform-host';
 import { resolveBundledTec1Rom } from './assembler';
 import { buildSymbolIndex } from './symbol-service';
 import { SourceManager } from './source-manager';
@@ -54,21 +47,14 @@ import { buildMemorySnapshotResponse } from './memory-snapshot';
 import { ADDR_MASK } from '../platforms/tec-common';
 import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 import { resolveAssemblerBackend } from './assembler-backend';
+import { resolvePlatformProvider } from '../platforms/provider';
 
-// Import from extracted modules - types only for now (gradual migration)
-import { LaunchRequestArguments, extractKeyCode } from './types';
+import { LaunchRequestArguments } from './types';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
-import {
-  handleKeyRequest,
-  handleResetRequest,
-  handleSerialRequest,
-  handleSpeedRequest,
-} from './platform-requests';
 import { buildRomSourcesResponse } from './rom-requests';
 import {
-  normalizePlatformName,
   populateFromConfig,
   resolveArtifacts,
   resolveDebugMapPath,
@@ -80,7 +66,7 @@ import {
   type LaunchArgsHelpers,
 } from './launch-args';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
-import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from './launch-pipeline';
+import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -132,131 +118,6 @@ export class Z80DebugSession extends DebugSession {
     this.commandRouter.register('debug80/romSources', (response) =>
       this.handleRomRequest('debug80/romSources', response)
     );
-  }
-
-  private registerPlatformCommands(platform: string): void {
-    this.platformRegistry.clear();
-
-    if (platform === 'tec1') {
-      this.platformRegistry.register({
-        id: 'tec1',
-        commands: {
-          'debug80/tec1Key': (response, args) => {
-            const code = extractKeyCode(args);
-            const error = handleKeyRequest(this.sessionState.tec1Runtime, code, () =>
-              this.sessionState.tec1gRuntime?.silenceSpeaker()
-            );
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1Reset': (response) => {
-            const error = handleResetRequest(
-              this.sessionState.runtime,
-              this.sessionState.loadedProgram,
-              this.sessionState.loadedEntry,
-              this.sessionState.tec1Runtime
-            );
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1Speed': (response, args) => {
-            const error = handleSpeedRequest(this.sessionState.tec1Runtime, args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1SerialInput': (response, args) => {
-            const error = handleSerialRequest(this.sessionState.tec1Runtime, args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-        },
-      });
-    }
-
-    if (platform === 'tec1g') {
-      this.platformRegistry.register({
-        id: 'tec1g',
-        commands: {
-          'debug80/tec1gKey': (response, args) => {
-            const code = extractKeyCode(args);
-            const error = handleKeyRequest(this.sessionState.tec1gRuntime, code);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1gMatrixKey': (response, args) => {
-            const error = this.handleMatrixKeyRequest(args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1gMatrixMode': (response, args) => {
-            const error = this.handleMatrixModeRequest(args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1gReset': (response) => {
-            const error = handleResetRequest(
-              this.sessionState.runtime,
-              this.sessionState.loadedProgram,
-              this.sessionState.loadedEntry,
-              this.sessionState.tec1gRuntime
-            );
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.matrixHeldKeys.clear();
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1gSpeed': (response, args) => {
-            const error = handleSpeedRequest(this.sessionState.tec1gRuntime, args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-          'debug80/tec1gSerialInput': (response, args) => {
-            const error = handleSerialRequest(this.sessionState.tec1gRuntime, args);
-            if (error !== null) {
-              this.sendErrorResponse(response, 1, error);
-              return true;
-            }
-            this.sendResponse(response);
-            return true;
-          },
-        },
-      });
-    }
   }
 
   protected initializeRequest(
@@ -313,20 +174,25 @@ export class Z80DebugSession extends DebugSession {
         return;
       }
 
-      const platform = normalizePlatformName(merged);
+      const platformProvider = resolvePlatformProvider(merged);
+      const platform = platformProvider.id;
       this.platformState.active = platform;
-      this.registerPlatformCommands(platform);
-      const simpleConfig = platform === 'simple' ? normalizeSimpleConfig(merged.simple) : undefined;
-      const tec1Config = platform === 'tec1' ? normalizeTec1Config(merged.tec1) : undefined;
-      const tec1gConfig = platform === 'tec1g' ? normalizeTec1gConfig(merged.tec1g) : undefined;
-      const platformPayload: {
-        id: string;
-        uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'];
-      } = { id: platform };
-      if (platform === 'tec1g' && tec1gConfig?.uiVisibility) {
-        platformPayload.uiVisibility = tec1gConfig.uiVisibility;
-      }
-      this.sendEvent(new DapEvent('debug80/platform', platformPayload));
+      const simpleConfig = platformProvider.simpleConfig;
+      const tec1Config = platformProvider.tec1Config;
+      const tec1gConfig = platformProvider.tec1gConfig;
+      this.platformRegistry.clear();
+      platformProvider.registerCommands(this.platformRegistry, {
+        sessionState: this.sessionState,
+        sendResponse: (platformResponse) => this.sendResponse(platformResponse),
+        sendErrorResponse: (platformResponse, id, message) =>
+          this.sendErrorResponse(platformResponse, id, message),
+        handleMatrixModeRequest: (platformArgs) => this.handleMatrixModeRequest(platformArgs),
+        handleMatrixKeyRequest: (platformArgs) => this.handleMatrixKeyRequest(platformArgs),
+        clearMatrixHeldKeys: () => {
+          this.matrixHeldKeys.clear();
+        },
+      });
+      this.sendEvent(new DapEvent('debug80/platform', platformProvider.payload));
 
       const baseDir = this.resolveBaseDir(merged);
       this.sessionState.baseDir = baseDir;
@@ -381,7 +247,7 @@ export class Z80DebugSession extends DebugSession {
 
       this.sessionState.listing = listingInfo;
       this.sessionState.listingPath = listingPath;
-      const extraListings = resolveExtraListings(platform, simpleConfig, tec1Config, tec1gConfig);
+      const extraListings = platformProvider.extraListings;
       this.sourceState.setManager(
         new SourceManager({
           platform,
@@ -441,11 +307,8 @@ export class Z80DebugSession extends DebugSession {
       this.sourceState.lookupAnchors = symbolIndex.lookupAnchors;
       this.sessionState.symbolList = symbolIndex.list;
 
-      const platformIo = buildPlatformIoHandlers({
-        platform,
+      const platformIo = platformProvider.buildIoHandlers({
         ...(merged.terminal !== undefined ? { terminal: merged.terminal } : {}),
-        ...(tec1Config !== undefined ? { tec1Config } : {}),
-        ...(tec1gConfig !== undefined ? { tec1gConfig } : {}),
         onTec1Update: (payload) => {
           this.sendEvent(new DapEvent('debug80/tec1Update', payload));
         },
@@ -466,62 +329,24 @@ export class Z80DebugSession extends DebugSession {
       this.sessionState.tec1gRuntime = platformIo.tec1gRuntime;
       this.sessionState.terminalState = platformIo.terminalState;
       const ioHandlers = platformIo.ioHandlers;
-      const runtimeOptions =
-        (platform === 'simple' && simpleConfig) ||
-        (platform === 'tec1' && tec1Config) ||
-        (platform === 'tec1g' && tec1gConfig)
-          ? { romRanges: (simpleConfig ?? tec1Config ?? tec1gConfig)?.romRanges ?? [] }
-          : undefined;
-      let tec1gCartridgeImage: Tec1gCartridgeImage | null = null;
-      if (platform === 'tec1g' && tec1gConfig) {
-        const cartridgeHex = tec1gConfig.cartridgeHex;
-        if (cartridgeHex !== undefined && cartridgeHex !== '') {
-          const cartridgePath = resolveRelative(cartridgeHex, this.sessionState.baseDir);
-          if (!fs.existsSync(cartridgePath)) {
-            emitConsoleOutput(
-              (event) => this.sendEvent(event as DebugProtocol.Event),
-              `Debug80: TEC-1G cartridge not found at "${cartridgePath}".`
-            );
-          } else {
-            try {
-              tec1gCartridgeImage = loadTec1gCartridgeImage(cartridgePath);
-            } catch (err) {
-              emitConsoleOutput(
-                (event) => this.sendEvent(event as DebugProtocol.Event),
-                `Debug80: Failed to load cartridge "${cartridgePath}": ${String(err)}`
-              );
-            }
-          }
-        }
-      }
-      const entry =
-        platform === 'simple'
-          ? simpleConfig?.entry
-          : platform === 'tec1'
-            ? tec1Config?.entry
-            : platform === 'tec1g'
-              ? (tec1gCartridgeImage?.bootEntry ?? tec1gConfig?.entry)
-              : merged.entry;
+      const runtimeOptions = platformProvider.runtimeOptions;
+      const platformAssets = platformProvider.loadAssets?.({
+        baseDir: this.sessionState.baseDir,
+        log: (message: string): void => {
+          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
+        },
+        resolveRelative: (filePath, baseDir) => resolveRelative(filePath, baseDir),
+      });
+      const entry = platformProvider.resolveEntry(platformAssets);
       this.sessionState.loadedProgram = program;
       this.sessionState.loadedEntry = entry;
       this.sessionState.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
-      const tec1gRuntime = this.sessionState.tec1gRuntime;
-      if (
-        platform === 'tec1g' &&
-        this.sessionState.runtime !== undefined &&
-        tec1gRuntime !== undefined
-      ) {
-        const baseMemory = this.sessionState.runtime.hardware.memory;
-        const romRanges = runtimeOptions?.romRanges ?? [];
-        const hooks = createTec1gMemoryHooks(baseMemory, romRanges, tec1gRuntime.state);
-        this.sessionState.runtime.hardware.memRead = hooks.memRead;
-        this.sessionState.runtime.hardware.memWrite = hooks.memWrite;
-        if (tec1gCartridgeImage) {
-          applyCartridgeMemory(hooks.expandBanks, tec1gCartridgeImage.memory);
-          tec1gRuntime.setCartridgePresent(true);
-        } else {
-          tec1gRuntime.setCartridgePresent(false);
-        }
+      if (this.sessionState.runtime !== undefined) {
+        platformProvider.finalizeRuntime?.({
+          runtime: this.sessionState.runtime,
+          sessionState: this.sessionState,
+          assets: platformAssets,
+        });
       }
       this.sessionState.runState.callDepth = 0;
       this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(
