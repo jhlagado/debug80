@@ -42,7 +42,7 @@ describe('TEC-1G matrix keyboard', () => {
   it('suppresses keypad NMI when matrix mode is enabled', () => {
     const rt = makeRuntime(true);
     rt.applyKey(0x12);
-    expect(rt.state.nmiPending).toBe(false);
-    expect(rt.state.keyValue).toBe(0x7f);
+    expect(rt.state.input.nmiPending).toBe(false);
+    expect(rt.state.input.keyValue).toBe(0x7f);
   });
 });

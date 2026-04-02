@@ -31,27 +31,27 @@ describe('port 0x03 (SYS_INPUT)', () => {
   it('bit 0 (SKEY) reflects shift key state', () => {
     const rt = makeRuntime();
     expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0);
-    rt.state.shiftKeyActive = true;
+    rt.state.input.shiftKeyActive = true;
     expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0x01);
   });
 
   it('bit 1 (PROTECT) reflects protect state', () => {
     const rt = makeRuntime();
     expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0);
-    rt.state.protectEnabled = true;
+    rt.state.system.protectEnabled = true;
     expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0x02);
   });
 
   it('bit 2 (EXPAND) reflects expand state', () => {
     const rt = makeRuntime();
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0);
-    rt.state.expandEnabled = true;
+    rt.state.system.expandEnabled = true;
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0x04);
   });
 
   it('bit 3 (CART) is 0 when no cartridge present', () => {
     const rt = makeRuntime();
-    rt.state.cartridgePresent = false;
+    rt.state.system.cartridgePresent = false;
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0);
   });
 
@@ -64,7 +64,7 @@ describe('port 0x03 (SYS_INPUT)', () => {
   it('bit 4 (RKEY) reflects raw key state', () => {
     const rt = makeRuntime();
     expect(rt.ioHandlers.read(0x03) & 0x10).toBe(0);
-    rt.state.rawKeyActive = true;
+    rt.state.input.rawKeyActive = true;
     expect(rt.ioHandlers.read(0x03) & 0x10).toBe(0x10);
   });
 
@@ -87,29 +87,29 @@ describe('port 0x03 (SYS_INPUT)', () => {
 
   it('bit 3 (CART) is independent of expand state', () => {
     const rt = makeRuntime();
-    rt.state.expandEnabled = true;
-    rt.state.cartridgePresent = false;
+    rt.state.system.expandEnabled = true;
+    rt.state.system.cartridgePresent = false;
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0);
 
-    rt.state.expandEnabled = false;
-    rt.state.cartridgePresent = true;
+    rt.state.system.expandEnabled = false;
+    rt.state.system.cartridgePresent = true;
     expect(rt.ioHandlers.read(0x03) & 0x08).toBe(0x08);
   });
 
   it('bit 2 (EXPAND) is independent of cartridge state', () => {
     const rt = makeRuntime();
-    rt.state.expandEnabled = true;
-    rt.state.cartridgePresent = false;
+    rt.state.system.expandEnabled = true;
+    rt.state.system.cartridgePresent = false;
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0x04);
 
-    rt.state.expandEnabled = false;
-    rt.state.cartridgePresent = true;
+    rt.state.system.expandEnabled = false;
+    rt.state.system.cartridgePresent = true;
     expect(rt.ioHandlers.read(0x03) & 0x04).toBe(0);
   });
 
   it('bit 7 (RX) tracks serial input level', () => {
     const rt = makeRuntime();
-    const cyclesPerBit = rt.state.clockHz / 4800;
+    const cyclesPerBit = rt.state.timing.clockHz / 4800;
     rt.queueSerial([0x55]);
     rt.ioHandlers.read(0x00);
     rt.recordCycles(Math.ceil(cyclesPerBit * 2));
@@ -127,7 +127,7 @@ describe('port 0x03 (SYS_INPUT)', () => {
 
   it('sets protect on reset when configured', () => {
     const rt = makeRuntime({ protectOnReset: true });
-    expect(rt.state.sysCtrl & 0x02).toBe(0x02);
+    expect(rt.state.system.sysCtrl & 0x02).toBe(0x02);
     expect(rt.ioHandlers.read(0x03) & 0x02).toBe(0x02);
   });
 });

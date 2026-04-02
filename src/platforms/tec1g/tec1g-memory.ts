@@ -49,7 +49,7 @@ export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Arr
 export function createTec1gMemoryHooks(
   baseMemory: Uint8Array,
   romRanges: Array<{ start: number; end: number }>,
-  state: Pick<Tec1gState, 'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'>
+  state: Pick<Tec1gState['system'], 'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'>
 ): Tec1gMemoryHooks {
   const expandBanks: [Uint8Array, Uint8Array] = [
     new Uint8Array(TEC1G_EXPAND_SIZE),

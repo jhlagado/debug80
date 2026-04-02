@@ -138,7 +138,7 @@ function finalizeTec1gRuntime(
 
   const assets = (context.assets ?? { cartridgeImage: null }) as Tec1gPlatformAssets;
   const baseMemory = context.runtime.hardware.memory;
-  const hooks = createTec1gMemoryHooks(baseMemory, config.romRanges, tec1gRuntime.state);
+  const hooks = createTec1gMemoryHooks(baseMemory, config.romRanges, tec1gRuntime.state.system);
   context.runtime.hardware.memRead = hooks.memRead;
   context.runtime.hardware.memWrite = hooks.memWrite;
   if (assets.cartridgeImage) {
