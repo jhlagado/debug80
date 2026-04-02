@@ -15,9 +15,7 @@ import {
   Event as DapEvent,
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
-import * as fs from 'fs';
 
-import { createZ80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
   createSessionState,
@@ -25,11 +23,7 @@ import {
   StopReason,
   type SessionStateShape,
 } from './session-state';
-import { loadProgramArtifacts } from './program-loader';
 import { BreakpointManager } from './breakpoint-manager';
-import { resolveBundledTec1Rom } from './assembler';
-import { buildSymbolIndex } from './symbol-service';
-import { SourceManager } from './source-manager';
 import { SourceStateManager } from './source-state-manager';
 import { CommandRouter } from './command-router';
 import { PlatformRegistry } from './platform-registry';
@@ -43,72 +37,36 @@ import {
 import { VariableService } from './variable-service';
 import { ADDR_MASK } from '../platforms/tec-common';
 import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
-import { resolveAssemblerBackend } from './assembler-backend';
-import { resolvePlatformProvider } from '../platforms/provider';
 
 import { LaunchRequestArguments } from './types';
 import {
-  buildListingCacheKey,
   resolveBaseDir,
-  resolveCacheDir,
-  resolveListingSourcePath,
   resolveMappedPath,
 } from './path-resolver';
-import { emitConsoleOutput, emitMainSource } from './adapter-ui';
+import { emitConsoleOutput } from './adapter-ui';
 import { buildRomSourcesResponse } from './rom-requests';
 import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
 import { handleMemorySnapshotRequest } from './memory-request';
-import { handleMatrixModeRequest, handleMatrixKeyRequest } from './matrix-request';
 import { getUnmappedCallReturnAddress } from './step-call-resolver';
 import {
   populateFromConfig,
-  resolveArtifacts,
-  resolveDebugMapPath,
-  resolveExtraDebugMapPath,
-  resolveRelative,
-  resolveAsmPath,
   normalizeSourcePath,
-  relativeIfPossible,
-  type LaunchArgsHelpers,
 } from './launch-args';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
-import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
-import { formatLogMessage, Logger, NullLogger } from '../util/logger';
+import {
+  MissingLaunchArtifactsError,
+  buildLaunchSession,
+  createLaunchLogger,
+  hasLaunchInputs,
+  respondToMissingArtifacts,
+  respondToMissingLaunchInputs,
+  type LaunchSequenceContext,
+  type LaunchSessionArtifacts,
+} from './launch-sequence';
+import { Logger, NullLogger } from '../util/logger';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
-
-function createLaunchLogger(
-  baseLogger: Logger,
-  sendEvent: (event: unknown) => void,
-): Logger {
-  const emitOutput = (message: string): void => {
-    emitConsoleOutput((event) => sendEvent(event), message);
-  };
-  const tee = (
-    sink: (message: string, ...args: unknown[]) => void,
-    message: string,
-    args: unknown[],
-  ): void => {
-    sink(message, ...args);
-    emitOutput(formatLogMessage(message, args));
-  };
-  return {
-    debug: (message: string, ...args: unknown[]) => tee(baseLogger.debug.bind(baseLogger), message, args),
-    info: (message: string, ...args: unknown[]) => tee(baseLogger.info.bind(baseLogger), message, args),
-    warn: (message: string, ...args: unknown[]) => tee(baseLogger.warn.bind(baseLogger), message, args),
-    error: (message: string, ...args: unknown[]) => tee(baseLogger.error.bind(baseLogger), message, args),
-  };
-}
-
-const LAUNCH_ARGS_HELPERS: LaunchArgsHelpers = {
-  resolveBaseDir,
-  resolveAsmPath,
-  resolveRelative,
-  resolveCacheDir,
-  buildListingCacheKey,
-  relativeIfPossible,
-};
 
 export class Z80DebugSession extends DebugSession {
   private breakpointManager = new BreakpointManager();
@@ -195,227 +153,37 @@ export class Z80DebugSession extends DebugSession {
   ): Promise<void> {
     resetSessionState(this.sessionState);
     this.breakpointManager.reset();
+    const launchLogger = createLaunchLogger(this.logger, (event) => this.sendEvent(event));
+    const merged: LaunchRequestArguments = populateFromConfig(args, {
+      resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
+    });
+    this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
+
+    if (!hasLaunchInputs(merged)) {
+      await respondToMissingLaunchInputs(
+        response,
+        () => this.promptForConfigCreation(),
+        (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
+      );
+      return;
+    }
 
     try {
-      const launchLogger = createLaunchLogger(this.logger, (event) => this.sendEvent(event as DebugProtocol.Event));
-      const merged: LaunchRequestArguments = populateFromConfig(args, {
-        resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
-      });
-      this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
-
-      if (
-        (merged.asm === undefined || merged.asm === '') &&
-        (merged.hex === undefined || merged.hex === '') &&
-        (merged.listing === undefined || merged.listing === '')
-      ) {
-        const created = await this.promptForConfigCreation();
-        if (created) {
-          this.sendErrorResponse(
-            response,
-            1,
-            'Debug80: Created debug80.json. Set up your default target and re-run.'
-          );
-          return;
-        }
-        this.sendErrorResponse(
-          response,
-          1,
-          'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
-        );
-        return;
-      }
-
-      const platformProvider = resolvePlatformProvider(merged);
-      const platform = platformProvider.id;
-      this.platformState.active = platform;
-      const simpleConfig = platformProvider.simpleConfig;
-      const tec1Config = platformProvider.tec1Config;
-      const tec1gConfig = platformProvider.tec1gConfig;
-      this.platformRegistry.clear();
-      platformProvider.registerCommands(this.platformRegistry, {
-        sessionState: this.sessionState,
-        sendResponse: (platformResponse) => this.sendResponse(platformResponse),
-        sendErrorResponse: (platformResponse, id, message) =>
-          this.sendErrorResponse(platformResponse, id, message),
-        handleMatrixModeRequest: (platformArgs) =>
-          handleMatrixModeRequest(this.sessionState.tec1gRuntime, this.matrixHeldKeys, platformArgs),
-        handleMatrixKeyRequest: (platformArgs) =>
-          handleMatrixKeyRequest(this.sessionState.tec1gRuntime, this.matrixHeldKeys, platformArgs),
-        clearMatrixHeldKeys: () => {
-          this.matrixHeldKeys.clear();
-        },
-      });
-      this.sendEvent(new DapEvent('debug80/platform', platformProvider.payload));
-
-      const baseDir = resolveBaseDir(merged);
-      this.sessionState.baseDir = baseDir;
-      const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir, {
-        resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-        resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-      });
-      const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
-
-      assembleIfRequested({
-        backend: assemblerBackend,
-        args: merged,
-        asmPath,
-        hexPath,
-        listingPath,
-        platform,
-        ...(simpleConfig !== undefined ? { simpleConfig } : {}),
-        sendEvent: (event) => this.sendEvent(event as DebugProtocol.Event),
-      });
-
-      if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
-        const created = await this.promptForConfigCreation();
-        if (created) {
-          this.sendErrorResponse(
-            response,
-            1,
-            'Debug80: Created debug80.json. Re-run the launch after building artifacts.'
-          );
-          return;
-        }
-        this.sendErrorResponse(
-          response,
-          1,
-          `Z80 artifacts not found. Expected HEX at "${hexPath}" and LST at "${listingPath}".`
-        );
-        return;
-      }
-
-      const { program, listingInfo, listingContent } = loadProgramArtifacts({
-        platform,
-        baseDir,
-        hexPath,
-        listingPath,
-        resolveRelative: (p, dir) => resolveRelative(p, dir),
-        resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
-        logger: launchLogger,
-        ...(tec1Config ? { tec1Config } : {}),
-        ...(tec1gConfig ? { tec1gConfig } : {}),
-      });
-
-      this.sessionState.listing = listingInfo;
-      this.sessionState.listingPath = listingPath;
-      const extraListings = platformProvider.extraListings;
-      this.sourceState.setManager(
-        new SourceManager({
-          platform,
-          baseDir,
-          resolveRelative: (p, dir) => resolveRelative(p, dir),
-          resolveMappedPath: (file): string | undefined =>
-            resolveMappedPath(file, this.sessionState.listingPath, this.sessionState.sourceRoots),
-          relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, LAUNCH_ARGS_HELPERS),
-          resolveDebugMapPath: (args, dir, asm, listing) =>
-            resolveDebugMapPath(
-              args as LaunchRequestArguments,
-              dir,
-              asm,
-              listing,
-              LAUNCH_ARGS_HELPERS
-            ),
-          resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
-          logger: launchLogger,
-        })
-      );
-
-      const sourceState = this.sourceState.build({
-        listingContent,
-        listingPath,
-        ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
-        ...(merged.sourceFile !== undefined && merged.sourceFile.length > 0
-          ? { sourceFile: merged.sourceFile }
-          : {}),
-        sourceRoots: merged.sourceRoots ?? [],
-        extraListings,
-        mapArgs: {
-          ...(merged.artifactBase !== undefined && merged.artifactBase.length > 0
-            ? { artifactBase: merged.artifactBase }
-            : {}),
-          ...(merged.outputDir !== undefined && merged.outputDir.length > 0
-            ? { outputDir: merged.outputDir }
-            : {}),
-        },
-      });
-
-      this.sessionState.sourceRoots = sourceState.sourceRoots;
-      this.sessionState.extraListingPaths = sourceState.extraListingPaths;
-      this.sessionState.mapping = sourceState.mapping;
-      this.sessionState.mappingIndex = sourceState.mappingIndex;
-      emitMainSource(
-        (event) => this.sendEvent(event as DebugProtocol.Event),
-        this.sourceState.file
-      );
-      const symbolIndex = buildSymbolIndex({
-        mapping: this.sessionState.mapping,
-        listingContent,
-        sourceFile: this.sourceState.file,
-      });
-      this.sessionState.symbolAnchors = symbolIndex.anchors;
-      this.sourceState.lookupAnchors = symbolIndex.lookupAnchors;
-      this.sessionState.symbolList = symbolIndex.list;
-
-      const emitDap = (name: string) => (payload: unknown) =>
-        this.sendEvent(new DapEvent(name, payload));
-      const platformIo = platformProvider.buildIoHandlers({
-        ...(merged.terminal !== undefined ? { terminal: merged.terminal } : {}),
-        onTec1Update: emitDap('debug80/tec1Update'),
-        onTec1Serial: emitDap('debug80/tec1Serial'),
-        onTec1gUpdate: emitDap('debug80/tec1gUpdate'),
-        onTec1gSerial: emitDap('debug80/tec1gSerial'),
-        onTerminalOutput: emitDap('debug80/terminalOutput'),
-      });
-      this.sessionState.tec1Runtime = platformIo.tec1Runtime;
-      this.sessionState.tec1gRuntime = platformIo.tec1gRuntime;
-      this.sessionState.terminalState = platformIo.terminalState;
-      const ioHandlers = platformIo.ioHandlers;
-      const runtimeOptions = platformProvider.runtimeOptions;
-      const platformAssets = platformProvider.loadAssets?.({
-        baseDir: this.sessionState.baseDir,
-        logger: launchLogger,
-        resolveRelative: (filePath, baseDir) => resolveRelative(filePath, baseDir),
-      });
-      const entry = platformProvider.resolveEntry(platformAssets);
-      this.sessionState.loadedProgram = program;
-      this.sessionState.loadedEntry = entry;
-      this.sessionState.runtime = createZ80Runtime(program, entry, ioHandlers, runtimeOptions);
-      if (this.sessionState.runtime !== undefined) {
-        platformProvider.finalizeRuntime?.({
-          runtime: this.sessionState.runtime,
-          sessionState: this.sessionState,
-          assets: platformAssets,
-        });
-      }
-      this.sessionState.runState.callDepth = 0;
-      this.sessionState.runState.stepOverMaxInstructions = normalizeStepLimit(
-        merged.stepOverMaxInstructions,
-        0
-      );
-      this.sessionState.runState.stepOutMaxInstructions = normalizeStepLimit(
-        merged.stepOutMaxInstructions,
-        0
-      );
-      if (this.sessionState.listing !== undefined) {
-        const applied = this.breakpointManager.applyAll(
-          this.sessionState.listing,
-          this.sessionState.listingPath,
-          this.sessionState.mappingIndex
-        );
-        for (const bp of applied) {
-          this.sendEvent(new BreakpointEvent('changed', bp));
-        }
-      }
-
+      const artifacts = buildLaunchSession(merged, this.createLaunchSequenceContext(launchLogger));
+      this.applyLaunchSessionArtifacts(artifacts);
+      this.applyLaunchBreakpoints();
       this.sendResponse(response);
-
-      if (this.sessionState.runState.stopOnEntry) {
-        this.sessionState.runState.lastStopReason = 'entry';
-        this.sessionState.runState.lastBreakpointAddress = null;
-        this.sendEvent(new StoppedEvent('entry', THREAD_ID));
-      }
+      this.sendEntryStopIfNeeded();
     } catch (err) {
+      if (err instanceof MissingLaunchArtifactsError) {
+        await respondToMissingArtifacts(
+          response,
+          err,
+          () => this.promptForConfigCreation(),
+          (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
+        );
+        return;
+      }
       const detail = `Failed to load program: ${String(err)}`;
       this.logger.error(detail);
       emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
@@ -502,8 +270,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.sessionState.runtime.step({ trace });
     applyStepInfo(this.getRuntimeControlContext(), trace);
-    this.sessionState.tec1Runtime?.recordCycles(result.cycles ?? 0);
-    this.sessionState.tec1gRuntime?.recordCycles(result.cycles ?? 0);
+    this.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
     this.sessionState.runState.pauseRequested = false;
     this.sendResponse(response);
 
@@ -541,8 +308,7 @@ export class Z80DebugSession extends DebugSession {
     const trace: StepInfo = { taken: false };
     const result = this.sessionState.runtime.step({ trace });
     applyStepInfo(this.getRuntimeControlContext(), trace);
-    this.sessionState.tec1Runtime?.recordCycles(result.cycles ?? 0);
-    this.sessionState.tec1gRuntime?.recordCycles(result.cycles ?? 0);
+    this.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
     this.sessionState.runState.pauseRequested = false;
     this.sendResponse(response);
 
@@ -674,13 +440,13 @@ export class Z80DebugSession extends DebugSession {
     response: DebugProtocol.DisconnectResponse,
     _args: DebugProtocol.DisconnectArguments
   ): void {
-    this.sessionState.tec1Runtime?.silenceSpeaker();
-    this.sessionState.tec1gRuntime?.silenceSpeaker();
+    this.sessionState.platformRuntime?.silenceSpeaker();
     this.sessionState.runtime = undefined;
     this.sessionState.runState.haltNotified = false;
     this.sessionState.terminalState = undefined;
     this.sessionState.tec1Runtime = undefined;
     this.sessionState.tec1gRuntime = undefined;
+    this.sessionState.platformRuntime = undefined;
     this.sessionState.loadedProgram = undefined;
     this.sessionState.loadedEntry = undefined;
     this.platformRegistry.clear();
@@ -746,7 +512,7 @@ export class Z80DebugSession extends DebugSession {
     }
 
     this.sessionState.tec1Runtime?.silenceSpeaker();
-    this.sessionState.tec1gRuntime?.silenceSpeaker();
+    this.sessionState.platformRuntime?.silenceSpeaker();
     this.sendEvent(new TerminatedEvent());
   }
 
@@ -786,6 +552,78 @@ export class Z80DebugSession extends DebugSession {
   private async promptForConfigCreation(): Promise<boolean> {
     const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
     return Boolean(created);
+  }
+
+  private createLaunchSequenceContext(logger: Logger): LaunchSequenceContext {
+    return {
+      logger,
+      sessionState: this.sessionState,
+      sourceState: this.sourceState,
+      platformRegistry: this.platformRegistry,
+      matrixHeldKeys: this.matrixHeldKeys,
+      emitEvent: (event: DebugProtocol.Event): void => {
+        this.sendEvent(event);
+      },
+      emitDapEvent: (name: string, payload: unknown): void => {
+        this.sendEvent(new DapEvent(name, payload));
+      },
+      sendResponse: (platformResponse: DebugProtocol.Response): void => {
+        this.sendResponse(platformResponse);
+      },
+      sendErrorResponse: (
+        platformResponse: DebugProtocol.Response,
+        id: number,
+        message: string
+      ): void => {
+        this.sendErrorResponse(platformResponse, id, message);
+      },
+    };
+  }
+
+  private applyLaunchSessionArtifacts(artifacts: LaunchSessionArtifacts): void {
+    this.platformState.active = artifacts.platform;
+    this.sessionState.listing = artifacts.listing;
+    this.sessionState.listingPath = artifacts.listingPath;
+    this.sessionState.mapping = artifacts.mapping;
+    this.sessionState.mappingIndex = artifacts.mappingIndex;
+    this.sessionState.sourceRoots = artifacts.sourceRoots;
+    this.sessionState.extraListingPaths = artifacts.extraListingPaths;
+    this.sessionState.symbolAnchors = artifacts.symbolAnchors;
+    this.sessionState.symbolList = artifacts.symbolList;
+    this.sessionState.runtime = artifacts.runtime;
+    this.sessionState.terminalState = artifacts.terminalState;
+    this.sessionState.tec1Runtime = artifacts.tec1Runtime;
+    this.sessionState.tec1gRuntime = artifacts.tec1gRuntime;
+    this.sessionState.platformRuntime = artifacts.platformRuntime;
+    this.sessionState.tec1gConfig = artifacts.tec1gConfig;
+    this.sessionState.loadedProgram = artifacts.loadedProgram;
+    this.sessionState.loadedEntry = artifacts.loadedEntry;
+    this.sessionState.runState.callDepth = 0;
+    this.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
+    this.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
+  }
+
+  private applyLaunchBreakpoints(): void {
+    if (this.sessionState.listing === undefined) {
+      return;
+    }
+    const applied = this.breakpointManager.applyAll(
+      this.sessionState.listing,
+      this.sessionState.listingPath,
+      this.sessionState.mappingIndex
+    );
+    for (const bp of applied) {
+      this.sendEvent(new BreakpointEvent('changed', bp));
+    }
+  }
+
+  private sendEntryStopIfNeeded(): void {
+    if (!this.sessionState.runState.stopOnEntry) {
+      return;
+    }
+    this.sessionState.runState.lastStopReason = 'entry';
+    this.sessionState.runState.lastBreakpointAddress = null;
+    this.sendEvent(new StoppedEvent('entry', THREAD_ID));
   }
 }
 
