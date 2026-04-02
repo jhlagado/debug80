@@ -3,7 +3,7 @@ import { MemoryPanel } from '../common/memory-panel';
 import { appendSerialText, sendSerialInput } from '../common/serial';
 import { acquireVscodeApi } from '../common/vscode';
 import { A00 } from './hd44780-a00';
-import { ST7920_FONT } from './st7920-font';
+import ST7920_FONT from './st7920-font.bin';
 
 type PanelTab = 'ui' | 'memory';
 
