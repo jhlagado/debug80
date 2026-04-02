@@ -103,7 +103,7 @@ export interface Tec1gState {
     lastEdgeCycle: number | null;
     silenceEventId: number | null;
   };
-  lcd: Tec1gLcdState;
+  lcdCtrl: Tec1gLcdState;
   timing: {
     cycleClock: CycleClock;
     lastUpdateMs: number;
@@ -297,7 +297,7 @@ export function createTec1gRuntime(
       lastEdgeCycle: null,
       silenceEventId: null,
     },
-    lcd: {
+    lcdCtrl: {
       lcd: Array.from({ length: 80 }, () => TEC1G_LCD_SPACE),
       lcdAddr: TEC1G_LCD_ROW0_START,
       lcdAddrMode: 'ddram',
@@ -340,7 +340,7 @@ export function createTec1gRuntime(
   const display = state.display;
   const input = state.input;
   const audio = state.audio;
-  const lcdState = state.lcd;
+  const lcdState = state.lcdCtrl;
   const timing = state.timing;
   const system = state.system;
   const lcdTest = 'ARROWS: ';
