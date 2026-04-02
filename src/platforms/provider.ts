@@ -9,6 +9,7 @@ import type { PlatformKind } from "../debug/program-loader";
 import type { SessionStateShape } from "../debug/session-state";
 import type { LaunchRequestArguments, TerminalConfig } from "../debug/types";
 import type { Z80Runtime } from "../z80/runtime";
+import type { Logger } from "../util/logger";
 import type {
   SimplePlatformConfigNormalized,
   Tec1PlatformConfigNormalized,
@@ -43,7 +44,7 @@ export interface PlatformIoCallbacks {
 
 export interface PlatformAssetLoadContext {
   baseDir: string;
-  log: (message: string) => void;
+  logger: Logger;
   resolveRelative: (filePath: string, baseDir: string) => string;
 }
 

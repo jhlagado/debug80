@@ -21,6 +21,7 @@ import {
   parseD8DebugMap,
 } from '../mapping/d8-map';
 import { legacyDebugMapPath } from './d8-map-paths';
+import { Logger } from '../util/logger';
 
 export interface MappingServiceOptions {
   platform: string;
@@ -37,7 +38,7 @@ export interface MappingServiceOptions {
     asmPath: string | undefined,
     listingPath: string
   ) => string;
-  log: (message: string) => void;
+  logger: Logger;
 }
 
 export interface MappingBuildResult {
@@ -72,14 +73,14 @@ export function buildMappingFromListing(options: {
   const loadedMap = loadDebugMap(mapPath, service);
   const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
   if (hasNativeMap) {
-    service.log(
+    service.logger.info(
       `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
     );
   }
 
   const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
   if (mapStale) {
-    service.log('Debug80: D8 debug map is older than the LST. Regenerating from LST.');
+    service.logger.warn('Debug80: D8 debug map is older than the LST. Regenerating from LST.');
   }
 
   let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
@@ -94,7 +95,7 @@ export function buildMappingFromListing(options: {
     missingSources = layer2.missingSources;
     if (missingSources.length > 0) {
       const unique = Array.from(new Set(missingSources));
-      service.log(`Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`);
+      service.logger.warn(`Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`);
     }
     debugMap = buildD8DebugMap(baseMapping, {
       arch: 'z80',
@@ -183,7 +184,7 @@ function loadDebugMap(
     const { map, error } = parseD8DebugMap(raw);
     if (!map) {
       const prefix = `Debug80 [${service.platform}]`;
-      service.log(
+      service.logger.warn(
         `${prefix}: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})`
       );
       return undefined;
@@ -191,7 +192,7 @@ function loadDebugMap(
     return map;
   } catch (err) {
     const prefix = `Debug80 [${service.platform}]`;
-    service.log(
+    service.logger.error(
       `${prefix}: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})`
     );
     return undefined;
@@ -257,7 +258,7 @@ function writeDebugMap(
     };
     fs.writeFileSync(mapPath, JSON.stringify(enriched, null, 2));
   } catch (err) {
-    service.log(`Debug80: Failed to write D8 debug map: ${String(err)}`);
+    service.logger.error(`Debug80: Failed to write D8 debug map: ${String(err)}`);
   }
 }
 
@@ -275,7 +276,7 @@ function loadExtraListingMapping(
       const loadedMap = loadDebugMap(mapPath, service);
       const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
       if (hasNativeMap) {
-        service.log(
+        service.logger.info(
           `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
         );
       }
@@ -283,7 +284,7 @@ function loadExtraListingMapping(
       const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
       if (mapStale) {
         const prefix = `Debug80 [${service.platform}]`;
-        service.log(
+        service.logger.warn(
           `${prefix}: D8 debug map for extra listing is older than the LST. Regenerating (${listingPath}).`
         );
       }
@@ -311,7 +312,7 @@ function loadExtraListingMapping(
       writeDebugMap(debugMap, mapPath, service, listingPath);
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
-      service.log(`${prefix}: failed to read extra listing "${listingPath}": ${String(err)}`);
+      service.logger.error(`${prefix}: failed to read extra listing "${listingPath}": ${String(err)}`);
     }
   }
   if (combined.segments.length === 0 && combined.anchors.length === 0) {
@@ -337,7 +338,7 @@ function buildExtraListingMapping(
       }
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
-      service.log(`${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`);
+      service.logger.error(`${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`);
     }
   }
   const content = fs.readFileSync(listingPath, 'utf-8');

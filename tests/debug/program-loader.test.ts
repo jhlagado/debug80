@@ -8,6 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { loadProgramArtifacts } from '../../src/debug/program-loader';
 import { TEC1_ROM_LOAD_ADDR } from '../../src/platforms/tec-common';
+import type { Logger } from '../../src/util/logger';
 
 const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -20,6 +21,13 @@ const writeHexFile = (filePath: string, address: number, value: number): void =>
   const line = `:01${addr}00${byte}00`;
   writeFile(filePath, `${line}\n:00000001FF\n`);
 };
+
+const createLogger = (logs: string[]): Logger => ({
+  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+});
 
 describe('program-loader', () => {
   it('loads TEC-1 overlays and applies program hex', () => {
@@ -42,7 +50,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
       tec1Config: { romHex: romPath, ramInitHex: ramPath },
     });
 
@@ -73,7 +81,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
       tec1gConfig: { romHex: romPath, ramInitHex: ramPath },
     });
 
@@ -101,7 +109,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
       tec1Config: { romHex: 'nonexistent.hex' },
     });
 
@@ -125,7 +133,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
       tec1gConfig: { romHex: 'nonexistent.bin' },
     });
 
@@ -149,7 +157,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
       tec1Config: { ramInitHex: 'nonexistent-ram.hex' },
     });
 
@@ -173,7 +181,7 @@ describe('program-loader', () => {
       listingPath,
       resolveRelative: (p, base) => path.resolve(base, p),
       resolveBundledTec1Rom: () => undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
     });
 
     expect(result.program.memory[0x0100]).toBe(0xee);

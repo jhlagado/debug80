@@ -7,6 +7,7 @@ import * as path from 'path';
 import { ListingInfo, HexProgram, parseIntelHex, parseListing } from '../z80/loaders';
 import { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../platforms/types';
 import { Z80_ADDRESS_SPACE, TEC1_ROM_LOAD_ADDR } from '../platforms/tec-common';
+import { Logger } from '../util/logger';
 
 export type PlatformKind = 'simple' | 'tec1' | 'tec1g';
 
@@ -17,7 +18,7 @@ export interface ProgramLoaderOptions {
   listingPath: string;
   resolveRelative: (p: string, baseDir: string) => string;
   resolveBundledTec1Rom: () => string | undefined;
-  log: (message: string) => void;
+  logger: Logger;
   tec1Config?: Tec1PlatformConfigNormalized;
   tec1gConfig?: Tec1gPlatformConfigNormalized;
 }
@@ -62,7 +63,7 @@ function buildTec1Memory(hexContent: string, options: ProgramLoaderOptions): Uin
       : options.resolveBundledTec1Rom();
   if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
     const target = romPath ?? '(missing bundled ROM)';
-    options.log(`Debug80: TEC-1 ROM not found at "${target}".`);
+    options.logger.warn(`Debug80: TEC-1 ROM not found at "${target}".`);
   } else {
     const binPath = resolveRomBinPath(romPath);
     if (binPath !== undefined && binPath.length > 0 && fs.existsSync(binPath)) {
@@ -81,7 +82,7 @@ function buildTec1Memory(hexContent: string, options: ProgramLoaderOptions): Uin
       : undefined;
   if (ramInitPath !== undefined && ramInitPath.length > 0) {
     if (!fs.existsSync(ramInitPath)) {
-      options.log(`Debug80: TEC-1 RAM init not found at "${ramInitPath}".`);
+      options.logger.warn(`Debug80: TEC-1 RAM init not found at "${ramInitPath}".`);
     } else {
       const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
       const ramInitHexContent = extractRomHex(ramInitContent, ramInitPath);
@@ -104,7 +105,7 @@ function buildTec1gMemory(hexContent: string, options: ProgramLoaderOptions): Ui
       : undefined;
   if (romPath === undefined || romPath.length === 0 || !fs.existsSync(romPath)) {
     const target = romPath ?? '(missing TEC-1G ROM)';
-    options.log(`Debug80: TEC-1G ROM not found at "${target}".`);
+    options.logger.warn(`Debug80: TEC-1G ROM not found at "${target}".`);
   } else if (romPath.toLowerCase().endsWith('.bin')) {
     applyBinaryToMemoryAtOffset(romPath, memory, TEC1_ROM_LOAD_ADDR);
   } else {
@@ -120,7 +121,7 @@ function buildTec1gMemory(hexContent: string, options: ProgramLoaderOptions): Ui
       : undefined;
   if (ramInitPath !== undefined && ramInitPath.length > 0) {
     if (!fs.existsSync(ramInitPath)) {
-      options.log(`Debug80: TEC-1G RAM init not found at "${ramInitPath}".`);
+      options.logger.warn(`Debug80: TEC-1G RAM init not found at "${ramInitPath}".`);
     } else {
       const ramInitContent = fs.readFileSync(ramInitPath, 'utf-8');
       const ramInitHexContent = extractRomHex(ramInitContent, ramInitPath);

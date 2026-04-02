@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import type { Logger } from '../../src/util/logger';
 
 vi.mock('../../src/debug/path-resolver', () => ({
   resolveListingSourcePath: () => undefined,
@@ -20,6 +21,13 @@ const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
 };
+
+const createLogger = (logs: string[]): Logger => ({
+  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+});
 
 describe('source-manager', () => {
   it('builds mapping state and resolves extra listings', () => {
@@ -45,7 +53,7 @@ describe('source-manager', () => {
       resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
       resolveListingSourcePath: (listing) =>
         listing.endsWith('.lst') ? listing.replace(/\.lst$/, '.asm') : undefined,
-      log: (message) => logs.push(message),
+      logger: createLogger(logs),
     });
 
     const state = manager.buildState({
@@ -80,7 +88,7 @@ describe('source-manager', () => {
       resolveExtraDebugMapPath: () => path.join(dir, 'extra.json'),
       resolveListingSourcePath: (listing) =>
         listing.endsWith('.lst') ? listing.replace(/\.lst$/, '.asm') : undefined,
-      log: () => undefined,
+      logger: createLogger([]),
     });
 
     const entries = manager.collectRomSources([extraListingPath]);

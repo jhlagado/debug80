@@ -12,14 +12,16 @@ import { PlatformViewProvider } from './platform-view-provider';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
+import { OutputChannelLogger } from '../util/logger';
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
  */
 export function activate(context: vscode.ExtensionContext): void {
   const sessionState = new SessionStateManager();
-  const factory = new Z80DebugAdapterFactory();
   const output = vscode.window.createOutputChannel('Debug80');
+  const logger = new OutputChannelLogger(output);
+  const factory = new Z80DebugAdapterFactory(logger);
   const platformViewProvider = new PlatformViewProvider(context.extensionUri);
   const workspaceSelection = new WorkspaceSelectionController(context, platformViewProvider);
   const sourceColumns = new SourceColumnController(sessionState);
@@ -38,6 +40,7 @@ export function activate(context: vscode.ExtensionContext): void {
       platformViewProvider
     )
   );
+  context.subscriptions.push(output);
 
   registerLanguageAssociations(context, output);
   workspaceSelection.registerInfrastructure();
