@@ -17,7 +17,6 @@ import {
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import { findSegmentForAddress } from '../mapping/source-map';
 import { createZ80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
@@ -50,7 +49,12 @@ import { resolveAssemblerBackend } from './assembler-backend';
 import { resolvePlatformProvider } from '../platforms/provider';
 
 import { LaunchRequestArguments } from './types';
-import { resolveListingSourcePath } from './path-resolver';
+import {
+  buildListingCacheKey,
+  resolveBaseDir,
+  resolveCacheDir,
+  resolveListingSourcePath,
+} from './path-resolver';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
 import { buildRomSourcesResponse } from './rom-requests';
@@ -71,9 +75,6 @@ import { formatLogMessage, Logger, NullLogger } from '../util/logger';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
-
-/** Length of cache key hash */
-const CACHE_KEY_LENGTH = 12;
 
 type MatrixKeyPayload = {
   key: string;
@@ -173,7 +174,7 @@ export class Z80DebugSession extends DebugSession {
     try {
       const launchLogger = this.createLaunchLogger();
       const merged: LaunchRequestArguments = populateFromConfig(args, {
-        resolveBaseDir: (requestArgs) => this.resolveBaseDir(requestArgs),
+        resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
       });
       this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
 
@@ -219,7 +220,7 @@ export class Z80DebugSession extends DebugSession {
       });
       this.sendEvent(new DapEvent('debug80/platform', platformProvider.payload));
 
-      const baseDir = this.resolveBaseDir(merged);
+      const baseDir = resolveBaseDir(merged);
       this.sessionState.baseDir = baseDir;
       const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir, {
         resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
@@ -1153,58 +1154,14 @@ export class Z80DebugSession extends DebugSession {
 
   private getLaunchArgsHelpers(): LaunchArgsHelpers {
     return {
-      resolveBaseDir: (args: LaunchRequestArguments) => this.resolveBaseDir(args),
+      resolveBaseDir: (args: LaunchRequestArguments) => resolveBaseDir(args),
       resolveAsmPath: (asm: string | undefined, baseDir: string) => resolveAsmPath(asm, baseDir),
       resolveRelative: (filePath: string, baseDir: string) => resolveRelative(filePath, baseDir),
-      resolveCacheDir: (baseDir: string) => this.resolveCacheDir(baseDir),
-      buildListingCacheKey: (listingPath: string) => this.buildListingCacheKey(listingPath),
+      resolveCacheDir: (baseDir: string) => resolveCacheDir(baseDir),
+      buildListingCacheKey: (listingPath: string) => buildListingCacheKey(listingPath),
       relativeIfPossible: (filePath: string, baseDir: string) =>
         relativeIfPossible(filePath, baseDir),
     };
-  }
-
-  private resolveBaseDir(args: LaunchRequestArguments): string {
-    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-
-    // If a projectConfig is provided, use the workspace root when the config lives inside it
-    // (including .vscode), otherwise fall back to the config directory.
-    if (args.projectConfig !== undefined && args.projectConfig !== '') {
-      const cfgPath = path.isAbsolute(args.projectConfig)
-        ? args.projectConfig
-        : workspace !== undefined
-          ? path.join(workspace, args.projectConfig)
-          : args.projectConfig;
-
-      if (workspace !== undefined && cfgPath.startsWith(workspace)) {
-        return workspace;
-      }
-
-      return path.dirname(cfgPath);
-    }
-
-    return workspace ?? process.cwd();
-  }
-
-  private resolveCacheDir(baseDir: string): string | undefined {
-    if (!baseDir || baseDir.length === 0) {
-      return undefined;
-    }
-    try {
-      const stat = fs.statSync(baseDir);
-      if (!stat.isDirectory()) {
-        return undefined;
-      }
-      const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
-      fs.mkdirSync(cacheDir, { recursive: true });
-      return cacheDir;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private buildListingCacheKey(listingPath: string): string {
-    const normalized = path.resolve(listingPath);
-    return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
   }
 }
 
