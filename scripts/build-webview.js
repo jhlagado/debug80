@@ -40,6 +40,9 @@ async function build() {
     format: 'iife',
     target: ['es2020'],
     sourcemap: true,
+    loader: {
+      '.bin': 'binary',
+    },
   });
 
   await Promise.all(staticFiles.map((file) => copyFile(file, outDir)));
