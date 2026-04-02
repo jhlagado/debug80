@@ -17,7 +17,7 @@ TEC-1G notes: `docs/platforms/tec1g/README.md`.
 - Support multiple Z80 target environments without changing the core debugger.
 - Keep launch config minimal by using the existing target selection.
 - Make the current simple environment configurable.
-- Allow machine profiles (CP/M, Microbee, TEC-1) to be added incrementally.
+- Allow the supported machine profiles (Simple, TEC-1, TEC-1G) to evolve incrementally.
 
 ## Selection and configuration
 
@@ -44,7 +44,7 @@ Platform selection is per target in `debug80.json`:
 ```
 
 `platform` is a string id. The matching config object uses the same key as the
-platform id (e.g. `simple`, `cpm`, `microbee`, `tec1`).
+platform id (e.g. `simple`, `tec1`, `tec1g`).
 
 ## Folder structure
 
@@ -53,23 +53,25 @@ Platform modules live under `src/platforms/`:
 ```
 src/
   platforms/
+    serial/
+      bitbang-uart.ts
     simple/
+      provider.ts
+      runtime.ts
+    tec-common/
       index.ts
-      devices/
-    cpm/
-      index.ts
-      devices/
-    microbee/
-      index.ts
-      devices/
     tec1/
-      index.ts
-      devices/
+      provider.ts
+      runtime.ts
+    tec1g/
+      provider.ts
+      runtime.ts
 ```
 
-Each platform can have its own dependencies. TEC-1 and Simple now have their
-runtime/panel modules under `src/platforms/`, while the adapter and extension
-still orchestrate wiring. ROMs live under `roms/`.
+Each platform can have its own dependencies. Shared serial helpers and TEC
+constants live alongside the platform code. TEC-1 and TEC-1G now have their
+runtime, controller, and webview panel modules under `src/platforms/`, while
+the adapter and extension still orchestrate wiring. ROMs live under `roms/`.
 
 ## Core interfaces
 
@@ -211,52 +213,9 @@ Notes:
 - `simple.entry` is the CPU start address (default first ROM region start).
 - `simple.binFrom`/`simple.binTo` optionally trigger an extra asm80 pass that emits `.bin`.
 
-### CP/M (draft)
-
-CP/M is a well-known Z80 environment with a TPA that usually starts at 0x0100 (256).
-Exact BIOS/BDOS wiring varies by machine, so the platform keeps these as
-configurable values.
-
-```json
-{
-  "platform": "cpm",
-  "cpm": {
-    "entry": 256,
-    "biosEntry": 0,
-    "bdosEntry": 5,
-    "console": {
-      "mode": "port",
-      "rxPort": 0,
-      "txPort": 1,
-      "statusPort": 2
-    }
-  }
-}
-```
-
-Notes:
-- `entry` is the program start address (default 0x0100 / 256).
-- `biosEntry` and `bdosEntry` are optional and can be ignored until a BDOS
-  emulation layer is implemented.
-
-### Microbee (draft)
-
-Microbee is a richer platform with banked ROM/RAM, video memory, keyboard, and
-floppy controller. The v0.1 target is a stub profile with a realistic memory
-map and port allocation left as configurable values.
-
-```json
-{
-  "platform": "microbee",
-  "microbee": {
-    "rom": "roms/microbee.rom",
-    "ramSize": 65536,
-    "banked": true,
-    "keyboard": { "port": 0 },
-    "video": { "port": 16 }
-  }
-}
-```
+The repository no longer ships `cpm` or `microbee` platform directories or
+example configs. Those machine profiles moved out of tree and are not covered by
+this spec.
 
 ### TEC-1 (v0.1)
 
