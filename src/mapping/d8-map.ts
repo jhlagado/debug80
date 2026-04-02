@@ -162,8 +162,10 @@ export interface D8MemoryLayout {
  * Information about the tool that generated the debug map.
  */
 export interface D8Generator {
-  /** Generator tool name */
-  name: string;
+  /** Generator display name */
+  name?: string;
+  /** Generator tool identifier */
+  tool?: string;
   /** Generator version */
   version?: string;
   args?: string[];
@@ -315,7 +317,7 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
   for (const [fileKey, entry] of Object.entries(files)) {
     const file = fromFileKey(fileKey);
     for (const segment of entry.segments ?? []) {
-      const line = segment.line ?? null;
+      const line = resolveD8SegmentLine(segment);
       const confidence = segment.confidence ?? defaultConfidence;
 
       const lstLine = segment.lstLine;
@@ -355,6 +357,10 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
   }
 
   return { segments, anchors };
+}
+
+function resolveD8SegmentLine(segment: D8Segment): number | null {
+  return segment.line ?? segment.lstLine ?? null;
 }
 
 export function parseD8DebugMap(content: string): { map?: D8DebugMap; error?: string } {

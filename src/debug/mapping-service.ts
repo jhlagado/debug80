@@ -105,8 +105,7 @@ export function buildMappingFromListing(options: {
     writeDebugMap(debugMap, mapPath, service, listingPath);
   }
 
-  const normalizedDebugMap = hasNativeMap ? normalizeNativeDebugMapForDebug80(debugMap) : debugMap;
-  let mapping = buildMappingFromD8DebugMap(normalizedDebugMap);
+  let mapping = buildMappingFromD8DebugMap(debugMap);
   const extraMapping = loadExtraListingMapping(extraListingPaths, service);
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
@@ -199,45 +198,44 @@ function loadDebugMap(
   }
 }
 
-function isNativeDebugMap(map: D8DebugMap): boolean {
-  const generatorName = map.generator?.name?.trim().toLowerCase();
-  return typeof generatorName === 'string' && generatorName.length > 0 && generatorName !== 'debug80';
+export function isNativeDebugMap(map: D8DebugMap): boolean {
+  const generator = map.generator;
+  if (generator === undefined) {
+    return true;
+  }
+
+  const generatorName = normalizeGeneratorIdentity(generator.name);
+  if (generatorName === 'debug80') {
+    return false;
+  }
+
+  const generatorTool = normalizeGeneratorIdentity(generator.tool);
+  if (generatorTool === 'debug80') {
+    return false;
+  }
+
+  return true;
 }
 
 function getDebugMapGeneratorLabel(map: D8DebugMap): string {
-  const generatorName = map.generator?.name?.trim();
-  return typeof generatorName === 'string' && generatorName.length > 0
-    ? generatorName
+  const generator = map.generator;
+  const generatorName = generator?.name?.trim();
+  if (typeof generatorName === 'string' && generatorName.length > 0) {
+    return generatorName;
+  }
+
+  const generatorTool = generator?.tool?.trim();
+  return typeof generatorTool === 'string' && generatorTool.length > 0
+    ? generatorTool
     : 'unknown generator';
 }
 
-function normalizeNativeDebugMapForDebug80(map: D8DebugMap): D8DebugMap {
-  const files = map.files;
-  if (files === undefined || Array.isArray(files)) {
-    return map;
+function normalizeGeneratorIdentity(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
   }
-
-  const normalizedFiles: D8DebugMap['files'] = {};
-  for (const [fileKey, entry] of Object.entries(files)) {
-    normalizedFiles[fileKey] = {
-      ...entry,
-      ...(entry.segments
-        ? {
-            segments: entry.segments.map((segment) => ({
-              ...segment,
-              ...(segment.line === undefined || segment.line === null
-                ? { line: segment.lstLine }
-                : {}),
-            })),
-          }
-        : {}),
-    };
-  }
-
-  return {
-    ...map,
-    files: normalizedFiles,
-  };
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function writeDebugMap(
@@ -292,10 +290,7 @@ function loadExtraListingMapping(
 
       let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
       if (debugMap) {
-        const normalizedDebugMap = hasNativeMap
-          ? normalizeNativeDebugMapForDebug80(debugMap)
-          : debugMap;
-        const mapping = buildMappingFromD8DebugMap(normalizedDebugMap);
+        const mapping = buildMappingFromD8DebugMap(debugMap);
         combined.segments.push(...mapping.segments);
         combined.anchors.push(...mapping.anchors);
         continue;
