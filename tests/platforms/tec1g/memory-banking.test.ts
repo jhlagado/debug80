@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTec1gMemoryHooks } from '../../../src/debug/tec1g-memory';
+import { createTec1gMemoryHooks } from '../../../src/platforms/tec1g/tec1g-memory';
 
 describe('TEC-1G memory banking', () => {
   it('reads shadow ROM when enabled', () => {

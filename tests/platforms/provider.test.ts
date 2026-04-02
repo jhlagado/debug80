@@ -23,7 +23,7 @@ vi.mock('../../src/debug/platform-host', () => ({
   buildPlatformIoHandlers,
 }));
 
-vi.mock('../../src/debug/tec1g-memory', () => ({
+vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
   createTec1gMemoryHooks,
   applyCartridgeMemory,
 }));

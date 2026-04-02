@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { applyCartridgeMemory, createTec1gMemoryHooks } from '../../src/debug/tec1g-memory';
+import {
+  applyCartridgeMemory,
+  createTec1gMemoryHooks,
+} from '../../src/platforms/tec1g/tec1g-memory';
 import { createTec1gRuntime } from '../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../src/platforms/types';
 
