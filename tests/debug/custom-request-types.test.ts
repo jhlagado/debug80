@@ -13,10 +13,12 @@ import {
   extractSpeedMode,
   isSerialInputPayload,
   extractSerialText,
+} from '../../src/debug/message-types';
+import {
   isMemoryViewRequest,
   extractMemorySnapshotPayload,
   extractViewEntry,
-} from '../../src/debug/types';
+} from '../../src/debug/memory-types';
 
 describe('Terminal Input Payload', () => {
   describe('isTerminalInputPayload', () => {

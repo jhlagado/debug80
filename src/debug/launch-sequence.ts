@@ -32,7 +32,8 @@ import type { SourceMapIndex } from '../mapping/source-map';
 import { formatLogMessage, type Logger } from '../util/logger';
 import type { MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 import type { ListingInfo, HexProgram } from '../z80/loaders';
-import type { TerminalState, LaunchRequestArguments } from './types';
+import type { LaunchRequestArguments } from './types';
+import type { TerminalState } from './terminal-types';
 import type {
   ActivePlatformRuntime,
   SessionStateShape,

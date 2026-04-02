@@ -4,7 +4,7 @@
 
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { applyTerminalBreak, applyTerminalInput } from './io-requests';
-import type { TerminalState } from './types';
+import type { TerminalState } from './terminal-types';
 
 export type TerminalRequestDeps = {
   getTerminalState: () => TerminalState | undefined;

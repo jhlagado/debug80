@@ -7,7 +7,7 @@ import type { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from
 import { createTec1Runtime, Tec1Runtime } from '../platforms/tec1/runtime';
 import { createTec1gRuntime, Tec1gRuntime } from '../platforms/tec1g/runtime';
 import type { PlatformKind } from './program-loader';
-import type { TerminalConfig, TerminalConfigNormalized, TerminalState } from './types';
+import type { TerminalConfig, TerminalConfigNormalized, TerminalState } from './terminal-types';
 
 export interface PlatformIoBuildOptions {
   platform: PlatformKind;

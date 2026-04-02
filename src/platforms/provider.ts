@@ -7,7 +7,8 @@ import type { PlatformIoBuildResult } from "../debug/platform-host";
 import type { PlatformRegistry } from "../debug/platform-registry";
 import type { PlatformKind } from "../debug/program-loader";
 import type { SessionStateShape } from "../debug/session-state";
-import type { LaunchRequestArguments, TerminalConfig } from "../debug/types";
+import type { LaunchRequestArguments } from "../debug/types";
+import type { TerminalConfig } from "../debug/terminal-types";
 import type { Z80Runtime } from "../z80/runtime";
 import type { Logger } from "../util/logger";
 import type {

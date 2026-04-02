@@ -2,7 +2,12 @@
  * @fileoverview IO request helpers for terminal/serial/speed commands.
  */
 
-import { extractSerialText, extractSpeedMode, extractTerminalText, TerminalState } from './types';
+import {
+  extractSerialText,
+  extractSpeedMode,
+  extractTerminalText,
+} from './message-types';
+import type { TerminalState } from './terminal-types';
 
 export interface SerialTarget {
   queueSerial: (bytes: number[]) => void;

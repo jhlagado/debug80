@@ -23,7 +23,8 @@ import {
   handleSpeedRequest,
 } from '../../debug/platform-requests';
 import type { PlatformContribution } from '../../debug/platform-registry';
-import { extractKeyCode, type LaunchRequestArguments } from '../../debug/types';
+import type { LaunchRequestArguments } from '../../debug/types';
+import { extractKeyCode } from '../../debug/message-types';
 import type {
   PlatformAssetLoadContext,
   PlatformCommandContext,
