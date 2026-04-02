@@ -333,7 +333,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "pretest": "npm run build",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:webview",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "perf:z80": "npm run build && node scripts/perf-z80.js",
