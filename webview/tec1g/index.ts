@@ -1,9 +1,9 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
-import { appendSerialText, sendSerialInput } from '../common/serial';
 import { acquireVscodeApi } from '../common/vscode';
 import { A00 } from './hd44780-a00';
 import ST7920_FONT from './st7920-font.bin';
+import { wireTec1gSerialUi } from './serial-ui';
 
 type PanelTab = 'ui' | 'memory';
 
@@ -19,12 +19,6 @@ const statusShadow = document.getElementById('statusShadow') as HTMLElement;
 const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
-const serialOutEl = document.getElementById('serialOut') as HTMLElement;
-const serialInputEl = document.getElementById('serialInput') as HTMLInputElement;
-const serialSendEl = document.getElementById('serialSend') as HTMLElement;
-const serialSendFileEl = document.getElementById('serialSendFile') as HTMLElement;
-const serialSaveEl = document.getElementById('serialSave') as HTMLElement;
-const serialClearEl = document.getElementById('serialClear') as HTMLElement;
 const lcdCanvas = document.getElementById('lcdCanvas') as HTMLCanvasElement | null;
 const lcdCtx = lcdCanvas?.getContext('2d') ?? null;
 const glcdCanvas = document.getElementById('glcdCanvas') as HTMLCanvasElement | null;
@@ -46,7 +40,6 @@ const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const uiControls = document.getElementById('uiControls') as HTMLElement;
 const uiSectionNodes = Array.from(document.querySelectorAll<HTMLElement>('.ui-section'));
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
-const SERIAL_MAX = 8000;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
 const LCD_COLS = 20;
@@ -1118,18 +1111,6 @@ window.addEventListener('message', event => {
     }
     return;
   }
-  if (event.data.type === 'serial') {
-    appendSerialText(serialOutEl, event.data.text || '', SERIAL_MAX);
-    return;
-  }
-  if (event.data.type === 'serialInit') {
-    serialOutEl.textContent = event.data.text || '';
-    return;
-  }
-  if (event.data.type === 'serialClear') {
-    serialOutEl.textContent = '';
-    return;
-  }
   if (event.data.type === 'snapshot') {
     memoryPanelController?.handleSnapshot(event.data);
     return;
@@ -1151,31 +1132,7 @@ drawGlcd();
 setTab(DEFAULT_TAB, false);
 window.addEventListener('resize', scheduleMemoryResize);
 updateMemoryLayout(false);
-if (document.activeElement !== serialInputEl) {
-  document.getElementById('app').focus();
-}
-
-serialSendEl.addEventListener('click', () => {
-  sendSerialInput(serialInputEl, vscode);
-});
-serialInputEl.addEventListener('keydown', event => {
-  if (event.key === 'Enter') {
-    sendSerialInput(serialInputEl, vscode);
-    event.preventDefault();
-  }
-});
-
-serialSendFileEl.addEventListener('click', () => {
-  vscode.postMessage({ type: 'serialSendFile' });
-});
-serialSaveEl.addEventListener('click', () => {
-  const text = serialOutEl.textContent || '';
-  vscode.postMessage({ type: 'serialSave', text });
-});
-serialClearEl.addEventListener('click', () => {
-  serialOutEl.textContent = '';
-  vscode.postMessage({ type: 'serialClear' });
-});
+wireTec1gSerialUi(vscode);
 
 window.addEventListener('keydown', event => {
   if (event.repeat) return;
