@@ -61,9 +61,9 @@ describe('TEC-1G expand bank switching', () => {
       sdHighCapacity: true,
     };
     const runtime = createTec1gRuntime(config, () => {});
-    runtime.state.bankA14 = false;
+    runtime.state.system.bankA14 = false;
     runtime.resetState();
-    expect(runtime.state.bankA14).toBe(true);
+    expect(runtime.state.system.bankA14).toBe(true);
   });
 
   it('loads cartridge data into expansion banks', () => {
