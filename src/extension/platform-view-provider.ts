@@ -38,6 +38,11 @@ import {
   type PlatformViewPlatform,
 } from './platform-view-messages';
 import {
+  handlePlatformSerialSave,
+  handlePlatformSerialSendFile,
+} from './platform-view-serial-actions';
+import { getPlatformViewIdleHtml } from './platform-view-idle-html';
+import {
   type PlatformViewState,
   buildSnapshotPayload,
   clearPlatformState,
@@ -332,8 +337,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       void handlePlatformViewMessage(msg, {
         currentPlatform: () => this.currentPlatform,
         handleStartDebug: () => vscode.commands.executeCommand('workbench.action.debug.start'),
-        handleSerialSendFile: () => this.handleSerialSendFile(),
-        handleSerialSave: (text) => this.handleSerialSave(text),
+        handleSerialSendFile: () =>
+          handlePlatformSerialSendFile({
+            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            getPlatform: () => this.currentPlatform,
+          }),
+        handleSerialSave: (text) => handlePlatformSerialSave(text),
         clearSerialBuffer: (platform) => {
           const ps = this.platformStateFor(platform);
           if (ps) {clearSerialBuffer(ps.serialBuffer);}
@@ -409,7 +418,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
-      this.view.webview.html = this.getIdleHtml();
+      const idleHtmlOptions = {
+        hasProject: this.hasProject,
+        multiRoot: (vscode.workspace.workspaceFolders ?? []).length > 1,
+        ...(this.selectedWorkspace?.name !== undefined
+          ? { selectedWorkspaceName: this.selectedWorkspace.name }
+          : {}),
+      };
+      this.view.webview.html = getPlatformViewIdleHtml(idleHtmlOptions);
     }
   }
 
@@ -440,112 +456,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     return this.currentSessionId === sessionId;
   }
 
-  private async handleSerialSendFile(): Promise<void> {
-    const uris = await vscode.window.showOpenDialog({
-      canSelectMany: false,
-      filters: {
-        'Intel HEX': ['hex'],
-        'Text Files': ['txt'],
-        'All Files': ['*'],
-      },
-      title: 'Select file to send',
-    });
-    if (!uris || uris.length === 0) {
-      return;
-    }
-    const fileUri = uris[0]!;
-    const fileName = fileUri.path.split('/').pop() ?? 'file';
-    const fileBytes = await vscode.workspace.fs.readFile(fileUri);
-    const fileText = new TextDecoder('utf-8').decode(fileBytes);
-
-    const session = this.currentSession ?? vscode.debug.activeDebugSession;
-    if (!session || session.type !== 'z80') {
-      void vscode.window.showErrorMessage('Debug80: No active debug session.');
-      return;
-    }
-
-    const command =
-      this.currentPlatform === 'tec1g' ? 'debug80/tec1gSerialInput' : 'debug80/tec1SerialInput';
-
-    // Stream characters with a small delay between each for reliable reception
-    const charDelayMs = 2;
-    const lineDelayMs = 10;
-
-    void vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `Sending ${fileName}...`,
-        cancellable: true,
-      },
-      async (progress, token) => {
-        const lines = fileText.split(/\r?\n/);
-        let charsSent = 0;
-        const totalChars = fileText.length;
-
-        for (const line of lines) {
-          if (token.isCancellationRequested) {
-            void vscode.window.showWarningMessage('Debug80: File send cancelled.');
-            return;
-          }
-          for (const char of line) {
-            if (token.isCancellationRequested) {
-              return;
-            }
-            try {
-              await session.customRequest(command, { text: char });
-            } catch {
-              void vscode.window.showErrorMessage('Debug80: Failed to send character.');
-              return;
-            }
-            charsSent += 1;
-            if (charDelayMs > 0) {
-              await new Promise((r) => setTimeout(r, charDelayMs));
-            }
-          }
-          // Send CR at end of line
-          try {
-            await session.customRequest(command, { text: '\r' });
-          } catch {
-            /* ignore */
-          }
-          charsSent += 1;
-          progress.report({ increment: (100 * (line.length + 1)) / totalChars });
-          if (lineDelayMs > 0) {
-            await new Promise((r) => setTimeout(r, lineDelayMs));
-          }
-        }
-        void vscode.window.showInformationMessage(`Debug80: Sent ${charsSent} characters.`);
-      }
-    );
-  }
-
-  private async handleSerialSave(text: string): Promise<void> {
-    if (!text || text.length === 0) {
-      void vscode.window.showWarningMessage('Debug80: Serial buffer is empty.');
-      return;
-    }
-
-    // Detect if content is Intel HEX format
-    const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-    const isHex = lines.length > 0 && lines.every((l) => l.startsWith(':') || l.trim() === '');
-
-    const filters: Record<string, string[]> = isHex
-      ? { 'Intel HEX': ['hex'], 'Text Files': ['txt'] }
-      : { 'Text Files': ['txt'], 'All Files': ['*'] };
-
-    const uri = await vscode.window.showSaveDialog({
-      filters,
-      title: 'Save serial output',
-    });
-    if (!uri) {
-      return;
-    }
-
-    const encoder = new TextEncoder();
-    await vscode.workspace.fs.writeFile(uri, encoder.encode(text));
-    void vscode.window.showInformationMessage(`Debug80: Saved to ${uri.path.split('/').pop()}`);
-  }
-
   private nextUiRevision(): number {
     this.uiRevision += 1;
     return this.uiRevision;
@@ -574,66 +484,4 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: 'snapshot', ...snapshotObject });
   }
 
-  private getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i += 1) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
-  }
-
-  private getIdleHtml(): string {
-    const nonce = this.getNonce();
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    const multiRoot = folders.length > 1;
-    if (!this.hasProject) {
-      return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
-  <p>Debug80</p>
-  <p style="opacity: 0.7;">Create a Debug80 project to get started.</p>
-</body>
-</html>`;
-    }
-    const selectedLabel = this.selectedWorkspace?.name ?? 'Workspace';
-    const selectionHint =
-      multiRoot && !this.selectedWorkspace
-        ? 'Select a workspace folder with “Debug80: Select Workspace Folder”.'
-        : '';
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
-  <p>Debug80</p>
-  <p style="opacity: 0.7;">Project detected (${selectedLabel}). Start a debug session to see the platform UI.</p>
-  <button id="startDebug" style="margin-top: 8px; padding: 6px 10px; font-size: 12px;">
-    Start Debugging
-  </button>
-  ${selectionHint ? `<p style="opacity: 0.7;">${selectionHint}</p>` : ''}
-  <script nonce="${nonce}">
-    (function () {
-      const vscode = acquireVsCodeApi();
-      const button = document.getElementById('startDebug');
-      if (button) {
-        button.addEventListener('click', () => {
-          vscode.postMessage({ type: 'startDebug' });
-        });
-      }
-    }());
-  </script>
-</body>
-</html>`;
-  }
 }
