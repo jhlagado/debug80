@@ -124,4 +124,32 @@ describe('TEC-1G GLCD instruction handling', () => {
     // Back to basic
     rt.ioHandlers.write(0x07, 0x20);
   });
+
+  it('applies scroll address only while scroll mode is enabled', () => {
+    const rt = makeRuntime();
+
+    rt.ioHandlers.write(0x07, 0x24); // function set: RE=1, G=0
+    rt.ioHandlers.write(0x07, 0x4a); // scroll address 10 without scroll mode
+    expect(rt.state.display.glcdCtrl.glcdScroll).toBe(0);
+
+    rt.ioHandlers.write(0x07, 0x03); // enable scroll mode
+    rt.ioHandlers.write(0x07, 0x4a); // scroll address 10
+    expect(rt.state.display.glcdCtrl.glcdScroll).toBe(10);
+  });
+
+  it('shifts text after a complete DDRAM write when entry shift is enabled', () => {
+    const rt = makeRuntime();
+
+    rt.ioHandlers.write(0x07, 0x07); // entry mode: increment with shift
+    rt.ioHandlers.write(0x07, 0x80); // DDRAM addr
+    rt.ioHandlers.write(0x87, 0x41); // first byte, phase only
+    expect(rt.state.display.glcdCtrl.glcdTextShift).toBe(0);
+
+    rt.recordCycles(rt.state.timing.clockHz);
+    rt.ioHandlers.write(0x87, 0x42); // second byte completes the character cell
+
+    expect(rt.state.display.glcdCtrl.glcdTextShift).toBe(1);
+    expect(rt.state.display.glcdCtrl.glcdDdramAddr).toBe(0x81);
+    expect(rt.state.display.glcdCtrl.glcdDdramPhase).toBe(0);
+  });
 });

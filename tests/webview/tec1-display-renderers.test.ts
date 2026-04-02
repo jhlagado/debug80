@@ -58,6 +58,21 @@ describe('tec1 display renderers', () => {
     expect(canvas.__ctx.fillText).toHaveBeenCalled();
   });
 
+  it('maps special LCD bytes and pads the remaining cells with spaces', () => {
+    const renderer = createLcdRenderer();
+    const canvas = document.getElementById('lcdCanvas') as HTMLCanvasElement & {
+      __ctx: FakeContext2d;
+    };
+
+    renderer.applyLcdUpdate({ lcd: [0x5c, 0x7e, 0x7f] });
+
+    expect(canvas.__ctx.fillText).toHaveBeenNthCalledWith(1, '¥', 2, 2);
+    expect(canvas.__ctx.fillText).toHaveBeenNthCalledWith(2, '▶', 16, 2);
+    expect(canvas.__ctx.fillText).toHaveBeenNthCalledWith(3, '◀', 30, 2);
+    expect(canvas.__ctx.fillText).toHaveBeenNthCalledWith(4, ' ', 44, 2);
+    expect(canvas.__ctx.fillText).toHaveBeenCalledTimes(32);
+  });
+
   it('builds the matrix grid and lights updated cells', () => {
     const renderer = createMatrixRenderer();
     const grid = document.getElementById('matrixGrid') as HTMLElement;

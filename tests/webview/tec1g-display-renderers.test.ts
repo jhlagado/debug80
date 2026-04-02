@@ -15,6 +15,7 @@ type FakeContext2d = {
   createImageData: ReturnType<typeof vi.fn>;
   drawImage: ReturnType<typeof vi.fn>;
   imageSmoothingEnabled: boolean;
+  lastImageData?: { data: Uint8ClampedArray };
   putImageData: ReturnType<typeof vi.fn>;
 };
 
@@ -25,7 +26,7 @@ function buildDom(): Document {
 }
 
 function createContext(): FakeContext2d {
-  return {
+  const ctx: FakeContext2d = {
     clearRect: vi.fn(),
     createImageData: vi.fn((width: number, height: number) => ({
       data: new Uint8ClampedArray(width * height * 4),
@@ -34,6 +35,40 @@ function createContext(): FakeContext2d {
     imageSmoothingEnabled: true,
     putImageData: vi.fn(),
   };
+  ctx.putImageData = vi.fn((image: { data: Uint8ClampedArray }) => {
+    ctx.lastImageData = image;
+  });
+  return ctx;
+}
+
+function readRgb(image: { data: Uint8ClampedArray }, width: number, x: number, y: number) {
+  const offset = (y * width + x) * 4;
+  return [image.data[offset], image.data[offset + 1], image.data[offset + 2]];
+}
+
+function expectRgb(
+  image: { data: Uint8ClampedArray },
+  width: number,
+  x: number,
+  y: number,
+  rgb: [number, number, number],
+) {
+  expect(readRgb(image, width, x, y)).toEqual(rgb);
+}
+
+function lastGlcdImage(canvas: HTMLCanvasElement & { __ctx: FakeContext2d }) {
+  const baseCanvas = canvas.__ctx.drawImage.mock.calls.at(-1)?.[0] as
+    | (HTMLCanvasElement & { __ctx?: FakeContext2d })
+    | undefined;
+  const image = baseCanvas?.__ctx?.lastImageData;
+  expect(image).toBeDefined();
+  return image!;
+}
+
+function lastLcdImage(canvas: HTMLCanvasElement & { __ctx: FakeContext2d }) {
+  const image = canvas.__ctx.lastImageData;
+  expect(image).toBeDefined();
+  return image!;
 }
 
 describe('tec1g display renderers', () => {
@@ -103,5 +138,58 @@ describe('tec1g display renderers', () => {
 
     expect(canvas.__ctx.clearRect).toHaveBeenCalledTimes(1);
     expect(canvas.__ctx.drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the GLCD cursor underline at the shifted display position', () => {
+    const glcdRenderer = createGlcdRenderer();
+    const canvas = document.getElementById('glcdCanvas') as HTMLCanvasElement & {
+      __ctx: FakeContext2d;
+    };
+
+    glcdRenderer.applyGlcdUpdate({
+      glcdState: {
+        cursorOn: true,
+        ddramAddr: 0x80,
+        ddramPhase: 0,
+        displayOn: true,
+        graphicsOn: false,
+        textShift: 0,
+      },
+    });
+    const unshifted = lastGlcdImage(canvas);
+    expectRgb(unshifted, 128, 0, 15, [32, 58, 22]);
+
+    glcdRenderer.applyGlcdUpdate({
+      glcdState: {
+        cursorOn: true,
+        ddramAddr: 0x80,
+        ddramPhase: 0,
+        displayOn: true,
+        graphicsOn: false,
+        textShift: 1,
+      },
+    });
+    const shifted = lastGlcdImage(canvas);
+    expectRgb(shifted, 128, 0, 15, [158, 182, 99]);
+  });
+
+  it('renders the LCD cursor underline at the shifted display position', () => {
+    lcdRenderer = createLcdRenderer();
+    const canvas = document.getElementById('lcdCanvas') as HTMLCanvasElement & {
+      __ctx: FakeContext2d;
+    };
+
+    lcdRenderer.applyLcdUpdate({
+      lcdState: {
+        cursorAddr: 0x80,
+        cursorOn: true,
+        displayOn: true,
+        displayShift: 1,
+      },
+    });
+
+    const image = lastLcdImage(canvas);
+    expectRgb(image, canvas.width, 1, 15, [11, 26, 16]);
+    expectRgb(image, canvas.width, 229, 15, [180, 245, 180]);
   });
 });
