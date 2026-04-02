@@ -14,6 +14,7 @@ import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
 import { SdSpi } from './sd-spi';
+import { createTec1gLcdController } from './lcd';
 import { createTec1gSerialController } from './serial';
 import {
   TEC1G_DIGIT_SERIAL_TX,
@@ -46,29 +47,6 @@ import {
   GLCD_SHIFT_DISPLAY,
   GLCD_SHIFT_RIGHT,
   GLCD_STATUS_BUSY,
-  LCD_STATUS_BUSY,
-  LCD_CMD_CGRAM,
-  LCD_CMD_CLEAR,
-  LCD_CMD_DDRAM,
-  LCD_CMD_DISPLAY,
-  LCD_CMD_ENTRY_MODE,
-  LCD_DISPLAY_MASK,
-  LCD_ENTRY_MODE_MASK,
-  LCD_CMD_FUNCTION,
-  LCD_FUNCTION_MASK,
-  LCD_CMD_HOME,
-  LCD_CMD_SHIFT,
-  LCD_SHIFT_MASK,
-  LCD_BLINK_ON,
-  LCD_CURSOR_ON,
-  LCD_DISPLAY_ON,
-  LCD_ENTRY_INCREMENT,
-  LCD_ENTRY_SHIFT,
-  LCD_FUNC_2LINE,
-  LCD_FUNC_8BIT,
-  LCD_FUNC_FONT5X8,
-  LCD_SHIFT_DISPLAY,
-  LCD_SHIFT_RIGHT,
   TEC1G_PORT_DIGIT,
   TEC1G_PORT_GLCD_CMD,
   TEC1G_PORT_GLCD_DATA,
@@ -108,17 +86,7 @@ import {
   TEC1G_GLCD_ROW_MASK,
   TEC1G_GLCD_ROW_STRIDE,
   TEC1G_GLCD_COL_STRIDE,
-  TEC1G_LCD_ROW0_END,
   TEC1G_LCD_ROW0_START,
-  TEC1G_LCD_ROW1_END,
-  TEC1G_LCD_ROW1_OFFSET,
-  TEC1G_LCD_ROW1_START,
-  TEC1G_LCD_ROW2_END,
-  TEC1G_LCD_ROW2_OFFSET,
-  TEC1G_LCD_ROW2_START,
-  TEC1G_LCD_ROW3_END,
-  TEC1G_LCD_ROW3_OFFSET,
-  TEC1G_LCD_ROW3_START,
   TEC1G_LCD_SPACE,
   TEC1G_MASK_BYTE,
   TEC1G_MASK_LOW7,
@@ -147,8 +115,8 @@ import {
   calculateSpeakerFrequency,
   calculateKeyHoldCycles,
   shouldUpdate,
-  microsecondsToClocks,
   millisecondsToClocks,
+  microsecondsToClocks,
 } from '../tec-common';
 
 /**
@@ -250,8 +218,6 @@ export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
-const TEC1G_LCD_BUSY_US = 37;
-const TEC1G_LCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BUSY_US = 72;
 const TEC1G_GLCD_BUSY_CLEAR_US = 1600;
 const TEC1G_GLCD_BLINK_MS = 400;
@@ -470,7 +436,6 @@ export function createTec1gRuntime(
     state.lcd[lcdTest.length + 2] = TEC1G_LCD_ARROW_RIGHT;
   }
 
-  let lcdBusyUntil = 0;
   let glcdBusyUntil = 0;
 
   const sendUpdate = (): void => {
@@ -728,131 +693,10 @@ export function createTec1gRuntime(
     sendUpdate();
   };
 
+  const lcd = createTec1gLcdController(state, state.cycleClock, state.clockHz, queueUpdate);
+
   const updateDisplay = (): void => {
     if (updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch)) {
-      queueUpdate();
-    }
-  };
-
-  const lcdIndexForAddr = (addr: number): number | null => {
-    if (addr >= TEC1G_LCD_ROW0_START && addr <= TEC1G_LCD_ROW0_END) {
-      return addr - TEC1G_LCD_ROW0_START;
-    }
-    if (addr >= TEC1G_LCD_ROW1_START && addr <= TEC1G_LCD_ROW1_END) {
-      return TEC1G_LCD_ROW1_OFFSET + (addr - TEC1G_LCD_ROW1_START);
-    }
-    if (addr >= TEC1G_LCD_ROW2_START && addr <= TEC1G_LCD_ROW2_END) {
-      return TEC1G_LCD_ROW2_OFFSET + (addr - TEC1G_LCD_ROW2_START);
-    }
-    if (addr >= TEC1G_LCD_ROW3_START && addr <= TEC1G_LCD_ROW3_END) {
-      return TEC1G_LCD_ROW3_OFFSET + (addr - TEC1G_LCD_ROW3_START);
-    }
-    return null;
-  };
-
-  const lcdSetBusy = (microseconds: number): void => {
-    const cycles = microsecondsToClocks(state.clockHz, microseconds);
-    const until = state.cycleClock.now() + cycles;
-    if (until > lcdBusyUntil) {
-      lcdBusyUntil = until;
-    }
-  };
-
-  const lcdIsBusy = (): boolean => state.cycleClock.now() < lcdBusyUntil;
-
-  const lcdReadStatus = (): number => {
-    const busy = lcdIsBusy() ? LCD_STATUS_BUSY : 0;
-    const addr =
-      state.lcdAddrMode === 'cgram'
-        ? state.lcdCgramAddr & TEC1G_MASK_LOW6
-        : state.lcdAddr & TEC1G_MASK_LOW7;
-    return busy | addr;
-  };
-
-  const lcdSetAddr = (addr: number): void => {
-    state.lcdAddr = addr & TEC1G_MASK_BYTE;
-    state.lcdAddrMode = 'ddram';
-  };
-
-  const lcdWriteData = (value: number): void => {
-    if (state.lcdAddrMode === 'cgram') {
-      const addr = state.lcdCgramAddr & TEC1G_MASK_LOW6;
-      state.lcdCgram[addr] = value & TEC1G_MASK_BYTE;
-      state.lcdCgramAddr = lcdAdvanceCgramAddr(state.lcdCgramAddr, state.lcdEntryIncrement);
-      lcdSetBusy(TEC1G_LCD_BUSY_US);
-      return;
-    }
-    const index = lcdIndexForAddr(state.lcdAddr);
-    if (index !== null) {
-      state.lcd[index] = value & TEC1G_MASK_BYTE;
-      queueUpdate();
-    }
-    state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, state.lcdEntryIncrement);
-    if (state.lcdEntryShift) {
-      shiftLcdDisplay(state.lcdEntryIncrement ? 1 : -1);
-    }
-    lcdSetBusy(TEC1G_LCD_BUSY_US);
-  };
-
-  const lcdReadData = (): number => {
-    if (state.lcdAddrMode === 'cgram') {
-      const addr = state.lcdCgramAddr & TEC1G_MASK_LOW6;
-      const value = state.lcdCgram[addr] ?? 0;
-      state.lcdCgramAddr = lcdAdvanceCgramAddr(state.lcdCgramAddr, state.lcdEntryIncrement);
-      lcdSetBusy(TEC1G_LCD_BUSY_US);
-      return value & TEC1G_MASK_BYTE;
-    }
-    const index = lcdIndexForAddr(state.lcdAddr);
-    const value =
-      index !== null ? (state.lcd[index] ?? TEC1G_LCD_SPACE) : TEC1G_LCD_SPACE;
-    state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, state.lcdEntryIncrement);
-    if (state.lcdEntryShift) {
-      shiftLcdDisplay(state.lcdEntryIncrement ? 1 : -1);
-    }
-    lcdSetBusy(TEC1G_LCD_BUSY_US);
-    return value & TEC1G_MASK_BYTE;
-  };
-
-  const lcdClear = (): void => {
-    state.lcd.fill(TEC1G_LCD_SPACE);
-    lcdSetAddr(TEC1G_LCD_ROW0_START);
-    state.lcdDisplayShift = 0;
-    queueUpdate();
-    lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
-  };
-
-  const lcdAdvanceAddr = (addr: number, increment: boolean): number => {
-    const masked = addr & TEC1G_MASK_BYTE;
-    const index = lcdIndexForAddr(masked);
-    if (index !== null) {
-      const next = (index + (increment ? 1 : -1) + state.lcd.length) % state.lcd.length;
-      return lcdAddrForIndex(next);
-    }
-    return (masked + (increment ? 1 : -1)) & TEC1G_MASK_BYTE;
-  };
-
-  const lcdAddrForIndex = (index: number): number => {
-    if (index < TEC1G_LCD_ROW1_OFFSET) {
-      return TEC1G_LCD_ROW0_START + index;
-    }
-    if (index < TEC1G_LCD_ROW2_OFFSET) {
-      return TEC1G_LCD_ROW1_START + (index - TEC1G_LCD_ROW1_OFFSET);
-    }
-    if (index < TEC1G_LCD_ROW3_OFFSET) {
-      return TEC1G_LCD_ROW2_START + (index - TEC1G_LCD_ROW2_OFFSET);
-    }
-    return TEC1G_LCD_ROW3_START + (index - TEC1G_LCD_ROW3_OFFSET);
-  };
-
-  const lcdAdvanceCgramAddr = (addr: number, increment: boolean): number => {
-    const delta = increment ? 1 : -1;
-    return (addr + delta + state.lcdCgram.length) & TEC1G_MASK_LOW6;
-  };
-
-  const shiftLcdDisplay = (delta: number): void => {
-    const next = (state.lcdDisplayShift + delta + 20) % 20;
-    if (next !== state.lcdDisplayShift) {
-      state.lcdDisplayShift = next;
       queueUpdate();
     }
   };
@@ -893,10 +737,10 @@ export function createTec1gRuntime(
         return state.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_LCD_CMD) {
-        return lcdReadStatus();
+        return lcd.readStatus();
       }
       if (p === TEC1G_PORT_LCD_DATA) {
-        return lcdReadData();
+        return lcd.readData();
       }
       if (p === TEC1G_PORT_RTC) {
         return rtcEnabled && rtc ? rtc.read() : TEC1G_MASK_BYTE;
@@ -995,68 +839,11 @@ export function createTec1gRuntime(
         return;
       }
       if (p === TEC1G_PORT_LCD_CMD) {
-        const instruction = value & TEC1G_MASK_BYTE;
-        if (instruction === LCD_CMD_CLEAR) {
-          lcdClear();
-          return;
-        }
-        if (instruction === LCD_CMD_HOME) {
-          lcdSetAddr(LCD_CMD_DDRAM);
-          state.lcdDisplayShift = 0;
-          lcdSetBusy(TEC1G_LCD_BUSY_CLEAR_US);
-          return;
-        }
-        if ((instruction & LCD_CMD_DDRAM) !== 0) {
-          lcdSetAddr(instruction);
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        if ((instruction & LCD_CMD_CGRAM) !== 0) {
-          state.lcdCgramAddr = instruction & TEC1G_MASK_LOW6;
-          state.lcdAddrMode = 'cgram';
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        if ((instruction & LCD_ENTRY_MODE_MASK) === LCD_CMD_ENTRY_MODE) {
-          state.lcdEntryIncrement = (instruction & LCD_ENTRY_INCREMENT) !== 0;
-          state.lcdEntryShift = (instruction & LCD_ENTRY_SHIFT) !== 0;
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        if ((instruction & LCD_DISPLAY_MASK) === LCD_CMD_DISPLAY) {
-          state.lcdDisplayOn = (instruction & LCD_DISPLAY_ON) !== 0;
-          state.lcdCursorOn = (instruction & LCD_CURSOR_ON) !== 0;
-          state.lcdCursorBlink = (instruction & LCD_BLINK_ON) !== 0;
-          queueUpdate();
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        if ((instruction & LCD_SHIFT_MASK) === LCD_CMD_SHIFT) {
-          const displayShift = (instruction & LCD_SHIFT_DISPLAY) !== 0;
-          const shiftRight = (instruction & LCD_SHIFT_RIGHT) !== 0;
-          if (displayShift) {
-            shiftLcdDisplay(shiftRight ? 1 : -1);
-          } else {
-            state.lcdAddrMode = 'ddram';
-            state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, shiftRight);
-          }
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        if ((instruction & LCD_FUNCTION_MASK) === LCD_CMD_FUNCTION) {
-          state.lcdFunction = {
-            dataLength8: (instruction & LCD_FUNC_8BIT) !== 0,
-            lines2: (instruction & LCD_FUNC_2LINE) !== 0,
-            font5x8: (instruction & LCD_FUNC_FONT5X8) === 0,
-          };
-          lcdSetBusy(TEC1G_LCD_BUSY_US);
-          return;
-        }
-        lcdSetBusy(TEC1G_LCD_BUSY_US);
+        lcd.writeCommand(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_LCD_DATA) {
-        lcdWriteData(value);
+        lcd.writeData(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_GLCD_CMD) {
@@ -1260,6 +1047,7 @@ export function createTec1gRuntime(
     state.speedMode = mode;
     state.clockHz = mode === 'slow' ? TEC1G_SLOW_HZ : TEC1G_FAST_HZ;
     serial.setClockHz(state.clockHz);
+    lcd.setClockHz(state.clockHz);
     glcdRescheduleBlink();
     sendUpdate();
   };
@@ -1268,23 +1056,7 @@ export function createTec1gRuntime(
     state.speaker = false;
     state.speakerHz = 0;
     state.lastEdgeCycle = null;
-    state.lcd.fill(TEC1G_LCD_SPACE);
-    state.lcdAddr = TEC1G_LCD_ROW0_START;
-    state.lcdAddrMode = 'ddram';
-    state.lcdEntryIncrement = true;
-    state.lcdEntryShift = false;
-    state.lcdDisplayOn = true;
-    state.lcdCursorOn = false;
-    state.lcdCursorBlink = false;
-    state.lcdDisplayShift = 0;
-    state.lcdCgram.fill(0);
-    state.lcdCgramAddr = 0;
-    state.lcdFunction = {
-      dataLength8: true,
-      lines2: true,
-      font5x8: true,
-    };
-    lcdBusyUntil = 0;
+    lcd.reset();
     state.matrix.fill(0);
     state.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     state.matrixModeEnabled = matrixMode;
