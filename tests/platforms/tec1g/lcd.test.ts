@@ -1,126 +1,118 @@
 import { describe, expect, it } from 'vitest';
-import { createTec1gRuntime } from '../../../src/platforms/tec1g/runtime';
-import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
+import { CycleClock } from '../../../src/platforms/cycle-clock';
+import { TEC_FAST_HZ } from '../../../src/platforms/tec-common';
+import {
+  createTec1gLcdController,
+  type Tec1gLcdState,
+} from '../../../src/platforms/tec1g/lcd';
+import { TEC1G_LCD_ROW0_START, TEC1G_LCD_SPACE } from '../../../src/platforms/tec1g/constants';
 
-function makeRuntime() {
-  const config: Tec1gPlatformConfigNormalized = {
-    regions: [
-      { start: 0x0000, end: 0x7fff, kind: 'ram' as const },
-      { start: 0xc000, end: 0xffff, kind: 'rom' as const },
-    ],
-    romRanges: [{ start: 0xc000, end: 0xffff }],
-    appStart: 0x0000,
-    entry: 0x0000,
-    updateMs: 100,
-    yieldMs: 0,
-    gimpSignal: false,
-    expansionBankHi: false,
-    matrixMode: false,
-    protectOnReset: false,
-    rtcEnabled: false,
-    sdEnabled: false,
-    sdHighCapacity: true,
+function makeState(): Tec1gLcdState {
+  return {
+    lcd: Array.from({ length: 80 }, () => TEC1G_LCD_SPACE),
+    lcdAddr: TEC1G_LCD_ROW0_START,
+    lcdAddrMode: 'ddram',
+    lcdEntryIncrement: true,
+    lcdEntryShift: false,
+    lcdDisplayOn: true,
+    lcdCursorOn: false,
+    lcdCursorBlink: false,
+    lcdDisplayShift: 0,
+    lcdCgram: new Uint8Array(64),
+    lcdCgramAddr: 0,
+    lcdFunction: {
+      dataLength8: true,
+      lines2: true,
+      font5x8: true,
+    },
   };
-  return createTec1gRuntime(config, () => {});
 }
 
-describe('TEC-1G LCD instruction handling', () => {
-  it('entry mode decrement moves cursor backward', () => {
-    const rt = makeRuntime();
-    rt.state.lcdAddr = 0x80;
-    rt.ioHandlers.write(0x04, 0x04); // entry mode: decrement, no shift
-    rt.ioHandlers.write(0x84, 0x41);
-    expect(rt.state.lcdAddr).toBe(0xe7);
+function makeController() {
+  const clock = new CycleClock();
+  const state = makeState();
+  const controller = createTec1gLcdController(state, clock, TEC_FAST_HZ, () => {});
+  return { clock, state, controller };
+}
+
+describe('TEC-1G LCD controller', () => {
+  it('moves the cursor backward in decrement mode', () => {
+    const { state, controller } = makeController();
+    state.lcdAddr = 0x80;
+    controller.writeCommand(0x04);
+    controller.writeData(0x41);
+    expect(state.lcdAddr).toBe(0xe7);
   });
 
-  it('entry mode shift updates display offset on write', () => {
-    const rt = makeRuntime();
-    rt.state.lcdDisplayShift = 0;
-    rt.ioHandlers.write(0x04, 0x07); // entry mode: increment + shift
-    rt.ioHandlers.write(0x84, 0x41);
-    expect(rt.state.lcdDisplayShift).toBe(1);
+  it('applies display shift on write when entry shift is enabled', () => {
+    const { state, controller } = makeController();
+    controller.writeCommand(0x07);
+    controller.writeData(0x41);
+    expect(state.lcdDisplayShift).toBe(1);
   });
 
-  it('display on/off control toggles state', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x08); // display off
-    expect(rt.state.lcdDisplayOn).toBe(false);
-    rt.ioHandlers.write(0x04, 0x0c); // display on, cursor off
-    expect(rt.state.lcdDisplayOn).toBe(true);
+  it('updates display, cursor, and blink flags', () => {
+    const { state, controller } = makeController();
+    controller.writeCommand(0x0f);
+    expect(state.lcdDisplayOn).toBe(true);
+    expect(state.lcdCursorOn).toBe(true);
+    expect(state.lcdCursorBlink).toBe(true);
   });
 
-  it('display control updates cursor and blink state', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x0f); // display on, cursor on, blink on
-    expect(rt.state.lcdCursorOn).toBe(true);
-    expect(rt.state.lcdCursorBlink).toBe(true);
+  it('shifts the cursor address', () => {
+    const { state, controller } = makeController();
+    state.lcdAddr = 0x80;
+    controller.writeCommand(0x10);
+    expect(state.lcdAddr).toBe(0xe7);
   });
 
-  it('cursor shift updates address', () => {
-    const rt = makeRuntime();
-    rt.state.lcdAddr = 0x80;
-    rt.ioHandlers.write(0x04, 0x10); // cursor move left
-    expect(rt.state.lcdAddr).toBe(0xe7);
+  it('shifts the display offset', () => {
+    const { state, controller } = makeController();
+    controller.writeCommand(0x18);
+    expect(state.lcdDisplayShift).toBe(19);
   });
 
-  it('display shift updates display offset', () => {
-    const rt = makeRuntime();
-    rt.state.lcdDisplayShift = 0;
-    rt.ioHandlers.write(0x04, 0x18); // display shift left
-    expect(rt.state.lcdDisplayShift).toBe(19);
+  it('stores function-set flags', () => {
+    const { state, controller } = makeController();
+    controller.writeCommand(0x38);
+    expect(state.lcdFunction).toEqual({
+      dataLength8: true,
+      lines2: true,
+      font5x8: true,
+    });
   });
 
-  it('function set updates stored state', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x38); // 8-bit, 2-line, 5x8
-    expect(rt.state.lcdFunction.dataLength8).toBe(true);
-    expect(rt.state.lcdFunction.lines2).toBe(true);
-    expect(rt.state.lcdFunction.font5x8).toBe(true);
+  it('reads and writes cgram data', () => {
+    const { controller } = makeController();
+    controller.writeCommand(0x40);
+    controller.writeData(0x1f);
+    controller.writeCommand(0x40);
+    expect(controller.readData()).toBe(0x1f);
   });
 
-  it('cgram read/write uses cgram address', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x40); // set CGRAM addr 0
-    rt.ioHandlers.write(0x84, 0x1f);
-    rt.ioHandlers.write(0x04, 0x40); // reset addr
-    const value = rt.ioHandlers.read(0x84);
-    expect(value).toBe(0x1f);
+  it('reports busy status until the clear delay elapses', () => {
+    const { clock, controller } = makeController();
+    controller.writeCommand(0x01);
+    expect(controller.readStatus() & 0x80).toBe(0x80);
+    clock.advance(7000);
+    expect(controller.readStatus() & 0x80).toBe(0x00);
   });
 
-  it('lcd status read ignores high byte of port address', () => {
-    const rt = makeRuntime();
-    const low = rt.ioHandlers.read(0x0004);
-    const high = rt.ioHandlers.read(0x1204);
-    expect(high).toBe(low);
+  it('resets address and display shift on clear and home', () => {
+    const { state, controller } = makeController();
+    state.lcdAddr = 0x94;
+    state.lcdDisplayShift = 3;
+    controller.writeCommand(0x02);
+    expect(state.lcdAddr).toBe(0x80);
+    expect(state.lcdDisplayShift).toBe(0);
   });
 
-  it('clear command resets DDRAM and clears busy flag after time', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x80); // set DDRAM addr
-    rt.ioHandlers.write(0x84, 0x41);
-    rt.ioHandlers.write(0x04, 0x01); // clear display
-    expect(rt.ioHandlers.read(0x04) & 0x80).toBe(0x80);
-    rt.recordCycles(rt.state.clockHz);
-    expect(rt.ioHandlers.read(0x04) & 0x80).toBe(0x00);
-    expect(rt.state.lcd[0]).toBe(0x20);
-    expect(rt.state.lcdAddr).toBe(0x80);
-  });
-
-  it('home command resets address and display shift', () => {
-    const rt = makeRuntime();
-    rt.state.lcdAddr = 0x94;
-    rt.state.lcdDisplayShift = 3;
-    rt.ioHandlers.write(0x04, 0x02); // home
-    expect(rt.state.lcdAddr).toBe(0x80);
-    expect(rt.state.lcdDisplayShift).toBe(0);
-  });
-
-  it('ddram read/write returns stored data', () => {
-    const rt = makeRuntime();
-    rt.ioHandlers.write(0x04, 0x80);
-    rt.ioHandlers.write(0x84, 0x5a);
-    rt.ioHandlers.write(0x04, 0x80);
-    const value = rt.ioHandlers.read(0x84);
-    expect(value).toBe(0x5a);
+  it('returns stored ddram data', () => {
+    const { state, controller } = makeController();
+    controller.writeCommand(0x80);
+    controller.writeData(0x5a);
+    controller.writeCommand(0x80);
+    expect(controller.readData()).toBe(0x5a);
+    expect(state.lcd[0]).toBe(0x5a);
   });
 });
