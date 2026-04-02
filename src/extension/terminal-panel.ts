@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { SessionStateManager } from './session-state-manager';
+import { getTerminalHtml } from './terminal-panel-html';
 
 const TERMINAL_BUFFER_MAX = 50_000;
 const TERMINAL_FLUSH_MS = 50;
@@ -12,7 +13,8 @@ const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
 export class TerminalPanelController {
   constructor(
     private readonly sessionState: SessionStateManager,
-    private readonly getPanelColumn: (session: vscode.DebugSession) => vscode.ViewColumn
+    private readonly getPanelColumn: (session: vscode.DebugSession) => vscode.ViewColumn,
+    private readonly extensionUri: { fsPath: string }
   ) {}
 
   hasPanel(): boolean {
@@ -75,7 +77,10 @@ export class TerminalPanelController {
     if (reveal) {
       this.sessionState.terminalPanel.reveal(targetColumn, !focus);
     }
-    this.sessionState.terminalPanel.webview.html = getTerminalHtml(this.sessionState.terminalBuffer);
+    this.sessionState.terminalPanel.webview.html = getTerminalHtml(
+      this.sessionState.terminalBuffer,
+      this.extensionUri
+    );
     this.sessionState.terminalPendingOutput = '';
     this.sessionState.terminalNeedsFullRefresh = false;
   }
@@ -210,53 +215,4 @@ export class TerminalPanelController {
 
     return { remaining, shouldClear };
   }
-}
-
-function getTerminalHtml(initial: string): string {
-  const escaped = initial.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return `<!DOCTYPE html>
-<html lang="en">
-<body style="font-family: monospace; padding: 8px;">
-  <pre id="out" style="white-space: pre-wrap; word-break: break-word;">${escaped}</pre>
-  <div style="margin-top:8px;">
-    <input id="input" type="text" style="width:80%;" placeholder="Type and press Enter"/>
-    <button id="send">Send</button>
-  </div>
-  <script>
-    const vscode = acquireVsCodeApi();
-    const out = document.getElementById('out');
-    const input = document.getElementById('input');
-    const send = document.getElementById('send');
-    window.addEventListener('message', event => {
-      const msg = event.data;
-      if (msg.type === 'clear') {
-        out.textContent = '';
-        return;
-      }
-      if (msg.type === 'output' && typeof msg.text === 'string') {
-        out.textContent += msg.text;
-        window.scrollTo(0, document.body.scrollHeight);
-      }
-    });
-    function sendInput() {
-      const text = input.value;
-      const payload = text + "\\n";
-      out.textContent += payload;
-      window.scrollTo(0, document.body.scrollHeight);
-      vscode.postMessage({ type: 'input', text: payload });
-      input.value = '';
-      input.focus();
-    }
-    send.addEventListener('click', sendInput);
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        sendInput();
-      } else if (e.key === 'c' && e.ctrlKey) {
-        vscode.postMessage({ type: 'break' });
-      }
-    });
-    input.focus();
-  </script>
-</body>
-</html>`;
 }
