@@ -18,26 +18,39 @@ Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
 Text diagram (left -> right = flow of control):
 
 VS Code UI
-  -> Extension activation (src/extension/extension.ts)
-  -> Debug Adapter Factory (src/debug/adapter.ts)
-  -> Z80DebugSession (DAP server)
+  -> Extension wiring (src/extension/extension.ts + helpers)
+  -> Debug adapter orchestration (src/debug/adapter.ts)
+  -> Launch pipeline + command routing (src/debug/launch-pipeline.ts, src/debug/command-router.ts, src/debug/platform-registry.ts)
+  -> Request handlers and platform view helpers (src/debug/matrix-request.ts, src/debug/memory-request.ts, src/debug/terminal-request.ts, src/debug/step-call-resolver.ts; src/extension/platform-view-provider.ts, src/extension/platform-view-state.ts)
+  -> Platform runtimes/controllers (src/platforms/*)
   -> Z80 runtime + memory (src/z80/*)
   -> Mapping pipeline (src/mapping/*)
 
 Key concepts:
-- The extension registers a debug adapter type named `z80`.
+- The extension registers a debug adapter type named `z80` and now splits its own
+  wiring across small helper modules instead of keeping everything in one file.
 - The debug adapter runs in-process (inline implementation), not as a separate server.
-- The runtime executes Z80 instructions directly in JS/TS.
+- Launch/config resolution is separated from the adapter session so platform selection,
+  command routing, and request handling can evolve independently.
+- Platform-specific emulation lives under `src/platforms/*`, with per-peripheral
+  controllers and webview panel modules for machines that need them.
 
 ## 3. Repo layout
 
-- src/extension/extension.ts
-  - VS Code activation and command wiring.
-  - Registers the debug adapter factory.
-  - Hosts the terminal webview output (custom events).
+- src/extension/*
+  - VS Code activation plus small helpers for commands, language association,
+    debug-session events, terminal panel state, workspace selection, and the
+    platform webview provider/state/message plumbing.
 - src/debug/adapter.ts
-  - Main debug adapter (Z80DebugSession).
-  - Launch/config merge, assembler invocation, breakpoint resolution, stepping.
+  - Main debug adapter (Z80DebugSession) and request orchestration.
+- src/debug/*-request.ts, src/debug/step-call-resolver.ts
+  - Request handlers split out of the adapter for matrix, memory, terminal, and
+    step-control flows.
+- src/debug/launch-pipeline.ts, src/debug/command-router.ts, src/debug/platform-registry.ts
+  - Launch/config merge, platform selection, and custom request dispatch.
+- src/platforms/*
+  - Platform-specific runtimes and controllers, including TEC-1/TEC-1G
+    peripherals, shared serial helpers, and panel modules.
 - src/mapping/*
   - Listing -> segments/anchors, layer 2 matching, and index building.
 - src/z80/*
@@ -48,13 +61,13 @@ Key concepts:
 
 Entry point: src/extension/extension.ts
 
-Activation does three important things:
+Activation now keeps the top-level wiring small and delegates the details to
+helper modules:
 1) Registers the debug adapter for type `z80`.
-2) Registers commands:
-   - debug80.createProject
-   - debug80.openTerminal
-   - debug80.terminalInput
-3) Handles the terminal webview, receiving custom output events from the adapter.
+2) Registers commands and project scaffolding helpers.
+3) Wires debug-session events into the terminal panel and ROM/source views.
+4) Keeps the platform webview provider/state and workspace selection logic
+   separate from the debug adapter path.
 
 Important behavior for new VS Code extension developers:
 - The debug adapter is created with vscode.DebugAdapterInlineImplementation.
@@ -70,13 +83,17 @@ DAP lifecycle (simplified):
 1) initializeRequest
    - Announces adapter capabilities.
 2) launchRequest
-   - Merges launch args with debug80.json.
+   - Delegates launch/config resolution to src/debug/launch-pipeline.ts.
    - Resolves artifacts (HEX, LST) and runs asm80 if enabled.
    - Parses HEX and LST.
    - Builds source mapping and indexes.
    - Creates the runtime and applies breakpoints.
 3) configurationDoneRequest (implicit behavior)
 4) continue / step / pause / disconnect
+
+Custom request handling is routed through `CommandRouter` and the platform
+registry rather than being hardcoded directly in the session class. That keeps
+platform-specific commands close to the platform implementation.
 
 ## 6. Project configuration
 
@@ -152,6 +169,23 @@ Key ideas:
 
 Register display:
 - The adapter exposes standard Z80 registers (AF, BC, DE, HL, IX, IY, etc).
+
+### 8.1 Platform decomposition
+
+Platform runtimes are responsible for wiring memory, I/O, and peripheral
+controllers into the Z80 bus. The current TEC-1G runtime is split into smaller
+modules such as:
+- `src/platforms/tec1g/lcd.ts`
+- `src/platforms/tec1g/glcd.ts`
+- `src/platforms/tec1g/serial.ts`
+- `src/platforms/tec1g/ds1302.ts`
+- `src/platforms/tec1g/sd-spi.ts`
+- `src/platforms/tec1g/sysctrl.ts`
+- `src/platforms/tec1g/tec1g-memory.ts`
+
+The runtime file stays as the orchestrator that instantiates those controllers
+and attaches them to the CPU bus. The same pattern applies to other platforms:
+small focused modules for the peripheral logic, plus a thin runtime wrapper.
 
 ## 9. Source mapping pipeline
 
