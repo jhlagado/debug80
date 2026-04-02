@@ -16,8 +16,7 @@ import {
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as fs from 'fs';
-import * as path from 'path';
-import { findSegmentForAddress } from '../mapping/source-map';
+
 import { createZ80Runtime } from '../z80/runtime';
 import { StepInfo } from '../z80/types';
 import {
@@ -42,9 +41,8 @@ import {
   RuntimeControlContext,
 } from './runtime-control';
 import { VariableService } from './variable-service';
-import { buildMemorySnapshotResponse } from './memory-snapshot';
 import { ADDR_MASK } from '../platforms/tec-common';
-import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
+import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 import { resolveAssemblerBackend } from './assembler-backend';
 import { resolvePlatformProvider } from '../platforms/provider';
 
@@ -54,10 +52,14 @@ import {
   resolveBaseDir,
   resolveCacheDir,
   resolveListingSourcePath,
+  resolveMappedPath,
 } from './path-resolver';
-import { applyTerminalBreak, applyTerminalInput } from './io-requests';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
 import { buildRomSourcesResponse } from './rom-requests';
+import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
+import { handleMemorySnapshotRequest } from './memory-request';
+import { handleMatrixModeRequest, handleMatrixKeyRequest } from './matrix-request';
+import { getUnmappedCallReturnAddress } from './step-call-resolver';
 import {
   populateFromConfig,
   resolveArtifacts,
@@ -76,12 +78,36 @@ import { formatLogMessage, Logger, NullLogger } from '../util/logger';
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
 
-type MatrixKeyPayload = {
-  key: string;
-  pressed: boolean;
-  shift?: boolean;
-  ctrl?: boolean;
-  alt?: boolean;
+function createLaunchLogger(
+  baseLogger: Logger,
+  sendEvent: (event: unknown) => void,
+): Logger {
+  const emitOutput = (message: string): void => {
+    emitConsoleOutput((event) => sendEvent(event), message);
+  };
+  const tee = (
+    sink: (message: string, ...args: unknown[]) => void,
+    message: string,
+    args: unknown[],
+  ): void => {
+    sink(message, ...args);
+    emitOutput(formatLogMessage(message, args));
+  };
+  return {
+    debug: (message: string, ...args: unknown[]) => tee(baseLogger.debug.bind(baseLogger), message, args),
+    info: (message: string, ...args: unknown[]) => tee(baseLogger.info.bind(baseLogger), message, args),
+    warn: (message: string, ...args: unknown[]) => tee(baseLogger.warn.bind(baseLogger), message, args),
+    error: (message: string, ...args: unknown[]) => tee(baseLogger.error.bind(baseLogger), message, args),
+  };
+}
+
+const LAUNCH_ARGS_HELPERS: LaunchArgsHelpers = {
+  resolveBaseDir,
+  resolveAsmPath,
+  resolveRelative,
+  resolveCacheDir,
+  buildListingCacheKey,
+  relativeIfPossible,
 };
 
 export class Z80DebugSession extends DebugSession {
@@ -107,42 +133,41 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private registerCommandHandlers(): void {
+    const respond = (response: DebugProtocol.Response): void => this.sendResponse(response);
+    const respondError = (response: DebugProtocol.Response, id: number, message: string): void =>
+      this.sendErrorResponse(response, id, message);
+    const terminalDeps = {
+      getTerminalState: () => this.sessionState.terminalState,
+      sendResponse: respond,
+      sendErrorResponse: respondError,
+    };
     this.commandRouter.register('debug80/terminalInput', (response, args) =>
-      this.handleTerminalRequest('debug80/terminalInput', response, args)
+      handleTerminalInput(response, args, terminalDeps)
     );
-    this.commandRouter.register('debug80/terminalBreak', (response, args) =>
-      this.handleTerminalRequest('debug80/terminalBreak', response, args)
+    this.commandRouter.register('debug80/terminalBreak', (response) =>
+      handleTerminalBreak(response, terminalDeps)
     );
+    const memoryDeps = {
+      getRuntime: () => this.sessionState.runtime,
+      getSymbolAnchors: () => this.sessionState.symbolAnchors,
+      getLookupAnchors: () => this.sourceState.lookupAnchors,
+      getSymbolList: () => this.sessionState.symbolList,
+      sendResponse: respond,
+      sendErrorResponse: respondError,
+    };
     this.commandRouter.register('debug80/tec1MemorySnapshot', (response, args) =>
-      this.handleMemoryRequest('debug80/tec1MemorySnapshot', response, args)
+      handleMemorySnapshotRequest(response, args, memoryDeps)
     );
     this.commandRouter.register('debug80/tec1gMemorySnapshot', (response, args) =>
-      this.handleMemoryRequest('debug80/tec1gMemorySnapshot', response, args)
+      handleMemorySnapshotRequest(response, args, memoryDeps)
     );
-    this.commandRouter.register('debug80/romSources', (response) =>
-      this.handleRomRequest('debug80/romSources', response)
-    );
-  }
-
-  private createLaunchLogger(): Logger {
-    const emitOutput = (message: string): void => {
-      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
-    };
-    const tee = (
-      sink: (message: string, ...args: unknown[]) => void,
-      message: string,
-      args: unknown[]
-    ): void => {
-      sink(message, ...args);
-      emitOutput(formatLogMessage(message, args));
-    };
-
-    return {
-      debug: (message: string, ...args: unknown[]) => tee(this.logger.debug.bind(this.logger), message, args),
-      info: (message: string, ...args: unknown[]) => tee(this.logger.info.bind(this.logger), message, args),
-      warn: (message: string, ...args: unknown[]) => tee(this.logger.warn.bind(this.logger), message, args),
-      error: (message: string, ...args: unknown[]) => tee(this.logger.error.bind(this.logger), message, args),
-    };
+    this.commandRouter.register('debug80/romSources', (response) => {
+      response.body = buildRomSourcesResponse(
+        this.sourceState.collectRomSources(this.sessionState.extraListingPaths)
+      );
+      this.sendResponse(response);
+      return true;
+    });
   }
 
   protected initializeRequest(
@@ -172,7 +197,7 @@ export class Z80DebugSession extends DebugSession {
     this.breakpointManager.reset();
 
     try {
-      const launchLogger = this.createLaunchLogger();
+      const launchLogger = createLaunchLogger(this.logger, (event) => this.sendEvent(event as DebugProtocol.Event));
       const merged: LaunchRequestArguments = populateFromConfig(args, {
         resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
       });
@@ -183,7 +208,7 @@ export class Z80DebugSession extends DebugSession {
         (merged.hex === undefined || merged.hex === '') &&
         (merged.listing === undefined || merged.listing === '')
       ) {
-        const created = await this.promptForConfigCreation(args);
+        const created = await this.promptForConfigCreation();
         if (created) {
           this.sendErrorResponse(
             response,
@@ -212,8 +237,10 @@ export class Z80DebugSession extends DebugSession {
         sendResponse: (platformResponse) => this.sendResponse(platformResponse),
         sendErrorResponse: (platformResponse, id, message) =>
           this.sendErrorResponse(platformResponse, id, message),
-        handleMatrixModeRequest: (platformArgs) => this.handleMatrixModeRequest(platformArgs),
-        handleMatrixKeyRequest: (platformArgs) => this.handleMatrixKeyRequest(platformArgs),
+        handleMatrixModeRequest: (platformArgs) =>
+          handleMatrixModeRequest(this.sessionState.tec1gRuntime, this.matrixHeldKeys, platformArgs),
+        handleMatrixKeyRequest: (platformArgs) =>
+          handleMatrixKeyRequest(this.sessionState.tec1gRuntime, this.matrixHeldKeys, platformArgs),
         clearMatrixHeldKeys: () => {
           this.matrixHeldKeys.clear();
         },
@@ -240,7 +267,7 @@ export class Z80DebugSession extends DebugSession {
       });
 
       if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
-        const created = await this.promptForConfigCreation(args);
+        const created = await this.promptForConfigCreation();
         if (created) {
           this.sendErrorResponse(
             response,
@@ -277,16 +304,17 @@ export class Z80DebugSession extends DebugSession {
           platform,
           baseDir,
           resolveRelative: (p, dir) => resolveRelative(p, dir),
-          resolveMappedPath: (file) => this.resolveMappedPath(file),
+          resolveMappedPath: (file): string | undefined =>
+            resolveMappedPath(file, this.sessionState.listingPath, this.sessionState.sourceRoots),
           relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, this.getLaunchArgsHelpers()),
+          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, LAUNCH_ARGS_HELPERS),
           resolveDebugMapPath: (args, dir, asm, listing) =>
             resolveDebugMapPath(
               args as LaunchRequestArguments,
               dir,
               asm,
               listing,
-              this.getLaunchArgsHelpers()
+              LAUNCH_ARGS_HELPERS
             ),
           resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
           logger: launchLogger,
@@ -329,23 +357,15 @@ export class Z80DebugSession extends DebugSession {
       this.sourceState.lookupAnchors = symbolIndex.lookupAnchors;
       this.sessionState.symbolList = symbolIndex.list;
 
+      const emitDap = (name: string) => (payload: unknown) =>
+        this.sendEvent(new DapEvent(name, payload));
       const platformIo = platformProvider.buildIoHandlers({
         ...(merged.terminal !== undefined ? { terminal: merged.terminal } : {}),
-        onTec1Update: (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1Update', payload));
-        },
-        onTec1Serial: (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1Serial', payload));
-        },
-        onTec1gUpdate: (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1gUpdate', payload));
-        },
-        onTec1gSerial: (payload) => {
-          this.sendEvent(new DapEvent('debug80/tec1gSerial', payload));
-        },
-        onTerminalOutput: (payload) => {
-          this.sendEvent(new DapEvent('debug80/terminalOutput', payload));
-        },
+        onTec1Update: emitDap('debug80/tec1Update'),
+        onTec1Serial: emitDap('debug80/tec1Serial'),
+        onTec1gUpdate: emitDap('debug80/tec1gUpdate'),
+        onTec1gSerial: emitDap('debug80/tec1gSerial'),
+        onTerminalOutput: emitDap('debug80/terminalOutput'),
       });
       this.sessionState.tec1Runtime = platformIo.tec1Runtime;
       this.sessionState.tec1gRuntime = platformIo.tec1gRuntime;
@@ -517,7 +537,7 @@ export class Z80DebugSession extends DebugSession {
       return;
     }
 
-    const unmappedReturn = this.getUnmappedCallReturnAddress();
+    const unmappedReturn = this.resolveUnmappedCall();
     const trace: StepInfo = { taken: false };
     const result = this.sessionState.runtime.step({ trace });
     applyStepInfo(this.getRuntimeControlContext(), trace);
@@ -560,17 +580,7 @@ export class Z80DebugSession extends DebugSession {
     const baseline = this.sessionState.runState.callDepth;
     this.sendResponse(response);
     this.sessionState.runState.pauseRequested = false;
-    if (
-      this.sessionState.runState.lastStopReason === 'breakpoint' &&
-      this.sessionState.runtime.getPC() === this.sessionState.runState.lastBreakpointAddress &&
-      this.sessionState.runState.lastBreakpointAddress !== null &&
-      this.isBreakpointAddress(this.sessionState.runState.lastBreakpointAddress)
-    ) {
-      this.sessionState.runState.skipBreakpointOnce =
-        this.sessionState.runState.lastBreakpointAddress;
-    } else {
-      this.sessionState.runState.skipBreakpointOnce = null;
-    }
+    this.updateBreakpointSkip();
     void runUntilReturnAsync(
       this.getRuntimeControlContext(),
       baseline,
@@ -604,7 +614,8 @@ export class Z80DebugSession extends DebugSession {
         ? { mappingIndex: this.sessionState.mappingIndex }
         : {}),
       ...(this.sourceState.file !== undefined ? { sourceFile: this.sourceState.file } : {}),
-      resolveMappedPath: (file) => this.resolveMappedPath(file),
+      resolveMappedPath: (file): string | undefined =>
+        resolveMappedPath(file, this.sessionState.listingPath, this.sessionState.sourceRoots),
       getAddressAliases: (address) => {
         const masked = address & ADDR_MASK;
         const aliases = [masked];
@@ -633,30 +644,6 @@ export class Z80DebugSession extends DebugSession {
       activePlatform: this.platformState.active,
       tec1gRuntime: this.sessionState.tec1gRuntime,
     });
-  }
-
-  private resolveMappedPath(file: string): string | undefined {
-    if (path.isAbsolute(file)) {
-      return file;
-    }
-    const roots: string[] = [];
-    if (this.sessionState.listingPath !== undefined) {
-      roots.push(path.dirname(this.sessionState.listingPath));
-    }
-    roots.push(...this.sessionState.sourceRoots);
-
-    for (const root of roots) {
-      const candidate = path.resolve(root, file);
-      if (fs.existsSync(candidate)) {
-        return candidate;
-      }
-    }
-
-    return undefined;
-  }
-
-  private collectRomSources(): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
-    return this.sourceState.collectRomSources(this.sessionState.extraListingPaths);
   }
 
   protected scopesRequest(
@@ -711,256 +698,6 @@ export class Z80DebugSession extends DebugSession {
     super.customRequest(command, response, args);
   }
 
-  private handleTerminalRequest(
-    command: string,
-    response: DebugProtocol.Response,
-    args: unknown
-  ): boolean {
-    if (command === 'debug80/terminalInput') {
-      if (this.sessionState.terminalState === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
-        return true;
-      }
-      applyTerminalInput(args, this.sessionState.terminalState);
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/terminalBreak') {
-      if (this.sessionState.terminalState === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: Terminal not configured.');
-        return true;
-      }
-      applyTerminalBreak(this.sessionState.terminalState);
-      this.sendResponse(response);
-      return true;
-    }
-    return false;
-  }
-
-  private handleMemoryRequest(
-    command: string,
-    response: DebugProtocol.Response,
-    args: unknown
-  ): boolean {
-    if (command === 'debug80/tec1MemorySnapshot') {
-      if (this.sessionState.runtime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return true;
-      }
-      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(
-        args,
-        {
-          runtime: this.sessionState.runtime,
-          symbolAnchors: this.sessionState.symbolAnchors,
-          lookupAnchors: this.sourceState.lookupAnchors,
-          symbolList: this.sessionState.symbolList,
-        }
-      );
-      response.body = {
-        before: snapshot.before,
-        rowSize: snapshot.rowSize,
-        views: snapshot.views,
-        symbols: snapshot.symbols,
-        registers: snapshot.registers,
-      };
-      this.sendResponse(response);
-      return true;
-    }
-    if (command === 'debug80/tec1gMemorySnapshot') {
-      if (this.sessionState.runtime === undefined) {
-        this.sendErrorResponse(response, 1, 'Debug80: No program loaded.');
-        return true;
-      }
-      const snapshot: ReturnType<typeof buildMemorySnapshotResponse> = buildMemorySnapshotResponse(
-        args,
-        {
-          runtime: this.sessionState.runtime,
-          symbolAnchors: this.sessionState.symbolAnchors,
-          lookupAnchors: this.sourceState.lookupAnchors,
-          symbolList: this.sessionState.symbolList,
-        }
-      );
-      response.body = {
-        before: snapshot.before,
-        rowSize: snapshot.rowSize,
-        views: snapshot.views,
-        symbols: snapshot.symbols,
-        registers: snapshot.registers,
-      };
-      this.sendResponse(response);
-      return true;
-    }
-    return false;
-  }
-
-  private handleMatrixModeRequest(args: unknown): string | null {
-    const runtime = this.sessionState.tec1gRuntime;
-    if (!runtime) {
-      return 'Debug80: Platform not active.';
-    }
-    const enabled = this.parseMatrixModeEnabled(args);
-    if (enabled === undefined) {
-      return 'Debug80: Missing matrix mode flag.';
-    }
-    runtime.setMatrixMode(enabled);
-    if (!enabled) {
-      this.matrixHeldKeys.clear();
-    }
-    return null;
-  }
-
-  private handleMatrixKeyRequest(args: unknown): string | null {
-    const runtime = this.sessionState.tec1gRuntime;
-    if (!runtime) {
-      return 'Debug80: Platform not active.';
-    }
-    const payload = this.parseMatrixKeyPayload(args);
-    if (!payload) {
-      return 'Debug80: Missing matrix key payload.';
-    }
-    if (!runtime.state.matrixModeEnabled) {
-      return null;
-    }
-    const ascii = this.resolveMatrixAscii(payload.key);
-    if (ascii === undefined) {
-      return null;
-    }
-    const combos = getMatrixCombosForAscii(ascii);
-    if (combos.length === 0) {
-      return null;
-    }
-    const keyId = this.buildMatrixKeyId(payload);
-    const combo = this.selectMatrixCombo(combos, payload, runtime.state.capsLock);
-    if (!combo) {
-      return null;
-    }
-    const applied = this.expandMatrixCombo(combo);
-    if (payload.pressed) {
-      if (!this.matrixHeldKeys.has(keyId)) {
-        this.matrixHeldKeys.set(keyId, applied);
-        applied.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, true));
-      }
-      return null;
-    }
-    const held = this.matrixHeldKeys.get(keyId) ?? applied;
-    held.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
-    this.matrixHeldKeys.delete(keyId);
-    return null;
-  }
-
-  private parseMatrixModeEnabled(args: unknown): boolean | undefined {
-    if (typeof args !== 'object' || args === null) {
-      return undefined;
-    }
-    const candidate = (args as { enabled?: unknown }).enabled;
-    return typeof candidate === 'boolean' ? candidate : undefined;
-  }
-
-  private parseMatrixKeyPayload(args: unknown): MatrixKeyPayload | null {
-    if (typeof args !== 'object' || args === null) {
-      return null;
-    }
-    const candidate = args as {
-      key?: unknown;
-      pressed?: unknown;
-      shift?: unknown;
-      ctrl?: unknown;
-      alt?: unknown;
-    };
-    if (typeof candidate.key !== 'string' || typeof candidate.pressed !== 'boolean') {
-      return null;
-    }
-    const payload: MatrixKeyPayload = {
-      key: candidate.key,
-      pressed: candidate.pressed,
-    };
-    if (candidate.shift === true) {
-      payload.shift = true;
-    }
-    if (candidate.ctrl === true) {
-      payload.ctrl = true;
-    }
-    if (candidate.alt === true) {
-      payload.alt = true;
-    }
-    return payload;
-  }
-
-  private resolveMatrixAscii(key: string): number | undefined {
-    if (key.length === 1) {
-      return key.charCodeAt(0);
-    }
-    if (key === 'Enter') {
-      return 0x0d;
-    }
-    if (key === 'Escape') {
-      return 0x1b;
-    }
-    return undefined;
-  }
-
-  private buildMatrixKeyId(payload: MatrixKeyPayload): string {
-    return (
-      payload.key +
-      '|' +
-      (payload.shift === true ? '1' : '0') +
-      (payload.ctrl === true ? '1' : '0') +
-      (payload.alt === true ? '1' : '0')
-    );
-  }
-
-  private selectMatrixCombo(
-    combos: MatrixKeyCombo[],
-    payload: MatrixKeyPayload,
-    capsLock: boolean
-  ): MatrixKeyCombo | undefined {
-    const preferred =
-      payload.ctrl === true
-        ? 'ctrl'
-        : payload.shift === true
-          ? 'shift'
-          : payload.alt === true
-            ? 'fn'
-            : undefined;
-    const matchesCaps = (combo: MatrixKeyCombo): boolean =>
-      combo.capsLock === undefined || combo.capsLock === capsLock;
-    if (preferred !== undefined) {
-      const preferredMatch = combos.find(
-        (combo) => combo.modifier === preferred && matchesCaps(combo)
-      );
-      if (preferredMatch) {
-        return preferredMatch;
-      }
-    }
-    const unmodified = combos.find((combo) => combo.modifier === undefined && matchesCaps(combo));
-    if (unmodified) {
-      return unmodified;
-    }
-    const capsMatch = combos.find(matchesCaps);
-    return capsMatch ?? combos[0];
-  }
-
-  private expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; col: number }> {
-    const entries = [{ row: combo.row, col: combo.col }];
-    if (combo.modifier === 'shift') {
-      entries.push({ row: 0, col: 0 });
-    } else if (combo.modifier === 'ctrl') {
-      entries.push({ row: 0, col: 1 });
-    } else if (combo.modifier === 'fn') {
-      entries.push({ row: 0, col: 2 });
-    }
-    return entries;
-  }
-
-  private handleRomRequest(command: string, response: DebugProtocol.Response): boolean {
-    if (command === 'debug80/romSources') {
-      response.body = buildRomSourcesResponse(this.collectRomSources());
-      this.sendResponse(response);
-      return true;
-    }
-    return false;
-  }
-
   private continueExecution(response: DebugProtocol.Response): void {
     if (this.sessionState.runtime === undefined) {
       this.sendErrorResponse(response, 1, 'No program loaded');
@@ -969,37 +706,34 @@ export class Z80DebugSession extends DebugSession {
 
     this.sendResponse(response);
     this.sessionState.runState.pauseRequested = false;
-    if (
-      this.sessionState.runState.lastStopReason === 'breakpoint' &&
-      this.sessionState.runtime.getPC() === this.sessionState.runState.lastBreakpointAddress &&
-      this.sessionState.runState.lastBreakpointAddress !== null &&
-      this.isBreakpointAddress(this.sessionState.runState.lastBreakpointAddress)
-    ) {
-      this.sessionState.runState.skipBreakpointOnce =
-        this.sessionState.runState.lastBreakpointAddress;
-    } else {
-      this.sessionState.runState.skipBreakpointOnce = null;
-    }
+    this.updateBreakpointSkip();
     this.runUntilStop();
+  }
+
+  private updateBreakpointSkip(): void {
+    const rs = this.sessionState.runState;
+    if (
+      rs.lastStopReason === 'breakpoint' &&
+      this.sessionState.runtime?.getPC() === rs.lastBreakpointAddress &&
+      rs.lastBreakpointAddress !== null &&
+      this.isBreakpointAddress(rs.lastBreakpointAddress)
+    ) {
+      rs.skipBreakpointOnce = rs.lastBreakpointAddress;
+    } else {
+      rs.skipBreakpointOnce = null;
+    }
   }
 
   private runUntilStop(
     extraBreakpoints?: Set<number>,
     maxInstructions?: number,
-    limitLabel = 'step'
+    limitLabel = 'step',
   ): void {
-    const options: {
-      extraBreakpoints?: Set<number>;
-      maxInstructions?: number;
-      limitLabel?: string;
-    } = { limitLabel };
-    if (extraBreakpoints !== undefined) {
-      options.extraBreakpoints = extraBreakpoints;
-    }
-    if (maxInstructions !== undefined) {
-      options.maxInstructions = maxInstructions;
-    }
-    void runUntilStopAsync(this.getRuntimeControlContext(), options);
+    void runUntilStopAsync(this.getRuntimeControlContext(), {
+      limitLabel,
+      ...(extraBreakpoints !== undefined ? { extraBreakpoints } : {}),
+      ...(maxInstructions !== undefined ? { maxInstructions } : {}),
+    });
   }
 
   private handleHaltStop(): void {
@@ -1016,152 +750,42 @@ export class Z80DebugSession extends DebugSession {
     this.sendEvent(new TerminatedEvent());
   }
 
-  private getUnmappedCallReturnAddress(): number | null {
-    if (this.sessionState.runtime === undefined || this.sessionState.mappingIndex === undefined) {
+  private resolveUnmappedCall(): number | null {
+    const { runtime, mappingIndex } = this.sessionState;
+    if (runtime === undefined || mappingIndex === undefined) {
       return null;
     }
-    const cpu = this.sessionState.runtime.getRegisters();
-    const memRead =
-      this.sessionState.runtime.hardware.memRead ??
-      ((addr: number): number => this.sessionState.runtime?.hardware.memory[addr & 0xffff] ?? 0);
-    const pc = cpu.pc & 0xffff;
-    const opcode = memRead(pc) & 0xff;
-
-    const read16 = (addr: number): number => {
-      const lo = memRead(addr & 0xffff) & 0xff;
-      const hi = memRead((addr + 1) & 0xffff) & 0xff;
-      return lo | (hi << 8);
-    };
-
-    let taken = false;
-    let target: number | null = null;
-    let returnAddress: number | null = null;
-
-    switch (opcode) {
-      case 0xcd: // CALL nn
-        taken = true;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xc4: // CALL NZ
-        taken = !cpu.flags.Z;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xcc: // CALL Z
-        taken = !!cpu.flags.Z;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xd4: // CALL NC
-        taken = !cpu.flags.C;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xdc: // CALL C
-        taken = !!cpu.flags.C;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xe4: // CALL PO
-        taken = !cpu.flags.P;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xec: // CALL PE
-        taken = !!cpu.flags.P;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xf4: // CALL P
-        taken = !cpu.flags.S;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xfc: // CALL M
-        taken = !!cpu.flags.S;
-        target = read16(pc + 1);
-        returnAddress = (pc + 3) & 0xffff;
-        break;
-      case 0xc7:
-      case 0xcf:
-      case 0xd7:
-      case 0xdf:
-      case 0xe7:
-      case 0xef:
-      case 0xf7:
-      case 0xff:
-        taken = true;
-        target = opcode & 0x38;
-        returnAddress = (pc + 1) & 0xffff;
-        break;
-      default:
-        break;
-    }
-
-    if (!taken || target === null || returnAddress === null) {
-      return null;
-    }
-
-    const segment = findSegmentForAddress(this.sessionState.mappingIndex, target);
-    if (segment && segment.loc.file !== null) {
-      return null;
-    }
-
-    return returnAddress;
+    const cpu = runtime.getRegisters();
+    const memRead = runtime.hardware.memRead ?? ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
+    return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
   }
 
   private getRuntimeControlContext(): RuntimeControlContext {
+    const rs = this.sessionState.runState;
     return {
       getRuntime: () => this.sessionState.runtime,
       getTec1Runtime: () => this.sessionState.tec1Runtime,
       getTec1gRuntime: () => this.sessionState.tec1gRuntime,
       getActivePlatform: () => this.platformState.active,
-      getCallDepth: () => this.sessionState.runState.callDepth,
-      setCallDepth: (value: number): void => {
-        this.sessionState.runState.callDepth = value;
-      },
-      getPauseRequested: () => this.sessionState.runState.pauseRequested,
-      setPauseRequested: (value: boolean): void => {
-        this.sessionState.runState.pauseRequested = value;
-      },
-      getSkipBreakpointOnce: () => this.sessionState.runState.skipBreakpointOnce,
-      setSkipBreakpointOnce: (value: number | null): void => {
-        this.sessionState.runState.skipBreakpointOnce = value;
-      },
-      getHaltNotified: () => this.sessionState.runState.haltNotified,
-      setHaltNotified: (value: boolean): void => {
-        this.sessionState.runState.haltNotified = value;
-      },
-      setLastStopReason: (reason: StopReason): void => {
-        this.sessionState.runState.lastStopReason = reason;
-      },
-      setLastBreakpointAddress: (address: number | null): void => {
-        this.sessionState.runState.lastBreakpointAddress = address;
-      },
-      isBreakpointAddress: (address: number | null): boolean => this.isBreakpointAddress(address),
+      getCallDepth: (): number => rs.callDepth,
+      setCallDepth: (v: number): void => { rs.callDepth = v; },
+      getPauseRequested: (): boolean => rs.pauseRequested,
+      setPauseRequested: (v: boolean): void => { rs.pauseRequested = v; },
+      getSkipBreakpointOnce: (): number | null => rs.skipBreakpointOnce,
+      setSkipBreakpointOnce: (v: number | null): void => { rs.skipBreakpointOnce = v; },
+      getHaltNotified: (): boolean => rs.haltNotified,
+      setHaltNotified: (v: boolean): void => { rs.haltNotified = v; },
+      setLastStopReason: (reason: StopReason): void => { rs.lastStopReason = reason; },
+      setLastBreakpointAddress: (addr: number | null): void => { rs.lastBreakpointAddress = addr; },
+      isBreakpointAddress: (addr: number | null): boolean => this.isBreakpointAddress(addr),
       handleHaltStop: (): void => this.handleHaltStop(),
-      sendEvent: (event: unknown): void => {
-        this.sendEvent(event as DebugProtocol.Event);
-      },
+      sendEvent: (event: unknown): void => { this.sendEvent(event as DebugProtocol.Event); },
     };
   }
 
-  private async promptForConfigCreation(_args: LaunchRequestArguments): Promise<boolean> {
+  private async promptForConfigCreation(): Promise<boolean> {
     const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
     return Boolean(created);
-  }
-
-  private getLaunchArgsHelpers(): LaunchArgsHelpers {
-    return {
-      resolveBaseDir: (args: LaunchRequestArguments) => resolveBaseDir(args),
-      resolveAsmPath: (asm: string | undefined, baseDir: string) => resolveAsmPath(asm, baseDir),
-      resolveRelative: (filePath: string, baseDir: string) => resolveRelative(filePath, baseDir),
-      resolveCacheDir: (baseDir: string) => resolveCacheDir(baseDir),
-      buildListingCacheKey: (listingPath: string) => buildListingCacheKey(listingPath),
-      relativeIfPossible: (filePath: string, baseDir: string) =>
-        relativeIfPossible(filePath, baseDir),
-    };
   }
 }
 
