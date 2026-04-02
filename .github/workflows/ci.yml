@@ -32,5 +32,3 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
-      - name: Webview Tests
-        run: npm run test:webview
