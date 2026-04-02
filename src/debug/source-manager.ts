@@ -7,6 +7,7 @@ import * as path from 'path';
 import { MappingParseResult } from '../mapping/parser';
 import { SourceMapIndex } from '../mapping/source-map';
 import { buildMappingFromListing, MappingBuildResult } from './mapping-service';
+import { Logger } from '../util/logger';
 
 export interface SourceManagerOptions {
   platform: string;
@@ -22,7 +23,7 @@ export interface SourceManagerOptions {
   ) => string;
   resolveExtraDebugMapPath: (listingPath: string) => string;
   resolveListingSourcePath: (listingPath: string) => string | undefined;
-  log: (message: string) => void;
+  logger: Logger;
 }
 
 export interface SourceManagerState {
@@ -58,7 +59,7 @@ export class SourceManager {
   ) => string;
   private resolveExtraDebugMapPath: (listingPath: string) => string;
   private resolveListingSourcePath: (listingPath: string) => string | undefined;
-  private log: (message: string) => void;
+  private logger: Logger;
 
   public constructor(options: SourceManagerOptions) {
     this.platform = options.platform;
@@ -69,7 +70,7 @@ export class SourceManager {
     this.resolveDebugMapPath = options.resolveDebugMapPath;
     this.resolveExtraDebugMapPath = options.resolveExtraDebugMapPath;
     this.resolveListingSourcePath = options.resolveListingSourcePath;
-    this.log = options.log;
+    this.logger = options.logger;
   }
 
   public buildState(args: BuildSourceStateArgs): SourceManagerState {
@@ -151,7 +152,7 @@ export class SourceManager {
         resolveExtraDebugMapPath: (p) => this.resolveExtraDebugMapPath(p),
         resolveDebugMapPath: (args, dir, asm, listing) =>
           this.resolveDebugMapPath(args, dir, asm, listing),
-        log: (message) => this.log(message),
+        logger: this.logger,
       },
     });
   }
@@ -196,7 +197,7 @@ export class SourceManager {
       }
       if (!fs.existsSync(normalized)) {
         const prefix = `Debug80 [${this.platform}]`;
-        this.log(`${prefix}: extra listing not found at "${normalized}".`);
+        this.logger.warn(`${prefix}: extra listing not found at "${normalized}".`);
         continue;
       }
       resolved.push(normalized);

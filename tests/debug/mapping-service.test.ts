@@ -8,6 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { AssemblerBackend } from '../../src/debug/assembler-backend';
 import * as assemblerBackendModule from '../../src/debug/assembler-backend';
+import type { Logger } from '../../src/util/logger';
 
 const resolveListingSourcePathMock = vi.hoisted(() => vi.fn(() => undefined));
 
@@ -27,6 +28,13 @@ const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
 };
+
+const createLogger = (logs: string[]): Logger => ({
+  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+});
 
 describe('mapping-service', () => {
   it('detects native D8 maps from missing generator metadata or tool-only producers', () => {
@@ -72,7 +80,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: (message) => logs.push(message),
+        logger: createLogger(logs),
       },
     });
 
@@ -125,7 +133,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: (message) => logs.push(message),
+        logger: createLogger(logs),
       },
     });
 
@@ -189,7 +197,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: (message) => logs.push(message),
+        logger: createLogger(logs),
       },
     });
 
@@ -242,7 +250,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: () => undefined,
+        logger: createLogger([]),
       },
     });
 
@@ -286,7 +294,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: (message) => logs.push(message),
+        logger: createLogger(logs),
       },
     });
 
@@ -347,7 +355,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: () => undefined,
+        logger: createLogger([]),
       },
     });
 
@@ -397,7 +405,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
-        log: () => undefined,
+        logger: createLogger([]),
       },
     });
 
@@ -478,7 +486,7 @@ describe('mapping-service', () => {
           path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: () => extraMapPath,
         resolveDebugMapPath: () => mapPath,
-        log: (message) => logs.push(message),
+        logger: createLogger(logs),
       },
     });
 

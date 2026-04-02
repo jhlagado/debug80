@@ -112,14 +112,14 @@ function loadTec1gAssets(
 
   const cartridgePath = context.resolveRelative(cartridgeHex, context.baseDir);
   if (!fs.existsSync(cartridgePath)) {
-    context.log('Debug80: TEC-1G cartridge not found at ' + cartridgePath + '.');
+    context.logger.warn('Debug80: TEC-1G cartridge not found at ' + cartridgePath + '.');
     return { cartridgeImage: null };
   }
 
   try {
     return { cartridgeImage: loadTec1gCartridgeImage(cartridgePath) };
   } catch (err) {
-    context.log('Debug80: Failed to load cartridge ' + cartridgePath + ': ' + String(err));
+    context.logger.error('Debug80: Failed to load cartridge ' + cartridgePath + ': ' + String(err));
     return { cartridgeImage: null };
   }
 }
