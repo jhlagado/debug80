@@ -1,10 +1,11 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { acquireVscodeApi } from '../common/vscode';
-import { A00 } from './hd44780-a00';
+import { createGlcdRenderer } from './glcd-renderer';
+import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
-import ST7920_FONT from './st7920-font.bin';
 import { wireTec1gSerialUi } from './serial-ui';
+import { createVisibilityController } from './visibility-controller';
 
 type PanelTab = 'ui' | 'memory';
 
@@ -20,61 +21,15 @@ const statusShadow = document.getElementById('statusShadow') as HTMLElement;
 const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
-const lcdCanvas = document.getElementById('lcdCanvas') as HTMLCanvasElement | null;
-const lcdCtx = lcdCanvas?.getContext('2d') ?? null;
-const glcdCanvas = document.getElementById('glcdCanvas') as HTMLCanvasElement | null;
-const glcdCtx = glcdCanvas?.getContext('2d') ?? null;
-const glcdBaseCanvas = glcdCtx ? document.createElement('canvas') : null;
-const glcdBaseCtx = glcdBaseCanvas?.getContext('2d') ?? null;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
-const uiControls = document.getElementById('uiControls') as HTMLElement;
-const uiSectionNodes = Array.from(document.querySelectorAll<HTMLElement>('.ui-section'));
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
-const LCD_COLS = 20;
-const LCD_ROWS = 4;
-const LCD_BYTES = LCD_COLS * LCD_ROWS;
-const GLCD_WIDTH = 128;
-const GLCD_HEIGHT = 64;
-const GLCD_BYTES = 1024;
-let lcdBytes = new Array(LCD_BYTES).fill(0x20);
-let lcdCgram = new Array(64).fill(0x00);
-let lcdDisplayOn = true;
-let lcdCursorOn = false;
-let lcdCursorBlink = false;
-let lcdCursorAddr = 0x80;
-let lcdDisplayShift = 0;
-let lcdCursorBlinkVisible = true;
-let lcdCursorBlinkTimer = null;
-const GLCD_DDRAM_SIZE = 64;
-const GLCD_TEXT_COLS = 16;
-const GLCD_TEXT_ROWS = 4;
-let glcdDdram = new Array(GLCD_DDRAM_SIZE).fill(0x20);
-let glcdDisplayOn = true;
-let glcdGraphicsOn = true;
-let glcdCursorOn = false;
-let glcdCursorBlink = false;
-let glcdCursorAddr = 0x80;
-let glcdCursorPhase = 0;
-let glcdTextShift = 0;
-let glcdScroll = 0;
-let glcdReverseMask = 0;
-let glcdBlinkVisible = true;
-let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
 let sysCtrlSegs = [];
 let sysCtrlValue = 0;
-if (glcdBaseCanvas) {
-  glcdBaseCanvas.width = GLCD_WIDTH;
-  glcdBaseCanvas.height = GLCD_HEIGHT;
-}
-const glcdImageData =
-  glcdBaseCtx && glcdBaseCanvas
-    ? glcdBaseCtx.createImageData(GLCD_WIDTH, GLCD_HEIGHT)
-    : null;
 const digitEls: HTMLElement[] = [];
 for (let i = 0; i < DIGITS; i++) {
   const digit = createDigit();
@@ -83,7 +38,10 @@ for (let i = 0; i < DIGITS; i++) {
 }
 
 let activeTab: PanelTab = DEFAULT_TAB === 'memory' ? 'memory' : 'ui';
+const glcdRenderer = createGlcdRenderer();
+const lcdRenderer = createLcdRenderer();
 const matrixUi = createMatrixUiController(vscode, () => activeTab === 'ui');
+const visibilityController = createVisibilityController(vscode);
 let memoryRowSize = 16;
 let resizeTimer: number | null = null;
 let memoryPanelController: MemoryPanel | null = null;
@@ -161,82 +119,6 @@ tabButtons.forEach((button) => {
   });
 });
 
-const defaultVisibility = {
-  lcd: true,
-  display: true,
-  keypad: true,
-  matrixKeyboard: true,
-  matrix: false,
-  glcd: false,
-  serial: true,
-};
-
-function applyVisibility(visibility) {
-  uiSectionNodes.forEach((node) => {
-    const key = node.dataset.section;
-    if (!key) {
-      return;
-    }
-    const enabled = visibility[key] !== false;
-    node.classList.toggle('ui-hidden', !enabled);
-  });
-  if (uiControls) {
-    uiControls
-      .querySelectorAll('input[type="checkbox"][data-section]')
-      .forEach((input) => {
-        const key = input.dataset.section;
-        if (!key) {
-          return;
-        }
-        input.checked = visibility[key] !== false;
-      });
-  }
-}
-
-function loadVisibility() {
-  const stored = vscode.getState();
-  const visibility = {
-    ...defaultVisibility,
-    ...(stored && stored.uiVisibility ? stored.uiVisibility : {}),
-  };
-  applyVisibility(visibility);
-  return visibility;
-}
-
-function saveVisibility(visibility) {
-  const stored = vscode.getState() || {};
-  vscode.setState({ ...stored, uiVisibility: visibility });
-}
-
-function applyVisibilityOverride(visibility, persist) {
-  if (!visibility || typeof visibility !== 'object') {
-    return;
-  }
-  uiVisibility = { ...defaultVisibility, ...visibility };
-  applyVisibility(uiVisibility);
-  if (persist) {
-    saveVisibility(uiVisibility);
-  }
-}
-
-let uiVisibility = loadVisibility();
-
-if (uiControls) {
-  uiControls.addEventListener('change', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
-    const key = target.dataset.section;
-    if (!key) {
-      return;
-    }
-    uiVisibility = { ...uiVisibility, [key]: target.checked };
-    applyVisibility(uiVisibility);
-    saveVisibility(uiVisibility);
-  });
-}
-
 const keyMap = {
   '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
   '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
@@ -273,233 +155,6 @@ function applySpeed(mode) {
   speedEl.textContent = mode.toUpperCase();
   speedEl.classList.toggle('slow', mode === 'slow');
   speedEl.classList.toggle('fast', mode === 'fast');
-}
-
-function drawLcd() {
-  drawLcdBitmap();
-}
-
-function drawLcdBitmap() {
-  if (!lcdCtx || !lcdCanvas) {
-    return;
-  }
-  const dot = 2;
-  const cellW = 5 * dot + 2;
-  const cellH = 8 * dot + 2;
-  const w = LCD_COLS * cellW;
-  const h = LCD_ROWS * cellH;
-  lcdCanvas.width = w;
-  lcdCanvas.height = h;
-  lcdCanvas.style.width = '';
-  lcdCanvas.style.height = '';
-  const img = lcdCtx.createImageData(w, h);
-  const d = img.data;
-  const bgR = 11, bgG = 26, bgB = 16;
-  const onR = 180, onG = 245, onB = 180;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = bgR; d[i + 1] = bgG; d[i + 2] = bgB; d[i + 3] = 255;
-  }
-  const cursorVisible = lcdDisplayOn && (lcdCursorOn || (lcdCursorBlink && lcdCursorBlinkVisible));
-  const cursorIndex = getLcdIndex(lcdCursorAddr);
-  for (let row = 0; row < LCD_ROWS; row++) {
-    for (let col = 0; col < LCD_COLS; col++) {
-      const srcCol = (col + lcdDisplayShift + LCD_COLS) % LCD_COLS;
-      const index = row * LCD_COLS + srcCol;
-      const charCode = lcdDisplayOn ? ((lcdBytes[index] || 0x20) & 0xFF) : 0x20;
-      const romBase = charCode * 8;
-      const ox = col * cellW + 1;
-      const oy = row * cellH + 1;
-      for (let dy = 0; dy < 8; dy++) {
-        let bits = A00[romBase + dy] || 0;
-        if (charCode < 0x08) {
-          bits = lcdCgram[charCode * 8 + dy] || 0;
-        }
-        for (let dx = 0; dx < 5; dx++) {
-          if (bits & (0x10 >> dx)) {
-            const sx = ox + dx * dot;
-            const sy = oy + dy * dot;
-            for (let py = 0; py < dot; py++) {
-              for (let px = 0; px < dot; px++) {
-                const idx = ((sy + py) * w + (sx + px)) * 4;
-                if (idx >= 0 && idx < d.length - 3) {
-                  d[idx] = onR;
-                  d[idx + 1] = onG;
-                  d[idx + 2] = onB;
-                }
-              }
-            }
-          }
-        }
-      }
-      if (cursorVisible && cursorIndex === index) {
-        const dy = 7;
-        for (let dx = 0; dx < 5; dx++) {
-          const sx = ox + dx * dot;
-          const sy = oy + dy * dot;
-          for (let py = 0; py < dot; py++) {
-            for (let px = 0; px < dot; px++) {
-              const idx = ((sy + py) * w + (sx + px)) * 4;
-              if (idx >= 0 && idx < d.length - 3) {
-                d[idx] = onR;
-                d[idx + 1] = onG;
-                d[idx + 2] = onB;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  lcdCtx.putImageData(img, 0, 0);
-}
-
-function getLcdIndex(addr) {
-  const masked = addr & 0xFF;
-  if (masked >= 0x80 && masked <= 0x93) return masked - 0x80;
-  if (masked >= 0xC0 && masked <= 0xD3) return 20 + (masked - 0xC0);
-  if (masked >= 0x94 && masked <= 0xA7) return 40 + (masked - 0x94);
-  if (masked >= 0xD4 && masked <= 0xE7) return 60 + (masked - 0xD4);
-  return -1;
-}
-
-function updateLcdCursorBlink() {
-  if (lcdCursorBlinkTimer) {
-    clearInterval(lcdCursorBlinkTimer);
-    lcdCursorBlinkTimer = null;
-  }
-  lcdCursorBlinkVisible = true;
-  if (!lcdCursorBlink) {
-    return;
-  }
-  lcdCursorBlinkTimer = setInterval(() => {
-    lcdCursorBlinkVisible = !lcdCursorBlinkVisible;
-    drawLcd();
-  }, 500);
-}
-
-function drawGlcd() {
-  if (!glcdCtx || !glcdCanvas || !glcdBaseCtx || !glcdBaseCanvas || !glcdImageData) {
-    return;
-  }
-  const data = glcdImageData.data;
-  const onR = 32;
-  const onG = 58;
-  const onB = 22;
-  const offR = 158;
-  const offG = 182;
-  const offB = 99;
-  const scroll = glcdScroll & 0x3f;
-  const shift = Math.max(-15, Math.min(15, Math.trunc(glcdTextShift || 0)));
-  let ptr = 0;
-  if (!glcdDisplayOn) {
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = offR;
-      data[i + 1] = offG;
-      data[i + 2] = offB;
-      data[i + 3] = 255;
-    }
-  } else {
-    if (glcdGraphicsOn) {
-      for (let row = 0; row < GLCD_HEIGHT; row += 1) {
-        const srcRow = (row + scroll) & 0x3f;
-        for (let colByte = 0; colByte < 16; colByte += 1) {
-          const value = glcdBytes[srcRow * 16 + colByte] || 0;
-          for (let bit = 0; bit < 8; bit += 1) {
-            const on = (value & (0x80 >> bit)) !== 0;
-            data[ptr++] = on ? onR : offR;
-            data[ptr++] = on ? onG : offG;
-            data[ptr++] = on ? onB : offB;
-            data[ptr++] = 255;
-          }
-        }
-      }
-    } else {
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = offR;
-        data[i + 1] = offG;
-        data[i + 2] = offB;
-        data[i + 3] = 255;
-      }
-    }
-    // Overlay DDRAM text layer using ST7920 half-height font (8x16, 16 cols x 4 rows)
-    for (let tRow = 0; tRow < GLCD_TEXT_ROWS; tRow++) {
-      for (let tCol = 0; tCol < GLCD_TEXT_COLS; tCol++) {
-        const memCol = tCol + shift;
-        if (memCol < 0 || memCol >= GLCD_TEXT_COLS) {
-          continue;
-        }
-        const ch = glcdDdram[tRow * GLCD_TEXT_COLS + memCol] || 0x20;
-        if (ch === 0x20 || ch === 0x00) continue; // skip spaces
-        const romBase = (ch & 0x7F) * 16;
-        const px0 = tCol * 8;
-        const py0 = tRow * 16;
-        for (let dy = 0; dy < 16; dy++) {
-          const bits = ST7920_FONT[romBase + dy] || 0;
-          if (bits === 0) continue;
-          for (let dx = 0; dx < 8; dx++) {
-            if (bits & (0x80 >> dx)) {
-              const px = px0 + dx;
-              const py = (py0 + dy - scroll + GLCD_HEIGHT) & 0x3f;
-              if (px < GLCD_WIDTH && py < GLCD_HEIGHT) {
-                const idx = (py * GLCD_WIDTH + px) * 4;
-                if (glcdGraphicsOn) {
-                  const isOn =
-                    data[idx] === onR && data[idx + 1] === onG && data[idx + 2] === onB;
-                  data[idx] = isOn ? offR : onR;
-                  data[idx + 1] = isOn ? offG : onG;
-                  data[idx + 2] = isOn ? offB : onB;
-                } else {
-                  data[idx] = onR;
-                  data[idx + 1] = onG;
-                  data[idx + 2] = onB;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    if (glcdReverseMask) {
-      for (let tRow = 0; tRow < GLCD_TEXT_ROWS; tRow++) {
-        if ((glcdReverseMask & (1 << tRow)) === 0) continue;
-        for (let dy = 0; dy < 16; dy++) {
-          const py = (tRow * 16 + dy - scroll + GLCD_HEIGHT) & 0x3f;
-          for (let px = 0; px < GLCD_WIDTH; px++) {
-            const idx = (py * GLCD_WIDTH + px) * 4;
-            const isOn = data[idx] === onR && data[idx + 1] === onG && data[idx + 2] === onB;
-            data[idx] = isOn ? offR : onR;
-            data[idx + 1] = isOn ? offG : onG;
-            data[idx + 2] = isOn ? offB : onB;
-          }
-        }
-      }
-    }
-    const cursorVisible = glcdCursorOn || (glcdCursorBlink && glcdBlinkVisible);
-    if (cursorVisible) {
-      const addr = glcdCursorAddr & 0x7f;
-      const row = ((addr & 0x10) >> 4) | ((addr & 0x08) >> 2);
-      const col = addr & 0x07;
-      const memCol = col * 2 + (glcdCursorPhase ? 1 : 0);
-      const dispCol = memCol - shift;
-      if (dispCol >= 0 && dispCol < GLCD_TEXT_COLS) {
-        const px0 = dispCol * 8;
-        const py0 = (row * 16 - scroll + GLCD_HEIGHT) & 0x3f;
-        const underlineY = (py0 + 15) & 0x3f;
-        for (let dx = 0; dx < 8; dx++) {
-          const px = px0 + dx;
-          if (px >= GLCD_WIDTH) continue;
-          const idx = (underlineY * GLCD_WIDTH + px) * 4;
-          data[idx] = onR;
-          data[idx + 1] = onG;
-          data[idx + 2] = onB;
-        }
-      }
-    }
-  }
-  glcdBaseCtx.putImageData(glcdImageData, 0, 0);
-  glcdCtx.imageSmoothingEnabled = false;
-  glcdCtx.clearRect(0, 0, glcdCanvas.width, glcdCanvas.height);
-  glcdCtx.drawImage(glcdBaseCanvas, 0, 0, glcdCanvas.width, glcdCanvas.height);
 }
 
 function setShiftLatched(value) {
@@ -694,40 +349,7 @@ function applyUpdate(payload) {
   if (data.speedMode === 'slow' || data.speedMode === 'fast') {
     applySpeed(data.speedMode);
   }
-  if (Array.isArray(data.lcd)) {
-    lcdBytes = data.lcd.slice(0, LCD_BYTES);
-    while (lcdBytes.length < LCD_BYTES) {
-      lcdBytes.push(0x20);
-    }
-    drawLcd();
-  }
-  if (Array.isArray(data.lcdCgram)) {
-    lcdCgram = data.lcdCgram.slice(0, 64);
-    while (lcdCgram.length < 64) {
-      lcdCgram.push(0x00);
-    }
-    drawLcd();
-  }
-  if (data.lcdState && typeof data.lcdState === 'object') {
-    if (typeof data.lcdState.displayOn === 'boolean') {
-      lcdDisplayOn = data.lcdState.displayOn;
-    }
-    if (typeof data.lcdState.cursorOn === 'boolean') {
-      lcdCursorOn = data.lcdState.cursorOn;
-    }
-    if (typeof data.lcdState.cursorBlink === 'boolean') {
-      lcdCursorBlink = data.lcdState.cursorBlink;
-    }
-    if (typeof data.lcdState.cursorAddr === 'number') {
-      lcdCursorAddr = data.lcdState.cursorAddr & 0xFF;
-    }
-    if (typeof data.lcdState.displayShift === 'number') {
-      const shift = Math.trunc(data.lcdState.displayShift || 0);
-      lcdDisplayShift = ((shift % LCD_COLS) + LCD_COLS) % LCD_COLS;
-    }
-    updateLcdCursorBlink();
-    drawLcd();
-  }
+  lcdRenderer.applyLcdUpdate(data);
   if (Array.isArray(data.matrix)) {
     matrixUi.applyMatrixRows(data.matrix);
   }
@@ -742,51 +364,7 @@ function applyUpdate(payload) {
   if (typeof data.matrixMode === 'boolean') {
     matrixUi.applyMatrixMode(data.matrixMode);
   }
-  if (Array.isArray(data.glcdDdram)) {
-    glcdDdram = data.glcdDdram.slice(0, GLCD_DDRAM_SIZE);
-    while (glcdDdram.length < GLCD_DDRAM_SIZE) {
-      glcdDdram.push(0x20);
-    }
-  }
-  if (data.glcdState && typeof data.glcdState === 'object') {
-    if (typeof data.glcdState.displayOn === 'boolean') {
-      glcdDisplayOn = data.glcdState.displayOn;
-    }
-    if (typeof data.glcdState.graphicsOn === 'boolean') {
-      glcdGraphicsOn = data.glcdState.graphicsOn;
-    }
-    if (typeof data.glcdState.cursorOn === 'boolean') {
-      glcdCursorOn = data.glcdState.cursorOn;
-    }
-    if (typeof data.glcdState.cursorBlink === 'boolean') {
-      glcdCursorBlink = data.glcdState.cursorBlink;
-    }
-    if (typeof data.glcdState.blinkVisible === 'boolean') {
-      glcdBlinkVisible = data.glcdState.blinkVisible;
-    }
-    if (typeof data.glcdState.ddramAddr === 'number') {
-      glcdCursorAddr = data.glcdState.ddramAddr & 0xFF;
-    }
-    if (typeof data.glcdState.ddramPhase === 'number') {
-      glcdCursorPhase = data.glcdState.ddramPhase ? 1 : 0;
-    }
-    if (typeof data.glcdState.textShift === 'number') {
-      glcdTextShift = data.glcdState.textShift;
-    }
-    if (typeof data.glcdState.scroll === 'number') {
-      glcdScroll = data.glcdState.scroll & 0x3F;
-    }
-    if (typeof data.glcdState.reverseMask === 'number') {
-      glcdReverseMask = data.glcdState.reverseMask & 0x0F;
-    }
-  }
-  if (Array.isArray(data.glcd)) {
-    glcdBytes = data.glcd.slice(0, GLCD_BYTES);
-    while (glcdBytes.length < GLCD_BYTES) {
-      glcdBytes.push(0);
-    }
-  }
-  drawGlcd();
+  glcdRenderer.applyGlcdUpdate(data);
 }
 
 const statusEl = document.getElementById('status');
@@ -842,7 +420,7 @@ window.addEventListener('message', event => {
     return;
   }
   if (event.data.type === 'uiVisibility') {
-    applyVisibilityOverride(event.data.visibility, event.data.persist === true);
+    visibilityController.applyOverride(event.data.visibility, event.data.persist === true);
     return;
   }
   if (event.data.type === 'update') {
@@ -870,8 +448,9 @@ window.addEventListener('message', event => {
 applySpeed(speedMode);
 applyMuteState();
 matrixUi.init();
-drawLcd();
-drawGlcd();
+visibilityController.wire();
+lcdRenderer.draw();
+glcdRenderer.draw();
 setTab(DEFAULT_TAB, false);
 window.addEventListener('resize', scheduleMemoryResize);
 updateMemoryLayout(false);
