@@ -36,4 +36,5 @@ enabled via the `terminal` configuration:
 
 ## Where the platform lives in code
 
-- Emulator and I/O: `src/debug/adapter.ts`
+- Emulator and I/O: `src/platforms/simple/runtime.ts`
+- Debug adapter wiring: `src/platforms/simple/provider.ts`
