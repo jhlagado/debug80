@@ -10,6 +10,7 @@ build/
 .idea/
 /.vscode/
 .husky/_/
+.claude/
 
 # OS
 .DS_Store
