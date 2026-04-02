@@ -2,6 +2,7 @@ import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { acquireVscodeApi } from '../common/vscode';
 import { A00 } from './hd44780-a00';
+import { createMatrixUiController } from './matrix-ui';
 import ST7920_FONT from './st7920-font.bin';
 import { wireTec1gSerialUi } from './serial-ui';
 
@@ -25,14 +26,6 @@ const glcdCanvas = document.getElementById('glcdCanvas') as HTMLCanvasElement | 
 const glcdCtx = glcdCanvas?.getContext('2d') ?? null;
 const glcdBaseCanvas = glcdCtx ? document.createElement('canvas') : null;
 const glcdBaseCtx = glcdBaseCanvas?.getContext('2d') ?? null;
-const matrixGrid = document.getElementById('matrixGrid') as HTMLElement;
-const matrixModeToggle = document.getElementById('matrixModeToggle') as HTMLElement;
-const matrixModeStatus = document.getElementById('matrixModeStatus') as HTMLElement;
-const matrixCapsStatus = document.getElementById('matrixCapsStatus') as HTMLElement;
-const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid') as HTMLElement;
-const matrixShift = document.getElementById('matrixShift') as HTMLElement;
-const matrixCtrl = document.getElementById('matrixCtrl') as HTMLElement;
-const matrixAlt = document.getElementById('matrixAlt') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
@@ -74,15 +67,6 @@ let glcdBlinkVisible = true;
 let glcdBytes = new Array(GLCD_BYTES).fill(0x00);
 let sysCtrlSegs = [];
 let sysCtrlValue = 0;
-let matrixModeEnabled = false;
-let capsLockEnabled = false;
-const matrixHeldKeys = new Set();
-const matrixClickMods = {
-  shift: false,
-  ctrl: false,
-  alt: false,
-};
-const matrixKeyElements = new Map();
 if (glcdBaseCanvas) {
   glcdBaseCanvas.width = GLCD_WIDTH;
   glcdBaseCanvas.height = GLCD_HEIGHT;
@@ -91,7 +75,6 @@ const glcdImageData =
   glcdBaseCtx && glcdBaseCanvas
     ? glcdBaseCtx.createImageData(GLCD_WIDTH, GLCD_HEIGHT)
     : null;
-let matrixRows = new Array(8).fill(0);
 const digitEls: HTMLElement[] = [];
 for (let i = 0; i < DIGITS; i++) {
   const digit = createDigit();
@@ -100,6 +83,7 @@ for (let i = 0; i < DIGITS; i++) {
 }
 
 let activeTab: PanelTab = DEFAULT_TAB === 'memory' ? 'memory' : 'ui';
+const matrixUi = createMatrixUiController(vscode, () => activeTab === 'ui');
 let memoryRowSize = 16;
 let resizeTimer: number | null = null;
 let memoryPanelController: MemoryPanel | null = null;
@@ -518,35 +502,6 @@ function drawGlcd() {
   glcdCtx.drawImage(glcdBaseCanvas, 0, 0, glcdCanvas.width, glcdCanvas.height);
 }
 
-function buildMatrix() {
-  if (!matrixGrid) return;
-  matrixGrid.innerHTML = '';
-  for (let row = 0; row < 8; row += 1) {
-    for (let col = 0; col < 8; col += 1) {
-      const dot = document.createElement('div');
-      dot.className = 'matrix-dot';
-      dot.dataset.row = String(row);
-      dot.dataset.col = String(col);
-      matrixGrid.appendChild(dot);
-    }
-  }
-}
-
-function drawMatrix() {
-  if (!matrixGrid) return;
-  const dots = matrixGrid.querySelectorAll('.matrix-dot');
-  dots.forEach(dot => {
-    const row = parseInt(dot.dataset.row || '0', 10);
-    const col = parseInt(dot.dataset.col || '0', 10);
-    const mask = 1 << col;
-    if (matrixRows[row] & mask) {
-      dot.classList.add('on');
-    } else {
-      dot.classList.remove('on');
-    }
-  });
-}
-
 function setShiftLatched(value) {
   shiftLatched = value;
   shiftButton.classList.toggle('active', shiftLatched);
@@ -664,194 +619,6 @@ function updateStatusLeds() {
   }
 }
 
-function applyMatrixMode(enabled) {
-  matrixModeEnabled = !!enabled;
-  if (matrixModeToggle) {
-    matrixModeToggle.classList.toggle('active', matrixModeEnabled);
-  }
-  if (matrixModeStatus) {
-    matrixModeStatus.textContent = matrixModeEnabled ? 'ON' : 'OFF';
-    matrixModeStatus.classList.toggle('on', matrixModeEnabled);
-  }
-}
-
-function applyCapsLock(enabled) {
-  capsLockEnabled = !!enabled;
-  if (matrixCapsStatus) {
-    matrixCapsStatus.classList.toggle('on', capsLockEnabled);
-  }
-}
-
-function shouldIgnoreKeyEvent(event) {
-  const target = event.target;
-  return (
-    target &&
-    (target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT')
-  );
-}
-
-function setMatrixKeyPressed(key, pressed) {
-  if (!key) {
-    return;
-  }
-  const direct = matrixKeyElements.get(key);
-  const fallback =
-    key.length === 1 ? matrixKeyElements.get(key.toLowerCase()) : undefined;
-  const el = direct ?? fallback;
-  if (el) {
-    el.classList.toggle('pressed', pressed);
-  }
-}
-
-function sendMatrixKey(key, pressed, mods) {
-  const keyId =
-    key + '|' + (mods.shift ? '1' : '0') + (mods.ctrl ? '1' : '0') + (mods.alt ? '1' : '0');
-  if (pressed) {
-    if (matrixHeldKeys.has(keyId)) {
-      return true;
-    }
-    matrixHeldKeys.add(keyId);
-  } else {
-    if (!matrixHeldKeys.has(keyId)) {
-      return false;
-    }
-    matrixHeldKeys.delete(keyId);
-  }
-  vscode.postMessage({
-    type: 'matrixKey',
-    key: key,
-    pressed: !!pressed,
-    shift: mods.shift,
-    ctrl: mods.ctrl,
-    alt: mods.alt,
-  });
-  return true;
-}
-
-function handleMatrixKeyEvent(event, pressed) {
-  if (!matrixModeEnabled || activeTab !== 'ui' || shouldIgnoreKeyEvent(event)) {
-    return false;
-  }
-  const key = event.key;
-  if (!key) {
-    return false;
-  }
-  if (pressed && event.repeat) {
-    return true;
-  }
-  setMatrixKeyPressed(key, pressed);
-  if (key.length === 1 && key !== key.toLowerCase()) {
-    setMatrixKeyPressed(key.toLowerCase(), pressed);
-  }
-  sendMatrixKey(key, pressed, {
-    shift: event.shiftKey,
-    ctrl: event.ctrlKey,
-    alt: event.altKey,
-  });
-  return true;
-}
-
-function setMatrixMod(mod, active) {
-  matrixClickMods[mod] = active;
-  const el = mod === 'shift' ? matrixShift : mod === 'ctrl' ? matrixCtrl : matrixAlt;
-  if (el) {
-    el.classList.toggle('active', active);
-  }
-}
-
-function toggleMatrixMod(mod) {
-  setMatrixMod(mod, !matrixClickMods[mod]);
-}
-
-function buildMatrixKeyboard() {
-  if (!matrixKeyboardGrid) {
-    return;
-  }
-  const rows = [
-    ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
-    ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\\\'],
-    ['Caps', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
-    ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
-    ['Ctrl', 'Alt', 'Space', 'Alt', 'Ctrl'],
-  ];
-  const spans = {
-    Backspace: 2,
-    Tab: 2,
-    Caps: 2,
-    Enter: 2,
-    Shift: 2,
-    Ctrl: 2,
-    Alt: 2,
-    Space: 6,
-  };
-  matrixKeyboardGrid.innerHTML = '';
-  rows.forEach((row) => {
-    row.forEach((label) => {
-      const keyEl = document.createElement('div');
-      keyEl.className = 'matrix-key' + (spans[label] ? ' wide' : '');
-      const span = spans[label] ?? 1;
-      keyEl.style.gridColumn = 'span ' + span;
-      keyEl.textContent = label;
-      const keyValue =
-        label === 'Space'
-          ? ' '
-          : label === 'Backspace'
-          ? 'Backspace'
-          : label === 'Enter'
-          ? 'Enter'
-          : label === 'Esc'
-          ? 'Escape'
-          : label === 'Tab'
-          ? 'Tab'
-          : label === 'Caps'
-          ? 'CapsLock'
-          : label === 'Shift'
-          ? 'Shift'
-          : label === 'Ctrl'
-          ? 'Control'
-          : label === 'Alt'
-          ? 'Alt'
-          : label;
-      keyEl.dataset.key = keyValue;
-      if (keyValue !== 'Shift' && keyValue !== 'Control' && keyValue !== 'Alt' && keyValue !== 'CapsLock') {
-        matrixKeyElements.set(keyValue, keyEl);
-      }
-      keyEl.addEventListener('mousedown', (event) => {
-        event.preventDefault();
-        if (!matrixModeEnabled || activeTab !== 'ui') {
-          return;
-        }
-        if (keyValue === 'Shift') {
-          toggleMatrixMod('shift');
-          return;
-        }
-        if (keyValue === 'Control') {
-          toggleMatrixMod('ctrl');
-          return;
-        }
-        if (keyValue === 'Alt') {
-          toggleMatrixMod('alt');
-          return;
-        }
-        setMatrixKeyPressed(keyValue, true);
-        sendMatrixKey(keyValue, true, matrixClickMods);
-      });
-      const release = () => {
-        if (keyValue === 'Shift' || keyValue === 'Control' || keyValue === 'Alt') {
-          return;
-        }
-        setMatrixKeyPressed(keyValue, false);
-        sendMatrixKey(keyValue, false, matrixClickMods);
-      };
-      keyEl.addEventListener('mouseup', release);
-      keyEl.addEventListener('mouseleave', release);
-      matrixKeyboardGrid.appendChild(keyEl);
-    });
-  });
-}
-
 addButton('RESET', () => {
   setShiftLatched(false);
   vscode.postMessage({ type: 'reset' });
@@ -874,22 +641,6 @@ for (let row = 0; row < 4; row += 1) {
 const shiftButton = addButton('FN', () => {
   setShiftLatched(!shiftLatched);
 }, 'keycap-light', 1, 4, true);
-if (matrixModeToggle) {
-  matrixModeToggle.addEventListener('click', () => {
-    const next = !matrixModeEnabled;
-    applyMatrixMode(next);
-    vscode.postMessage({ type: 'matrixMode', enabled: next });
-  });
-}
-if (matrixShift) {
-  matrixShift.addEventListener('click', () => toggleMatrixMod('shift'));
-}
-if (matrixCtrl) {
-  matrixCtrl.addEventListener('click', () => toggleMatrixMod('ctrl'));
-}
-if (matrixAlt) {
-  matrixAlt.addEventListener('click', () => toggleMatrixMod('alt'));
-}
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
   applySpeed(next);
@@ -978,11 +729,7 @@ function applyUpdate(payload) {
     drawLcd();
   }
   if (Array.isArray(data.matrix)) {
-    matrixRows = data.matrix.slice(0, 8);
-    while (matrixRows.length < 8) {
-      matrixRows.push(0);
-    }
-    drawMatrix();
+    matrixUi.applyMatrixRows(data.matrix);
   }
   if (typeof data.sysCtrl === 'number') {
     sysCtrlValue = data.sysCtrl & 0xff;
@@ -990,10 +737,10 @@ function applyUpdate(payload) {
     updateStatusLeds();
   }
   if (typeof data.capsLock === 'boolean') {
-    applyCapsLock(data.capsLock);
+    matrixUi.applyCapsLock(data.capsLock);
   }
   if (typeof data.matrixMode === 'boolean') {
-    applyMatrixMode(data.matrixMode);
+    matrixUi.applyMatrixMode(data.matrixMode);
   }
   if (Array.isArray(data.glcdDdram)) {
     glcdDdram = data.glcdDdram.slice(0, GLCD_DDRAM_SIZE);
@@ -1122,12 +869,8 @@ window.addEventListener('message', event => {
 
 applySpeed(speedMode);
 applyMuteState();
-applyMatrixMode(matrixModeEnabled);
-buildMatrixKeyboard();
-applyCapsLock(capsLockEnabled);
+matrixUi.init();
 drawLcd();
-buildMatrix();
-drawMatrix();
 drawGlcd();
 setTab(DEFAULT_TAB, false);
 window.addEventListener('resize', scheduleMemoryResize);
@@ -1136,7 +879,7 @@ wireTec1gSerialUi(vscode);
 
 window.addEventListener('keydown', event => {
   if (event.repeat) return;
-  if (handleMatrixKeyEvent(event, true)) {
+  if (matrixUi.handleKeyEvent(event, true)) {
     event.preventDefault();
     return;
   }
@@ -1168,7 +911,7 @@ window.addEventListener('keydown', event => {
   }
 });
 window.addEventListener('keyup', event => {
-  if (handleMatrixKeyEvent(event, false)) {
+  if (matrixUi.handleKeyEvent(event, false)) {
     event.preventDefault();
   }
 });
