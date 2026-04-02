@@ -27,7 +27,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const sourceColumns = new SourceColumnController(sessionState);
   const terminalPanel = new TerminalPanelController(
     sessionState,
-    (session) => sourceColumns.getSessionColumns(session).panel
+    (session) => sourceColumns.getSessionColumns(session).panel,
+    context.extensionUri
   );
 
   context.subscriptions.push(
