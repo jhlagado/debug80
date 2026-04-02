@@ -74,6 +74,7 @@ vi.mock('vscode', () => ({
 
 describe('extension activation', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     onDidOpenHandler = undefined;
   });
@@ -91,7 +92,12 @@ describe('extension activation', () => {
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.selectWorkspaceFolder', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1Memory', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.openRomSource', expect.anything());
     expect(context.subscriptions.length).toBeGreaterThan(0);
   }, 20000);
 

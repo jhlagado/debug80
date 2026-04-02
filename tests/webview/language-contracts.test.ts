@@ -2,7 +2,7 @@
  * @file Regression test: package.json language/breakpoint contracts.
  *
  * Validates that:
- * 1. The ASM_LANGUAGE_ID used in extension.ts is contributed as a language.
+ * 1. The language IDs used in the extension language-association module are contributed.
  * 2. Every contributed language has a breakpoint entry.
  * 3. .asm files are associated with the contributed language.
  * 4. The debugger languages list includes every breakpoint language.
@@ -13,7 +13,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const PKG_PATH = path.resolve(__dirname, '../../package.json');
-const EXT_PATH = path.resolve(__dirname, '../../src/extension/extension.ts');
+const LANGUAGE_ASSOCIATION_PATH = path.resolve(
+  __dirname,
+  '../../src/extension/language-association.ts'
+);
 
 interface PackageJson {
   contributes: {
@@ -31,19 +34,19 @@ function loadPackageJson(): PackageJson {
 }
 
 function extractAsmLanguageId(): string {
-  const src = fs.readFileSync(EXT_PATH, 'utf8');
+  const src = fs.readFileSync(LANGUAGE_ASSOCIATION_PATH, 'utf8');
   const match = src.match(/const ASM_LANGUAGE_ID\s*=\s*'([^']+)'/);
   if (match === null || match[1] === undefined) {
-    throw new Error('Could not find ASM_LANGUAGE_ID in extension.ts');
+    throw new Error('Could not find ASM_LANGUAGE_ID in language-association.ts');
   }
   return match[1];
 }
 
 function extractZaxLanguageId(): string {
-  const src = fs.readFileSync(EXT_PATH, 'utf8');
+  const src = fs.readFileSync(LANGUAGE_ASSOCIATION_PATH, 'utf8');
   const match = src.match(/const ZAX_LANGUAGE_ID\s*=\s*'([^']+)'/);
   if (match === null || match[1] === undefined) {
-    throw new Error('Could not find ZAX_LANGUAGE_ID in extension.ts');
+    throw new Error('Could not find ZAX_LANGUAGE_ID in language-association.ts');
   }
   return match[1];
 }
