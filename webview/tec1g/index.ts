@@ -8,6 +8,64 @@ import { wireTec1gSerialUi } from './serial-ui';
 import { createVisibilityController } from './visibility-controller';
 
 type PanelTab = 'ui' | 'memory';
+type SpeedMode = 'slow' | 'fast';
+type AudioContextCtor = typeof AudioContext;
+
+type Tec1gUpdatePayload = {
+  digits?: number[];
+  matrix?: number[];
+  matrixMode?: boolean;
+  glcd?: number[];
+  glcdDdram?: number[];
+  glcdState?: {
+    displayOn?: boolean;
+    graphicsOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    blinkVisible?: boolean;
+    ddramAddr?: number;
+    ddramPhase?: number;
+    textShift?: number;
+    scroll?: number;
+    reverseMask?: number;
+  };
+  speaker?: boolean | number;
+  speakerHz?: number;
+  speedMode?: SpeedMode;
+  sysCtrl?: number;
+  bankA14?: boolean;
+  capsLock?: boolean;
+  lcdState?: {
+    displayOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    cursorAddr?: number;
+    displayShift?: number;
+  };
+  lcdCgram?: number[];
+  lcd?: number[];
+};
+
+type MemorySnapshotPayload = {
+  symbols?: Array<{ name: string; address: number }>;
+  registers?: Record<string, number | string | undefined>;
+  views?: Array<{
+    id: string;
+    address?: number;
+    start: number;
+    bytes: number[];
+    focus?: number;
+    symbol?: string;
+    symbolOffset?: number;
+  }>;
+};
+
+type IncomingMessage =
+  | { type: 'selectTab'; tab: string }
+  | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
+  | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
+  | ({ type: 'snapshot' } & MemorySnapshotPayload)
+  | { type: 'snapshotError'; message?: string };
 
 const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab = document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
@@ -28,7 +86,7 @@ const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
-let sysCtrlSegs = [];
+let sysCtrlSegs: HTMLElement[] = [];
 let sysCtrlValue = 0;
 const digitEls: HTMLElement[] = [];
 for (let i = 0; i < DIGITS; i++) {
@@ -48,7 +106,7 @@ let memoryPanelController: MemoryPanel | null = null;
 const MEMORY_NARROW_MAX = 480;
 const MEMORY_WIDE_MIN = 520;
 
-function resolveMemoryRowSize(width) {
+function resolveMemoryRowSize(width: number): number {
   if (!Number.isFinite(width)) {
     return memoryRowSize;
   }
@@ -61,7 +119,7 @@ function resolveMemoryRowSize(width) {
   return memoryRowSize;
 }
 
-function updateMemoryLayout(forceRefresh) {
+function updateMemoryLayout(forceRefresh: boolean): void {
   if (activeTab !== 'memory') {
     return;
   }
@@ -79,7 +137,7 @@ function updateMemoryLayout(forceRefresh) {
   }
 }
 
-function scheduleMemoryResize() {
+function scheduleMemoryResize(): void {
   if (resizeTimer !== null) {
     clearTimeout(resizeTimer);
   }
@@ -89,7 +147,7 @@ function scheduleMemoryResize() {
   }, 150);
 }
 
-function setTab(tab, notify) {
+function setTab(tab: string, notify: boolean): void {
   activeTab = tab === 'memory' ? 'memory' : 'ui';
   if (panelUi) {
     panelUi.classList.toggle('active', activeTab === 'ui');
@@ -140,31 +198,34 @@ const hexOrder = [
   '0', '1', '2', '3'
 ];
 
-let speedMode = 'fast';
+let speedMode: SpeedMode = 'fast';
 let uiRevision = 0;
 let muted = true;
 let lastSpeakerOn = false;
 let lastSpeakerHz = 0;
 let shiftLatched = false;
-let audioCtx = null;
-let osc = null;
-let gain = null;
+let audioCtx: AudioContext | null = null;
+let osc: OscillatorNode | null = null;
+let gain: GainNode | null = null;
 
-function applySpeed(mode) {
+function applySpeed(mode: SpeedMode): void {
   speedMode = mode;
   speedEl.textContent = mode.toUpperCase();
   speedEl.classList.toggle('slow', mode === 'slow');
   speedEl.classList.toggle('fast', mode === 'fast');
 }
 
-function setShiftLatched(value) {
+function setShiftLatched(value: boolean): void {
   shiftLatched = value;
   shiftButton.classList.toggle('active', shiftLatched);
 }
 
-function ensureAudio() {
+function ensureAudio(): void {
   if (!audioCtx) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const Ctx = window.AudioContext ?? (window as Window & { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
+    if (!Ctx) {
+      return;
+    }
     audioCtx = new Ctx();
     osc = audioCtx.createOscillator();
     osc.type = 'square';
@@ -174,12 +235,12 @@ function ensureAudio() {
     osc.start();
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    void audioCtx.resume();
   }
 }
 
-function updateAudio() {
-  if (!gain || muted || lastSpeakerHz <= 0) {
+function updateAudio(): void {
+  if (!audioCtx || !osc || !gain || muted || lastSpeakerHz <= 0) {
     if (gain) {
       gain.gain.value = 0;
     }
@@ -189,7 +250,7 @@ function updateAudio() {
   gain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.01);
 }
 
-function applyMuteState() {
+function applyMuteState(): void {
   muteEl.textContent = muted ? 'MUTED' : 'SOUND';
   if (muted && gain) {
     gain.gain.value = 0;
@@ -197,7 +258,7 @@ function applyMuteState() {
   updateAudio();
 }
 
-function sendKey(code) {
+function sendKey(code: number): void {
   let adjusted = code;
   if (shiftLatched) {
     adjusted = code & ~SHIFT_BIT;
@@ -210,7 +271,14 @@ function sendKey(code) {
   }
 }
 
-function addButton(label, action, className, col, row, isLongLabel) {
+function addButton(
+  label: string,
+  action: () => void,
+  className: string | undefined,
+  col: number | undefined,
+  row: number | undefined,
+  isLongLabel: boolean,
+): HTMLDivElement {
   const button = document.createElement('div');
   button.className = className ? 'keycap ' + className : 'keycap';
   const labelSpan = document.createElement('span');
@@ -228,7 +296,7 @@ function addButton(label, action, className, col, row, isLongLabel) {
   return button;
 }
 
-function addSysCtrlBar(col, row, rowSpan) {
+function addSysCtrlBar(col: number, row: number, rowSpan?: number): void {
   const bar = document.createElement('div');
   bar.className = 'sysctrl';
   for (let i = 0; i < 8; i += 1) {
@@ -242,7 +310,7 @@ function addSysCtrlBar(col, row, rowSpan) {
   sysCtrlSegs = Array.from(bar.querySelectorAll('.sysctrl-seg'));
 }
 
-function updateSysCtrl() {
+function updateSysCtrl(): void {
   if (!sysCtrlSegs.length) {
     return;
   }
@@ -255,7 +323,7 @@ function updateSysCtrl() {
   }
 }
 
-function updateStatusLeds() {
+function updateStatusLeds(): void {
   const shadowOn = (sysCtrlValue & 0x01) === 0;
   const protectOn = (sysCtrlValue & 0x02) !== 0;
   const expandOn = (sysCtrlValue & 0x04) !== 0;
@@ -309,9 +377,9 @@ muteEl.addEventListener('click', () => {
   applyMuteState();
 });
 
-function updateDigit(el, value) {
+function updateDigit(el: HTMLElement, value: number): void {
   const segments = el.querySelectorAll('[data-mask]');
-  segments.forEach(seg => {
+  segments.forEach((seg) => {
     const mask = parseInt(seg.dataset.mask || '0', 10);
     if (value & mask) {
       seg.classList.add('on');
@@ -321,7 +389,7 @@ function updateDigit(el, value) {
   });
 }
 
-function applyUpdate(payload) {
+function applyUpdate(payload: Tec1gUpdatePayload | null | undefined): void {
   if (!payload || typeof payload !== 'object') {
     return;
   }
@@ -413,35 +481,38 @@ memoryPanelController = new MemoryPanel({
 });
 memoryPanelController.wire();
 
-window.addEventListener('message', event => {
-  if (!event.data) return;
-  if (event.data.type === 'selectTab') {
-    setTab(event.data.tab, false);
+window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefined>): void => {
+  const message = event.data;
+  if (!message) {
     return;
   }
-  if (event.data.type === 'uiVisibility') {
-    visibilityController.applyOverride(event.data.visibility, event.data.persist === true);
+  if (message.type === 'selectTab') {
+    setTab(message.tab, false);
     return;
   }
-  if (event.data.type === 'update') {
-    if (typeof event.data.uiRevision === 'number') {
-      if (event.data.uiRevision < uiRevision) {
+  if (message.type === 'uiVisibility') {
+    visibilityController.applyOverride(message.visibility, message.persist === true);
+    return;
+  }
+  if (message.type === 'update') {
+    if (typeof message.uiRevision === 'number') {
+      if (message.uiRevision < uiRevision) {
         return;
       }
-      uiRevision = event.data.uiRevision;
+      uiRevision = message.uiRevision;
     }
-    applyUpdate(event.data);
+    applyUpdate(message);
     if (activeTab === 'memory') {
       memoryPanelController?.requestSnapshot();
     }
     return;
   }
-  if (event.data.type === 'snapshot') {
-    memoryPanelController?.handleSnapshot(event.data);
+  if (message.type === 'snapshot') {
+    memoryPanelController?.handleSnapshot(message);
     return;
   }
-  if (event.data.type === 'snapshotError') {
-    memoryPanelController?.handleSnapshotError(event.data.message);
+  if (message.type === 'snapshotError') {
+    memoryPanelController?.handleSnapshotError(message.message);
   }
 });
 
