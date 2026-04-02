@@ -201,14 +201,27 @@ export function buildLaunchSession(
   const tec1gConfig = platformProvider.tec1gConfig;
 
   context.platformRegistry.clear();
+  const tec1gMatrixRuntime =
+    context.sessionState.tec1gRuntime === undefined
+      ? undefined
+      : {
+          state: {
+            matrixModeEnabled: context.sessionState.tec1gRuntime.state.input.matrixModeEnabled,
+            capsLock: context.sessionState.tec1gRuntime.state.system.capsLock,
+          },
+          setMatrixMode: (enabled: boolean) =>
+            context.sessionState.tec1gRuntime?.setMatrixMode(enabled),
+          applyMatrixKey: (row: number, col: number, pressed: boolean) =>
+            context.sessionState.tec1gRuntime?.applyMatrixKey(row, col, pressed),
+        };
   platformProvider.registerCommands(context.platformRegistry, {
     sessionState: context.sessionState,
     sendResponse: context.sendResponse,
     sendErrorResponse: context.sendErrorResponse,
     handleMatrixModeRequest: (args) =>
-      handleMatrixModeRequest(context.sessionState.tec1gRuntime, context.matrixHeldKeys, args),
+      handleMatrixModeRequest(tec1gMatrixRuntime, context.matrixHeldKeys, args),
     handleMatrixKeyRequest: (args) =>
-      handleMatrixKeyRequest(context.sessionState.tec1gRuntime, context.matrixHeldKeys, args),
+      handleMatrixKeyRequest(tec1gMatrixRuntime, context.matrixHeldKeys, args),
     clearMatrixHeldKeys: () => {
       context.matrixHeldKeys.clear();
     },
