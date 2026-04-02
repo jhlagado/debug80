@@ -67,6 +67,7 @@ import {
 } from './launch-args';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
+import { Logger, NullLogger } from '../util/logger';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -94,9 +95,11 @@ export class Z80DebugSession extends DebugSession {
   private platformState = {
     active: 'simple',
   };
+  private logger: Logger;
 
-  public constructor() {
+  public constructor(logger: Logger = new NullLogger()) {
     super();
+    this.logger = logger;
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
     this.registerCommandHandlers();
@@ -238,9 +241,7 @@ export class Z80DebugSession extends DebugSession {
         listingPath,
         resolveRelative: (p, dir) => resolveRelative(p, dir),
         resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
-        log: (message: string): void => {
-          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
-        },
+        logger: this.logger,
         ...(tec1Config ? { tec1Config } : {}),
         ...(tec1gConfig ? { tec1gConfig } : {}),
       });
@@ -265,9 +266,7 @@ export class Z80DebugSession extends DebugSession {
               this.getLaunchArgsHelpers()
             ),
           resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
-          log: (message: string): void => {
-            emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
-          },
+          logger: this.logger,
         })
       );
 
@@ -332,9 +331,7 @@ export class Z80DebugSession extends DebugSession {
       const runtimeOptions = platformProvider.runtimeOptions;
       const platformAssets = platformProvider.loadAssets?.({
         baseDir: this.sessionState.baseDir,
-        log: (message: string): void => {
-          emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
-        },
+        logger: this.logger,
         resolveRelative: (filePath, baseDir) => resolveRelative(filePath, baseDir),
       });
       const entry = platformProvider.resolveEntry(platformAssets);
@@ -377,6 +374,7 @@ export class Z80DebugSession extends DebugSession {
       }
     } catch (err) {
       const detail = `Failed to load program: ${String(err)}`;
+      this.logger.error(detail);
       emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
       const short =
         detail.toLowerCase().includes('asm80') || detail.toLowerCase().includes('failed')
@@ -1189,9 +1187,11 @@ export class Z80DebugSession extends DebugSession {
 }
 
 export class Z80DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+  public constructor(private readonly logger: Logger = new NullLogger()) {}
+
   createDebugAdapterDescriptor(
     _session: vscode.DebugSession
   ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-    return new vscode.DebugAdapterInlineImplementation(new Z80DebugSession());
+    return new vscode.DebugAdapterInlineImplementation(new Z80DebugSession(this.logger));
   }
 }
