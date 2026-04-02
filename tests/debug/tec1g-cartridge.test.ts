@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { loadTec1gCartridgeImage } from '../../src/debug/tec1g-cartridge';
+import { loadTec1gCartridgeImage } from '../../src/platforms/tec1g/tec1g-cartridge';
 
 const withTempDir = (run: (dir: string) => void): void => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-cart-'));
