@@ -1,5 +1,20 @@
 /**
  * @fileoverview Z80 primary opcode decoder.
+ *
+ * This file is intentionally large. It implements the full primary Z80 opcode
+ * surface in one place: a sparse table for the irregular opcodes plus direct
+ * decoding for the highly regular register-load and ALU ranges.
+ *
+ * The size here is structural rather than accidental. Splitting it by numeric
+ * opcode range would add cross-file wiring around the same shared helpers and
+ * CPU context without reducing the underlying conceptual complexity of the 256
+ * primary opcodes.
+ *
+ * Major sections in this file:
+ * - 0x00-0x3F: load, exchange, rotate, and relative-jump instructions
+ * - 0x40-0x7F: 8-bit register loads, decoded directly in executePrimaryOpcode
+ * - 0x80-0xBF: ALU register operations, decoded directly in executePrimaryOpcode
+ * - 0xC0-0xFF: control flow, stack, prefixes, and immediate ALU instructions
  */
 
 import { cycle_counts, parity_bits } from './constants';
@@ -104,6 +119,10 @@ export const buildPrimaryInstructions = (ctx: PrimaryInstructionContext): Opcode
   // by the register/ALU decoder at the end of this function).
   // ==========================================================================
   const instructions: OpcodeTable = new Array<OpcodeHandler>(256).fill(noop);
+
+  // ==========================================================================
+  // 0x00-0x3F: LOAD / EXCHANGE / ROTATE / RELATIVE CONTROL FLOW
+  // ==========================================================================
 
   // 0x00 : NOP
   instructions[0x00] = (): void => {
@@ -495,6 +514,11 @@ export const buildPrimaryInstructions = (ctx: PrimaryInstructionContext): Opcode
     cpu.flags.C = cpu.flags.C ? 0 : 1;
     update_xy_flags(cpu.a);
   };
+
+  // ==========================================================================
+  // 0xC0-0xFF: CONTROL FLOW / STACK / PREFIX / IMMEDIATE ALU
+  // ==========================================================================
+
   // 0xc0 : RET NZ
   instructions[0xc0] = (): void => {
     do_conditional_return(!cpu.flags.Z);
@@ -819,10 +843,11 @@ export const executePrimaryOpcode = (
     do_cp,
   } = ctx;
   // ==========================================================================
-  // REGISTER/ALU DECODER (0x40-0xBF)
+  // DIRECT DECODER FOR REGULAR OPCODE RANGES
   // ==========================================================================
-  // The 8-bit register loads (0x40-0x7F) and ALU operations (0x80-0xBF)
-  // are so uniform that they're decoded directly rather than using the table.
+  // 0x40-0x7F is the 8-bit LD r,r' matrix and 0x80-0xBF is the ALU matrix.
+  // These ranges are more readable as formulaic decoders than as 128 nearly
+  // identical table entries.
   // ==========================================================================
 
   /**
