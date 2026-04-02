@@ -9,12 +9,18 @@ import type { Z80Runtime } from '../z80/runtime';
 import type { TerminalState } from './types';
 import type { Tec1Runtime } from '../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
+import type { TecBaseRuntime, TecBaseState } from '../platforms/tec-common';
 import type { Tec1gPlatformConfigNormalized } from '../platforms/types';
 
 /**
  * Reasons a debug session can stop.
  */
 export type StopReason = 'breakpoint' | 'step' | 'halt' | 'entry' | 'pause';
+
+export type ActivePlatformRuntime = Pick<
+  TecBaseRuntime<TecBaseState>,
+  'recordCycles' | 'silenceSpeaker'
+>;
 
 /**
  * Subset of Z80DebugSession fields that are reset per launch.
@@ -32,6 +38,7 @@ export interface SessionStateShape {
   terminalState: TerminalState | undefined;
   tec1Runtime: Tec1Runtime | undefined;
   tec1gRuntime: Tec1gRuntime | undefined;
+  platformRuntime: ActivePlatformRuntime | undefined;
   tec1gConfig: Tec1gPlatformConfigNormalized | undefined;
   loadedProgram: HexProgram | undefined;
   loadedEntry: number | undefined;
@@ -71,6 +78,7 @@ export function createSessionState(): SessionStateShape {
     terminalState: undefined,
     tec1Runtime: undefined,
     tec1gRuntime: undefined,
+    platformRuntime: undefined,
     tec1gConfig: undefined,
     loadedProgram: undefined,
     loadedEntry: undefined,
