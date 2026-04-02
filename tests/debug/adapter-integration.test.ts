@@ -197,4 +197,38 @@ describe('adapter integration', () => {
 
     await client.sendRequest('disconnect');
   });
+
+  it('preserves launch diagnostics on the DAP output stream', async () => {
+    const { client } = harness ?? createHarness();
+
+    await initialize(client);
+    await launchWithDiagnostics(client, {
+      target: 'app',
+      platform: 'tec1',
+      tec1: {
+        entry: 0,
+        romHex: 'missing.hex',
+      },
+      stopOnEntry: true,
+      openRomSourcesOnLaunch: false,
+      openMainSourceOnLaunch: false,
+    });
+
+    const output = await client.waitForEvent<{ body?: { output?: string } }>(
+      'output',
+      (event) => {
+        const body = event.body as { output?: unknown } | undefined;
+        return typeof body?.output === 'string' && body.output.includes('TEC-1 ROM not found');
+      }
+    );
+    expect(output.body?.output).toContain('TEC-1 ROM not found');
+
+    await client.sendRequest('setBreakpoints', {
+      source: { path: sourcePath },
+      breakpoints: [],
+    });
+    await client.sendRequest('configurationDone');
+    await client.waitForEvent('stopped');
+    await client.sendRequest('disconnect');
+  });
 });

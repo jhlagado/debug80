@@ -22,7 +22,7 @@ function formatValue(value: unknown): string {
   }
 }
 
-function formatMessage(message: string, args: unknown[]): string {
+export function formatLogMessage(message: string, args: unknown[]): string {
   if (args.length === 0) {
     return message;
   }
@@ -33,19 +33,19 @@ export class OutputChannelLogger implements Logger {
   public constructor(private readonly channel: vscode.OutputChannel) {}
 
   public debug(message: string, ...args: unknown[]): void {
-    this.channel.appendLine(`[DEBUG] ${formatMessage(message, args)}`);
+    this.channel.appendLine(`[DEBUG] ${formatLogMessage(message, args)}`);
   }
 
   public info(message: string, ...args: unknown[]): void {
-    this.channel.appendLine(`[INFO] ${formatMessage(message, args)}`);
+    this.channel.appendLine(`[INFO] ${formatLogMessage(message, args)}`);
   }
 
   public warn(message: string, ...args: unknown[]): void {
-    this.channel.appendLine(`[WARN] ${formatMessage(message, args)}`);
+    this.channel.appendLine(`[WARN] ${formatLogMessage(message, args)}`);
   }
 
   public error(message: string, ...args: unknown[]): void {
-    this.channel.appendLine(`[ERROR] ${formatMessage(message, args)}`);
+    this.channel.appendLine(`[ERROR] ${formatLogMessage(message, args)}`);
   }
 }
 

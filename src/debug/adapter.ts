@@ -67,7 +67,7 @@ import {
 } from './launch-args';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
-import { Logger, NullLogger } from '../util/logger';
+import { formatLogMessage, Logger, NullLogger } from '../util/logger';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -123,6 +123,27 @@ export class Z80DebugSession extends DebugSession {
     );
   }
 
+  private createLaunchLogger(): Logger {
+    const emitOutput = (message: string): void => {
+      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), message);
+    };
+    const tee = (
+      sink: (message: string, ...args: unknown[]) => void,
+      message: string,
+      args: unknown[]
+    ): void => {
+      sink(message, ...args);
+      emitOutput(formatLogMessage(message, args));
+    };
+
+    return {
+      debug: (message: string, ...args: unknown[]) => tee(this.logger.debug.bind(this.logger), message, args),
+      info: (message: string, ...args: unknown[]) => tee(this.logger.info.bind(this.logger), message, args),
+      warn: (message: string, ...args: unknown[]) => tee(this.logger.warn.bind(this.logger), message, args),
+      error: (message: string, ...args: unknown[]) => tee(this.logger.error.bind(this.logger), message, args),
+    };
+  }
+
   protected initializeRequest(
     response: DebugProtocol.InitializeResponse,
     _args: DebugProtocol.InitializeRequestArguments
@@ -150,6 +171,7 @@ export class Z80DebugSession extends DebugSession {
     this.breakpointManager.reset();
 
     try {
+      const launchLogger = this.createLaunchLogger();
       const merged: LaunchRequestArguments = populateFromConfig(args, {
         resolveBaseDir: (requestArgs) => this.resolveBaseDir(requestArgs),
       });
@@ -241,7 +263,7 @@ export class Z80DebugSession extends DebugSession {
         listingPath,
         resolveRelative: (p, dir) => resolveRelative(p, dir),
         resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
-        logger: this.logger,
+        logger: launchLogger,
         ...(tec1Config ? { tec1Config } : {}),
         ...(tec1gConfig ? { tec1gConfig } : {}),
       });
@@ -266,7 +288,7 @@ export class Z80DebugSession extends DebugSession {
               this.getLaunchArgsHelpers()
             ),
           resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
-          logger: this.logger,
+          logger: launchLogger,
         })
       );
 
@@ -331,7 +353,7 @@ export class Z80DebugSession extends DebugSession {
       const runtimeOptions = platformProvider.runtimeOptions;
       const platformAssets = platformProvider.loadAssets?.({
         baseDir: this.sessionState.baseDir,
-        logger: this.logger,
+        logger: launchLogger,
         resolveRelative: (filePath, baseDir) => resolveRelative(filePath, baseDir),
       });
       const entry = platformProvider.resolveEntry(platformAssets);
