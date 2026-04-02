@@ -1,0 +1,122 @@
+/**
+ * @file Project scaffolding helpers for Debug80 workspaces.
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
+
+export async function scaffoldProject(includeLaunch: boolean): Promise<boolean> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    void vscode.window.showErrorMessage('Debug80: No workspace folder open.');
+    return false;
+  }
+
+  const workspaceRoot = folder.uri.fsPath;
+  const vscodeDir = path.join(workspaceRoot, '.vscode');
+  const configPath = path.join(vscodeDir, 'debug80.json');
+  const launchPath = path.join(vscodeDir, 'launch.json');
+  const configExists = fs.existsSync(configPath);
+
+  const inferred = inferDefaultTarget(workspaceRoot);
+
+  let proceed = true;
+  if (!configExists) {
+    const choice = await vscode.window.showInformationMessage(
+      inferred.found
+        ? `Debug80: Create .vscode/debug80.json targeting ${inferred.sourceFile}?`
+        : `Debug80: Create .vscode/debug80.json targeting ${inferred.sourceFile}? (file not found yet)`,
+      { modal: true },
+      'Create'
+    );
+    proceed = choice === 'Create';
+  }
+
+  if (!proceed) {
+    return false;
+  }
+
+  ensureDirExists(path.join(workspaceRoot, path.dirname(inferred.sourceFile)));
+  ensureDirExists(path.join(workspaceRoot, inferred.outputDir));
+  ensureDirExists(vscodeDir);
+  if (includeLaunch) {
+    ensureDirExists(vscodeDir);
+  }
+
+  let created = false;
+
+  if (!configExists) {
+    const defaultConfig = {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: inferred.sourceFile,
+          outputDir: inferred.outputDir,
+          artifactBase: inferred.artifactBase,
+          platform: 'simple',
+          simple: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 65535, kind: 'ram' },
+            ],
+            appStart: 0x0900,
+            entry: 0,
+          },
+        },
+      },
+    };
+
+    try {
+      fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+      void vscode.window.showInformationMessage(
+        `Debug80: Created .vscode/debug80.json targeting ${inferred.sourceFile}.`
+      );
+      created = true;
+    } catch (err) {
+      void vscode.window.showErrorMessage(
+        `Debug80: Failed to write .vscode/debug80.json: ${String(err)}`
+      );
+      return false;
+    }
+  } else if (!includeLaunch) {
+    void vscode.window.showInformationMessage('.vscode/debug80.json already exists.');
+  }
+
+  if (includeLaunch) {
+    if (!fs.existsSync(launchPath)) {
+      const launchConfig = {
+        version: '0.2.0',
+        configurations: [
+          {
+            name: 'Debug (debug80)',
+            type: 'z80',
+            request: 'launch',
+            projectConfig: '${workspaceFolder}/.vscode/debug80.json',
+            target: 'app',
+            stopOnEntry: false,
+          },
+        ],
+      };
+      try {
+        fs.writeFileSync(launchPath, JSON.stringify(launchConfig, null, 2));
+        void vscode.window.showInformationMessage(
+          'Debug80: Created .vscode/launch.json for debug80.'
+        );
+        created = true;
+      } catch (err) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Failed to write .vscode/launch.json: ${String(err)}`
+        );
+        return created;
+      }
+    } else {
+      void vscode.window.showInformationMessage(
+        'Debug80: .vscode/launch.json already exists; not overwriting.'
+      );
+    }
+  }
+
+  return created;
+}
