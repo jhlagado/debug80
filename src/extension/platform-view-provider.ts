@@ -7,7 +7,7 @@ import { getTec1Html } from '../platforms/tec1/ui-panel-html';
 import {
   createMemoryViewState as createTec1MemoryViewState,
 } from '../platforms/tec1/ui-panel-memory';
-import { handleTec1Message, Tec1Message } from '../platforms/tec1/ui-panel-messages';
+import { handleTec1Message } from '../platforms/tec1/ui-panel-messages';
 import {
   createRefreshController as createTec1RefreshController,
   refreshSnapshot as refreshTec1Snapshot,
@@ -25,7 +25,7 @@ import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import {
   createMemoryViewState as createTec1gMemoryViewState,
 } from '../platforms/tec1g/ui-panel-memory';
-import { handleTec1gMessage, Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
+import { handleTec1gMessage } from '../platforms/tec1g/ui-panel-messages';
 import {
   createRefreshController as createTec1gRefreshController,
   refreshSnapshot as refreshTec1gSnapshot,
@@ -41,14 +41,17 @@ import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTe
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import { type MemoryViewState } from '../platforms/panel-memory';
 import { type PanelTab } from '../platforms/panel-html';
-
-type PlatformId = 'tec1' | 'tec1g' | 'simple';
+import {
+  handlePlatformViewMessage,
+  type PlatformViewMessage,
+  type PlatformViewPlatform,
+} from './platform-view-messages';
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'debug80.platformView';
 
   private view: vscode.WebviewView | undefined;
-  private currentPlatform: PlatformId | undefined;
+  private currentPlatform: PlatformViewPlatform | undefined;
   private currentSession: vscode.DebugSession | undefined;
   private currentSessionId: string | undefined;
   private uiRevision = 0;
@@ -110,7 +113,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   setPlatform(
-    platform: PlatformId,
+    platform: PlatformViewPlatform,
     session?: vscode.DebugSession,
     options?: { focus?: boolean; reveal?: boolean; tab?: PanelTab }
   ): void {
@@ -275,52 +278,44 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
     };
 
-    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string; text?: string }) => {
-      if (msg?.type === 'startDebug') {
-        await vscode.commands.executeCommand('workbench.action.debug.start');
-        return;
-      }
-      if (msg?.type === 'serialSendFile') {
-        await this.handleSerialSendFile();
-        return;
-      }
-      if (msg?.type === 'serialSave' && typeof msg.text === 'string') {
-        await this.handleSerialSave(msg.text);
-        return;
-      }
-      if (msg?.type === 'serialClear') {
-        if (this.currentPlatform === 'tec1') {
-          clearSerialBuffer(this.tec1SerialBuffer);
-        } else if (this.currentPlatform === 'tec1g') {
-          clearTec1gSerialBuffer(this.tec1gSerialBuffer);
-        }
-        return;
-      }
-      if (this.currentPlatform === 'tec1') {
-        await handleTec1Message(msg as Tec1Message, {
-          getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-          refreshController: this.tec1RefreshController,
-          autoRefreshMs: 150,
-          setActiveTab: (tab) => {
-            this.tec1ActiveTab = tab;
-          },
-          getActiveTab: () => this.tec1ActiveTab,
-          isPanelVisible: () => this.view?.visible === true,
-          memoryViews: this.tec1MemoryViews,
-        });
-      } else if (this.currentPlatform === 'tec1g') {
-        await handleTec1gMessage(msg as Tec1gMessage, {
-          getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-          refreshController: this.tec1gRefreshController,
-          autoRefreshMs: 150,
-          setActiveTab: (tab) => {
-            this.tec1gActiveTab = tab;
-          },
-          getActiveTab: () => this.tec1gActiveTab,
-          isPanelVisible: () => this.view?.visible === true,
-          memoryViews: this.tec1gMemoryViews,
-        });
-      }
+    webviewView.webview.onDidReceiveMessage((msg: PlatformViewMessage) => {
+      void handlePlatformViewMessage(msg, {
+        currentPlatform: () => this.currentPlatform,
+        handleStartDebug: () => vscode.commands.executeCommand('workbench.action.debug.start'),
+        handleSerialSendFile: () => this.handleSerialSendFile(),
+        handleSerialSave: (text) => this.handleSerialSave(text),
+        clearSerialBuffer: (platform) => {
+          if (platform === 'tec1') {
+            clearSerialBuffer(this.tec1SerialBuffer);
+          } else {
+            clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+          }
+        },
+        handleTec1Message: async (message) =>
+          handleTec1Message(message, {
+            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            refreshController: this.tec1RefreshController,
+            autoRefreshMs: 150,
+            setActiveTab: (tab) => {
+              this.tec1ActiveTab = tab;
+            },
+            getActiveTab: () => this.tec1ActiveTab,
+            isPanelVisible: () => this.view?.visible === true,
+            memoryViews: this.tec1MemoryViews,
+          }),
+        handleTec1gMessage: async (message) =>
+          handleTec1gMessage(message, {
+            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            refreshController: this.tec1gRefreshController,
+            autoRefreshMs: 150,
+            setActiveTab: (tab) => {
+              this.tec1gActiveTab = tab;
+            },
+            getActiveTab: () => this.tec1gActiveTab,
+            isPanelVisible: () => this.view?.visible === true,
+            memoryViews: this.tec1gMemoryViews,
+          }),
+      });
     });
 
     webviewView.onDidDispose(() => {
