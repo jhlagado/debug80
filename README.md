@@ -4,8 +4,10 @@
 
 Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in the examples below.
 
-Machine-specific setups now live in separate repos. For TEC-1, see `debug80-tec1`:
+TEC-1-specific workspace setups live in the separate `debug80-tec1` repo:
 https://github.com/jhlagado/debug80-tec1
+
+This repository keeps the shared debugger plus the in-repo example workspaces for Simple and TEC-1G.
 
 <table>
   <tr>
@@ -32,7 +34,8 @@ npm test
 ## Quick start (examples)
 
 - Open `examples/HelloWorld` for the Simple platform terminal demo.
-- Open `examples/Tec1` for the TEC-1 monitor + serial demo.
+- Open `examples/Tec1g` for the TEC-1G monitor + serial demo.
+- Open the separate `debug80-tec1` repo for TEC-1 monitor + serial workflows.
 - Press F5 to start debugging.
 
 These example folders already include `.vscode` configs, so you can run them immediately.
@@ -100,7 +103,7 @@ After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as n
 
 To target a different platform (e.g., `tec1`):
 - Set `platform: "tec1"` in `.vscode/debug80.json`.
-- Copy relevant fields from `examples/Tec1/.vscode/debug80.json` (e.g., memory regions, ROM, `ramInitHex`).
+- Copy relevant fields from the dedicated `debug80-tec1` repo’s `.vscode/debug80.json` (e.g., memory regions, ROM, `ramInitHex`).
 - Update `sourceFile` to your program and build outputs.
 
 ## Z80 workflow

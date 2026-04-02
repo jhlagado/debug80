@@ -154,6 +154,7 @@ You can override with `romHex` in the platform config.
 
 ## Where the platform lives in code
 
-- Emulator and I/O: `src/debug/adapter.ts`
-- Webview panel UI: `src/extension/extension.ts`
+- Emulator and I/O: `src/platforms/tec1/runtime.ts`
+- Debug adapter wiring and TEC-1 custom requests: `src/platforms/tec1/provider.ts`
+- Memory panel webview: `src/platforms/tec1/memory-panel.ts` and `src/platforms/tec1/memory-panel-html.ts`
 - Bundled ROM: `roms/tec1/mon-1b/mon-1b.hex`
