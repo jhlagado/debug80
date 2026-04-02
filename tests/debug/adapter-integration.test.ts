@@ -5,11 +5,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PassThrough } from 'stream';
 import path from 'path';
+import * as vscodeMock from '../e2e/adapter/vscode-mock';
 
-vi.mock('vscode', async () => {
-  const mock = await import('../e2e/adapter/vscode-mock');
+vi.mock('vscode', () => {
   return {
-    ...mock,
+    ...vscodeMock,
     extensions: {
       getExtension: vi.fn(() => undefined),
     },
@@ -18,7 +18,7 @@ vi.mock('vscode', async () => {
 
 import { Z80DebugSession } from '../../src/debug/adapter';
 import { DapClient } from '../e2e/adapter/dap-client';
-import { workspace } from '../e2e/adapter/vscode-mock';
+const { workspace } = vscodeMock;
 
 const fixtureRoot = path.resolve(__dirname, '../e2e/fixtures/simple');
 const sourcePath = path.join(fixtureRoot, 'src', 'simple.asm');
