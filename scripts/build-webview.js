@@ -15,6 +15,7 @@ const staticFiles = [
   path.join(webviewDir, 'common', 'styles.css'),
   path.join(webviewDir, 'tec1', 'index.html'),
   path.join(webviewDir, 'tec1', 'styles.css'),
+  path.join(webviewDir, 'terminal', 'index.html'),
   path.join(webviewDir, 'tec1g', 'index.html'),
   path.join(webviewDir, 'tec1g', 'styles.css'),
 ];
