@@ -33,7 +33,7 @@ const makeRuntime = (shadowEnabled: boolean): Tec1gRuntime =>
         lastEdgeCycle: null,
         silenceEventId: null,
       },
-      lcd: {
+      lcdCtrl: {
         lcd: [],
         lcdAddr: 0,
         lcdAddrMode: 'ddram',
