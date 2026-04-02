@@ -4,13 +4,13 @@
 
 import { describe, it, expect } from 'vitest';
 import { applySerialInput, applySpeedChange, applyTerminalBreak, applyTerminalInput } from '../../src/debug/io-requests';
-import type { TerminalState } from '../../src/debug/types';
+import type { TerminalState } from '../../src/debug/terminal-types';
 
 describe('io-requests', () => {
   it('applies terminal input and break', () => {
     const state: TerminalState = {
+      config: { txPort: 0, rxPort: 1, statusPort: 2, interrupt: false },
       input: [],
-      output: [],
       breakRequested: false,
     };
     applyTerminalInput({ text: 'A' }, state);

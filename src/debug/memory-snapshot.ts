@@ -5,7 +5,7 @@
 import { findNearestSymbol } from './symbol-service';
 import type { SourceMapAnchor } from '../mapping/parser';
 import { buildMemorySnapshotViews, clampMemoryWindow } from './memory-view';
-import { extractMemorySnapshotPayload, extractViewEntry } from './types';
+import { extractMemorySnapshotPayload, extractViewEntry } from './memory-types';
 import type { Cpu, Flags } from '../z80/types';
 
 export type SnapshotRuntime = {

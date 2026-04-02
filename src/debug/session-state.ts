@@ -6,7 +6,7 @@ import type { ListingInfo, HexProgram } from '../z80/loaders';
 import type { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
 import type { SourceMapIndex } from '../mapping/source-map';
 import type { Z80Runtime } from '../z80/runtime';
-import type { TerminalState } from './types';
+import type { TerminalState } from './terminal-types';
 import type { Tec1Runtime } from '../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
 import type { TecBaseRuntime, TecBaseState } from '../platforms/tec-common';

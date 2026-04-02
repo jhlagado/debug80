@@ -6,7 +6,8 @@
  */
 
 import { ConfigurationError, MissingConfigError, UnsupportedPlatformError } from './errors';
-import { LaunchRequestArguments, TerminalConfig } from './types';
+import { LaunchRequestArguments } from './types';
+import type { TerminalConfig } from './terminal-types';
 import { Tec1PlatformConfig, Tec1gPlatformConfig, SimplePlatformConfig } from '../platforms/types';
 
 // ============================================================================
