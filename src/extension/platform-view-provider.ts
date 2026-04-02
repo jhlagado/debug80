@@ -3,10 +3,9 @@
  */
 
 import * as vscode from 'vscode';
-import { Tec1PanelTab, getTec1Html } from '../platforms/tec1/ui-panel-html';
+import { getTec1Html } from '../platforms/tec1/ui-panel-html';
 import {
   createMemoryViewState as createTec1MemoryViewState,
-  MemoryViewState as Tec1MemoryViewState,
 } from '../platforms/tec1/ui-panel-memory';
 import { handleTec1Message, Tec1Message } from '../platforms/tec1/ui-panel-messages';
 import {
@@ -22,10 +21,9 @@ import {
 } from '../platforms/tec1/ui-panel-state';
 import { appendSerialText, clearSerialBuffer, createSerialBuffer } from '../platforms/tec1/ui-panel-serial';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
-import { Tec1gPanelTab, getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
+import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import {
   createMemoryViewState as createTec1gMemoryViewState,
-  MemoryViewState as Tec1gMemoryViewState,
 } from '../platforms/tec1g/ui-panel-memory';
 import { handleTec1gMessage, Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
 import {
@@ -41,6 +39,8 @@ import {
 } from '../platforms/tec1g/ui-panel-state';
 import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTec1gSerialBuffer, createSerialBuffer as createTec1gSerialBuffer } from '../platforms/tec1g/ui-panel-serial';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
+import { type MemoryViewState } from '../platforms/panel-memory';
+import { type PanelTab } from '../platforms/panel-html';
 
 type PlatformId = 'tec1' | 'tec1g' | 'simple';
 
@@ -60,7 +60,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.extensionUri = extensionUri;
   }
 
-  private tec1ActiveTab: Tec1PanelTab = 'ui';
+  private tec1ActiveTab: PanelTab = 'ui';
   private tec1UiState = createTec1UiState();
   private tec1SerialBuffer = createSerialBuffer();
   private tec1MemoryViews = createTec1MemoryViewState();
@@ -73,7 +73,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   );
 
-  private tec1gActiveTab: Tec1gPanelTab = 'ui';
+  private tec1gActiveTab: PanelTab = 'ui';
   private tec1gUiState = createTec1gUiState();
   private tec1gSerialBuffer = createTec1gSerialBuffer();
   private tec1gMemoryViews = createTec1gMemoryViewState();
@@ -112,7 +112,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   setPlatform(
     platform: PlatformId,
     session?: vscode.DebugSession,
-    options?: { focus?: boolean; reveal?: boolean; tab?: Tec1PanelTab | Tec1gPanelTab }
+    options?: { focus?: boolean; reveal?: boolean; tab?: PanelTab }
   ): void {
     this.currentPlatform = platform;
     if (session !== undefined) {
@@ -450,7 +450,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private buildSnapshotPayload(memoryViews: Tec1MemoryViewState | Tec1gMemoryViewState): {
+  private buildSnapshotPayload(memoryViews: MemoryViewState): {
     views: Array<{ id: string; view: string; after: number; address?: number | undefined }>;
   } {
     const { viewModes, viewAfter, viewAddress } = memoryViews;
