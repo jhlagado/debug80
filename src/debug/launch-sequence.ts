@@ -102,20 +102,28 @@ export async function respondToMissingLaunchInputs(
     message: string
   ) => void
 ): Promise<void> {
-  const created = await promptForConfigCreation();
-  if (created) {
+  try {
+    const created = await promptForConfigCreation();
+    if (created) {
+      sendErrorResponse(
+        response,
+        1,
+        'Debug80: Created debug80.json. Set up your default target and re-run.'
+      );
+      return;
+    }
     sendErrorResponse(
       response,
       1,
-      'Debug80: Created debug80.json. Set up your default target and re-run.'
+      'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
     );
-    return;
+  } catch (err) {
+    sendErrorResponse(
+      response,
+      1,
+      `Debug80: Failed to create project config: ${String(err)}`
+    );
   }
-  sendErrorResponse(
-    response,
-    1,
-    'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
-  );
 }
 
 export async function respondToMissingArtifacts(
@@ -128,16 +136,24 @@ export async function respondToMissingArtifacts(
     message: string
   ) => void
 ): Promise<void> {
-  const created = await promptForConfigCreation();
-  if (created) {
+  try {
+    const created = await promptForConfigCreation();
+    if (created) {
+      sendErrorResponse(
+        response,
+        1,
+        'Debug80: Created debug80.json. Re-run the launch after building artifacts.'
+      );
+      return;
+    }
+    sendErrorResponse(response, 1, err.message);
+  } catch (promptErr) {
     sendErrorResponse(
       response,
       1,
-      'Debug80: Created debug80.json. Re-run the launch after building artifacts.'
+      `Debug80: Failed to create project config: ${String(promptErr)}`
     );
-    return;
   }
-  sendErrorResponse(response, 1, err.message);
 }
 
 export interface LaunchSessionArtifacts {
