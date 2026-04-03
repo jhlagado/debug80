@@ -2,6 +2,15 @@
  * @file TEC-1 memory panel HTML template.
  */
 
+import {
+  TEC1_MEMORY_PANEL_AFTER_OPTIONS,
+  TEC1_MEMORY_PANEL_VIEW_DEFINITIONS,
+  TEC1_MEMORY_PANEL_VIEW_OPTIONS,
+  getTec1MemoryPanelScript,
+  type Tec1MemoryPanelViewDefinition,
+  type Tec1MemoryPanelViewMode,
+} from './memory-panel-browser';
+
 /**
  * Snapshot payload posted from the TEC-1 memory webview controller.
  */
@@ -22,14 +31,7 @@ export interface Tec1MemorySnapshotPayload {
   symbols?: Array<{ name: string; address: number }>;
 }
 
-/**
- * Builds HTML for the TEC-1 memory panel.
- */
-export function getTec1MemoryHtml(): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <style>
+const TEC1_MEMORY_PANEL_STYLES = `
     body {
       margin: 0;
       padding: 16px;
@@ -137,6 +139,61 @@ export function getTec1MemoryHtml(): string {
       font-size: 12px;
       color: #a0a0a0;
     }
+`;
+
+/**
+ *
+ */
+function renderSelectOptions(selectedValue: Tec1MemoryPanelViewMode): string {
+  return TEC1_MEMORY_PANEL_VIEW_OPTIONS.map(({ value, label }) => {
+    const selected = value === selectedValue ? ' selected' : '';
+    return `            <option value="${value}"${selected}>${label}</option>`;
+  }).join('\n');
+}
+
+/**
+ *
+ */
+function renderAfterOptions(): string {
+  return TEC1_MEMORY_PANEL_AFTER_OPTIONS.map((value) => {
+    const selected = value === 16 ? ' selected' : '';
+    return `            <option value="${value}"${selected}>${value}</option>`;
+  }).join('\n');
+}
+
+/**
+ *
+ */
+function renderMemorySection({ id, label, defaultView }: Tec1MemoryPanelViewDefinition): string {
+  return `    <div class="section">
+      <div class="section-header">
+        <h2><span id="label-${id}">${label}</span> <span class="addr" id="addr-${id}">0x0000</span><span class="symbol" id="sym-${id}"></span></h2>
+        <div class="controls">
+          <select id="view-${id}">
+${renderSelectOptions(defaultView)}
+          </select>
+          <input id="address-${id}" type="text" placeholder="0x0000" />
+          <select id="after-${id}">
+${renderAfterOptions()}
+          </select>
+        </div>
+      </div>
+      <div class="dump" id="dump-${id}"></div>
+    </div>`;
+}
+
+/**
+ * Builds HTML for the TEC-1 memory panel.
+ */
+export function getTec1MemoryHtml(): string {
+  const sections = TEC1_MEMORY_PANEL_VIEW_DEFINITIONS.map(renderMemorySection).join('\n');
+  const script = getTec1MemoryPanelScript(TEC1_MEMORY_PANEL_VIEW_DEFINITIONS);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+${TEC1_MEMORY_PANEL_STYLES}
   </style>
 </head>
 <body>
@@ -145,326 +202,10 @@ export function getTec1MemoryHtml(): string {
   </div>
   <div class="shell">
     <h1>CPU Pointer View</h1>
-    <div class="section">
-      <div class="section-header">
-        <h2><span id="label-a">PC</span> <span class="addr" id="addr-a">0x0000</span><span class="symbol" id="sym-a"></span></h2>
-        <div class="controls">
-          <select id="view-a">
-            <option value="pc" selected>PC</option>
-            <option value="sp">SP</option>
-            <option value="bc">BC</option>
-            <option value="de">DE</option>
-            <option value="hl">HL</option>
-            <option value="ix">IX</option>
-            <option value="iy">IY</option>
-            <option value="absolute">Absolute</option>
-          </select>
-          <input id="address-a" type="text" placeholder="0x0000" />
-          <select id="after-a">
-            <option value="16" selected>16</option>
-            <option value="32">32</option>
-            <option value="64">64</option>
-            <option value="128">128</option>
-            <option value="256">256</option>
-            <option value="512">512</option>
-            <option value="1024">1024</option>
-          </select>
-        </div>
-      </div>
-      <div class="dump" id="dump-a"></div>
-    </div>
-    <div class="section">
-      <div class="section-header">
-        <h2><span id="label-b">SP</span> <span class="addr" id="addr-b">0x0000</span><span class="symbol" id="sym-b"></span></h2>
-        <div class="controls">
-          <select id="view-b">
-            <option value="pc">PC</option>
-            <option value="sp" selected>SP</option>
-            <option value="bc">BC</option>
-            <option value="de">DE</option>
-            <option value="hl">HL</option>
-            <option value="ix">IX</option>
-            <option value="iy">IY</option>
-            <option value="absolute">Absolute</option>
-          </select>
-          <input id="address-b" type="text" placeholder="0x0000" />
-          <select id="after-b">
-            <option value="16" selected>16</option>
-            <option value="32">32</option>
-            <option value="64">64</option>
-            <option value="128">128</option>
-            <option value="256">256</option>
-            <option value="512">512</option>
-            <option value="1024">1024</option>
-          </select>
-        </div>
-      </div>
-      <div class="dump" id="dump-b"></div>
-    </div>
-    <div class="section">
-      <div class="section-header">
-        <h2><span id="label-c">HL</span> <span class="addr" id="addr-c">0x0000</span><span class="symbol" id="sym-c"></span></h2>
-        <div class="controls">
-          <select id="view-c">
-            <option value="pc">PC</option>
-            <option value="sp">SP</option>
-            <option value="bc">BC</option>
-            <option value="de">DE</option>
-            <option value="hl" selected>HL</option>
-            <option value="ix">IX</option>
-            <option value="iy">IY</option>
-            <option value="absolute">Absolute</option>
-          </select>
-          <input id="address-c" type="text" placeholder="0x0000" />
-          <select id="after-c">
-            <option value="16" selected>16</option>
-            <option value="32">32</option>
-            <option value="64">64</option>
-            <option value="128">128</option>
-            <option value="256">256</option>
-            <option value="512">512</option>
-            <option value="1024">1024</option>
-          </select>
-        </div>
-      </div>
-      <div class="dump" id="dump-c"></div>
-    </div>
-    <div class="section">
-      <div class="section-header">
-        <h2><span id="label-d">DE</span> <span class="addr" id="addr-d">0x0000</span><span class="symbol" id="sym-d"></span></h2>
-        <div class="controls">
-          <select id="view-d">
-            <option value="pc">PC</option>
-            <option value="sp">SP</option>
-            <option value="bc">BC</option>
-            <option value="de" selected>DE</option>
-            <option value="hl">HL</option>
-            <option value="ix">IX</option>
-            <option value="iy">IY</option>
-            <option value="absolute">Absolute</option>
-          </select>
-          <input id="address-d" type="text" placeholder="0x0000" />
-          <select id="after-d">
-            <option value="16" selected>16</option>
-            <option value="32">32</option>
-            <option value="64">64</option>
-            <option value="128">128</option>
-            <option value="256">256</option>
-            <option value="512">512</option>
-            <option value="1024">1024</option>
-          </select>
-        </div>
-      </div>
-      <div class="dump" id="dump-d"></div>
-    </div>
+${sections}
   </div>
   <script>
-    const vscode = acquireVsCodeApi();
-    const statusEl = document.getElementById('status');
-    const symbolMap = new Map();
-    let symbolsKey = '';
-    const views = [
-      {
-        id: 'a',
-        view: document.getElementById('view-a'),
-        address: document.getElementById('address-a'),
-        after: document.getElementById('after-a'),
-        label: document.getElementById('label-a'),
-        addr: document.getElementById('addr-a'),
-        symbol: document.getElementById('sym-a'),
-        dump: document.getElementById('dump-a'),
-      },
-      {
-        id: 'b',
-        view: document.getElementById('view-b'),
-        address: document.getElementById('address-b'),
-        after: document.getElementById('after-b'),
-        label: document.getElementById('label-b'),
-        addr: document.getElementById('addr-b'),
-        symbol: document.getElementById('sym-b'),
-        dump: document.getElementById('dump-b'),
-      },
-      {
-        id: 'c',
-        view: document.getElementById('view-c'),
-        address: document.getElementById('address-c'),
-        after: document.getElementById('after-c'),
-        label: document.getElementById('label-c'),
-        addr: document.getElementById('addr-c'),
-        symbol: document.getElementById('sym-c'),
-        dump: document.getElementById('dump-c'),
-      },
-      {
-        id: 'd',
-        view: document.getElementById('view-d'),
-        address: document.getElementById('address-d'),
-        after: document.getElementById('after-d'),
-        label: document.getElementById('label-d'),
-        addr: document.getElementById('addr-d'),
-        symbol: document.getElementById('sym-d'),
-        dump: document.getElementById('dump-d'),
-      },
-    ];
-
-    function formatHex(value, width) {
-      return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
-    }
-
-    function renderDump(el, start, bytes, focusOffset, rowSize) {
-      let html = '';
-      for (let i = 0; i < bytes.length; i += rowSize) {
-        const rowAddr = (start + i) & 0xFFFF;
-        html += '<div class="row"><span class="row-addr">' + formatHex(rowAddr, 4) + '</span>';
-        let ascii = '';
-        for (let j = 0; j < rowSize && i + j < bytes.length; j++) {
-          const idx = i + j;
-          const value = bytes[idx];
-          const cls = idx === focusOffset ? 'byte focus' : 'byte';
-          html += '<span class="' + cls + '">' + value.toString(16).toUpperCase().padStart(2, '0') + '</span>';
-          ascii += value >= 32 && value <= 126 ? String.fromCharCode(value) : '.';
-        }
-        html += '<span class="ascii">' + ascii + '</span></div>';
-      }
-      el.innerHTML = html;
-    }
-
-    function parseAddress(text) {
-      const trimmed = text.trim();
-      if (!trimmed) return undefined;
-      if (trimmed.startsWith('0x') || /[A-Fa-f]/.test(trimmed)) {
-        const value = parseInt(trimmed.replace(/^0x/i, ''), 16);
-        return Number.isFinite(value) ? value & 0xFFFF : undefined;
-      }
-      const value = parseInt(trimmed, 10);
-      return Number.isFinite(value) ? value & 0xFFFF : undefined;
-    }
-
-    function updateSymbolOptions(symbols) {
-      if (!Array.isArray(symbols)) {
-        return;
-      }
-      const nextKey = symbols
-        .map((sym) =>
-          sym && typeof sym.name === 'string' ? sym.name + ':' + String(sym.address) : ''
-        )
-        .join('|');
-      if (nextKey === symbolsKey) {
-        return;
-      }
-      symbolsKey = nextKey;
-      symbolMap.clear();
-      symbols.forEach((sym) => {
-        if (sym && typeof sym.name === 'string' && Number.isFinite(sym.address)) {
-          symbolMap.set(sym.name, sym.address & 0xffff);
-        }
-      });
-      views.forEach((entry) => {
-        const existing = entry.view.querySelector('optgroup[data-symbols="true"]');
-        if (existing) {
-          existing.remove();
-        }
-        if (symbolMap.size === 0) {
-          return;
-        }
-        const group = document.createElement('optgroup');
-        group.label = 'Symbols';
-        group.dataset.symbols = 'true';
-        symbols.forEach((sym) => {
-          if (!sym || typeof sym.name !== 'string' || !Number.isFinite(sym.address)) {
-            return;
-          }
-          const option = document.createElement('option');
-          option.value = 'symbol:' + sym.name;
-          option.textContent = sym.name;
-          group.appendChild(option);
-        });
-        entry.view.appendChild(group);
-      });
-    }
-
-    function requestSnapshot() {
-      const rowSize = 16;
-      const payloadViews = views.map((entry) => {
-        const viewValue = entry.view.value;
-        let viewMode = viewValue;
-        let addressValue;
-        if (viewValue.startsWith('symbol:')) {
-          const name = viewValue.slice(7);
-          const symAddress = symbolMap.get(name);
-          if (symAddress !== undefined) {
-            viewMode = 'absolute';
-            addressValue = symAddress;
-          }
-        }
-        if (viewMode === 'absolute' && addressValue === undefined) {
-          addressValue = parseAddress(entry.address.value);
-        }
-        return {
-          id: entry.id,
-          view: viewMode,
-          after: parseInt(entry.after.value, 10),
-          address: addressValue,
-        };
-      });
-      vscode.postMessage({
-        type: 'refresh',
-        rowSize,
-        views: payloadViews,
-      });
-      statusEl.textContent = 'Refreshing…';
-    }
-
-    views.forEach((entry) => {
-      entry.after.addEventListener('change', requestSnapshot);
-      entry.view.addEventListener('change', () => {
-        if (entry.view.value.startsWith('symbol:')) {
-          const name = entry.view.value.slice(7);
-          const address = symbolMap.get(name);
-          if (address !== undefined) {
-            entry.address.value = formatHex(address, 4);
-          }
-        }
-        requestSnapshot();
-      });
-      entry.address.addEventListener('change', requestSnapshot);
-    });
-
-    window.addEventListener('message', (event) => {
-      const msg = event.data;
-      if (msg.type === 'snapshot') {
-        updateSymbolOptions(msg.symbols);
-        if (Array.isArray(msg.views)) {
-          msg.views.forEach((entry) => {
-            const target = views.find((view) => view.id === entry.id);
-            if (!target) {
-              return;
-            }
-            const labelValue = target.view.value.startsWith('symbol:')
-              ? target.view.value.slice(7)
-              : target.view.value.toUpperCase();
-            target.label.textContent = labelValue;
-            target.addr.textContent = formatHex(entry.address ?? 0, 4);
-            renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, 16);
-            if (entry.symbol) {
-              if (entry.symbolOffset) {
-                const offset = entry.symbolOffset.toString(16).toUpperCase();
-                target.symbol.textContent = entry.symbol + ' + 0x' + offset;
-              } else {
-                target.symbol.textContent = entry.symbol;
-              }
-            } else {
-              target.symbol.textContent = '';
-            }
-          });
-        }
-        statusEl.textContent = 'Updated';
-      }
-      if (msg.type === 'snapshotError') {
-        statusEl.textContent = msg.message || 'Snapshot failed';
-      }
-    });
-
-    requestSnapshot();
+${script}
   </script>
 </body>
 </html>`;
