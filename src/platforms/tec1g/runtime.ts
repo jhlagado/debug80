@@ -397,10 +397,7 @@ export function createTec1gRuntime(
 
   const ioHandlers = createTec1gIoHandlers({
     state,
-    timing: {
-      cycleClock: timing.cycleClock,
-      clockHz: timing.clockHz,
-    },
+    timing,
     lcd,
     glcd,
     serial,
