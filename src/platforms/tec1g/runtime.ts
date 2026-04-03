@@ -406,7 +406,7 @@ export function createTec1gRuntime(
     sdEnabled,
     sdSpi,
     queueUpdate,
-    onPortWrite,
+    ...(onPortWrite ? { onPortWrite } : {}),
   });
 
   const tick = (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
