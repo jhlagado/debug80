@@ -75,6 +75,17 @@ Important behavior for new VS Code extension developers:
   `debug80/terminalOutput`.
 - Source-language enforcement currently normalizes `.asm` files to `z80-asm` and `.zax` files to `zax` when those languages are available.
 
+### 4.1 Platform Extension API
+
+Debug80 now exposes a small public extension API from `activate()` so other VS
+Code extensions can register additional platforms without editing the core repo.
+The runtime side uses [src/platforms/manifest.ts](../src/platforms/manifest.ts),
+and the optional sidebar UI side uses
+[src/extension/platform-view-manifest.ts](../src/extension/platform-view-manifest.ts).
+
+For the external registration workflow, packaging model, and optional UI panel
+registration, see [docs/platform-extension-api.md](./platform-extension-api.md).
+
 ## 5. Debug Adapter Protocol (DAP) flow
 
 Class: Z80DebugSession in src/debug/adapter.ts
@@ -250,7 +261,9 @@ Debug80 always writes a `*.d8.json` file alongside the build artifacts.
 
 The debugger core runs against a platform abstraction that supplies memory and
 I/O devices. Platform selection is per target in `debug80.json`. The platform
-spec and configuration layout are defined in `docs/platforms.md`.
+spec and configuration layout are defined in `docs/platforms.md`. External
+registration and lazy manifest loading are documented in
+`docs/platform-extension-api.md`.
 
 ## 10. Breakpoints and stack frames
 
