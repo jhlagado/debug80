@@ -270,7 +270,7 @@ describe('tec1 memory panel html', () => {
     );
 
     harness.viewA.value = 'symbol:START';
-    harness.viewA.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+    harness.viewA.dispatchEvent(new Event('change', { bubbles: true }));
 
     expect(harness.addressA.value).toBe('0x1234');
     expect(harness.messages).toHaveLength(1);
