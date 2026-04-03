@@ -11,7 +11,6 @@ import {
   TerminatedEvent,
   Thread,
   Handles,
-  BreakpointEvent,
   Event as DapEvent,
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
@@ -20,7 +19,6 @@ import { StepInfo } from '../z80/types';
 import {
   createSessionState,
   resetSessionState,
-  StopReason,
   type SessionStateShape,
 } from './session-state';
 import { BreakpointManager } from './breakpoint-manager';
@@ -30,6 +28,10 @@ import { PlatformRegistry } from './platform-registry';
 import { buildStackFrames } from './stack-service';
 import {
   applyStepInfo,
+  applyLaunchBreakpoints,
+  applyLaunchSessionArtifacts,
+  createLaunchSequenceContext,
+  createRuntimeControlContext,
   runUntilReturnAsync,
   runUntilStopAsync,
   RuntimeControlContext,
@@ -60,8 +62,6 @@ import {
   hasLaunchInputs,
   respondToMissingArtifacts,
   respondToMissingLaunchInputs,
-  type LaunchSequenceContext,
-  type LaunchSessionArtifacts,
 } from './launch-sequence';
 import { Logger, NullLogger } from '../util/logger';
 
@@ -81,6 +81,17 @@ export class Z80DebugSession extends DebugSession {
     active: 'simple',
   };
   private logger: Logger;
+  private readonly getRuntimeControlContext = (): RuntimeControlContext =>
+    createRuntimeControlContext({
+      sessionState: this.sessionState,
+      activePlatform: () => this.platformState.active,
+      isBreakpointAddress: (address: number | null): boolean =>
+        this.isBreakpointAddress(address),
+      handleHaltStop: (): void => this.handleHaltStop(),
+      sendEvent: (event: unknown): void => {
+        this.sendEvent(event as DebugProtocol.Event);
+      },
+    });
 
   public constructor(logger: Logger = new NullLogger()) {
     super();
@@ -169,11 +180,45 @@ export class Z80DebugSession extends DebugSession {
     }
 
     try {
-      const artifacts = buildLaunchSession(merged, this.createLaunchSequenceContext(launchLogger));
-      this.applyLaunchSessionArtifacts(artifacts);
-      this.applyLaunchBreakpoints();
-      this.sendResponse(response);
-      this.sendEntryStopIfNeeded();
+      const artifacts = buildLaunchSession(
+        merged,
+        createLaunchSequenceContext({
+          logger: launchLogger,
+          sessionState: this.sessionState,
+          sourceState: this.sourceState,
+          platformRegistry: this.platformRegistry,
+          matrixHeldKeys: this.matrixHeldKeys,
+          emitEvent: (event) => {
+            this.sendEvent(event);
+          },
+          emitDapEvent: (name, payload) => {
+            this.sendEvent(new DapEvent(name, payload));
+          },
+          sendResponse: (platformResponse) => {
+            this.sendResponse(platformResponse);
+          },
+          sendErrorResponse: (platformResponse, id, message) => {
+            this.sendErrorResponse(platformResponse, id, message);
+          },
+        })
+      );
+    applyLaunchSessionArtifacts(
+      { platformState: this.platformState, sessionState: this.sessionState },
+      artifacts
+    );
+    applyLaunchBreakpoints(
+      this.breakpointManager,
+      {
+        listing: this.sessionState.listing,
+        listingPath: this.sessionState.listingPath,
+        mappingIndex: this.sessionState.mappingIndex,
+      },
+      (event) => {
+        this.sendEvent(event);
+      }
+    );
+    this.sendResponse(response);
+    this.sendEntryStopIfNeeded();
     } catch (err) {
       if (err instanceof MissingLaunchArtifactsError) {
         await respondToMissingArtifacts(
@@ -526,95 +571,9 @@ export class Z80DebugSession extends DebugSession {
     return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
   }
 
-  private getRuntimeControlContext(): RuntimeControlContext {
-    const rs = this.sessionState.runState;
-    return {
-      getRuntime: () => this.sessionState.runtime,
-      getTec1Runtime: () => this.sessionState.tec1Runtime,
-      getTec1gRuntime: () => this.sessionState.tec1gRuntime,
-      getActivePlatform: () => this.platformState.active,
-      getCallDepth: (): number => rs.callDepth,
-      setCallDepth: (v: number): void => { rs.callDepth = v; },
-      getPauseRequested: (): boolean => rs.pauseRequested,
-      setPauseRequested: (v: boolean): void => { rs.pauseRequested = v; },
-      getSkipBreakpointOnce: (): number | null => rs.skipBreakpointOnce,
-      setSkipBreakpointOnce: (v: number | null): void => { rs.skipBreakpointOnce = v; },
-      getHaltNotified: (): boolean => rs.haltNotified,
-      setHaltNotified: (v: boolean): void => { rs.haltNotified = v; },
-      setLastStopReason: (reason: StopReason): void => { rs.lastStopReason = reason; },
-      setLastBreakpointAddress: (addr: number | null): void => { rs.lastBreakpointAddress = addr; },
-      isBreakpointAddress: (addr: number | null): boolean => this.isBreakpointAddress(addr),
-      handleHaltStop: (): void => this.handleHaltStop(),
-      sendEvent: (event: unknown): void => { this.sendEvent(event as DebugProtocol.Event); },
-    };
-  }
-
   private async promptForConfigCreation(): Promise<boolean> {
     const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
     return Boolean(created);
-  }
-
-  private createLaunchSequenceContext(logger: Logger): LaunchSequenceContext {
-    return {
-      logger,
-      sessionState: this.sessionState,
-      sourceState: this.sourceState,
-      platformRegistry: this.platformRegistry,
-      matrixHeldKeys: this.matrixHeldKeys,
-      emitEvent: (event: DebugProtocol.Event): void => {
-        this.sendEvent(event);
-      },
-      emitDapEvent: (name: string, payload: unknown): void => {
-        this.sendEvent(new DapEvent(name, payload));
-      },
-      sendResponse: (platformResponse: DebugProtocol.Response): void => {
-        this.sendResponse(platformResponse);
-      },
-      sendErrorResponse: (
-        platformResponse: DebugProtocol.Response,
-        id: number,
-        message: string
-      ): void => {
-        this.sendErrorResponse(platformResponse, id, message);
-      },
-    };
-  }
-
-  private applyLaunchSessionArtifacts(artifacts: LaunchSessionArtifacts): void {
-    this.platformState.active = artifacts.platform;
-    this.sessionState.listing = artifacts.listing;
-    this.sessionState.listingPath = artifacts.listingPath;
-    this.sessionState.mapping = artifacts.mapping;
-    this.sessionState.mappingIndex = artifacts.mappingIndex;
-    this.sessionState.sourceRoots = artifacts.sourceRoots;
-    this.sessionState.extraListingPaths = artifacts.extraListingPaths;
-    this.sessionState.symbolAnchors = artifacts.symbolAnchors;
-    this.sessionState.symbolList = artifacts.symbolList;
-    this.sessionState.runtime = artifacts.runtime;
-    this.sessionState.terminalState = artifacts.terminalState;
-    this.sessionState.tec1Runtime = artifacts.tec1Runtime;
-    this.sessionState.tec1gRuntime = artifacts.tec1gRuntime;
-    this.sessionState.platformRuntime = artifacts.platformRuntime;
-    this.sessionState.tec1gConfig = artifacts.tec1gConfig;
-    this.sessionState.loadedProgram = artifacts.loadedProgram;
-    this.sessionState.loadedEntry = artifacts.loadedEntry;
-    this.sessionState.runState.callDepth = 0;
-    this.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
-    this.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
-  }
-
-  private applyLaunchBreakpoints(): void {
-    if (this.sessionState.listing === undefined) {
-      return;
-    }
-    const applied = this.breakpointManager.applyAll(
-      this.sessionState.listing,
-      this.sessionState.listingPath,
-      this.sessionState.mappingIndex
-    );
-    for (const bp of applied) {
-      this.sendEvent(new BreakpointEvent('changed', bp));
-    }
   }
 
   private sendEntryStopIfNeeded(): void {

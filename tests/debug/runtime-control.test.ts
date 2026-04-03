@@ -5,7 +5,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { OutputEvent, StoppedEvent } from '@vscode/debugadapter';
 import { applyStepInfo, runUntilReturnAsync, runUntilStopAsync } from '../../src/debug/runtime-control';
-import type { RuntimeControlContext } from '../../src/debug/runtime-control';
+import type {
+  RuntimeControlCapabilities,
+  RuntimeControlContext,
+} from '../../src/debug/runtime-control';
 import type { StepInfo } from '../../src/z80/types';
 import type { Z80Runtime } from '../../src/z80/runtime';
 
@@ -14,6 +17,8 @@ const makeContext = (options?: {
   pc?: number;
   runtimeStep?: (trace: StepInfo) => { halted: boolean; cycles?: number };
   isBreakpointAddress?: (address: number | null) => boolean;
+  runtimeCapabilities?: RuntimeControlCapabilities;
+  runtimeCapabilitiesFactory?: () => RuntimeControlCapabilities | undefined;
 }): RuntimeControlContext => {
   let callDepth = 0;
   let pauseRequested = options?.pauseRequested ?? false;
@@ -34,8 +39,8 @@ const makeContext = (options?: {
   } as unknown as Z80Runtime;
   return {
     getRuntime: () => runtime,
-    getTec1Runtime: () => undefined,
-    getTec1gRuntime: () => undefined,
+    getRuntimeCapabilities: () =>
+      options?.runtimeCapabilitiesFactory?.() ?? options?.runtimeCapabilities,
     getActivePlatform: () => 'simple',
     getCallDepth: () => callDepth,
     setCallDepth: (value) => {
@@ -83,6 +88,36 @@ describe('runtime-control', () => {
     const context = makeContext({ pauseRequested: true });
     await runUntilStopAsync(context);
     expect(context.getPauseRequested()).toBe(false);
+  });
+
+  it('records cycles through the runtime capability', async () => {
+    const recordCycles = vi.fn();
+    const context = makeContext({
+      runtimeStep: () => ({ halted: true, cycles: 3 }),
+      runtimeCapabilities: {
+        recordCycles,
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    await runUntilStopAsync(context);
+    expect(recordCycles).toHaveBeenCalledWith(3);
+  });
+
+  it('silences the runtime capability when paused', async () => {
+    const silenceSpeaker = vi.fn();
+    const context = makeContext({
+      pauseRequested: true,
+      runtimeCapabilities: {
+        recordCycles: vi.fn(),
+        silenceSpeaker,
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    await runUntilStopAsync(context);
+    expect(silenceSpeaker).toHaveBeenCalledTimes(1);
   });
 
   it('returns after a ret when stepping out', async () => {
@@ -227,7 +262,7 @@ describe('runtime-control', () => {
     expect(context.getCallDepth()).toBe(0);
   });
 
-  it('yields when running on tec1 with yieldMs', async () => {
+  it('throttles when the runtime capability provides clockHz', async () => {
     vi.useFakeTimers();
     let runtimeCalls = 0;
     const runtime = {
@@ -238,18 +273,132 @@ describe('runtime-control', () => {
         return { halted: false, cycles: 1 };
       },
     } as unknown as Z80Runtime;
-    const tec1Runtime = {
-      state: { yieldMs: 1, clockHz: 0 },
-      recordCycles: () => undefined,
-      silenceSpeaker: () => undefined,
-    };
     const ctx: RuntimeControlContext = {
       getRuntime: () => {
         runtimeCalls += 1;
         return runtimeCalls <= 1000 ? runtime : undefined;
       },
-      getTec1Runtime: () => tec1Runtime as unknown as never,
-      getTec1gRuntime: () => undefined,
+      getRuntimeCapabilities: () => ({
+        recordCycles: () => undefined,
+        silenceSpeaker: () => undefined,
+        getClockHz: () => 1000,
+        getYieldMs: () => 0,
+      }),
+      getActivePlatform: () => 'tec1g',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    const promise = runUntilStopAsync(ctx);
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+  });
+
+  it('re-reads clockHz from the runtime capability during throttling', async () => {
+    let runtimeCalls = 0;
+    let capabilityCalls = 0;
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation(
+        ((handler: Parameters<typeof setTimeout>[0]) => {
+          if (typeof handler === 'function') {
+            handler();
+          }
+          return 0 as ReturnType<typeof setTimeout>;
+        }) as typeof setTimeout
+      );
+    const setImmediateSpy = vi
+      .spyOn(globalThis, 'setImmediate')
+      .mockImplementation(
+        ((handler: Parameters<typeof setImmediate>[0]) => {
+          if (typeof handler === 'function') {
+            handler();
+          }
+          return 0 as ReturnType<typeof setImmediate>;
+        }) as typeof setImmediate
+      );
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1001 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => {
+        capabilityCalls += 1;
+        return capabilityCalls <= 1000
+          ? {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 0,
+            }
+          : {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 1000,
+              getYieldMs: () => 0,
+            };
+      },
+      getActivePlatform: () => 'tec1g',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    await runUntilStopAsync(ctx);
+    expect(setTimeoutSpy).toHaveBeenCalled();
+    expect(setImmediateSpy).not.toHaveBeenCalled();
+  });
+
+  it('yields when running with capability yieldMs', async () => {
+    vi.useFakeTimers();
+    let runtimeCalls = 0;
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1000 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => ({
+        recordCycles: () => undefined,
+        silenceSpeaker: () => undefined,
+        getClockHz: () => 0,
+        getYieldMs: () => 1,
+      }),
       getActivePlatform: () => 'tec1',
       getCallDepth: () => 0,
       setCallDepth: () => undefined,
@@ -271,11 +420,82 @@ describe('runtime-control', () => {
     vi.useRealTimers();
   });
 
+  it('re-reads yieldMs from the runtime capability during yielding', async () => {
+    let runtimeCalls = 0;
+    let capabilityCalls = 0;
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation(
+        ((handler: Parameters<typeof setTimeout>[0]) => {
+          if (typeof handler === 'function') {
+            handler();
+          }
+          return 0 as ReturnType<typeof setTimeout>;
+        }) as typeof setTimeout
+      );
+    const setImmediateSpy = vi
+      .spyOn(globalThis, 'setImmediate')
+      .mockImplementation(
+        ((handler: Parameters<typeof setImmediate>[0]) => {
+          if (typeof handler === 'function') {
+            handler();
+          }
+          return 0 as ReturnType<typeof setImmediate>;
+        }) as typeof setImmediate
+      );
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1001 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => {
+        capabilityCalls += 1;
+        return capabilityCalls <= 1000
+          ? {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 0,
+            }
+          : {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 1,
+            };
+      },
+      getActivePlatform: () => 'tec1',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    await runUntilStopAsync(ctx);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1);
+    expect(setImmediateSpy).not.toHaveBeenCalled();
+  });
+
   it('returns early when runtime is unavailable', async () => {
     const ctx: RuntimeControlContext = {
       getRuntime: () => undefined,
-      getTec1Runtime: () => undefined,
-      getTec1gRuntime: () => undefined,
+      getRuntimeCapabilities: () => undefined,
       getActivePlatform: () => 'simple',
       getCallDepth: () => 0,
       setCallDepth: () => undefined,
