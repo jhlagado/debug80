@@ -8,14 +8,11 @@ import {
   DebugSession,
   InitializedEvent,
   StoppedEvent,
-  TerminatedEvent,
-  Thread,
   Handles,
   Event as DapEvent,
 } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 
-import { StepInfo } from '../z80/types';
 import {
   createSessionState,
   resetSessionState,
@@ -25,36 +22,23 @@ import { BreakpointManager } from './breakpoint-manager';
 import { SourceStateManager } from './source-state-manager';
 import { CommandRouter } from './command-router';
 import { PlatformRegistry } from './platform-registry';
-import { buildStackFrames } from './stack-service';
 import {
-  applyStepInfo,
   applyLaunchBreakpoints,
   applyLaunchSessionArtifacts,
   createLaunchSequenceContext,
   createRuntimeControlContext,
-  runUntilReturnAsync,
-  runUntilStopAsync,
   RuntimeControlContext,
 } from './runtime-control';
 import { VariableService } from './variable-service';
-import { ADDR_MASK } from '../platforms/tec-common';
 import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 
 import { LaunchRequestArguments } from './types';
-import {
-  resolveBaseDir,
-  resolveMappedPath,
-} from './path-resolver';
+import { resolveBaseDir } from './path-resolver';
 import { emitConsoleOutput } from './adapter-ui';
 import { buildRomSourcesResponse } from './rom-requests';
 import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
 import { handleMemorySnapshotRequest } from './memory-request';
-import { getUnmappedCallReturnAddress } from './step-call-resolver';
-import {
-  populateFromConfig,
-  normalizeSourcePath,
-} from './launch-args';
-import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
+import { populateFromConfig } from './launch-args';
 import {
   MissingLaunchArtifactsError,
   buildLaunchSession,
@@ -64,6 +48,7 @@ import {
   respondToMissingLaunchInputs,
 } from './launch-sequence';
 import { Logger, NullLogger } from '../util/logger';
+import { AdapterRequestController } from './adapter-request-controller';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -81,13 +66,14 @@ export class Z80DebugSession extends DebugSession {
     active: 'simple',
   };
   private logger: Logger;
+  private readonly requestController: AdapterRequestController;
   private readonly getRuntimeControlContext = (): RuntimeControlContext =>
     createRuntimeControlContext({
       sessionState: this.sessionState,
       activePlatform: () => this.platformState.active,
       isBreakpointAddress: (address: number | null): boolean =>
-        this.isBreakpointAddress(address),
-      handleHaltStop: (): void => this.handleHaltStop(),
+        this.requestController.isBreakpointAddress(address),
+      handleHaltStop: (): void => this.requestController.handleHaltStop(),
       sendEvent: (event: unknown): void => {
         this.sendEvent(event as DebugProtocol.Event);
       },
@@ -96,6 +82,26 @@ export class Z80DebugSession extends DebugSession {
   public constructor(logger: Logger = new NullLogger()) {
     super();
     this.logger = logger;
+    this.requestController = new AdapterRequestController({
+      threadId: THREAD_ID,
+      breakpointManager: this.breakpointManager,
+      sourceState: this.sourceState,
+      sessionState: this.sessionState,
+      platformState: this.platformState,
+      variableService: this.variableService,
+      commandRouter: this.commandRouter,
+      platformRegistry: this.platformRegistry,
+      sendResponse: (response: DebugProtocol.Response): void => {
+        this.sendResponse(response);
+      },
+      sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string): void => {
+        this.sendErrorResponse(response, id, message);
+      },
+      sendEvent: (event: unknown): void => {
+        this.sendEvent(event as DebugProtocol.Event);
+      },
+      getRuntimeControlContext: (): RuntimeControlContext => this.getRuntimeControlContext(),
+    });
     this.setDebuggerLinesStartAt1(true);
     this.setDebuggerColumnsStartAt1(true);
     this.registerCommandHandlers();
@@ -240,337 +246,6 @@ export class Z80DebugSession extends DebugSession {
     }
   }
 
-  protected setBreakPointsRequest(
-    response: DebugProtocol.SetBreakpointsResponse,
-    args: DebugProtocol.SetBreakpointsArguments
-  ): void {
-    const sourcePath = args.source?.path;
-    const breakpoints = args.breakpoints ?? [];
-    const normalized =
-      sourcePath === undefined || sourcePath.length === 0
-        ? undefined
-        : normalizeSourcePath(sourcePath, this.sessionState.baseDir);
-
-    if (normalized !== undefined) {
-      this.breakpointManager.setPending(normalized, breakpoints);
-    }
-
-    const verified =
-      this.sessionState.listing !== undefined && normalized !== undefined
-        ? this.breakpointManager.applyForSource(
-            this.sessionState.listing,
-            this.sessionState.listingPath,
-            this.sessionState.mappingIndex,
-            normalized,
-            breakpoints
-          )
-        : breakpoints.map((bp) => ({ line: bp.line, verified: false }));
-
-    if (this.sessionState.listing !== undefined) {
-      this.breakpointManager.rebuild(
-        this.sessionState.listing,
-        this.sessionState.listingPath,
-        this.sessionState.mappingIndex
-      );
-    }
-
-    response.body = { breakpoints: verified };
-    this.sendResponse(response);
-  }
-
-  protected configurationDoneRequest(
-    response: DebugProtocol.ConfigurationDoneResponse,
-    _args: DebugProtocol.ConfigurationDoneArguments
-  ): void {
-    this.sendResponse(response);
-
-    if (!this.sessionState.runState.stopOnEntry) {
-      this.runUntilStop();
-    }
-  }
-
-  protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-    response.body = {
-      threads: [new Thread(THREAD_ID, 'Main Thread')],
-    };
-    this.sendResponse(response);
-  }
-
-  protected continueRequest(
-    response: DebugProtocol.ContinueResponse,
-    _args: DebugProtocol.ContinueArguments
-  ): void {
-    this.continueExecution(response);
-  }
-
-  protected nextRequest(
-    response: DebugProtocol.NextResponse,
-    _args: DebugProtocol.NextArguments
-  ): void {
-    if (this.sessionState.runtime === undefined) {
-      this.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-
-    const trace: StepInfo = { taken: false };
-    const result = this.sessionState.runtime.step({ trace });
-    applyStepInfo(this.getRuntimeControlContext(), trace);
-    this.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
-    this.sessionState.runState.pauseRequested = false;
-    this.sendResponse(response);
-
-    if (result.halted) {
-      this.handleHaltStop();
-    } else {
-      if (trace.kind && trace.taken && trace.returnAddress !== undefined) {
-        this.sessionState.runState.haltNotified = false;
-        this.sessionState.runState.lastStopReason = 'step';
-        this.sessionState.runState.lastBreakpointAddress = null;
-        this.runUntilStop(
-          new Set([trace.returnAddress]),
-          this.sessionState.runState.stepOverMaxInstructions,
-          'step over'
-        );
-        return;
-      }
-      this.sessionState.runState.haltNotified = false;
-      this.sessionState.runState.lastStopReason = 'step';
-      this.sessionState.runState.lastBreakpointAddress = null;
-      this.sendEvent(new StoppedEvent('step', THREAD_ID));
-    }
-  }
-
-  protected stepInRequest(
-    response: DebugProtocol.StepInResponse,
-    _args: DebugProtocol.StepInArguments
-  ): void {
-    if (this.sessionState.runtime === undefined) {
-      this.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-
-    const unmappedReturn = this.resolveUnmappedCall();
-    const trace: StepInfo = { taken: false };
-    const result = this.sessionState.runtime.step({ trace });
-    applyStepInfo(this.getRuntimeControlContext(), trace);
-    this.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
-    this.sessionState.runState.pauseRequested = false;
-    this.sendResponse(response);
-
-    if (unmappedReturn !== null && trace.kind && trace.taken) {
-      const returnAddress = trace.returnAddress ?? unmappedReturn;
-      this.sessionState.runState.haltNotified = false;
-      this.sessionState.runState.lastStopReason = 'step';
-      this.sessionState.runState.lastBreakpointAddress = null;
-      this.runUntilStop(
-        new Set([returnAddress]),
-        this.sessionState.runState.stepOverMaxInstructions,
-        'step over'
-      );
-      return;
-    }
-
-    if (result.halted) {
-      this.handleHaltStop();
-    } else {
-      this.sessionState.runState.haltNotified = false;
-      this.sessionState.runState.lastStopReason = 'step';
-      this.sessionState.runState.lastBreakpointAddress = null;
-      this.sendEvent(new StoppedEvent('step', THREAD_ID));
-    }
-  }
-
-  protected stepOutRequest(
-    response: DebugProtocol.StepOutResponse,
-    _args: DebugProtocol.StepOutArguments
-  ): void {
-    if (this.sessionState.runtime === undefined) {
-      this.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-    const baseline = this.sessionState.runState.callDepth;
-    this.sendResponse(response);
-    this.sessionState.runState.pauseRequested = false;
-    this.updateBreakpointSkip();
-    void runUntilReturnAsync(
-      this.getRuntimeControlContext(),
-      baseline,
-      this.sessionState.runState.stepOutMaxInstructions
-    );
-  }
-
-  protected pauseRequest(
-    response: DebugProtocol.PauseResponse,
-    _args: DebugProtocol.PauseArguments
-  ): void {
-    this.sessionState.runState.pauseRequested = true;
-    this.sendResponse(response);
-  }
-
-  protected stackTraceRequest(
-    response: DebugProtocol.StackTraceResponse,
-    _args: DebugProtocol.StackTraceArguments
-  ): void {
-    if (this.sessionState.runtime === undefined) {
-      response.body = { stackFrames: [], totalFrames: 0 };
-      this.sendResponse(response);
-      return;
-    }
-    const responseBody = buildStackFrames(this.sessionState.runtime.getPC(), {
-      ...(this.sessionState.listing !== undefined ? { listing: this.sessionState.listing } : {}),
-      ...(this.sessionState.listingPath !== undefined
-        ? { listingPath: this.sessionState.listingPath }
-        : {}),
-      ...(this.sessionState.mappingIndex !== undefined
-        ? { mappingIndex: this.sessionState.mappingIndex }
-        : {}),
-      ...(this.sourceState.file !== undefined ? { sourceFile: this.sourceState.file } : {}),
-      resolveMappedPath: (file): string | undefined =>
-        resolveMappedPath(file, this.sessionState.listingPath, this.sessionState.sourceRoots),
-      getAddressAliases: (address) => {
-        const masked = address & ADDR_MASK;
-        const aliases = [masked];
-        const shadowAlias = this.getShadowAlias(masked);
-        if (shadowAlias !== null && shadowAlias !== masked) {
-          aliases.push(shadowAlias);
-        }
-        return aliases;
-      },
-    });
-
-    response.body = responseBody;
-    this.sendResponse(response);
-  }
-
-  private getShadowAlias(address: number): number | null {
-    return getShadowAlias(address, {
-      activePlatform: this.platformState.active,
-      tec1gRuntime: this.sessionState.tec1gRuntime,
-    });
-  }
-
-  private isBreakpointAddress(address: number | null): boolean {
-    return isBreakpointAddress(address, {
-      hasBreakpoint: (addr) => this.breakpointManager.hasAddress(addr),
-      activePlatform: this.platformState.active,
-      tec1gRuntime: this.sessionState.tec1gRuntime,
-    });
-  }
-
-  protected scopesRequest(
-    response: DebugProtocol.ScopesResponse,
-    _args: DebugProtocol.ScopesArguments
-  ): void {
-    response.body = {
-      scopes: this.variableService.createScopes(),
-    };
-    this.sendResponse(response);
-  }
-
-  protected variablesRequest(
-    response: DebugProtocol.VariablesResponse,
-    args: DebugProtocol.VariablesArguments
-  ): void {
-    response.body = {
-      variables: this.variableService.resolveVariables(
-        args.variablesReference,
-        this.sessionState.runtime
-      ),
-    };
-
-    this.sendResponse(response);
-  }
-
-  protected disconnectRequest(
-    response: DebugProtocol.DisconnectResponse,
-    _args: DebugProtocol.DisconnectArguments
-  ): void {
-    this.sessionState.platformRuntime?.silenceSpeaker();
-    this.sessionState.runtime = undefined;
-    this.sessionState.runState.haltNotified = false;
-    this.sessionState.terminalState = undefined;
-    this.sessionState.tec1Runtime = undefined;
-    this.sessionState.tec1gRuntime = undefined;
-    this.sessionState.platformRuntime = undefined;
-    this.sessionState.loadedProgram = undefined;
-    this.sessionState.loadedEntry = undefined;
-    this.platformRegistry.clear();
-    this.sendResponse(response);
-  }
-
-  protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
-    if (this.commandRouter.handle(command, response, args)) {
-      return;
-    }
-    const platformHandler = this.platformRegistry.getHandler(command);
-    if (platformHandler && platformHandler(response, args)) {
-      return;
-    }
-    super.customRequest(command, response, args);
-  }
-
-  private continueExecution(response: DebugProtocol.Response): void {
-    if (this.sessionState.runtime === undefined) {
-      this.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-
-    this.sendResponse(response);
-    this.sessionState.runState.pauseRequested = false;
-    this.updateBreakpointSkip();
-    this.runUntilStop();
-  }
-
-  private updateBreakpointSkip(): void {
-    const rs = this.sessionState.runState;
-    if (
-      rs.lastStopReason === 'breakpoint' &&
-      this.sessionState.runtime?.getPC() === rs.lastBreakpointAddress &&
-      rs.lastBreakpointAddress !== null &&
-      this.isBreakpointAddress(rs.lastBreakpointAddress)
-    ) {
-      rs.skipBreakpointOnce = rs.lastBreakpointAddress;
-    } else {
-      rs.skipBreakpointOnce = null;
-    }
-  }
-
-  private runUntilStop(
-    extraBreakpoints?: Set<number>,
-    maxInstructions?: number,
-    limitLabel = 'step',
-  ): void {
-    void runUntilStopAsync(this.getRuntimeControlContext(), {
-      limitLabel,
-      ...(extraBreakpoints !== undefined ? { extraBreakpoints } : {}),
-      ...(maxInstructions !== undefined ? { maxInstructions } : {}),
-    });
-  }
-
-  private handleHaltStop(): void {
-    if (!this.sessionState.runState.haltNotified) {
-      this.sessionState.runState.haltNotified = true;
-      this.sessionState.runState.lastStopReason = 'halt';
-      this.sessionState.runState.lastBreakpointAddress = null;
-      this.sendEvent(new StoppedEvent('halt', THREAD_ID));
-      return;
-    }
-
-    this.sessionState.tec1Runtime?.silenceSpeaker();
-    this.sessionState.platformRuntime?.silenceSpeaker();
-    this.sendEvent(new TerminatedEvent());
-  }
-
-  private resolveUnmappedCall(): number | null {
-    const { runtime, mappingIndex } = this.sessionState;
-    if (runtime === undefined || mappingIndex === undefined) {
-      return null;
-    }
-    const cpu = runtime.getRegisters();
-    const memRead = runtime.hardware.memRead ?? ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
-    return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
-  }
-
   private async promptForConfigCreation(): Promise<boolean> {
     const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
     return Boolean(created);
@@ -583,6 +258,93 @@ export class Z80DebugSession extends DebugSession {
     this.sessionState.runState.lastStopReason = 'entry';
     this.sessionState.runState.lastBreakpointAddress = null;
     this.sendEvent(new StoppedEvent('entry', THREAD_ID));
+  }
+
+  protected setBreakPointsRequest(
+    response: DebugProtocol.SetBreakpointsResponse,
+    args: DebugProtocol.SetBreakpointsArguments
+  ): void {
+    this.requestController.setBreakPointsRequest(response, args);
+  }
+
+  protected configurationDoneRequest(
+    response: DebugProtocol.ConfigurationDoneResponse,
+    _args: DebugProtocol.ConfigurationDoneArguments
+  ): void {
+    this.requestController.configurationDoneRequest(response, _args);
+  }
+
+  protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+    this.requestController.threadsRequest(response);
+  }
+
+  protected continueRequest(
+    response: DebugProtocol.ContinueResponse,
+    _args: DebugProtocol.ContinueArguments
+  ): void {
+    this.requestController.continueRequest(response, _args);
+  }
+
+  protected nextRequest(
+    response: DebugProtocol.NextResponse,
+    _args: DebugProtocol.NextArguments
+  ): void {
+    this.requestController.nextRequest(response, _args);
+  }
+
+  protected stepInRequest(
+    response: DebugProtocol.StepInResponse,
+    _args: DebugProtocol.StepInArguments
+  ): void {
+    this.requestController.stepInRequest(response, _args);
+  }
+
+  protected stepOutRequest(
+    response: DebugProtocol.StepOutResponse,
+    _args: DebugProtocol.StepOutArguments
+  ): void {
+    this.requestController.stepOutRequest(response, _args);
+  }
+
+  protected pauseRequest(
+    response: DebugProtocol.PauseResponse,
+    _args: DebugProtocol.PauseArguments
+  ): void {
+    this.requestController.pauseRequest(response, _args);
+  }
+
+  protected stackTraceRequest(
+    response: DebugProtocol.StackTraceResponse,
+    _args: DebugProtocol.StackTraceArguments
+  ): void {
+    this.requestController.stackTraceRequest(response, _args);
+  }
+
+  protected scopesRequest(
+    response: DebugProtocol.ScopesResponse,
+    _args: DebugProtocol.ScopesArguments
+  ): void {
+    this.requestController.scopesRequest(response, _args);
+  }
+
+  protected variablesRequest(
+    response: DebugProtocol.VariablesResponse,
+    args: DebugProtocol.VariablesArguments
+  ): void {
+    this.requestController.variablesRequest(response, args);
+  }
+
+  protected disconnectRequest(
+    response: DebugProtocol.DisconnectResponse,
+    _args: DebugProtocol.DisconnectArguments
+  ): void {
+    this.requestController.disconnectRequest(response, _args);
+  }
+
+  protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
+    this.requestController.customRequest(command, response, args, (cmd, resp, customArgs) =>
+      super.customRequest(cmd, resp, customArgs)
+    );
   }
 }
 
