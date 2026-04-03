@@ -4,8 +4,6 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { handlePlatformViewMessage } from '../../src/extension/platform-view-messages';
-import type { Tec1Message } from '../../src/platforms/tec1/ui-panel-messages';
-import type { Tec1gMessage } from '../../src/platforms/tec1g/ui-panel-messages';
 
 function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
   return {
@@ -14,8 +12,7 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleSerialSendFile: vi.fn(() => undefined),
     handleSerialSave: vi.fn(() => undefined),
     clearSerialBuffer: vi.fn(() => undefined),
-    handleTec1Message: vi.fn(() => undefined),
-    handleTec1gMessage: vi.fn(() => undefined),
+    handlePlatformMessage: vi.fn(() => undefined),
   };
 }
 
@@ -47,14 +44,14 @@ describe('platform-view message routing', () => {
     const tec1Deps = createDependencies('tec1');
     const tec1gDeps = createDependencies('tec1g');
 
-    const tec1Message = { type: 'update' } as Tec1Message;
-    const tec1gMessage = { type: 'update' } as Tec1gMessage;
+    const tec1Message = { type: 'update' };
+    const tec1gMessage = { type: 'update' };
 
     await handlePlatformViewMessage(tec1Message, tec1Deps);
     await handlePlatformViewMessage(tec1gMessage, tec1gDeps);
 
-    expect(tec1Deps.handleTec1Message).toHaveBeenCalledWith(tec1Message);
-    expect(tec1gDeps.handleTec1gMessage).toHaveBeenCalledWith(tec1gMessage);
+    expect(tec1Deps.handlePlatformMessage).toHaveBeenCalledWith('tec1', tec1Message);
+    expect(tec1gDeps.handlePlatformMessage).toHaveBeenCalledWith('tec1g', tec1gMessage);
   });
 
   it('ignores serialClear for idle simple view state', async () => {
