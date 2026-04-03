@@ -8,6 +8,11 @@ unchanged; only the platform supplies the environment.
 The format is intentionally simple: select a `platform` in `debug80.json`, then
 provide a platform-specific config block. No feature flags.
 
+Platform ids are now resolved through the lazy manifest in
+`src/platforms/manifest.ts`. Built-in platforms register there, and external
+extensions can add new entries through the public `Debug80Api.registerPlatform()`
+surface documented in `docs/platform-extension-api.md`.
+
 For per-platform details, see `src/platforms/README.md`.
 For timing and time-series I/O, see `docs/timing-model.md`.
 TEC-1G notes: `docs/platforms/tec1g/README.md`.
@@ -340,7 +345,8 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 ## Build and launch flow
 
 1) User selects a target in the debug config (via `projectConfig` + `target`).
-2) Debug80 reads `platform` and instantiates the platform runtime.
+2) Debug80 reads `platform`, resolves the matching manifest entry, and lazy-loads
+  the platform provider.
 3) Platform sets up memory and devices, then the CPU runs normally.
 4) Mapping, breakpoints, and stepping are unchanged.
 
@@ -352,13 +358,15 @@ Reset behavior:
 ## v0.1 expectations
 
 - Terminal platform is configurable and is the default.
-- Platform registry exists with stubs for CP/M, Microbee, TEC-1.
+- Built-in platform entries are registered in `src/platforms/manifest.ts`.
+- External platforms can be registered during extension activation without
+  editing the Debug80 core.
 - The platform config lives in `debug80.json` per target.
-- No dynamic loading yet; all platform modules are bundled.
+- Runtime providers and platform sidebar UI modules are lazy-loaded.
 
 ## Future expansion
 
-- Dynamic loading of platform modules (optional).
-- External platform packages.
+- Stable published import paths for third-party platform packages.
+- More worked examples of external platform packages and wrapper extensions.
 - Common device library (terminal, keyboard, display, disk).
 - Memory map visualization in the debugger UI.
