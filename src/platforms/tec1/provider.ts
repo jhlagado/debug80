@@ -95,7 +95,7 @@ export function createTec1PlatformProvider(
     registerCommands: (registry, context): void => {
       registry.register(buildTec1Contribution(context));
     },
-    buildIoHandlers: (callbacks): PlatformIoBuildResult =>
+    buildIoHandlers: async (callbacks): Promise<PlatformIoBuildResult> =>
       buildPlatformIoHandlers({
         platform: 'tec1',
         tec1Config,

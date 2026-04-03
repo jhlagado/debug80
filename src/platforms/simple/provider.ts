@@ -18,7 +18,7 @@ export function createSimplePlatformProvider(
     extraListings: simpleConfig.extraListings ?? [],
     runtimeOptions: { romRanges: simpleConfig.romRanges },
     registerCommands: () => undefined,
-    buildIoHandlers: (callbacks) =>
+    buildIoHandlers: async (callbacks) =>
       buildPlatformIoHandlers({
         platform: "simple",
         ...(callbacks.terminal !== undefined ? { terminal: callbacks.terminal } : {}),

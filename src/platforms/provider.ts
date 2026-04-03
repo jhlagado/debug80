@@ -7,7 +7,6 @@ import type { PlatformIoBuildResult } from "../debug/platform-host";
 import type { PlatformRegistry } from "../debug/platform-registry";
 import type { PlatformKind } from "../debug/program-loader";
 import type { SessionStateShape } from "../debug/session-state";
-import type { LaunchRequestArguments } from "../debug/types";
 import type { TerminalConfig } from "../debug/terminal-types";
 import type { Z80Runtime } from "../z80/runtime";
 import type { Logger } from "../util/logger";
@@ -16,10 +15,6 @@ import type {
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
 } from "./types";
-import { normalizePlatformName } from "../debug/launch-args";
-import { createSimplePlatformProvider } from "./simple/provider";
-import { createTec1PlatformProvider } from "./tec1/provider";
-import { createTec1gPlatformProvider } from "./tec1g/provider";
 
 export interface PlatformCommandContext {
   sessionState: SessionStateShape;
@@ -64,21 +59,10 @@ export interface ResolvedPlatformProvider {
   extraListings: string[];
   runtimeOptions?: { romRanges: Array<{ start: number; end: number }> };
   registerCommands: (registry: PlatformRegistry, context: PlatformCommandContext) => void;
-  buildIoHandlers: (callbacks: PlatformIoCallbacks) => PlatformIoBuildResult;
+  buildIoHandlers: (callbacks: PlatformIoCallbacks) => Promise<PlatformIoBuildResult>;
   loadAssets?: (context: PlatformAssetLoadContext) => unknown;
   resolveEntry: (assets?: unknown) => number | undefined;
   finalizeRuntime?: (context: PlatformRuntimeFinalizeContext) => void;
 }
 
-export function resolvePlatformProvider(
-  args: LaunchRequestArguments
-): ResolvedPlatformProvider {
-  switch (normalizePlatformName(args)) {
-    case "simple":
-      return createSimplePlatformProvider(args);
-    case "tec1":
-      return createTec1PlatformProvider(args);
-    case "tec1g":
-      return createTec1gPlatformProvider(args);
-  }
-}
+export { listPlatforms, registerPlatform, resolvePlatformProvider } from './manifest';

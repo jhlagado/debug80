@@ -4,10 +4,10 @@
 
 import type { IoHandlers } from '../z80/runtime';
 import type { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../platforms/types';
-import { createTec1Runtime, Tec1Runtime } from '../platforms/tec1/runtime';
-import { createTec1gRuntime, Tec1gRuntime } from '../platforms/tec1g/runtime';
 import type { PlatformKind } from './program-loader';
 import type { TerminalConfig, TerminalConfigNormalized, TerminalState } from './terminal-types';
+import type { Tec1Runtime } from '../platforms/tec1/runtime';
+import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
 
 export interface PlatformIoBuildOptions {
   platform: PlatformKind;
@@ -31,7 +31,9 @@ export interface PlatformIoBuildResult {
 /**
  * Builds platform-specific IO handlers and runtimes.
  */
-export function buildPlatformIoHandlers(options: PlatformIoBuildOptions): PlatformIoBuildResult {
+export async function buildPlatformIoHandlers(
+  options: PlatformIoBuildOptions
+): Promise<PlatformIoBuildResult> {
   const {
     platform,
     terminal,
@@ -48,10 +50,11 @@ export function buildPlatformIoHandlers(options: PlatformIoBuildOptions): Platfo
     if (!tec1Config) {
       return { ioHandlers: undefined };
     }
+    const { createTec1Runtime } = await import('../platforms/tec1/runtime.js');
     const tec1Runtime = createTec1Runtime(
       tec1Config,
-      (payload) => onTec1Update(payload),
-      (byte) => {
+      (payload: unknown) => onTec1Update(payload),
+      (byte: number) => {
         const value = byte & 0xff;
         const text = String.fromCharCode(value);
         onTec1Serial({ byte: value, text });
@@ -64,10 +67,11 @@ export function buildPlatformIoHandlers(options: PlatformIoBuildOptions): Platfo
     if (!tec1gConfig) {
       return { ioHandlers: undefined };
     }
+    const { createTec1gRuntime } = await import('../platforms/tec1g/runtime.js');
     const tec1gRuntime = createTec1gRuntime(
       tec1gConfig,
-      (payload) => onTec1gUpdate(payload),
-      (byte) => {
+      (payload: unknown) => onTec1gUpdate(payload),
+      (byte: number) => {
         const value = byte & 0xff;
         const text = String.fromCharCode(value);
         onTec1gSerial({ byte: value, text });
