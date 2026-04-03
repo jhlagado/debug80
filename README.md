@@ -132,6 +132,7 @@ This keeps example configs inside Debug80 while letting external projects own th
 
 - `docs/technical.md` — detailed developer guide to the extension, adapter, mapping, and stepping
 - `docs/platforms.md` — platform architecture and config references
+- `docs/platform-extension-api.md` — how external extensions register new runtime/UI platforms
 - `docs/d8-debug-map.md` — debug map format and generator notes
 - `docs/timing-model.md` — timing and cycle model details
 - `docs/platform-development-guide.md` — how to add a new platform runtime/UI
