@@ -191,11 +191,11 @@ export interface LaunchSequenceContext {
   sendErrorResponse: (response: DP.Response, id: number, message: string) => void;
 }
 
-export function buildLaunchSession(
+export async function buildLaunchSession(
   merged: LaunchRequestArguments,
   context: LaunchSequenceContext
-): LaunchSessionArtifacts {
-  const platformProvider = resolvePlatformProvider(merged);
+): Promise<LaunchSessionArtifacts> {
+  const platformProvider = await resolvePlatformProvider(merged);
   const platform = platformProvider.id;
   const simpleConfig = platformProvider.simpleConfig;
   const tec1Config = platformProvider.tec1Config;
@@ -318,7 +318,7 @@ export function buildLaunchSession(
 
   const emitPlatformEvent = (name: string) => (payload: unknown) =>
     context.emitDapEvent(name, payload);
-  const platformIo = platformProvider.buildIoHandlers({
+  const platformIo = await platformProvider.buildIoHandlers({
     ...(merged.terminal !== undefined ? { terminal: merged.terminal } : {}),
     onTec1Update: emitPlatformEvent('debug80/tec1Update'),
     onTec1Serial: emitPlatformEvent('debug80/tec1Serial'),
