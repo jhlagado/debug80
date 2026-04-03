@@ -84,19 +84,13 @@ export function registerDebugSessionHandlers({
           sessionState.sessionPlatforms.set(evt.session.id, id);
         }
         workspaceSelection.rememberWorkspace(evt.session.workspaceFolder);
-        if (id === 'tec1') {
-          platformViewProvider.setPlatform('tec1', evt.session, {
+        if (id !== undefined && id.length > 0 && id !== 'simple') {
+          platformViewProvider.setPlatform(id, evt.session, {
             focus: false,
             reveal: true,
             tab: 'ui',
           });
-        } else if (id === 'tec1g') {
-          platformViewProvider.setPlatform('tec1g', evt.session, {
-            focus: false,
-            reveal: true,
-            tab: 'ui',
-          });
-          if (body?.uiVisibility) {
+          if (id === 'tec1g' && body?.uiVisibility) {
             platformViewProvider.setTec1gUiVisibility(body.uiVisibility, false);
           }
         } else {
