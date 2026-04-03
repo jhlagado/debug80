@@ -24,9 +24,6 @@ export function normalizePlatformName(args: LaunchRequestArguments): PlatformKin
   if (name === '') {
     return 'simple';
   }
-  if (name !== 'simple' && name !== 'tec1' && name !== 'tec1g') {
-    throw new Error(`Unsupported platform "${raw}".`);
-  }
   return name;
 }
 

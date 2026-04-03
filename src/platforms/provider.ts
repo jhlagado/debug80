@@ -65,4 +65,9 @@ export interface ResolvedPlatformProvider {
   finalizeRuntime?: (context: PlatformRuntimeFinalizeContext) => void;
 }
 
-export { listPlatforms, registerPlatform, resolvePlatformProvider } from './manifest';
+export {
+  listPlatforms,
+  registerPlatform,
+  resolvePlatformProvider,
+  type PlatformManifestEntry,
+} from './manifest';

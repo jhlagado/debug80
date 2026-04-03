@@ -9,7 +9,8 @@ import { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../
 import { Z80_ADDRESS_SPACE, TEC1_ROM_LOAD_ADDR } from '../platforms/tec-common';
 import { Logger } from '../util/logger';
 
-export type PlatformKind = 'simple' | 'tec1' | 'tec1g';
+export type BuiltInPlatformKind = 'simple' | 'tec1' | 'tec1g';
+export type PlatformKind = BuiltInPlatformKind | (string & Record<never, never>);
 
 export interface ProgramLoaderOptions {
   platform: PlatformKind;
