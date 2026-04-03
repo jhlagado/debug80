@@ -17,6 +17,7 @@ import { SdSpi } from './sd-spi';
 import { createTec1gLcdController, type Tec1gLcdState } from './lcd';
 import { createTec1gSerialController } from './serial';
 import { createGlcdController, createGlcdState, type GlcdState } from './glcd';
+import { createTec1gUpdateController, type Tec1gUpdateController } from './update-controller';
 import {
   TEC1G_SYSCTRL_PROTECT,
   TEC1G_SYSCTRL_BANK_A14,
@@ -44,7 +45,6 @@ import {
   TEC_FAST_HZ,
   TEC_KEY_HOLD_MS,
   calculateKeyHoldCycles,
-  shouldUpdate,
 } from '../tec-common';
 import { createTec1gIoHandlers } from './io-handlers';
 
@@ -328,72 +328,33 @@ export function createTec1gRuntime(
     lcdState.lcd[lcdTest.length + 2] = TEC1G_LCD_ARROW_RIGHT;
   }
 
-  const sendUpdate = (): void => {
-    onUpdate({
-      digits: [...display.digits],
-      matrix: [...display.matrix],
-      matrixMode: input.matrixModeEnabled,
-      glcd: Array.from(display.glcdCtrl.glcd),
-      glcdDdram: Array.from(display.glcdCtrl.glcdDdram),
-      glcdState: {
-        displayOn: display.glcdCtrl.glcdDisplayOn,
-        graphicsOn: display.glcdCtrl.glcdGraphics,
-        cursorOn: display.glcdCtrl.glcdCursorOn,
-        cursorBlink: display.glcdCtrl.glcdCursorBlink,
-        blinkVisible: display.glcdCtrl.glcdBlinkVisible,
-        ddramAddr: display.glcdCtrl.glcdDdramAddr,
-        ddramPhase: display.glcdCtrl.glcdDdramPhase,
-        textShift: display.glcdCtrl.glcdTextShift,
-        scroll: display.glcdCtrl.glcdScroll,
-        reverseMask: display.glcdCtrl.glcdReverseMask,
-      },
-      sysCtrl: system.sysCtrl,
-      bankA14: system.bankA14,
-      capsLock: system.capsLock,
-      lcdState: {
-        displayOn: lcdState.lcdDisplayOn,
-        cursorOn: lcdState.lcdCursorOn,
-        cursorBlink: lcdState.lcdCursorBlink,
-        cursorAddr: lcdState.lcdAddr,
-        displayShift: lcdState.lcdDisplayShift,
-      },
-      lcdCgram: Array.from(lcdState.lcdCgram),
-      speaker: audio.speaker ? 1 : 0,
-      speedMode: timing.speedMode,
-      lcd: [...lcdState.lcd],
-      speakerHz: audio.speakerHz,
-    });
-  };
+  const updateControllerRef: { current: Tec1gUpdateController | undefined } = { current: undefined };
+  /**
+   * Queues a throttled runtime UI update through the update controller.
+   */
+  function queueUpdate(): void {
+    updateControllerRef.current?.queueUpdate();
+  }
+  /**
+   * Flushes any pending throttled runtime UI update through the update controller.
+   */
+  function flushUpdate(): void {
+    updateControllerRef.current?.flushUpdate();
+  }
 
-  const glcd = createGlcdController(display.glcdCtrl, timing.cycleClock, timing.clockHz, () =>
-    queueUpdate()
-  );
+  const glcd = createGlcdController(display.glcdCtrl, timing.cycleClock, timing.clockHz, queueUpdate);
 
   const serial = createTec1gSerialController(timing.cycleClock, timing.clockHz, onSerialByte);
 
-  const queueUpdate = (): void => {
-    if (shouldUpdate(timing.lastUpdateMs, timing.updateMs)) {
-      timing.lastUpdateMs = Date.now();
-      timing.pendingUpdate = false;
-      sendUpdate();
-      return;
-    }
-    timing.pendingUpdate = true;
-  };
-
-  const flushUpdate = (): void => {
-    if (!timing.pendingUpdate) {
-      return;
-    }
-    if (!shouldUpdate(timing.lastUpdateMs, timing.updateMs)) {
-      return;
-    }
-    timing.lastUpdateMs = Date.now();
-    timing.pendingUpdate = false;
-    sendUpdate();
-  };
-
   const lcd = createTec1gLcdController(lcdState, timing.cycleClock, timing.clockHz, queueUpdate);
+
+  updateControllerRef.current = createTec1gUpdateController({
+    state,
+    lcd,
+    glcd,
+    serial,
+    onUpdate,
+  });
 
   const ioHandlers = createTec1gIoHandlers({
     state,
@@ -478,12 +439,7 @@ export function createTec1gRuntime(
   };
 
   const setSpeed = (mode: Tec1gSpeedMode): void => {
-    timing.speedMode = mode;
-    timing.clockHz = mode === 'slow' ? TEC1G_SLOW_HZ : TEC1G_FAST_HZ;
-    serial.setClockHz(timing.clockHz);
-    lcd.setClockHz(timing.clockHz);
-    glcd.setClockHz(timing.clockHz);
-    sendUpdate();
+    updateControllerRef.current?.setSpeed(mode);
   };
 
   const resetState = (): void => {
