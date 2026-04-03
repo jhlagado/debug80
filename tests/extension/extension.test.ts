@@ -81,14 +81,17 @@ describe('extension activation', () => {
 
   it('registers commands and adapter factory', async () => {
     const extension = (await import('../../src/extension/extension')) as {
-      activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
+      activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => {
+        registerPlatform: (entry: { id: string; displayName: string }) => void;
+        listPlatforms: () => Array<{ id: string; displayName: string }>;
+      };
     };
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
       extensionUri: { fsPath: '/tmp/debug80' },
     };
-    extension.activate(context);
+    const api = extension.activate(context);
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
@@ -99,6 +102,11 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1Memory', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openRomSource', expect.anything());
     expect(context.subscriptions.length).toBeGreaterThan(0);
+    expect(api.listPlatforms()).toEqual([
+      expect.objectContaining({ id: 'simple', displayName: 'Simple' }),
+      expect.objectContaining({ id: 'tec1', displayName: 'TEC-1' }),
+      expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
+    ]);
   }, 20000);
 
   it('forces asm documents to z80-asm when available', async () => {

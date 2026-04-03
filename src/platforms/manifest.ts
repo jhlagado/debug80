@@ -11,48 +11,63 @@ type PlatformProviderLoader = (
   args: LaunchRequestArguments
 ) => Promise<ResolvedPlatformProvider>;
 
-const platformLoaders = new Map<PlatformKind, PlatformProviderLoader>([
+export interface PlatformManifestEntry {
+  id: PlatformKind;
+  displayName: string;
+  loadProvider: PlatformProviderLoader;
+}
+
+const platformEntries = new Map<PlatformKind, PlatformManifestEntry>([
   [
     'simple',
-    async (args): Promise<ResolvedPlatformProvider> => {
-      const { createSimplePlatformProvider } = await import('./simple/provider.js');
-      return createSimplePlatformProvider(args);
+    {
+      id: 'simple',
+      displayName: 'Simple',
+      loadProvider: async (args): Promise<ResolvedPlatformProvider> => {
+        const { createSimplePlatformProvider } = await import('./simple/provider.js');
+        return createSimplePlatformProvider(args);
+      },
     },
   ],
   [
     'tec1',
-    async (args): Promise<ResolvedPlatformProvider> => {
-      const { createTec1PlatformProvider } = await import('./tec1/provider.js');
-      return createTec1PlatformProvider(args);
+    {
+      id: 'tec1',
+      displayName: 'TEC-1',
+      loadProvider: async (args): Promise<ResolvedPlatformProvider> => {
+        const { createTec1PlatformProvider } = await import('./tec1/provider.js');
+        return createTec1PlatformProvider(args);
+      },
     },
   ],
   [
     'tec1g',
-    async (args): Promise<ResolvedPlatformProvider> => {
-      const { createTec1gPlatformProvider } = await import('./tec1g/provider.js');
-      return createTec1gPlatformProvider(args);
+    {
+      id: 'tec1g',
+      displayName: 'TEC-1G',
+      loadProvider: async (args): Promise<ResolvedPlatformProvider> => {
+        const { createTec1gPlatformProvider } = await import('./tec1g/provider.js');
+        return createTec1gPlatformProvider(args);
+      },
     },
   ],
 ]);
 
-export function registerPlatform(
-  platform: PlatformKind,
-  loadProvider: PlatformProviderLoader
-): void {
-  platformLoaders.set(platform, loadProvider);
+export function registerPlatform(entry: PlatformManifestEntry): void {
+  platformEntries.set(entry.id, entry);
 }
 
-export function listPlatforms(): PlatformKind[] {
-  return Array.from(platformLoaders.keys());
+export function listPlatforms(): PlatformManifestEntry[] {
+  return Array.from(platformEntries.values());
 }
 
 export async function resolvePlatformProvider(
   args: LaunchRequestArguments
 ): Promise<ResolvedPlatformProvider> {
   const platform = normalizePlatformName(args);
-  const loadProvider = platformLoaders.get(platform);
-  if (loadProvider === undefined) {
+  const entry = platformEntries.get(platform);
+  if (entry === undefined) {
     throw new Error(`Unsupported platform: ${platform}`);
   }
-  return loadProvider(args);
+  return entry.loadProvider(args);
 }

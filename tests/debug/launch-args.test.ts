@@ -25,9 +25,9 @@ describe('launch-args', () => {
     expect(normalizePlatformName({ platform: 'TEC1' } as LaunchRequestArguments)).toBe('tec1');
     expect(normalizePlatformName({ platform: 'simple' } as LaunchRequestArguments)).toBe('simple');
     expect(normalizePlatformName({ platform: '' } as LaunchRequestArguments)).toBe('simple');
-    expect(() =>
-      normalizePlatformName({ platform: 'unknown' } as LaunchRequestArguments)
-    ).toThrow('Unsupported platform');
+    expect(normalizePlatformName({ platform: 'MicroBee' } as LaunchRequestArguments)).toBe(
+      'microbee'
+    );
   });
 
   it('resolves artifacts from asm path', () => {
