@@ -86,6 +86,7 @@ describe('extension activation', () => {
         listPlatforms: () => Array<{ id: string; displayName: string }>;
       };
     };
+    const uiManifest = (await import('../../src/extension/platform-view-manifest')) as typeof import('../../src/extension/platform-view-manifest');
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
@@ -106,6 +107,10 @@ describe('extension activation', () => {
       expect.objectContaining({ id: 'simple', displayName: 'Simple' }),
       expect.objectContaining({ id: 'tec1', displayName: 'TEC-1' }),
       expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
+    ]);
+    expect(uiManifest.listPlatformUis()).toEqual([
+      expect.objectContaining({ id: 'tec1' }),
+      expect.objectContaining({ id: 'tec1g' }),
     ]);
   }, 20000);
 
