@@ -2,17 +2,24 @@
  * @fileoverview Runtime execution helpers for stepping and stopping.
  */
 
-import { OutputEvent, StoppedEvent } from '@vscode/debugadapter';
+import { BreakpointEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
+import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { Z80Runtime } from '../z80/runtime';
 import type { StepInfo } from '../z80/types';
 import type { Tec1Runtime } from '../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
-import type { StopReason } from './session-state';
+import type { Logger } from '../util/logger';
+import type { MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
+import type { SourceStateManager } from './source-state-manager';
+import type { PlatformRegistry } from './platform-registry';
+import type { SessionStateShape, StopReason } from './session-state';
+import type { LaunchSequenceContext } from './launch-sequence';
+import type { LaunchSessionArtifacts } from './launch-sequence';
+import type { BreakpointManager } from './breakpoint-manager';
 
 export interface RuntimeControlContext {
   getRuntime: () => Z80Runtime | undefined;
-  getTec1Runtime: () => Tec1Runtime | undefined;
-  getTec1gRuntime: () => Tec1gRuntime | undefined;
+  getRuntimeCapabilities: () => RuntimeControlCapabilities | undefined;
   getActivePlatform: () => string;
   getCallDepth: () => number;
   setCallDepth: (value: number) => void;
@@ -27,6 +34,167 @@ export interface RuntimeControlContext {
   isBreakpointAddress: (address: number | null) => boolean;
   handleHaltStop: () => void;
   sendEvent: (event: unknown) => void;
+}
+
+export interface RuntimeControlCapabilities {
+  recordCycles: (cycles: number) => void;
+  silenceSpeaker: () => void;
+  getClockHz: () => number;
+  getYieldMs: () => number;
+}
+
+export interface RuntimeControlContextInput {
+  sessionState: SessionStateShape;
+  activePlatform: () => string;
+  isBreakpointAddress: (address: number | null) => boolean;
+  handleHaltStop: () => void;
+  sendEvent: (event: unknown) => void;
+}
+
+export interface LaunchSequenceContextInput {
+  logger: Logger;
+  sessionState: SessionStateShape;
+  sourceState: SourceStateManager;
+  platformRegistry: PlatformRegistry;
+  matrixHeldKeys: Map<string, MatrixKeyCombo[]>;
+  emitEvent: (event: DebugProtocol.Event) => void;
+  emitDapEvent: (name: string, payload: unknown) => void;
+  sendResponse: (response: DebugProtocol.Response) => void;
+  sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
+}
+
+export function createRuntimeControlContext(
+  input: RuntimeControlContextInput
+): RuntimeControlContext {
+  const runState = input.sessionState.runState;
+  return {
+    getRuntime: () => input.sessionState.runtime,
+    getRuntimeCapabilities: () =>
+      createRuntimeControlCapabilities({
+        activePlatform: input.activePlatform(),
+        tec1Runtime: input.sessionState.tec1Runtime,
+        tec1gRuntime: input.sessionState.tec1gRuntime,
+      }),
+    getActivePlatform: () => input.activePlatform(),
+    getCallDepth: () => runState.callDepth,
+    setCallDepth: (value: number): void => {
+      runState.callDepth = value;
+    },
+    getPauseRequested: () => runState.pauseRequested,
+    setPauseRequested: (value: boolean): void => {
+      runState.pauseRequested = value;
+    },
+    getSkipBreakpointOnce: () => runState.skipBreakpointOnce,
+    setSkipBreakpointOnce: (value: number | null): void => {
+      runState.skipBreakpointOnce = value;
+    },
+    getHaltNotified: () => runState.haltNotified,
+    setHaltNotified: (value: boolean): void => {
+      runState.haltNotified = value;
+    },
+    setLastStopReason: (reason: StopReason): void => {
+      runState.lastStopReason = reason;
+    },
+    setLastBreakpointAddress: (address: number | null): void => {
+      runState.lastBreakpointAddress = address;
+    },
+    isBreakpointAddress: (address: number | null): boolean => input.isBreakpointAddress(address),
+    handleHaltStop: (): void => input.handleHaltStop(),
+    sendEvent: (event: unknown): void => input.sendEvent(event),
+  };
+}
+
+export function createRuntimeControlCapabilities(options: {
+  activePlatform: string;
+  tec1Runtime: Tec1Runtime | undefined;
+  tec1gRuntime: Tec1gRuntime | undefined;
+}): RuntimeControlCapabilities | undefined {
+  if (options.activePlatform === 'tec1') {
+    const runtime = options.tec1Runtime;
+    if (runtime === undefined) {
+      return undefined;
+    }
+    return {
+      recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
+      silenceSpeaker: (): void => runtime.silenceSpeaker(),
+      getClockHz: (): number => runtime.state.clockHz,
+      getYieldMs: (): number => runtime.state.yieldMs,
+    };
+  }
+  if (options.activePlatform === 'tec1g') {
+    const runtime = options.tec1gRuntime;
+    if (runtime === undefined) {
+      return undefined;
+    }
+    return {
+      recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
+      silenceSpeaker: (): void => runtime.silenceSpeaker(),
+      getClockHz: (): number => runtime.state.timing.clockHz,
+      getYieldMs: (): number => runtime.state.timing.yieldMs,
+    };
+  }
+  return undefined;
+}
+
+export function createLaunchSequenceContext(
+  input: LaunchSequenceContextInput
+): LaunchSequenceContext {
+  return input;
+}
+
+export interface LaunchArtifactsTarget {
+  platformState: { active: string };
+  sessionState: SessionStateShape;
+}
+
+export function applyLaunchSessionArtifacts(
+  target: LaunchArtifactsTarget,
+  artifacts: LaunchSessionArtifacts
+): void {
+  target.platformState.active = artifacts.platform;
+  target.sessionState.listing = artifacts.listing;
+  target.sessionState.listingPath = artifacts.listingPath;
+  target.sessionState.mapping = artifacts.mapping;
+  target.sessionState.mappingIndex = artifacts.mappingIndex;
+  target.sessionState.sourceRoots = artifacts.sourceRoots;
+  target.sessionState.extraListingPaths = artifacts.extraListingPaths;
+  target.sessionState.symbolAnchors = artifacts.symbolAnchors;
+  target.sessionState.symbolList = artifacts.symbolList;
+  target.sessionState.runtime = artifacts.runtime;
+  target.sessionState.terminalState = artifacts.terminalState;
+  target.sessionState.tec1Runtime = artifacts.tec1Runtime;
+  target.sessionState.tec1gRuntime = artifacts.tec1gRuntime;
+  target.sessionState.platformRuntime = artifacts.platformRuntime;
+  target.sessionState.tec1gConfig = artifacts.tec1gConfig;
+  target.sessionState.loadedProgram = artifacts.loadedProgram;
+  target.sessionState.loadedEntry = artifacts.loadedEntry;
+  target.sessionState.runState.callDepth = 0;
+  target.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
+  target.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
+}
+
+export interface LaunchBreakpointsTarget {
+  listing: LaunchSessionArtifacts['listing'] | undefined;
+  listingPath: string | undefined;
+  mappingIndex: LaunchSessionArtifacts['mappingIndex'] | undefined;
+}
+
+export function applyLaunchBreakpoints(
+  breakpointManager: BreakpointManager,
+  target: LaunchBreakpointsTarget,
+  sendEvent: (event: DebugProtocol.Event) => void
+): void {
+  if (target.listing === undefined) {
+    return;
+  }
+  const applied = breakpointManager.applyAll(
+    target.listing,
+    target.listingPath,
+    target.mappingIndex
+  );
+  for (const bp of applied) {
+    sendEvent(new BreakpointEvent('changed', bp));
+  }
 }
 
 export function applyStepInfo(context: RuntimeControlContext, trace: StepInfo): void {
@@ -62,12 +230,8 @@ export async function runUntilStopAsync(
   let executed = 0;
   let cyclesSinceThrottle = 0;
   let lastThrottleMs = Date.now();
-  const yieldMs =
-    context.getActivePlatform() === 'tec1'
-      ? (context.getTec1Runtime()?.state.yieldMs ?? 0)
-      : context.getActivePlatform() === 'tec1g'
-        ? (context.getTec1gRuntime()?.state.timing.yieldMs ?? 0)
-        : 0;
+  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
+    context.getRuntimeCapabilities();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -80,8 +244,7 @@ export async function runUntilStopAsync(
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
-        context.getTec1Runtime()?.silenceSpeaker();
-        context.getTec1gRuntime()?.silenceSpeaker();
+        getRuntimeCapabilities()?.silenceSpeaker();
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -94,8 +257,7 @@ export async function runUntilStopAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += stepped.cycles ?? 0;
-        context.getTec1Runtime()?.recordCycles(stepped.cycles ?? 0);
-        context.getTec1gRuntime()?.recordCycles(stepped.cycles ?? 0);
+        getRuntimeCapabilities()?.recordCycles(stepped.cycles ?? 0);
         if (stepped.halted) {
           context.handleHaltStop();
           return;
@@ -121,8 +283,7 @@ export async function runUntilStopAsync(
       applyStepInfo(context, trace);
       executed += 1;
       cyclesSinceThrottle += result.cycles ?? 0;
-      context.getTec1Runtime()?.recordCycles(result.cycles ?? 0);
-      context.getTec1gRuntime()?.recordCycles(result.cycles ?? 0);
+      getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
       if (result.halted) {
         context.handleHaltStop();
         return;
@@ -141,10 +302,8 @@ export async function runUntilStopAsync(
       }
     }
     if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const clockHz =
-        context.getActivePlatform() === 'tec1'
-          ? (context.getTec1Runtime()?.state.clockHz ?? 0)
-          : (context.getTec1gRuntime()?.state.timing.clockHz ?? 0);
+      const capabilities = getRuntimeCapabilities();
+      const clockHz = capabilities?.getClockHz() ?? 0;
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
@@ -152,8 +311,8 @@ export async function runUntilStopAsync(
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, waitMs));
-        } else if (yieldMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, yieldMs));
+        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
+          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
         } else {
           await new Promise((resolve) => setImmediate(resolve));
         }
@@ -164,6 +323,7 @@ export async function runUntilStopAsync(
     }
     cyclesSinceThrottle = 0;
     lastThrottleMs = Date.now();
+    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, yieldMs));
     } else {
@@ -186,12 +346,8 @@ export async function runUntilReturnAsync(
   let executed = 0;
   let cyclesSinceThrottle = 0;
   let lastThrottleMs = Date.now();
-  const yieldMs =
-    context.getActivePlatform() === 'tec1'
-      ? (context.getTec1Runtime()?.state.yieldMs ?? 0)
-      : context.getActivePlatform() === 'tec1g'
-        ? (context.getTec1gRuntime()?.state.timing.yieldMs ?? 0)
-        : 0;
+  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
+    context.getRuntimeCapabilities();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -204,8 +360,7 @@ export async function runUntilReturnAsync(
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
-        context.getTec1Runtime()?.silenceSpeaker();
-        context.getTec1gRuntime()?.silenceSpeaker();
+        getRuntimeCapabilities()?.silenceSpeaker();
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -235,8 +390,7 @@ export async function runUntilReturnAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
-        context.getTec1Runtime()?.recordCycles(result.cycles ?? 0);
-        context.getTec1gRuntime()?.recordCycles(result.cycles ?? 0);
+        getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
           context.handleHaltStop();
           return;
@@ -267,10 +421,8 @@ export async function runUntilReturnAsync(
       }
     }
     if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const clockHz =
-        context.getActivePlatform() === 'tec1'
-          ? (context.getTec1Runtime()?.state.clockHz ?? 0)
-          : (context.getTec1gRuntime()?.state.timing.clockHz ?? 0);
+      const capabilities = getRuntimeCapabilities();
+      const clockHz = capabilities?.getClockHz() ?? 0;
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
@@ -278,8 +430,8 @@ export async function runUntilReturnAsync(
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, waitMs));
-        } else if (yieldMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, yieldMs));
+        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
+          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
         } else {
           await new Promise((resolve) => setImmediate(resolve));
         }
@@ -290,6 +442,7 @@ export async function runUntilReturnAsync(
     }
     cyclesSinceThrottle = 0;
     lastThrottleMs = Date.now();
+    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, yieldMs));
     } else {
