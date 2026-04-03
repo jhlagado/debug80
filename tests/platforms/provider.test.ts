@@ -30,7 +30,9 @@ vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
 
 import {
   listPlatforms,
+  registerPlatform,
   resolvePlatformProvider,
+  type PlatformManifestEntry,
 } from '../../src/platforms/provider';
 import { PlatformRegistry } from '../../src/debug/platform-registry';
 import { createSessionState } from '../../src/debug/session-state';
@@ -53,7 +55,40 @@ describe('platform providers', () => {
   });
 
   it('lists the built-in platform manifest entries', () => {
-    expect(listPlatforms()).toEqual(['simple', 'tec1', 'tec1g']);
+    expect(listPlatforms()).toEqual([
+      expect.objectContaining({ id: 'simple', displayName: 'Simple' }),
+      expect.objectContaining({ id: 'tec1', displayName: 'TEC-1' }),
+      expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
+    ]);
+  });
+
+  it('resolves a registered external platform provider', async () => {
+    const customProvider = {
+      id: 'microbee',
+      payload: { id: 'microbee' },
+      extraListings: [],
+      registerCommands: vi.fn(),
+      buildIoHandlers: vi.fn(() => Promise.resolve({ ioHandlers: undefined })),
+      resolveEntry: vi.fn(() => 0x4000),
+    };
+    const entry: PlatformManifestEntry = {
+      id: 'microbee',
+      displayName: 'MicroBee',
+      loadProvider: vi.fn(() => Promise.resolve(customProvider)),
+    };
+
+    registerPlatform(entry);
+
+    expect(listPlatforms()).toContainEqual(expect.objectContaining({ id: 'microbee' }));
+
+    const provider = await resolvePlatformProvider({
+      platform: 'microbee',
+    });
+
+    expect(entry.loadProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ platform: 'microbee' })
+    );
+    expect(provider).toBe(customProvider);
   });
 
   it('builds a simple provider with terminal IO delegation', async () => {

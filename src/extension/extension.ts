@@ -13,11 +13,21 @@ import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { OutputChannelLogger } from '../util/logger';
+import {
+  listPlatforms,
+  registerPlatform,
+  type PlatformManifestEntry,
+} from '../platforms/provider';
+
+export interface Debug80Api {
+  registerPlatform: (entry: PlatformManifestEntry) => void;
+  listPlatforms: () => PlatformManifestEntry[];
+}
 
 /**
  * Activates the Debug80 extension and registers commands/providers.
  */
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): Debug80Api {
   const sessionState = new SessionStateManager();
   const output = vscode.window.createOutputChannel('Debug80');
   const logger = new OutputChannelLogger(output);
@@ -61,6 +71,11 @@ export function activate(context: vscode.ExtensionContext): void {
     terminalPanel,
     workspaceSelection,
   });
+
+  return {
+    registerPlatform,
+    listPlatforms,
+  };
 }
 
 /**
