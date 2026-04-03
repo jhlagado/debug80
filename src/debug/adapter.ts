@@ -186,7 +186,7 @@ export class Z80DebugSession extends DebugSession {
     }
 
     try {
-      const artifacts = buildLaunchSession(
+      const artifacts = await buildLaunchSession(
         merged,
         createLaunchSequenceContext({
           logger: launchLogger,
@@ -208,23 +208,23 @@ export class Z80DebugSession extends DebugSession {
           },
         })
       );
-    applyLaunchSessionArtifacts(
-      { platformState: this.platformState, sessionState: this.sessionState },
-      artifacts
-    );
-    applyLaunchBreakpoints(
-      this.breakpointManager,
-      {
-        listing: this.sessionState.listing,
-        listingPath: this.sessionState.listingPath,
-        mappingIndex: this.sessionState.mappingIndex,
-      },
-      (event) => {
-        this.sendEvent(event);
-      }
-    );
-    this.sendResponse(response);
-    this.sendEntryStopIfNeeded();
+      applyLaunchSessionArtifacts(
+        { platformState: this.platformState, sessionState: this.sessionState },
+        artifacts
+      );
+      applyLaunchBreakpoints(
+        this.breakpointManager,
+        {
+          listing: this.sessionState.listing,
+          listingPath: this.sessionState.listingPath,
+          mappingIndex: this.sessionState.mappingIndex,
+        },
+        (event) => {
+          this.sendEvent(event);
+        }
+      );
+      this.sendResponse(response);
+      this.sendEntryStopIfNeeded();
     } catch (err) {
       if (err instanceof MissingLaunchArtifactsError) {
         await respondToMissingArtifacts(

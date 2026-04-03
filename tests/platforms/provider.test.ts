@@ -28,7 +28,10 @@ vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
   applyCartridgeMemory,
 }));
 
-import { resolvePlatformProvider } from '../../src/platforms/provider';
+import {
+  listPlatforms,
+  resolvePlatformProvider,
+} from '../../src/platforms/provider';
 import { PlatformRegistry } from '../../src/debug/platform-registry';
 import { createSessionState } from '../../src/debug/session-state';
 import type { Tec1gRuntime } from '../../src/platforms/tec1g/runtime';
@@ -49,8 +52,12 @@ describe('platform providers', () => {
     vi.clearAllMocks();
   });
 
-  it('builds a simple provider with terminal IO delegation', () => {
-    const provider = resolvePlatformProvider({
+  it('lists the built-in platform manifest entries', () => {
+    expect(listPlatforms()).toEqual(['simple', 'tec1', 'tec1g']);
+  });
+
+  it('builds a simple provider with terminal IO delegation', async () => {
+    const provider = await resolvePlatformProvider({
       platform: 'simple',
       terminal: { txPort: 4 },
       simple: { entry: 0x1234, extraListings: ['rom.lst'] },
@@ -64,7 +71,7 @@ describe('platform providers', () => {
       romRanges: provider.simpleConfig?.romRanges ?? [],
     });
 
-    provider.buildIoHandlers({
+    await provider.buildIoHandlers({
       terminal: { txPort: 4 },
       onTec1Update: () => undefined,
       onTec1Serial: () => undefined,
@@ -81,8 +88,8 @@ describe('platform providers', () => {
     );
   });
 
-  it('registers TEC-1 commands through the platform registry', () => {
-    const provider = resolvePlatformProvider({
+  it('registers TEC-1 commands through the platform registry', async () => {
+    const provider = await resolvePlatformProvider({
       platform: 'tec1',
       tec1: { entry: 0x4567, extraListings: ['tec1.rom.lst'] },
     });
@@ -117,8 +124,8 @@ describe('platform providers', () => {
     expect(context.sessionState.tec1Runtime?.resetState).toHaveBeenCalledTimes(1);
   });
 
-  it('finalizes TEC-1G runtime setup through the provider hook', () => {
-    const provider = resolvePlatformProvider({
+  it('finalizes TEC-1G runtime setup through the provider hook', async () => {
+    const provider = await resolvePlatformProvider({
       platform: 'tec1g',
       tec1g: {
         entry: 0x2000,
