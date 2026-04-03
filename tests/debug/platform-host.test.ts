@@ -30,8 +30,8 @@ describe('platform-host', () => {
     vi.clearAllMocks();
   });
 
-  it('returns undefined handlers when platform config is missing', () => {
-    const result = buildPlatformIoHandlers({
+  it('returns undefined handlers when platform config is missing', async () => {
+    const result = await buildPlatformIoHandlers({
       platform: 'tec1',
       onTec1Update: () => undefined,
       onTec1Serial: () => undefined,
@@ -44,8 +44,8 @@ describe('platform-host', () => {
     expect(result.tec1Runtime).toBeUndefined();
   });
 
-  it('creates tec1 runtime when config is provided', () => {
-    const result = buildPlatformIoHandlers({
+  it('creates tec1 runtime when config is provided', async () => {
+    const result = await buildPlatformIoHandlers({
       platform: 'tec1',
       tec1Config: { regions: [], romRanges: [], entry: 0, appStart: 0, updateMs: 16, yieldMs: 0 },
       onTec1Update: () => undefined,
@@ -59,8 +59,8 @@ describe('platform-host', () => {
     expect(result.tec1Runtime).toBeDefined();
   });
 
-  it('creates tec1g runtime when config is provided', () => {
-    const result = buildPlatformIoHandlers({
+  it('creates tec1g runtime when config is provided', async () => {
+    const result = await buildPlatformIoHandlers({
       platform: 'tec1g',
       tec1gConfig: { regions: [], romRanges: [], entry: 0, appStart: 0, updateMs: 16, yieldMs: 0 },
       onTec1Update: () => undefined,
@@ -74,9 +74,9 @@ describe('platform-host', () => {
     expect(result.tec1gRuntime).toBeDefined();
   });
 
-  it('builds terminal io handlers for simple platform', () => {
+  it('builds terminal io handlers for simple platform', async () => {
     const output: string[] = [];
-    const result = buildPlatformIoHandlers({
+    const result = await buildPlatformIoHandlers({
       platform: 'simple',
       terminal: { txPort: 4, rxPort: 5, statusPort: 6, interrupt: true },
       onTec1Update: () => undefined,
@@ -106,8 +106,8 @@ describe('platform-host', () => {
     expect(tickResult?.interrupt?.data).toBe(0x38);
   });
 
-  it('returns undefined handlers for simple platform without terminal', () => {
-    const result = buildPlatformIoHandlers({
+  it('returns undefined handlers for simple platform without terminal', async () => {
+    const result = await buildPlatformIoHandlers({
       platform: 'simple',
       onTec1Update: () => undefined,
       onTec1Serial: () => undefined,

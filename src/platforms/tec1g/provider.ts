@@ -169,7 +169,7 @@ export function createTec1gPlatformProvider(
     registerCommands: (registry, context): void => {
       registry.register(buildTec1gContribution(context));
     },
-    buildIoHandlers: (callbacks): PlatformIoBuildResult =>
+    buildIoHandlers: async (callbacks): Promise<PlatformIoBuildResult> =>
       buildPlatformIoHandlers({
         platform: 'tec1g',
         tec1gConfig,
