@@ -1,58 +1,53 @@
 # Debug80 Codebase Improvement Plan
 
 Date: 2026-02-03
-Last Updated: 2026-04-02
+Last Updated: 2026-04-03
 
 ## Current State Assessment
 
-Debug80 is a functional Z80 debug adapter for VS Code with TEC-1/TEC-1G platform emulation. The core Z80 emulation and source mapping systems are solid. The TypeScript config is strict, dependencies are minimal, and the documentation is above average. However, the codebase shows clear signs of organic growth without periodic refactoring. Several files have become load-bearing monoliths, the UI layer is architecturally problematic, test coverage has critical gaps, and platform-specific logic is tangled into the adapter core.
+Debug80 is a functional Z80 debug adapter for VS Code with TEC-1/TEC-1G platform emulation. The core Z80 emulation and source mapping systems are solid. The TypeScript config is strict, dependencies are minimal, and the documentation is above average. The recent refactor batch materially improved the adapter, runtime-control, webview, and testing seams. However, a few load-bearing files are still oversized, and a couple of platform-specific areas still need follow-on cleanup.
 
-This is an honest assessment — the project works, but scaling it (new platforms, new features, new contributors) will be painful without structural changes.
+This is still an honest assessment: the project works, but scaling it (new platforms, new features, new contributors) will be painful without keeping the remaining structural debt under control.
 
 ## 2026-04 Batch Completed
 
 The tracked backlog batch that followed this plan has now landed:
 
 - Platform command/provider extraction from `src/debug/adapter.ts`
-- Extension activation split out of the old `src/extension/extension.ts` monolith
-- Native D8/ZAX map preference aligned with the design
-- Adapter integration coverage added for launch/custom-request seams
-- TEC-1G ownership cleanup from `src/debug/` into `src/platforms/tec1g/`
-- ST7920 font moved from generated TypeScript to a binary asset
-- TEC-1 / TEC-1G panel helper dedupe at the shared-helper layer
-- Consistent first-slice logger abstraction introduced
-- Pre-commit hooks added
-- First TEC-1G runtime extraction slice landed for serial bitbang handling
+- Runtime-control seam extraction for stepping/throttling and launch-session helpers
+- TEC-1G I/O handler extraction from `src/platforms/tec1g/runtime.ts`
+- TEC-1G runtime clock and speaker fixes that followed the extraction
+- TEC-1G matrix UI regression coverage
+- TEC-1 memory panel regression coverage
+- TEC-1G display-renderer coverage deepening
+- TEC-1G runtime/docs cleanup and related follow-up closures
 
 This means the plan below should now be read as historical context plus residual follow-up areas, not as the current active queue.
 
-## Next Batch
+## Residual Hotspots
 
-The next useful refactor batch is smaller and more targeted:
+The next useful work is narrower than the previous batch:
 
-1. Continue splitting `src/platforms/tec1g/runtime.ts`
-   Focus on GLCD/LCD state machines, keypad/matrix scanning, and remaining device clusters.
+1. Finish splitting `src/debug/adapter.ts`
+   The adapter is still above the hard limit and still holds a small amount of remaining DAP/session glue.
 
-2. Continue decomposing `src/debug/adapter.ts`
-   The platform-provider extraction landed, but the adapter is still a large load-bearing file with room to peel off more DAP/session responsibilities.
+2. Continue decomposing `src/platforms/tec1g/runtime.ts`
+   The I/O coordination block is extracted, but lifecycle/state coordination still needs another pass.
 
-3. Split `src/extension/platform-view-provider.ts`
-   This is now one of the main extension-side monoliths after the activation split.
+3. Modernize `src/platforms/tec1/memory-panel-html.ts`
+   The template is still blob-like even though the behavior is now covered by tests.
 
-4. Decompose `webview/tec1g/index.ts`
-   Helper dedupe landed, but the TEC-1G webview controller is still a large load-bearing browser-side file.
-
-5. Extend the shared logger migration
-   The core debug-path slice landed, but extension/webview/platform call sites still need gradual adoption.
+4. Keep the docs concise as this history accumulates
+   The improvement plan should stay as a short status note, not a second backlog tracker.
 
 ### Current Line Counts (Critical Files)
 
 | File | Lines | Status |
 |------|-------|--------|
-| `src/debug/adapter.ts` | 1,328 | God file - needs splitting |
+| `src/debug/adapter.ts` | 638 | Still above hard limit |
 | `src/extension/extension.ts` | 1,075 | Does too much |
 | `src/z80/decode.ts` | 248 | Thin entry point |
-| `src/platforms/tec1g/runtime.ts` | 1,417 | Complex, has bugs |
+| `src/platforms/tec1g/runtime.ts` | 736 | Complex, needs another slice |
 | `webview/tec1g/index.ts` | 1,210 | Webview UI (TypeScript) |
 | `src/platforms/tec1/runtime.ts` | 549 | Simpler, OK for now |
 | `webview/tec1/index.ts` | 526 | Webview UI (TypeScript) |
