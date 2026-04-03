@@ -39,8 +39,8 @@ export interface RuntimeControlContext {
 export interface RuntimeControlCapabilities {
   recordCycles: (cycles: number) => void;
   silenceSpeaker: () => void;
-  clockHz: number;
-  yieldMs: number;
+  getClockHz: () => number;
+  getYieldMs: () => number;
 }
 
 export interface RuntimeControlContextInput {
@@ -117,8 +117,8 @@ export function createRuntimeControlCapabilities(options: {
     return {
       recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
       silenceSpeaker: (): void => runtime.silenceSpeaker(),
-      clockHz: runtime.state.clockHz,
-      yieldMs: runtime.state.yieldMs,
+      getClockHz: (): number => runtime.state.clockHz,
+      getYieldMs: (): number => runtime.state.yieldMs,
     };
   }
   if (options.activePlatform === 'tec1g') {
@@ -129,8 +129,8 @@ export function createRuntimeControlCapabilities(options: {
     return {
       recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
       silenceSpeaker: (): void => runtime.silenceSpeaker(),
-      clockHz: runtime.state.timing.clockHz,
-      yieldMs: runtime.state.timing.yieldMs,
+      getClockHz: (): number => runtime.state.timing.clockHz,
+      getYieldMs: (): number => runtime.state.timing.yieldMs,
     };
   }
   return undefined;
@@ -230,8 +230,8 @@ export async function runUntilStopAsync(
   let executed = 0;
   let cyclesSinceThrottle = 0;
   let lastThrottleMs = Date.now();
-  const runtimeCapabilities = context.getRuntimeCapabilities();
-  const yieldMs = runtimeCapabilities?.yieldMs ?? 0;
+  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
+    context.getRuntimeCapabilities();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -244,7 +244,7 @@ export async function runUntilStopAsync(
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
-        runtimeCapabilities?.silenceSpeaker();
+        getRuntimeCapabilities()?.silenceSpeaker();
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -257,7 +257,7 @@ export async function runUntilStopAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += stepped.cycles ?? 0;
-        runtimeCapabilities?.recordCycles(stepped.cycles ?? 0);
+        getRuntimeCapabilities()?.recordCycles(stepped.cycles ?? 0);
         if (stepped.halted) {
           context.handleHaltStop();
           return;
@@ -283,7 +283,7 @@ export async function runUntilStopAsync(
       applyStepInfo(context, trace);
       executed += 1;
       cyclesSinceThrottle += result.cycles ?? 0;
-      runtimeCapabilities?.recordCycles(result.cycles ?? 0);
+      getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
       if (result.halted) {
         context.handleHaltStop();
         return;
@@ -302,7 +302,8 @@ export async function runUntilStopAsync(
       }
     }
     if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const clockHz = runtimeCapabilities?.clockHz ?? 0;
+      const capabilities = getRuntimeCapabilities();
+      const clockHz = capabilities?.getClockHz() ?? 0;
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
@@ -310,8 +311,8 @@ export async function runUntilStopAsync(
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, waitMs));
-        } else if (yieldMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, yieldMs));
+        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
+          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
         } else {
           await new Promise((resolve) => setImmediate(resolve));
         }
@@ -322,6 +323,7 @@ export async function runUntilStopAsync(
     }
     cyclesSinceThrottle = 0;
     lastThrottleMs = Date.now();
+    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, yieldMs));
     } else {
@@ -344,8 +346,8 @@ export async function runUntilReturnAsync(
   let executed = 0;
   let cyclesSinceThrottle = 0;
   let lastThrottleMs = Date.now();
-  const runtimeCapabilities = context.getRuntimeCapabilities();
-  const yieldMs = runtimeCapabilities?.yieldMs ?? 0;
+  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
+    context.getRuntimeCapabilities();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -358,7 +360,7 @@ export async function runUntilReturnAsync(
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
-        runtimeCapabilities?.silenceSpeaker();
+        getRuntimeCapabilities()?.silenceSpeaker();
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -388,7 +390,7 @@ export async function runUntilReturnAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
-        runtimeCapabilities?.recordCycles(result.cycles ?? 0);
+        getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
           context.handleHaltStop();
           return;
@@ -419,7 +421,8 @@ export async function runUntilReturnAsync(
       }
     }
     if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const clockHz = runtimeCapabilities?.clockHz ?? 0;
+      const capabilities = getRuntimeCapabilities();
+      const clockHz = capabilities?.getClockHz() ?? 0;
       if (clockHz > 0) {
         const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
         const now = Date.now();
@@ -427,8 +430,8 @@ export async function runUntilReturnAsync(
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, waitMs));
-        } else if (yieldMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, yieldMs));
+        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
+          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
         } else {
           await new Promise((resolve) => setImmediate(resolve));
         }
@@ -439,6 +442,7 @@ export async function runUntilReturnAsync(
     }
     cyclesSinceThrottle = 0;
     lastThrottleMs = Date.now();
+    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, yieldMs));
     } else {
