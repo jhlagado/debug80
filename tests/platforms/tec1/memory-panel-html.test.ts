@@ -1,12 +1,16 @@
 /**
  * @file TEC-1 memory panel HTML regression tests.
  */
+
 // @vitest-environment jsdom
 
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getTec1MemoryHtml, type Tec1MemorySnapshotPayload } from '../../../src/platforms/tec1/memory-panel-html';
+import {
+  getTec1MemoryHtml,
+  type Tec1MemorySnapshotPayload,
+} from '../../../src/platforms/tec1/memory-panel-html';
 
 type RefreshMessage = {
   type: 'refresh';
@@ -211,6 +215,70 @@ describe('tec1 memory panel html', () => {
         { id: 'c', view: 'hl', after: 16, address: undefined },
         { id: 'd', view: 'de', after: 16, address: undefined },
       ],
+    });
+  });
+
+  it('executes the shipped script to render snapshots and surface snapshot errors', () => {
+    const { window } = harness;
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          type: 'snapshot',
+          views: [
+            {
+              id: 'a',
+              view: 'pc',
+              address: 0x1234,
+              start: 0x1230,
+              bytes: [0x41, 0x42, 0x43, 0x44],
+              focus: 1,
+              symbol: 'START',
+              after: 16,
+            },
+          ],
+          symbols: [{ name: 'START', address: 0x1234 }],
+        },
+      }),
+    );
+
+    expect(harness.status.textContent).toBe('Updated');
+    expect(harness.dumpA.innerHTML).toContain('byte focus');
+    expect(harness.dumpA.textContent).toContain('ABCD');
+    expect(harness.symA.textContent).toBe('START');
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'snapshotError', message: 'No active z80 session.' },
+      }),
+    );
+
+    expect(harness.status.textContent).toBe('No active z80 session.');
+  });
+
+  it('converts symbol selections into absolute refresh addresses', () => {
+    harness.messages.length = 0;
+
+    harness.window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          type: 'snapshot',
+          views: [],
+          symbols: [{ name: 'START', address: 0x1234 }],
+        },
+      }),
+    );
+
+    harness.viewA.value = 'symbol:START';
+    harness.viewA.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+
+    expect(harness.addressA.value).toBe('0x1234');
+    expect(harness.messages).toHaveLength(1);
+    expect(harness.messages[0].views.find((entry) => entry.id === 'a')).toEqual({
+      id: 'a',
+      view: 'absolute',
+      after: 16,
+      address: 0x1234,
     });
   });
 });
