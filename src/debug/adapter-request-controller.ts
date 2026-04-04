@@ -40,6 +40,18 @@ export interface AdapterRequestControllerDeps {
 export class AdapterRequestController {
   public constructor(private readonly deps: AdapterRequestControllerDeps) {}
 
+  public markLaunchComplete(): void {
+    this.deps.sessionState.runState.launchComplete = true;
+  }
+
+  public startConfiguredExecutionIfReady(): void {
+    const runState = this.deps.sessionState.runState;
+    if (!runState.launchComplete || !runState.configurationDone || runState.stopOnEntry) {
+      return;
+    }
+    this.runUntilStop();
+  }
+
   public setBreakPointsRequest(
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments
@@ -82,11 +94,9 @@ export class AdapterRequestController {
     response: DebugProtocol.ConfigurationDoneResponse,
     _args: DebugProtocol.ConfigurationDoneArguments
   ): void {
+    this.deps.sessionState.runState.configurationDone = true;
     this.deps.sendResponse(response);
-
-    if (!this.deps.sessionState.runState.stopOnEntry) {
-      this.runUntilStop();
-    }
+    this.startConfiguredExecutionIfReady();
   }
 
   public threadsRequest(response: DebugProtocol.ThreadsResponse): void {

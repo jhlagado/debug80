@@ -45,6 +45,7 @@ import {
   TEC_FAST_HZ,
   TEC_KEY_HOLD_MS,
   calculateKeyHoldCycles,
+  millisecondsToClocks,
 } from '../tec-common';
 import { createTec1gIoHandlers } from './io-handlers';
 
@@ -54,10 +55,12 @@ import { createTec1gIoHandlers } from './io-handlers';
 export interface Tec1gState {
   display: {
     digits: number[];
-    matrix: number[];
+    ledMatrixRows: number[];
+    ledMatrixBrightness: number[];
     digitLatch: number;
     segmentLatch: number;
-    matrixLatch: number;
+    ledMatrixRowLatch: number;
+    ledMatrixDataLatch: number;
     glcdCtrl: GlcdState;
   };
   input: {
@@ -118,6 +121,46 @@ export interface Tec1gRuntime {
 export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
+const TEC1G_MATRIX_PERSISTENCE_MS = 40;
+const TEC1G_MATRIX_BRIGHTNESS_GAIN = 16;
+
+/**
+ *
+ */
+function updateLedMatrixBrightness(
+  display: Tec1gState['display'],
+  clockHz: number,
+  cycles: number
+): boolean {
+  if (cycles <= 0 || clockHz <= 0) {
+    return false;
+  }
+
+  const persistenceCycles = millisecondsToClocks(clockHz, TEC1G_MATRIX_PERSISTENCE_MS);
+  const decay = (cycles * 255) / persistenceCycles;
+  const exposure = decay * TEC1G_MATRIX_BRIGHTNESS_GAIN;
+  const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
+  const dataMask = display.ledMatrixDataLatch & TEC1G_MASK_BYTE;
+  let changed = false;
+
+  for (let row = 0; row < 8; row += 1) {
+    const rowSelected = (rowMask & (1 << row)) !== 0;
+    const base = row * 8;
+    for (let col = 0; col < 8; col += 1) {
+      const index = base + col;
+      const columnSelected = (dataMask & (1 << col)) !== 0;
+      const current = display.ledMatrixBrightness[index] ?? 0;
+      const faded = current > 0 ? Math.max(0, current - decay) : 0;
+      const next = rowSelected && columnSelected ? Math.min(255, faded + exposure) : faded;
+      if (Math.abs(next - current) > 0.0001) {
+        display.ledMatrixBrightness[index] = next;
+        changed = true;
+      }
+    }
+  }
+
+  return changed;
+}
 
 /**
  * Normalizes TEC-1G configuration with defaults and bounds.
@@ -247,10 +290,12 @@ export function createTec1gRuntime(
   const state: Tec1gState = {
     display: {
       digits: Array.from({ length: 6 }, () => 0),
-      matrix: Array.from({ length: 8 }, () => 0),
+      ledMatrixRows: Array.from({ length: 8 }, () => 0),
+      ledMatrixBrightness: Array.from({ length: 64 }, () => 0),
       digitLatch: 0,
       segmentLatch: 0,
-      matrixLatch: 0,
+      ledMatrixRowLatch: 0,
+      ledMatrixDataLatch: 0,
       glcdCtrl: createGlcdState(),
     },
     input: {
@@ -423,6 +468,9 @@ export function createTec1gRuntime(
       return;
     }
     timing.cycleClock.advance(cycles);
+    if (updateLedMatrixBrightness(display, timing.clockHz, cycles)) {
+      queueUpdate();
+    }
   };
 
   const silenceSpeaker = (): void => {
@@ -447,7 +495,10 @@ export function createTec1gRuntime(
     audio.speakerHz = 0;
     audio.lastEdgeCycle = null;
     lcd.reset();
-    display.matrix.fill(0);
+    display.ledMatrixRows.fill(0);
+    display.ledMatrixBrightness.fill(0);
+    display.ledMatrixRowLatch = 0;
+    display.ledMatrixDataLatch = 0;
     input.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     input.matrixModeEnabled = matrixMode;
     glcd.reset();
