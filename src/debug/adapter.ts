@@ -223,7 +223,9 @@ export class Z80DebugSession extends DebugSession {
           this.sendEvent(event);
         }
       );
+      this.requestController.markLaunchComplete();
       this.sendResponse(response);
+      this.requestController.startConfiguredExecutionIfReady();
       this.sendEntryStopIfNeeded();
     } catch (err) {
       if (err instanceof MissingLaunchArtifactsError) {

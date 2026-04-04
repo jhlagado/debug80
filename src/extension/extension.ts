@@ -113,6 +113,7 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
       const serializeState = (uiState: Tec1gUiState): Record<string, unknown> => ({
         digits: uiState.digits,
         matrix: uiState.matrix,
+        matrixBrightness: uiState.matrixBrightness,
         glcd: uiState.glcd,
         glcdDdram: uiState.glcdDdram,
         glcdState: uiState.glcdState,
@@ -152,6 +153,7 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
             uiRevision,
             digits: tec1gState.digits,
             matrix: tec1gState.matrix,
+            matrixBrightness: tec1gState.matrixBrightness,
             glcd: tec1gState.glcd,
             speaker: false,
             speedMode: tec1gState.speedMode,

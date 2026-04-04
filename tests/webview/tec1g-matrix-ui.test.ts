@@ -80,6 +80,30 @@ describe('tec1g matrix ui', () => {
     expect(matrixCapsStatus.classList.contains('on')).toBe(true);
   });
 
+  it('renders matrix brightness as a fading display level', () => {
+    const firstDot = document.querySelector('.matrix-dot') as HTMLElement;
+
+    controller.applyMatrixRows([0x01]);
+    controller.applyMatrixBrightness([255, 0, 0, 0, 0, 0, 0, 0]);
+
+    expect(firstDot.classList.contains('on')).toBe(true);
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('1.000');
+
+    controller.applyMatrixBrightness(Array.from({ length: 64 }, () => 0));
+
+    expect(firstDot.classList.contains('on')).toBe(false);
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.000');
+  });
+
+  it('falls back to latch rows before brightness data arrives', () => {
+    const firstDot = document.querySelector('.matrix-dot') as HTMLElement;
+
+    controller.applyMatrixRows([0x01]);
+
+    expect(firstDot.classList.contains('on')).toBe(true);
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('1.000');
+  });
+
   it('tracks modifier state when clicking matrix keys', () => {
     controller.applyMatrixMode(true);
     const matrixShift = document.getElementById('matrixShift') as HTMLElement;

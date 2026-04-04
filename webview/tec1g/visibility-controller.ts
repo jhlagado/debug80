@@ -4,10 +4,10 @@ const DEFAULT_VISIBILITY = {
   lcd: true,
   display: true,
   keypad: true,
-  matrixKeyboard: true,
+  matrixKeyboard: false,
   matrix: false,
-  glcd: false,
-  serial: true,
+  glcd: true,
+  serial: false,
 };
 
 type UiVisibility = Record<string, boolean>;

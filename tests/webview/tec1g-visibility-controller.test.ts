@@ -20,6 +20,24 @@ describe('tec1g visibility controller', () => {
     buildDom();
   });
 
+  it('uses the revised default visible sections', () => {
+    const controller = createVisibilityController({
+      getState: () => null,
+      postMessage: () => undefined,
+      setState: () => undefined,
+    });
+
+    controller.wire();
+
+    expect((document.querySelector('[data-section="lcd"]') as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('[data-section="display"]') as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('[data-section="keypad"]') as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('[data-section="glcd"]') as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('[data-section="serial"]') as HTMLInputElement).checked).toBe(false);
+    expect((document.querySelector('[data-section="matrix"]') as HTMLInputElement).checked).toBe(false);
+    expect((document.querySelector('[data-section="matrixKeyboard"]') as HTMLInputElement).checked).toBe(false);
+  });
+
   it('loads persisted visibility state into the DOM and checkboxes', () => {
     const controller = createVisibilityController({
       getState: () => ({ uiVisibility: { glcd: true, serial: false } }),

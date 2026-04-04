@@ -166,6 +166,7 @@ export function registerDebugSessionHandlers({
         const payload = evt.body as {
           digits?: number[];
           matrix?: number[];
+          matrixBrightness?: number[];
           glcd?: number[];
           glcdDdram?: number[];
           glcdState?: {
@@ -191,6 +192,9 @@ export function registerDebugSessionHandlers({
         const update = {
           digits: payload.digits,
           matrix: payload.matrix,
+          ...(payload.matrixBrightness !== undefined
+            ? { matrixBrightness: payload.matrixBrightness }
+            : {}),
           glcd: payload.glcd,
           speaker: payload.speaker ?? 0,
           speedMode: payload.speedMode ?? 'slow',

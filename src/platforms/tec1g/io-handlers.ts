@@ -37,10 +37,46 @@ import {
   TEC_SILENCE_CYCLES,
   calculateSpeakerFrequency,
   updateDisplayDigits,
-  updateMatrixRow,
 } from '../tec-common';
 import { decodeSysCtrl } from './sysctrl';
 import type { IoHandlers } from '../../z80/runtime';
+
+/**
+ *
+ */
+function rebuildLedMatrixRows(display: Tec1gState['display']): boolean {
+  let changed = false;
+  const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
+  const dataMask = display.ledMatrixDataLatch & TEC1G_MASK_BYTE;
+  for (let row = 0; row < 8; row += 1) {
+    const next = (rowMask & (1 << row)) !== 0 ? dataMask : 0;
+    if (display.ledMatrixRows[row] !== next) {
+      display.ledMatrixRows[row] = next;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ *
+ */
+function updateLedMatrixLatches(
+  display: Tec1gState['display'],
+  nextRowLatch: number,
+  nextDataLatch: number
+): boolean {
+  let changed = false;
+  if (display.ledMatrixRowLatch !== nextRowLatch) {
+    display.ledMatrixRowLatch = nextRowLatch;
+    changed = true;
+  }
+  if (display.ledMatrixDataLatch !== nextDataLatch) {
+    display.ledMatrixDataLatch = nextDataLatch;
+    changed = true;
+  }
+  return rebuildLedMatrixRows(display) || changed;
+}
 
 type Tec1gIoTiming = Pick<Tec1gState['timing'], 'cycleClock' | 'clockHz'>;
 
@@ -126,7 +162,13 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrix = (rowMask: number): void => {
-    if (updateMatrixRow(display.ledMatrixRows, rowMask, display.ledMatrixDataLatch)) {
+    if (updateLedMatrixLatches(display, rowMask & TEC1G_MASK_BYTE, display.ledMatrixDataLatch)) {
+      queueUpdate();
+    }
+  };
+
+  const updateLedMatrixData = (dataMask: number): void => {
+    if (updateLedMatrixLatches(display, display.ledMatrixRowLatch, dataMask & TEC1G_MASK_BYTE)) {
       queueUpdate();
     }
   };
@@ -221,7 +263,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         return;
       }
       if (p === TEC1G_PORT_8X8_DATA) {
-        display.ledMatrixDataLatch = value & TEC1G_MASK_BYTE;
+        updateLedMatrixData(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_8X8_ROW) {

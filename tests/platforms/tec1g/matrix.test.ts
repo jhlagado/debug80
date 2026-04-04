@@ -40,7 +40,11 @@ describe('TEC-1G matrix keyboard', () => {
     rt.ioHandlers.write(0x05, 0x04);
 
     expect(rt.state.display.ledMatrixDataLatch).toBe(0xaa);
+    expect(rt.state.display.ledMatrixRowLatch).toBe(0x04);
     expect(rt.state.display.ledMatrixRows[2]).toBe(0xaa);
+    expect(rt.state.display.ledMatrixRows[0]).toBe(0x00);
+    rt.recordCycles(4096);
+    expect(rt.state.display.ledMatrixBrightness[17]).toBeGreaterThan(0);
     expect(rt.ioHandlers.read(0x02fe) & (1 << 4)).toBe(0);
   });
 
@@ -58,8 +62,50 @@ describe('TEC-1G matrix keyboard', () => {
     rt.ioHandlers.write(0x05, 0x01);
     rt.resetState();
 
+    expect(rt.state.display.ledMatrixRowLatch).toBe(0);
     expect(rt.state.display.ledMatrixDataLatch).toBe(0);
+    expect(rt.state.display.ledMatrixBrightness).toEqual(Array.from({ length: 64 }, () => 0));
     expect(rt.state.display.ledMatrixRows).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it('treats the visible matrix as the direct result of row and data latches', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0x01);
+    rt.ioHandlers.write(0x05, 0x03);
+
+    expect(rt.state.display.ledMatrixRows).toEqual([0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+    rt.ioHandlers.write(0x06, 0x02);
+    expect(rt.state.display.ledMatrixRows).toEqual([0x02, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+    rt.ioHandlers.write(0x05, 0x04);
+    expect(rt.state.display.ledMatrixRows).toEqual([0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+    rt.recordCycles(4096 * 300);
+    expect(rt.state.display.ledMatrixRows).toEqual([0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]);
+  });
+
+  it('accumulates brightness while a row is selected and decays after the scan moves on', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0x01);
+    rt.ioHandlers.write(0x05, 0x01);
+    rt.recordCycles(4096);
+    const firstLevel = rt.state.display.ledMatrixBrightness[0];
+
+    expect(firstLevel).toBeGreaterThan(0);
+
+    rt.recordCycles(4096);
+    expect(rt.state.display.ledMatrixBrightness[0]).toBeGreaterThan(firstLevel);
+
+    rt.ioHandlers.write(0x05, 0x02);
+    rt.recordCycles(4096);
+    expect(rt.state.display.ledMatrixBrightness[0]).toBeLessThan(255);
+    expect(rt.state.display.ledMatrixBrightness[8]).toBeGreaterThan(0);
+
+    rt.recordCycles(4096 * 40);
+    expect(rt.state.display.ledMatrixBrightness[0]).toBe(0);
   });
 
   it('suppresses keypad NMI when matrix mode is enabled', () => {

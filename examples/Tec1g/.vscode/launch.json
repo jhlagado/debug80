@@ -8,6 +8,14 @@
       "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
       "target": "mon3-serial",
       "stopOnEntry": true
+    },
+    {
+      "name": "Debug (TEC-1G MON-3 + Matrix Scan)",
+      "type": "z80",
+      "request": "launch",
+      "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
+      "target": "mon3-matrix-scan",
+      "stopOnEntry": true
     }
   ]
 }
