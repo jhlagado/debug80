@@ -54,10 +54,10 @@ import { createTec1gIoHandlers } from './io-handlers';
 export interface Tec1gState {
   display: {
     digits: number[];
-    matrix: number[];
+    ledMatrixRows: number[];
     digitLatch: number;
     segmentLatch: number;
-    matrixLatch: number;
+    ledMatrixDataLatch: number;
     glcdCtrl: GlcdState;
   };
   input: {
@@ -247,10 +247,10 @@ export function createTec1gRuntime(
   const state: Tec1gState = {
     display: {
       digits: Array.from({ length: 6 }, () => 0),
-      matrix: Array.from({ length: 8 }, () => 0),
+      ledMatrixRows: Array.from({ length: 8 }, () => 0),
       digitLatch: 0,
       segmentLatch: 0,
-      matrixLatch: 0,
+      ledMatrixDataLatch: 0,
       glcdCtrl: createGlcdState(),
     },
     input: {
@@ -447,7 +447,8 @@ export function createTec1gRuntime(
     audio.speakerHz = 0;
     audio.lastEdgeCycle = null;
     lcd.reset();
-    display.matrix.fill(0);
+    display.ledMatrixRows.fill(0);
+    display.ledMatrixDataLatch = 0;
     input.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     input.matrixModeEnabled = matrixMode;
     glcd.reset();

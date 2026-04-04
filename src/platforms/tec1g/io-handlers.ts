@@ -4,6 +4,8 @@
 
 import type { Tec1gState } from './runtime';
 import {
+  TEC1G_PORT_8X8_DATA,
+  TEC1G_PORT_8X8_ROW,
   TEC1G_DIGIT_SERIAL_TX,
   TEC1G_DIGIT_SPEAKER,
   TEC1G_PORT_DIGIT,
@@ -12,9 +14,7 @@ import {
   TEC1G_PORT_KEYBOARD,
   TEC1G_PORT_LCD_CMD,
   TEC1G_PORT_LCD_DATA,
-  TEC1G_PORT_MATRIX,
-  TEC1G_PORT_MATRIX_LATCH,
-  TEC1G_PORT_MATRIX_STROBE,
+  TEC1G_PORT_MATRIX_KEYBOARD,
   TEC1G_PORT_RTC,
   TEC1G_PORT_SD,
   TEC1G_PORT_SEGMENT,
@@ -125,8 +125,8 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
     }
   };
 
-  const updateMatrix = (rowMask: number): void => {
-    if (updateMatrixRow(display.matrix, rowMask, display.matrixLatch)) {
+  const updateLedMatrix = (rowMask: number): void => {
+    if (updateMatrixRow(display.ledMatrixRows, rowMask, display.ledMatrixDataLatch)) {
       queueUpdate();
     }
   };
@@ -153,7 +153,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         const key = input.keyValue & TEC1G_MASK_LOW7;
         return key | (serial.getRxLevel() ? TEC1G_STATUS_SERIAL_RX : 0);
       }
-      if (p === TEC1G_PORT_MATRIX) {
+      if (p === TEC1G_PORT_MATRIX_KEYBOARD) {
         if (!input.matrixModeEnabled) {
           return TEC1G_MASK_BYTE;
         }
@@ -220,12 +220,12 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         updateDisplay();
         return;
       }
-      if (p === TEC1G_PORT_MATRIX_LATCH) {
-        display.matrixLatch = value & TEC1G_MASK_BYTE;
+      if (p === TEC1G_PORT_8X8_DATA) {
+        display.ledMatrixDataLatch = value & TEC1G_MASK_BYTE;
         return;
       }
-      if (p === TEC1G_PORT_MATRIX_STROBE) {
-        updateMatrix(value & TEC1G_MASK_BYTE);
+      if (p === TEC1G_PORT_8X8_ROW) {
+        updateLedMatrix(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_RTC) {
@@ -256,7 +256,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         glcd.writeData(value & TEC1G_MASK_BYTE);
         return;
       }
-      if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX) {
+      if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX_KEYBOARD) {
         logPortWrite(p, value);
         return;
       }

@@ -175,10 +175,10 @@ describe('platform providers', () => {
       state: {
         display: {
           digits: [],
-          matrix: [],
+          ledMatrixRows: [],
           digitLatch: 0,
           segmentLatch: 0,
-          matrixLatch: 0,
+          ledMatrixDataLatch: 0,
           glcdCtrl: {} as never,
         },
         input: {
