@@ -1,5 +1,6 @@
 export interface MatrixUiController {
   applyMatrixRows(rows: number[]): void;
+  applyMatrixBrightness(levels: number[]): void;
   applyCapsLock(enabled: boolean): void;
   applyMatrixMode(enabled: boolean): void;
   handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean;
@@ -33,6 +34,8 @@ export function createMatrixUiController(
   };
   const matrixKeyElements = new Map<string, HTMLElement>();
   let matrixRows = new Array(8).fill(0);
+  let matrixBrightness = new Array(64).fill(0);
+  let hasMatrixBrightness = false;
 
   function buildMatrix() {
     if (!matrixGrid) return;
@@ -55,12 +58,30 @@ export function createMatrixUiController(
       const row = parseInt((dot as HTMLElement).dataset.row || '0', 10);
       const col = parseInt((dot as HTMLElement).dataset.col || '0', 10);
       const mask = 1 << col;
-      if (matrixRows[row] & mask) {
+      const level = hasMatrixBrightness
+        ? matrixBrightness[row * 8 + col] ?? 0
+        : (matrixRows[row] & mask) !== 0
+        ? 255
+        : 0;
+      (dot as HTMLElement).style.setProperty('--matrix-level', (level / 255).toFixed(3));
+      if (level > 0) {
         dot.classList.add('on');
       } else {
         dot.classList.remove('on');
       }
     });
+  }
+
+  function applyMatrixBrightness(levels: number[]) {
+    hasMatrixBrightness = true;
+    matrixBrightness = Array.from({ length: 64 }, (_, index) => {
+      const value = levels[index];
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return 0;
+      }
+      return Math.max(0, Math.min(255, Math.trunc(value)));
+    });
+    drawMatrix();
   }
 
   function applyMatrixMode(enabled) {
@@ -283,6 +304,7 @@ export function createMatrixUiController(
       }
       drawMatrix();
     },
+    applyMatrixBrightness,
     applyCapsLock,
     applyMatrixMode,
     handleKeyEvent,

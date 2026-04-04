@@ -51,6 +51,8 @@ export interface SessionStateShape {
  */
 export interface RunState {
   stopOnEntry: boolean;
+  launchComplete: boolean;
+  configurationDone: boolean;
   haltNotified: boolean;
   lastStopReason: StopReason | undefined;
   lastBreakpointAddress: number | null;
@@ -85,6 +87,8 @@ export function createSessionState(): SessionStateShape {
     extraListingPaths: [],
     runState: {
       stopOnEntry: false,
+      launchComplete: false,
+      configurationDone: false,
       haltNotified: false,
       lastStopReason: undefined,
       lastBreakpointAddress: null,

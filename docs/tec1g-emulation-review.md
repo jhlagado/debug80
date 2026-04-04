@@ -214,7 +214,7 @@ Multiplexed scanning — **Complete**
 | Feature                              | Rating       | Notes                           |
 | ------------------------------------ | ------------ | ------------------------------- |
 | Row select (port 0x05, U13 74HCT273) | **Complete** | `updateMatrixRow` handler       |
-| Column data (port 0x06)              | **Complete** | Latched via `matrixLatch` state |
+| Column data (port 0x06)              | **Complete** | Latched via `ledMatrixDataLatch` state |
 
 ### 5. Keypad (hex + function keys)
 

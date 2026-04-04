@@ -14,6 +14,7 @@ type AudioContextCtor = typeof AudioContext;
 type Tec1gUpdatePayload = {
   digits?: number[];
   matrix?: number[];
+  matrixBrightness?: number[];
   matrixMode?: boolean;
   glcd?: number[];
   glcdDdram?: number[];
@@ -420,6 +421,9 @@ function applyUpdate(payload: Tec1gUpdatePayload | null | undefined): void {
   lcdRenderer.applyLcdUpdate(data);
   if (Array.isArray(data.matrix)) {
     matrixUi.applyMatrixRows(data.matrix);
+  }
+  if (Array.isArray(data.matrixBrightness)) {
+    matrixUi.applyMatrixBrightness(data.matrixBrightness);
   }
   if (typeof data.sysCtrl === 'number') {
     sysCtrlValue = data.sysCtrl & 0xff;
