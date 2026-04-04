@@ -32,11 +32,34 @@ describe('TEC-1G matrix keyboard', () => {
     expect(value & (1 << 5)).toBe(0);
   });
 
+  it('drives the 8x8 display from ports 0x06 and 0x05 independently of keyboard state', () => {
+    const rt = makeRuntime(true);
+
+    rt.applyMatrixKey(2, 4, true);
+    rt.ioHandlers.write(0x06, 0xaa);
+    rt.ioHandlers.write(0x05, 0x04);
+
+    expect(rt.state.display.ledMatrixDataLatch).toBe(0xaa);
+    expect(rt.state.display.ledMatrixRows[2]).toBe(0xaa);
+    expect(rt.ioHandlers.read(0x02fe) & (1 << 4)).toBe(0);
+  });
+
   it('returns 0xff when matrix mode is disabled', () => {
     const rt = makeRuntime(false);
     rt.applyMatrixKey(1, 2, true);
     const value = rt.ioHandlers.read(0x01fe);
     expect(value).toBe(0xff);
+  });
+
+  it('clears the 8x8 display state on reset', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0x5a);
+    rt.ioHandlers.write(0x05, 0x01);
+    rt.resetState();
+
+    expect(rt.state.display.ledMatrixDataLatch).toBe(0);
+    expect(rt.state.display.ledMatrixRows).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   it('suppresses keypad NMI when matrix mode is enabled', () => {

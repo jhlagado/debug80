@@ -34,7 +34,7 @@ function buildUpdatePayload(state: Tec1gState): Tec1gUpdatePayload {
   const { display, input, audio, lcdCtrl, timing, system } = state;
   return {
     digits: [...display.digits],
-    matrix: [...display.matrix],
+    matrix: [...display.ledMatrixRows],
     matrixMode: input.matrixModeEnabled,
     glcd: Array.from(display.glcdCtrl.glcd),
     glcdDdram: Array.from(display.glcdCtrl.glcdDdram),

@@ -14,10 +14,10 @@ export const TEC1G_PORT_SEGMENT = 0x02;
 export const TEC1G_PORT_STATUS = 0x03;
 /** LCD command register (HD44780). */
 export const TEC1G_PORT_LCD_CMD = 0x04;
-/** Matrix keyboard row strobe. */
-export const TEC1G_PORT_MATRIX_STROBE = 0x05;
-/** Matrix keyboard latch. */
-export const TEC1G_PORT_MATRIX_LATCH = 0x06;
+/** 8x8 LED display row-select latch. */
+export const TEC1G_PORT_8X8_ROW = 0x05;
+/** 8x8 LED display mono data latch. */
+export const TEC1G_PORT_8X8_DATA = 0x06;
 /** GLCD command register (ST7920). */
 export const TEC1G_PORT_GLCD_CMD = 0x07;
 /** LCD data register. */
@@ -29,7 +29,7 @@ export const TEC1G_PORT_RTC = 0xfc;
 /** SD SPI data port. */
 export const TEC1G_PORT_SD = 0xfd;
 /** Matrix keyboard read port (row in high byte). */
-export const TEC1G_PORT_MATRIX = 0xfe;
+export const TEC1G_PORT_MATRIX_KEYBOARD = 0xfe;
 /** System control port (shadow/protect/expand/bank/caps). */
 export const TEC1G_PORT_SYSCTRL = 0xff;
 
