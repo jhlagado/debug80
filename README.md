@@ -7,7 +7,10 @@ Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listin
 TEC-1-specific workspace setups live in the separate `debug80-tec1` repo:
 https://github.com/jhlagado/debug80-tec1
 
-This repository keeps the shared debugger plus the in-repo example workspaces for Simple and TEC-1G.
+TEC-1G-specific workspace setups live in the separate `debug80-tec1g` repo:
+https://github.com/jhlagado/debug80-tec1g
+
+This repository keeps the shared debugger plus the in-repo Simple example workspace.
 
 <table>
   <tr>
@@ -34,11 +37,11 @@ npm test
 ## Quick start (examples)
 
 - Open `examples/HelloWorld` for the Simple platform terminal demo.
-- Open `examples/Tec1g` for the TEC-1G monitor + serial demo.
+- Open the separate `debug80-tec1g` repo for TEC-1G monitor + serial workflows.
 - Open the separate `debug80-tec1` repo for TEC-1 monitor + serial workflows.
 - Press F5 to start debugging.
 
-These example folders already include `.vscode` configs, so you can run them immediately.
+The example workspace and the separate platform repos already include `.vscode` configs, so you can run them immediately.
 
 ## Project config (recommended)
 

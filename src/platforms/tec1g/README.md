@@ -121,4 +121,4 @@ config (and optionally ROM listings via `extraListings`).
 switches (keyboard mode, protect on reset, expansion bank select).
 
 ## Examples
-- `examples/Tec1g` includes a 4800-baud serial echo program for MON-3.
+- See the separate `debug80-tec1g` repo for MON-3 example workspaces and demos.
