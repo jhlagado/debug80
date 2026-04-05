@@ -59,7 +59,8 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
             context.sessionState.runtime,
             context.sessionState.loadedProgram,
             context.sessionState.loadedEntry,
-            context.sessionState.tec1Runtime
+            context.sessionState.tec1Runtime,
+            context.sessionState.entryCpuState
           ),
           context
         ),

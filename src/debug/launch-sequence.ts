@@ -169,6 +169,7 @@ export interface LaunchSessionArtifacts {
   symbolList: Array<{ name: string; address: number }>;
   loadedProgram: HexProgram;
   loadedEntry: number | undefined;
+  restartCaptureAddress: number | undefined;
   runtime: Z80Runtime;
   terminalState: TerminalState | undefined;
   tec1Runtime: Tec1Runtime | undefined;
@@ -338,6 +339,14 @@ export async function buildLaunchSession(
     resolveRelative: (filePath, assetBaseDir) => resolveRelative(filePath, assetBaseDir),
   });
   const entry = platformProvider.resolveEntry(platformAssets);
+  const restartCaptureAddress =
+    platform === 'simple'
+      ? simpleConfig?.appStart ?? entry
+      : platform === 'tec1'
+        ? tec1Config?.appStart ?? entry
+        : platform === 'tec1g'
+          ? tec1gConfig?.appStart ?? entry
+          : entry;
   const runtime = createZ80Runtime(program, entry, platformIo.ioHandlers, platformProvider.runtimeOptions);
   context.sessionState.runtime = runtime;
   if (runtime !== undefined) {
@@ -360,6 +369,7 @@ export async function buildLaunchSession(
     symbolList: symbolIndex.list,
     loadedProgram: program,
     loadedEntry: entry,
+    restartCaptureAddress,
     runtime,
     terminalState: platformIo.terminalState,
     tec1Runtime: platformIo.tec1Runtime,

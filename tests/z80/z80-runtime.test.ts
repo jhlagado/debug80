@@ -79,4 +79,30 @@ describe('z80-runtime', () => {
 
     assert.deepEqual(reads, [0x5604]);
   });
+
+  it('captures and restores CPU state snapshots', () => {
+    const program = makeProgram([
+      0x31,
+      0x34,
+      0x12, // LD SP,0x1234
+      0x3e,
+      0x56, // LD A,0x56
+      0x76, // HALT
+    ]);
+    const runtime = createZ80Runtime(program);
+
+    runtime.step();
+    runtime.step();
+    const snapshot = runtime.captureCpuState();
+
+    runtime.reset(program, 0x0000);
+    assert.notEqual(runtime.getRegisters().sp, snapshot.sp);
+    assert.notEqual(runtime.getRegisters().a, snapshot.a);
+
+    runtime.restoreCpuState(snapshot);
+
+    assert.equal(runtime.getRegisters().sp, 0x1234);
+    assert.equal(runtime.getRegisters().a, 0x56);
+    assert.equal(runtime.getPC(), snapshot.pc);
+  });
 });

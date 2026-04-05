@@ -16,10 +16,14 @@ import type { SessionStateShape, StopReason } from './session-state';
 import type { LaunchSequenceContext } from './launch-sequence';
 import type { LaunchSessionArtifacts } from './launch-sequence';
 import type { BreakpointManager } from './breakpoint-manager';
+import type { CpuStateSnapshot } from '../z80/runtime';
 
 export interface RuntimeControlContext {
   getRuntime: () => Z80Runtime | undefined;
   getRuntimeCapabilities: () => RuntimeControlCapabilities | undefined;
+  getRestartCaptureAddress: () => number | undefined;
+  getEntryCpuState: () => CpuStateSnapshot | undefined;
+  setEntryCpuState: (snapshot: CpuStateSnapshot | undefined) => void;
   getActivePlatform: () => string;
   getCallDepth: () => number;
   setCallDepth: (value: number) => void;
@@ -75,6 +79,11 @@ export function createRuntimeControlContext(
         tec1Runtime: input.sessionState.tec1Runtime,
         tec1gRuntime: input.sessionState.tec1gRuntime,
       }),
+    getRestartCaptureAddress: () => input.sessionState.restartCaptureAddress,
+    getEntryCpuState: () => input.sessionState.entryCpuState,
+    setEntryCpuState: (snapshot: CpuStateSnapshot | undefined): void => {
+      input.sessionState.entryCpuState = snapshot;
+    },
     getActivePlatform: () => input.activePlatform(),
     getCallDepth: () => runState.callDepth,
     setCallDepth: (value: number): void => {
@@ -168,6 +177,8 @@ export function applyLaunchSessionArtifacts(
   target.sessionState.tec1gConfig = artifacts.tec1gConfig;
   target.sessionState.loadedProgram = artifacts.loadedProgram;
   target.sessionState.loadedEntry = artifacts.loadedEntry;
+  target.sessionState.restartCaptureAddress = artifacts.restartCaptureAddress;
+  target.sessionState.entryCpuState = undefined;
   target.sessionState.runState.callDepth = 0;
   target.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
   target.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
@@ -210,6 +221,36 @@ export function applyStepInfo(context: RuntimeControlContext, trace: StepInfo): 
   }
 }
 
+export function captureEntryCpuStateIfNeeded(context: RuntimeControlContext): void {
+  const getEntryCpuState = (context as Partial<RuntimeControlContext>).getEntryCpuState;
+  const getRestartCaptureAddress =
+    (context as Partial<RuntimeControlContext>).getRestartCaptureAddress;
+  const setEntryCpuState = (context as Partial<RuntimeControlContext>).setEntryCpuState;
+  if (
+    typeof getEntryCpuState !== 'function' ||
+    typeof getRestartCaptureAddress !== 'function' ||
+    typeof setEntryCpuState !== 'function'
+  ) {
+    return;
+  }
+  if (getEntryCpuState.call(context) !== undefined) {
+    return;
+  }
+  const runtime = context.getRuntime();
+  const captureAddress = getRestartCaptureAddress.call(context);
+  if (
+    runtime === undefined ||
+    captureAddress === undefined ||
+    typeof runtime.captureCpuState !== 'function'
+  ) {
+    return;
+  }
+  if (runtime.getPC() !== captureAddress) {
+    return;
+  }
+  setEntryCpuState.call(context, runtime.captureCpuState());
+}
+
 export async function runUntilStopAsync(
   context: RuntimeControlContext,
   options?: {
@@ -239,6 +280,7 @@ export async function runUntilStopAsync(
       if (activeRuntime === undefined) {
         return;
       }
+      captureEntryCpuStateIfNeeded(context);
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
         context.setHaltNotified(false);
@@ -255,6 +297,7 @@ export async function runUntilStopAsync(
         context.setSkipBreakpointOnce(null);
         const stepped = activeRuntime.step({ trace });
         applyStepInfo(context, trace);
+        captureEntryCpuStateIfNeeded(context);
         executed += 1;
         cyclesSinceThrottle += stepped.cycles ?? 0;
         getRuntimeCapabilities()?.recordCycles(stepped.cycles ?? 0);
@@ -281,6 +324,7 @@ export async function runUntilStopAsync(
       }
       const result = activeRuntime.step({ trace });
       applyStepInfo(context, trace);
+      captureEntryCpuStateIfNeeded(context);
       executed += 1;
       cyclesSinceThrottle += result.cycles ?? 0;
       getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
