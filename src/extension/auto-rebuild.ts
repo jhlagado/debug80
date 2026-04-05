@@ -45,6 +45,10 @@ export function registerAutoRebuildOnSave(
   sessionState: SessionStateManager,
   output: vscode.OutputChannel
 ): void {
+  if (typeof vscode.workspace.onDidSaveTextDocument !== 'function') {
+    return;
+  }
+
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (!isAssemblyDocument(document)) {
