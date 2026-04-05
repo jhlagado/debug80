@@ -10,7 +10,12 @@ import type { CommandRouter } from './command-router';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
 import { buildStackFrames } from './stack-service';
 import type { SourceStateManager } from './source-state-manager';
-import { runUntilReturnAsync, runUntilStopAsync, type RuntimeControlContext } from './runtime-control';
+import {
+  captureEntryCpuStateIfNeeded,
+  runUntilReturnAsync,
+  runUntilStopAsync,
+  type RuntimeControlContext,
+} from './runtime-control';
 import { resolveMappedPath } from './path-resolver';
 import { normalizeSourcePath } from './launch-args';
 import { getUnmappedCallReturnAddress } from './step-call-resolver';
@@ -123,6 +128,7 @@ export class AdapterRequestController {
     const result = this.deps.sessionState.runtime.step({ trace });
     this.applyStepInfo(trace);
     this.deps.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
+    captureEntryCpuStateIfNeeded(this.deps.getRuntimeControlContext());
     this.deps.sessionState.runState.pauseRequested = false;
     this.deps.sendResponse(response);
 
@@ -161,6 +167,7 @@ export class AdapterRequestController {
     const result = this.deps.sessionState.runtime.step({ trace });
     this.applyStepInfo(trace);
     this.deps.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
+    captureEntryCpuStateIfNeeded(this.deps.getRuntimeControlContext());
     this.deps.sessionState.runState.pauseRequested = false;
     this.deps.sendResponse(response);
 
@@ -286,6 +293,9 @@ export class AdapterRequestController {
     this.deps.sessionState.platformRuntime = undefined;
     this.deps.sessionState.loadedProgram = undefined;
     this.deps.sessionState.loadedEntry = undefined;
+    this.deps.sessionState.restartCaptureAddress = undefined;
+    this.deps.sessionState.entryCpuState = undefined;
+    this.deps.sessionState.launchArgs = undefined;
     this.deps.platformRegistry.clear();
     this.deps.sendResponse(response);
   }

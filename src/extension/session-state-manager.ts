@@ -21,6 +21,9 @@ export class SessionStateManager {
   romSourcesOpenedSessions = new Set<string>();
   mainSourceOpenedSessions = new Set<string>();
   sessionColumns = new Map<string, { source: vscode.ViewColumn; panel: vscode.ViewColumn }>();
+  rebuildTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  rebuildPending = new Set<string>();
+  rebuildInFlight = new Set<string>();
 
   resetTerminalState(): void {
     this.terminalBuffer = '';
