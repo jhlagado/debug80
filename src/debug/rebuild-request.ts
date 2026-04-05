@@ -3,14 +3,20 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { BreakpointEvent } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import { resolveBundledTec1Rom } from './assembler';
+import {
+  AssembleFailureError,
+  formatAssemblyDiagnostic,
+  resolveBundledTec1Rom,
+} from './assembler';
 import { emitConsoleOutput, emitMainSource } from './adapter-ui';
 import { resolveAssemblerBackend } from './assembler-backend';
 import type { BreakpointManager } from './breakpoint-manager';
 import { resolveArtifacts, resolveAsmPath, resolveDebugMapPath, resolveExtraDebugMapPath, resolveRelative, relativeIfPossible } from './launch-args';
 import { assembleIfRequested } from './launch-pipeline';
+import type { WarmRebuildResult } from './message-types';
 import { resolveListingSourcePath, resolveMappedPath, resolveBaseDir, resolveCacheDir, buildListingCacheKey } from './path-resolver';
 import { loadProgramArtifacts } from './program-loader';
 import type { SessionStateShape } from './session-state';
@@ -43,6 +49,45 @@ function applyWriteRanges(
   }
 }
 
+function sendWarmRebuildResult(
+  response: DebugProtocol.Response,
+  deps: RebuildDeps,
+  result: WarmRebuildResult,
+  showInConsole = true
+): boolean {
+  response.body = result;
+  if (showInConsole) {
+    const consoleMessage = [result.summary, result.detail]
+      .filter((value): value is string => value !== undefined && value.length > 0)
+      .join('\n');
+    emitConsoleOutput((event) => deps.sendEvent(event as DebugProtocol.Event), consoleMessage);
+  }
+  deps.sendResponse(response);
+  return true;
+}
+
+function createWarmRebuildFailureResult(
+  summary: string,
+  options?: { detail?: string; location?: WarmRebuildResult['location'] }
+): WarmRebuildResult {
+  return {
+    ok: false,
+    summary,
+    ...(options?.detail !== undefined ? { detail: options.detail } : {}),
+    ...(options?.location !== undefined ? { location: options.location } : {}),
+  };
+}
+
+function buildCompactFailureDetail(err: AssembleFailureError): string | undefined {
+  const diagnostic = err.result.diagnostic;
+  if (diagnostic !== undefined) {
+    return [diagnostic.message, diagnostic.sourceLine]
+      .filter((value): value is string => value !== undefined && value.length > 0)
+      .join('\n');
+  }
+  return err.result.error;
+}
+
 export function handleWarmRebuildRequest(
   response: DebugProtocol.Response,
   deps: RebuildDeps
@@ -50,8 +95,12 @@ export function handleWarmRebuildRequest(
   const launchArgs = deps.sessionState.launchArgs;
   const runtime = deps.sessionState.runtime;
   if (!launchArgs || !runtime) {
-    deps.sendErrorResponse(response, 1, 'Debug80: No active launch to rebuild.');
-    return true;
+    return sendWarmRebuildResult(
+      response,
+      deps,
+      createWarmRebuildFailureResult('Debug80: No active launch to rebuild.'),
+      false
+    );
   }
 
   try {
@@ -73,8 +122,11 @@ export function handleWarmRebuildRequest(
     });
 
     if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
-      deps.sendErrorResponse(response, 1, 'Debug80: Rebuild did not produce HEX/LST artifacts.');
-      return true;
+      return sendWarmRebuildResult(
+        response,
+        deps,
+        createWarmRebuildFailureResult('Debug80: Rebuild did not produce HEX/LST artifacts.')
+      );
     }
 
     const simpleConfig = launchArgs.simple;
@@ -178,17 +230,52 @@ export function handleWarmRebuildRequest(
       runtime.reset(program, deps.sessionState.loadedEntry);
     }
 
-    emitConsoleOutput(
-      (event) => deps.sendEvent(event as DebugProtocol.Event),
-      'Debug80: Rebuilt program and restarted from the captured entry state.'
+    const successSummary = `${path.basename(asmPath ?? listingPath)} rebuilt and restarted`;
+    return sendWarmRebuildResult(
+      response,
+      deps,
+      {
+        ok: true,
+        summary: successSummary,
+        ...(asmPath !== undefined && asmPath.length > 0 ? { rebuiltPath: asmPath } : {}),
+      },
+      true
     );
-    deps.sendResponse(response);
-    return true;
   } catch (err) {
-    const detail = `Debug80: Warm rebuild failed: ${String(err)}`;
-    deps.logger.error(detail);
-    emitConsoleOutput((event) => deps.sendEvent(event as DebugProtocol.Event), detail);
-    deps.sendErrorResponse(response, 1, detail);
-    return true;
+    if (err instanceof AssembleFailureError) {
+      const diagnostic = err.result.diagnostic;
+      const location =
+        diagnostic?.path !== undefined && diagnostic.line !== undefined
+          ? {
+              path: diagnostic.path,
+              line: diagnostic.line,
+              ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
+              ...(diagnostic.sourceLine !== undefined
+                ? { sourceLine: diagnostic.sourceLine }
+                : {}),
+            }
+          : undefined;
+      const locationLabel =
+        location !== undefined ? `${path.basename(location.path)}:${location.line}` : 'assembly';
+      const summary = locationLabel;
+      const detail = buildCompactFailureDetail(err) ?? formatAssemblyDiagnostic(diagnostic ?? {
+        message: err.result.error ?? String(err),
+      });
+      return sendWarmRebuildResult(
+        response,
+        deps,
+        createWarmRebuildFailureResult(summary, {
+          ...(detail !== summary ? { detail } : {}),
+          ...(location !== undefined ? { location } : {}),
+        })
+      );
+    }
+
+    const detail = String(err);
+    return sendWarmRebuildResult(
+      response,
+      deps,
+      createWarmRebuildFailureResult('Rebuild failed', { detail })
+    );
   }
 }

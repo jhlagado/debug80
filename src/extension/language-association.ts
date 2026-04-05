@@ -28,7 +28,6 @@ export function registerLanguageAssociations(
     }
     try {
       await vscode.languages.setTextDocumentLanguage(doc, languageId);
-      output.appendLine(`Set ${doc.uri.fsPath} language to ${languageId} (was ${doc.languageId})`);
     } catch (err) {
       output.appendLine(`Failed to set language for ${doc.uri.fsPath}: ${String(err)}`);
     }
@@ -43,8 +42,6 @@ export function registerLanguageAssociations(
   void vscode.languages.getLanguages().then((languages) => {
     const hasAsmLang = languages.includes(ASM_LANGUAGE_ID);
     const hasZaxLang = languages.includes(ZAX_LANGUAGE_ID);
-    output.appendLine(`Language ${ASM_LANGUAGE_ID} available: ${hasAsmLang}`);
-    output.appendLine(`Language ${ZAX_LANGUAGE_ID} available: ${hasZaxLang}`);
     if (hasAsmLang || hasZaxLang) {
       for (const doc of vscode.workspace.textDocuments) {
         if (hasAsmLang) {

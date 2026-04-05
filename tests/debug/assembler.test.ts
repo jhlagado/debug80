@@ -8,6 +8,8 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   findAsm80Binary,
+  formatAssemblyDiagnostic,
+  parseAsm80Diagnostic,
   resolveAsm80Command,
   runAssembler,
   runAssemblerBin,
@@ -106,6 +108,42 @@ describe('assembler helpers', () => {
     const result = runAssembler(asmPath, hexPath, listingPath);
     expect(result.success).toBe(false);
     expect(result.error).toContain('asm80 not found');
+  });
+
+  it('parses asm80 diagnostics into concise rebuild text', () => {
+    const diagnostic = parseAsm80Diagnostic(
+      `Processing: /tmp/matrix-demo.asm\nERROR  Unrecognized instruction LDX\nat line  19\n>>>  LDX: D,C\n`
+    );
+
+    expect(diagnostic).toEqual({
+      path: '/tmp/matrix-demo.asm',
+      line: 19,
+      message: 'Unrecognized instruction LDX',
+      sourceLine: 'LDX: D,C',
+    });
+    expect(formatAssemblyDiagnostic(diagnostic!)).toBe(
+      'matrix-demo.asm:19\nUnrecognized instruction LDX\nLDX: D,C'
+    );
+  });
+
+  it('returns concise asm80 errors instead of raw JSON dumps', () => {
+    const asmPath = path.join(tmpDir, 'matrix-demo.asm');
+    fs.writeFileSync(asmPath, 'NOP\n');
+    const hexPath = path.join(tmpDir, 'matrix-demo.hex');
+    const listingPath = path.join(tmpDir, 'matrix-demo.lst');
+
+    spawnSync.mockReturnValue({
+      status: 255,
+      stdout:
+        "Processing: /tmp/matrix-demo.asm\n{ msg: 'Unrecognized instruction LDX' }\nERROR  Unrecognized instruction LDX\nat line  19\n>>>  LDX: D,C\n",
+      stderr: '',
+    });
+
+    const result = runAssembler(asmPath, hexPath, listingPath);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('matrix-demo.asm:19\nUnrecognized instruction LDX\nLDX: D,C');
+    expect(result.diagnostic?.line).toBe(19);
   });
 
   it('cleans up BIN wrapper files after assembly', () => {

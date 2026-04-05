@@ -7,6 +7,7 @@ import type {
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
 } from '../platforms/types';
+import { AssembleFailureError } from './assembler';
 import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from './types';
 import { emitConsoleOutput, type EventSender } from './adapter-ui';
@@ -48,7 +49,10 @@ export function assembleIfRequested(options: {
     emitConsoleOutput(sendEvent, message, { newline: false });
   } });
   if (!result.success) {
-    throw new Error(result.error ?? `${backend.id} failed to assemble`);
+    throw new AssembleFailureError({
+      ...result,
+      error: result.error ?? `${backend.id} failed to assemble`,
+    });
   }
 
   if (
@@ -66,7 +70,10 @@ export function assembleIfRequested(options: {
       },
     });
     if (binResult && !binResult.success) {
-      throw new Error(binResult.error ?? `${backend.id} failed to build binary`);
+      throw new AssembleFailureError({
+        ...binResult,
+        error: binResult.error ?? `${backend.id} failed to build binary`,
+      });
     }
   }
 }

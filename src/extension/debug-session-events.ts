@@ -12,6 +12,7 @@ import { WorkspaceSelectionController } from './workspace-selection';
 
 type DebugSessionEventDependencies = {
   context: vscode.ExtensionContext;
+  rebuildDiagnostics: vscode.DiagnosticCollection;
   platformViewProvider: PlatformViewProvider;
   sessionState: SessionStateManager;
   sourceColumns: SourceColumnController;
@@ -21,6 +22,7 @@ type DebugSessionEventDependencies = {
 
 export function registerDebugSessionHandlers({
   context,
+  rebuildDiagnostics,
   platformViewProvider,
   sessionState,
   sourceColumns,
@@ -35,7 +37,9 @@ export function registerDebugSessionHandlers({
         platformViewProvider.clear();
         sessionState.sessionPlatforms.delete(session.id);
         sourceColumns.onSessionStarted(session);
-        if (session.configuration?.openRomSourcesOnLaunch !== false) {
+        const openRomSources = session.configuration?.openRomSourcesOnLaunch !== false;
+        const openMainSource = session.configuration?.openMainSourceOnLaunch !== false;
+        if (openRomSources && !openMainSource) {
           const sessionId = session.id;
           const column = sourceColumns.getSessionColumns(session).source;
           setTimeout(() => {
@@ -70,6 +74,11 @@ export function registerDebugSessionHandlers({
         }
         sessionState.rebuildPending.delete(session.id);
         sessionState.rebuildInFlight.delete(session.id);
+        const diagnosticUri = sessionState.rebuildDiagnosticUris.get(session.id);
+        if (diagnosticUri !== undefined) {
+          rebuildDiagnostics.delete(diagnosticUri);
+          sessionState.rebuildDiagnosticUris.delete(session.id);
+        }
         sessionState.activeZ80Sessions.delete(session.id);
         sessionState.sessionPlatforms.delete(session.id);
         sessionState.romSourcesOpenedSessions.delete(session.id);
@@ -241,17 +250,28 @@ export function registerDebugSessionHandlers({
         sessionState.mainSourceOpenedSessions.add(evt.session.id);
         const columns = sourceColumns.getSessionColumns(evt.session);
         const viewColumn = columns.source;
+        let mainDoc: vscode.TextDocument | undefined;
         void vscode.workspace
           .openTextDocument(sourcePath)
-          .then((doc) => vscode.window.showTextDocument(doc, { preview: false, viewColumn }))
-          .then(() => {
+          .then((doc) => {
+            mainDoc = doc;
+            return vscode.window.showTextDocument(doc, { preview: false, viewColumn });
+          })
+          .then(async () => {
             const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
             if (!openRomSources || sessionState.romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
-            return openRomSourcesForSession(evt.session, viewColumn).then((opened) => {
+            return openRomSourcesForSession(evt.session, viewColumn).then(async (opened) => {
               if (opened) {
                 sessionState.romSourcesOpenedSessions.add(evt.session.id);
+                if (mainDoc !== undefined) {
+                  await vscode.window.showTextDocument(mainDoc, {
+                    preview: false,
+                    preserveFocus: false,
+                    viewColumn,
+                  });
+                }
               }
             });
           });

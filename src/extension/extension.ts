@@ -174,6 +174,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   registerBuiltInPlatformUis();
   const sessionState = new SessionStateManager();
   const output = vscode.window.createOutputChannel('Debug80');
+  const rebuildDiagnostics = vscode.languages.createDiagnosticCollection('debug80-rebuild');
   const logger = new OutputChannelLogger(output);
   const factory = new Z80DebugAdapterFactory(logger);
   const platformViewProvider = new PlatformViewProvider(context.extensionUri);
@@ -196,6 +197,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
     )
   );
   context.subscriptions.push(output);
+  context.subscriptions.push(rebuildDiagnostics);
 
   registerLanguageAssociations(context, output);
   workspaceSelection.registerInfrastructure();
@@ -209,13 +211,14 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   });
   registerDebugSessionHandlers({
     context,
+    rebuildDiagnostics,
     platformViewProvider,
     sessionState,
     sourceColumns,
     terminalPanel,
     workspaceSelection,
   });
-  registerAutoRebuildOnSave(context, sessionState, output);
+  registerAutoRebuildOnSave(context, sessionState, output, rebuildDiagnostics);
 
   return {
     registerPlatform,
