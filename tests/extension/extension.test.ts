@@ -14,6 +14,12 @@ const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
   Promise.resolve({ doc, languageId })
 );
 const getLanguages = vi.fn(() => Promise.resolve(['z80-asm', 'zax']));
+const createDiagnosticCollection = vi.fn(() => ({
+  set: vi.fn(),
+  delete: vi.fn(),
+  clear: vi.fn(),
+  dispose: vi.fn(),
+}));
 
 vi.mock('vscode', () => ({
   ViewColumn: { One: 1, Two: 2, Nine: 9 },
@@ -43,7 +49,7 @@ vi.mock('vscode', () => ({
     })),
     onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
   },
-  languages: { getLanguages, setTextDocumentLanguage },
+  languages: { getLanguages, setTextDocumentLanguage, createDiagnosticCollection },
   window: {
     showErrorMessage: vi.fn(),
     showInformationMessage: vi.fn(),

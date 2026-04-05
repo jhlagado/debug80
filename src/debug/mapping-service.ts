@@ -79,9 +79,6 @@ export function buildMappingFromListing(options: {
   }
 
   const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
-  if (mapStale) {
-    service.logger.warn('Debug80: D8 debug map is older than the LST. Regenerating from LST.');
-  }
 
   let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
   let missingSources: string[] = [];
