@@ -25,6 +25,7 @@ import { PlatformRegistry } from './platform-registry';
 import {
   applyLaunchBreakpoints,
   applyLaunchSessionArtifacts,
+  captureEntryCpuStateIfNeeded,
   createLaunchSequenceContext,
   createRuntimeControlContext,
   RuntimeControlContext,
@@ -49,6 +50,7 @@ import {
 } from './launch-sequence';
 import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './adapter-request-controller';
+import { handleWarmRebuildRequest } from './rebuild-request';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -143,6 +145,18 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return true;
     });
+    this.commandRouter.register('debug80/rebuildWarm', (response) =>
+      handleWarmRebuildRequest(response, {
+        logger: this.logger,
+        sessionState: this.sessionState,
+        sourceState: this.sourceState,
+        breakpointManager: this.breakpointManager,
+        platformState: this.platformState,
+        sendEvent: (event) => this.sendEvent(event),
+        sendResponse: (resp) => this.sendResponse(resp),
+        sendErrorResponse: (resp, id, message) => this.sendErrorResponse(resp, id, message),
+      })
+    );
   }
 
   protected initializeRequest(
@@ -174,6 +188,7 @@ export class Z80DebugSession extends DebugSession {
     const merged: LaunchRequestArguments = populateFromConfig(args, {
       resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
     });
+    this.sessionState.launchArgs = merged;
     this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
 
     if (!hasLaunchInputs(merged)) {
@@ -212,6 +227,7 @@ export class Z80DebugSession extends DebugSession {
         { platformState: this.platformState, sessionState: this.sessionState },
         artifacts
       );
+      captureEntryCpuStateIfNeeded(this.getRuntimeControlContext());
       applyLaunchBreakpoints(
         this.breakpointManager,
         {

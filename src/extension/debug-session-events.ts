@@ -63,6 +63,13 @@ export function registerDebugSessionHandlers({
       }
       platformViewProvider.handleSessionTerminated(session.id);
       if (session.type === 'z80') {
+        const rebuildTimer = sessionState.rebuildTimers.get(session.id);
+        if (rebuildTimer !== undefined) {
+          clearTimeout(rebuildTimer);
+          sessionState.rebuildTimers.delete(session.id);
+        }
+        sessionState.rebuildPending.delete(session.id);
+        sessionState.rebuildInFlight.delete(session.id);
         sessionState.activeZ80Sessions.delete(session.id);
         sessionState.sessionPlatforms.delete(session.id);
         sessionState.romSourcesOpenedSessions.delete(session.id);
