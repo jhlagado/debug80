@@ -36,6 +36,7 @@ import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 import { LaunchRequestArguments } from './types';
 import { resolveBaseDir } from './path-resolver';
 import { emitConsoleOutput } from './adapter-ui';
+import { AssembleFailureError } from './assembler';
 import { buildRomSourcesResponse } from './rom-requests';
 import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
 import { handleMemorySnapshotRequest } from './memory-request';
@@ -251,6 +252,12 @@ export class Z80DebugSession extends DebugSession {
           () => this.promptForConfigCreation(),
           (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
         );
+        return;
+      }
+      if (err instanceof AssembleFailureError) {
+        const detail = err.result.error ?? 'Assembly failed';
+        emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
+        this.sendErrorResponse(response, 1, detail.split(/\r?\n/, 1)[0] ?? detail);
         return;
       }
       const detail = `Failed to load program: ${String(err)}`;

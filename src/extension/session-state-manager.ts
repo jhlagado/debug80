@@ -24,6 +24,7 @@ export class SessionStateManager {
   rebuildTimers = new Map<string, ReturnType<typeof setTimeout>>();
   rebuildPending = new Set<string>();
   rebuildInFlight = new Set<string>();
+  rebuildDiagnosticUris = new Map<string, vscode.Uri>();
 
   resetTerminalState(): void {
     this.terminalBuffer = '';

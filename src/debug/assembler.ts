@@ -6,8 +6,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
-import * as vscode from 'vscode';
+import { createRequire } from 'module';
 import { toPortablePath } from './path-utils';
+
+const moduleRequire = createRequire(__filename);
 
 /**
  * Represents the asm80 command and its arguments.
@@ -31,6 +33,99 @@ export interface AssembleResult {
   stdout?: string;
   /** Stderr content */
   stderr?: string;
+  /** Parsed assembler diagnostic if available */
+  diagnostic?: AssemblyDiagnostic;
+}
+
+export interface AssemblyDiagnostic {
+  /** Source file associated with the diagnostic */
+  path?: string;
+  /** 1-based source line */
+  line?: number;
+  /** 1-based source column */
+  column?: number;
+  /** Primary diagnostic message */
+  message: string;
+  /** Source line text when available */
+  sourceLine?: string;
+}
+
+export class AssembleFailureError extends Error {
+  public readonly result: AssembleResult;
+
+  public constructor(result: AssembleResult) {
+    super(result.error ?? 'Assembly failed');
+    this.name = 'AssembleFailureError';
+    this.result = result;
+  }
+}
+
+function extractQuotedValue(output: string, key: string): string | undefined {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`${escapedKey}:\\s*'([^'\\n\\r]+)'`, 'i').exec(output);
+  return match?.[1]?.trim();
+}
+
+function extractNumericValue(output: string, key: string): number | undefined {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`${escapedKey}:\\s*(\\d+)`, 'i').exec(output);
+  if (!match) {
+    return undefined;
+  }
+  const value = Number.parseInt(match[1] ?? '', 10);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+export function parseAsm80Diagnostic(output: string, asmPath?: string): AssemblyDiagnostic | undefined {
+  const trimmed = output.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const pathMatch = /Processing:\s+([^\n\r]+)/i.exec(trimmed);
+  const errorMatch = /ERROR\s+([^\n\r]+)/i.exec(trimmed);
+  const sourceMatch = />>>\s*(.+)/.exec(trimmed);
+  const lineMatch = /at line\s+(\d+)/i.exec(trimmed);
+
+  const message =
+    errorMatch?.[1]?.trim() ??
+    extractQuotedValue(trimmed, 'msg') ??
+    trimmed.split(/\r?\n/, 1)[0]?.trim();
+  if (message === undefined || message.length === 0) {
+    return undefined;
+  }
+
+  const parsedLine =
+    (lineMatch?.[1] !== undefined ? Number.parseInt(lineMatch[1], 10) : undefined) ??
+    extractNumericValue(trimmed, 'numline');
+  const parsedColumn = extractNumericValue(trimmed, 'col');
+  const sourceLine = sourceMatch?.[1]?.trim() ?? extractQuotedValue(trimmed, 'line');
+
+  return {
+    message,
+    ...(pathMatch?.[1] !== undefined
+      ? { path: pathMatch[1].trim() }
+      : asmPath !== undefined && asmPath.length > 0
+        ? { path: asmPath }
+        : {}),
+    ...(parsedLine !== undefined && Number.isFinite(parsedLine) ? { line: parsedLine } : {}),
+    ...(parsedColumn !== undefined && Number.isFinite(parsedColumn) ? { column: parsedColumn } : {}),
+    ...(sourceLine !== undefined && sourceLine.length > 0 ? { sourceLine } : {}),
+  };
+}
+
+export function formatAssemblyDiagnostic(diagnostic: AssemblyDiagnostic): string {
+  const location =
+    diagnostic.path !== undefined
+      ? `${path.basename(diagnostic.path)}${
+          diagnostic.line !== undefined ? `:${diagnostic.line}` : ''
+        }`
+      : diagnostic.line !== undefined
+        ? `line ${diagnostic.line}`
+        : undefined;
+  return [location, diagnostic.message, diagnostic.sourceLine]
+    .filter((value): value is string => value !== undefined && value.length > 0)
+    .join('\n');
 }
 
 /**
@@ -207,22 +302,18 @@ export function runAssembler(
   }
 
   if (result.status !== 0) {
-    if (onOutput) {
-      if (result.stdout) {
-        onOutput(`asm80 stdout:\n${result.stdout}\n`);
-      }
-      if (result.stderr) {
-        onOutput(`asm80 stderr:\n${result.stderr}\n`);
-      }
-    }
-
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-    const suffix = output.length > 0 ? `: ${output}` : '';
+    const diagnostic = parseAsm80Diagnostic(output, asmPath);
+    const error =
+      diagnostic !== undefined
+        ? formatAssemblyDiagnostic(diagnostic)
+        : `asm80 exited with code ${result.status}`;
     return {
       success: false,
-      error: `asm80 exited with code ${result.status}${suffix}`,
+      error,
       stdout: result.stdout ?? undefined,
       stderr: result.stderr ?? undefined,
+      ...(diagnostic !== undefined ? { diagnostic } : {}),
     };
   }
 
@@ -335,7 +426,14 @@ export function runAssemblerBin(
  * @returns Path to the bundled ROM, or undefined
  */
 export function resolveBundledTec1Rom(): string | undefined {
-  const extension = vscode.extensions.getExtension('jhlagado.debug80');
+  let vscodeModule: typeof import('vscode') | undefined;
+  try {
+    vscodeModule = moduleRequire('vscode') as typeof import('vscode');
+  } catch {
+    vscodeModule = undefined;
+  }
+
+  const extension = vscodeModule?.extensions.getExtension('jhlagado.debug80');
   if (!extension) {
     return undefined;
   }

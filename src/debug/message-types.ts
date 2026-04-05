@@ -81,6 +81,29 @@ export interface RomSourceEntry {
   kind: 'listing' | 'source';
 }
 
+export interface RebuildIssueLocation {
+  path: string;
+  line: number;
+  column?: number;
+  sourceLine?: string;
+}
+
+export interface WarmRebuildResult {
+  ok: boolean;
+  summary: string;
+  detail?: string;
+  rebuiltPath?: string;
+  location?: RebuildIssueLocation;
+}
+
+export function isWarmRebuildResult(value: unknown): value is WarmRebuildResult {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const payload = value as Partial<WarmRebuildResult>;
+  return typeof payload.ok === 'boolean' && typeof payload.summary === 'string';
+}
+
 /**
  * Checks if value is a valid TerminalInputPayload.
  */
