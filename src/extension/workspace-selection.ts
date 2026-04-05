@@ -9,6 +9,12 @@ import { PlatformViewProvider } from './platform-view-provider';
 
 const WORKSPACE_KEY = 'debug80.selectedWorkspace';
 
+export type ResolveWorkspaceFolderOptions = {
+  prompt?: boolean;
+  requireProject?: boolean;
+  placeHolder?: string;
+};
+
 export class WorkspaceSelectionController {
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -40,15 +46,58 @@ export class WorkspaceSelectionController {
     this.platformViewProvider.setSelectedWorkspace(folder);
   }
 
+  async resolveWorkspaceFolder(
+    options: ResolveWorkspaceFolderOptions = {}
+  ): Promise<vscode.WorkspaceFolder | undefined> {
+    const { prompt = false, requireProject = false } = options;
+    const preferred = this.resolvePreferredWorkspace(requireProject);
+    if (preferred !== undefined) {
+      this.rememberWorkspace(preferred);
+      return preferred;
+    }
+
+    const folders = this.getCandidateFolders(requireProject);
+    if (folders.length === 0) {
+      return undefined;
+    }
+    if (folders.length === 1) {
+      const [folder] = folders;
+      this.rememberWorkspace(folder);
+      return folder;
+    }
+    if (!prompt) {
+      return undefined;
+    }
+
+    const picked = await vscode.window.showQuickPick(
+      folders.map((folder) => ({
+        label: folder.name,
+        description: folder.uri.fsPath,
+        folder,
+      })),
+      {
+        placeHolder:
+          options.placeHolder ??
+          (requireProject
+            ? 'Select a Debug80 project folder'
+            : 'Select workspace folder for Debug80'),
+      }
+    );
+    if (!picked) {
+      return undefined;
+    }
+    this.rememberWorkspace(picked.folder);
+    return picked.folder;
+  }
+
   async selectWorkspaceFolder(): Promise<void> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
+    const folders = this.getCandidateFolders(false);
     if (folders.length === 0) {
       void vscode.window.showInformationMessage('Debug80: No workspace folders to select.');
       return;
     }
     if (folders.length === 1) {
-      void this.context.workspaceState.update(WORKSPACE_KEY, folders[0]?.uri.fsPath ?? '');
-      this.applySelectedWorkspace();
+      this.rememberWorkspace(folders[0]);
       return;
     }
     const picked = await vscode.window.showQuickPick(
@@ -62,8 +111,7 @@ export class WorkspaceSelectionController {
     if (!picked) {
       return;
     }
-    void this.context.workspaceState.update(WORKSPACE_KEY, picked.folder.uri.fsPath);
-    this.applySelectedWorkspace();
+    this.rememberWorkspace(picked.folder);
   }
 
   private readonly updateHasProject = (): void => {
@@ -84,8 +132,31 @@ export class WorkspaceSelectionController {
     return folders.find((folder) => folder.uri.fsPath === storedPath);
   }
 
-  private applySelectedWorkspace(): void {
+  private hasProject(folder: vscode.WorkspaceFolder): boolean {
+    return fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'));
+  }
+
+  private getCandidateFolders(requireProject: boolean): vscode.WorkspaceFolder[] {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    return requireProject ? folders.filter((folder) => this.hasProject(folder)) : [...folders];
+  }
+
+  private resolvePreferredWorkspace(requireProject: boolean): vscode.WorkspaceFolder | undefined {
     const selected = this.resolveSelectedWorkspace();
+    if (selected !== undefined && (!requireProject || this.hasProject(selected))) {
+      return selected;
+    }
+
+    const folders = this.getCandidateFolders(requireProject);
+    if (folders.length === 1) {
+      return folders[0];
+    }
+
+    return undefined;
+  }
+
+  private applySelectedWorkspace(): void {
+    const selected = this.resolvePreferredWorkspace(false);
     this.platformViewProvider.setSelectedWorkspace(selected);
   }
 }

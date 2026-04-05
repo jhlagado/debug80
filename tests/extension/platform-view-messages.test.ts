@@ -7,6 +7,11 @@ import { handlePlatformViewMessage } from '../../src/extension/platform-view-mes
 
 function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
   return {
+    handleCreateProject: vi.fn(() => undefined),
+    handleSelectProject: vi.fn(() => undefined),
+    handleSelectTarget: vi.fn(() => undefined),
+    handleRestartDebug: vi.fn(() => undefined),
+    handleSetEntrySource: vi.fn(() => undefined),
     currentPlatform: vi.fn(() => platform),
     handleStartDebug: vi.fn(() => undefined),
     handleSerialSendFile: vi.fn(() => undefined),
@@ -20,10 +25,20 @@ describe('platform-view message routing', () => {
   it('routes control messages to the expected handlers', async () => {
     const deps = createDependencies('simple');
 
+    await handlePlatformViewMessage({ type: 'createProject' }, deps);
+    await handlePlatformViewMessage({ type: 'selectProject' }, deps);
+    await handlePlatformViewMessage({ type: 'selectTarget' }, deps);
+    await handlePlatformViewMessage({ type: 'restartDebug' }, deps);
+    await handlePlatformViewMessage({ type: 'setEntrySource' }, deps);
     await handlePlatformViewMessage({ type: 'startDebug' }, deps);
     await handlePlatformViewMessage({ type: 'serialSendFile' }, deps);
     await handlePlatformViewMessage({ type: 'serialSave', text: 'hello' }, deps);
 
+    expect(deps.handleCreateProject).toHaveBeenCalledTimes(1);
+    expect(deps.handleSelectProject).toHaveBeenCalledTimes(1);
+    expect(deps.handleSelectTarget).toHaveBeenCalledTimes(1);
+    expect(deps.handleRestartDebug).toHaveBeenCalledTimes(1);
+    expect(deps.handleSetEntrySource).toHaveBeenCalledTimes(1);
     expect(deps.handleStartDebug).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSendFile).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSave).toHaveBeenCalledWith('hello');

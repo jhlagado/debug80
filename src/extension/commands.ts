@@ -2,8 +2,19 @@
  * @file Command registration for the Debug80 extension.
  */
 
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
+import {
+  findProjectConfigPath,
+  listProjectSourceFiles,
+  readProjectConfig,
+  updateProjectTargetSource,
+} from './project-config';
+import {
+  ProjectTargetSelectionController,
+  resolvePreferredTargetName,
+} from './project-target-selection';
 import { scaffoldProject } from './project-scaffolding';
 import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
@@ -16,7 +27,107 @@ type CommandDependencies = {
   sourceColumns: SourceColumnController;
   terminalPanel: TerminalPanelController;
   workspaceSelection: WorkspaceSelectionController;
+  targetSelection: ProjectTargetSelectionController;
 };
+
+async function resolveFolderForProjectCreation(
+  workspaceSelection: WorkspaceSelectionController
+): Promise<vscode.WorkspaceFolder | undefined> {
+  const folder = await workspaceSelection.resolveWorkspaceFolder({
+    prompt: true,
+    placeHolder: 'Select a folder for the new Debug80 project',
+  });
+  if (folder !== undefined) {
+    return folder;
+  }
+
+  const hasWorkspaceFolders = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+  if (hasWorkspaceFolders) {
+    return undefined;
+  }
+
+  const picked = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: 'Use Folder for Debug80 Project',
+    title: 'Select a folder for the new Debug80 project',
+  });
+  const folderUri = picked?.[0];
+  if (folderUri === undefined) {
+    return undefined;
+  }
+
+  const existingFolder = vscode.workspace.getWorkspaceFolder(folderUri);
+  if (existingFolder !== undefined) {
+    workspaceSelection.rememberWorkspace(existingFolder);
+    return existingFolder;
+  }
+
+  const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
+  const added = vscode.workspace.updateWorkspaceFolders(insertAt, 0, {
+    uri: folderUri,
+    name: path.basename(folderUri.fsPath),
+  });
+  if (!added) {
+    void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
+    return undefined;
+  }
+
+  const addedFolder =
+    vscode.workspace.getWorkspaceFolder(folderUri) ??
+    ({
+      uri: folderUri,
+      name: path.basename(folderUri.fsPath),
+      index: insertAt,
+    } as vscode.WorkspaceFolder);
+  workspaceSelection.rememberWorkspace(addedFolder);
+  return addedFolder;
+}
+
+function resolveProjectFolderFromResource(
+  resource: vscode.Uri | undefined,
+  workspaceSelection: WorkspaceSelectionController
+): vscode.WorkspaceFolder | undefined {
+  if (resource === undefined) {
+    return undefined;
+  }
+
+  const folder = vscode.workspace.getWorkspaceFolder(resource);
+  if (folder === undefined) {
+    return undefined;
+  }
+
+  const projectConfig = findProjectConfigPath(folder);
+  if (projectConfig === undefined) {
+    return undefined;
+  }
+
+  workspaceSelection.rememberWorkspace(folder);
+  return folder;
+}
+
+async function startCurrentProjectDebugging(
+  folder: vscode.WorkspaceFolder,
+  workspaceSelection: WorkspaceSelectionController
+): Promise<boolean> {
+  const projectConfig = findProjectConfigPath(folder);
+  if (projectConfig === undefined) {
+    void vscode.window.showErrorMessage(
+      `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+    );
+    return false;
+  }
+
+  workspaceSelection.rememberWorkspace(folder);
+  return vscode.debug.startDebugging(folder, {
+    type: 'z80',
+    request: 'launch',
+    name: 'Debug Z80 (current project)',
+    projectConfig,
+    stopOnEntry: false,
+  });
+}
 
 export function registerExtensionCommands({
   context,
@@ -24,16 +135,212 @@ export function registerExtensionCommands({
   sourceColumns,
   terminalPanel,
   workspaceSelection,
+  targetSelection,
 }: CommandDependencies): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.createProject', async () => {
-      return scaffoldProject(true);
+      const folder = await resolveFolderForProjectCreation(workspaceSelection);
+      if (!folder) {
+        void vscode.window.showErrorMessage('Debug80: No workspace folder available for project creation.');
+        return false;
+      }
+      const created = await scaffoldProject(folder, true);
+      if (created) {
+        workspaceSelection.rememberWorkspace(folder);
+        platformViewProvider.refreshIdleView();
+      }
+      return created;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.startDebug', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        prompt: true,
+        requireProject: true,
+        placeHolder: 'Select the Debug80 project folder to debug',
+      });
+      if (!folder) {
+        const workspaceFolderCount = vscode.workspace.workspaceFolders?.length ?? 0;
+        void vscode.window.showInformationMessage(
+          workspaceFolderCount === 0
+            ? 'Debug80: No workspace folder open. Open or create a project folder first.'
+            : 'Debug80: No configured Debug80 project found. Create a project first.'
+        );
+        return false;
+      }
+      return startCurrentProjectDebugging(folder, workspaceSelection);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.restartDebug', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        prompt: true,
+        requireProject: true,
+        placeHolder: 'Select the Debug80 project folder to debug',
+      });
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return false;
+      }
+
+      const activeSession = vscode.debug.activeDebugSession;
+      if (activeSession?.type === 'z80') {
+        await vscode.debug.stopDebugging(activeSession);
+      }
+
+      return startCurrentProjectDebugging(folder, workspaceSelection);
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.selectWorkspaceFolder', async () => {
       await workspaceSelection.selectWorkspaceFolder();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.selectTarget', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        requireProject: true,
+        prompt: true,
+        placeHolder: 'Select the Debug80 project folder',
+      });
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+
+      const projectConfig = findProjectConfigPath(folder);
+      if (projectConfig === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+        );
+        return undefined;
+      }
+
+      const previousTarget = resolvePreferredTargetName(context.workspaceState, projectConfig);
+
+      const target = await targetSelection.resolveTarget(projectConfig, {
+        prompt: true,
+        forcePrompt: true,
+        placeHolder: 'Select the active Debug80 target',
+      });
+      if (target === null) {
+        return undefined;
+      }
+      if (target === undefined) {
+        void vscode.window.showInformationMessage(
+          'Debug80: This project does not define any named targets.'
+        );
+        return undefined;
+      }
+
+      platformViewProvider.refreshIdleView();
+
+      const activeSession = vscode.debug.activeDebugSession;
+      if (activeSession?.type === 'z80' && target !== previousTarget) {
+        await vscode.debug.stopDebugging(activeSession);
+        const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
+        if (restarted) {
+          void vscode.window.showInformationMessage(
+            `Debug80: Switched target to ${target} and restarted debugging.`
+          );
+          return target;
+        }
+      }
+
+      void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
+      return target;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.setEntrySource', async (resource?: vscode.Uri) => {
+      const folder =
+        resolveProjectFolderFromResource(resource, workspaceSelection) ??
+        (await workspaceSelection.resolveWorkspaceFolder({
+          requireProject: true,
+          prompt: true,
+          placeHolder: 'Select the Debug80 project folder',
+        }));
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+
+      const projectConfig = findProjectConfigPath(folder);
+      if (projectConfig === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+        );
+        return undefined;
+      }
+
+      const target = await targetSelection.resolveTarget(projectConfig, {
+        prompt: true,
+        placeHolder: 'Select the Debug80 target to update',
+      });
+      if (target === null) {
+        return undefined;
+      }
+      if (target === undefined) {
+        void vscode.window.showInformationMessage(
+          'Debug80: This project does not define any named targets.'
+        );
+        return undefined;
+      }
+
+      const config = readProjectConfig(projectConfig);
+      const currentSource = config?.targets?.[target]?.sourceFile ?? config?.targets?.[target]?.asm;
+      const candidates = listProjectSourceFiles(folder.uri.fsPath);
+      if (candidates.length === 0) {
+        void vscode.window.showInformationMessage(
+          'Debug80: No .asm or .zax source files were found in this project folder.'
+        );
+        return undefined;
+      }
+
+      const resourceRelative =
+        resource !== undefined && resource.fsPath.startsWith(folder.uri.fsPath)
+          ? path.relative(folder.uri.fsPath, resource.fsPath).split(path.sep).join('/')
+          : undefined;
+      const initialSelection =
+        resourceRelative !== undefined && candidates.includes(resourceRelative)
+          ? resourceRelative
+          : undefined;
+
+      const picked =
+        initialSelection ??
+        (
+          await vscode.window.showQuickPick(
+            candidates.map((candidate) => ({
+              label: candidate,
+              ...(candidate === currentSource ? { description: 'current entry source' } : {}),
+            })),
+            {
+              placeHolder: 'Select the entry source for the active Debug80 target',
+              matchOnDescription: true,
+            }
+          )
+        )?.label;
+
+      if (picked === undefined) {
+        return undefined;
+      }
+
+      const updated = updateProjectTargetSource(projectConfig, target, picked);
+      if (!updated) {
+        void vscode.window.showErrorMessage('Debug80: Failed to update the project entry source.');
+        return undefined;
+      }
+
+      platformViewProvider.refreshIdleView();
+      void vscode.window.showInformationMessage(
+        `Debug80: Set ${target} entry source to ${picked}.`
+      );
+      return picked;
     })
   );
 

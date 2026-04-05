@@ -9,6 +9,8 @@ import { wireTec1SerialUi } from './serial-ui';
 
 const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab = document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
+const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const selectTargetButton = document.getElementById('selectTarget') as HTMLButtonElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -62,6 +64,14 @@ let shiftLatched = false;
 const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
+
+selectProjectButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'selectProject' });
+});
+
+selectTargetButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'selectTarget' });
+});
 
 function applySpeed(mode: string): void {
   speedMode = mode;

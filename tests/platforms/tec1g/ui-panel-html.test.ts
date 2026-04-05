@@ -6,6 +6,14 @@ import path from 'path';
 import { describe, it, expect, vi } from 'vitest';
 import { getTec1gHtml } from '../../../src/platforms/tec1g/ui-panel-html';
 
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    existsSync: (filePath: string) => !filePath.includes(`${path.sep}out${path.sep}webview${path.sep}`),
+  };
+});
+
 vi.mock('vscode', () => {
   return {
     Uri: {
@@ -28,6 +36,8 @@ describe('tec1g ui-panel-html', () => {
 
   it('includes key UI sections', () => {
     const html = getTec1gHtml('ui', webview, extensionUri);
+    expect(html).toContain('Select Open Project');
+    expect(html).toContain('Select Target');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
