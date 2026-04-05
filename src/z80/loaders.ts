@@ -13,6 +13,8 @@ export interface HexProgram {
   memory: Uint8Array;
   /** Lowest address with data (entry point hint) */
   startAddress: number;
+  /** Address ranges written by the HEX payload (end exclusive) */
+  writeRanges?: Array<{ start: number; end: number }>;
 }
 
 /**
@@ -49,6 +51,7 @@ export interface ListingInfo {
 export function parseIntelHex(content: string): HexProgram {
   const memory = new Uint8Array(0x10000);
   memory.fill(0);
+  const writeRanges: Array<{ start: number; end: number }> = [];
 
   let startAddress = Number.MAX_SAFE_INTEGER;
   const lines = content
@@ -77,6 +80,9 @@ export function parseIntelHex(content: string): HexProgram {
     }
 
     startAddress = Math.min(startAddress, address);
+    if (byteCount > 0) {
+      writeRanges.push({ start: address, end: address + byteCount });
+    }
 
     for (let i = 0; i < byteCount; i++) {
       const byteHex = dataString.slice(i * 2, i * 2 + 2);
@@ -92,7 +98,7 @@ export function parseIntelHex(content: string): HexProgram {
     startAddress = 0;
   }
 
-  return { memory, startAddress };
+  return { memory, startAddress, writeRanges };
 }
 
 /**

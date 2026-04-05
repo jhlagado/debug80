@@ -5,7 +5,8 @@
 import type { ListingInfo, HexProgram } from '../z80/loaders';
 import type { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
 import type { SourceMapIndex } from '../mapping/source-map';
-import type { Z80Runtime } from '../z80/runtime';
+import type { CpuStateSnapshot, Z80Runtime } from '../z80/runtime';
+import type { LaunchRequestArguments } from './types';
 import type { TerminalState } from './terminal-types';
 import type { Tec1Runtime } from '../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
@@ -42,6 +43,9 @@ export interface SessionStateShape {
   tec1gConfig: Tec1gPlatformConfigNormalized | undefined;
   loadedProgram: HexProgram | undefined;
   loadedEntry: number | undefined;
+  restartCaptureAddress: number | undefined;
+  entryCpuState: CpuStateSnapshot | undefined;
+  launchArgs: LaunchRequestArguments | undefined;
   extraListingPaths: string[];
   runState: RunState;
 }
@@ -84,6 +88,9 @@ export function createSessionState(): SessionStateShape {
     tec1gConfig: undefined,
     loadedProgram: undefined,
     loadedEntry: undefined,
+    restartCaptureAddress: undefined,
+    entryCpuState: undefined,
+    launchArgs: undefined,
     extraListingPaths: [],
     runState: {
       stopOnEntry: false,

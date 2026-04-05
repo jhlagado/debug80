@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { Z80DebugAdapterFactory } from '../debug/adapter';
 import { registerExtensionCommands } from './commands';
 import { registerDebugSessionHandlers } from './debug-session-events';
+import { registerAutoRebuildOnSave } from './auto-rebuild';
 import { registerLanguageAssociations } from './language-association';
 import { SessionStateManager } from './session-state-manager';
 import { PlatformViewProvider } from './platform-view-provider';
@@ -214,6 +215,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
     terminalPanel,
     workspaceSelection,
   });
+  registerAutoRebuildOnSave(context, sessionState, output);
 
   return {
     registerPlatform,

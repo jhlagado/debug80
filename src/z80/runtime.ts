@@ -33,7 +33,41 @@ export interface Z80Runtime {
   getRegisters: () => Cpu;
   isHalted: () => boolean;
   getPC: () => number;
+  captureCpuState: () => CpuStateSnapshot;
+  restoreCpuState: (snapshot: CpuStateSnapshot) => void;
   reset: (program?: HexProgram, entry?: number) => void;
+}
+
+export interface CpuStateSnapshot {
+  b: number;
+  a: number;
+  c: number;
+  d: number;
+  e: number;
+  h: number;
+  l: number;
+  a_prime: number;
+  b_prime: number;
+  c_prime: number;
+  d_prime: number;
+  e_prime: number;
+  h_prime: number;
+  l_prime: number;
+  ix: number;
+  iy: number;
+  i: number;
+  r: number;
+  sp: number;
+  pc: number;
+  flags: Cpu['flags'];
+  flags_prime: Cpu['flags_prime'];
+  imode: number;
+  iff1: number;
+  iff2: number;
+  halted: boolean;
+  do_delayed_di: boolean;
+  do_delayed_ei: boolean;
+  cycle_counter: number;
 }
 
 export interface RuntimeOptions {
@@ -119,6 +153,8 @@ export function createZ80Runtime(
     getRegisters,
     isHalted,
     getPC,
+    captureCpuState,
+    restoreCpuState,
     reset: resetRuntime,
   };
 
@@ -287,6 +323,87 @@ function isHalted(this: Z80RuntimeImpl): boolean {
 
 function getPC(this: Z80RuntimeImpl): number {
   return this.cpu.pc;
+}
+
+function cloneFlags(flags: Cpu['flags']): Cpu['flags'] {
+  return {
+    S: flags.S,
+    Z: flags.Z,
+    Y: flags.Y,
+    H: flags.H,
+    X: flags.X,
+    P: flags.P,
+    N: flags.N,
+    C: flags.C,
+  };
+}
+
+function captureCpuState(this: Z80RuntimeImpl): CpuStateSnapshot {
+  const cpu = this.cpu;
+  return {
+    b: cpu.b,
+    a: cpu.a,
+    c: cpu.c,
+    d: cpu.d,
+    e: cpu.e,
+    h: cpu.h,
+    l: cpu.l,
+    a_prime: cpu.a_prime,
+    b_prime: cpu.b_prime,
+    c_prime: cpu.c_prime,
+    d_prime: cpu.d_prime,
+    e_prime: cpu.e_prime,
+    h_prime: cpu.h_prime,
+    l_prime: cpu.l_prime,
+    ix: cpu.ix,
+    iy: cpu.iy,
+    i: cpu.i,
+    r: cpu.r,
+    sp: cpu.sp,
+    pc: cpu.pc,
+    flags: cloneFlags(cpu.flags),
+    flags_prime: cloneFlags(cpu.flags_prime),
+    imode: cpu.imode,
+    iff1: cpu.iff1,
+    iff2: cpu.iff2,
+    halted: cpu.halted,
+    do_delayed_di: cpu.do_delayed_di,
+    do_delayed_ei: cpu.do_delayed_ei,
+    cycle_counter: cpu.cycle_counter,
+  };
+}
+
+function restoreCpuState(this: Z80RuntimeImpl, snapshot: CpuStateSnapshot): void {
+  const cpu = this.cpu;
+  cpu.b = snapshot.b;
+  cpu.a = snapshot.a;
+  cpu.c = snapshot.c;
+  cpu.d = snapshot.d;
+  cpu.e = snapshot.e;
+  cpu.h = snapshot.h;
+  cpu.l = snapshot.l;
+  cpu.a_prime = snapshot.a_prime;
+  cpu.b_prime = snapshot.b_prime;
+  cpu.c_prime = snapshot.c_prime;
+  cpu.d_prime = snapshot.d_prime;
+  cpu.e_prime = snapshot.e_prime;
+  cpu.h_prime = snapshot.h_prime;
+  cpu.l_prime = snapshot.l_prime;
+  cpu.ix = snapshot.ix;
+  cpu.iy = snapshot.iy;
+  cpu.i = snapshot.i;
+  cpu.r = snapshot.r;
+  cpu.sp = snapshot.sp;
+  cpu.pc = snapshot.pc;
+  cpu.flags = cloneFlags(snapshot.flags);
+  cpu.flags_prime = cloneFlags(snapshot.flags_prime);
+  cpu.imode = snapshot.imode;
+  cpu.iff1 = snapshot.iff1;
+  cpu.iff2 = snapshot.iff2;
+  cpu.halted = snapshot.halted;
+  cpu.do_delayed_di = snapshot.do_delayed_di;
+  cpu.do_delayed_ei = snapshot.do_delayed_ei;
+  cpu.cycle_counter = snapshot.cycle_counter;
 }
 
 function resetRuntime(this: Z80RuntimeImpl, prog?: HexProgram, ent?: number): void {
