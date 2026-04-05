@@ -18,6 +18,7 @@ describe('platform-view idle html', () => {
     });
 
     expect(html).toContain('Create a Debug80 project to get started.');
+    expect(html).toContain('Create Project');
     expect(html).toContain("script-src 'nonce-abc123'");
     expect(html).not.toContain('Start Debugging');
   });
@@ -27,10 +28,19 @@ describe('platform-view idle html', () => {
       hasProject: true,
       multiRoot: true,
       nonce: 'xyz789',
+      projectName: 'caverns80',
+      targetName: 'app',
+      entrySource: 'src/main.asm',
     });
 
     expect(html).toContain('Project detected (Workspace).');
+    expect(html).toContain('Project: caverns80');
+    expect(html).toContain('Target: app');
+    expect(html).toContain('Entry: src/main.asm');
     expect(html).toContain('Start Debugging');
+    expect(html).toContain('Select Open Project');
+    expect(html).toContain('Select Target');
+    expect(html).toContain('Set Entry Source');
     expect(html).toContain("script-src 'nonce-xyz789'");
     expect(html).toContain('Select a workspace folder with');
   });

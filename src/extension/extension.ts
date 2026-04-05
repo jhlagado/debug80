@@ -12,7 +12,9 @@ import { SessionStateManager } from './session-state-manager';
 import { PlatformViewProvider } from './platform-view-provider';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
+import { ProjectTargetSelectionController } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
+import { Debug80ConfigurationProvider } from './debug-configuration-provider';
 import { OutputChannelLogger } from '../util/logger';
 import {
   listPlatforms,
@@ -177,8 +179,13 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   const rebuildDiagnostics = vscode.languages.createDiagnosticCollection('debug80-rebuild');
   const logger = new OutputChannelLogger(output);
   const factory = new Z80DebugAdapterFactory(logger);
-  const platformViewProvider = new PlatformViewProvider(context.extensionUri);
+  const platformViewProvider = new PlatformViewProvider(context.extensionUri, context.workspaceState);
   const workspaceSelection = new WorkspaceSelectionController(context, platformViewProvider);
+  const targetSelection = new ProjectTargetSelectionController(context);
+  const debugConfigurationProvider = new Debug80ConfigurationProvider(
+    workspaceSelection,
+    targetSelection
+  );
   const sourceColumns = new SourceColumnController(sessionState);
   const terminalPanel = new TerminalPanelController(
     sessionState,
@@ -188,6 +195,10 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
 
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory)
+  );
+
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider('z80', debugConfigurationProvider)
   );
 
   context.subscriptions.push(
@@ -208,6 +219,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
     sourceColumns,
     terminalPanel,
     workspaceSelection,
+    targetSelection,
   });
   registerDebugSessionHandlers({
     context,

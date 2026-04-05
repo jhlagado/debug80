@@ -2,7 +2,7 @@
  * @fileoverview Platform-specific request handlers for debug adapter commands.
  */
 
-import { type CpuStateSnapshot, Z80Runtime } from '../z80/runtime';
+import { Z80Runtime } from '../z80/runtime';
 import { KEY_RESET } from '../platforms/tec-common';
 import { applySerialInput, applySpeedChange, SerialTarget, SpeedTarget } from './io-requests';
 
@@ -40,16 +40,14 @@ export function handleResetRequest(
   runtime: Z80Runtime | undefined,
   program: unknown,
   entry: number | undefined,
-  platformRuntime: ResettableTarget | undefined,
-  entryCpuState?: CpuStateSnapshot
+  platformRuntime: ResettableTarget | undefined
 ): string | null {
   if (!runtime || program === undefined) {
     return 'Debug80: No program loaded.';
   }
-  if (entryCpuState !== undefined) {
-    runtime.restoreCpuState(entryCpuState);
-    return null;
-  }
+
+  // Hardware reset should be a cold reset of the machine state, not a warm jump
+  // back into the captured app entry snapshot.
   runtime.reset(program as never, entry);
   platformRuntime?.resetState();
   return null;
