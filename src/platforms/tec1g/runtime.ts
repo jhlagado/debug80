@@ -121,7 +121,7 @@ export interface Tec1gRuntime {
 export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
-const TEC1G_MATRIX_PERSISTENCE_MS = 40;
+const TEC1G_MATRIX_PERSISTENCE_MS = 20;
 const TEC1G_MATRIX_BRIGHTNESS_GAIN = 16;
 
 /**

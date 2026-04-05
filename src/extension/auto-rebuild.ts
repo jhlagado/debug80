@@ -4,6 +4,8 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
+import type { WarmRebuildResult } from '../debug/message-types';
+import { isWarmRebuildResult } from '../debug/message-types';
 import { SessionStateManager } from './session-state-manager';
 
 const REBUILD_DEBOUNCE_MS = 250;
@@ -16,10 +18,63 @@ function isAssemblyDocument(document: vscode.TextDocument): boolean {
   return ASSEMBLY_EXTENSIONS.has(path.extname(document.uri.fsPath).toLowerCase());
 }
 
+function clearRebuildDiagnostics(
+  sessionId: string,
+  sessionState: SessionStateManager,
+  diagnostics: vscode.DiagnosticCollection
+): void {
+  const uri = sessionState.rebuildDiagnosticUris.get(sessionId);
+  if (uri !== undefined) {
+    diagnostics.delete(uri);
+    sessionState.rebuildDiagnosticUris.delete(sessionId);
+  }
+}
+
+function applyRebuildDiagnostics(
+  sessionId: string,
+  sessionState: SessionStateManager,
+  diagnostics: vscode.DiagnosticCollection,
+  result: WarmRebuildResult
+): void {
+  clearRebuildDiagnostics(sessionId, sessionState, diagnostics);
+  if (result.location === undefined) {
+    return;
+  }
+
+  const uri = vscode.Uri.file(result.location.path);
+  const startLine = Math.max(0, result.location.line - 1);
+  const startCharacter = Math.max(0, (result.location.column ?? 1) - 1);
+  const endCharacter = Math.max(startCharacter + 1, result.location.sourceLine?.length ?? 1);
+  const range = new vscode.Range(startLine, startCharacter, startLine, endCharacter);
+  const diagnosticMessage = result.detail?.split(/\r?\n/, 1)[0] ?? result.summary;
+  const diagnostic = new vscode.Diagnostic(
+    range,
+    diagnosticMessage,
+    vscode.DiagnosticSeverity.Error
+  );
+  diagnostics.set(uri, [diagnostic]);
+  sessionState.rebuildDiagnosticUris.set(sessionId, uri);
+}
+
+async function revealRebuildLocation(result: WarmRebuildResult): Promise<void> {
+  if (result.location === undefined) {
+    return;
+  }
+  const doc = await vscode.workspace.openTextDocument(result.location.path);
+  const startLine = Math.max(0, result.location.line - 1);
+  const startCharacter = Math.max(0, (result.location.column ?? 1) - 1);
+  const endCharacter = Math.max(startCharacter + 1, result.location.sourceLine?.length ?? 1);
+  const range = new vscode.Range(startLine, startCharacter, startLine, endCharacter);
+  const editor = await vscode.window.showTextDocument(doc, { preview: false });
+  editor.selection = new vscode.Selection(range.start, range.end);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+}
+
 async function runWarmRebuild(
   session: vscode.DebugSession,
   sessionState: SessionStateManager,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  diagnostics: vscode.DiagnosticCollection
 ): Promise<void> {
   if (sessionState.rebuildInFlight.has(session.id)) {
     sessionState.rebuildPending.add(session.id);
@@ -28,14 +83,31 @@ async function runWarmRebuild(
 
   sessionState.rebuildInFlight.add(session.id);
   try {
-    await session.customRequest('debug80/rebuildWarm', {});
+    const response: unknown = await session.customRequest('debug80/rebuildWarm', {});
+    if (isWarmRebuildResult(response)) {
+      if (response.ok) {
+        clearRebuildDiagnostics(session.id, sessionState, diagnostics);
+        output.appendLine(response.summary);
+      } else {
+        applyRebuildDiagnostics(session.id, sessionState, diagnostics, response);
+        output.appendLine(response.summary);
+        if (response.detail !== undefined && response.detail.length > 0) {
+          output.appendLine(response.detail);
+        }
+        output.show(true);
+        await revealRebuildLocation(response);
+      }
+      return;
+    }
+
+    clearRebuildDiagnostics(session.id, sessionState, diagnostics);
   } catch (err) {
     output.appendLine(`Debug80: warm rebuild failed: ${String(err)}`);
     output.show(true);
   } finally {
     sessionState.rebuildInFlight.delete(session.id);
     if (sessionState.rebuildPending.delete(session.id)) {
-      void runWarmRebuild(session, sessionState, output);
+      void runWarmRebuild(session, sessionState, output, diagnostics);
     }
   }
 }
@@ -43,7 +115,8 @@ async function runWarmRebuild(
 export function registerAutoRebuildOnSave(
   context: vscode.ExtensionContext,
   sessionState: SessionStateManager,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  diagnostics: vscode.DiagnosticCollection
 ): void {
   if (typeof vscode.workspace.onDidSaveTextDocument !== 'function') {
     return;
@@ -73,7 +146,7 @@ export function registerAutoRebuildOnSave(
       }
       const timer = setTimeout(() => {
         sessionState.rebuildTimers.delete(session.id);
-        void runWarmRebuild(session, sessionState, output);
+        void runWarmRebuild(session, sessionState, output, diagnostics);
       }, REBUILD_DEBOUNCE_MS);
       sessionState.rebuildTimers.set(session.id, timer);
     })
