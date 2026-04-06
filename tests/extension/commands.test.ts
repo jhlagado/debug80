@@ -1,6 +1,8 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const projectConfigPath = path.normalize('/workspace/tec1g-mon3/.vscode/debug80.json');
+
 const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
 const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => unknown) => {
   registeredCommands.set(name, callback);
@@ -46,9 +48,7 @@ describe('registerExtensionCommands', () => {
     vi.clearAllMocks();
     registeredCommands.clear();
     existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) ===
-        path.normalize('/workspace/tec1g-mon3/.vscode/debug80.json')
+      (candidate: string) => path.normalize(candidate) === projectConfigPath
     );
   });
 
@@ -89,7 +89,7 @@ describe('registerExtensionCommands', () => {
         type: 'z80',
         request: 'launch',
         name: 'Debug Z80 (current project)',
-        projectConfig: '/workspace/tec1g-mon3/.vscode/debug80.json',
+        projectConfig: projectConfigPath,
         stopOnEntry: false,
       })
     );
@@ -128,7 +128,7 @@ describe('registerExtensionCommands', () => {
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
     await selectTarget?.();
 
-    expect(resolveTarget).toHaveBeenCalledWith('/workspace/tec1g-mon3/.vscode/debug80.json', {
+    expect(resolveTarget).toHaveBeenCalledWith(projectConfigPath, {
       prompt: true,
       forcePrompt: true,
       placeHolder: 'Select the active Debug80 target',
@@ -185,7 +185,7 @@ describe('registerExtensionCommands', () => {
       expect.objectContaining({
         type: 'z80',
         request: 'launch',
-        projectConfig: '/workspace/tec1g-mon3/.vscode/debug80.json',
+        projectConfig: projectConfigPath,
         stopOnEntry: false,
       })
     );
@@ -235,7 +235,7 @@ describe('registerExtensionCommands', () => {
       expect.objectContaining({
         type: 'z80',
         request: 'launch',
-        projectConfig: '/workspace/tec1g-mon3/.vscode/debug80.json',
+        projectConfig: projectConfigPath,
         stopOnEntry: false,
       })
     );
