@@ -37,25 +37,35 @@ export interface ResolvedArtifacts {
  * @returns The base directory path
  */
 export function resolveBaseDir(args: LaunchRequestArguments): string {
-  const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  const defaultWorkspace = workspaceFolders[0]?.uri.fsPath;
 
-  // If a projectConfig is provided, use the workspace root when the config lives
-  // inside it (including .vscode), otherwise fall back to the config directory.
+  // If a projectConfig is provided, use the workspace root that contains it.
   if (args.projectConfig !== undefined && args.projectConfig !== '') {
     const cfgPath = path.isAbsolute(args.projectConfig)
       ? args.projectConfig
-      : workspace !== undefined
-        ? path.join(workspace, args.projectConfig)
+      : defaultWorkspace !== undefined
+        ? path.join(defaultWorkspace, args.projectConfig)
         : args.projectConfig;
 
-    if (workspace !== undefined && cfgPath.startsWith(workspace)) {
-      return workspace;
+    // Find the workspace folder that contains this config
+    for (const folder of workspaceFolders) {
+      const folderPath = folder.uri.fsPath;
+      if (cfgPath.startsWith(folderPath + path.sep) || cfgPath.startsWith(folderPath + '/')) {
+        return folderPath;
+      }
     }
 
-    return path.dirname(cfgPath);
+    // Fall back to the config's parent directory (not .vscode itself)
+    const cfgDir = path.dirname(cfgPath);
+    if (cfgDir.endsWith(`${path.sep}.vscode`) || cfgDir.endsWith('/.vscode')) {
+      return path.dirname(cfgDir);
+    }
+
+    return cfgDir;
   }
 
-  return workspace ?? process.cwd();
+  return defaultWorkspace ?? process.cwd();
 }
 
 /**

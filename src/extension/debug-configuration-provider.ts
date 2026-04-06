@@ -21,10 +21,23 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
     private readonly targetSelection: ProjectTargetSelectionController
   ) {}
 
+  provideDebugConfigurations(
+    _folder: vscode.WorkspaceFolder | undefined
+  ): vscode.DebugConfiguration[] {
+    return [this.createCurrentProjectConfig()];
+  }
+
   async resolveDebugConfiguration(
     folder: vscode.WorkspaceFolder | undefined,
     config: Debug80LaunchConfig
   ): Promise<vscode.DebugConfiguration | null | undefined> {
+    // Handle F5 with no launch.json / empty config — VS Code passes {}
+    const configKeys = Object.keys(config).filter((k) => k !== 'name' && k !== 'request' && k !== 'type');
+    const isEmptyConfig = !config.type && configKeys.length === 0;
+    if (isEmptyConfig) {
+      config = this.createCurrentProjectConfig();
+    }
+
     const normalized = this.normalizeConfig(config);
 
     if (this.hasExplicitArtifactInputs(normalized)) {
@@ -41,11 +54,17 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
       return normalized;
     }
 
-    let projectFolder = await this.workspaceSelection.resolveWorkspaceFolder({
-      requireProject: true,
-      prompt: true,
-      placeHolder: 'Select the Debug80 project folder to debug',
-    });
+    // Use the folder VS Code gave us if it's a valid project
+    let projectFolder: vscode.WorkspaceFolder | undefined;
+    if (folder !== undefined && findProjectConfigPath(folder) !== undefined) {
+      projectFolder = folder;
+    } else {
+      projectFolder = await this.workspaceSelection.resolveWorkspaceFolder({
+        requireProject: true,
+        prompt: true,
+        placeHolder: 'Select the Debug80 project folder to debug',
+      });
+    }
 
     if (projectFolder === undefined) {
       const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
@@ -142,9 +161,18 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
       ...config,
       type: 'z80',
       request: 'launch',
-      name: config.name ?? 'Debug Z80 (current project)',
+      name: config.name ?? 'Debug80: Current Project',
       stopOnEntry,
     };
+  }
+
+  private createCurrentProjectConfig(): vscode.DebugConfiguration {
+    return this.normalizeConfig({
+      type: 'z80',
+      request: 'launch',
+      name: 'Debug80: Current Project',
+      stopOnEntry: true,
+    });
   }
 
   private hasExplicitArtifactInputs(config: Debug80LaunchConfig): boolean {

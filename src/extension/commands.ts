@@ -123,7 +123,7 @@ async function startCurrentProjectDebugging(
   return vscode.debug.startDebugging(folder, {
     type: 'z80',
     request: 'launch',
-    name: 'Debug Z80 (current project)',
+    name: 'Debug80: Current Project',
     projectConfig,
     stopOnEntry: false,
   });
@@ -144,7 +144,7 @@ export function registerExtensionCommands({
         void vscode.window.showErrorMessage('Debug80: No workspace folder available for project creation.');
         return false;
       }
-      const created = await scaffoldProject(folder, true);
+      const created = await scaffoldProject(folder, false);
       if (created) {
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();

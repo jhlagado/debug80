@@ -88,7 +88,7 @@ describe('registerExtensionCommands', () => {
       expect.objectContaining({
         type: 'z80',
         request: 'launch',
-        name: 'Debug Z80 (current project)',
+        name: 'Debug80: Current Project',
         projectConfig: projectConfigPath,
         stopOnEntry: false,
       })
