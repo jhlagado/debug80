@@ -79,8 +79,7 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
             context.sessionState.runtime,
             context.sessionState.loadedProgram,
             context.sessionState.loadedEntry,
-            context.sessionState.tec1gRuntime,
-            context.sessionState.entryCpuState
+            context.sessionState.tec1gRuntime
           ),
           context,
           () => context.clearMatrixHeldKeys()
