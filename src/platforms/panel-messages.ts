@@ -63,7 +63,7 @@ export async function handleCommonPanelMessage<TTab extends string>(
   ctx: PanelMessageContext<TTab>,
   commands: PanelCommands
 ): Promise<boolean> {
-  if (msg.type === 'tab' && (msg.tab === 'ui' || msg.tab === 'memory')) {
+  if (msg.type === 'tab' && (msg.tab === 'home' || msg.tab === 'ui' || msg.tab === 'memory')) {
     ctx.setActiveTab(msg.tab as TTab);
     if (ctx.isPanelVisible() && ctx.getActiveTab() === 'memory') {
       startAutoRefresh(ctx.refreshController.state, ctx.autoRefreshMs, () => {
