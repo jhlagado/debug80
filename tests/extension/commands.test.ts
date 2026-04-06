@@ -1,3 +1,4 @@
+import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
@@ -45,7 +46,9 @@ describe('registerExtensionCommands', () => {
     vi.clearAllMocks();
     registeredCommands.clear();
     existsSync.mockImplementation(
-      (candidate: string) => candidate === '/workspace/tec1g-mon3/.vscode/debug80.json'
+      (candidate: string) =>
+        path.normalize(candidate) ===
+        path.normalize('/workspace/tec1g-mon3/.vscode/debug80.json')
     );
   });
 
