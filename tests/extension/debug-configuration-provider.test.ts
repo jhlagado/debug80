@@ -1,6 +1,9 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const cavernsProjectConfigPath = path.normalize('/workspace/caverns80/.vscode/debug80.json');
+const debug80ProjectConfigPath = path.normalize('/workspace/debug80/.vscode/debug80.json');
+
 const executeCommand = vi.fn();
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
@@ -39,8 +42,7 @@ describe('Debug80ConfigurationProvider', () => {
     );
 
     existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
+      (candidate: string) => path.normalize(candidate) === cavernsProjectConfigPath
     );
 
     const rememberWorkspace = vi.fn();
@@ -61,7 +63,7 @@ describe('Debug80ConfigurationProvider', () => {
         type: 'z80',
         request: 'launch',
         name: 'Debug Z80 (current project)',
-        projectConfig: '/workspace/caverns80/.vscode/debug80.json',
+        projectConfig: cavernsProjectConfigPath,
         stopOnEntry: true,
       })
     );
@@ -77,8 +79,7 @@ describe('Debug80ConfigurationProvider', () => {
 
     workspaceFolders = [{ name: 'debug80', uri: { fsPath: '/workspace/debug80' } }];
     existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/debug80/.vscode/debug80.json')
+      (candidate: string) => path.normalize(candidate) === debug80ProjectConfigPath
     );
     showInformationMessage.mockResolvedValueOnce('Create Project');
     executeCommand.mockResolvedValueOnce(true);
@@ -107,7 +108,7 @@ describe('Debug80ConfigurationProvider', () => {
     expect(executeCommand).toHaveBeenCalledWith('debug80.createProject');
     expect(resolved).toEqual(
       expect.objectContaining({
-        projectConfig: '/workspace/debug80/.vscode/debug80.json',
+        projectConfig: debug80ProjectConfigPath,
       })
     );
   });
@@ -160,16 +161,16 @@ describe('Debug80ConfigurationProvider', () => {
 
     const resolved = await provider.resolveDebugConfigurationWithSubstitutedVariables(
       { name: 'debug80', uri: { fsPath: '/workspace/debug80' } } as never,
-      { projectConfig: '/workspace/debug80/.vscode/debug80.json' }
+      { projectConfig: debug80ProjectConfigPath }
     );
 
-    expect(resolveTarget).toHaveBeenCalledWith('/workspace/debug80/.vscode/debug80.json', {
+    expect(resolveTarget).toHaveBeenCalledWith(debug80ProjectConfigPath, {
       prompt: true,
       placeHolder: 'Select the Debug80 target to debug',
     });
     expect(resolved).toEqual(
       expect.objectContaining({
-        projectConfig: '/workspace/debug80/.vscode/debug80.json',
+        projectConfig: debug80ProjectConfigPath,
         target: 'serial',
       })
     );
