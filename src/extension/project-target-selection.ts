@@ -82,13 +82,13 @@ export class ProjectTargetSelectionController {
     const hasDefault =
       defaultTarget !== undefined && choices.some((choice) => choice.name === defaultTarget);
 
-    if (!forcePrompt && hasStored) {
-      this.rememberTarget(projectConfigPath, stored as string);
+    if (!forcePrompt && hasStored && stored !== undefined) {
+      this.rememberTarget(projectConfigPath, stored);
       return stored;
     }
 
-    if (!forcePrompt && hasDefault) {
-      this.rememberTarget(projectConfigPath, defaultTarget as string);
+    if (!forcePrompt && hasDefault && defaultTarget !== undefined) {
+      this.rememberTarget(projectConfigPath, defaultTarget);
       return defaultTarget;
     }
 
@@ -100,7 +100,7 @@ export class ProjectTargetSelectionController {
       return only;
     }
 
-    if (!options.prompt) {
+    if (options.prompt !== true) {
       return undefined;
     }
 
@@ -132,7 +132,7 @@ export class ProjectTargetSelectionController {
         matchOnDetail: true,
       }
     );
-    if (!picked) {
+    if (picked === undefined) {
       return null;
     }
 

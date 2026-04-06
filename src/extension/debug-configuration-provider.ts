@@ -64,8 +64,10 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
         return null;
       }
 
-      const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
-      if (!created) {
+      const createdResult: unknown = await vscode.commands.executeCommand(
+        'debug80.createProject'
+      );
+      if (createdResult !== true) {
         return null;
       }
 
@@ -134,12 +136,14 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
   }
 
   private normalizeConfig(config: Debug80LaunchConfig): Debug80LaunchConfig {
+    const stopOnEntry = typeof config.stopOnEntry === 'boolean' ? config.stopOnEntry : true;
+
     return {
       ...config,
       type: 'z80',
       request: 'launch',
       name: config.name ?? 'Debug Z80 (current project)',
-      stopOnEntry: config.stopOnEntry ?? true,
+      stopOnEntry,
     };
   }
 
