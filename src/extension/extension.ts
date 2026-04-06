@@ -179,7 +179,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   const rebuildDiagnostics = vscode.languages.createDiagnosticCollection('debug80-rebuild');
   const logger = new OutputChannelLogger(output);
   const factory = new Z80DebugAdapterFactory(logger);
-  const platformViewProvider = new PlatformViewProvider(context.extensionUri, context.workspaceState);
+  const platformViewProvider = new PlatformViewProvider(context.extensionUri);
   const workspaceSelection = new WorkspaceSelectionController(context, platformViewProvider);
   const targetSelection = new ProjectTargetSelectionController(context);
   const debugConfigurationProvider = new Debug80ConfigurationProvider(
@@ -199,6 +199,14 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
 
   context.subscriptions.push(
     vscode.debug.registerDebugConfigurationProvider('z80', debugConfigurationProvider)
+  );
+
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider(
+      'z80',
+      debugConfigurationProvider,
+      vscode.DebugConfigurationProviderTriggerKind.Dynamic
+    )
   );
 
   context.subscriptions.push(

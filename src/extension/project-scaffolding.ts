@@ -57,6 +57,20 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): Record<string, u
   };
 }
 
+export function createDefaultLaunchConfig(): Record<string, unknown> {
+  return {
+    version: '0.2.0',
+    configurations: [
+      {
+        name: 'Debug80: Current Project',
+        type: 'z80',
+        request: 'launch',
+        stopOnEntry: true,
+      },
+    ],
+  };
+}
+
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
   includeLaunch: boolean
@@ -119,23 +133,11 @@ export async function scaffoldProject(
 
   if (includeLaunch) {
     if (!fs.existsSync(launchPath)) {
-      const launchConfig = {
-        version: '0.2.0',
-        configurations: [
-          {
-            name: 'Debug (debug80)',
-            type: 'z80',
-            request: 'launch',
-            projectConfig: '${workspaceFolder}/.vscode/debug80.json',
-            target: scaffoldPlan?.targetName ?? 'app',
-            stopOnEntry: false,
-          },
-        ],
-      };
+      const launchConfig = createDefaultLaunchConfig();
       try {
         fs.writeFileSync(launchPath, `${JSON.stringify(launchConfig, null, 2)}\n`);
         void vscode.window.showInformationMessage(
-          'Debug80: Created .vscode/launch.json for debug80.'
+          'Debug80: Created .vscode/launch.json for the current-project workflow.'
         );
         created = true;
       } catch (err) {

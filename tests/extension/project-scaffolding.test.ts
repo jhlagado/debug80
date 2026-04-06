@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createDefaultProjectConfig,
+  createDefaultLaunchConfig,
   createStarterSourceContent,
 } from '../../src/extension/project-scaffolding';
 
@@ -64,5 +65,19 @@ describe('project-scaffolding helpers', () => {
     expect(createStarterSourceContent('asm')).toContain('jr start');
     expect(createStarterSourceContent('zax')).toContain('; Debug80 starter (ZAX)');
     expect(createStarterSourceContent('zax')).toContain('jr start');
+  });
+
+  it('creates a generic current-project launch config', () => {
+    expect(createDefaultLaunchConfig()).toEqual({
+      version: '0.2.0',
+      configurations: [
+        {
+          name: 'Debug80: Current Project',
+          type: 'z80',
+          request: 'launch',
+          stopOnEntry: true,
+        },
+      ],
+    });
   });
 });

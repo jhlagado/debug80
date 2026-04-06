@@ -62,7 +62,7 @@ describe('Debug80ConfigurationProvider', () => {
       expect.objectContaining({
         type: 'z80',
         request: 'launch',
-        name: 'Debug Z80 (current project)',
+        name: 'Debug80: Current Project',
         projectConfig: cavernsProjectConfigPath,
         stopOnEntry: true,
       })
@@ -174,5 +174,30 @@ describe('Debug80ConfigurationProvider', () => {
         target: 'serial',
       })
     );
+  });
+
+  it('provides a generic current-project launch configuration', async () => {
+    const { Debug80ConfigurationProvider } = await import(
+      '../../src/extension/debug-configuration-provider'
+    );
+
+    const provider = new Debug80ConfigurationProvider(
+      {
+        rememberWorkspace: vi.fn(),
+        resolveWorkspaceFolder: vi.fn(),
+      } as never,
+      {
+        resolveTarget: vi.fn(),
+      } as never
+    );
+
+    expect(provider.provideDebugConfigurations?.(undefined)).toEqual([
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        name: 'Debug80: Current Project',
+        stopOnEntry: true,
+      }),
+    ]);
   });
 });

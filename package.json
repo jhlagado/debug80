@@ -17,6 +17,8 @@
   ],
   "activationEvents": [
     "onDebugResolve:z80",
+    "workspaceContains:**/.vscode/debug80.json",
+    "workspaceContains:**/debug80.json",
     "onLanguage:asm",
     "onLanguage:asm-collection",
     "onLanguage:zax",
@@ -135,7 +137,11 @@
     "commands": [
       {
         "command": "debug80.createProject",
-        "title": "Debug80: Create Project (config + launch)"
+        "title": "Debug80: Create Project"
+      },
+      {
+        "command": "debug80.startDebug",
+        "title": "Debug80: Start Debugging"
       },
       {
         "command": "debug80.terminalInput",
@@ -333,25 +339,29 @@
           {
             "type": "z80",
             "request": "launch",
-            "name": "Debug Z80 (project config)",
-            "projectConfig": "${workspaceFolder}/.vscode/debug80.json",
+            "name": "Debug80: Current Project",
             "stopOnEntry": true
           }
         ],
         "configurationSnippets": [
           {
-            "label": "Z80: Launch (HEX + LST)",
-            "description": "Launch and debug a Z80 program from HEX/LST",
+            "label": "Debug80: Current Project",
+            "description": "Launch the selected Debug80 project and target from the current workspace",
             "body": {
               "type": "z80",
               "request": "launch",
-              "name": "Debug Z80 (project config target)",
-              "projectConfig": "^\"\\${workspaceFolder}/.vscode/debug80.json\"",
-              "target": "app",
+              "name": "Debug80: Current Project",
               "stopOnEntry": true
             }
           }
         ]
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "debug80.startDebug",
+        "key": "f5",
+        "when": "debug80.hasProject && !inDebugMode"
       }
     ]
   },

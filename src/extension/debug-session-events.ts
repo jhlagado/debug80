@@ -29,6 +29,9 @@ export function registerDebugSessionHandlers({
   terminalPanel,
   workspaceSelection,
 }: DebugSessionEventDependencies): void {
+  const isPlatformId = (value: string): value is 'tec1' | 'tec1g' | 'simple' =>
+    value === 'tec1' || value === 'tec1g' || value === 'simple';
+
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
@@ -100,7 +103,7 @@ export function registerDebugSessionHandlers({
           sessionState.sessionPlatforms.set(evt.session.id, id);
         }
         workspaceSelection.rememberWorkspace(evt.session.workspaceFolder);
-        if (id !== undefined && id.length > 0 && id !== 'simple') {
+        if (id !== undefined && id.length > 0 && isPlatformId(id) && id !== 'simple') {
           platformViewProvider.setPlatform(id, evt.session, {
             focus: false,
             reveal: true,

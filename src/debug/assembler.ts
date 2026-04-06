@@ -154,7 +154,18 @@ export function findAsm80Binary(startDir: string): string | undefined {
     dir = parent;
   }
 
-  // Try bundled asm80
+  // Try bundled asm80 relative to extension root (out/debug/ -> ../../node_modules)
+  const extensionRoot = path.resolve(__dirname, '..', '..');
+  const binStub = path.join(extensionRoot, 'node_modules', '.bin', 'asm80');
+  if (fs.existsSync(binStub)) {
+    return binStub;
+  }
+  const bundledJs = path.join(extensionRoot, 'node_modules', 'asm80', 'asm80.js');
+  if (fs.existsSync(bundledJs)) {
+    return bundledJs;
+  }
+
+  // Try require.resolve as last resort
   const bundled = resolveBundledAsm80();
   if (bundled !== undefined) {
     return bundled;
@@ -171,11 +182,17 @@ export function findAsm80Binary(startDir: string): string | undefined {
 export function resolveBundledAsm80(): string | undefined {
   const tryResolve = (id: string): string | undefined => {
     try {
-      return require.resolve(id);
+      return moduleRequire.resolve(id);
     } catch {
       return undefined;
     }
   };
+
+  // Try the actual binary entry from asm80's package.json ("bin": {"asm80": "./asm80.js"})
+  const entry = tryResolve('asm80/asm80.js');
+  if (entry !== undefined) {
+    return entry;
+  }
 
   const direct = tryResolve('asm80/bin/asm80') ?? tryResolve('asm80/bin/asm80.js');
   if (direct !== undefined) {
@@ -185,6 +202,13 @@ export function resolveBundledAsm80(): string | undefined {
   const pkg = tryResolve('asm80/package.json');
   if (pkg !== undefined) {
     const root = path.dirname(pkg);
+
+    // Check for the bin entry at the package root
+    const rootBin = path.join(root, 'asm80.js');
+    if (fs.existsSync(rootBin)) {
+      return rootBin;
+    }
+
     const bin = path.join(root, 'bin', 'asm80');
     if (fs.existsSync(bin)) {
       return bin;
@@ -207,9 +231,37 @@ export function resolveBundledAsm80(): string | undefined {
 export function resolveAsm80Command(asmDir: string): Asm80Command {
   const resolved = findAsm80Binary(asmDir) ?? 'asm80';
   if (shouldInvokeWithNode(resolved)) {
-    return { command: process.execPath, argsPrefix: [resolved] };
+    // process.execPath in VS Code's Extension Host is the Electron binary, not node.
+    // Find the real node binary instead.
+    const node = findNodeBinary();
+    return { command: node, argsPrefix: [resolved] };
   }
   return { command: resolved, argsPrefix: [] };
+}
+
+/**
+ * Finds the real Node.js binary (not the Electron helper).
+ */
+function findNodeBinary(): string {
+  // If process.execPath looks like a real node binary, use it
+  const exec = process.execPath;
+  if (exec.endsWith('/node') || exec.endsWith('\\node.exe') || exec.endsWith('/node.exe')) {
+    return exec;
+  }
+
+  // Look for node on PATH
+  const which = process.platform === 'win32' ? 'where' : 'which';
+  try {
+    const result = cp.spawnSync(which, ['node'], { encoding: 'utf-8' });
+    const nodePath = result.stdout?.trim().split('\n')[0]?.trim();
+    if (nodePath !== undefined && nodePath !== '' && fs.existsSync(nodePath)) {
+      return nodePath;
+    }
+  } catch {
+    // fall through
+  }
+
+  return 'node';
 }
 
 /**
@@ -220,6 +272,11 @@ export function resolveAsm80Command(asmDir: string): Asm80Command {
  */
 export function shouldInvokeWithNode(command: string): boolean {
   const lower = command.toLowerCase();
+
+  // node_modules/.bin/ stubs are executable scripts that find node themselves
+  if (command.includes(`node_modules${path.sep}.bin`) || command.includes('node_modules/.bin')) {
+    return false;
+  }
 
   // Windows executables run directly
   if (
@@ -291,7 +348,7 @@ export function runAssembler(
   if (result.error) {
     const enoent = (result.error as NodeJS.ErrnoException)?.code === 'ENOENT';
     const message = enoent
-      ? 'asm80 not found. Install it with "npm install -D asm80" or ensure it is on PATH.'
+      ? `asm80 not found. Tried command="${asm80.command}" args=${JSON.stringify(asm80.argsPrefix)} asmDir="${asmDir}" __dirname="${__dirname}"`
       : `asm80 failed to start: ${result.error.message ?? String(result.error)}`;
 
     if (onOutput) {

@@ -23,6 +23,7 @@ const createDiagnosticCollection = vi.fn(() => ({
 }));
 
 vi.mock('vscode', () => ({
+  DebugConfigurationProviderTriggerKind: { Initial: 1, Dynamic: 2 },
   ViewColumn: { One: 1, Two: 2, Nine: 9 },
   commands: { registerCommand, executeCommand: vi.fn() },
   debug: {
@@ -108,7 +109,17 @@ describe('extension activation', () => {
     const api = extension.activate(context);
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
-    expect(registerDebugConfigurationProvider).toHaveBeenCalledWith('z80', expect.anything());
+    expect(registerDebugConfigurationProvider).toHaveBeenNthCalledWith(
+      1,
+      'z80',
+      expect.anything()
+    );
+    expect(registerDebugConfigurationProvider).toHaveBeenNthCalledWith(
+      2,
+      'z80',
+      expect.anything(),
+      2
+    );
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.startDebug', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.restartDebug', expect.anything());
