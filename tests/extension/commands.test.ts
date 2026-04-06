@@ -135,6 +135,47 @@ describe('registerExtensionCommands', () => {
     });
   });
 
+  it('selects a configured root and starts debugging immediately', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const folder = {
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    };
+    const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder,
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await selectRoot?.();
+
+    expect(result).toEqual(folder);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: false,
+      })
+    );
+  });
+
   it('auto-restarts an active z80 session after changing target', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');
