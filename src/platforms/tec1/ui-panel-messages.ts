@@ -9,7 +9,7 @@ export type Tec1Message = PanelMessage;
 /**
  * Context required for TEC-1 message handling.
  */
-export type MessageContext = PanelMessageContext<'ui' | 'memory'>;
+export type MessageContext = PanelMessageContext<'home' | 'ui' | 'memory'>;
 
 /**
  * Handles inbound webview messages for the TEC-1 panel.

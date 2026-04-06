@@ -106,7 +106,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     modules: PlatformUiModules<TUiState>,
   ): PlatformViewState<TUiState> {
     const platformState: PlatformViewState<TUiState> = {
-      activeTab: 'ui',
+      activeTab: 'home',
       uiState: modules.createUiState(),
       serialBuffer: createSerialBuffer(),
       memoryViews: modules.createMemoryViewState(),
@@ -145,7 +145,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.selectedWorkspace = folder;
     if (this.currentPlatform === undefined) {
       this.renderCurrentView(true);
+      return;
     }
+    this.postProjectStatus();
   }
 
   setHasProject(value: boolean): void {
@@ -180,7 +182,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   ): Promise<void> {
     try {
       const ps = await this.ensurePlatformState(platform);
-      if (ps && (options?.tab === 'ui' || options?.tab === 'memory')) {
+      if (ps && (options?.tab === 'home' || options?.tab === 'ui' || options?.tab === 'memory')) {
         ps.activeTab = options.tab;
       }
       if (options?.reveal !== false) {
@@ -397,6 +399,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           this.postMessage({ type: 'serialInit', text: ps.serialBuffer.text });
         }
         this.postMessage({ type: 'selectTab', tab: ps.activeTab });
+        this.postProjectStatus();
         syncPlatformMemoryRefresh(ps, this.view.visible, rehydrate);
         return;
       }
@@ -436,6 +439,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     void this.view.webview.postMessage(payload);
+  }
+
+  private postProjectStatus(): void {
+    const summary = resolveProjectStatusSummary(this.workspaceState, this.selectedWorkspace);
+    this.postMessage({
+      type: 'projectStatus',
+      rootName: this.selectedWorkspace?.name,
+      hasProject: summary !== undefined,
+      projectName: summary?.projectName,
+      targetName: summary?.targetName,
+      entrySource: summary?.entrySource,
+    });
   }
 
   private shouldAcceptSession(sessionId?: string): boolean {

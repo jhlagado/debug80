@@ -8,26 +8,52 @@ body {
     #app {
       outline: none;
     }
-    .session-controls {
+    .home-panel {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border: 1px solid #333;
-      border-radius: 10px;
-      background: #141414;
+      flex-direction: column;
+      gap: 8px;
     }
-    .session-controls-title {
+    .home-card {
+      padding: 14px;
+      border: 1px solid #333;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #141414 0%, #101010 100%);
+    }
+    .home-kicker {
+      margin-bottom: 10px;
       font-size: 11px;
       letter-spacing: 0.14em;
       color: #bcbcbc;
     }
-    .session-controls-buttons {
+    .home-status {
+      display: grid;
+      gap: 8px;
+    }
+    .home-status-row {
+      display: grid;
+      grid-template-columns: minmax(88px, 120px) 1fr;
+      gap: 12px;
+      align-items: baseline;
+    }
+    .home-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9a9a9a;
+    }
+    .home-value {
+      color: #f0f0f0;
+      word-break: break-word;
+    }
+    .home-actions {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+    .home-note {
+      margin: 0;
+      color: #bcbcbc;
+      line-height: 1.4;
     }
     .session-button {
       appearance: none;
@@ -51,9 +77,9 @@ body {
       background: #465924;
     }
     @media (max-width: 640px) {
-      .session-controls {
-        align-items: flex-start;
-        flex-direction: column;
+      .home-status-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
       }
     }
     .layout {

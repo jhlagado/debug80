@@ -1,4 +1,4 @@
-export type PanelTab = 'ui' | 'memory';
+export type PanelTab = 'home' | 'ui' | 'memory';
 
 const MEMORY_NARROW_MAX = 480;
 const MEMORY_WIDE_MIN = 520;
@@ -14,6 +14,7 @@ export interface PanelLayoutController {
 
 type PanelLayoutOptions = {
   defaultTab: PanelTab;
+  panelHome: HTMLElement | null;
   memoryPanel: HTMLElement | null;
   panelMemory: HTMLElement | null;
   panelUi: HTMLElement | null;
@@ -36,7 +37,12 @@ function resolveMemoryRowSize(width: number, currentSize: number): number {
 }
 
 export function createPanelLayoutController(options: PanelLayoutOptions): PanelLayoutController {
-  let activeTab: PanelTab = options.defaultTab === 'memory' ? 'memory' : 'ui';
+  let activeTab: PanelTab =
+    options.defaultTab === 'memory'
+      ? 'memory'
+      : options.defaultTab === 'ui'
+        ? 'ui'
+        : 'home';
   let memoryRowSize = 16;
   let resizeTimer: number | null = null;
 
@@ -56,7 +62,8 @@ export function createPanelLayoutController(options: PanelLayoutOptions): PanelL
   };
 
   const setTab = (tab: string, notify: boolean): void => {
-    activeTab = tab === 'memory' ? 'memory' : 'ui';
+    activeTab = tab === 'memory' ? 'memory' : tab === 'ui' ? 'ui' : 'home';
+    options.panelHome?.classList.toggle('active', activeTab === 'home');
     options.panelUi?.classList.toggle('active', activeTab === 'ui');
     options.panelMemory?.classList.toggle('active', activeTab === 'memory');
     options.tabButtons.forEach((button) => {

@@ -26,18 +26,21 @@ vi.mock('vscode', () => {
 });
 
 describe('tec1 ui-panel-html', () => {
-  const extensionUri = { fsPath: process.cwd() };
+  const extensionUri = { fsPath: process.cwd() } as never;
   const webview = {
     cspSource: 'vscode-resource://test',
     asWebviewUri: (uri: { fsPath: string }) => ({
       toString: () => uri.fsPath,
     }),
-  };
+  } as never;
 
   it('includes key UI sections', () => {
-    const html = getTec1Html('ui', webview, extensionUri);
-    expect(html).toContain('Select Open Project');
+    const html = getTec1Html('home', webview, extensionUri);
+    expect(html).toContain('Home');
+    expect(html).toContain('panel-home');
+    expect(html).toContain('Select Root');
     expect(html).toContain('Select Target');
+    expect(html).toContain('Set Entry Source');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
@@ -46,7 +49,7 @@ describe('tec1 ui-panel-html', () => {
   });
 
   it('embeds the active tab', () => {
-    const html = getTec1Html('memory', webview, extensionUri);
-    expect(html).toContain('data-active-tab="memory"');
+    const html = getTec1Html('home', webview, extensionUri);
+    expect(html).toContain('data-active-tab="home"');
   });
 });
