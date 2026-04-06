@@ -11,6 +11,11 @@ export type PlatformViewMessage = {
 };
 
 export interface PlatformViewMessageDependencies {
+  handleCreateProject: () => PromiseLike<void>;
+  handleSelectProject: () => PromiseLike<void>;
+  handleSelectTarget: () => PromiseLike<void>;
+  handleRestartDebug: () => PromiseLike<void>;
+  handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
   handleStartDebug: () => PromiseLike<void>;
   handleSerialSendFile: () => PromiseLike<void>;
@@ -26,6 +31,26 @@ export async function handlePlatformViewMessage(
   msg: PlatformViewMessage,
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
+  if (msg?.type === 'createProject') {
+    await deps.handleCreateProject();
+    return;
+  }
+  if (msg?.type === 'selectProject') {
+    await deps.handleSelectProject();
+    return;
+  }
+  if (msg?.type === 'selectTarget') {
+    await deps.handleSelectTarget();
+    return;
+  }
+  if (msg?.type === 'restartDebug') {
+    await deps.handleRestartDebug();
+    return;
+  }
+  if (msg?.type === 'setEntrySource') {
+    await deps.handleSetEntrySource();
+    return;
+  }
   if (msg?.type === 'startDebug') {
     await deps.handleStartDebug();
     return;

@@ -58,7 +58,10 @@ describe('PlatformViewProvider', () => {
     const modules = createModules();
     loadPlatformUi.mockResolvedValue(modules);
 
-    const provider = new PlatformViewProvider({ fsPath: '/tmp/debug80' } as never);
+    const provider = new PlatformViewProvider(
+      { fsPath: '/tmp/debug80' } as never,
+      { get: vi.fn(), update: vi.fn() } as never
+    );
 
     expect(loadPlatformUi).not.toHaveBeenCalled();
     expect(modules.createUiState).not.toHaveBeenCalled();
@@ -75,7 +78,10 @@ describe('PlatformViewProvider', () => {
     const modules = createModules();
     loadPlatformUi.mockResolvedValue(modules);
 
-    const provider = new PlatformViewProvider({ fsPath: '/tmp/debug80' } as never);
+    const provider = new PlatformViewProvider(
+      { fsPath: '/tmp/debug80' } as never,
+      { get: vi.fn(), update: vi.fn() } as never
+    );
 
     provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
     await flushPromises();

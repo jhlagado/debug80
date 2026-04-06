@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const registerCommand = vi.fn(() => ({ dispose: vi.fn() }));
 const registerDebugAdapterDescriptorFactory = vi.fn(() => ({ dispose: vi.fn() }));
+const registerDebugConfigurationProvider = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidStartDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidTerminateDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidReceiveDebugSessionCustomEvent = vi.fn(() => ({ dispose: vi.fn() }));
@@ -26,9 +27,12 @@ vi.mock('vscode', () => ({
   commands: { registerCommand, executeCommand: vi.fn() },
   debug: {
     registerDebugAdapterDescriptorFactory,
+    registerDebugConfigurationProvider,
     onDidStartDebugSession,
     onDidTerminateDebugSession,
     onDidReceiveDebugSessionCustomEvent,
+    startDebugging: vi.fn(),
+    stopDebugging: vi.fn(() => Promise.resolve()),
     activeDebugSession: undefined,
   },
   workspace: {
@@ -40,6 +44,8 @@ vi.mock('vscode', () => ({
       { uri: { path: '/tmp/test.asm', scheme: 'file' }, languageId: 'plaintext' },
     ],
     workspaceFolders: undefined,
+    getWorkspaceFolder: vi.fn(),
+    updateWorkspaceFolders: vi.fn(() => true),
     openTextDocument: vi.fn(),
     createFileSystemWatcher: vi.fn(() => ({
       onDidCreate: vi.fn(),
@@ -54,6 +60,7 @@ vi.mock('vscode', () => ({
     showErrorMessage: vi.fn(),
     showInformationMessage: vi.fn(),
     showInputBox: vi.fn(),
+    showOpenDialog: vi.fn(),
     showQuickPick: vi.fn(),
     showTextDocument: vi.fn(),
     onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
@@ -101,8 +108,13 @@ describe('extension activation', () => {
     const api = extension.activate(context);
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
+    expect(registerDebugConfigurationProvider).toHaveBeenCalledWith('z80', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.startDebug', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.restartDebug', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.selectWorkspaceFolder', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.selectTarget', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.setEntrySource', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1', expect.anything());

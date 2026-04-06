@@ -158,10 +158,45 @@
         "title": "Debug80: Select Workspace Folder"
       },
       {
+        "command": "debug80.selectTarget",
+        "title": "Debug80: Select Active Target"
+      },
+      {
+        "command": "debug80.restartDebug",
+        "title": "Debug80: Restart Debugging (Current Target)"
+      },
+      {
+        "command": "debug80.setEntrySource",
+        "title": "Debug80: Set Entry Source"
+      },
+      {
         "command": "debug80.openRomSource",
         "title": "Debug80: Open ROM Listing/Source"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "group": "navigation@9"
+        }
+      ]
+    },
     "debuggers": [
       {
         "type": "z80",

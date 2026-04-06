@@ -32,6 +32,7 @@ import {
   type PlatformUiMessageContext,
   type PlatformUiModules,
 } from './platform-view-manifest';
+import { resolveProjectStatusSummary } from './project-status';
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'debug80.platformView';
@@ -44,14 +45,16 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
   private hasProject = false;
   private readonly extensionUri: vscode.Uri;
+  private readonly workspaceState: vscode.Memento;
   private readonly platformStates = new Map<PlatformViewPlatform, PlatformViewState<unknown>>();
   private readonly platformStateLoads = new Map<
     PlatformViewPlatform,
     Promise<PlatformViewState<unknown> | undefined>
   >();
 
-  constructor(extensionUri: vscode.Uri) {
+  constructor(extensionUri: vscode.Uri, workspaceState: vscode.Memento) {
     this.extensionUri = extensionUri;
+    this.workspaceState = workspaceState;
   }
 
   private tec1gUiVisibilityOverride: Record<string, boolean> | undefined;
@@ -147,6 +150,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   setHasProject(value: boolean): void {
     this.hasProject = value;
+    if (this.currentPlatform === undefined) {
+      this.renderCurrentView(true);
+    }
+  }
+
+  refreshIdleView(): void {
     if (this.currentPlatform === undefined) {
       this.renderCurrentView(true);
     }
@@ -292,8 +301,15 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage((msg: PlatformViewMessage) => {
       void handlePlatformViewMessage(msg, {
+        handleCreateProject: () => vscode.commands.executeCommand('debug80.createProject'),
+        handleSelectProject: () =>
+          vscode.commands.executeCommand('debug80.selectWorkspaceFolder'),
+        handleSelectTarget: () => vscode.commands.executeCommand('debug80.selectTarget'),
+        handleRestartDebug: () => vscode.commands.executeCommand('debug80.restartDebug'),
+        handleSetEntrySource: () =>
+          vscode.commands.executeCommand('debug80.setEntrySource'),
         currentPlatform: () => this.currentPlatform,
-        handleStartDebug: () => vscode.commands.executeCommand('workbench.action.debug.start'),
+        handleStartDebug: () => vscode.commands.executeCommand('debug80.startDebug'),
         handleSerialSendFile: () =>
           handlePlatformSerialSendFile({
             getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
@@ -390,12 +406,16 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       }
     }
     if (rehydrate || this.view.webview.html.length === 0) {
+      const status = resolveProjectStatusSummary(this.workspaceState, this.selectedWorkspace);
       const idleHtmlOptions = {
         hasProject: this.hasProject,
         multiRoot: (vscode.workspace.workspaceFolders ?? []).length > 1,
         ...(this.selectedWorkspace?.name !== undefined
           ? { selectedWorkspaceName: this.selectedWorkspace.name }
           : {}),
+        ...(status?.projectName !== undefined ? { projectName: status.projectName } : {}),
+        ...(status?.targetName !== undefined ? { targetName: status.targetName } : {}),
+        ...(status?.entrySource !== undefined ? { entrySource: status.entrySource } : {}),
       };
       this.view.webview.html = getPlatformViewIdleHtml(idleHtmlOptions);
     }

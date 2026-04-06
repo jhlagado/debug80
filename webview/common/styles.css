@@ -8,6 +8,54 @@ body {
     #app {
       outline: none;
     }
+    .session-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid #333;
+      border-radius: 10px;
+      background: #141414;
+    }
+    .session-controls-title {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: #bcbcbc;
+    }
+    .session-controls-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .session-button {
+      appearance: none;
+      border: 1px solid #4a4a4a;
+      border-radius: 8px;
+      background: #232323;
+      color: #f0f0f0;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .session-button:hover {
+      background: #2d2d2d;
+    }
+    .session-button-primary {
+      background: #3b4b1c;
+      border-color: #637b2a;
+      color: #f6ffd8;
+    }
+    .session-button-primary:hover {
+      background: #465924;
+    }
+    @media (max-width: 640px) {
+      .session-controls {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
     .layout {
       display: grid;
       gap: 16px;
