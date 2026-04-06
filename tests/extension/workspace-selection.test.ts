@@ -1,3 +1,4 @@
+import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const showQuickPick = vi.fn();
@@ -68,8 +69,9 @@ describe('WorkspaceSelectionController', () => {
       { name: 'debug80', uri: { fsPath: '/workspace/debug80' } },
       { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
     ];
-    existsSync.mockImplementation((candidate: string) =>
-      candidate === '/workspace/caverns80/.vscode/debug80.json'
+    existsSync.mockImplementation(
+      (candidate: string) =>
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
     );
 
     const { WorkspaceSelectionController } = await import(
@@ -100,9 +102,10 @@ describe('WorkspaceSelectionController', () => {
       { name: 'debug80', uri: { fsPath: '/workspace/debug80' } },
       { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
     ];
-    existsSync.mockImplementation((candidate: string) =>
-      candidate === '/workspace/debug80/.vscode/debug80.json' ||
-      candidate === '/workspace/caverns80/.vscode/debug80.json'
+    existsSync.mockImplementation(
+      (candidate: string) =>
+        path.normalize(candidate) === path.normalize('/workspace/debug80/.vscode/debug80.json') ||
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
     );
     showQuickPick.mockResolvedValueOnce({
       label: 'caverns80',

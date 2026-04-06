@@ -1,3 +1,4 @@
+import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const executeCommand = vi.fn();
@@ -37,8 +38,9 @@ describe('Debug80ConfigurationProvider', () => {
       '../../src/extension/debug-configuration-provider'
     );
 
-    existsSync.mockImplementation((candidate: string) =>
-      candidate === '/workspace/caverns80/.vscode/debug80.json'
+    existsSync.mockImplementation(
+      (candidate: string) =>
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
     );
 
     const rememberWorkspace = vi.fn();
@@ -74,8 +76,9 @@ describe('Debug80ConfigurationProvider', () => {
     );
 
     workspaceFolders = [{ name: 'debug80', uri: { fsPath: '/workspace/debug80' } }];
-    existsSync.mockImplementation((candidate: string) =>
-      candidate === '/workspace/debug80/.vscode/debug80.json'
+    existsSync.mockImplementation(
+      (candidate: string) =>
+        path.normalize(candidate) === path.normalize('/workspace/debug80/.vscode/debug80.json')
     );
     showInformationMessage.mockResolvedValueOnce('Create Project');
     executeCommand.mockResolvedValueOnce(true);
