@@ -8,9 +8,19 @@ import { createPanelLayoutController, type PanelTab } from './panel-layout';
 import { wireTec1SerialUi } from './serial-ui';
 
 const vscode = acquireVscodeApi();
-const DEFAULT_TAB: PanelTab = document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
+const DEFAULT_TAB: PanelTab =
+  document.body.dataset.activeTab === 'memory'
+    ? 'memory'
+    : document.body.dataset.activeTab === 'ui'
+      ? 'ui'
+      : 'home';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const selectTargetButton = document.getElementById('selectTarget') as HTMLButtonElement | null;
+const setEntrySourceButton = document.getElementById('setEntrySource') as HTMLButtonElement | null;
+const homeRootName = document.getElementById('homeRootName') as HTMLElement | null;
+const homeProjectState = document.getElementById('homeProjectState') as HTMLElement | null;
+const homeTargetName = document.getElementById('homeTargetName') as HTMLElement | null;
+const homeEntrySource = document.getElementById('homeEntrySource') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -18,6 +28,7 @@ const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
 const muteEl = document.getElementById('mute') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
+const panelHome = document.getElementById('panel-home') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
@@ -34,6 +45,7 @@ for (let i = 0; i < DIGITS; i++) {
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createPanelLayoutController({
   defaultTab: DEFAULT_TAB,
+  panelHome,
   memoryPanel,
   panelMemory,
   panelUi,
@@ -72,6 +84,35 @@ selectProjectButton?.addEventListener('click', () => {
 selectTargetButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'selectTarget' });
 });
+
+setEntrySourceButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'setEntrySource' });
+});
+
+function setHomeValue(node: HTMLElement | null, value: string | undefined, fallback: string): void {
+  if (!node) {
+    return;
+  }
+  node.textContent = value !== undefined && value !== '' ? value : fallback;
+}
+
+function applyProjectStatus(payload: {
+  rootName?: string;
+  hasProject?: boolean;
+  targetName?: string;
+  entrySource?: string;
+}): void {
+  setHomeValue(homeRootName, payload.rootName, 'No root selected');
+  setHomeValue(
+    homeProjectState,
+    payload.hasProject ? 'Configured Debug80 project' : undefined,
+    payload.rootName ? 'No Debug80 project in this root' : 'No root selected'
+  );
+  setHomeValue(homeTargetName, payload.targetName, 'No target selected');
+  setHomeValue(homeEntrySource, payload.entrySource, 'No entry source selected');
+}
+
+applyProjectStatus({});
 
 function applySpeed(mode: string): void {
   speedMode = mode;
@@ -232,6 +273,10 @@ const serialUi = wireTec1SerialUi(vscode);
 
 window.addEventListener('message', event => {
   if (!event.data) return;
+  if (event.data.type === 'projectStatus') {
+    applyProjectStatus(event.data);
+    return;
+  }
   if (event.data.type === 'selectTab') {
     panelLayout.setTab(event.data.tab, false);
     return;

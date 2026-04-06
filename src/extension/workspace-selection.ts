@@ -2,12 +2,12 @@
  * @file Workspace selection and project-detection state for Debug80.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
+import { findProjectConfigPath } from './project-config';
 
 const WORKSPACE_KEY = 'debug80.selectedWorkspace';
+const PROJECT_CONFIG_WATCH_GLOBS = ['**/.vscode/debug80.json', '**/debug80.json', '**/.debug80.json'];
 
 export type ResolveWorkspaceFolderOptions = {
   prompt?: boolean;
@@ -25,10 +25,12 @@ export class WorkspaceSelectionController {
     this.updateHasProject();
     this.applySelectedWorkspace();
 
-    const configWatcher = vscode.workspace.createFileSystemWatcher('**/.vscode/debug80.json');
-    configWatcher.onDidCreate(this.updateHasProject);
-    configWatcher.onDidDelete(this.updateHasProject);
-    this.context.subscriptions.push(configWatcher);
+    PROJECT_CONFIG_WATCH_GLOBS.forEach((pattern) => {
+      const configWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+      configWatcher.onDidCreate(this.updateHasProject);
+      configWatcher.onDidDelete(this.updateHasProject);
+      this.context.subscriptions.push(configWatcher);
+    });
 
     this.context.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
@@ -90,35 +92,41 @@ export class WorkspaceSelectionController {
     return picked.folder;
   }
 
-  async selectWorkspaceFolder(): Promise<void> {
+  async selectWorkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
     const folders = this.getCandidateFolders(false);
     if (folders.length === 0) {
       void vscode.window.showInformationMessage('Debug80: No workspace folders to select.');
-      return;
+      return undefined;
     }
     if (folders.length === 1) {
       this.rememberWorkspace(folders[0]);
-      return;
+      return folders[0];
     }
     const picked = await vscode.window.showQuickPick(
-      folders.map((folder) => ({
-        label: folder.name,
-        description: folder.uri.fsPath,
-        folder,
-      })),
-      { placeHolder: 'Select workspace folder for Debug80' }
+      folders.map((folder) => {
+        const projectConfig = findProjectConfigPath(folder);
+        return {
+          label: folder.name,
+          description: folder.uri.fsPath,
+          detail:
+            projectConfig !== undefined
+              ? `Configured Debug80 root (${projectConfig.split('/').slice(-2).join('/')})`
+              : 'No Debug80 project config in this root',
+          folder,
+        };
+      }),
+      { placeHolder: 'Select workspace root for Debug80' }
     );
     if (!picked) {
-      return;
+      return undefined;
     }
     this.rememberWorkspace(picked.folder);
+    return picked.folder;
   }
 
   private readonly updateHasProject = (): void => {
     const folders = vscode.workspace.workspaceFolders ?? [];
-    const hasProject = folders.some((folder) =>
-      fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'))
-    );
+    const hasProject = folders.some((folder) => this.hasProject(folder));
     void vscode.commands.executeCommand('setContext', 'debug80.hasProject', hasProject);
     this.platformViewProvider.setHasProject(hasProject);
   };
@@ -133,7 +141,7 @@ export class WorkspaceSelectionController {
   }
 
   private hasProject(folder: vscode.WorkspaceFolder): boolean {
-    return fs.existsSync(path.join(folder.uri.fsPath, '.vscode', 'debug80.json'));
+    return findProjectConfigPath(folder) !== undefined;
   }
 
   private getCandidateFolders(requireProject: boolean): vscode.WorkspaceFolder[] {

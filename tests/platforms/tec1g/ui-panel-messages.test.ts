@@ -24,12 +24,12 @@ describe('tec1g ui-panel-messages', () => {
       onSnapshotFailed: vi.fn(),
     };
     const refreshController = createRefreshController(() => ({ views: [] }), handlers);
-    let activeTab: 'ui' | 'memory' = 'ui';
+    let activeTab: 'home' | 'ui' | 'memory' = 'ui';
     const ctx = {
       getSession: () => undefined as { type: string; customRequest: (c: string, p: unknown) => Promise<unknown> } | undefined,
       refreshController,
       autoRefreshMs: 250,
-      setActiveTab: (tab: 'ui' | 'memory') => {
+      setActiveTab: (tab: 'home' | 'ui' | 'memory') => {
         activeTab = tab;
       },
       getActiveTab: () => activeTab,
@@ -50,7 +50,7 @@ describe('tec1g ui-panel-messages', () => {
   it('stops refresh when panel not visible', async () => {
     const { ctx } = createContext();
     ctx.isPanelVisible = () => false;
-    await handleTec1gMessage({ type: 'tab', tab: 'ui' }, ctx);
+    await handleTec1gMessage({ type: 'tab', tab: 'home' }, ctx);
     expect(ctx.refreshController.state.timer).toBeUndefined();
   });
 

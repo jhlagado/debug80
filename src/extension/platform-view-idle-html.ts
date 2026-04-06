@@ -39,19 +39,24 @@ export function getPlatformViewIdleHtml(options: {
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Create a Debug80 project to get started.</p>
-  <button id="createProject" style="margin-top: 8px; padding: 6px 10px; font-size: 12px;">
-    Create Project
-  </button>
+  <p style="opacity: 0.7;">Create a Debug80 root project to get started.</p>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+    <button id="createProject" style="padding: 6px 10px; font-size: 12px;">Create Project</button>
+    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
+  </div>
   <script nonce="${nonce}">
     (function () {
       const vscode = acquireVsCodeApi();
-      const button = document.getElementById('createProject');
-      if (button) {
-        button.addEventListener('click', () => {
-          vscode.postMessage({ type: 'createProject' });
-        });
-      }
+      const bind = (id, type) => {
+        const button = document.getElementById(id);
+        if (button) {
+          button.addEventListener('click', () => {
+            vscode.postMessage({ type });
+          });
+        }
+      };
+      bind('createProject', 'createProject');
+      bind('selectProject', 'selectProject');
     }());
   </script>
 </body>
@@ -62,10 +67,10 @@ export function getPlatformViewIdleHtml(options: {
   const selectionHint =
     options.multiRoot &&
     (options.selectedWorkspaceName === undefined || options.selectedWorkspaceName === '')
-      ? 'Select a workspace folder with “Debug80: Select Workspace Folder”.'
+      ? 'Select a workspace root with “Debug80: Select Workspace Folder”.'
       : '';
   const statusRows = [
-    options.projectName !== undefined ? `<p style="margin: 6px 0 0; opacity: 0.85;">Project: ${options.projectName}</p>` : '',
+    options.projectName !== undefined ? `<p style="margin: 6px 0 0; opacity: 0.85;">Root: ${options.projectName}</p>` : '',
     options.targetName !== undefined ? `<p style="margin: 4px 0 0; opacity: 0.85;">Target: ${options.targetName}</p>` : '',
     options.entrySource !== undefined ? `<p style="margin: 4px 0 0; opacity: 0.85;">Entry: ${options.entrySource}</p>` : '',
   ]
@@ -82,11 +87,11 @@ export function getPlatformViewIdleHtml(options: {
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Project detected (${selectedLabel}). Start a debug session to see the platform UI.</p>
+  <p style="opacity: 0.7;">Configured root detected (${selectedLabel}). Select a root or target to start debugging, or use F5.</p>
   ${statusRows}
   <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
     <button id="startDebug" style="padding: 6px 10px; font-size: 12px;">Start Debugging</button>
-    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Open Project</button>
+    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
     <button id="selectTarget" style="padding: 6px 10px; font-size: 12px;">Select Target</button>
     <button id="setEntrySource" style="padding: 6px 10px; font-size: 12px;">Set Entry Source</button>
   </div>
