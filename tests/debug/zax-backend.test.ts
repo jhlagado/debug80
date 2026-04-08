@@ -25,6 +25,54 @@ describe('zax-backend', () => {
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env.DEBUG80_ZAX_CLI;
+    delete process.env.DEBUG80_ZAX_ROOT;
+  });
+
+  it('uses DEBUG80_ZAX_CLI when set to an existing cli.js', () => {
+    const fakeCli = path.join(tmpDir, 'cli.js');
+    fs.writeFileSync(fakeCli, '// zax cli stub');
+    process.env.DEBUG80_ZAX_CLI = fakeCli;
+
+    const backend = new ZaxBackend();
+    const asmPath = path.join(tmpDir, 'prog.zax');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+    const listingPath = path.join(tmpDir, 'prog.lst');
+
+    fs.writeFileSync(asmPath, 'export func main() nop end\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+    fs.writeFileSync(listingPath, 'LISTING\n');
+    spawnSync.mockReturnValue({ status: 0, stdout: `${hexPath}\n`, stderr: '' });
+
+    const result = backend.assemble({ asmPath, hexPath, listingPath });
+
+    expect(result.success).toBe(true);
+    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
+    expect(calls[0]?.[1]?.[0]).toBe(fakeCli);
+  });
+
+  it('uses DEBUG80_ZAX_ROOT when dist/src/cli.js exists', () => {
+    const root = path.join(tmpDir, 'ZAX');
+    const cliPath = path.join(root, 'dist', 'src', 'cli.js');
+    fs.mkdirSync(path.dirname(cliPath), { recursive: true });
+    fs.writeFileSync(cliPath, '// zax cli');
+    process.env.DEBUG80_ZAX_ROOT = root;
+
+    const backend = new ZaxBackend();
+    const asmPath = path.join(tmpDir, 'prog.zax');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+    const listingPath = path.join(tmpDir, 'prog.lst');
+
+    fs.writeFileSync(asmPath, 'export func main() nop end\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+    fs.writeFileSync(listingPath, 'LISTING\n');
+    spawnSync.mockReturnValue({ status: 0, stdout: `${hexPath}\n`, stderr: '' });
+
+    const result = backend.assemble({ asmPath, hexPath, listingPath });
+
+    expect(result.success).toBe(true);
+    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
+    expect(calls[0]?.[1]?.[0]).toBe(cliPath);
   });
 
   it('assembles successfully and copies listings when needed', () => {

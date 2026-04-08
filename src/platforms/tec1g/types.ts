@@ -6,8 +6,15 @@ export type Tec1gSpeedMode = 'slow' | 'fast';
 
 export interface Tec1gUpdatePayload {
   digits: number[];
+  /** Red column plane row masks (port 0x06). */
   matrix: number[];
+  /** Green column plane row masks (port 0xF8). */
+  matrixGreen?: number[];
+  /** Blue column plane row masks (port 0xF9). */
+  matrixBlue?: number[];
   matrixBrightness?: number[];
+  matrixBrightnessG?: number[];
+  matrixBrightnessB?: number[];
   matrixMode?: boolean;
   glcd: number[];
   speaker: number;

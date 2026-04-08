@@ -13,6 +13,7 @@ import { WorkspaceSelectionController } from './workspace-selection';
 type DebugSessionEventDependencies = {
   context: vscode.ExtensionContext;
   rebuildDiagnostics: vscode.DiagnosticCollection;
+  assemblyDiagnostics: vscode.DiagnosticCollection;
   platformViewProvider: PlatformViewProvider;
   sessionState: SessionStateManager;
   sourceColumns: SourceColumnController;
@@ -20,9 +21,41 @@ type DebugSessionEventDependencies = {
   workspaceSelection: WorkspaceSelectionController;
 };
 
+type AssemblyFailedPayload = {
+  diagnostic?: {
+    path?: string;
+    line?: number;
+    column?: number;
+    message?: string;
+    sourceLine?: string;
+  };
+  error?: string;
+};
+
+function applyLaunchAssemblyDiagnostic(
+  assemblyDiagnostics: vscode.DiagnosticCollection,
+  payload: AssemblyFailedPayload
+): void {
+  const d = payload.diagnostic;
+  if (d?.path === undefined || d.path === '' || d.line === undefined) {
+    return;
+  }
+  const uri = vscode.Uri.file(d.path);
+  const startLine = Math.max(0, d.line - 1);
+  const startCharacter = Math.max(0, (d.column ?? 1) - 1);
+  const endCharacter = Math.max(startCharacter + 1, d.sourceLine?.length ?? 1);
+  const range = new vscode.Range(startLine, startCharacter, startLine, endCharacter);
+  const message =
+    (typeof d.message === 'string' && d.message.trim().length > 0 ? d.message.trim() : undefined) ??
+    (typeof payload.error === 'string' && payload.error.length > 0 ? payload.error.split(/\r?\n/, 1)[0] : undefined) ??
+    'Assembly failed';
+  assemblyDiagnostics.set(uri, [new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Error)]);
+}
+
 export function registerDebugSessionHandlers({
   context,
   rebuildDiagnostics,
+  assemblyDiagnostics,
   platformViewProvider,
   sessionState,
   sourceColumns,
@@ -35,6 +68,7 @@ export function registerDebugSessionHandlers({
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
+        assemblyDiagnostics.clear();
         sessionState.activeZ80Sessions.add(session.id);
         terminalPanel.clear();
         platformViewProvider.clear();
@@ -185,7 +219,11 @@ export function registerDebugSessionHandlers({
         const payload = evt.body as {
           digits?: number[];
           matrix?: number[];
+          matrixGreen?: number[];
+          matrixBlue?: number[];
           matrixBrightness?: number[];
+          matrixBrightnessG?: number[];
+          matrixBrightnessB?: number[];
           glcd?: number[];
           glcdDdram?: number[];
           glcdState?: {
@@ -211,8 +249,16 @@ export function registerDebugSessionHandlers({
         const update = {
           digits: payload.digits,
           matrix: payload.matrix,
+          ...(payload.matrixGreen !== undefined ? { matrixGreen: payload.matrixGreen } : {}),
+          ...(payload.matrixBlue !== undefined ? { matrixBlue: payload.matrixBlue } : {}),
           ...(payload.matrixBrightness !== undefined
             ? { matrixBrightness: payload.matrixBrightness }
+            : {}),
+          ...(payload.matrixBrightnessG !== undefined
+            ? { matrixBrightnessG: payload.matrixBrightnessG }
+            : {}),
+          ...(payload.matrixBrightnessB !== undefined
+            ? { matrixBrightnessB: payload.matrixBrightnessB }
             : {}),
           glcd: payload.glcd,
           speaker: payload.speaker ?? 0,
@@ -238,6 +284,13 @@ export function registerDebugSessionHandlers({
           return;
         }
         platformViewProvider.appendTec1gSerial(text, evt.session.id);
+        return;
+      }
+      if (evt.event === 'debug80/assemblyFailed') {
+        const body = evt.body as AssemblyFailedPayload | undefined;
+        if (body !== undefined) {
+          applyLaunchAssemblyDiagnostic(assemblyDiagnostics, body);
+        }
         return;
       }
       if (evt.event === 'debug80/mainSource') {
