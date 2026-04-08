@@ -38,6 +38,26 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
   }
 }
 
+/**
+ * Merged launch args resolve the assemble input as `asm` before `sourceFile`
+ * (see `populateFromConfig` in launch-args). Keep both in sync when the user
+ * picks a new entry source so ZAX (and asm80) targets assemble the selected file.
+ */
+function nextTargetEntrySource(
+  target: Record<string, unknown>,
+  sourceFile: string
+): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...target };
+  delete rest.assembler;
+  const isZax = sourceFile.toLowerCase().endsWith('.zax');
+  return {
+    ...rest,
+    sourceFile,
+    asm: sourceFile,
+    ...(isZax ? { assembler: 'zax' } : {}),
+  };
+}
+
 export function updateProjectTargetSource(
   projectConfigPath: string,
   targetName: string,
@@ -48,13 +68,10 @@ export function updateProjectTargetSource(
       const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
       const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig } & Record<string, unknown>;
       const config = pkg.debug80 ?? { targets: {} };
-      const targets = config.targets ?? {};
+      const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
       const target = targets[targetName] ?? {};
-      targets[targetName] = {
-        ...target,
-        sourceFile,
-      };
-      config.targets = targets;
+      targets[targetName] = nextTargetEntrySource(target, sourceFile);
+      config.targets = targets as NonNullable<ProjectConfig['targets']>;
       pkg.debug80 = config;
       fs.writeFileSync(projectConfigPath, `${JSON.stringify(pkg, null, 2)}\n`);
       return true;
@@ -62,13 +79,10 @@ export function updateProjectTargetSource(
 
     const raw = fs.readFileSync(projectConfigPath, 'utf-8');
     const config = JSON.parse(raw) as ProjectConfig;
-    const targets = config.targets ?? {};
+    const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
     const target = targets[targetName] ?? {};
-    targets[targetName] = {
-      ...target,
-      sourceFile,
-    };
-    config.targets = targets;
+    targets[targetName] = nextTargetEntrySource(target, sourceFile);
+    config.targets = targets as NonNullable<ProjectConfig['targets']>;
     fs.writeFileSync(projectConfigPath, `${JSON.stringify(config, null, 2)}\n`);
     return true;
   } catch {

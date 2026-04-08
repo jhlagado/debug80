@@ -6,11 +6,39 @@ import * as cp from 'child_process';
 import { createRequire } from 'module';
 import * as fs from 'fs';
 import * as path from 'path';
+import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 import { toPortablePath } from './path-utils';
 import type { AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
 const moduleRequire = createRequire(__filename);
+
+/**
+ * Optional local development without publishing to npm:
+ * - Prefer `npm link` in the ZAX repo, then `npm link @jhlagado/zax` in Debug80 (see README).
+ * - `DEBUG80_ZAX_CLI`: absolute path to `cli.js` (e.g. `.../ZAX/dist/src/cli.js`)
+ * - `DEBUG80_ZAX_ROOT`: path to ZAX repo root (uses `dist/src/cli.js` under it)
+ *
+ * Env vars are checked before `node_modules` resolution so Extension Host can override
+ * a registry install when needed.
+ */
+function resolveZaxCliFromEnv(): string | undefined {
+  const cli = process.env.DEBUG80_ZAX_CLI?.trim();
+  if (cli !== undefined && cli !== '') {
+    const abs = path.resolve(cli);
+    if (fs.existsSync(abs)) {
+      return abs;
+    }
+  }
+  const root = process.env.DEBUG80_ZAX_ROOT?.trim();
+  if (root !== undefined && root !== '') {
+    const candidate = path.join(path.resolve(root), 'dist', 'src', 'cli.js');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
 
 function findLocalZaxCli(startDir: string): string | undefined {
   for (let dir = startDir; ; ) {
@@ -30,6 +58,11 @@ function findLocalZaxCli(startDir: string): string | undefined {
 }
 
 function resolveZaxCliPath(startDir: string): string | undefined {
+  const fromEnv = resolveZaxCliFromEnv();
+  if (fromEnv !== undefined) {
+    return fromEnv;
+  }
+
   try {
     return moduleRequire.resolve('@jhlagado/zax/dist/src/cli.js');
   } catch {
@@ -51,7 +84,11 @@ function resolveZaxCliPath(startDir: string): string | undefined {
 }
 
 function zaxNotFoundMessage(): string {
-  return 'zax not found. Install it with "npm install -D @jhlagado/zax" or ensure it is available in node_modules.';
+  return (
+    'zax not found. Install with "npm install -D @jhlagado/zax", use a local checkout ' +
+    '("cd ZAX && npm link" then "cd debug80 && npm link @jhlagado/zax"), "npm install file:../ZAX", ' +
+    'or set DEBUG80_ZAX_ROOT / DEBUG80_ZAX_CLI (see Debug80 README).'
+  );
 }
 
 export class ZaxBackend implements AssemblerBackend {
@@ -134,6 +171,12 @@ export class ZaxBackend implements AssemblerBackend {
         fs.mkdirSync(listingDir, { recursive: true });
       }
       fs.copyFileSync(producedListing, options.listingPath);
+      const artifactBase = path.basename(options.hexPath, path.extname(options.hexPath));
+      const producedD8 = path.join(path.dirname(options.hexPath), `${artifactBase}${D8_DEBUG_MAP_EXT}`);
+      const targetD8 = path.join(path.dirname(options.listingPath), `${artifactBase}${D8_DEBUG_MAP_EXT}`);
+      if (fs.existsSync(producedD8) && producedD8 !== targetD8) {
+        fs.copyFileSync(producedD8, targetD8);
+      }
     }
 
     return {
