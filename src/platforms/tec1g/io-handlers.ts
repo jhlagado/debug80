@@ -4,7 +4,9 @@
 
 import type { Tec1gState } from './runtime';
 import {
-  TEC1G_PORT_8X8_DATA,
+  TEC1G_PORT_8X8_BLUE,
+  TEC1G_PORT_8X8_GREEN,
+  TEC1G_PORT_8X8_RED,
   TEC1G_PORT_8X8_ROW,
   TEC1G_DIGIT_SERIAL_TX,
   TEC1G_DIGIT_SPEAKER,
@@ -47,14 +49,19 @@ import type { IoHandlers } from '../../z80/runtime';
 function rebuildLedMatrixRows(display: Tec1gState['display']): boolean {
   let changed = false;
   const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
-  const dataMask = display.ledMatrixDataLatch & TEC1G_MASK_BYTE;
-  for (let row = 0; row < 8; row += 1) {
-    const next = (rowMask & (1 << row)) !== 0 ? dataMask : 0;
-    if (display.ledMatrixRows[row] !== next) {
-      display.ledMatrixRows[row] = next;
-      changed = true;
+  const rebuildPlane = (rows: number[], latch: number): void => {
+    const dataMask = latch & TEC1G_MASK_BYTE;
+    for (let row = 0; row < 8; row += 1) {
+      const next = (rowMask & (1 << row)) !== 0 ? dataMask : 0;
+      if (rows[row] !== next) {
+        rows[row] = next;
+        changed = true;
+      }
     }
-  }
+  };
+  rebuildPlane(display.ledMatrixRedRows, display.ledMatrixRedLatch);
+  rebuildPlane(display.ledMatrixGreenRows, display.ledMatrixGreenLatch);
+  rebuildPlane(display.ledMatrixBlueRows, display.ledMatrixBlueLatch);
   return changed;
 }
 
@@ -64,15 +71,28 @@ function rebuildLedMatrixRows(display: Tec1gState['display']): boolean {
 function updateLedMatrixLatches(
   display: Tec1gState['display'],
   nextRowLatch: number,
-  nextDataLatch: number
+  nextRed: number,
+  nextGreen: number,
+  nextBlue: number
 ): boolean {
   let changed = false;
   if (display.ledMatrixRowLatch !== nextRowLatch) {
     display.ledMatrixRowLatch = nextRowLatch;
     changed = true;
   }
-  if (display.ledMatrixDataLatch !== nextDataLatch) {
-    display.ledMatrixDataLatch = nextDataLatch;
+  const r = nextRed & TEC1G_MASK_BYTE;
+  const g = nextGreen & TEC1G_MASK_BYTE;
+  const b = nextBlue & TEC1G_MASK_BYTE;
+  if (display.ledMatrixRedLatch !== r) {
+    display.ledMatrixRedLatch = r;
+    changed = true;
+  }
+  if (display.ledMatrixGreenLatch !== g) {
+    display.ledMatrixGreenLatch = g;
+    changed = true;
+  }
+  if (display.ledMatrixBlueLatch !== b) {
+    display.ledMatrixBlueLatch = b;
     changed = true;
   }
   return rebuildLedMatrixRows(display) || changed;
@@ -162,13 +182,57 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrix = (rowMask: number): void => {
-    if (updateLedMatrixLatches(display, rowMask & TEC1G_MASK_BYTE, display.ledMatrixDataLatch)) {
+    if (
+      updateLedMatrixLatches(
+        display,
+        rowMask & TEC1G_MASK_BYTE,
+        display.ledMatrixRedLatch,
+        display.ledMatrixGreenLatch,
+        display.ledMatrixBlueLatch
+      )
+    ) {
       queueUpdate();
     }
   };
 
-  const updateLedMatrixData = (dataMask: number): void => {
-    if (updateLedMatrixLatches(display, display.ledMatrixRowLatch, dataMask & TEC1G_MASK_BYTE)) {
+  const updateLedMatrixRed = (dataMask: number): void => {
+    if (
+      updateLedMatrixLatches(
+        display,
+        display.ledMatrixRowLatch,
+        dataMask & TEC1G_MASK_BYTE,
+        display.ledMatrixGreenLatch,
+        display.ledMatrixBlueLatch
+      )
+    ) {
+      queueUpdate();
+    }
+  };
+
+  const updateLedMatrixGreen = (dataMask: number): void => {
+    if (
+      updateLedMatrixLatches(
+        display,
+        display.ledMatrixRowLatch,
+        display.ledMatrixRedLatch,
+        dataMask & TEC1G_MASK_BYTE,
+        display.ledMatrixBlueLatch
+      )
+    ) {
+      queueUpdate();
+    }
+  };
+
+  const updateLedMatrixBlue = (dataMask: number): void => {
+    if (
+      updateLedMatrixLatches(
+        display,
+        display.ledMatrixRowLatch,
+        display.ledMatrixRedLatch,
+        display.ledMatrixGreenLatch,
+        dataMask & TEC1G_MASK_BYTE
+      )
+    ) {
       queueUpdate();
     }
   };
@@ -262,8 +326,16 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         updateDisplay();
         return;
       }
-      if (p === TEC1G_PORT_8X8_DATA) {
-        updateLedMatrixData(value & TEC1G_MASK_BYTE);
+      if (p === TEC1G_PORT_8X8_RED) {
+        updateLedMatrixRed(value & TEC1G_MASK_BYTE);
+        return;
+      }
+      if (p === TEC1G_PORT_8X8_GREEN) {
+        updateLedMatrixGreen(value & TEC1G_MASK_BYTE);
+        return;
+      }
+      if (p === TEC1G_PORT_8X8_BLUE) {
+        updateLedMatrixBlue(value & TEC1G_MASK_BYTE);
         return;
       }
       if (p === TEC1G_PORT_8X8_ROW) {

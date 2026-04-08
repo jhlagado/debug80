@@ -2,14 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const readFileSync = vi.fn();
 const existsSync = vi.fn();
+const readdirSync = vi.fn(() => []);
 const showQuickPick = vi.fn();
 
 vi.mock('fs', () => ({
   readFileSync,
   existsSync,
+  readdirSync,
 }));
 
 vi.mock('vscode', () => ({
+  QuickPickItemKind: {
+    Separator: -1,
+    Default: 0,
+  },
   window: {
     showQuickPick,
   },
@@ -98,7 +104,7 @@ describe('ProjectTargetSelectionController', () => {
     );
     showQuickPick.mockResolvedValueOnce({
       label: 'serial',
-      description: 'asm80',
+      description: 'src/serial.asm',
       detail: 'src/serial.asm',
       targetName: 'serial',
     });
@@ -142,7 +148,7 @@ describe('ProjectTargetSelectionController', () => {
     );
     showQuickPick.mockResolvedValueOnce({
       label: 'serial',
-      description: 'tec1g',
+      description: 'src/serial.asm • tec1g',
       detail: 'src/serial.asm',
       targetName: 'serial',
     });

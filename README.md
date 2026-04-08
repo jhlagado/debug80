@@ -26,6 +26,58 @@ This repository keeps the shared debugger plus the in-repo Simple example worksp
 - npm (ships with Node)
 - asm80 installed locally: `npm install -D asm80`
 
+## Local ZAX checkout (develop ZAX + Debug80 without npm publish)
+
+Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) for the `.zax` assembler backend. To iterate on **ZAX** and **Debug80** side by side on one machine:
+
+### Option A — `npm link` (recommended)
+
+Use a global symlink so Debug80’s `node_modules/@jhlagado/zax` always points at your ZAX clone:
+
+```bash
+# 1) In the ZAX repo: register this package globally
+cd /path/to/ZAX
+npm run build
+npm link
+
+# 2) In the Debug80 repo: use that link
+cd /path/to/debug80
+npm link @jhlagado/zax
+```
+
+After **every change to ZAX TypeScript**, rebuild the compiler (`npm run build` in ZAX). Debug80 reads `dist/src/cli.js` from the linked tree; you usually **do not** need to reinstall or rebuild Debug80 for ZAX-only changes.
+
+To go back to the published package from npm:
+
+```bash
+cd /path/to/debug80
+npm unlink @jhlagado/zax
+npm install
+```
+
+(From the ZAX repo, `npm unlink` removes the global registration when you no longer need it.)
+
+### Option B — `file:` dependency
+
+If you prefer a project-relative install instead of a global link:
+
+```bash
+npm install file:../ZAX
+```
+
+(Adjust the path to your ZAX checkout.)
+
+### Option C — environment override
+
+Point Debug80 at a built ZAX **before** it resolves `node_modules`:
+
+- **`DEBUG80_ZAX_ROOT`**: path to the **ZAX repository root** (uses `dist/src/cli.js`).
+- **`DEBUG80_ZAX_CLI`**: full path to **`cli.js`**.
+
+Restart VS Code (or the Extension Development Host) so the extension inherits the variable, or set them under **`terminal.integrated.env.*`** / your launch **`env`**.
+
+If unset, Debug80 uses `node_modules/@jhlagado/zax` (registry install or `npm link` / `file:` as above).
+
 ## Install & Build
 
 ```bash

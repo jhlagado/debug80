@@ -186,26 +186,54 @@
       width: fit-content;
       padding: 8px;
       border-radius: 8px;
-      background: #0d0d0d;
-      border: 1px solid #202020;
+      background: #000000;
+      border: 1px solid #1a1a1a;
     }
     .matrix-dot {
       --matrix-level: 0;
+      --matrix-r: 0;
+      --matrix-g: 0;
+      --matrix-b: 0;
       width: 16px;
       height: 16px;
       border-radius: 999px;
-      background: radial-gradient(circle at 35% 35%, #41230d 0%, #221109 55%, #110806 100%);
+      background: radial-gradient(circle at 35% 35%, #2a1810 0%, #140c08 55%, #080403 100%);
       box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.05),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.6);
-      opacity: calc(0.08 + (var(--matrix-level) * 0.92));
-      transition: opacity 40ms linear, box-shadow 40ms linear, background 40ms linear;
+        inset 0 1px 2px rgba(255, 255, 255, 0.04),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.65);
+      opacity: calc(0.03 + (var(--matrix-level) * 0.97));
+      transition: opacity 40ms linear, box-shadow 40ms linear, background 40ms linear, filter 40ms linear;
     }
     .matrix-dot.on {
-      background: radial-gradient(circle at 35% 35%, #ffe27a 0%, #ff9f2f 45%, #8f3600 100%);
+      /* Hot centre + saturated rim: reads closer to real RGB matrix / LED sign */
+      background: radial-gradient(
+        circle at 42% 32%,
+        rgb(
+          calc(70 + 185 * var(--matrix-r)),
+          calc(70 + 185 * var(--matrix-g)),
+          calc(70 + 185 * var(--matrix-b))
+        ) 0%,
+        rgb(
+          calc(20 + 235 * var(--matrix-r)),
+          calc(20 + 235 * var(--matrix-g)),
+          calc(20 + 235 * var(--matrix-b))
+        ) 42%,
+        rgb(
+          calc(4 + 120 * var(--matrix-r)),
+          calc(4 + 120 * var(--matrix-g)),
+          calc(4 + 120 * var(--matrix-b))
+        ) 100%
+      );
       box-shadow:
-        0 0 calc(2px + (var(--matrix-level) * 10px)) rgba(255, 176, 56, 0.7),
-        inset 0 1px 2px rgba(255, 250, 220, 0.55);
+        0 0 calc(3px + (var(--matrix-level) * 14px))
+          rgba(
+            calc(100 + 155 * var(--matrix-r)),
+            calc(100 + 155 * var(--matrix-g)),
+            calc(100 + 155 * var(--matrix-b)),
+            0.92
+          ),
+        inset 0 1px 3px rgba(255, 255, 255, 0.45);
+      filter: brightness(1.08) saturate(1.18);
     }
     .matrix-keyboard {
       margin-top: 12px;

@@ -345,7 +345,7 @@ export function resolveExtraListingPaths(
 export function resolveListingSourcePath(listingPath: string): string | undefined {
   const dir = path.dirname(listingPath);
   const base = path.basename(listingPath, path.extname(listingPath));
-  const candidates = [`${base}.source.asm`, `${base}.asm`];
+  const candidates = [`${base}.source.asm`, `${base}.asm`, `${base}.zax`];
 
   for (const candidate of candidates) {
     const candidatePath = path.join(dir, candidate);
