@@ -56,20 +56,6 @@ function applyRebuildDiagnostics(
   sessionState.rebuildDiagnosticUris.set(sessionId, uri);
 }
 
-async function revealRebuildLocation(result: WarmRebuildResult): Promise<void> {
-  if (result.location === undefined) {
-    return;
-  }
-  const doc = await vscode.workspace.openTextDocument(result.location.path);
-  const startLine = Math.max(0, result.location.line - 1);
-  const startCharacter = Math.max(0, (result.location.column ?? 1) - 1);
-  const endCharacter = Math.max(startCharacter + 1, result.location.sourceLine?.length ?? 1);
-  const range = new vscode.Range(startLine, startCharacter, startLine, endCharacter);
-  const editor = await vscode.window.showTextDocument(doc, { preview: false });
-  editor.selection = new vscode.Selection(range.start, range.end);
-  editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-}
-
 async function runWarmRebuild(
   session: vscode.DebugSession,
   sessionState: SessionStateManager,
@@ -95,7 +81,6 @@ async function runWarmRebuild(
           output.appendLine(response.detail);
         }
         output.show(true);
-        await revealRebuildLocation(response);
       }
       return;
     }

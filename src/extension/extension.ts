@@ -116,7 +116,11 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
       const serializeState = (uiState: Tec1gUiState): Record<string, unknown> => ({
         digits: uiState.digits,
         matrix: uiState.matrix,
+        matrixGreen: uiState.matrixGreen,
+        matrixBlue: uiState.matrixBlue,
         matrixBrightness: uiState.matrixBrightness,
+        matrixBrightnessG: uiState.matrixBrightnessG,
+        matrixBrightnessB: uiState.matrixBrightnessB,
         glcd: uiState.glcd,
         glcdDdram: uiState.glcdDdram,
         glcdState: uiState.glcdState,
@@ -156,7 +160,11 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
             uiRevision,
             digits: tec1gState.digits,
             matrix: tec1gState.matrix,
+            matrixGreen: tec1gState.matrixGreen,
+            matrixBlue: tec1gState.matrixBlue,
             matrixBrightness: tec1gState.matrixBrightness,
+            matrixBrightnessG: tec1gState.matrixBrightnessG,
+            matrixBrightnessB: tec1gState.matrixBrightnessB,
             glcd: tec1gState.glcd,
             speaker: false,
             speedMode: tec1gState.speedMode,
@@ -177,6 +185,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   const sessionState = new SessionStateManager();
   const output = vscode.window.createOutputChannel('Debug80');
   const rebuildDiagnostics = vscode.languages.createDiagnosticCollection('debug80-rebuild');
+  const assemblyDiagnostics = vscode.languages.createDiagnosticCollection('debug80-assembly');
   const logger = new OutputChannelLogger(output);
   const factory = new Z80DebugAdapterFactory(logger);
   const platformViewProvider = new PlatformViewProvider(context.extensionUri);
@@ -217,6 +226,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   );
   context.subscriptions.push(output);
   context.subscriptions.push(rebuildDiagnostics);
+  context.subscriptions.push(assemblyDiagnostics);
 
   registerLanguageAssociations(context, output);
   workspaceSelection.registerInfrastructure();
@@ -232,6 +242,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   registerDebugSessionHandlers({
     context,
     rebuildDiagnostics,
+    assemblyDiagnostics,
     platformViewProvider,
     sessionState,
     sourceColumns,

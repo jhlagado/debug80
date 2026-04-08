@@ -3,6 +3,7 @@
  */
 
 import { OutputEvent, Event as DapEvent } from '@vscode/debugadapter';
+import type { AssemblyDiagnostic } from './assembler';
 
 export type EventSender = (event: unknown) => void;
 
@@ -18,4 +19,12 @@ export function emitConsoleOutput(
 
 export function emitMainSource(sendEvent: EventSender, sourcePath: string): void {
   sendEvent(new DapEvent('debug80/mainSource', { path: sourcePath }));
+}
+
+/** Notifies the host to show an assembly error squiggle without focusing the editor. */
+export function emitAssemblyFailed(
+  sendEvent: EventSender,
+  payload: { diagnostic?: AssemblyDiagnostic; error?: string }
+): void {
+  sendEvent(new DapEvent('debug80/assemblyFailed', payload));
 }
