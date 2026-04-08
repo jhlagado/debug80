@@ -20,7 +20,11 @@ export type GlcdState = {
 export type Tec1gUiState = {
   digits: number[];
   matrix: number[];
+  matrixGreen: number[];
+  matrixBlue: number[];
   matrixBrightness: number[];
+  matrixBrightnessG: number[];
+  matrixBrightnessB: number[];
   matrixMode: boolean;
   glcd: number[];
   glcdDdram: number[];
@@ -48,7 +52,11 @@ export function createTec1gUiState(): Tec1gUiState {
   return {
     digits: Array.from({ length: 6 }, () => 0),
     matrix: Array.from({ length: 8 }, () => 0),
+    matrixGreen: Array.from({ length: 8 }, () => 0),
+    matrixBlue: Array.from({ length: 8 }, () => 0),
     matrixBrightness: Array.from({ length: 64 }, () => 0),
+    matrixBrightnessG: Array.from({ length: 64 }, () => 0),
+    matrixBrightnessB: Array.from({ length: 64 }, () => 0),
     matrixMode: false,
     glcd: Array.from({ length: 1024 }, () => 0),
     glcdDdram: Array.from({ length: 64 }, () => 0x20),
@@ -88,7 +96,11 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
   const next = createTec1gUiState();
   state.digits = next.digits;
   state.matrix = next.matrix;
+  state.matrixGreen = next.matrixGreen;
+  state.matrixBlue = next.matrixBlue;
   state.matrixBrightness = next.matrixBrightness;
+  state.matrixBrightnessG = next.matrixBrightnessG;
+  state.matrixBrightnessB = next.matrixBrightnessB;
   state.matrixMode = next.matrixMode;
   state.glcd = next.glcd;
   state.glcdDdram = next.glcdDdram;
@@ -109,10 +121,34 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
 export function applyTec1gUpdate(state: Tec1gUiState, payload: Tec1gUpdatePayload): void {
   state.digits = payload.digits.slice(0, 6);
   state.matrix = payload.matrix.slice(0, 8);
+  if (Array.isArray(payload.matrixGreen)) {
+    state.matrixGreen = payload.matrixGreen.slice(0, 8);
+    while (state.matrixGreen.length < 8) {
+      state.matrixGreen.push(0);
+    }
+  }
+  if (Array.isArray(payload.matrixBlue)) {
+    state.matrixBlue = payload.matrixBlue.slice(0, 8);
+    while (state.matrixBlue.length < 8) {
+      state.matrixBlue.push(0);
+    }
+  }
   if (Array.isArray(payload.matrixBrightness)) {
     state.matrixBrightness = payload.matrixBrightness.slice(0, 64);
     while (state.matrixBrightness.length < 64) {
       state.matrixBrightness.push(0);
+    }
+  }
+  if (Array.isArray(payload.matrixBrightnessG)) {
+    state.matrixBrightnessG = payload.matrixBrightnessG.slice(0, 64);
+    while (state.matrixBrightnessG.length < 64) {
+      state.matrixBrightnessG.push(0);
+    }
+  }
+  if (Array.isArray(payload.matrixBrightnessB)) {
+    state.matrixBrightnessB = payload.matrixBrightnessB.slice(0, 64);
+    while (state.matrixBrightnessB.length < 64) {
+      state.matrixBrightnessB.push(0);
     }
   }
   if (typeof payload.matrixMode === 'boolean') {
