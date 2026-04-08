@@ -16,8 +16,14 @@ export const TEC1G_PORT_STATUS = 0x03;
 export const TEC1G_PORT_LCD_CMD = 0x04;
 /** 8x8 LED display row-select latch. */
 export const TEC1G_PORT_8X8_ROW = 0x05;
-/** 8x8 LED display mono data latch. */
-export const TEC1G_PORT_8X8_DATA = 0x06;
+/** 8x8 RGB matrix red column latch (TEC-Expander 8x8 RGB). */
+export const TEC1G_PORT_8X8_RED = 0x06;
+/** 8x8 RGB matrix green column latch. */
+export const TEC1G_PORT_8X8_GREEN = 0xf8;
+/** 8x8 RGB matrix blue column latch. */
+export const TEC1G_PORT_8X8_BLUE = 0xf9;
+/** @deprecated Use {@link TEC1G_PORT_8X8_RED}; kept for callers that still say "data". */
+export const TEC1G_PORT_8X8_DATA = TEC1G_PORT_8X8_RED;
 /** GLCD command register (ST7920). */
 export const TEC1G_PORT_GLCD_CMD = 0x07;
 /** LCD data register. */
