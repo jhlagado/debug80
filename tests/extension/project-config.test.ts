@@ -46,6 +46,7 @@ describe('project-config helpers', () => {
     expect(updated).toBe(true);
     const config = readProjectConfig(configPath);
     expect(config?.targets?.app?.sourceFile).toBe('src/new.asm');
+    expect(config?.targets?.app?.asm).toBe('src/new.asm');
     expect(config?.targets?.app?.platform).toBe('simple');
   });
 
@@ -73,5 +74,34 @@ describe('project-config helpers', () => {
       debug80?: { targets?: Record<string, { sourceFile?: string }> };
     };
     expect(pkg.debug80?.targets?.app?.sourceFile).toBe('src/new.zax');
+    expect(pkg.debug80?.targets?.app?.asm).toBe('src/new.zax');
+    expect(pkg.debug80?.targets?.app?.assembler).toBe('zax');
+  });
+
+  it('sets assembler to zax when entry source is .zax and syncs asm', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-entry-'));
+    const configPath = path.join(root, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        targets: {
+          app: {
+            asm: 'src/old.asm',
+            sourceFile: 'src/old.asm',
+            assembler: 'asm80',
+            platform: 'simple',
+          },
+        },
+      })
+    );
+
+    const updated = updateProjectTargetSource(configPath, 'app', 'src/main.zax');
+
+    expect(updated).toBe(true);
+    const config = readProjectConfig(configPath);
+    expect(config?.targets?.app?.sourceFile).toBe('src/main.zax');
+    expect(config?.targets?.app?.asm).toBe('src/main.zax');
+    expect(config?.targets?.app?.assembler).toBe('zax');
   });
 });

@@ -12,10 +12,18 @@ const makeRuntime = (shadowEnabled: boolean): Tec1gRuntime =>
     state: {
       display: {
         digits: [],
-        ledMatrixRows: [],
+        ledMatrixRedRows: [],
+        ledMatrixGreenRows: [],
+        ledMatrixBlueRows: [],
+        ledMatrixBrightnessR: [],
+        ledMatrixBrightnessG: [],
+        ledMatrixBrightnessB: [],
         digitLatch: 0,
         segmentLatch: 0,
-        ledMatrixDataLatch: 0,
+        ledMatrixRowLatch: 0,
+        ledMatrixRedLatch: 0,
+        ledMatrixGreenLatch: 0,
+        ledMatrixBlueLatch: 0,
         glcdCtrl: {},
       },
       input: {

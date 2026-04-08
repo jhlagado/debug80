@@ -79,7 +79,11 @@ export class SourceManager {
       args.sourceFile,
       args.listingPath
     );
-    const sourceRoots = this.resolveSourceRoots(args.sourceRoots);
+    let sourceRoots = this.resolveSourceRoots(args.sourceRoots);
+    if (args.asmPath !== undefined && args.asmPath.length > 0) {
+      const asmDir = path.dirname(this.resolveRelative(args.asmPath, this.baseDir));
+      sourceRoots = [...sourceRoots, asmDir];
+    }
     const extraListingPaths = this.resolveExtraListingPaths(args.extraListings, args.listingPath);
     const mergedRoots = this.extendSourceRoots(sourceRoots, extraListingPaths);
 
