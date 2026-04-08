@@ -55,12 +55,18 @@ import { createTec1gIoHandlers } from './io-handlers';
 export interface Tec1gState {
   display: {
     digits: number[];
-    ledMatrixRows: number[];
-    ledMatrixBrightness: number[];
+    ledMatrixRedRows: number[];
+    ledMatrixGreenRows: number[];
+    ledMatrixBlueRows: number[];
+    ledMatrixBrightnessR: number[];
+    ledMatrixBrightnessG: number[];
+    ledMatrixBrightnessB: number[];
     digitLatch: number;
     segmentLatch: number;
     ledMatrixRowLatch: number;
-    ledMatrixDataLatch: number;
+    ledMatrixRedLatch: number;
+    ledMatrixGreenLatch: number;
+    ledMatrixBlueLatch: number;
     glcdCtrl: GlcdState;
   };
   input: {
@@ -121,8 +127,10 @@ export interface Tec1gRuntime {
 export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
-const TEC1G_MATRIX_PERSISTENCE_MS = 20;
-const TEC1G_MATRIX_BRIGHTNESS_GAIN = 16;
+/** Multiplex decay time constant; slightly longer hold reads brighter between scans. */
+const TEC1G_MATRIX_PERSISTENCE_MS = 10;
+/** Higher = shorter attack time → pixels reach full drive faster (bright LED look). */
+const TEC1G_MATRIX_BRIGHTNESS_GAIN = 72;
 
 /**
  *
@@ -137,25 +145,38 @@ function updateLedMatrixBrightness(
   }
 
   const persistenceCycles = millisecondsToClocks(clockHz, TEC1G_MATRIX_PERSISTENCE_MS);
-  const decay = (cycles * 255) / persistenceCycles;
-  const exposure = decay * TEC1G_MATRIX_BRIGHTNESS_GAIN;
+  const safePersistenceCycles = Math.max(1, persistenceCycles);
+  const decayFactor = Math.exp(-cycles / safePersistenceCycles);
+  const attackCycles = Math.max(1, safePersistenceCycles / TEC1G_MATRIX_BRIGHTNESS_GAIN);
+  const chargeFactor = 1 - Math.exp(-cycles / attackCycles);
   const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
-  const dataMask = display.ledMatrixDataLatch & TEC1G_MASK_BYTE;
+  const redMask = display.ledMatrixRedLatch & TEC1G_MASK_BYTE;
+  const greenMask = display.ledMatrixGreenLatch & TEC1G_MASK_BYTE;
+  const blueMask = display.ledMatrixBlueLatch & TEC1G_MASK_BYTE;
   let changed = false;
+
+  const updateChannel = (channel: number[], index: number, lit: boolean): void => {
+    const current = channel[index] ?? 0;
+    const faded = current > 0 ? current * decayFactor : 0;
+    const next = lit ? faded + ((255 - faded) * chargeFactor) : faded;
+    if (Math.abs(next - current) > 0.0001) {
+      channel[index] = next;
+      changed = true;
+    }
+  };
 
   for (let row = 0; row < 8; row += 1) {
     const rowSelected = (rowMask & (1 << row)) !== 0;
     const base = row * 8;
     for (let col = 0; col < 8; col += 1) {
       const index = base + col;
-      const columnSelected = (dataMask & (1 << col)) !== 0;
-      const current = display.ledMatrixBrightness[index] ?? 0;
-      const faded = current > 0 ? Math.max(0, current - decay) : 0;
-      const next = rowSelected && columnSelected ? Math.min(255, faded + exposure) : faded;
-      if (Math.abs(next - current) > 0.0001) {
-        display.ledMatrixBrightness[index] = next;
-        changed = true;
-      }
+      const columnBit = 1 << col;
+      const redLit = rowSelected && (redMask & columnBit) !== 0;
+      const greenLit = rowSelected && (greenMask & columnBit) !== 0;
+      const blueLit = rowSelected && (blueMask & columnBit) !== 0;
+      updateChannel(display.ledMatrixBrightnessR, index, redLit);
+      updateChannel(display.ledMatrixBrightnessG, index, greenLit);
+      updateChannel(display.ledMatrixBrightnessB, index, blueLit);
     }
   }
 
@@ -290,12 +311,18 @@ export function createTec1gRuntime(
   const state: Tec1gState = {
     display: {
       digits: Array.from({ length: 6 }, () => 0),
-      ledMatrixRows: Array.from({ length: 8 }, () => 0),
-      ledMatrixBrightness: Array.from({ length: 64 }, () => 0),
+      ledMatrixRedRows: Array.from({ length: 8 }, () => 0),
+      ledMatrixGreenRows: Array.from({ length: 8 }, () => 0),
+      ledMatrixBlueRows: Array.from({ length: 8 }, () => 0),
+      ledMatrixBrightnessR: Array.from({ length: 64 }, () => 0),
+      ledMatrixBrightnessG: Array.from({ length: 64 }, () => 0),
+      ledMatrixBrightnessB: Array.from({ length: 64 }, () => 0),
       digitLatch: 0,
       segmentLatch: 0,
       ledMatrixRowLatch: 0,
-      ledMatrixDataLatch: 0,
+      ledMatrixRedLatch: 0,
+      ledMatrixGreenLatch: 0,
+      ledMatrixBlueLatch: 0,
       glcdCtrl: createGlcdState(),
     },
     input: {
@@ -495,10 +522,16 @@ export function createTec1gRuntime(
     audio.speakerHz = 0;
     audio.lastEdgeCycle = null;
     lcd.reset();
-    display.ledMatrixRows.fill(0);
-    display.ledMatrixBrightness.fill(0);
+    display.ledMatrixRedRows.fill(0);
+    display.ledMatrixGreenRows.fill(0);
+    display.ledMatrixBlueRows.fill(0);
+    display.ledMatrixBrightnessR.fill(0);
+    display.ledMatrixBrightnessG.fill(0);
+    display.ledMatrixBrightnessB.fill(0);
     display.ledMatrixRowLatch = 0;
-    display.ledMatrixDataLatch = 0;
+    display.ledMatrixRedLatch = 0;
+    display.ledMatrixGreenLatch = 0;
+    display.ledMatrixBlueLatch = 0;
     input.matrixKeyStates.fill(TEC1G_MASK_BYTE);
     input.matrixModeEnabled = matrixMode;
     glcd.reset();

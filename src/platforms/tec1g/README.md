@@ -9,7 +9,7 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 - LCD write/read emulation (HD44780-style), including busy-flag status.
 - Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
 - Shadow/Protect/Expand memory behavior and the 0x8000-0xBFFF expansion window.
-- 8x8 LED matrix output (row select + column data).
+- 8x8 RGB LED matrix output (row select + red/green/blue column latches).
 - RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
 
 ## Not yet emulated
@@ -61,7 +61,9 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0x02` (SEGS): seven-seg segment data (latched).
 - `OUT 0x04/0x84`: LCD instruction/data.
 - `OUT 0x05`: LED matrix row select.
-- `OUT 0x06`: LED matrix column data.
+- `OUT 0x06`: LED matrix red columns (TEC-Expander 8x8 RGB).
+- `OUT 0xF8`: LED matrix green columns.
+- `OUT 0xF9`: LED matrix blue columns.
 - `OUT 0x07/0x87`: GLCD instruction/data (ST7920 — text, graphics, busy flag all emulated).
 - `OUT 0xFF` (SYS_CTRL): system latch (U13 74HCT273).
   - Bit 0: ~SHADOW (active low — 0 = shadow on).

@@ -34,8 +34,16 @@ function buildUpdatePayload(state: Tec1gState): Tec1gUpdatePayload {
   const { display, input, audio, lcdCtrl, timing, system } = state;
   return {
     digits: [...display.digits],
-    matrix: [...display.ledMatrixRows],
-    matrixBrightness: display.ledMatrixBrightness.map((value) =>
+    matrix: [...display.ledMatrixRedRows],
+    matrixGreen: [...display.ledMatrixGreenRows],
+    matrixBlue: [...display.ledMatrixBlueRows],
+    matrixBrightness: display.ledMatrixBrightnessR.map((value) =>
+      Math.max(0, Math.min(255, Math.round(value)))
+    ),
+    matrixBrightnessG: display.ledMatrixBrightnessG.map((value) =>
+      Math.max(0, Math.min(255, Math.round(value)))
+    ),
+    matrixBrightnessB: display.ledMatrixBrightnessB.map((value) =>
       Math.max(0, Math.min(255, Math.round(value)))
     ),
     matrixMode: input.matrixModeEnabled,

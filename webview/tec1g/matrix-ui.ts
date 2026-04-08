@@ -1,6 +1,8 @@
 export interface MatrixUiController {
   applyMatrixRows(rows: number[]): void;
-  applyMatrixBrightness(levels: number[]): void;
+  applyMatrixGreenRows(rows: number[]): void;
+  applyMatrixBlueRows(rows: number[]): void;
+  applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]): void;
   applyCapsLock(enabled: boolean): void;
   applyMatrixMode(enabled: boolean): void;
   handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean;
@@ -33,8 +35,12 @@ export function createMatrixUiController(
     alt: false,
   };
   const matrixKeyElements = new Map<string, HTMLElement>();
-  let matrixRows = new Array(8).fill(0);
-  let matrixBrightness = new Array(64).fill(0);
+  let matrixRedRows = new Array(8).fill(0);
+  let matrixGreenRows = new Array(8).fill(0);
+  let matrixBlueRows = new Array(8).fill(0);
+  let matrixBrightnessR = new Array(64).fill(0);
+  let matrixBrightnessG = new Array(64).fill(0);
+  let matrixBrightnessB = new Array(64).fill(0);
   let hasMatrixBrightness = false;
 
   function buildMatrix() {
@@ -51,6 +57,19 @@ export function createMatrixUiController(
     }
   }
 
+  /**
+   * Maps emulated 0–255 drive to display values so lit pixels read closer to bright
+   * LED signage (lift shadows, slight gamma) without clipping white mixes.
+   */
+  function ledEmissionChannel(raw: number): number {
+    if (raw <= 0) {
+      return 0;
+    }
+    const t = raw / 255;
+    const gamma = Math.pow(t, 0.82);
+    return Math.min(255, Math.round(255 * gamma + 10 * t));
+  }
+
   function drawMatrix() {
     if (!matrixGrid) return;
     const dots = matrixGrid.querySelectorAll('.matrix-dot');
@@ -58,12 +77,28 @@ export function createMatrixUiController(
       const row = parseInt((dot as HTMLElement).dataset.row || '0', 10);
       const col = parseInt((dot as HTMLElement).dataset.col || '0', 10);
       const mask = 1 << col;
-      const level = hasMatrixBrightness
-        ? matrixBrightness[row * 8 + col] ?? 0
-        : (matrixRows[row] & mask) !== 0
-        ? 255
-        : 0;
-      (dot as HTMLElement).style.setProperty('--matrix-level', (level / 255).toFixed(3));
+      const idx = row * 8 + col;
+      let br: number;
+      let bg: number;
+      let bb: number;
+      if (hasMatrixBrightness) {
+        br = matrixBrightnessR[idx] ?? 0;
+        bg = matrixBrightnessG[idx] ?? 0;
+        bb = matrixBrightnessB[idx] ?? 0;
+      } else {
+        br = (matrixRedRows[row] & mask) !== 0 ? 255 : 0;
+        bg = (matrixGreenRows[row] & mask) !== 0 ? 255 : 0;
+        bb = (matrixBlueRows[row] & mask) !== 0 ? 255 : 0;
+      }
+      const er = ledEmissionChannel(br);
+      const eg = ledEmissionChannel(bg);
+      const eb = ledEmissionChannel(bb);
+      const level = Math.max(er, eg, eb);
+      const el = dot as HTMLElement;
+      el.style.setProperty('--matrix-r', (er / 255).toFixed(3));
+      el.style.setProperty('--matrix-g', (eg / 255).toFixed(3));
+      el.style.setProperty('--matrix-b', (eb / 255).toFixed(3));
+      el.style.setProperty('--matrix-level', (level / 255).toFixed(3));
       if (level > 0) {
         dot.classList.add('on');
       } else {
@@ -72,15 +107,24 @@ export function createMatrixUiController(
     });
   }
 
-  function applyMatrixBrightness(levels: number[]) {
+  function applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]) {
     hasMatrixBrightness = true;
-    matrixBrightness = Array.from({ length: 64 }, (_, index) => {
-      const value = levels[index];
-      if (typeof value !== 'number' || !Number.isFinite(value)) {
-        return 0;
-      }
-      return Math.max(0, Math.min(255, Math.trunc(value)));
-    });
+    const pad64 = (source: number[] | undefined, fill: number): number[] =>
+      Array.from({ length: 64 }, (_, index) => {
+        const value = source?.[index];
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+          return fill;
+        }
+        return Math.max(0, Math.min(255, Math.trunc(value)));
+      });
+    matrixBrightnessR = pad64(levels, 0);
+    if (green !== undefined || blue !== undefined) {
+      matrixBrightnessG = pad64(green, 0);
+      matrixBrightnessB = pad64(blue, 0);
+    } else {
+      matrixBrightnessG = new Array(64).fill(0);
+      matrixBrightnessB = new Array(64).fill(0);
+    }
     drawMatrix();
   }
 
@@ -296,12 +340,25 @@ export function createMatrixUiController(
     }
   }
 
+  function padRowPlane(rows: number[]): number[] {
+    const next = rows.slice(0, 8);
+    while (next.length < 8) {
+      next.push(0);
+    }
+    return next;
+  }
+
   return {
     applyMatrixRows(rows: number[]) {
-      matrixRows = rows.slice(0, 8);
-      while (matrixRows.length < 8) {
-        matrixRows.push(0);
-      }
+      matrixRedRows = padRowPlane(rows);
+      drawMatrix();
+    },
+    applyMatrixGreenRows(rows: number[]) {
+      matrixGreenRows = padRowPlane(rows);
+      drawMatrix();
+    },
+    applyMatrixBlueRows(rows: number[]) {
+      matrixBlueRows = padRowPlane(rows);
       drawMatrix();
     },
     applyMatrixBrightness,

@@ -20,7 +20,7 @@ import {
   D8DebugMap,
   parseD8DebugMap,
 } from '../mapping/d8-map';
-import { legacyDebugMapPath } from './d8-map-paths';
+import { D8_DEBUG_MAP_EXT, legacyDebugMapPath } from './d8-map-paths';
 import { Logger } from '../util/logger';
 
 export interface MappingServiceOptions {
@@ -48,6 +48,35 @@ export interface MappingBuildResult {
 }
 
 /**
+ * ZAX (and similar) write `<artifact>.d8.json` next to the listing; Debug80 also
+ * stores a map under `.debug80/cache/...`. Prefer the sidecar so native tool maps win.
+ */
+function collectDebugMapCandidates(mapPath: string, listingPath: string): string[] {
+  const sidecar = path.join(
+    path.dirname(listingPath),
+    `${path.basename(listingPath, path.extname(listingPath))}${D8_DEBUG_MAP_EXT}`
+  );
+  const legacy = legacyDebugMapPath(mapPath);
+  const ordered = [sidecar, mapPath, legacy !== null ? legacy : undefined].filter(
+    (p): p is string => p !== undefined && p.length > 0
+  );
+  return [...new Set(ordered)];
+}
+
+function loadFirstExistingDebugMap(
+  candidates: string[],
+  service: MappingServiceOptions
+): { map: D8DebugMap | undefined; pathUsed: string | undefined } {
+  for (const p of candidates) {
+    const m = loadDebugMap(p, service);
+    if (m !== undefined) {
+      return { map: m, pathUsed: p };
+    }
+  }
+  return { map: undefined, pathUsed: undefined };
+}
+
+/**
  * Builds (or loads) a mapping for a primary listing file and any extra listings.
  */
 export function buildMappingFromListing(options: {
@@ -70,15 +99,20 @@ export function buildMappingFromListing(options: {
   } = options;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
-  const loadedMap = loadDebugMap(mapPath, service);
+  const debugMapCandidates = collectDebugMapCandidates(mapPath, listingPath);
+  const { map: loadedMap, pathUsed: debugMapLoadedFrom } = loadFirstExistingDebugMap(
+    debugMapCandidates,
+    service
+  );
   const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
   if (hasNativeMap) {
     service.logger.info(
-      `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
+      `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${debugMapLoadedFrom ?? mapPath}".`
     );
   }
 
-  const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
+  const mapStale =
+    !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
 
   let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
   let missingSources: string[] = [];

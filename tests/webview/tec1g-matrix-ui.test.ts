@@ -88,6 +88,9 @@ describe('tec1g matrix ui', () => {
 
     expect(firstDot.classList.contains('on')).toBe(true);
     expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-g')).toBe('0.000');
+    expect(firstDot.style.getPropertyValue('--matrix-b')).toBe('0.000');
 
     controller.applyMatrixBrightness(Array.from({ length: 64 }, () => 0));
 
@@ -102,6 +105,7 @@ describe('tec1g matrix ui', () => {
 
     expect(firstDot.classList.contains('on')).toBe(true);
     expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
   });
 
   it('tracks modifier state when clicking matrix keys', () => {
