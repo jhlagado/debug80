@@ -102,6 +102,13 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 Debug80 does not bundle MON-3 ROM images. Provide `romHex` in the platform
 config (and optionally ROM listings via `extraListings`).
 
+**Shared MON-3 settings (recommended):** Put `romHex`, `entry`, and any other
+fields that are the same for every build under **`debug80.json` root** `tec1g`,
+not only under each `targets.<name>` entry. That way every target (ASM, ZAX,
+different demos) loads the same monitor ROM without duplicating paths or
+depending on merge order. Use per-target `tec1g` only for overrides (for example
+`appStart`, `matrixMode`, or `extraListings`).
+
 ```json
 {
   "platform": "tec1g",
