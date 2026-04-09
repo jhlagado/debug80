@@ -109,6 +109,83 @@ describe('launch-args', () => {
     expect(merged.outputDir).toBe('build');
   });
 
+  it('deep-merges tec1g so target overrides do not drop root romHex', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-merge-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        platform: 'tec1g',
+        defaultTarget: 'matrix',
+        tec1g: {
+          romHex: 'roms/mon-3.hex',
+          entry: 0,
+          appStart: 16384,
+        },
+        targets: {
+          matrix: {
+            asm: 'src/matrix.zax',
+            tec1g: {
+              appStart: 16384,
+            },
+          },
+          asmDemo: {
+            asm: 'src/matrix-demo.asm',
+          },
+        },
+      })
+    );
+    const mergedMatrix = populateFromConfig(
+      { projectConfig: configPath, target: 'matrix' } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+    expect(mergedMatrix.tec1g?.romHex).toBe('roms/mon-3.hex');
+    expect(mergedMatrix.tec1g?.entry).toBe(0);
+    expect(mergedMatrix.tec1g?.appStart).toBe(16384);
+
+    const mergedAsm = populateFromConfig(
+      { projectConfig: configPath, target: 'asmDemo' } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+    expect(mergedAsm.tec1g?.romHex).toBe('roms/mon-3.hex');
+    expect(mergedAsm.asm).toBe('src/matrix-demo.asm');
+  });
+
+  it('inherits tec1g.romHex from another target when root has no romHex', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-inherit-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        platform: 'tec1g',
+        defaultTarget: 'matrix',
+        targets: {
+          'matrix-demo': {
+            asm: 'src/matrix-demo.asm',
+            tec1g: {
+              romHex: 'roms/mon-3.hex',
+              entry: 0,
+            },
+          },
+          matrix: {
+            asm: 'src/matrix.zax',
+            assembler: 'zax',
+            tec1g: {
+              appStart: 16384,
+            },
+          },
+        },
+      })
+    );
+    const merged = populateFromConfig(
+      { projectConfig: configPath, target: 'matrix' } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+    expect(merged.tec1g?.romHex).toBe('roms/mon-3.hex');
+    expect(merged.tec1g?.appStart).toBe(16384);
+    expect(merged.tec1g?.entry).toBe(0);
+  });
+
   it('returns args when config is missing or unreadable', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-missing-'));
     const args = { asm: path.join(dir, 'main.asm') } as LaunchRequestArguments;
