@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import { resolveBundledTec1Rom } from './assembler';
 import { emitConsoleOutput } from './adapter-ui';
@@ -266,6 +267,16 @@ export async function buildLaunchSession(
   });
 
   context.sessionState.listingPath = listingPath;
+  const preSourceRoots: string[] = [];
+  for (const r of merged.sourceRoots ?? []) {
+    preSourceRoots.push(resolveRelative(r, baseDir));
+  }
+  if (asmPath !== undefined && asmPath.length > 0) {
+    preSourceRoots.push(path.dirname(resolveRelative(asmPath, baseDir)));
+  }
+  context.sessionState.sourceRoots = preSourceRoots;
+  const resolvedSourceRoots =
+    preSourceRoots.length > 0 ? preSourceRoots : merged.sourceRoots ?? [];
   const extraListings = platformProvider.extraListings;
   context.sourceState.setManager(
     new SourceManager({
@@ -296,7 +307,7 @@ export async function buildLaunchSession(
     ...(merged.sourceFile !== undefined && merged.sourceFile.length > 0
       ? { sourceFile: merged.sourceFile }
       : {}),
-    sourceRoots: merged.sourceRoots ?? [],
+    sourceRoots: resolvedSourceRoots,
     extraListings,
     mapArgs: {
       ...(merged.artifactBase !== undefined && merged.artifactBase.length > 0

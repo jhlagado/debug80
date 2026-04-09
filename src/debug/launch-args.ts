@@ -6,8 +6,58 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LaunchRequestArguments } from './types';
 import type { PlatformKind } from './program-loader';
+import type { Tec1gPlatformConfig } from '../platforms/types';
 import { isPathWithin } from './path-utils';
 import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
+
+/**
+ * Shallow-merge nested platform blocks so a target can override e.g. `tec1g.appStart`
+ * without replacing the entire root `tec1g` object (which would drop `romHex` and break MON-3).
+ */
+function mergeNestedPlatformBlock<T extends object>(
+  ...parts: Array<Partial<T> | undefined>
+): T | undefined {
+  const out: Record<string, unknown> = {};
+  for (const p of parts) {
+    if (p === undefined || typeof p !== 'object' || Array.isArray(p)) {
+      continue;
+    }
+    Object.assign(out, p as Record<string, unknown>);
+  }
+  return Object.keys(out).length > 0 ? (out as T) : undefined;
+}
+
+/**
+ * When `romHex` lives only under another target's `tec1g` block (common for MON-3),
+ * the active target's partial `tec1g` would otherwise drop it after merge.
+ * If root and merged base have no non-empty `romHex`, inherit from the first target
+ * (alphabetically) that defines `romHex`, then apply root overrides.
+ */
+function resolveTec1gBaseForMerge(cfg: {
+  tec1g?: Tec1gPlatformConfig;
+  targets?: Record<
+    string,
+    Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string }
+  >;
+}): Tec1gPlatformConfig | undefined {
+  const root = cfg.tec1g;
+  if (root !== undefined && typeof root.romHex === 'string' && root.romHex.trim() !== '') {
+    return root;
+  }
+  let inherited: Tec1gPlatformConfig | undefined;
+  const names = Object.keys(cfg.targets ?? {}).sort((a, b) => a.localeCompare(b));
+  for (const name of names) {
+    const t = cfg.targets?.[name]?.tec1g;
+    if (t !== undefined && typeof t.romHex === 'string' && t.romHex.trim() !== '') {
+      inherited = { ...t };
+      break;
+    }
+  }
+  if (inherited === undefined) {
+    return root;
+  }
+  return { ...inherited, ...(root ?? {}) };
+}
 
 export interface LaunchArgsHelpers {
   resolveBaseDir: (args: LaunchRequestArguments) => string;
@@ -120,6 +170,29 @@ export function populateFromConfig(
       ...targetCfg,
       ...args,
     };
+
+    const mergedSimple = mergeNestedPlatformBlock(cfg.simple, targetCfg?.simple, args.simple);
+    if (mergedSimple !== undefined) {
+      merged.simple = mergedSimple;
+    } else {
+      delete merged.simple;
+    }
+    const mergedTec1 = mergeNestedPlatformBlock(cfg.tec1, targetCfg?.tec1, args.tec1);
+    if (mergedTec1 !== undefined) {
+      merged.tec1 = mergedTec1;
+    } else {
+      delete merged.tec1;
+    }
+    const mergedTec1g = mergeNestedPlatformBlock(
+      resolveTec1gBaseForMerge(cfg),
+      targetCfg?.tec1g,
+      args.tec1g,
+    );
+    if (mergedTec1g !== undefined) {
+      merged.tec1g = mergedTec1g;
+    } else {
+      delete merged.tec1g;
+    }
 
     const asmResolved =
       args.asm ??
