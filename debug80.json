@@ -2,7 +2,7 @@
   "defaultTarget": "app",
   "targets": {
     "app": {
-      "sourceFile": "examples/echo.asm",
+      "sourceFile": "test/fixtures/echo.asm",
       "outputDir": "build",
       "artifactBase": "echo",
       "platform": "simple",
