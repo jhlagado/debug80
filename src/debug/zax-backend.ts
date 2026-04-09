@@ -14,13 +14,13 @@ import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 const moduleRequire = createRequire(__filename);
 
 /**
- * Optional local development without publishing to npm:
- * - Prefer `npm link` in the ZAX repo, then `npm link @jhlagado/zax` in Debug80 (see README).
- * - `DEBUG80_ZAX_CLI`: absolute path to `cli.js` (e.g. `.../ZAX/dist/src/cli.js`)
- * - `DEBUG80_ZAX_ROOT`: path to ZAX repo root (uses `dist/src/cli.js` under it)
+ * Resolution order:
+ * 1) Optional env overrides (one-off debugging; see README).
+ * 2) `require.resolve('@jhlagado/zax/dist/src/cli.js')` / package layout.
+ * 3) Walk parents for `node_modules/@jhlagado/zax` (e.g. workspace with hoisted deps).
  *
- * Env vars are checked before `node_modules` resolution so Extension Host can override
- * a registry install when needed.
+ * Normal local ZAX development: keep `package.json` on the published semver
+ * (`@jhlagado/zax`) and use `npm link` — no committed `file:` dependency.
  */
 function resolveZaxCliFromEnv(): string | undefined {
   const cli = process.env.DEBUG80_ZAX_CLI?.trim();
@@ -85,9 +85,9 @@ function resolveZaxCliPath(startDir: string): string | undefined {
 
 function zaxNotFoundMessage(): string {
   return (
-    'zax not found. Install with "npm install -D @jhlagado/zax", use a local checkout ' +
-    '("cd ZAX && npm link" then "cd debug80 && npm link @jhlagado/zax"), "npm install file:../ZAX", ' +
-    'or set DEBUG80_ZAX_ROOT / DEBUG80_ZAX_CLI (see Debug80 README).'
+    'zax not found. Install with "npm install -D @jhlagado/zax", or link a local ZAX build ' +
+    '("cd ZAX && npm run build && npm link" then "cd debug80 && npm link @jhlagado/zax"). ' +
+    'Optional: DEBUG80_ZAX_ROOT / DEBUG80_ZAX_CLI (see Debug80 README).'
   );
 }
 
@@ -110,7 +110,8 @@ export class ZaxBackend implements AssemblerBackend {
     }
 
     const outArg = toPortablePath(path.relative(asmDir, options.hexPath));
-    const args = [cliPath, '--nobin', '-o', outArg, path.basename(options.asmPath)];
+    // ZAX --asm80: emit ASM80-compatible lowered source (.z80) beside the HEX for inspection.
+    const args = [cliPath, '--nobin', '--asm80', '-o', outArg, path.basename(options.asmPath)];
     const result = cp.spawnSync(process.execPath, args, {
       cwd: asmDir,
       encoding: 'utf-8',

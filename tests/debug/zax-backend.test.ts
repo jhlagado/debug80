@@ -99,6 +99,7 @@ describe('zax-backend', () => {
     const [command, args, spawnOptions] = firstCall;
     expect(command).toBe(process.execPath);
     expect(args).toContain('--nobin');
+    expect(args).toContain('--asm80');
     expect(args).toContain('-o');
     expect(args).toContain(path.join('build', 'prog.hex').replace(/\\/g, '/'));
     expect(args).toContain(path.basename(asmPath));
