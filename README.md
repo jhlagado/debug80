@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jhlagado/debug80/actions/workflows/ci.yml/badge.svg)](https://github.com/jhlagado/debug80/actions/workflows/ci.yml)
 
-Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in the examples below.
+Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in this document.
 
 TEC-1-specific workspace setups live in the separate `debug80-tec1` repo:
 https://github.com/jhlagado/debug80-tec1
@@ -10,7 +10,7 @@ https://github.com/jhlagado/debug80-tec1
 TEC-1G-specific workspace setups live in the separate `debug80-tec1g` repo:
 https://github.com/jhlagado/debug80-tec1g
 
-This repository keeps the shared debugger plus the in-repo Simple example workspace.
+This repository keeps the shared debugger and a small `test/fixtures` stub for the root `debug80.json`.
 
 <table>
   <tr>
@@ -28,14 +28,14 @@ This repository keeps the shared debugger plus the in-repo Simple example worksp
 
 ## Local ZAX checkout (develop ZAX + Debug80 without npm publish)
 
-Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) for the `.zax` assembler backend. To iterate on **ZAX** and **Debug80** side by side on one machine:
+Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) (e.g. `"@jhlagado/zax": "^0.1.0"` in `package.json`) for the `.zax` assembler backend. **Keep that semver range in git** so CI, VSIX packaging, and collaborators all resolve the same dependency story. Do not commit `file:../zax` (or similar) in this repo if you want a single, consistent install.
 
-### Option A — `npm link` (recommended)
+### `npm link` (recommended for local ZAX development)
 
-Use a global symlink so Debug80’s `node_modules/@jhlagado/zax` always points at your ZAX clone:
+`npm link` does **not** change `package.json`. It only changes what ends up under `node_modules/@jhlagado/zax` on your machine:
 
 ```bash
-# 1) In the ZAX repo: register this package globally
+# 1) In the ZAX repo: build, then register globally
 cd /path/to/ZAX
 npm run build
 npm link
@@ -47,7 +47,7 @@ npm link @jhlagado/zax
 
 After **every change to ZAX TypeScript**, rebuild the compiler (`npm run build` in ZAX). Debug80 reads `dist/src/cli.js` from the linked tree; you usually **do not** need to reinstall or rebuild Debug80 for ZAX-only changes.
 
-To go back to the published package from npm:
+To match what users get from npm (or before you cut a release), put the tree back:
 
 ```bash
 cd /path/to/debug80
@@ -57,26 +57,18 @@ npm install
 
 (From the ZAX repo, `npm unlink` removes the global registration when you no longer need it.)
 
-### Option B — `file:` dependency
+Packaging the extension (`vsce package` / clean `npm ci`) uses the registry with a normal `package.json` — no link — unless you explicitly link in that environment.
 
-If you prefer a project-relative install instead of a global link:
+### Optional environment overrides
 
-```bash
-npm install file:../ZAX
-```
+For one-off cases (e.g. point at a specific `cli.js` without using `npm link`), you can set these **before** extension host resolution; they are **not** required for normal development:
 
-(Adjust the path to your ZAX checkout.)
+- **`DEBUG80_ZAX_CLI`**: absolute path to `dist/src/cli.js` (or another runnable entry).
+- **`DEBUG80_ZAX_ROOT`**: path to the ZAX repo root (uses `dist/src/cli.js` under it).
 
-### Option C — environment override
+Restart VS Code (or the Extension Development Host) after changing them, or set them via **`terminal.integrated.env.*`** / launch **`env`**.
 
-Point Debug80 at a built ZAX **before** it resolves `node_modules`:
-
-- **`DEBUG80_ZAX_ROOT`**: path to the **ZAX repository root** (uses `dist/src/cli.js`).
-- **`DEBUG80_ZAX_CLI`**: full path to **`cli.js`**.
-
-Restart VS Code (or the Extension Development Host) so the extension inherits the variable, or set them under **`terminal.integrated.env.*`** / your launch **`env`**.
-
-If unset, Debug80 uses `node_modules/@jhlagado/zax` (registry install or `npm link` / `file:` as above).
+If unset, Debug80 resolves `@jhlagado/zax` from `node_modules` (registry install or `npm link` as above).
 
 ## Install & Build
 
@@ -86,14 +78,13 @@ npm run build
 npm test
 ```
 
-## Quick start (examples)
+## Quick start
 
-- Open `examples/HelloWorld` for the Simple platform terminal demo.
-- Open the separate `debug80-tec1g` repo for TEC-1G monitor + serial workflows.
-- Open the separate `debug80-tec1` repo for TEC-1 monitor + serial workflows.
-- Press F5 to start debugging.
+- Open the separate [`debug80-tec1g`](https://github.com/jhlagado/debug80-tec1g) repo for TEC-1G monitor + serial workflows (or `debug80-tec1g-mon3` for MON-3–oriented workspaces).
+- Open the separate [`debug80-tec1`](https://github.com/jhlagado/debug80-tec1) repo for TEC-1 monitor + serial workflows.
+- With this repo open, you can point `debug80.json` at `test/fixtures/echo.asm` and press F5 for a minimal Simple-platform smoke run.
 
-The example workspace and the separate platform repos already include `.vscode` configs, so you can run them immediately.
+Platform-focused repos ship their own `.vscode` configs; use those for full demos.
 
 ## Project config (recommended)
 
@@ -103,7 +94,7 @@ Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80
   "defaultTarget": "app",
   "targets": {
     "app": {
-      "sourceFile": "examples/echo.asm",
+      "sourceFile": "test/fixtures/echo.asm",
       "outputDir": "build",
       "artifactBase": "echo",
       "platform": "simple",
