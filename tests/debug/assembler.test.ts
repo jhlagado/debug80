@@ -59,15 +59,15 @@ describe('assembler helpers', () => {
     expect(findAsm80Binary(tmpDir)).toBe(binPath);
   });
 
-  it('resolves asm80 via node when shebang indicates node', () => {
+  it('runs node_modules/.bin/asm80 directly (stub invokes node itself)', () => {
     const binDir = path.join(tmpDir, 'node_modules', '.bin');
     fs.mkdirSync(binDir, { recursive: true });
     const binPath = path.join(binDir, 'asm80');
     fs.writeFileSync(binPath, '#!/usr/bin/env node\n');
 
     const resolved = resolveAsm80Command(tmpDir);
-    expect(resolved.command).toBe(process.execPath);
-    expect(resolved.argsPrefix).toEqual([binPath]);
+    expect(resolved.command).toBe(binPath);
+    expect(resolved.argsPrefix).toEqual([]);
   });
 
   it('runs the assembler and copies listings when needed', () => {
