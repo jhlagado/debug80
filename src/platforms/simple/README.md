@@ -1,6 +1,6 @@
 # Simple Platform
 
-This is the minimal ROM/RAM platform used for basic examples.
+This is the minimal ROM/RAM platform used for basic bring-up and smoke tests.
 
 ## Memory map (default)
 
