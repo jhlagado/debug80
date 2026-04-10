@@ -13,13 +13,14 @@ import {
 import { resolveAssemblerBackend } from './assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import { applyLayer2 } from '../mapping/layer2';
-import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn } from '../mapping/source-map';
+import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn, setSegmentWarningHandler } from '../mapping/source-map';
 import {
   buildD8DebugMap,
   buildMappingFromD8DebugMap,
   D8DebugMap,
   parseD8DebugMap,
 } from '../mapping/d8-map';
+import { validateD8Segments } from '../mapping/d8-validate';
 import { D8_DEBUG_MAP_EXT, legacyDebugMapPath } from './d8-map-paths';
 import { Logger } from '../util/logger';
 
@@ -109,8 +110,15 @@ export function buildMappingFromListing(options: {
     service.logger.info(
       `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${debugMapLoadedFrom ?? mapPath}".`
     );
+    const d8Warnings = validateD8Segments(loadedMap);
+    for (const w of d8Warnings) {
+      service.logger.warn(`Debug80: D8 quality warning [${w.file}]: ${w.message}`);
+    }
   }
 
+  // Only apply listing-vs-map mtime for Debug80-generated maps. Native assembler maps (e.g. ZAX
+  // `.d8.json`) must not be invalidated when the `.lst` is newer — ZAX emits both; mtimes are
+  // not a reliable ordering signal, and the listing parser is asm80-oriented, not a substitute.
   const mapStale =
     !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
 
@@ -138,6 +146,16 @@ export function buildMappingFromListing(options: {
   }
 
   let mapping = buildMappingFromD8DebugMap(debugMap);
+
+  const fileSet = new Set<string | null>();
+  for (const seg of mapping.segments) {
+    fileSet.add(seg.loc.file);
+  }
+  service.logger.info(
+    `Debug80: mapping has ${mapping.segments.length} segments, ` +
+    `${mapping.anchors.length} anchors, files=[${[...fileSet].map(f => f ?? '(null)').join(', ')}]`
+  );
+
   const extraMapping = loadExtraListingMapping(extraListingPaths, service);
   if (extraMapping) {
     mapping = mergeMappings(mapping, extraMapping);
@@ -146,7 +164,15 @@ export function buildMappingFromListing(options: {
     applyTec1gBootstrapAlias(mapping);
   }
 
+  setSegmentWarningHandler((msg) => service.logger.warn(`Debug80: ${msg}`));
+
   const index = buildSourceMapIndex(mapping, (file) => service.resolveMappedPath(file));
+
+  service.logger.info(
+    `Debug80: index built with ${index.segmentsByAddress.length} address-sorted segments, ` +
+    `${index.segmentsByFileLine.size} file entries, ${index.anchorsByFile.size} anchor files`
+  );
+
   return { mapping, index, missingSources };
 }
 

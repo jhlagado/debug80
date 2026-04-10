@@ -12,6 +12,7 @@ vi.mock('../../src/debug/path-resolver', () => ({
   resolveListingSourcePath: () => undefined,
 }));
 
+import * as mappingService from '../../src/debug/mapping-service';
 import { SourceManager } from '../../src/debug/source-manager';
 
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures');
@@ -70,6 +71,51 @@ describe('source-manager', () => {
     expect(state.sourceRoots).toContain(path.resolve(dir, 'src'));
     expect(state.sourceRoots).toContain(path.dirname(extraListingPath));
     expect(logs.some((line) => line.includes('extra listing not found'))).toBe(true);
+  });
+
+  it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. ZAX entry only)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-zax-'));
+    const listingPath = path.join(dir, 'out.lst');
+    const asmPath = 'src/matrix.zax';
+    writeFile(listingPath, listingContent);
+    const zaxPath = path.join(dir, 'src', 'matrix.zax');
+    writeFile(zaxPath, 'nop\n');
+
+    const buildMappingSpy = vi.spyOn(mappingService, 'buildMappingFromListing');
+
+    const logs: string[] = [];
+    const manager = new SourceManager({
+      platform: 'tec1g',
+      baseDir: dir,
+      resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
+      resolveMappedPath: (filePath) => {
+        const candidate = path.resolve(dir, filePath);
+        return fs.existsSync(candidate) ? candidate : undefined;
+      },
+      relativeIfPossible: (filePath, baseDir) =>
+        path.relative(baseDir, filePath) || filePath,
+      resolveDebugMapPath: (_a, _b, _c, listing) =>
+        path.join(path.dirname(listing), `${path.basename(listing, '.lst')}.d8.json`),
+      resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
+      resolveListingSourcePath: () => undefined,
+      logger: createLogger(logs),
+    });
+
+    manager.buildState({
+      listingContent,
+      listingPath,
+      asmPath,
+      sourceRoots: [],
+      extraListings: [],
+      mapArgs: {},
+    });
+
+    expect(buildMappingSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceFile: path.join(dir, 'src', 'matrix.zax'),
+      })
+    );
+    buildMappingSpy.mockRestore();
   });
 
   it('collects listing and source entries for extra listings', () => {

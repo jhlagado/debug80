@@ -28,7 +28,7 @@ This repository keeps the shared debugger and a small `test/fixtures` stub for t
 
 ## Local ZAX checkout (develop ZAX + Debug80 without npm publish)
 
-Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) (e.g. `"@jhlagado/zax": "^0.1.0"` in `package.json`) for the `.zax` assembler backend. **Keep that semver range in git** so CI, VSIX packaging, and collaborators all resolve the same dependency story. Do not commit `file:../zax` (or similar) in this repo if you want a single, consistent install.
+Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) (e.g. `"@jhlagado/zax": "^0.2.2"` in `package.json`) for the `.zax` assembler backend. **Keep that semver range in git** so CI, VSIX packaging, and collaborators all resolve the same dependency story. Do not commit `file:../zax` (or similar) in this repo if you want a single, consistent install.
 
 ### `npm link` (recommended for local ZAX development)
 

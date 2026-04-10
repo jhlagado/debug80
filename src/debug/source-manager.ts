@@ -87,13 +87,17 @@ export class SourceManager {
     const extraListingPaths = this.resolveExtraListingPaths(args.extraListings, args.listingPath);
     const mergedRoots = this.extendSourceRoots(sourceRoots, extraListingPaths);
 
+    const mappingSourceForFallback =
+      (args.asmPath !== undefined && args.asmPath.length > 0) ||
+      (args.sourceFile !== undefined && args.sourceFile.length > 0)
+        ? sourceFileResolved
+        : undefined;
+
     const mappingResult = this.buildMapping({
       listingContent: args.listingContent,
       listingPath: args.listingPath,
       ...(args.asmPath !== undefined && args.asmPath.length > 0 ? { asmPath: args.asmPath } : {}),
-      ...(args.sourceFile !== undefined && args.sourceFile.length > 0
-        ? { sourceFile: args.sourceFile }
-        : {}),
+      ...(mappingSourceForFallback !== undefined ? { sourceFile: mappingSourceForFallback } : {}),
       extraListingPaths,
       mapArgs: args.mapArgs,
     });
@@ -167,7 +171,7 @@ export class SourceManager {
     listingPath: string
   ): string {
     if (asmPath !== undefined && asmPath.length > 0) {
-      return asmPath;
+      return path.isAbsolute(asmPath) ? path.normalize(asmPath) : this.resolveRelative(asmPath, this.baseDir);
     }
     if (sourceFile !== undefined && sourceFile.length > 0) {
       return this.resolveRelative(sourceFile, this.baseDir);

@@ -23,7 +23,7 @@ type TargetChoice = {
 type TargetQuickPickItem = vscode.QuickPickItem & {
   targetName: string;
   /** When set, selecting this row applies this path as sourceFile/asm for `targetName`. */
-  applyZaxSource?: string;
+  applyEntrySource?: string;
 };
 
 function isTargetPickRow(item: vscode.QuickPickItem): item is TargetQuickPickItem {
@@ -66,6 +66,54 @@ export function resolvePreferredTargetName(
   }
 
   return undefined;
+}
+
+function appendEntrySourceSection(
+  items: Array<vscode.QuickPickItem | TargetQuickPickItem>,
+  paths: string[],
+  separatorLabel: string,
+  detail: 'ZAX' | 'ASM',
+  projectRoot: string,
+  targetsPerPath: Map<string, string[]>,
+  bindTarget: string | undefined
+): void {
+  if (paths.length === 0) {
+    return;
+  }
+  items.push({
+    kind: vscode.QuickPickItemKind.Separator,
+    label: separatorLabel,
+  });
+  for (const filePath of paths) {
+    const key = entrySourceKey(projectRoot, filePath);
+    const boundTargets = targetsPerPath.get(key) ?? [];
+    if (boundTargets.length > 0) {
+      const primary = boundTargets[0];
+      if (primary === undefined) {
+        continue;
+      }
+      const row: TargetQuickPickItem = {
+        label: filePath,
+        description:
+          boundTargets.length > 1 ? `Targets: ${boundTargets.join(', ')}` : `Target: ${primary}`,
+        detail,
+        targetName: primary,
+      };
+      items.push(row);
+      continue;
+    }
+    if (bindTarget === undefined) {
+      continue;
+    }
+    const row: TargetQuickPickItem = {
+      label: filePath,
+      description: `Set as entry for target "${bindTarget}"`,
+      detail,
+      targetName: bindTarget,
+      applyEntrySource: filePath,
+    };
+    items.push(row);
+  }
 }
 
 export class ProjectTargetSelectionController {
@@ -135,64 +183,40 @@ export class ProjectTargetSelectionController {
 
     const bindTarget = defaultTarget ?? stored ?? choices[0]?.name;
     let zaxPaths: string[] = [];
+    let asmPaths: string[] = [];
     const targetsPerZaxPath = new Map<string, string[]>();
+    const targetsPerAsmPath = new Map<string, string[]>();
     const config = readProjectConfig(projectConfigPath);
     const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
     for (const [name, t] of Object.entries(config?.targets ?? {})) {
       const src = t.sourceFile ?? t.asm ?? t.source;
-      if (typeof src !== 'string' || !src.toLowerCase().endsWith('.zax')) {
+      if (typeof src !== 'string') {
         continue;
       }
-      const key = zaxEntryKey(projectRoot, src);
-      const list = targetsPerZaxPath.get(key) ?? [];
-      list.push(name);
-      targetsPerZaxPath.set(key, list);
+      const lower = src.toLowerCase();
+      const key = entrySourceKey(projectRoot, src);
+      if (lower.endsWith('.zax')) {
+        const list = targetsPerZaxPath.get(key) ?? [];
+        list.push(name);
+        targetsPerZaxPath.set(key, list);
+      } else if (lower.endsWith('.asm')) {
+        const list = targetsPerAsmPath.get(key) ?? [];
+        list.push(name);
+        targetsPerAsmPath.set(key, list);
+      }
     }
 
     try {
-      zaxPaths = listProjectSourceFiles(projectRoot).filter((p) => p.toLowerCase().endsWith('.zax'));
+      const all = listProjectSourceFiles(projectRoot);
+      zaxPaths = all.filter((p) => p.toLowerCase().endsWith('.zax'));
+      asmPaths = all.filter((p) => p.toLowerCase().endsWith('.asm'));
     } catch {
       zaxPaths = [];
+      asmPaths = [];
     }
 
-    if (zaxPaths.length > 0) {
-      items.push({
-        kind: vscode.QuickPickItemKind.Separator,
-        label: 'ZAX sources',
-      });
-      for (const zaxPath of zaxPaths) {
-        const key = zaxEntryKey(projectRoot, zaxPath);
-        const boundTargets = targetsPerZaxPath.get(key) ?? [];
-        if (boundTargets.length > 0) {
-          const primary = boundTargets[0];
-          if (primary === undefined) {
-            continue;
-          }
-          const row: TargetQuickPickItem = {
-            label: zaxPath,
-            description:
-              boundTargets.length > 1
-                ? `Targets: ${boundTargets.join(', ')}`
-                : `Target: ${primary}`,
-            detail: 'ZAX',
-            targetName: primary,
-          };
-          items.push(row);
-          continue;
-        }
-        if (bindTarget === undefined) {
-          continue;
-        }
-        const row: TargetQuickPickItem = {
-          label: zaxPath,
-          description: `Set as entry for target "${bindTarget}"`,
-          detail: 'ZAX',
-          targetName: bindTarget,
-          applyZaxSource: zaxPath,
-        };
-        items.push(row);
-      }
-    }
+    appendEntrySourceSection(items, zaxPaths, 'ZAX sources', 'ZAX', projectRoot, targetsPerZaxPath, bindTarget);
+    appendEntrySourceSection(items, asmPaths, 'ASM sources', 'ASM', projectRoot, targetsPerAsmPath, bindTarget);
 
     const picked = await vscode.window.showQuickPick(items, {
       placeHolder: options.placeHolder ?? 'Select the Debug80 target',
@@ -206,8 +230,8 @@ export class ProjectTargetSelectionController {
       return null;
     }
 
-    if (picked.applyZaxSource !== undefined) {
-      const ok = updateProjectTargetSource(projectConfigPath, picked.targetName, picked.applyZaxSource);
+    if (picked.applyEntrySource !== undefined) {
+      const ok = updateProjectTargetSource(projectConfigPath, picked.targetName, picked.applyEntrySource);
       if (!ok) {
         void vscode.window.showErrorMessage('Debug80: Failed to update the project entry source.');
         return null;
@@ -283,7 +307,7 @@ function normalizeProjectRelativePath(p: string): string {
 }
 
 /** Keys match {@link listProjectSourceFiles} paths (relative to project root, forward slashes). */
-function zaxEntryKey(projectRoot: string, src: string): string {
+function entrySourceKey(projectRoot: string, src: string): string {
   const norm = normalizeProjectRelativePath(src);
   if (path.isAbsolute(src)) {
     return normalizeProjectRelativePath(path.relative(projectRoot, src));
