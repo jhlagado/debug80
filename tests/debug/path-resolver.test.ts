@@ -19,6 +19,7 @@ import {
   resolveListingSourcePath,
   resolveMappedPath,
 } from '../../src/debug/path-resolver';
+import { canonicalizeDebuggerSourcePath } from '../../src/debug/path-utils';
 import { LaunchRequestArguments } from '../../src/debug/types';
 
 const workspaceState = vi.hoisted(
@@ -119,7 +120,9 @@ describe('path-resolver', () => {
     const filePath = path.join(sourceRoot, 'lib.asm');
     fs.writeFileSync(filePath, 'NOP');
 
-    expect(resolveMappedPath('lib.asm', listingPath, [sourceRoot])).toBe(filePath);
+    expect(resolveMappedPath('lib.asm', listingPath, [sourceRoot])).toBe(
+      canonicalizeDebuggerSourcePath(filePath)
+    );
   });
 
   it('resolves fallback source file relative to source roots', () => {

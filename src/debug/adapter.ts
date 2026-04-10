@@ -18,6 +18,7 @@ import {
   resetSessionState,
   type SessionStateShape,
 } from './session-state';
+import { setDiagnosticsEnabled } from './stack-service';
 import { BreakpointManager } from './breakpoint-manager';
 import { SourceStateManager } from './source-state-manager';
 import { CommandRouter } from './command-router';
@@ -191,6 +192,7 @@ export class Z80DebugSession extends DebugSession {
     });
     this.sessionState.launchArgs = merged;
     this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
+    setDiagnosticsEnabled(merged.diagnostics === true);
 
     if (!hasLaunchInputs(merged)) {
       await respondToMissingLaunchInputs(

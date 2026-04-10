@@ -2,13 +2,13 @@
  * @fileoverview DAP request/control helpers for the debug adapter.
  */
 
-import { StoppedEvent, TerminatedEvent, Thread } from '@vscode/debugadapter';
+import { OutputEvent, StoppedEvent, TerminatedEvent, Thread } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { StepInfo } from '../z80/types';
 import type { BreakpointManager } from './breakpoint-manager';
 import type { CommandRouter } from './command-router';
 import { getShadowAlias, isBreakpointAddress } from './debug-addressing';
-import { buildStackFrames } from './stack-service';
+import { buildStackFrames, flushDiagLog, isDiagnosticsEnabled } from './stack-service';
 import type { SourceStateManager } from './source-state-manager';
 import {
   captureEntryCpuStateIfNeeded,
@@ -230,7 +230,10 @@ export class AdapterRequestController {
       this.deps.sendResponse(response);
       return;
     }
-    const responseBody = buildStackFrames(this.deps.sessionState.runtime.getPC(), {
+    const pc = this.deps.sessionState.runtime.getPC();
+    const resolveFn = (file: string): string | undefined =>
+      resolveMappedPath(file, this.deps.sessionState.listingPath, this.deps.sessionState.sourceRoots);
+    const responseBody = buildStackFrames(pc, {
       ...(this.deps.sessionState.listing !== undefined ? { listing: this.deps.sessionState.listing } : {}),
       ...(this.deps.sessionState.listingPath !== undefined
         ? { listingPath: this.deps.sessionState.listingPath }
@@ -239,8 +242,7 @@ export class AdapterRequestController {
         ? { mappingIndex: this.deps.sessionState.mappingIndex }
         : {}),
       ...(this.deps.sourceState.file !== undefined ? { sourceFile: this.deps.sourceState.file } : {}),
-      resolveMappedPath: (file): string | undefined =>
-        resolveMappedPath(file, this.deps.sessionState.listingPath, this.deps.sessionState.sourceRoots),
+      resolveMappedPath: resolveFn,
       getAddressAliases: (address) => {
         const masked = address & ADDR_MASK;
         const aliases = [masked];
@@ -251,6 +253,23 @@ export class AdapterRequestController {
         return aliases;
       },
     });
+
+    if (isDiagnosticsEnabled()) {
+      const diagLines = flushDiagLog();
+      const frame = responseBody.stackFrames[0];
+      const hasMappingIndex = this.deps.sessionState.mappingIndex !== undefined;
+      const segCount = this.deps.sessionState.mappingIndex?.segmentsByAddress?.length ?? 0;
+      const diagText = [
+        `[debug80-diag] PC=0x${pc.toString(16).padStart(4, '0')} ` +
+          `mappingIndex=${hasMappingIndex} (${segCount} segs) ` +
+          `sourceFile="${this.deps.sourceState.file ?? '(none)'}" ` +
+          `listingPath="${this.deps.sessionState.listingPath ?? '(none)'}" ` +
+          `sourceRoots=[${this.deps.sessionState.sourceRoots.join(', ')}]`,
+        ...diagLines,
+        `  => frame.source="${frame?.source?.path ?? '(none)'}" line=${frame?.line ?? '?'}`,
+      ].join('\n');
+      this.deps.sendEvent(new OutputEvent(diagText + '\n', 'console'));
+    }
 
     response.body = responseBody;
     this.deps.sendResponse(response);
