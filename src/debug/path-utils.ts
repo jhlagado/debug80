@@ -3,38 +3,100 @@
  * Provides Windows-safe path comparison and normalization functions.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 
 /** Whether the current platform is Windows */
 export const IS_WINDOWS = process.platform === 'win32';
 
 /**
+ * Probes the filesystem under `dir` for case sensitivity by checking whether
+ * accessing the directory name in opposite case resolves to the same inode.
+ * Falls back to `true` on Windows and `false` otherwise if the probe fails.
+ */
+function probeIsCaseInsensitive(dir: string): boolean {
+  if (IS_WINDOWS) {
+    return true;
+  }
+  try {
+    const resolved = path.resolve(dir);
+    const parent = path.dirname(resolved);
+    const base = path.basename(resolved);
+    if (base.length === 0) {
+      return false;
+    }
+    const flipped = base === base.toLowerCase() ? base.toUpperCase() : base.toLowerCase();
+    if (flipped === base) {
+      return false;
+    }
+    const flippedPath = path.join(parent, flipped);
+    const origStat = fs.statSync(resolved);
+    let flippedStat: fs.Stats;
+    try {
+      flippedStat = fs.statSync(flippedPath);
+    } catch {
+      return false;
+    }
+    return origStat.ino === flippedStat.ino && origStat.dev === flippedStat.dev;
+  } catch {
+    return false;
+  }
+}
+
+let caseInsensitiveFs: boolean | undefined;
+
+function isCaseInsensitiveFs(): boolean {
+  if (caseInsensitiveFs === undefined) {
+    caseInsensitiveFs = probeIsCaseInsensitive(process.cwd());
+  }
+  return caseInsensitiveFs;
+}
+
+/**
+ * Resolves to an absolute path and follows symlinks when the path exists (e.g. npm-linked trees).
+ */
+function canonicalizeExistingPath(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  try {
+    if (fs.existsSync(resolved)) {
+      return fs.realpathSync.native(resolved);
+    }
+  } catch {
+    /* keep resolved */
+  }
+  return resolved;
+}
+
+/**
+ * Canonical path for debugger {@link Source} / stack frames so they match VS Code's document URI
+ * (realpath when the file exists; avoids lost current-line highlight with symlinks or odd casing).
+ */
+export function canonicalizeDebuggerSourcePath(filePath: string): string {
+  return canonicalizeExistingPath(filePath);
+}
+
+/**
  * Normalizes a path for use as a map key.
- * Converts to lowercase on Windows for case-insensitive matching.
+ * Uses realpath when possible, lowercases on Windows and macOS so editor and map paths agree.
  *
  * @param filePath - Path to normalize
  * @returns Normalized path suitable for use as a map key
  */
 export function normalizePathForKey(filePath: string): string {
-  const resolved = path.resolve(filePath);
-  return IS_WINDOWS ? resolved.toLowerCase() : resolved;
+  const resolved = canonicalizeExistingPath(filePath);
+  return isCaseInsensitiveFs() ? resolved.toLowerCase() : resolved;
 }
 
 /**
  * Compares two file paths for equality.
- * Uses case-insensitive comparison on Windows.
+ * Uses the same rules as {@link normalizePathForKey}.
  *
  * @param path1 - First path
  * @param path2 - Second path
  * @returns True if paths refer to the same file
  */
 export function pathsEqual(path1: string, path2: string): boolean {
-  const resolved1 = path.resolve(path1);
-  const resolved2 = path.resolve(path2);
-  if (IS_WINDOWS) {
-    return resolved1.toLowerCase() === resolved2.toLowerCase();
-  }
-  return resolved1 === resolved2;
+  return normalizePathForKey(path1) === normalizePathForKey(path2);
 }
 
 /**
@@ -55,7 +117,7 @@ export function isPathWithin(filePath: string, baseDir: string): boolean {
     ? normalizedBase
     : normalizedBase + path.sep;
 
-  if (IS_WINDOWS) {
+  if (isCaseInsensitiveFs()) {
     const pathLower = normalizedPath.toLowerCase();
     const baseLower = baseWithSep.toLowerCase();
     // Also check if paths are exactly equal (file is the base dir itself)

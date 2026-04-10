@@ -6,6 +6,12 @@
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 import { normalizePathForKey } from '../debug/path-utils';
 
+let onSegmentWarning: ((message: string) => void) | undefined;
+
+export function setSegmentWarningHandler(handler: ((message: string) => void) | undefined): void {
+  onSegmentWarning = handler;
+}
+
 /**
  * Indexed source map for efficient lookups.
  */
@@ -96,10 +102,12 @@ export function buildSourceMapIndex(
 }
 
 /**
- * Finds the source map segment containing a given address.
+ * Finds the most specific source map segment containing a given address.
  *
- * Performs a linear search through segments sorted by address.
- * Returns the first segment where start <= address < end.
+ * When multiple segments overlap the same address (e.g. a wide "function scope"
+ * segment and a narrow per-instruction segment), the narrowest segment with a
+ * valid source line (>= 1) wins.  This prevents catch-all segments with line 0
+ * from shadowing fine-grained mappings.
  *
  * @param index - Source map index
  * @param address - Memory address to look up
@@ -109,15 +117,50 @@ export function findSegmentForAddress(
   index: SourceMapIndex,
   address: number
 ): SourceMapSegment | undefined {
+  let best: SourceMapSegment | undefined;
+  let bestSpan = Infinity;
+
   for (const segment of index.segmentsByAddress) {
     if (address < segment.start) {
       break;
     }
     if (address >= segment.start && address < segment.end) {
-      return segment;
+      const span = segment.end - segment.start;
+      const hasValidLine =
+        segment.loc.line !== null && segment.loc.line !== undefined && segment.loc.line >= 1;
+
+      if (best === undefined) {
+        best = segment;
+        bestSpan = span;
+        continue;
+      }
+
+      const bestHasValidLine =
+        best.loc.line !== null && best.loc.line !== undefined && best.loc.line >= 1;
+
+      if (hasValidLine && !bestHasValidLine) {
+        best = segment;
+        bestSpan = span;
+      } else if (hasValidLine === bestHasValidLine && span < bestSpan) {
+        best = segment;
+        bestSpan = span;
+      }
     }
   }
-  return undefined;
+
+  if (best !== undefined && onSegmentWarning) {
+    const bestHasValidLine =
+      best.loc.line !== null && best.loc.line !== undefined && best.loc.line >= 1;
+    if (!bestHasValidLine) {
+      onSegmentWarning(
+        `findSegmentForAddress(0x${address.toString(16)}): best segment ` +
+        `[0x${best.start.toString(16)}-0x${best.end.toString(16)}] has no valid source line ` +
+        `(line=${best.loc.line ?? 'null'})`
+      );
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -136,9 +179,16 @@ export function resolveLocation(index: SourceMapIndex, filePath: string, line: n
   const key = normalizePathForKey(filePath);
   const fileMap = index.segmentsByFileLine.get(key);
   if (fileMap) {
-    const segments = fileMap.get(line);
-    if (segments && segments.length > 0) {
-      return segments.map((seg) => seg.start);
+    const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
+    for (const delta of lineSlop) {
+      const tryLine = line + delta;
+      if (tryLine < 1) {
+        continue;
+      }
+      const segments = fileMap.get(tryLine);
+      if (segments && segments.length > 0) {
+        return segments.map((seg) => seg.start);
+      }
     }
   }
 

@@ -78,4 +78,78 @@ describe('source-map', () => {
     assert.equal(findAnchorLine(index, asmPath, 0x0002), 1);
     assert.equal(findAnchorLine(index, asmPath, 0xffff), 5);
   });
+
+  it('prefers narrow segment with valid line over wide segment with line=0', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4033,
+          loc: { file: 'matrix.zax', line: 0 },
+          lst: { line: 0, text: '' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4002,
+          loc: { file: 'matrix.zax', line: 10 },
+          lst: { line: 1, text: 'LD C, 1' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4002,
+          end: 0x4004,
+          loc: { file: 'matrix.zax', line: 11 },
+          lst: { line: 2, text: 'LD E, 8' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const resolveAll = () => '/test/matrix.zax';
+    const idx = buildSourceMapIndex(mapping, resolveAll);
+
+    const seg1 = findSegmentForAddress(idx, 0x4000);
+    assert.ok(seg1);
+    assert.equal(seg1.loc.line, 10);
+    assert.equal(seg1.end - seg1.start, 2);
+
+    const seg2 = findSegmentForAddress(idx, 0x4002);
+    assert.ok(seg2);
+    assert.equal(seg2.loc.line, 11);
+    assert.equal(seg2.end - seg2.start, 2);
+
+    const seg3 = findSegmentForAddress(idx, 0x4010);
+    assert.ok(seg3);
+    assert.equal(seg3.loc.line, 0);
+  });
+
+  it('prefers narrower segment when both have valid lines', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x1000,
+          end: 0x1010,
+          loc: { file: 'main.asm', line: 5 },
+          lst: { line: 1, text: 'wide' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x1000,
+          end: 0x1002,
+          loc: { file: 'main.asm', line: 7 },
+          lst: { line: 2, text: 'narrow' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const resolveAll = () => '/test/main.asm';
+    const idx = buildSourceMapIndex(mapping, resolveAll);
+
+    const seg = findSegmentForAddress(idx, 0x1000);
+    assert.ok(seg);
+    assert.equal(seg.loc.line, 7);
+    assert.equal(seg.end - seg.start, 2);
+  });
 });
