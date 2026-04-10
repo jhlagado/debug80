@@ -55,6 +55,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   tec1?: Tec1PlatformConfig;
   /** TEC-1G platform configuration */
   tec1g?: Tec1gPlatformConfig;
+  /** Enable verbose diagnostics in the Debug Console */
+  diagnostics?: boolean;
 }
 
 /**

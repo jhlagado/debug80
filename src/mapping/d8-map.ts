@@ -360,7 +360,11 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
 }
 
 function resolveD8SegmentLine(segment: D8Segment): number | null {
-  return segment.line ?? segment.lstLine ?? null;
+  const line = segment.line ?? segment.lstLine ?? null;
+  if (line !== null && line < 1) {
+    return null;
+  }
+  return line;
 }
 
 export function parseD8DebugMap(content: string): { map?: D8DebugMap; error?: string } {

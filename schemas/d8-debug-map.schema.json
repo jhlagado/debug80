@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://debug80.dev/schemas/d8-debug-map.schema.json",
+  "title": "D8 Debug Map",
+  "description": "Portable debug information format for Z80 (and similar) assemblers. Version 1.",
+  "type": "object",
+  "required": ["format", "version", "arch", "addressWidth", "endianness", "files"],
+  "properties": {
+    "format": {
+      "const": "d8-debug-map"
+    },
+    "version": {
+      "const": 1
+    },
+    "arch": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target architecture, e.g. 'z80'."
+    },
+    "addressWidth": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Address width in bits."
+    },
+    "endianness": {
+      "type": "string",
+      "enum": ["little", "big"]
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/fileEntry" },
+      "description": "Map of source file names to their debug entries."
+    },
+    "lstText": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Shared listing text table for deduplication."
+    },
+    "segmentDefaults": { "$ref": "#/definitions/segmentDefaults" },
+    "symbolDefaults": { "$ref": "#/definitions/symbolDefaults" },
+    "memory": { "$ref": "#/definitions/memoryLayout" },
+    "generator": { "$ref": "#/definitions/generator" },
+    "diagnostics": { "$ref": "#/definitions/diagnosticsBlock" }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "segmentKind": {
+      "type": "string",
+      "enum": ["code", "data", "directive", "label", "macro", "unknown"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "symbolKind": {
+      "type": "string",
+      "enum": ["label", "constant", "data", "macro", "unknown"]
+    },
+    "symbolScope": {
+      "type": "string",
+      "enum": ["global", "local"]
+    },
+    "fileEntry": {
+      "type": "object",
+      "properties": {
+        "meta": {
+          "type": "object",
+          "properties": {
+            "sha256": { "type": "string" },
+            "lineCount": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "segments": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/segment" }
+        },
+        "symbols": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/symbol" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "segment": {
+      "type": "object",
+      "required": ["start", "end", "lstLine"],
+      "properties": {
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Start address (inclusive)."
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "End address (exclusive). Must be > start."
+        },
+        "line": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Source line number (1-based). Omit or set null if unknown. Must be >= 1 when present."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": { "$ref": "#/definitions/segmentKind" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "lstLine": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Listing file line number. Should be >= 1 for valid mappings; 0 indicates unknown."
+        },
+        "lstText": { "type": "string" },
+        "lstTextId": { "type": "integer", "minimum": 0 },
+        "includeChain": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "macro": {
+          "type": "object",
+          "required": ["name", "callsite"],
+          "properties": {
+            "name": { "type": "string" },
+            "callsite": {
+              "type": "object",
+              "required": ["file", "line"],
+              "properties": {
+                "file": { "type": "string" },
+                "line": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "symbol": {
+      "type": "object",
+      "required": ["name", "address"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "address": { "type": "integer", "minimum": 0 },
+        "line": { "type": "integer", "minimum": 1 },
+        "kind": { "$ref": "#/definitions/symbolKind" },
+        "scope": { "$ref": "#/definitions/symbolScope" },
+        "size": { "type": "integer", "minimum": 0 },
+        "value": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "segmentDefaults": {
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/definitions/segmentKind" },
+        "confidence": { "$ref": "#/definitions/confidence" }
+      },
+      "additionalProperties": false
+    },
+    "symbolDefaults": {
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/definitions/symbolKind" },
+        "scope": { "$ref": "#/definitions/symbolScope" }
+      },
+      "additionalProperties": false
+    },
+    "memoryLayout": {
+      "type": "object",
+      "required": ["segments"],
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "start", "end"],
+            "properties": {
+              "name": { "type": "string" },
+              "start": { "type": "integer", "minimum": 0 },
+              "end": { "type": "integer", "minimum": 0 },
+              "kind": {
+                "type": "string",
+                "enum": ["rom", "ram", "io", "banked", "unknown"]
+              },
+              "bank": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "tool": { "type": "string" },
+        "version": { "type": "string" },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string" },
+        "inputs": { "type": "object" },
+        "entrySymbol": { "type": "string" },
+        "entryAddress": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "diagnosticsBlock": {
+      "type": "object",
+      "properties": {
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "errors": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}
