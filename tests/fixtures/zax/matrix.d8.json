@@ -1,0 +1,329 @@
+{
+  "format": "d8-debug-map",
+  "version": 1,
+  "arch": "z80",
+  "addressWidth": 16,
+  "endianness": "little",
+  "files": {
+    "matrix.zax": {
+      "segments": [
+        {
+          "start": 16384,
+          "end": 16386,
+          "lstLine": 28,
+          "line": 28,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16384,
+          "end": 16435,
+          "lstLine": 0,
+          "kind": "unknown",
+          "confidence": "low"
+        },
+        {
+          "start": 16386,
+          "end": 16388,
+          "lstLine": 29,
+          "line": 29,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16388,
+          "end": 16391,
+          "lstLine": 31,
+          "line": 31,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16391,
+          "end": 16392,
+          "lstLine": 32,
+          "line": 32,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16392,
+          "end": 16394,
+          "lstLine": 33,
+          "line": 33,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16394,
+          "end": 16395,
+          "lstLine": 35,
+          "line": 35,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16395,
+          "end": 16397,
+          "lstLine": 36,
+          "line": 36,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16397,
+          "end": 16398,
+          "lstLine": 37,
+          "line": 37,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16398,
+          "end": 16399,
+          "lstLine": 38,
+          "line": 38,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16399,
+          "end": 16401,
+          "lstLine": 39,
+          "line": 39,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16401,
+          "end": 16402,
+          "lstLine": 40,
+          "line": 40,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16402,
+          "end": 16403,
+          "lstLine": 41,
+          "line": 41,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16403,
+          "end": 16405,
+          "lstLine": 42,
+          "line": 42,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16405,
+          "end": 16406,
+          "lstLine": 43,
+          "line": 43,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16406,
+          "end": 16407,
+          "lstLine": 44,
+          "line": 44,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16407,
+          "end": 16409,
+          "lstLine": 45,
+          "line": 45,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16409,
+          "end": 16412,
+          "lstLine": 46,
+          "line": 46,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16412,
+          "end": 16414,
+          "lstLine": 47,
+          "line": 47,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16414,
+          "end": 16416,
+          "lstLine": 48,
+          "line": 48,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16416,
+          "end": 16417,
+          "lstLine": 49,
+          "line": 49,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16417,
+          "end": 16419,
+          "lstLine": 50,
+          "line": 50,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16419,
+          "end": 16421,
+          "lstLine": 51,
+          "line": 51,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16421,
+          "end": 16423,
+          "lstLine": 53,
+          "line": 53,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16423,
+          "end": 16424,
+          "lstLine": 57,
+          "line": 57,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16424,
+          "end": 16426,
+          "lstLine": 58,
+          "line": 58,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16426,
+          "end": 16428,
+          "lstLine": 60,
+          "line": 60,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16428,
+          "end": 16429,
+          "lstLine": 62,
+          "line": 62,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16429,
+          "end": 16431,
+          "lstLine": 63,
+          "line": 63,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16431,
+          "end": 16433,
+          "lstLine": 64,
+          "line": 64,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16433,
+          "end": 16434,
+          "lstLine": 65,
+          "line": 65,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16434,
+          "end": 16435,
+          "lstLine": 66,
+          "line": 66,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 16640,
+          "end": 16664,
+          "lstLine": 0,
+          "kind": "unknown",
+          "confidence": "low"
+        }
+      ],
+      "symbols": [
+        {
+          "name": "main",
+          "kind": "label",
+          "address": 16384,
+          "line": 27,
+          "scope": "global"
+        },
+        {
+          "name": "frame",
+          "kind": "label",
+          "address": 16388,
+          "line": 30,
+          "scope": "global"
+        },
+        {
+          "name": "rowlp",
+          "kind": "label",
+          "address": 16394,
+          "line": 34,
+          "scope": "global"
+        },
+        {
+          "name": "delay",
+          "kind": "label",
+          "address": 16423,
+          "line": 56,
+          "scope": "global"
+        },
+        {
+          "name": "d1",
+          "kind": "label",
+          "address": 16426,
+          "line": 59,
+          "scope": "global"
+        },
+        {
+          "name": "d2",
+          "kind": "label",
+          "address": 16428,
+          "line": 61,
+          "scope": "global"
+        },
+        {
+          "name": "bitmap",
+          "kind": "data",
+          "address": 16640,
+          "line": 15,
+          "scope": "global"
+        }
+      ]
+    }
+  },
+  "generator": {
+    "tool": "zax"
+  }
+}

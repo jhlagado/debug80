@@ -139,6 +139,12 @@ export class BreakpointManager {
     if (lower.endsWith('.asm')) {
       return normalized.slice(0, -'.asm'.length) + '.source.asm';
     }
+    if (lower.endsWith('.source.zax')) {
+      return normalized.slice(0, -'.source.zax'.length) + '.zax';
+    }
+    if (lower.endsWith('.zax')) {
+      return normalized.slice(0, -'.zax'.length) + '.source.zax';
+    }
     return null;
   }
 
