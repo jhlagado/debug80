@@ -125,6 +125,8 @@ type Tec1gPortContext = {
   sdEnabled: boolean;
   sdSpi: { read(): number; write(value: number): void } | null;
   queueUpdate: () => void;
+  /** Called after matrix latches change; do not queue UI here — runtime commits on 8 rows or idle. */
+  onMatrixPortsChanged?: (kind: 'row' | 'rgb') => void;
   onPortWrite?: (payload: { port: number; value: number }) => void;
 };
 
@@ -162,8 +164,20 @@ function createTec1gPortStatus(state: Tec1gState): number {
  * Builds the TEC-1G runtime port handlers.
  */
 export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
-  const { state, timing, lcd, glcd, serial, rtcEnabled, rtc, sdEnabled, sdSpi, queueUpdate, onPortWrite } =
-    context;
+  const {
+    state,
+    timing,
+    lcd,
+    glcd,
+    serial,
+    rtcEnabled,
+    rtc,
+    sdEnabled,
+    sdSpi,
+    queueUpdate,
+    onMatrixPortsChanged,
+    onPortWrite,
+  } = context;
   const display = state.display;
   const input = state.input;
   const audio = state.audio;
@@ -191,7 +205,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         display.ledMatrixBlueLatch
       )
     ) {
-      queueUpdate();
+      onMatrixPortsChanged?.('row');
     }
   };
 
@@ -205,7 +219,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         display.ledMatrixBlueLatch
       )
     ) {
-      queueUpdate();
+      onMatrixPortsChanged?.('rgb');
     }
   };
 
@@ -219,7 +233,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         display.ledMatrixBlueLatch
       )
     ) {
-      queueUpdate();
+      onMatrixPortsChanged?.('rgb');
     }
   };
 
@@ -233,7 +247,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         dataMask & TEC1G_MASK_BYTE
       )
     ) {
-      queueUpdate();
+      onMatrixPortsChanged?.('rgb');
     }
   };
 
