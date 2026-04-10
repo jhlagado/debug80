@@ -78,4 +78,32 @@ describe('source-map', () => {
     assert.equal(findAnchorLine(index, asmPath, 0x0002), 1);
     assert.equal(findAnchorLine(index, asmPath, 0xffff), 5);
   });
+
+  it('prefers the narrowest segment when ZAX-style D8 maps overlap (wide unknown + code)', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4002,
+          loc: { file: 'app.zax', line: 21 },
+          lst: { line: 21, text: 'ld a,1' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4040,
+          loc: { file: 'app.zax', line: null },
+          lst: { line: 0, text: '' },
+          confidence: 'LOW',
+        },
+      ],
+      anchors: [],
+    };
+    const resolve = (f: string): string | undefined => (f === 'app.zax' ? '/x/app.zax' : undefined);
+    const idx = buildSourceMapIndex(mapping, resolve);
+    const seg = findSegmentForAddress(idx, 0x4001);
+    assert.ok(seg);
+    assert.equal(seg?.loc.line, 21);
+    assert.equal(seg?.confidence, 'HIGH');
+  });
 });

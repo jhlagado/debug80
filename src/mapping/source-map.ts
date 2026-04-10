@@ -3,8 +3,30 @@
  * Provides efficient address-to-source and source-to-address resolution.
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
+import { Confidence, MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 import { normalizePathForKey } from '../debug/path-utils';
+
+const CONFIDENCE_RANK: Record<Confidence, number> = {
+  HIGH: 0,
+  MEDIUM: 1,
+  LOW: 2,
+};
+
+function segmentWidth(segment: SourceMapSegment): number {
+  return Math.max(0, segment.end - segment.start);
+}
+
+/** Prefer the narrowest span; then higher mapping confidence (ZAX may emit overlapping unknown spans). */
+function compareSegmentForAddress(
+  a: SourceMapSegment,
+  b: SourceMapSegment
+): number {
+  const w = segmentWidth(a) - segmentWidth(b);
+  if (w !== 0) {
+    return w;
+  }
+  return CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence];
+}
 
 /**
  * Indexed source map for efficient lookups.
@@ -49,7 +71,7 @@ export function buildSourceMapIndex(
   resolvePath: ResolvePathFn
 ): SourceMapIndex {
   const segmentsByAddress = [...mapping.segments].sort(
-    (a, b) => a.start - b.start || a.lst.line - b.lst.line
+    (a, b) => a.start - b.start || segmentWidth(a) - segmentWidth(b) || a.lst.line - b.lst.line
   );
 
   const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
@@ -98,8 +120,9 @@ export function buildSourceMapIndex(
 /**
  * Finds the source map segment containing a given address.
  *
- * Performs a linear search through segments sorted by address.
- * Returns the first segment where start <= address < end.
+ * Native D8 maps (e.g. ZAX) may emit overlapping segments: a coarse `unknown` span and
+ * precise `code` rows sharing the same address range. Breakpoints still resolve via
+ * file+line; PC→line must pick the **most specific** span, not the first in sort order.
  *
  * @param index - Source map index
  * @param address - Memory address to look up
@@ -109,15 +132,16 @@ export function findSegmentForAddress(
   index: SourceMapIndex,
   address: number
 ): SourceMapSegment | undefined {
+  let best: SourceMapSegment | undefined;
   for (const segment of index.segmentsByAddress) {
-    if (address < segment.start) {
-      break;
+    if (address < segment.start || address >= segment.end) {
+      continue;
     }
-    if (address >= segment.start && address < segment.end) {
-      return segment;
+    if (best === undefined || compareSegmentForAddress(segment, best) < 0) {
+      best = segment;
     }
   }
-  return undefined;
+  return best;
 }
 
 /**
