@@ -44,7 +44,7 @@ describe('TEC-1G matrix keyboard', () => {
     expect(rt.state.display.ledMatrixRowLatch).toBe(0x04);
     expect(rt.state.display.ledMatrixRedRows[2]).toBe(0xaa);
     expect(rt.state.display.ledMatrixRedRows[0]).toBe(0x00);
-    // Brightness commits on idle (~40ms) or 8 row-port writes — not on every OUT.
+    // Brightness commits on idle (~40ms) or when all 8 row lines have been selected — not on every OUT.
     const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
     rt.recordCycles(idleCycles);
     expect(rt.state.display.ledMatrixBrightnessR[17]).toBe(255);
@@ -102,7 +102,7 @@ describe('TEC-1G matrix keyboard', () => {
     expect(rt.state.display.ledMatrixRedRows).toEqual([0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]);
   });
 
-  it('commits latched staging after 8 row-port writes (full raster) with solid pixels', () => {
+  it('commits latched staging once each physical row has been selected (mask 0xFF)', () => {
     const rt = makeRuntime(true);
 
     rt.ioHandlers.write(0x06, 0xff);
@@ -115,6 +115,21 @@ describe('TEC-1G matrix keyboard', () => {
     for (let i = 0; i < 64; i += 1) {
       expect(rt.state.display.ledMatrixBrightnessR[i]).toBe(255);
     }
+  });
+
+  it('does not commit on eight row writes if only one physical row was revisited', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0xff);
+    for (let i = 0; i < 8; i += 1) {
+      rt.ioHandlers.write(0x05, 0x01);
+    }
+    expect(rt.state.display.matrixRowsVisitedMask).toBe(0x01);
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(0);
+
+    const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
+    rt.recordCycles(idleCycles);
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(255);
   });
 
   it('commits partial staging after idle when scan stalls (debug / slow code)', () => {

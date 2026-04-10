@@ -65,8 +65,8 @@ export interface Tec1gState {
     matrixStagingR: number[];
     matrixStagingG: number[];
     matrixStagingB: number[];
-    /** Counts TEC1G_PORT_8X8_ROW writes since last commit (0..8). */
-    matrixRowPortWritesSinceCommit: number;
+    /** Bits 0–7 set when each physical row has been selected at least once since last commit; 0xFF = full raster. */
+    matrixRowsVisitedMask: number;
     /** Cycle-clock time of last matrix port OUT; -1 = no pending activity window. */
     matrixLastActivityCycle: number;
     digitLatch: number;
@@ -177,7 +177,9 @@ function commitMatrixStaging(display: Tec1gState['display']): void {
 }
 
 /**
- * Matrix display: accumulate row RGB into staging; commit after 8 row-port writes or via idle (recordCycles).
+ * Matrix display: accumulate row RGB into staging; commit when all 8 rows have been
+ * selected at least once (visit mask 0xFF), or via idle (recordCycles).
+ * Row port 0 = blanking — does not set visit bits.
  */
 function handleMatrixPortWrite(
   display: Tec1gState['display'],
@@ -188,10 +190,13 @@ function handleMatrixPortWrite(
   accumulateMatrixStagingFromRows(display);
   display.matrixLastActivityCycle = timing.cycleClock.now();
   if (kind === 'row') {
-    display.matrixRowPortWritesSinceCommit += 1;
-    if (display.matrixRowPortWritesSinceCommit >= 8) {
+    const rowSel = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
+    if (rowSel !== 0) {
+      display.matrixRowsVisitedMask |= rowSel;
+    }
+    if (display.matrixRowsVisitedMask === TEC1G_MASK_BYTE) {
       commitMatrixStaging(display);
-      display.matrixRowPortWritesSinceCommit = 0;
+      display.matrixRowsVisitedMask = 0;
       display.matrixLastActivityCycle = -1;
       queueUpdate();
     }
@@ -217,7 +222,7 @@ function maybeCommitMatrixOnIdle(
     return;
   }
   commitMatrixStaging(display);
-  display.matrixRowPortWritesSinceCommit = 0;
+  display.matrixRowsVisitedMask = 0;
   display.matrixLastActivityCycle = -1;
   queueUpdate();
 }
@@ -359,7 +364,7 @@ export function createTec1gRuntime(
       matrixStagingR: Array.from({ length: 64 }, () => 0),
       matrixStagingG: Array.from({ length: 64 }, () => 0),
       matrixStagingB: Array.from({ length: 64 }, () => 0),
-      matrixRowPortWritesSinceCommit: 0,
+      matrixRowsVisitedMask: 0,
       matrixLastActivityCycle: -1,
       digitLatch: 0,
       segmentLatch: 0,
@@ -583,7 +588,7 @@ export function createTec1gRuntime(
     display.matrixStagingR.fill(0);
     display.matrixStagingG.fill(0);
     display.matrixStagingB.fill(0);
-    display.matrixRowPortWritesSinceCommit = 0;
+    display.matrixRowsVisitedMask = 0;
     display.matrixLastActivityCycle = -1;
     display.ledMatrixRowLatch = 0;
     display.ledMatrixRedLatch = 0;
