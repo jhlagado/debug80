@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createTec1gRuntime } from '../../../src/platforms/tec1g/runtime';
+import { createTec1gRuntime, TEC1G_FAST_HZ } from '../../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
+import { millisecondsToClocks } from '../../../src/platforms/tec-common';
 
 function makeRuntime(matrixMode = true) {
   const config: Tec1gPlatformConfigNormalized = {
@@ -43,8 +44,10 @@ describe('TEC-1G matrix keyboard', () => {
     expect(rt.state.display.ledMatrixRowLatch).toBe(0x04);
     expect(rt.state.display.ledMatrixRedRows[2]).toBe(0xaa);
     expect(rt.state.display.ledMatrixRedRows[0]).toBe(0x00);
-    rt.recordCycles(4096);
-    expect(rt.state.display.ledMatrixBrightnessR[17]).toBeGreaterThan(0);
+    // Brightness commits on idle (~40ms) or 8 row-port writes — not on every OUT.
+    const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
+    rt.recordCycles(idleCycles);
+    expect(rt.state.display.ledMatrixBrightnessR[17]).toBe(255);
     expect(rt.ioHandlers.read(0x02fe) & (1 << 4)).toBe(0);
   });
 
@@ -99,27 +102,33 @@ describe('TEC-1G matrix keyboard', () => {
     expect(rt.state.display.ledMatrixRedRows).toEqual([0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]);
   });
 
-  it('accumulates brightness while a row is selected and decays after the scan moves on', () => {
+  it('commits latched staging after 8 row-port writes (full raster) with solid pixels', () => {
     const rt = makeRuntime(true);
 
-    rt.ioHandlers.write(0x06, 0x01);
+    rt.ioHandlers.write(0x06, 0xff);
+    for (let i = 0; i < 7; i += 1) {
+      rt.ioHandlers.write(0x05, 1 << i);
+    }
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(0);
+
+    rt.ioHandlers.write(0x05, 1 << 7);
+    for (let i = 0; i < 64; i += 1) {
+      expect(rt.state.display.ledMatrixBrightnessR[i]).toBe(255);
+    }
+  });
+
+  it('commits partial staging after idle when scan stalls (debug / slow code)', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0x03);
     rt.ioHandlers.write(0x05, 0x01);
-    rt.recordCycles(1);
-    const firstLevel = rt.state.display.ledMatrixBrightnessR[0];
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(0);
 
-    expect(firstLevel).toBeGreaterThan(0);
-    expect(firstLevel).toBeLessThan(250);
-
-    rt.recordCycles(4096);
-    expect(rt.state.display.ledMatrixBrightnessR[0]).toBeGreaterThan(firstLevel);
-
-    rt.ioHandlers.write(0x05, 0x02);
-    rt.recordCycles(4096);
-    expect(rt.state.display.ledMatrixBrightnessR[0]).toBeLessThan(255);
-    expect(rt.state.display.ledMatrixBrightnessR[8]).toBeGreaterThan(0);
-
-    rt.recordCycles(4096 * 1000);
-    expect(rt.state.display.ledMatrixBrightnessR[0]).toBeLessThan(0.001);
+    const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
+    rt.recordCycles(idleCycles);
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(255);
+    expect(rt.state.display.ledMatrixBrightnessR[1]).toBe(255);
+    expect(rt.state.display.ledMatrixBrightnessR[2]).toBe(0);
   });
 
   it('suppresses keypad NMI when matrix mode is enabled', () => {

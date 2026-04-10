@@ -41,7 +41,8 @@ export function createMatrixUiController(
   let matrixBrightnessR = new Array(64).fill(0);
   let matrixBrightnessG = new Array(64).fill(0);
   let matrixBrightnessB = new Array(64).fill(0);
-  let hasMatrixBrightness = false;
+  /** Prefer per-pixel RGB from runtime (latched commits); avoids multiplex flicker from row planes alone. */
+  let hasMatrixBrightness = true;
 
   function buildMatrix() {
     if (!matrixGrid) return;
