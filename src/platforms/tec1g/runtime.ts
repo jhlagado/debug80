@@ -61,6 +61,14 @@ export interface Tec1gState {
     ledMatrixBrightnessR: number[];
     ledMatrixBrightnessG: number[];
     ledMatrixBrightnessB: number[];
+    /** Staging buffer for multiplexed RGB; committed to brightness on 8 row writes or idle flush. */
+    matrixStagingR: number[];
+    matrixStagingG: number[];
+    matrixStagingB: number[];
+    /** Counts TEC1G_PORT_8X8_ROW writes since last commit (0..8). */
+    matrixRowPortWritesSinceCommit: number;
+    /** Cycle-clock time of last matrix port OUT; -1 = no pending activity window. */
+    matrixLastActivityCycle: number;
     digitLatch: number;
     segmentLatch: number;
     ledMatrixRowLatch: number;
@@ -127,60 +135,91 @@ export interface Tec1gRuntime {
 export const TEC1G_SLOW_HZ = TEC_SLOW_HZ;
 export const TEC1G_FAST_HZ = TEC_FAST_HZ;
 const TEC1G_KEY_HOLD_MS = TEC_KEY_HOLD_MS;
-/** Multiplex decay time constant; slightly longer hold reads brighter between scans. */
-const TEC1G_MATRIX_PERSISTENCE_MS = 10;
-/** Higher = shorter attack time → pixels reach full drive faster (bright LED look). */
-const TEC1G_MATRIX_BRIGHTNESS_GAIN = 72;
+/** If no matrix port OUT for this long, commit partial staging (~25 fps). */
+const TEC1G_MATRIX_IDLE_FLUSH_MS = 40;
+
+/**
+ * Copies the selected row's column pattern from row planes into staging (latched snapshot).
+ */
+function accumulateMatrixStagingFromRows(display: Tec1gState['display']): void {
+  const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
+  const { ledMatrixRedRows, ledMatrixGreenRows, ledMatrixBlueRows } = display;
+  for (let row = 0; row < 8; row += 1) {
+    if ((rowMask & (1 << row)) === 0) {
+      continue;
+    }
+    const base = row * 8;
+    const rPlane = ledMatrixRedRows[row] ?? 0;
+    const gPlane = ledMatrixGreenRows[row] ?? 0;
+    const bPlane = ledMatrixBlueRows[row] ?? 0;
+    for (let col = 0; col < 8; col += 1) {
+      const bit = 1 << col;
+      const idx = base + col;
+      display.matrixStagingR[idx] = (rPlane & bit) !== 0 ? 255 : 0;
+      display.matrixStagingG[idx] = (gPlane & bit) !== 0 ? 255 : 0;
+      display.matrixStagingB[idx] = (bPlane & bit) !== 0 ? 255 : 0;
+    }
+  }
+}
+
+/**
+ * Commits staging buffers to visible brightness and clears staging.
+ */
+function commitMatrixStaging(display: Tec1gState['display']): void {
+  for (let i = 0; i < 64; i += 1) {
+    display.ledMatrixBrightnessR[i] = display.matrixStagingR[i] ?? 0;
+    display.ledMatrixBrightnessG[i] = display.matrixStagingG[i] ?? 0;
+    display.ledMatrixBrightnessB[i] = display.matrixStagingB[i] ?? 0;
+  }
+  display.matrixStagingR.fill(0);
+  display.matrixStagingG.fill(0);
+  display.matrixStagingB.fill(0);
+}
+
+/**
+ * Matrix display: accumulate row RGB into staging; commit after 8 row-port writes or via idle (recordCycles).
+ */
+function handleMatrixPortWrite(
+  display: Tec1gState['display'],
+  timing: Tec1gState['timing'],
+  kind: 'row' | 'rgb',
+  queueUpdate: () => void,
+): void {
+  accumulateMatrixStagingFromRows(display);
+  display.matrixLastActivityCycle = timing.cycleClock.now();
+  if (kind === 'row') {
+    display.matrixRowPortWritesSinceCommit += 1;
+    if (display.matrixRowPortWritesSinceCommit >= 8) {
+      commitMatrixStaging(display);
+      display.matrixRowPortWritesSinceCommit = 0;
+      display.matrixLastActivityCycle = -1;
+      queueUpdate();
+    }
+  }
+}
 
 /**
  *
  */
-function updateLedMatrixBrightness(
+function maybeCommitMatrixOnIdle(
   display: Tec1gState['display'],
-  clockHz: number,
-  cycles: number
-): boolean {
-  if (cycles <= 0 || clockHz <= 0) {
-    return false;
+  timing: Tec1gState['timing'],
+  queueUpdate: () => void,
+): void {
+  if (display.matrixLastActivityCycle < 0) {
+    return;
   }
-
-  const persistenceCycles = millisecondsToClocks(clockHz, TEC1G_MATRIX_PERSISTENCE_MS);
-  const safePersistenceCycles = Math.max(1, persistenceCycles);
-  const decayFactor = Math.exp(-cycles / safePersistenceCycles);
-  const attackCycles = Math.max(1, safePersistenceCycles / TEC1G_MATRIX_BRIGHTNESS_GAIN);
-  const chargeFactor = 1 - Math.exp(-cycles / attackCycles);
-  const rowMask = display.ledMatrixRowLatch & TEC1G_MASK_BYTE;
-  const redMask = display.ledMatrixRedLatch & TEC1G_MASK_BYTE;
-  const greenMask = display.ledMatrixGreenLatch & TEC1G_MASK_BYTE;
-  const blueMask = display.ledMatrixBlueLatch & TEC1G_MASK_BYTE;
-  let changed = false;
-
-  const updateChannel = (channel: number[], index: number, lit: boolean): void => {
-    const current = channel[index] ?? 0;
-    const faded = current > 0 ? current * decayFactor : 0;
-    const next = lit ? faded + ((255 - faded) * chargeFactor) : faded;
-    if (Math.abs(next - current) > 0.0001) {
-      channel[index] = next;
-      changed = true;
-    }
-  };
-
-  for (let row = 0; row < 8; row += 1) {
-    const rowSelected = (rowMask & (1 << row)) !== 0;
-    const base = row * 8;
-    for (let col = 0; col < 8; col += 1) {
-      const index = base + col;
-      const columnBit = 1 << col;
-      const redLit = rowSelected && (redMask & columnBit) !== 0;
-      const greenLit = rowSelected && (greenMask & columnBit) !== 0;
-      const blueLit = rowSelected && (blueMask & columnBit) !== 0;
-      updateChannel(display.ledMatrixBrightnessR, index, redLit);
-      updateChannel(display.ledMatrixBrightnessG, index, greenLit);
-      updateChannel(display.ledMatrixBrightnessB, index, blueLit);
-    }
+  const idleCycles = millisecondsToClocks(timing.clockHz, TEC1G_MATRIX_IDLE_FLUSH_MS);
+  if (idleCycles <= 0) {
+    return;
   }
-
-  return changed;
+  if (timing.cycleClock.now() - display.matrixLastActivityCycle < idleCycles) {
+    return;
+  }
+  commitMatrixStaging(display);
+  display.matrixRowPortWritesSinceCommit = 0;
+  display.matrixLastActivityCycle = -1;
+  queueUpdate();
 }
 
 /**
@@ -317,6 +356,11 @@ export function createTec1gRuntime(
       ledMatrixBrightnessR: Array.from({ length: 64 }, () => 0),
       ledMatrixBrightnessG: Array.from({ length: 64 }, () => 0),
       ledMatrixBrightnessB: Array.from({ length: 64 }, () => 0),
+      matrixStagingR: Array.from({ length: 64 }, () => 0),
+      matrixStagingG: Array.from({ length: 64 }, () => 0),
+      matrixStagingB: Array.from({ length: 64 }, () => 0),
+      matrixRowPortWritesSinceCommit: 0,
+      matrixLastActivityCycle: -1,
       digitLatch: 0,
       segmentLatch: 0,
       ledMatrixRowLatch: 0,
@@ -400,7 +444,9 @@ export function createTec1gRuntime(
     lcdState.lcd[lcdTest.length + 2] = TEC1G_LCD_ARROW_RIGHT;
   }
 
-  const updateControllerRef: { current: Tec1gUpdateController | undefined } = { current: undefined };
+  const updateControllerRef: { current: Tec1gUpdateController | undefined } = {
+    current: undefined,
+  };
   /**
    * Queues a throttled runtime UI update through the update controller.
    */
@@ -414,7 +460,12 @@ export function createTec1gRuntime(
     updateControllerRef.current?.flushUpdate();
   }
 
-  const glcd = createGlcdController(display.glcdCtrl, timing.cycleClock, timing.clockHz, queueUpdate);
+  const glcd = createGlcdController(
+    display.glcdCtrl,
+    timing.cycleClock,
+    timing.clockHz,
+    queueUpdate
+  );
 
   const serial = createTec1gSerialController(timing.cycleClock, timing.clockHz, onSerialByte);
 
@@ -439,6 +490,9 @@ export function createTec1gRuntime(
     sdEnabled,
     sdSpi,
     queueUpdate,
+    onMatrixPortsChanged: (kind: 'row' | 'rgb'): void => {
+      handleMatrixPortWrite(display, timing, kind, queueUpdate);
+    },
     ...(onPortWrite ? { onPortWrite } : {}),
   });
 
@@ -495,9 +549,7 @@ export function createTec1gRuntime(
       return;
     }
     timing.cycleClock.advance(cycles);
-    if (updateLedMatrixBrightness(display, timing.clockHz, cycles)) {
-      queueUpdate();
-    }
+    maybeCommitMatrixOnIdle(display, timing, queueUpdate);
   };
 
   const silenceSpeaker = (): void => {
@@ -528,6 +580,11 @@ export function createTec1gRuntime(
     display.ledMatrixBrightnessR.fill(0);
     display.ledMatrixBrightnessG.fill(0);
     display.ledMatrixBrightnessB.fill(0);
+    display.matrixStagingR.fill(0);
+    display.matrixStagingG.fill(0);
+    display.matrixStagingB.fill(0);
+    display.matrixRowPortWritesSinceCommit = 0;
+    display.matrixLastActivityCycle = -1;
     display.ledMatrixRowLatch = 0;
     display.ledMatrixRedLatch = 0;
     display.ledMatrixGreenLatch = 0;
