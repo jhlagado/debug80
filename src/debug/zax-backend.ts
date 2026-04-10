@@ -16,8 +16,9 @@ const moduleRequire = createRequire(__filename);
 /**
  * Resolution order:
  * 1) Optional env overrides (one-off debugging; see README).
- * 2) `require.resolve('@jhlagado/zax/dist/src/cli.js')` / package layout.
- * 3) Walk parents for `node_modules/@jhlagado/zax` (e.g. workspace with hoisted deps).
+ * 2) `require.resolve('@jhlagado/zax/cli')` (package `exports`; required when ZAX uses `exports`).
+ * 3) Legacy `dist/src/cli.js` / `package.json` fallback for older installs.
+ * 4) Walk parents for `node_modules/@jhlagado/zax` (e.g. workspace with hoisted deps).
  *
  * Normal local ZAX development: keep `package.json` on the published semver
  * (`@jhlagado/zax`) and use `npm link` — no committed `file:` dependency.
@@ -61,6 +62,12 @@ function resolveZaxCliPath(startDir: string): string | undefined {
   const fromEnv = resolveZaxCliFromEnv();
   if (fromEnv !== undefined) {
     return fromEnv;
+  }
+
+  try {
+    return moduleRequire.resolve('@jhlagado/zax/cli');
+  } catch {
+    /* fall through */
   }
 
   try {
