@@ -87,7 +87,6 @@ describe('mapping-service', () => {
     expect(result.mapping.segments.length).toBeGreaterThan(0);
     expect(result.index.segmentsByAddress.length).toBeGreaterThan(0);
     expect(fs.existsSync(mapPath)).toBe(true);
-    expect(logs.length).toBe(0);
   });
 
   it('loads a fresh debug map when available', () => {

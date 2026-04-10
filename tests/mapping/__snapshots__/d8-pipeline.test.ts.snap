@@ -1,0 +1,134 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`D8 pipeline address→line snapshot > matches the expected snapshot for all segment start addresses 1`] = `
+{
+  "0x4000": {
+    "file": "matrix.zax",
+    "line": 28,
+  },
+  "0x4002": {
+    "file": "matrix.zax",
+    "line": 29,
+  },
+  "0x4004": {
+    "file": "matrix.zax",
+    "line": 31,
+  },
+  "0x4007": {
+    "file": "matrix.zax",
+    "line": 32,
+  },
+  "0x4008": {
+    "file": "matrix.zax",
+    "line": 33,
+  },
+  "0x400a": {
+    "file": "matrix.zax",
+    "line": 35,
+  },
+  "0x400b": {
+    "file": "matrix.zax",
+    "line": 36,
+  },
+  "0x400d": {
+    "file": "matrix.zax",
+    "line": 37,
+  },
+  "0x400e": {
+    "file": "matrix.zax",
+    "line": 38,
+  },
+  "0x400f": {
+    "file": "matrix.zax",
+    "line": 39,
+  },
+  "0x4011": {
+    "file": "matrix.zax",
+    "line": 40,
+  },
+  "0x4012": {
+    "file": "matrix.zax",
+    "line": 41,
+  },
+  "0x4013": {
+    "file": "matrix.zax",
+    "line": 42,
+  },
+  "0x4015": {
+    "file": "matrix.zax",
+    "line": 43,
+  },
+  "0x4016": {
+    "file": "matrix.zax",
+    "line": 44,
+  },
+  "0x4017": {
+    "file": "matrix.zax",
+    "line": 45,
+  },
+  "0x4019": {
+    "file": "matrix.zax",
+    "line": 46,
+  },
+  "0x401c": {
+    "file": "matrix.zax",
+    "line": 47,
+  },
+  "0x401e": {
+    "file": "matrix.zax",
+    "line": 48,
+  },
+  "0x4020": {
+    "file": "matrix.zax",
+    "line": 49,
+  },
+  "0x4021": {
+    "file": "matrix.zax",
+    "line": 50,
+  },
+  "0x4023": {
+    "file": "matrix.zax",
+    "line": 51,
+  },
+  "0x4025": {
+    "file": "matrix.zax",
+    "line": 53,
+  },
+  "0x4027": {
+    "file": "matrix.zax",
+    "line": 57,
+  },
+  "0x4028": {
+    "file": "matrix.zax",
+    "line": 58,
+  },
+  "0x402a": {
+    "file": "matrix.zax",
+    "line": 60,
+  },
+  "0x402c": {
+    "file": "matrix.zax",
+    "line": 62,
+  },
+  "0x402d": {
+    "file": "matrix.zax",
+    "line": 63,
+  },
+  "0x402f": {
+    "file": "matrix.zax",
+    "line": 64,
+  },
+  "0x4031": {
+    "file": "matrix.zax",
+    "line": 65,
+  },
+  "0x4032": {
+    "file": "matrix.zax",
+    "line": 66,
+  },
+  "0x4100": {
+    "file": "matrix.zax",
+    "line": null,
+  },
+}
+`;

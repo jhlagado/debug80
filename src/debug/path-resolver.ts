@@ -7,10 +7,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
 import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './types';
 import { FileResolutionError } from './errors';
-import { isPathWithin } from './path-utils';
+import { canonicalizeDebuggerSourcePath, isPathWithin } from './path-utils';
 import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 
 /**
@@ -365,13 +366,30 @@ export function resolveListingSourcePath(listingPath: string): string | undefine
  * @param sourceRoots - Array of source root directories
  * @returns Resolved absolute path, or undefined
  */
+function stripFileScheme(mappedFile: string): string {
+  const trimmed = mappedFile.trim();
+  if (trimmed.startsWith('file:')) {
+    try {
+      return fileURLToPath(trimmed);
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 export function resolveMappedPath(
   file: string,
   listingPath: string | undefined,
   sourceRoots: string[]
 ): string | undefined {
-  if (path.isAbsolute(file)) {
-    return file;
+  const raw = stripFileScheme(file);
+  if (path.isAbsolute(raw)) {
+    const normalized = path.normalize(raw);
+    if (fs.existsSync(normalized)) {
+      return canonicalizeDebuggerSourcePath(normalized);
+    }
+    return normalized;
   }
 
   const roots: string[] = [];
@@ -381,9 +399,9 @@ export function resolveMappedPath(
   roots.push(...sourceRoots);
 
   for (const root of roots) {
-    const candidate = path.resolve(root, file);
+    const candidate = path.resolve(root, raw);
     if (fs.existsSync(candidate)) {
-      return candidate;
+      return canonicalizeDebuggerSourcePath(candidate);
     }
   }
 
