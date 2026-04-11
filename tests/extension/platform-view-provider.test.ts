@@ -4,8 +4,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { executeCommand } = vi.hoisted(() => ({
+const { executeCommand, resolveProjectStatusSummary } = vi.hoisted(() => ({
   executeCommand: vi.fn(() => Promise.resolve()),
+  resolveProjectStatusSummary: vi.fn(() => ({
+    projectName: 'demo',
+    targetName: 'app',
+    entrySource: 'src/main.asm',
+  })),
 }));
 
 vi.mock('vscode', () => {
@@ -32,6 +37,10 @@ vi.mock('vscode', () => {
     ProgressLocation: { Notification: 1 },
   };
 });
+
+vi.mock('../../src/extension/project-status', () => ({
+  resolveProjectStatusSummary,
+}));
 
 import * as path from 'path';
 
@@ -104,5 +113,45 @@ describe('PlatformViewProvider', () => {
 
     expect(webviewView.webview.html.length).toBeGreaterThan(0);
     expect(webviewView.webview.html).not.toBe(first);
+  });
+
+  it('posts project status updates while Tec1g is active', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+    provider.setSelectedWorkspace({
+      name: 'demo',
+      uri: { fsPath: '/workspace/demo' },
+    } as never);
+    provider.setHasProject(true);
+
+    const postMessageCalls = (
+      webviewView.webview as unknown as {
+        postMessage: { mock: { calls: Array<[Record<string, unknown>]> } };
+      }
+    ).postMessage.mock.calls;
+    let found = false;
+    for (const [message] of postMessageCalls) {
+      if (
+        message.type === 'projectStatus' &&
+        message.rootName === 'demo' &&
+        message.hasProject === true &&
+        message.targetName === 'app' &&
+        message.entrySource === 'src/main.asm'
+      ) {
+        found = true;
+        break;
+      }
+    }
+    expect(found).toBe(true);
   });
 });

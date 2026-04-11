@@ -35,9 +35,17 @@ import {
 } from '../platforms/tec1g/ui-panel-state';
 import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTec1gSerialBuffer, createSerialBuffer as createTec1gSerialBuffer } from '../platforms/tec1g/ui-panel-serial';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
+import { resolveProjectStatusSummary } from './project-status';
 import { getPlatformViewIdleHtml } from './platform-view-idle-html';
 
 type PlatformId = 'tec1' | 'tec1g' | 'simple';
+
+type ProjectStatusPayload = {
+  rootName?: string;
+  hasProject?: boolean;
+  targetName?: string;
+  entrySource?: string;
+};
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'debug80.platformView';
@@ -49,10 +57,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
   private hasProject = false;
+  private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
 
-  constructor(extensionUri: vscode.Uri) {
+  constructor(extensionUri: vscode.Uri, workspaceState?: vscode.Memento) {
     this.extensionUri = extensionUri;
+    this.workspaceState = workspaceState;
   }
 
   private tec1ActiveTab: Tec1PanelTab = 'ui';
@@ -92,22 +102,24 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
     this.selectedWorkspace = folder;
-    if (!this.currentPlatform) {
-      this.renderCurrentView(true);
-    }
+    this.refreshProjectStatus();
   }
 
   setHasProject(value: boolean): void {
     this.hasProject = value;
-    if (!this.currentPlatform) {
-      this.renderCurrentView(true);
-    }
+    this.refreshProjectStatus();
   }
 
   refreshIdleView(): void {
+    this.refreshProjectStatus();
+  }
+
+  refreshProjectStatus(): void {
     if (!this.currentPlatform) {
       this.renderCurrentView(true);
+      return;
     }
+    this.postProjectStatus();
   }
 
   setPlatform(
@@ -130,6 +142,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.reveal(options?.focus ?? false);
     }
     this.renderCurrentView(true);
+    this.postProjectStatus();
   }
 
   setTec1gUiVisibility(visibility: Record<string, boolean> | undefined, persist = false): void {
@@ -433,6 +446,38 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private postProjectStatus(): void {
+    if (!this.view) {
+      return;
+    }
+    this.postMessage({ type: 'projectStatus', ...this.getProjectStatusPayload() });
+  }
+
+  private getProjectStatusPayload(): ProjectStatusPayload {
+    const folder = this.selectedWorkspace;
+    if (folder === undefined) {
+      return {};
+    }
+
+    const projectStatus =
+      this.workspaceState !== undefined
+        ? resolveProjectStatusSummary(this.workspaceState, folder)
+        : undefined;
+    if (projectStatus === undefined) {
+      return {
+        rootName: folder.name,
+        hasProject: false,
+      };
+    }
+
+    return {
+      rootName: folder.name,
+      hasProject: true,
+      ...(projectStatus.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
+      ...(projectStatus.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
+    };
+  }
+
   private syncMemoryRefresh(platform: 'tec1' | 'tec1g', rehydrate: boolean): void {
     if (this.view?.visible !== true) {
       return;
@@ -686,12 +731,20 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   private getIdleHtml(): string {
     const folders = vscode.workspace.workspaceFolders ?? [];
+    const projectStatus = this.getProjectStatusPayload();
     const opts: Parameters<typeof getPlatformViewIdleHtml>[0] = {
       hasProject: this.hasProject,
       multiRoot: folders.length > 1,
     };
-    if (this.selectedWorkspace) {
-      opts.selectedWorkspaceName = this.selectedWorkspace.name;
+    if (projectStatus.rootName !== undefined) {
+      opts.selectedWorkspaceName = projectStatus.rootName;
+      opts.projectName = projectStatus.rootName;
+    }
+    if (projectStatus.targetName !== undefined) {
+      opts.targetName = projectStatus.targetName;
+    }
+    if (projectStatus.entrySource !== undefined) {
+      opts.entrySource = projectStatus.entrySource;
     }
     return getPlatformViewIdleHtml(opts);
   }
