@@ -14,6 +14,8 @@ export type PanelMessage = {
   type?: string;
   code?: number;
   mode?: string;
+  register?: string;
+  value?: string;
   text?: string;
   tab?: string;
   views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
@@ -39,17 +41,19 @@ export type PanelCommands = {
   reset: string;
   speed: string;
   serialSend: string;
+  registerWrite: string;
 };
 
 async function sendCommand(
   session: Exclude<PanelSession, undefined>,
   command: string,
   payload: unknown
-): Promise<void> {
+): Promise<boolean> {
   try {
     await session.customRequest(command, payload);
+    return true;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
@@ -96,6 +100,24 @@ export async function handleCommonPanelMessage<TTab extends string>(
     return true;
   }
   const session = ctx.getSession();
+  if (msg.type === 'registerEdit' && typeof msg.register === 'string' && typeof msg.value === 'string') {
+    if (session?.type !== 'z80') {
+      return true;
+    }
+    const ok = await sendCommand(session, commands.registerWrite, {
+      register: msg.register,
+      value: msg.value,
+    });
+    if (ok) {
+      void refreshSnapshot(
+        ctx.refreshController.state,
+        ctx.refreshController.handlers,
+        ctx.refreshController.snapshotPayload(),
+        { allowErrors: true }
+      );
+    }
+    return true;
+  }
   if (session?.type !== 'z80') {
     return msg.type === 'key' ||
       msg.type === 'reset' ||

@@ -20,5 +20,6 @@ export async function handleTec1Message(msg: Tec1Message, ctx: MessageContext): 
     reset: 'debug80/tec1Reset',
     speed: 'debug80/tec1Speed',
     serialSend: 'debug80/tec1SerialInput',
+    registerWrite: 'debug80/registerWrite',
   });
 }

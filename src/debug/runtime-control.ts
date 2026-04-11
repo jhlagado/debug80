@@ -29,6 +29,8 @@ export interface RuntimeControlContext {
   setCallDepth: (value: number) => void;
   getPauseRequested: () => boolean;
   setPauseRequested: (value: boolean) => void;
+  getRunning: () => boolean;
+  setRunning: (value: boolean) => void;
   getSkipBreakpointOnce: () => number | null;
   setSkipBreakpointOnce: (value: number | null) => void;
   getHaltNotified: () => boolean;
@@ -92,6 +94,10 @@ export function createRuntimeControlContext(
     getPauseRequested: () => runState.pauseRequested,
     setPauseRequested: (value: boolean): void => {
       runState.pauseRequested = value;
+    },
+    getRunning: () => runState.isRunning,
+    setRunning: (value: boolean): void => {
+      runState.isRunning = value;
     },
     getSkipBreakpointOnce: () => runState.skipBreakpointOnce,
     setSkipBreakpointOnce: (value: number | null): void => {
@@ -283,6 +289,7 @@ export async function runUntilStopAsync(
       captureEntryCpuStateIfNeeded(context);
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
+        context.setRunning(false);
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
@@ -310,6 +317,7 @@ export async function runUntilStopAsync(
       const pc = activeRuntime.getPC();
       if (context.isBreakpointAddress(pc)) {
         context.setHaltNotified(false);
+        context.setRunning(false);
         context.setLastStopReason('breakpoint');
         context.setLastBreakpointAddress(pc);
         context.sendEvent(new StoppedEvent('breakpoint', 1));
@@ -317,6 +325,7 @@ export async function runUntilStopAsync(
       }
       if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
         context.setHaltNotified(false);
+        context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
         context.sendEvent(new StoppedEvent('step', 1));
@@ -329,11 +338,13 @@ export async function runUntilStopAsync(
       cyclesSinceThrottle += result.cycles ?? 0;
       getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
       if (result.halted) {
+        context.setRunning(false);
         context.handleHaltStop();
         return;
       }
       if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
         context.setHaltNotified(false);
+        context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
         context.sendEvent(
@@ -401,6 +412,7 @@ export async function runUntilReturnAsync(
       }
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
+        context.setRunning(false);
         context.setHaltNotified(false);
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
@@ -425,6 +437,7 @@ export async function runUntilReturnAsync(
         const pc = activeRuntime.getPC();
         if (context.isBreakpointAddress(pc)) {
           context.setHaltNotified(false);
+          context.setRunning(false);
           context.setLastStopReason('breakpoint');
           context.setLastBreakpointAddress(pc);
           context.sendEvent(new StoppedEvent('breakpoint', 1));
@@ -436,6 +449,7 @@ export async function runUntilReturnAsync(
         cyclesSinceThrottle += result.cycles ?? 0;
         getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
+          context.setRunning(false);
           context.handleHaltStop();
           return;
         }
@@ -444,6 +458,7 @@ export async function runUntilReturnAsync(
       if (trace.kind === 'ret' && trace.taken) {
         if (baselineDepth === 0 || context.getCallDepth() < baselineDepth) {
           context.setHaltNotified(false);
+          context.setRunning(false);
           context.setLastStopReason('step');
           context.setLastBreakpointAddress(null);
           context.sendEvent(new StoppedEvent('step', 1));
@@ -453,6 +468,7 @@ export async function runUntilReturnAsync(
 
       if (maxInstructions > 0 && executed >= maxInstructions) {
         context.setHaltNotified(false);
+        context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
         context.sendEvent(
