@@ -23,6 +23,10 @@ import type { VariableService } from './variable-service';
 import type { SessionStateShape } from './session-state';
 import type { PlatformRegistry } from './platform-registry';
 import { ADDR_MASK } from '../platforms/tec-common';
+import {
+  tryWriteRegisterByKey,
+  writableRegisterKeyFromVariableName,
+} from './register-request';
 
 export interface AdapterRequestControllerDeps {
   threadId: number;
@@ -302,6 +306,40 @@ export class AdapterRequestController {
       ),
     };
 
+    this.deps.sendResponse(response);
+  }
+
+  public setVariableRequest(
+    response: DebugProtocol.SetVariableResponse,
+    args: DebugProtocol.SetVariableArguments
+  ): void {
+    if (!this.deps.variableService.isRegistersVariablesReference(args.variablesReference)) {
+      this.deps.sendErrorResponse(response, 1, 'Debug80: This variable cannot be edited here.');
+      return;
+    }
+
+    const registerKey = writableRegisterKeyFromVariableName(args.name);
+    if (registerKey === null) {
+      this.deps.sendErrorResponse(
+        response,
+        1,
+        'Debug80: This register is read-only or not recognized.'
+      );
+      return;
+    }
+
+    const err = tryWriteRegisterByKey(this.deps.sessionState, registerKey, args.value);
+    if (err !== null) {
+      this.deps.sendErrorResponse(response, 1, err);
+      return;
+    }
+
+    const runtime = this.deps.sessionState.runtime;
+    const variables = this.deps.variableService.resolveVariables(args.variablesReference, runtime);
+    const updated = variables.find((v) => v.name === args.name);
+    response.body = {
+      value: updated?.value ?? String(args.value),
+    };
     this.deps.sendResponse(response);
   }
 
