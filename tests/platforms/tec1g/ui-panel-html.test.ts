@@ -41,7 +41,7 @@ describe('tec1g ui-panel-html', () => {
     expect(html).toContain('homeRootSelect');
     expect(html).toContain('homeTargetSelect');
     expect(html).toContain('Quick Pick');
-    expect(html).toContain('Set Entry Source');
+    expect(html).toContain('Set Program File');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
