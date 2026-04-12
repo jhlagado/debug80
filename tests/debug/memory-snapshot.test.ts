@@ -36,6 +36,7 @@ describe('memory-snapshot', () => {
       },
       {
         runtime,
+        running: false,
         symbolAnchors: [],
         lookupAnchors: [],
         symbolList: [{ name: 'ENTRY', address: 0x10 }],
@@ -44,6 +45,7 @@ describe('memory-snapshot', () => {
 
     expect(snapshot.before).toBe(8);
     expect(snapshot.rowSize).toBe(8);
+    expect(snapshot.running).toBe(false);
     expect(snapshot.views).toHaveLength(1);
     expect(snapshot.views[0]?.address).toBe(0x10);
     expect(snapshot.symbols).toEqual([{ name: 'ENTRY', address: 0x10 }]);

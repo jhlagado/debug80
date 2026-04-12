@@ -41,6 +41,7 @@ import { AssembleFailureError } from './assembler';
 import { buildRomSourcesResponse } from './rom-requests';
 import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
 import { handleMemorySnapshotRequest } from './memory-request';
+import { handleMemoryWriteRequest } from './memory-write';
 import { handleRegisterWriteRequest } from './register-request';
 import { populateFromConfig } from './launch-args';
 import {
@@ -129,6 +130,7 @@ export class Z80DebugSession extends DebugSession {
     );
     const memoryDeps = {
       getRuntime: () => this.sessionState.runtime,
+      getRunning: () => this.sessionState.runState.isRunning,
       getSymbolAnchors: () => this.sessionState.symbolAnchors,
       getLookupAnchors: () => this.sourceState.lookupAnchors,
       getSymbolList: () => this.sessionState.symbolList,
@@ -143,6 +145,15 @@ export class Z80DebugSession extends DebugSession {
     );
     this.commandRouter.register('debug80/registerWrite', (response, args) => {
       const error = handleRegisterWriteRequest(this.sessionState, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/memoryWrite', (response, args) => {
+      const error = handleMemoryWriteRequest(this.sessionState, args);
       if (error !== null) {
         this.sendErrorResponse(response, 1, error);
         return true;

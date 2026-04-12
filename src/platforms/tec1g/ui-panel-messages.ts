@@ -28,6 +28,7 @@ export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext)
     speed: 'debug80/tec1gSpeed',
     serialSend: 'debug80/tec1gSerialInput',
     registerWrite: 'debug80/registerWrite',
+    memoryWrite: 'debug80/memoryWrite',
   })) {
     return;
   }

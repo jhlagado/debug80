@@ -54,6 +54,7 @@ type Tec1gUpdatePayload = {
 type MemorySnapshotPayload = {
   symbols?: Array<{ name: string; address: number }>;
   registers?: Record<string, number | string | undefined>;
+  running?: boolean;
   views?: Array<{
     id: string;
     address?: number;

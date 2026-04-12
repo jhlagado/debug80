@@ -15,6 +15,7 @@ export type PanelMessage = {
   code?: number;
   mode?: string;
   register?: string;
+  address?: number;
   value?: string;
   text?: string;
   tab?: string;
@@ -42,6 +43,7 @@ export type PanelCommands = {
   speed: string;
   serialSend: string;
   registerWrite: string;
+  memoryWrite: string;
 };
 
 async function sendCommand(
@@ -110,6 +112,31 @@ export async function handleCommonPanelMessage<TTab extends string>(
     });
     if (!ok && ctx.isPanelVisible()) {
       // Rehydrate from the runtime when the adapter rejects the write so the UI snaps back.
+      void refreshSnapshot(
+        ctx.refreshController.state,
+        ctx.refreshController.handlers,
+        ctx.refreshController.snapshotPayload(),
+        { allowErrors: true }
+      );
+      return true;
+    }
+    void refreshSnapshot(
+      ctx.refreshController.state,
+      ctx.refreshController.handlers,
+      ctx.refreshController.snapshotPayload(),
+      { allowErrors: true }
+    );
+    return true;
+  }
+  if (msg.type === 'memoryEdit' && typeof msg.address === 'number' && typeof msg.value === 'string') {
+    if (session?.type !== 'z80') {
+      return true;
+    }
+    const ok = await sendCommand(session, commands.memoryWrite, {
+      address: msg.address,
+      value: msg.value,
+    });
+    if (!ok && ctx.isPanelVisible()) {
       void refreshSnapshot(
         ctx.refreshController.state,
         ctx.refreshController.handlers,
