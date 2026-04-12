@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const showQuickPick = vi.fn();
 const executeCommand = vi.fn();
 const existsSync = vi.fn();
+const startDebugging = vi.fn();
+const resolvePreferredTargetName = vi.fn();
 
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 let storedPath: string | undefined;
@@ -20,11 +22,24 @@ vi.mock('vscode', () => ({
   commands: {
     executeCommand,
   },
+  debug: {
+    activeDebugSession: undefined,
+    startDebugging,
+  },
   workspace: {
     get workspaceFolders() {
       return workspaceFolders;
     },
+    createFileSystemWatcher: vi.fn(() => ({
+      onDidCreate: vi.fn(),
+      onDidDelete: vi.fn(),
+    })),
+    onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
   },
+}));
+
+vi.mock('../../src/extension/project-target-selection', () => ({
+  resolvePreferredTargetName,
 }));
 
 describe('WorkspaceSelectionController', () => {
@@ -32,6 +47,7 @@ describe('WorkspaceSelectionController', () => {
     vi.clearAllMocks();
     workspaceFolders = undefined;
     storedPath = undefined;
+    resolvePreferredTargetName.mockReturnValue(undefined);
   });
 
   it('reuses the remembered workspace without prompting', async () => {
@@ -144,5 +160,44 @@ describe('WorkspaceSelectionController', () => {
       expect.objectContaining({ placeHolder: 'Select the Debug80 project folder to debug' })
     );
     expect(update).toHaveBeenCalledWith('debug80.selectedWorkspace', '/workspace/caverns80');
+  });
+
+  it('auto-starts the remembered project on startup when a preferred target exists', async () => {
+    workspaceFolders = [{ name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } }];
+    storedPath = '/workspace/caverns80';
+    existsSync.mockImplementation(
+      (candidate: string) =>
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
+    );
+    resolvePreferredTargetName.mockReturnValue('app');
+
+    const { WorkspaceSelectionController } = await import(
+      '../../src/extension/workspace-selection'
+    );
+    const platformViewProvider = {
+      setSelectedWorkspace: vi.fn(),
+      setHasProject: vi.fn(),
+    };
+
+    const controller = new WorkspaceSelectionController(
+      {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => storedPath), update: vi.fn() },
+      } as never,
+      platformViewProvider as never
+    );
+
+    controller.registerInfrastructure();
+
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/caverns80' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        name: 'Debug80: Current Project',
+        projectConfig: path.normalize('/workspace/caverns80/.vscode/debug80.json'),
+        stopOnEntry: false,
+      })
+    );
   });
 });

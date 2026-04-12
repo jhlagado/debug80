@@ -36,9 +36,12 @@ describe('tec1g ui-panel-html', () => {
 
   it('includes key UI sections', () => {
     const html = getTec1gHtml('ui', webview, extensionUri);
-    expect(html).toContain('homeRootSelect');
+    expect(html).toContain('selectProject');
     expect(html).toContain('homeTargetSelect');
     expect(html).toContain('project-header');
+    expect(html).toContain('project-label');
+    expect(html).toContain('Project');
+    expect(html).toContain('Target');
     expect(html).not.toContain('panel-home');
     expect(html).not.toContain('Home');
     expect(html).toContain('panel-ui');
