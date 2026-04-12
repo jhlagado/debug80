@@ -184,4 +184,183 @@ describe('PlatformViewProvider', () => {
     }
     expect(found).toBe(true);
   });
+
+  function getPostMessageCalls(webviewView: vscode.WebviewView): Array<[Record<string, unknown>]> {
+    return (
+      webviewView.webview as unknown as {
+        postMessage: { mock: { calls: Array<[Record<string, unknown>]> } };
+      }
+    ).postMessage.mock.calls;
+  }
+
+  function findProjectStatusMessages(calls: Array<[Record<string, unknown>]>): Array<Record<string, unknown>> {
+    return calls.filter(([msg]) => msg.type === 'projectStatus').map(([msg]) => msg);
+  }
+
+  it('posts projectStatus when setPlatform switches to Tec1', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setHasProject(true);
+
+    // Clear previous calls, then set platform
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBeGreaterThanOrEqual(1);
+    expect(statusMessages[0]?.rootName).toBe('demo');
+  });
+
+  it('posts projectStatus when the panel becomes visible with an active platform', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+    let visibilityCallback: (() => void) | undefined;
+    (webviewView.onDidChangeVisibility as ReturnType<typeof vi.fn>).mockImplementation(
+      (cb: () => void) => {
+        visibilityCallback = cb;
+        return { dispose: vi.fn() };
+      }
+    );
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setHasProject(true);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    // Simulate panel becoming visible
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    (webviewView as { visible: boolean }).visible = true;
+    visibilityCallback?.();
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBeGreaterThanOrEqual(1);
+    expect(statusMessages[0]?.rootName).toBe('demo');
+  });
+
+  it('refreshProjectStatus posts projectStatus to the webview when a platform is active', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    workspaceFolders = [{ name: 'myproject', uri: { fsPath: '/workspace/myproject' } }];
+    provider.setSelectedWorkspace({ name: 'myproject', uri: { fsPath: '/workspace/myproject' } } as never);
+    provider.setHasProject(true);
+    provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
+
+    // Clear and trigger a refresh
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.refreshProjectStatus();
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBe(1);
+    expect(statusMessages[0]?.rootName).toBe('myproject');
+    expect(statusMessages[0]?.hasProject).toBe(true);
+  });
+
+  it('setSelectedWorkspace triggers projectStatus update when platform is active', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    workspaceFolders = [
+      { name: 'proj-a', uri: { fsPath: '/workspace/proj-a' } },
+      { name: 'proj-b', uri: { fsPath: '/workspace/proj-b' } },
+    ];
+
+    // Clear and switch workspace
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.setSelectedWorkspace({ name: 'proj-b', uri: { fsPath: '/workspace/proj-b' } } as never);
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBeGreaterThanOrEqual(1);
+    expect(statusMessages[0]?.rootName).toBe('proj-b');
+  });
+
+  it('setHasProject triggers projectStatus update when platform is active', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
+
+    // Clear and toggle hasProject
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.setHasProject(true);
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBeGreaterThanOrEqual(1);
+    expect(statusMessages[0]?.hasProject).toBe(true);
+  });
+
+  it('refreshIdleView triggers projectStatus update when platform is active', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setHasProject(true);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    // Clear and call refreshIdleView (used by commands after selection changes)
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.refreshIdleView();
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.length).toBe(1);
+    expect(statusMessages[0]?.rootName).toBe('demo');
+    expect(statusMessages[0]?.targetName).toBe('app');
+    expect(statusMessages[0]?.entrySource).toBe('src/main.asm');
+  });
 });
