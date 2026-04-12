@@ -100,7 +100,7 @@ const DEFAULT_TAB: PanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
     : 'ui';
-const homeRootSelect = document.getElementById('homeRootSelect') as HTMLSelectElement | null;
+const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -243,12 +243,8 @@ let audioCtx: AudioContext | null = null;
 let osc: OscillatorNode | null = null;
 let gain: GainNode | null = null;
 
-homeRootSelect?.addEventListener('change', () => {
-  const rootPath = homeRootSelect.value;
-  if (!rootPath) {
-    return;
-  }
-  vscode.postMessage({ type: 'selectProject', rootPath });
+selectProjectButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'selectProject' });
 });
 
 homeTargetSelect?.addEventListener('change', () => {
@@ -279,25 +275,25 @@ function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
 }
 
 function setRootOptions(options: ProjectRootOption[], selectedRootPath?: string): void {
-  if (!homeRootSelect) {
+  if (!selectProjectButton) {
     return;
   }
-  clearSelectOptions(homeRootSelect);
   if (options.length === 0) {
-    setSelectPlaceholder(homeRootSelect, 'No workspace roots available');
-    homeRootSelect.disabled = true;
+    selectProjectButton.disabled = true;
+    selectProjectButton.textContent = 'No workspace roots available';
+    selectProjectButton.title = 'No workspace roots available';
     return;
   }
-  setSelectPlaceholder(homeRootSelect, 'Select root...');
-  for (const option of options) {
-    const el = document.createElement('option');
-    el.value = option.path;
-    el.textContent = `${option.name} — ${option.path}`;
-    el.title = option.hasProject ? 'Configured Debug80 project' : 'No Debug80 project config';
-    homeRootSelect.appendChild(el);
-  }
-  homeRootSelect.disabled = false;
-  homeRootSelect.value = selectedRootPath ?? '';
+  const selected = options.find((option) => option.path === selectedRootPath) ?? options[0];
+  selectProjectButton.disabled = false;
+  selectProjectButton.textContent =
+    selected !== undefined ? selected.name : 'Select workspace root';
+  selectProjectButton.title =
+    selected === undefined
+      ? 'Select workspace root'
+      : selected.hasProject
+        ? `${selected.name} — ${selected.path}`
+        : `${selected.name} — ${selected.path} (no Debug80 project config)`;
 }
 
 function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: string): void {
@@ -314,7 +310,7 @@ function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: s
   for (const option of options) {
     const el = document.createElement('option');
     el.value = option.name;
-    el.textContent = option.description ? `${option.name} — ${option.description}` : option.name;
+    el.textContent = option.name;
     el.title = option.detail ?? option.description ?? option.name;
     homeTargetSelect.appendChild(el);
   }
