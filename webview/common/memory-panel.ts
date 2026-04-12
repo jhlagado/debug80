@@ -42,6 +42,7 @@ type MemoryPanelOptions = {
 export class MemoryPanel {
   private readonly symbolMap = new Map<string, number>();
   private symbolsKey = '';
+  private editingEnabled = false;
 
   constructor(private readonly options: MemoryPanelOptions) {}
 
@@ -59,7 +60,37 @@ export class MemoryPanel {
         this.requestSnapshot();
       });
       entry.address?.addEventListener('change', () => this.requestSnapshot());
+      entry.dump?.addEventListener('keydown', (event) => {
+        const input = event.target;
+        if (!isMemoryByteInput(input)) {
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          input.blur();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          const previousValue = input.dataset.previous ?? input.value;
+          input.value = previousValue;
+          input.blur();
+        }
+      });
+      entry.dump?.addEventListener('focusout', (event) => {
+        const input = event.target;
+        if (!isMemoryByteInput(input)) {
+          return;
+        }
+        void this.commitMemoryEdit(input);
+      });
     });
+  }
+
+  setEditingEnabled(enabled: boolean): void {
+    if (this.editingEnabled === enabled) {
+      return;
+    }
+    this.editingEnabled = enabled;
+    this.updateMemoryInputsState();
   }
 
   requestSnapshot(): void {
@@ -103,8 +134,18 @@ export class MemoryPanel {
     }
   }
 
-  handleSnapshot(payload: { symbols?: Array<{ name: string; address: number }>; registers?: RegisterData; views?: SnapshotView[] }): void {
+  handleSnapshot(
+    payload: {
+      symbols?: Array<{ name: string; address: number }>;
+      registers?: RegisterData;
+      views?: SnapshotView[];
+      running?: boolean;
+    }
+  ): void {
     this.updateSymbols(payload.symbols || []);
+    if (typeof payload.running === 'boolean') {
+      this.setEditingEnabled(!payload.running);
+    }
     if (payload.registers) {
       this.renderRegisters(payload.registers);
     }
@@ -261,7 +302,7 @@ export class MemoryPanel {
         return;
       }
       target.addr.textContent = formatHex(entry.address ?? 0, 4);
-      renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize);
+      renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize, this.editingEnabled);
       if (entry.symbol) {
         if (entry.symbolOffset) {
           const offset = entry.symbolOffset.toString(16).toUpperCase();
@@ -272,6 +313,39 @@ export class MemoryPanel {
       } else {
         target.symbol.textContent = '';
       }
+    });
+  }
+
+  private updateMemoryInputsState(): void {
+    this.options.views.forEach((entry) => {
+      entry.dump
+        ?.querySelectorAll<HTMLInputElement>('input.memory-byte-input')
+        .forEach((input) => {
+          input.disabled = !this.editingEnabled;
+        });
+    });
+  }
+
+  private commitMemoryEdit(input: HTMLInputElement): void {
+    const address = Number.parseInt(input.dataset.address ?? '', 16);
+    const previousValue = input.dataset.previous ?? input.value;
+    const value = normalizeHexInput(input.value, 2);
+    if (!Number.isFinite(address) || value === null) {
+      input.value = previousValue;
+      if (this.options.statusEl) {
+        this.options.statusEl.textContent = 'Memory edit failed';
+      }
+      return;
+    }
+    if (value === previousValue) {
+      return;
+    }
+    input.value = value;
+    input.dataset.previous = value;
+    this.options.vscode.postMessage({
+      type: 'memoryEdit',
+      address: address & 0xffff,
+      value,
     });
   }
 }
@@ -300,7 +374,8 @@ function renderDump(
   start: number,
   bytes: number[],
   focusOffset: number,
-  rowSize: number
+  rowSize: number,
+  editingEnabled: boolean
 ): void {
   let html = '';
   for (let i = 0; i < bytes.length; i += rowSize) {
@@ -311,17 +386,32 @@ function renderDump(
       const idx = i + j;
       const value = bytes[idx];
       const cls = idx === focusOffset ? 'byte focus' : 'byte';
+      const byteValue = formatByteHex(value);
       html +=
-        '<span class="' +
+        '<input class="' +
         cls +
-        '">' +
-        value.toString(16).toUpperCase().padStart(2, '0') +
-        '</span>';
+        ' memory-byte-input" type="text" spellcheck="false" autocomplete="off" inputmode="text" maxlength="2" data-address="' +
+        formatByteHex((rowAddr + j) & 0xffff, 4) +
+        '" data-previous="' +
+        byteValue +
+        '" value="' +
+        byteValue +
+        '"' +
+        (editingEnabled ? '' : ' disabled') +
+        ' />';
       ascii += value >= 32 && value <= 126 ? String.fromCharCode(value) : '.';
     }
     html += '<span class="ascii">' + ascii + '</span></div>';
   }
   el.innerHTML = html;
+}
+
+function isMemoryByteInput(target: EventTarget | null): target is HTMLInputElement {
+  return target instanceof HTMLInputElement && target.classList.contains('memory-byte-input');
+}
+
+function formatByteHex(value: number, width = 2): string {
+  return value.toString(16).toUpperCase().padStart(width, '0');
 }
 
 function parseAddress(text: string): number | undefined {

@@ -7,6 +7,7 @@ import { buildMemorySnapshotResponse, type MemorySnapshotContext } from './memor
 
 export type MemoryRequestDeps = {
   getRuntime: () => MemorySnapshotContext['runtime'] | undefined;
+  getRunning: () => boolean;
   getSymbolAnchors: () => MemorySnapshotContext['symbolAnchors'];
   getLookupAnchors: () => MemorySnapshotContext['lookupAnchors'];
   getSymbolList: () => MemorySnapshotContext['symbolList'];
@@ -26,6 +27,7 @@ export function handleMemorySnapshotRequest(
   }
   const snapshot = buildMemorySnapshotResponse(args, {
     runtime,
+    running: deps.getRunning(),
     symbolAnchors: deps.getSymbolAnchors(),
     lookupAnchors: deps.getLookupAnchors(),
     symbolList: deps.getSymbolList(),

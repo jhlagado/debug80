@@ -1,0 +1,127 @@
+/**
+ * @file Shared memory panel editing tests.
+ */
+
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryPanel } from '../../../webview/common/memory-panel';
+import type { VscodeApi } from '../../../webview/common/vscode';
+
+function createElement<T extends HTMLElement>(
+  tagName: string,
+  className?: string
+): T {
+  const element = document.createElement(tagName) as T;
+  if (className !== undefined) {
+    element.className = className;
+  }
+  return element;
+}
+
+function createPanel(vscode: VscodeApi) {
+  const registerStrip = createElement<HTMLDivElement>('div');
+  const statusEl = createElement<HTMLDivElement>('div');
+  const dump = createElement<HTMLDivElement>('div');
+  const view = document.createElement('select');
+  const address = document.createElement('input');
+  const addr = createElement<HTMLSpanElement>('span');
+  const symbol = createElement<HTMLSpanElement>('span');
+
+  document.body.append(registerStrip, statusEl, dump, view, address, addr, symbol);
+
+  const panel = new MemoryPanel({
+    vscode,
+    registerStrip,
+    statusEl,
+    views: [
+      {
+        id: 'a',
+        view,
+        address,
+        addr,
+        symbol,
+        dump,
+      },
+    ],
+    getRowSize: () => 8,
+    isActive: () => true,
+  });
+
+  panel.wire();
+
+  return { panel, dump, statusEl };
+}
+
+afterEach(() => {
+  document.body.innerHTML = '';
+});
+
+describe('shared memory panel', () => {
+  it('renders editable byte inputs and posts plain-hex memory edits', () => {
+    const postMessage = vi.fn();
+    const { panel, dump } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      views: [
+        {
+          id: 'a',
+          address: 0x1000,
+          start: 0x1000,
+          bytes: [0x41, 0x42, 0x43, 0x44],
+          focus: 1,
+        },
+      ],
+    });
+
+    const inputs = dump.querySelectorAll<HTMLInputElement>('input.memory-byte-input');
+    expect(inputs).toHaveLength(4);
+    expect(inputs[0]?.disabled).toBe(false);
+    expect(inputs[0]?.value).toBe('41');
+
+    if (!inputs[0]) {
+      throw new Error('first memory input missing');
+    }
+
+    inputs[0].value = 'ab';
+    inputs[0].dispatchEvent(new Event('focusout', { bubbles: true }));
+
+    expect(inputs[0].value).toBe('AB');
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'memoryEdit',
+      address: 0x1000,
+      value: 'AB',
+    });
+  });
+
+  it('disables byte inputs while the runtime is running', () => {
+    const { panel, dump } = createPanel({
+      postMessage: vi.fn(),
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: true,
+      views: [
+        {
+          id: 'a',
+          address: 0x2000,
+          start: 0x2000,
+          bytes: [0x10, 0x20],
+          focus: 0,
+        },
+      ],
+    });
+
+    const inputs = dump.querySelectorAll<HTMLInputElement>('input.memory-byte-input');
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]?.disabled).toBe(true);
+    expect(inputs[1]?.disabled).toBe(true);
+  });
+});

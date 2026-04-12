@@ -18,6 +18,7 @@ export type SnapshotRuntime = {
 
 export type MemorySnapshotContext = {
   runtime: SnapshotRuntime;
+  running: boolean;
   symbolAnchors: SourceMapAnchor[];
   lookupAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
@@ -29,6 +30,7 @@ export function buildMemorySnapshotResponse(
 ): {
   before: number;
   rowSize: 8 | 16;
+  running: boolean;
   views: ReturnType<typeof buildMemorySnapshotViews>;
   symbols: Array<{ name: string; address: number }>;
   registers: {
@@ -91,6 +93,7 @@ export function buildMemorySnapshotResponse(
   return {
     before,
     rowSize,
+    running: ctx.running,
     views,
     symbols: ctx.symbolList,
     registers: {
