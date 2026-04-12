@@ -146,6 +146,41 @@ async function startCurrentProjectDebugging(
   });
 }
 
+async function maybeAutoStartSingleTargetForRootChange(
+  folder: vscode.WorkspaceFolder,
+  workspaceSelection: WorkspaceSelectionController,
+  targetSelection: ProjectTargetSelectionController
+): Promise<string | undefined> {
+  const projectConfig = findProjectConfigPath(folder);
+  if (projectConfig === undefined) {
+    return undefined;
+  }
+
+  const choices = listProjectTargetChoices(projectConfig);
+  if (choices.length !== 1) {
+    return undefined;
+  }
+
+  const onlyTarget = choices[0]?.name;
+  if (onlyTarget === undefined) {
+    return undefined;
+  }
+
+  targetSelection.rememberTarget(projectConfig, onlyTarget);
+
+  const activeSession = vscode.debug.activeDebugSession;
+  if (activeSession?.type === 'z80') {
+    await vscode.debug.stopDebugging(activeSession);
+  }
+
+  const started = await startCurrentProjectDebugging(folder, workspaceSelection);
+  if (!started) {
+    return undefined;
+  }
+
+  return onlyTarget;
+}
+
 export function registerExtensionCommands({
   context,
   platformViewProvider,
@@ -231,6 +266,17 @@ export function registerExtensionCommands({
 
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
+
+        const singleTarget = await maybeAutoStartSingleTargetForRootChange(
+          folder,
+          workspaceSelection,
+          targetSelection
+        );
+        if (singleTarget !== undefined) {
+          void vscode.window.showInformationMessage(
+            `Debug80: Selected root ${folder.name} and started target ${singleTarget}.`
+          );
+        }
         return folder;
       }
     )

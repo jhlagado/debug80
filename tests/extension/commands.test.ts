@@ -219,6 +219,60 @@ describe('registerExtensionCommands', () => {
     expect(startDebugging).not.toHaveBeenCalled();
   });
 
+  it('auto-starts when a selected root exposes exactly one target', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        targets: {
+          matrix: { sourceFile: 'src/matrix.zax' },
+        },
+      })
+    );
+
+    const folder = {
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    };
+    const rememberWorkspace = vi.fn();
+    const rememberTarget = vi.fn();
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        rememberTarget,
+      } as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(rememberTarget).toHaveBeenCalledWith(projectConfigPath, 'matrix');
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: false,
+      })
+    );
+  });
+
   it('remembers a direct root selection even when no project config exists', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
     const vscode = await import('vscode');

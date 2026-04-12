@@ -10,8 +10,14 @@
 <body data-active-tab="{{activeTab}}">
 <div id="app" tabindex="0">
     <div class="project-header" id="projectHeader">
-      <select class="project-select" id="homeRootSelect"></select>
-      <select class="project-select" id="homeTargetSelect"></select>
+      <div class="project-control">
+        <span class="project-label">Root</span>
+        <button class="project-root-button" id="selectProject" type="button">No workspace roots available</button>
+      </div>
+      <div class="project-control">
+        <span class="project-label">Target</span>
+        <select class="project-select" id="homeTargetSelect"></select>
+      </div>
     </div>
     <div class="tabs">
       <button class="tab" data-tab="ui">UI</button>
