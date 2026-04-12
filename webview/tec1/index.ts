@@ -11,15 +11,9 @@ const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
-    : document.body.dataset.activeTab === 'ui'
-      ? 'ui'
-      : 'home';
+    : 'ui';
 const homeRootSelect = document.getElementById('homeRootSelect') as HTMLSelectElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
-const homeRootName = document.getElementById('homeRootName') as HTMLElement | null;
-const homeProjectState = document.getElementById('homeProjectState') as HTMLElement | null;
-const homeTargetName = document.getElementById('homeTargetName') as HTMLElement | null;
-const homeEntrySource = document.getElementById('homeEntrySource') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -27,7 +21,6 @@ const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
 const muteEl = document.getElementById('mute') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
-const panelHome = document.getElementById('panel-home') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
@@ -44,7 +37,6 @@ for (let i = 0; i < DIGITS; i++) {
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createPanelLayoutController({
   defaultTab: DEFAULT_TAB,
-  panelHome,
   memoryPanel,
   panelMemory,
   panelUi,
@@ -156,33 +148,15 @@ function setTargetOptions(options: Array<{ name: string; description?: string; d
   homeTargetSelect.value = selectedTargetName ?? '';
 }
 
-function setHomeValue(node: HTMLElement | null, value: string | undefined, fallback: string): void {
-  if (!node) {
-    return;
-  }
-  node.textContent = value !== undefined && value !== '' ? value : fallback;
-}
-
 function applyProjectStatus(payload: {
-  rootName?: string;
   rootPath?: string;
-  hasProject?: boolean;
-  targetName?: string;
-  entrySource?: string;
   roots?: Array<{ name: string; path: string; hasProject: boolean }>;
   targets?: Array<{ name: string; description?: string; detail?: string }>;
+  targetName?: string;
 }): void {
   currentRootPath = payload.rootPath ?? '';
   setRootOptions(payload.roots ?? [], currentRootPath);
   setTargetOptions(payload.targets ?? [], payload.targetName);
-  setHomeValue(homeRootName, payload.rootName, 'No root selected');
-  setHomeValue(
-    homeProjectState,
-    payload.hasProject ? 'Configured Debug80 project' : undefined,
-    payload.rootName ? 'No Debug80 project in this root' : 'No root selected'
-  );
-  setHomeValue(homeTargetName, payload.targetName, 'No target selected');
-  setHomeValue(homeEntrySource, payload.entrySource, 'No program file selected');
 }
 
 applyProjectStatus({});

@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 
-export type PanelTab = 'home' | 'ui' | 'memory';
+export type PanelTab = 'ui' | 'memory';
 export type PanelPlatform = 'tec1' | 'tec1g';
 
 /** Generates a CSP nonce for inline script tags. */
