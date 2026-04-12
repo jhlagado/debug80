@@ -177,9 +177,9 @@ active target unless the user explicitly chooses another launch configuration.
 
 This needs a clear and rigid rule.
 
-### Rule 1: Once a project exists, the entry source is explicit
+### Rule 1: Once a project exists, the program file is explicit
 
-The active target in `debug80.json` defines the entry source via `sourceFile` or equivalent.
+The active target in `debug80.json` defines the program file via `sourceFile` or equivalent.
 
 ### Rule 2: Inference is bootstrap-only
 
@@ -202,7 +202,7 @@ Bootstrap inference order:
 
 Debug80 should provide:
 
-- `Debug80: Set Entry Source`
+- `Debug80: Set Program File`
 - `Debug80: Set Active Target`
 - `Debug80: New ASM Source`
 - `Debug80: New ZAX Source`
@@ -247,7 +247,7 @@ This state drives the UI:
 
 ### Source and entry management
 
-- `Debug80: Set Entry Source`
+- `Debug80: Set Program File`
 - `Debug80: New ASM Source`
 - `Debug80: New ZAX Source`
 - `Debug80: Reveal Project Config`
@@ -270,7 +270,7 @@ Show a compact status block:
 - current folder
 - current project state
 - active target
-- entry source
+- program file
 - platform
 
 Primary actions:
@@ -278,7 +278,7 @@ Primary actions:
 - Debug
 - Select Project
 - Select Target
-- Set Entry Source
+- Set Program File
 - New ASM Source
 - New ZAX Source
 
@@ -396,7 +396,7 @@ manually creating files first.
 ### Project-scoped state
 
 - active target name
-- last selected entry source during creation flow if not yet committed
+- last selected program file during creation flow if not yet committed
 
 The durable source of truth should still be the project config. Remembered state is a
 convenience layer only.
@@ -413,7 +413,7 @@ convenience layer only.
 4. Debug80 asks for platform.
 5. Debug80 asks whether to create ASM or ZAX starter.
 6. Debug80 creates folder, source file, project config, and launch config.
-7. Debug80 opens the starter file and marks it as entry source.
+7. Debug80 opens the starter file and marks it as the program file.
 8. User presses `F5`.
 
 ### Flow B: Add Debug80 to an existing source folder
@@ -421,7 +421,7 @@ convenience layer only.
 1. User opens a folder containing `asm` or `zax` files.
 2. Debug80 detects source-only state.
 3. Debug80 offers `Create Project`.
-4. Debug80 proposes an inferred entry source or asks the user to choose one.
+4. Debug80 proposes an inferred program file or asks the user to choose one.
 5. Debug80 creates config and launch.
 6. `F5` debugs the created target.
 
@@ -457,12 +457,12 @@ convenience layer only.
 - Add platform selection.
 - Add source language selection.
 - Add starter-file creation.
-- Ask for entry source only when inference is ambiguous.
+- Ask for program file only when inference is ambiguous.
 
 ### Phase 4: Add target and entry management
 
 - Add `Select Active Target`.
-- Add `Set Entry Source`.
+- Add `Set Program File`.
 - Persist project and target selection.
 
 ### Phase 5: Align `F5` with Debug80 context
