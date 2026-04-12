@@ -37,11 +37,11 @@ describe('platform-view idle html', () => {
     expect(html).toContain('Configured root detected (Workspace).');
     expect(html).toContain('Root: caverns80');
     expect(html).toContain('Target: app');
-    expect(html).toContain('Entry: src/main.asm');
+    expect(html).toContain('Program: src/main.asm');
     expect(html).toContain('Start Debugging');
     expect(html).toContain('Select Root');
     expect(html).not.toContain('Select Target');
-    expect(html).not.toContain('Set Entry Source');
+    expect(html).not.toContain('Set Program File');
     expect(html).toContain('open the Home tab for project controls');
     expect(html).toContain("script-src 'nonce-xyz789'");
     expect(html).toContain('Select a workspace root with');
