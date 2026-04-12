@@ -9,52 +9,13 @@
 </head>
 <body data-active-tab="{{activeTab}}">
 <div id="app" tabindex="0">
+    <div class="project-header" id="projectHeader">
+      <select class="project-select" id="homeRootSelect"></select>
+      <select class="project-select" id="homeTargetSelect"></select>
+    </div>
     <div class="tabs">
-      <button class="tab" data-tab="home">Home</button>
       <button class="tab" data-tab="ui">UI</button>
       <button class="tab" data-tab="memory">CPU</button>
-    </div>
-    <div class="panel panel-home" id="panel-home">
-      <div class="home-panel">
-        <div class="home-card">
-          <div class="home-kicker">DEBUG80 HOME</div>
-          <div class="home-controls">
-            <div class="home-control">
-              <label class="home-label" for="homeRootSelect">Root</label>
-              <div class="home-control-row">
-                <select class="home-select" id="homeRootSelect"></select>
-              </div>
-            </div>
-            <div class="home-control">
-              <label class="home-label" for="homeTargetSelect">Target</label>
-              <div class="home-control-row">
-                <select class="home-select" id="homeTargetSelect"></select>
-              </div>
-            </div>
-          </div>
-          <div class="home-status">
-            <div class="home-status-row">
-              <span class="home-label">Root</span>
-              <span class="home-value" id="homeRootName">No root selected</span>
-            </div>
-            <div class="home-status-row">
-              <span class="home-label">Project State</span>
-              <span class="home-value" id="homeProjectState">No Debug80 project in this root</span>
-            </div>
-            <div class="home-status-row">
-              <span class="home-label">Target</span>
-              <span class="home-value" id="homeTargetName">No target selected</span>
-            </div>
-            <div class="home-status-row">
-              <span class="home-label">Program</span>
-              <span class="home-value" id="homeEntrySource">No program file selected</span>
-            </div>
-          </div>
-        </div>
-        <p class="home-note">
-          Select a root, then select a target. Changing the target starts or restarts the debug session.
-        </p>
-      </div>
     </div>
     <div class="panel panel-ui" id="panel-ui">
       <div class="ui-controls" id="uiControls">
