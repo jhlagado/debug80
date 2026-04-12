@@ -108,14 +108,22 @@ export async function handleCommonPanelMessage<TTab extends string>(
       register: msg.register,
       value: msg.value,
     });
-    if (ok) {
+    if (!ok && ctx.isPanelVisible()) {
+      // Rehydrate from the runtime when the adapter rejects the write so the UI snaps back.
       void refreshSnapshot(
         ctx.refreshController.state,
         ctx.refreshController.handlers,
         ctx.refreshController.snapshotPayload(),
         { allowErrors: true }
       );
+      return true;
     }
+    void refreshSnapshot(
+      ctx.refreshController.state,
+      ctx.refreshController.handlers,
+      ctx.refreshController.snapshotPayload(),
+      { allowErrors: true }
+    );
     return true;
   }
   if (session?.type !== 'z80') {
