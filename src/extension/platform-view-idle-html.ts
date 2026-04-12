@@ -72,7 +72,7 @@ export function getPlatformViewIdleHtml(options: {
   const statusRows = [
     options.projectName !== undefined ? `<p style="margin: 6px 0 0; opacity: 0.85;">Root: ${options.projectName}</p>` : '',
     options.targetName !== undefined ? `<p style="margin: 4px 0 0; opacity: 0.85;">Target: ${options.targetName}</p>` : '',
-    options.entrySource !== undefined ? `<p style="margin: 4px 0 0; opacity: 0.85;">Entry: ${options.entrySource}</p>` : '',
+    options.entrySource !== undefined ? `<p style="margin: 4px 0 0; opacity: 0.85;">Program: ${options.entrySource}</p>` : '',
   ]
     .filter((row) => row.length > 0)
     .join('');

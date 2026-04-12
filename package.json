@@ -173,7 +173,7 @@
       },
       {
         "command": "debug80.setEntrySource",
-        "title": "Debug80: Set Entry Source"
+        "title": "Debug80: Set Program File"
       },
       {
         "command": "debug80.openRomSource",

@@ -417,10 +417,10 @@ export function registerExtensionCommands({
           await vscode.window.showQuickPick(
             candidates.map((candidate) => ({
               label: candidate,
-              ...(candidate === currentSource ? { description: 'current entry source' } : {}),
+              ...(candidate === currentSource ? { description: 'current program file' } : {}),
             })),
             {
-              placeHolder: 'Select the entry source for the active Debug80 target',
+              placeHolder: 'Select the program file for the active Debug80 target',
               matchOnDescription: true,
             }
           )
@@ -432,13 +432,13 @@ export function registerExtensionCommands({
 
       const updated = updateProjectTargetSource(projectConfig, target, picked);
       if (!updated) {
-        void vscode.window.showErrorMessage('Debug80: Failed to update the project entry source.');
+        void vscode.window.showErrorMessage('Debug80: Failed to update the project program file.');
         return undefined;
       }
 
       platformViewProvider.refreshIdleView();
       void vscode.window.showInformationMessage(
-        `Debug80: Set ${target} entry source to ${picked}.`
+        `Debug80: Set ${target} program file to ${picked}.`
       );
       return picked;
     })
