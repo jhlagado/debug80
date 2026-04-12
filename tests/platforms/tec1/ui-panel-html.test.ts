@@ -40,7 +40,7 @@ describe('tec1 ui-panel-html', () => {
     expect(html).toContain('homeTargetSelect');
     expect(html).toContain('project-header');
     expect(html).toContain('project-label');
-    expect(html).toContain('Root');
+    expect(html).toContain('Project');
     expect(html).toContain('Target');
     expect(html).not.toContain('panel-home');
     expect(html).not.toContain('Home');
