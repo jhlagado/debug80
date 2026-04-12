@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import { findProjectConfigPath } from './project-config';
+import { resolvePreferredTargetName } from './project-target-selection';
 
 const WORKSPACE_KEY = 'debug80.selectedWorkspace';
 const PROJECT_CONFIG_WATCH_GLOBS = ['**/.vscode/debug80.json', '**/debug80.json', '**/.debug80.json'];
@@ -16,6 +17,8 @@ export type ResolveWorkspaceFolderOptions = {
 };
 
 export class WorkspaceSelectionController {
+  private startupAutoStartAttempted = false;
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly platformViewProvider: PlatformViewProvider
@@ -24,6 +27,7 @@ export class WorkspaceSelectionController {
   registerInfrastructure(): void {
     this.updateHasProject();
     this.applySelectedWorkspace();
+    this.maybeAutoStartRememberedProject();
 
     PROJECT_CONFIG_WATCH_GLOBS.forEach((pattern) => {
       const configWatcher = vscode.workspace.createFileSystemWatcher(pattern);
@@ -166,5 +170,39 @@ export class WorkspaceSelectionController {
   private applySelectedWorkspace(): void {
     const selected = this.resolvePreferredWorkspace(false);
     this.platformViewProvider.setSelectedWorkspace(selected);
+  }
+
+  private maybeAutoStartRememberedProject(): void {
+    if (this.startupAutoStartAttempted) {
+      return;
+    }
+    this.startupAutoStartAttempted = true;
+
+    if (vscode.debug.activeDebugSession?.type === 'z80') {
+      return;
+    }
+
+    const selected = this.resolvePreferredWorkspace(true);
+    if (selected === undefined) {
+      return;
+    }
+
+    const projectConfigPath = findProjectConfigPath(selected);
+    if (projectConfigPath === undefined) {
+      return;
+    }
+
+    const preferredTarget = resolvePreferredTargetName(this.context.workspaceState, projectConfigPath);
+    if (preferredTarget === undefined) {
+      return;
+    }
+
+    void vscode.debug.startDebugging(selected, {
+      type: 'z80',
+      request: 'launch',
+      name: 'Debug80: Current Project',
+      projectConfig: projectConfigPath,
+      stopOnEntry: false,
+    });
   }
 }
