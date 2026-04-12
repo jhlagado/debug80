@@ -17,7 +17,7 @@ describe('platform-view idle html', () => {
       multiRoot: false,
     });
 
-    expect(html).toContain('Create a Debug80 root project to get started.');
+    expect(html).toContain('Create or select a Debug80 project root to get started.');
     expect(html).toContain('Create Project');
     expect(html).toContain('Select Root');
     expect(html).toContain("script-src 'nonce-abc123'");
@@ -40,8 +40,9 @@ describe('platform-view idle html', () => {
     expect(html).toContain('Entry: src/main.asm');
     expect(html).toContain('Start Debugging');
     expect(html).toContain('Select Root');
-    expect(html).toContain('Select Target');
-    expect(html).toContain('Set Entry Source');
+    expect(html).not.toContain('Select Target');
+    expect(html).not.toContain('Set Entry Source');
+    expect(html).toContain('open the Home tab for project controls');
     expect(html).toContain("script-src 'nonce-xyz789'");
     expect(html).toContain('Select a workspace root with');
   });
