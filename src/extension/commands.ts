@@ -231,33 +231,6 @@ export function registerExtensionCommands({
 
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
-
-        const projectConfig = findProjectConfigPath(folder);
-        if (projectConfig === undefined) {
-          void vscode.window.showInformationMessage(
-            `Debug80: Selected root ${folder.name}. This root does not contain a Debug80 project config.`
-          );
-          return folder;
-        }
-
-        const activeSession = vscode.debug.activeDebugSession;
-        if (activeSession?.type === 'z80') {
-          await vscode.debug.stopDebugging(activeSession);
-          const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
-          if (restarted) {
-            void vscode.window.showInformationMessage(
-              `Debug80: Switched to root ${folder.name} and restarted debugging.`
-            );
-          }
-          return folder;
-        }
-
-        const started = await startCurrentProjectDebugging(folder, workspaceSelection);
-        if (started) {
-          void vscode.window.showInformationMessage(
-            `Debug80: Selected root ${folder.name} and started debugging.`
-          );
-        }
         return folder;
       }
     )
