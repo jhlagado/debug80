@@ -40,8 +40,9 @@ describe('tec1g ui-panel-html', () => {
     expect(html).toContain('panel-home');
     expect(html).toContain('homeRootSelect');
     expect(html).toContain('homeTargetSelect');
-    expect(html).toContain('Quick Pick');
-    expect(html).toContain('Set Program File');
+    expect(html).not.toContain('Quick Pick');
+    expect(html).not.toContain('Set Program File');
+    expect(html).toContain('Select a root, then select a target. Changing the target starts or restarts the debug session.');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
