@@ -287,13 +287,13 @@ function setRootOptions(options: ProjectRootOption[], selectedRootPath?: string)
   const selected = options.find((option) => option.path === selectedRootPath) ?? options[0];
   selectProjectButton.disabled = false;
   selectProjectButton.textContent =
-    selected !== undefined ? `${selected.name} — ${selected.path}` : 'Select workspace root';
+    selected !== undefined ? selected.name : 'Select workspace root';
   selectProjectButton.title =
     selected === undefined
       ? 'Select workspace root'
       : selected.hasProject
-        ? 'Configured Debug80 project'
-        : 'No Debug80 project config';
+        ? `${selected.name} — ${selected.path}`
+        : `${selected.name} — ${selected.path} (no Debug80 project config)`;
 }
 
 function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: string): void {
@@ -310,7 +310,7 @@ function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: s
   for (const option of options) {
     const el = document.createElement('option');
     el.value = option.name;
-    el.textContent = option.description ? `${option.name} — ${option.description}` : option.name;
+    el.textContent = option.name;
     el.title = option.detail ?? option.description ?? option.name;
     homeTargetSelect.appendChild(el);
   }
