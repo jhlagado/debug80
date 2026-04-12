@@ -9,6 +9,7 @@ const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => u
   return { dispose: vi.fn() };
 });
 const existsSync = vi.fn();
+const readFileSync = vi.fn();
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
 const startDebugging = vi.fn();
@@ -17,6 +18,7 @@ const executeCommand = vi.fn();
 
 vi.mock('fs', () => ({
   existsSync,
+  readFileSync,
 }));
 
 vi.mock('vscode', () => ({
@@ -49,6 +51,14 @@ describe('registerExtensionCommands', () => {
     registeredCommands.clear();
     existsSync.mockImplementation(
       (candidate: string) => path.normalize(candidate) === projectConfigPath
+    );
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        targets: {
+          app: { sourceFile: 'src/main.asm' },
+          serial: { sourceFile: 'src/serial.asm' },
+        },
+      })
     );
   });
 
@@ -108,7 +118,10 @@ describe('registerExtensionCommands', () => {
     const resolveTarget = vi.fn().mockResolvedValue('serial');
 
     registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
+      } as never,
       platformViewProvider: { refreshIdleView: vi.fn() } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
@@ -119,6 +132,7 @@ describe('registerExtensionCommands', () => {
       } as never,
       targetSelection: {
         resolveTarget,
+        rememberTarget: vi.fn(),
       } as never,
     });
 
@@ -176,6 +190,46 @@ describe('registerExtensionCommands', () => {
     );
   });
 
+  it('uses a direct root selection without prompting', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const folder = {
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    };
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: false,
+      })
+    );
+  });
+
   it('auto-restarts an active z80 session after changing target', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');
@@ -202,6 +256,7 @@ describe('registerExtensionCommands', () => {
       } as never,
       targetSelection: {
         resolveTarget,
+        rememberTarget: vi.fn(),
       } as never,
     });
 
@@ -230,6 +285,39 @@ describe('registerExtensionCommands', () => {
         stopOnEntry: false,
       })
     );
+  });
+
+  it('uses a direct target selection without prompting', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    registerExtensionCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
+      } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget: vi.fn(),
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommands.get('debug80.selectTarget');
+    expect(selectTarget).toBeTypeOf('function');
+
+    const result = await selectTarget?.({
+      rootPath: '/workspace/tec1g-mon3',
+      targetName: 'serial',
+    });
+
+    expect(result).toBe('serial');
   });
 
   it('restarts the active z80 session against the current project target', async () => {
