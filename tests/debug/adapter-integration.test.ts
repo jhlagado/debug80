@@ -95,6 +95,22 @@ describe('adapter integration', () => {
     harness = undefined;
   });
 
+  it('initialize response advertises setVariable for native register editing', async () => {
+    const { client } = harness ?? createHarness();
+    const initResp = await client.sendRequest<{ body?: { supportsSetVariable?: boolean } }>(
+      'initialize',
+      {
+        adapterID: 'z80',
+        pathFormat: 'path',
+        linesStartAt1: true,
+        columnsStartAt1: true,
+      }
+    );
+    expect(initResp.body?.supportsSetVariable).toBe(true);
+    await client.waitForEvent('initialized');
+    await client.sendRequest('disconnect');
+  });
+
   it('launches from discovered workspace config when projectConfig is omitted', async () => {
     const { client } = harness ?? createHarness();
 
