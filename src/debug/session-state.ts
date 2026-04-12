@@ -57,6 +57,7 @@ export interface RunState {
   stopOnEntry: boolean;
   launchComplete: boolean;
   configurationDone: boolean;
+  isRunning: boolean;
   haltNotified: boolean;
   lastStopReason: StopReason | undefined;
   lastBreakpointAddress: number | null;
@@ -96,6 +97,7 @@ export function createSessionState(): SessionStateShape {
       stopOnEntry: false,
       launchComplete: false,
       configurationDone: false,
+      isRunning: false,
       haltNotified: false,
       lastStopReason: undefined,
       lastBreakpointAddress: null,

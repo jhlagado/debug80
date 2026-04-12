@@ -11,6 +11,15 @@ export type MemoryViewEntry = {
 
 type RegisterData = Record<string, number | string | undefined>;
 
+type RegisterItem = {
+  label: string;
+  value: string;
+  width?: number;
+  editable?: boolean;
+  register?: string;
+  flags?: boolean;
+};
+
 type SnapshotView = {
   id: string;
   address?: number;
@@ -161,38 +170,87 @@ export class MemoryPanel {
     if (!this.options.registerStrip || !data) {
       return;
     }
-    const items = [
-      { label: 'AF', value: formatHex((data.af as number) || 0, 4) },
-      { label: 'BC', value: formatHex((data.bc as number) || 0, 4) },
-      { label: 'DE', value: formatHex((data.de as number) || 0, 4) },
-      { label: 'HL', value: formatHex((data.hl as number) || 0, 4) },
-      { label: "AF'", value: formatHex((data.afp as number) || 0, 4) },
-      { label: "BC'", value: formatHex((data.bcp as number) || 0, 4) },
-      { label: "DE'", value: formatHex((data.dep as number) || 0, 4) },
-      { label: "HL'", value: formatHex((data.hlp as number) || 0, 4) },
-      { label: 'PC', value: formatHex((data.pc as number) || 0, 4) },
-      { label: 'SP', value: formatHex((data.sp as number) || 0, 4) },
-      { label: 'IX', value: formatHex((data.ix as number) || 0, 4) },
-      { label: 'IY', value: formatHex((data.iy as number) || 0, 4) },
+    const items: RegisterItem[] = [
+      { label: 'BC', register: 'bc', value: formatRegisterHex((data.bc as number) || 0, 4), width: 4, editable: true },
+      { label: 'DE', register: 'de', value: formatRegisterHex((data.de as number) || 0, 4), width: 4, editable: true },
+      { label: 'HL', register: 'hl', value: formatRegisterHex((data.hl as number) || 0, 4), width: 4, editable: true },
+      { label: "BC'", register: 'bcp', value: formatRegisterHex((data.bcp as number) || 0, 4), width: 4, editable: true },
+      { label: "DE'", register: 'dep', value: formatRegisterHex((data.dep as number) || 0, 4), width: 4, editable: true },
+      { label: "HL'", register: 'hlp', value: formatRegisterHex((data.hlp as number) || 0, 4), width: 4, editable: true },
+      { label: 'PC', register: 'pc', value: formatRegisterHex((data.pc as number) || 0, 4), width: 4, editable: true },
+      { label: 'SP', register: 'sp', value: formatRegisterHex((data.sp as number) || 0, 4), width: 4, editable: true },
+      { label: 'IX', register: 'ix', value: formatRegisterHex((data.ix as number) || 0, 4), width: 4, editable: true },
+      { label: 'IY', register: 'iy', value: formatRegisterHex((data.iy as number) || 0, 4), width: 4, editable: true },
+      { label: 'AF', value: formatRegisterHex((data.af as number) || 0, 4), width: 4 },
+      { label: "AF'", value: formatRegisterHex((data.afp as number) || 0, 4), width: 4 },
       { label: 'F', value: (data.flags as string) || '--', flags: true },
       { label: "F'", value: (data.flagsPrime as string) || '--', flags: true },
-      { label: 'I', value: formatHex((data.i as number) || 0, 2) },
-      { label: 'R', value: formatHex((data.r as number) || 0, 2) },
+      { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
+      { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
     ];
-    this.options.registerStrip.innerHTML = items
-      .map((item) => {
-        const valueClass = item.flags ? 'register-flags' : 'register-value';
-        return (
-          '<div class="register-item"><span class="register-label">' +
-          item.label +
-          '</span><span class="' +
-          valueClass +
-          '">' +
-          item.value +
-          '</span></div>'
-        );
-      })
-      .join('');
+    this.options.registerStrip.innerHTML = '';
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'register-item' + (item.editable ? ' editable' : '');
+      const label = document.createElement('span');
+      label.className = 'register-label';
+      label.textContent = item.label;
+      row.appendChild(label);
+      if (item.editable && item.register !== undefined && item.width !== undefined) {
+        const input = document.createElement('input');
+        input.className = 'register-input';
+        input.type = 'text';
+        input.value = item.value;
+        input.spellcheck = false;
+        input.autocomplete = 'off';
+        input.inputMode = 'text';
+        input.maxLength = item.width;
+        input.dataset.register = item.register;
+        input.dataset.width = String(item.width);
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            input.blur();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            input.value = item.value;
+            input.blur();
+          }
+        });
+        input.addEventListener('blur', () => {
+          void this.commitRegisterEdit(input, item.value);
+        });
+        row.appendChild(input);
+      } else {
+        const value = document.createElement('span');
+        value.className = item.flags ? 'register-flags' : 'register-value';
+        value.textContent = item.value;
+        row.appendChild(value);
+      }
+      this.options.registerStrip?.appendChild(row);
+    });
+  }
+
+  private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
+    const register = input.dataset.register;
+    const width = Number.parseInt(input.dataset.width ?? '', 10);
+    const value = normalizeHexInput(input.value, width);
+    if (!register || value === null) {
+      input.value = previousValue;
+      if (this.options.statusEl) {
+        this.options.statusEl.textContent = 'Register edit failed';
+      }
+      return;
+    }
+    if (value === previousValue) {
+      return;
+    }
+    input.value = value;
+    this.options.vscode.postMessage({
+      type: 'registerEdit',
+      register,
+      value,
+    });
   }
 
   private renderViews(views: SnapshotView[]): void {
@@ -218,8 +276,23 @@ export class MemoryPanel {
   }
 }
 
+function formatRegisterHex(value: number, width: number): string {
+  return value.toString(16).toUpperCase().padStart(width, '0');
+}
+
 function formatHex(value: number, width: number): string {
   return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
+}
+
+function normalizeHexInput(value: string, width: number): string | null {
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed.length === 0 || trimmed.startsWith('0X')) {
+    return null;
+  }
+  if (!/^[0-9A-F]+$/.test(trimmed) || trimmed.length > width) {
+    return null;
+  }
+  return trimmed.padStart(width, '0');
 }
 
 function renderDump(

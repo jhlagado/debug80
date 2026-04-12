@@ -41,6 +41,8 @@ function createController() {
       setCallDepth: () => undefined,
       getPauseRequested: () => false,
       setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
       getSkipBreakpointOnce: () => null,
       setSkipBreakpointOnce: () => undefined,
       getHaltNotified: () => false,
