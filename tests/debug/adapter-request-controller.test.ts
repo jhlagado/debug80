@@ -2,9 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('vscode', () => ({}));
 
+import { Handles } from '@vscode/debugadapter';
 import { AdapterRequestController } from '../../src/debug/adapter-request-controller';
 import { createSessionState } from '../../src/debug/session-state';
 import * as runtimeControl from '../../src/debug/runtime-control';
+import { VariableService } from '../../src/debug/variable-service';
+import { createZ80Runtime } from '../../src/z80/runtime';
 
 function createController() {
   const sessionState = createSessionState();
@@ -94,5 +97,98 @@ describe('adapter-request-controller startup sequencing', () => {
     controller.startConfiguredExecutionIfReady();
 
     expect(runUntilStopSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('AdapterRequestController setVariableRequest', () => {
+  it('updates a writable register and returns the formatted value', () => {
+    const sessionState = createSessionState();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    sessionState.runState.isRunning = false;
+
+    const handles = new Handles<string>();
+    const variableService = new VariableService(handles);
+    const registersRef = variableService.createScopes()[0]?.variablesReference ?? 0;
+
+    const deps = {
+      threadId: 1,
+      breakpointManager: {
+        setPending: vi.fn(),
+        applyForSource: vi.fn(),
+        rebuild: vi.fn(),
+        hasAddress: vi.fn(() => false),
+      },
+      sourceState: {} as never,
+      sessionState,
+      platformState: { active: 'simple' },
+      variableService,
+      commandRouter: { handle: vi.fn(() => false) } as never,
+      platformRegistry: { clear: vi.fn(), getHandler: vi.fn() } as never,
+      sendResponse: vi.fn(),
+      sendErrorResponse: vi.fn(),
+      sendEvent: vi.fn(),
+      getRuntimeControlContext: vi.fn(),
+    };
+
+    const controller = new AdapterRequestController(deps as never);
+    controller.setVariableRequest({} as never, {
+      variablesReference: registersRef,
+      name: 'DE',
+      value: '0x0102',
+    });
+
+    expect(deps.sendErrorResponse).not.toHaveBeenCalled();
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    const responseArg = deps.sendResponse.mock.calls[0]?.[0] as { body?: { value?: string } };
+    expect(responseArg.body?.value).toBe('0x0102');
+    const cpu = sessionState.runtime.getRegisters();
+    expect(cpu.d).toBe(0x01);
+    expect(cpu.e).toBe(0x02);
+  });
+
+  it('rejects setVariable for read-only register names', () => {
+    const sessionState = createSessionState();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    sessionState.runState.isRunning = false;
+
+    const handles = new Handles<string>();
+    const variableService = new VariableService(handles);
+    const registersRef = variableService.createScopes()[0]?.variablesReference ?? 0;
+
+    const deps = {
+      threadId: 1,
+      breakpointManager: {
+        setPending: vi.fn(),
+        applyForSource: vi.fn(),
+        rebuild: vi.fn(),
+        hasAddress: vi.fn(() => false),
+      },
+      sourceState: {} as never,
+      sessionState,
+      platformState: { active: 'simple' },
+      variableService,
+      commandRouter: { handle: vi.fn(() => false) } as never,
+      platformRegistry: { clear: vi.fn(), getHandler: vi.fn() } as never,
+      sendResponse: vi.fn(),
+      sendErrorResponse: vi.fn(),
+      sendEvent: vi.fn(),
+      getRuntimeControlContext: vi.fn(),
+    };
+
+    const controller = new AdapterRequestController(deps as never);
+    controller.setVariableRequest({} as never, {
+      variablesReference: registersRef,
+      name: 'AF',
+      value: '0x0000',
+    });
+
+    expect(deps.sendResponse).not.toHaveBeenCalled();
+    expect(deps.sendErrorResponse).toHaveBeenCalledTimes(1);
   });
 });
