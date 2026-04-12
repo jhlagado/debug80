@@ -12,8 +12,8 @@ export type PlatformViewMessage = {
 
 export interface PlatformViewMessageDependencies {
   handleCreateProject: () => PromiseLike<void>;
-  handleSelectProject: () => PromiseLike<void>;
-  handleSelectTarget: () => PromiseLike<void>;
+  handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
+  handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
@@ -36,11 +36,22 @@ export async function handlePlatformViewMessage(
     return;
   }
   if (msg?.type === 'selectProject') {
-    await deps.handleSelectProject();
+    await deps.handleSelectProject(
+      typeof msg.rootPath === 'string' && msg.rootPath.length > 0
+        ? { rootPath: msg.rootPath }
+        : undefined
+    );
     return;
   }
   if (msg?.type === 'selectTarget') {
-    await deps.handleSelectTarget();
+    await deps.handleSelectTarget({
+      ...(typeof msg.rootPath === 'string' && msg.rootPath.length > 0
+        ? { rootPath: msg.rootPath }
+        : {}),
+      ...(typeof msg.targetName === 'string' && msg.targetName.length > 0
+        ? { targetName: msg.targetName }
+        : {}),
+    });
     return;
   }
   if (msg?.type === 'restartDebug') {

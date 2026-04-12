@@ -26,8 +26,11 @@ describe('platform-view message routing', () => {
     const deps = createDependencies('simple');
 
     await handlePlatformViewMessage({ type: 'createProject' }, deps);
-    await handlePlatformViewMessage({ type: 'selectProject' }, deps);
-    await handlePlatformViewMessage({ type: 'selectTarget' }, deps);
+    await handlePlatformViewMessage({ type: 'selectProject', rootPath: '/workspace/a' }, deps);
+    await handlePlatformViewMessage(
+      { type: 'selectTarget', rootPath: '/workspace/a', targetName: 'app' },
+      deps
+    );
     await handlePlatformViewMessage({ type: 'restartDebug' }, deps);
     await handlePlatformViewMessage({ type: 'setEntrySource' }, deps);
     await handlePlatformViewMessage({ type: 'startDebug' }, deps);
@@ -35,8 +38,11 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'serialSave', text: 'hello' }, deps);
 
     expect(deps.handleCreateProject).toHaveBeenCalledTimes(1);
-    expect(deps.handleSelectProject).toHaveBeenCalledTimes(1);
-    expect(deps.handleSelectTarget).toHaveBeenCalledTimes(1);
+    expect(deps.handleSelectProject).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
+    expect(deps.handleSelectTarget).toHaveBeenCalledWith({
+      rootPath: '/workspace/a',
+      targetName: 'app',
+    });
     expect(deps.handleRestartDebug).toHaveBeenCalledTimes(1);
     expect(deps.handleSetEntrySource).toHaveBeenCalledTimes(1);
     expect(deps.handleStartDebug).toHaveBeenCalledTimes(1);

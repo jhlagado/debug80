@@ -35,16 +35,29 @@ import {
 } from '../platforms/tec1g/ui-panel-state';
 import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTec1gSerialBuffer, createSerialBuffer as createTec1gSerialBuffer } from '../platforms/tec1g/ui-panel-serial';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
+import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { getPlatformViewIdleHtml } from './platform-view-idle-html';
+import { findProjectConfigPath } from './project-config';
 
 type PlatformId = 'tec1' | 'tec1g' | 'simple';
 
 type ProjectStatusPayload = {
   rootName?: string;
+  rootPath?: string;
   hasProject?: boolean;
   targetName?: string;
   entrySource?: string;
+  roots: Array<{
+    name: string;
+    path: string;
+    hasProject: boolean;
+  }>;
+  targets: Array<{
+    name: string;
+    description?: string;
+    detail?: string;
+  }>;
 };
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
@@ -309,11 +322,16 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         return;
       }
       if (msg?.type === 'selectProject') {
-        await vscode.commands.executeCommand('debug80.selectWorkspaceFolder');
+        await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', {
+          rootPath: (msg as { rootPath?: string }).rootPath,
+        });
         return;
       }
       if (msg?.type === 'selectTarget') {
-        await vscode.commands.executeCommand('debug80.selectTarget');
+        await vscode.commands.executeCommand('debug80.selectTarget', {
+          rootPath: (msg as { rootPath?: string }).rootPath,
+          targetName: (msg as { targetName?: string }).targetName,
+        });
         return;
       }
       if (msg?.type === 'setEntrySource') {
@@ -454,24 +472,41 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getProjectStatusPayload(): ProjectStatusPayload {
+    const roots = (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+      name: folder.name,
+      path: folder.uri.fsPath,
+      hasProject: this.selectedWorkspace?.uri.fsPath === folder.uri.fsPath
+        ? this.hasProject
+        : findProjectConfigPath(folder) !== undefined,
+    }));
     const folder = this.selectedWorkspace;
     if (folder === undefined) {
-      return {};
+      return {
+        roots,
+        targets: [],
+      };
     }
 
+    const projectConfigPath = findProjectConfigPath(folder);
     const projectStatus =
       this.workspaceState !== undefined
         ? resolveProjectStatusSummary(this.workspaceState, folder)
         : undefined;
-    if (projectStatus === undefined) {
+    if (projectStatus === undefined || projectConfigPath === undefined) {
       return {
+        roots,
+        targets: [],
         rootName: folder.name,
+        rootPath: folder.uri.fsPath,
         hasProject: false,
       };
     }
 
     return {
+      roots,
+      targets: listProjectTargetChoices(projectConfigPath),
       rootName: folder.name,
+      rootPath: folder.uri.fsPath,
       hasProject: true,
       ...(projectStatus.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
       ...(projectStatus.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
