@@ -16,7 +16,7 @@ export type Tec1gMessage = PanelMessage & {
 /**
  * Context required for TEC-1G message handling.
  */
-export type MessageContext = PanelMessageContext<'home' | 'ui' | 'memory'>;
+export type MessageContext = PanelMessageContext<'ui' | 'memory'>;
 
 /**
  * Handles inbound webview messages for the TEC-1G panel.
