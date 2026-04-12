@@ -155,7 +155,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.reveal(options?.focus ?? false);
     }
     this.renderCurrentView(true);
-    this.postProjectStatus();
   }
 
   setTec1gUiVisibility(visibility: Record<string, boolean> | undefined, persist = false): void {
@@ -405,6 +404,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     if (this.currentPlatform === 'tec1') {
       this.view.webview.html = getTec1Html(this.tec1ActiveTab, this.view.webview, this.extensionUri);
+      this.postProjectStatus();
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
@@ -423,6 +423,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     if (this.currentPlatform === 'tec1g') {
       this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
+      this.postProjectStatus();
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
