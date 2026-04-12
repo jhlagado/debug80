@@ -238,7 +238,7 @@ async function chooseEntrySource(
     placeHolder:
       sourceFiles.length === 0
         ? 'Create a starter source file for this Debug80 project'
-        : 'Choose the entry source for this Debug80 project',
+        : 'Choose the program file for this Debug80 project',
     matchOnDescription: true,
   });
   return picked?.choice;

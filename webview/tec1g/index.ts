@@ -373,7 +373,7 @@ function applyProjectStatus(payload: {
     payload.rootName ? 'No Debug80 project in this root' : 'No root selected'
   );
   setHomeValue(homeTargetName, payload.targetName, 'No target selected');
-  setHomeValue(homeEntrySource, payload.entrySource, 'No entry source selected');
+  setHomeValue(homeEntrySource, payload.entrySource, 'No program file selected');
 }
 
 applyProjectStatus({});

@@ -239,7 +239,7 @@ export class ProjectTargetSelectionController {
     if (picked.applyEntrySource !== undefined) {
       const ok = updateProjectTargetSource(projectConfigPath, picked.targetName, picked.applyEntrySource);
       if (!ok) {
-        void vscode.window.showErrorMessage('Debug80: Failed to update the project entry source.');
+        void vscode.window.showErrorMessage('Debug80: Failed to update the project program file.');
         return null;
       }
       this.rememberTarget(projectConfigPath, picked.targetName);

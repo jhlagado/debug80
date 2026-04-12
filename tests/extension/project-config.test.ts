@@ -78,7 +78,7 @@ describe('project-config helpers', () => {
     expect(pkg.debug80?.targets?.app?.assembler).toBe('zax');
   });
 
-  it('sets assembler to zax when entry source is .zax and syncs asm', () => {
+  it('sets assembler to zax when program file is .zax and syncs asm', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-entry-'));
     const configPath = path.join(root, 'debug80.json');
     fs.writeFileSync(

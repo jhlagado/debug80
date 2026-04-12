@@ -7,7 +7,7 @@ import { resolveProjectStatusSummary } from '../../src/extension/project-status'
 vi.mock('vscode', () => ({}));
 
 describe('project-status', () => {
-  it('resolves the selected project target and entry source', () => {
+  it('resolves the selected project target and program file', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
     fs.mkdirSync(path.join(root, '.vscode'), { recursive: true });
     fs.writeFileSync(
