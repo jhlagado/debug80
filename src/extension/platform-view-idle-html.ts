@@ -27,6 +27,7 @@ export function getPlatformViewIdleHtml(options: {
   nonce?: string;
 }): string {
   const nonce = options.nonce ?? createPlatformViewNonce();
+  void nonce;
 
   if (!options.hasProject) {
     return `<!DOCTYPE html>
@@ -34,31 +35,12 @@ export function getPlatformViewIdleHtml(options: {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+        content="default-src 'none'; style-src 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Create or select a Debug80 project root to get started.</p>
-  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-    <button id="createProject" style="padding: 6px 10px; font-size: 12px;">Create Project</button>
-    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
-  </div>
-  <script nonce="${nonce}">
-    (function () {
-      const vscode = acquireVsCodeApi();
-      const bind = (id, type) => {
-        const button = document.getElementById(id);
-        if (button) {
-          button.addEventListener('click', () => {
-            vscode.postMessage({ type });
-          });
-        }
-      };
-      bind('createProject', 'createProject');
-      bind('selectProject', 'selectProject');
-    }());
-  </script>
+  <p style="opacity: 0.7;">Open the Home tab to select a project root and target.</p>
 </body>
 </html>`;
   }
@@ -82,33 +64,14 @@ export function getPlatformViewIdleHtml(options: {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+        content="default-src 'none'; style-src 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Configured root detected (${selectedLabel}). Use Start Debugging or open the Home tab for project controls.</p>
+  <p style="opacity: 0.7;">Configured root detected (${selectedLabel}). Open the Home tab to review the selected root and target.</p>
   ${statusRows}
-  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-    <button id="startDebug" style="padding: 6px 10px; font-size: 12px;">Start Debugging</button>
-    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
-  </div>
   ${selectionHint ? `<p style="opacity: 0.7;">${selectionHint}</p>` : ''}
-  <script nonce="${nonce}">
-    (function () {
-      const vscode = acquireVsCodeApi();
-      const bind = (id, type) => {
-        const button = document.getElementById(id);
-        if (button) {
-          button.addEventListener('click', () => {
-            vscode.postMessage({ type });
-          });
-        }
-      };
-      bind('startDebug', 'startDebug');
-      bind('selectProject', 'selectProject');
-    }());
-  </script>
 </body>
 </html>`;
 }
