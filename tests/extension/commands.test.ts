@@ -158,6 +158,7 @@ describe('registerExtensionCommands', () => {
       index: 0,
     };
     const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+    const rememberWorkspace = vi.fn();
 
     registerExtensionCommands({
       context: { subscriptions: [] } as never,
@@ -166,7 +167,7 @@ describe('registerExtensionCommands', () => {
       terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
-        rememberWorkspace: vi.fn(),
+        rememberWorkspace,
         selectWorkspaceFolder,
       } as never,
       targetSelection: {} as never,
@@ -188,6 +189,7 @@ describe('registerExtensionCommands', () => {
         stopOnEntry: false,
       })
     );
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
   });
 
   it('uses a direct root selection without prompting', async () => {
@@ -204,6 +206,7 @@ describe('registerExtensionCommands', () => {
       platformViewProvider: { refreshIdleView: vi.fn() } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
+      workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
@@ -219,6 +222,7 @@ describe('registerExtensionCommands', () => {
     const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
 
     expect(result).toEqual(folder);
+    expect(startDebugging).toHaveBeenCalled();
     expect(startDebugging).toHaveBeenCalledWith(
       expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
       expect.objectContaining({
@@ -228,6 +232,41 @@ describe('registerExtensionCommands', () => {
         stopOnEntry: false,
       })
     );
+  });
+
+  it('remembers a direct root selection even when no project config exists', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+    const vscode = await import('vscode');
+
+    const folder = {
+      name: 'notes',
+      uri: { fsPath: '/workspace/notes' },
+      index: 0,
+    };
+    (vscode.workspace as { workspaceFolders?: Array<{ name: string; uri: { fsPath: string }; index: number }> }).workspaceFolders = [folder];
+    const rememberWorkspace = vi.fn();
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(startDebugging).not.toHaveBeenCalled();
   });
 
   it('auto-restarts an active z80 session after changing target', async () => {
@@ -289,6 +328,14 @@ describe('registerExtensionCommands', () => {
 
   it('uses a direct target selection without prompting', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
+    const vscode = await import('vscode');
+    (vscode.workspace as { workspaceFolders?: Array<{ name: string; uri: { fsPath: string }; index: number }> }).workspaceFolders = [
+      {
+        name: 'tec1g-mon3',
+        uri: { fsPath: '/workspace/tec1g-mon3' },
+        index: 0,
+      },
+    ];
 
     registerExtensionCommands({
       context: {
