@@ -18,6 +18,22 @@
       <div class="home-panel">
         <div class="home-card">
           <div class="home-kicker">DEBUG80 HOME</div>
+          <div class="home-controls">
+            <div class="home-control">
+              <label class="home-label" for="homeRootSelect">Root</label>
+              <div class="home-control-row">
+                <select class="home-select" id="homeRootSelect"></select>
+                <button class="session-button session-button-fallback" id="selectProject">Quick Pick</button>
+              </div>
+            </div>
+            <div class="home-control">
+              <label class="home-label" for="homeTargetSelect">Target</label>
+              <div class="home-control-row">
+                <select class="home-select" id="homeTargetSelect"></select>
+                <button class="session-button session-button-fallback" id="selectTarget">Quick Pick</button>
+              </div>
+            </div>
+          </div>
           <div class="home-status">
             <div class="home-status-row">
               <span class="home-label">Root</span>
@@ -38,12 +54,10 @@
           </div>
         </div>
         <div class="home-actions">
-          <button class="session-button" id="selectProject">Select Root</button>
-          <button class="session-button" id="selectTarget">Select Target</button>
           <button class="session-button" id="setEntrySource">Set Entry Source</button>
         </div>
         <p class="home-note">
-          Debug80 follows workspace roots. Select a configured root and target here, then use the UI and CPU tabs while the session runs.
+          Debug80 follows workspace roots. Use the selectors above to switch roots and targets directly, or use Quick Pick when you need the full picker flow.
         </p>
       </div>
     </div>

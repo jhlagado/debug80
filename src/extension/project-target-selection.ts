@@ -36,6 +36,8 @@ type LoadedTargetChoices = {
   defaultTarget?: string;
 };
 
+export type ProjectTargetChoice = TargetChoice;
+
 export function getStoredTargetName(
   workspaceState: vscode.Memento,
   projectConfigPath: string
@@ -66,6 +68,10 @@ export function resolvePreferredTargetName(
   }
 
   return undefined;
+}
+
+export function listProjectTargetChoices(projectConfigPath: string): ProjectTargetChoice[] {
+  return loadTargetChoices(projectConfigPath).choices;
 }
 
 function appendEntrySourceSection(

@@ -38,8 +38,9 @@ describe('tec1 ui-panel-html', () => {
     const html = getTec1Html('home', webview, extensionUri);
     expect(html).toContain('Home');
     expect(html).toContain('panel-home');
-    expect(html).toContain('Select Root');
-    expect(html).toContain('Select Target');
+    expect(html).toContain('homeRootSelect');
+    expect(html).toContain('homeTargetSelect');
+    expect(html).toContain('Quick Pick');
     expect(html).toContain('Set Entry Source');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
