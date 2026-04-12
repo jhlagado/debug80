@@ -69,6 +69,7 @@ export function registerDebugSessionHandlers({
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === 'z80') {
         assemblyDiagnostics.clear();
+        platformViewProvider.setSessionStatus('starting');
         sessionState.activeZ80Sessions.add(session.id);
         terminalPanel.clear();
         platformViewProvider.clear();
@@ -167,6 +168,19 @@ export function registerDebugSessionHandlers({
               sessionState.romSourcesOpenedSessions.add(evt.session.id);
             }
           });
+        }
+        return;
+      }
+      if (evt.event === 'debug80/sessionStatus') {
+        const body = evt.body as { status?: string } | undefined;
+        const status = body?.status;
+        if (
+          status === 'starting' ||
+          status === 'running' ||
+          status === 'paused' ||
+          status === 'not running'
+        ) {
+          platformViewProvider.setSessionStatus(status);
         }
         return;
       }
