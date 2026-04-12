@@ -7,7 +7,7 @@ import { createMatrixUiController } from './matrix-ui';
 import { wireTec1gSerialUi } from './serial-ui';
 import { createVisibilityController } from './visibility-controller';
 
-type PanelTab = 'home' | 'ui' | 'memory';
+type PanelTab = 'ui' | 'memory';
 type SpeedMode = 'slow' | 'fast';
 type AudioContextCtor = typeof AudioContext;
 
@@ -99,15 +99,9 @@ const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
-    : document.body.dataset.activeTab === 'ui'
-      ? 'ui'
-      : 'home';
+    : 'ui';
 const homeRootSelect = document.getElementById('homeRootSelect') as HTMLSelectElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
-const homeRootName = document.getElementById('homeRootName') as HTMLElement | null;
-const homeProjectState = document.getElementById('homeProjectState') as HTMLElement | null;
-const homeTargetName = document.getElementById('homeTargetName') as HTMLElement | null;
-const homeEntrySource = document.getElementById('homeEntrySource') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -119,7 +113,6 @@ const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
-const panelHome = document.getElementById('panel-home') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
@@ -137,7 +130,7 @@ for (let i = 0; i < DIGITS; i++) {
 }
 
 let activeTab: PanelTab =
-  DEFAULT_TAB === 'memory' ? 'memory' : DEFAULT_TAB === 'ui' ? 'ui' : 'home';
+  DEFAULT_TAB === 'memory' ? 'memory' : 'ui';
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
 const matrixUi = createMatrixUiController(vscode, () => activeTab === 'ui');
@@ -190,10 +183,7 @@ function scheduleMemoryResize(): void {
 }
 
 function setTab(tab: string, notify: boolean): void {
-  activeTab = tab === 'memory' ? 'memory' : tab === 'ui' ? 'ui' : 'home';
-  if (panelHome) {
-    panelHome.classList.toggle('active', activeTab === 'home');
-  }
+  activeTab = tab === 'memory' ? 'memory' : 'ui';
   if (panelUi) {
     panelUi.classList.toggle('active', activeTab === 'ui');
   }
@@ -332,33 +322,15 @@ function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: s
   homeTargetSelect.value = selectedTargetName ?? '';
 }
 
-function setHomeValue(node: HTMLElement | null, value: string | undefined, fallback: string): void {
-  if (!node) {
-    return;
-  }
-  node.textContent = value !== undefined && value !== '' ? value : fallback;
-}
-
 function applyProjectStatus(payload: {
-  rootName?: string;
   rootPath?: string;
-  hasProject?: boolean;
-  targetName?: string;
-  entrySource?: string;
   roots?: ProjectRootOption[];
   targets?: ProjectTargetOption[];
+  targetName?: string;
 }): void {
   currentRootPath = payload.rootPath ?? '';
   setRootOptions(payload.roots ?? [], currentRootPath);
   setTargetOptions(payload.targets ?? [], payload.targetName);
-  setHomeValue(homeRootName, payload.rootName, 'No root selected');
-  setHomeValue(
-    homeProjectState,
-    payload.hasProject ? 'Configured Debug80 project' : undefined,
-    payload.rootName ? 'No Debug80 project in this root' : 'No root selected'
-  );
-  setHomeValue(homeTargetName, payload.targetName, 'No target selected');
-  setHomeValue(homeEntrySource, payload.entrySource, 'No program file selected');
 }
 
 applyProjectStatus({});

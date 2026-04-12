@@ -8,107 +8,21 @@ body {
     #app {
       outline: none;
     }
-    .home-panel {
+    .project-header {
       display: flex;
-      flex-direction: column;
       gap: 8px;
-    }
-    .home-card {
-      padding: 14px;
-      border: 1px solid #333;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #141414 0%, #101010 100%);
-    }
-    .home-kicker {
-      margin-bottom: 10px;
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      color: #bcbcbc;
-    }
-    .home-status {
-      display: grid;
-      gap: 8px;
-    }
-    .home-controls {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .home-control {
-      display: grid;
-      gap: 6px;
-    }
-    .home-control-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
+      margin-bottom: 8px;
       align-items: center;
     }
-    .home-select {
-      width: 100%;
+    .project-select {
+      flex: 1;
       min-width: 0;
-      border: 1px solid #4a4a4a;
-      border-radius: 8px;
+      border: 1px solid #333;
+      border-radius: 6px;
       background: #1b1b1b;
       color: #f0f0f0;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-    .home-status-row {
-      display: grid;
-      grid-template-columns: minmax(88px, 120px) 1fr;
-      gap: 12px;
-      align-items: baseline;
-    }
-    .home-label {
+      padding: 4px 6px;
       font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #9a9a9a;
-    }
-    .home-value {
-      color: #f0f0f0;
-      word-break: break-word;
-    }
-    .home-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .home-note {
-      margin: 0;
-      color: #bcbcbc;
-      line-height: 1.4;
-    }
-    .session-button {
-      appearance: none;
-      border: 1px solid #4a4a4a;
-      border-radius: 8px;
-      background: #232323;
-      color: #f0f0f0;
-      padding: 6px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .session-button:hover {
-      background: #2d2d2d;
-    }
-    .session-button-fallback {
-      white-space: nowrap;
-    }
-    .session-button-primary {
-      background: #3b4b1c;
-      border-color: #637b2a;
-      color: #f6ffd8;
-    }
-    .session-button-primary:hover {
-      background: #465924;
-    }
-    @media (max-width: 640px) {
-      .home-status-row {
-        grid-template-columns: 1fr;
-        gap: 4px;
-      }
     }
     .layout {
       display: grid;
