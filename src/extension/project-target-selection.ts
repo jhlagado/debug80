@@ -129,6 +129,10 @@ export class ProjectTargetSelectionController {
     void this.context.workspaceState.update(targetKeyFor(projectConfigPath), targetName);
   }
 
+  clearTarget(projectConfigPath: string): void {
+    void this.context.workspaceState.update(targetKeyFor(projectConfigPath), undefined);
+  }
+
   async resolveTarget(
     projectConfigPath: string,
     options: ResolveTargetOptions = {}

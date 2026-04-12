@@ -39,26 +39,7 @@ export function getPlatformViewIdleHtml(options: {
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Create or select a Debug80 project root to get started.</p>
-  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-    <button id="createProject" style="padding: 6px 10px; font-size: 12px;">Create Project</button>
-    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
-  </div>
-  <script nonce="${nonce}">
-    (function () {
-      const vscode = acquireVsCodeApi();
-      const bind = (id, type) => {
-        const button = document.getElementById(id);
-        if (button) {
-          button.addEventListener('click', () => {
-            vscode.postMessage({ type });
-          });
-        }
-      };
-      bind('createProject', 'createProject');
-      bind('selectProject', 'selectProject');
-    }());
-  </script>
+  <p style="opacity: 0.7;">Open the Home tab to choose a root and target.</p>
 </body>
 </html>`;
   }
@@ -87,28 +68,9 @@ export function getPlatformViewIdleHtml(options: {
 </head>
 <body style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
   <p>Debug80</p>
-  <p style="opacity: 0.7;">Configured root detected (${selectedLabel}). Use Start Debugging or open the Home tab for project controls.</p>
+  <p style="opacity: 0.7;">Configured root detected (${selectedLabel}). Open the Home tab to choose a target.</p>
   ${statusRows}
-  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-    <button id="startDebug" style="padding: 6px 10px; font-size: 12px;">Start Debugging</button>
-    <button id="selectProject" style="padding: 6px 10px; font-size: 12px;">Select Root</button>
-  </div>
   ${selectionHint ? `<p style="opacity: 0.7;">${selectionHint}</p>` : ''}
-  <script nonce="${nonce}">
-    (function () {
-      const vscode = acquireVsCodeApi();
-      const bind = (id, type) => {
-        const button = document.getElementById(id);
-        if (button) {
-          button.addEventListener('click', () => {
-            vscode.postMessage({ type });
-          });
-        }
-      };
-      bind('startDebug', 'startDebug');
-      bind('selectProject', 'selectProject');
-    }());
-  </script>
 </body>
 </html>`;
 }

@@ -17,11 +17,11 @@ describe('platform-view idle html', () => {
       multiRoot: false,
     });
 
-    expect(html).toContain('Create or select a Debug80 project root to get started.');
-    expect(html).toContain('Create Project');
-    expect(html).toContain('Select Root');
+    expect(html).toContain('Open the Home tab to choose a root and target.');
     expect(html).toContain("script-src 'nonce-abc123'");
     expect(html).not.toContain('Start Debugging');
+    expect(html).not.toContain('Create Project');
+    expect(html).not.toContain('Select Root');
   });
 
   it('renders the project-detected view and workspace hint', () => {
@@ -37,12 +37,11 @@ describe('platform-view idle html', () => {
     expect(html).toContain('Configured root detected (Workspace).');
     expect(html).toContain('Root: caverns80');
     expect(html).toContain('Target: app');
-    expect(html).toContain('Program: src/main.asm');
-    expect(html).toContain('Start Debugging');
-    expect(html).toContain('Select Root');
+    expect(html).toContain('Open the Home tab to choose a target.');
+    expect(html).not.toContain('Start Debugging');
+    expect(html).not.toContain('Select Root');
     expect(html).not.toContain('Select Target');
     expect(html).not.toContain('Set Program File');
-    expect(html).toContain('open the Home tab for project controls');
     expect(html).toContain("script-src 'nonce-xyz789'");
     expect(html).toContain('Select a workspace root with');
   });

@@ -14,9 +14,6 @@ const DEFAULT_TAB: PanelTab =
     : document.body.dataset.activeTab === 'ui'
       ? 'ui'
       : 'home';
-const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const selectTargetButton = document.getElementById('selectTarget') as HTMLButtonElement | null;
-const setEntrySourceButton = document.getElementById('setEntrySource') as HTMLButtonElement | null;
 const homeRootSelect = document.getElementById('homeRootSelect') as HTMLSelectElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const homeRootName = document.getElementById('homeRootName') as HTMLElement | null;
@@ -79,18 +76,6 @@ let currentRootPath = '';
 const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
-
-selectProjectButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'selectProject' });
-});
-
-selectTargetButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'selectTarget' });
-});
-
-setEntrySourceButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'setEntrySource' });
-});
 
 homeRootSelect?.addEventListener('change', () => {
   const rootPath = homeRootSelect.value;
@@ -155,7 +140,7 @@ function setTargetOptions(options: Array<{ name: string; description?: string; d
   }
   clearSelectOptions(homeTargetSelect);
   if (options.length === 0) {
-    setSelectPlaceholder(homeTargetSelect, 'No targets available');
+    setSelectPlaceholder(homeTargetSelect, currentRootPath ? 'No targets available' : 'Select root first');
     homeTargetSelect.disabled = true;
     return;
   }

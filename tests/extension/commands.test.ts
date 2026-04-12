@@ -149,7 +149,7 @@ describe('registerExtensionCommands', () => {
     });
   });
 
-  it('selects a configured root and starts debugging immediately', async () => {
+  it('selects a configured root without starting debugging', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const folder = {
@@ -159,10 +159,11 @@ describe('registerExtensionCommands', () => {
     };
     const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
     const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
 
     registerExtensionCommands({
       context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      platformViewProvider: { refreshIdleView } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
       workspaceSelection: {
@@ -180,16 +181,9 @@ describe('registerExtensionCommands', () => {
     const result = await selectRoot?.();
 
     expect(result).toEqual(folder);
-    expect(startDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
-      expect.objectContaining({
-        type: 'z80',
-        request: 'launch',
-        projectConfig: projectConfigPath,
-        stopOnEntry: false,
-      })
-    );
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(startDebugging).not.toHaveBeenCalled();
   });
 
   it('uses a direct root selection without prompting', async () => {
@@ -222,16 +216,7 @@ describe('registerExtensionCommands', () => {
     const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
 
     expect(result).toEqual(folder);
-    expect(startDebugging).toHaveBeenCalled();
-    expect(startDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
-      expect.objectContaining({
-        type: 'z80',
-        request: 'launch',
-        projectConfig: projectConfigPath,
-        stopOnEntry: false,
-      })
-    );
+    expect(startDebugging).not.toHaveBeenCalled();
   });
 
   it('remembers a direct root selection even when no project config exists', async () => {
@@ -359,12 +344,22 @@ describe('registerExtensionCommands', () => {
     const selectTarget = registeredCommands.get('debug80.selectTarget');
     expect(selectTarget).toBeTypeOf('function');
 
+    startDebugging.mockResolvedValueOnce(true);
     const result = await selectTarget?.({
       rootPath: '/workspace/tec1g-mon3',
       targetName: 'serial',
     });
 
     expect(result).toBe('serial');
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: false,
+      })
+    );
   });
 
   it('restarts the active z80 session against the current project target', async () => {

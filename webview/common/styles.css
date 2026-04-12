@@ -70,39 +70,10 @@ body {
       color: #f0f0f0;
       word-break: break-word;
     }
-    .home-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
     .home-note {
       margin: 0;
       color: #bcbcbc;
       line-height: 1.4;
-    }
-    .session-button {
-      appearance: none;
-      border: 1px solid #4a4a4a;
-      border-radius: 8px;
-      background: #232323;
-      color: #f0f0f0;
-      padding: 6px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .session-button:hover {
-      background: #2d2d2d;
-    }
-    .session-button-fallback {
-      white-space: nowrap;
-    }
-    .session-button-primary {
-      background: #3b4b1c;
-      border-color: #637b2a;
-      color: #f6ffd8;
-    }
-    .session-button-primary:hover {
-      background: #465924;
     }
     @media (max-width: 640px) {
       .home-status-row {
