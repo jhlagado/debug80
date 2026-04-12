@@ -35,14 +35,12 @@ describe('tec1 ui-panel-html', () => {
   } as never;
 
   it('includes key UI sections', () => {
-    const html = getTec1Html('home', webview, extensionUri);
-    expect(html).toContain('Home');
-    expect(html).toContain('panel-home');
+    const html = getTec1Html('ui', webview, extensionUri);
     expect(html).toContain('homeRootSelect');
     expect(html).toContain('homeTargetSelect');
-    expect(html).not.toContain('Quick Pick');
-    expect(html).not.toContain('Set Program File');
-    expect(html).toContain('Select a root, then select a target. Changing the target starts or restarts the debug session.');
+    expect(html).toContain('project-header');
+    expect(html).not.toContain('panel-home');
+    expect(html).not.toContain('Home');
     expect(html).toContain('panel-ui');
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
@@ -51,7 +49,7 @@ describe('tec1 ui-panel-html', () => {
   });
 
   it('embeds the active tab', () => {
-    const html = getTec1Html('home', webview, extensionUri);
-    expect(html).toContain('data-active-tab="home"');
+    const html = getTec1Html('ui', webview, extensionUri);
+    expect(html).toContain('data-active-tab="ui"');
   });
 });

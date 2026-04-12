@@ -37,7 +37,6 @@ import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTe
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
-import { getPlatformViewIdleHtml } from './platform-view-idle-html';
 import { findProjectConfigPath } from './project-config';
 
 type PlatformId = 'tec1' | 'tec1g' | 'simple';
@@ -461,7 +460,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
-      this.view.webview.html = this.getIdleHtml();
+      this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
+      this.postProjectStatus();
     }
   }
 
@@ -765,23 +765,4 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: 'snapshot', ...snapshotObject });
   }
 
-  private getIdleHtml(): string {
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    const projectStatus = this.getProjectStatusPayload();
-    const opts: Parameters<typeof getPlatformViewIdleHtml>[0] = {
-      hasProject: this.hasProject,
-      multiRoot: folders.length > 1,
-    };
-    if (projectStatus.rootName !== undefined) {
-      opts.selectedWorkspaceName = projectStatus.rootName;
-      opts.projectName = projectStatus.rootName;
-    }
-    if (projectStatus.targetName !== undefined) {
-      opts.targetName = projectStatus.targetName;
-    }
-    if (projectStatus.entrySource !== undefined) {
-      opts.entrySource = projectStatus.entrySource;
-    }
-    return getPlatformViewIdleHtml(opts);
-  }
 }
