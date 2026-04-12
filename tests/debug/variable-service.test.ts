@@ -75,4 +75,14 @@ describe('VariableService', () => {
     const variables = service.resolveVariables(999, undefined);
     expect(variables).toEqual([]);
   });
+
+  it('reuses the same Registers scope variablesReference across scope requests', () => {
+    const handles = new Handles<string>();
+    const service = new VariableService(handles);
+    const ref1 = service.createScopes()[0]?.variablesReference ?? 0;
+    const ref2 = service.createScopes()[0]?.variablesReference ?? 0;
+    expect(ref2).toBe(ref1);
+    expect(service.isRegistersVariablesReference(ref1)).toBe(true);
+    expect(service.isRegistersVariablesReference(ref1 + 1)).toBe(false);
+  });
 });

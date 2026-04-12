@@ -189,6 +189,7 @@ export class Z80DebugSession extends DebugSession {
     response.body = response.body ?? {};
     response.body.supportsConfigurationDoneRequest = true;
     response.body.supportsSingleThreadExecutionRequests = true;
+    response.body.supportsSetVariable = true;
 
     this.sendResponse(response);
     this.sendEvent(new InitializedEvent());
@@ -384,6 +385,13 @@ export class Z80DebugSession extends DebugSession {
     args: DebugProtocol.VariablesArguments
   ): void {
     this.requestController.variablesRequest(response, args);
+  }
+
+  protected setVariableRequest(
+    response: DebugProtocol.SetVariableResponse,
+    args: DebugProtocol.SetVariableArguments
+  ): void {
+    this.requestController.setVariableRequest(response, args);
   }
 
   protected disconnectRequest(
