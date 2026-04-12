@@ -229,6 +229,7 @@ export function registerExtensionCommands({
           return undefined;
         }
 
+        workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
 
         const projectConfig = findProjectConfigPath(folder);
