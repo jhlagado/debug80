@@ -41,6 +41,7 @@ import { AssembleFailureError } from './assembler';
 import { buildRomSourcesResponse } from './rom-requests';
 import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
 import { handleMemorySnapshotRequest } from './memory-request';
+import { handleRegisterWriteRequest } from './register-request';
 import { populateFromConfig } from './launch-args';
 import {
   MissingLaunchArtifactsError,
@@ -140,6 +141,15 @@ export class Z80DebugSession extends DebugSession {
     this.commandRouter.register('debug80/tec1gMemorySnapshot', (response, args) =>
       handleMemorySnapshotRequest(response, args, memoryDeps)
     );
+    this.commandRouter.register('debug80/registerWrite', (response, args) => {
+      const error = handleRegisterWriteRequest(this.sessionState, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    });
     this.commandRouter.register('debug80/romSources', (response) => {
       response.body = buildRomSourcesResponse(
         this.sourceState.collectRomSources(this.sessionState.extraListingPaths)

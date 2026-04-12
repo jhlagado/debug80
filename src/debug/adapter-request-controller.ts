@@ -54,6 +54,7 @@ export class AdapterRequestController {
     if (!runState.launchComplete || !runState.configurationDone || runState.stopOnEntry) {
       return;
     }
+    runState.isRunning = true;
     this.runUntilStop();
   }
 
@@ -137,6 +138,7 @@ export class AdapterRequestController {
     } else {
       if (trace.kind && trace.taken && trace.returnAddress !== undefined) {
         this.deps.sessionState.runState.haltNotified = false;
+        this.deps.sessionState.runState.isRunning = true;
         this.deps.sessionState.runState.lastStopReason = 'step';
         this.deps.sessionState.runState.lastBreakpointAddress = null;
         this.runUntilStop(
@@ -147,6 +149,7 @@ export class AdapterRequestController {
         return;
       }
       this.deps.sessionState.runState.haltNotified = false;
+      this.deps.sessionState.runState.isRunning = false;
       this.deps.sessionState.runState.lastStopReason = 'step';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
       this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
@@ -174,6 +177,7 @@ export class AdapterRequestController {
     if (unmappedReturn !== null && trace.kind && trace.taken) {
       const returnAddress = trace.returnAddress ?? unmappedReturn;
       this.deps.sessionState.runState.haltNotified = false;
+      this.deps.sessionState.runState.isRunning = true;
       this.deps.sessionState.runState.lastStopReason = 'step';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
       this.runUntilStop(
@@ -188,6 +192,7 @@ export class AdapterRequestController {
       this.handleHaltStop();
     } else {
       this.deps.sessionState.runState.haltNotified = false;
+      this.deps.sessionState.runState.isRunning = false;
       this.deps.sessionState.runState.lastStopReason = 'step';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
       this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
@@ -203,6 +208,7 @@ export class AdapterRequestController {
       return;
     }
     const baseline = this.deps.sessionState.runState.callDepth;
+    this.deps.sessionState.runState.isRunning = true;
     this.deps.sendResponse(response);
     this.deps.sessionState.runState.pauseRequested = false;
     this.updateBreakpointSkip();
@@ -305,6 +311,7 @@ export class AdapterRequestController {
   ): void {
     this.deps.sessionState.platformRuntime?.silenceSpeaker();
     this.deps.sessionState.runtime = undefined;
+    this.deps.sessionState.runState.isRunning = false;
     this.deps.sessionState.runState.haltNotified = false;
     this.deps.sessionState.terminalState = undefined;
     this.deps.sessionState.tec1Runtime = undefined;
@@ -344,6 +351,7 @@ export class AdapterRequestController {
   }
 
   public handleHaltStop(): void {
+    this.deps.sessionState.runState.isRunning = false;
     if (!this.deps.sessionState.runState.haltNotified) {
       this.deps.sessionState.runState.haltNotified = true;
       this.deps.sessionState.runState.lastStopReason = 'halt';
@@ -388,6 +396,7 @@ export class AdapterRequestController {
     maxInstructions?: number,
     limitLabel = 'step',
   ): void {
+    this.deps.sessionState.runState.isRunning = true;
     void runUntilStopAsync(this.deps.getRuntimeControlContext(), {
       limitLabel,
       ...(extraBreakpoints !== undefined ? { extraBreakpoints } : {}),
