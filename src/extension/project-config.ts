@@ -41,7 +41,7 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
 /**
  * Merged launch args resolve the assemble input as `asm` before `sourceFile`
  * (see `populateFromConfig` in launch-args). Keep both in sync when the user
- * picks a new entry source so ZAX (and asm80) targets assemble the selected file.
+ * picks a new program file so ZAX (and asm80) targets assemble the selected file.
  */
 function nextTargetEntrySource(
   target: Record<string, unknown>,
