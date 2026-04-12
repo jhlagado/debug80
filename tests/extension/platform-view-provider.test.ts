@@ -4,21 +4,30 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { executeCommand, resolveProjectStatusSummary } = vi.hoisted(() => ({
+const { executeCommand, resolveProjectStatusSummary, findProjectConfigPath, listProjectTargetChoices } = vi.hoisted(() => ({
   executeCommand: vi.fn(() => Promise.resolve()),
   resolveProjectStatusSummary: vi.fn(() => ({
     projectName: 'demo',
     targetName: 'app',
     entrySource: 'src/main.asm',
   })),
+  findProjectConfigPath: vi.fn((folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/.vscode/debug80.json`),
+  listProjectTargetChoices: vi.fn(() => [
+    { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
+    { name: 'serial', description: 'src/serial.asm', detail: 'src/serial.asm' },
+  ]),
 }));
+
+let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 
 vi.mock('vscode', () => {
   return {
     commands: { executeCommand },
     debug: { activeDebugSession: undefined },
     workspace: {
-      workspaceFolders: undefined,
+      get workspaceFolders() {
+        return workspaceFolders;
+      },
       fs: { readFile: vi.fn(), writeFile: vi.fn() },
     },
     window: {
@@ -40,6 +49,14 @@ vi.mock('vscode', () => {
 
 vi.mock('../../src/extension/project-status', () => ({
   resolveProjectStatusSummary,
+}));
+
+vi.mock('../../src/extension/project-config', () => ({
+  findProjectConfigPath,
+}));
+
+vi.mock('../../src/extension/project-target-selection', () => ({
+  listProjectTargetChoices,
 }));
 
 import * as path from 'path';
@@ -75,6 +92,7 @@ function createWebviewView(): vscode.WebviewView {
 describe('PlatformViewProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    workspaceFolders = undefined;
   });
 
   it('renders Tec1 HTML when the webview resolves and the platform is Tec1', async () => {
@@ -128,6 +146,12 @@ describe('PlatformViewProvider', () => {
     } as vscode.CancellationToken);
 
     provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+    workspaceFolders = [
+      {
+        name: 'demo',
+        uri: { fsPath: '/workspace/demo' },
+      },
+    ];
     provider.setSelectedWorkspace({
       name: 'demo',
       uri: { fsPath: '/workspace/demo' },
@@ -144,9 +168,15 @@ describe('PlatformViewProvider', () => {
       if (
         message.type === 'projectStatus' &&
         message.rootName === 'demo' &&
+        message.rootPath === '/workspace/demo' &&
         message.hasProject === true &&
         message.targetName === 'app' &&
-        message.entrySource === 'src/main.asm'
+        message.entrySource === 'src/main.asm' &&
+        Array.isArray(message.roots) &&
+        message.roots.length === 1 &&
+        message.roots[0]?.path === '/workspace/demo' &&
+        Array.isArray(message.targets) &&
+        message.targets.length === 2
       ) {
         found = true;
         break;

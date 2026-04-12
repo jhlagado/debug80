@@ -29,6 +29,31 @@ body {
       display: grid;
       gap: 8px;
     }
+    .home-controls {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .home-control {
+      display: grid;
+      gap: 6px;
+    }
+    .home-control-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .home-select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid #4a4a4a;
+      border-radius: 8px;
+      background: #1b1b1b;
+      color: #f0f0f0;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
     .home-status-row {
       display: grid;
       grid-template-columns: minmax(88px, 120px) 1fr;
@@ -67,6 +92,9 @@ body {
     }
     .session-button:hover {
       background: #2d2d2d;
+    }
+    .session-button-fallback {
+      white-space: nowrap;
     }
     .session-button-primary {
       background: #3b4b1c;

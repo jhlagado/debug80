@@ -65,14 +65,29 @@ type MemorySnapshotPayload = {
   }>;
 };
 
+type ProjectRootOption = {
+  name: string;
+  path: string;
+  hasProject: boolean;
+};
+
+type ProjectTargetOption = {
+  name: string;
+  description?: string;
+  detail?: string;
+};
+
 type IncomingMessage =
   | { type: 'selectTab'; tab: string }
   | {
       type: 'projectStatus';
       rootName?: string;
+      rootPath?: string;
       hasProject?: boolean;
       targetName?: string;
       entrySource?: string;
+      roots: ProjectRootOption[];
+      targets: ProjectTargetOption[];
     }
   | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
   | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
@@ -89,6 +104,8 @@ const DEFAULT_TAB: PanelTab =
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const selectTargetButton = document.getElementById('selectTarget') as HTMLButtonElement | null;
 const setEntrySourceButton = document.getElementById('setEntrySource') as HTMLButtonElement | null;
+const homeRootSelect = document.getElementById('homeRootSelect') as HTMLSelectElement | null;
+const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const homeRootName = document.getElementById('homeRootName') as HTMLElement | null;
 const homeProjectState = document.getElementById('homeProjectState') as HTMLElement | null;
 const homeTargetName = document.getElementById('homeTargetName') as HTMLElement | null;
@@ -113,6 +130,7 @@ const SHIFT_BIT = 0x20;
 const DIGITS = 6;
 let sysCtrlSegs: HTMLElement[] = [];
 let sysCtrlValue = 0;
+let currentRootPath = '';
 const digitEls: HTMLElement[] = [];
 for (let i = 0; i < DIGITS; i++) {
   const digit = createDigit();
@@ -249,6 +267,85 @@ setEntrySourceButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'setEntrySource' });
 });
 
+homeRootSelect?.addEventListener('change', () => {
+  const rootPath = homeRootSelect.value;
+  if (!rootPath) {
+    return;
+  }
+  vscode.postMessage({ type: 'selectProject', rootPath });
+});
+
+homeTargetSelect?.addEventListener('change', () => {
+  const targetName = homeTargetSelect.value;
+  if (!targetName) {
+    return;
+  }
+  vscode.postMessage({
+    type: 'selectTarget',
+    rootPath: currentRootPath,
+    targetName,
+  });
+});
+
+function clearSelectOptions(select: HTMLSelectElement): void {
+  while (select.firstChild) {
+    select.removeChild(select.firstChild);
+  }
+}
+
+function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = label;
+  option.disabled = true;
+  option.selected = true;
+  select.appendChild(option);
+}
+
+function setRootOptions(options: ProjectRootOption[], selectedRootPath?: string): void {
+  if (!homeRootSelect) {
+    return;
+  }
+  clearSelectOptions(homeRootSelect);
+  if (options.length === 0) {
+    setSelectPlaceholder(homeRootSelect, 'No workspace roots available');
+    homeRootSelect.disabled = true;
+    return;
+  }
+  setSelectPlaceholder(homeRootSelect, 'Select root...');
+  for (const option of options) {
+    const el = document.createElement('option');
+    el.value = option.path;
+    el.textContent = `${option.name} — ${option.path}`;
+    el.title = option.hasProject ? 'Configured Debug80 project' : 'No Debug80 project config';
+    homeRootSelect.appendChild(el);
+  }
+  homeRootSelect.disabled = false;
+  homeRootSelect.value = selectedRootPath ?? '';
+}
+
+function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: string): void {
+  if (!homeTargetSelect) {
+    return;
+  }
+  clearSelectOptions(homeTargetSelect);
+  if (options.length === 0) {
+    setSelectPlaceholder(homeTargetSelect, 'No targets available');
+    homeTargetSelect.disabled = true;
+    return;
+  }
+  setSelectPlaceholder(homeTargetSelect, 'Select target...');
+  for (const option of options) {
+    const el = document.createElement('option');
+    el.value = option.name;
+    el.textContent = option.description ? `${option.name} — ${option.description}` : option.name;
+    el.title = option.detail ?? option.description ?? option.name;
+    homeTargetSelect.appendChild(el);
+  }
+  homeTargetSelect.disabled = false;
+  homeTargetSelect.value = selectedTargetName ?? '';
+}
+
 function setHomeValue(node: HTMLElement | null, value: string | undefined, fallback: string): void {
   if (!node) {
     return;
@@ -258,10 +355,16 @@ function setHomeValue(node: HTMLElement | null, value: string | undefined, fallb
 
 function applyProjectStatus(payload: {
   rootName?: string;
+  rootPath?: string;
   hasProject?: boolean;
   targetName?: string;
   entrySource?: string;
+  roots?: ProjectRootOption[];
+  targets?: ProjectTargetOption[];
 }): void {
+  currentRootPath = payload.rootPath ?? '';
+  setRootOptions(payload.roots ?? [], currentRootPath);
+  setTargetOptions(payload.targets ?? [], payload.targetName);
   setHomeValue(homeRootName, payload.rootName, 'No root selected');
   setHomeValue(
     homeProjectState,
