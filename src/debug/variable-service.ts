@@ -15,11 +15,19 @@ type RegisterRuntime = {
  * Builds variable scopes and register variables.
  */
 export class VariableService {
+  private registersScopeRef: number | undefined;
+
   constructor(private readonly variableHandles: Handles<string>) {}
 
   createScopes(): DebugProtocol.Scope[] {
-    const registersRef = this.variableHandles.create('registers');
-    return [new Scope('Registers', registersRef, false)];
+    if (this.registersScopeRef === undefined) {
+      this.registersScopeRef = this.variableHandles.create('registers');
+    }
+    return [new Scope('Registers', this.registersScopeRef, false)];
+  }
+
+  isRegistersVariablesReference(variablesReference: number): boolean {
+    return this.variableHandles.get(variablesReference) === 'registers';
   }
 
   resolveVariables(
@@ -44,17 +52,34 @@ export class VariableService {
     const dep = ((regs.d_prime & 0xff) << 8) | (regs.e_prime & 0xff);
     const hlp = ((regs.h_prime & 0xff) << 8) | (regs.l_prime & 0xff);
 
+    const readOnly = { attributes: ['readOnly' as const] };
+
     return [
-      { name: 'Flags', value: this.flagsToString(regs.flags), variablesReference: 0 },
+      {
+        name: 'Flags',
+        value: this.flagsToString(regs.flags),
+        variablesReference: 0,
+        presentationHint: readOnly,
+      },
       { name: 'PC', value: this.format16(runtime.getPC()), variablesReference: 0 },
       { name: 'SP', value: this.format16(regs.sp), variablesReference: 0 },
 
-      { name: 'AF', value: this.format16(af), variablesReference: 0 },
+      {
+        name: 'AF',
+        value: this.format16(af),
+        variablesReference: 0,
+        presentationHint: readOnly,
+      },
       { name: 'BC', value: this.format16(bc), variablesReference: 0 },
       { name: 'DE', value: this.format16(de), variablesReference: 0 },
       { name: 'HL', value: this.format16(hl), variablesReference: 0 },
 
-      { name: "AF'", value: this.format16(afp), variablesReference: 0 },
+      {
+        name: "AF'",
+        value: this.format16(afp),
+        variablesReference: 0,
+        presentationHint: readOnly,
+      },
       { name: "BC'", value: this.format16(bcp), variablesReference: 0 },
       { name: "DE'", value: this.format16(dep), variablesReference: 0 },
       { name: "HL'", value: this.format16(hlp), variablesReference: 0 },
@@ -62,8 +87,18 @@ export class VariableService {
       { name: 'IX', value: this.format16(regs.ix), variablesReference: 0 },
       { name: 'IY', value: this.format16(regs.iy), variablesReference: 0 },
 
-      { name: 'I', value: this.format8(regs.i), variablesReference: 0 },
-      { name: 'R', value: this.format8(regs.r), variablesReference: 0 },
+      {
+        name: 'I',
+        value: this.format8(regs.i),
+        variablesReference: 0,
+        presentationHint: readOnly,
+      },
+      {
+        name: 'R',
+        value: this.format8(regs.r),
+        variablesReference: 0,
+        presentationHint: readOnly,
+      },
     ];
   }
 
