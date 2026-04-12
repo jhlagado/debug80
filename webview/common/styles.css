@@ -457,6 +457,30 @@ body {
       width: 22px;
       text-align: center;
     }
+    #memoryPanel .memory-byte-input {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      line-height: inherit;
+      padding: 0;
+      margin: 0;
+      width: 22px;
+      text-align: center;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    #memoryPanel .memory-byte-input:focus {
+      outline: none;
+      border-color: #7aa2f7;
+      background: rgba(122, 162, 247, 0.12);
+      box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.35);
+    }
+    #memoryPanel .memory-byte-input:disabled {
+      opacity: 0.72;
+      cursor: default;
+    }
     #memoryPanel .byte.focus {
       color: #111;
       background: #ffd05c;
