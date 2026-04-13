@@ -3,11 +3,12 @@
  */
 
 import * as vscode from 'vscode';
-import { readProjectConfig, findProjectConfigPath } from './project-config';
+import { readProjectConfig, findProjectConfigPath, resolveProjectPlatform } from './project-config';
 import { resolvePreferredTargetName } from './project-target-selection';
 
 export type ProjectStatusSummary = {
   projectName: string;
+  projectPlatform?: string;
   targetName?: string;
   entrySource?: string;
 };
@@ -29,9 +30,9 @@ export function resolveProjectStatusSummary(
   const targetName = resolvePreferredTargetName(workspaceState, projectConfigPath);
   const entrySource =
     (targetName !== undefined
-      ? config?.targets?.[targetName]?.sourceFile ??
+      ? (config?.targets?.[targetName]?.sourceFile ??
         config?.targets?.[targetName]?.asm ??
-        config?.targets?.[targetName]?.source
+        config?.targets?.[targetName]?.source)
       : undefined) ??
     config?.sourceFile ??
     config?.asm ??
@@ -39,6 +40,10 @@ export function resolveProjectStatusSummary(
 
   return {
     projectName: folder.name,
+    ...((): Partial<ProjectStatusSummary> => {
+      const projectPlatform = resolveProjectPlatform(config);
+      return projectPlatform !== undefined ? { projectPlatform } : {};
+    })(),
     ...(targetName !== undefined ? { targetName } : {}),
     ...(entrySource !== undefined ? { entrySource } : {}),
   };

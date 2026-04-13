@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
-import { listProjectSourceFiles } from './project-config';
+import { DEBUG80_PROJECT_VERSION, listProjectSourceFiles } from './project-config';
 import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,
@@ -91,7 +91,12 @@ export function createStarterSourceContent(language: StarterLanguage): string {
   return ['; Debug80 starter (ASM)', '', 'start:', '    nop', '    jr start', ''].join('\n');
 }
 
-export function createDefaultProjectConfig(plan: ScaffoldPlan): Record<string, unknown> {
+export function createDefaultProjectConfig(plan: ScaffoldPlan): {
+  projectVersion: typeof DEBUG80_PROJECT_VERSION;
+  projectPlatform: ScaffoldPlatform;
+  defaultTarget: string;
+  targets: Record<string, Record<string, unknown>>;
+} {
   const targetConfig: Record<string, unknown> = {
     sourceFile: plan.sourceFile,
     outputDir: plan.outputDir,
@@ -109,6 +114,8 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): Record<string, u
   }
 
   return {
+    projectVersion: DEBUG80_PROJECT_VERSION,
+    projectPlatform: plan.platform,
     defaultTarget: plan.targetName,
     targets: {
       [plan.targetName]: targetConfig,
