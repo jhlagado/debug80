@@ -14,10 +14,18 @@
         <span class="project-label">Project</span>
         <button class="project-root-button" id="selectProject" type="button">No workspace roots available</button>
         <button class="project-action-button" id="createProject" type="button" hidden>Create Project</button>
+        <button class="project-action-button" id="configureProject" type="button" hidden>Configure</button>
       </div>
       <div class="project-control">
         <span class="project-label">Target</span>
         <select class="project-select" id="homeTargetSelect"></select>
+      </div>
+    </div>
+    <div class="setup-card" id="setupCard">
+      <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
+      <div class="setup-card-actions">
+        <button class="project-action-button" id="setupPrimaryAction" type="button">Open Folder</button>
+        <button class="project-action-button" id="setupSecondaryAction" type="button" hidden>Configure</button>
       </div>
     </div>
     <div class="tabs">

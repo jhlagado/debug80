@@ -152,6 +152,42 @@ describe('registerExtensionCommands', () => {
     15000
   );
 
+  it('starts debugging directly from a provided rootPath', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const rememberWorkspace = vi.fn();
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const startDebug = registeredCommands.get('debug80.startDebug');
+    expect(startDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await startDebug?.({ rootPath: '/workspace/tec1g-mon3' });
+
+    expect(result).toBe(true);
+    expect(rememberWorkspace).toHaveBeenCalled();
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        name: 'Debug80: Current Project',
+        projectConfig: projectConfigPath,
+      })
+    );
+  });
+
   it('creates a project directly in an already-open empty workspace root', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 

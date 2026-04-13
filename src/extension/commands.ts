@@ -50,6 +50,10 @@ type SelectWorkspaceFolderArgs = {
   rootPath?: string;
 };
 
+type StartDebugArgs = {
+  rootPath?: string;
+};
+
 type SelectTargetArgs = {
   rootPath?: string;
   targetName?: string;
@@ -355,12 +359,17 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.startDebug', async () => {
-      const folder = await workspaceSelection.resolveWorkspaceFolder({
-        prompt: true,
-        requireProject: true,
-        placeHolder: 'Select the Debug80 project folder to debug',
-      });
+    vscode.commands.registerCommand('debug80.startDebug', async (args?: StartDebugArgs) => {
+      const directFolder = findWorkspaceFolder(args?.rootPath);
+      const folder =
+        directFolder &&
+        findProjectConfigPath(directFolder) !== undefined
+          ? directFolder
+          : await workspaceSelection.resolveWorkspaceFolder({
+              prompt: true,
+              requireProject: true,
+              placeHolder: 'Select the Debug80 project folder to debug',
+            });
       if (!folder) {
         const workspaceFolderCount = vscode.workspace.workspaceFolders?.length ?? 0;
         void vscode.window.showInformationMessage(

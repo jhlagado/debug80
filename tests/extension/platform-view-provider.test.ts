@@ -500,7 +500,34 @@ describe('PlatformViewProvider', () => {
 
     await handler?.({ type: 'startDebug' });
 
-    expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug');
+    expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug', undefined);
+  });
+
+  it('routes startDebug with rootPath to the start command args', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string; rootPath?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    await handler?.({ type: 'startDebug', rootPath: '/workspace/demo' });
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug', {
+      rootPath: '/workspace/demo',
+    });
   });
 
   it('routes createProject messages with a root path to the create command', async () => {
@@ -528,5 +555,55 @@ describe('PlatformViewProvider', () => {
     expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
       rootPath: '/workspace/empty-root',
     });
+  });
+
+  it('routes configureProject messages to project config panel command', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    await handler?.({ type: 'configureProject' });
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.openProjectConfigPanel');
+  });
+
+  it('routes openWorkspaceFolder messages to vscode open folder command', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    await handler?.({ type: 'openWorkspaceFolder' });
+
+    expect(executeCommand).toHaveBeenCalledWith('vscode.openFolder');
   });
 });

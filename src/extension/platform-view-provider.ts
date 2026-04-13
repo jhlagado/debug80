@@ -323,7 +323,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string; text?: string }) => {
       if (msg?.type === 'startDebug') {
-        await vscode.commands.executeCommand('debug80.startDebug');
+        await vscode.commands.executeCommand(
+          'debug80.startDebug',
+          typeof (msg as { rootPath?: string }).rootPath === 'string'
+            ? { rootPath: (msg as { rootPath?: string }).rootPath }
+            : undefined
+        );
         return;
       }
       if (msg?.type === 'createProject') {
@@ -332,10 +337,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         });
         return;
       }
+      if (msg?.type === 'openWorkspaceFolder') {
+        await vscode.commands.executeCommand('vscode.openFolder');
+        return;
+      }
       if (msg?.type === 'selectProject') {
         await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', {
           rootPath: (msg as { rootPath?: string }).rootPath,
         });
+        return;
+      }
+      if (msg?.type === 'configureProject') {
+        await vscode.commands.executeCommand('debug80.openProjectConfigPanel');
         return;
       }
       if (msg?.type === 'selectTarget') {
