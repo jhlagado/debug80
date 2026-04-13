@@ -29,7 +29,10 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return {
     ...actual,
-    existsSync: vi.fn((candidate: string) => !candidate.endsWith('/.vscode/debug80.json')),
+    existsSync: vi.fn((candidate: string) => {
+      const normalized = candidate.replace(/\\/g, '/');
+      return !normalized.endsWith('/.vscode/debug80.json');
+    }),
     writeFileSync: vi.fn(),
   };
 });
