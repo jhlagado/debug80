@@ -15,6 +15,7 @@ import {
   createStarterSourceContent,
   scaffoldProject,
 } from '../../src/extension/project-scaffolding';
+import { DEBUG80_PROJECT_VERSION } from '../../src/extension/project-config';
 
 vi.mock('vscode', () => ({
   window: {
@@ -46,9 +47,15 @@ vi.mock('../../src/debug/config-utils', () => ({
   })),
 }));
 
-vi.mock('../../src/extension/project-config', () => ({
-  listProjectSourceFiles: vi.fn(() => []),
-}));
+vi.mock('../../src/extension/project-config', async () => {
+  const actual = await vi.importActual<typeof import('../../src/extension/project-config')>(
+    '../../src/extension/project-config'
+  );
+  return {
+    ...actual,
+    listProjectSourceFiles: vi.fn(() => []),
+  };
+});
 
 describe('project-scaffolding helpers', () => {
   beforeEach(() => {
@@ -65,6 +72,8 @@ describe('project-scaffolding helpers', () => {
     });
 
     expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'simple',
       defaultTarget: 'app',
       targets: {
         app: {
@@ -138,6 +147,8 @@ describe('project-scaffolding helpers', () => {
     });
 
     expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1',
       defaultTarget: 'app',
       targets: {
         app: {
@@ -168,6 +179,8 @@ describe('project-scaffolding helpers', () => {
     });
 
     expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1g',
       defaultTarget: 'app',
       targets: {
         app: {
@@ -226,8 +239,12 @@ describe('project-scaffolding helpers', () => {
     expect(configWrite).toBeDefined();
 
     const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+      projectVersion?: number;
+      projectPlatform?: string;
       targets?: Record<string, { platform?: string; tec1g?: Record<string, unknown> }>;
     };
+    expect(writtenConfig.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
+    expect(writtenConfig.projectPlatform).toBe('tec1g');
     expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
     expect(writtenConfig.targets?.app?.tec1g).toEqual(
       expect.objectContaining({
