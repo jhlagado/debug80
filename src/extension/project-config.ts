@@ -80,6 +80,23 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
   }
 }
 
+export function writeProjectConfig(projectConfigPath: string, config: ProjectConfig): boolean {
+  try {
+    if (projectConfigPath.endsWith('package.json')) {
+      const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
+      const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig } & Record<string, unknown>;
+      pkg.debug80 = config;
+      fs.writeFileSync(projectConfigPath, `${JSON.stringify(pkg, null, 2)}\n`);
+      return true;
+    }
+
+    fs.writeFileSync(projectConfigPath, `${JSON.stringify(config, null, 2)}\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function isInitializedDebug80Project(folder: vscode.WorkspaceFolder): boolean {
   const projectConfigPath = findProjectConfigPath(folder);
   if (projectConfigPath === undefined) {
