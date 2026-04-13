@@ -109,10 +109,14 @@ describe('PlatformViewProvider', () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
     await flushPromises();
@@ -125,10 +129,14 @@ describe('PlatformViewProvider', () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
     await flushPromises();
@@ -150,10 +158,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
     workspaceFolders = [
@@ -203,7 +215,9 @@ describe('PlatformViewProvider', () => {
     ).postMessage.mock.calls;
   }
 
-  function findProjectStatusMessages(calls: Array<[Record<string, unknown>]>): Array<Record<string, unknown>> {
+  function findProjectStatusMessages(
+    calls: Array<[Record<string, unknown>]>
+  ): Array<Record<string, unknown>> {
     return calls.filter(([msg]) => msg.type === 'projectStatus').map(([msg]) => msg);
   }
 
@@ -214,10 +228,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
     provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
@@ -246,10 +264,14 @@ describe('PlatformViewProvider', () => {
       }
     );
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
     provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
@@ -273,13 +295,20 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     workspaceFolders = [{ name: 'myproject', uri: { fsPath: '/workspace/myproject' } }];
-    provider.setSelectedWorkspace({ name: 'myproject', uri: { fsPath: '/workspace/myproject' } } as never);
+    provider.setSelectedWorkspace({
+      name: 'myproject',
+      uri: { fsPath: '/workspace/myproject' },
+    } as never);
     provider.setHasProject(true);
     provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
 
@@ -300,10 +329,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
 
@@ -314,7 +347,10 @@ describe('PlatformViewProvider', () => {
 
     // Clear and switch workspace
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
-    provider.setSelectedWorkspace({ name: 'proj-b', uri: { fsPath: '/workspace/proj-b' } } as never);
+    provider.setSelectedWorkspace({
+      name: 'proj-b',
+      uri: { fsPath: '/workspace/proj-b' },
+    } as never);
 
     const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
     expect(statusMessages.length).toBeGreaterThanOrEqual(1);
@@ -328,10 +364,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
     provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
@@ -353,10 +393,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
     provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
@@ -381,10 +425,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
     provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
 
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
@@ -407,10 +455,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
     provider.setPlatform('tec1g', { id: 'session-1' } as never, { reveal: false, tab: 'ui' });
 
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
@@ -433,10 +485,14 @@ describe('PlatformViewProvider', () => {
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
-      isCancellationRequested: false,
-      onCancellationRequested: vi.fn(),
-    } as vscode.CancellationToken);
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
 
     const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
       .calls[0]?.[0] as ((msg: { type?: string }) => Promise<void>) | undefined;
@@ -445,5 +501,32 @@ describe('PlatformViewProvider', () => {
     await handler?.({ type: 'startDebug' });
 
     expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug');
+  });
+
+  it('routes createProject messages with a root path to the create command', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string; rootPath?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    await handler?.({ type: 'createProject', rootPath: '/workspace/empty-root' });
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
+      rootPath: '/workspace/empty-root',
+    });
   });
 });

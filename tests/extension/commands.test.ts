@@ -15,6 +15,8 @@ const showErrorMessage = vi.fn();
 const startDebugging = vi.fn();
 const stopDebugging = vi.fn();
 const executeCommand = vi.fn();
+const scaffoldProject = vi.fn();
+let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 
 vi.mock('fs', () => ({
   existsSync,
@@ -39,16 +41,23 @@ vi.mock('vscode', () => ({
     showInputBox: vi.fn(),
   },
   workspace: {
-    workspaceFolders: [{ name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 0 }],
+    get workspaceFolders() {
+      return workspaceFolders;
+    },
     getWorkspaceFolder: vi.fn(),
     updateWorkspaceFolders: vi.fn(() => true),
   },
+}));
+
+vi.mock('../../src/extension/project-scaffolding', () => ({
+  scaffoldProject,
 }));
 
 describe('registerExtensionCommands', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     registeredCommands.clear();
+    workspaceFolders = [{ name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 0 }];
     existsSync.mockImplementation(
       (candidate: string) => path.normalize(candidate) === projectConfigPath
     );
@@ -62,7 +71,9 @@ describe('registerExtensionCommands', () => {
     );
   });
 
-  it('starts debugging with the current project config instead of the selected launch config', async () => {
+  it(
+    'starts debugging with the current project config instead of the selected launch config',
+    async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
@@ -104,6 +115,45 @@ describe('registerExtensionCommands', () => {
       })
     );
     expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.debug.start');
+  },
+    15000
+  );
+
+  it('creates a project directly in an already-open empty workspace root', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    workspaceFolders = [{ name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 }];
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: '/workspace/empty-root' },
+      index: 0,
+    };
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const createProject = registeredCommands.get('debug80.createProject');
+    expect(createProject).toBeTypeOf('function');
+
+    scaffoldProject.mockResolvedValueOnce(true);
+    const result = await createProject?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toBe(true);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false);
   });
 
   it('forces a prompt when selecting the active target', async () => {
@@ -275,14 +325,13 @@ describe('registerExtensionCommands', () => {
 
   it('remembers a direct root selection even when no project config exists', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
-    const vscode = await import('vscode');
 
     const folder = {
       name: 'notes',
       uri: { fsPath: '/workspace/notes' },
       index: 0,
     };
-    (vscode.workspace as { workspaceFolders?: Array<{ name: string; uri: { fsPath: string }; index: number }> }).workspaceFolders = [folder];
+    workspaceFolders = [folder];
     const rememberWorkspace = vi.fn();
 
     registerExtensionCommands({
@@ -367,8 +416,7 @@ describe('registerExtensionCommands', () => {
 
   it('uses a direct target selection without prompting', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
-    const vscode = await import('vscode');
-    (vscode.workspace as { workspaceFolders?: Array<{ name: string; uri: { fsPath: string }; index: number }> }).workspaceFolders = [
+    workspaceFolders = [
       {
         name: 'tec1g-mon3',
         uri: { fsPath: '/workspace/tec1g-mon3' },

@@ -1,6 +1,7 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
+import { createProjectRootButtonController } from '../common/project-root-button';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
@@ -14,6 +15,7 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
@@ -71,10 +73,11 @@ const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
-
-selectProjectButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'selectProject' });
-});
+const projectRootController = createProjectRootButtonController(
+  vscode,
+  selectProjectButton,
+  createProjectButton
+);
 
 homeTargetSelect?.addEventListener('change', () => {
   const targetName = homeTargetSelect.value;
@@ -101,31 +104,6 @@ function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
   option.disabled = true;
   option.selected = true;
   select.appendChild(option);
-}
-
-function setRootOptions(
-  options: Array<{ name: string; path: string; hasProject: boolean }>,
-  selectedRootPath?: string
-): void {
-  if (!selectProjectButton) {
-    return;
-  }
-  if (options.length === 0) {
-    selectProjectButton.disabled = true;
-    selectProjectButton.textContent = 'No workspace roots available';
-    selectProjectButton.title = 'No workspace roots available';
-    return;
-  }
-  const selected = options.find((option) => option.path === selectedRootPath) ?? options[0];
-  selectProjectButton.disabled = false;
-  selectProjectButton.textContent =
-    selected !== undefined ? selected.name : 'Select workspace root';
-  selectProjectButton.title =
-    selected === undefined
-      ? 'Select workspace root'
-      : selected.hasProject
-        ? `${selected.name} — ${selected.path}`
-        : `${selected.name} — ${selected.path} (no Debug80 project config)`;
 }
 
 function setTargetOptions(options: Array<{ name: string; description?: string; detail?: string }>, selectedTargetName?: string): void {
@@ -157,7 +135,11 @@ function applyProjectStatus(payload: {
   targetName?: string;
 }): void {
   currentRootPath = payload.rootPath ?? '';
-  setRootOptions(payload.roots ?? [], currentRootPath);
+  projectRootController.applyProjectStatus({
+    rootPath: payload.rootPath,
+    roots: payload.roots ?? [],
+    targetCount: payload.targets?.length ?? 0,
+  });
   setTargetOptions(payload.targets ?? [], payload.targetName);
 }
 
@@ -399,5 +381,6 @@ window.addEventListener('keydown', event => {
 window.addEventListener('beforeunload', () => {
   serialUi.dispose();
   sessionStatusController.dispose();
+  projectRootController.dispose();
 });
   
