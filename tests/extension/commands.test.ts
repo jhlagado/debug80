@@ -10,6 +10,7 @@ const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => u
 });
 const existsSync = vi.fn();
 const readFileSync = vi.fn();
+const writeFileSync = vi.fn();
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
 const startDebugging = vi.fn();
@@ -21,6 +22,7 @@ let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefin
 vi.mock('fs', () => ({
   existsSync,
   readFileSync,
+  writeFileSync,
 }));
 
 vi.mock('vscode', () => ({
@@ -452,6 +454,55 @@ describe('registerExtensionCommands', () => {
     });
 
     expect(result).toBe('serial');
+  });
+
+  it('configures target platform through debug80.configureProject', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({ label: 'Platform', value: 'platform' });
+    showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommands.get('debug80.configureProject');
+    expect(configureProject).toBeTypeOf('function');
+
+    const result = await configureProject?.();
+
+    expect(result).toBe('app');
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1g"');
+    expect(serialized).toContain('"platform": "tec1g"');
   });
 
   it('restarts the active z80 session against the current project target', async () => {

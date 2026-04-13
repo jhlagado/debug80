@@ -10,6 +10,7 @@ import {
   readProjectConfig,
   resolveProjectPlatform,
   updateProjectTargetSource,
+  writeProjectConfig,
 } from '../../src/extension/project-config';
 
 describe('project-config helpers', () => {
@@ -176,5 +177,34 @@ describe('project-config helpers', () => {
     expect(config?.targets?.app?.sourceFile).toBe('src/main.zax');
     expect(config?.targets?.app?.asm).toBe('src/main.zax');
     expect(config?.targets?.app?.assembler).toBe('zax');
+  });
+
+  it('writes updated config into package.json debug80 section', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-write-package-'));
+    const pkgPath = path.join(root, 'package.json');
+    fs.writeFileSync(
+      pkgPath,
+      JSON.stringify({
+        name: 'fixture',
+        debug80: {
+          targets: {
+            app: { sourceFile: 'src/main.asm', platform: 'simple' },
+          },
+        },
+      })
+    );
+
+    const written = writeProjectConfig(pkgPath, {
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1',
+      targets: {
+        app: { sourceFile: 'src/main.asm', platform: 'tec1' },
+      },
+    });
+
+    expect(written).toBe(true);
+    const raw = fs.readFileSync(pkgPath, 'utf-8');
+    const parsed = JSON.parse(raw) as { debug80?: { projectPlatform?: string } };
+    expect(parsed.debug80?.projectPlatform).toBe('tec1');
   });
 });
