@@ -3,6 +3,7 @@
  */
 
 import * as path from 'path';
+import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
@@ -105,7 +106,15 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function buildProjectConfigPanelHtml(config: ProjectConfig): string {
+function createNonce(): string {
+  return randomBytes(16).toString('base64');
+}
+
+function buildProjectConfigPanelHtml(
+  config: ProjectConfig,
+  cspSource: string,
+  nonce: string
+): string {
   const currentPlatform = resolveProjectPlatform(config) ?? 'simple';
   const targetNames = Object.keys(config.targets ?? {});
   const currentDefault = config.defaultTarget ?? config.target ?? targetNames[0] ?? '';
@@ -131,8 +140,9 @@ function buildProjectConfigPanelHtml(config: ProjectConfig): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
   <title>Debug80 Project Config</title>
-  <style>
+  <style nonce="${nonce}">
     body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 16px; }
     h2 { margin-top: 0; }
     .row { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; max-width: 480px; }
@@ -153,7 +163,7 @@ function buildProjectConfigPanelHtml(config: ProjectConfig): string {
   </div>
   <button id="save">Save Configuration</button>
   <div class="hint">This panel edits project-level settings only. Target-specific runtime controls are unchanged.</div>
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     document.getElementById('save')?.addEventListener('click', () => {
       const platform = document.getElementById('platform')?.value ?? '';
@@ -831,7 +841,7 @@ export function registerExtensionCommands({
         vscode.ViewColumn.Active,
         { enableScripts: true, retainContextWhenHidden: true }
       );
-      panel.webview.html = buildProjectConfigPanelHtml(config);
+      panel.webview.html = buildProjectConfigPanelHtml(config, panel.webview.cspSource, createNonce());
 
       const messageDisposable = panel.webview.onDidReceiveMessage((msg: unknown) => {
         const payload = msg as { type?: string; platform?: string; defaultTarget?: string };
@@ -869,7 +879,11 @@ export function registerExtensionCommands({
         }
 
         config = next;
-        panel.webview.html = buildProjectConfigPanelHtml(config);
+        panel.webview.html = buildProjectConfigPanelHtml(
+          config,
+          panel.webview.cspSource,
+          createNonce()
+        );
         platformViewProvider.refreshIdleView();
         void vscode.window.showInformationMessage('Debug80: Project configuration updated.');
       });
