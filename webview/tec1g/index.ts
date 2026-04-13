@@ -2,6 +2,7 @@ import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController, type SessionStatus } from '../common/session-status';
 import { createProjectRootButtonController } from '../common/project-root-button';
+import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
@@ -105,6 +106,11 @@ const DEFAULT_TAB: PanelTab =
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
+const configureProjectButton = document.getElementById('configureProject') as HTMLButtonElement | null;
+const setupCard = document.getElementById('setupCard') as HTMLElement | null;
+const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
+const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
+const setupSecondaryAction = document.getElementById('setupSecondaryAction') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
@@ -127,6 +133,9 @@ const DIGITS = 6;
 let sysCtrlSegs: HTMLElement[] = [];
 let sysCtrlValue = 0;
 let currentRootPath = '';
+let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
+let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug' =
+  'openWorkspaceFolder';
 const digitEls: HTMLElement[] = [];
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 for (let i = 0; i < DIGITS; i++) {
@@ -254,6 +263,36 @@ const projectRootController = createProjectRootButtonController(
   createProjectButton
 );
 
+configureProjectButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'configureProject' });
+});
+
+setupPrimaryAction?.addEventListener('click', () => {
+  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+  if (setupPrimaryActionType === 'openWorkspaceFolder') {
+    vscode.postMessage({ type: 'openWorkspaceFolder' });
+    return;
+  }
+  if (setupPrimaryActionType === 'createProject') {
+    if (selected !== undefined) {
+      vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+    }
+    return;
+  }
+  if (setupPrimaryActionType === 'configureProject') {
+    vscode.postMessage({ type: 'configureProject' });
+    return;
+  }
+  vscode.postMessage({
+    type: 'startDebug',
+    ...(selected ? { rootPath: selected.path } : {}),
+  });
+});
+
+setupSecondaryAction?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'configureProject' });
+});
+
 homeTargetSelect?.addEventListener('change', () => {
   const targetName = homeTargetSelect.value;
   if (!targetName) {
@@ -310,12 +349,28 @@ function applyProjectStatus(payload: {
   targetName?: string;
 }): void {
   currentRootPath = payload.rootPath ?? '';
+  currentRoots = payload.roots ?? [];
   projectRootController.applyProjectStatus({
     rootPath: payload.rootPath,
     roots: payload.roots ?? [],
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
+  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+  const targetCount = payload.targets?.length ?? 0;
+  if (configureProjectButton) {
+    configureProjectButton.hidden = selected?.hasProject !== true;
+  }
+  if (!setupCard || !setupCardText || !setupPrimaryAction || !setupSecondaryAction) {
+    return;
+  }
+  setupCard.hidden = false;
+  const setupState = resolveSetupCardState(selected, targetCount);
+  setupPrimaryActionType = setupState.primaryAction;
+  setupCardText.textContent = setupState.text;
+  setupPrimaryAction.textContent = setupState.primaryLabel;
+  setupSecondaryAction.hidden = !setupState.showSecondaryConfigure;
+  setupSecondaryAction.textContent = 'Configure';
 }
 
 applyProjectStatus({});
