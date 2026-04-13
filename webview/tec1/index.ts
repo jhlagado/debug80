@@ -1,5 +1,6 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
+import { createSessionStatusController } from '../common/session-status';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
@@ -13,6 +14,7 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -68,6 +70,7 @@ let currentRootPath = '';
 const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
+const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 
 selectProjectButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'selectProject' });
@@ -323,6 +326,10 @@ window.addEventListener('message', event => {
     applyProjectStatus(event.data);
     return;
   }
+  if (event.data.type === 'sessionStatus') {
+    sessionStatusController.setStatus(event.data.status);
+    return;
+  }
   if (event.data.type === 'selectTab') {
     panelLayout.setTab(event.data.tab, false);
     return;
@@ -355,6 +362,7 @@ lcdRenderer.draw();
 matrixRenderer.build();
 matrixRenderer.draw();
 panelLayout.setTab(DEFAULT_TAB, false);
+sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());
 panelLayout.updateMemoryLayout(false);
 
@@ -390,5 +398,6 @@ window.addEventListener('keydown', event => {
 
 window.addEventListener('beforeunload', () => {
   serialUi.dispose();
+  sessionStatusController.dispose();
 });
   

@@ -1,5 +1,6 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
+import { createSessionStatusController, type SessionStatus } from '../common/session-status';
 import { acquireVscodeApi } from '../common/vscode';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
@@ -80,6 +81,7 @@ type ProjectTargetOption = {
 
 type IncomingMessage =
   | { type: 'selectTab'; tab: string }
+  | { type: 'sessionStatus'; status: SessionStatus }
   | {
       type: 'projectStatus';
       rootName?: string;
@@ -101,6 +103,7 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -123,6 +126,7 @@ let sysCtrlSegs: HTMLElement[] = [];
 let sysCtrlValue = 0;
 let currentRootPath = '';
 const digitEls: HTMLElement[] = [];
+const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 for (let i = 0; i < DIGITS; i++) {
   const digit = createDigit();
   digitEls.push(digit);
@@ -626,6 +630,10 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     applyProjectStatus(message);
     return;
   }
+  if (message.type === 'sessionStatus') {
+    sessionStatusController.setStatus(message.status);
+    return;
+  }
   if (message.type === 'selectTab') {
     setTab(message.tab, false);
     return;
@@ -663,6 +671,7 @@ visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
 setTab(DEFAULT_TAB, false);
+sessionStatusController.setStatus('not running');
 window.addEventListener('resize', scheduleMemoryResize);
 updateMemoryLayout(false);
 wireTec1gSerialUi(vscode);
@@ -704,5 +713,8 @@ window.addEventListener('keyup', event => {
   if (matrixUi.handleKeyEvent(event, false)) {
     event.preventDefault();
   }
+});
+window.addEventListener('beforeunload', () => {
+  sessionStatusController.dispose();
 });
   

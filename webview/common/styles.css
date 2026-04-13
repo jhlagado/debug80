@@ -259,8 +259,17 @@ body {
     }
     .tabs {
       display: flex;
-      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 12px;
+    }
+    .tabs-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
     }
     .tab {
       background: #1f1f1f;
@@ -276,6 +285,43 @@ body {
       background: #3a3a3a;
       color: #fff;
       border-color: #5a5a5a;
+    }
+    .session-status {
+      border: 1px solid #3b3b3b;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: #242424;
+      color: #cfcfcf;
+      cursor: default;
+      min-width: 108px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .session-status:not(:disabled) {
+      cursor: pointer;
+    }
+    .session-status.status-starting {
+      background: #3a2f18;
+      color: #ffd48a;
+      border-color: #7d5a20;
+    }
+    .session-status.status-running {
+      background: #1f3a26;
+      color: #b5f0c5;
+      border-color: #3f7750;
+    }
+    .session-status.status-paused {
+      background: #1c2e44;
+      color: #c0d7ff;
+      border-color: #47658e;
+    }
+    .session-status.status-not-running {
+      background: #242424;
+      color: #d0d0d0;
+      border-color: #454545;
     }
     .panel {
       display: none;

@@ -55,6 +55,7 @@ import {
 import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './adapter-request-controller';
 import { handleWarmRebuildRequest } from './rebuild-request';
+import { emitDebugSessionStatus } from './session-status';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -310,6 +311,7 @@ export class Z80DebugSession extends DebugSession {
     }
     this.sessionState.runState.lastStopReason = 'entry';
     this.sessionState.runState.lastBreakpointAddress = null;
+    emitDebugSessionStatus((event) => this.sendEvent(event as DebugProtocol.Event), 'paused');
     this.sendEvent(new StoppedEvent('entry', THREAD_ID));
   }
 
