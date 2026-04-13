@@ -16,6 +16,11 @@ const DEFAULT_TAB: PanelTab =
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
+const configureProjectButton = document.getElementById('configureProject') as HTMLButtonElement | null;
+const setupCard = document.getElementById('setupCard') as HTMLElement | null;
+const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
+const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
+const setupSecondaryAction = document.getElementById('setupSecondaryAction') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
@@ -69,6 +74,8 @@ let speedMode = 'fast';
 let uiRevision = 0;
 let shiftLatched = false;
 let currentRootPath = '';
+let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
+let currentTargetCount = 0;
 const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
@@ -78,6 +85,31 @@ const projectRootController = createProjectRootButtonController(
   selectProjectButton,
   createProjectButton
 );
+
+configureProjectButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'configureProject' });
+});
+
+setupPrimaryAction?.addEventListener('click', () => {
+  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+  if (selected === undefined) {
+    vscode.postMessage({ type: 'openWorkspaceFolder' });
+    return;
+  }
+  if (!selected.hasProject) {
+    vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+    return;
+  }
+  if (currentTargetCount === 0) {
+    vscode.postMessage({ type: 'configureProject' });
+    return;
+  }
+  vscode.postMessage({ type: 'startDebug' });
+});
+
+setupSecondaryAction?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'configureProject' });
+});
 
 homeTargetSelect?.addEventListener('change', () => {
   const targetName = homeTargetSelect.value;
@@ -135,12 +167,45 @@ function applyProjectStatus(payload: {
   targetName?: string;
 }): void {
   currentRootPath = payload.rootPath ?? '';
+  currentRoots = payload.roots ?? [];
   projectRootController.applyProjectStatus({
     rootPath: payload.rootPath,
     roots: payload.roots ?? [],
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
+  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+  const targetCount = payload.targets?.length ?? 0;
+  currentTargetCount = targetCount;
+  if (configureProjectButton) {
+    configureProjectButton.hidden = selected?.hasProject !== true;
+  }
+  if (!setupCard || !setupCardText || !setupPrimaryAction || !setupSecondaryAction) {
+    return;
+  }
+  setupCard.hidden = false;
+  if (selected === undefined) {
+    setupCardText.textContent = 'No workspace folder is open. Open a folder to start with Debug80.';
+    setupPrimaryAction.textContent = 'Open Folder';
+    setupSecondaryAction.hidden = true;
+    return;
+  }
+  if (!selected.hasProject) {
+    setupCardText.textContent = `No Debug80 project found in ${selected.name}.`;
+    setupPrimaryAction.textContent = 'Create Project';
+    setupSecondaryAction.hidden = true;
+    return;
+  }
+  if (targetCount === 0) {
+    setupCardText.textContent = 'Project has no targets configured yet.';
+    setupPrimaryAction.textContent = 'Configure Project';
+    setupSecondaryAction.hidden = true;
+    return;
+  }
+  setupCardText.textContent = 'Project is configured. Start debugging or adjust settings.';
+  setupPrimaryAction.textContent = 'Start Debugging';
+  setupSecondaryAction.hidden = false;
+  setupSecondaryAction.textContent = 'Configure';
 }
 
 applyProjectStatus({});

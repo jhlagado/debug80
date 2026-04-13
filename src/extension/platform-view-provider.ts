@@ -332,10 +332,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         });
         return;
       }
+      if (msg?.type === 'openWorkspaceFolder') {
+        await vscode.commands.executeCommand('vscode.openFolder');
+        return;
+      }
       if (msg?.type === 'selectProject') {
         await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', {
           rootPath: (msg as { rootPath?: string }).rootPath,
         });
+        return;
+      }
+      if (msg?.type === 'configureProject') {
+        await vscode.commands.executeCommand('debug80.openProjectConfigPanel');
         return;
       }
       if (msg?.type === 'selectTarget') {
