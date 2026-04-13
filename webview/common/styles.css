@@ -289,14 +289,14 @@ body {
     .session-status {
       border: 1px solid #3b3b3b;
       border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 10px;
-      letter-spacing: 0.08em;
+      padding: 4px 8px;
+      font-size: 9px;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       background: #242424;
       color: #cfcfcf;
       cursor: default;
-      min-width: 108px;
+      min-width: 96px;
       text-align: center;
       white-space: nowrap;
     }
