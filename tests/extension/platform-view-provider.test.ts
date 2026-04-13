@@ -363,4 +363,56 @@ describe('PlatformViewProvider', () => {
     expect(statusMessages[0]?.targetName).toBe('app');
     expect(statusMessages[0]?.entrySource).toBe('src/main.asm');
   });
+
+  it('posts sessionStatus updates to the active webview', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.setSessionStatus('running');
+
+    const statusMessages = getPostMessageCalls(webviewView).filter(
+      ([msg]) => msg.type === 'sessionStatus'
+    );
+    expect(statusMessages).toHaveLength(1);
+    expect(statusMessages[0]?.[0]).toEqual({
+      type: 'sessionStatus',
+      status: 'running',
+    });
+  });
+
+  it('returns the session badge to Not running when the active session terminates', () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+    provider.setPlatform('tec1g', { id: 'session-1' } as never, { reveal: false, tab: 'ui' });
+
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.handleSessionTerminated('session-1');
+
+    const statusMessages = getPostMessageCalls(webviewView).filter(
+      ([msg]) => msg.type === 'sessionStatus'
+    );
+    expect(statusMessages).toHaveLength(1);
+    expect(statusMessages[0]?.[0]).toEqual({
+      type: 'sessionStatus',
+      status: 'not running',
+    });
+  });
 });

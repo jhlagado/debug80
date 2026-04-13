@@ -19,6 +19,7 @@ import {
 import { resolveMappedPath } from './path-resolver';
 import { normalizeSourcePath } from './launch-args';
 import { getUnmappedCallReturnAddress } from './step-call-resolver';
+import { emitDebugSessionStatus } from './session-status';
 import type { VariableService } from './variable-service';
 import type { SessionStateShape } from './session-state';
 import type { PlatformRegistry } from './platform-registry';
@@ -394,6 +395,7 @@ export class AdapterRequestController {
       this.deps.sessionState.runState.haltNotified = true;
       this.deps.sessionState.runState.lastStopReason = 'halt';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
+      emitDebugSessionStatus(this.deps.sendEvent, 'paused');
       this.deps.sendEvent(new StoppedEvent('halt', this.deps.threadId));
       return;
     }
