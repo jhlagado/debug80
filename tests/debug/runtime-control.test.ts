@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { OutputEvent, StoppedEvent } from '@vscode/debugadapter';
+import { Event as DapEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
 import { applyStepInfo, runUntilReturnAsync, runUntilStopAsync } from '../../src/debug/runtime-control';
 import type {
   RuntimeControlCapabilities,
@@ -168,6 +168,31 @@ describe('runtime-control', () => {
     await runUntilStopAsync(context);
     expect(stopReason).toBe('breakpoint');
     expect(stopAddress).toBe(0x1234);
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('emits running and paused session status events during the stop loop', async () => {
+    const context = makeContext({
+      pauseRequested: true,
+      runtimeCapabilities: {
+        recordCycles: vi.fn(),
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+
+    await runUntilStopAsync(context);
+
+    const statusEvents = events.filter(
+      (event): event is DapEvent =>
+        event instanceof DapEvent && event.event === 'debug80/sessionStatus'
+    );
+    expect(statusEvents).toHaveLength(2);
+    expect(statusEvents[0]?.body).toEqual({ status: 'running' });
+    expect(statusEvents[1]?.body).toEqual({ status: 'paused' });
     expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
   });
 

@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+import type { DebugSessionStatus } from '../debug/session-status';
 import { Tec1PanelTab, getTec1Html } from '../platforms/tec1/ui-panel-html';
 import { createMemoryViewState as createTec1MemoryViewState } from '../platforms/tec1/ui-panel-memory';
 import { handleTec1Message, Tec1Message } from '../platforms/tec1/ui-panel-messages';
@@ -95,6 +96,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private tec1gSerialBuffer = createTec1gSerialBuffer();
   private tec1gMemoryViews = createTec1gMemoryViewState();
   private tec1gUiVisibilityOverride: Record<string, boolean> | undefined;
+  private sessionStatus: DebugSessionStatus = 'not running';
   private tec1gRefreshController = createTec1gRefreshController(
     () => this.buildSnapshotPayload(this.tec1gMemoryViews),
     {
@@ -154,6 +156,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.reveal(options?.focus ?? false);
     }
     this.renderCurrentView(true);
+  }
+
+  setSessionStatus(status: DebugSessionStatus): void {
+    this.sessionStatus = status;
+    if (!this.currentPlatform) {
+      return;
+    }
+    this.postMessage({ type: 'sessionStatus', status });
   }
 
   setTec1gUiVisibility(visibility: Record<string, boolean> | undefined, persist = false): void {
@@ -293,6 +303,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     this.currentSession = undefined;
     this.currentSessionId = undefined;
+    this.setSessionStatus('not running');
     stopTec1AutoRefresh(this.tec1RefreshController.state);
     stopTec1gAutoRefresh(this.tec1gRefreshController.state);
     this.clear();
@@ -404,6 +415,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.currentPlatform === 'tec1') {
       this.view.webview.html = getTec1Html(this.tec1ActiveTab, this.view.webview, this.extensionUri);
       this.postProjectStatus();
+      this.postSessionStatus();
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
@@ -423,6 +435,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.currentPlatform === 'tec1g') {
       this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
       this.postProjectStatus();
+      this.postSessionStatus();
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
@@ -462,6 +475,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (rehydrate || this.view.webview.html.length === 0) {
       this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
       this.postProjectStatus();
+      this.postSessionStatus();
     }
   }
 
@@ -470,6 +484,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postMessage({ type: 'projectStatus', ...this.getProjectStatusPayload() });
+  }
+
+  private postSessionStatus(): void {
+    if (!this.view || !this.currentPlatform) {
+      return;
+    }
+    this.postMessage({ type: 'sessionStatus', status: this.sessionStatus });
   }
 
   private getProjectStatusPayload(): ProjectStatusPayload {

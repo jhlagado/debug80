@@ -17,6 +17,7 @@ import type { LaunchSequenceContext } from './launch-sequence';
 import type { LaunchSessionArtifacts } from './launch-sequence';
 import type { BreakpointManager } from './breakpoint-manager';
 import type { CpuStateSnapshot } from '../z80/runtime';
+import { emitDebugSessionStatus } from './session-status';
 
 export interface RuntimeControlContext {
   getRuntime: () => Z80Runtime | undefined;
@@ -279,6 +280,7 @@ export async function runUntilStopAsync(
   let lastThrottleMs = Date.now();
   const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
     context.getRuntimeCapabilities();
+  emitDebugSessionStatus(context.sendEvent, 'running');
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -294,6 +296,7 @@ export async function runUntilStopAsync(
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
         getRuntimeCapabilities()?.silenceSpeaker();
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -320,6 +323,7 @@ export async function runUntilStopAsync(
         context.setRunning(false);
         context.setLastStopReason('breakpoint');
         context.setLastBreakpointAddress(pc);
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(new StoppedEvent('breakpoint', 1));
         return;
       }
@@ -328,6 +332,7 @@ export async function runUntilStopAsync(
         context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(new StoppedEvent('step', 1));
         return;
       }
@@ -347,6 +352,7 @@ export async function runUntilStopAsync(
         context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(
           new OutputEvent(
             `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
@@ -403,6 +409,7 @@ export async function runUntilReturnAsync(
   let lastThrottleMs = Date.now();
   const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
     context.getRuntimeCapabilities();
+  emitDebugSessionStatus(context.sendEvent, 'running');
   // eslint-disable-next-line no-constant-condition
   while (true) {
     for (let i = 0; i < CHUNK; i += 1) {
@@ -417,6 +424,7 @@ export async function runUntilReturnAsync(
         context.setLastStopReason('pause');
         context.setLastBreakpointAddress(null);
         getRuntimeCapabilities()?.silenceSpeaker();
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(new StoppedEvent('pause', 1));
         return;
       }
@@ -440,6 +448,7 @@ export async function runUntilReturnAsync(
           context.setRunning(false);
           context.setLastStopReason('breakpoint');
           context.setLastBreakpointAddress(pc);
+          emitDebugSessionStatus(context.sendEvent, 'paused');
           context.sendEvent(new StoppedEvent('breakpoint', 1));
           return;
         }
@@ -461,6 +470,7 @@ export async function runUntilReturnAsync(
           context.setRunning(false);
           context.setLastStopReason('step');
           context.setLastBreakpointAddress(null);
+          emitDebugSessionStatus(context.sendEvent, 'paused');
           context.sendEvent(new StoppedEvent('step', 1));
           return;
         }
@@ -471,6 +481,7 @@ export async function runUntilReturnAsync(
         context.setRunning(false);
         context.setLastStopReason('step');
         context.setLastBreakpointAddress(null);
+        emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(
           new OutputEvent(
             `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
