@@ -309,7 +309,10 @@ function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
   select.appendChild(option);
 }
 
-function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: string): void {
+function setTargetOptions(
+  options: ProjectStatusPayload['targets'],
+  selectedTargetName?: string
+): void {
   if (!homeTargetSelect) {
     return;
   }
