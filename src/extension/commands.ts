@@ -48,8 +48,22 @@ function findWorkspaceFolder(rootPath: string | undefined): vscode.WorkspaceFold
 }
 
 async function resolveFolderForProjectCreation(
-  workspaceSelection: WorkspaceSelectionController
+  workspaceSelection: WorkspaceSelectionController,
+  rootPath?: string
 ): Promise<vscode.WorkspaceFolder | undefined> {
+  const directFolder = findWorkspaceFolder(rootPath);
+  if (directFolder !== undefined) {
+    workspaceSelection.rememberWorkspace(directFolder);
+    return directFolder;
+  }
+
+  if (rootPath !== undefined && rootPath.length > 0) {
+    void vscode.window.showInformationMessage(
+      `Debug80: The workspace root ${rootPath} is not open in this window.`
+    );
+    return undefined;
+  }
+
   const folder = await workspaceSelection.resolveWorkspaceFolder({
     prompt: true,
     placeHolder: 'Select a folder for the new Debug80 project',
@@ -190,8 +204,8 @@ export function registerExtensionCommands({
   targetSelection,
 }: CommandDependencies): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.createProject', async () => {
-      const folder = await resolveFolderForProjectCreation(workspaceSelection);
+    vscode.commands.registerCommand('debug80.createProject', async (args?: { rootPath?: string }) => {
+      const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
       if (!folder) {
         void vscode.window.showErrorMessage('Debug80: No workspace folder available for project creation.');
         return false;
