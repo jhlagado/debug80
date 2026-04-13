@@ -505,6 +505,111 @@ describe('registerExtensionCommands', () => {
     expect(serialized).toContain('"platform": "tec1g"');
   });
 
+  it('does not overwrite projectPlatform when editing one target in multi-target config', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        projectVersion: 1,
+        projectPlatform: 'tec1',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+          other: { sourceFile: 'src/other.asm', platform: 'tec1g' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({ label: 'Platform', value: 'platform' });
+    showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommands.get('debug80.configureProject');
+    expect(configureProject).toBeTypeOf('function');
+
+    await configureProject?.();
+
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1"');
+    expect(serialized).toContain('"app"');
+    expect(serialized).toContain('"platform": "tec1g"');
+  });
+
+  it('renames target and updates target alias when config.target points to old name', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        target: 'app',
+        defaultTarget: 'app',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({ label: 'Target Name', value: 'targetName' });
+    const showInputBoxMock = vscode.window.showInputBox as ReturnType<typeof vi.fn>;
+    showInputBoxMock.mockResolvedValueOnce('renamed');
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommands.get('debug80.configureProject');
+    expect(configureProject).toBeTypeOf('function');
+
+    const result = await configureProject?.();
+
+    expect(result).toBe('renamed');
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"target": "renamed"');
+    expect(serialized).toContain('"defaultTarget": "renamed"');
+    expect(serialized).toContain('"renamed"');
+  });
+
   it('restarts the active z80 session against the current project target', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');

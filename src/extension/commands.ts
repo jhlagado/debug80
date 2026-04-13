@@ -531,7 +531,10 @@ export function registerExtensionCommands({
           updatedTarget.simple = createSimplePlatformDefaults();
         }
         config.projectVersion = DEBUG80_PROJECT_VERSION;
-        config.projectPlatform = platform;
+        // Keep project-level platform stable for mixed-target projects.
+        if (Object.keys(targets).length <= 1) {
+          config.projectPlatform = platform;
+        }
       } else if (pick.value === 'program') {
         const sources = listProjectSourceFiles(folder.uri.fsPath);
         if (sources.length === 0) {
@@ -594,6 +597,9 @@ export function registerExtensionCommands({
         nextTargetName = targetName;
         if (config.defaultTarget === target) {
           config.defaultTarget = targetName;
+        }
+        if (config.target === target) {
+          config.target = targetName;
         }
       } else if (pick.value === 'outputDir') {
         const outputDir = (await vscode.window.showInputBox({
