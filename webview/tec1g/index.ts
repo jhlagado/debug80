@@ -2,6 +2,7 @@ import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController, type SessionStatus } from '../common/session-status';
 import { createProjectRootButtonController } from '../common/project-root-button';
+import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
@@ -133,7 +134,8 @@ let sysCtrlSegs: HTMLElement[] = [];
 let sysCtrlValue = 0;
 let currentRootPath = '';
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-let currentTargetCount = 0;
+let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug' =
+  'openWorkspaceFolder';
 const digitEls: HTMLElement[] = [];
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 for (let i = 0; i < DIGITS; i++) {
@@ -267,19 +269,24 @@ configureProjectButton?.addEventListener('click', () => {
 
 setupPrimaryAction?.addEventListener('click', () => {
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  if (selected === undefined) {
+  if (setupPrimaryActionType === 'openWorkspaceFolder') {
     vscode.postMessage({ type: 'openWorkspaceFolder' });
     return;
   }
-  if (!selected.hasProject) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+  if (setupPrimaryActionType === 'createProject') {
+    if (selected !== undefined) {
+      vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+    }
     return;
   }
-  if (currentTargetCount === 0) {
+  if (setupPrimaryActionType === 'configureProject') {
     vscode.postMessage({ type: 'configureProject' });
     return;
   }
-  vscode.postMessage({ type: 'startDebug' });
+  vscode.postMessage({
+    type: 'startDebug',
+    ...(selected ? { rootPath: selected.path } : {}),
+  });
 });
 
 setupSecondaryAction?.addEventListener('click', () => {
@@ -351,7 +358,6 @@ function applyProjectStatus(payload: {
   setTargetOptions(payload.targets ?? [], payload.targetName);
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
   const targetCount = payload.targets?.length ?? 0;
-  currentTargetCount = targetCount;
   if (configureProjectButton) {
     configureProjectButton.hidden = selected?.hasProject !== true;
   }
@@ -359,27 +365,11 @@ function applyProjectStatus(payload: {
     return;
   }
   setupCard.hidden = false;
-  if (selected === undefined) {
-    setupCardText.textContent = 'No workspace folder is open. Open a folder to start with Debug80.';
-    setupPrimaryAction.textContent = 'Open Folder';
-    setupSecondaryAction.hidden = true;
-    return;
-  }
-  if (!selected.hasProject) {
-    setupCardText.textContent = `No Debug80 project found in ${selected.name}.`;
-    setupPrimaryAction.textContent = 'Create Project';
-    setupSecondaryAction.hidden = true;
-    return;
-  }
-  if (targetCount === 0) {
-    setupCardText.textContent = 'Project has no targets configured yet.';
-    setupPrimaryAction.textContent = 'Configure Project';
-    setupSecondaryAction.hidden = true;
-    return;
-  }
-  setupCardText.textContent = 'Project is configured. Start debugging or adjust settings.';
-  setupPrimaryAction.textContent = 'Start Debugging';
-  setupSecondaryAction.hidden = false;
+  const setupState = resolveSetupCardState(selected, targetCount);
+  setupPrimaryActionType = setupState.primaryAction;
+  setupCardText.textContent = setupState.text;
+  setupPrimaryAction.textContent = setupState.primaryLabel;
+  setupSecondaryAction.hidden = !setupState.showSecondaryConfigure;
   setupSecondaryAction.textContent = 'Configure';
 }
 
