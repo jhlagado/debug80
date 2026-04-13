@@ -50,6 +50,9 @@ export function createSessionStatusController(
     element.dataset.status = status.replace(/\s+/g, '-');
     element.className = statusClass(status);
     element.title = STATUS_TITLES[status];
+    element.setAttribute('aria-label', `${STATUS_LABELS[status]}. ${STATUS_TITLES[status]}`);
+    element.setAttribute('aria-live', 'polite');
+    element.setAttribute('aria-atomic', 'true');
     element.disabled = status !== 'not running';
   };
 

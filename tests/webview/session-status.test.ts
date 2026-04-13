@@ -45,6 +45,10 @@ describe('debugger session status badge', () => {
     expect(badge?.textContent).toBe('Not running');
     expect(badge?.dataset.status).toBe('not-running');
     expect(badge?.disabled).toBe(false);
+    expect(badge?.title).toBe('Click to start debugging');
+    expect(badge?.getAttribute('aria-label')).toBe(
+      'Not running. Click to start debugging'
+    );
   });
 
   it.each(HTML_PATHS)('updates the badge text for %s session states', (_label, htmlPath) => {
@@ -60,14 +64,17 @@ describe('debugger session status badge', () => {
     expect(badge?.textContent).toBe('Starting...');
     expect(badge?.dataset.status).toBe('starting');
     expect(badge?.disabled).toBe(true);
+    expect(badge?.title).toBe('Debugger session is starting');
 
     controller.setStatus('running');
     expect(badge?.textContent).toBe('Running');
     expect(badge?.dataset.status).toBe('running');
+    expect(badge?.title).toBe('Debugger session is running');
 
     controller.setStatus('paused');
     expect(badge?.textContent).toBe('Paused');
     expect(badge?.dataset.status).toBe('paused');
+    expect(badge?.title).toBe('Debugger session is paused');
 
     controller.dispose();
   });

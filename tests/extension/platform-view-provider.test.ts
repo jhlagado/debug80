@@ -4,19 +4,29 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { executeCommand, resolveProjectStatusSummary, findProjectConfigPath, listProjectTargetChoices } = vi.hoisted(() => ({
-  executeCommand: vi.fn(() => Promise.resolve()),
-  resolveProjectStatusSummary: vi.fn(() => ({
-    projectName: 'demo',
-    targetName: 'app',
-    entrySource: 'src/main.asm',
-  })),
-  findProjectConfigPath: vi.fn((folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/.vscode/debug80.json`),
-  listProjectTargetChoices: vi.fn(() => [
-    { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
-    { name: 'serial', description: 'src/serial.asm', detail: 'src/serial.asm' },
-  ]),
-}));
+const {
+  executeCommand,
+  resolveProjectStatusSummary,
+  findProjectConfigPath,
+  listProjectTargetChoices,
+} = vi.hoisted(() => {
+  const executeCommand = vi.fn(() => Promise.resolve(true));
+  return {
+    executeCommand,
+    resolveProjectStatusSummary: vi.fn(() => ({
+      projectName: 'demo',
+      targetName: 'app',
+      entrySource: 'src/main.asm',
+    })),
+    findProjectConfigPath: vi.fn(
+      (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/.vscode/debug80.json`
+    ),
+    listProjectTargetChoices: vi.fn(() => [
+      { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
+      { name: 'serial', description: 'src/serial.asm', detail: 'src/serial.asm' },
+    ]),
+  };
+});
 
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 
@@ -414,5 +424,26 @@ describe('PlatformViewProvider', () => {
       type: 'sessionStatus',
       status: 'not running',
     });
+  });
+
+  it('routes startDebug messages to the existing start command', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(webviewView, {} as vscode.WebviewViewResolveContext, {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    } as vscode.CancellationToken);
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    await handler?.({ type: 'startDebug' });
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug');
   });
 });
