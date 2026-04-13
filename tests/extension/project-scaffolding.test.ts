@@ -1,18 +1,61 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { showQuickPick, showInputBox, showInformationMessage, showErrorMessage } = vi.hoisted(
+  () => ({
+    showQuickPick: vi.fn(),
+    showInputBox: vi.fn(),
+    showInformationMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+  })
+);
+
 import {
   createDefaultProjectConfig,
   createDefaultLaunchConfig,
   createStarterSourceContent,
+  scaffoldProject,
 } from '../../src/extension/project-scaffolding';
 
 vi.mock('vscode', () => ({
-  window: {},
+  window: {
+    showQuickPick,
+    showInputBox,
+    showInformationMessage,
+    showErrorMessage,
+  },
+}));
+
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    existsSync: vi.fn((candidate: string) => !candidate.endsWith('/.vscode/debug80.json')),
+    writeFileSync: vi.fn(),
+  };
+});
+
+vi.mock('../../src/debug/config-utils', () => ({
+  ensureDirExists: vi.fn(),
+  inferDefaultTarget: vi.fn(() => ({
+    sourceFile: 'src/main.asm',
+    outputDir: 'build',
+    artifactBase: 'main',
+  })),
+}));
+
+vi.mock('../../src/extension/project-config', () => ({
+  listProjectSourceFiles: vi.fn(() => []),
 }));
 
 describe('project-scaffolding helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('builds a simple target config for asm sources', () => {
     const config = createDefaultProjectConfig({
       targetName: 'app',
+      platform: 'simple',
       sourceFile: 'src/main.asm',
       outputDir: 'build',
       artifactBase: 'main',
@@ -42,6 +85,7 @@ describe('project-scaffolding helpers', () => {
   it('includes the zax assembler when scaffolding a zax target', () => {
     const config = createDefaultProjectConfig({
       targetName: 'app',
+      platform: 'simple',
       sourceFile: 'src/main.zax',
       outputDir: 'build',
       artifactBase: 'main',
@@ -79,5 +123,118 @@ describe('project-scaffolding helpers', () => {
         },
       ],
     });
+  });
+
+  it('builds a tec1 target config when scaffolding for TEC-1', () => {
+    const config = createDefaultProjectConfig({
+      targetName: 'app',
+      platform: 'tec1',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+    });
+
+    expect(config).toEqual({
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          outputDir: 'build',
+          artifactBase: 'main',
+          platform: 'tec1',
+          tec1: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 4095, kind: 'ram' },
+            ],
+            appStart: 0x0800,
+            entry: 0,
+          },
+        },
+      },
+    });
+  });
+
+  it('builds a tec1g target config when scaffolding for TEC-1G', () => {
+    const config = createDefaultProjectConfig({
+      targetName: 'app',
+      platform: 'tec1g',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+    });
+
+    expect(config).toEqual({
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          outputDir: 'build',
+          artifactBase: 'main',
+          platform: 'tec1g',
+          tec1g: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 32767, kind: 'ram' },
+              { start: 49152, end: 65535, kind: 'rom' },
+            ],
+            appStart: 0x4000,
+            entry: 0,
+          },
+        },
+      },
+    });
+  });
+
+  it('cancels scaffolding when platform selection is dismissed', async () => {
+    showQuickPick.mockResolvedValueOnce(undefined);
+
+    const created = await scaffoldProject(
+      { name: 'demo', uri: { fsPath: '/workspace/demo' }, index: 0 } as never,
+      false
+    );
+
+    expect(created).toBe(false);
+    expect(showInputBox).not.toHaveBeenCalled();
+  });
+
+  it('writes a tec1g config after choosing platform, target name, and starter source', async () => {
+    const fs = await import('fs');
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    showQuickPick.mockResolvedValueOnce({ platform: 'tec1g' }).mockResolvedValueOnce({
+      choice: { kind: 'starter', language: 'asm' },
+    });
+    showInputBox.mockResolvedValueOnce('app');
+
+    const created = await scaffoldProject(
+      { name: 'demo', uri: { fsPath: '/workspace/demo' }, index: 0 } as never,
+      false
+    );
+
+    expect(created).toBe(true);
+    expect(showQuickPick).toHaveBeenCalledTimes(2);
+    expect(showInputBox).toHaveBeenCalledOnce();
+    expect(writeFileSync).toHaveBeenCalled();
+
+    const configWrite = writeFileSync.mock.calls.find(
+      ([filePath]) => filePath === '/workspace/demo/.vscode/debug80.json'
+    );
+    expect(configWrite).toBeDefined();
+
+    const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+      targets?: Record<string, { platform?: string; tec1g?: Record<string, unknown> }>;
+    };
+    expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
+    expect(writtenConfig.targets?.app?.tec1g).toEqual(
+      expect.objectContaining({
+        appStart: 0x4000,
+        entry: 0,
+      })
+    );
+
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: Created TEC-1G project in .vscode/debug80.json targeting src/main.asm.'
+    );
   });
 });

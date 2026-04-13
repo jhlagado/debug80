@@ -7,11 +7,24 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
 import { listProjectSourceFiles } from './project-config';
+import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
+import {
+  TEC1G_APP_START_DEFAULT,
+  TEC1G_RAM_END,
+  TEC1G_RAM_START,
+  TEC1G_ROM0_END,
+  TEC1G_ROM0_START,
+  TEC1G_ROM1_END,
+  TEC1G_ROM1_START,
+} from '../platforms/tec1g/constants';
+
+type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
 
 type StarterLanguage = 'asm' | 'zax';
 
 type ScaffoldPlan = {
   targetName: string;
+  platform: ScaffoldPlatform;
   sourceFile: string;
   outputDir: string;
   artifactBase: string;
@@ -26,6 +39,50 @@ type SourceChoice =
   | { kind: 'existing'; sourceFile: string }
   | { kind: 'starter'; language: StarterLanguage };
 
+function createSimpleDefaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: 0, end: 2047, kind: 'rom' },
+      { start: 2048, end: 65535, kind: 'ram' },
+    ],
+    appStart: 0x0900,
+    entry: 0,
+  };
+}
+
+function createTec1Defaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: 0, end: 2047, kind: 'rom' },
+      { start: 2048, end: 4095, kind: 'ram' },
+    ],
+    appStart: TEC1_APP_START_DEFAULT,
+    entry: 0,
+  };
+}
+
+function createTec1gDefaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: TEC1G_ROM0_START, end: TEC1G_ROM0_END, kind: 'rom' },
+      { start: TEC1G_RAM_START, end: TEC1G_RAM_END, kind: 'ram' },
+      { start: TEC1G_ROM1_START, end: TEC1G_ROM1_END, kind: 'rom' },
+    ],
+    appStart: TEC1G_APP_START_DEFAULT,
+    entry: 0,
+  };
+}
+
+function platformDisplayName(platform: ScaffoldPlatform): string {
+  if (platform === 'tec1') {
+    return 'TEC-1';
+  }
+  if (platform === 'tec1g') {
+    return 'TEC-1G';
+  }
+  return 'Simple';
+}
+
 export function createStarterSourceContent(language: StarterLanguage): string {
   if (language === 'zax') {
     return ['; Debug80 starter (ZAX)', '', 'start:', '    nop', '    jr start', ''].join('\n');
@@ -35,26 +92,55 @@ export function createStarterSourceContent(language: StarterLanguage): string {
 }
 
 export function createDefaultProjectConfig(plan: ScaffoldPlan): Record<string, unknown> {
+  const targetConfig: Record<string, unknown> = {
+    sourceFile: plan.sourceFile,
+    outputDir: plan.outputDir,
+    artifactBase: plan.artifactBase,
+    platform: plan.platform,
+    ...(plan.assembler !== undefined ? { assembler: plan.assembler } : {}),
+  };
+
+  if (plan.platform === 'tec1') {
+    targetConfig.tec1 = createTec1Defaults();
+  } else if (plan.platform === 'tec1g') {
+    targetConfig.tec1g = createTec1gDefaults();
+  } else {
+    targetConfig.simple = createSimpleDefaults();
+  }
+
   return {
     defaultTarget: plan.targetName,
     targets: {
-      [plan.targetName]: {
-        sourceFile: plan.sourceFile,
-        outputDir: plan.outputDir,
-        artifactBase: plan.artifactBase,
-        platform: 'simple',
-        ...(plan.assembler !== undefined ? { assembler: plan.assembler } : {}),
-        simple: {
-          regions: [
-            { start: 0, end: 2047, kind: 'rom' },
-            { start: 2048, end: 65535, kind: 'ram' },
-          ],
-          appStart: 0x0900,
-          entry: 0,
-        },
-      },
+      [plan.targetName]: targetConfig,
     },
   };
+}
+
+async function choosePlatform(): Promise<ScaffoldPlatform | undefined> {
+  const items: Array<vscode.QuickPickItem & { platform: ScaffoldPlatform }> = [
+    {
+      label: 'Simple',
+      description: 'Generic Debug80 memory-map platform',
+      platform: 'simple',
+    },
+    {
+      label: 'TEC-1',
+      description: 'Classic TEC-1 keypad/LCD platform',
+      platform: 'tec1',
+    },
+    {
+      label: 'TEC-1G',
+      description: 'TEC-1G LCD/GLCD/matrix platform',
+      platform: 'tec1g',
+    },
+  ];
+
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Choose the platform for this Debug80 project',
+    matchOnDescription: true,
+  });
+
+  return picked?.platform;
 }
 
 export function createDefaultLaunchConfig(): Record<string, unknown> {
@@ -118,7 +204,7 @@ export async function scaffoldProject(
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created .vscode/debug80.json targeting ${scaffoldPlan.sourceFile}.`
+        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in .vscode/debug80.json targeting ${scaffoldPlan.sourceFile}.`
       );
       created = true;
     } catch (err) {
@@ -160,14 +246,21 @@ async function buildScaffoldPlan(
   folder: vscode.WorkspaceFolder,
   inferred: { sourceFile: string; outputDir: string; artifactBase: string }
 ): Promise<ScaffoldPlan | undefined> {
+  const platform = await choosePlatform();
+  if (platform === undefined) {
+    return undefined;
+  }
+
   const targetName =
-    (await vscode.window.showInputBox({
-      prompt: 'Debug80 target name',
-      placeHolder: 'app',
-      value: 'app',
-      validateInput: (value) =>
-        value.trim().length === 0 ? 'Target name cannot be empty.' : undefined,
-    }))?.trim() ?? '';
+    (
+      await vscode.window.showInputBox({
+        prompt: 'Debug80 target name',
+        placeHolder: 'app',
+        value: 'app',
+        validateInput: (value) =>
+          value.trim().length === 0 ? 'Target name cannot be empty.' : undefined,
+      })
+    )?.trim() ?? '';
   if (targetName.length === 0) {
     return undefined;
   }
@@ -181,6 +274,7 @@ async function buildScaffoldPlan(
     const sourceFile = choice.sourceFile;
     return {
       targetName,
+      platform,
       sourceFile,
       outputDir: inferred.outputDir,
       artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
@@ -191,6 +285,7 @@ async function buildScaffoldPlan(
   const sourceFile = choice.language === 'zax' ? 'src/main.zax' : 'src/main.asm';
   return {
     targetName,
+    platform,
     sourceFile,
     outputDir: inferred.outputDir,
     artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
