@@ -327,7 +327,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         return;
       }
       if (msg?.type === 'createProject') {
-        await vscode.commands.executeCommand('debug80.createProject');
+        await vscode.commands.executeCommand('debug80.createProject', {
+          rootPath: (msg as { rootPath?: string }).rootPath,
+        });
         return;
       }
       if (msg?.type === 'selectProject') {
