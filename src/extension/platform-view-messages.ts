@@ -2,22 +2,32 @@
  * @file Message routing helpers for the Debug80 platform view webview.
  */
 
-export type PlatformViewPlatform = string;
+import type {
+  PlatformId as PlatformViewPlatform,
+  PlatformViewInboundMessage as PlatformViewMessage,
+} from '../contracts/platform-view';
+export type { PlatformViewPlatform, PlatformViewMessage };
 
-export type PlatformViewMessage = {
-  type?: string;
-  text?: string;
-  [key: string]: unknown;
-};
+function rootPathFrom(msg: PlatformViewMessage): string | undefined {
+  const value = (msg as { rootPath?: unknown }).rootPath;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function targetNameFrom(msg: PlatformViewMessage): string | undefined {
+  const value = (msg as { targetName?: unknown }).targetName;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
 
 export interface PlatformViewMessageDependencies {
   handleCreateProject: (args?: { rootPath?: string }) => PromiseLike<void>;
+  handleOpenWorkspaceFolder: () => PromiseLike<void>;
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
+  handleConfigureProject: () => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
-  handleStartDebug: () => PromiseLike<void>;
+  handleStartDebug: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleSerialSendFile: () => PromiseLike<void>;
   handleSerialSave: (text: string) => PromiseLike<void>;
   clearSerialBuffer: (platform: PlatformViewPlatform) => void;
@@ -32,29 +42,29 @@ export async function handlePlatformViewMessage(
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
   if (msg?.type === 'createProject') {
-    await deps.handleCreateProject(
-      typeof msg.rootPath === 'string' && msg.rootPath.length > 0
-        ? { rootPath: msg.rootPath }
-        : undefined
-    );
+    const rootPath = rootPathFrom(msg);
+    await deps.handleCreateProject(rootPath !== undefined ? { rootPath } : undefined);
     return;
   }
   if (msg?.type === 'selectProject') {
-    await deps.handleSelectProject(
-      typeof msg.rootPath === 'string' && msg.rootPath.length > 0
-        ? { rootPath: msg.rootPath }
-        : undefined
-    );
+    const rootPath = rootPathFrom(msg);
+    await deps.handleSelectProject(rootPath !== undefined ? { rootPath } : undefined);
+    return;
+  }
+  if (msg?.type === 'openWorkspaceFolder') {
+    await deps.handleOpenWorkspaceFolder();
+    return;
+  }
+  if (msg?.type === 'configureProject') {
+    await deps.handleConfigureProject();
     return;
   }
   if (msg?.type === 'selectTarget') {
+    const rootPath = rootPathFrom(msg);
+    const targetName = targetNameFrom(msg);
     await deps.handleSelectTarget({
-      ...(typeof msg.rootPath === 'string' && msg.rootPath.length > 0
-        ? { rootPath: msg.rootPath }
-        : {}),
-      ...(typeof msg.targetName === 'string' && msg.targetName.length > 0
-        ? { targetName: msg.targetName }
-        : {}),
+      ...(rootPath !== undefined ? { rootPath } : {}),
+      ...(targetName !== undefined ? { targetName } : {}),
     });
     return;
   }
@@ -67,7 +77,8 @@ export async function handlePlatformViewMessage(
     return;
   }
   if (msg?.type === 'startDebug') {
-    await deps.handleStartDebug();
+    const rootPath = rootPathFrom(msg);
+    await deps.handleStartDebug(rootPath !== undefined ? { rootPath } : undefined);
     return;
   }
   if (msg?.type === 'serialSendFile') {

@@ -4,6 +4,7 @@ import { createSessionStatusController } from '../common/session-status';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
+import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixRenderer } from './matrix-renderer';
@@ -168,10 +169,10 @@ function setTargetOptions(options: Array<{ name: string; description?: string; d
 }
 
 function applyProjectStatus(payload: {
-  rootPath?: string;
-  roots?: Array<{ name: string; path: string; hasProject: boolean }>;
-  targets?: Array<{ name: string; description?: string; detail?: string }>;
-  targetName?: string;
+  rootPath?: ProjectStatusPayload['rootPath'];
+  roots?: ProjectStatusPayload['roots'];
+  targets?: ProjectStatusPayload['targets'];
+  targetName?: ProjectStatusPayload['targetName'];
 }): void {
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];

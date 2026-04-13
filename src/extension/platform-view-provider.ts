@@ -39,26 +39,12 @@ import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { findProjectConfigPath } from './project-config';
-
-type PlatformId = 'tec1' | 'tec1g' | 'simple';
-
-type ProjectStatusPayload = {
-  rootName?: string;
-  rootPath?: string;
-  hasProject?: boolean;
-  targetName?: string;
-  entrySource?: string;
-  roots: Array<{
-    name: string;
-    path: string;
-    hasProject: boolean;
-  }>;
-  targets: Array<{
-    name: string;
-    description?: string;
-    detail?: string;
-  }>;
-};
+import { handlePlatformViewMessage } from './platform-view-messages';
+import type {
+  PlatformId,
+  PlatformViewInboundMessage,
+  ProjectStatusPayload,
+} from '../contracts/platform-view';
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'debug80.platformView';
@@ -321,88 +307,74 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
     };
 
-    webviewView.webview.onDidReceiveMessage(async (msg: Tec1Message | Tec1gMessage | { type?: string; text?: string }) => {
-      if (msg?.type === 'startDebug') {
-        await vscode.commands.executeCommand(
-          'debug80.startDebug',
-          typeof (msg as { rootPath?: string }).rootPath === 'string'
-            ? { rootPath: (msg as { rootPath?: string }).rootPath }
-            : undefined
-        );
-        return;
-      }
-      if (msg?.type === 'createProject') {
-        await vscode.commands.executeCommand('debug80.createProject', {
-          rootPath: (msg as { rootPath?: string }).rootPath,
-        });
-        return;
-      }
-      if (msg?.type === 'openWorkspaceFolder') {
-        await vscode.commands.executeCommand('vscode.openFolder');
-        return;
-      }
-      if (msg?.type === 'selectProject') {
-        await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', {
-          rootPath: (msg as { rootPath?: string }).rootPath,
-        });
-        return;
-      }
-      if (msg?.type === 'configureProject') {
-        await vscode.commands.executeCommand('debug80.openProjectConfigPanel');
-        return;
-      }
-      if (msg?.type === 'selectTarget') {
-        await vscode.commands.executeCommand('debug80.selectTarget', {
-          rootPath: (msg as { rootPath?: string }).rootPath,
-          targetName: (msg as { targetName?: string }).targetName,
-        });
-        return;
-      }
-      if (msg?.type === 'setEntrySource') {
-        await vscode.commands.executeCommand('debug80.setEntrySource');
-        return;
-      }
-      if (msg?.type === 'serialSendFile') {
-        await this.handleSerialSendFile();
-        return;
-      }
-      if (msg?.type === 'serialSave' && typeof msg.text === 'string') {
-        await this.handleSerialSave(msg.text);
-        return;
-      }
-      if (msg?.type === 'serialClear') {
-        if (this.currentPlatform === 'tec1') {
-          clearSerialBuffer(this.tec1SerialBuffer);
-        } else if (this.currentPlatform === 'tec1g') {
-          clearTec1gSerialBuffer(this.tec1gSerialBuffer);
-        }
-        return;
-      }
-      if (this.currentPlatform === 'tec1') {
-        await handleTec1Message(msg as Tec1Message, {
-          getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-          refreshController: this.tec1RefreshController,
-          autoRefreshMs: 150,
-          setActiveTab: (tab) => {
-            this.tec1ActiveTab = tab;
-          },
-          getActiveTab: () => this.tec1ActiveTab,
-          isPanelVisible: () => this.view?.visible === true,
-          memoryViews: this.tec1MemoryViews,
-        });
-      } else if (this.currentPlatform === 'tec1g') {
-        await handleTec1gMessage(msg as Tec1gMessage, {
-          getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-          refreshController: this.tec1gRefreshController,
-          autoRefreshMs: 150,
-          setActiveTab: (tab) => {
-            this.tec1gActiveTab = tab;
-          },
-          getActiveTab: () => this.tec1gActiveTab,
-          isPanelVisible: () => this.view?.visible === true,
-          memoryViews: this.tec1gMemoryViews,
-        });
-      }
+    webviewView.webview.onDidReceiveMessage(async (msg: PlatformViewInboundMessage) => {
+      await handlePlatformViewMessage(msg, {
+        handleCreateProject: async (args) => {
+          await vscode.commands.executeCommand('debug80.createProject', args);
+        },
+        handleOpenWorkspaceFolder: async () => {
+          await vscode.commands.executeCommand('vscode.openFolder');
+        },
+        handleSelectProject: async (args) => {
+          await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);
+        },
+        handleConfigureProject: async () => {
+          await vscode.commands.executeCommand('debug80.openProjectConfigPanel');
+        },
+        handleSelectTarget: async (args) => {
+          await vscode.commands.executeCommand('debug80.selectTarget', args);
+        },
+        handleRestartDebug: async () => {
+          await vscode.commands.executeCommand('debug80.restartDebug');
+        },
+        handleSetEntrySource: async () => {
+          await vscode.commands.executeCommand('debug80.setEntrySource');
+        },
+        currentPlatform: () => this.currentPlatform,
+        handleStartDebug: async (args) => {
+          await vscode.commands.executeCommand('debug80.startDebug', args);
+        },
+        handleSerialSendFile: async () => {
+          await this.handleSerialSendFile();
+        },
+        handleSerialSave: async (text) => {
+          await this.handleSerialSave(text);
+        },
+        clearSerialBuffer: (platform) => {
+          if (platform === 'tec1') {
+            clearSerialBuffer(this.tec1SerialBuffer);
+          } else if (platform === 'tec1g') {
+            clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+          }
+        },
+        handlePlatformMessage: async (platform, platformMsg) => {
+          if (platform === 'tec1') {
+            await handleTec1Message(platformMsg as Tec1Message, {
+              getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+              refreshController: this.tec1RefreshController,
+              autoRefreshMs: 150,
+              setActiveTab: (tab) => {
+                this.tec1ActiveTab = tab;
+              },
+              getActiveTab: () => this.tec1ActiveTab,
+              isPanelVisible: () => this.view?.visible === true,
+              memoryViews: this.tec1MemoryViews,
+            });
+            return;
+          }
+          await handleTec1gMessage(platformMsg as Tec1gMessage, {
+            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            refreshController: this.tec1gRefreshController,
+            autoRefreshMs: 150,
+            setActiveTab: (tab) => {
+              this.tec1gActiveTab = tab;
+            },
+            getActiveTab: () => this.tec1gActiveTab,
+            isPanelVisible: () => this.view?.visible === true,
+            memoryViews: this.tec1gMemoryViews,
+          });
+        },
+      });
     });
 
     webviewView.onDidDispose(() => {
