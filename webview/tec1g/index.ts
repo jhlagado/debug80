@@ -4,6 +4,7 @@ import { createSessionStatusController, type SessionStatus } from '../common/ses
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
+import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
@@ -69,18 +70,6 @@ type MemorySnapshotPayload = {
   }>;
 };
 
-type ProjectRootOption = {
-  name: string;
-  path: string;
-  hasProject: boolean;
-};
-
-type ProjectTargetOption = {
-  name: string;
-  description?: string;
-  detail?: string;
-};
-
 type IncomingMessage =
   | { type: 'selectTab'; tab: string }
   | { type: 'sessionStatus'; status: SessionStatus }
@@ -91,8 +80,8 @@ type IncomingMessage =
       hasProject?: boolean;
       targetName?: string;
       entrySource?: string;
-      roots: ProjectRootOption[];
-      targets: ProjectTargetOption[];
+      roots: ProjectStatusPayload['roots'];
+      targets: ProjectStatusPayload['targets'];
     }
   | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
   | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
@@ -320,7 +309,10 @@ function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
   select.appendChild(option);
 }
 
-function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: string): void {
+function setTargetOptions(
+  options: ProjectStatusPayload['targets'],
+  selectedTargetName?: string
+): void {
   if (!homeTargetSelect) {
     return;
   }
@@ -343,10 +335,10 @@ function setTargetOptions(options: ProjectTargetOption[], selectedTargetName?: s
 }
 
 function applyProjectStatus(payload: {
-  rootPath?: string;
-  roots?: ProjectRootOption[];
-  targets?: ProjectTargetOption[];
-  targetName?: string;
+  rootPath?: ProjectStatusPayload['rootPath'];
+  roots?: ProjectStatusPayload['roots'];
+  targets?: ProjectStatusPayload['targets'];
+  targetName?: ProjectStatusPayload['targetName'];
 }): void {
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
