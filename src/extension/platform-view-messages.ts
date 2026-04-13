@@ -11,7 +11,7 @@ export type PlatformViewMessage = {
 };
 
 export interface PlatformViewMessageDependencies {
-  handleCreateProject: () => PromiseLike<void>;
+  handleCreateProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
@@ -32,7 +32,11 @@ export async function handlePlatformViewMessage(
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
   if (msg?.type === 'createProject') {
-    await deps.handleCreateProject();
+    await deps.handleCreateProject(
+      typeof msg.rootPath === 'string' && msg.rootPath.length > 0
+        ? { rootPath: msg.rootPath }
+        : undefined
+    );
     return;
   }
   if (msg?.type === 'selectProject') {
