@@ -3,6 +3,7 @@
  */
 
 import * as path from 'path';
+import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
@@ -10,6 +11,7 @@ import {
   findProjectConfigPath,
   listProjectSourceFiles,
   readProjectConfig,
+  resolveProjectPlatform,
   writeProjectConfig,
   updateProjectTargetSource,
 } from './project-config';
@@ -93,6 +95,84 @@ function createTec1gPlatformDefaults(): Record<string, unknown> {
     appStart: TEC1G_APP_START_DEFAULT,
     entry: 0,
   };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function createNonce(): string {
+  return randomBytes(16).toString('base64');
+}
+
+function buildProjectConfigPanelHtml(
+  config: ProjectConfig,
+  cspSource: string,
+  nonce: string
+): string {
+  const currentPlatform = resolveProjectPlatform(config) ?? 'simple';
+  const targetNames = Object.keys(config.targets ?? {});
+  const currentDefault = config.defaultTarget ?? config.target ?? targetNames[0] ?? '';
+  const platformOptions = ['simple', 'tec1', 'tec1g']
+    .map(
+      (platform) =>
+        `<option value="${platform}"${
+          platform === currentPlatform ? ' selected' : ''
+        }>${platform}</option>`
+    )
+    .join('');
+  const targetOptions = targetNames
+    .map(
+      (targetName) =>
+        `<option value="${escapeHtml(targetName)}"${
+          targetName === currentDefault ? ' selected' : ''
+        }>${escapeHtml(targetName)}</option>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+  <title>Debug80 Project Config</title>
+  <style nonce="${nonce}">
+    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 16px; }
+    h2 { margin-top: 0; }
+    .row { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; max-width: 480px; }
+    label { font-size: 12px; opacity: 0.9; }
+    select, button { padding: 6px 8px; font: inherit; }
+    .hint { font-size: 12px; opacity: 0.8; margin-top: 8px; max-width: 600px; }
+  </style>
+</head>
+<body>
+  <h2>Debug80 Project Configuration</h2>
+  <div class="row">
+    <label for="platform">Project Platform</label>
+    <select id="platform">${platformOptions}</select>
+  </div>
+  <div class="row">
+    <label for="defaultTarget">Default Target</label>
+    <select id="defaultTarget">${targetOptions}</select>
+  </div>
+  <button id="save">Save Configuration</button>
+  <div class="hint">This panel edits project-level settings only. Target-specific runtime controls are unchanged.</div>
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    document.getElementById('save')?.addEventListener('click', () => {
+      const platform = document.getElementById('platform')?.value ?? '';
+      const defaultTarget = document.getElementById('defaultTarget')?.value ?? '';
+      vscode.postMessage({ type: 'saveProjectConfig', platform, defaultTarget });
+    });
+  </script>
+</body>
+</html>`;
 }
 
 function findWorkspaceFolder(rootPath: string | undefined): vscode.WorkspaceFolder | undefined {
@@ -725,6 +805,93 @@ export function registerExtensionCommands({
         `Debug80: Set ${target} program file to ${picked}.`
       );
       return picked;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openProjectConfigPanel', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        requireProject: true,
+        prompt: true,
+        placeHolder: 'Select the Debug80 project folder to configure',
+      });
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+
+      const projectConfigPath = findProjectConfigPath(folder);
+      if (projectConfigPath === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+        );
+        return undefined;
+      }
+
+      const initialConfig = readProjectConfig(projectConfigPath);
+      if (initialConfig === undefined) {
+        void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
+        return undefined;
+      }
+      let config: ProjectConfig = initialConfig;
+
+      const panel = vscode.window.createWebviewPanel(
+        'debug80ProjectConfig',
+        `Debug80 Project Settings: ${folder.name}`,
+        vscode.ViewColumn.Active,
+        { enableScripts: true, retainContextWhenHidden: true }
+      );
+      panel.webview.html = buildProjectConfigPanelHtml(config, panel.webview.cspSource, createNonce());
+
+      const messageDisposable = panel.webview.onDidReceiveMessage((msg: unknown) => {
+        const payload = msg as { type?: string; platform?: string; defaultTarget?: string };
+        if (payload.type !== 'saveProjectConfig') {
+          return;
+        }
+
+        const platform = payload.platform;
+        const defaultTarget = payload.defaultTarget;
+        if (
+          (platform !== 'simple' && platform !== 'tec1' && platform !== 'tec1g') ||
+          typeof defaultTarget !== 'string'
+        ) {
+          void vscode.window.showErrorMessage('Debug80: Invalid project configuration values.');
+          return;
+        }
+
+        const targets = config.targets ?? {};
+        if (targets[defaultTarget] === undefined) {
+          void vscode.window.showErrorMessage('Debug80: Selected default target no longer exists.');
+          return;
+        }
+
+        const next: ProjectConfig = {
+          ...config,
+          projectVersion: DEBUG80_PROJECT_VERSION,
+          projectPlatform: platform,
+          defaultTarget,
+          target: defaultTarget,
+        };
+        const written = writeProjectConfig(projectConfigPath, next);
+        if (!written) {
+          void vscode.window.showErrorMessage('Debug80: Failed to update project config.');
+          return;
+        }
+
+        config = next;
+        panel.webview.html = buildProjectConfigPanelHtml(
+          config,
+          panel.webview.cspSource,
+          createNonce()
+        );
+        platformViewProvider.refreshIdleView();
+        void vscode.window.showInformationMessage('Debug80: Project configuration updated.');
+      });
+      panel.onDidDispose(() => {
+        messageDisposable.dispose();
+      });
+
+      return true;
     })
   );
 
