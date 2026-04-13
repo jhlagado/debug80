@@ -60,7 +60,7 @@ type SelectTargetArgs = {
 };
 
 type ConfigureFieldId =
-  | 'platform'
+  | 'targetPlatformOverride'
   | 'program'
   | 'assembler'
   | 'targetName'
@@ -158,7 +158,7 @@ function buildProjectConfigPanelHtml(
 <body>
   <h2>Debug80 Project Configuration</h2>
   <div class="row">
-    <label for="platform">Project Platform</label>
+    <label for="platform">Project Default Platform</label>
     <select id="platform">${platformOptions}</select>
   </div>
   <div class="row">
@@ -166,7 +166,7 @@ function buildProjectConfigPanelHtml(
     <select id="defaultTarget">${targetOptions}</select>
   </div>
   <button id="save">Save Configuration</button>
-  <div class="hint">This panel edits project-level settings only. Target-specific runtime controls are unchanged.</div>
+  <div class="hint">This panel edits project-level settings only. Per-target platform overrides remain available in target configuration flows.</div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     document.getElementById('save')?.addEventListener('click', () => {
@@ -570,7 +570,7 @@ export function registerExtensionCommands({
 
       const pick = await vscode.window.showQuickPick(
         [
-          { label: 'Platform', value: 'platform' as ConfigureFieldId },
+          { label: 'Target Platform Override', value: 'targetPlatformOverride' as ConfigureFieldId },
           { label: 'Program File', value: 'program' as ConfigureFieldId },
           { label: 'Assembler', value: 'assembler' as ConfigureFieldId },
           { label: 'Target Name', value: 'targetName' as ConfigureFieldId },
@@ -595,14 +595,14 @@ export function registerExtensionCommands({
       const updatedTarget: Record<string, unknown> = { ...currentTarget };
       let nextTargetName = target;
 
-      if (pick.value === 'platform') {
+      if (pick.value === 'targetPlatformOverride') {
         const platformPick = await vscode.window.showQuickPick(
           [
             { label: 'simple', detail: 'Generic Debug80 memory-map platform' },
             { label: 'tec1', detail: 'Classic TEC-1 keypad/LCD platform' },
             { label: 'tec1g', detail: 'TEC-1G LCD/GLCD/matrix platform' },
           ],
-          { placeHolder: 'Select target platform' }
+          { placeHolder: 'Select a platform override for this target' }
         );
         if (!platformPick) {
           return undefined;
