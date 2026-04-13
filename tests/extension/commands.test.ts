@@ -541,7 +541,10 @@ describe('registerExtensionCommands', () => {
       })
     );
     const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
-    showQuickPickMock.mockResolvedValueOnce({ label: 'Platform', value: 'platform' });
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Target Platform Override',
+      value: 'targetPlatformOverride',
+    });
     showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
 
     registerExtensionCommands({
@@ -593,7 +596,10 @@ describe('registerExtensionCommands', () => {
       })
     );
     const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
-    showQuickPickMock.mockResolvedValueOnce({ label: 'Platform', value: 'platform' });
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Target Platform Override',
+      value: 'targetPlatformOverride',
+    });
     showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
 
     registerExtensionCommands({
