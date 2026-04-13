@@ -182,6 +182,10 @@
       {
         "command": "debug80.openRomSource",
         "title": "Debug80: Open ROM Listing/Source"
+      },
+      {
+        "command": "debug80.openProjectConfigPanel",
+        "title": "Debug80: Open Project Configuration Panel"
       }
     ],
     "menus": {

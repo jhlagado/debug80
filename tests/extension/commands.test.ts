@@ -13,11 +13,14 @@ const readFileSync = vi.fn();
 const writeFileSync = vi.fn();
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
+const createWebviewPanel = vi.fn();
 const startDebugging = vi.fn();
 const stopDebugging = vi.fn();
 const executeCommand = vi.fn();
 const scaffoldProject = vi.fn();
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
+let panelMessageHandler: ((msg: unknown) => void) | undefined;
+let panelHtml = '';
 
 vi.mock('fs', () => ({
   existsSync,
@@ -41,6 +44,10 @@ vi.mock('vscode', () => ({
     showQuickPick: vi.fn(),
     showOpenDialog: vi.fn(),
     showInputBox: vi.fn(),
+    createWebviewPanel,
+  },
+  ViewColumn: {
+    Active: 1,
   },
   workspace: {
     get workspaceFolders() {
@@ -71,6 +78,30 @@ describe('registerExtensionCommands', () => {
         },
       })
     );
+    panelMessageHandler = undefined;
+    panelHtml = '';
+    createWebviewPanel.mockImplementation(() => {
+      const webview = {
+        cspSource: 'vscode-webview:',
+        get html() {
+          return panelHtml;
+        },
+        set html(value: string) {
+          panelHtml = value;
+        },
+        onDidReceiveMessage: vi.fn((handler: (msg: unknown) => void) => {
+          panelMessageHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+      };
+      return {
+        webview,
+        onDidDispose: vi.fn((handler: () => void) => {
+          void handler;
+          return { dispose: vi.fn() };
+        }),
+      };
+    });
   });
 
   it(
@@ -608,6 +639,120 @@ describe('registerExtensionCommands', () => {
     expect(serialized).toContain('"target": "renamed"');
     expect(serialized).toContain('"defaultTarget": "renamed"');
     expect(serialized).toContain('"renamed"');
+  });
+
+  it('renders project config panel with manifest-selected defaults and CSP nonce', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        projectPlatform: 'tec1g',
+        defaultTarget: 'serial',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'tec1g' },
+          serial: { sourceFile: 'src/serial.asm', platform: 'tec1g' },
+        },
+      })
+    );
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
+    expect(openPanel).toBeTypeOf('function');
+
+    await openPanel?.();
+
+    expect(createWebviewPanel).toHaveBeenCalled();
+    expect(panelHtml).toContain('Content-Security-Policy');
+    expect(panelHtml).toContain('script-src \'nonce-');
+    expect(panelHtml).toContain('<option value="tec1g" selected>');
+    expect(panelHtml).toContain('<option value="serial" selected>');
+  });
+
+  it('rejects invalid save payload in project config panel', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
+    expect(openPanel).toBeTypeOf('function');
+    await openPanel?.();
+
+    panelMessageHandler?.({ type: 'saveProjectConfig', platform: 'bad-platform', defaultTarget: 'app' });
+
+    expect(showErrorMessage).toHaveBeenCalledWith(
+      'Debug80: Invalid project configuration values.'
+    );
+    expect(writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('saves project config panel updates and refreshes idle view', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+    const refreshIdleView = vi.fn();
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
+    expect(openPanel).toBeTypeOf('function');
+    await openPanel?.();
+
+    panelMessageHandler?.({ type: 'saveProjectConfig', platform: 'tec1g', defaultTarget: 'serial' });
+
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1g"');
+    expect(serialized).toContain('"defaultTarget": "serial"');
+    expect(serialized).toContain('"target": "serial"');
+    expect(refreshIdleView).toHaveBeenCalled();
   });
 
   it('restarts the active z80 session against the current project target', async () => {
