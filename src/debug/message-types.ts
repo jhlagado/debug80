@@ -20,6 +20,8 @@ export type CustomRequestType =
   | 'debug80/tec1gSerialInput'
   | 'debug80/tec1MemorySnapshot'
   | 'debug80/tec1gMemorySnapshot'
+  | 'debug80/registerWrite'
+  | 'debug80/memoryWrite'
   | 'debug80/rebuildWarm'
   | 'debug80/romSources';
 
