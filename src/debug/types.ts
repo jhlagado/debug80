@@ -63,6 +63,10 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
  * Configuration file structure for debug80.json.
  */
 export interface ProjectConfig {
+  /** Schema version for the Debug80 project manifest/config model */
+  projectVersion?: 1;
+  /** Project-level platform identity chosen at project creation time */
+  projectPlatform?: string;
   /** Default target to use when none specified */
   defaultTarget?: string;
   /** Alternative name for defaultTarget */
@@ -90,4 +94,3 @@ export interface ProjectConfig {
   tec1?: Tec1PlatformConfig;
   tec1g?: Tec1gPlatformConfig;
 }
-

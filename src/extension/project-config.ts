@@ -7,6 +7,48 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ProjectConfig } from '../debug/types';
 
+export const DEBUG80_PROJECT_VERSION = 1 as const;
+
+export function isDebug80ProjectConfig(config: ProjectConfig | undefined): config is ProjectConfig {
+  if (config === undefined) {
+    return false;
+  }
+
+  const targets = config.targets;
+  if (targets === undefined || Object.keys(targets).length === 0) {
+    return false;
+  }
+
+  if (config.projectVersion !== undefined && config.projectVersion !== DEBUG80_PROJECT_VERSION) {
+    return false;
+  }
+
+  return true;
+}
+
+export function resolveProjectPlatform(config: ProjectConfig | undefined): string | undefined {
+  if (config === undefined) {
+    return undefined;
+  }
+
+  if (typeof config.projectPlatform === 'string' && config.projectPlatform.trim() !== '') {
+    return config.projectPlatform.trim().toLowerCase();
+  }
+
+  if (typeof config.platform === 'string' && config.platform.trim() !== '') {
+    return config.platform.trim().toLowerCase();
+  }
+
+  const targets = Object.values(config.targets ?? {});
+  for (const target of targets) {
+    if (typeof target?.platform === 'string' && target.platform.trim() !== '') {
+      return target.platform.trim().toLowerCase();
+    }
+  }
+
+  return undefined;
+}
+
 export const PROJECT_CONFIG_CANDIDATES = [
   path.join('.vscode', 'debug80.json'),
   'debug80.json',
@@ -36,6 +78,14 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
   } catch {
     return undefined;
   }
+}
+
+export function isInitializedDebug80Project(folder: vscode.WorkspaceFolder): boolean {
+  const projectConfigPath = findProjectConfigPath(folder);
+  if (projectConfigPath === undefined) {
+    return false;
+  }
+  return isDebug80ProjectConfig(readProjectConfig(projectConfigPath));
 }
 
 /**
