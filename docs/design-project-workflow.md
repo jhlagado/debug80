@@ -84,6 +84,21 @@ The first version of the improved model should be:
 
 This maps directly onto the current `debug80.json` structure and keeps scope under control.
 
+### Platform UX model
+
+Debug80 should use this user-facing platform model:
+
+- `Project default platform`: the baseline platform for the project (`projectPlatform`).
+- `Target platform override`: an optional per-target override (`targets.<name>.platform`).
+
+UX guidance:
+
+- project setup and project configuration panels should present and edit the project default first
+- target configuration should label per-target platform as an override, not as the primary project identity
+- debug and sidebar status should prefer project-level language by default, while still honoring target overrides at runtime
+
+This keeps config flexibility without forcing new users to think in target-level terms before they need to.
+
 ### Configuration location
 
 Debug80 project config should live in the folder:
