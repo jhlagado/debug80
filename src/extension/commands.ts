@@ -6,9 +6,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
+  DEBUG80_PROJECT_VERSION,
   findProjectConfigPath,
   listProjectSourceFiles,
   readProjectConfig,
+  writeProjectConfig,
   updateProjectTargetSource,
 } from './project-config';
 import {
@@ -21,6 +23,17 @@ import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
+import type { ProjectConfig } from '../debug/types';
+import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
+import {
+  TEC1G_APP_START_DEFAULT,
+  TEC1G_RAM_END,
+  TEC1G_RAM_START,
+  TEC1G_ROM0_END,
+  TEC1G_ROM0_START,
+  TEC1G_ROM1_END,
+  TEC1G_ROM1_START,
+} from '../platforms/tec1g/constants';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -39,6 +52,48 @@ type SelectTargetArgs = {
   rootPath?: string;
   targetName?: string;
 };
+
+type ConfigureFieldId =
+  | 'platform'
+  | 'program'
+  | 'assembler'
+  | 'targetName'
+  | 'outputDir'
+  | 'artifactBase';
+
+function createSimplePlatformDefaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: 0, end: 2047, kind: 'rom' },
+      { start: 2048, end: 65535, kind: 'ram' },
+    ],
+    appStart: 0x0900,
+    entry: 0,
+  };
+}
+
+function createTec1PlatformDefaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: 0, end: 2047, kind: 'rom' },
+      { start: 2048, end: 4095, kind: 'ram' },
+    ],
+    appStart: TEC1_APP_START_DEFAULT,
+    entry: 0,
+  };
+}
+
+function createTec1gPlatformDefaults(): Record<string, unknown> {
+  return {
+    regions: [
+      { start: TEC1G_ROM0_START, end: TEC1G_ROM0_END, kind: 'rom' },
+      { start: TEC1G_RAM_START, end: TEC1G_RAM_END, kind: 'ram' },
+      { start: TEC1G_ROM1_START, end: TEC1G_ROM1_END, kind: 'rom' },
+    ],
+    appStart: TEC1G_APP_START_DEFAULT,
+    entry: 0,
+  };
+}
 
 function findWorkspaceFolder(rootPath: string | undefined): vscode.WorkspaceFolder | undefined {
   if (rootPath === undefined || rootPath.length === 0) {
@@ -387,6 +442,202 @@ export function registerExtensionCommands({
         return target;
       }
     )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.configureProject', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        requireProject: true,
+        prompt: true,
+        placeHolder: 'Select the Debug80 project folder to configure',
+      });
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+
+      const projectConfigPath = findProjectConfigPath(folder);
+      if (projectConfigPath === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+        );
+        return undefined;
+      }
+
+      const config = readProjectConfig(projectConfigPath);
+      if (config === undefined) {
+        void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
+        return undefined;
+      }
+
+      const target = await targetSelection.resolveTarget(projectConfigPath, {
+        prompt: true,
+        forcePrompt: true,
+        placeHolder: 'Select the Debug80 target to configure',
+      });
+      if (target === undefined || target === null) {
+        return undefined;
+      }
+
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: 'Platform', value: 'platform' as ConfigureFieldId },
+          { label: 'Program File', value: 'program' as ConfigureFieldId },
+          { label: 'Assembler', value: 'assembler' as ConfigureFieldId },
+          { label: 'Target Name', value: 'targetName' as ConfigureFieldId },
+          { label: 'Output Directory', value: 'outputDir' as ConfigureFieldId },
+          { label: 'Artifact Base', value: 'artifactBase' as ConfigureFieldId },
+        ],
+        {
+          placeHolder: 'Select what to configure for this target',
+        }
+      );
+      if (!pick) {
+        return undefined;
+      }
+
+      const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
+      const currentTarget = targets[target];
+      if (currentTarget === undefined) {
+        void vscode.window.showErrorMessage(`Debug80: Target ${target} no longer exists.`);
+        return undefined;
+      }
+
+      const updatedTarget: Record<string, unknown> = { ...currentTarget };
+      let nextTargetName = target;
+
+      if (pick.value === 'platform') {
+        const platformPick = await vscode.window.showQuickPick(
+          [
+            { label: 'simple', detail: 'Generic Debug80 memory-map platform' },
+            { label: 'tec1', detail: 'Classic TEC-1 keypad/LCD platform' },
+            { label: 'tec1g', detail: 'TEC-1G LCD/GLCD/matrix platform' },
+          ],
+          { placeHolder: 'Select target platform' }
+        );
+        if (!platformPick) {
+          return undefined;
+        }
+        const platform = platformPick.label as 'simple' | 'tec1' | 'tec1g';
+        updatedTarget.platform = platform;
+        delete updatedTarget.simple;
+        delete updatedTarget.tec1;
+        delete updatedTarget.tec1g;
+        if (platform === 'tec1') {
+          updatedTarget.tec1 = createTec1PlatformDefaults();
+        } else if (platform === 'tec1g') {
+          updatedTarget.tec1g = createTec1gPlatformDefaults();
+        } else {
+          updatedTarget.simple = createSimplePlatformDefaults();
+        }
+        config.projectVersion = DEBUG80_PROJECT_VERSION;
+        // Keep project-level platform stable for mixed-target projects.
+        if (Object.keys(targets).length <= 1) {
+          config.projectPlatform = platform;
+        }
+      } else if (pick.value === 'program') {
+        const sources = listProjectSourceFiles(folder.uri.fsPath);
+        if (sources.length === 0) {
+          void vscode.window.showInformationMessage(
+            'Debug80: No .asm or .zax source files were found in this project folder.'
+          );
+          return undefined;
+        }
+        const sourcePick = await vscode.window.showQuickPick(
+          sources.map((src) => ({ label: src })),
+          { placeHolder: 'Select the program file for this target' }
+        );
+        if (!sourcePick) {
+          return undefined;
+        }
+        updatedTarget.sourceFile = sourcePick.label;
+        updatedTarget.asm = sourcePick.label;
+        if (sourcePick.label.toLowerCase().endsWith('.zax')) {
+          updatedTarget.assembler = 'zax';
+        } else if (updatedTarget.assembler === 'zax') {
+          delete updatedTarget.assembler;
+        }
+      } else if (pick.value === 'assembler') {
+        const assemblerPick = await vscode.window.showQuickPick(
+          [
+            { label: 'default', detail: 'Use extension default by source file extension' },
+            { label: 'asm80', detail: 'Force asm80 backend' },
+            { label: 'zax', detail: 'Force zax backend' },
+          ],
+          { placeHolder: 'Select assembler for this target' }
+        );
+        if (!assemblerPick) {
+          return undefined;
+        }
+        if (assemblerPick.label === 'default') {
+          delete updatedTarget.assembler;
+        } else {
+          updatedTarget.assembler = assemblerPick.label;
+        }
+      } else if (pick.value === 'targetName') {
+        const targetName = (await vscode.window.showInputBox({
+          prompt: 'Debug80 target name',
+          value: target,
+          validateInput: (value) => {
+            const trimmed = value.trim();
+            if (trimmed.length === 0) {
+              return 'Target name cannot be empty.';
+            }
+            if (trimmed !== target && targets[trimmed] !== undefined) {
+              return 'A target with this name already exists.';
+            }
+            return undefined;
+          },
+        }))?.trim();
+        if (targetName === undefined || targetName.length === 0 || targetName === target) {
+          return undefined;
+        }
+        delete targets[target];
+        targets[targetName] = updatedTarget;
+        nextTargetName = targetName;
+        if (config.defaultTarget === target) {
+          config.defaultTarget = targetName;
+        }
+        if (config.target === target) {
+          config.target = targetName;
+        }
+      } else if (pick.value === 'outputDir') {
+        const outputDir = (await vscode.window.showInputBox({
+          prompt: 'Output directory',
+          value: String(updatedTarget.outputDir ?? ''),
+          placeHolder: 'build',
+        }))?.trim();
+        if (outputDir === undefined || outputDir.length === 0) {
+          return undefined;
+        }
+        updatedTarget.outputDir = outputDir;
+      } else if (pick.value === 'artifactBase') {
+        const artifactBase = (await vscode.window.showInputBox({
+          prompt: 'Artifact base',
+          value: String(updatedTarget.artifactBase ?? ''),
+          placeHolder: 'main',
+        }))?.trim();
+        if (artifactBase === undefined || artifactBase.length === 0) {
+          return undefined;
+        }
+        updatedTarget.artifactBase = artifactBase;
+      }
+
+      targets[nextTargetName] = updatedTarget;
+      config.targets = targets as NonNullable<ProjectConfig['targets']>;
+      const written = writeProjectConfig(projectConfigPath, config);
+      if (!written) {
+        void vscode.window.showErrorMessage('Debug80: Failed to update project config.');
+        return undefined;
+      }
+
+      targetSelection.rememberTarget(projectConfigPath, nextTargetName);
+      platformViewProvider.refreshIdleView();
+      void vscode.window.showInformationMessage(
+        `Debug80: Updated ${nextTargetName} (${pick.label}).`
+      );
+      return nextTargetName;
+    })
   );
 
   context.subscriptions.push(

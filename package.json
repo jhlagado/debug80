@@ -176,6 +176,10 @@
         "title": "Debug80: Set Program File"
       },
       {
+        "command": "debug80.configureProject",
+        "title": "Debug80: Configure Project"
+      },
+      {
         "command": "debug80.openRomSource",
         "title": "Debug80: Open ROM Listing/Source"
       }
