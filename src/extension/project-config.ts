@@ -10,7 +10,20 @@ import type { ProjectConfig } from '../debug/types';
 export const DEBUG80_PROJECT_VERSION = 1 as const;
 
 export function isDebug80ProjectConfig(config: ProjectConfig | undefined): config is ProjectConfig {
-  return config !== undefined;
+  if (config === undefined) {
+    return false;
+  }
+
+  const targets = config.targets;
+  if (targets === undefined || Object.keys(targets).length === 0) {
+    return false;
+  }
+
+  if (config.projectVersion !== undefined && config.projectVersion !== DEBUG80_PROJECT_VERSION) {
+    return false;
+  }
+
+  return true;
 }
 
 export function resolveProjectPlatform(config: ProjectConfig | undefined): string | undefined {

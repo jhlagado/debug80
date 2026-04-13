@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   DEBUG80_PROJECT_VERSION,
+  isDebug80ProjectConfig,
   isInitializedDebug80Project,
   listProjectSourceFiles,
   readProjectConfig,
@@ -97,6 +98,27 @@ describe('project-config helpers', () => {
         index: 0,
       } as never)
     ).toBe(true);
+  });
+
+  it('rejects configs without targets as uninitialized', () => {
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: DEBUG80_PROJECT_VERSION,
+        projectPlatform: 'simple',
+      })
+    ).toBe(false);
+  });
+
+  it('rejects configs with unsupported project version', () => {
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: 999 as 1,
+        projectPlatform: 'simple',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        },
+      })
+    ).toBe(false);
   });
 
   it('updates the selected target source in package.json debug80 config', () => {
