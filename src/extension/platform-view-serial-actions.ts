@@ -13,6 +13,8 @@ export interface PlatformSerialActionsContext {
 
 /**
  * Sends a file to the active serial input one character at a time.
+ * Awaits `vscode.window.withProgress` until the transfer completes (the webview message handler
+ * stays in flight for the duration), which differs from a fire-and-forget `void withProgress(...)`.
  */
 export async function handlePlatformSerialSendFile(
   ctx: PlatformSerialActionsContext
