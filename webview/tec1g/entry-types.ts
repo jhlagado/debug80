@@ -3,49 +3,19 @@
  */
 
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
+import type { Tec1gUpdatePayload as Tec1gUpdatePayloadBase } from '../../src/platforms/tec1g/types';
 import type { SessionStatus } from '../common/session-status';
 
 export type Tec1gPanelTab = 'ui' | 'memory';
-export type Tec1gSpeedMode = 'slow' | 'fast';
 
-export type Tec1gUpdatePayload = {
-  digits?: number[];
-  matrix?: number[];
-  matrixGreen?: number[];
-  matrixBlue?: number[];
-  matrixBrightness?: number[];
-  matrixBrightnessG?: number[];
-  matrixBrightnessB?: number[];
-  matrixMode?: boolean;
-  glcd?: number[];
-  glcdDdram?: number[];
-  glcdState?: {
-    displayOn?: boolean;
-    graphicsOn?: boolean;
-    cursorOn?: boolean;
-    cursorBlink?: boolean;
-    blinkVisible?: boolean;
-    ddramAddr?: number;
-    ddramPhase?: number;
-    textShift?: number;
-    scroll?: number;
-    reverseMask?: number;
-  };
+export type { Tec1gSpeedMode } from '../../src/platforms/tec1g/types';
+
+/**
+ * `update` message body: all fields optional for partial snapshots; `speaker` may be boolean or
+ * numeric 0/1 depending on the post path. Shape is derived from {@link Tec1gUpdatePayloadBase}.
+ */
+export type Tec1gUpdatePayload = Omit<Partial<Tec1gUpdatePayloadBase>, 'speaker'> & {
   speaker?: boolean | number;
-  speakerHz?: number;
-  speedMode?: Tec1gSpeedMode;
-  sysCtrl?: number;
-  bankA14?: boolean;
-  capsLock?: boolean;
-  lcdState?: {
-    displayOn?: boolean;
-    cursorOn?: boolean;
-    cursorBlink?: boolean;
-    cursorAddr?: number;
-    displayShift?: number;
-  };
-  lcdCgram?: number[];
-  lcd?: number[];
 };
 
 export type MemorySnapshotPayload = {
