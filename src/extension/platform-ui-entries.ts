@@ -136,7 +136,7 @@ export function createSimplePlatformUiEntry(): PlatformUiEntry {
         import('../platforms/simple/ui-panel-state.js'),
       ]);
       return {
-        getHtml: (_tab, webview, extensionUri) => html.getSimpleHtml(webview, extensionUri),
+        getHtml: (tab, webview, extensionUri) => html.getSimpleHtml(webview, extensionUri, tab),
         createUiState: state.createSimpleUiState,
         resetUiState: (uiState): void => state.resetSimpleUiState(uiState as SimpleUiState),
         applyUpdate: (uiState, payload): Record<string, unknown> =>
