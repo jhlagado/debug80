@@ -323,5 +323,16 @@ export function resetSessionState(target: SessionStateShape): void {
   target.entryCpuState = next.entryCpuState;
   target.launchArgs = next.launchArgs;
   target.extraListingPaths = next.extraListingPaths;
-  target.runState = next.runState;
+  target.runState.stopOnEntry = next.runState.stopOnEntry;
+  target.runState.launchComplete = next.runState.launchComplete;
+  target.runState.configurationDone = next.runState.configurationDone;
+  target.runState.isRunning = next.runState.isRunning;
+  target.runState.haltNotified = next.runState.haltNotified;
+  target.runState.lastStopReason = next.runState.lastStopReason;
+  target.runState.lastBreakpointAddress = next.runState.lastBreakpointAddress;
+  target.runState.skipBreakpointOnce = next.runState.skipBreakpointOnce;
+  target.runState.callDepth = next.runState.callDepth;
+  target.runState.stepOverMaxInstructions = next.runState.stepOverMaxInstructions;
+  target.runState.stepOutMaxInstructions = next.runState.stepOutMaxInstructions;
+  target.runState.pauseRequested = next.runState.pauseRequested;
 }
