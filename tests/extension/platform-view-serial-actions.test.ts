@@ -114,4 +114,52 @@ describe('platform-view serial actions', () => {
     expect(mocks.showWarningMessage).toHaveBeenCalledWith('Debug80: Serial buffer is empty.');
     expect(mocks.showSaveDialog).not.toHaveBeenCalled();
   });
+
+  it('uses TEC-1G serial input when platform is tec1g', async () => {
+    const fileUri = { path: '/tmp/x.txt' };
+    mocks.showOpenDialog.mockResolvedValueOnce([fileUri]);
+    mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode('Z'));
+    mocks.withProgress.mockImplementationOnce(async (_opts, callback) => {
+      await callback({ report: vi.fn() }, { isCancellationRequested: false });
+    });
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: TimerHandler) => {
+      if (typeof callback === 'function') {
+        callback();
+      }
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+
+    await handlePlatformSerialSendFile({
+      getSession: () => mocks.activeDebugSession,
+      getPlatform: () => 'tec1g',
+    });
+
+    expect(mocks.customRequest).toHaveBeenCalledWith('debug80/tec1gSerialInput', { text: 'Z' });
+    expect(mocks.customRequest).toHaveBeenCalledWith('debug80/tec1gSerialInput', { text: '\r' });
+  });
+
+  it('shows an error when there is no z80 session for send file', async () => {
+    mocks.showOpenDialog.mockResolvedValueOnce([{ path: '/tmp/a.txt' }]);
+    mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode('x'));
+
+    await handlePlatformSerialSendFile({
+      getSession: () => undefined,
+      getPlatform: () => 'tec1',
+    });
+
+    expect(mocks.showErrorMessage).toHaveBeenCalledWith('Debug80: No active debug session.');
+    expect(mocks.customRequest).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the open dialog is cancelled', async () => {
+    mocks.showOpenDialog.mockResolvedValueOnce(undefined);
+
+    await handlePlatformSerialSendFile({
+      getSession: () => mocks.activeDebugSession,
+      getPlatform: () => 'tec1',
+    });
+
+    expect(mocks.readFile).not.toHaveBeenCalled();
+    expect(mocks.customRequest).not.toHaveBeenCalled();
+  });
 });
