@@ -520,7 +520,16 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const existing = readProjectConfig(configPath) ?? {};
-    const updated = { ...existing, projectPlatform: platform };
+    // Update projectPlatform (sidebar display) AND the platform field inside
+    // every target so the restarted debug session picks up the new platform.
+    const existingTargets = existing.targets ?? {};
+    const updatedTargets = Object.fromEntries(
+      Object.entries(existingTargets).map(([name, target]) => [
+        name,
+        { ...(target as Record<string, unknown>), platform },
+      ])
+    ) as typeof existingTargets;
+    const updated = { ...existing, projectPlatform: platform, targets: updatedTargets };
     const ok = writeProjectConfig(configPath, updated);
     if (!ok) {
       void vscode.window.showErrorMessage('Debug80: Failed to save project config.');
