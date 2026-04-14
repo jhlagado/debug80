@@ -12,6 +12,7 @@ import { BitbangUartDecoder } from '../serial/bitbang-uart';
 import { Tec1PlatformConfig, Tec1PlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+import { serializeTec1UpdateFromRuntimeState } from './serialize-update-payload';
 import {
   TEC1_ADDR_MAX,
   TEC1_APP_START_DEFAULT,
@@ -192,14 +193,7 @@ export function createTec1Runtime(
   };
 
   const sendUpdate = (): void => {
-    onUpdate({
-      digits: [...state.digits],
-      matrix: [...state.matrix],
-      speaker: state.speaker ? 1 : 0,
-      speedMode: state.speedMode,
-      lcd: [...state.lcd],
-      speakerHz: state.speakerHz,
-    });
+    onUpdate(serializeTec1UpdateFromRuntimeState(state));
   };
 
   let serialLevel: 0 | 1 = 1;

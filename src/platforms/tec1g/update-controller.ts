@@ -30,7 +30,7 @@ interface Tec1gUpdateControllerDeps {
  * @param state - Current TEC-1G runtime state.
  * @returns Snapshot payload for the UI.
  */
-function buildUpdatePayload(state: Tec1gState): Tec1gUpdatePayload {
+export function serializeTec1gUpdateFromRuntimeState(state: Tec1gState): Tec1gUpdatePayload {
   const { display, input, audio, lcdCtrl, timing, system } = state;
   return {
     digits: [...display.digits],
@@ -91,7 +91,7 @@ export function createTec1gUpdateController(
   const { timing } = state;
 
   const sendUpdate = (): void => {
-    onUpdate(buildUpdatePayload(state));
+    onUpdate(serializeTec1gUpdateFromRuntimeState(state));
   };
 
   const queueUpdate = (): void => {

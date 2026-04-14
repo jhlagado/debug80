@@ -3,6 +3,8 @@
  */
 
 import * as vscode from 'vscode';
+import { tec1UpdatePayloadFromDebugEventBody } from '../platforms/tec1/serialize-update-payload';
+import { tec1gUpdatePayloadFromDebugEventBody } from '../platforms/tec1g/serialize-ui-update-payload';
 import { PlatformViewProvider } from './platform-view-provider';
 import { openRomSourcesForSession } from './rom-sources';
 import { SessionStateManager } from './session-state-manager';
@@ -194,30 +196,11 @@ export function registerDebugSessionHandlers({
         return;
       }
       if (evt.event === 'debug80/tec1Update') {
-        const payload = evt.body as {
-          digits?: number[];
-          matrix?: number[];
-          lcd?: number[];
-          sysCtrl?: number;
-          speaker?: number;
-          speakerHz?: number;
-          speedMode?: 'slow' | 'fast';
-        } | undefined;
-        if (!payload?.digits || !payload?.lcd || !payload?.matrix) {
+        const payload = tec1UpdatePayloadFromDebugEventBody(evt.body);
+        if (payload === undefined) {
           return;
         }
-        const update = {
-          digits: payload.digits,
-          matrix: payload.matrix,
-          speaker: payload.speaker ?? 0,
-          speedMode: payload.speedMode ?? 'slow',
-          lcd: payload.lcd,
-        };
-        if (payload.speakerHz !== undefined) {
-          platformViewProvider.updateTec1({ ...update, speakerHz: payload.speakerHz }, evt.session.id);
-        } else {
-          platformViewProvider.updateTec1(update, evt.session.id);
-        }
+        platformViewProvider.updateTec1(payload, evt.session.id);
         return;
       }
       if (evt.event === 'debug80/tec1Serial') {
@@ -230,65 +213,11 @@ export function registerDebugSessionHandlers({
         return;
       }
       if (evt.event === 'debug80/tec1gUpdate') {
-        const payload = evt.body as {
-          digits?: number[];
-          matrix?: number[];
-          matrixGreen?: number[];
-          matrixBlue?: number[];
-          matrixBrightness?: number[];
-          matrixBrightnessG?: number[];
-          matrixBrightnessB?: number[];
-          glcd?: number[];
-          glcdDdram?: number[];
-          glcdState?: {
-            displayOn?: boolean;
-            graphicsOn?: boolean;
-            cursorOn?: boolean;
-            cursorBlink?: boolean;
-            blinkVisible?: boolean;
-            ddramAddr?: number;
-            ddramPhase?: number;
-            textShift?: number;
-            scroll?: number;
-            reverseMask?: number;
-          };
-          lcd?: number[];
-          speaker?: number;
-          speakerHz?: number;
-          speedMode?: 'slow' | 'fast';
-        } | undefined;
-        if (!payload?.digits || !payload?.lcd || !payload?.matrix || !payload?.glcd) {
+        const payload = tec1gUpdatePayloadFromDebugEventBody(evt.body);
+        if (payload === undefined) {
           return;
         }
-        const update = {
-          digits: payload.digits,
-          matrix: payload.matrix,
-          ...(payload.matrixGreen !== undefined ? { matrixGreen: payload.matrixGreen } : {}),
-          ...(payload.matrixBlue !== undefined ? { matrixBlue: payload.matrixBlue } : {}),
-          ...(payload.matrixBrightness !== undefined
-            ? { matrixBrightness: payload.matrixBrightness }
-            : {}),
-          ...(payload.matrixBrightnessG !== undefined
-            ? { matrixBrightnessG: payload.matrixBrightnessG }
-            : {}),
-          ...(payload.matrixBrightnessB !== undefined
-            ? { matrixBrightnessB: payload.matrixBrightnessB }
-            : {}),
-          glcd: payload.glcd,
-          speaker: payload.speaker ?? 0,
-          speedMode: payload.speedMode ?? 'slow',
-          lcd: payload.lcd,
-          ...(payload.glcdDdram !== undefined ? { glcdDdram: payload.glcdDdram } : {}),
-          ...(payload.glcdState !== undefined ? { glcdState: payload.glcdState } : {}),
-        };
-        if (payload.speakerHz !== undefined) {
-          platformViewProvider.updateTec1g(
-            { ...update, speakerHz: payload.speakerHz },
-            evt.session.id
-          );
-        } else {
-          platformViewProvider.updateTec1g(update, evt.session.id);
-        }
+        platformViewProvider.updateTec1g(payload, evt.session.id);
         return;
       }
       if (evt.event === 'debug80/tec1gSerial') {
