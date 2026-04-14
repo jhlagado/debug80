@@ -39,7 +39,7 @@ import type { Z80Runtime } from '../z80/runtime';
 import type { Tec1Runtime } from '../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../platforms/tec1g/runtime';
 import type { ResolvedPlatformProvider } from '../platforms/provider';
-import type { DebugProtocol as DP } from '@vscode/debugprotocol';
+
 
 const LAUNCH_ARGS_HELPERS: LaunchArgsHelpers = {
   resolveBaseDir,
@@ -185,8 +185,8 @@ export interface LaunchSequenceContext {
   matrixHeldKeys: Map<string, MatrixKeyCombo[]>;
   emitEvent: (event: DebugProtocol.Event) => void;
   emitDapEvent: (name: string, payload: unknown) => void;
-  sendResponse: (response: DP.Response) => void;
-  sendErrorResponse: (response: DP.Response, id: number, message: string) => void;
+  sendResponse: (response: DebugProtocol.Response) => void;
+  sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
 }
 
 export async function buildLaunchSession(
