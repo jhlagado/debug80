@@ -17,12 +17,9 @@ import { WorkspaceSelectionController } from './workspace-selection';
 import { Debug80ConfigurationProvider } from './debug-configuration-provider';
 import { OutputChannelLogger } from '../util/logger';
 import {
-  listPlatforms,
-  registerPlatform,
   type PlatformManifestEntry,
 } from '../platforms/provider';
 import {
-  registerPlatformUi,
   type PlatformUiEntry,
   type PlatformUiModules,
 } from './platform-view-manifest';
@@ -34,6 +31,11 @@ import {
   serializeTec1gClearPanelUpdateFromUiState,
   serializeTec1gUpdateFromUiState,
 } from '../platforms/tec1g/serialize-ui-update-payload';
+import {
+  listExtensionPlatforms,
+  registerExtensionPlatform,
+  registerRuntimePlatform,
+} from './platform-extension-model';
 
 export interface Debug80Api {
   registerPlatform: (entry: PlatformManifestEntry) => void;
@@ -44,8 +46,28 @@ export interface Debug80Api {
  *
  */
 function registerBuiltInPlatformUis(): void {
-  registerPlatformUi(createTec1PlatformUiEntry());
-  registerPlatformUi(createTec1gPlatformUiEntry());
+  registerExtensionPlatform({
+    runtime: {
+      id: 'tec1',
+      displayName: 'TEC-1',
+      loadProvider: async (args) => {
+        const { createTec1PlatformProvider } = await import('../platforms/tec1/provider.js');
+        return createTec1PlatformProvider(args);
+      },
+    },
+    ui: createTec1PlatformUiEntry(),
+  });
+  registerExtensionPlatform({
+    runtime: {
+      id: 'tec1g',
+      displayName: 'TEC-1G',
+      loadProvider: async (args) => {
+        const { createTec1gPlatformProvider } = await import('../platforms/tec1g/provider.js');
+        return createTec1gPlatformProvider(args);
+      },
+    },
+    ui: createTec1gPlatformUiEntry(),
+  });
 }
 
 /**
@@ -215,8 +237,8 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   registerAutoRebuildOnSave(context, sessionState, output, rebuildDiagnostics);
 
   return {
-    registerPlatform,
-    listPlatforms,
+    registerPlatform: registerRuntimePlatform,
+    listPlatforms: () => listExtensionPlatforms().map((entry) => entry.runtime),
   };
 }
 

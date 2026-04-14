@@ -101,6 +101,7 @@ describe('extension activation', () => {
       };
     };
     const uiManifest = (await import('../../src/extension/platform-view-manifest')) as typeof import('../../src/extension/platform-view-manifest');
+    const unifiedManifest = (await import('../../src/extension/platform-extension-model')) as typeof import('../../src/extension/platform-extension-model');
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
@@ -141,6 +142,21 @@ describe('extension activation', () => {
       expect.objectContaining({ id: 'tec1' }),
       expect.objectContaining({ id: 'tec1g' }),
     ]);
+    expect(unifiedManifest.listExtensionPlatforms()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          runtime: expect.objectContaining({ id: 'simple' }),
+        }),
+        expect.objectContaining({
+          runtime: expect.objectContaining({ id: 'tec1' }),
+          ui: expect.objectContaining({ id: 'tec1' }),
+        }),
+        expect.objectContaining({
+          runtime: expect.objectContaining({ id: 'tec1g' }),
+          ui: expect.objectContaining({ id: 'tec1g' }),
+        }),
+      ])
+    );
   }, 20000);
 
   it('forces asm documents to z80-asm when available', async () => {
