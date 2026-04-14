@@ -262,7 +262,7 @@ This payload is posted as a `projectStatus` message. The webview renders it as a
 
 ## Serial file send
 
-`handleSerialSendFile()` handles the `serialSendFile` webview message. It:
+`handlePlatformSerialSendFile()` in `platform-view-serial-actions.ts` handles the `serialSendFile` webview message (the provider delegates to it). It:
 
 1. Opens a file picker filtered to `.hex`, `.txt`, and all files.
 2. Reads the file as UTF-8 text.
@@ -271,6 +271,8 @@ This payload is posted as a `projectStatus` message. The webview renders it as a
 5. Shows a cancellable progress notification.
 
 The character-by-character sending mirrors the timing of a real terminal, giving the program time to process each byte. Intel HEX files sent this way are loaded by the MON-1B or MON-3 monitor's load routine.
+
+`handlePlatformSerialSave()` handles `serialSave`: it warns on an empty buffer, picks `.hex` vs `.txt` filters when the buffer looks like Intel HEX, then writes UTF-8 bytes via `vscode.workspace.fs.writeFile`.
 
 ---
 
