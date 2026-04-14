@@ -32,8 +32,25 @@ Key concepts:
 
 - src/extension/extension.ts
   - VS Code activation and command wiring.
-  - Registers the debug adapter factory.
-  - Hosts the terminal webview output (custom events).
+  - Registers the debug adapter factory and built-in platform UIs.
+  - Wires the sidebar platform view provider.
+- src/extension/platform-view-provider.ts
+  - PlatformViewProvider: WebviewViewProvider for the Debug80 sidebar.
+  - Manages per-platform in-memory UI state and serial buffers.
+  - Posts messages to the webview and handles inbound webview messages.
+- src/extension/platform-extension-model.ts / platform-view-manifest.ts
+  - Platform registration registry (runtime + UI).
+  - `registerExtensionPlatform()` / `listPlatformUis()` / `loadPlatformUi()`.
+- src/extension/debug-session-events.ts
+  - Wires debug session lifecycle and custom DAP event handlers.
+  - Routes `debug80/terminalOutput` to the sidebar (simple) or terminal panel (others).
+- src/extension/platform-ui-entries.ts
+  - Factory functions for built-in platform UI module bundles (Simple, TEC-1, TEC-1G).
+- src/platforms/*/ui-panel-*.ts
+  - Per-platform UI modules: HTML generation, state management, message handling, memory views.
+- webview/
+  - Browser-side source for all three platform panels (simple/, tec1/, tec1g/).
+  - common/ — shared utilities: VS Code API bridge, session status, memory panel, serial helpers.
 - src/debug/adapter.ts
   - Main debug adapter (Z80DebugSession).
   - Launch/config merge, assembler invocation, breakpoint resolution, stepping.
@@ -47,18 +64,31 @@ Key concepts:
 
 Entry point: src/extension/extension.ts
 
-Activation does three important things:
-1) Registers the debug adapter for type `z80`.
-2) Registers commands:
-   - debug80.createProject
-   - debug80.openTerminal
-   - debug80.terminalInput
-3) Handles the terminal webview, receiving custom output events from the adapter.
+Activation does four important things:
+1) Registers the three built-in platform UIs (Simple, TEC-1, TEC-1G) via `registerBuiltInPlatformUis()`.
+2) Registers the debug adapter for type `z80`.
+3) Registers the `PlatformViewProvider` sidebar WebviewView (`debug80.platformView`).
+4) Registers commands and debug session event handlers.
+
+Registered commands (src/extension/commands.ts):
+- debug80.createProject       — scaffold a debug80.json in the workspace
+- debug80.startDebug          — launch a debug session for the selected target
+- debug80.restartDebug        — restart the active debug session
+- debug80.selectWorkspaceFolder — change the active workspace root
+- debug80.selectTarget        — change the active launch target
+- debug80.configureProject    — open project config (currently a no-op; config is via project header)
+- debug80.openProjectConfigPanel — open the project config JSON in an editor
+- debug80.setEntrySource      — set the main source file for the active target
+- debug80.openTerminal        — open the terminal panel (non-platform sessions)
+- debug80.terminalInput       — send text input to the active debug session terminal
+- debug80.openTec1            — reveal the TEC-1 sidebar panel
+- debug80.openTec1Memory      — switch the TEC-1 panel to the CPU tab
+- debug80.openRomSource       — open ROM source files for the active session
 
 Important behavior for new VS Code extension developers:
 - The debug adapter is created with vscode.DebugAdapterInlineImplementation.
-- Terminal output is sent from the adapter via a custom event name:
-  `debug80/terminalOutput`.
+- Terminal output is sent from the adapter via custom DAP events (see section 13).
+- Platform UI is served from the sidebar WebviewView, not from a WebviewPanel.
 
 ## 5. Debug Adapter Protocol (DAP) flow
 
@@ -285,22 +315,171 @@ Custom requests:
 - debug80/terminalInput (send text to rx buffer)
 - debug80/terminalBreak (trigger interrupt on next tick)
 
-The extension receives output via debug80/terminalOutput and renders it
-in a webview panel.
+The extension receives output via the `debug80/terminalOutput` custom DAP event.
+Routing depends on the session platform (determined by the preceding `debug80/platform` event):
 
-## 14. For developers new to VS Code extensions
+- **Simple platform sessions**: output is routed to the sidebar UI tab via
+  `PlatformViewProvider.appendSimpleTerminal()`. The terminal content appears in
+  the "TERMINAL" area of the simple platform's UI tab. No separate VS Code panel is opened.
+- **All other sessions** (no recognized platform ID): output is routed to
+  `TerminalPanelController`, which opens a dedicated VS Code panel if one is not already open.
+
+## 14. Platform sidebar UI
+
+### 14.1 Overview
+
+The Debug80 sidebar (`debug80.platformView`) is a VS Code `WebviewViewProvider` implemented by
+`PlatformViewProvider` (`src/extension/platform-view-provider.ts`). It is a single persistent
+webview that swaps its HTML content when the active platform changes. All three built-in platforms
+share this one sidebar location.
+
+Built-in platforms and their sidebar behavior:
+
+| Platform | UI tab content           | CPU tab content |
+|----------|--------------------------|-----------------|
+| Simple   | Terminal output (TERMINAL area + CLEAR button) | Z80 memory viewer (4 sections) |
+| TEC-1    | Hardware display, keypad, LCD, 8×8 LED matrix, serial terminal | Z80 memory viewer |
+| TEC-1G   | Hardware display, keypad, GLCD, RGB LED matrix, serial terminal | Z80 memory viewer |
+
+### 14.2 Platform registration
+
+Platforms register a runtime provider and a UI module bundle via `registerExtensionPlatform()`
+in `src/extension/platform-extension-model.ts`. The three built-in registrations happen in
+`registerBuiltInPlatformUis()` inside `extension.ts`.
+
+Each UI entry (`PlatformUiEntry`) provides a `loadUiModules()` factory that lazily imports four
+modules: `ui-panel-html`, `ui-panel-memory`, `ui-panel-messages`, and `ui-panel-state`.
+These are combined into a `PlatformUiModules` bundle used by `PlatformViewProvider` to
+generate HTML, apply updates, handle messages, and build serialized update payloads.
+
+### 14.3 Project header
+
+Every platform panel includes a project header at the top with three controls:
+
+- **Project button** — shows the active workspace root name; clicking cycles or opens a picker.
+- **Target select** — dropdown of available launch targets from `debug80.json`.
+- **Platform select** — dropdown with options Simple / TEC-1 / TEC-1G.
+  - Changing this dropdown immediately posts a `saveProjectConfig` message to the extension.
+  - The extension writes `projectPlatform` and all per-target `platform` fields in `debug80.json`,
+    then executes `debug80.restartDebug` to restart the emulator with the new platform.
+
+### 14.4 Setup card
+
+A setup card is shown at the top of the panel when the workspace is not ready:
+
+- No workspace roots available → "Select a workspace root to get started." + Open Folder button.
+- Workspace available but no project → "No debug80.json found..." + Create Project button.
+
+The setup card is **hidden entirely** once a project exists with at least one target. There is no
+"configured" or "ready" state shown — the project header controls are always visible and sufficient.
+
+### 14.5 Session status button
+
+Below the project header and tabs sits a session status button showing the current debug session
+state. It doubles as a start/stop toggle:
+
+- **Not running** — click to start debugging (`debug80.startDebug`).
+- **Starting / Running / Paused** — click to stop the active session.
+
+The status is driven by `debug80/sessionStatus` custom DAP events from the adapter.
+
+### 14.6 Tab structure
+
+Both Simple and TEC-1/TEC-1G panels use the same two-tab layout:
+
+- **UI tab** (default on session start) — platform-specific content.
+- **CPU tab** — Z80 memory inspector (four independently-addressed 16-byte dump sections,
+  register strip, live refresh during pause).
+
+Tab state is persisted in the extension host per-platform state and restored during webview
+rehydration (see section 14.9).
+
+### 14.7 Simple platform UI tab
+
+The Simple platform has no hardware display. Its UI tab contains:
+
+- **TERMINAL area** — a `<pre>` element that accumulates output text from the Z80 program's
+  configured tx port (via `debug80/terminalOutput` DAP events, routed to the sidebar for simple
+  sessions).
+- **CLEAR button** — clears the terminal display and notifies the extension host to clear the
+  serial buffer.
+
+The terminal buffer (max 8 000 characters) is maintained in the extension host and replayed into
+the webview on every rehydration via a `serialInit` message.
+
+### 14.8 TEC-1 / TEC-1G UI tab
+
+The UI tab for hardware platforms contains the physical hardware emulation display and a serial
+terminal section. The serial terminal is driven by `debug80/tec1Serial` / `debug80/tec1gSerial`
+custom DAP events and exposes send / save / send-file / clear controls. For TEC-1G the tab also
+includes the RGB LED matrix and GLCD renderer.
+
+### 14.9 Webview rehydration
+
+When the sidebar HTML is replaced (platform switch, panel reveal, VS Code restart), the extension
+host replays state in this order:
+
+1. `projectStatus` — workspace roots, targets, selected target, platform
+2. `sessionStatus` — current debug session state
+3. `update` — full UI state snapshot (TEC-1/TEC-1G hardware registers, speaker, etc.)
+4. `uiVisibility` — TEC-1G component visibility flags (TEC-1G only)
+5. `serialInit` — accumulated serial/terminal buffer text
+6. `selectTab` — restores the last active tab
+7. Memory refresh restart if the CPU tab was active
+
+### 14.10 Extension ↔ webview message types
+
+**Extension → webview:**
+
+| type          | Description |
+|---------------|-------------|
+| `projectStatus` | Workspace roots, targets, selected target name, active platform ID |
+| `sessionStatus` | Debug session state: `starting`, `running`, `paused`, `not running` |
+| `update`      | Full platform UI state snapshot (carries `uiRevision` monotonic guard) |
+| `uiVisibility` | TEC-1G component show/hide flags |
+| `serial`      | Incremental text appended to the serial/terminal output |
+| `serialInit`  | Full serial/terminal buffer on rehydration |
+| `serialClear` | Clear the serial/terminal display |
+| `selectTab`   | Restore the active tab (`ui` or `memory`) |
+| `snapshot`    | Memory dump for the CPU tab (register strip + hex sections) |
+| `snapshotError` | Error message when snapshot fails |
+
+**Webview → extension:**
+
+| type             | Description |
+|------------------|-------------|
+| `tab`            | User switched to `ui` or `memory` tab |
+| `saveProjectConfig` | User changed Platform dropdown; payload: `{ platform: string }` |
+| `selectTarget`   | User changed Target dropdown |
+| `openWorkspaceFolder` | User clicked the workspace folder button |
+| `createProject`  | User clicked Create Project in the setup card |
+| `refresh`        | Memory panel requests a snapshot with updated view configuration |
+| `registerEdit`   | User edited a register value in the CPU tab |
+| `memoryEdit`     | User edited a memory byte in the CPU tab |
+| `serialSend`     | User sent text via the serial input field |
+| `serialSendFile` | User triggered a file send via serial |
+| `serialSave`     | User saved serial output to a file |
+| `serialClear`    | User cleared the serial/terminal display |
+| `key`            | Keypad key press (TEC-1/TEC-1G) |
+| `reset`          | Reset button (TEC-1/TEC-1G) |
+| `speed`          | Speed toggle slow/fast (TEC-1/TEC-1G) |
+
+## 15. For developers new to VS Code extensions
 
 Key VS Code concepts used here:
 - Extension activation: register commands and debug adapter factory.
 - Debug Adapter Protocol: the adapter responds to DAP requests.
 - Inline debug adapter: adapter runs in the extension host process.
+- WebviewViewProvider: the sidebar panel (`debug80.platformView`) is a persistent webview
+  that swaps HTML on platform change; see section 14.
 
 If you want to add features, start here:
 - New launch args: update LaunchRequestArguments in src/debug/adapter.ts.
 - New terminal behavior: update buildIoHandlers() in src/debug/adapter.ts.
 - New mapping logic: update src/mapping/* and the index builder.
+- New platform UI: see docs/platform-development-guide.md and docs/platform-extension-api.md.
 
-## 15. Known limitations
+## 16. Known limitations
 
 - Mapping accuracy depends on the quality of the .lst listing and symbols.
 - process.cwd() discovery may miss the workspace in extension dev host.
