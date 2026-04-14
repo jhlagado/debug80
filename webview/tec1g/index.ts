@@ -1,98 +1,30 @@
+/**
+ * @file TEC-1G webview composition root: wires feature modules and extension messages.
+ */
+
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
-import { createSessionStatusController, type SessionStatus } from '../common/session-status';
-import { createProjectRootButtonController } from '../common/project-root-button';
-import { resolveSetupCardState } from '../common/setup-card-state';
+import { createSessionStatusController } from '../common/session-status';
 import { acquireVscodeApi } from '../common/vscode';
-import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
 import { wireTec1gSerialUi } from './serial-ui';
 import { createVisibilityController } from './visibility-controller';
-
-type PanelTab = 'ui' | 'memory';
-type SpeedMode = 'slow' | 'fast';
-type AudioContextCtor = typeof AudioContext;
-
-type Tec1gUpdatePayload = {
-  digits?: number[];
-  matrix?: number[];
-  matrixGreen?: number[];
-  matrixBlue?: number[];
-  matrixBrightness?: number[];
-  matrixBrightnessG?: number[];
-  matrixBrightnessB?: number[];
-  matrixMode?: boolean;
-  glcd?: number[];
-  glcdDdram?: number[];
-  glcdState?: {
-    displayOn?: boolean;
-    graphicsOn?: boolean;
-    cursorOn?: boolean;
-    cursorBlink?: boolean;
-    blinkVisible?: boolean;
-    ddramAddr?: number;
-    ddramPhase?: number;
-    textShift?: number;
-    scroll?: number;
-    reverseMask?: number;
-  };
-  speaker?: boolean | number;
-  speakerHz?: number;
-  speedMode?: SpeedMode;
-  sysCtrl?: number;
-  bankA14?: boolean;
-  capsLock?: boolean;
-  lcdState?: {
-    displayOn?: boolean;
-    cursorOn?: boolean;
-    cursorBlink?: boolean;
-    cursorAddr?: number;
-    displayShift?: number;
-  };
-  lcdCgram?: number[];
-  lcd?: number[];
-};
-
-type MemorySnapshotPayload = {
-  symbols?: Array<{ name: string; address: number }>;
-  registers?: Record<string, number | string | undefined>;
-  running?: boolean;
-  views?: Array<{
-    id: string;
-    address?: number;
-    start: number;
-    bytes: number[];
-    focus?: number;
-    symbol?: string;
-    symbolOffset?: number;
-  }>;
-};
-
-type IncomingMessage =
-  | { type: 'selectTab'; tab: string }
-  | { type: 'sessionStatus'; status: SessionStatus }
-  | {
-      type: 'projectStatus';
-      rootName?: string;
-      rootPath?: string;
-      hasProject?: boolean;
-      targetName?: string;
-      entrySource?: string;
-      roots: ProjectStatusPayload['roots'];
-      targets: ProjectStatusPayload['targets'];
-    }
-  | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
-  | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
-  | ({ type: 'snapshot' } & MemorySnapshotPayload)
-  | { type: 'snapshotError'; message?: string };
+import type { IncomingMessage, Tec1gPanelTab, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
+import { TEC1G_DIGITS } from './keypad-layout';
+import { createTec1gMemoryViews } from './tec1g-memory-views';
+import { createTec1gAudio } from './tec1g-audio';
+import { createTec1gKeypad, TEC1G_KEY_MAP } from './tec1g-keypad';
+import { applyTec1gPlatformUpdate } from './tec1g-platform-update';
+import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
+import { createTec1gTabMemory } from './tec1g-tab-memory';
 
 const vscode = acquireVscodeApi();
-const DEFAULT_TAB: PanelTab =
-  document.body.dataset.activeTab === 'memory'
-    ? 'memory'
-    : 'ui';
+
+const DEFAULT_TAB: Tec1gPanelTab =
+  document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
+
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
 const configureProjectButton = document.getElementById('configureProject') as HTMLButtonElement | null;
@@ -116,540 +48,98 @@ const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
-const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
-const SHIFT_BIT = 0x20;
-const DIGITS = 6;
-let sysCtrlSegs: HTMLElement[] = [];
-let sysCtrlValue = 0;
-let currentRootPath = '';
-let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug' =
-  'openWorkspaceFolder';
+const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
+
 const digitEls: HTMLElement[] = [];
-const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
-for (let i = 0; i < DIGITS; i++) {
+for (let i = 0; i < TEC1G_DIGITS; i++) {
   const digit = createDigit();
   digitEls.push(digit);
   displayEl.appendChild(digit);
 }
 
-let activeTab: PanelTab =
-  DEFAULT_TAB === 'memory' ? 'memory' : 'ui';
+const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
+
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
-const matrixUi = createMatrixUiController(vscode, () => activeTab === 'ui');
-const visibilityController = createVisibilityController(vscode);
-let memoryRowSize = 16;
-let resizeTimer: number | null = null;
+
 let memoryPanelController: MemoryPanel | null = null;
-const MEMORY_NARROW_MAX = 480;
-const MEMORY_WIDE_MIN = 520;
 
-function resolveMemoryRowSize(width: number): number {
-  if (!Number.isFinite(width)) {
-    return memoryRowSize;
-  }
-  if (width <= MEMORY_NARROW_MAX) {
-    return 8;
-  }
-  if (width >= MEMORY_WIDE_MIN) {
-    return 16;
-  }
-  return memoryRowSize;
-}
-
-function updateMemoryLayout(forceRefresh: boolean): void {
-  if (activeTab !== 'memory') {
-    return;
-  }
-  if (!memoryPanel) {
-    return;
-  }
-  const next = resolveMemoryRowSize(memoryPanel.clientWidth);
-  if (next !== memoryRowSize) {
-    memoryRowSize = next;
-    memoryPanelController?.requestSnapshot();
-    return;
-  }
-  if (forceRefresh) {
-    memoryPanelController?.requestSnapshot();
-  }
-}
-
-function scheduleMemoryResize(): void {
-  if (resizeTimer !== null) {
-    clearTimeout(resizeTimer);
-  }
-  resizeTimer = setTimeout(() => {
-    resizeTimer = null;
-    updateMemoryLayout(false);
-  }, 150);
-}
-
-function setTab(tab: string, notify: boolean): void {
-  activeTab = tab === 'memory' ? 'memory' : 'ui';
-  if (panelUi) {
-    panelUi.classList.toggle('active', activeTab === 'ui');
-  }
-  if (panelMemory) {
-    panelMemory.classList.toggle('active', activeTab === 'memory');
-  }
-  tabButtons.forEach((button) => {
-    const isActive = button.dataset.tab === activeTab;
-    button.classList.toggle('active', isActive);
-  });
-  if (notify) {
-    vscode.postMessage({ type: 'tab', tab: activeTab });
-  }
-  if (activeTab === 'memory') {
-    updateMemoryLayout(true);
-  }
-}
-
-tabButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const tab = button.dataset.tab;
-    if (!tab) {
-      return;
-    }
-    setTab(tab, true);
-  });
-});
-
-const keyMap = {
-  '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
-  '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
-  'A': 0x0A, 'B': 0x0B, 'C': 0x0C, 'D': 0x0D, 'E': 0x0E, 'F': 0x0F,
-  'AD': 0x13, 'RIGHT': 0x10, 'GO': 0x12, 'LEFT': 0x11
-};
-
-const controlOrder = ['AD', 'GO', 'LEFT', 'RIGHT'];
-const controlLabels = {
-  AD: 'AD',
-  GO: 'GO',
-  LEFT: '◀',
-  RIGHT: '▶',
-};
-const hexOrder = [
-  'C', 'D', 'E', 'F',
-  '8', '9', 'A', 'B',
-  '4', '5', '6', '7',
-  '0', '1', '2', '3'
-];
-
-let speedMode: SpeedMode = 'fast';
-let uiRevision = 0;
-let muted = true;
-let lastSpeakerOn = false;
-let lastSpeakerHz = 0;
-let shiftLatched = false;
-let audioCtx: AudioContext | null = null;
-let osc: OscillatorNode | null = null;
-let gain: GainNode | null = null;
-const projectRootController = createProjectRootButtonController(
+const tabMemory = createTec1gTabMemory({
   vscode,
+  tabButtons,
+  panelUi,
+  panelMemory,
+  memoryPanel: memoryPanelEl,
+  defaultTab: DEFAULT_TAB,
+  getMemoryPanelController: () => memoryPanelController,
+});
+
+const matrixUi = createMatrixUiController(vscode, () => tabMemory.getActiveTab() === 'ui');
+const visibilityController = createVisibilityController(vscode);
+
+const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   selectProjectButton,
-  createProjectButton
-);
-
-configureProjectButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'configureProject' });
+  createProjectButton,
+  configureProjectButton,
+  setupCard,
+  setupCardText,
+  setupPrimaryAction,
+  setupSecondaryAction,
+  homeTargetSelect,
 });
 
-setupPrimaryAction?.addEventListener('click', () => {
-  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  if (setupPrimaryActionType === 'openWorkspaceFolder') {
-    vscode.postMessage({ type: 'openWorkspaceFolder' });
-    return;
-  }
-  if (setupPrimaryActionType === 'createProject') {
-    if (selected !== undefined) {
-      vscode.postMessage({ type: 'createProject', rootPath: selected.path });
-    }
-    return;
-  }
-  if (setupPrimaryActionType === 'configureProject') {
-    vscode.postMessage({ type: 'configureProject' });
-    return;
-  }
-  vscode.postMessage({
-    type: 'startDebug',
-    ...(selected ? { rootPath: selected.path } : {}),
-  });
-});
+projectStatusUi.applyProjectStatus({});
 
-setupSecondaryAction?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'configureProject' });
-});
+const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
+audio.wireMuteClick();
 
-homeTargetSelect?.addEventListener('change', () => {
-  const targetName = homeTargetSelect.value;
-  if (!targetName) {
-    return;
-  }
-  vscode.postMessage({
-    type: 'selectTarget',
-    rootPath: currentRootPath,
-    targetName,
-  });
-});
-
-function clearSelectOptions(select: HTMLSelectElement): void {
-  while (select.firstChild) {
-    select.removeChild(select.firstChild);
-  }
-}
-
-function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
-  const option = document.createElement('option');
-  option.value = '';
-  option.textContent = label;
-  option.disabled = true;
-  option.selected = true;
-  select.appendChild(option);
-}
-
-function setTargetOptions(
-  options: ProjectStatusPayload['targets'],
-  selectedTargetName?: string
-): void {
-  if (!homeTargetSelect) {
-    return;
-  }
-  clearSelectOptions(homeTargetSelect);
-  if (options.length === 0) {
-    setSelectPlaceholder(homeTargetSelect, 'No targets available');
-    homeTargetSelect.disabled = true;
-    return;
-  }
-  setSelectPlaceholder(homeTargetSelect, 'Select target...');
-  for (const option of options) {
-    const el = document.createElement('option');
-    el.value = option.name;
-    el.textContent = option.name;
-    el.title = option.detail ?? option.description ?? option.name;
-    homeTargetSelect.appendChild(el);
-  }
-  homeTargetSelect.disabled = false;
-  homeTargetSelect.value = selectedTargetName ?? '';
-}
-
-function applyProjectStatus(payload: {
-  rootPath?: ProjectStatusPayload['rootPath'];
-  roots?: ProjectStatusPayload['roots'];
-  targets?: ProjectStatusPayload['targets'];
-  targetName?: ProjectStatusPayload['targetName'];
-}): void {
-  currentRootPath = payload.rootPath ?? '';
-  currentRoots = payload.roots ?? [];
-  projectRootController.applyProjectStatus({
-    rootPath: payload.rootPath,
-    roots: payload.roots ?? [],
-    targetCount: payload.targets?.length ?? 0,
-  });
-  setTargetOptions(payload.targets ?? [], payload.targetName);
-  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  const targetCount = payload.targets?.length ?? 0;
-  if (configureProjectButton) {
-    configureProjectButton.hidden = selected?.hasProject !== true;
-  }
-  if (!setupCard || !setupCardText || !setupPrimaryAction || !setupSecondaryAction) {
-    return;
-  }
-  setupCard.hidden = false;
-  const setupState = resolveSetupCardState(selected, targetCount);
-  setupPrimaryActionType = setupState.primaryAction;
-  setupCardText.textContent = setupState.text;
-  setupPrimaryAction.textContent = setupState.primaryLabel;
-  setupSecondaryAction.hidden = !setupState.showSecondaryConfigure;
-  setupSecondaryAction.textContent = 'Configure';
-}
-
-applyProjectStatus({});
-
-function applySpeed(mode: SpeedMode): void {
+let speedMode: Tec1gSpeedMode = 'fast';
+function applySpeed(mode: Tec1gSpeedMode): void {
   speedMode = mode;
   speedEl.textContent = mode.toUpperCase();
   speedEl.classList.toggle('slow', mode === 'slow');
   speedEl.classList.toggle('fast', mode === 'fast');
 }
 
-function setShiftLatched(value: boolean): void {
-  shiftLatched = value;
-  shiftButton.classList.toggle('active', shiftLatched);
-}
+const keypad = createTec1gKeypad(vscode, keypadEl, {
+  statusShadow,
+  statusProtect,
+  statusExpand,
+  statusCaps,
+});
 
-function ensureAudio(): void {
-  if (!audioCtx) {
-    const Ctx = window.AudioContext ?? (window as Window & { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
-    if (!Ctx) {
-      return;
-    }
-    audioCtx = new Ctx();
-    osc = audioCtx.createOscillator();
-    osc.type = 'square';
-    gain = audioCtx.createGain();
-    gain.gain.value = 0;
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-  }
-  if (audioCtx.state === 'suspended') {
-    void audioCtx.resume();
-  }
-}
-
-function updateAudio(): void {
-  if (!audioCtx || !osc || !gain || muted || lastSpeakerHz <= 0) {
-    if (gain) {
-      gain.gain.value = 0;
-    }
-    return;
-  }
-  osc.frequency.setValueAtTime(lastSpeakerHz, audioCtx.currentTime);
-  gain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.01);
-}
-
-function applyMuteState(): void {
-  muteEl.textContent = muted ? 'MUTED' : 'SOUND';
-  if (muted && gain) {
-    gain.gain.value = 0;
-  }
-  updateAudio();
-}
-
-function sendKey(code: number): void {
-  let adjusted = code;
-  if (shiftLatched) {
-    adjusted = code & ~SHIFT_BIT;
-  } else {
-    adjusted = code | SHIFT_BIT;
-  }
-  vscode.postMessage({ type: 'key', code: adjusted });
-  if (shiftLatched) {
-    setShiftLatched(false);
-  }
-}
-
-function addButton(
-  label: string,
-  action: () => void,
-  className: string | undefined,
-  col: number | undefined,
-  row: number | undefined,
-  isLongLabel: boolean,
-): HTMLDivElement {
-  const button = document.createElement('div');
-  button.className = className ? 'keycap ' + className : 'keycap';
-  const labelSpan = document.createElement('span');
-  labelSpan.className = 'label ' + (isLongLabel ? 'long' : 'short');
-  labelSpan.textContent = label;
-  button.appendChild(labelSpan);
-  if (col) {
-    button.style.gridColumn = String(col);
-  }
-  if (row) {
-    button.style.gridRow = String(row);
-  }
-  button.addEventListener('click', action);
-  keypadEl.appendChild(button);
-  return button;
-}
-
-function addSysCtrlBar(col: number, row: number, rowSpan?: number): void {
-  const bar = document.createElement('div');
-  bar.className = 'sysctrl';
-  for (let i = 0; i < 8; i += 1) {
-    const seg = document.createElement('div');
-    seg.className = 'sysctrl-seg';
-    bar.appendChild(seg);
-  }
-  bar.style.gridColumn = String(col);
-  bar.style.gridRow = rowSpan ? row + ' / span ' + rowSpan : String(row);
-  keypadEl.appendChild(bar);
-  sysCtrlSegs = Array.from(bar.querySelectorAll('.sysctrl-seg'));
-}
-
-function updateSysCtrl(): void {
-  if (!sysCtrlSegs.length) {
-    return;
-  }
-  for (let i = 0; i < 8; i += 1) {
-    const on = (sysCtrlValue & (1 << i)) !== 0;
-    const seg = sysCtrlSegs[7 - i];
-    if (seg) {
-      seg.classList.toggle('on', on);
-    }
-  }
-}
-
-function updateStatusLeds(): void {
-  const shadowOn = (sysCtrlValue & 0x01) === 0;
-  const protectOn = (sysCtrlValue & 0x02) !== 0;
-  const expandOn = (sysCtrlValue & 0x04) !== 0;
-  const capsOn = (sysCtrlValue & 0x20) !== 0;
-  if (statusShadow) {
-    statusShadow.classList.toggle('on', shadowOn);
-  }
-  if (statusProtect) {
-    statusProtect.classList.toggle('on', protectOn);
-  }
-  if (statusExpand) {
-    statusExpand.classList.toggle('on', expandOn);
-  }
-  if (statusCaps) {
-    statusCaps.classList.toggle('on', capsOn);
-  }
-}
-
-addButton('RESET', () => {
-  setShiftLatched(false);
-  vscode.postMessage({ type: 'reset' });
-}, 'keycap-light', 1, 1, true);
-addSysCtrlBar(1, 2, 2);
-
-for (let row = 0; row < 4; row += 1) {
-  const control = controlOrder[row];
-  const rowNum = row + 1;
-  const controlLabel = controlLabels[control] ?? control;
-  const isLong = controlLabel.length > 1;
-  addButton(controlLabel, () => sendKey(keyMap[control]), 'keycap-light', 2, rowNum, isLong);
-  const rowStart = row * 4;
-  for (let col = 0; col < 4; col += 1) {
-    const label = hexOrder[rowStart + col];
-    addButton(label, () => sendKey(keyMap[label]), 'keycap-cream', 3 + col, rowNum, false);
-  }
-}
-
-const shiftButton = addButton('FN', () => {
-  setShiftLatched(!shiftLatched);
-}, 'keycap-light', 1, 4, true);
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
   applySpeed(next);
   vscode.postMessage({ type: 'speed', mode: next });
 });
-muteEl.addEventListener('click', () => {
-  muted = !muted;
-  if (!muted) {
-    ensureAudio();
-  }
-  applyMuteState();
-});
 
-function updateDigit(el: HTMLElement, value: number): void {
-  const segments = el.querySelectorAll('[data-mask]');
-  segments.forEach((seg) => {
-    const mask = parseInt(seg.dataset.mask || '0', 10);
-    if (value & mask) {
-      seg.classList.add('on');
-    } else {
-      seg.classList.remove('on');
-    }
-  });
-}
+let uiRevision = 0;
 
-function applyUpdate(payload: Tec1gUpdatePayload | null | undefined): void {
-  if (!payload || typeof payload !== 'object') {
-    return;
-  }
-  const data = payload;
-  const digits = Array.isArray(data.digits) ? data.digits : [];
-  digitEls.forEach((el, idx) => {
-    updateDigit(el, digits[idx] || 0);
-  });
-  if (data.speaker) {
-    speakerEl.classList.add('on');
-  } else {
-    speakerEl.classList.remove('on');
-  }
-  if (speakerLabel) {
-    if (typeof data.speakerHz === 'number' && data.speakerHz > 0) {
-      speakerLabel.textContent = data.speakerHz + ' Hz';
-      lastSpeakerHz = data.speakerHz;
-    } else {
-      speakerLabel.textContent = 'SPEAKER';
-      lastSpeakerHz = 0;
-    }
-  }
-  lastSpeakerOn = !!data.speaker;
-  updateAudio();
-  if (data.speedMode === 'slow' || data.speedMode === 'fast') {
-    applySpeed(data.speedMode);
-  }
-  lcdRenderer.applyLcdUpdate(data);
-  if (Array.isArray(data.matrix)) {
-    matrixUi.applyMatrixRows(data.matrix);
-  }
-  if (Array.isArray(data.matrixGreen)) {
-    matrixUi.applyMatrixGreenRows(data.matrixGreen);
-  }
-  if (Array.isArray(data.matrixBlue)) {
-    matrixUi.applyMatrixBlueRows(data.matrixBlue);
-  }
-  if (Array.isArray(data.matrixBrightness)) {
-    matrixUi.applyMatrixBrightness(
-      data.matrixBrightness,
-      Array.isArray(data.matrixBrightnessG) ? data.matrixBrightnessG : undefined,
-      Array.isArray(data.matrixBrightnessB) ? data.matrixBrightnessB : undefined
-    );
-  }
-  if (typeof data.sysCtrl === 'number') {
-    sysCtrlValue = data.sysCtrl & 0xff;
-    updateSysCtrl();
-    updateStatusLeds();
-  }
-  if (typeof data.capsLock === 'boolean') {
-    matrixUi.applyCapsLock(data.capsLock);
-  }
-  if (typeof data.matrixMode === 'boolean') {
-    matrixUi.applyMatrixMode(data.matrixMode);
-  }
-  glcdRenderer.applyGlcdUpdate(data);
+const platformUpdateDeps = {
+  digitEls,
+  audio,
+  applySpeed,
+  lcdRenderer,
+  matrixUi,
+  glcdRenderer,
+  keypad,
+};
+
+function applyUpdateFromPayload(payload: Tec1gUpdatePayload | null | undefined): void {
+  applyTec1gPlatformUpdate(platformUpdateDeps, payload);
 }
 
 const statusEl = document.getElementById('status');
-const views = [
-  {
-    id: 'a',
-    view: document.getElementById('view-a'),
-    address: document.getElementById('address-a'),
-    addr: document.getElementById('addr-a'),
-    symbol: document.getElementById('sym-a'),
-    dump: document.getElementById('dump-a'),
-  },
-  {
-    id: 'b',
-    view: document.getElementById('view-b'),
-    address: document.getElementById('address-b'),
-    addr: document.getElementById('addr-b'),
-    symbol: document.getElementById('sym-b'),
-    dump: document.getElementById('dump-b'),
-  },
-  {
-    id: 'c',
-    view: document.getElementById('view-c'),
-    address: document.getElementById('address-c'),
-    addr: document.getElementById('addr-c'),
-    symbol: document.getElementById('sym-c'),
-    dump: document.getElementById('dump-c'),
-  },
-  {
-    id: 'd',
-    view: document.getElementById('view-d'),
-    address: document.getElementById('address-d'),
-    addr: document.getElementById('addr-d'),
-    symbol: document.getElementById('sym-d'),
-    dump: document.getElementById('dump-d'),
-  },
-];
+const views = createTec1gMemoryViews();
 
 memoryPanelController = new MemoryPanel({
   vscode,
   registerStrip,
   statusEl,
   views,
-  getRowSize: () => memoryRowSize,
-  isActive: () => activeTab === 'memory',
+  getRowSize: () => tabMemory.getMemoryRowSize(),
+  isActive: () => tabMemory.getActiveTab() === 'memory',
 });
 memoryPanelController.wire();
 
@@ -659,7 +149,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'projectStatus') {
-    applyProjectStatus(message);
+    projectStatusUi.applyProjectStatus(message);
     return;
   }
   if (message.type === 'sessionStatus') {
@@ -667,7 +157,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'selectTab') {
-    setTab(message.tab, false);
+    tabMemory.setTab(message.tab, false);
     return;
   }
   if (message.type === 'uiVisibility') {
@@ -681,8 +171,8 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       }
       uiRevision = message.uiRevision;
     }
-    applyUpdate(message);
-    if (activeTab === 'memory') {
+    applyUpdateFromPayload(message);
+    if (tabMemory.getActiveTab() === 'memory') {
       memoryPanelController?.requestSnapshot();
     }
     return;
@@ -697,19 +187,23 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
 });
 
 applySpeed(speedMode);
-applyMuteState();
+audio.applyMuteState();
 matrixUi.init();
 visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
-setTab(DEFAULT_TAB, false);
+tabMemory.setTab(DEFAULT_TAB, false);
 sessionStatusController.setStatus('not running');
-window.addEventListener('resize', scheduleMemoryResize);
-updateMemoryLayout(false);
+window.addEventListener('resize', () => {
+  tabMemory.scheduleMemoryResize();
+});
+tabMemory.updateMemoryLayout(false);
 wireTec1gSerialUi(vscode);
 
-window.addEventListener('keydown', event => {
-  if (event.repeat) return;
+window.addEventListener('keydown', (event) => {
+  if (event.repeat) {
+    return;
+  }
   if (matrixUi.handleKeyEvent(event, true)) {
     event.preventDefault();
     return;
@@ -722,32 +216,31 @@ window.addEventListener('keydown', event => {
     return;
   }
   const key = event.key.toUpperCase();
-  if (keyMap[key] !== undefined) {
-    sendKey(keyMap[key]);
+  if (TEC1G_KEY_MAP[key] !== undefined) {
+    keypad.sendKey(TEC1G_KEY_MAP[key]);
     event.preventDefault();
     return;
   }
   if (event.key === 'Enter') {
-    sendKey(0x12);
+    keypad.sendKey(0x12);
     event.preventDefault();
   } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-    sendKey(0x11);
+    keypad.sendKey(0x11);
     event.preventDefault();
   } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-    sendKey(0x10);
+    keypad.sendKey(0x10);
     event.preventDefault();
   } else if (event.key === 'Tab') {
-    sendKey(0x13);
+    keypad.sendKey(0x13);
     event.preventDefault();
   }
 });
-window.addEventListener('keyup', event => {
+window.addEventListener('keyup', (event) => {
   if (matrixUi.handleKeyEvent(event, false)) {
     event.preventDefault();
   }
 });
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
-  projectRootController.dispose();
+  projectStatusUi.dispose();
 });
-  

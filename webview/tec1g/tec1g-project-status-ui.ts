@@ -1,0 +1,175 @@
+/**
+ * @file Project header, target dropdown, and setup card wiring for the TEC-1G webview.
+ */
+
+import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
+import type { VscodeApi } from '../common/vscode';
+import { createProjectRootButtonController } from '../common/project-root-button';
+import { resolveSetupCardState } from '../common/setup-card-state';
+
+export type Tec1gProjectStatusElements = {
+  selectProjectButton: HTMLButtonElement | null;
+  createProjectButton: HTMLButtonElement | null;
+  configureProjectButton: HTMLButtonElement | null;
+  setupCard: HTMLElement | null;
+  setupCardText: HTMLElement | null;
+  setupPrimaryAction: HTMLButtonElement | null;
+  setupSecondaryAction: HTMLButtonElement | null;
+  homeTargetSelect: HTMLSelectElement | null;
+};
+
+export type Tec1gProjectStatusUi = {
+  applyProjectStatus: (payload: {
+    rootPath?: ProjectStatusPayload['rootPath'];
+    roots?: ProjectStatusPayload['roots'];
+    targets?: ProjectStatusPayload['targets'];
+    targetName?: ProjectStatusPayload['targetName'];
+  }) => void;
+  dispose: () => void;
+};
+
+function clearSelectOptions(select: HTMLSelectElement): void {
+  while (select.firstChild) {
+    select.removeChild(select.firstChild);
+  }
+}
+
+function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = label;
+  option.disabled = true;
+  option.selected = true;
+  select.appendChild(option);
+}
+
+function setTargetOptions(
+  homeTargetSelect: HTMLSelectElement,
+  options: ProjectStatusPayload['targets'],
+  selectedTargetName?: string
+): void {
+  clearSelectOptions(homeTargetSelect);
+  if (options.length === 0) {
+    setSelectPlaceholder(homeTargetSelect, 'No targets available');
+    homeTargetSelect.disabled = true;
+    return;
+  }
+  setSelectPlaceholder(homeTargetSelect, 'Select target...');
+  for (const option of options) {
+    const el = document.createElement('option');
+    el.value = option.name;
+    el.textContent = option.name;
+    el.title = option.detail ?? option.description ?? option.name;
+    homeTargetSelect.appendChild(el);
+  }
+  homeTargetSelect.disabled = false;
+  homeTargetSelect.value = selectedTargetName ?? '';
+}
+
+/**
+ * Wires workspace/target controls and returns `applyProjectStatus` for extension messages.
+ */
+export function createTec1gProjectStatusUi(
+  vscode: VscodeApi,
+  elements: Tec1gProjectStatusElements
+): Tec1gProjectStatusUi {
+  const {
+    selectProjectButton,
+    createProjectButton,
+    configureProjectButton,
+    setupCard,
+    setupCardText,
+    setupPrimaryAction,
+    setupSecondaryAction,
+    homeTargetSelect,
+  } = elements;
+
+  let currentRootPath = '';
+  let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
+  let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug' =
+    'openWorkspaceFolder';
+
+  const projectRootController = createProjectRootButtonController(vscode, selectProjectButton, createProjectButton);
+
+  configureProjectButton?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'configureProject' });
+  });
+
+  setupPrimaryAction?.addEventListener('click', () => {
+    const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+    if (setupPrimaryActionType === 'openWorkspaceFolder') {
+      vscode.postMessage({ type: 'openWorkspaceFolder' });
+      return;
+    }
+    if (setupPrimaryActionType === 'createProject') {
+      if (selected !== undefined) {
+        vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+      }
+      return;
+    }
+    if (setupPrimaryActionType === 'configureProject') {
+      vscode.postMessage({ type: 'configureProject' });
+      return;
+    }
+    vscode.postMessage({
+      type: 'startDebug',
+      ...(selected ? { rootPath: selected.path } : {}),
+    });
+  });
+
+  setupSecondaryAction?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'configureProject' });
+  });
+
+  homeTargetSelect?.addEventListener('change', () => {
+    const targetName = homeTargetSelect.value;
+    if (!targetName) {
+      return;
+    }
+    vscode.postMessage({
+      type: 'selectTarget',
+      rootPath: currentRootPath,
+      targetName,
+    });
+  });
+
+  function applyProjectStatus(payload: {
+    rootPath?: ProjectStatusPayload['rootPath'];
+    roots?: ProjectStatusPayload['roots'];
+    targets?: ProjectStatusPayload['targets'];
+    targetName?: ProjectStatusPayload['targetName'];
+  }): void {
+    currentRootPath = payload.rootPath ?? '';
+    currentRoots = payload.roots ?? [];
+    projectRootController.applyProjectStatus({
+      rootPath: payload.rootPath,
+      roots: payload.roots ?? [],
+      targetCount: payload.targets?.length ?? 0,
+    });
+    if (homeTargetSelect) {
+      setTargetOptions(homeTargetSelect, payload.targets ?? [], payload.targetName);
+    }
+    const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+    const targetCount = payload.targets?.length ?? 0;
+    if (configureProjectButton) {
+      configureProjectButton.hidden = selected?.hasProject !== true;
+    }
+    if (!setupCard || !setupCardText || !setupPrimaryAction || !setupSecondaryAction) {
+      return;
+    }
+    setupCard.hidden = false;
+    const setupState = resolveSetupCardState(selected, targetCount);
+    setupPrimaryActionType = setupState.primaryAction;
+    setupCardText.textContent = setupState.text;
+    setupPrimaryAction.textContent = setupState.primaryLabel;
+    setupSecondaryAction.hidden = !setupState.showSecondaryConfigure;
+    setupSecondaryAction.textContent = 'Configure';
+  }
+
+  return {
+    applyProjectStatus,
+    dispose: () => {
+      projectRootController.dispose();
+    },
+  };
+}
