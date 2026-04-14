@@ -6,6 +6,8 @@ The debug80 sidebar panel is a VS Code WebviewView — an iframe-based panel emb
 
 This chapter covers the provider class: what state it holds, how the webview is created and destroyed, the complete message catalogue in both directions, and how the provider wires together the debug adapter, the workspace, and the UI.
 
+For lifecycle edge-cases that are maintained as behavior contracts (session affinity filtering, rehydration replay order, TEC-1G matrix commit policy, and serial send pacing), see `docs/design-platform-ui-runtime-behaviors.md`.
+
 ---
 
 ## The provider class

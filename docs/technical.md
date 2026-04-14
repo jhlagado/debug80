@@ -216,6 +216,9 @@ The debugger core runs against a platform abstraction that supplies memory and
 I/O devices. Platform selection is per target in `debug80.json`. The platform
 spec and configuration layout are defined in `docs/platforms.md`.
 
+For UI/runtime lifecycle nuances that are easy to miss in isolated files, see
+`docs/design-platform-ui-runtime-behaviors.md`.
+
 ## 10. Breakpoints and stack frames
 
 ### 10.1 Breakpoint resolution
