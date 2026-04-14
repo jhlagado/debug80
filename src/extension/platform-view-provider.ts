@@ -535,7 +535,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Reads the current project config and posts it to the webview form. */
   private postProjectConfigData(): void {
-    const folder = this.selectedWorkspace;
+    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
     if (folder === undefined) {
       return;
     }
