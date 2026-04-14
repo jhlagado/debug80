@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 
 export type PanelTab = 'ui' | 'memory' | 'config';
-export type PanelPlatform = 'tec1' | 'tec1g';
+export type PanelPlatform = 'tec1' | 'tec1g' | 'simple';
 
 /** Generates a CSP nonce for inline script tags. */
 function getNonce(): string {

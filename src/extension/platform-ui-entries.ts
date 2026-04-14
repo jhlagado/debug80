@@ -1,16 +1,17 @@
 /**
  * @file Built-in platform UI entry factories.
  *
- * These functions create {@link PlatformUiEntry} objects for the TEC-1 and
- * TEC-1G platforms.  They are kept in a separate module so that tests can
- * register the real UI modules without importing the full extension entry
- * point and all its side-effect-heavy dependencies.
+ * These functions create {@link PlatformUiEntry} objects for the simple,
+ * TEC-1 and TEC-1G platforms.  They are kept in a separate module so that
+ * tests can register the real UI modules without importing the full extension
+ * entry point and all its side-effect-heavy dependencies.
  */
 
 import {
   serializeTec1ClearFromUiState,
   serializeTec1UpdateFromUiState,
 } from '../platforms/tec1/serialize-update-payload';
+import type { SimpleUiState } from '../platforms/simple/ui-panel-state';
 import {
   serializeTec1gClearPanelUpdateFromUiState,
   serializeTec1gUpdateFromUiState,
@@ -114,6 +115,47 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
           ...serializeTec1gClearPanelUpdateFromUiState(uiState as Tec1gUiState),
         }),
         snapshotCommand: 'debug80/tec1gMemorySnapshot',
+      };
+    },
+  };
+}
+
+/**
+ * Builds the simple platform UI entry for the sidebar panel manifest.
+ * The simple platform has no hardware display — only the CPU memory viewer
+ * is shown.
+ */
+export function createSimplePlatformUiEntry(): PlatformUiEntry {
+  return {
+    id: 'simple',
+    loadUiModules: async (): Promise<PlatformUiModules> => {
+      const [html, memory, messages, state] = await Promise.all([
+        import('../platforms/simple/ui-panel-html.js'),
+        import('../platforms/simple/ui-panel-memory.js'),
+        import('../platforms/simple/ui-panel-messages.js'),
+        import('../platforms/simple/ui-panel-state.js'),
+      ]);
+      return {
+        getHtml: (_tab, webview, extensionUri) => html.getSimpleHtml(webview, extensionUri),
+        createUiState: state.createSimpleUiState,
+        resetUiState: (uiState): void => state.resetSimpleUiState(uiState as SimpleUiState),
+        applyUpdate: (uiState, payload): Record<string, unknown> =>
+          state.applySimpleUpdate(uiState as SimpleUiState, payload),
+        createMemoryViewState: memory.createMemoryViewState,
+        handleMessage: (message, context): Promise<void> =>
+          messages.handleSimpleMessage(
+            message,
+            context as Parameters<typeof messages.handleSimpleMessage>[1]
+          ),
+        buildUpdateMessage: (_uiState, uiRevision): Record<string, unknown> => ({
+          type: 'update',
+          uiRevision,
+        }),
+        buildClearMessage: (_uiState, uiRevision): Record<string, unknown> => ({
+          type: 'update',
+          uiRevision,
+        }),
+        snapshotCommand: 'debug80/tec1MemorySnapshot',
       };
     },
   };

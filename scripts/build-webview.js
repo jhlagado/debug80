@@ -7,12 +7,15 @@ const outDir = path.join(rootDir, 'out', 'webview');
 const webviewDir = path.join(rootDir, 'webview');
 
 const entryPoints = [
+  path.join(webviewDir, 'simple', 'index.ts'),
   path.join(webviewDir, 'tec1', 'index.ts'),
   path.join(webviewDir, 'tec1g', 'index.ts'),
 ];
 
 const staticFiles = [
   path.join(webviewDir, 'common', 'styles.css'),
+  path.join(webviewDir, 'simple', 'index.html'),
+  path.join(webviewDir, 'simple', 'styles.css'),
   path.join(webviewDir, 'tec1', 'index.html'),
   path.join(webviewDir, 'tec1', 'styles.css'),
   path.join(webviewDir, 'terminal', 'index.html'),
