@@ -3,12 +3,9 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import { resolveBundledTec1Rom } from './assembler';
 import { emitConsoleOutput } from './adapter-ui';
-import { buildSymbolIndex } from './symbol-service';
-import { SourceManager } from './source-manager';
 import type { SourceStateManager } from './source-state-manager';
 import type { PlatformRegistry } from './platform-registry';
 import { handleMatrixKeyRequest, handleMatrixModeRequest } from './matrix-request';
@@ -16,17 +13,16 @@ import {
   relativeIfPossible,
   resolveArtifacts,
   resolveAsmPath,
-  resolveDebugMapPath,
-  resolveExtraDebugMapPath,
   resolveRelative,
   type LaunchArgsHelpers,
 } from './launch-args';
-import { buildListingCacheKey, resolveBaseDir, resolveCacheDir, resolveListingSourcePath, resolveMappedPath } from './path-resolver';
+import { buildListingCacheKey, resolveBaseDir, resolveCacheDir } from './path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
 import { resolveAssemblerBackend } from './assembler-backend';
 import { emitMainSource } from './adapter-ui';
 import { resolvePlatformProvider } from '../platforms/provider';
+import { buildLaunchSourceState } from './launch-source-state';
 import { createZ80Runtime } from '../z80/runtime';
 import type { MappingParseResult, SourceMapAnchor } from '../mapping/parser';
 import type { SourceMapIndex } from '../mapping/source-map';
@@ -267,66 +263,22 @@ export async function buildLaunchSession(
   });
 
   context.sessionState.listingPath = listingPath;
-  const preSourceRoots: string[] = [];
-  for (const r of merged.sourceRoots ?? []) {
-    preSourceRoots.push(resolveRelative(r, baseDir));
-  }
-  if (asmPath !== undefined && asmPath.length > 0) {
-    preSourceRoots.push(path.dirname(resolveRelative(asmPath, baseDir)));
-  }
-  context.sessionState.sourceRoots = preSourceRoots;
-  const resolvedSourceRoots =
-    preSourceRoots.length > 0 ? preSourceRoots : merged.sourceRoots ?? [];
   const extraListings = platformProvider.extraListings;
-  context.sourceState.setManager(
-    new SourceManager({
-      platform,
-      baseDir,
-      resolveRelative: (p, dir) => resolveRelative(p, dir),
-      resolveMappedPath: (file): string | undefined =>
-        resolveMappedPath(file, context.sessionState.listingPath, context.sessionState.sourceRoots),
-      relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-      resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, LAUNCH_ARGS_HELPERS),
-      resolveDebugMapPath: (args, dir, asm, listing) =>
-        resolveDebugMapPath(
-          args as LaunchRequestArguments,
-          dir,
-          asm,
-          listing,
-          LAUNCH_ARGS_HELPERS
-        ),
-      resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
-      logger: context.logger,
-    })
+  const builtSourceState = buildLaunchSourceState(
+    merged,
+    platform,
+    baseDir,
+    asmPath,
+    listingPath,
+    listingContent,
+    extraListings,
+    context.sourceState,
+    context.sessionState,
+    LAUNCH_ARGS_HELPERS,
+    context.logger
   );
 
-  const builtSourceState = context.sourceState.build({
-    listingContent,
-    listingPath,
-    ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
-    ...(merged.sourceFile !== undefined && merged.sourceFile.length > 0
-      ? { sourceFile: merged.sourceFile }
-      : {}),
-    sourceRoots: resolvedSourceRoots,
-    extraListings,
-    mapArgs: {
-      ...(merged.artifactBase !== undefined && merged.artifactBase.length > 0
-        ? { artifactBase: merged.artifactBase }
-        : {}),
-      ...(merged.outputDir !== undefined && merged.outputDir.length > 0
-        ? { outputDir: merged.outputDir }
-        : {}),
-    },
-  });
-
   emitMainSource((event) => context.emitEvent(event as DebugProtocol.Event), context.sourceState.file);
-
-  const symbolIndex = buildSymbolIndex({
-    mapping: builtSourceState.mapping,
-    listingContent,
-    sourceFile: context.sourceState.file,
-  });
-  context.sourceState.lookupAnchors = symbolIndex.lookupAnchors;
 
   const emitPlatformEvent = (name: string) => (payload: unknown) =>
     context.emitDapEvent(name, payload);
@@ -376,8 +328,8 @@ export async function buildLaunchSession(
     mappingIndex: builtSourceState.mappingIndex,
     sourceRoots: builtSourceState.sourceRoots,
     extraListingPaths: builtSourceState.extraListingPaths,
-    symbolAnchors: symbolIndex.anchors,
-    symbolList: symbolIndex.list,
+    symbolAnchors: builtSourceState.symbolAnchors,
+    symbolList: builtSourceState.symbolList,
     loadedProgram: program,
     loadedEntry: entry,
     restartCaptureAddress,
