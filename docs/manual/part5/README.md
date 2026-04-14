@@ -4,3 +4,4 @@ Part V covers the sidebar panel that the user interacts with — how it is const
 
 - [Chapter 12 — The Extension Host UI](12-the-extension-host-ui.md)
 - [Chapter 13 — The Webview Panels](13-the-webview-panels.md)
+- [Platform UI/Runtime Behavior Notes](../../design-platform-ui-runtime-behaviors.md)
