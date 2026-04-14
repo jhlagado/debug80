@@ -171,14 +171,17 @@ export function createTec1gInitialState(params: {
       gimpSignal: config.gimpSignal,
     },
   };
-  primeTec1gLcdTestLine(state.lcdCtrl);
+  writeLcdArrowHint(state.lcdCtrl);
   return state;
 }
 
 /**
- *
+ * Writes a default arrow-character hint line into the LCD buffer so
+ * the user can see that the custom arrow characters are working before
+ * any program runs.  Content: "ARROWS: ← → " using the TEC-1G custom
+ * character codes.
  */
-function primeTec1gLcdTestLine(lcdState: Tec1gLcdState): void {
+function writeLcdArrowHint(lcdState: Tec1gLcdState): void {
   const lcdTest = 'ARROWS: ';
   for (let i = 0; i < lcdTest.length && i < lcdState.lcd.length; i += 1) {
     lcdState.lcd[i] = lcdTest.charCodeAt(i);

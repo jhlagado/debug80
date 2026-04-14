@@ -114,186 +114,116 @@ export interface RunState {
 
 /**
  * Creates a fresh session state object with default values.
+ *
+ * Implementation note: the five domain-view proxy objects (source,
+ * launch, runtimeState, platform, ui) must close over the same backing
+ * store as the flat fields.  We therefore build the flat backing object
+ * first, construct the proxies referencing it, then merge everything
+ * with Object.assign so the returned state is a single object where
+ * both the flat fields and the proxy views are present on the same
+ * reference — no unsafe casts required.
  */
 export function createSessionState(): SessionStateShape {
-  const state = {
-    runtime: undefined,
-    listing: undefined,
-    listingPath: undefined,
-    mapping: undefined,
-    mappingIndex: undefined,
-    symbolAnchors: [],
-    symbolList: [],
-    sourceRoots: [],
+  // --- flat backing store -------------------------------------------
+  // All mutable session fields live here.  The domain-view proxies
+  // below are thin get/set facades over these same slots.
+  const flat = {
+    runtime: undefined as Z80Runtime | undefined,
+    listing: undefined as ListingInfo | undefined,
+    listingPath: undefined as string | undefined,
+    mapping: undefined as MappingParseResult | undefined,
+    mappingIndex: undefined as SourceMapIndex | undefined,
+    symbolAnchors: [] as SourceMapAnchor[],
+    symbolList: [] as Array<{ name: string; address: number }>,
+    sourceRoots: [] as string[],
     baseDir: process.cwd(),
-    terminalState: undefined,
-    tec1Runtime: undefined,
-    tec1gRuntime: undefined,
-    platformRuntime: undefined,
-    tec1gConfig: undefined,
-    loadedProgram: undefined,
-    loadedEntry: undefined,
-    restartCaptureAddress: undefined,
-    entryCpuState: undefined,
-    launchArgs: undefined,
-    extraListingPaths: [],
-    source: undefined as unknown as SessionSourceState,
-    launch: undefined as unknown as SessionLaunchState,
-    runtimeState: undefined as unknown as SessionRuntimeState,
-    platform: undefined as unknown as SessionPlatformState,
-    ui: undefined as unknown as SessionUiState,
+    terminalState: undefined as TerminalState | undefined,
+    tec1Runtime: undefined as Tec1Runtime | undefined,
+    tec1gRuntime: undefined as Tec1gRuntime | undefined,
+    platformRuntime: undefined as ActivePlatformRuntime | undefined,
+    tec1gConfig: undefined as Tec1gPlatformConfigNormalized | undefined,
+    loadedProgram: undefined as HexProgram | undefined,
+    loadedEntry: undefined as number | undefined,
+    restartCaptureAddress: undefined as number | undefined,
+    entryCpuState: undefined as CpuStateSnapshot | undefined,
+    launchArgs: undefined as LaunchRequestArguments | undefined,
+    extraListingPaths: [] as string[],
     runState: {
       stopOnEntry: false,
       launchComplete: false,
       configurationDone: false,
       isRunning: false,
       haltNotified: false,
-      lastStopReason: undefined,
-      lastBreakpointAddress: null,
-      skipBreakpointOnce: null,
+      lastStopReason: undefined as StopReason | undefined,
+      lastBreakpointAddress: null as number | null,
+      skipBreakpointOnce: null as number | null,
       callDepth: 0,
       stepOverMaxInstructions: 0,
       stepOutMaxInstructions: 0,
       pauseRequested: false,
     },
-  } as SessionStateShape;
-
-  state.source = {
-    get listing(): ListingInfo | undefined {
-      return state.listing;
-    },
-    set listing(value) {
-      state.listing = value;
-    },
-    get listingPath(): string | undefined {
-      return state.listingPath;
-    },
-    set listingPath(value) {
-      state.listingPath = value;
-    },
-    get mapping(): MappingParseResult | undefined {
-      return state.mapping;
-    },
-    set mapping(value) {
-      state.mapping = value;
-    },
-    get mappingIndex(): SourceMapIndex | undefined {
-      return state.mappingIndex;
-    },
-    set mappingIndex(value) {
-      state.mappingIndex = value;
-    },
-    get symbolAnchors(): SourceMapAnchor[] {
-      return state.symbolAnchors;
-    },
-    set symbolAnchors(value) {
-      state.symbolAnchors = value;
-    },
-    get symbolList(): Array<{ name: string; address: number }> {
-      return state.symbolList;
-    },
-    set symbolList(value) {
-      state.symbolList = value;
-    },
-    get sourceRoots(): string[] {
-      return state.sourceRoots;
-    },
-    set sourceRoots(value) {
-      state.sourceRoots = value;
-    },
-    get extraListingPaths(): string[] {
-      return state.extraListingPaths;
-    },
-    set extraListingPaths(value) {
-      state.extraListingPaths = value;
-    },
   };
 
-  state.launch = {
-    get baseDir(): string {
-      return state.baseDir;
-    },
-    set baseDir(value) {
-      state.baseDir = value;
-    },
-    get loadedProgram(): HexProgram | undefined {
-      return state.loadedProgram;
-    },
-    set loadedProgram(value) {
-      state.loadedProgram = value;
-    },
-    get loadedEntry(): number | undefined {
-      return state.loadedEntry;
-    },
-    set loadedEntry(value) {
-      state.loadedEntry = value;
-    },
-    get restartCaptureAddress(): number | undefined {
-      return state.restartCaptureAddress;
-    },
-    set restartCaptureAddress(value) {
-      state.restartCaptureAddress = value;
-    },
-    get entryCpuState(): CpuStateSnapshot | undefined {
-      return state.entryCpuState;
-    },
-    set entryCpuState(value) {
-      state.entryCpuState = value;
-    },
-    get launchArgs(): LaunchRequestArguments | undefined {
-      return state.launchArgs;
-    },
-    set launchArgs(value) {
-      state.launchArgs = value;
-    },
+  // --- domain-view proxies -----------------------------------------
+  // These close over `flat` so reads/writes go directly to the same
+  // backing slots as the flat fields on the final merged state object.
+  const source: SessionSourceState = {
+    get listing() { return flat.listing; },
+    set listing(v) { flat.listing = v; },
+    get listingPath() { return flat.listingPath; },
+    set listingPath(v) { flat.listingPath = v; },
+    get mapping() { return flat.mapping; },
+    set mapping(v) { flat.mapping = v; },
+    get mappingIndex() { return flat.mappingIndex; },
+    set mappingIndex(v) { flat.mappingIndex = v; },
+    get symbolAnchors() { return flat.symbolAnchors; },
+    set symbolAnchors(v) { flat.symbolAnchors = v; },
+    get symbolList() { return flat.symbolList; },
+    set symbolList(v) { flat.symbolList = v; },
+    get sourceRoots() { return flat.sourceRoots; },
+    set sourceRoots(v) { flat.sourceRoots = v; },
+    get extraListingPaths() { return flat.extraListingPaths; },
+    set extraListingPaths(v) { flat.extraListingPaths = v; },
   };
 
-  state.runtimeState = {
-    get execution(): Z80Runtime | undefined {
-      return state.runtime;
-    },
-    set execution(value) {
-      state.runtime = value;
-    },
+  const launch: SessionLaunchState = {
+    get baseDir() { return flat.baseDir; },
+    set baseDir(v) { flat.baseDir = v; },
+    get loadedProgram() { return flat.loadedProgram; },
+    set loadedProgram(v) { flat.loadedProgram = v; },
+    get loadedEntry() { return flat.loadedEntry; },
+    set loadedEntry(v) { flat.loadedEntry = v; },
+    get restartCaptureAddress() { return flat.restartCaptureAddress; },
+    set restartCaptureAddress(v) { flat.restartCaptureAddress = v; },
+    get entryCpuState() { return flat.entryCpuState; },
+    set entryCpuState(v) { flat.entryCpuState = v; },
+    get launchArgs() { return flat.launchArgs; },
+    set launchArgs(v) { flat.launchArgs = v; },
   };
 
-  state.platform = {
-    get tec1Runtime(): Tec1Runtime | undefined {
-      return state.tec1Runtime;
-    },
-    set tec1Runtime(value) {
-      state.tec1Runtime = value;
-    },
-    get tec1gRuntime(): Tec1gRuntime | undefined {
-      return state.tec1gRuntime;
-    },
-    set tec1gRuntime(value) {
-      state.tec1gRuntime = value;
-    },
-    get platformRuntime(): ActivePlatformRuntime | undefined {
-      return state.platformRuntime;
-    },
-    set platformRuntime(value) {
-      state.platformRuntime = value;
-    },
-    get tec1gConfig(): Tec1gPlatformConfigNormalized | undefined {
-      return state.tec1gConfig;
-    },
-    set tec1gConfig(value) {
-      state.tec1gConfig = value;
-    },
+  const runtimeState: SessionRuntimeState = {
+    get execution() { return flat.runtime; },
+    set execution(v) { flat.runtime = v; },
   };
 
-  state.ui = {
-    get terminalState(): TerminalState | undefined {
-      return state.terminalState;
-    },
-    set terminalState(value) {
-      state.terminalState = value;
-    },
+  const platform: SessionPlatformState = {
+    get tec1Runtime() { return flat.tec1Runtime; },
+    set tec1Runtime(v) { flat.tec1Runtime = v; },
+    get tec1gRuntime() { return flat.tec1gRuntime; },
+    set tec1gRuntime(v) { flat.tec1gRuntime = v; },
+    get platformRuntime() { return flat.platformRuntime; },
+    set platformRuntime(v) { flat.platformRuntime = v; },
+    get tec1gConfig() { return flat.tec1gConfig; },
+    set tec1gConfig(v) { flat.tec1gConfig = v; },
   };
 
-  return state;
+  const ui: SessionUiState = {
+    get terminalState() { return flat.terminalState; },
+    set terminalState(v) { flat.terminalState = v; },
+  };
+
+  // Merge flat backing store + proxy views into the returned state.
+  return Object.assign(flat, { source, launch, runtimeState, platform, ui });
 }
 
 /**

@@ -43,7 +43,9 @@ export interface Debug80Api {
 }
 
 /**
- *
+ * Registers the built-in TEC-1 and TEC-1G platforms with both the
+ * runtime manifest (for session launch) and the UI manifest (for the
+ * sidebar panel).
  */
 function registerBuiltInPlatformUis(): void {
   registerExtensionPlatform({
@@ -71,7 +73,9 @@ function registerBuiltInPlatformUis(): void {
 }
 
 /**
- *
+ * Builds the TEC-1 UI entry for the sidebar panel manifest.
+ * Lazily imports all four TEC-1 UI modules (html, memory, messages,
+ * state) and wires them into a {@link PlatformUiModules} instance.
  */
 function createTec1PlatformUiEntry(): PlatformUiEntry {
   return {
@@ -117,7 +121,9 @@ function createTec1PlatformUiEntry(): PlatformUiEntry {
 }
 
 /**
- *
+ * Builds the TEC-1G UI entry for the sidebar panel manifest.
+ * Lazily imports all four TEC-1G UI modules (html, memory, messages,
+ * state) and wires them into a {@link PlatformUiModules} instance.
  */
 function createTec1gPlatformUiEntry(): PlatformUiEntry {
   return {
