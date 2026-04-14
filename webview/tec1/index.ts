@@ -15,7 +15,9 @@ const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
-    : 'ui';
+    : document.body.dataset.activeTab === 'config'
+      ? 'config'
+      : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
 const configureProjectButton = document.getElementById('configureProject') as HTMLButtonElement | null;
@@ -34,8 +36,13 @@ const muteEl = document.getElementById('mute') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
+const panelConfig = document.getElementById('panel-config') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
+const configPlatformEl = document.getElementById('configPlatform') as HTMLSelectElement | null;
+const configDefaultTargetEl = document.getElementById('configDefaultTarget') as HTMLSelectElement | null;
+const configSaveEl = document.getElementById('configSave') as HTMLButtonElement | null;
+const configStatusEl = document.getElementById('configStatus') as HTMLElement | null;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
 const digitEls = [];
@@ -51,6 +58,7 @@ const panelLayout = createPanelLayoutController({
   memoryPanel,
   panelMemory,
   panelUi,
+  panelConfig,
   postMessage: (message) => vscode.postMessage(message),
   requestSnapshot: () => memoryPanelController?.requestSnapshot(),
   tabButtons,
@@ -79,6 +87,14 @@ let currentRootPath = '';
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
 let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug' =
   'openWorkspaceFolder';
+configSaveEl?.addEventListener('click', () => {
+  vscode.postMessage({
+    type: 'saveProjectConfig',
+    platform: configPlatformEl?.value ?? '',
+    defaultTarget: configDefaultTargetEl?.value ?? '',
+  });
+});
+
 const audio = createAudioController(muteEl);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
@@ -370,6 +386,35 @@ window.addEventListener('message', event => {
   }
   if (event.data.type === 'selectTab') {
     panelLayout.setTab(event.data.tab, false);
+    return;
+  }
+  if (event.data.type === 'projectConfigData') {
+    if (configPlatformEl) {
+      configPlatformEl.value = event.data.platform ?? '';
+    }
+    if (configDefaultTargetEl) {
+      configDefaultTargetEl.innerHTML = '';
+      const targets: string[] = Array.isArray(event.data.targets) ? event.data.targets : [];
+      targets.forEach((t: string) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        opt.selected = t === event.data.defaultTarget;
+        configDefaultTargetEl.appendChild(opt);
+      });
+    }
+    if (configStatusEl) {
+      configStatusEl.textContent = '';
+    }
+    return;
+  }
+  if (event.data.type === 'configSaved') {
+    if (configStatusEl) {
+      configStatusEl.textContent = 'Saved.';
+      setTimeout(() => {
+        if (configStatusEl) configStatusEl.textContent = '';
+      }, 2000);
+    }
     return;
   }
   if (event.data.type === 'update') {

@@ -27,6 +27,7 @@ export type PlatformViewControlMessage =
   | { type: 'openWorkspaceFolder' }
   | { type: 'selectProject'; rootPath?: string }
   | { type: 'configureProject' }
+  | { type: 'saveProjectConfig'; platform: string; defaultTarget: string }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }

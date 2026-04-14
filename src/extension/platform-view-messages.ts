@@ -23,6 +23,7 @@ export interface PlatformViewMessageDependencies {
   handleOpenWorkspaceFolder: () => PromiseLike<void>;
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleConfigureProject: () => PromiseLike<void>;
+  handleSaveProjectConfig: (platform: string, defaultTarget: string) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
@@ -57,6 +58,14 @@ export async function handlePlatformViewMessage(
   }
   if (msg?.type === 'configureProject') {
     await deps.handleConfigureProject();
+    return;
+  }
+  if (msg?.type === 'saveProjectConfig') {
+    const platform = (msg as { platform?: unknown }).platform;
+    const defaultTarget = (msg as { defaultTarget?: unknown }).defaultTarget;
+    if (typeof platform === 'string' && typeof defaultTarget === 'string') {
+      await deps.handleSaveProjectConfig(platform, defaultTarget);
+    }
     return;
   }
   if (msg?.type === 'selectTarget') {

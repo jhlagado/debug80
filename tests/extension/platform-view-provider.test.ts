@@ -643,14 +643,14 @@ describe('PlatformViewProvider', () => {
     expect(update?.speakerHz).toBe(payload.speakerHz);
   });
 
-  it('routes configureProject messages to project config panel command', async () => {
+  it('routes configureProject messages to the config tab in the sidebar', async () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),
       update: vi.fn(),
     } as never);
     const webviewView = createWebviewView();
 
-    provider.resolveWebviewView(
+    await provider.resolveWebviewView(
       webviewView,
       {} as vscode.WebviewViewResolveContext,
       {
@@ -658,14 +658,18 @@ describe('PlatformViewProvider', () => {
         onCancellationRequested: vi.fn(),
       } as vscode.CancellationToken
     );
+    provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
 
     const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
       .calls[0]?.[0] as ((msg: { type?: string }) => Promise<void>) | undefined;
     expect(handler).toBeTypeOf('function');
 
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
     await handler?.({ type: 'configureProject' });
 
-    expect(executeCommand).toHaveBeenCalledWith('debug80.openProjectConfigPanel');
+    const tabMessages = getPostMessageCalls(webviewView).filter(([msg]) => msg.type === 'selectTab');
+    expect(tabMessages).toHaveLength(1);
+    expect(tabMessages[0]?.[0]).toMatchObject({ type: 'selectTab', tab: 'config' });
   });
 
   it('routes openWorkspaceFolder messages to vscode open folder command', async () => {
