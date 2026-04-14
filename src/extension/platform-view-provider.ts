@@ -20,6 +20,10 @@ import {
 } from '../platforms/tec1/ui-panel-state';
 import { appendSerialText, clearSerialBuffer, createSerialBuffer } from '../platforms/tec1/ui-panel-serial';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
+import {
+  serializeTec1ClearFromUiState,
+  serializeTec1UpdateFromUiState,
+} from '../platforms/tec1/serialize-update-payload';
 import { Tec1gPanelTab, getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import { createMemoryViewState as createTec1gMemoryViewState } from '../platforms/tec1g/ui-panel-memory';
 import { handleTec1gMessage, Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
@@ -36,6 +40,10 @@ import {
 } from '../platforms/tec1g/ui-panel-state';
 import { appendSerialText as appendTec1gSerialText, clearSerialBuffer as clearTec1gSerialBuffer, createSerialBuffer as createTec1gSerialBuffer } from '../platforms/tec1g/ui-panel-serial';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
+import {
+  serializeTec1gClearPanelUpdateFromUiState,
+  serializeTec1gUpdateFromUiState,
+} from '../platforms/tec1g/serialize-ui-update-payload';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { findProjectConfigPath } from './project-config';
@@ -177,12 +185,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({
       type: 'update',
       uiRevision: this.nextUiRevision(),
-      digits: this.tec1UiState.digits,
-      matrix: this.tec1UiState.matrix,
-      speaker: this.tec1UiState.speaker,
-      speedMode: this.tec1UiState.speedMode,
-      lcd: this.tec1UiState.lcd,
-      speakerHz: payload.speakerHz,
+      ...serializeTec1UpdateFromUiState(this.tec1UiState, payload.speakerHz),
     });
   }
 
@@ -197,25 +200,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({
       type: 'update',
       uiRevision: this.nextUiRevision(),
-      digits: this.tec1gUiState.digits,
-      matrix: this.tec1gUiState.matrix,
-      matrixGreen: this.tec1gUiState.matrixGreen,
-      matrixBlue: this.tec1gUiState.matrixBlue,
-      glcd: this.tec1gUiState.glcd,
-      glcdDdram: this.tec1gUiState.glcdDdram,
-      glcdState: this.tec1gUiState.glcdState,
-      speaker: this.tec1gUiState.speaker,
-      matrixBrightness: this.tec1gUiState.matrixBrightness,
-      matrixBrightnessG: this.tec1gUiState.matrixBrightnessG,
-      matrixBrightnessB: this.tec1gUiState.matrixBrightnessB,
-      speedMode: this.tec1gUiState.speedMode,
-      sysCtrl: this.tec1gUiState.sysCtrlValue,
-      bankA14: this.tec1gUiState.bankA14,
-      capsLock: this.tec1gUiState.capsLock,
-      lcdState: this.tec1gUiState.lcdState,
-      lcdCgram: this.tec1gUiState.lcdCgram,
-      lcd: this.tec1gUiState.lcd,
-      speakerHz: payload.speakerHz,
+      ...serializeTec1gUpdateFromUiState(this.tec1gUiState, payload.speakerHz),
     });
   }
 
@@ -256,28 +241,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
-        digits: this.tec1UiState.digits,
-        matrix: this.tec1UiState.matrix,
-        speaker: false,
-        speedMode: this.tec1UiState.speedMode,
-        lcd: this.tec1UiState.lcd,
+        ...serializeTec1ClearFromUiState(this.tec1UiState),
       });
       this.postMessage({ type: 'serialClear' });
     } else if (this.currentPlatform === 'tec1g') {
       this.postMessage({
         type: 'update',
         uiRevision: this.nextUiRevision(),
-        digits: this.tec1gUiState.digits,
-        matrix: this.tec1gUiState.matrix,
-        matrixGreen: this.tec1gUiState.matrixGreen,
-        matrixBlue: this.tec1gUiState.matrixBlue,
-        glcd: this.tec1gUiState.glcd,
-        speaker: false,
-        speedMode: this.tec1gUiState.speedMode,
-        lcd: this.tec1gUiState.lcd,
-        matrixBrightness: this.tec1gUiState.matrixBrightness,
-        matrixBrightnessG: this.tec1gUiState.matrixBrightnessG,
-        matrixBrightnessB: this.tec1gUiState.matrixBrightnessB,
+        ...serializeTec1gClearPanelUpdateFromUiState(this.tec1gUiState),
       });
       this.postMessage({ type: 'serialClear' });
     }
