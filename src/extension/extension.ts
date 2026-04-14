@@ -70,6 +70,7 @@ function createTec1PlatformUiEntry(): PlatformUiEntry {
           const tec1State = uiState as Tec1UiState;
           const tec1Payload = payload as Parameters<typeof state.applyTec1Update>[1];
           state.applyTec1Update(tec1State, tec1Payload);
+          // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1-shaped after apply.
           return serializeTec1UpdateFromUiState(tec1State, tec1Payload.speakerHz) as unknown as Record<
             string,
             unknown
@@ -115,6 +116,7 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
           const tec1gState = uiState as Tec1gUiState;
           const tec1gPayload = payload as Parameters<typeof state.applyTec1gUpdate>[1];
           state.applyTec1gUpdate(tec1gState, tec1gPayload);
+          // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1G-shaped after apply.
           return serializeTec1gUpdateFromUiState(tec1gState, tec1gPayload.speakerHz) as unknown as Record<
             string,
             unknown
