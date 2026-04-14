@@ -115,7 +115,6 @@ function nextTargetEntrySource(
   sourceFile: string
 ): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...target };
-  delete rest.assembler;
   const isZax = sourceFile.toLowerCase().endsWith('.zax');
   return {
     ...rest,
