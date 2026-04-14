@@ -106,6 +106,13 @@ export async function handlePlatformViewMessage(
     return;
   }
 
+  // Intercept tab→config before the platform guard so it fires even when no
+  // platform is active (e.g. right after extension restart).
+  if (msg?.type === 'tab' && (msg as { tab?: unknown }).tab === 'config') {
+    await deps.handleConfigureProject();
+    return;
+  }
+
   const platform = deps.currentPlatform();
   if (platform !== undefined && platform !== 'simple') {
     await deps.handlePlatformMessage(platform, msg);
