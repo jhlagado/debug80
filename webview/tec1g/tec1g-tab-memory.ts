@@ -14,7 +14,6 @@ export type Tec1gTabMemoryOptions = {
   tabButtons: HTMLElement[];
   panelUi: HTMLElement | null;
   panelMemory: HTMLElement | null;
-  panelConfig: HTMLElement | null;
   memoryPanel: HTMLElement | null;
   defaultTab: Tec1gPanelTab;
   getMemoryPanelController: () => MemoryPanel | null;
@@ -32,9 +31,9 @@ export type Tec1gTabMemory = {
  * Tab visibility, `tab` postMessage, and memory panel width → snapshot row size.
  */
 export function createTec1gTabMemory(options: Tec1gTabMemoryOptions): Tec1gTabMemory {
-  const { vscode, tabButtons, panelUi, panelMemory, panelConfig, memoryPanel, defaultTab, getMemoryPanelController } = options;
+  const { vscode, tabButtons, panelUi, panelMemory, memoryPanel, defaultTab, getMemoryPanelController } = options;
 
-  let activeTab: Tec1gPanelTab = defaultTab === 'memory' ? 'memory' : defaultTab === 'config' ? 'config' : 'ui';
+  let activeTab: Tec1gPanelTab = defaultTab === 'memory' ? 'memory' : 'ui';
   let memoryRowSize = 16;
   let resizeTimer: number | null = null;
 
@@ -80,15 +79,12 @@ export function createTec1gTabMemory(options: Tec1gTabMemoryOptions): Tec1gTabMe
   }
 
   function setTab(tab: string, notify: boolean): void {
-    activeTab = tab === 'memory' ? 'memory' : tab === 'config' ? 'config' : 'ui';
+    activeTab = tab === 'memory' ? 'memory' : 'ui';
     if (panelUi) {
       panelUi.classList.toggle('active', activeTab === 'ui');
     }
     if (panelMemory) {
       panelMemory.classList.toggle('active', activeTab === 'memory');
-    }
-    if (panelConfig) {
-      panelConfig.classList.toggle('active', activeTab === 'config');
     }
     tabButtons.forEach((button) => {
       const isActive = button.dataset.tab === activeTab;

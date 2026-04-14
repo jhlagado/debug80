@@ -11,6 +11,7 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleOpenWorkspaceFolder: vi.fn(() => undefined),
     handleSelectProject: vi.fn(() => undefined),
     handleConfigureProject: vi.fn(() => undefined),
+    handleSaveProjectConfig: vi.fn(() => undefined),
     handleSelectTarget: vi.fn(() => undefined),
     handleRestartDebug: vi.fn(() => undefined),
     handleSetEntrySource: vi.fn(() => undefined),

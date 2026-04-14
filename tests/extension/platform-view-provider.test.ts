@@ -64,6 +64,8 @@ vi.mock('../../src/extension/project-status', () => ({
 
 vi.mock('../../src/extension/project-config', () => ({
   findProjectConfigPath,
+  readProjectConfig: vi.fn(() => ({ projectPlatform: 'tec1g', targets: {} })),
+  resolveProjectPlatform: vi.fn(() => 'tec1g'),
 }));
 
 vi.mock('../../src/extension/project-target-selection', () => ({
@@ -643,7 +645,7 @@ describe('PlatformViewProvider', () => {
     expect(update?.speakerHz).toBe(payload.speakerHz);
   });
 
-  it('routes configureProject messages to the config tab in the sidebar', async () => {
+  it('routes configureProject messages as a no-op (Config tab removed)', async () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),
       update: vi.fn(),
@@ -667,9 +669,9 @@ describe('PlatformViewProvider', () => {
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
     await handler?.({ type: 'configureProject' });
 
+    // configureProject is now a no-op; no selectTab message should be sent
     const tabMessages = getPostMessageCalls(webviewView).filter(([msg]) => msg.type === 'selectTab');
-    expect(tabMessages).toHaveLength(1);
-    expect(tabMessages[0]?.[0]).toMatchObject({ type: 'selectTab', tab: 'config' });
+    expect(tabMessages).toHaveLength(0);
   });
 
   it('routes openWorkspaceFolder messages to vscode open folder command', async () => {
