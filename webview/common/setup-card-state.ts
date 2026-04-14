@@ -4,25 +4,27 @@ export type SetupRootOption = {
   hasProject: boolean;
 };
 
-export type SetupPrimaryAction = 'openWorkspaceFolder' | 'createProject' | 'configureProject' | 'startDebug';
+export type SetupPrimaryAction = 'openWorkspaceFolder' | 'createProject';
 
 export type SetupCardState = {
   text: string;
   primaryLabel: string;
   primaryAction: SetupPrimaryAction;
-  showSecondaryConfigure: boolean;
 };
 
+/**
+ * Returns the setup card state for the given root/target situation, or null if
+ * the setup card should be hidden (project is already configured).
+ */
 export function resolveSetupCardState(
   selectedRoot: SetupRootOption | undefined,
   targetCount: number
-): SetupCardState {
+): SetupCardState | null {
   if (selectedRoot === undefined) {
     return {
       text: 'No workspace folder is open. Open a folder to start with Debug80.',
       primaryLabel: 'Open Folder',
       primaryAction: 'openWorkspaceFolder',
-      showSecondaryConfigure: false,
     };
   }
   if (!selectedRoot.hasProject) {
@@ -30,21 +32,9 @@ export function resolveSetupCardState(
       text: `No Debug80 project found in ${selectedRoot.name}.`,
       primaryLabel: 'Create Project',
       primaryAction: 'createProject',
-      showSecondaryConfigure: false,
     };
   }
-  if (targetCount === 0) {
-    return {
-      text: 'Project has no targets configured yet.',
-      primaryLabel: 'Configure Project',
-      primaryAction: 'configureProject',
-      showSecondaryConfigure: false,
-    };
-  }
-  return {
-    text: 'Project is configured. Start debugging or adjust settings.',
-    primaryLabel: 'Start Debugging',
-    primaryAction: 'startDebug',
-    showSecondaryConfigure: true,
-  };
+  // Project exists (with or without targets) — hide the card.
+  void targetCount;
+  return null;
 }
