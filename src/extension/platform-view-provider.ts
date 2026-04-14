@@ -47,7 +47,7 @@ import {
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { findProjectConfigPath } from './project-config';
-import { handlePlatformViewMessage } from './platform-view-messages';
+import { handlePlatformViewMessage, type PlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
   handlePlatformSerialSendFile,
@@ -57,6 +57,22 @@ import type {
   PlatformViewInboundMessage,
   ProjectStatusPayload,
 } from '../contracts/platform-view';
+
+type ActiveSidebarPlatformId = 'tec1' | 'tec1g';
+
+type PlatformUiAdapter = {
+  platform: ActiveSidebarPlatformId;
+  getHtml: (webview: vscode.Webview, extensionUri: vscode.Uri) => string;
+  getActiveTab: () => 'ui' | 'memory';
+  buildUpdateMessage: (uiRevision: number) => Record<string, unknown>;
+  buildClearMessage: (uiRevision: number) => Record<string, unknown>;
+  serialText: () => string;
+  appendSerial: (text: string) => void;
+  clearSerial: () => void;
+  handleMessage: (msg: PlatformViewMessage, getSession: () => vscode.DebugSession | undefined, isPanelVisible: () => boolean) => Promise<void>;
+  syncMemoryRefresh: (rehydrate: boolean) => void;
+  stopAutoRefresh: () => void;
+};
 
 export class PlatformViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'debug80.platformView';
@@ -183,7 +199,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     applyTec1Update(this.tec1UiState, payload);
-    if (this.currentPlatform !== 'tec1') {
+    const adapter = this.resolveCurrentPlatformAdapter();
+    if (adapter?.platform !== 'tec1') {
       return;
     }
     this.postMessage({
@@ -198,7 +215,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     applyTec1gUpdate(this.tec1gUiState, payload);
-    if (this.currentPlatform !== 'tec1g') {
+    const adapter = this.resolveCurrentPlatformAdapter();
+    if (adapter?.platform !== 'tec1g') {
       return;
     }
     this.postMessage({
@@ -215,8 +233,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (text.length === 0) {
       return;
     }
-    appendSerialText(this.tec1SerialBuffer, text);
-    if (this.currentPlatform === 'tec1') {
+    const adapter = this.resolvePlatformAdapter('tec1');
+    adapter.appendSerial(text);
+    if (this.currentPlatform === adapter.platform) {
       this.postMessage({ type: 'serial', text });
     }
   }
@@ -228,32 +247,25 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (text.length === 0) {
       return;
     }
-    appendTec1gSerialText(this.tec1gSerialBuffer, text);
-    if (this.currentPlatform === 'tec1g') {
+    const adapter = this.resolvePlatformAdapter('tec1g');
+    adapter.appendSerial(text);
+    if (this.currentPlatform === adapter.platform) {
       this.postMessage({ type: 'serial', text });
     }
   }
 
   clear(): void {
+    const tec1Adapter = this.resolvePlatformAdapter('tec1');
     resetTec1UiState(this.tec1UiState);
-    clearSerialBuffer(this.tec1SerialBuffer);
+    tec1Adapter.clearSerial();
     this.tec1MemoryViews = createTec1MemoryViewState();
+    const tec1gAdapter = this.resolvePlatformAdapter('tec1g');
     resetTec1gUiState(this.tec1gUiState);
-    clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+    tec1gAdapter.clearSerial();
     this.tec1gMemoryViews = createTec1gMemoryViewState();
-    if (this.currentPlatform === 'tec1') {
-      this.postMessage({
-        type: 'update',
-        uiRevision: this.nextUiRevision(),
-        ...serializeTec1ClearFromUiState(this.tec1UiState),
-      });
-      this.postMessage({ type: 'serialClear' });
-    } else if (this.currentPlatform === 'tec1g') {
-      this.postMessage({
-        type: 'update',
-        uiRevision: this.nextUiRevision(),
-        ...serializeTec1gClearPanelUpdateFromUiState(this.tec1gUiState),
-      });
+    const adapter = this.resolveCurrentPlatformAdapter();
+    if (adapter !== undefined) {
+      this.postMessage(adapter.buildClearMessage(this.nextUiRevision()));
       this.postMessage({ type: 'serialClear' });
     }
   }
@@ -265,8 +277,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.currentSession = undefined;
     this.currentSessionId = undefined;
     this.setSessionStatus('not running');
-    stopTec1AutoRefresh(this.tec1RefreshController.state);
-    stopTec1gAutoRefresh(this.tec1gRefreshController.state);
+    this.stopAllPlatformRefresh();
     this.clear();
   }
 
@@ -319,46 +330,28 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await handlePlatformSerialSave(text);
         },
         clearSerialBuffer: (platform) => {
-          if (platform === 'tec1') {
-            clearSerialBuffer(this.tec1SerialBuffer);
-          } else if (platform === 'tec1g') {
-            clearTec1gSerialBuffer(this.tec1gSerialBuffer);
-          }
-        },
-        handlePlatformMessage: async (platform, platformMsg) => {
-          if (platform === 'tec1') {
-            await handleTec1Message(platformMsg as Tec1Message, {
-              getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-              refreshController: this.tec1RefreshController,
-              autoRefreshMs: 150,
-              setActiveTab: (tab) => {
-                this.tec1ActiveTab = tab;
-              },
-              getActiveTab: () => this.tec1ActiveTab,
-              isPanelVisible: () => this.view?.visible === true,
-              memoryViews: this.tec1MemoryViews,
-            });
+          if (platform !== 'tec1' && platform !== 'tec1g') {
             return;
           }
-          await handleTec1gMessage(platformMsg as Tec1gMessage, {
-            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
-            refreshController: this.tec1gRefreshController,
-            autoRefreshMs: 150,
-            setActiveTab: (tab) => {
-              this.tec1gActiveTab = tab;
-            },
-            getActiveTab: () => this.tec1gActiveTab,
-            isPanelVisible: () => this.view?.visible === true,
-            memoryViews: this.tec1gMemoryViews,
-          });
+          this.resolvePlatformAdapter(platform).clearSerial();
+        },
+        handlePlatformMessage: async (platform, platformMsg) => {
+          if (platform !== 'tec1' && platform !== 'tec1g') {
+            return;
+          }
+          const adapter = this.resolvePlatformAdapter(platform);
+          await adapter.handleMessage(
+            platformMsg,
+            () => this.currentSession ?? vscode.debug.activeDebugSession,
+            () => this.view?.visible === true
+          );
         },
       });
     });
 
     webviewView.onDidDispose(() => {
       this.view = undefined;
-      stopTec1AutoRefresh(this.tec1RefreshController.state);
-      stopTec1gAutoRefresh(this.tec1gRefreshController.state);
+      this.stopAllPlatformRefresh();
     });
 
     webviewView.onDidChangeVisibility(() => {
@@ -366,8 +359,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.renderCurrentView(true);
         return;
       }
-      stopTec1AutoRefresh(this.tec1RefreshController.state);
-      stopTec1gAutoRefresh(this.tec1gRefreshController.state);
+      this.stopAllPlatformRefresh();
     });
 
     this.renderCurrentView(false);
@@ -377,64 +369,24 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       return;
     }
-    if (this.currentPlatform === 'tec1') {
-      this.view.webview.html = getTec1Html(this.tec1ActiveTab, this.view.webview, this.extensionUri);
+    const adapter = this.resolveCurrentPlatformAdapter();
+    if (adapter !== undefined) {
+      this.view.webview.html = adapter.getHtml(this.view.webview, this.extensionUri);
       this.postProjectStatus();
       this.postSessionStatus();
-      this.postMessage({
-        type: 'update',
-        uiRevision: this.nextUiRevision(),
-        digits: this.tec1UiState.digits,
-        matrix: this.tec1UiState.matrix,
-        speaker: this.tec1UiState.speaker,
-        speedMode: this.tec1UiState.speedMode,
-        lcd: this.tec1UiState.lcd,
-      });
-      if (this.tec1SerialBuffer.text.length > 0) {
-        this.postMessage({ type: 'serialInit', text: this.tec1SerialBuffer.text });
-      }
-      this.postMessage({ type: 'selectTab', tab: this.tec1ActiveTab });
-      this.syncMemoryRefresh('tec1', rehydrate);
-      return;
-    }
-    if (this.currentPlatform === 'tec1g') {
-      this.view.webview.html = getTec1gHtml(this.tec1gActiveTab, this.view.webview, this.extensionUri);
-      this.postProjectStatus();
-      this.postSessionStatus();
-      this.postMessage({
-        type: 'update',
-        uiRevision: this.nextUiRevision(),
-        digits: this.tec1gUiState.digits,
-        matrix: this.tec1gUiState.matrix,
-        matrixGreen: this.tec1gUiState.matrixGreen,
-        matrixBlue: this.tec1gUiState.matrixBlue,
-        glcd: this.tec1gUiState.glcd,
-        glcdDdram: this.tec1gUiState.glcdDdram,
-        glcdState: this.tec1gUiState.glcdState,
-        speaker: this.tec1gUiState.speaker,
-        matrixBrightness: this.tec1gUiState.matrixBrightness,
-        matrixBrightnessG: this.tec1gUiState.matrixBrightnessG,
-        matrixBrightnessB: this.tec1gUiState.matrixBrightnessB,
-        speedMode: this.tec1gUiState.speedMode,
-        sysCtrl: this.tec1gUiState.sysCtrlValue,
-        bankA14: this.tec1gUiState.bankA14,
-        capsLock: this.tec1gUiState.capsLock,
-        lcdState: this.tec1gUiState.lcdState,
-        lcdCgram: this.tec1gUiState.lcdCgram,
-        lcd: this.tec1gUiState.lcd,
-      });
-      if (this.tec1gUiVisibilityOverride) {
+      this.postMessage(adapter.buildUpdateMessage(this.nextUiRevision()));
+      if (adapter.platform === 'tec1g' && this.tec1gUiVisibilityOverride) {
         this.postMessage({
           type: 'uiVisibility',
           visibility: this.tec1gUiVisibilityOverride,
           persist: false,
         });
       }
-      if (this.tec1gSerialBuffer.text.length > 0) {
-        this.postMessage({ type: 'serialInit', text: this.tec1gSerialBuffer.text });
+      if (adapter.serialText().length > 0) {
+        this.postMessage({ type: 'serialInit', text: adapter.serialText() });
       }
-      this.postMessage({ type: 'selectTab', tab: this.tec1gActiveTab });
-      this.syncMemoryRefresh('tec1g', rehydrate);
+      this.postMessage({ type: 'selectTab', tab: adapter.getActiveTab() });
+      adapter.syncMemoryRefresh(rehydrate);
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
@@ -442,6 +394,145 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postProjectStatus();
       this.postSessionStatus();
     }
+  }
+
+  private resolveCurrentPlatformAdapter(): PlatformUiAdapter | undefined {
+    if (this.currentPlatform !== 'tec1' && this.currentPlatform !== 'tec1g') {
+      return undefined;
+    }
+    return this.resolvePlatformAdapter(this.currentPlatform);
+  }
+
+  private resolvePlatformAdapter(platform: ActiveSidebarPlatformId): PlatformUiAdapter {
+    if (platform === 'tec1') {
+      return {
+        platform,
+        getHtml: (webview, extensionUri) => getTec1Html(this.tec1ActiveTab, webview, extensionUri),
+        getActiveTab: () => this.tec1ActiveTab,
+        buildUpdateMessage: (uiRevision) => ({
+          type: 'update',
+          uiRevision,
+          ...serializeTec1UpdateFromUiState(this.tec1UiState),
+        }),
+        buildClearMessage: (uiRevision) => ({
+          type: 'update',
+          uiRevision,
+          ...serializeTec1ClearFromUiState(this.tec1UiState),
+        }),
+        serialText: () => this.tec1SerialBuffer.text,
+        appendSerial: (text): void => {
+          appendSerialText(this.tec1SerialBuffer, text);
+        },
+        clearSerial: (): void => {
+          clearSerialBuffer(this.tec1SerialBuffer);
+        },
+        handleMessage: async (msg, getSession, isPanelVisible): Promise<void> => {
+          await handleTec1Message(msg as Tec1Message, {
+            getSession,
+            refreshController: this.tec1RefreshController,
+            autoRefreshMs: 150,
+            setActiveTab: (tab) => {
+              this.tec1ActiveTab = tab;
+            },
+            getActiveTab: () => this.tec1ActiveTab,
+            isPanelVisible,
+            memoryViews: this.tec1MemoryViews,
+          });
+        },
+        syncMemoryRefresh: (rehydrate): void => {
+          if (this.view?.visible !== true) {
+            return;
+          }
+          if (this.tec1ActiveTab !== 'memory') {
+            stopTec1AutoRefresh(this.tec1RefreshController.state);
+            return;
+          }
+          startTec1AutoRefresh(this.tec1RefreshController.state, 150, () => {
+            void refreshTec1Snapshot(
+              this.tec1RefreshController.state,
+              this.tec1RefreshController.handlers,
+              this.tec1RefreshController.snapshotPayload(),
+              { allowErrors: false }
+            );
+          });
+          if (rehydrate) {
+            void refreshTec1Snapshot(
+              this.tec1RefreshController.state,
+              this.tec1RefreshController.handlers,
+              this.tec1RefreshController.snapshotPayload(),
+              { allowErrors: true }
+            );
+          }
+        },
+        stopAutoRefresh: (): void => {
+          stopTec1AutoRefresh(this.tec1RefreshController.state);
+        },
+      };
+    }
+
+    return {
+      platform,
+      getHtml: (webview, extensionUri) => getTec1gHtml(this.tec1gActiveTab, webview, extensionUri),
+      getActiveTab: () => this.tec1gActiveTab,
+      buildUpdateMessage: (uiRevision) => ({
+        type: 'update',
+        uiRevision,
+        ...serializeTec1gUpdateFromUiState(this.tec1gUiState),
+      }),
+      buildClearMessage: (uiRevision) => ({
+        type: 'update',
+        uiRevision,
+        ...serializeTec1gClearPanelUpdateFromUiState(this.tec1gUiState),
+      }),
+      serialText: () => this.tec1gSerialBuffer.text,
+      appendSerial: (text): void => {
+        appendTec1gSerialText(this.tec1gSerialBuffer, text);
+      },
+      clearSerial: (): void => {
+        clearTec1gSerialBuffer(this.tec1gSerialBuffer);
+      },
+      handleMessage: async (msg, getSession, isPanelVisible): Promise<void> => {
+        await handleTec1gMessage(msg as Tec1gMessage, {
+          getSession,
+          refreshController: this.tec1gRefreshController,
+          autoRefreshMs: 150,
+          setActiveTab: (tab) => {
+            this.tec1gActiveTab = tab;
+          },
+          getActiveTab: () => this.tec1gActiveTab,
+          isPanelVisible,
+          memoryViews: this.tec1gMemoryViews,
+        });
+      },
+      syncMemoryRefresh: (rehydrate): void => {
+        if (this.view?.visible !== true) {
+          return;
+        }
+        if (this.tec1gActiveTab !== 'memory') {
+          stopTec1gAutoRefresh(this.tec1gRefreshController.state);
+          return;
+        }
+        startTec1gAutoRefresh(this.tec1gRefreshController.state, 150, () => {
+          void refreshTec1gSnapshot(
+            this.tec1gRefreshController.state,
+            this.tec1gRefreshController.handlers,
+            this.tec1gRefreshController.snapshotPayload(),
+            { allowErrors: false }
+          );
+        });
+        if (rehydrate) {
+          void refreshTec1gSnapshot(
+            this.tec1gRefreshController.state,
+            this.tec1gRefreshController.handlers,
+            this.tec1gRefreshController.snapshotPayload(),
+            { allowErrors: true }
+          );
+        }
+      },
+      stopAutoRefresh: (): void => {
+        stopTec1gAutoRefresh(this.tec1gRefreshController.state);
+      },
+    };
   }
 
   private postProjectStatus(): void {
@@ -500,53 +591,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     };
   }
 
-  private syncMemoryRefresh(platform: 'tec1' | 'tec1g', rehydrate: boolean): void {
-    if (this.view?.visible !== true) {
-      return;
-    }
-    if (platform === 'tec1') {
-      if (this.tec1ActiveTab !== 'memory') {
-        stopTec1AutoRefresh(this.tec1RefreshController.state);
-        return;
-      }
-      startTec1AutoRefresh(this.tec1RefreshController.state, 150, () => {
-        void refreshTec1Snapshot(
-          this.tec1RefreshController.state,
-          this.tec1RefreshController.handlers,
-          this.tec1RefreshController.snapshotPayload(),
-          { allowErrors: false }
-        );
-      });
-      if (rehydrate) {
-        void refreshTec1Snapshot(
-          this.tec1RefreshController.state,
-          this.tec1RefreshController.handlers,
-          this.tec1RefreshController.snapshotPayload(),
-          { allowErrors: true }
-        );
-      }
-      return;
-    }
-    if (this.tec1gActiveTab !== 'memory') {
-      stopTec1gAutoRefresh(this.tec1gRefreshController.state);
-      return;
-    }
-    startTec1gAutoRefresh(this.tec1gRefreshController.state, 150, () => {
-      void refreshTec1gSnapshot(
-        this.tec1gRefreshController.state,
-        this.tec1gRefreshController.handlers,
-        this.tec1gRefreshController.snapshotPayload(),
-        { allowErrors: false }
-      );
-    });
-    if (rehydrate) {
-      void refreshTec1gSnapshot(
-        this.tec1gRefreshController.state,
-        this.tec1gRefreshController.handlers,
-        this.tec1gRefreshController.snapshotPayload(),
-        { allowErrors: true }
-      );
-    }
+  private stopAllPlatformRefresh(): void {
+    this.resolvePlatformAdapter('tec1').stopAutoRefresh();
+    this.resolvePlatformAdapter('tec1g').stopAutoRefresh();
   }
 
   private buildSnapshotPayload(memoryViews: {
