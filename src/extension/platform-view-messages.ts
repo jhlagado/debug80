@@ -23,7 +23,7 @@ export interface PlatformViewMessageDependencies {
   handleOpenWorkspaceFolder: () => PromiseLike<void>;
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleConfigureProject: () => PromiseLike<void>;
-  handleSaveProjectConfig: (platform: string, defaultTarget: string) => PromiseLike<void>;
+  handleSaveProjectConfig: (platform: string) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
@@ -62,9 +62,8 @@ export async function handlePlatformViewMessage(
   }
   if (msg?.type === 'saveProjectConfig') {
     const platform = (msg as { platform?: unknown }).platform;
-    const defaultTarget = (msg as { defaultTarget?: unknown }).defaultTarget;
-    if (typeof platform === 'string' && typeof defaultTarget === 'string') {
-      await deps.handleSaveProjectConfig(platform, defaultTarget);
+    if (typeof platform === 'string') {
+      await deps.handleSaveProjectConfig(platform);
     }
     return;
   }
@@ -103,13 +102,6 @@ export async function handlePlatformViewMessage(
     if (platform !== undefined && platform !== 'simple') {
       deps.clearSerialBuffer(platform);
     }
-    return;
-  }
-
-  // Intercept tab→config before the platform guard so it fires even when no
-  // platform is active (e.g. right after extension restart).
-  if (msg?.type === 'tab' && (msg as { tab?: unknown }).tab === 'config') {
-    await deps.handleConfigureProject();
     return;
   }
 

@@ -28,7 +28,6 @@ type ScaffoldPlan = {
   sourceFile: string;
   outputDir: string;
   artifactBase: string;
-  assembler?: 'zax';
   starterFile?: {
     path: string;
     content: string;
@@ -102,7 +101,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     outputDir: plan.outputDir,
     artifactBase: plan.artifactBase,
     platform: plan.platform,
-    ...(plan.assembler !== undefined ? { assembler: plan.assembler } : {}),
   };
 
   if (plan.platform === 'tec1') {
@@ -285,7 +283,6 @@ async function buildScaffoldPlan(
       sourceFile,
       outputDir: inferred.outputDir,
       artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
-      ...(sourceFile.toLowerCase().endsWith('.zax') ? { assembler: 'zax' as const } : {}),
     };
   }
 
@@ -296,7 +293,6 @@ async function buildScaffoldPlan(
     sourceFile,
     outputDir: inferred.outputDir,
     artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
-    ...(choice.language === 'zax' ? { assembler: 'zax' as const } : {}),
     starterFile: {
       path: sourceFile,
       content: createStarterSourceContent(choice.language),

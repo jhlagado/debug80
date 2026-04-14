@@ -19,6 +19,14 @@
         <span class="project-label">Target</span>
         <select class="project-select" id="homeTargetSelect"></select>
       </div>
+      <div class="project-control">
+        <span class="project-label">Platform</span>
+        <select class="project-select" id="platformSelect">
+          <option value="simple">Simple</option>
+          <option value="tec1">TEC-1</option>
+          <option value="tec1g">TEC-1G</option>
+        </select>
+      </div>
     </div>
     <div class="setup-card" id="setupCard">
       <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
@@ -31,7 +39,6 @@
       <div class="tabs-buttons">
         <button class="tab" data-tab="ui">UI</button>
         <button class="tab" data-tab="memory">CPU</button>
-        <button class="tab" data-tab="config">Config</button>
       </div>
       <button
         class="session-status"
@@ -83,29 +90,6 @@
           <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
           <div class="key" id="serialSend">SEND</div>
         </div>
-      </div>
-    </div>
-    <div class="panel panel-config" id="panel-config">
-      <div class="config-panel">
-        <div class="config-form">
-          <div class="config-row">
-            <label class="config-label" for="configPlatform">Platform</label>
-            <select class="config-select" id="configPlatform">
-              <option value="simple">Simple</option>
-              <option value="tec1">TEC-1</option>
-              <option value="tec1g">TEC-1G</option>
-            </select>
-          </div>
-          <div class="config-row">
-            <label class="config-label" for="configDefaultTarget">Default Target</label>
-            <select class="config-select" id="configDefaultTarget"></select>
-          </div>
-          <div class="config-actions">
-            <button class="config-save-button" id="configSave" type="button">Save Configuration</button>
-          </div>
-          <div class="config-status" id="configStatus"></div>
-        </div>
-        <p class="config-note">This panel edits project-level settings only.</p>
       </div>
     </div>
     <div class="panel panel-memory" id="panel-memory">

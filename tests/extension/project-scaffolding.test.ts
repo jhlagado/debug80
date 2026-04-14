@@ -94,26 +94,26 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
-  it('includes the zax assembler when scaffolding a zax target', () => {
+  it('does not include assembler field when scaffolding a zax target (auto-inferred from extension)', () => {
     const config = createDefaultProjectConfig({
       targetName: 'app',
       platform: 'simple',
       sourceFile: 'src/main.zax',
       outputDir: 'build',
       artifactBase: 'main',
-      assembler: 'zax',
     });
 
     expect(config).toEqual(
       expect.objectContaining({
         targets: {
           app: expect.objectContaining({
-            assembler: 'zax',
             sourceFile: 'src/main.zax',
           }),
         },
       })
     );
+    // assembler is no longer written to new project configs (auto-inferred from file extension)
+    expect(config.targets.app).not.toHaveProperty('assembler');
   });
 
   it('creates starter source text for asm and zax', () => {
