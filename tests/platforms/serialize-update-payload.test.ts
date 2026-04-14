@@ -67,7 +67,7 @@ describe('TEC-1 update payload serialization', () => {
 });
 
 describe('TEC-1G update payload serialization', () => {
-  it('keeps runtime and UI serializers aligned on required keys', () => {
+  it('maps UI state to payload (matrix, sysCtrl, speaker Hz) and clear panel snapshot', () => {
     const ui = createTec1gUiState();
     ui.matrixMode = true;
     ui.sysCtrlValue = 0x42;
