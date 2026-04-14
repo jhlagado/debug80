@@ -29,11 +29,9 @@ const DEFAULT_TAB: Tec1gPanelTab =
 
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
-const configureProjectButton = document.getElementById('configureProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const setupSecondaryAction = document.getElementById('setupSecondaryAction') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
@@ -83,11 +81,9 @@ const visibilityController = createVisibilityController(vscode);
 const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   selectProjectButton,
   createProjectButton,
-  configureProjectButton,
   setupCard,
   setupCardText,
   setupPrimaryAction,
-  setupSecondaryAction,
   homeTargetSelect,
 });
 
