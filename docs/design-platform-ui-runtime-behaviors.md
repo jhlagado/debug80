@@ -1,7 +1,8 @@
 # Platform UI/Runtime Behavior Notes
 
 This note captures cross-cutting behavior that is easy to miss when reading only one file at a time.
-It focuses on the extension-host sidebar, TEC-1G runtime display updates, and serial pacing assumptions.
+It focuses on the extension-host sidebar, TEC-1G runtime display updates, serial pacing assumptions,
+and terminal output routing for the simple platform.
 
 ## Scope and intent
 
@@ -11,6 +12,7 @@ These behaviors are intentionally preserved as implementation details that shape
 - Sidebar updates use session affinity guards to avoid stale cross-session updates.
 - Webview rehydration is message-driven and expects full-state replay after HTML replacement.
 - Serial send-file pacing is deliberately slow enough for monitor firmware input loops.
+- Simple platform terminal output is routed to the sidebar, not a VS Code terminal panel.
 
 ## TEC-1G matrix staging and idle flush
 
@@ -42,15 +44,15 @@ The provider still keeps parallel in-memory state for TEC-1 and TEC-1G, but only
 
 ## Webview rehydration semantics
 
-Sources: `src/extension/platform-view-provider.ts`, `webview/tec1/index.ts`, `webview/tec1g/index.ts`.
+Sources: `src/extension/platform-view-provider.ts`, `webview/tec1/index.ts`, `webview/tec1g/index.ts`, `webview/simple/index.ts`.
 
 Rehydration is triggered whenever the webview HTML is replaced (platform switch, reveal lifecycle, initial resolve). After replacement, the host must replay state in order:
 
 1. `projectStatus`
 2. `sessionStatus`
 3. full `update` snapshot (with `uiRevision`)
-4. optional `uiVisibility` (TEC-1G)
-5. optional `serialInit`
+4. optional `uiVisibility` (TEC-1G only)
+5. optional `serialInit` (all platforms: TEC-1/TEC-1G serial buffer; simple terminal buffer)
 6. `selectTab`
 7. memory refresh restart (if memory tab is active)
 
@@ -59,6 +61,7 @@ Important properties:
 - `update` messages are treated as full-state snapshots from the host cache, not deltas.
 - the webview applies a `uiRevision` monotonic guard so stale updates are ignored.
 - non-`update` messages (`projectStatus`, `serial`, etc.) are not revision-gated.
+- for the simple platform, `serialInit`/`serial`/`serialClear` carry terminal output text, not hardware serial data.
 
 ## Serial send-file pacing assumptions
 
@@ -77,6 +80,28 @@ Operational detail:
 - the handler awaits `vscode.window.withProgress(...)`, so the message-handler promise stays active until transfer completion or cancellation.
 - this is intentionally synchronous from the provider perspective and affects lifecycle ordering versus fire-and-forget dispatch.
 
+## Simple platform terminal output routing
+
+Source: `src/extension/debug-session-events.ts`.
+
+The `debug80/terminalOutput` custom DAP event is emitted by the adapter for all platforms that
+use the port-based I/O bridge. Its routing depends on the platform recorded for the session:
+
+- **Simple platform** (`sessionState.sessionPlatforms.get(session.id) === 'simple'`):
+  `platformViewProvider.appendSimpleTerminal(text, session.id)` is called.
+  This stores text in the simple platform's serial buffer and posts `{ type: 'serial', text }` to
+  the webview, where it is displayed in the TERMINAL area of the UI tab.
+
+- **No recognized platform** (or not yet set): `terminalPanel.appendOutput(text)` is called,
+  opening a VS Code panel if one is not already visible.
+
+The platform is recorded when the adapter fires the `debug80/platform` event during session
+startup. Because that event arrives before any `debug80/terminalOutput` events in practice,
+the routing decision is stable from the first output line.
+
+Note: TEC-1 and TEC-1G do not use `debug80/terminalOutput`. They emit `debug80/tec1Serial` and
+`debug80/tec1gSerial` events respectively, which always route to the sidebar serial buffer.
+
 ## Maintenance checklist
 
 When changing any of these areas, verify all of the following:
@@ -84,4 +109,5 @@ When changing any of these areas, verify all of the following:
 - matrix updates still commit on full row coverage and idle timeout,
 - session-id filtering remains in front of state mutation,
 - rehydration still replays a full update snapshot before tab-specific behavior,
-- serial pacing changes are tested against monitor load reliability.
+- serial pacing changes are tested against monitor load reliability,
+- simple platform terminal output arrives in the sidebar UI tab, not a VS Code terminal panel.
