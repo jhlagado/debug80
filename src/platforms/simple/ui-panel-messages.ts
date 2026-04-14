@@ -6,7 +6,7 @@ import { handleCommonPanelMessage, type PanelMessage, type PanelMessageContext }
 
 export type SimpleMessage = PanelMessage;
 
-export type MessageContext = PanelMessageContext<'memory'>;
+export type MessageContext = PanelMessageContext<'ui' | 'memory'>;
 
 /**
  * Handles inbound webview messages for the simple platform panel.

@@ -144,7 +144,7 @@ export function registerDebugSessionHandlers({
           platformViewProvider.setPlatform(id, evt.session, {
             focus: false,
             reveal: true,
-            tab: id === 'simple' ? 'memory' : 'ui',
+            tab: 'ui',
           });
           if (id === 'tec1g' && body?.uiVisibility) {
             platformViewProvider.setTec1gUiVisibility(body.uiVisibility, false);
@@ -188,11 +188,16 @@ export function registerDebugSessionHandlers({
       }
       if (evt.event === 'debug80/terminalOutput') {
         const text = (evt.body as { text?: string } | undefined)?.text ?? '';
-        if (!terminalPanel.hasPanel()) {
-          const column = sourceColumns.getSessionColumns(evt.session).panel;
-          terminalPanel.open(evt.session, { focus: false, reveal: true, column });
+        const sessionPlatform = sessionState.sessionPlatforms.get(evt.session.id);
+        if (sessionPlatform === 'simple') {
+          platformViewProvider.appendSimpleTerminal(text, evt.session.id);
+        } else {
+          if (!terminalPanel.hasPanel()) {
+            const column = sourceColumns.getSessionColumns(evt.session).panel;
+            terminalPanel.open(evt.session, { focus: false, reveal: true, column });
+          }
+          terminalPanel.appendOutput(text);
         }
-        terminalPanel.appendOutput(text);
         return;
       }
       if (evt.event === 'debug80/tec1Update') {

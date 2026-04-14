@@ -36,6 +36,7 @@
   </div>
   <div class="tabs">
     <div class="tabs-buttons">
+      <button class="tab" data-tab="ui">UI</button>
       <button class="tab" data-tab="memory">CPU</button>
     </div>
     <button
@@ -48,6 +49,17 @@
       aria-live="polite"
       aria-atomic="true"
     >Not running</button>
+  </div>
+  <div class="panel panel-ui" id="panel-ui">
+    <div class="serial">
+      <div class="serial-header">
+        <div class="serial-title">TERMINAL</div>
+        <div class="serial-buttons">
+          <div class="key key-small" id="terminalClear">CLEAR</div>
+        </div>
+      </div>
+      <pre class="serial-body" id="terminalOut"></pre>
+    </div>
   </div>
   <div class="panel panel-memory" id="panel-memory">
     <div class="memory-panel" id="memoryPanel">

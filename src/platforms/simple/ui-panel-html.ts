@@ -3,11 +3,12 @@
  */
 
 import * as vscode from 'vscode';
-import { buildPanelHtml } from '../panel-html';
+import { buildPanelHtml, type PanelTab } from '../panel-html';
 
 export function getSimpleHtml(
   webview: vscode.Webview,
-  extensionUri: vscode.Uri
+  extensionUri: vscode.Uri,
+  activeTab: PanelTab = 'ui'
 ): string {
-  return buildPanelHtml('memory', webview, extensionUri, 'simple');
+  return buildPanelHtml(activeTab, webview, extensionUri, 'simple');
 }

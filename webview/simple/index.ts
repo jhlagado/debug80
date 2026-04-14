@@ -1,13 +1,16 @@
 /**
- * @file Simple platform webview entry — project header, session status, CPU memory viewer.
+ * @file Simple platform webview entry — project header, session status, terminal, CPU memory viewer.
  */
 
+import { appendSerialText } from '../common/serial';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
+
+const TERMINAL_MAX = 8000;
 
 const vscode = acquireVscodeApi();
 
@@ -19,11 +22,15 @@ const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTML
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
+const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
+const terminalOutEl = document.getElementById('terminalOut') as HTMLElement | null;
+const terminalClearEl = document.getElementById('terminalClear') as HTMLElement | null;
 
+let activeTab: 'ui' | 'memory' = 'ui';
 let currentRootPath = '';
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
 let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' = 'openWorkspaceFolder';
@@ -54,6 +61,13 @@ homeTargetSelect?.addEventListener('change', () => {
     return;
   }
   vscode.postMessage({ type: 'selectTarget', rootPath: currentRootPath, targetName });
+});
+
+terminalClearEl?.addEventListener('click', () => {
+  if (terminalOutEl) {
+    terminalOutEl.textContent = '';
+  }
+  vscode.postMessage({ type: 'serialClear' });
 });
 
 function clearSelectOptions(select: HTMLSelectElement): void {
@@ -130,17 +144,20 @@ function applyProjectStatus(payload: {
   setupPrimaryAction.textContent = setupState.primaryLabel;
 }
 
-// Tab — only 'memory' exists for simple, but wire buttons for active styling
+function setTab(tab: 'ui' | 'memory'): void {
+  activeTab = tab;
+  panelUi.classList.toggle('active', tab === 'ui');
+  panelMemory.classList.toggle('active', tab === 'memory');
+  tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+}
+
 tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
-    tabButtons.forEach((b) => b.classList.remove('active'));
-    button.classList.add('active');
-    panelMemory.classList.add('active');
-    vscode.postMessage({ type: 'tab', tab: 'memory' });
+    const tab = button.dataset.tab as 'ui' | 'memory';
+    setTab(tab);
+    vscode.postMessage({ type: 'tab', tab });
   });
 });
-panelMemory.classList.add('active');
-tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === 'memory'));
 
 const views = [
   {
@@ -184,7 +201,7 @@ const memoryPanelController = new MemoryPanel({
   statusEl,
   views,
   getRowSize: () => memoryRowSize,
-  isActive: () => true,
+  isActive: () => activeTab === 'memory',
 });
 memoryPanelController.wire();
 
@@ -215,6 +232,31 @@ window.addEventListener('message', (event: MessageEvent): void => {
     sessionStatusController.setStatus(event.data.status);
     return;
   }
+  if (event.data.type === 'selectTab') {
+    const tab = event.data.tab as string;
+    if (tab === 'ui' || tab === 'memory') {
+      setTab(tab);
+    }
+    return;
+  }
+  if (event.data.type === 'serial') {
+    if (terminalOutEl) {
+      appendSerialText(terminalOutEl, event.data.text || '', TERMINAL_MAX);
+    }
+    return;
+  }
+  if (event.data.type === 'serialInit') {
+    if (terminalOutEl) {
+      terminalOutEl.textContent = event.data.text || '';
+    }
+    return;
+  }
+  if (event.data.type === 'serialClear') {
+    if (terminalOutEl) {
+      terminalOutEl.textContent = '';
+    }
+    return;
+  }
   if (event.data.type === 'snapshot') {
     memoryPanelController.handleSnapshot(event.data);
     return;
@@ -224,6 +266,7 @@ window.addEventListener('message', (event: MessageEvent): void => {
   }
 });
 
+setTab('ui');
 applyProjectStatus({});
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => scheduleMemoryResize());

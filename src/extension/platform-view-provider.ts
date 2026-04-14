@@ -215,6 +215,20 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  appendSimpleTerminal(text: string, sessionId?: string): void {
+    if (!this.shouldAcceptSession(sessionId) || text.length === 0) {
+      return;
+    }
+    const bundle = this.getActiveBundle('simple');
+    if (bundle === undefined) {
+      return;
+    }
+    appendSerialText(bundle.state.serialBuffer, text);
+    if (this.currentPlatform === 'simple') {
+      this.postMessage({ type: 'serial', text });
+    }
+  }
+
   appendTec1gSerial(text: string, sessionId?: string): void {
     if (!this.shouldAcceptSession(sessionId) || text.length === 0) {
       return;
