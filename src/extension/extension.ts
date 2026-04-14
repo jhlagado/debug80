@@ -20,6 +20,7 @@ import {
   type PlatformManifestEntry,
 } from '../platforms/provider';
 import {
+  createSimplePlatformUiEntry,
   createTec1PlatformUiEntry,
   createTec1gPlatformUiEntry,
 } from './platform-ui-entries';
@@ -40,6 +41,17 @@ export interface Debug80Api {
  * sidebar panel).
  */
 function registerBuiltInPlatformUis(): void {
+  registerExtensionPlatform({
+    runtime: {
+      id: 'simple',
+      displayName: 'Simple',
+      loadProvider: async (args) => {
+        const { createSimplePlatformProvider } = await import('../platforms/simple/provider.js');
+        return createSimplePlatformProvider(args);
+      },
+    },
+    ui: createSimplePlatformUiEntry(),
+  });
   registerExtensionPlatform({
     runtime: {
       id: 'tec1',
