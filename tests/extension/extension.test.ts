@@ -139,6 +139,7 @@ describe('extension activation', () => {
       expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
     ]);
     expect(uiManifest.listPlatformUis()).toEqual([
+      expect.objectContaining({ id: 'simple' }),
       expect.objectContaining({ id: 'tec1' }),
       expect.objectContaining({ id: 'tec1g' }),
     ]);
