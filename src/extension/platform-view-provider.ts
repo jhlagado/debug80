@@ -30,7 +30,12 @@ import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
-import { findProjectConfigPath, readProjectConfig, writeProjectConfig } from './project-config';
+import {
+  findProjectConfigPath,
+  readProjectConfig,
+  resolveProjectPlatform,
+  writeProjectConfig,
+} from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
@@ -330,6 +335,15 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
             isPanelVisible: () => this.view?.visible === true,
             memoryViews: bundle.state.memoryViews,
           });
+          // When the user clicks the Config tab button directly the webview
+          // sends { type:'tab', tab:'config' } which lands here. Populate
+          // the form now that the tab is active.
+          if (
+            (platformMsg as { type?: unknown }).type === 'tab' &&
+            bundle.state.activeTab === 'config'
+          ) {
+            this.postProjectConfigData();
+          }
         },
       });
     });
@@ -530,10 +544,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const config = readProjectConfig(configPath);
-    const platform =
-      (config?.projectPlatform) ??
-      (config?.platform) ??
-      'simple';
+    const platform = resolveProjectPlatform(config) ?? 'simple';
     const targets = Object.keys(config?.targets ?? {});
     const defaultTarget =
       (config?.defaultTarget) ??
