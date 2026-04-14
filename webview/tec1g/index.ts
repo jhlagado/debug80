@@ -23,7 +23,11 @@ import { createTec1gTabMemory } from './tec1g-tab-memory';
 const vscode = acquireVscodeApi();
 
 const DEFAULT_TAB: Tec1gPanelTab =
-  document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
+  document.body.dataset.activeTab === 'memory'
+    ? 'memory'
+    : document.body.dataset.activeTab === 'config'
+      ? 'config'
+      : 'ui';
 
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
@@ -47,8 +51,13 @@ const statusCaps = document.getElementById('statusCaps') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
+const panelConfig = document.getElementById('panel-config') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
+const configPlatformEl = document.getElementById('configPlatform') as HTMLSelectElement | null;
+const configDefaultTargetEl = document.getElementById('configDefaultTarget') as HTMLSelectElement | null;
+const configSaveEl = document.getElementById('configSave') as HTMLButtonElement | null;
+const configStatusEl = document.getElementById('configStatus') as HTMLElement | null;
 
 const digitEls: HTMLElement[] = [];
 for (let i = 0; i < TEC1G_DIGITS; i++) {
@@ -69,6 +78,7 @@ const tabMemory = createTec1gTabMemory({
   tabButtons,
   panelUi,
   panelMemory,
+  panelConfig,
   memoryPanel: memoryPanelEl,
   defaultTab: DEFAULT_TAB,
   getMemoryPanelController: () => memoryPanelController,
@@ -89,6 +99,14 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
 });
 
 projectStatusUi.applyProjectStatus({});
+
+configSaveEl?.addEventListener('click', () => {
+  vscode.postMessage({
+    type: 'saveProjectConfig',
+    platform: configPlatformEl?.value ?? '',
+    defaultTarget: configDefaultTargetEl?.value ?? '',
+  });
+});
 
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
 audio.wireMuteClick();
@@ -158,6 +176,35 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
   }
   if (message.type === 'selectTab') {
     tabMemory.setTab(message.tab, false);
+    return;
+  }
+  if (message.type === 'projectConfigData') {
+    if (configPlatformEl) {
+      configPlatformEl.value = message.platform ?? '';
+    }
+    if (configDefaultTargetEl) {
+      configDefaultTargetEl.innerHTML = '';
+      const targets: string[] = Array.isArray(message.targets) ? message.targets : [];
+      targets.forEach((t: string) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        opt.selected = t === message.defaultTarget;
+        configDefaultTargetEl.appendChild(opt);
+      });
+    }
+    if (configStatusEl) {
+      configStatusEl.textContent = '';
+    }
+    return;
+  }
+  if (message.type === 'configSaved') {
+    if (configStatusEl) {
+      configStatusEl.textContent = 'Saved.';
+      setTimeout(() => {
+        if (configStatusEl) configStatusEl.textContent = '';
+      }, 2000);
+    }
     return;
   }
   if (message.type === 'uiVisibility') {

@@ -6,7 +6,7 @@ import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import type { Tec1gUpdatePayload as Tec1gUpdatePayloadBase } from '../../src/platforms/tec1g/types';
 import type { SessionStatus } from '../common/session-status';
 
-export type Tec1gPanelTab = 'ui' | 'memory';
+export type Tec1gPanelTab = 'ui' | 'memory' | 'config';
 
 export type { Tec1gSpeedMode } from '../../src/platforms/tec1g/types';
 
@@ -49,4 +49,6 @@ export type IncomingMessage =
   | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
   | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
   | ({ type: 'snapshot' } & MemorySnapshotPayload)
-  | { type: 'snapshotError'; message?: string };
+  | { type: 'snapshotError'; message?: string }
+  | { type: 'projectConfigData'; platform: string; defaultTarget: string; targets: string[] }
+  | { type: 'configSaved' };

@@ -48,7 +48,10 @@ export function createTec1PlatformUiEntry(): PlatformUiEntry {
           >;
         },
         createMemoryViewState: memory.createMemoryViewState,
-        handleMessage: (message, context): Promise<void> => messages.handleTec1Message(message, context),
+        handleMessage: (message, context): Promise<void> =>
+          // Cast getActiveTab/setActiveTab to the narrower 'ui'|'memory' type expected by the
+          // panel message handler; 'config' never reaches handleTec1Message in practice.
+          messages.handleTec1Message(message, context as Parameters<typeof messages.handleTec1Message>[1]),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,
@@ -96,7 +99,10 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
           >;
         },
         createMemoryViewState: memory.createMemoryViewState,
-        handleMessage: (message, context): Promise<void> => messages.handleTec1gMessage(message, context),
+        handleMessage: (message, context): Promise<void> =>
+          // Cast getActiveTab/setActiveTab to the narrower 'ui'|'memory' type expected by the
+          // panel message handler; 'config' never reaches handleTec1gMessage in practice.
+          messages.handleTec1gMessage(message, context as Parameters<typeof messages.handleTec1gMessage>[1]),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,
