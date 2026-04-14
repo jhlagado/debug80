@@ -26,6 +26,14 @@ import {
   type PlatformUiEntry,
   type PlatformUiModules,
 } from './platform-view-manifest';
+import {
+  serializeTec1ClearFromUiState,
+  serializeTec1UpdateFromUiState,
+} from '../platforms/tec1/serialize-update-payload';
+import {
+  serializeTec1gClearPanelUpdateFromUiState,
+  serializeTec1gUpdateFromUiState,
+} from '../platforms/tec1g/serialize-ui-update-payload';
 
 export interface Debug80Api {
   registerPlatform: (entry: PlatformManifestEntry) => void;
@@ -54,13 +62,6 @@ function createTec1PlatformUiEntry(): PlatformUiEntry {
         import('../platforms/tec1/ui-panel-state.js'),
       ]);
       type Tec1UiState = ReturnType<typeof state.createTec1UiState>;
-      const serializeState = (uiState: Tec1UiState): Record<string, unknown> => ({
-        digits: uiState.digits,
-        matrix: uiState.matrix,
-        speaker: uiState.speaker,
-        speedMode: uiState.speedMode,
-        lcd: uiState.lcd,
-      });
       return {
         getHtml: html.getTec1Html,
         createUiState: state.createTec1UiState,
@@ -69,30 +70,23 @@ function createTec1PlatformUiEntry(): PlatformUiEntry {
           const tec1State = uiState as Tec1UiState;
           const tec1Payload = payload as Parameters<typeof state.applyTec1Update>[1];
           state.applyTec1Update(tec1State, tec1Payload);
-          return {
-            ...serializeState(tec1State),
-            ...(tec1Payload.speakerHz !== undefined ? { speakerHz: tec1Payload.speakerHz } : {}),
-          };
+          return serializeTec1UpdateFromUiState(tec1State, tec1Payload.speakerHz) as unknown as Record<
+            string,
+            unknown
+          >;
         },
         createMemoryViewState: memory.createMemoryViewState,
         handleMessage: (message, context): Promise<void> => messages.handleTec1Message(message, context),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,
-          ...serializeState(uiState as Tec1UiState),
+          ...serializeTec1UpdateFromUiState(uiState as Tec1UiState),
         }),
-        buildClearMessage: (uiState, uiRevision): Record<string, unknown> => {
-          const tec1State = uiState as Tec1UiState;
-          return {
-            type: 'update',
-            uiRevision,
-            digits: tec1State.digits,
-            matrix: tec1State.matrix,
-            speaker: false,
-            speedMode: tec1State.speedMode,
-            lcd: tec1State.lcd,
-          };
-        },
+        buildClearMessage: (uiState, uiRevision): Record<string, unknown> => ({
+          type: 'update',
+          uiRevision,
+          ...serializeTec1ClearFromUiState(uiState as Tec1UiState),
+        }),
         snapshotCommand: 'debug80/tec1MemorySnapshot',
       };
     },
@@ -113,26 +107,6 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
         import('../platforms/tec1g/ui-panel-state.js'),
       ]);
       type Tec1gUiState = ReturnType<typeof state.createTec1gUiState>;
-      const serializeState = (uiState: Tec1gUiState): Record<string, unknown> => ({
-        digits: uiState.digits,
-        matrix: uiState.matrix,
-        matrixGreen: uiState.matrixGreen,
-        matrixBlue: uiState.matrixBlue,
-        matrixBrightness: uiState.matrixBrightness,
-        matrixBrightnessG: uiState.matrixBrightnessG,
-        matrixBrightnessB: uiState.matrixBrightnessB,
-        glcd: uiState.glcd,
-        glcdDdram: uiState.glcdDdram,
-        glcdState: uiState.glcdState,
-        speaker: uiState.speaker,
-        speedMode: uiState.speedMode,
-        sysCtrl: uiState.sysCtrlValue,
-        bankA14: uiState.bankA14,
-        capsLock: uiState.capsLock,
-        lcdState: uiState.lcdState,
-        lcdCgram: uiState.lcdCgram,
-        lcd: uiState.lcd,
-      });
       return {
         getHtml: html.getTec1gHtml,
         createUiState: state.createTec1gUiState,
@@ -141,36 +115,23 @@ function createTec1gPlatformUiEntry(): PlatformUiEntry {
           const tec1gState = uiState as Tec1gUiState;
           const tec1gPayload = payload as Parameters<typeof state.applyTec1gUpdate>[1];
           state.applyTec1gUpdate(tec1gState, tec1gPayload);
-          return {
-            ...serializeState(tec1gState),
-            ...(tec1gPayload.speakerHz !== undefined ? { speakerHz: tec1gPayload.speakerHz } : {}),
-          };
+          return serializeTec1gUpdateFromUiState(tec1gState, tec1gPayload.speakerHz) as unknown as Record<
+            string,
+            unknown
+          >;
         },
         createMemoryViewState: memory.createMemoryViewState,
         handleMessage: (message, context): Promise<void> => messages.handleTec1gMessage(message, context),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,
-          ...serializeState(uiState as Tec1gUiState),
+          ...serializeTec1gUpdateFromUiState(uiState as Tec1gUiState),
         }),
-        buildClearMessage: (uiState, uiRevision): Record<string, unknown> => {
-          const tec1gState = uiState as Tec1gUiState;
-          return {
-            type: 'update',
-            uiRevision,
-            digits: tec1gState.digits,
-            matrix: tec1gState.matrix,
-            matrixGreen: tec1gState.matrixGreen,
-            matrixBlue: tec1gState.matrixBlue,
-            matrixBrightness: tec1gState.matrixBrightness,
-            matrixBrightnessG: tec1gState.matrixBrightnessG,
-            matrixBrightnessB: tec1gState.matrixBrightnessB,
-            glcd: tec1gState.glcd,
-            speaker: false,
-            speedMode: tec1gState.speedMode,
-            lcd: tec1gState.lcd,
-          };
-        },
+        buildClearMessage: (uiState, uiRevision): Record<string, unknown> => ({
+          type: 'update',
+          uiRevision,
+          ...serializeTec1gClearPanelUpdateFromUiState(uiState as Tec1gUiState),
+        }),
         snapshotCommand: 'debug80/tec1gMemorySnapshot',
       };
     },
