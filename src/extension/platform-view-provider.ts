@@ -30,7 +30,7 @@ import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
-import { findProjectConfigPath } from './project-config';
+import { findProjectConfigPath, readProjectConfig, writeProjectConfig } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
@@ -278,8 +278,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         handleSelectProject: async (args) => {
           await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);
         },
-        handleConfigureProject: async () => {
-          await vscode.commands.executeCommand('debug80.openProjectConfigPanel');
+        handleConfigureProject: () => {
+          this.activateConfigTab();
+          return Promise.resolve();
+        },
+        handleSaveProjectConfig: (platform, defaultTarget) => {
+          this.handleSaveProjectConfig(platform, defaultTarget);
+          return Promise.resolve();
         },
         handleSelectTarget: async (args) => {
           await vscode.commands.executeCommand('debug80.selectTarget', args);
@@ -380,6 +385,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({ type: 'serialInit', text: bundle.state.serialBuffer.text });
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
+      if (bundle.state.activeTab === 'config') {
+        this.postProjectConfigData();
+      }
       this.syncMemoryRefresh(bundle, rehydrate);
       return;
     }
@@ -492,6 +500,74 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     for (const state of this.platformStates.values()) {
       stopAutoRefresh(state.refreshController.state);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Private — config tab
+  // -------------------------------------------------------------------------
+
+  /**
+   * Switches the active platform's tab to 'config' and posts the current
+   * project config data so the form can be populated.
+   */
+  private activateConfigTab(): void {
+    const bundle = this.getCurrentBundle();
+    if (bundle !== undefined) {
+      bundle.state.activeTab = 'config';
+    }
+    this.postMessage({ type: 'selectTab', tab: 'config' });
+    this.postProjectConfigData();
+  }
+
+  /** Reads the current project config and posts it to the webview form. */
+  private postProjectConfigData(): void {
+    const folder = this.selectedWorkspace;
+    if (folder === undefined) {
+      return;
+    }
+    const configPath = findProjectConfigPath(folder);
+    if (configPath === undefined) {
+      return;
+    }
+    const config = readProjectConfig(configPath);
+    const platform =
+      (config?.projectPlatform) ??
+      (config?.platform) ??
+      'simple';
+    const targets = Object.keys(config?.targets ?? {});
+    const defaultTarget =
+      (config?.defaultTarget) ??
+      (config?.target) ??
+      (targets[0] ?? '');
+    this.postMessage({
+      type: 'projectConfigData',
+      platform,
+      defaultTarget,
+      targets,
+    });
+  }
+
+  /** Writes updated platform/defaultTarget to the project config file. */
+  private handleSaveProjectConfig(platform: string, defaultTarget: string): void {
+    const folder = this.selectedWorkspace;
+    if (folder === undefined) {
+      void vscode.window.showErrorMessage('Debug80: No workspace folder selected.');
+      return;
+    }
+    const configPath = findProjectConfigPath(folder);
+    if (configPath === undefined) {
+      void vscode.window.showErrorMessage('Debug80: No project config found in workspace.');
+      return;
+    }
+    const existing = readProjectConfig(configPath) ?? {};
+    const updated = { ...existing, projectPlatform: platform, defaultTarget };
+    const ok = writeProjectConfig(configPath, updated);
+    if (!ok) {
+      void vscode.window.showErrorMessage('Debug80: Failed to save project config.');
+      return;
+    }
+    this.postMessage({ type: 'configSaved' });
+    this.refreshProjectStatus();
   }
 
   // -------------------------------------------------------------------------

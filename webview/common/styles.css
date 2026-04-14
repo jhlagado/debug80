@@ -378,6 +378,67 @@ body {
     .panel.active {
       display: block;
     }
+    .config-panel {
+      padding: 8px 0;
+    }
+    .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .config-row {
+      display: grid;
+      grid-template-columns: minmax(80px, 130px) 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .config-label {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9a9a9a;
+    }
+    .config-select {
+      background: #1e1e1e;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      color: #f0f0f0;
+      padding: 5px 8px;
+      font-size: 12px;
+      width: 100%;
+      cursor: pointer;
+    }
+    .config-select:focus {
+      outline: none;
+      border-color: #5a5a5a;
+    }
+    .config-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .config-save-button {
+      background: #2a5a8a;
+      border: 1px solid #3a7ab0;
+      border-radius: 6px;
+      color: #f0f0f0;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .config-save-button:hover {
+      background: #3a6a9a;
+    }
+    .config-status {
+      font-size: 11px;
+      color: #6cad5e;
+      min-height: 1em;
+    }
+    .config-note {
+      font-size: 10px;
+      color: #5a5a5a;
+      margin: 10px 0 0;
+    }
     #memoryPanel {
       margin-top: 4px;
     }
