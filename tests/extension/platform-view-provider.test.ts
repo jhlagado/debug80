@@ -1,5 +1,6 @@
 /**
- * @file PlatformViewProvider tests (static Tec1/Tec1g UI modules; no dynamic loadPlatformUi).
+ * @file PlatformViewProvider tests — platforms are loaded via the manifest
+ * registry using the real TEC-1 / TEC-1G UI entry factories.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -75,6 +76,11 @@ import type * as vscode from 'vscode';
 import { PlatformViewProvider } from '../../src/extension/platform-view-provider';
 import type { Tec1UpdatePayload } from '../../src/platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../../src/platforms/tec1g/types';
+import { registerPlatformUi } from '../../src/extension/platform-view-manifest';
+import {
+  createTec1PlatformUiEntry,
+  createTec1gPlatformUiEntry,
+} from '../../src/extension/platform-ui-entries';
 
 /** Extension root must contain built `webview/` assets (see panel-html). */
 const extensionRoot = { fsPath: path.resolve(process.cwd()) } as vscode.Uri;
@@ -105,6 +111,8 @@ describe('PlatformViewProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     workspaceFolders = undefined;
+    registerPlatformUi(createTec1PlatformUiEntry());
+    registerPlatformUi(createTec1gPlatformUiEntry());
   });
 
   it('renders Tec1 HTML when the webview resolves and the platform is Tec1', async () => {
@@ -559,10 +567,10 @@ describe('PlatformViewProvider', () => {
     });
   });
 
-  it('posts Tec1 update payload with contract-critical fields', () => {
+  it('posts Tec1 update payload with contract-critical fields', async () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();
-    provider.resolveWebviewView(
+    await provider.resolveWebviewView(
       webviewView,
       {} as vscode.WebviewViewResolveContext,
       {
@@ -594,10 +602,10 @@ describe('PlatformViewProvider', () => {
     });
   });
 
-  it('posts Tec1g update payload with matrix and glcd contract fields', () => {
+  it('posts Tec1g update payload with matrix and glcd contract fields', async () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();
-    provider.resolveWebviewView(
+    await provider.resolveWebviewView(
       webviewView,
       {} as vscode.WebviewViewResolveContext,
       {
