@@ -167,25 +167,31 @@ export function applyLaunchSessionArtifacts(
   target: LaunchArtifactsTarget,
   artifacts: LaunchSessionArtifacts
 ): void {
+  const source = target.sessionState.source;
+  const runtimeState = target.sessionState.runtimeState;
+  const platform = target.sessionState.platform;
+  const launch = target.sessionState.launch;
+  const ui = target.sessionState.ui;
+
   target.platformState.active = artifacts.platform;
-  target.sessionState.listing = artifacts.listing;
-  target.sessionState.listingPath = artifacts.listingPath;
-  target.sessionState.mapping = artifacts.mapping;
-  target.sessionState.mappingIndex = artifacts.mappingIndex;
-  target.sessionState.sourceRoots = artifacts.sourceRoots;
-  target.sessionState.extraListingPaths = artifacts.extraListingPaths;
-  target.sessionState.symbolAnchors = artifacts.symbolAnchors;
-  target.sessionState.symbolList = artifacts.symbolList;
-  target.sessionState.runtime = artifacts.runtime;
-  target.sessionState.terminalState = artifacts.terminalState;
-  target.sessionState.tec1Runtime = artifacts.tec1Runtime;
-  target.sessionState.tec1gRuntime = artifacts.tec1gRuntime;
-  target.sessionState.platformRuntime = artifacts.platformRuntime;
-  target.sessionState.tec1gConfig = artifacts.tec1gConfig;
-  target.sessionState.loadedProgram = artifacts.loadedProgram;
-  target.sessionState.loadedEntry = artifacts.loadedEntry;
-  target.sessionState.restartCaptureAddress = artifacts.restartCaptureAddress;
-  target.sessionState.entryCpuState = undefined;
+  source.listing = artifacts.listing;
+  source.listingPath = artifacts.listingPath;
+  source.mapping = artifacts.mapping;
+  source.mappingIndex = artifacts.mappingIndex;
+  source.sourceRoots = artifacts.sourceRoots;
+  source.extraListingPaths = artifacts.extraListingPaths;
+  source.symbolAnchors = artifacts.symbolAnchors;
+  source.symbolList = artifacts.symbolList;
+  runtimeState.execution = artifacts.runtime;
+  ui.terminalState = artifacts.terminalState;
+  platform.tec1Runtime = artifacts.tec1Runtime;
+  platform.tec1gRuntime = artifacts.tec1gRuntime;
+  platform.platformRuntime = artifacts.platformRuntime;
+  platform.tec1gConfig = artifacts.tec1gConfig;
+  launch.loadedProgram = artifacts.loadedProgram;
+  launch.loadedEntry = artifacts.loadedEntry;
+  launch.restartCaptureAddress = artifacts.restartCaptureAddress;
+  launch.entryCpuState = undefined;
   target.sessionState.runState.callDepth = 0;
   target.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
   target.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;

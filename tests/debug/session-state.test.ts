@@ -67,4 +67,15 @@ describe('session-state', () => {
     expect(state.restartCaptureAddress).toBeUndefined();
     expect(state.entryCpuState).toBeUndefined();
   });
+
+  it('preserves runState object identity across reset', () => {
+    const state = createSessionState();
+    const captured = state.runState;
+    state.runState.haltNotified = true;
+
+    resetSessionState(state);
+
+    expect(state.runState).toBe(captured);
+    expect(captured.haltNotified).toBe(false);
+  });
 });

@@ -119,7 +119,7 @@ export class Z80DebugSession extends DebugSession {
     const respondError = (response: DebugProtocol.Response, id: number, message: string): void =>
       this.sendErrorResponse(response, id, message);
     const terminalDeps = {
-      getTerminalState: () => this.sessionState.terminalState,
+      getTerminalState: () => this.sessionState.ui.terminalState,
       sendResponse: respond,
       sendErrorResponse: respondError,
     };
@@ -130,11 +130,11 @@ export class Z80DebugSession extends DebugSession {
       handleTerminalBreak(response, terminalDeps)
     );
     const memoryDeps = {
-      getRuntime: () => this.sessionState.runtime,
+      getRuntime: () => this.sessionState.runtimeState.execution,
       getRunning: () => this.sessionState.runState.isRunning,
-      getSymbolAnchors: () => this.sessionState.symbolAnchors,
+      getSymbolAnchors: () => this.sessionState.source.symbolAnchors,
       getLookupAnchors: () => this.sourceState.lookupAnchors,
-      getSymbolList: () => this.sessionState.symbolList,
+      getSymbolList: () => this.sessionState.source.symbolList,
       sendResponse: respond,
       sendErrorResponse: respondError,
     };
@@ -164,7 +164,7 @@ export class Z80DebugSession extends DebugSession {
     });
     this.commandRouter.register('debug80/romSources', (response) => {
       response.body = buildRomSourcesResponse(
-        this.sourceState.collectRomSources(this.sessionState.extraListingPaths)
+        this.sourceState.collectRomSources(this.sessionState.source.extraListingPaths)
       );
       this.sendResponse(response);
       return true;
@@ -213,7 +213,7 @@ export class Z80DebugSession extends DebugSession {
     const merged: LaunchRequestArguments = populateFromConfig(args, {
       resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
     });
-    this.sessionState.launchArgs = merged;
+    this.sessionState.launch.launchArgs = merged;
     this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
     setDiagnosticsEnabled(merged.diagnostics === true);
 
