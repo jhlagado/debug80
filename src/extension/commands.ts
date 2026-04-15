@@ -334,6 +334,50 @@ async function maybeAutoStartSingleTargetForRootChange(
   return onlyTarget;
 }
 
+function resolveProjectPlatformForFolder(folder: vscode.WorkspaceFolder): string | undefined {
+  const projectConfig = findProjectConfigPath(folder);
+  if (projectConfig === undefined) {
+    return undefined;
+  }
+  return resolveProjectPlatform(readProjectConfig(projectConfig));
+}
+
+function projectConfigFromSession(session: vscode.DebugSession): string | undefined {
+  const configuration = session.configuration as { projectConfig?: unknown } | undefined;
+  const projectConfigRaw = configuration?.projectConfig;
+  if (typeof projectConfigRaw !== 'string' || projectConfigRaw.trim() === '') {
+    return undefined;
+  }
+  return projectConfigRaw;
+}
+
+function resolveSessionProjectPlatform(session: vscode.DebugSession): string | undefined {
+  const projectConfigRaw = projectConfigFromSession(session);
+  if (projectConfigRaw === undefined) {
+    return undefined;
+  }
+  const projectConfigPath = path.isAbsolute(projectConfigRaw)
+    ? projectConfigRaw
+    : session.workspaceFolder !== undefined
+      ? path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw)
+      : projectConfigRaw;
+  return resolveProjectPlatform(readProjectConfig(projectConfigPath));
+}
+
+function resolveSessionProjectConfigPath(session: vscode.DebugSession): string | undefined {
+  const projectConfigRaw = projectConfigFromSession(session);
+  if (projectConfigRaw === undefined) {
+    return undefined;
+  }
+  if (path.isAbsolute(projectConfigRaw)) {
+    return path.normalize(projectConfigRaw);
+  }
+  if (session.workspaceFolder !== undefined) {
+    return path.normalize(path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw));
+  }
+  return path.normalize(projectConfigRaw);
+}
+
 export function registerExtensionCommands({
   context,
   platformViewProvider,
@@ -466,11 +510,47 @@ export function registerExtensionCommands({
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
 
-        const singleTarget = await maybeAutoStartSingleTargetForRootChange(
-          folder,
-          workspaceSelection,
-          targetSelection
-        );
+        let restartedForPlatformChange = false;
+        const activeSession = vscode.debug.activeDebugSession;
+        if (activeSession?.type === 'z80') {
+          const nextProjectConfigPath = findProjectConfigPath(folder);
+          const previousProjectConfigPath = resolveSessionProjectConfigPath(activeSession);
+          const previousPlatform = resolveSessionProjectPlatform(activeSession);
+          const nextPlatform = resolveProjectPlatformForFolder(folder);
+          const projectChanged =
+            previousProjectConfigPath !== undefined &&
+            nextProjectConfigPath !== undefined &&
+            path.normalize(previousProjectConfigPath) !== path.normalize(nextProjectConfigPath);
+          if (
+            projectChanged ||
+            (previousPlatform !== undefined &&
+              nextPlatform !== undefined &&
+              previousPlatform !== nextPlatform)
+          ) {
+            await vscode.debug.stopDebugging(activeSession);
+            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
+            restartedForPlatformChange = restarted;
+            if (restarted) {
+              const reason =
+                previousPlatform !== undefined &&
+                nextPlatform !== undefined &&
+                previousPlatform !== nextPlatform
+                  ? nextPlatform
+                  : 'selected project';
+              void vscode.window.showInformationMessage(
+                `Debug80: Selected root ${folder.name}; restarted debugging for ${reason}.`
+              );
+            }
+          }
+        }
+
+        const singleTarget = restartedForPlatformChange
+          ? undefined
+          : await maybeAutoStartSingleTargetForRootChange(
+              folder,
+              workspaceSelection,
+              targetSelection
+            );
         if (singleTarget !== undefined) {
           void vscode.window.showInformationMessage(
             `Debug80: Selected root ${folder.name} and started target ${singleTarget}.`
