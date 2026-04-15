@@ -202,7 +202,6 @@ export class WorkspaceSelectionController {
       request: 'launch',
       name: 'Debug80: Current Project',
       projectConfig: projectConfigPath,
-      stopOnEntry: false,
     });
   }
 }

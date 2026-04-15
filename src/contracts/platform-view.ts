@@ -10,6 +10,8 @@ export type ProjectStatusPayload = {
   targetName?: string;
   entrySource?: string;
   platform?: string;
+  /** Effective stop-on-entry for the current target (merged from target + project root). */
+  stopOnEntry?: boolean;
   roots: Array<{
     name: string;
     path: string;
@@ -29,6 +31,7 @@ export type PlatformViewControlMessage =
   | { type: 'selectProject'; rootPath?: string }
   | { type: 'configureProject' }
   | { type: 'saveProjectConfig'; platform: string }
+  | { type: 'setStopOnEntry'; stopOnEntry: boolean }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }

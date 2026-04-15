@@ -44,6 +44,7 @@ export type IncomingMessage =
       targetName?: string;
       entrySource?: string;
       platform?: string;
+      stopOnEntry?: boolean;
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];
     }

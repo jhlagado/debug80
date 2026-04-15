@@ -8,6 +8,7 @@ import * as path from 'path';
 import { createSessionStatusController } from '../../webview/common/session-status';
 
 const HTML_PATHS = [
+  ['simple', path.resolve(__dirname, '../../webview/simple/index.html')],
   ['tec1', path.resolve(__dirname, '../../webview/tec1/index.html')],
   ['tec1g', path.resolve(__dirname, '../../webview/tec1g/index.html')],
 ] as const;
@@ -42,6 +43,12 @@ describe('debugger session status badge', () => {
       throw new Error('session status badge is missing');
     }
     expect(tabs.contains(badge)).toBe(true);
+    const slot = document.querySelector('.tabs-status-slot');
+    const stopOnEntry = document.getElementById('stopOnEntry') as HTMLInputElement | null;
+    expect(slot).not.toBeNull();
+    expect(slot?.contains(badge)).toBe(true);
+    expect(stopOnEntry).not.toBeNull();
+    expect(slot?.contains(stopOnEntry)).toBe(true);
     expect(badge?.textContent).toBe('Not running');
     expect(badge?.dataset.status).toBe('not-running');
     expect(badge?.disabled).toBe(false);

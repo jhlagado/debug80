@@ -57,6 +57,15 @@ describe('path-resolver', () => {
     expect(resolveBaseDir(args)).toBe(path.dirname(configPath));
   });
 
+  it('uses project root when config is .vscode/debug80.json outside workspace', () => {
+    const workspace = path.join(tmpDir, 'workspace');
+    const projectRoot = path.join(tmpDir, 'other-project');
+    const configPath = path.join(projectRoot, '.vscode', 'debug80.json');
+    workspaceState.workspaceFolders = [{ uri: { fsPath: workspace } }];
+    const args = { projectConfig: configPath } as LaunchRequestArguments;
+    expect(resolveBaseDir(args)).toBe(projectRoot);
+  });
+
   it('resolves artifacts relative to the base dir', () => {
     const asmPath = path.join(tmpDir, 'demo.asm');
     fs.writeFileSync(asmPath, 'NOP\n');
@@ -104,6 +113,17 @@ describe('path-resolver', () => {
     fs.mkdirSync(dir, { recursive: true });
     const listing = path.join(dir, 'demo.lst');
     const source = path.join(dir, 'demo.source.asm');
+    fs.writeFileSync(listing, 'LIST');
+    fs.writeFileSync(source, 'NOP');
+
+    expect(resolveListingSourcePath(listing)).toBe(source);
+  });
+
+  it('resolves listing source path from .z80 when present', () => {
+    const dir = path.join(tmpDir, 'build');
+    fs.mkdirSync(dir, { recursive: true });
+    const listing = path.join(dir, 'mon3.lst');
+    const source = path.join(dir, 'mon3.z80');
     fs.writeFileSync(listing, 'LIST');
     fs.writeFileSync(source, 'NOP');
 

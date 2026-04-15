@@ -39,16 +39,25 @@
         <button class="tab" data-tab="ui">UI</button>
         <button class="tab" data-tab="memory">CPU</button>
       </div>
-      <button
-        class="session-status"
-        id="sessionStatus"
-        type="button"
-        data-status="not-running"
-        title="Click to start debugging"
-        aria-label="Not running. Click to start debugging"
-        aria-live="polite"
-        aria-atomic="true"
-      >Not running</button>
+      <div class="tabs-status-slot">
+        <label
+          class="stop-on-entry-label"
+          title="Pause at the program entry point when starting a debug session (saved to debug80.json)."
+        >
+          <input type="checkbox" id="stopOnEntry" />
+          Stop on entry
+        </label>
+        <button
+          class="session-status"
+          id="sessionStatus"
+          type="button"
+          data-status="not-running"
+          title="Click to start debugging"
+          aria-label="Not running. Click to start debugging"
+          aria-live="polite"
+          aria-atomic="true"
+        >Not running</button>
+      </div>
     </div>
     <div class="panel panel-ui" id="panel-ui">
       <div class="layout">
