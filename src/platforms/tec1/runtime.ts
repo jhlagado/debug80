@@ -158,7 +158,9 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
 }
 
 /**
- *
+ * Infers extra listing paths from a ROM hex path when none are configured explicitly.
+ * Given `roms/tec1/mon1.bin`, returns candidates `roms/tec1/mon1.lst` and the
+ * dash/underscore-stripped variant. Returns `undefined` when the ROM path is absent.
  */
 function inferListingsFromRom(romHex: string | undefined): string[] | undefined {
   if (typeof romHex !== 'string' || romHex.trim() === '') {
