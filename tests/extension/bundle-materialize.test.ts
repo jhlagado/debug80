@@ -21,6 +21,7 @@ import {
   BUNDLED_MON3_V1_REL,
   materializeBundledRom,
 } from '../../src/extension/bundle-materialize';
+import * as crypto from 'crypto';
 
 describe('bundle-materialize', () => {
   const tmpDirs: string[] = [];
@@ -105,6 +106,40 @@ describe('bundle-materialize', () => {
 
   it('exposes bundled MON3 path constant for scaffold', () => {
     expect(BUNDLED_MON3_V1_REL).toBe('tec1g/mon3/v1');
+  });
+
+  it('accepts listing checksum when file differs only by CRLF line endings', () => {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-crlf-'));
+    tmpDirs.push(workspaceRoot);
+
+    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-crlf-'));
+    tmpDirs.push(bundleRoot);
+    const rel = 'demo/crlf';
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+
+    fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([0xaa, 0xbb]));
+    const listingLf = '0000: NOP\n0001: HALT\n';
+    const listingCrlf = listingLf.replace(/\n/g, '\r\n');
+    fs.writeFileSync(path.join(bundleDir, 'rom.lst'), listingCrlf, 'utf-8');
+    const listingLfHash = crypto.createHash('sha256').update(Buffer.from(listingLf, 'utf-8')).digest('hex');
+
+    const manifest = {
+      schemaVersion: 1,
+      id: 'demo-crlf',
+      version: '1',
+      platform: 'tec1g',
+      label: 'Demo CRLF',
+      files: [
+        { role: 'rom' as const, path: 'rom.bin' },
+        { role: 'listing' as const, path: 'rom.lst', sha256: listingLfHash },
+      ],
+      workspaceLayout: { destination: 'roms/crlf' },
+    };
+    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+
+    const result = materializeBundledRom(vscode.Uri.file(bundleRoot), workspaceRoot, rel);
+    expect(result.ok).toBe(true);
   });
 
   it('materializes the committed MON3 bundle (checksums in bundle.json)', () => {
