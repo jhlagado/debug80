@@ -1,6 +1,7 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
+import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
@@ -22,6 +23,7 @@ const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -86,6 +88,7 @@ platformSelectEl?.addEventListener('change', () => {
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
+const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 const projectRootController = createProjectRootButtonController(
   vscode,
   selectProjectButton,
@@ -157,6 +160,8 @@ function applyProjectStatus(payload: {
   roots?: ProjectStatusPayload['roots'];
   targets?: ProjectStatusPayload['targets'];
   targetName?: ProjectStatusPayload['targetName'];
+  hasProject?: ProjectStatusPayload['hasProject'];
+  stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
@@ -166,6 +171,10 @@ function applyProjectStatus(payload: {
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
+  stopOnEntryControl.applyProjectStatus({
+    hasProject: payload.hasProject === true,
+    stopOnEntry: payload.stopOnEntry,
+  });
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
   const targetCount = payload.targets?.length ?? 0;
   if (!setupCard || !setupCardText || !setupPrimaryAction) {
@@ -423,6 +432,7 @@ window.addEventListener('keydown', event => {
 window.addEventListener('beforeunload', () => {
   serialUi.dispose();
   sessionStatusController.dispose();
+  stopOnEntryControl.dispose();
   projectRootController.dispose();
 });
   

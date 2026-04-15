@@ -320,6 +320,33 @@ body {
       min-width: 0;
       flex: 1;
     }
+    .tabs-status-slot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .stop-on-entry-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #b0b0b0;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+      margin: 0;
+    }
+    .stop-on-entry-label input {
+      cursor: pointer;
+    }
+    .stop-on-entry-label:has(input:disabled) {
+      opacity: 0.45;
+      cursor: default;
+    }
     .tab {
       background: #1f1f1f;
       border: 1px solid #333;

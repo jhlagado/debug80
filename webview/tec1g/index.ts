@@ -5,6 +5,7 @@
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
+import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { acquireVscodeApi } from '../common/vscode';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
@@ -33,6 +34,7 @@ const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -59,6 +61,7 @@ for (let i = 0; i < TEC1G_DIGITS; i++) {
 }
 
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
+const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
@@ -156,6 +159,10 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     if (platformSelectEl && message.platform !== undefined) {
       platformSelectEl.value = message.platform;
     }
+    stopOnEntryControl.applyProjectStatus({
+      hasProject: message.hasProject === true,
+      stopOnEntry: message.stopOnEntry,
+    });
     return;
   }
   if (message.type === 'sessionStatus') {
@@ -248,5 +255,6 @@ window.addEventListener('keyup', (event) => {
 });
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
+  stopOnEntryControl.dispose();
   projectStatusUi.dispose();
 });

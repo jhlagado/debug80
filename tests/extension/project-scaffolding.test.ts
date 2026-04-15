@@ -131,7 +131,6 @@ describe('project-scaffolding helpers', () => {
           name: 'Debug80: Current Project',
           type: 'z80',
           request: 'launch',
-          stopOnEntry: true,
         },
       ],
     });
@@ -167,6 +166,33 @@ describe('project-scaffolding helpers', () => {
         },
       },
     });
+  });
+
+  it('merges bundled MON3 paths into tec1g when materialization succeeded', () => {
+    const config = createDefaultProjectConfig({
+      targetName: 'app',
+      platform: 'tec1g',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+      bundledMon3: {
+        ok: true,
+        destinationRelative: 'roms/tec1g/mon3',
+        romRelativePath: 'roms/tec1g/mon3/mon3.bin',
+        listingRelativePath: 'roms/tec1g/mon3/mon3.lst',
+      },
+    });
+
+    expect(config.targets.app).toEqual(
+      expect.objectContaining({
+        platform: 'tec1g',
+        tec1g: expect.objectContaining({
+          romHex: 'roms/tec1g/mon3/mon3.bin',
+          extraListings: ['roms/tec1g/mon3/mon3.lst'],
+          sourceRoots: ['src', 'roms/tec1g/mon3'],
+        }),
+      })
+    );
   });
 
   it('builds a tec1g target config when scaffolding for TEC-1G', () => {

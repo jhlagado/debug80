@@ -78,8 +78,7 @@ export function registerDebugSessionHandlers({
         sessionState.sessionPlatforms.delete(session.id);
         sourceColumns.onSessionStarted(session);
         const openRomSources = session.configuration?.openRomSourcesOnLaunch !== false;
-        const openMainSource = session.configuration?.openMainSourceOnLaunch !== false;
-        if (openRomSources && !openMainSource) {
+        if (openRomSources) {
           const sessionId = session.id;
           const column = sourceColumns.getSessionColumns(session).source;
           setTimeout(() => {

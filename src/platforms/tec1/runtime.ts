@@ -6,6 +6,7 @@
  * runtime state for display, keypad, and serial behavior.
  */
 
+import * as path from 'path';
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
@@ -142,7 +143,7 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     ? config.extraListings
         .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
         .filter((entry) => entry !== '')
-    : undefined;
+    : inferListingsFromRom(romHex);
   return {
     regions,
     romRanges,
@@ -152,8 +153,24 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
-    ...(extraListings ? { extraListings } : {}),
+    ...(extraListings && extraListings.length > 0 ? { extraListings } : {}),
   };
+}
+
+/**
+ *
+ */
+function inferListingsFromRom(romHex: string | undefined): string[] | undefined {
+  if (typeof romHex !== 'string' || romHex.trim() === '') {
+    return undefined;
+  }
+  const dir = path.dirname(romHex);
+  const base = path.basename(romHex, path.extname(romHex));
+  const candidates = [
+    path.join(dir, `${base}.lst`),
+    path.join(dir, `${base.replace(/[-_]/g, '')}.lst`),
+  ];
+  return [...new Set(candidates)];
 }
 
 /**

@@ -200,6 +200,30 @@ describe('launch-args', () => {
     expect(mergedBad).toEqual(badArgs);
   });
 
+  it('prefers project stopOnEntry over launch args when projectConfig is present', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-stoponentry-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        targets: {
+          matrix: {
+            asm: 'src/matrix.zax',
+            stopOnEntry: false,
+          },
+        },
+        defaultTarget: 'matrix',
+      })
+    );
+
+    const merged = populateFromConfig(
+      { projectConfig: configPath, target: 'matrix', stopOnEntry: true } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.stopOnEntry).toBe(false);
+  });
+
   it('normalizes source paths and relative paths', () => {
     const root = path.parse(process.cwd()).root;
     const baseDir = path.join(root, 'root');

@@ -70,6 +70,29 @@ export function resolvePreferredTargetName(
   return undefined;
 }
 
+/**
+ * Resolves the active target name for config updates when workspace memento may be absent
+ * (e.g. tests): prefers stored/default selection, otherwise a single-target fallback.
+ */
+export function resolveTargetNameForConfig(
+  workspaceState: vscode.Memento | undefined,
+  projectConfigPath: string
+): string | undefined {
+  if (workspaceState !== undefined) {
+    return resolvePreferredTargetName(workspaceState, projectConfigPath);
+  }
+  const config = readProjectConfig(projectConfigPath);
+  if (config === undefined) {
+    return undefined;
+  }
+  const preferred = config.defaultTarget ?? config.target;
+  if (typeof preferred === 'string' && config.targets?.[preferred] !== undefined) {
+    return preferred;
+  }
+  const keys = Object.keys(config.targets ?? {});
+  return keys.length === 1 ? keys[0] : undefined;
+}
+
 export function listProjectTargetChoices(projectConfigPath: string): ProjectTargetChoice[] {
   return loadTargetChoices(projectConfigPath).choices;
 }

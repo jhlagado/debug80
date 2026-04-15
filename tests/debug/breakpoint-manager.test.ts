@@ -120,6 +120,57 @@ describe('BreakpointManager', () => {
     expect(applied[0]?.verified).toBe(true);
   });
 
+  it('falls back to .source.z80 when resolving breakpoints', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map());
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    const listingPath = path.join(baseDir, 'program.lst');
+    const sourcePath = path.resolve(baseDir, 'mon3.z80');
+
+    const index = createMockIndex(
+      new Map([[path.resolve(baseDir, 'mon3.source.z80'), new Map([[171, [0xc000]]])]])
+    );
+
+    mgr.setPending(sourcePath, [{ line: 171 }]);
+    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
+
+    expect(applied.length).toBe(1);
+    expect(applied[0]?.verified).toBe(true);
+  });
+
+  it('falls back by basename when mapped path differs', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map());
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
+    const requestedPath = path.resolve('/workspace/roms/mon3.z80');
+    const mappedPath = path.resolve('/private/tmp/debug80/roms/mon3.z80');
+
+    const index = createMockIndex(new Map([[mappedPath, new Map([[171, [0xc000]]])]]));
+
+    mgr.setPending(requestedPath, [{ line: 171 }]);
+    const applied = mgr.applyForSource(listing, listingPath, index, requestedPath, [{ line: 171 }]);
+
+    expect(applied.length).toBe(1);
+    expect(applied[0]?.verified).toBe(true);
+  });
+
+  it('falls back to listing line for asm-like source when mapping misses', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map([[171, 0xc000]]));
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
+    const sourcePath = path.resolve('/workspace/roms/mon3.z80');
+    const index = createMockIndex(new Map());
+
+    mgr.setPending(sourcePath, [{ line: 171 }]);
+    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
+
+    expect(applied.length).toBe(1);
+    expect(applied[0]?.verified).toBe(true);
+
+    mgr.rebuild(listing, listingPath, index);
+    expect(mgr.hasAddress(0xc000)).toBe(true);
+  });
+
   it('falls back to the next available listing entry', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(
