@@ -41,9 +41,45 @@ function readManifest(extensionUri: vscode.Uri, bundleRelPath: string): BundleMa
   }
 }
 
-function sha256File(filePath: string): string {
+function sha256File(filePath: string, normalizeLineEndings = false): string {
   const data = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(data).digest('hex');
+  if (!normalizeLineEndings) {
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
+  // Windows checkouts may materialize listings with CRLF even when bundle checksums
+  // were generated from LF content; normalize to LF for checksum verification only.
+  const normalized = Buffer.from(data.toString('utf-8').replace(/\r\n/g, '\n'), 'utf-8');
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+function verifyEntryChecksum(
+  filePath: string,
+  entry: BundleManifestV1['files'][number]
+): string | undefined {
+  if (entry.sha256 === undefined || entry.sha256.length === 0) {
+    return undefined;
+  }
+  const expected = entry.sha256.toLowerCase();
+  const direct = sha256File(filePath).toLowerCase();
+  if (direct === expected) {
+    return undefined;
+  }
+  if (entry.role === 'listing') {
+    const normalized = sha256File(filePath, true).toLowerCase();
+    if (normalized === expected) {
+      return undefined;
+    }
+    return direct;
+  }
+  return direct;
+}
+
+function checksumMismatchReason(
+  entry: BundleManifestV1['files'][number],
+  actualHash: string
+): string {
+  const expected = entry.sha256 ?? '';
+  return `Checksum mismatch for ${entry.path} (expected ${expected}, got ${actualHash})`;
 }
 
 /**
@@ -84,14 +120,12 @@ export function materializeBundledRom(
       return { ok: false, reason: `Bundled file missing in extension: ${entry.path}` };
     }
 
-    if (entry.sha256 !== undefined && entry.sha256.length > 0) {
-      const hash = sha256File(from);
-      if (hash.toLowerCase() !== entry.sha256.toLowerCase()) {
-        return {
-          ok: false,
-          reason: `Checksum mismatch for ${entry.path} (expected ${entry.sha256}, got ${hash})`,
-        };
-      }
+    const checksumMismatch = verifyEntryChecksum(from, entry);
+    if (checksumMismatch !== undefined) {
+      return {
+        ok: false,
+        reason: checksumMismatchReason(entry, checksumMismatch),
+      };
     }
 
     if (fs.existsSync(to) && !overwrite) {
