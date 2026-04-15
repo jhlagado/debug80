@@ -260,7 +260,13 @@ export function populateFromConfig(
       merged.simple = simpleResolved;
     }
 
-    const stopOnEntryResolved = args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
+    // For project-driven launches, treat debug80.json as the source of truth so
+    // the sidebar checkbox (setStopOnEntry) is not overridden by stale launch.json.
+    const preferProjectStopOnEntry =
+      typeof merged.projectConfig === 'string' && merged.projectConfig.length > 0;
+    const stopOnEntryResolved = preferProjectStopOnEntry
+      ? targetCfg?.stopOnEntry ?? cfg.stopOnEntry ?? args.stopOnEntry
+      : args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
     if (stopOnEntryResolved !== undefined) {
       merged.stopOnEntry = stopOnEntryResolved;
     }
@@ -422,8 +428,11 @@ export function resolveBaseDir(args: LaunchRequestArguments): string {
     if (cfgPath.startsWith(workspace)) {
       return workspace;
     }
-
-    return path.dirname(cfgPath);
+    const cfgDir = path.dirname(cfgPath);
+    if (path.basename(cfgDir).toLowerCase() === '.vscode') {
+      return path.dirname(cfgDir);
+    }
+    return cfgDir;
   }
   return workspace;
 }

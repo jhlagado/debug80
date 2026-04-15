@@ -2,6 +2,7 @@
  * @file TEC-1G runtime configuration normalization.
  */
 
+import * as path from 'path';
 import type { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import {
@@ -49,7 +50,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     ? config.extraListings
         .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
         .filter((entry) => entry !== '')
-    : undefined;
+    : inferListingsFromRom(romHex);
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
@@ -77,7 +78,23 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     sdHighCapacity,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
-    ...(extraListings ? { extraListings } : {}),
+    ...(extraListings && extraListings.length > 0 ? { extraListings } : {}),
     ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
+}
+
+/**
+ *
+ */
+function inferListingsFromRom(romHex: string | undefined): string[] | undefined {
+  if (typeof romHex !== 'string' || romHex.trim() === '') {
+    return undefined;
+  }
+  const dir = path.dirname(romHex);
+  const base = path.basename(romHex, path.extname(romHex));
+  const candidates = [
+    path.join(dir, `${base}.lst`),
+    path.join(dir, `${base.replace(/[-_]/g, '')}.lst`),
+  ];
+  return [...new Set(candidates)];
 }

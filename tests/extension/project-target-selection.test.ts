@@ -174,4 +174,49 @@ describe('ProjectTargetSelectionController', () => {
       'serial'
     );
   });
+
+  it('resolveTargetNameForConfig uses defaultTarget when workspace memento is absent', async () => {
+    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        defaultTarget: 'app',
+        targets: {
+          app: { sourceFile: 'src/a.asm' },
+          other: { sourceFile: 'src/b.asm' },
+        },
+      })
+    );
+
+    expect(resolveTargetNameForConfig(undefined, '/workspace/p/.vscode/debug80.json')).toBe('app');
+  });
+
+  it('resolveTargetNameForConfig returns the sole target when there is no default', async () => {
+    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        targets: {
+          only: { sourceFile: 'src/a.asm' },
+        },
+      })
+    );
+
+    expect(resolveTargetNameForConfig(undefined, '/workspace/p/debug80.json')).toBe('only');
+  });
+
+  it('resolveTargetNameForConfig returns undefined when multiple targets lack a default', async () => {
+    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        targets: {
+          a: { sourceFile: 'src/a.asm' },
+          b: { sourceFile: 'src/b.asm' },
+        },
+      })
+    );
+
+    expect(resolveTargetNameForConfig(undefined, '/workspace/p/debug80.json')).toBeUndefined();
+  });
 });

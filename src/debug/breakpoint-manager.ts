@@ -63,7 +63,11 @@ export class BreakpointManager {
     for (const bp of breakpoints) {
       const line = bp.line ?? 0;
       const addresses = this.resolveSourceBreakpoint(mappingIndex, sourcePath, line);
-      const ok = addresses.length > 0;
+      let ok = addresses.length > 0;
+      if (!ok && this.isAsmLikeSource(sourcePath)) {
+        const listingAddress = this.resolveListingLineAddress(listing, line);
+        ok = listingAddress !== undefined;
+      }
       verified.push({ line: bp.line, verified: ok });
     }
 
@@ -98,6 +102,13 @@ export class BreakpointManager {
         const [first] = addresses;
         if (first !== undefined) {
           this.active.add(first);
+          continue;
+        }
+        if (this.isAsmLikeSource(source)) {
+          const listingAddress = this.resolveListingLineAddress(listing, line);
+          if (listingAddress !== undefined) {
+            this.active.add(listingAddress);
+          }
         }
       }
     }
@@ -121,7 +132,31 @@ export class BreakpointManager {
     }
     const alternate = this.resolveAlternateSourcePath(sourcePath);
     if (alternate !== null) {
-      return resolveLocation(mappingIndex, alternate, line);
+      const mapped = resolveLocation(mappingIndex, alternate, line);
+      if (mapped.length > 0) {
+        return mapped;
+      }
+    }
+    return this.resolveByBasename(mappingIndex, sourcePath, line);
+  }
+
+  private resolveByBasename(mappingIndex: SourceMapIndex, sourcePath: string, line: number): number[] {
+    const want = path.basename(sourcePath).toLowerCase();
+    const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
+    for (const [fileKey, fileMap] of mappingIndex.segmentsByFileLine.entries()) {
+      if (path.basename(fileKey).toLowerCase() !== want) {
+        continue;
+      }
+      for (const delta of lineSlop) {
+        const tryLine = line + delta;
+        if (tryLine < 1) {
+          continue;
+        }
+        const segments = fileMap.get(tryLine);
+        if (segments && segments.length > 0) {
+          return segments.map((seg) => seg.start);
+        }
+      }
     }
     return [];
   }
@@ -145,6 +180,12 @@ export class BreakpointManager {
     if (lower.endsWith('.zax')) {
       return normalized.slice(0, -'.zax'.length) + '.source.zax';
     }
+    if (lower.endsWith('.source.z80')) {
+      return normalized.slice(0, -'.source.z80'.length) + '.z80';
+    }
+    if (lower.endsWith('.z80')) {
+      return normalized.slice(0, -'.z80'.length) + '.source.z80';
+    }
     return null;
   }
 
@@ -166,5 +207,10 @@ export class BreakpointManager {
       }
     }
     return undefined;
+  }
+
+  private isAsmLikeSource(sourcePath: string): boolean {
+    const lower = sourcePath.toLowerCase();
+    return lower.endsWith('.asm') || lower.endsWith('.z80') || lower.endsWith('.zax');
   }
 }
