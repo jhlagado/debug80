@@ -9,6 +9,7 @@ import {
   listProjectSourceFiles,
   readProjectConfig,
   resolveProjectPlatform,
+  resolveStopOnEntryForTarget,
   updateProjectTargetSource,
   writeProjectConfig,
 } from '../../src/extension/project-config';
@@ -75,6 +76,28 @@ describe('project-config helpers', () => {
         },
       })
     ).toBe('tec1');
+  });
+
+  it('resolves stopOnEntry from target override then project root', () => {
+    expect(
+      resolveStopOnEntryForTarget(
+        {
+          stopOnEntry: true,
+          targets: { app: { stopOnEntry: false } },
+        },
+        'app'
+      )
+    ).toBe(false);
+    expect(
+      resolveStopOnEntryForTarget(
+        {
+          stopOnEntry: true,
+          targets: { app: {} },
+        },
+        'app'
+      )
+    ).toBe(true);
+    expect(resolveStopOnEntryForTarget({ targets: { app: {} } }, 'app')).toBe(false);
   });
 
   it('recognizes initialized debug80 projects from config presence', () => {

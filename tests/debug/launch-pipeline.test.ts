@@ -35,6 +35,7 @@ describe('launch-pipeline', () => {
     expect(resolveExtraListings('tec1')).toEqual([]);
   });
 
+
   it('skips assembly when disabled', () => {
     const args = { assemble: false } as LaunchRequestArguments;
     expect(() =>

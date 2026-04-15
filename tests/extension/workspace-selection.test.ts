@@ -196,7 +196,6 @@ describe('WorkspaceSelectionController', () => {
         request: 'launch',
         name: 'Debug80: Current Project',
         projectConfig: path.normalize('/workspace/caverns80/.vscode/debug80.json'),
-        stopOnEntry: false,
       })
     );
   });

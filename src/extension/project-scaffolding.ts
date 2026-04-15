@@ -17,6 +17,11 @@ import {
   TEC1G_ROM1_END,
   TEC1G_ROM1_START,
 } from '../platforms/tec1g/constants';
+import {
+  BUNDLED_MON3_V1_REL,
+  materializeBundledRom,
+  type MaterializeBundledRomResult,
+} from './bundle-materialize';
 
 type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
 
@@ -32,6 +37,8 @@ type ScaffoldPlan = {
     path: string;
     content: string;
   };
+  /** Present when bundled MON3 was copied into the workspace during scaffold */
+  bundledMon3?: Extract<MaterializeBundledRomResult, { ok: true }>;
 };
 
 type SourceChoice =
@@ -106,7 +113,23 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   if (plan.platform === 'tec1') {
     targetConfig.tec1 = createTec1Defaults();
   } else if (plan.platform === 'tec1g') {
-    targetConfig.tec1g = createTec1gDefaults();
+    const base = createTec1gDefaults();
+    if (plan.bundledMon3 !== undefined) {
+      const sourceRoots = [
+        'src',
+        ...(plan.bundledMon3.listingRelativePath !== undefined ? ['roms/tec1g/mon3'] : []),
+      ];
+      targetConfig.tec1g = {
+        ...base,
+        romHex: plan.bundledMon3.romRelativePath,
+        ...(plan.bundledMon3.listingRelativePath !== undefined
+          ? { extraListings: [plan.bundledMon3.listingRelativePath] }
+          : {}),
+        sourceRoots,
+      };
+    } else {
+      targetConfig.tec1g = base;
+    }
   } else {
     targetConfig.simple = createSimpleDefaults();
   }
@@ -156,15 +179,45 @@ export function createDefaultLaunchConfig(): Record<string, unknown> {
         name: 'Debug80: Current Project',
         type: 'z80',
         request: 'launch',
-        stopOnEntry: true,
       },
     ],
   };
 }
 
+function ensureWorkspaceSettings(vscodeDir: string): void {
+  const settingsPath = path.join(vscodeDir, 'settings.json');
+  let settings: Record<string, unknown> = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const raw = fs.readFileSync(settingsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        settings = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Keep defaults if settings cannot be parsed.
+    }
+  }
+
+  const associationsRaw = settings['files.associations'];
+  const associations =
+    associationsRaw !== null &&
+    associationsRaw !== undefined &&
+    typeof associationsRaw === 'object' &&
+    !Array.isArray(associationsRaw)
+      ? ({ ...associationsRaw } as Record<string, unknown>)
+      : {};
+  if (typeof associations['*.z80'] !== 'string') {
+    associations['*.z80'] = 'z80-asm';
+  }
+  settings['files.associations'] = associations;
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+}
+
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
-  includeLaunch: boolean
+  includeLaunch: boolean,
+  extensionUri?: vscode.Uri
 ): Promise<boolean> {
   const workspaceRoot = folder.uri.fsPath;
   const vscodeDir = path.join(workspaceRoot, '.vscode');
@@ -179,7 +232,22 @@ export async function scaffoldProject(
     return false;
   }
 
-  const scaffoldPlan = plan;
+  let scaffoldPlan = plan;
+
+  if (
+    scaffoldPlan !== undefined &&
+    scaffoldPlan.platform === 'tec1g' &&
+    extensionUri !== undefined
+  ) {
+    const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
+    if (mat.ok) {
+      scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
+    } else {
+      void vscode.window.showWarningMessage(
+        `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
+      );
+    }
+  }
 
   ensureDirExists(
     path.join(workspaceRoot, path.dirname(scaffoldPlan?.sourceFile ?? inferred.sourceFile))
@@ -189,6 +257,7 @@ export async function scaffoldProject(
   if (includeLaunch) {
     ensureDirExists(vscodeDir);
   }
+  ensureWorkspaceSettings(vscodeDir);
 
   let created = false;
 

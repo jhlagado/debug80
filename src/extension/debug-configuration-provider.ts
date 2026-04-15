@@ -155,14 +155,11 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
   }
 
   private normalizeConfig(config: Debug80LaunchConfig): Debug80LaunchConfig {
-    const stopOnEntry = typeof config.stopOnEntry === 'boolean' ? config.stopOnEntry : true;
-
     return {
       ...config,
       type: 'z80',
       request: 'launch',
       name: config.name ?? 'Debug80: Current Project',
-      stopOnEntry,
     };
   }
 
@@ -171,7 +168,6 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
       type: 'z80',
       request: 'launch',
       name: 'Debug80: Current Project',
-      stopOnEntry: true,
     });
   }
 
