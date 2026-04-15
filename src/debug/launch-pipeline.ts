@@ -2,7 +2,6 @@
  * @fileoverview Launch pipeline helpers (config normalization, assembly).
  */
 
-import * as path from 'path';
 import type {
   SimplePlatformConfigNormalized,
   Tec1PlatformConfigNormalized,
@@ -19,27 +18,14 @@ export function resolveExtraListings(
   tec1Config?: Tec1PlatformConfigNormalized,
   tec1gConfig?: Tec1gPlatformConfigNormalized
 ): string[] {
-  const inferFromRom = (romHex: string | undefined): string[] => {
-    if (typeof romHex !== 'string' || romHex.trim() === '') {
-      return [];
-    }
-    const dir = path.dirname(romHex);
-    const base = path.basename(romHex, path.extname(romHex));
-    const candidates = [
-      path.join(dir, `${base}.lst`),
-      path.join(dir, `${base.replace(/[-_]/g, '')}.lst`),
-    ];
-    return [...new Set(candidates)];
-  };
-
   if (platform === 'simple') {
     return simpleConfig?.extraListings ?? [];
   }
   if (platform === 'tec1') {
-    return tec1Config?.extraListings ?? inferFromRom(tec1Config?.romHex);
+    return tec1Config?.extraListings ?? [];
   }
   if (platform === 'tec1g') {
-    return tec1gConfig?.extraListings ?? inferFromRom(tec1gConfig?.romHex);
+    return tec1gConfig?.extraListings ?? [];
   }
   return [];
 }
