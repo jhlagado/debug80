@@ -144,7 +144,6 @@ describe('registerExtensionCommands', () => {
         request: 'launch',
         name: 'Debug80: Current Project',
         projectConfig: projectConfigPath,
-        stopOnEntry: false,
       })
     );
     expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.debug.start');
@@ -222,7 +221,7 @@ describe('registerExtensionCommands', () => {
     expect(result).toBe(true);
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
-    expect(scaffoldProject).toHaveBeenCalledWith(folder, false);
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined);
   });
 
   it('forces a prompt when selecting the active target', async () => {
@@ -387,7 +386,6 @@ describe('registerExtensionCommands', () => {
         type: 'z80',
         request: 'launch',
         projectConfig: projectConfigPath,
-        stopOnEntry: false,
       })
     );
   });
@@ -478,7 +476,6 @@ describe('registerExtensionCommands', () => {
         type: 'z80',
         request: 'launch',
         projectConfig: projectConfigPath,
-        stopOnEntry: false,
       })
     );
   });
@@ -842,7 +839,6 @@ describe('registerExtensionCommands', () => {
         type: 'z80',
         request: 'launch',
         projectConfig: projectConfigPath,
-        stopOnEntry: false,
       })
     );
   });

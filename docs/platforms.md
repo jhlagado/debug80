@@ -342,6 +342,53 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 }
 ```
 
+### TEC-1G: bundled MON3 (wizard and manual projects)
+
+For **TEC-1G**, Debug80 can ship a **MON3** ROM snapshot inside the VSIX and copy it into
+your workspace under stable paths (see `docs/plans/platform-rom-bundles.md`).
+
+**After “Create Project” (TEC-1G)** the extension copies, when possible:
+
+- `roms/tec1g/mon3/mon3.bin` — monitor ROM image (`tec1g.romHex`; `.bin` or `.hex` per program loader rules).
+- `roms/tec1g/mon3/mon3.lst` — ASM80 listing for ROM source mapping (`tec1g.extraListings`).
+- `tec1g.sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
+
+**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files as the wizard.
+
+**Manual project (no wizard):** point `tec1g.romHex` and `tec1g.extraListings` at workspace-relative paths (or absolute paths). Example:
+
+```json
+{
+  "defaultTarget": "app",
+  "targets": {
+    "app": {
+      "sourceFile": "src/main.asm",
+      "outputDir": "build",
+      "artifactBase": "main",
+      "platform": "tec1g",
+      "tec1g": {
+        "regions": [
+          { "start": 0, "end": 2047, "kind": "rom" },
+          { "start": 2048, "end": 32767, "kind": "ram" },
+          { "start": 49152, "end": 65535, "kind": "rom" }
+        ],
+        "appStart": 16384,
+        "entry": 0,
+        "romHex": "roms/tec1g/mon3/mon3.bin",
+        "extraListings": ["roms/tec1g/mon3/mon3.lst"],
+        "sourceRoots": ["src", "roms/tec1g/mon3"]
+      }
+    }
+  }
+}
+```
+
+**Overrides:** replace the files on disk and keep the same paths, or change `romHex` /
+`extraListings` / `sourceRoots` to your own MON3 build. Day-to-day debugging uses only
+workspace paths, not paths inside the extension.
+
+More hardware and I/O detail: `docs/platforms/tec1g/README.md`.
+
 ## Build and launch flow
 
 1) User selects a target in the debug config (via `projectConfig` + `target`).

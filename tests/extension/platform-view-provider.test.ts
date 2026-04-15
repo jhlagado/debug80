@@ -66,10 +66,13 @@ vi.mock('../../src/extension/project-config', () => ({
   findProjectConfigPath,
   readProjectConfig: vi.fn(() => ({ projectPlatform: 'tec1g', targets: {} })),
   resolveProjectPlatform: vi.fn(() => 'tec1g'),
+  resolveStopOnEntryForTarget: vi.fn(() => false),
+  writeProjectConfig: vi.fn(() => true),
 }));
 
 vi.mock('../../src/extension/project-target-selection', () => ({
   listProjectTargetChoices,
+  resolveTargetNameForConfig: vi.fn(() => 'app'),
 }));
 
 import * as path from 'path';

@@ -67,6 +67,9 @@
     "languages": [
       {
         "id": "z80-asm",
+        "aliases": [
+          "Z80 Assembly"
+        ],
         "extensions": [
           ".asm",
           ".z80",
@@ -186,6 +189,10 @@
       {
         "command": "debug80.openProjectConfigPanel",
         "title": "Debug80: Open Project Configuration Panel"
+      },
+      {
+        "command": "debug80.materializeBundledRom",
+        "title": "Debug80: Copy Bundled MON3 ROM and Listing into Workspace"
       }
     ],
     "menus": {
@@ -375,6 +382,7 @@
   },
   "scripts": {
     "build": "tsc && npm run build:webview",
+    "bundle:sync-mon3": "node scripts/sync-mon3-bundle.cjs",
     "build:webview": "node scripts/build-webview.js",
     "prepare": "husky",
     "typecheck": "tsc --noEmit",

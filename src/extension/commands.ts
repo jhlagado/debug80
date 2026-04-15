@@ -20,6 +20,7 @@ import {
   listProjectTargetChoices,
   resolvePreferredTargetName,
 } from './project-target-selection';
+import { BUNDLED_MON3_V1_REL, materializeBundledRom } from './bundle-materialize';
 import { scaffoldProject } from './project-scaffolding';
 import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
@@ -295,7 +296,6 @@ async function startCurrentProjectDebugging(
     request: 'launch',
     name: 'Debug80: Current Project',
     projectConfig,
-    stopOnEntry: false,
   });
 }
 
@@ -349,12 +349,53 @@ export function registerExtensionCommands({
         void vscode.window.showErrorMessage('Debug80: No workspace folder available for project creation.');
         return false;
       }
-      const created = await scaffoldProject(folder, false);
+      const created = await scaffoldProject(folder, false, context.extensionUri);
       if (created) {
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
       }
       return created;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.materializeBundledRom', async () => {
+      const folder = await workspaceSelection.resolveWorkspaceFolder({
+        prompt: true,
+        requireProject: false,
+        placeHolder: 'Select the workspace folder to install bundled MON3 ROM and listing',
+      });
+      if (folder === undefined) {
+        return false;
+      }
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: 'Skip existing files', value: false as const },
+          { label: 'Overwrite existing files', value: true as const },
+        ],
+        { placeHolder: 'If bundled files already exist, should they be overwritten?' }
+      );
+      if (pick === undefined) {
+        return undefined;
+      }
+      const result = materializeBundledRom(
+        context.extensionUri,
+        folder.uri.fsPath,
+        BUNDLED_MON3_V1_REL,
+        { overwrite: pick.value }
+      );
+      if (result.ok) {
+        const listingNote =
+          result.listingRelativePath !== undefined
+            ? ` Listing: ${result.listingRelativePath}.`
+            : '';
+        void vscode.window.showInformationMessage(
+          `Debug80: Installed bundled MON3 ROM at ${result.romRelativePath}.${listingNote}`
+        );
+        return true;
+      }
+      void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
+      return false;
     })
   );
 
