@@ -63,7 +63,7 @@ vi.mock('../../src/extension/project-scaffolding', () => ({
 }));
 
 describe('registerExtensionCommands', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     registeredCommands.clear();
     workspaceFolders = [{ name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 0 }];
@@ -80,6 +80,8 @@ describe('registerExtensionCommands', () => {
     );
     panelMessageHandler = undefined;
     panelHtml = '';
+    const vscode = await import('vscode');
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
     createWebviewPanel.mockImplementation(() => {
       const webview = {
         cspSource: 'vscode-webview:',
@@ -335,6 +337,148 @@ describe('registerExtensionCommands', () => {
     expect(result).toEqual(folder);
     expect(refreshIdleView).toHaveBeenCalled();
     expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('restarts active z80 session when selected root changes platform', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const oldRoot = '/workspace/tec1g-mon3';
+    const newRoot = '/workspace/tec1-mon1';
+    const oldConfigPath = path.normalize(`${oldRoot}/.vscode/debug80.json`);
+    const newConfigPath = path.normalize(`${newRoot}/.vscode/debug80.json`);
+    workspaceFolders = [
+      { name: 'tec1g-mon3', uri: { fsPath: oldRoot }, index: 0 },
+      { name: 'tec1-mon1', uri: { fsPath: newRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === oldConfigPath || normalized === newConfigPath;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === oldConfigPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1g',
+          targets: { app: { sourceFile: 'src/main.asm' } },
+        });
+      }
+      if (normalized === newConfigPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1',
+          targets: { app: { sourceFile: 'src/main.asm' } },
+        });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    stopDebugging.mockResolvedValueOnce(undefined);
+    startDebugging.mockResolvedValueOnce(true);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-switch',
+      configuration: { projectConfig: oldConfigPath },
+      workspaceFolder: { uri: { fsPath: oldRoot } },
+    };
+
+    const result = await selectRoot?.({ rootPath: newRoot });
+
+    expect(result).toEqual(expect.objectContaining({ uri: { fsPath: newRoot } }));
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-switch' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: newRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: newConfigPath,
+      })
+    );
+  });
+
+  it('restarts active z80 session when selected root changes project config', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const rootA = '/workspace/tec1-mon1';
+    const rootB = '/workspace/tec1-mon2';
+    const configAPath = path.normalize(`${rootA}/.vscode/debug80.json`);
+    const configBPath = path.normalize(`${rootB}/.vscode/debug80.json`);
+    workspaceFolders = [
+      { name: 'tec1-mon1', uri: { fsPath: rootA }, index: 0 },
+      { name: 'tec1-mon2', uri: { fsPath: rootB }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === configAPath || normalized === configBPath;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === configAPath || normalized === configBPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1',
+          targets: { serial: { sourceFile: 'src/serial.asm' } },
+        });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    stopDebugging.mockResolvedValueOnce(undefined);
+    startDebugging.mockResolvedValueOnce(true);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-root-change',
+      configuration: { projectConfig: configAPath },
+      workspaceFolder: { uri: { fsPath: rootA } },
+    };
+
+    const result = await selectRoot?.({ rootPath: rootB });
+
+    expect(result).toEqual(expect.objectContaining({ uri: { fsPath: rootB } }));
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-root-change' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: rootB } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: configBPath,
+      })
+    );
   });
 
   it('auto-starts when a selected root exposes exactly one target', async () => {
