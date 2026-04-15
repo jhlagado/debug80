@@ -64,7 +64,6 @@ describe('Debug80ConfigurationProvider', () => {
         request: 'launch',
         name: 'Debug80: Current Project',
         projectConfig: cavernsProjectConfigPath,
-        stopOnEntry: true,
       })
     );
     expect(rememberWorkspace).toHaveBeenCalledWith(
@@ -196,7 +195,6 @@ describe('Debug80ConfigurationProvider', () => {
         type: 'z80',
         request: 'launch',
         name: 'Debug80: Current Project',
-        stopOnEntry: true,
       }),
     ]);
   });

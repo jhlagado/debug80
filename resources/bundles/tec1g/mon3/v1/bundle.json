@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "tec1g/mon3",
+  "version": "1.6.0-bc25",
+  "platform": "tec1g",
+  "label": "MON3 (TEC-1G)",
+  "files": [
+    {
+      "role": "rom",
+      "path": "mon3.bin",
+      "sha256": "754555aa4029fc496352fbb4a7de91e67c7c7e58de76c7dc5fba2e85e4705401"
+    },
+    {
+      "role": "listing",
+      "path": "mon3.lst",
+      "sha256": "f6f5032cc16dceed7e921efe863371d8f2773465860bd518c9d998d83a5b67bb"
+    }
+  ],
+  "workspaceLayout": {
+    "destination": "roms/tec1g/mon3"
+  }
+}

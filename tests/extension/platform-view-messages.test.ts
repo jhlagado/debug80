@@ -12,6 +12,7 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleSelectProject: vi.fn(() => undefined),
     handleConfigureProject: vi.fn(() => undefined),
     handleSaveProjectConfig: vi.fn(() => undefined),
+    handleSetStopOnEntry: vi.fn(() => undefined),
     handleSelectTarget: vi.fn(() => undefined),
     handleRestartDebug: vi.fn(() => undefined),
     handleSetEntrySource: vi.fn(() => undefined),
@@ -39,6 +40,7 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'startDebug', rootPath: '/workspace/a' }, deps);
     await handlePlatformViewMessage({ type: 'openWorkspaceFolder' }, deps);
     await handlePlatformViewMessage({ type: 'configureProject' }, deps);
+    await handlePlatformViewMessage({ type: 'setStopOnEntry', stopOnEntry: true }, deps);
     await handlePlatformViewMessage({ type: 'serialSendFile' }, deps);
     await handlePlatformViewMessage({ type: 'serialSave', text: 'hello' }, deps);
 
@@ -53,6 +55,7 @@ describe('platform-view message routing', () => {
     expect(deps.handleStartDebug).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
     expect(deps.handleOpenWorkspaceFolder).toHaveBeenCalledTimes(1);
     expect(deps.handleConfigureProject).toHaveBeenCalledTimes(1);
+    expect(deps.handleSetStopOnEntry).toHaveBeenCalledWith(true);
     expect(deps.handleSerialSendFile).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSave).toHaveBeenCalledWith('hello');
   });

@@ -24,6 +24,7 @@ export interface PlatformViewMessageDependencies {
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleConfigureProject: () => PromiseLike<void>;
   handleSaveProjectConfig: (platform: string) => PromiseLike<void>;
+  handleSetStopOnEntry: (value: boolean) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
@@ -64,6 +65,13 @@ export async function handlePlatformViewMessage(
     const platform = (msg as { platform?: unknown }).platform;
     if (typeof platform === 'string') {
       await deps.handleSaveProjectConfig(platform);
+    }
+    return;
+  }
+  if (msg?.type === 'setStopOnEntry') {
+    const stopOnEntry = (msg as { stopOnEntry?: unknown }).stopOnEntry;
+    if (typeof stopOnEntry === 'boolean') {
+      await deps.handleSetStopOnEntry(stopOnEntry);
     }
     return;
   }

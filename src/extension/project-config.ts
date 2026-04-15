@@ -26,6 +26,23 @@ export function isDebug80ProjectConfig(config: ProjectConfig | undefined): confi
   return true;
 }
 
+/**
+ * Merged `stopOnEntry` for launch (target overrides project root), matching
+ * {@link populateFromConfig} in launch-args. Undefined in both places means false at runtime.
+ */
+export function resolveStopOnEntryForTarget(
+  config: ProjectConfig | undefined,
+  targetName: string | undefined
+): boolean {
+  if (config === undefined) {
+    return false;
+  }
+  const fromTarget =
+    targetName !== undefined ? config.targets?.[targetName]?.stopOnEntry : undefined;
+  const merged = fromTarget ?? config.stopOnEntry;
+  return merged === true;
+}
+
 export function resolveProjectPlatform(config: ProjectConfig | undefined): string | undefined {
   if (config === undefined) {
     return undefined;

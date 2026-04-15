@@ -35,6 +35,27 @@ describe('launch-pipeline', () => {
     expect(resolveExtraListings('tec1')).toEqual([]);
   });
 
+  it('infers tec1g listing from romHex when extraListings is missing', () => {
+    const list = resolveExtraListings('tec1g', undefined, undefined, {
+      regions: [],
+      romRanges: [],
+      appStart: 0,
+      entry: 0,
+      updateMs: 16,
+      yieldMs: 0,
+      romHex: 'roms/tec1g/mon-3/mon-3.bin',
+      gimpSignal: false,
+      expansionBankHi: false,
+      matrixMode: false,
+      protectOnReset: false,
+      rtcEnabled: false,
+      sdEnabled: false,
+      sdHighCapacity: false,
+    });
+    expect(list).toContain('roms/tec1g/mon-3/mon-3.lst');
+    expect(list).toContain('roms/tec1g/mon-3/mon3.lst');
+  });
+
   it('skips assembly when disabled', () => {
     const args = { assemble: false } as LaunchRequestArguments;
     expect(() =>
