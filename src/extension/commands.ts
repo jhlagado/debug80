@@ -510,7 +510,7 @@ export function registerExtensionCommands({
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
 
-        let restartedForPlatformChange = false;
+        let restartedForRootChange = false;
         const activeSession = vscode.debug.activeDebugSession;
         if (activeSession?.type === 'z80') {
           const nextProjectConfigPath = findProjectConfigPath(folder);
@@ -520,7 +520,7 @@ export function registerExtensionCommands({
           const projectChanged =
             previousProjectConfigPath !== undefined &&
             nextProjectConfigPath !== undefined &&
-            path.normalize(previousProjectConfigPath) !== path.normalize(nextProjectConfigPath);
+            previousProjectConfigPath !== path.normalize(nextProjectConfigPath);
           if (
             projectChanged ||
             (previousPlatform !== undefined &&
@@ -529,7 +529,7 @@ export function registerExtensionCommands({
           ) {
             await vscode.debug.stopDebugging(activeSession);
             const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
-            restartedForPlatformChange = restarted;
+            restartedForRootChange = restarted;
             if (restarted) {
               const reason =
                 previousPlatform !== undefined &&
@@ -544,7 +544,7 @@ export function registerExtensionCommands({
           }
         }
 
-        const singleTarget = restartedForPlatformChange
+        const singleTarget = restartedForRootChange
           ? undefined
           : await maybeAutoStartSingleTargetForRootChange(
               folder,
