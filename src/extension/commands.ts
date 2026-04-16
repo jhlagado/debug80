@@ -388,7 +388,7 @@ export function registerExtensionCommands({
 }: CommandDependencies): void {
   let creatingProject = false;
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.createProject', async (args?: { rootPath?: string }) => {
+    vscode.commands.registerCommand('debug80.createProject', async (args?: { rootPath?: string; platform?: string }) => {
       if (creatingProject) {
         return false;
       }
@@ -405,7 +405,7 @@ export function registerExtensionCommands({
           );
           return false;
         }
-        const created = await scaffoldProject(folder, false, context.extensionUri);
+        const created = await scaffoldProject(folder, false, context.extensionUri, args?.platform);
         if (created) {
           workspaceSelection.rememberWorkspace(folder);
           platformViewProvider.refreshIdleView();
