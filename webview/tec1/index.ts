@@ -18,7 +18,6 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
@@ -89,11 +88,7 @@ const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const projectRootController = createProjectRootButtonController(
-  vscode,
-  selectProjectButton,
-  createProjectButton
-);
+const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
 setupPrimaryAction?.addEventListener('click', () => {
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];

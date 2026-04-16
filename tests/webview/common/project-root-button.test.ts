@@ -17,41 +17,29 @@ function createVscodeMock(messages: PostedMessage[]) {
 
 describe('project root button controller', () => {
   let rootButton: HTMLButtonElement;
-  let createButton: HTMLButtonElement;
 
   beforeEach(() => {
     document.body.innerHTML = `
       <button id="selectProject" type="button"></button>
-      <button id="createProject" type="button"></button>
     `;
     rootButton = document.getElementById('selectProject') as HTMLButtonElement;
-    createButton = document.getElementById('createProject') as HTMLButtonElement;
   });
 
   it('offers an open-folder action when there are no workspace roots', () => {
     const messages: PostedMessage[] = [];
-    const controller = createProjectRootButtonController(
-      createVscodeMock(messages),
-      rootButton,
-      createButton
-    );
+    const controller = createProjectRootButtonController(createVscodeMock(messages), rootButton);
 
     controller.applyProjectStatus({ roots: [], targetCount: 0 });
     rootButton.click();
 
     expect(rootButton.textContent).toBe('Open Folder');
     expect(rootButton.title).toContain('Open a folder');
-    expect(createButton.hidden).toBe(true);
     expect(messages).toContainEqual({ type: 'createProject' });
   });
 
-  it('keeps create-project hidden for an empty root so setup card owns the primary action', () => {
+  it('uses select action when a root exists without a project (Create Project is on the setup card)', () => {
     const messages: PostedMessage[] = [];
-    const controller = createProjectRootButtonController(
-      createVscodeMock(messages),
-      rootButton,
-      createButton
-    );
+    const controller = createProjectRootButtonController(createVscodeMock(messages), rootButton);
 
     controller.applyProjectStatus({
       rootPath: '/workspace/debug80',
@@ -60,18 +48,13 @@ describe('project root button controller', () => {
     });
 
     expect(rootButton.textContent).toBe('debug80');
-    expect(createButton.hidden).toBe(true);
-    expect(createButton.disabled).toBe(true);
-    expect(messages).toEqual([]);
+    rootButton.click();
+    expect(messages).toContainEqual({ type: 'selectProject' });
   });
 
   it('keeps the root selector behavior for configured projects', () => {
     const messages: PostedMessage[] = [];
-    const controller = createProjectRootButtonController(
-      createVscodeMock(messages),
-      rootButton,
-      createButton
-    );
+    const controller = createProjectRootButtonController(createVscodeMock(messages), rootButton);
 
     controller.applyProjectStatus({
       rootPath: '/workspace/debug80',
@@ -81,7 +64,6 @@ describe('project root button controller', () => {
 
     rootButton.click();
 
-    expect(createButton.hidden).toBe(true);
     expect(messages).toContainEqual({ type: 'selectProject' });
   });
 });
