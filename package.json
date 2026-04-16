@@ -51,7 +51,7 @@
     "viewsWelcome": [
       {
         "view": "debug80.platformView",
-        "contents": "No Debug80 project found in this workspace.\n[Create Project](command:debug80.createProject)\nCreate a .vscode/debug80.json configuration file to get started.",
+        "contents": "No Debug80 project found in this workspace.\nOpen the Platform view above and use Create Project to add a `.vscode/debug80.json` file.",
         "when": "!debug80.hasProject"
       }
     ],
