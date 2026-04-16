@@ -18,6 +18,7 @@ import {
   TEC1G_ROM1_START,
 } from '../platforms/tec1g/constants';
 import {
+  BUNDLED_MON1B_V1_REL,
   BUNDLED_MON3_V1_REL,
   materializeBundledRom,
   type MaterializeBundledRomResult,
@@ -39,6 +40,8 @@ type ScaffoldPlan = {
   };
   /** Present when bundled MON3 was copied into the workspace during scaffold */
   bundledMon3?: Extract<MaterializeBundledRomResult, { ok: true }>;
+  /** Present when bundled MON-1B was copied into the workspace during scaffold */
+  bundledMon1b?: Extract<MaterializeBundledRomResult, { ok: true }>;
 };
 
 type SourceChoice =
@@ -111,7 +114,23 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   };
 
   if (plan.platform === 'tec1') {
-    targetConfig.tec1 = createTec1Defaults();
+    const base = createTec1Defaults();
+    if (plan.bundledMon1b !== undefined) {
+      const sourceRoots = [
+        'src',
+        ...(plan.bundledMon1b.listingRelativePath !== undefined ? ['roms/tec1/mon1b'] : []),
+      ];
+      targetConfig.tec1 = {
+        ...base,
+        romHex: plan.bundledMon1b.romRelativePath,
+        ...(plan.bundledMon1b.listingRelativePath !== undefined
+          ? { extraListings: [plan.bundledMon1b.listingRelativePath] }
+          : {}),
+        sourceRoots,
+      };
+    } else {
+      targetConfig.tec1 = base;
+    }
   } else if (plan.platform === 'tec1g') {
     const base = createTec1gDefaults();
     if (plan.bundledMon3 !== undefined) {
@@ -235,18 +254,25 @@ export async function scaffoldProject(
 
   let scaffoldPlan = plan;
 
-  if (
-    scaffoldPlan !== undefined &&
-    scaffoldPlan.platform === 'tec1g' &&
-    extensionUri !== undefined
-  ) {
-    const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
-    if (mat.ok) {
-      scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
-    } else {
-      void vscode.window.showWarningMessage(
-        `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
-      );
+  if (scaffoldPlan !== undefined && extensionUri !== undefined) {
+    if (scaffoldPlan.platform === 'tec1g') {
+      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
+      if (mat.ok) {
+        scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
+      } else {
+        void vscode.window.showWarningMessage(
+          `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
+        );
+      }
+    } else if (scaffoldPlan.platform === 'tec1') {
+      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON1B_V1_REL);
+      if (mat.ok) {
+        scaffoldPlan = { ...scaffoldPlan, bundledMon1b: mat };
+      } else {
+        void vscode.window.showWarningMessage(
+          `Debug80: Could not copy bundled MON-1B ROM (${mat.reason}). You can add romHex manually in debug80.json.`
+        );
+      }
     }
   }
 
