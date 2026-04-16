@@ -31,7 +31,7 @@
   "main": "./out/extension/extension.js",
   "contributes": {
     "viewsContainers": {
-      "activitybar": [
+      "secondarySideBar": [
         {
           "id": "debug80",
           "title": "Debug80",
