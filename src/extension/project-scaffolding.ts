@@ -402,12 +402,13 @@ function buildDefaultScaffoldPlan(
     : undefined;
   const resolvedSource = needsStarter ? 'src/main.asm' : sourceFile;
 
+  const baseName = path.basename(resolvedSource, path.extname(resolvedSource)) || inferred.artifactBase;
   return {
-    targetName: 'app',
+    targetName: baseName,
     platform,
     sourceFile: resolvedSource,
     outputDir: inferred.outputDir,
-    artifactBase: path.basename(resolvedSource, path.extname(resolvedSource)) || inferred.artifactBase,
+    artifactBase: baseName,
     ...(starterFile !== undefined ? { starterFile } : {}),
   };
 }
