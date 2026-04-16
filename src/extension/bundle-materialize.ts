@@ -12,6 +12,9 @@ import { isBundleManifestV1 } from './bundle-manifest';
 /** Default MON3 profile shipped under resources/bundles/tec1g/mon3/v1 */
 export const BUNDLED_MON3_V1_REL = 'tec1g/mon3/v1' as const;
 
+/** Default MON-1B profile shipped under resources/bundles/tec1/mon1b/v1 */
+export const BUNDLED_MON1B_V1_REL = 'tec1/mon1b/v1' as const;
+
 export type MaterializeBundledRomResult = {
   ok: true;
   destinationRelative: string;
