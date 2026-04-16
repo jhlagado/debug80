@@ -9,7 +9,6 @@ import { resolveSetupCardState } from '../common/setup-card-state';
 
 export type Tec1gProjectStatusElements = {
   selectProjectButton: HTMLButtonElement | null;
-  createProjectButton: HTMLButtonElement | null;
   setupCard: HTMLElement | null;
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
@@ -73,7 +72,6 @@ export function createTec1gProjectStatusUi(
 ): Tec1gProjectStatusUi {
   const {
     selectProjectButton,
-    createProjectButton,
     setupCard,
     setupCardText,
     setupPrimaryAction,
@@ -84,7 +82,7 @@ export function createTec1gProjectStatusUi(
   let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
   let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' = 'openWorkspaceFolder';
 
-  const projectRootController = createProjectRootButtonController(vscode, selectProjectButton, createProjectButton);
+  const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
   setupPrimaryAction?.addEventListener('click', () => {
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];

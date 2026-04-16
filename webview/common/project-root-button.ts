@@ -37,10 +37,13 @@ function selectedRoot(
   return roots[0];
 }
 
+/**
+ * Controls the Project root selector only. Empty-state "Create Project" lives on the setup card
+ * (`setupPrimaryAction` + `resolveSetupCardState`) — do not add a second header button for it.
+ */
 export function createProjectRootButtonController(
   vscode: VsCodeLike,
-  rootButton: HTMLButtonElement | null,
-  createButton: HTMLButtonElement | null
+  rootButton: HTMLButtonElement | null
 ): ProjectRootButtonController {
   let state: ProjectRootButtonState = {
     roots: [],
@@ -85,16 +88,6 @@ export function createProjectRootButtonController(
       rootButton.dataset.action = 'select';
       delete rootButton.dataset.rootPath;
     }
-
-    if (createButton) {
-      // The setup card already provides the primary empty-state action; keep the
-      // header focused on root selection to avoid duplicate "Create Project" CTAs.
-      createButton.hidden = true;
-      createButton.disabled = true;
-      createButton.textContent = 'Create Project';
-      createButton.title = 'Create a Debug80 project in this workspace root.';
-      createButton.dataset.rootPath = '';
-    }
   };
 
   const handleRootClick = (): void => {
@@ -113,18 +106,7 @@ export function createProjectRootButtonController(
     vscode.postMessage({ type: 'selectProject' });
   };
 
-  const handleCreateClick = (): void => {
-    if (!createButton || createButton.hidden) {
-      return;
-    }
-    vscode.postMessage({
-      type: 'createProject',
-      ...(createButton.dataset.rootPath ? { rootPath: createButton.dataset.rootPath } : {}),
-    });
-  };
-
   rootButton?.addEventListener('click', handleRootClick);
-  createButton?.addEventListener('click', handleCreateClick);
 
   return {
     applyProjectStatus(status) {
@@ -137,7 +119,6 @@ export function createProjectRootButtonController(
     },
     dispose() {
       rootButton?.removeEventListener('click', handleRootClick);
-      createButton?.removeEventListener('click', handleCreateClick);
     },
   };
 }
