@@ -16,7 +16,6 @@ const TERMINAL_MAX = 8000;
 const vscode = acquireVscodeApi();
 
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const createProjectButton = document.getElementById('createProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
@@ -41,7 +40,7 @@ let resizeTimer: number | null = null;
 
 const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const projectRootController = createProjectRootButtonController(vscode, selectProjectButton, createProjectButton);
+const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
 platformSelectEl?.addEventListener('change', () => {
   vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
