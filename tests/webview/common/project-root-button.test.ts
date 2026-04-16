@@ -45,7 +45,7 @@ describe('project root button controller', () => {
     expect(messages).toContainEqual({ type: 'createProject' });
   });
 
-  it('offers create-project for an empty root and keeps root selection separate', () => {
+  it('keeps create-project hidden for an empty root so setup card owns the primary action', () => {
     const messages: PostedMessage[] = [];
     const controller = createProjectRootButtonController(
       createVscodeMock(messages),
@@ -60,11 +60,9 @@ describe('project root button controller', () => {
     });
 
     expect(rootButton.textContent).toBe('debug80');
-    expect(createButton.hidden).toBe(false);
-    expect(createButton.title).toContain('debug80');
-
-    createButton.click();
-    expect(messages).toContainEqual({ type: 'createProject', rootPath: '/workspace/debug80' });
+    expect(createButton.hidden).toBe(true);
+    expect(createButton.disabled).toBe(true);
+    expect(messages).toEqual([]);
   });
 
   it('keeps the root selector behavior for configured projects', () => {

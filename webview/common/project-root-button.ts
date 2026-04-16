@@ -57,8 +57,6 @@ export function createProjectRootButtonController(
     const rootConfigured = selected?.hasProject === true;
     const hasRoots = state.roots.length > 0;
     const hasSelectedRoot = selected !== undefined;
-    const isEmptyRoot = hasSelectedRoot && !rootConfigured;
-
     if (!hasRoots) {
       rootButton.disabled = false;
       rootButton.textContent = 'Open Folder';
@@ -89,13 +87,13 @@ export function createProjectRootButtonController(
     }
 
     if (createButton) {
-      createButton.hidden = !isEmptyRoot;
-      createButton.disabled = !isEmptyRoot;
+      // The setup card already provides the primary empty-state action; keep the
+      // header focused on root selection to avoid duplicate "Create Project" CTAs.
+      createButton.hidden = true;
+      createButton.disabled = true;
       createButton.textContent = 'Create Project';
-      createButton.title = isEmptyRoot
-        ? `Create a Debug80 project in ${selected.name}.`
-        : 'Create a Debug80 project in this workspace root.';
-      createButton.dataset.rootPath = isEmptyRoot ? selected.path : '';
+      createButton.title = 'Create a Debug80 project in this workspace root.';
+      createButton.dataset.rootPath = '';
     }
   };
 
