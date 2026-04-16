@@ -217,7 +217,8 @@ function ensureWorkspaceSettings(vscodeDir: string): void {
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
   includeLaunch: boolean,
-  extensionUri?: vscode.Uri
+  extensionUri?: vscode.Uri,
+  preselectedPlatform?: string
 ): Promise<boolean> {
   const workspaceRoot = folder.uri.fsPath;
   const vscodeDir = path.join(workspaceRoot, '.vscode');
@@ -226,7 +227,7 @@ export async function scaffoldProject(
   const configExists = fs.existsSync(configPath);
 
   const inferred = inferDefaultTarget(workspaceRoot);
-  const plan = configExists ? undefined : await buildScaffoldPlan(folder, inferred);
+  const plan = configExists ? undefined : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
 
   if (!configExists && plan === undefined) {
     return false;
@@ -318,9 +319,14 @@ export async function scaffoldProject(
 
 async function buildScaffoldPlan(
   folder: vscode.WorkspaceFolder,
-  inferred: { sourceFile: string; outputDir: string; artifactBase: string }
+  inferred: { sourceFile: string; outputDir: string; artifactBase: string },
+  preselectedPlatform?: string
 ): Promise<ScaffoldPlan | undefined> {
-  const platform = await choosePlatform();
+  const resolvedPlatform: ScaffoldPlatform | undefined =
+    preselectedPlatform === 'tec1' || preselectedPlatform === 'tec1g' || preselectedPlatform === 'simple'
+      ? preselectedPlatform
+      : undefined;
+  const platform = resolvedPlatform ?? (await choosePlatform());
   if (platform === undefined) {
     return undefined;
   }

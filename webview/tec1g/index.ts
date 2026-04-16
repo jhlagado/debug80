@@ -86,6 +86,7 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   setupCardText,
   setupPrimaryAction,
   homeTargetSelect,
+  getPlatform: () => platformSelectEl?.value ?? undefined,
 });
 
 projectStatusUi.applyProjectStatus({});

@@ -97,7 +97,7 @@ setupPrimaryAction?.addEventListener('click', () => {
     return;
   }
   if (selected !== undefined) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
   }
 });
 
