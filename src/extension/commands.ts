@@ -386,19 +386,34 @@ export function registerExtensionCommands({
   workspaceSelection,
   targetSelection,
 }: CommandDependencies): void {
+  let creatingProject = false;
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.createProject', async (args?: { rootPath?: string }) => {
-      const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
-      if (!folder) {
-        void vscode.window.showErrorMessage('Debug80: No workspace folder available for project creation.');
+      if (creatingProject) {
         return false;
       }
-      const created = await scaffoldProject(folder, false, context.extensionUri);
-      if (created) {
-        workspaceSelection.rememberWorkspace(folder);
-        platformViewProvider.refreshIdleView();
+      creatingProject = true;
+      try {
+        // Defer one event-loop tick so that the trailing mouseup from a welcome-view
+        // link click settles before any quick-pick or open-dialog is shown.
+        // Without this the picker opens and is immediately dismissed.
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
+        if (!folder) {
+          void vscode.window.showErrorMessage(
+            'Debug80: No workspace folder available for project creation.'
+          );
+          return false;
+        }
+        const created = await scaffoldProject(folder, false, context.extensionUri);
+        if (created) {
+          workspaceSelection.rememberWorkspace(folder);
+          platformViewProvider.refreshIdleView();
+        }
+        return created;
+      } finally {
+        creatingProject = false;
       }
-      return created;
     })
   );
 
