@@ -19,7 +19,7 @@ function targetNameFrom(msg: PlatformViewMessage): string | undefined {
 }
 
 export interface PlatformViewMessageDependencies {
-  handleCreateProject: (args?: { rootPath?: string }) => PromiseLike<void>;
+  handleCreateProject: (args?: { rootPath?: string; platform?: string }) => PromiseLike<void>;
   handleOpenWorkspaceFolder: () => PromiseLike<void>;
   handleSelectProject: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleConfigureProject: () => PromiseLike<void>;
@@ -45,7 +45,12 @@ export async function handlePlatformViewMessage(
 ): Promise<void> {
   if (msg?.type === 'createProject') {
     const rootPath = rootPathFrom(msg);
-    await deps.handleCreateProject(rootPath !== undefined ? { rootPath } : undefined);
+    const platformRaw = (msg as { platform?: unknown }).platform;
+    const platform = typeof platformRaw === 'string' && platformRaw.length > 0 ? platformRaw : undefined;
+    await deps.handleCreateProject({
+      ...(rootPath !== undefined ? { rootPath } : {}),
+      ...(platform !== undefined ? { platform } : {}),
+    });
     return;
   }
   if (msg?.type === 'selectProject') {
