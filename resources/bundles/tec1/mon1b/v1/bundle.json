@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "tec1/mon1b",
+  "version": "1.0.0",
+  "platform": "tec1",
+  "label": "MON-1B (TEC-1)",
+  "files": [
+    {
+      "role": "rom",
+      "path": "mon-1b.bin",
+      "sha256": "f3e39203ecf134c737e307a5f7ef82f3c4b62b979da0fb883b56b632ab3b1596"
+    },
+    {
+      "role": "listing",
+      "path": "mon-1b.lst",
+      "sha256": "76bd761d226911b5aa0f53b7f0a4253a40e2d68154146c1506bf07ae7380ad89"
+    }
+  ],
+  "workspaceLayout": {
+    "destination": "roms/tec1/mon1b"
+  }
+}
