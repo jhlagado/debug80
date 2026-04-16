@@ -13,6 +13,7 @@ export type Tec1gProjectStatusElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   homeTargetSelect: HTMLSelectElement | null;
+  getPlatform?: () => string | undefined;
 };
 
 export type Tec1gProjectStatusUi = {
@@ -76,6 +77,7 @@ export function createTec1gProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     homeTargetSelect,
+    getPlatform,
   } = elements;
 
   let currentRootPath = '';
@@ -91,7 +93,7 @@ export function createTec1gProjectStatusUi(
       return;
     }
     if (selected !== undefined) {
-      vscode.postMessage({ type: 'createProject', rootPath: selected.path });
+      vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: getPlatform?.() });
     }
   });
 
