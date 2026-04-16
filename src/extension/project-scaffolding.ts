@@ -326,7 +326,14 @@ async function buildScaffoldPlan(
     preselectedPlatform === 'tec1' || preselectedPlatform === 'tec1g' || preselectedPlatform === 'simple'
       ? preselectedPlatform
       : undefined;
-  const platform = resolvedPlatform ?? (await choosePlatform());
+
+  // When the platform comes from the webview UI, skip all interactive pickers
+  // and build a plan from defaults immediately.
+  if (resolvedPlatform !== undefined) {
+    return buildDefaultScaffoldPlan(folder, inferred, resolvedPlatform);
+  }
+
+  const platform = await choosePlatform();
   if (platform === undefined) {
     return undefined;
   }
@@ -372,6 +379,36 @@ async function buildScaffoldPlan(
       path: sourceFile,
       content: createStarterSourceContent(choice.language),
     },
+  };
+}
+
+function buildDefaultScaffoldPlan(
+  folder: vscode.WorkspaceFolder,
+  inferred: { sourceFile: string; outputDir: string; artifactBase: string },
+  platform: ScaffoldPlatform
+): ScaffoldPlan {
+  const sourceFiles = listProjectSourceFiles(folder.uri.fsPath);
+  const inferredExists = sourceFiles.includes(inferred.sourceFile);
+  const sourceFile =
+    sourceFiles.length === 1
+      ? (sourceFiles[0] ?? inferred.sourceFile)
+      : inferredExists
+        ? inferred.sourceFile
+        : sourceFiles[0] ?? inferred.sourceFile;
+
+  const needsStarter = sourceFiles.length === 0;
+  const starterFile = needsStarter
+    ? { path: 'src/main.asm', content: createStarterSourceContent('asm') }
+    : undefined;
+  const resolvedSource = needsStarter ? 'src/main.asm' : sourceFile;
+
+  return {
+    targetName: 'app',
+    platform,
+    sourceFile: resolvedSource,
+    outputDir: inferred.outputDir,
+    artifactBase: path.basename(resolvedSource, path.extname(resolvedSource)) || inferred.artifactBase,
+    ...(starterFile !== undefined ? { starterFile } : {}),
   };
 }
 
