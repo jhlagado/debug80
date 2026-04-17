@@ -5,6 +5,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 
+const { getExtension } = vi.hoisted(() => ({
+  getExtension: vi.fn(),
+}));
+
 const {
   buildPlatformIoHandlers,
   createTec1gMemoryHooks,
@@ -17,6 +21,15 @@ const {
     expandBanks: ['bank'],
   })),
   applyCartridgeMemory: vi.fn(() => undefined),
+}));
+
+vi.mock('vscode', () => ({
+  extensions: {
+    getExtension,
+  },
+  workspace: {
+    workspaceFolders: undefined,
+  },
 }));
 
 vi.mock('../../src/debug/platform-host', () => ({

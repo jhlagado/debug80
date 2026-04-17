@@ -4,6 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './types';
 import type { PlatformKind } from './program-loader';
 import type { Tec1gPlatformConfig } from '../platforms/types';
@@ -31,10 +32,19 @@ type LaunchConfigManifest = Partial<LaunchRequestArguments> & {
   projectPlatform?: string;
   defaultProfile?: string;
   source?: string;
-  bundledAssets?: Record<string, { destination?: string } | undefined>;
+  bundledAssets?: Record<
+    string,
+    { bundleId?: string; path?: string; destination?: string } | undefined
+  >;
   profiles?: Record<
     string,
-    { platform?: string; bundledAssets?: Record<string, { destination?: string } | undefined> } | undefined
+    {
+      platform?: string;
+      bundledAssets?: Record<
+        string,
+        { bundleId?: string; path?: string; destination?: string } | undefined
+      >;
+    } | undefined
   >;
   targets?: Record<
     string,
@@ -50,12 +60,26 @@ type LaunchTargetConfig = Partial<LaunchRequestArguments> & {
   profile?: string;
 };
 
+type BundledAssetReferenceLike = {
+  bundleId?: string;
+  path?: string;
+  destination?: string;
+};
+
 function normalizeNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed.toLowerCase() : undefined;
+}
+
+function normalizePathString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function resolveProfilePlatform(
@@ -70,23 +94,83 @@ function resolveProfilePlatform(
   return normalizeNonEmptyString(profile?.platform);
 }
 
-function resolveBundledAssetDestination(
+function resolveBundledAssetReference(
   cfg: LaunchConfigManifest,
   targetCfg: LaunchTargetConfig | undefined,
   assetName: string
-): string | undefined {
+): BundledAssetReferenceLike | undefined {
   const profileName =
     normalizeNonEmptyString(targetCfg?.profile) ?? normalizeNonEmptyString(cfg.defaultProfile);
   if (profileName !== undefined) {
-    const profileAsset = cfg.profiles?.[profileName]?.bundledAssets?.[assetName]?.destination;
-    const profileDestination = normalizeNonEmptyString(profileAsset);
-    if (profileDestination !== undefined) {
-      return profileDestination;
+    const profileAsset = cfg.profiles?.[profileName]?.bundledAssets?.[assetName];
+    if (profileAsset !== undefined) {
+      return profileAsset;
     }
   }
 
-  const rootAsset = cfg.bundledAssets?.[assetName]?.destination;
-  return normalizeNonEmptyString(rootAsset);
+  return cfg.bundledAssets?.[assetName];
+}
+
+function resolveExtensionBundledAssetPath(
+  reference: BundledAssetReferenceLike
+): string | undefined {
+  const extension = vscode.extensions.getExtension('jhlagado.debug80');
+  if (extension === undefined) {
+    return undefined;
+  }
+
+  const bundleId = normalizePathString(reference.bundleId);
+  const assetPath = normalizePathString(reference.path);
+  if (bundleId === undefined || assetPath === undefined) {
+    return undefined;
+  }
+
+  const candidate = path.join(
+    extension.extensionPath,
+    'resources',
+    'bundles',
+    ...bundleId.split('/'),
+    assetPath
+  );
+  return fs.existsSync(candidate) ? candidate : undefined;
+}
+
+function resolveBundledAssetRuntimePath(
+  candidatePath: string | undefined,
+  reference: BundledAssetReferenceLike | undefined,
+  baseDir: string
+): string | undefined {
+  const resolvedCandidate =
+    candidatePath !== undefined && candidatePath !== ''
+      ? path.isAbsolute(candidatePath)
+        ? path.normalize(candidatePath)
+        : path.resolve(baseDir, candidatePath)
+      : undefined;
+  if (resolvedCandidate !== undefined && fs.existsSync(resolvedCandidate)) {
+    return resolvedCandidate;
+  }
+
+  if (reference === undefined) {
+    return resolvedCandidate;
+  }
+
+  const destination = normalizePathString(reference.destination);
+  const resolvedDestination =
+    destination !== undefined
+      ? path.isAbsolute(destination)
+        ? path.normalize(destination)
+        : path.resolve(baseDir, destination)
+      : undefined;
+
+  const shouldUseBundle =
+    resolvedCandidate === undefined ||
+    resolvedDestination === undefined ||
+    path.normalize(resolvedCandidate) === path.normalize(resolvedDestination);
+  if (!shouldUseBundle) {
+    return resolvedCandidate;
+  }
+
+  return resolveExtensionBundledAssetPath(reference) ?? resolvedCandidate;
 }
 
 function resolveLaunchPlatform(
@@ -256,7 +340,7 @@ export function populateFromConfig(
 
     const targets = cfg.targets ?? {};
     const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-      const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
+    const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
 
     const merged: LaunchRequestArguments = {
       ...cfg,
@@ -372,14 +456,18 @@ export function populateFromConfig(
       merged.sourceRoots = sourceRootsResolved;
     }
 
-    const resolvedRomHex =
-      merged.tec1?.romHex ??
-      merged.tec1g?.romHex ??
-      resolveBundledAssetDestination(cfg, targetCfg, 'romHex');
-    const resolvedExtraListing =
-      merged.tec1?.extraListings?.[0] ??
-      merged.tec1g?.extraListings?.[0] ??
-      resolveBundledAssetDestination(cfg, targetCfg, 'listing');
+    const bundledRomReference = resolveBundledAssetReference(cfg, targetCfg, 'romHex');
+    const bundledListingReference = resolveBundledAssetReference(cfg, targetCfg, 'listing');
+    const resolvedRomHex = resolveBundledAssetRuntimePath(
+      merged.tec1?.romHex ?? merged.tec1g?.romHex,
+      bundledRomReference,
+      workspaceRoot
+    );
+    const resolvedExtraListing = resolveBundledAssetRuntimePath(
+      merged.tec1?.extraListings?.[0] ?? merged.tec1g?.extraListings?.[0],
+      bundledListingReference,
+      workspaceRoot
+    );
 
     if (resolvedRomHex !== undefined) {
       if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
@@ -391,15 +479,35 @@ export function populateFromConfig(
 
     if (resolvedExtraListing !== undefined) {
       if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
-        const extraListings = merged.tec1?.extraListings ?? [];
-        if (extraListings.length === 0) {
-          merged.tec1 = { ...(merged.tec1 ?? {}), extraListings: [resolvedExtraListing] };
-        }
+        const extraListings = (merged.tec1?.extraListings ?? [])
+          .map((entry) =>
+            resolveBundledAssetRuntimePath(entry, bundledListingReference, workspaceRoot)
+          )
+          .filter((entry): entry is string => entry !== undefined);
+        merged.tec1 = {
+          ...(merged.tec1 ?? {}),
+          extraListings:
+            extraListings.length > 0
+              ? extraListings
+              : resolvedExtraListing !== undefined
+                ? [resolvedExtraListing]
+                : [],
+        };
       } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
-        const extraListings = merged.tec1g?.extraListings ?? [];
-        if (extraListings.length === 0) {
-          merged.tec1g = { ...(merged.tec1g ?? {}), extraListings: [resolvedExtraListing] };
-        }
+        const extraListings = (merged.tec1g?.extraListings ?? [])
+          .map((entry) =>
+            resolveBundledAssetRuntimePath(entry, bundledListingReference, workspaceRoot)
+          )
+          .filter((entry): entry is string => entry !== undefined);
+        merged.tec1g = {
+          ...(merged.tec1g ?? {}),
+          extraListings:
+            extraListings.length > 0
+              ? extraListings
+              : resolvedExtraListing !== undefined
+                ? [resolvedExtraListing]
+                : [],
+        };
       }
     }
 
