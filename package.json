@@ -16,6 +16,7 @@
     "Debuggers"
   ],
   "activationEvents": [
+    "onView:debug80.platformView",
     "onDebugResolve:z80",
     "workspaceContains:**/debug80.json",
     "workspaceContains:**/.vscode/debug80.json",
