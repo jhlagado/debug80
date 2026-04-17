@@ -108,7 +108,7 @@ describe('path-resolver', () => {
     expect(resolved).toEqual([listingB]);
   });
 
-  it('resolves listing source path from .source.asm when present', () => {
+  it('does not resolve listing source path from .source.asm', () => {
     const dir = path.join(tmpDir, 'build');
     fs.mkdirSync(dir, { recursive: true });
     const listing = path.join(dir, 'demo.lst');
@@ -116,7 +116,7 @@ describe('path-resolver', () => {
     fs.writeFileSync(listing, 'LIST');
     fs.writeFileSync(source, 'NOP');
 
-    expect(resolveListingSourcePath(listing)).toBe(source);
+    expect(resolveListingSourcePath(listing)).toBeUndefined();
   });
 
   it('resolves listing source path from .z80 when present', () => {

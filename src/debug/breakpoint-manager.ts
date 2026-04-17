@@ -130,13 +130,6 @@ export class BreakpointManager {
     if (direct.length > 0) {
       return direct;
     }
-    const alternate = this.resolveAlternateSourcePath(sourcePath);
-    if (alternate !== null) {
-      const mapped = resolveLocation(mappingIndex, alternate, line);
-      if (mapped.length > 0) {
-        return mapped;
-      }
-    }
     return this.resolveByBasename(mappingIndex, sourcePath, line);
   }
 
@@ -163,30 +156,6 @@ export class BreakpointManager {
 
   private isListingSource(listingPath: string, sourcePath: string): boolean {
     return pathsEqual(sourcePath, listingPath);
-  }
-
-  private resolveAlternateSourcePath(sourcePath: string): string | null {
-    const normalized = path.resolve(sourcePath);
-    const lower = normalized.toLowerCase();
-    if (lower.endsWith('.source.asm')) {
-      return normalized.slice(0, -'.source.asm'.length) + '.asm';
-    }
-    if (lower.endsWith('.asm')) {
-      return normalized.slice(0, -'.asm'.length) + '.source.asm';
-    }
-    if (lower.endsWith('.source.zax')) {
-      return normalized.slice(0, -'.source.zax'.length) + '.zax';
-    }
-    if (lower.endsWith('.zax')) {
-      return normalized.slice(0, -'.zax'.length) + '.source.zax';
-    }
-    if (lower.endsWith('.source.z80')) {
-      return normalized.slice(0, -'.source.z80'.length) + '.z80';
-    }
-    if (lower.endsWith('.z80')) {
-      return normalized.slice(0, -'.z80'.length) + '.source.z80';
-    }
-    return null;
   }
 
   private resolveListingLineAddress(listing: ListingInfo, line: number): number | undefined {
