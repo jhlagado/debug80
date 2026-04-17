@@ -109,6 +109,64 @@ describe('launch-args', () => {
     expect(merged.outputDir).toBe('build');
   });
 
+  it('resolves platform from target profile metadata when explicit platform is absent', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-target-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+          },
+        },
+        targets: {
+          app: {
+            asm: 'src/main.asm',
+            profile: 'mon3',
+          },
+        },
+      })
+    );
+
+    const merged = populateFromConfig(
+      { projectConfig: configPath } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.platform).toBe('tec1g');
+  });
+
+  it('resolves platform from defaultProfile when target profile is absent', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-default-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+          },
+        },
+        targets: {
+          app: {
+            asm: 'src/main.asm',
+          },
+        },
+      })
+    );
+
+    const merged = populateFromConfig(
+      { projectConfig: configPath } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.platform).toBe('tec1g');
+  });
+
   it('deep-merges tec1g so target overrides do not drop root romHex', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-merge-'));
     const configPath = path.join(dir, 'debug80.json');
