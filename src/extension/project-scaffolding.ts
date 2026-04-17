@@ -251,8 +251,8 @@ export async function scaffoldProject(
 
   let scaffoldPlan = plan;
 
-  if (scaffoldPlan !== undefined && extensionUri !== undefined) {
-    if (scaffoldPlan.kit.platform === 'tec1g') {
+  if (scaffoldPlan !== undefined && extensionUri !== undefined && scaffoldPlan.kit.bundledProfile !== undefined) {
+    if (scaffoldPlan.kit.bundledProfile.bundleRel === BUNDLED_MON3_V1_REL) {
       const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
       if (mat.ok) {
         scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
@@ -261,7 +261,7 @@ export async function scaffoldProject(
           `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
         );
       }
-    } else if (scaffoldPlan.kit.platform === 'tec1') {
+    } else if (scaffoldPlan.kit.bundledProfile.bundleRel === BUNDLED_MON1B_V1_REL) {
       const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON1B_V1_REL);
       if (mat.ok) {
         scaffoldPlan = { ...scaffoldPlan, bundledMon1b: mat };
