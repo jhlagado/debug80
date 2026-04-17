@@ -9,9 +9,82 @@ import type { SourceMapIndex } from '../mapping/source-map';
 import { resolveLocation } from '../mapping/source-map';
 import { pathsEqual } from './path-utils';
 
+type SourceBreakpointResolution = {
+  addresses: number[];
+  verified: boolean;
+};
+
+interface SourceBreakpointResolver {
+  matches(sourcePath: string, listingPath: string): boolean;
+  resolve(
+    listing: ListingInfo,
+    mappingIndex: SourceMapIndex | undefined,
+    sourcePath: string,
+    line: number
+  ): SourceBreakpointResolution;
+  continueOnEmpty: boolean;
+}
+
 export class BreakpointManager {
   private readonly pendingBySource = new Map<string, DebugProtocol.SourceBreakpoint[]>();
   private readonly active = new Set<number>();
+  private readonly sourceResolvers: SourceBreakpointResolver[];
+
+  constructor() {
+    this.sourceResolvers = [
+      {
+        matches: (sourcePath: string, listingPath: string): boolean =>
+          this.isListingSource(listingPath, sourcePath),
+        resolve: (
+          listing: ListingInfo,
+          _mappingIndex: SourceMapIndex | undefined,
+          _sourcePath: string,
+          line: number
+        ): SourceBreakpointResolution => {
+          const address = this.resolveListingLineAddress(listing, line);
+          return {
+            addresses: address !== undefined ? [address] : [],
+            verified: address !== undefined,
+          };
+        },
+        continueOnEmpty: false,
+      },
+      {
+        matches: (sourcePath: string, listingPath: string): boolean =>
+          !this.isListingSource(listingPath, sourcePath),
+        resolve: (
+          _listing: ListingInfo,
+          mappingIndex: SourceMapIndex | undefined,
+          sourcePath: string,
+          line: number
+        ): SourceBreakpointResolution => {
+          const addresses = this.resolveSourceBreakpoint(mappingIndex, sourcePath, line);
+          if (addresses.length > 0) {
+            return { addresses, verified: true };
+          }
+          return { addresses: [], verified: false };
+        },
+        continueOnEmpty: true,
+      },
+      {
+        matches: (sourcePath: string, listingPath: string): boolean =>
+          !this.isListingSource(listingPath, sourcePath) && this.isAsmLikeSource(sourcePath),
+        resolve: (
+          listing: ListingInfo,
+          _mappingIndex: SourceMapIndex | undefined,
+          _sourcePath: string,
+          line: number
+        ): SourceBreakpointResolution => {
+          const address = this.resolveListingLineAddress(listing, line);
+          return {
+            addresses: address !== undefined ? [address] : [],
+            verified: address !== undefined,
+          };
+        },
+        continueOnEmpty: false,
+      },
+    ];
+  }
 
   reset(): void {
     this.pendingBySource.clear();
@@ -50,25 +123,16 @@ export class BreakpointManager {
       return verified;
     }
 
-    if (this.isListingSource(listingPath, sourcePath)) {
-      for (const bp of breakpoints) {
-        const line = bp.line ?? 0;
-        const address = this.resolveListingLineAddress(listing, line);
-        const ok = address !== undefined;
-        verified.push({ line: bp.line, verified: ok });
-      }
-      return verified;
-    }
-
     for (const bp of breakpoints) {
       const line = bp.line ?? 0;
-      const addresses = this.resolveSourceBreakpoint(mappingIndex, sourcePath, line);
-      let ok = addresses.length > 0;
-      if (!ok && this.isAsmLikeSource(sourcePath)) {
-        const listingAddress = this.resolveListingLineAddress(listing, line);
-        ok = listingAddress !== undefined;
-      }
-      verified.push({ line: bp.line, verified: ok });
+      const resolution = this.resolveBreakpointForSource(
+        listing,
+        listingPath,
+        mappingIndex,
+        sourcePath,
+        line
+      );
+      verified.push({ line: bp.line, verified: resolution.verified });
     }
 
     return verified;
@@ -85,30 +149,18 @@ export class BreakpointManager {
     }
 
     for (const [source, bps] of this.pendingBySource.entries()) {
-      if (this.isListingSource(listingPath, source)) {
-        for (const bp of bps) {
-          const line = bp.line ?? 0;
-          const address = this.resolveListingLineAddress(listing, line);
-          if (address !== undefined) {
-            this.active.add(address);
-          }
-        }
-        continue;
-      }
-
       for (const bp of bps) {
         const line = bp.line ?? 0;
-        const addresses = this.resolveSourceBreakpoint(mappingIndex, source, line);
-        const [first] = addresses;
+        const resolution = this.resolveBreakpointForSource(
+          listing,
+          listingPath,
+          mappingIndex,
+          source,
+          line
+        );
+        const [first] = resolution.addresses;
         if (first !== undefined) {
           this.active.add(first);
-          continue;
-        }
-        if (this.isAsmLikeSource(source)) {
-          const listingAddress = this.resolveListingLineAddress(listing, line);
-          if (listingAddress !== undefined) {
-            this.active.add(listingAddress);
-          }
         }
       }
     }
@@ -116,6 +168,26 @@ export class BreakpointManager {
 
   hasAddress(address: number): boolean {
     return this.active.has(address);
+  }
+
+  private resolveBreakpointForSource(
+    listing: ListingInfo,
+    listingPath: string,
+    mappingIndex: SourceMapIndex | undefined,
+    sourcePath: string,
+    line: number
+  ): SourceBreakpointResolution {
+    for (const resolver of this.sourceResolvers) {
+      if (!resolver.matches(sourcePath, listingPath)) {
+        continue;
+      }
+      const resolution = resolver.resolve(listing, mappingIndex, sourcePath, line);
+      if (resolution.addresses.length > 0 || !resolver.continueOnEmpty) {
+        return resolution;
+      }
+    }
+
+    return { addresses: [], verified: false };
   }
 
   private resolveSourceBreakpoint(
