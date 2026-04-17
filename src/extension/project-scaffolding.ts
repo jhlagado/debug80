@@ -207,36 +207,6 @@ export function createDefaultLaunchConfig(): Record<string, unknown> {
   };
 }
 
-function ensureWorkspaceSettings(vscodeDir: string): void {
-  const settingsPath = path.join(vscodeDir, 'settings.json');
-  let settings: Record<string, unknown> = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      const raw = fs.readFileSync(settingsPath, 'utf-8');
-      const parsed = JSON.parse(raw) as unknown;
-      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        settings = parsed as Record<string, unknown>;
-      }
-    } catch {
-      // Keep defaults if settings cannot be parsed.
-    }
-  }
-
-  const associationsRaw = settings['files.associations'];
-  const associations =
-    associationsRaw !== null &&
-    associationsRaw !== undefined &&
-    typeof associationsRaw === 'object' &&
-    !Array.isArray(associationsRaw)
-      ? ({ ...associationsRaw } as Record<string, unknown>)
-      : {};
-  if (typeof associations['*.z80'] !== 'string') {
-    associations['*.z80'] = 'z80-asm';
-  }
-  settings['files.associations'] = associations;
-  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
-}
-
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
   includeLaunch: boolean,
@@ -288,7 +258,6 @@ export async function scaffoldProject(
   if (includeLaunch) {
     ensureDirExists(vscodeDir);
   }
-  ensureWorkspaceSettings(vscodeDir);
 
   let created = false;
 
