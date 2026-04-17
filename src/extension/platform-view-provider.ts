@@ -28,16 +28,12 @@ import {
 import type { MemoryViewState } from '../platforms/panel-memory';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
-import {
-  listProjectTargetChoices,
-  resolveTargetNameForConfig,
-} from './project-target-selection';
+import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import {
   findProjectConfigPath,
   readProjectConfig,
   resolveProjectPlatform,
-  resolveStopOnEntryForTarget,
   writeProjectConfig,
 } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
@@ -97,6 +93,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** TEC-1G only: visibility overrides sent to the webview. */
   private tec1gUiVisibilityOverride: Record<string, boolean> | undefined;
+
+  /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
+  public stopOnEntry = false;
 
   constructor(extensionUri: vscode.Uri, workspaceState?: vscode.Memento) {
     this.extensionUri = extensionUri;
@@ -561,41 +560,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private handleSetStopOnEntry(value: boolean): void {
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
-    if (folder === undefined) {
-      void vscode.window.showErrorMessage('Debug80: No workspace folder selected.');
-      return;
-    }
-    const configPath = findProjectConfigPath(folder);
-    if (configPath === undefined) {
-      void vscode.window.showErrorMessage('Debug80: No project config found in workspace.');
-      return;
-    }
-    const cfg = readProjectConfig(configPath);
-    if (cfg === undefined) {
-      void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
-      return;
-    }
-    const targetName = resolveTargetNameForConfig(this.workspaceState, configPath);
-    const next =
-      targetName !== undefined && cfg.targets?.[targetName] !== undefined
-        ? {
-            ...cfg,
-            targets: {
-              ...cfg.targets,
-              [targetName]: {
-                ...cfg.targets[targetName],
-                stopOnEntry: value,
-              },
-            },
-          }
-        : { ...cfg, stopOnEntry: value };
-    const ok = writeProjectConfig(configPath, next);
-    if (!ok) {
-      void vscode.window.showErrorMessage('Debug80: Failed to save project config.');
-      return;
-    }
+    this.stopOnEntry = value;
     this.postProjectStatus();
+    void vscode.commands.executeCommand('debug80.restartDebug');
   }
 
   // -------------------------------------------------------------------------
@@ -642,16 +609,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         rootName: folder.name,
         rootPath: folder.uri.fsPath,
         hasProject: false,
-        stopOnEntry: false,
+        stopOnEntry: this.stopOnEntry,
       };
     }
 
     const config = readProjectConfig(projectConfigPath);
     const platform = resolveProjectPlatform(config) ?? 'simple';
-    const targetNameForLaunch = resolveTargetNameForConfig(
-      this.workspaceState,
-      projectConfigPath
-    );
 
     return {
       roots,
@@ -660,7 +623,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       rootPath: folder.uri.fsPath,
       hasProject: true,
       platform,
-      stopOnEntry: resolveStopOnEntryForTarget(config, targetNameForLaunch),
+      stopOnEntry: this.stopOnEntry,
       ...(projectStatus.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
       ...(projectStatus.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
     };
