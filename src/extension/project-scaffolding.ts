@@ -11,7 +11,6 @@ import {
   findProjectConfigPath,
   listProjectSourceFiles,
 } from './project-config';
-import { materializeBundledRom } from './bundle-materialize';
 import {
   TEC1G_RAM_END,
   TEC1G_RAM_START,
@@ -228,19 +227,6 @@ export async function scaffoldProject(
 
   if (!configExists && plan === undefined) {
     return false;
-  }
-
-  if (plan !== undefined && plan.kit.bundledProfile !== undefined) {
-    const materializeResult = materializeBundledRom(
-      extensionUri ?? vscode.Uri.file(process.cwd()),
-      workspaceRoot,
-      plan.kit.bundledProfile.bundleRel
-    );
-    if (!materializeResult.ok) {
-      void vscode.window.showWarningMessage(
-        `Debug80: Could not copy bundled ${plan.kit.label} ROM (${materializeResult.reason}). You can add romHex manually in debug80.json.`
-      );
-    }
   }
 
   ensureDirExists(
