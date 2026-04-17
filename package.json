@@ -30,17 +30,8 @@
   ],
   "main": "./out/extension/extension.js",
   "contributes": {
-    "viewsContainers": {
-      "secondarySideBar": [
-        {
-          "id": "debug80",
-          "title": "Debug80",
-          "icon": "assets/debug80-icon.svg"
-        }
-      ]
-    },
     "views": {
-      "debug80": [
+      "debug": [
         {
           "type": "webview",
           "id": "debug80.platformView",
