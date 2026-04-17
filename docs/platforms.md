@@ -261,7 +261,7 @@ Extra ROM listings:
 - Use `extraListings` to load ROM listings that live outside the project (for example, in a
   platform repo). Paths are resolved relative to the `debug80.json` base directory; absolute
   paths also work.
-- If a listing sits next to a `.source.asm` or `.asm`, Debug80 will offer that source in the
+- If a listing sits next to a matching `.asm`, `.zax`, or `.z80` source file, Debug80 will offer that source in the
   ROM source picker and use it for line-based breakpoints.
 - Debug80 caches a D8 debug map under `<workspace>/.debug80/cache` as
   `<listing-base>.<hash>.d8.json` (hash from the listing path). If the workspace cache
