@@ -549,7 +549,7 @@ describe('registerExtensionCommands', () => {
     );
   });
 
-  it('restarts active z80 session when selected root changes project config', async () => {
+  it('does not restart an active z80 session when selected root keeps the same platform', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
@@ -570,7 +570,10 @@ describe('registerExtensionCommands', () => {
       if (normalized === configAPath || normalized === configBPath) {
         return JSON.stringify({
           projectPlatform: 'tec1',
-          targets: { serial: { sourceFile: 'src/serial.asm' } },
+          targets: {
+            app: { sourceFile: 'src/main.asm' },
+            serial: { sourceFile: 'src/serial.asm' },
+          },
         });
       }
       return JSON.stringify({ targets: {} });
@@ -604,17 +607,8 @@ describe('registerExtensionCommands', () => {
     const result = await selectRoot?.({ rootPath: rootB });
 
     expect(result).toEqual(expect.objectContaining({ uri: { fsPath: rootB } }));
-    expect(stopDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'z80', id: 'session-root-change' })
-    );
-    expect(startDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: rootB } }),
-      expect.objectContaining({
-        type: 'z80',
-        request: 'launch',
-        projectConfig: configBPath,
-      })
-    );
+    expect(stopDebugging).not.toHaveBeenCalled();
+    expect(startDebugging).not.toHaveBeenCalled();
   });
 
   it('auto-starts when a selected root exposes exactly one target', async () => {
