@@ -18,6 +18,8 @@ const startDebugging = vi.fn();
 const stopDebugging = vi.fn();
 const executeCommand = vi.fn();
 const scaffoldProject = vi.fn();
+const materializeBundledAsset = vi.fn();
+const materializeBundledRom = vi.fn();
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 let panelMessageHandler: ((msg: unknown) => void) | undefined;
 let panelHtml = '';
@@ -60,6 +62,13 @@ vi.mock('vscode', () => ({
 
 vi.mock('../../src/extension/project-scaffolding', () => ({
   scaffoldProject,
+}));
+
+vi.mock('../../src/extension/bundle-materialize', () => ({
+  BUNDLED_MON1B_V1_REL: 'tec1/mon1b/v1',
+  BUNDLED_MON3_V1_REL: 'tec1g/mon3/v1',
+  materializeBundledAsset,
+  materializeBundledRom,
 }));
 
 describe('registerExtensionCommands', () => {
@@ -224,6 +233,101 @@ describe('registerExtensionCommands', () => {
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
     expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, undefined);
+  });
+
+  it('materializes manifest-backed bundled asset references from the project config', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const folder = {
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    };
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Skip existing files',
+      value: false,
+    });
+
+    readFileSync.mockImplementationOnce(() =>
+      JSON.stringify({
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+                destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+              listing: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.lst',
+                destination: 'roms/tec1g/mon3/mon3.lst',
+              },
+            },
+          },
+        },
+        targets: {
+          app: { sourceFile: 'src/main.asm', profile: 'mon3' },
+        },
+      })
+    );
+    materializeBundledAsset.mockImplementation(
+      (_extensionUri: unknown, _workspaceRoot: string, reference: { destination?: string }) => ({
+        ok: true,
+        destinationRelative: reference.destination ?? 'roms/tec1g/mon3',
+        materializedRelativePath: reference.destination ?? 'roms/tec1g/mon3',
+      })
+    );
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const materializeBundledRomCommand = registeredCommands.get('debug80.materializeBundledRom');
+    expect(materializeBundledRomCommand).toBeTypeOf('function');
+
+    const result = await materializeBundledRomCommand?.();
+
+    expect(result).toBe(true);
+    expect(materializeBundledAsset).toHaveBeenCalledTimes(2);
+    expect(materializeBundledAsset).toHaveBeenNthCalledWith(
+      1,
+      undefined,
+      '/workspace/tec1g-mon3',
+      expect.objectContaining({
+        bundleId: 'tec1g/mon3/v1',
+        path: 'mon3.bin',
+        destination: 'roms/tec1g/mon3/mon3.bin',
+      }),
+      { overwrite: false }
+    );
+    expect(materializeBundledAsset).toHaveBeenNthCalledWith(
+      2,
+      undefined,
+      '/workspace/tec1g-mon3',
+      expect.objectContaining({
+        bundleId: 'tec1g/mon3/v1',
+        path: 'mon3.lst',
+        destination: 'roms/tec1g/mon3/mon3.lst',
+      }),
+      { overwrite: false }
+    );
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Installed bundled assets for profile:mon3')
+    );
   });
 
   it('forces a prompt when selecting the active target', async () => {

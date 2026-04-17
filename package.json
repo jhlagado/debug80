@@ -192,7 +192,7 @@
       },
       {
         "command": "debug80.materializeBundledRom",
-        "title": "Debug80: Copy Bundled MON3 ROM and Listing into Workspace"
+        "title": "Debug80: Copy Bundled Assets into Workspace"
       }
     ],
     "menus": {
