@@ -1,9 +1,13 @@
 .layout {
-      grid-template-columns: auto 300px;
       justify-items: start;
       justify-content: start;
-      width: fit-content;
-      max-width: 100%;
+    }
+    @container (min-width: 480px) {
+      .layout {
+        grid-template-columns: auto 300px;
+        width: fit-content;
+        max-width: 100%;
+      }
     }
     .right-col {
       align-items: stretch;
