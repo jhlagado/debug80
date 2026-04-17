@@ -1,8 +1,8 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const cavernsProjectConfigPath = path.normalize('/workspace/caverns80/.vscode/debug80.json');
-const debug80ProjectConfigPath = path.normalize('/workspace/debug80/.vscode/debug80.json');
+const cavernsProjectConfigPath = path.normalize('/workspace/caverns80/debug80.json');
+const debug80ProjectConfigPath = path.normalize('/workspace/debug80/debug80.json');
 
 const executeCommand = vi.fn();
 const showInformationMessage = vi.fn();

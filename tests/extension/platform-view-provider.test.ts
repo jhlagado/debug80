@@ -20,7 +20,7 @@ const {
       entrySource: 'src/main.asm',
     })),
     findProjectConfigPath: vi.fn(
-      (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/.vscode/debug80.json`
+      (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/debug80.json`
     ),
     listProjectTargetChoices: vi.fn(() => [
       { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
