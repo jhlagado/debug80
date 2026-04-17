@@ -142,6 +142,40 @@ describe('bundle-materialize', () => {
     expect(fs.existsSync(path.join(workspaceRoot, 'assets', 'custom', 'payload.bin'))).toBe(true);
   });
 
+  it('rejects a bundled ROM when the checksum does not match', () => {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-badsha-'));
+    tmpDirs.push(workspaceRoot);
+
+    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-ext-badsha-'));
+    tmpDirs.push(bundleRoot);
+    const rel = 'demo/badsha/v1';
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+    fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([0x11, 0x22, 0x33]));
+    fs.writeFileSync(
+      path.join(bundleDir, 'bundle.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: 'demo-badsha',
+        version: '1',
+        platform: 'tec1g',
+        label: 'Bad SHA',
+        files: [{ role: 'rom' as const, path: 'rom.bin', sha256: 'deadbeef' }],
+        workspaceLayout: { destination: 'roms/badsha' },
+      })
+    );
+
+    const result = materializeBundledRom(vscode.Uri.file(bundleRoot), workspaceRoot, rel);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toContain('Checksum mismatch');
+    expect(result.reason).toContain('rom.bin');
+    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'badsha', 'rom.bin'))).toBe(false);
+  });
+
   it('rejects a bundled asset destination that escapes the workspace root', () => {
     const workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-root-'));
     tmpDirs.push(workspaceBase);
