@@ -1,7 +1,7 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const projectConfigPath = path.normalize('/workspace/tec1g-mon3/.vscode/debug80.json');
+const projectConfigPath = path.normalize('/workspace/tec1g-mon3/debug80.json');
 
 const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
 const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => unknown) => {
@@ -345,8 +345,8 @@ describe('registerExtensionCommands', () => {
 
     const oldRoot = '/workspace/tec1g-mon3';
     const newRoot = '/workspace/tec1-mon1';
-    const oldConfigPath = path.normalize(`${oldRoot}/.vscode/debug80.json`);
-    const newConfigPath = path.normalize(`${newRoot}/.vscode/debug80.json`);
+    const oldConfigPath = path.normalize(`${oldRoot}/debug80.json`);
+    const newConfigPath = path.normalize(`${newRoot}/debug80.json`);
     workspaceFolders = [
       { name: 'tec1g-mon3', uri: { fsPath: oldRoot }, index: 0 },
       { name: 'tec1-mon1', uri: { fsPath: newRoot }, index: 1 },
@@ -419,8 +419,8 @@ describe('registerExtensionCommands', () => {
 
     const rootA = '/workspace/tec1-mon1';
     const rootB = '/workspace/tec1-mon2';
-    const configAPath = path.normalize(`${rootA}/.vscode/debug80.json`);
-    const configBPath = path.normalize(`${rootB}/.vscode/debug80.json`);
+    const configAPath = path.normalize(`${rootA}/debug80.json`);
+    const configBPath = path.normalize(`${rootB}/debug80.json`);
     workspaceFolders = [
       { name: 'tec1-mon1', uri: { fsPath: rootA }, index: 0 },
       { name: 'tec1-mon2', uri: { fsPath: rootB }, index: 1 },

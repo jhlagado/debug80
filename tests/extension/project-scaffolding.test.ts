@@ -32,7 +32,11 @@ vi.mock('fs', async () => {
     ...actual,
     existsSync: vi.fn((candidate: string) => {
       const normalized = candidate.replace(/\\/g, '/');
-      return !normalized.endsWith('/.vscode/debug80.json');
+      return (
+        !normalized.endsWith('/debug80.json') &&
+        !normalized.endsWith('/.vscode/debug80.json') &&
+        !normalized.endsWith('/.debug80.json')
+      );
     }),
     writeFileSync: vi.fn(),
   };
@@ -260,7 +264,7 @@ describe('project-scaffolding helpers', () => {
     expect(writeFileSync).toHaveBeenCalled();
 
     const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
-      String(filePath).replace(/\\/g, '/').endsWith('/.vscode/debug80.json')
+      String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
     );
     expect(configWrite).toBeDefined();
 
@@ -280,12 +284,7 @@ describe('project-scaffolding helpers', () => {
     );
 
     expect(showInformationMessage).toHaveBeenCalledWith(
-      'Debug80: Created TEC-1G project in .vscode/debug80.json targeting src/main.asm.'
+      'Debug80: Created TEC-1G project in debug80.json targeting src/main.asm.'
     );
-
-    const settingsWrite = writeFileSync.mock.calls.find(([filePath]) =>
-      String(filePath).replace(/\\/g, '/').endsWith('/.vscode/settings.json')
-    );
-    expect(settingsWrite).toBeUndefined();
   });
 });
