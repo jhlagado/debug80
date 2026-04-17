@@ -498,11 +498,19 @@ export function registerExtensionCommands({
         if (created) {
           workspaceSelection.rememberWorkspace(folder);
           platformViewProvider.refreshIdleView();
+          platformViewProvider.reveal?.(false);
         }
         return created;
       } finally {
         creatingProject = false;
       }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openDebug80View', () => {
+      platformViewProvider.reveal(true);
+      return true;
     })
   );
 
@@ -637,6 +645,7 @@ export function registerExtensionCommands({
 
         workspaceSelection.rememberWorkspace(folder);
         platformViewProvider.refreshIdleView();
+        platformViewProvider.reveal?.(false);
 
         let restartedForRootChange = false;
         const activeSession = vscode.debug.activeDebugSession;
