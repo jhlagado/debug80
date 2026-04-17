@@ -34,7 +34,7 @@ export interface ProjectProfileConfig {
   /** Optional display note for the profile */
   description?: string;
   /** Baseline platform id for this profile */
-  platform?: Debug80PlatformId | string;
+  platform?: string;
   /** Bundled assets attached to this profile */
   bundledAssets?: Record<string, BundledAssetReference>;
 }
