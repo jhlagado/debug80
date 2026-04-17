@@ -77,24 +77,6 @@ export function registerDebugSessionHandlers({
         platformViewProvider.clear();
         sessionState.sessionPlatforms.delete(session.id);
         sourceColumns.onSessionStarted(session);
-        const openRomSources = session.configuration?.openRomSourcesOnLaunch !== false;
-        if (openRomSources) {
-          const sessionId = session.id;
-          const column = sourceColumns.getSessionColumns(session).source;
-          setTimeout(() => {
-            if (!sessionState.activeZ80Sessions.has(sessionId)) {
-              return;
-            }
-            if (sessionState.romSourcesOpenedSessions.has(sessionId)) {
-              return;
-            }
-            void openRomSourcesForSession(session, column).then((opened) => {
-              if (opened) {
-                sessionState.romSourcesOpenedSessions.add(sessionId);
-              }
-            });
-          }, 200);
-        }
       }
     })
   );
