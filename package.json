@@ -44,7 +44,7 @@
         {
           "type": "webview",
           "id": "debug80.platformView",
-          "name": "Platform"
+          "name": "Debug80"
         }
       ]
     },
@@ -191,8 +191,12 @@
         "title": "Debug80: Open Project Configuration Panel"
       },
       {
+        "command": "debug80.openDebug80View",
+        "title": "Debug80: Open Debug80 View"
+      },
+      {
         "command": "debug80.materializeBundledRom",
-        "title": "Debug80: Copy Bundled MON3 ROM and Listing into Workspace"
+        "title": "Debug80: Copy Bundled Assets into Workspace"
       }
     ],
     "menus": {
