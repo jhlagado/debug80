@@ -152,13 +152,32 @@ describe('project-scaffolding helpers', () => {
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
       projectPlatform: 'tec1',
+      defaultProfile: 'mon1b',
       defaultTarget: 'app',
+      profiles: {
+        mon1b: {
+          platform: 'tec1',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.bin',
+              destination: 'roms/tec1/mon1b/mon-1b.bin',
+            },
+            listing: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.lst',
+              destination: 'roms/tec1/mon1b/mon-1b.lst',
+            },
+          },
+        },
+      },
       targets: {
         app: {
           sourceFile: 'src/main.asm',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1',
+          profile: 'mon1b',
           tec1: {
             regions: [
               { start: 0, end: 2047, kind: 'rom' },
@@ -166,37 +185,122 @@ describe('project-scaffolding helpers', () => {
             ],
             appStart: 0x0800,
             entry: 0,
+            romHex: 'roms/tec1/mon1b/mon-1b.bin',
+            extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
+            sourceRoots: ['src', 'roms/tec1/mon1b'],
           },
         },
       },
     });
   });
 
-  it('merges bundled MON3 paths into tec1g when materialization succeeded', () => {
+  it('builds a tec1g bundled profile config for MON3', () => {
     const config = createDefaultProjectConfig({
       targetName: 'app',
       platform: 'tec1g',
       sourceFile: 'src/main.asm',
       outputDir: 'build',
       artifactBase: 'main',
-      bundledMon3: {
-        ok: true,
-        destinationRelative: 'roms/tec1g/mon3',
-        romRelativePath: 'roms/tec1g/mon3/mon3.bin',
-        listingRelativePath: 'roms/tec1g/mon3/mon3.lst',
-      },
     });
 
-    expect(config.targets.app).toEqual(
-      expect.objectContaining({
-        platform: 'tec1g',
-        tec1g: expect.objectContaining({
-          romHex: 'roms/tec1g/mon3/mon3.bin',
-          extraListings: ['roms/tec1g/mon3/mon3.lst'],
-          sourceRoots: ['src', 'roms/tec1g/mon3'],
-        }),
-      })
-    );
+    expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1g',
+      defaultProfile: 'mon3',
+      defaultTarget: 'app',
+      profiles: {
+        mon3: {
+          platform: 'tec1g',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.bin',
+              destination: 'roms/tec1g/mon3/mon3.bin',
+            },
+            listing: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.lst',
+              destination: 'roms/tec1g/mon3/mon3.lst',
+            },
+          },
+        },
+      },
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          outputDir: 'build',
+          artifactBase: 'main',
+          platform: 'tec1g',
+          profile: 'mon3',
+          tec1g: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 32767, kind: 'ram' },
+              { start: 49152, end: 65535, kind: 'rom' },
+            ],
+            appStart: 0x4000,
+            entry: 0,
+            romHex: 'roms/tec1g/mon3/mon3.bin',
+            extraListings: ['roms/tec1g/mon3/mon3.lst'],
+            sourceRoots: ['src', 'roms/tec1g/mon3'],
+          },
+        },
+      },
+    });
+  });
+
+  it('builds a tec1 bundled profile config for MON-1B', () => {
+    const config = createDefaultProjectConfig({
+      targetName: 'app',
+      platform: 'tec1',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+    });
+
+    expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1',
+      defaultProfile: 'mon1b',
+      defaultTarget: 'app',
+      profiles: {
+        mon1b: {
+          platform: 'tec1',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.bin',
+              destination: 'roms/tec1/mon1b/mon-1b.bin',
+            },
+            listing: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.lst',
+              destination: 'roms/tec1/mon1b/mon-1b.lst',
+            },
+          },
+        },
+      },
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          outputDir: 'build',
+          artifactBase: 'main',
+          platform: 'tec1',
+          profile: 'mon1b',
+          tec1: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 4095, kind: 'ram' },
+            ],
+            appStart: 0x0800,
+            entry: 0,
+            romHex: 'roms/tec1/mon1b/mon-1b.bin',
+            extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
+            sourceRoots: ['src', 'roms/tec1/mon1b'],
+          },
+        },
+      },
+    });
   });
 
   it('builds a tec1g target config when scaffolding for TEC-1G', () => {
@@ -211,13 +315,32 @@ describe('project-scaffolding helpers', () => {
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
       projectPlatform: 'tec1g',
+      defaultProfile: 'mon3',
       defaultTarget: 'app',
+      profiles: {
+        mon3: {
+          platform: 'tec1g',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.bin',
+              destination: 'roms/tec1g/mon3/mon3.bin',
+            },
+            listing: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.lst',
+              destination: 'roms/tec1g/mon3/mon3.lst',
+            },
+          },
+        },
+      },
       targets: {
         app: {
           sourceFile: 'src/main.asm',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1g',
+          profile: 'mon3',
           tec1g: {
             regions: [
               { start: 0, end: 2047, kind: 'rom' },
@@ -226,6 +349,9 @@ describe('project-scaffolding helpers', () => {
             ],
             appStart: 0x4000,
             entry: 0,
+            romHex: 'roms/tec1g/mon3/mon3.bin',
+            extraListings: ['roms/tec1g/mon3/mon3.lst'],
+            sourceRoots: ['src', 'roms/tec1g/mon3'],
           },
         },
       },
@@ -276,15 +402,23 @@ describe('project-scaffolding helpers', () => {
     const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
       projectVersion?: number;
       projectPlatform?: string;
-      targets?: Record<string, { platform?: string; tec1g?: Record<string, unknown> }>;
+      defaultProfile?: string;
+      profiles?: Record<string, { platform?: string; bundledAssets?: Record<string, { bundleId?: string }> }>;
+      targets?: Record<string, { platform?: string; profile?: string; tec1g?: Record<string, unknown> }>;
     };
     expect(writtenConfig.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
     expect(writtenConfig.projectPlatform).toBe('tec1g');
+    expect(writtenConfig.defaultProfile).toBe('mon3');
+    expect(writtenConfig.profiles?.mon3?.platform).toBe('tec1g');
+    expect(writtenConfig.profiles?.mon3?.bundledAssets?.romHex?.bundleId).toBe('tec1g/mon3/v1');
     expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
+    expect(writtenConfig.targets?.app?.profile).toBe('mon3');
     expect(writtenConfig.targets?.app?.tec1g).toEqual(
       expect.objectContaining({
         appStart: 0x4000,
         entry: 0,
+        romHex: 'roms/tec1g/mon3/mon3.bin',
+        extraListings: ['roms/tec1g/mon3/mon3.lst'],
       })
     );
 
