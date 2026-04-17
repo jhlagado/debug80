@@ -118,15 +118,17 @@ both `ensureAsmLanguage(doc)` and `ensureZaxLanguage(doc)` for each document.
 `.asm`/`z80-asm`, once for `.zax`/`zax`. Either approach is acceptable; the key constraint
 is that both languages are enforced.
 
-### 7. `src/debug/breakpoint-manager.ts` — Alternate source path (no change needed)
+### 7. `src/debug/breakpoint-manager.ts` — Source-path policy
 
-The existing `resolveAlternateSourcePath()` handles `.asm` ↔ `.source.asm` pairs. This is
-an asm80-specific convention. ZAX does not use `.source.zax` files, so **no change is
-required** in `breakpoint-manager.ts`. Note this for awareness only.
+Breakpoint resolution should use direct mapped source paths plus basename matching for path
+normalization differences. `.source.*` fallback pairs are deprecated and should not be
+reintroduced for either asm80 or ZAX sources.
 
-### 8. `src/debug/path-resolver.ts` — No change needed
+### 8. `src/debug/path-resolver.ts` — Listing-adjacent source lookup
 
-`resolveAsmPath()` is extension-agnostic — it resolves any path. No change required.
+Listing-adjacent source lookup should only consider direct sibling source files such as
+`.asm`, `.zax`, or `.z80`. Deprecated `.source.*` companions are outside the supported
+policy.
 
 ---
 
