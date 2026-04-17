@@ -344,16 +344,25 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 
 ### TEC-1G: bundled MON3 (wizard and manual projects)
 
-For **TEC-1G**, Debug80 can ship a **MON3** ROM snapshot inside the VSIX and copy it into
-your workspace under stable paths (see `docs/plans/platform-rom-bundles.md`).
+For **TEC-1G**, Debug80 can ship a **MON3** ROM snapshot inside the VSIX and
+resolve it directly at launch, with an explicit command available if you want
+to copy it into your workspace under stable paths (see
+`docs/plans/platform-rom-bundles.md`).
 
-**After “Create Project” (TEC-1G)** the extension copies, when possible:
+**After “Create Project” (TEC-1G)** the extension records the MON-3 bundle
+reference in `debug80.json` and resolves the shipped bundle on launch when no
+workspace copy is present:
 
 - `roms/tec1g/mon3/mon3.bin` — monitor ROM image (`tec1g.romHex`; `.bin` or `.hex` per program loader rules).
 - `roms/tec1g/mon3/mon3.lst` — ASM80 listing for ROM source mapping (`tec1g.extraListings`).
 - `tec1g.sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
 
-**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files as the wizard.
+**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files on demand.
+
+New TEC-1G projects keep the MON-3 bundle reference in `debug80.json` by
+default. At launch, Debug80 resolves the shipped bundle directly when the
+workspace copy is absent, and the explicit materialize command remains
+available if you want local ROM/listing files.
 
 **Manual project (no wizard):** point `tec1g.romHex` and `tec1g.extraListings` at workspace-relative paths (or absolute paths). Example:
 
