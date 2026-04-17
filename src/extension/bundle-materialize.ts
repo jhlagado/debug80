@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import type { BundledAssetReference } from '../debug/types';
 import type { BundleManifestV1 } from './bundle-manifest';
 import { isBundleManifestV1 } from './bundle-manifest';
 
@@ -26,11 +27,23 @@ export type MaterializeBundledRomResult = {
   reason: string;
 };
 
+export type MaterializeBundledAssetResult = {
+  ok: true;
+  destinationRelative: string;
+  materializedRelativePath: string;
+} | {
+  ok: false;
+  reason: string;
+};
+
 function bundleRootUri(extensionUri: vscode.Uri, bundleRelPath: string): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'resources', 'bundles', ...bundleRelPath.split('/'));
 }
 
-function readManifest(extensionUri: vscode.Uri, bundleRelPath: string): BundleManifestV1 | undefined {
+function readManifest(
+  extensionUri: vscode.Uri,
+  bundleRelPath: string
+): BundleManifestV1 | undefined {
   const manifestUri = vscode.Uri.joinPath(bundleRootUri(extensionUri, bundleRelPath), 'bundle.json');
   try {
     const raw = fs.readFileSync(manifestUri.fsPath, 'utf-8');
@@ -83,6 +96,85 @@ function checksumMismatchReason(
 ): string {
   const expected = entry.sha256 ?? '';
   return `Checksum mismatch for ${entry.path} (expected ${expected}, got ${actualHash})`;
+}
+
+function normalizeRelativePath(relPath: string): string {
+  return relPath.split(path.sep).join('/');
+}
+
+function resolveAssetDestination(
+  manifest: BundleManifestV1,
+  reference: BundledAssetReference
+): string {
+  const destination = reference.destination;
+  if (destination !== undefined && destination.trim().length > 0) {
+    return normalizeRelativePath(path.normalize(destination.trim()));
+  }
+  return normalizeRelativePath(
+    path.join(manifest.workspaceLayout.destination, path.basename(reference.path))
+  );
+}
+
+/**
+ * Copies a single bundled asset reference into the workspace.
+ * This is the generic path used by manifest-backed bundled asset refs.
+ */
+export function materializeBundledAsset(
+  extensionUri: vscode.Uri,
+  workspaceRoot: string,
+  reference: BundledAssetReference,
+  options?: { overwrite?: boolean }
+): MaterializeBundledAssetResult {
+  const manifest = readManifest(extensionUri, reference.bundleId);
+  if (manifest === undefined) {
+    return { ok: false, reason: `Missing or invalid bundle manifest at ${reference.bundleId}` };
+  }
+
+  const entry = manifest.files.find((file) => file.path === reference.path);
+  if (entry === undefined) {
+    return {
+      ok: false,
+      reason: `Bundle ${reference.bundleId} does not contain ${reference.path}`,
+    };
+  }
+
+  const bundleDiskRoot = bundleRootUri(extensionUri, reference.bundleId).fsPath;
+  const from = path.join(bundleDiskRoot, entry.path);
+  const destinationRelative = resolveAssetDestination(manifest, reference);
+  const to = path.join(workspaceRoot, destinationRelative);
+  const overwrite = options?.overwrite === true;
+
+  if (!fs.existsSync(from)) {
+    return { ok: false, reason: `Bundled file missing in extension: ${reference.path}` };
+  }
+
+  const checksumMismatch = verifyEntryChecksum(from, entry);
+  if (checksumMismatch !== undefined) {
+    return {
+      ok: false,
+      reason: checksumMismatchReason(entry, checksumMismatch),
+    };
+  }
+
+  try {
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+  } catch (e) {
+    return { ok: false, reason: `Could not create ${path.dirname(to)}: ${String(e)}` };
+  }
+
+  if (!(fs.existsSync(to) && !overwrite)) {
+    try {
+      fs.copyFileSync(from, to);
+    } catch (e) {
+      return { ok: false, reason: `Copy failed ${from} -> ${to}: ${String(e)}` };
+    }
+  }
+
+  return {
+    ok: true,
+    destinationRelative,
+    materializedRelativePath: destinationRelative,
+  };
 }
 
 /**

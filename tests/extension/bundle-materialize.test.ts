@@ -19,6 +19,7 @@ vi.mock('vscode', () => ({
 import * as vscode from 'vscode';
 import {
   BUNDLED_MON3_V1_REL,
+  materializeBundledAsset,
   materializeBundledRom,
 } from '../../src/extension/bundle-materialize';
 import * as crypto from 'crypto';
@@ -102,6 +103,43 @@ describe('bundle-materialize', () => {
     }
     expect(result.romRelativePath).toBe('roms/out/rom.bin');
     expect(result.listingRelativePath).toBe('roms/out/rom.lst');
+  });
+
+  it('materializes a single bundled asset reference to an explicit destination', () => {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-'));
+    tmpDirs.push(workspaceRoot);
+
+    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-'));
+    tmpDirs.push(bundleRoot);
+    const rel = 'demo/asset/v1';
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+    fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0xde, 0xad, 0xbe, 0xef]));
+
+    const manifest = {
+      schemaVersion: 1,
+      id: 'demo-asset',
+      version: '1',
+      platform: 'tec1g',
+      label: 'Demo Asset',
+      files: [{ role: 'rom' as const, path: 'payload.bin' }],
+      workspaceLayout: { destination: 'roms/demo-default' },
+    };
+    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+
+    const result = materializeBundledAsset(vscode.Uri.file(bundleRoot), workspaceRoot, {
+      bundleId: rel,
+      path: 'payload.bin',
+      destination: 'assets/custom/payload.bin',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.destinationRelative).toBe('assets/custom/payload.bin');
+    expect(result.materializedRelativePath).toBe('assets/custom/payload.bin');
+    expect(fs.existsSync(path.join(workspaceRoot, 'assets', 'custom', 'payload.bin'))).toBe(true);
   });
 
   it('exposes bundled MON3 path constant for scaffold', () => {
