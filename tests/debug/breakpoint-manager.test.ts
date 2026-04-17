@@ -102,7 +102,11 @@ describe('BreakpointManager', () => {
     expect(applied[0]?.verified).toBe(true);
   });
 
+<<<<<<< HEAD
   it('does not fall back to .source.asm when resolving breakpoints', () => {
+=======
+  it('does not fall back to .source.asm when resolving breakpoints', () => {
+>>>>>>> b4f8359 (Remove alternate source fallback)
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
@@ -115,24 +119,6 @@ describe('BreakpointManager', () => {
 
     mgr.setPending(sourcePath, [{ line: 42 }]);
     const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 42 }]);
-
-    expect(applied.length).toBe(1);
-    expect(applied[0]?.verified).toBe(false);
-  });
-
-  it('does not fall back to .source.z80 when resolving breakpoints', () => {
-    const mgr = new BreakpointManager();
-    const listing = createMockListing(new Map());
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    const listingPath = path.join(baseDir, 'program.lst');
-    const sourcePath = path.resolve(baseDir, 'mon3.z80');
-
-    const index = createMockIndex(
-      new Map([[path.resolve(baseDir, 'mon3.source.z80'), new Map([[171, [0xc000]]])]])
-    );
-
-    mgr.setPending(sourcePath, [{ line: 171 }]);
-    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
 
     expect(applied.length).toBe(1);
     expect(applied[0]?.verified).toBe(false);

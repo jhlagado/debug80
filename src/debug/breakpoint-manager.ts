@@ -205,7 +205,11 @@ export class BreakpointManager {
     return this.resolveByBasename(mappingIndex, sourcePath, line);
   }
 
-  private resolveByBasename(mappingIndex: SourceMapIndex, sourcePath: string, line: number): number[] {
+  private resolveByBasename(
+    mappingIndex: SourceMapIndex,
+    sourcePath: string,
+    line: number
+  ): number[] {
     const want = path.basename(sourcePath).toLowerCase();
     const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
     for (const [fileKey, fileMap] of mappingIndex.segmentsByFileLine.entries()) {
