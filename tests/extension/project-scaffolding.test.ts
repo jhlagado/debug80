@@ -259,6 +259,36 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
+  it('does not pull MON-1B bundle fields into classic-2k scaffolding', async () => {
+    const fs = await import('fs');
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    showQuickPick.mockResolvedValueOnce({ kit: kit('tec1/classic-2k') }).mockResolvedValueOnce({
+      choice: { kind: 'starter', language: 'asm' },
+    });
+    showInputBox.mockResolvedValueOnce('app');
+
+    const created = await scaffoldProject(
+      { name: 'demo', uri: { fsPath: '/workspace/demo' }, index: 0 } as never,
+      false
+    );
+
+    expect(created).toBe(true);
+
+    const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
+      String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
+    );
+    expect(configWrite).toBeDefined();
+
+    const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+      targets?: Record<string, { tec1?: Record<string, unknown> }>;
+    };
+    expect(writtenConfig.targets?.app?.tec1).toBeDefined();
+    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('romHex');
+    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('extraListings');
+    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('sourceRoots');
+  });
+
   it('builds a tec1g mon3 profile kit config when scaffolding for TEC-1G', () => {
     const config = createDefaultProjectConfig({
       kit: kit('tec1g/mon3'),
