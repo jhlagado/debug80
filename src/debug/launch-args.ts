@@ -27,6 +27,82 @@ function mergeNestedPlatformBlock<T extends object>(
   return Object.keys(out).length > 0 ? (out as T) : undefined;
 }
 
+type LaunchConfigManifest = Partial<LaunchRequestArguments> & {
+  projectPlatform?: string;
+  defaultProfile?: string;
+  source?: string;
+  profiles?: Record<string, { platform?: string } | undefined>;
+  targets?: Record<
+    string,
+    Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string; profile?: string }
+  >;
+  defaultTarget?: string;
+  target?: string;
+};
+
+type LaunchTargetConfig = Partial<LaunchRequestArguments> & {
+  sourceFile?: string;
+  source?: string;
+  profile?: string;
+};
+
+function normalizeNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toLowerCase() : undefined;
+}
+
+function resolveProfilePlatform(
+  profileName: string | undefined,
+  cfg: LaunchConfigManifest
+): string | undefined {
+  const normalizedName = normalizeNonEmptyString(profileName);
+  if (normalizedName === undefined) {
+    return undefined;
+  }
+  const profile = cfg.profiles?.[normalizedName];
+  return normalizeNonEmptyString(profile?.platform);
+}
+
+function resolveLaunchPlatform(
+  args: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined
+): string | undefined {
+  const explicit =
+    normalizeNonEmptyString(args.platform) ??
+    normalizeNonEmptyString(targetCfg?.platform) ??
+    normalizeNonEmptyString(cfg.platform) ??
+    normalizeNonEmptyString(cfg.projectPlatform);
+  if (explicit !== undefined) {
+    return explicit;
+  }
+
+  const targetProfile = resolveProfilePlatform(targetCfg?.profile, cfg);
+  if (targetProfile !== undefined) {
+    return targetProfile;
+  }
+
+  const defaultProfile = resolveProfilePlatform(cfg.defaultProfile, cfg);
+  if (defaultProfile !== undefined) {
+    return defaultProfile;
+  }
+
+  const profiles = Object.values(
+    cfg.profiles ?? {}
+  ) as Array<{ platform?: string } | undefined>;
+  for (const profile of profiles) {
+    const platform = normalizeNonEmptyString(profile?.platform);
+    if (platform !== undefined) {
+      return platform;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * When `romHex` lives only under another target's `tec1g` block (common for MON-3),
  * the active target's partial `tec1g` would otherwise drop it after merge.
@@ -140,13 +216,7 @@ export function populateFromConfig(
   }
 
   try {
-    let cfg: {
-      defaultTarget?: string;
-      targets?: Record<
-        string,
-        Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string }
-      >;
-    } & (Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string });
+    let cfg: LaunchConfigManifest;
 
     if (configPath.endsWith('package.json')) {
       const pkgRaw = fs.readFileSync(configPath, 'utf-8');
@@ -163,7 +233,7 @@ export function populateFromConfig(
 
     const targets = cfg.targets ?? {};
     const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-    const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
+      const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
 
     const merged: LaunchRequestArguments = {
       ...cfg,
@@ -251,7 +321,10 @@ export function populateFromConfig(
     }
 
     const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
-    if (platformResolved !== undefined) {
+    const launchPlatformResolved = resolveLaunchPlatform(args, cfg, targetCfg);
+    if (launchPlatformResolved !== undefined) {
+      merged.platform = launchPlatformResolved;
+    } else if (platformResolved !== undefined) {
       merged.platform = platformResolved;
     }
 
