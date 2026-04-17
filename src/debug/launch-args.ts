@@ -31,7 +31,11 @@ type LaunchConfigManifest = Partial<LaunchRequestArguments> & {
   projectPlatform?: string;
   defaultProfile?: string;
   source?: string;
-  profiles?: Record<string, { platform?: string } | undefined>;
+  bundledAssets?: Record<string, { destination?: string } | undefined>;
+  profiles?: Record<
+    string,
+    { platform?: string; bundledAssets?: Record<string, { destination?: string } | undefined> } | undefined
+  >;
   targets?: Record<
     string,
     Partial<LaunchRequestArguments> & { sourceFile?: string; source?: string; profile?: string }
@@ -64,6 +68,25 @@ function resolveProfilePlatform(
   }
   const profile = cfg.profiles?.[normalizedName];
   return normalizeNonEmptyString(profile?.platform);
+}
+
+function resolveBundledAssetDestination(
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  assetName: string
+): string | undefined {
+  const profileName =
+    normalizeNonEmptyString(targetCfg?.profile) ?? normalizeNonEmptyString(cfg.defaultProfile);
+  if (profileName !== undefined) {
+    const profileAsset = cfg.profiles?.[profileName]?.bundledAssets?.[assetName]?.destination;
+    const profileDestination = normalizeNonEmptyString(profileAsset);
+    if (profileDestination !== undefined) {
+      return profileDestination;
+    }
+  }
+
+  const rootAsset = cfg.bundledAssets?.[assetName]?.destination;
+  return normalizeNonEmptyString(rootAsset);
 }
 
 function resolveLaunchPlatform(
@@ -322,11 +345,6 @@ export function populateFromConfig(
 
     const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
     const launchPlatformResolved = resolveLaunchPlatform(args, cfg, targetCfg);
-    if (launchPlatformResolved !== undefined) {
-      merged.platform = launchPlatformResolved;
-    } else if (platformResolved !== undefined) {
-      merged.platform = platformResolved;
-    }
 
     const simpleResolved = args.simple ?? targetCfg?.simple ?? cfg.simple;
     if (simpleResolved !== undefined) {
@@ -352,6 +370,43 @@ export function populateFromConfig(
     const sourceRootsResolved = args.sourceRoots ?? targetCfg?.sourceRoots ?? cfg.sourceRoots;
     if (sourceRootsResolved !== undefined) {
       merged.sourceRoots = sourceRootsResolved;
+    }
+
+    const resolvedRomHex =
+      merged.tec1?.romHex ??
+      merged.tec1g?.romHex ??
+      resolveBundledAssetDestination(cfg, targetCfg, 'romHex');
+    const resolvedExtraListing =
+      merged.tec1?.extraListings?.[0] ??
+      merged.tec1g?.extraListings?.[0] ??
+      resolveBundledAssetDestination(cfg, targetCfg, 'listing');
+
+    if (resolvedRomHex !== undefined) {
+      if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
+        merged.tec1 = { ...(merged.tec1 ?? {}), romHex: resolvedRomHex };
+      } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
+        merged.tec1g = { ...(merged.tec1g ?? {}), romHex: resolvedRomHex };
+      }
+    }
+
+    if (resolvedExtraListing !== undefined) {
+      if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
+        const extraListings = merged.tec1?.extraListings ?? [];
+        if (extraListings.length === 0) {
+          merged.tec1 = { ...(merged.tec1 ?? {}), extraListings: [resolvedExtraListing] };
+        }
+      } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
+        const extraListings = merged.tec1g?.extraListings ?? [];
+        if (extraListings.length === 0) {
+          merged.tec1g = { ...(merged.tec1g ?? {}), extraListings: [resolvedExtraListing] };
+        }
+      }
+    }
+
+    if (launchPlatformResolved !== undefined) {
+      merged.platform = launchPlatformResolved;
+    } else if (platformResolved !== undefined) {
+      merged.platform = platformResolved;
     }
 
     const stepOverResolved =

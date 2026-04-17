@@ -167,6 +167,94 @@ describe('launch-args', () => {
     expect(merged.platform).toBe('tec1g');
   });
 
+  it('hydrates tec1g launch paths from bundled profile assets', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1g-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+                destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+              listing: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.lst',
+                destination: 'roms/tec1g/mon3/mon3.lst',
+              },
+            },
+          },
+        },
+        targets: {
+          app: {
+            asm: 'src/main.asm',
+            profile: 'mon3',
+          },
+        },
+      })
+    );
+
+    const merged = populateFromConfig(
+      { projectConfig: configPath } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.platform).toBe('tec1g');
+    expect(merged.tec1g?.romHex).toBe('roms/tec1g/mon3/mon3.bin');
+    expect(merged.tec1g?.extraListings).toEqual(['roms/tec1g/mon3/mon3.lst']);
+  });
+
+  it('hydrates tec1 launch paths from bundled profile assets', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        defaultProfile: 'mon1b',
+        profiles: {
+          mon1b: {
+            platform: 'tec1',
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1/mon1b/v1',
+                path: 'mon-1b.bin',
+                destination: 'roms/tec1/mon1b/mon-1b.bin',
+              },
+              listing: {
+                bundleId: 'tec1/mon1b/v1',
+                path: 'mon-1b.lst',
+                destination: 'roms/tec1/mon1b/mon-1b.lst',
+              },
+            },
+          },
+        },
+        targets: {
+          app: {
+            asm: 'src/main.asm',
+            profile: 'mon1b',
+          },
+        },
+      })
+    );
+
+    const merged = populateFromConfig(
+      { projectConfig: configPath } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.platform).toBe('tec1');
+    expect(merged.tec1?.romHex).toBe('roms/tec1/mon1b/mon-1b.bin');
+    expect(merged.tec1?.extraListings).toEqual(['roms/tec1/mon1b/mon-1b.lst']);
+  });
+
   it('deep-merges tec1g so target overrides do not drop root romHex', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-merge-'));
     const configPath = path.join(dir, 'debug80.json');
