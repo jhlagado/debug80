@@ -209,10 +209,11 @@ describe('registerExtensionCommands', () => {
     };
     const rememberWorkspace = vi.fn();
     const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
 
     registerExtensionCommands({
       context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView } as never,
+      platformViewProvider: { refreshIdleView, reveal } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
       workspaceSelection: {
@@ -232,7 +233,34 @@ describe('registerExtensionCommands', () => {
     expect(result).toBe(true);
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
     expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, undefined);
+  });
+
+  it('reveals the Debug80 view through the dedicated command', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const reveal = vi.fn();
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn(), reveal } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const openDebug80View = registeredCommands.get('debug80.openDebug80View');
+    expect(openDebug80View).toBeTypeOf('function');
+
+    const result = await openDebug80View?.();
+
+    expect(result).toBe(true);
+    expect(reveal).toHaveBeenCalledWith(true);
   });
 
   it('materializes manifest-backed bundled asset references from the project config', async () => {
@@ -384,10 +412,11 @@ describe('registerExtensionCommands', () => {
     const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
     const rememberWorkspace = vi.fn();
     const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
 
     registerExtensionCommands({
       context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView } as never,
+      platformViewProvider: { refreshIdleView, reveal } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
       workspaceSelection: {
@@ -406,6 +435,7 @@ describe('registerExtensionCommands', () => {
     expect(result).toEqual(folder);
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
     expect(startDebugging).not.toHaveBeenCalled();
   });
 
@@ -419,9 +449,10 @@ describe('registerExtensionCommands', () => {
     };
 
     const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
     registerExtensionCommands({
       context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView } as never,
+      platformViewProvider: { refreshIdleView, reveal } as never,
       sourceColumns: {} as never,
       terminalPanel: {} as never,
       workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
@@ -440,6 +471,7 @@ describe('registerExtensionCommands', () => {
 
     expect(result).toEqual(folder);
     expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
     expect(startDebugging).not.toHaveBeenCalled();
   });
 
