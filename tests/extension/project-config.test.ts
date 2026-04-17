@@ -68,6 +68,28 @@ describe('project-config helpers', () => {
     ).toBe('tec1g');
   });
 
+  it('resolves project platform from the default profile when projectPlatform is absent', () => {
+    expect(
+      resolveProjectPlatform({
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+              },
+            },
+          },
+        },
+        targets: {
+          app: { sourceFile: 'src/main.asm', profile: 'mon3' },
+        },
+      })
+    ).toBe('tec1g');
+  });
+
   it('falls back to target platform when project platform is absent', () => {
     expect(
       resolveProjectPlatform({
@@ -143,6 +165,61 @@ describe('project-config helpers', () => {
         },
       })
     ).toBe(false);
+  });
+
+  it('rejects configs with invalid profile or bundle references', () => {
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: DEBUG80_PROJECT_VERSION,
+        projectPlatform: 'simple',
+        profiles: {
+          app: {
+            platform: 'simple',
+            bundledAssets: {
+              romHex: {
+                bundleId: '',
+                path: 'rom.bin',
+              },
+            },
+          },
+        },
+        targets: {
+          app: { sourceFile: 'src/main.asm', profile: 'app' },
+        },
+      })
+    ).toBe(false);
+  });
+
+  it('upgrades manifests that use profile metadata to version 2 on read', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-manifest-v2-'));
+    const configPath = path.join(root, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+                destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+            },
+          },
+        },
+        targets: {
+          app: { sourceFile: 'src/main.asm', profile: 'mon3' },
+        },
+      })
+    );
+
+    const config = readProjectConfig(configPath);
+
+    expect(config?.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
+    expect(config?.defaultProfile).toBe('mon3');
+    expect(config?.profiles?.mon3?.bundledAssets?.romHex?.bundleId).toBe('tec1g/mon3/v1');
   });
 
   it('updates the selected target source in package.json debug80 config', () => {
