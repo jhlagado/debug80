@@ -282,5 +282,10 @@ describe('project-scaffolding helpers', () => {
     expect(showInformationMessage).toHaveBeenCalledWith(
       'Debug80: Created TEC-1G project in .vscode/debug80.json targeting src/main.asm.'
     );
+
+    const settingsWrite = writeFileSync.mock.calls.find(([filePath]) =>
+      String(filePath).replace(/\\/g, '/').endsWith('/.vscode/settings.json')
+    );
+    expect(settingsWrite).toBeUndefined();
   });
 });
