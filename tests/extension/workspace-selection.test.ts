@@ -87,7 +87,7 @@ describe('WorkspaceSelectionController', () => {
     ];
     existsSync.mockImplementation(
       (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
     );
 
     const { WorkspaceSelectionController } = await import(
@@ -120,8 +120,8 @@ describe('WorkspaceSelectionController', () => {
     ];
     existsSync.mockImplementation(
       (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/debug80/.vscode/debug80.json') ||
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
+        path.normalize(candidate) === path.normalize('/workspace/debug80/debug80.json') ||
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
     );
     showQuickPick.mockResolvedValueOnce({
       label: 'caverns80',
@@ -167,7 +167,7 @@ describe('WorkspaceSelectionController', () => {
     storedPath = '/workspace/caverns80';
     existsSync.mockImplementation(
       (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/.vscode/debug80.json')
+        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
     );
     resolvePreferredTargetName.mockReturnValue('app');
 
@@ -195,7 +195,7 @@ describe('WorkspaceSelectionController', () => {
         type: 'z80',
         request: 'launch',
         name: 'Debug80: Current Project',
-        projectConfig: path.normalize('/workspace/caverns80/.vscode/debug80.json'),
+        projectConfig: path.normalize('/workspace/caverns80/debug80.json'),
       })
     );
   });

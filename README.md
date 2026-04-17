@@ -144,6 +144,7 @@ To make a folder debuggable quickly in VS Code:
 This command scaffolds a Simple-platform config:
 - Creates `.vscode/debug80.json` with a default target (tries `src/main.asm`, or the first `.asm` it finds).
 - Creates `.vscode/launch.json` with a Debug80 launch configuration.
+- It does not generate `.vscode/settings.json`; the extension already contributes the relevant file associations.
 
 After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as needed, then press F5.
 
