@@ -262,6 +262,11 @@ describe('project-scaffolding helpers', () => {
     expect(showQuickPick).toHaveBeenCalledTimes(2);
     expect(showInputBox).toHaveBeenCalledOnce();
     expect(writeFileSync).toHaveBeenCalled();
+    expect(
+      writeFileSync.mock.calls.some(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/.vscode/settings.json')
+      )
+    ).toBe(false);
 
     const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
       String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
