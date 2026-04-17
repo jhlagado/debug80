@@ -17,8 +17,8 @@
   ],
   "activationEvents": [
     "onDebugResolve:z80",
-    "workspaceContains:**/.vscode/debug80.json",
     "workspaceContains:**/debug80.json",
+    "workspaceContains:**/.vscode/debug80.json",
     "onLanguage:asm",
     "onLanguage:asm-collection",
     "onLanguage:zax",
@@ -51,7 +51,7 @@
     "viewsWelcome": [
       {
         "view": "debug80.platformView",
-        "contents": "No Debug80 project found in this workspace.\n[Create Project](command:debug80.createProject)\nCreate a .vscode/debug80.json configuration file to get started.",
+        "contents": "No Debug80 project found in this workspace.\n[Create Project](command:debug80.createProject)\nCreate a debug80.json configuration file to get started.",
         "when": "!debug80.hasProject"
       }
     ],
@@ -240,7 +240,7 @@
             "properties": {
               "projectConfig": {
                 "type": "string",
-                "description": "Path to debug80 project config (defaults to ${workspaceFolder}/.vscode/debug80.json)"
+                "description": "Path to debug80 project config (defaults to ${workspaceFolder}/debug80.json)"
               },
               "target": {
                 "type": "string",

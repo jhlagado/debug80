@@ -2,13 +2,14 @@
  * @file Workspace selection and project-detection state for Debug80.
  */
 
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import { findProjectConfigPath } from './project-config';
 import { resolvePreferredTargetName } from './project-target-selection';
 
 const WORKSPACE_KEY = 'debug80.selectedWorkspace';
-const PROJECT_CONFIG_WATCH_GLOBS = ['**/.vscode/debug80.json', '**/debug80.json', '**/.debug80.json'];
+const PROJECT_CONFIG_WATCH_GLOBS = ['**/debug80.json', '**/.vscode/debug80.json', '**/.debug80.json'];
 
 export type ResolveWorkspaceFolderOptions = {
   prompt?: boolean;
@@ -114,7 +115,7 @@ export class WorkspaceSelectionController {
           description: folder.uri.fsPath,
           detail:
             projectConfig !== undefined
-              ? `Configured Debug80 root (${projectConfig.split('/').slice(-2).join('/')})`
+              ? `Configured Debug80 root (${path.relative(folder.uri.fsPath, projectConfig).split(path.sep).join('/')})`
               : 'No Debug80 project config in this root',
           folder,
         };
