@@ -6,7 +6,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
-import { DEBUG80_PROJECT_VERSION, listProjectSourceFiles } from './project-config';
+import {
+  DEBUG80_PROJECT_VERSION,
+  findProjectConfigPath,
+  listProjectSourceFiles,
+} from './project-config';
 import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,
@@ -203,6 +207,36 @@ export function createDefaultLaunchConfig(): Record<string, unknown> {
   };
 }
 
+function ensureWorkspaceSettings(vscodeDir: string): void {
+  const settingsPath = path.join(vscodeDir, 'settings.json');
+  let settings: Record<string, unknown> = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const raw = fs.readFileSync(settingsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        settings = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Keep defaults if settings cannot be parsed.
+    }
+  }
+
+  const associationsRaw = settings['files.associations'];
+  const associations =
+    associationsRaw !== null &&
+    associationsRaw !== undefined &&
+    typeof associationsRaw === 'object' &&
+    !Array.isArray(associationsRaw)
+      ? ({ ...associationsRaw } as Record<string, unknown>)
+      : {};
+  if (typeof associations['*.z80'] !== 'string') {
+    associations['*.z80'] = 'z80-asm';
+  }
+  settings['files.associations'] = associations;
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+}
+
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
   includeLaunch: boolean,
@@ -211,9 +245,9 @@ export async function scaffoldProject(
 ): Promise<boolean> {
   const workspaceRoot = folder.uri.fsPath;
   const vscodeDir = path.join(workspaceRoot, '.vscode');
-  const configPath = path.join(vscodeDir, 'debug80.json');
+  const configPath = path.join(workspaceRoot, 'debug80.json');
   const launchPath = path.join(vscodeDir, 'launch.json');
-  const configExists = fs.existsSync(configPath);
+  const configExists = findProjectConfigPath(folder) !== undefined;
 
   const inferred = inferDefaultTarget(workspaceRoot);
   const plan = configExists ? undefined : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
@@ -254,6 +288,7 @@ export async function scaffoldProject(
   if (includeLaunch) {
     ensureDirExists(vscodeDir);
   }
+  ensureWorkspaceSettings(vscodeDir);
 
   let created = false;
 
@@ -274,17 +309,17 @@ export async function scaffoldProject(
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in .vscode/debug80.json targeting ${scaffoldPlan.sourceFile}.`
+        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in debug80.json targeting ${scaffoldPlan.sourceFile}.`
       );
       created = true;
     } catch (err) {
       void vscode.window.showErrorMessage(
-        `Debug80: Failed to write .vscode/debug80.json: ${String(err)}`
+        `Debug80: Failed to write debug80.json: ${String(err)}`
       );
       return false;
     }
   } else if (!includeLaunch) {
-    void vscode.window.showInformationMessage('.vscode/debug80.json already exists.');
+    void vscode.window.showInformationMessage('Debug80 project config already exists.');
   }
 
   if (includeLaunch) {

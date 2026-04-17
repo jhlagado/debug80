@@ -9,9 +9,8 @@ vi.mock('vscode', () => ({}));
 describe('project-status', () => {
   it('resolves the selected project target and program file', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
-    fs.mkdirSync(path.join(root, '.vscode'), { recursive: true });
     fs.writeFileSync(
-      path.join(root, '.vscode', 'debug80.json'),
+      path.join(root, 'debug80.json'),
       JSON.stringify({
         defaultTarget: 'app',
         targets: {
@@ -24,7 +23,7 @@ describe('project-status', () => {
     const summary = resolveProjectStatusSummary(
       {
         get: vi.fn((key: string) =>
-          key === `debug80.selectedTarget:${path.join(root, '.vscode', 'debug80.json')}`
+          key === `debug80.selectedTarget:${path.join(root, 'debug80.json')}`
             ? 'serial'
             : undefined
         ),
