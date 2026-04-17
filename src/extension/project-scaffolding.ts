@@ -11,6 +11,7 @@ import {
   findProjectConfigPath,
   listProjectSourceFiles,
 } from './project-config';
+import { materializeBundledRom } from './bundle-materialize';
 import {
   TEC1G_RAM_END,
   TEC1G_RAM_START,
@@ -19,12 +20,6 @@ import {
   TEC1G_ROM1_END,
   TEC1G_ROM1_START,
 } from '../platforms/tec1g/constants';
-import {
-  BUNDLED_MON1B_V1_REL,
-  BUNDLED_MON3_V1_REL,
-  materializeBundledRom,
-  type MaterializeBundledRomResult,
-} from './bundle-materialize';
 import {
   getProjectKitChoices,
   readProjectKitStarterTemplate,
@@ -43,10 +38,6 @@ type ScaffoldPlan = {
   starterFile?: {
     path: string;
   };
-  /** Present when bundled MON3 was copied into the workspace during scaffold */
-  bundledMon3?: Extract<MaterializeBundledRomResult, { ok: true }>;
-  /** Present when bundled MON-1B was copied into the workspace during scaffold */
-  bundledMon1b?: Extract<MaterializeBundledRomResult, { ok: true }>;
 };
 
 type SourceChoice =
@@ -124,12 +115,14 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
       romHex: {
         bundleId: plan.kit.bundledProfile.bundleId,
         path: path.basename(plan.kit.bundledProfile.romPath),
+        destination: plan.kit.bundledProfile.romPath,
       },
       ...(plan.kit.bundledProfile.listingPath !== undefined
         ? {
             listing: {
               bundleId: plan.kit.bundledProfile.bundleId,
               path: path.basename(plan.kit.bundledProfile.listingPath),
+              destination: plan.kit.bundledProfile.listingPath,
             },
           }
         : {}),
@@ -146,40 +139,28 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
 
   if (plan.kit.platform === 'tec1') {
     const base = createTec1Defaults(plan.kit.appStart);
-    if (plan.bundledMon1b !== undefined) {
-      const sourceRoots = [
-        'src',
-        ...(plan.bundledMon1b.listingRelativePath !== undefined ? ['roms/tec1/mon1b'] : []),
-      ];
-      targetConfig.tec1 = {
-        ...base,
-        romHex: plan.bundledMon1b.romRelativePath,
-        ...(plan.bundledMon1b.listingRelativePath !== undefined
-          ? { extraListings: [plan.bundledMon1b.listingRelativePath] }
-          : {}),
-        sourceRoots,
-      };
-    } else {
-      targetConfig.tec1 = base;
-    }
+    targetConfig.tec1 = plan.kit.bundledProfile !== undefined
+      ? {
+          ...base,
+          romHex: plan.kit.bundledProfile.romPath,
+          ...(plan.kit.bundledProfile.listingPath !== undefined
+            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+            : {}),
+          sourceRoots: plan.kit.bundledProfile.sourceRoots,
+        }
+      : base;
   } else if (plan.kit.platform === 'tec1g') {
     const base = createTec1gDefaults(plan.kit.appStart);
-    if (plan.bundledMon3 !== undefined) {
-      const sourceRoots = [
-        'src',
-        ...(plan.bundledMon3.listingRelativePath !== undefined ? ['roms/tec1g/mon3'] : []),
-      ];
-      targetConfig.tec1g = {
-        ...base,
-        romHex: plan.bundledMon3.romRelativePath,
-        ...(plan.bundledMon3.listingRelativePath !== undefined
-          ? { extraListings: [plan.bundledMon3.listingRelativePath] }
-          : {}),
-        sourceRoots,
-      };
-    } else {
-      targetConfig.tec1g = base;
-    }
+    targetConfig.tec1g = plan.kit.bundledProfile !== undefined
+      ? {
+          ...base,
+          romHex: plan.kit.bundledProfile.romPath,
+          ...(plan.kit.bundledProfile.listingPath !== undefined
+            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+            : {}),
+          sourceRoots: plan.kit.bundledProfile.sourceRoots,
+        }
+      : base;
   } else {
     targetConfig.simple = createSimpleDefaults();
   }
@@ -249,34 +230,23 @@ export async function scaffoldProject(
     return false;
   }
 
-  let scaffoldPlan = plan;
-
-  if (scaffoldPlan !== undefined && extensionUri !== undefined && scaffoldPlan.kit.bundledProfile !== undefined) {
-    if (scaffoldPlan.kit.bundledProfile.bundleRel === BUNDLED_MON3_V1_REL) {
-      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
-      if (mat.ok) {
-        scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
-      } else {
-        void vscode.window.showWarningMessage(
-          `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
-        );
-      }
-    } else if (scaffoldPlan.kit.bundledProfile.bundleRel === BUNDLED_MON1B_V1_REL) {
-      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON1B_V1_REL);
-      if (mat.ok) {
-        scaffoldPlan = { ...scaffoldPlan, bundledMon1b: mat };
-      } else {
-        void vscode.window.showWarningMessage(
-          `Debug80: Could not copy bundled MON-1B ROM (${mat.reason}). You can add romHex manually in debug80.json.`
-        );
-      }
+  if (plan !== undefined && plan.kit.bundledProfile !== undefined) {
+    const materializeResult = materializeBundledRom(
+      extensionUri ?? vscode.Uri.file(process.cwd()),
+      workspaceRoot,
+      plan.kit.bundledProfile.bundleRel
+    );
+    if (!materializeResult.ok) {
+      void vscode.window.showWarningMessage(
+        `Debug80: Could not copy bundled ${plan.kit.label} ROM (${materializeResult.reason}). You can add romHex manually in debug80.json.`
+      );
     }
   }
 
   ensureDirExists(
-    path.join(workspaceRoot, path.dirname(scaffoldPlan?.sourceFile ?? inferred.sourceFile))
+    path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile))
   );
-  ensureDirExists(path.join(workspaceRoot, scaffoldPlan?.outputDir ?? inferred.outputDir));
+  ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
   ensureDirExists(vscodeDir);
   if (includeLaunch) {
     ensureDirExists(vscodeDir);
@@ -285,30 +255,30 @@ export async function scaffoldProject(
   let created = false;
 
   if (!configExists) {
-    if (scaffoldPlan === undefined) {
+    if (plan === undefined) {
       return false;
     }
 
-    const defaultConfig = createDefaultProjectConfig(scaffoldPlan);
+    const defaultConfig = createDefaultProjectConfig(plan);
 
     try {
-      if (scaffoldPlan.starterFile !== undefined) {
-        const starterPath = path.join(workspaceRoot, scaffoldPlan.starterFile.path);
+      if (plan.starterFile !== undefined) {
+        const starterPath = path.join(workspaceRoot, plan.starterFile.path);
         ensureDirExists(path.dirname(starterPath));
         if (!fs.existsSync(starterPath)) {
           fs.writeFileSync(
             starterPath,
             createStarterSourceContent(
               extensionUri ?? vscode.Uri.file(process.cwd()),
-              scaffoldPlan.kit,
-              scaffoldPlan.starterLanguage ?? 'asm'
+              plan.kit,
+              plan.starterLanguage ?? 'asm'
             )
           );
         }
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created ${scaffoldPlan.kit.label} project in debug80.json targeting ${scaffoldPlan.sourceFile}.`
+        `Debug80: Created ${plan.kit.label} project in debug80.json targeting ${plan.sourceFile}.`
       );
       created = true;
     } catch (err) {

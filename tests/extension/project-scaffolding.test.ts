@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const { showQuickPick, showInputBox, showInformationMessage, showErrorMessage } = vi.hoisted(
   () => ({
@@ -8,6 +11,15 @@ const { showQuickPick, showInputBox, showInformationMessage, showErrorMessage } 
     showErrorMessage: vi.fn(),
   })
 );
+
+function defaultExistsSync(candidate: string): boolean {
+  const normalized = candidate.replace(/\\/g, '/');
+  return (
+    !normalized.endsWith('/debug80.json') &&
+    !normalized.endsWith('/.vscode/debug80.json') &&
+    !normalized.endsWith('/.debug80.json')
+  );
+}
 
 import {
   createDefaultProjectConfig,
@@ -19,6 +31,15 @@ import { DEBUG80_PROJECT_VERSION } from '../../src/extension/project-config';
 import { getProjectKitById } from '../../src/extension/project-kits';
 
 vi.mock('vscode', () => ({
+  Uri: {
+    file: (fsPath: string) => ({ fsPath }),
+    joinPath: (...segments: Array<{ fsPath?: string } | string>) => {
+      const parts = segments.map((segment) =>
+        typeof segment === 'string' ? segment : segment.fsPath ?? ''
+      );
+      return { fsPath: path.join(...parts) };
+    },
+  },
   window: {
     showQuickPick,
     showInputBox,
@@ -31,14 +52,7 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return {
     ...actual,
-    existsSync: vi.fn((candidate: string) => {
-      const normalized = candidate.replace(/\\/g, '/');
-      return (
-        !normalized.endsWith('/debug80.json') &&
-        !normalized.endsWith('/.vscode/debug80.json') &&
-        !normalized.endsWith('/.debug80.json')
-      );
-    }),
+    existsSync: vi.fn(defaultExistsSync),
     writeFileSync: vi.fn(),
   };
 });
@@ -65,6 +79,7 @@ vi.mock('../../src/extension/project-config', async () => {
 describe('project-scaffolding helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
   });
 
   function kit(id: Parameters<typeof getProjectKitById>[0]) {
@@ -167,19 +182,13 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
-  it('builds a tec1 mon1b profile kit config when scaffolding for TEC-1', () => {
+  it('builds a tec1 mon1b profile kit config with bundled asset refs', () => {
     const config = createDefaultProjectConfig({
       kit: kit('tec1/mon1b'),
       targetName: 'app',
       sourceFile: 'src/main.asm',
       outputDir: 'build',
       artifactBase: 'main',
-      bundledMon1b: {
-        ok: true,
-        destinationRelative: 'roms/tec1/mon1b',
-        romRelativePath: 'roms/tec1/mon1b/mon-1b.bin',
-        listingRelativePath: 'roms/tec1/mon1b/mon-1b.lst',
-      },
     });
 
     expect(config).toEqual({
@@ -188,13 +197,22 @@ describe('project-scaffolding helpers', () => {
       defaultProfile: 'mon1b',
       defaultTarget: 'app',
       profiles: {
-        mon1b: expect.objectContaining({
+        mon1b: {
           platform: 'tec1',
-          bundledAssets: expect.objectContaining({
-            romHex: expect.objectContaining({ bundleId: 'tec1/mon1b/v1', path: 'mon-1b.bin' }),
-            listing: expect.objectContaining({ bundleId: 'tec1/mon1b/v1', path: 'mon-1b.lst' }),
-          }),
-        }),
+          description: 'TEC-1 monitor-first profile with user code at 0x0800.',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.bin',
+              destination: 'roms/tec1/mon1b/mon-1b.bin',
+            },
+            listing: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.lst',
+              destination: 'roms/tec1/mon1b/mon-1b.lst',
+            },
+          },
+        },
       },
       targets: {
         app: {
@@ -219,7 +237,7 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
-  it('builds a tec1 classic-2k profile kit config when scaffolding for TEC-1', () => {
+  it('builds a tec1 classic-2k profile kit config without bundled asset refs', () => {
     const config = createDefaultProjectConfig({
       kit: kit('tec1/classic-2k'),
       targetName: 'app',
@@ -259,49 +277,13 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
-  it('does not pull MON-1B bundle fields into classic-2k scaffolding', async () => {
-    const fs = await import('fs');
-    const writeFileSync = vi.mocked(fs.writeFileSync);
-
-    showQuickPick.mockResolvedValueOnce({ kit: kit('tec1/classic-2k') }).mockResolvedValueOnce({
-      choice: { kind: 'starter', language: 'asm' },
-    });
-    showInputBox.mockResolvedValueOnce('app');
-
-    const created = await scaffoldProject(
-      { name: 'demo', uri: { fsPath: '/workspace/demo' }, index: 0 } as never,
-      false
-    );
-
-    expect(created).toBe(true);
-
-    const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
-      String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
-    );
-    expect(configWrite).toBeDefined();
-
-    const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
-      targets?: Record<string, { tec1?: Record<string, unknown> }>;
-    };
-    expect(writtenConfig.targets?.app?.tec1).toBeDefined();
-    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('romHex');
-    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('extraListings');
-    expect(writtenConfig.targets?.app?.tec1).not.toHaveProperty('sourceRoots');
-  });
-
-  it('builds a tec1g mon3 profile kit config when scaffolding for TEC-1G', () => {
+  it('builds a tec1g mon3 profile kit config with bundled asset refs', () => {
     const config = createDefaultProjectConfig({
       kit: kit('tec1g/mon3'),
       targetName: 'app',
       sourceFile: 'src/main.asm',
       outputDir: 'build',
       artifactBase: 'main',
-      bundledMon3: {
-        ok: true,
-        destinationRelative: 'roms/tec1g/mon3',
-        romRelativePath: 'roms/tec1g/mon3/mon3.bin',
-        listingRelativePath: 'roms/tec1g/mon3/mon3.lst',
-      },
     });
 
     expect(config).toEqual({
@@ -310,13 +292,22 @@ describe('project-scaffolding helpers', () => {
       defaultProfile: 'mon3',
       defaultTarget: 'app',
       profiles: {
-        mon3: expect.objectContaining({
+        mon3: {
           platform: 'tec1g',
-          bundledAssets: expect.objectContaining({
-            romHex: expect.objectContaining({ bundleId: 'tec1g/mon3/v1', path: 'mon3.bin' }),
-            listing: expect.objectContaining({ bundleId: 'tec1g/mon3/v1', path: 'mon3.lst' }),
-          }),
-        }),
+          description: 'TEC-1G monitor-first profile with user code at 0x4000.',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.bin',
+              destination: 'roms/tec1g/mon3/mon3.bin',
+            },
+            listing: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.lst',
+              destination: 'roms/tec1g/mon3/mon3.lst',
+            },
+          },
+        },
       },
       targets: {
         app: {
@@ -354,55 +345,151 @@ describe('project-scaffolding helpers', () => {
     expect(showInputBox).not.toHaveBeenCalled();
   });
 
-  it('writes a tec1g config after choosing a profile kit, target name, and starter source', async () => {
+  it('writes a tec1g config and materializes MON-3 bundle files during scaffold', async () => {
     const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
     const writeFileSync = vi.mocked(fs.writeFileSync);
+    const existsSync = vi.mocked(fs.existsSync);
 
-    showQuickPick.mockResolvedValueOnce({ kit: kit('tec1g/mon3') }).mockResolvedValueOnce({
-      choice: { kind: 'starter', language: 'asm' },
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = candidate.replace(/\\/g, '/');
+      if (
+        normalized.endsWith('/debug80.json') ||
+        normalized.endsWith('/.vscode/debug80.json') ||
+        normalized.endsWith('/.debug80.json')
+      ) {
+        return false;
+      }
+      if (normalized.includes('/resources/bundles/')) {
+        return true;
+      }
+      return false;
     });
-    showInputBox.mockResolvedValueOnce('app');
 
-    const created = await scaffoldProject(
-      { name: 'demo', uri: { fsPath: '/workspace/demo' }, index: 0 } as never,
-      false
-    );
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-scaffold-'));
+    try {
+      showQuickPick.mockResolvedValueOnce({ kit: kit('tec1g/mon3') }).mockResolvedValueOnce({
+        choice: { kind: 'starter', language: 'asm' },
+      });
+      showInputBox.mockResolvedValueOnce('app');
 
-    expect(created).toBe(true);
-    expect(showQuickPick).toHaveBeenCalledTimes(2);
-    expect(showInputBox).toHaveBeenCalledOnce();
-    expect(writeFileSync).toHaveBeenCalled();
-    expect(
-      writeFileSync.mock.calls.some(([filePath]) =>
-        String(filePath).replace(/\\/g, '/').endsWith('/.vscode/settings.json')
-      )
-    ).toBe(false);
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false
+      );
 
-    const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
-      String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
-    );
-    expect(configWrite).toBeDefined();
+      expect(created).toBe(true);
+      expect(showQuickPick).toHaveBeenCalledTimes(2);
+      expect(showInputBox).toHaveBeenCalledOnce();
+      expect(writeFileSync).toHaveBeenCalled();
 
-    const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
-      projectVersion?: number;
-      projectPlatform?: string;
-      defaultProfile?: string;
-      targets?: Record<string, { platform?: string; profile?: string; tec1g?: Record<string, unknown> }>;
-    };
-    expect(writtenConfig.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
-    expect(writtenConfig.projectPlatform).toBe('tec1g');
-    expect(writtenConfig.defaultProfile).toBe('mon3');
-    expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
-    expect(writtenConfig.targets?.app?.profile).toBe('mon3');
-    expect(writtenConfig.targets?.app?.tec1g).toEqual(
-      expect.objectContaining({
-        appStart: 0x4000,
-        entry: 0,
-      })
-    );
+      const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      expect(configWrite).toBeDefined();
 
-    expect(showInformationMessage).toHaveBeenCalledWith(
-      'Debug80: Created TEC-1G / MON-3 project in debug80.json targeting src/main.asm.'
-    );
+      const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+        projectVersion?: number;
+        projectPlatform?: string;
+        defaultProfile?: string;
+        profiles?: Record<string, { platform?: string; bundledAssets?: Record<string, { bundleId?: string; destination?: string }> }>;
+        targets?: Record<string, { platform?: string; profile?: string; tec1g?: Record<string, unknown> }>;
+      };
+      expect(writtenConfig.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
+      expect(writtenConfig.projectPlatform).toBe('tec1g');
+      expect(writtenConfig.defaultProfile).toBe('mon3');
+      expect(writtenConfig.profiles?.mon3?.platform).toBe('tec1g');
+      expect(writtenConfig.profiles?.mon3?.bundledAssets?.romHex?.bundleId).toBe('tec1g/mon3/v1');
+      expect(writtenConfig.profiles?.mon3?.bundledAssets?.romHex?.destination).toBe(
+        'roms/tec1g/mon3/mon3.bin'
+      );
+      expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
+      expect(writtenConfig.targets?.app?.profile).toBe('mon3');
+      expect(writtenConfig.targets?.app?.tec1g).toEqual(
+        expect.objectContaining({
+          appStart: 0x4000,
+          entry: 0,
+          romHex: 'roms/tec1g/mon3/mon3.bin',
+          extraListings: ['roms/tec1g/mon3/mon3.lst'],
+        })
+      );
+
+      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1g/mon3/mon3.bin'))).toBe(true);
+      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1g/mon3/mon3.lst'))).toBe(true);
+      expect(showInformationMessage).toHaveBeenCalledWith(
+        'Debug80: Created TEC-1G / MON-3 project in debug80.json targeting src/main.asm.'
+      );
+    } finally {
+      vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('writes a tec1 config and materializes MON-1B bundle files during scaffold', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+    const existsSync = vi.mocked(fs.existsSync);
+
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = candidate.replace(/\\/g, '/');
+      if (
+        normalized.endsWith('/debug80.json') ||
+        normalized.endsWith('/.vscode/debug80.json') ||
+        normalized.endsWith('/.debug80.json')
+      ) {
+        return false;
+      }
+      if (normalized.includes('/resources/bundles/')) {
+        return true;
+      }
+      return false;
+    });
+
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-scaffold-'));
+    try {
+      showQuickPick.mockResolvedValueOnce({ kit: kit('tec1/mon1b') }).mockResolvedValueOnce({
+        choice: { kind: 'starter', language: 'asm' },
+      });
+      showInputBox.mockResolvedValueOnce('app');
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false
+      );
+
+      expect(created).toBe(true);
+      expect(showQuickPick).toHaveBeenCalledTimes(2);
+      expect(showInputBox).toHaveBeenCalledOnce();
+      expect(writeFileSync).toHaveBeenCalled();
+
+      const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      expect(configWrite).toBeDefined();
+
+      const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+        projectPlatform?: string;
+        defaultProfile?: string;
+        targets?: Record<string, { tec1?: Record<string, unknown> }>;
+      };
+      expect(writtenConfig.projectPlatform).toBe('tec1');
+      expect(writtenConfig.defaultProfile).toBe('mon1b');
+      expect(writtenConfig.targets?.app?.tec1).toEqual(
+        expect.objectContaining({
+          romHex: 'roms/tec1/mon1b/mon-1b.bin',
+          extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
+        })
+      );
+
+      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1/mon1b/mon-1b.bin'))).toBe(true);
+      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1/mon1b/mon-1b.lst'))).toBe(true);
+      expect(showInformationMessage).toHaveBeenCalledWith(
+        'Debug80: Created TEC-1 / MON-1B project in debug80.json targeting src/main.asm.'
+      );
+    } finally {
+      vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
