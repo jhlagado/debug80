@@ -141,9 +141,10 @@ To make a folder debuggable quickly in VS Code:
 1) Press `Cmd-Shift-P` (macOS) or `Ctrl-Shift-P` (Windows/Linux) to open the Command Palette.
 2) Type “Debug80: Create Project (config + launch)” and press Enter.
 
-This command scaffolds a Simple-platform config:
+This command scaffolds a built-in profile kit:
 - Creates `.vscode/debug80.json` with a default target (tries `src/main.asm`, or the first `.asm` it finds).
 - Creates `.vscode/launch.json` with a Debug80 launch configuration.
+- Built-in kits cover Simple/default, TEC-1/MON-1B, TEC-1/Classic 2K, and TEC-1G/MON-3.
 - It does not generate `.vscode/settings.json`; the extension already contributes the relevant file associations.
 
 After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as needed, then press F5.
@@ -155,7 +156,7 @@ To target a different platform (e.g., `tec1`):
 
 ## Z80 workflow
 
-1) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode/debug80.json` (defaults to `targets.app` with `src/main.asm`) and `.vscode/launch.json`.
+1) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode/debug80.json` (defaults to `targets.app` with `src/main.asm`) and `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
 2) Start debugging with the generated debug80 launch; the adapter reads `.vscode/debug80.json`, runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
 3) Set breakpoints in `.asm` files (preferred). Listing breakpoints in `.lst` still work as a fallback.
 4) Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
@@ -170,7 +171,7 @@ Notes:
 For external repos:
 1) Open the external project as your workspace (e.g., `caverns80`).
 2) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode`.
-3) Update `platform` and `sourceFile` to match the project and platform (Simple/TEC-1).
+3) Update the selected profile kit and `sourceFile` to match the project and platform (Simple/TEC-1).
 4) Press F5.
 
 This keeps example configs inside Debug80 while letting external projects own their debug setup.
