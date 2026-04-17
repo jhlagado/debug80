@@ -102,11 +102,7 @@ describe('BreakpointManager', () => {
     expect(applied[0]?.verified).toBe(true);
   });
 
-<<<<<<< HEAD
   it('does not fall back to .source.asm when resolving breakpoints', () => {
-=======
-  it('does not fall back to .source.asm when resolving breakpoints', () => {
->>>>>>> b4f8359 (Remove alternate source fallback)
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
