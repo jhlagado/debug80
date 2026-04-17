@@ -102,7 +102,7 @@ describe('BreakpointManager', () => {
     expect(applied[0]?.verified).toBe(true);
   });
 
-  it('falls back to .source.asm when resolving breakpoints', () => {
+  it('does not fall back to .source.asm when resolving breakpoints', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
@@ -117,10 +117,10 @@ describe('BreakpointManager', () => {
     const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 42 }]);
 
     expect(applied.length).toBe(1);
-    expect(applied[0]?.verified).toBe(true);
+    expect(applied[0]?.verified).toBe(false);
   });
 
-  it('falls back to .source.z80 when resolving breakpoints', () => {
+  it('does not fall back to .source.z80 when resolving breakpoints', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map());
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
@@ -135,7 +135,7 @@ describe('BreakpointManager', () => {
     const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
 
     expect(applied.length).toBe(1);
-    expect(applied[0]?.verified).toBe(true);
+    expect(applied[0]?.verified).toBe(false);
   });
 
   it('falls back by basename when mapped path differs', () => {
