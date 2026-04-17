@@ -11,9 +11,7 @@ import {
   findProjectConfigPath,
   listProjectSourceFiles,
 } from './project-config';
-import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
-  TEC1G_APP_START_DEFAULT,
   TEC1G_RAM_END,
   TEC1G_RAM_START,
   TEC1G_ROM0_END,
@@ -22,30 +20,23 @@ import {
   TEC1G_ROM1_START,
 } from '../platforms/tec1g/constants';
 import {
-  BUNDLED_MON1B_V1_REL,
-  BUNDLED_MON3_V1_REL,
-  materializeBundledRom,
-  type MaterializeBundledRomResult,
-} from './bundle-materialize';
-
-type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
-
-type StarterLanguage = 'asm' | 'zax';
+  getProjectKitChoices,
+  readProjectKitStarterTemplate,
+  type ProjectKit,
+  type ScaffoldPlatform,
+  type StarterLanguage,
+} from './project-kits';
 
 type ScaffoldPlan = {
+  kit: ProjectKit;
   targetName: string;
-  platform: ScaffoldPlatform;
   sourceFile: string;
   outputDir: string;
   artifactBase: string;
+  starterLanguage?: StarterLanguage;
   starterFile?: {
     path: string;
-    content: string;
   };
-  /** Present when bundled MON3 was copied into the workspace during scaffold */
-  bundledMon3?: Extract<MaterializeBundledRomResult, { ok: true }>;
-  /** Present when bundled MON-1B was copied into the workspace during scaffold */
-  bundledMon1b?: Extract<MaterializeBundledRomResult, { ok: true }>;
 };
 
 type SourceChoice =
@@ -63,25 +54,25 @@ function createSimpleDefaults(): Record<string, unknown> {
   };
 }
 
-function createTec1Defaults(): Record<string, unknown> {
+function createTec1Defaults(appStart: number): Record<string, unknown> {
   return {
     regions: [
       { start: 0, end: 2047, kind: 'rom' },
       { start: 2048, end: 4095, kind: 'ram' },
     ],
-    appStart: TEC1_APP_START_DEFAULT,
+    appStart,
     entry: 0,
   };
 }
 
-function createTec1gDefaults(): Record<string, unknown> {
+function createTec1gDefaults(appStart: number): Record<string, unknown> {
   return {
     regions: [
       { start: TEC1G_ROM0_START, end: TEC1G_ROM0_END, kind: 'rom' },
       { start: TEC1G_RAM_START, end: TEC1G_RAM_END, kind: 'ram' },
       { start: TEC1G_ROM1_START, end: TEC1G_ROM1_END, kind: 'rom' },
     ],
-    appStart: TEC1G_APP_START_DEFAULT,
+    appStart,
     entry: 0,
   };
 }
@@ -96,102 +87,112 @@ function platformDisplayName(platform: ScaffoldPlatform): string {
   return 'Simple';
 }
 
-export function createStarterSourceContent(language: StarterLanguage): string {
-  if (language === 'zax') {
-    return ['; Debug80 starter (ZAX)', '', 'start:', '    nop', '    jr start', ''].join('\n');
-  }
-
-  return ['; Debug80 starter (ASM)', '', 'start:', '    nop', '    jr start', ''].join('\n');
+export function createStarterSourceContent(
+  extensionUri: vscode.Uri,
+  kit: ProjectKit,
+  language: StarterLanguage
+): string {
+  return readProjectKitStarterTemplate(extensionUri, kit, language);
 }
 
 export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   projectVersion: typeof DEBUG80_PROJECT_VERSION;
   projectPlatform: ScaffoldPlatform;
   defaultTarget: string;
+  defaultProfile: string;
+  profiles: Record<string, Record<string, unknown>>;
   targets: Record<string, Record<string, unknown>>;
 } {
+  const profileConfig: Record<string, unknown> = {
+    platform: plan.kit.platform,
+  };
+  if (plan.kit.description.length > 0) {
+    profileConfig.description = plan.kit.description;
+  }
+  if (plan.kit.bundledProfile !== undefined) {
+    profileConfig.bundledAssets = {
+      romHex: {
+        bundleId: plan.kit.bundledProfile.bundleId,
+        path: path.basename(plan.kit.bundledProfile.romPath),
+        destination: plan.kit.bundledProfile.romPath,
+      },
+      ...(plan.kit.bundledProfile.listingPath !== undefined
+        ? {
+            listing: {
+              bundleId: plan.kit.bundledProfile.bundleId,
+              path: path.basename(plan.kit.bundledProfile.listingPath),
+              destination: plan.kit.bundledProfile.listingPath,
+            },
+          }
+        : {}),
+    };
+  }
+
   const targetConfig: Record<string, unknown> = {
     sourceFile: plan.sourceFile,
     outputDir: plan.outputDir,
     artifactBase: plan.artifactBase,
-    platform: plan.platform,
+    platform: plan.kit.platform,
+    profile: plan.kit.profileName,
   };
 
-  if (plan.platform === 'tec1') {
-    const base = createTec1Defaults();
-    if (plan.bundledMon1b !== undefined) {
-      const sourceRoots = [
-        'src',
-        ...(plan.bundledMon1b.listingRelativePath !== undefined ? ['roms/tec1/mon1b'] : []),
-      ];
-      targetConfig.tec1 = {
-        ...base,
-        romHex: plan.bundledMon1b.romRelativePath,
-        ...(plan.bundledMon1b.listingRelativePath !== undefined
-          ? { extraListings: [plan.bundledMon1b.listingRelativePath] }
-          : {}),
-        sourceRoots,
-      };
-    } else {
-      targetConfig.tec1 = base;
-    }
-  } else if (plan.platform === 'tec1g') {
-    const base = createTec1gDefaults();
-    if (plan.bundledMon3 !== undefined) {
-      const sourceRoots = [
-        'src',
-        ...(plan.bundledMon3.listingRelativePath !== undefined ? ['roms/tec1g/mon3'] : []),
-      ];
-      targetConfig.tec1g = {
-        ...base,
-        romHex: plan.bundledMon3.romRelativePath,
-        ...(plan.bundledMon3.listingRelativePath !== undefined
-          ? { extraListings: [plan.bundledMon3.listingRelativePath] }
-          : {}),
-        sourceRoots,
-      };
-    } else {
-      targetConfig.tec1g = base;
-    }
+  if (plan.kit.platform === 'tec1') {
+    const base = createTec1Defaults(plan.kit.appStart);
+    targetConfig.tec1 = plan.kit.bundledProfile !== undefined
+      ? {
+          ...base,
+          romHex: plan.kit.bundledProfile.romPath,
+          ...(plan.kit.bundledProfile.listingPath !== undefined
+            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+            : {}),
+          sourceRoots: plan.kit.bundledProfile.sourceRoots,
+        }
+      : base;
+  } else if (plan.kit.platform === 'tec1g') {
+    const base = createTec1gDefaults(plan.kit.appStart);
+    targetConfig.tec1g = plan.kit.bundledProfile !== undefined
+      ? {
+          ...base,
+          romHex: plan.kit.bundledProfile.romPath,
+          ...(plan.kit.bundledProfile.listingPath !== undefined
+            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+            : {}),
+          sourceRoots: plan.kit.bundledProfile.sourceRoots,
+        }
+      : base;
   } else {
     targetConfig.simple = createSimpleDefaults();
   }
 
   return {
     projectVersion: DEBUG80_PROJECT_VERSION,
-    projectPlatform: plan.platform,
+    projectPlatform: plan.kit.platform,
+    defaultProfile: plan.kit.profileName,
     defaultTarget: plan.targetName,
+    profiles: {
+      [plan.kit.profileName]: profileConfig,
+    },
     targets: {
       [plan.targetName]: targetConfig,
     },
   };
 }
 
-async function choosePlatform(): Promise<ScaffoldPlatform | undefined> {
-  const items: Array<vscode.QuickPickItem & { platform: ScaffoldPlatform }> = [
-    {
-      label: 'Simple',
-      description: 'Generic Debug80 memory-map platform',
-      platform: 'simple',
-    },
-    {
-      label: 'TEC-1',
-      description: 'Classic TEC-1 keypad/LCD platform',
-      platform: 'tec1',
-    },
-    {
-      label: 'TEC-1G',
-      description: 'TEC-1G LCD/GLCD/matrix platform',
-      platform: 'tec1g',
-    },
-  ];
+async function chooseProjectKit(preselectedPlatform?: string): Promise<ProjectKit | undefined> {
+  const items = getProjectKitChoices(preselectedPlatform);
+  if (items.length === 1) {
+    return items[0]?.kit;
+  }
 
   const picked = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Choose the platform for this Debug80 project',
+    placeHolder:
+      preselectedPlatform !== undefined && preselectedPlatform.trim().length > 0
+        ? `Choose a profile kit for ${platformDisplayName(preselectedPlatform.trim().toLowerCase() as ScaffoldPlatform)}`
+        : 'Choose the profile kit for this Debug80 project',
     matchOnDescription: true,
   });
 
-  return picked?.platform;
+  return picked?.kit;
 }
 
 export function createDefaultLaunchConfig(): Record<string, unknown> {
@@ -220,40 +221,18 @@ export async function scaffoldProject(
   const configExists = findProjectConfigPath(folder) !== undefined;
 
   const inferred = inferDefaultTarget(workspaceRoot);
-  const plan = configExists ? undefined : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
+  const plan = configExists
+    ? undefined
+    : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
 
   if (!configExists && plan === undefined) {
     return false;
   }
 
-  let scaffoldPlan = plan;
-
-  if (scaffoldPlan !== undefined && extensionUri !== undefined) {
-    if (scaffoldPlan.platform === 'tec1g') {
-      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON3_V1_REL);
-      if (mat.ok) {
-        scaffoldPlan = { ...scaffoldPlan, bundledMon3: mat };
-      } else {
-        void vscode.window.showWarningMessage(
-          `Debug80: Could not copy bundled MON3 ROM (${mat.reason}). You can add romHex manually in debug80.json.`
-        );
-      }
-    } else if (scaffoldPlan.platform === 'tec1') {
-      const mat = materializeBundledRom(extensionUri, workspaceRoot, BUNDLED_MON1B_V1_REL);
-      if (mat.ok) {
-        scaffoldPlan = { ...scaffoldPlan, bundledMon1b: mat };
-      } else {
-        void vscode.window.showWarningMessage(
-          `Debug80: Could not copy bundled MON-1B ROM (${mat.reason}). You can add romHex manually in debug80.json.`
-        );
-      }
-    }
-  }
-
   ensureDirExists(
-    path.join(workspaceRoot, path.dirname(scaffoldPlan?.sourceFile ?? inferred.sourceFile))
+    path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile))
   );
-  ensureDirExists(path.join(workspaceRoot, scaffoldPlan?.outputDir ?? inferred.outputDir));
+  ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
   ensureDirExists(vscodeDir);
   if (includeLaunch) {
     ensureDirExists(vscodeDir);
@@ -262,23 +241,30 @@ export async function scaffoldProject(
   let created = false;
 
   if (!configExists) {
-    if (scaffoldPlan === undefined) {
+    if (plan === undefined) {
       return false;
     }
 
-    const defaultConfig = createDefaultProjectConfig(scaffoldPlan);
+    const defaultConfig = createDefaultProjectConfig(plan);
 
     try {
-      if (scaffoldPlan.starterFile !== undefined) {
-        const starterPath = path.join(workspaceRoot, scaffoldPlan.starterFile.path);
+      if (plan.starterFile !== undefined) {
+        const starterPath = path.join(workspaceRoot, plan.starterFile.path);
         ensureDirExists(path.dirname(starterPath));
         if (!fs.existsSync(starterPath)) {
-          fs.writeFileSync(starterPath, scaffoldPlan.starterFile.content);
+          fs.writeFileSync(
+            starterPath,
+            createStarterSourceContent(
+              extensionUri ?? vscode.Uri.file(process.cwd()),
+              plan.kit,
+              plan.starterLanguage ?? 'asm'
+            )
+          );
         }
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in debug80.json targeting ${scaffoldPlan.sourceFile}.`
+        `Debug80: Created ${plan.kit.label} project in debug80.json targeting ${plan.sourceFile}.`
       );
       created = true;
     } catch (err) {
@@ -321,19 +307,8 @@ async function buildScaffoldPlan(
   inferred: { sourceFile: string; outputDir: string; artifactBase: string },
   preselectedPlatform?: string
 ): Promise<ScaffoldPlan | undefined> {
-  const resolvedPlatform: ScaffoldPlatform | undefined =
-    preselectedPlatform === 'tec1' || preselectedPlatform === 'tec1g' || preselectedPlatform === 'simple'
-      ? preselectedPlatform
-      : undefined;
-
-  // When the platform comes from the webview UI, skip all interactive pickers
-  // and build a plan from defaults immediately.
-  if (resolvedPlatform !== undefined) {
-    return buildDefaultScaffoldPlan(folder, inferred, resolvedPlatform);
-  }
-
-  const platform = await choosePlatform();
-  if (platform === undefined) {
+  const kit = await chooseProjectKit(preselectedPlatform);
+  if (kit === undefined) {
     return undefined;
   }
 
@@ -359,8 +334,8 @@ async function buildScaffoldPlan(
   if (choice.kind === 'existing') {
     const sourceFile = choice.sourceFile;
     return {
+      kit,
       targetName,
-      platform,
       sourceFile,
       outputDir: inferred.outputDir,
       artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
@@ -369,46 +344,15 @@ async function buildScaffoldPlan(
 
   const sourceFile = choice.language === 'zax' ? 'src/main.zax' : 'src/main.asm';
   return {
+    kit,
     targetName,
-    platform,
     sourceFile,
     outputDir: inferred.outputDir,
     artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
+    starterLanguage: choice.language,
     starterFile: {
       path: sourceFile,
-      content: createStarterSourceContent(choice.language),
     },
-  };
-}
-
-function buildDefaultScaffoldPlan(
-  folder: vscode.WorkspaceFolder,
-  inferred: { sourceFile: string; outputDir: string; artifactBase: string },
-  platform: ScaffoldPlatform
-): ScaffoldPlan {
-  const sourceFiles = listProjectSourceFiles(folder.uri.fsPath);
-  const inferredExists = sourceFiles.includes(inferred.sourceFile);
-  const sourceFile =
-    sourceFiles.length === 1
-      ? (sourceFiles[0] ?? inferred.sourceFile)
-      : inferredExists
-        ? inferred.sourceFile
-        : sourceFiles[0] ?? inferred.sourceFile;
-
-  const needsStarter = sourceFiles.length === 0;
-  const starterFile = needsStarter
-    ? { path: 'src/main.asm', content: createStarterSourceContent('asm') }
-    : undefined;
-  const resolvedSource = needsStarter ? 'src/main.asm' : sourceFile;
-
-  const baseName = path.basename(resolvedSource, path.extname(resolvedSource)) || inferred.artifactBase;
-  return {
-    targetName: baseName,
-    platform,
-    sourceFile: resolvedSource,
-    outputDir: inferred.outputDir,
-    artifactBase: baseName,
-    ...(starterFile !== undefined ? { starterFile } : {}),
   };
 }
 
