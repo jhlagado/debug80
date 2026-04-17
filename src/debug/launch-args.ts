@@ -435,13 +435,14 @@ export function populateFromConfig(
       merged.simple = simpleResolved;
     }
 
-    // For project-driven launches, treat debug80.json as the source of truth so
-    // the sidebar checkbox (setStopOnEntry) is not overridden by stale launch.json.
-    const preferProjectStopOnEntry =
-      typeof merged.projectConfig === 'string' && merged.projectConfig.length > 0;
-    const stopOnEntryResolved = preferProjectStopOnEntry
-      ? targetCfg?.stopOnEntry ?? cfg.stopOnEntry ?? args.stopOnEntry
-      : args.stopOnEntry ?? targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
+    // args.stopOnEntry carries the global session setting from the Debug80 panel
+    // (managed in PlatformViewProvider, not stored in debug80.json). It always
+    // takes priority. Fall back to the project config only when the launch was
+    // triggered without an explicit value (e.g. a raw launch.json with no panel).
+    const stopOnEntryResolved =
+      args.stopOnEntry !== undefined
+        ? args.stopOnEntry
+        : targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
     if (stopOnEntryResolved !== undefined) {
       merged.stopOnEntry = stopOnEntryResolved;
     }

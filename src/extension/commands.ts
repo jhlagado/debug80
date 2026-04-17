@@ -289,7 +289,8 @@ function resolveProjectFolderFromResource(
 
 async function startCurrentProjectDebugging(
   folder: vscode.WorkspaceFolder,
-  workspaceSelection: WorkspaceSelectionController
+  workspaceSelection: WorkspaceSelectionController,
+  stopOnEntry: boolean
 ): Promise<boolean> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -305,13 +306,15 @@ async function startCurrentProjectDebugging(
     request: 'launch',
     name: 'Debug80: Current Project',
     projectConfig,
+    stopOnEntry,
   });
 }
 
 async function maybeAutoStartSingleTargetForRootChange(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
-  targetSelection: ProjectTargetSelectionController
+  targetSelection: ProjectTargetSelectionController,
+  stopOnEntry: boolean
 ): Promise<string | undefined> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -335,7 +338,7 @@ async function maybeAutoStartSingleTargetForRootChange(
     await vscode.debug.stopDebugging(activeSession);
   }
 
-  const started = await startCurrentProjectDebugging(folder, workspaceSelection);
+  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry);
   if (!started) {
     return undefined;
   }
@@ -586,7 +589,7 @@ export function registerExtensionCommands({
         );
         return false;
       }
-      return startCurrentProjectDebugging(folder, workspaceSelection);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
     })
   );
 
@@ -607,7 +610,7 @@ export function registerExtensionCommands({
         await vscode.debug.stopDebugging(activeSession);
       }
 
-      return startCurrentProjectDebugging(folder, workspaceSelection);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
     })
   );
 
@@ -644,7 +647,7 @@ export function registerExtensionCommands({
             previousPlatform !== nextPlatform
           ) {
             await vscode.debug.stopDebugging(activeSession);
-            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
+            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
             restartedForRootChange = restarted;
             if (restarted) {
               void vscode.window.showInformationMessage(
@@ -659,7 +662,8 @@ export function registerExtensionCommands({
           : await maybeAutoStartSingleTargetForRootChange(
               folder,
               workspaceSelection,
-              targetSelection
+              targetSelection,
+              platformViewProvider.stopOnEntry
             );
         if (singleTarget !== undefined) {
           void vscode.window.showInformationMessage(
@@ -739,7 +743,7 @@ export function registerExtensionCommands({
         const activeSession = vscode.debug.activeDebugSession;
         if (activeSession?.type === 'z80' && target !== previousTarget) {
           await vscode.debug.stopDebugging(activeSession);
-          const restarted = await startCurrentProjectDebugging(folder, workspaceSelection);
+          const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
           if (restarted) {
             void vscode.window.showInformationMessage(
               `Debug80: Switched target to ${target} and restarted debugging.`
@@ -749,7 +753,7 @@ export function registerExtensionCommands({
         }
 
         if (activeSession?.type !== 'z80') {
-          const started = await startCurrentProjectDebugging(folder, workspaceSelection);
+          const started = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
           if (started) {
             void vscode.window.showInformationMessage(
               `Debug80: Selected target ${target} and started debugging.`
