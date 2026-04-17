@@ -20,13 +20,17 @@ import {
   listProjectTargetChoices,
   resolvePreferredTargetName,
 } from './project-target-selection';
-import { BUNDLED_MON3_V1_REL, materializeBundledRom } from './bundle-materialize';
+import {
+  BUNDLED_MON1B_V1_REL,
+  BUNDLED_MON3_V1_REL,
+  materializeBundledAsset,
+} from './bundle-materialize';
 import { scaffoldProject } from './project-scaffolding';
 import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
-import type { ProjectConfig } from '../debug/types';
+import type { BundledAssetReference, ProjectConfig } from '../debug/types';
 import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,
@@ -67,6 +71,11 @@ type ConfigureFieldId =
   | 'targetName'
   | 'outputDir'
   | 'artifactBase';
+
+type BundledAssetInstallPlan = {
+  label: string;
+  references: BundledAssetReference[];
+};
 
 function createSimplePlatformDefaults(): Record<string, unknown> {
   return {
@@ -378,6 +387,86 @@ function resolveSessionProjectConfigPath(session: vscode.DebugSession): string |
   return path.normalize(projectConfigRaw);
 }
 
+function normalizeBundledAssetInstallPlan(
+  label: string,
+  references: BundledAssetReference[]
+): BundledAssetInstallPlan | undefined {
+  const filtered = references.filter(
+    (reference) =>
+      typeof reference.bundleId === 'string' &&
+      reference.bundleId.trim().length > 0 &&
+      typeof reference.path === 'string' &&
+      reference.path.trim().length > 0
+  );
+  if (filtered.length === 0) {
+    return undefined;
+  }
+  return { label, references: filtered };
+}
+
+function resolveProjectBundledAssetInstallPlan(
+  config: ProjectConfig
+): BundledAssetInstallPlan | undefined {
+  const defaultProfileName =
+    typeof config.defaultProfile === 'string' && config.defaultProfile.trim().length > 0
+      ? config.defaultProfile.trim()
+      : undefined;
+  if (defaultProfileName !== undefined) {
+    const defaultProfile = config.profiles?.[defaultProfileName];
+    const profilePlan = normalizeBundledAssetInstallPlan(
+      `profile:${defaultProfileName}`,
+      Object.values(defaultProfile?.bundledAssets ?? {})
+    );
+    if (profilePlan !== undefined) {
+      return profilePlan;
+    }
+  }
+
+  const rootPlan = normalizeBundledAssetInstallPlan(
+    'bundledAssets',
+    Object.values(config.bundledAssets ?? {})
+  );
+  if (rootPlan !== undefined) {
+    return rootPlan;
+  }
+
+  const profileEntries = Object.entries(config.profiles ?? {}).filter(([, profile]) =>
+    Object.keys(profile?.bundledAssets ?? {}).length > 0
+  );
+  if (profileEntries.length === 1) {
+    const firstProfileEntry = profileEntries[0];
+    if (firstProfileEntry === undefined) {
+      return undefined;
+    }
+    const [profileName, profile] = firstProfileEntry;
+    return normalizeBundledAssetInstallPlan(
+      `profile:${profileName}`,
+      Object.values(profile?.bundledAssets ?? {})
+    );
+  }
+
+  return undefined;
+}
+
+function buildBundledAssetFallbackPlans(): BundledAssetInstallPlan[] {
+  return [
+    {
+      label: 'MON3 (TEC-1G)',
+      references: [
+        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.bin' },
+        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.lst' },
+      ],
+    },
+    {
+      label: 'MON-1B (TEC-1)',
+      references: [
+        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.bin' },
+        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.lst' },
+      ],
+    },
+  ];
+}
+
 export function registerExtensionCommands({
   context,
   platformViewProvider,
@@ -422,9 +511,33 @@ export function registerExtensionCommands({
       const folder = await workspaceSelection.resolveWorkspaceFolder({
         prompt: true,
         requireProject: false,
-        placeHolder: 'Select the workspace folder to install bundled MON3 ROM and listing',
+        placeHolder: 'Select the workspace folder to install bundled assets',
       });
       if (folder === undefined) {
+        return false;
+      }
+      const projectConfigPath = findProjectConfigPath(folder);
+      const projectConfig =
+        projectConfigPath !== undefined ? readProjectConfig(projectConfigPath) : undefined;
+      const projectPlan =
+        projectConfig !== undefined ? resolveProjectBundledAssetInstallPlan(projectConfig) : undefined;
+      let installPlan = projectPlan;
+      if (installPlan === undefined) {
+        const pick = await vscode.window.showQuickPick(
+          buildBundledAssetFallbackPlans().map((plan) => ({
+            label: plan.label,
+            plan,
+          })),
+          {
+            placeHolder: 'Select the bundled asset set to install',
+          }
+        );
+        installPlan = pick?.plan;
+      }
+      if (installPlan === undefined) {
+        void vscode.window.showErrorMessage(
+          'Debug80: No bundled asset references were available to install.'
+        );
         return false;
       }
       const pick = await vscode.window.showQuickPick(
@@ -437,24 +550,24 @@ export function registerExtensionCommands({
       if (pick === undefined) {
         return undefined;
       }
-      const result = materializeBundledRom(
-        context.extensionUri,
-        folder.uri.fsPath,
-        BUNDLED_MON3_V1_REL,
-        { overwrite: pick.value }
-      );
-      if (result.ok) {
-        const listingNote =
-          result.listingRelativePath !== undefined
-            ? ` Listing: ${result.listingRelativePath}.`
-            : '';
-        void vscode.window.showInformationMessage(
-          `Debug80: Installed bundled MON3 ROM at ${result.romRelativePath}.${listingNote}`
+      const installed: string[] = [];
+      for (const reference of installPlan.references) {
+        const result = materializeBundledAsset(
+          context.extensionUri,
+          folder.uri.fsPath,
+          reference,
+          { overwrite: pick.value }
         );
-        return true;
+        if (!result.ok) {
+          void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
+          return false;
+        }
+        installed.push(result.materializedRelativePath);
       }
-      void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
-      return false;
+      void vscode.window.showInformationMessage(
+        `Debug80: Installed bundled assets for ${installPlan.label}: ${installed.join(', ')}`
+      );
+      return true;
     })
   );
 
