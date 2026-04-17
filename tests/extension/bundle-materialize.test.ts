@@ -142,6 +142,88 @@ describe('bundle-materialize', () => {
     expect(fs.existsSync(path.join(workspaceRoot, 'assets', 'custom', 'payload.bin'))).toBe(true);
   });
 
+  it('rejects a bundled asset destination that escapes the workspace root', () => {
+    const workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-root-'));
+    tmpDirs.push(workspaceBase);
+    const workspaceRoot = path.join(workspaceBase, 'project');
+    fs.mkdirSync(workspaceRoot, { recursive: true });
+
+    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-escape-'));
+    tmpDirs.push(bundleRoot);
+    const rel = 'demo/escape/v1';
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+    fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0x01]));
+    fs.writeFileSync(
+      path.join(bundleDir, 'bundle.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: 'demo-escape',
+        version: '1',
+        platform: 'tec1g',
+        label: 'Escape',
+        files: [{ role: 'rom' as const, path: 'payload.bin' }],
+        workspaceLayout: { destination: 'roms/escape' },
+      })
+    );
+
+    const escapeTarget = path.resolve(workspaceRoot, '../../escape.bin');
+    fs.rmSync(escapeTarget, { force: true });
+
+    const result = materializeBundledAsset(vscode.Uri.file(bundleRoot), workspaceRoot, {
+      bundleId: rel,
+      path: 'payload.bin',
+      destination: '../../escape.bin',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toContain('escapes the workspace root');
+    expect(fs.existsSync(escapeTarget)).toBe(false);
+  });
+
+  it('rejects an absolute bundled asset destination path', () => {
+    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-abs-'));
+    tmpDirs.push(workspaceRoot);
+
+    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-abs-'));
+    tmpDirs.push(bundleRoot);
+    const rel = 'demo/abs/v1';
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+    fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0x02]));
+    fs.writeFileSync(
+      path.join(bundleDir, 'bundle.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: 'demo-abs',
+        version: '1',
+        platform: 'tec1g',
+        label: 'Absolute',
+        files: [{ role: 'rom' as const, path: 'payload.bin' }],
+        workspaceLayout: { destination: 'roms/abs' },
+      })
+    );
+
+    const absoluteTarget = path.resolve(os.tmpdir(), 'debug80-absolute.bin');
+    fs.rmSync(absoluteTarget, { force: true });
+
+    const result = materializeBundledAsset(vscode.Uri.file(bundleRoot), workspaceRoot, {
+      bundleId: rel,
+      path: 'payload.bin',
+      destination: absoluteTarget,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.reason).toContain('must be workspace-relative');
+    expect(fs.existsSync(absoluteTarget)).toBe(false);
+  });
+
   it('exposes bundled MON3 path constant for scaffold', () => {
     expect(BUNDLED_MON3_V1_REL).toBe('tec1g/mon3/v1');
   });

@@ -115,6 +115,35 @@ function resolveAssetDestination(
   );
 }
 
+function resolveWorkspaceDestination(
+  workspaceRoot: string,
+  destinationRelative: string
+): { ok: true; absolutePath: string; relativePath: string } | { ok: false; reason: string } {
+  const trimmed = destinationRelative.trim();
+  if (trimmed.length === 0) {
+    return { ok: false, reason: 'Bundled asset destination is empty' };
+  }
+
+  if (path.isAbsolute(trimmed)) {
+    return { ok: false, reason: `Bundled asset destination must be workspace-relative: ${trimmed}` };
+  }
+
+  const normalizedRelative = normalizeRelativePath(path.normalize(trimmed));
+  const absolutePath = path.resolve(workspaceRoot, normalizedRelative);
+  const relativeToWorkspace = path.relative(workspaceRoot, absolutePath);
+  if (
+    relativeToWorkspace === '' ||
+    (!relativeToWorkspace.startsWith('..') && !path.isAbsolute(relativeToWorkspace))
+  ) {
+    return { ok: true, absolutePath, relativePath: normalizedRelative };
+  }
+
+  return {
+    ok: false,
+    reason: `Bundled asset destination escapes the workspace root: ${trimmed}`,
+  };
+}
+
 /**
  * Copies a single bundled asset reference into the workspace.
  * This is the generic path used by manifest-backed bundled asset refs.
@@ -141,7 +170,10 @@ export function materializeBundledAsset(
   const bundleDiskRoot = bundleRootUri(extensionUri, reference.bundleId).fsPath;
   const from = path.join(bundleDiskRoot, entry.path);
   const destinationRelative = resolveAssetDestination(manifest, reference);
-  const to = path.join(workspaceRoot, destinationRelative);
+  const destination = resolveWorkspaceDestination(workspaceRoot, destinationRelative);
+  if (!destination.ok) {
+    return destination;
+  }
   const overwrite = options?.overwrite === true;
 
   if (!fs.existsSync(from)) {
@@ -157,23 +189,26 @@ export function materializeBundledAsset(
   }
 
   try {
-    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.mkdirSync(path.dirname(destination.absolutePath), { recursive: true });
   } catch (e) {
-    return { ok: false, reason: `Could not create ${path.dirname(to)}: ${String(e)}` };
+    return {
+      ok: false,
+      reason: `Could not create ${path.dirname(destination.absolutePath)}: ${String(e)}`,
+    };
   }
 
-  if (!(fs.existsSync(to) && !overwrite)) {
+  if (!(fs.existsSync(destination.absolutePath) && !overwrite)) {
     try {
-      fs.copyFileSync(from, to);
+      fs.copyFileSync(from, destination.absolutePath);
     } catch (e) {
-      return { ok: false, reason: `Copy failed ${from} -> ${to}: ${String(e)}` };
+      return { ok: false, reason: `Copy failed ${from} -> ${destination.absolutePath}: ${String(e)}` };
     }
   }
 
   return {
     ok: true,
-    destinationRelative,
-    materializedRelativePath: destinationRelative,
+    destinationRelative: destination.relativePath,
+    materializedRelativePath: destination.relativePath,
   };
 }
 
