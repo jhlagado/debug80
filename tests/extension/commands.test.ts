@@ -223,7 +223,7 @@ describe('registerExtensionCommands', () => {
     expect(result).toBe(true);
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
-    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined);
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, undefined);
   });
 
   it('forces a prompt when selecting the active target', async () => {
