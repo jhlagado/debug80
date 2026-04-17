@@ -44,7 +44,7 @@
         {
           "type": "webview",
           "id": "debug80.platformView",
-          "name": "Platform"
+          "name": "Debug80"
         }
       ]
     },
@@ -189,6 +189,10 @@
       {
         "command": "debug80.openProjectConfigPanel",
         "title": "Debug80: Open Project Configuration Panel"
+      },
+      {
+        "command": "debug80.openDebug80View",
+        "title": "Debug80: Open Debug80 View"
       },
       {
         "command": "debug80.materializeBundledRom",
