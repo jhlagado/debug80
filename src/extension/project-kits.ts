@@ -21,8 +21,7 @@ export type ProjectKit = {
   entry: number;
   starterTemplates: Record<StarterLanguage, string>;
   bundledProfile?: {
-    bundleRel: string;
-    bundleId: string;
+    bundleRelPath: string;
     romPath: string;
     listingPath?: string;
     sourceRoots: string[];
@@ -56,8 +55,7 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
       zax: 'tec1/mon1b/starter.zax',
     },
     bundledProfile: {
-      bundleRel: BUNDLED_MON1B_V1_REL,
-      bundleId: BUNDLED_MON1B_V1_REL,
+      bundleRelPath: BUNDLED_MON1B_V1_REL,
       romPath: 'roms/tec1/mon1b/mon-1b.bin',
       listingPath: 'roms/tec1/mon1b/mon-1b.lst',
       sourceRoots: ['src', 'roms/tec1/mon1b'],
@@ -89,8 +87,7 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
       zax: 'tec1g/mon3/starter.zax',
     },
     bundledProfile: {
-      bundleRel: BUNDLED_MON3_V1_REL,
-      bundleId: BUNDLED_MON3_V1_REL,
+      bundleRelPath: BUNDLED_MON3_V1_REL,
       romPath: 'roms/tec1g/mon3/mon3.bin',
       listingPath: 'roms/tec1g/mon3/mon3.lst',
       sourceRoots: ['src', 'roms/tec1g/mon3'],
