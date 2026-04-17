@@ -345,7 +345,7 @@ describe('project-scaffolding helpers', () => {
     expect(showInputBox).not.toHaveBeenCalled();
   });
 
-  it('writes a tec1g config and materializes MON-3 bundle files during scaffold', async () => {
+  it('writes a tec1g config without copying MON-3 bundle files during scaffold', async () => {
     const fs = await import('fs');
     const actualFs = await vi.importActual<typeof import('fs')>('fs');
     const writeFileSync = vi.mocked(fs.writeFileSync);
@@ -414,8 +414,11 @@ describe('project-scaffolding helpers', () => {
         })
       );
 
-      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1g/mon3/mon3.bin'))).toBe(true);
-      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1g/mon3/mon3.lst'))).toBe(true);
+      expect(
+        writeFileSync.mock.calls
+          .map(([filePath]) => String(filePath).replace(/\\/g, '/'))
+          .filter((filePath) => filePath.includes('/roms/'))
+      ).toEqual([]);
       expect(showInformationMessage).toHaveBeenCalledWith(
         'Debug80: Created TEC-1G / MON-3 project in debug80.json targeting src/main.asm.'
       );
@@ -425,7 +428,7 @@ describe('project-scaffolding helpers', () => {
     }
   });
 
-  it('writes a tec1 config and materializes MON-1B bundle files during scaffold', async () => {
+  it('writes a tec1 config without copying MON-1B bundle files during scaffold', async () => {
     const fs = await import('fs');
     const actualFs = await vi.importActual<typeof import('fs')>('fs');
     const writeFileSync = vi.mocked(fs.writeFileSync);
@@ -482,8 +485,11 @@ describe('project-scaffolding helpers', () => {
         })
       );
 
-      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1/mon1b/mon-1b.bin'))).toBe(true);
-      expect(actualFs.existsSync(path.join(workspaceRoot, 'roms/tec1/mon1b/mon-1b.lst'))).toBe(true);
+      expect(
+        writeFileSync.mock.calls
+          .map(([filePath]) => String(filePath).replace(/\\/g, '/'))
+          .filter((filePath) => filePath.includes('/roms/'))
+      ).toEqual([]);
       expect(showInformationMessage).toHaveBeenCalledWith(
         'Debug80: Created TEC-1 / MON-1B project in debug80.json targeting src/main.asm.'
       );
