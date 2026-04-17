@@ -67,8 +67,8 @@ export function resolveProjectPlatform(config: ProjectConfig | undefined): strin
 }
 
 export const PROJECT_CONFIG_CANDIDATES = [
-  path.join('.vscode', 'debug80.json'),
   'debug80.json',
+  path.join('.vscode', 'debug80.json'),
   '.debug80.json',
 ];
 

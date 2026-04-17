@@ -6,7 +6,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
-import { DEBUG80_PROJECT_VERSION, listProjectSourceFiles } from './project-config';
+import {
+  DEBUG80_PROJECT_VERSION,
+  findProjectConfigPath,
+  listProjectSourceFiles,
+} from './project-config';
 import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,
@@ -241,9 +245,9 @@ export async function scaffoldProject(
 ): Promise<boolean> {
   const workspaceRoot = folder.uri.fsPath;
   const vscodeDir = path.join(workspaceRoot, '.vscode');
-  const configPath = path.join(vscodeDir, 'debug80.json');
+  const configPath = path.join(workspaceRoot, 'debug80.json');
   const launchPath = path.join(vscodeDir, 'launch.json');
-  const configExists = fs.existsSync(configPath);
+  const configExists = findProjectConfigPath(folder) !== undefined;
 
   const inferred = inferDefaultTarget(workspaceRoot);
   const plan = configExists ? undefined : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
@@ -305,17 +309,17 @@ export async function scaffoldProject(
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in .vscode/debug80.json targeting ${scaffoldPlan.sourceFile}.`
+        `Debug80: Created ${platformDisplayName(scaffoldPlan.platform)} project in debug80.json targeting ${scaffoldPlan.sourceFile}.`
       );
       created = true;
     } catch (err) {
       void vscode.window.showErrorMessage(
-        `Debug80: Failed to write .vscode/debug80.json: ${String(err)}`
+        `Debug80: Failed to write debug80.json: ${String(err)}`
       );
       return false;
     }
   } else if (!includeLaunch) {
-    void vscode.window.showInformationMessage('.vscode/debug80.json already exists.');
+    void vscode.window.showInformationMessage('Debug80 project config already exists.');
   }
 
   if (includeLaunch) {
