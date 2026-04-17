@@ -112,14 +112,14 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   if (plan.kit.bundledProfile !== undefined) {
     profileConfig.bundledAssets = {
       romHex: {
-        bundleId: plan.kit.bundledProfile.bundleId,
+        bundleId: plan.kit.bundledProfile.bundleRelPath,
         path: path.basename(plan.kit.bundledProfile.romPath),
         destination: plan.kit.bundledProfile.romPath,
       },
       ...(plan.kit.bundledProfile.listingPath !== undefined
         ? {
             listing: {
-              bundleId: plan.kit.bundledProfile.bundleId,
+              bundleId: plan.kit.bundledProfile.bundleRelPath,
               path: path.basename(plan.kit.bundledProfile.listingPath),
               destination: plan.kit.bundledProfile.listingPath,
             },
@@ -234,9 +234,6 @@ export async function scaffoldProject(
   );
   ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
   ensureDirExists(vscodeDir);
-  if (includeLaunch) {
-    ensureDirExists(vscodeDir);
-  }
 
   let created = false;
 
