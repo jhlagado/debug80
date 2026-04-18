@@ -29,7 +29,10 @@ describe('platform-view message routing', () => {
   it('routes control messages to the expected handlers', async () => {
     const deps = createDependencies('simple');
 
-    await handlePlatformViewMessage({ type: 'createProject', rootPath: '/workspace/a' }, deps);
+    await handlePlatformViewMessage(
+      { type: 'createProject', rootPath: '/workspace/a', platform: 'tec1g' },
+      deps
+    );
     await handlePlatformViewMessage({ type: 'selectProject', rootPath: '/workspace/a' }, deps);
     await handlePlatformViewMessage(
       { type: 'selectTarget', rootPath: '/workspace/a', targetName: 'app' },
@@ -44,7 +47,10 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'serialSendFile' }, deps);
     await handlePlatformViewMessage({ type: 'serialSave', text: 'hello' }, deps);
 
-    expect(deps.handleCreateProject).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
+    expect(deps.handleCreateProject).toHaveBeenCalledWith({
+      rootPath: '/workspace/a',
+      platform: 'tec1g',
+    });
     expect(deps.handleSelectProject).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
     expect(deps.handleSelectTarget).toHaveBeenCalledWith({
       rootPath: '/workspace/a',

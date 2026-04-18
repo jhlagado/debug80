@@ -20,6 +20,7 @@ import {
   TEC1G_ROM1_START,
 } from '../platforms/tec1g/constants';
 import {
+  getDefaultProjectKitForPlatform,
   getProjectKitChoices,
   readProjectKitStarterTemplate,
   type ProjectKit,
@@ -304,6 +305,22 @@ async function buildScaffoldPlan(
   inferred: { sourceFile: string; outputDir: string; artifactBase: string },
   preselectedPlatform?: string
 ): Promise<ScaffoldPlan | undefined> {
+  const defaultKit = getDefaultProjectKitForPlatform(preselectedPlatform);
+  if (defaultKit !== undefined) {
+    const sourceFile = 'src/main.asm';
+    return {
+      kit: defaultKit,
+      targetName: 'app',
+      sourceFile,
+      outputDir: inferred.outputDir,
+      artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
+      starterLanguage: 'asm',
+      starterFile: {
+        path: sourceFile,
+      },
+    };
+  }
+
   const kit = await chooseProjectKit(preselectedPlatform);
   if (kit === undefined) {
     return undefined;

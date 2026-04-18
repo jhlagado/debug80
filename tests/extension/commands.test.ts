@@ -228,13 +228,13 @@ describe('registerExtensionCommands', () => {
     expect(createProject).toBeTypeOf('function');
 
     scaffoldProject.mockResolvedValueOnce(true);
-    const result = await createProject?.({ rootPath: folder.uri.fsPath });
+    const result = await createProject?.({ rootPath: folder.uri.fsPath, platform: 'tec1g' });
 
     expect(result).toBe(true);
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
     expect(reveal).toHaveBeenCalledWith(false);
-    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, undefined);
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, 'tec1g');
   });
 
   it('reveals the Debug80 view through the dedicated command', async () => {
