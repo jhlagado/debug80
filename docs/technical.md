@@ -356,7 +356,7 @@ generate HTML, apply updates, handle messages, and build serialized update paylo
 
 Every platform panel includes a project header at the top with three controls:
 
-- **Project button** — shows the active workspace root name; clicking cycles or opens a picker.
+- **Project button** — shows the active workspace root name; with no folders it offers **Open Folder**; with multiple folders it opens the VS Code Quick Pick to choose the Debug80 workspace root (see `docs/adr/0001-project-workspace-root-control.md`).
 - **Target select** — dropdown of available launch targets from `debug80.json`.
 - **Platform select** — dropdown with options Simple / TEC-1 / TEC-1G.
   - Changing this dropdown immediately posts a `saveProjectConfig` message to the extension.
