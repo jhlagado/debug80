@@ -450,7 +450,7 @@ describe('launch-args', () => {
     expect(mergedBad).toEqual(badArgs);
   });
 
-  it('prefers project stopOnEntry over launch args when projectConfig is present', () => {
+  it('prefers explicit launch stopOnEntry over project config when projectConfig is present', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-stoponentry-'));
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
@@ -471,7 +471,7 @@ describe('launch-args', () => {
       { resolveBaseDir: () => dir }
     );
 
-    expect(merged.stopOnEntry).toBe(false);
+    expect(merged.stopOnEntry).toBe(true);
   });
 
   it('normalizes source paths and relative paths', () => {
