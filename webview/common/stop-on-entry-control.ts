@@ -1,5 +1,5 @@
 /**
- * @file Stop-on-entry checkbox: syncs with projectStatus and persists via setStopOnEntry.
+ * @file Stop-on-entry checkbox: syncs with projectStatus; changes post setStopOnEntry (panel session state).
  */
 
 import type { VscodeApi } from './vscode';
