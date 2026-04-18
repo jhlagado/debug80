@@ -303,6 +303,37 @@ describe('PlatformViewProvider', () => {
     }
   });
 
+  it('updates stop-on-entry state without restarting the session', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string; stopOnEntry?: boolean }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    executeCommand.mockClear();
+    await handler?.({ type: 'setStopOnEntry', stopOnEntry: true });
+
+    expect(provider.stopOnEntry).toBe(true);
+    expect(executeCommand).not.toHaveBeenCalledWith('debug80.restartDebug');
+  });
+
   function getPostMessageCalls(webviewView: vscode.WebviewView): Array<[Record<string, unknown>]> {
     return (
       webviewView.webview as unknown as {
