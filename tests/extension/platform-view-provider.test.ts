@@ -206,6 +206,7 @@ describe('PlatformViewProvider', () => {
         message.type === 'projectStatus' &&
         message.rootName === 'demo' &&
         message.rootPath === '/workspace/demo' &&
+        message.projectState === 'initialized' &&
         message.hasProject === true &&
         message.targetName === 'app' &&
         message.entrySource === 'src/main.asm' &&
@@ -220,6 +221,44 @@ describe('PlatformViewProvider', () => {
       }
     }
     expect(found).toBe(true);
+  });
+
+  it('posts an uninitialized projectStatus when the selected folder has no config', () => {
+    findProjectConfigPath.mockImplementation(() => undefined);
+    try {
+      const provider = new PlatformViewProvider(extensionRoot, {
+        get: vi.fn(),
+        update: vi.fn(),
+      } as never);
+      const webviewView = createWebviewView();
+
+      provider.resolveWebviewView(
+        webviewView,
+        {} as vscode.WebviewViewResolveContext,
+        {
+          isCancellationRequested: false,
+          onCancellationRequested: vi.fn(),
+        } as vscode.CancellationToken
+      );
+
+      workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+      provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+      provider.setPlatform('tec1', undefined, { reveal: false, tab: 'ui' });
+
+      const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+      expect(statusMessages.at(-1)).toMatchObject({
+        rootName: 'demo',
+        rootPath: '/workspace/demo',
+        projectState: 'uninitialized',
+        hasProject: false,
+        platform: 'tec1',
+        targets: [],
+      });
+    } finally {
+      findProjectConfigPath.mockImplementation(
+        (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/debug80.json`
+      );
+    }
   });
 
   function getPostMessageCalls(webviewView: vscode.WebviewView): Array<[Record<string, unknown>]> {

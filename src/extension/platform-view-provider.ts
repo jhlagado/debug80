@@ -81,7 +81,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private currentSessionId: string | undefined;
   private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
-  private hasProject = false;
   private sessionStatus: DebugSessionStatus = 'not running';
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
@@ -120,7 +119,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   setHasProject(value: boolean): void {
-    this.hasProject = value;
+    void value;
     this.refreshProjectStatus();
   }
 
@@ -587,28 +586,28 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     const roots = (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
       name: folder.name,
       path: folder.uri.fsPath,
-      hasProject:
-        this.selectedWorkspace?.uri.fsPath === folder.uri.fsPath
-          ? this.hasProject
-          : findProjectConfigPath(folder) !== undefined,
+      hasProject: findProjectConfigPath(folder) !== undefined,
     }));
     const folder = this.selectedWorkspace;
     if (folder === undefined) {
-      return { roots, targets: [] };
+      return { roots, targets: [], projectState: 'noWorkspace' };
     }
 
     const projectConfigPath = findProjectConfigPath(folder);
+    const hasProject = projectConfigPath !== undefined;
     const projectStatus =
-      this.workspaceState !== undefined
+      hasProject && this.workspaceState !== undefined
         ? resolveProjectStatusSummary(this.workspaceState, folder)
         : undefined;
-    if (projectStatus === undefined || projectConfigPath === undefined) {
+    if (!hasProject) {
       return {
         roots,
         targets: [],
         rootName: folder.name,
         rootPath: folder.uri.fsPath,
+        projectState: 'uninitialized',
         hasProject: false,
+        platform: this.currentPlatform ?? 'simple',
         stopOnEntry: this.stopOnEntry,
       };
     }
@@ -621,11 +620,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       targets: listProjectTargetChoices(projectConfigPath),
       rootName: folder.name,
       rootPath: folder.uri.fsPath,
+      projectState: 'initialized',
       hasProject: true,
       platform,
       stopOnEntry: this.stopOnEntry,
-      ...(projectStatus.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
-      ...(projectStatus.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
+      ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
+      ...(projectStatus?.entrySource !== undefined
+        ? { entrySource: projectStatus.entrySource }
+        : {}),
     };
   }
 
