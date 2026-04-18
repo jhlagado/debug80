@@ -363,17 +363,18 @@ function projectConfigFromSession(session: vscode.DebugSession): string | undefi
   return projectConfigRaw;
 }
 
-function resolveSessionProjectPlatform(session: vscode.DebugSession): string | undefined {
+function resolveSessionProjectConfigPath(session: vscode.DebugSession): string | undefined {
   const projectConfigRaw = projectConfigFromSession(session);
   if (projectConfigRaw === undefined) {
     return undefined;
   }
-  const projectConfigPath = path.isAbsolute(projectConfigRaw)
-    ? projectConfigRaw
-    : session.workspaceFolder !== undefined
-      ? path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw)
-      : projectConfigRaw;
-  return resolveProjectPlatform(readProjectConfig(projectConfigPath));
+  return path.normalize(
+    path.isAbsolute(projectConfigRaw)
+      ? projectConfigRaw
+      : session.workspaceFolder !== undefined
+        ? path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw)
+        : projectConfigRaw
+  );
 }
 
 function normalizeBundledAssetInstallPlan(
@@ -639,19 +640,22 @@ export function registerExtensionCommands({
         let restartedForRootChange = false;
         const activeSession = vscode.debug.activeDebugSession;
         if (activeSession?.type === 'z80') {
-          const previousPlatform = resolveSessionProjectPlatform(activeSession);
-          const nextPlatform = resolveProjectPlatformForFolder(folder);
+          const previousProjectConfig = resolveSessionProjectConfigPath(activeSession);
+          const nextProjectConfig = findProjectConfigPath(folder);
           if (
-            previousPlatform !== undefined &&
-            nextPlatform !== undefined &&
-            previousPlatform !== nextPlatform
+            previousProjectConfig !== undefined &&
+            nextProjectConfig !== undefined &&
+            path.normalize(nextProjectConfig) !== previousProjectConfig
           ) {
             await vscode.debug.stopDebugging(activeSession);
             const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
             restartedForRootChange = restarted;
             if (restarted) {
+              const nextPlatform = resolveProjectPlatformForFolder(folder);
               void vscode.window.showInformationMessage(
-                `Debug80: Selected root ${folder.name}; restarted debugging for ${nextPlatform}.`
+                nextPlatform !== undefined
+                  ? `Debug80: Selected root ${folder.name}; restarted debugging for ${nextPlatform}.`
+                  : `Debug80: Selected root ${folder.name}; restarted debugging.`
               );
             }
           }
