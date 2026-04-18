@@ -6,6 +6,7 @@ export type PlatformId = 'simple' | 'tec1' | 'tec1g';
 export type ProjectStatusPayload = {
   rootName?: string;
   rootPath?: string;
+  projectState?: 'noWorkspace' | 'uninitialized' | 'initialized';
   hasProject?: boolean;
   targetName?: string;
   entrySource?: string;
