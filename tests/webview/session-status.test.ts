@@ -1,5 +1,5 @@
 /**
- * @file Regression tests: debugger session status badge contract.
+ * @file Regression tests: shared restart control contract.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -31,72 +31,73 @@ function createVscodeMock(messages: PostedMessage[]) {
   };
 }
 
-describe('debugger session status badge', () => {
-  it.each(HTML_PATHS)('renders the badge in the %s top bar', (_label, htmlPath) => {
+describe('shared restart control', () => {
+  it.each(HTML_PATHS)('renders restart in the %s top bar', (_label, htmlPath) => {
     buildDom(htmlPath);
-    const badge = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+    const restartButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
     const tabs = document.querySelector('.tabs');
 
     expect(tabs).not.toBeNull();
-    expect(badge).not.toBeNull();
-    if (!tabs || !badge) {
-      throw new Error('session status badge is missing');
+    expect(restartButton).not.toBeNull();
+    if (!tabs || !restartButton) {
+      throw new Error('restart button is missing');
     }
-    expect(tabs.contains(badge)).toBe(true);
+    expect(tabs.contains(restartButton)).toBe(true);
     const slot = document.querySelector('.tabs-status-slot');
     const stopOnEntry = document.getElementById('stopOnEntry') as HTMLInputElement | null;
     expect(slot).not.toBeNull();
-    expect(slot?.contains(badge)).toBe(true);
+    expect(slot?.contains(restartButton)).toBe(true);
     expect(stopOnEntry).not.toBeNull();
     expect(slot?.contains(stopOnEntry)).toBe(true);
-    expect(badge?.textContent).toBe('Not running');
-    expect(badge?.dataset.status).toBe('not-running');
-    expect(badge?.disabled).toBe(false);
-    expect(badge?.title).toBe('Click to start debugging');
-    expect(badge?.getAttribute('aria-label')).toBe(
-      'Not running. Click to start debugging'
+    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.dataset.status).toBe('not-running');
+    expect(restartButton?.disabled).toBe(false);
+    expect(restartButton?.title).toBe(
+      'Relaunch the current project and target using the current launch options'
+    );
+    expect(restartButton?.getAttribute('aria-label')).toBe(
+      'Relaunch the current project and target using the current launch options'
     );
   });
 
-  it.each(HTML_PATHS)('updates the badge text for %s session states', (_label, htmlPath) => {
+  it.each(HTML_PATHS)('keeps restart explicit for %s session states', (_label, htmlPath) => {
     buildDom(htmlPath);
     const messages: PostedMessage[] = [];
     const controller = createSessionStatusController(
       createVscodeMock(messages),
-      document.getElementById('sessionStatus')
+      document.getElementById('restartDebug')
     );
-    const badge = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+    const restartButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 
     controller.setStatus('starting');
-    expect(badge?.textContent).toBe('Starting...');
-    expect(badge?.dataset.status).toBe('starting');
-    expect(badge?.disabled).toBe(true);
-    expect(badge?.title).toBe('Debugger session is starting');
+    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.dataset.status).toBe('starting');
+    expect(restartButton?.disabled).toBe(true);
 
     controller.setStatus('running');
-    expect(badge?.textContent).toBe('Running');
-    expect(badge?.dataset.status).toBe('running');
-    expect(badge?.title).toBe('Debugger session is running');
+    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.dataset.status).toBe('running');
+    expect(restartButton?.disabled).toBe(false);
 
     controller.setStatus('paused');
-    expect(badge?.textContent).toBe('Paused');
-    expect(badge?.dataset.status).toBe('paused');
-    expect(badge?.title).toBe('Debugger session is paused');
+    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.dataset.status).toBe('paused');
+    expect(restartButton?.disabled).toBe(false);
 
     controller.dispose();
   });
 
-  it.each(HTML_PATHS)('starts debugging when the %s badge is clicked in the idle state', (_label, htmlPath) => {
+  it.each(HTML_PATHS)('restarts debugging when the %s control is clicked', (_label, htmlPath) => {
     buildDom(htmlPath);
     const messages: PostedMessage[] = [];
     createSessionStatusController(
       createVscodeMock(messages),
-      document.getElementById('sessionStatus')
+      document.getElementById('restartDebug')
     );
 
-    const badge = document.getElementById('sessionStatus') as HTMLButtonElement | null;
-    badge?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const restartButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
+    restartButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(messages).toContainEqual({ type: 'startDebug' });
+    expect(messages).toContainEqual({ type: 'restartDebug' });
   });
 });

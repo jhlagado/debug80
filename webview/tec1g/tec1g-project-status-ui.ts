@@ -14,12 +14,6 @@ export type Tec1gProjectStatusElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   homeTargetSelect: HTMLSelectElement | null;
-  platformSelect?: HTMLSelectElement | null;
-  sessionStatusButton?: HTMLButtonElement | null;
-  stopOnEntryInput?: HTMLInputElement | null;
-  tabs?: HTMLElement | null;
-  panelUi?: HTMLElement | null;
-  panelMemory?: HTMLElement | null;
   getPlatform?: () => string | undefined;
 };
 
@@ -85,12 +79,6 @@ export function createTec1gProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     homeTargetSelect,
-    platformSelect,
-    sessionStatusButton,
-    stopOnEntryInput,
-    tabs,
-    panelUi,
-    panelMemory,
     getPlatform,
   } = elements;
 
@@ -130,8 +118,6 @@ export function createTec1gProjectStatusUi(
     targetName?: ProjectStatusPayload['targetName'];
     projectState?: ProjectStatusPayload['projectState'];
   }): void {
-    const projectState = resolveProjectViewState(payload);
-    const initialized = projectState === 'initialized';
     currentRootPath = payload.rootPath ?? '';
     currentRoots = payload.roots ?? [];
     projectRootController.applyProjectStatus({
@@ -141,35 +127,13 @@ export function createTec1gProjectStatusUi(
     });
     if (homeTargetSelect) {
       setTargetOptions(homeTargetSelect, payload.targets ?? [], payload.targetName);
-      const targetControl = homeTargetSelect.closest('.project-control') as HTMLElement | null;
-      if (targetControl) {
-        targetControl.hidden = !initialized;
-      }
-    }
-    const platformControl = platformSelect?.closest('.project-control') as HTMLElement | null;
-    if (platformControl) {
-      platformControl.hidden = initialized;
-    }
-    if (stopOnEntryInput?.parentElement) {
-      stopOnEntryInput.parentElement.hidden = !initialized;
-    }
-    if (sessionStatusButton) {
-      sessionStatusButton.hidden = !initialized;
-    }
-    if (tabs) {
-      tabs.hidden = !initialized;
-    }
-    if (panelUi) {
-      panelUi.hidden = !initialized;
-    }
-    if (panelMemory) {
-      panelMemory.hidden = !initialized;
     }
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     const targetCount = payload.targets?.length ?? 0;
     if (!setupCard || !setupCardText || !setupPrimaryAction) {
       return;
     }
+    const projectState = resolveProjectViewState(payload);
     const setupState = resolveSetupCardState(selected, projectState, targetCount);
     if (setupState === null) {
       setupCard.hidden = true;
