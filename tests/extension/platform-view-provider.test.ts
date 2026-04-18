@@ -261,6 +261,48 @@ describe('PlatformViewProvider', () => {
     }
   });
 
+  it('treats platform changes as idle panel selection when the folder is uninitialized', async () => {
+    findProjectConfigPath.mockImplementation(() => undefined);
+    try {
+      const provider = new PlatformViewProvider(extensionRoot, {
+        get: vi.fn(),
+        update: vi.fn(),
+      } as never);
+      const webviewView = createWebviewView();
+
+      provider.resolveWebviewView(
+        webviewView,
+        {} as vscode.WebviewViewResolveContext,
+        {
+          isCancellationRequested: false,
+          onCancellationRequested: vi.fn(),
+        } as vscode.CancellationToken
+      );
+
+      workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+      provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+      provider.setPlatform('simple', undefined, { reveal: false, tab: 'ui' });
+
+      const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+        .calls[0]?.[0] as ((msg: { type?: string; platform?: string }) => Promise<void>) | undefined;
+      expect(handler).toBeTypeOf('function');
+
+      (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+      await handler?.({ type: 'saveProjectConfig', platform: 'tec1g' });
+
+      const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+      expect(statusMessages.at(-1)).toMatchObject({
+        projectState: 'uninitialized',
+        platform: 'tec1g',
+      });
+      expect(executeCommand).not.toHaveBeenCalledWith('debug80.restartDebug');
+    } finally {
+      findProjectConfigPath.mockImplementation(
+        (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/debug80.json`
+      );
+    }
+  });
+
   function getPostMessageCalls(webviewView: vscode.WebviewView): Array<[Record<string, unknown>]> {
     return (
       webviewView.webview as unknown as {

@@ -536,6 +536,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     const configPath = findProjectConfigPath(folder);
     if (configPath === undefined) {
+      const normalized = this.normalizePlatformId(platform);
+      if (normalized !== undefined) {
+        this.currentPlatform = normalized;
+        this.renderCurrentView(true);
+        return;
+      }
       void vscode.window.showErrorMessage('Debug80: No project config found in workspace.');
       return;
     }
@@ -556,6 +562,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     void vscode.commands.executeCommand('debug80.restartDebug');
+  }
+
+  private normalizePlatformId(platform: string): PlatformId | undefined {
+    const normalized = platform.trim().toLowerCase();
+    if (normalized === 'simple' || normalized === 'tec1' || normalized === 'tec1g') {
+      return normalized;
+    }
+    return undefined;
   }
 
   private handleSetStopOnEntry(value: boolean): void {

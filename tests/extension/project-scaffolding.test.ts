@@ -345,6 +345,72 @@ describe('project-scaffolding helpers', () => {
     expect(showInputBox).not.toHaveBeenCalled();
   });
 
+  it('initializes from the selected platform with the default project kit and starter target', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const existsSync = vi.mocked(fs.existsSync);
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-init-flow-'));
+    try {
+      existsSync.mockImplementation((candidate: string) => {
+        const normalized = candidate.replace(/\\/g, '/');
+        return (
+          !normalized.endsWith('/debug80.json') &&
+          !normalized.endsWith('/.debug80.json') &&
+          !normalized.endsWith('/src/main.asm')
+        );
+      });
+      showErrorMessage.mockImplementation((message: string) => {
+        throw new Error(message);
+      });
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false,
+        undefined,
+        'tec1'
+      );
+
+      expect(created).toBe(true);
+      expect(showQuickPick).not.toHaveBeenCalled();
+      expect(showInputBox).not.toHaveBeenCalled();
+
+      const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      expect(configWrite).toBeDefined();
+      const starterWrite = writeFileSync.mock.calls.find(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/src/main.asm')
+      );
+      expect(starterWrite).toBeDefined();
+
+      const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+        defaultTarget?: string;
+        defaultProfile?: string;
+        projectPlatform?: string;
+        targets?: Record<string, { sourceFile?: string; platform?: string; profile?: string }>;
+      };
+      expect(writtenConfig.projectPlatform).toBe('tec1');
+      expect(writtenConfig.defaultProfile).toBe('mon1b');
+      expect(writtenConfig.defaultTarget).toBe('app');
+      expect(writtenConfig.targets?.app).toEqual(
+        expect.objectContaining({
+          sourceFile: 'src/main.asm',
+          platform: 'tec1',
+          profile: 'mon1b',
+        })
+      );
+      expect(showInformationMessage).toHaveBeenCalledWith(
+        'Debug80: Created TEC-1 / MON-1B project in debug80.json targeting src/main.asm.'
+      );
+    } finally {
+      vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
+      showErrorMessage.mockReset();
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('writes a tec1g config without copying MON-3 bundle files during scaffold', async () => {
     const fs = await import('fs');
     const actualFs = await vi.importActual<typeof import('fs')>('fs');
