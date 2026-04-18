@@ -3,6 +3,7 @@ import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectRootButtonController } from '../common/project-root-button';
+import { resolveProjectViewState } from '../common/project-state';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
@@ -24,6 +25,7 @@ const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTML
 const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
+const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -34,8 +36,10 @@ const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
+const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
+const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
 const digitEls = [];
@@ -155,9 +159,12 @@ function applyProjectStatus(payload: {
   roots?: ProjectStatusPayload['roots'];
   targets?: ProjectStatusPayload['targets'];
   targetName?: ProjectStatusPayload['targetName'];
+  projectState?: ProjectStatusPayload['projectState'];
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
+  const projectState = resolveProjectViewState(payload);
+  const initialized = projectState === 'initialized';
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
   projectRootController.applyProjectStatus({
@@ -166,16 +173,33 @@ function applyProjectStatus(payload: {
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
+  if (targetControl) {
+    targetControl.hidden = !initialized;
+  }
+  if (platformControl) {
+    platformControl.hidden = initialized;
+  }
   stopOnEntryControl.applyProjectStatus({
-    hasProject: payload.hasProject === true,
+    hasProject: initialized,
     stopOnEntry: payload.stopOnEntry,
   });
+  if (stopOnEntryInput?.parentElement) {
+    stopOnEntryInput.parentElement.hidden = !initialized;
+  }
+  if (sessionStatusButton) {
+    sessionStatusButton.hidden = !initialized;
+  }
+  if (tabsEl) {
+    tabsEl.hidden = !initialized;
+  }
+  panelUi.hidden = !initialized;
+  panelMemory.hidden = !initialized;
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
   const targetCount = payload.targets?.length ?? 0;
   if (!setupCard || !setupCardText || !setupPrimaryAction) {
     return;
   }
-  const setupState = resolveSetupCardState(selected, targetCount);
+  const setupState = resolveSetupCardState(selected, projectState, targetCount);
   if (setupState === null) {
     setupCard.hidden = true;
     return;
