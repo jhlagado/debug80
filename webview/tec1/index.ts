@@ -1,9 +1,9 @@
 import { createDigit } from '../common/digits';
+import { applyInitializedProjectControls } from '../common/project-controls';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectRootButtonController } from '../common/project-root-button';
-import { resolveProjectViewState } from '../common/project-state';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
@@ -22,7 +22,7 @@ const selectProjectButton = document.getElementById('selectProject') as HTMLButt
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
@@ -40,6 +40,7 @@ const platformControl = platformSelectEl?.closest('.project-control') as HTMLEle
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
+const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
 const digitEls = [];
@@ -90,7 +91,7 @@ platformSelectEl?.addEventListener('change', () => {
 });
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
-const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
+const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
@@ -163,8 +164,6 @@ function applyProjectStatus(payload: {
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
-  const projectState = resolveProjectViewState(payload);
-  const initialized = projectState === 'initialized';
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
   projectRootController.applyProjectStatus({
@@ -173,27 +172,19 @@ function applyProjectStatus(payload: {
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
-  if (targetControl) {
-    targetControl.hidden = !initialized;
-  }
-  if (platformControl) {
-    platformControl.hidden = initialized;
-  }
+  const initialized = applyInitializedProjectControls(payload, {
+    targetControl,
+    platformControl,
+    stopOnEntryLabel,
+    restartButton: restartDebugButton,
+    tabs: tabsEl,
+    panelUi,
+    panelMemory,
+  });
   stopOnEntryControl.applyProjectStatus({
     hasProject: initialized,
     stopOnEntry: payload.stopOnEntry,
   });
-  if (stopOnEntryInput?.parentElement) {
-    stopOnEntryInput.parentElement.hidden = !initialized;
-  }
-  if (sessionStatusButton) {
-    sessionStatusButton.hidden = !initialized;
-  }
-  if (tabsEl) {
-    tabsEl.hidden = !initialized;
-  }
-  panelUi.hidden = !initialized;
-  panelMemory.hidden = !initialized;
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
   const targetCount = payload.targets?.length ?? 0;
   if (!setupCard || !setupCardText || !setupPrimaryAction) {
