@@ -14,6 +14,7 @@ export type Tec1gProjectStatusElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   homeTargetSelect: HTMLSelectElement | null;
+  platformSelect?: HTMLSelectElement | null;
   sessionStatusButton?: HTMLButtonElement | null;
   stopOnEntryInput?: HTMLInputElement | null;
   tabs?: HTMLElement | null;
@@ -84,6 +85,7 @@ export function createTec1gProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     homeTargetSelect,
+    platformSelect,
     sessionStatusButton,
     stopOnEntryInput,
     tabs,
@@ -143,6 +145,10 @@ export function createTec1gProjectStatusUi(
       if (targetControl) {
         targetControl.hidden = !initialized;
       }
+    }
+    const platformControl = platformSelect?.closest('.project-control') as HTMLElement | null;
+    if (platformControl) {
+      platformControl.hidden = initialized;
     }
     if (stopOnEntryInput?.parentElement) {
       stopOnEntryInput.parentElement.hidden = !initialized;

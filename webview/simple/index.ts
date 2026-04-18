@@ -143,7 +143,7 @@ function applyProjectStatus(payload: {
     platformSelectEl.value = payload.platform;
   }
   if (platformControl) {
-    platformControl.hidden = false;
+    platformControl.hidden = initialized;
   }
   stopOnEntryControl.applyProjectStatus({
     hasProject: initialized,

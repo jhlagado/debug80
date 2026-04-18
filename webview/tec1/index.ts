@@ -177,7 +177,7 @@ function applyProjectStatus(payload: {
     targetControl.hidden = !initialized;
   }
   if (platformControl) {
-    platformControl.hidden = false;
+    platformControl.hidden = initialized;
   }
   stopOnEntryControl.applyProjectStatus({
     hasProject: initialized,
