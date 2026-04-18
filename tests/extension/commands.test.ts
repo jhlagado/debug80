@@ -549,7 +549,7 @@ describe('registerExtensionCommands', () => {
     );
   });
 
-  it('does not restart an active z80 session when selected root keeps the same platform', async () => {
+  it('restarts an active z80 session when selected root changes project but keeps the same platform', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
@@ -607,8 +607,17 @@ describe('registerExtensionCommands', () => {
     const result = await selectRoot?.({ rootPath: rootB });
 
     expect(result).toEqual(expect.objectContaining({ uri: { fsPath: rootB } }));
-    expect(stopDebugging).not.toHaveBeenCalled();
-    expect(startDebugging).not.toHaveBeenCalled();
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-root-change' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: rootB } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: configBPath,
+      })
+    );
   });
 
   it('auto-starts when a selected root exposes exactly one target', async () => {
@@ -1113,6 +1122,53 @@ describe('registerExtensionCommands', () => {
         type: 'z80',
         request: 'launch',
         projectConfig: projectConfigPath,
+      })
+    );
+  });
+
+  it('restarts with the current stop-on-entry state', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn(), stopOnEntry: true } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-stop-on-entry',
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: true,
       })
     );
   });

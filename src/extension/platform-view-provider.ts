@@ -575,7 +575,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private handleSetStopOnEntry(value: boolean): void {
     this.stopOnEntry = value;
     this.postProjectStatus();
-    void vscode.commands.executeCommand('debug80.restartDebug');
   }
 
   // -------------------------------------------------------------------------
