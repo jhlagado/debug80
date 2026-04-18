@@ -11,7 +11,7 @@ export type ProjectStatusPayload = {
   targetName?: string;
   entrySource?: string;
   platform?: string;
-  /** Effective stop-on-entry for the current target (merged from target + project root). */
+  /** Panel stop-on-entry toggle for this window session (not read from or written to debug80.json). */
   stopOnEntry?: boolean;
   roots: Array<{
     name: string;
