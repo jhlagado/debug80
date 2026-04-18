@@ -86,6 +86,11 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   setupCardText,
   setupPrimaryAction,
   homeTargetSelect,
+  sessionStatusButton,
+  stopOnEntryInput,
+  tabs: document.querySelector('.tabs') as HTMLElement | null,
+  panelUi,
+  panelMemory,
   getPlatform: () => platformSelectEl?.value ?? undefined,
 });
 

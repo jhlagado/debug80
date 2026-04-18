@@ -5,6 +5,7 @@
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import type { VscodeApi } from '../common/vscode';
 import { createProjectRootButtonController } from '../common/project-root-button';
+import { resolveProjectViewState } from '../common/project-state';
 import { resolveSetupCardState } from '../common/setup-card-state';
 
 export type Tec1gProjectStatusElements = {
@@ -13,6 +14,11 @@ export type Tec1gProjectStatusElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   homeTargetSelect: HTMLSelectElement | null;
+  sessionStatusButton?: HTMLButtonElement | null;
+  stopOnEntryInput?: HTMLInputElement | null;
+  tabs?: HTMLElement | null;
+  panelUi?: HTMLElement | null;
+  panelMemory?: HTMLElement | null;
   getPlatform?: () => string | undefined;
 };
 
@@ -22,6 +28,7 @@ export type Tec1gProjectStatusUi = {
     roots?: ProjectStatusPayload['roots'];
     targets?: ProjectStatusPayload['targets'];
     targetName?: ProjectStatusPayload['targetName'];
+    projectState?: ProjectStatusPayload['projectState'];
   }) => void;
   dispose: () => void;
 };
@@ -77,6 +84,11 @@ export function createTec1gProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     homeTargetSelect,
+    sessionStatusButton,
+    stopOnEntryInput,
+    tabs,
+    panelUi,
+    panelMemory,
     getPlatform,
   } = elements;
 
@@ -114,7 +126,10 @@ export function createTec1gProjectStatusUi(
     roots?: ProjectStatusPayload['roots'];
     targets?: ProjectStatusPayload['targets'];
     targetName?: ProjectStatusPayload['targetName'];
+    projectState?: ProjectStatusPayload['projectState'];
   }): void {
+    const projectState = resolveProjectViewState(payload);
+    const initialized = projectState === 'initialized';
     currentRootPath = payload.rootPath ?? '';
     currentRoots = payload.roots ?? [];
     projectRootController.applyProjectStatus({
@@ -124,13 +139,32 @@ export function createTec1gProjectStatusUi(
     });
     if (homeTargetSelect) {
       setTargetOptions(homeTargetSelect, payload.targets ?? [], payload.targetName);
+      const targetControl = homeTargetSelect.closest('.project-control') as HTMLElement | null;
+      if (targetControl) {
+        targetControl.hidden = !initialized;
+      }
+    }
+    if (stopOnEntryInput?.parentElement) {
+      stopOnEntryInput.parentElement.hidden = !initialized;
+    }
+    if (sessionStatusButton) {
+      sessionStatusButton.hidden = !initialized;
+    }
+    if (tabs) {
+      tabs.hidden = !initialized;
+    }
+    if (panelUi) {
+      panelUi.hidden = !initialized;
+    }
+    if (panelMemory) {
+      panelMemory.hidden = !initialized;
     }
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     const targetCount = payload.targets?.length ?? 0;
     if (!setupCard || !setupCardText || !setupPrimaryAction) {
       return;
     }
-    const setupState = resolveSetupCardState(selected, targetCount);
+    const setupState = resolveSetupCardState(selected, projectState, targetCount);
     if (setupState === null) {
       setupCard.hidden = true;
       return;
