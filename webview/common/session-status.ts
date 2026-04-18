@@ -7,19 +7,8 @@ export interface SessionStatusController {
   dispose: () => void;
 }
 
-const STATUS_LABELS: Record<SessionStatus, string> = {
-  starting: 'Starting...',
-  running: 'Running',
-  paused: 'Paused',
-  'not running': 'Not running',
-};
-
-const STATUS_TITLES: Record<SessionStatus, string> = {
-  starting: 'Debugger session is starting',
-  running: 'Debugger session is running',
-  paused: 'Debugger session is paused',
-  'not running': 'Click to start debugging',
-};
+const RESTART_LABEL = 'Restart';
+const RESTART_TITLE = 'Relaunch the current project and target using the current launch options';
 
 function statusClass(status: SessionStatus): string {
   return `session-status status-${status.replace(/\s+/g, '-')}`;
@@ -38,22 +27,22 @@ export function createSessionStatusController(
 
   let currentStatus: SessionStatus = 'not running';
   const handleClick = (): void => {
-    if (currentStatus !== 'not running') {
+    if (currentStatus === 'starting') {
       return;
     }
-    vscode.postMessage({ type: 'startDebug' });
+    vscode.postMessage({ type: 'restartDebug' });
   };
 
   const applyStatus = (status: SessionStatus): void => {
     currentStatus = status;
-    element.textContent = STATUS_LABELS[status];
+    element.textContent = RESTART_LABEL;
     element.dataset.status = status.replace(/\s+/g, '-');
     element.className = statusClass(status);
-    element.title = STATUS_TITLES[status];
-    element.setAttribute('aria-label', `${STATUS_LABELS[status]}. ${STATUS_TITLES[status]}`);
+    element.title = RESTART_TITLE;
+    element.setAttribute('aria-label', RESTART_TITLE);
     element.setAttribute('aria-live', 'polite');
     element.setAttribute('aria-atomic', 'true');
-    element.disabled = status !== 'not running';
+    element.disabled = status === 'starting';
   };
 
   element.type = 'button';

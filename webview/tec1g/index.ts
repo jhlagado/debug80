@@ -4,6 +4,7 @@
 
 import { createDigit } from '../common/digits';
 import { MemoryPanel } from '../common/memory-panel';
+import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { acquireVscodeApi } from '../common/vscode';
@@ -32,7 +33,7 @@ const selectProjectButton = document.getElementById('selectProject') as HTMLButt
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const sessionStatusButton = document.getElementById('sessionStatus') as HTMLButtonElement | null;
+const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
@@ -49,6 +50,10 @@ const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
+const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
+const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
+const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
+const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
 
@@ -59,7 +64,7 @@ for (let i = 0; i < TEC1G_DIGITS; i++) {
   displayEl.appendChild(digit);
 }
 
-const sessionStatusController = createSessionStatusController(vscode, sessionStatusButton);
+const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 
 const glcdRenderer = createGlcdRenderer();
@@ -86,12 +91,6 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   setupCardText,
   setupPrimaryAction,
   homeTargetSelect,
-  platformSelect: platformSelectEl,
-  sessionStatusButton,
-  stopOnEntryInput,
-  tabs: document.querySelector('.tabs') as HTMLElement | null,
-  panelUi,
-  panelMemory,
   getPlatform: () => platformSelectEl?.value ?? undefined,
 });
 
@@ -164,8 +163,17 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     if (platformSelectEl && message.platform !== undefined) {
       platformSelectEl.value = message.platform;
     }
+    const initialized = applyInitializedProjectControls(message, {
+      targetControl,
+      platformControl,
+      stopOnEntryLabel,
+      restartButton: restartDebugButton,
+      tabs: tabsEl,
+      panelUi,
+      panelMemory,
+    });
     stopOnEntryControl.applyProjectStatus({
-      hasProject: message.hasProject === true,
+      hasProject: initialized,
       stopOnEntry: message.stopOnEntry,
     });
     return;
