@@ -95,6 +95,12 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
   },
 };
 
+const DEFAULT_PROJECT_KITS: Record<ScaffoldPlatform, ProjectKitId> = {
+  simple: 'simple/default',
+  tec1: 'tec1/mon1b',
+  tec1g: 'tec1g/mon3',
+};
+
 export type ProjectKitChoice = vscode.QuickPickItem & {
   kit: ProjectKit;
 };
@@ -116,6 +122,14 @@ export function getProjectKitById(id: string | undefined): ProjectKit | undefine
     return undefined;
   }
   return PROJECT_KITS[id as ProjectKitId];
+}
+
+export function getDefaultProjectKitForPlatform(platform: string | undefined): ProjectKit | undefined {
+  const normalized = platform?.trim().toLowerCase();
+  if (normalized !== 'simple' && normalized !== 'tec1' && normalized !== 'tec1g') {
+    return undefined;
+  }
+  return PROJECT_KITS[DEFAULT_PROJECT_KITS[normalized]];
 }
 
 export function getProjectKitChoices(preselectedPlatform?: string): ProjectKitChoice[] {
