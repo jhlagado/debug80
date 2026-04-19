@@ -84,6 +84,7 @@ const hexOrder = [
 
 let speedMode = 'fast';
 let uiRevision = 0;
+let projectIsInitialized = false;
 let shiftLatched = false;
 let currentRootPath = '';
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
@@ -93,7 +94,9 @@ let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createPro
 const audio = createAudioController(muteEl);
 
 platformSelectEl?.addEventListener('change', () => {
-  vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  if (projectIsInitialized) {
+    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  }
 });
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
@@ -203,6 +206,7 @@ function applyProjectStatus(payload: {
     panelUi,
     panelMemory,
   });
+  projectIsInitialized = initialized;
   stopOnEntryControl.applyProjectStatus({
     hasProject: initialized,
     stopOnEntry: payload.stopOnEntry,
