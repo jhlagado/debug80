@@ -145,4 +145,54 @@ describe('initialized project controls', () => {
     expect(platformControl.hidden).toBe(true);
     expect(platformInfoControl.hidden).toBe(true);
   });
+
+  it('forces platform controls back to a single visible branch on first render', () => {
+    const platformControl = createElement();
+    const platformInfoControl = createElement();
+
+    platformControl.hidden = false;
+    platformInfoControl.hidden = false;
+
+    const initialized = applyInitializedProjectControls(
+      {},
+      { platformControl, platformInfoControl }
+    );
+
+    expect(initialized).toBe(false);
+    expect(platformControl.hidden).toBe(true);
+    expect(platformInfoControl.hidden).toBe(true);
+  });
+
+  it('switches cleanly between uninitialized and initialized platform states', () => {
+    const platformControl = createElement();
+    const platformInfoControl = createElement();
+    const platformValue = createElement();
+
+    applyInitializedProjectControls(
+      { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'tec1' },
+      { platformControl, platformInfoControl, platformValue }
+    );
+
+    expect(platformControl.hidden).toBe(false);
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
+
+    applyInitializedProjectControls(
+      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      { platformControl, platformInfoControl, platformValue }
+    );
+
+    expect(platformControl.hidden).toBe(true);
+    expect(platformInfoControl.hidden).toBe(false);
+    expect(platformValue.textContent).toBe('TEC-1G');
+
+    applyInitializedProjectControls(
+      { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'simple' },
+      { platformControl, platformInfoControl, platformValue }
+    );
+
+    expect(platformControl.hidden).toBe(false);
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
+  });
 });
