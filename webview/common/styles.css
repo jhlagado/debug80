@@ -344,6 +344,9 @@ body {
       flex-shrink: 0;
       margin-left: auto;
     }
+    .stop-on-entry-label[hidden] {
+      display: none;
+    }
     .stop-on-entry-label {
       display: flex;
       align-items: center;
