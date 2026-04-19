@@ -43,6 +43,7 @@ const terminalClearEl = document.getElementById('terminalClear') as HTMLElement 
 
 let activeTab: 'ui' | 'memory' = 'ui';
 let currentRootPath = '';
+let projectIsInitialized = false;
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
 let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createProject' =
   'openWorkspaceFolder';
@@ -54,7 +55,9 @@ const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
 platformSelectEl?.addEventListener('change', () => {
-  vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  if (projectIsInitialized) {
+    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  }
 });
 
 setupPrimaryAction?.addEventListener('click', () => {
@@ -165,6 +168,7 @@ function applyProjectStatus(payload: {
     panelUi,
     panelMemory,
   });
+  projectIsInitialized = initialized;
   stopOnEntryControl.applyProjectStatus({
     hasProject: initialized,
     stopOnEntry: payload.stopOnEntry,
