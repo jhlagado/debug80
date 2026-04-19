@@ -23,6 +23,9 @@ body {
       min-width: 0;
       flex: 1;
     }
+    .project-control[hidden] {
+      display: none;
+    }
     .project-control.actions {
       flex: 0 0 auto;
       align-items: stretch;
