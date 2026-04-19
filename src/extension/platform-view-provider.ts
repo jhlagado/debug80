@@ -34,7 +34,6 @@ import {
   findProjectConfigPath,
   readProjectConfig,
   resolveProjectPlatform,
-  writeProjectConfig,
 } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
@@ -527,7 +526,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   // Private — config
   // -------------------------------------------------------------------------
 
-  /** Writes updated platform to the project config file and triggers a restart. */
+  /** Applies the shared platform selector only for uninitialized workspaces. */
   private handleSaveProjectConfig(platform: string): void {
     const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
     if (folder === undefined) {
@@ -545,23 +544,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       void vscode.window.showErrorMessage('Debug80: No project config found in workspace.');
       return;
     }
-    const existing = readProjectConfig(configPath) ?? {};
-    // Update projectPlatform (sidebar display) AND the platform field inside
-    // every target so the restarted debug session picks up the new platform.
-    const existingTargets = existing.targets ?? {};
-    const updatedTargets = Object.fromEntries(
-      Object.entries(existingTargets).map(([name, target]) => [
-        name,
-        { ...(target as Record<string, unknown>), platform },
-      ])
-    ) as typeof existingTargets;
-    const updated = { ...existing, projectPlatform: platform, targets: updatedTargets };
-    const ok = writeProjectConfig(configPath, updated);
-    if (!ok) {
-      void vscode.window.showErrorMessage('Debug80: Failed to save project config.');
-      return;
-    }
-    void vscode.commands.executeCommand('debug80.restartDebug');
+    this.postProjectStatus();
   }
 
   private normalizePlatformId(platform: string): PlatformId | undefined {

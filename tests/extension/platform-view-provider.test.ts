@@ -10,6 +10,7 @@ const {
   resolveProjectStatusSummary,
   findProjectConfigPath,
   listProjectTargetChoices,
+  writeProjectConfig,
 } = vi.hoisted(() => {
   const executeCommand = vi.fn(() => Promise.resolve(true));
   return {
@@ -26,6 +27,7 @@ const {
       { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
       { name: 'serial', description: 'src/serial.asm', detail: 'src/serial.asm' },
     ]),
+    writeProjectConfig: vi.fn(() => true),
   };
 });
 
@@ -67,7 +69,7 @@ vi.mock('../../src/extension/project-config', () => ({
   readProjectConfig: vi.fn(() => ({ projectPlatform: 'tec1g', targets: {} })),
   resolveProjectPlatform: vi.fn(() => 'tec1g'),
   resolveStopOnEntryForTarget: vi.fn(() => false),
-  writeProjectConfig: vi.fn(() => true),
+  writeProjectConfig,
 }));
 
 vi.mock('../../src/extension/project-target-selection', () => ({
@@ -301,6 +303,45 @@ describe('PlatformViewProvider', () => {
         (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/debug80.json`
       );
     }
+  });
+
+  it('ignores shared platform change messages once the project is initialized', async () => {
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    workspaceFolders = [{ name: 'demo', uri: { fsPath: '/workspace/demo' } }];
+    provider.setSelectedWorkspace({ name: 'demo', uri: { fsPath: '/workspace/demo' } } as never);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as ((msg: { type?: string; platform?: string }) => Promise<void>) | undefined;
+    expect(handler).toBeTypeOf('function');
+
+    executeCommand.mockClear();
+    writeProjectConfig.mockClear();
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    await handler?.({ type: 'saveProjectConfig', platform: 'simple' });
+
+    expect(writeProjectConfig).not.toHaveBeenCalled();
+    expect(executeCommand).not.toHaveBeenCalledWith('debug80.restartDebug');
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.at(-1)).toMatchObject({
+      projectState: 'initialized',
+      platform: 'tec1g',
+    });
   });
 
   it('updates stop-on-entry state without restarting the session', async () => {

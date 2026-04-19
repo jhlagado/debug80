@@ -26,6 +26,8 @@ const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSele
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
+const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
+const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
@@ -141,6 +143,8 @@ function applyProjectStatus(payload: {
   const initialized = applyInitializedProjectControls(payload, {
     targetControl,
     platformControl,
+    platformInfoControl,
+    platformValue: platformValueEl,
     stopOnEntryLabel,
     restartButton: restartDebugButton,
     tabs: tabsEl,
