@@ -84,7 +84,8 @@ export function createTec1gProjectStatusUi(
 
   let currentRootPath = '';
   let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-  let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' = 'openWorkspaceFolder';
+  let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createProject' =
+    'openWorkspaceFolder';
 
   const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
@@ -92,6 +93,10 @@ export function createTec1gProjectStatusUi(
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     if (setupPrimaryActionType === 'openWorkspaceFolder') {
       vscode.postMessage({ type: 'openWorkspaceFolder' });
+      return;
+    }
+    if (setupPrimaryActionType === 'selectProject') {
+      vscode.postMessage({ type: 'selectProject' });
       return;
     }
     if (selected !== undefined) {
@@ -134,7 +139,12 @@ export function createTec1gProjectStatusUi(
       return;
     }
     const projectState = resolveProjectViewState(payload);
-    const setupState = resolveSetupCardState(selected, projectState, targetCount);
+    const setupState = resolveSetupCardState(
+      selected,
+      projectState,
+      targetCount,
+      currentRoots.length
+    );
     if (setupState === null) {
       setupCard.hidden = true;
       return;
