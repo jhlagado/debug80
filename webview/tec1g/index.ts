@@ -99,7 +99,7 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
 });
 
 projectStatusUi.applyProjectStatus({});
-applyInitializedProjectControls({}, {
+projectIsInitialized = applyInitializedProjectControls({}, {
   appRoot,
   projectHeader,
   targetControl,
@@ -119,10 +119,13 @@ const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
 audio.wireMuteClick();
 
 platformSelectEl?.addEventListener('change', () => {
-  vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  if (projectIsInitialized) {
+    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  }
 });
 
 let speedMode: Tec1gSpeedMode = 'fast';
+let projectIsInitialized = false;
 function applySpeed(mode: Tec1gSpeedMode): void {
   speedMode = mode;
   speedEl.textContent = mode.toUpperCase();
@@ -197,6 +200,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       panelUi,
       panelMemory,
     });
+    projectIsInitialized = initialized;
     stopOnEntryControl.applyProjectStatus({
       hasProject: initialized,
       stopOnEntry: message.stopOnEntry,
