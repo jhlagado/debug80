@@ -746,24 +746,10 @@ export function registerExtensionCommands({
 
         const activeSession = vscode.debug.activeDebugSession;
         if (activeSession?.type === 'z80' && target !== previousTarget) {
-          await vscode.debug.stopDebugging(activeSession);
-          const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
-          if (restarted) {
-            void vscode.window.showInformationMessage(
-              `Debug80: Switched target to ${target} and restarted debugging.`
-            );
-            return target;
-          }
-        }
-
-        if (activeSession?.type !== 'z80') {
-          const started = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
-          if (started) {
-            void vscode.window.showInformationMessage(
-              `Debug80: Selected target ${target} and started debugging.`
-            );
-            return target;
-          }
+          void vscode.window.showInformationMessage(
+            `Debug80: Selected target ${target}. Press Restart to apply it to the current session.`
+          );
+          return target;
         }
 
         void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
