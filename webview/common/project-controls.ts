@@ -3,6 +3,7 @@ import { resolveProjectViewState } from './project-state';
 
 export type SharedProjectControlElements = {
   appRoot?: HTMLElement | null;
+  projectHeader?: HTMLElement | null;
   targetControl?: HTMLElement | null;
   targetSelect?: HTMLSelectElement | null;
   platformControl?: HTMLElement | null;
@@ -40,11 +41,17 @@ export function applyInitializedProjectControls(
   elements: SharedProjectControlElements
 ): boolean {
   const projectViewState = resolveProjectViewState(payload);
+  const noWorkspace = projectViewState === 'noWorkspace';
   const initialized = projectViewState === 'initialized';
   const uninitialized = projectViewState === 'uninitialized';
 
   document.body?.setAttribute('data-project-view-state', projectViewState);
   elements.appRoot?.setAttribute('data-project-view-state', projectViewState);
+  if (elements.projectHeader) {
+    // Keep the "no workspace" panel to a single empty-state card. Header controls only
+    // appear once there is a workspace root to select or an actual project to run.
+    elements.projectHeader.hidden = noWorkspace;
+  }
 
   if (elements.targetControl) {
     elements.targetControl.hidden = !initialized;
