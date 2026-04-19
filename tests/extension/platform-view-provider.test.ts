@@ -303,6 +303,50 @@ describe('PlatformViewProvider', () => {
     }
   });
 
+  it('keeps workspace roots discoverable when no workspace is selected', () => {
+    findProjectConfigPath.mockImplementation(() => undefined);
+    try {
+      const provider = new PlatformViewProvider(extensionRoot, {
+        get: vi.fn(),
+        update: vi.fn(),
+      } as never);
+      const webviewView = createWebviewView();
+
+      provider.resolveWebviewView(
+        webviewView,
+        {} as vscode.WebviewViewResolveContext,
+        {
+          isCancellationRequested: false,
+          onCancellationRequested: vi.fn(),
+        } as vscode.CancellationToken
+      );
+
+      workspaceFolders = [
+        { name: 'alpha', uri: { fsPath: '/workspace/alpha' } },
+        { name: 'beta', uri: { fsPath: '/workspace/beta' } },
+      ];
+      provider.setSelectedWorkspace(undefined);
+      provider.setPlatform('simple', undefined, { reveal: false, tab: 'ui' });
+
+      const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+      expect(statusMessages.at(-1)).toMatchObject({
+        projectState: 'uninitialized',
+        hasProject: false,
+        platform: 'simple',
+        targets: [],
+      });
+      expect(statusMessages.at(-1)).not.toHaveProperty('rootPath');
+      expect(statusMessages.at(-1)?.roots).toEqual([
+        { name: 'alpha', path: '/workspace/alpha', hasProject: false },
+        { name: 'beta', path: '/workspace/beta', hasProject: false },
+      ]);
+    } finally {
+      findProjectConfigPath.mockImplementation(
+        (folder: { uri: { fsPath: string } }) => `${folder.uri.fsPath}/debug80.json`
+      );
+    }
+  });
+
   it('updates stop-on-entry state without restarting the session', async () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),
