@@ -19,6 +19,7 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const appRoot = document.getElementById('app') as HTMLElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
@@ -178,6 +179,7 @@ function applyProjectStatus(payload: {
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
   const initialized = applyInitializedProjectControls(payload, {
+    appRoot,
     targetControl,
     platformControl,
     stopOnEntryLabel,
