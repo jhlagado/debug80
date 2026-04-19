@@ -82,7 +82,8 @@ let uiRevision = 0;
 let shiftLatched = false;
 let currentRootPath = '';
 let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-let setupPrimaryActionType: 'openWorkspaceFolder' | 'createProject' = 'openWorkspaceFolder';
+let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createProject' =
+  'openWorkspaceFolder';
 
 const audio = createAudioController(muteEl);
 
@@ -99,6 +100,10 @@ setupPrimaryAction?.addEventListener('click', () => {
   const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
   if (setupPrimaryActionType === 'openWorkspaceFolder') {
     vscode.postMessage({ type: 'openWorkspaceFolder' });
+    return;
+  }
+  if (setupPrimaryActionType === 'selectProject') {
+    vscode.postMessage({ type: 'selectProject' });
     return;
   }
   if (selected !== undefined) {
@@ -190,7 +195,12 @@ function applyProjectStatus(payload: {
   if (!setupCard || !setupCardText || !setupPrimaryAction) {
     return;
   }
-  const setupState = resolveSetupCardState(selected, projectState, targetCount);
+  const setupState = resolveSetupCardState(
+    selected,
+    payload.projectState ?? 'noWorkspace',
+    targetCount,
+    currentRoots.length
+  );
   if (setupState === null) {
     setupCard.hidden = true;
     return;
