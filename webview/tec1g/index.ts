@@ -30,6 +30,7 @@ const DEFAULT_TAB: Tec1gPanelTab =
     : 'ui';
 
 const appRoot = document.getElementById('app') as HTMLElement | null;
+const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
@@ -100,6 +101,7 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
 projectStatusUi.applyProjectStatus({});
 applyInitializedProjectControls({}, {
   appRoot,
+  projectHeader,
   targetControl,
   targetSelect: homeTargetSelect,
   platformControl,
@@ -182,6 +184,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     }
     const initialized = applyInitializedProjectControls(message, {
       appRoot,
+      projectHeader,
       targetControl,
       targetSelect: homeTargetSelect,
       platformControl,

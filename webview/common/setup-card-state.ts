@@ -26,7 +26,7 @@ export function resolveSetupCardState(
 ): SetupCardState | null {
   if (rootCount === 0 && projectState === 'noWorkspace') {
     return {
-      text: 'No workspace folder is open. Open a folder to start with Debug80.',
+      text: 'Add projects or folders to the workspace to start with Debug80.',
       primaryLabel: 'Open Folder',
       primaryAction: 'openWorkspaceFolder',
     };
