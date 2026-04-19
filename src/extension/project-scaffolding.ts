@@ -27,6 +27,7 @@ import {
   type ScaffoldPlatform,
   type StarterLanguage,
 } from './project-kits';
+import { materializeBundledRom } from './bundle-materialize';
 
 type ScaffoldPlan = {
   kit: ProjectKit;
@@ -260,6 +261,18 @@ export async function scaffoldProject(
         }
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
+      if (plan.kit.bundledProfile !== undefined && extensionUri !== undefined) {
+        const romResult = materializeBundledRom(
+          extensionUri,
+          workspaceRoot,
+          plan.kit.bundledProfile.bundleRelPath
+        );
+        if (!romResult.ok) {
+          void vscode.window.showWarningMessage(
+            `Debug80: Project created but bundled ROM assets could not be installed: ${romResult.reason}`
+          );
+        }
+      }
       void vscode.window.showInformationMessage(
         `Debug80: Created ${plan.kit.label} project in debug80.json targeting ${plan.sourceFile}.`
       );
