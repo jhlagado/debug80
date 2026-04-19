@@ -227,6 +227,10 @@ export function createTec1gRuntime(
     );
   };
 
+  // Publish the initial hardware snapshot so the sidebar reflects the real
+  // startup state instead of the cleared placeholder UI.
+  queueUpdate();
+
   return {
     state,
     ioHandlers: { ...ioHandlers, tick },
