@@ -4,7 +4,9 @@ import { resolveProjectViewState } from './project-state';
 export type SharedProjectControlElements = {
   appRoot?: HTMLElement | null;
   targetControl?: HTMLElement | null;
+  targetSelect?: HTMLSelectElement | null;
   platformControl?: HTMLElement | null;
+  platformSelect?: HTMLSelectElement | null;
   platformInfoControl?: HTMLElement | null;
   platformValue?: HTMLElement | null;
   stopOnEntryLabel?: HTMLElement | null;
@@ -44,25 +46,53 @@ export function applyInitializedProjectControls(
   document.body?.setAttribute('data-project-view-state', projectViewState);
   elements.appRoot?.setAttribute('data-project-view-state', projectViewState);
 
-  elements.targetControl?.toggleAttribute('hidden', !initialized);
+  if (elements.targetControl) {
+    elements.targetControl.hidden = !initialized;
+  }
+  if (elements.targetSelect) {
+    elements.targetSelect.disabled = !initialized;
+    if (!initialized) {
+      elements.targetSelect.value = '';
+    }
+  }
+  if (elements.platformControl) {
+    elements.platformControl.hidden = !uninitialized;
+  }
+  if (elements.platformSelect) {
+    elements.platformSelect.disabled = !uninitialized;
+  }
   // Force the platform controls through a single exclusive path on every update.
-  elements.platformControl?.setAttribute('hidden', '');
-  elements.platformInfoControl?.setAttribute('hidden', '');
-  if (uninitialized) {
-    elements.platformControl?.removeAttribute('hidden');
-  } else if (initialized) {
-    elements.platformInfoControl?.removeAttribute('hidden');
+  if (elements.platformControl) {
+    elements.platformControl.hidden = true;
+  }
+  if (elements.platformInfoControl) {
+    elements.platformInfoControl.hidden = true;
+  }
+  if (uninitialized && elements.platformControl) {
+    elements.platformControl.hidden = false;
+  } else if (initialized && elements.platformInfoControl) {
+    elements.platformInfoControl.hidden = false;
   }
   if (elements.platformValue) {
     elements.platformValue.textContent = initialized
       ? formatPlatformLabel(payload.platform)
       : '';
   }
-  elements.stopOnEntryLabel?.toggleAttribute('hidden', !initialized);
-  elements.restartButton?.toggleAttribute('hidden', !initialized);
-  elements.tabs?.toggleAttribute('hidden', !initialized);
-  elements.panelUi?.toggleAttribute('hidden', !initialized);
-  elements.panelMemory?.toggleAttribute('hidden', !initialized);
+  if (elements.stopOnEntryLabel) {
+    elements.stopOnEntryLabel.hidden = !initialized;
+  }
+  if (elements.restartButton) {
+    elements.restartButton.hidden = !initialized;
+  }
+  if (elements.tabs) {
+    elements.tabs.hidden = !initialized;
+  }
+  if (elements.panelUi) {
+    elements.panelUi.hidden = !initialized;
+  }
+  if (elements.panelMemory) {
+    elements.panelMemory.hidden = !initialized;
+  }
 
   return initialized;
 }
