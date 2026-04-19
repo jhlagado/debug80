@@ -7,6 +7,7 @@ describe('setup card state resolver', () => {
     expect(state).not.toBeNull();
     expect(state?.primaryAction).toBe('openWorkspaceFolder');
     expect(state?.primaryLabel).toBe('Open Folder');
+    expect(state?.text).toBe('Add projects or folders to the workspace to start with Debug80.');
   });
 
   it('returns select-project action when workspace roots exist but none is selected', () => {
