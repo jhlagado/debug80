@@ -53,6 +53,8 @@ const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
+const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
+const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
@@ -178,6 +180,8 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       appRoot,
       targetControl,
       platformControl,
+      platformInfoControl,
+      platformValue: platformValueEl,
       stopOnEntryLabel,
       restartButton: restartDebugButton,
       tabs: tabsEl,
