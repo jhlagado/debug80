@@ -102,6 +102,8 @@ applyInitializedProjectControls({}, {
   appRoot,
   targetControl,
   platformControl,
+  platformInfoControl,
+  platformValue: platformValueEl,
   stopOnEntryLabel,
   restartButton: restartDebugButton,
   tabs: tabsEl,
