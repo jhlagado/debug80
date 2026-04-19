@@ -30,6 +30,14 @@
       <span class="project-label">Platform</span>
       <span class="project-value" id="platformValue"></span>
     </div>
+    <label
+      class="stop-on-entry-label"
+      hidden
+      title="Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json."
+    >
+      <input type="checkbox" id="stopOnEntry" />
+      Stop on entry
+    </label>
   </div>
   <div class="setup-card" id="setupCard">
     <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
@@ -43,13 +51,6 @@
       <button class="tab" data-tab="memory">CPU</button>
     </div>
     <div class="tabs-status-slot">
-      <label
-        class="stop-on-entry-label"
-        title="Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json."
-      >
-        <input type="checkbox" id="stopOnEntry" />
-        Stop on entry
-      </label>
       <button
         class="session-status"
         id="restartDebug"
