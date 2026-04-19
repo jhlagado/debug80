@@ -16,6 +16,7 @@ const TERMINAL_MAX = 8000;
 
 const vscode = acquireVscodeApi();
 
+const appRoot = document.getElementById('app') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
@@ -144,6 +145,7 @@ function applyProjectStatus(payload: {
     platformSelectEl.value = payload.platform;
   }
   const initialized = applyInitializedProjectControls(payload, {
+    appRoot,
     targetControl,
     platformControl,
     stopOnEntryLabel,
@@ -176,6 +178,8 @@ function applyProjectStatus(payload: {
   setupCardText.textContent = setupState.text;
   setupPrimaryAction.textContent = setupState.primaryLabel;
 }
+
+applyProjectStatus({});
 
 function setTab(tab: 'ui' | 'memory'): void {
   activeTab = tab;

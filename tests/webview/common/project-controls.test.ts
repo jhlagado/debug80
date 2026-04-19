@@ -7,6 +7,7 @@ function createElement(): HTMLElement {
 
 describe('initialized project controls', () => {
   it('shows only initialized controls after project setup', () => {
+    const appRoot = createElement();
     const targetControl = createElement();
     const platformControl = createElement();
     const stopOnEntryLabel = createElement();
@@ -17,10 +18,12 @@ describe('initialized project controls', () => {
 
     const initialized = applyInitializedProjectControls(
       { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true },
-      { targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
+      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
     );
 
     expect(initialized).toBe(true);
+    expect(document.body.dataset.projectViewState).toBe('initialized');
+    expect(appRoot.dataset.projectViewState).toBe('initialized');
     expect(targetControl.hidden).toBe(false);
     expect(platformControl.hidden).toBe(true);
     expect(stopOnEntryLabel.hidden).toBe(false);
@@ -31,20 +34,56 @@ describe('initialized project controls', () => {
   });
 
   it('keeps platform visible until the project is initialized', () => {
+    const appRoot = createElement();
     const targetControl = createElement();
     const platformControl = createElement();
     const stopOnEntryLabel = createElement();
     const restartButton = createElement();
+    const tabs = createElement();
+    const panelUi = createElement();
+    const panelMemory = createElement();
 
     const initialized = applyInitializedProjectControls(
       { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false },
-      { targetControl, platformControl, stopOnEntryLabel, restartButton }
+      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
     );
 
     expect(initialized).toBe(false);
+    expect(document.body.dataset.projectViewState).toBe('uninitialized');
+    expect(appRoot.dataset.projectViewState).toBe('uninitialized');
     expect(targetControl.hidden).toBe(true);
     expect(platformControl.hidden).toBe(false);
     expect(stopOnEntryLabel.hidden).toBe(true);
     expect(restartButton.hidden).toBe(true);
+    expect(tabs.hidden).toBe(true);
+    expect(panelUi.hidden).toBe(true);
+    expect(panelMemory.hidden).toBe(true);
+  });
+
+  it('defaults to setup-only chrome before project state arrives', () => {
+    const appRoot = createElement();
+    const targetControl = createElement();
+    const platformControl = createElement();
+    const stopOnEntryLabel = createElement();
+    const restartButton = createElement();
+    const tabs = createElement();
+    const panelUi = createElement();
+    const panelMemory = createElement();
+
+    const initialized = applyInitializedProjectControls(
+      {},
+      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
+    );
+
+    expect(initialized).toBe(false);
+    expect(document.body.dataset.projectViewState).toBe('noWorkspace');
+    expect(appRoot.dataset.projectViewState).toBe('noWorkspace');
+    expect(targetControl.hidden).toBe(true);
+    expect(platformControl.hidden).toBe(false);
+    expect(stopOnEntryLabel.hidden).toBe(true);
+    expect(restartButton.hidden).toBe(true);
+    expect(tabs.hidden).toBe(true);
+    expect(panelUi.hidden).toBe(true);
+    expect(panelMemory.hidden).toBe(true);
   });
 });
