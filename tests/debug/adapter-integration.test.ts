@@ -4,20 +4,28 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PassThrough } from 'stream';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as vscodeMock from '../e2e/adapter/vscode-mock';
+
+const { getExtension } = vi.hoisted(() => ({
+  getExtension: vi.fn(() => undefined),
+}));
 
 vi.mock('vscode', () => {
   return {
     ...vscodeMock,
     extensions: {
-      getExtension: vi.fn(() => undefined),
+      getExtension,
     },
   };
 });
 
 import { Z80DebugSession } from '../../src/debug/adapter';
 import { DapClient } from '../e2e/adapter/dap-client';
+import { createDefaultProjectConfig } from '../../src/extension/project-scaffolding';
+import { getProjectKitById } from '../../src/extension/project-kits';
 const { commands, workspace } = vscodeMock;
 
 const fixtureRoot = path.resolve(__dirname, '../e2e/fixtures/simple');
@@ -31,6 +39,57 @@ type SessionHarness = {
   input: PassThrough;
   output: PassThrough;
 };
+
+function createFreshProjectFixture(
+  kitId: 'tec1/mon1b' | 'tec1g/mon3'
+): { root: string; sourcePath: string } {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-fresh-project-'));
+  const sourceDir = path.join(root, 'src');
+  const buildDir = path.join(root, 'build');
+  fs.mkdirSync(sourceDir, { recursive: true });
+  fs.mkdirSync(buildDir, { recursive: true });
+
+  const kit = getProjectKitById(kitId);
+  if (kit === undefined) {
+    throw new Error(`Missing project kit ${kitId}`);
+  }
+
+  const sourcePath = path.join(root, 'src', 'main.asm');
+  fs.writeFileSync(
+    sourcePath,
+    kitId === 'tec1g/mon3'
+      ? '; Debug80 starter (TEC-1G / MON-3)\n        ORG 0x4000\n\nstart:  NOP\n        JR  start\n'
+      : '; Debug80 starter (TEC-1 / MON-1B)\n        ORG 0x0800\n\nstart:  NOP\n        JR  start\n'
+  );
+  fs.writeFileSync(
+    path.join(buildDir, 'main.hex'),
+    kitId === 'tec1g/mon3'
+      ? ':034000000018FDA8\n:00000001FF\n'
+      : ':030800000018FDE0\n:00000001FF\n'
+  );
+  fs.writeFileSync(
+    path.join(buildDir, 'main.lst'),
+    kitId === 'tec1g/mon3'
+      ? '4000   00           NOP\n4001   18 FD        JR start\n'
+      : '0800   00           NOP\n0801   18 FD        JR start\n'
+  );
+  fs.writeFileSync(
+    path.join(root, 'debug80.json'),
+    `${JSON.stringify(
+      createDefaultProjectConfig({
+        kit,
+        targetName: 'app',
+        sourceFile: 'src/main.asm',
+        outputDir: 'build',
+        artifactBase: 'main',
+      }),
+      null,
+      2
+    )}\n`
+  );
+
+  return { root, sourcePath };
+}
 
 function createHarness(): SessionHarness {
   const input = new PassThrough();
@@ -81,6 +140,8 @@ describe('adapter integration', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    getExtension.mockReset();
+    getExtension.mockReturnValue(undefined);
     workspace.workspaceFolders = [{ uri: { fsPath: fixtureRoot } }];
     harness = createHarness();
   });
@@ -207,12 +268,74 @@ describe('adapter integration', () => {
 
     const update = await client.waitForEvent<{
       body?: { speedMode?: string; lcd?: number[]; digits?: number[] };
-    }>('debug80/tec1Update');
+    }>(
+      'debug80/tec1Update',
+      (event) => (event.body as { speedMode?: unknown } | undefined)?.speedMode === 'slow'
+    );
     expect(update.body?.speedMode).toBe('slow');
     expect(update.body?.digits).toBeDefined();
     expect(update.body?.lcd).toBeDefined();
 
     await client.sendRequest('disconnect');
+  });
+
+  it('emits an initial TEC-1 update before user interaction', async () => {
+    const fixture = createFreshProjectFixture('tec1/mon1b');
+    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
+    getExtension.mockReturnValue({
+      extensionPath: path.resolve(__dirname, '../..'),
+    } as never);
+
+    const { client } = harness ?? createHarness();
+
+    await initialize(client);
+    await launchWithDiagnostics(client, {
+      target: 'app',
+      assemble: false,
+      stopOnEntry: true,
+      openRomSourcesOnLaunch: false,
+      openMainSourceOnLaunch: false,
+    });
+
+    const update = await client.waitForEvent<{
+      body?: { speedMode?: string; lcd?: number[] };
+    }>('debug80/tec1Update', undefined, 1000);
+
+    expect(update.body?.speedMode).toBe('fast');
+    expect(update.body?.lcd).toHaveLength(32);
+
+    await client.sendRequest('disconnect');
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  });
+
+  it('emits an initial TEC-1G update for a freshly initialized MON-3 project before user interaction', async () => {
+    const fixture = createFreshProjectFixture('tec1g/mon3');
+    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
+    getExtension.mockReturnValue({
+      extensionPath: path.resolve(__dirname, '../..'),
+    } as never);
+
+    const { client } = harness ?? createHarness();
+
+    await initialize(client);
+    await launchWithDiagnostics(client, {
+      target: 'app',
+      assemble: false,
+      stopOnEntry: true,
+      openRomSourcesOnLaunch: false,
+      openMainSourceOnLaunch: false,
+    });
+
+    const update = await client.waitForEvent<{
+      body?: { speedMode?: string; lcd?: number[]; sysCtrl?: number };
+    }>('debug80/tec1gUpdate', undefined, 1000);
+
+    expect(update.body?.speedMode).toBe('fast');
+    expect(update.body?.sysCtrl).toBe(0);
+    expect(update.body?.lcd?.[0]).toBe('A'.charCodeAt(0));
+
+    await client.sendRequest('disconnect');
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   });
 
   it('preserves launch diagnostics on the DAP output stream', async () => {
