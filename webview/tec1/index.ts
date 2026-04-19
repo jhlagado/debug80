@@ -1,5 +1,6 @@
 import { createDigit } from '../common/digits';
 import { applyInitializedProjectControls } from '../common/project-controls';
+import { resolveProjectViewState } from '../common/project-state';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
@@ -20,6 +21,7 @@ const DEFAULT_TAB: PanelTab =
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const appRoot = document.getElementById('app') as HTMLElement | null;
+const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
@@ -173,7 +175,7 @@ function applyProjectStatus(payload: {
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
-  const projectState = payload.projectState ?? 'noWorkspace';
+  const projectState = resolveProjectViewState(payload);
   const initializedProject = projectState === 'initialized';
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
@@ -188,6 +190,7 @@ function applyProjectStatus(payload: {
   }
   const initialized = applyInitializedProjectControls(payload, {
     appRoot,
+    projectHeader,
     targetControl,
     targetSelect: homeTargetSelect,
     platformControl,
