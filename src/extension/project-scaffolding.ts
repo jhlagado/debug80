@@ -234,7 +234,6 @@ export async function scaffoldProject(
     path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile))
   );
   ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
-  ensureDirExists(vscodeDir);
 
   let created = false;
 
@@ -279,6 +278,7 @@ export async function scaffoldProject(
     if (!fs.existsSync(launchPath)) {
       const launchConfig = createDefaultLaunchConfig();
       try {
+        ensureDirExists(vscodeDir);
         fs.writeFileSync(launchPath, `${JSON.stringify(launchConfig, null, 2)}\n`);
         void vscode.window.showInformationMessage(
           'Debug80: Created .vscode/launch.json for the current-project workflow.'
