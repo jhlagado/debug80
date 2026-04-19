@@ -20,6 +20,7 @@ const DEFAULT_TAB: PanelTab =
     ? 'memory'
     : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') as HTMLButtonElement | null;
 const appRoot = document.getElementById('app') as HTMLElement | null;
 const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
@@ -92,6 +93,10 @@ let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createPro
   'openWorkspaceFolder';
 
 const audio = createAudioController(muteEl);
+
+addWorkspaceFolderButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'openWorkspaceFolder' });
+});
 
 platformSelectEl?.addEventListener('change', () => {
   if (projectIsInitialized) {

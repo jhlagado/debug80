@@ -56,6 +56,22 @@ body {
       cursor: default;
       color: #7a7a7a;
     }
+    .add-workspace-button {
+      flex: 0 0 auto;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: transparent;
+      color: #9a9a9a;
+      padding: 1px 7px;
+      font-size: 16px;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+    .add-workspace-button:hover {
+      background: #2a2a2a;
+      color: #f0f0f0;
+      border-color: #666;
+    }
     .project-action-button {
       flex: 0 0 auto;
       min-width: 0;
