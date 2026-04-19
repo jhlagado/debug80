@@ -2,6 +2,7 @@
  * @file Command registration for the Debug80 extension.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
@@ -287,10 +288,43 @@ function resolveProjectFolderFromResource(
   return folder;
 }
 
+/**
+ * Silently copies any bundled ROM/listing assets that are referenced in the project config
+ * but not yet present in the workspace. Called on every debug launch so that new projects
+ * work without a manual "Install bundled assets" step.
+ */
+function ensureBundledAssetsPresent(
+  extensionUri: vscode.Uri,
+  workspaceRoot: string,
+  config: ProjectConfig
+): void {
+  const plan = resolveProjectBundledAssetInstallPlan(config);
+  if (plan === undefined) {
+    return;
+  }
+  for (const reference of plan.references) {
+    const destination = reference.destination;
+    if (typeof destination !== 'string' || destination.trim().length === 0) {
+      continue;
+    }
+    const absoluteDest = path.resolve(workspaceRoot, destination.trim());
+    if (fs.existsSync(absoluteDest)) {
+      continue;
+    }
+    const result = materializeBundledAsset(extensionUri, workspaceRoot, reference, { overwrite: false });
+    if (!result.ok) {
+      void vscode.window.showWarningMessage(
+        `Debug80: Could not install bundled asset "${reference.path}": ${result.reason}`
+      );
+    }
+  }
+}
+
 async function startCurrentProjectDebugging(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
-  stopOnEntry: boolean
+  stopOnEntry: boolean,
+  extensionUri: vscode.Uri
 ): Promise<boolean> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -298,6 +332,11 @@ async function startCurrentProjectDebugging(
       `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
     );
     return false;
+  }
+
+  const config = readProjectConfig(projectConfig);
+  if (config !== undefined) {
+    ensureBundledAssetsPresent(extensionUri, folder.uri.fsPath, config);
   }
 
   workspaceSelection.rememberWorkspace(folder);
@@ -314,7 +353,8 @@ async function maybeAutoStartSingleTargetForRootChange(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
   targetSelection: ProjectTargetSelectionController,
-  stopOnEntry: boolean
+  stopOnEntry: boolean,
+  extensionUri: vscode.Uri
 ): Promise<string | undefined> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -338,7 +378,7 @@ async function maybeAutoStartSingleTargetForRootChange(
     await vscode.debug.stopDebugging(activeSession);
   }
 
-  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry);
+  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry, extensionUri);
   if (!started) {
     return undefined;
   }
@@ -590,7 +630,7 @@ export function registerExtensionCommands({
         );
         return false;
       }
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
     })
   );
 
@@ -611,7 +651,7 @@ export function registerExtensionCommands({
         await vscode.debug.stopDebugging(activeSession);
       }
 
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
     })
   );
 
@@ -648,7 +688,7 @@ export function registerExtensionCommands({
             path.normalize(nextProjectConfig) !== previousProjectConfig
           ) {
             await vscode.debug.stopDebugging(activeSession);
-            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
             restartedForRootChange = restarted;
             if (restarted) {
               const nextPlatform = resolveProjectPlatformForFolder(folder);
@@ -667,7 +707,8 @@ export function registerExtensionCommands({
               folder,
               workspaceSelection,
               targetSelection,
-              platformViewProvider.stopOnEntry
+              platformViewProvider.stopOnEntry,
+              context.extensionUri
             );
         if (singleTarget !== undefined) {
           void vscode.window.showInformationMessage(
