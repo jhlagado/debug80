@@ -548,6 +548,10 @@ export function createTec1Runtime(
     queueUpdate();
   };
 
+  // Publish the initial hardware snapshot so the sidebar does not stay on
+  // its cleared placeholder state until the first user-driven interaction.
+  queueUpdate();
+
   return {
     state,
     ioHandlers,
