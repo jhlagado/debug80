@@ -101,7 +101,11 @@ projectStatusUi.applyProjectStatus({});
 applyInitializedProjectControls({}, {
   appRoot,
   targetControl,
+  targetSelect: homeTargetSelect,
   platformControl,
+  platformInfoControl,
+  platformValue: platformValueEl,
+  platformSelect: platformSelectEl,
   platformInfoControl,
   platformValue: platformValueEl,
   stopOnEntryLabel,
@@ -181,7 +185,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     const initialized = applyInitializedProjectControls(message, {
       appRoot,
       targetControl,
+      targetSelect: homeTargetSelect,
       platformControl,
+      platformSelect: platformSelectEl,
       platformInfoControl,
       platformValue: platformValueEl,
       stopOnEntryLabel,
