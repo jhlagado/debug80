@@ -17,19 +17,6 @@ export type SharedProjectControlElements = {
   panelMemory?: HTMLElement | null;
 };
 
-function formatPlatformLabel(platform?: string): string {
-  const normalized = platform?.trim().toLowerCase();
-  if (normalized === 'simple') {
-    return 'Simple';
-  }
-  if (normalized === 'tec1') {
-    return 'TEC-1';
-  }
-  if (normalized === 'tec1g') {
-    return 'TEC-1G';
-  }
-  return platform && platform.length > 0 ? platform : 'Unknown';
-}
 
 export function applyInitializedProjectControls(
   payload: {
@@ -62,28 +49,19 @@ export function applyInitializedProjectControls(
       elements.targetSelect.value = '';
     }
   }
+  // Platform selector: visible only when uninitialized (choosing platform before first init).
+  // platformInfoControl (read-only label) is never shown — platform is implicit once initialized.
   if (elements.platformControl) {
     elements.platformControl.hidden = !uninitialized;
   }
   if (elements.platformSelect) {
     elements.platformSelect.disabled = !uninitialized;
   }
-  // Force the platform controls through a single exclusive path on every update.
-  if (elements.platformControl) {
-    elements.platformControl.hidden = true;
-  }
   if (elements.platformInfoControl) {
     elements.platformInfoControl.hidden = true;
   }
-  if (uninitialized && elements.platformControl) {
-    elements.platformControl.hidden = false;
-  } else if (initialized && elements.platformInfoControl) {
-    elements.platformInfoControl.hidden = false;
-  }
   if (elements.platformValue) {
-    elements.platformValue.textContent = initialized
-      ? formatPlatformLabel(payload.platform)
-      : '';
+    elements.platformValue.textContent = '';
   }
   if (elements.stopOnEntryLabel) {
     elements.stopOnEntryLabel.hidden = !initialized;
