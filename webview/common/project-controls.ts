@@ -45,8 +45,14 @@ export function applyInitializedProjectControls(
   elements.appRoot?.setAttribute('data-project-view-state', projectViewState);
 
   elements.targetControl?.toggleAttribute('hidden', !initialized);
-  elements.platformControl?.toggleAttribute('hidden', !uninitialized);
-  elements.platformInfoControl?.toggleAttribute('hidden', !initialized);
+  // Force the platform controls through a single exclusive path on every update.
+  elements.platformControl?.setAttribute('hidden', '');
+  elements.platformInfoControl?.setAttribute('hidden', '');
+  if (uninitialized) {
+    elements.platformControl?.removeAttribute('hidden');
+  } else if (initialized) {
+    elements.platformInfoControl?.removeAttribute('hidden');
+  }
   if (elements.platformValue) {
     elements.platformValue.textContent = initialized
       ? formatPlatformLabel(payload.platform)
