@@ -29,6 +29,7 @@ const DEFAULT_TAB: Tec1gPanelTab =
     ? 'memory'
     : 'ui';
 
+const appRoot = document.getElementById('app') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
@@ -95,6 +96,16 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
 });
 
 projectStatusUi.applyProjectStatus({});
+applyInitializedProjectControls({}, {
+  appRoot,
+  targetControl,
+  platformControl,
+  stopOnEntryLabel,
+  restartButton: restartDebugButton,
+  tabs: tabsEl,
+  panelUi,
+  panelMemory,
+});
 
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
 audio.wireMuteClick();
@@ -164,6 +175,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       platformSelectEl.value = message.platform;
     }
     const initialized = applyInitializedProjectControls(message, {
+      appRoot,
       targetControl,
       platformControl,
       stopOnEntryLabel,
