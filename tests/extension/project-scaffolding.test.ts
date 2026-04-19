@@ -27,6 +27,7 @@ import {
   createStarterSourceContent,
   scaffoldProject,
 } from '../../src/extension/project-scaffolding';
+import { ensureDirExists } from '../../src/debug/config-utils';
 import { DEBUG80_PROJECT_VERSION } from '../../src/extension/project-config';
 import { getProjectKitById } from '../../src/extension/project-kits';
 
@@ -404,6 +405,49 @@ describe('project-scaffolding helpers', () => {
       expect(showInformationMessage).toHaveBeenCalledWith(
         'Debug80: Created TEC-1 / MON-1B project in debug80.json targeting src/main.asm.'
       );
+      expect(ensureDirExists).not.toHaveBeenCalledWith(path.join(workspaceRoot, '.vscode'));
+    } finally {
+      vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
+      showErrorMessage.mockReset();
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('creates .vscode only when launch.json is written', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const existsSync = vi.mocked(fs.existsSync);
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-flow-'));
+    try {
+      existsSync.mockImplementation((candidate: string) => {
+        const normalized = candidate.replace(/\\/g, '/');
+        return (
+          !normalized.endsWith('/debug80.json') &&
+          !normalized.endsWith('/.debug80.json') &&
+          !normalized.endsWith('/src/main.asm') &&
+          !normalized.endsWith('/.vscode/launch.json')
+        );
+      });
+      showErrorMessage.mockImplementation((message: string) => {
+        throw new Error(message);
+      });
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        true,
+        undefined,
+        'tec1'
+      );
+
+      expect(created).toBe(true);
+      expect(ensureDirExists).toHaveBeenCalledWith(path.join(workspaceRoot, '.vscode'));
+      expect(
+        writeFileSync.mock.calls.some(([filePath]) =>
+          String(filePath).replace(/\\/g, '/').endsWith('/.vscode/launch.json')
+        )
+      ).toBe(true);
     } finally {
       vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
       showErrorMessage.mockReset();
