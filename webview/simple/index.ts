@@ -135,6 +135,8 @@ function applyProjectStatus(payload: {
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
+  const projectState = payload.projectState ?? 'noWorkspace';
+  const initializedProject = projectState === 'initialized';
   currentRootPath = payload.rootPath ?? '';
   currentRoots = payload.roots ?? [];
   projectRootController.applyProjectStatus({
@@ -142,14 +144,16 @@ function applyProjectStatus(payload: {
     roots: payload.roots ?? [],
     targetCount: payload.targets?.length ?? 0,
   });
-  setTargetOptions(payload.targets ?? [], payload.targetName);
+  setTargetOptions(initializedProject ? (payload.targets ?? []) : [], payload.targetName);
   if (platformSelectEl && payload.platform !== undefined) {
     platformSelectEl.value = payload.platform;
   }
   const initialized = applyInitializedProjectControls(payload, {
     appRoot,
     targetControl,
+    targetSelect: homeTargetSelect,
     platformControl,
+    platformSelect: platformSelectEl,
     platformInfoControl,
     platformValue: platformValueEl,
     stopOnEntryLabel,
@@ -169,7 +173,7 @@ function applyProjectStatus(payload: {
   }
   const setupState = resolveSetupCardState(
     selected,
-    payload.projectState ?? 'noWorkspace',
+    projectState,
     targetCount,
     currentRoots.length
   );

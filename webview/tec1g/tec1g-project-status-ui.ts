@@ -123,6 +123,8 @@ export function createTec1gProjectStatusUi(
     targetName?: ProjectStatusPayload['targetName'];
     projectState?: ProjectStatusPayload['projectState'];
   }): void {
+    const projectState = resolveProjectViewState(payload);
+    const initializedProject = projectState === 'initialized';
     currentRootPath = payload.rootPath ?? '';
     currentRoots = payload.roots ?? [];
     projectRootController.applyProjectStatus({
@@ -131,14 +133,17 @@ export function createTec1gProjectStatusUi(
       targetCount: payload.targets?.length ?? 0,
     });
     if (homeTargetSelect) {
-      setTargetOptions(homeTargetSelect, payload.targets ?? [], payload.targetName);
+      setTargetOptions(
+        homeTargetSelect,
+        initializedProject ? (payload.targets ?? []) : [],
+        payload.targetName
+      );
     }
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     const targetCount = payload.targets?.length ?? 0;
     if (!setupCard || !setupCardText || !setupPrimaryAction) {
       return;
     }
-    const projectState = resolveProjectViewState(payload);
     const setupState = resolveSetupCardState(
       selected,
       projectState,
