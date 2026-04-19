@@ -106,8 +106,6 @@ applyInitializedProjectControls({}, {
   platformInfoControl,
   platformValue: platformValueEl,
   platformSelect: platformSelectEl,
-  platformInfoControl,
-  platformValue: platformValueEl,
   stopOnEntryLabel,
   restartButton: restartDebugButton,
   tabs: tabsEl,
