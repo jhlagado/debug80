@@ -108,6 +108,19 @@ body {
       padding: 4px 6px;
       font-size: 11px;
     }
+    .project-value {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #141414;
+      color: #cfcfcf;
+      padding: 4px 8px;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .layout {
       display: grid;
       gap: 16px;

@@ -38,6 +38,8 @@ const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
+const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
+const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
@@ -167,6 +169,7 @@ function applyProjectStatus(payload: {
   targets?: ProjectStatusPayload['targets'];
   targetName?: ProjectStatusPayload['targetName'];
   projectState?: ProjectStatusPayload['projectState'];
+  platform?: ProjectStatusPayload['platform'];
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
@@ -178,10 +181,15 @@ function applyProjectStatus(payload: {
     targetCount: payload.targets?.length ?? 0,
   });
   setTargetOptions(payload.targets ?? [], payload.targetName);
+  if (platformSelectEl && payload.platform !== undefined) {
+    platformSelectEl.value = payload.platform;
+  }
   const initialized = applyInitializedProjectControls(payload, {
     appRoot,
     targetControl,
     platformControl,
+    platformInfoControl,
+    platformValue: platformValueEl,
     stopOnEntryLabel,
     restartButton: restartDebugButton,
     tabs: tabsEl,

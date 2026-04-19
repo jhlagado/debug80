@@ -10,6 +10,8 @@ describe('initialized project controls', () => {
     const appRoot = createElement();
     const targetControl = createElement();
     const platformControl = createElement();
+    const platformInfoControl = createElement();
+    const platformValue = createElement();
     const stopOnEntryLabel = createElement();
     const restartButton = createElement();
     const tabs = createElement();
@@ -17,8 +19,19 @@ describe('initialized project controls', () => {
     const panelMemory = createElement();
 
     const initialized = applyInitializedProjectControls(
-      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true },
-      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
+      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      {
+        appRoot,
+        targetControl,
+        platformControl,
+        platformInfoControl,
+        platformValue,
+        stopOnEntryLabel,
+        restartButton,
+        tabs,
+        panelUi,
+        panelMemory,
+      }
     );
 
     expect(initialized).toBe(true);
@@ -26,6 +39,8 @@ describe('initialized project controls', () => {
     expect(appRoot.dataset.projectViewState).toBe('initialized');
     expect(targetControl.hidden).toBe(false);
     expect(platformControl.hidden).toBe(true);
+    expect(platformInfoControl.hidden).toBe(false);
+    expect(platformValue.textContent).toBe('TEC-1G');
     expect(stopOnEntryLabel.hidden).toBe(false);
     expect(restartButton.hidden).toBe(false);
     expect(tabs.hidden).toBe(false);
@@ -37,6 +52,8 @@ describe('initialized project controls', () => {
     const appRoot = createElement();
     const targetControl = createElement();
     const platformControl = createElement();
+    const platformInfoControl = createElement();
+    const platformValue = createElement();
     const stopOnEntryLabel = createElement();
     const restartButton = createElement();
     const tabs = createElement();
@@ -45,7 +62,18 @@ describe('initialized project controls', () => {
 
     const initialized = applyInitializedProjectControls(
       { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false },
-      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
+      {
+        appRoot,
+        targetControl,
+        platformControl,
+        platformInfoControl,
+        platformValue,
+        stopOnEntryLabel,
+        restartButton,
+        tabs,
+        panelUi,
+        panelMemory,
+      }
     );
 
     expect(initialized).toBe(false);
@@ -53,6 +81,8 @@ describe('initialized project controls', () => {
     expect(appRoot.dataset.projectViewState).toBe('uninitialized');
     expect(targetControl.hidden).toBe(true);
     expect(platformControl.hidden).toBe(false);
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
     expect(stopOnEntryLabel.hidden).toBe(true);
     expect(restartButton.hidden).toBe(true);
     expect(tabs.hidden).toBe(true);
@@ -64,6 +94,8 @@ describe('initialized project controls', () => {
     const appRoot = createElement();
     const targetControl = createElement();
     const platformControl = createElement();
+    const platformInfoControl = createElement();
+    const platformValue = createElement();
     const stopOnEntryLabel = createElement();
     const restartButton = createElement();
     const tabs = createElement();
@@ -72,18 +104,45 @@ describe('initialized project controls', () => {
 
     const initialized = applyInitializedProjectControls(
       {},
-      { appRoot, targetControl, platformControl, stopOnEntryLabel, restartButton, tabs, panelUi, panelMemory }
+      {
+        appRoot,
+        targetControl,
+        platformControl,
+        platformInfoControl,
+        platformValue,
+        stopOnEntryLabel,
+        restartButton,
+        tabs,
+        panelUi,
+        panelMemory,
+      }
     );
 
     expect(initialized).toBe(false);
     expect(document.body.dataset.projectViewState).toBe('noWorkspace');
     expect(appRoot.dataset.projectViewState).toBe('noWorkspace');
     expect(targetControl.hidden).toBe(true);
-    expect(platformControl.hidden).toBe(false);
+    expect(platformControl.hidden).toBe(true);
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
     expect(stopOnEntryLabel.hidden).toBe(true);
     expect(restartButton.hidden).toBe(true);
     expect(tabs.hidden).toBe(true);
     expect(panelUi.hidden).toBe(true);
     expect(panelMemory.hidden).toBe(true);
+  });
+
+  it('hides platform controls when no workspace root is selected', () => {
+    const platformControl = createElement();
+    const platformInfoControl = createElement();
+
+    const initialized = applyInitializedProjectControls(
+      { projectState: 'noWorkspace' },
+      { platformControl, platformInfoControl }
+    );
+
+    expect(initialized).toBe(false);
+    expect(platformControl.hidden).toBe(true);
+    expect(platformInfoControl.hidden).toBe(true);
   });
 });
