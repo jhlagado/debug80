@@ -707,7 +707,7 @@ describe('registerExtensionCommands', () => {
     expect(startDebugging).not.toHaveBeenCalled();
   });
 
-  it('auto-restarts an active z80 session after changing target', async () => {
+  it('keeps target changes pending while an active z80 session continues running', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
@@ -740,8 +740,6 @@ describe('registerExtensionCommands', () => {
     const selectTarget = registeredCommands.get('debug80.selectTarget');
     expect(selectTarget).toBeTypeOf('function');
 
-    stopDebugging.mockResolvedValueOnce(undefined);
-    startDebugging.mockResolvedValueOnce(true);
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
       type: 'z80',
       id: 'session-2',
@@ -750,17 +748,53 @@ describe('registerExtensionCommands', () => {
     const result = await selectTarget?.();
 
     expect(result).toBe('glcd-maze');
-    expect(stopDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'z80', id: 'session-2' })
+    expect(stopDebugging).not.toHaveBeenCalled();
+    expect(startDebugging).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: Selected target glcd-maze. Press Restart to apply it to the current session.'
     );
-    expect(startDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
-      expect.objectContaining({
-        type: 'z80',
-        request: 'launch',
-        projectConfig: projectConfigPath,
-      })
-    );
+  });
+
+  it('keeps target changes pending when no debug session is running', async () => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('serial');
+    const rememberTarget = vi.fn();
+
+    registerExtensionCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => 'app'), update: vi.fn() },
+      } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget,
+      } as never,
+    });
+
+    const selectTarget = registeredCommands.get('debug80.selectTarget');
+    expect(selectTarget).toBeTypeOf('function');
+
+    const result = await selectTarget?.();
+
+    expect(result).toBe('serial');
+    expect(rememberTarget).toHaveBeenCalledWith(projectConfigPath, 'serial');
+    expect(startDebugging).not.toHaveBeenCalled();
+    expect(stopDebugging).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith('Debug80: Selected target serial.');
   });
 
   it('uses a direct target selection without prompting', async () => {
