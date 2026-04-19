@@ -32,6 +32,7 @@ const DEFAULT_TAB: Tec1gPanelTab =
 const appRoot = document.getElementById('app') as HTMLElement | null;
 const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
+const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
@@ -117,6 +118,10 @@ projectIsInitialized = applyInitializedProjectControls({}, {
 
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
 audio.wireMuteClick();
+
+addWorkspaceFolderButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'openWorkspaceFolder' });
+});
 
 platformSelectEl?.addEventListener('change', () => {
   if (projectIsInitialized) {
