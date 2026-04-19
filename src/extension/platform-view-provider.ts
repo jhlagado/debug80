@@ -596,14 +596,24 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getProjectStatusPayload(): ProjectStatusPayload {
-    const roots = (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+    const roots = workspaceFolders.map((folder) => ({
       name: folder.name,
       path: folder.uri.fsPath,
       hasProject: findProjectConfigPath(folder) !== undefined,
     }));
-    const folder = this.selectedWorkspace;
+    const folder =
+      this.selectedWorkspace ??
+      (workspaceFolders.length === 1 ? workspaceFolders[0] : undefined);
     if (folder === undefined) {
-      return { roots, targets: [], projectState: 'noWorkspace' };
+      return {
+        roots,
+        targets: [],
+        projectState: roots.length === 0 ? 'noWorkspace' : 'uninitialized',
+        hasProject: false,
+        platform: this.currentPlatform ?? 'simple',
+        stopOnEntry: this.stopOnEntry,
+      };
     }
 
     const projectConfigPath = findProjectConfigPath(folder);

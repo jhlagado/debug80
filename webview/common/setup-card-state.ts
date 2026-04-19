@@ -6,7 +6,7 @@ export type SetupRootOption = {
 
 export type SetupProjectState = 'noWorkspace' | 'uninitialized' | 'initialized';
 
-export type SetupPrimaryAction = 'openWorkspaceFolder' | 'createProject';
+export type SetupPrimaryAction = 'openWorkspaceFolder' | 'selectProject' | 'createProject';
 
 export type SetupCardState = {
   text: string;
@@ -21,13 +21,21 @@ export type SetupCardState = {
 export function resolveSetupCardState(
   selectedRoot: SetupRootOption | undefined,
   projectState: SetupProjectState,
-  targetCount: number
+  targetCount: number,
+  rootCount = selectedRoot ? 1 : 0
 ): SetupCardState | null {
-  if (projectState === 'noWorkspace' || selectedRoot === undefined) {
+  if (rootCount === 0 && projectState === 'noWorkspace') {
     return {
       text: 'No workspace folder is open. Open a folder to start with Debug80.',
       primaryLabel: 'Open Folder',
       primaryAction: 'openWorkspaceFolder',
+    };
+  }
+  if (selectedRoot === undefined) {
+    return {
+      text: 'Workspace folders are available. Select a workspace root to create or find a Debug80 project.',
+      primaryLabel: 'Select Project',
+      primaryAction: 'selectProject',
     };
   }
   if (projectState === 'uninitialized') {
