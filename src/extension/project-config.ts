@@ -256,6 +256,60 @@ function nextTargetEntrySource(
   };
 }
 
+/**
+ * Adds a new target to the project config, inheriting all settings from the
+ * default target (platform, profile, memory map, etc.) but with a different
+ * sourceFile and artifactBase. Used when the user selects a discovered source
+ * file from the target dropdown.
+ */
+export function addProjectTarget(
+  projectConfigPath: string,
+  targetName: string,
+  sourceFile: string
+): boolean {
+  try {
+    const raw = fs.readFileSync(projectConfigPath, 'utf-8');
+    const config = JSON.parse(raw) as ProjectConfig;
+    const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
+
+    if (targets[targetName] !== undefined) {
+      return false; // already exists
+    }
+
+    // Clone the default target as a template
+    const defaultTargetName = config.defaultTarget ?? config.target;
+    const templateName =
+      typeof defaultTargetName === 'string' && targets[defaultTargetName] !== undefined
+        ? defaultTargetName
+        : Object.keys(targets)[0];
+    const template: Record<string, unknown> =
+      templateName !== undefined ? { ...(targets[templateName] ?? {}) } : {};
+
+    // Strip old source-specific keys; set new ones
+    delete template.sourceFile;
+    delete template.asm;
+    delete template.source;
+    delete template.artifactBase;
+    const ext = path.extname(sourceFile);
+    const baseName = path.basename(sourceFile, ext) || targetName;
+    const isZax = sourceFile.toLowerCase().endsWith('.zax');
+
+    targets[targetName] = {
+      ...template,
+      sourceFile,
+      asm: sourceFile,
+      artifactBase: baseName,
+      ...(isZax ? { assembler: 'zax' } : {}),
+    };
+
+    config.targets = targets as NonNullable<ProjectConfig['targets']>;
+    fs.writeFileSync(projectConfigPath, `${JSON.stringify(config, null, 2)}\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function updateProjectTargetSource(
   projectConfigPath: string,
   targetName: string,
@@ -295,7 +349,7 @@ export function listProjectSourceFiles(rootPath: string): string[] {
   return results;
 }
 
-const SKIP_DIRS = new Set(['.git', '.vscode', 'node_modules', 'out', 'dist', 'build', 'coverage']);
+const SKIP_DIRS = new Set(['.git', '.vscode', 'node_modules', 'out', 'dist', 'build', 'coverage', 'roms']);
 
 function collectProjectSourceFiles(rootPath: string, currentPath: string, results: string[]): void {
   const entries = fs.readdirSync(currentPath, { withFileTypes: true });
