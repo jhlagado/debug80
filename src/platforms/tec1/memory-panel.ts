@@ -146,7 +146,7 @@ export function createTec1MemoryPanelController(
         after: viewAfter[id],
         address: viewModes[id] === 'absolute' ? viewAddress[id] : undefined,
       }));
-      const payload = (await target.customRequest('debug80/tec1MemorySnapshot', {
+      const payload = (await target.customRequest('debug80/memorySnapshot', {
         before: windowBefore,
         rowSize,
         views,

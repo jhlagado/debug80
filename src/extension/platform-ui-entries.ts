@@ -63,7 +63,7 @@ export function createTec1PlatformUiEntry(): PlatformUiEntry {
           uiRevision,
           ...serializeTec1ClearFromUiState(uiState as Tec1UiState),
         }),
-        snapshotCommand: 'debug80/tec1MemorySnapshot',
+        snapshotCommand: 'debug80/memorySnapshot',
       };
     },
   };
@@ -114,7 +114,7 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
           uiRevision,
           ...serializeTec1gClearPanelUpdateFromUiState(uiState as Tec1gUiState),
         }),
-        snapshotCommand: 'debug80/tec1gMemorySnapshot',
+        snapshotCommand: 'debug80/memorySnapshot',
       };
     },
   };
@@ -155,7 +155,7 @@ export function createSimplePlatformUiEntry(): PlatformUiEntry {
           type: 'update',
           uiRevision,
         }),
-        snapshotCommand: 'debug80/tec1MemorySnapshot',
+        snapshotCommand: 'debug80/memorySnapshot',
       };
     },
   };

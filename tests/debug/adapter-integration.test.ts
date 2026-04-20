@@ -225,7 +225,7 @@ describe('adapter integration', () => {
         views?: Array<{ view?: string; address?: number; bytes?: number[]; focus?: number }>;
         registers?: { pc?: number; sp?: number };
       };
-    }>('debug80/tec1MemorySnapshot', {
+    }>('debug80/memorySnapshot', {
       before: 8,
       rowSize: 8,
       views: [{ id: 'pc', view: 'pc', after: 8 }],

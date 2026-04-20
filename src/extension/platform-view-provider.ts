@@ -677,7 +677,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async postSnapshot(
-    command: 'debug80/tec1MemorySnapshot' | 'debug80/tec1gMemorySnapshot',
+    command: 'debug80/memorySnapshot',
     payload: SnapshotRequest
   ): Promise<void> {
     if (!this.view) {

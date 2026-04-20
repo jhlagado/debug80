@@ -1,7 +1,10 @@
 # Debug80 Codebase Status + E2E Test Plan (Supplement)
 
-Date: 2026-02-03
-Scope: Objective status of the codebase after phases 0-3, plus an end-to-end testing plan. Phase 4 (webview extraction/dedup) is intentionally excluded from this assessment because it is in-flight.
+Date: 2026-02-03 (updated 2026-04-20)
+Scope: Objective status of the codebase after phases 0–4, plus an end-to-end testing plan.
+
+Last updated: 2026-04-20
+Current status: Phases 0–4 complete. Active focus: code quality cleanup (issues #344–#356), E2E test harness (issue #355).
 
 ---
 
@@ -31,7 +34,7 @@ Scope: Objective status of the codebase after phases 0-3, plus an end-to-end tes
 - **Platforms** (`src/platforms/*`)
   - TEC-1 and TEC-1G runtimes have explicit constants modules for I/O/memory.
   - TEC-1G runtime remains complex by necessity (LCD/GLCD/matrix/RTC/SD).
-  - Webview UIs still live as JS/CSS/HTML strings (Phase 4 in progress).
+  - Webview UIs extracted to TypeScript files in `webview/` (Phase 4 complete).
 
 ### 1.2 Progress against the improvement plan
 
@@ -39,7 +42,7 @@ Scope: Objective status of the codebase after phases 0-3, plus an end-to-end tes
 - **Phase 1 (foundation)**: Done (constants extracted; dead modules removed; key modules tested).
 - **Phase 2 (adapter)**: Structurally complete (command router + platform registry introduced).
 - **Phase 3 (decoder)**: Done (split into modules, helpers centralized, caching added, tests expanded).
-- **Phase 4 (UI extraction/dedup)**: In progress, explicitly excluded here.
+- **Phase 4 (UI extraction/dedup)**: Complete. Webview code extracted to TypeScript files in `webview/simple/`, `webview/tec1/`, `webview/tec1g/`. Shared utilities in `webview/common/`.
 
 ### 1.3 Code quality and maintainability (objective signals)
 
@@ -74,6 +77,12 @@ Scope: Objective status of the codebase after phases 0-3, plus an end-to-end tes
 ---
 
 ## 2) E2E testing plan for the Debug80 VS Code extension
+
+### Current status (as of 2026-04-20)
+
+The plan below is detailed and sound. As of this date, implementation has not yet started:
+`vitest.e2e.config.ts` exists as a placeholder but no fixture workspaces, DAP client, or test
+cases have been created. See issue #355 for the kickoff ticket.
 
 ### 2.1 Goals
 

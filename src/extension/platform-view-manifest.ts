@@ -32,7 +32,7 @@ export interface PlatformUiModules<TUiState = unknown> {
   ) => Promise<void>;
   buildUpdateMessage: (state: TUiState, uiRevision: number) => Record<string, unknown>;
   buildClearMessage: (state: TUiState, uiRevision: number) => Record<string, unknown>;
-  snapshotCommand: 'debug80/tec1MemorySnapshot' | 'debug80/tec1gMemorySnapshot';
+  snapshotCommand: 'debug80/memorySnapshot';
 }
 
 export interface PlatformUiEntry {

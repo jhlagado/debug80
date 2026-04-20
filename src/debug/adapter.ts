@@ -138,10 +138,7 @@ export class Z80DebugSession extends DebugSession {
       sendResponse: respond,
       sendErrorResponse: respondError,
     };
-    this.commandRouter.register('debug80/tec1MemorySnapshot', (response, args) =>
-      handleMemorySnapshotRequest(response, args, memoryDeps)
-    );
-    this.commandRouter.register('debug80/tec1gMemorySnapshot', (response, args) =>
+    this.commandRouter.register('debug80/memorySnapshot', (response, args) =>
       handleMemorySnapshotRequest(response, args, memoryDeps)
     );
     this.commandRouter.register('debug80/registerWrite', (response, args) => {

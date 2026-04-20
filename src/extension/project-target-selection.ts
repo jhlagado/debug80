@@ -8,6 +8,20 @@ import { listProjectSourceFiles, readProjectConfig, updateProjectTargetSource } 
 
 const TARGET_KEY_PREFIX = 'debug80.selectedTarget:';
 
+type SourceFileCache = { files: string[]; cachedAt: number };
+const sourceFileCache = new Map<string, SourceFileCache>();
+const SOURCE_FILE_CACHE_TTL_MS = 2000;
+
+function getCachedSourceFiles(projectRoot: string): string[] {
+  const cached = sourceFileCache.get(projectRoot);
+  if (cached !== undefined && Date.now() - cached.cachedAt < SOURCE_FILE_CACHE_TTL_MS) {
+    return cached.files;
+  }
+  const files = listProjectSourceFiles(projectRoot);
+  sourceFileCache.set(projectRoot, { files, cachedAt: Date.now() });
+  return files;
+}
+
 type ResolveTargetOptions = {
   prompt?: boolean;
   forcePrompt?: boolean;
@@ -126,7 +140,7 @@ export function listProjectTargetChoices(projectConfigPath: string): Discoverabl
   // Discover source files in the project folder that are not yet a target
   let allSourceFiles: string[] = [];
   try {
-    allSourceFiles = listProjectSourceFiles(projectRoot);
+    allSourceFiles = getCachedSourceFiles(projectRoot);
   } catch {
     // filesystem errors — skip discovery silently
   }
@@ -297,7 +311,7 @@ export class ProjectTargetSelectionController {
     }
 
     try {
-      const all = listProjectSourceFiles(projectRoot);
+      const all = getCachedSourceFiles(projectRoot);
       zaxPaths = all.filter((p) => p.toLowerCase().endsWith('.zax'));
       asmPaths = all.filter((p) => p.toLowerCase().endsWith('.asm'));
     } catch {

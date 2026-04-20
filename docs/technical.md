@@ -186,6 +186,10 @@ Register display:
 
 ## 9. Source mapping pipeline
 
+The pipeline is **orchestrated from `src/debug/mapping-service.ts`** — start there when
+investigating how a listing becomes a source map, where D8 maps are loaded or written, or why
+a cached map is or is not being used. The files below are the components it drives.
+
 The mapping pipeline converts a .lst listing into segments and anchors
 used for breakpoints and stack frames.
 
