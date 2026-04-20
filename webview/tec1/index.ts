@@ -7,6 +7,7 @@ import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
+import { sendCreateProject } from '../common/create-project';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
@@ -110,13 +111,6 @@ const sessionStatusController = createSessionStatusController(vscode, restartDeb
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
-function sendCreateProjectTec1(): void {
-  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  if (selected !== undefined) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
-  }
-}
-
 setupPrimaryAction?.addEventListener('click', () => {
   if (setupPrimaryActionType === 'openWorkspaceFolder') {
     vscode.postMessage({ type: 'openWorkspaceFolder' });
@@ -126,11 +120,11 @@ setupPrimaryAction?.addEventListener('click', () => {
     vscode.postMessage({ type: 'selectProject' });
     return;
   }
-  sendCreateProjectTec1();
+  sendCreateProject(vscode, 'tec1');
 });
 
 platformInitButton?.addEventListener('click', () => {
-  sendCreateProjectTec1();
+  sendCreateProject(vscode, 'tec1');
 });
 
 homeTargetSelect?.addEventListener('change', () => {
@@ -243,6 +237,8 @@ function applyProjectStatus(payload: {
   setupCard.hidden = false;
   setupPrimaryActionType = setupState.primaryAction;
   setupCardText.textContent = setupState.text;
+  // When createProject is the pending action, platformInitButton is the primary CTA;
+  // hide the setup card button to avoid showing two equivalent "Initialize" actions.
   const isCreateProject = setupState.primaryAction === 'createProject';
   setupPrimaryAction.hidden = isCreateProject;
   setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;

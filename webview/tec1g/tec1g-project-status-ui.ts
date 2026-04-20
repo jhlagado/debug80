@@ -7,6 +7,7 @@ import type { VscodeApi } from '../common/vscode';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveProjectViewState } from '../common/project-state';
 import { resolveSetupCardState } from '../common/setup-card-state';
+import { sendCreateProject } from '../common/create-project';
 
 export type Tec1gProjectStatusElements = {
   selectProjectButton: HTMLButtonElement | null;
@@ -91,13 +92,6 @@ export function createTec1gProjectStatusUi(
 
   const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
-  function sendCreateProject(): void {
-    const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-    if (selected !== undefined) {
-      vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: getPlatform?.() });
-    }
-  }
-
   setupPrimaryAction?.addEventListener('click', () => {
     if (setupPrimaryActionType === 'openWorkspaceFolder') {
       vscode.postMessage({ type: 'openWorkspaceFolder' });
@@ -107,11 +101,11 @@ export function createTec1gProjectStatusUi(
       vscode.postMessage({ type: 'selectProject' });
       return;
     }
-    sendCreateProject();
+    sendCreateProject(vscode, getPlatform?.() ?? 'tec1g');
   });
 
   platformInitButton?.addEventListener('click', () => {
-    sendCreateProject();
+    sendCreateProject(vscode, getPlatform?.() ?? 'tec1g');
   });
 
   homeTargetSelect?.addEventListener('change', () => {
@@ -167,8 +161,8 @@ export function createTec1gProjectStatusUi(
     setupCard.hidden = false;
     setupPrimaryActionType = setupState.primaryAction;
     setupCardText.textContent = setupState.text;
-    // The Initialize button lives in the platform selector row when uninitialized;
-    // hide the card button so it isn't duplicated.
+    // When createProject is the pending action, platformInitButton is the primary CTA;
+    // hide the setup card button to avoid showing two equivalent "Initialize" actions.
     const isCreateProject = setupState.primaryAction === 'createProject';
     setupPrimaryAction.hidden = isCreateProject;
     setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;

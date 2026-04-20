@@ -11,6 +11,7 @@ import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import { resolveSetupCardState } from '../common/setup-card-state';
 import { acquireVscodeApi } from '../common/vscode';
+import { sendCreateProject } from '../common/create-project';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 
 const TERMINAL_MAX = 8000;
@@ -66,13 +67,6 @@ platformSelectEl?.addEventListener('change', () => {
   }
 });
 
-function sendCreateProjectSimple(): void {
-  const selected = currentRoots.find((r) => r.path === currentRootPath) ?? currentRoots[0];
-  if (selected !== undefined) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
-  }
-}
-
 setupPrimaryAction?.addEventListener('click', () => {
   if (setupPrimaryActionType === 'openWorkspaceFolder') {
     vscode.postMessage({ type: 'openWorkspaceFolder' });
@@ -82,11 +76,11 @@ setupPrimaryAction?.addEventListener('click', () => {
     vscode.postMessage({ type: 'selectProject' });
     return;
   }
-  sendCreateProjectSimple();
+  sendCreateProject(vscode, 'simple');
 });
 
 platformInitButton?.addEventListener('click', () => {
-  sendCreateProjectSimple();
+  sendCreateProject(vscode, 'simple');
 });
 
 homeTargetSelect?.addEventListener('change', () => {
@@ -205,6 +199,8 @@ function applyProjectStatus(payload: {
   setupCard.hidden = false;
   setupPrimaryActionType = setupState.primaryAction;
   setupCardText.textContent = setupState.text;
+  // When createProject is the pending action, platformInitButton is the primary CTA;
+  // hide the setup card button to avoid showing two equivalent "Initialize" actions.
   const isCreateProject = setupState.primaryAction === 'createProject';
   setupPrimaryAction.hidden = isCreateProject;
   setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
