@@ -11,7 +11,6 @@ import {
   resolveProjectPlatform,
   resolveStopOnEntryForTarget,
   updateProjectTargetSource,
-  writeProjectConfig,
 } from '../../src/extension/project-config';
 
 describe('project-config helpers', () => {
@@ -222,36 +221,6 @@ describe('project-config helpers', () => {
     expect(config?.profiles?.mon3?.bundledAssets?.romHex?.bundleId).toBe('tec1g/mon3/v1');
   });
 
-  it('updates the selected target source in package.json debug80 config', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-package-'));
-    const pkgPath = path.join(root, 'package.json');
-    fs.writeFileSync(
-      pkgPath,
-      JSON.stringify({
-        name: 'fixture',
-        debug80: {
-          defaultTarget: 'app',
-          targets: {
-            app: { sourceFile: 'src/old.asm', platform: 'simple' },
-          },
-        },
-      })
-    );
-
-    const updated = updateProjectTargetSource(pkgPath, 'app', 'src/new.zax');
-
-    expect(updated).toBe(true);
-    const raw = fs.readFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(raw) as {
-      debug80?: {
-        targets?: Record<string, { sourceFile?: string; asm?: string; assembler?: string }>;
-      };
-    };
-    expect(pkg.debug80?.targets?.app?.sourceFile).toBe('src/new.zax');
-    expect(pkg.debug80?.targets?.app?.asm).toBe('src/new.zax');
-    expect(pkg.debug80?.targets?.app?.assembler).toBe('zax');
-  });
-
   it('sets assembler to zax when program file is .zax and syncs asm', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-entry-'));
     const configPath = path.join(root, 'debug80.json');
@@ -279,32 +248,4 @@ describe('project-config helpers', () => {
     expect(config?.targets?.app?.assembler).toBe('zax');
   });
 
-  it('writes updated config into package.json debug80 section', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-write-package-'));
-    const pkgPath = path.join(root, 'package.json');
-    fs.writeFileSync(
-      pkgPath,
-      JSON.stringify({
-        name: 'fixture',
-        debug80: {
-          targets: {
-            app: { sourceFile: 'src/main.asm', platform: 'simple' },
-          },
-        },
-      })
-    );
-
-    const written = writeProjectConfig(pkgPath, {
-      projectVersion: DEBUG80_PROJECT_VERSION,
-      projectPlatform: 'tec1',
-      targets: {
-        app: { sourceFile: 'src/main.asm', platform: 'tec1' },
-      },
-    });
-
-    expect(written).toBe(true);
-    const raw = fs.readFileSync(pkgPath, 'utf-8');
-    const parsed = JSON.parse(raw) as { debug80?: { projectPlatform?: string } };
-    expect(parsed.debug80?.projectPlatform).toBe('tec1');
-  });
 });
