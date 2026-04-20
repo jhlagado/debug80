@@ -199,12 +199,6 @@ export function findProjectConfigPath(folder: vscode.WorkspaceFolder): string | 
 
 export function readProjectConfig(projectConfigPath: string): ProjectConfig | undefined {
   try {
-    if (projectConfigPath.endsWith('package.json')) {
-      const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
-      const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig };
-      return pkg.debug80 !== undefined ? normalizeProjectVersion(pkg.debug80) : undefined;
-    }
-
     const raw = fs.readFileSync(projectConfigPath, 'utf-8');
     return normalizeProjectVersion(JSON.parse(raw) as ProjectConfig);
   } catch {
@@ -214,14 +208,6 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
 
 export function writeProjectConfig(projectConfigPath: string, config: ProjectConfig): boolean {
   try {
-    if (projectConfigPath.endsWith('package.json')) {
-      const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
-      const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig } & Record<string, unknown>;
-      pkg.debug80 = normalizeProjectVersion(config);
-      fs.writeFileSync(projectConfigPath, `${JSON.stringify(pkg, null, 2)}\n`);
-      return true;
-    }
-
     fs.writeFileSync(projectConfigPath, `${JSON.stringify(normalizeProjectVersion(config), null, 2)}\n`);
     return true;
   } catch {
@@ -346,19 +332,6 @@ export function updateProjectTargetSource(
   sourceFile: string
 ): boolean {
   try {
-    if (projectConfigPath.endsWith('package.json')) {
-      const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
-      const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig } & Record<string, unknown>;
-      const config = pkg.debug80 ?? { targets: {} };
-      const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
-      const target = targets[targetName] ?? {};
-      targets[targetName] = nextTargetEntrySource(target, sourceFile);
-      config.targets = targets as NonNullable<ProjectConfig['targets']>;
-      pkg.debug80 = config;
-      fs.writeFileSync(projectConfigPath, `${JSON.stringify(pkg, null, 2)}\n`);
-      return true;
-    }
-
     const raw = fs.readFileSync(projectConfigPath, 'utf-8');
     const config = JSON.parse(raw) as ProjectConfig;
     const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
