@@ -21,6 +21,7 @@ export type MaterializeBundledRomResult = {
   destinationRelative: string;
   romRelativePath: string;
   listingRelativePath?: string;
+  sourceRelativePath?: string;
   sourceRootRelative?: string;
 } | {
   ok: false;
@@ -239,6 +240,7 @@ export function materializeBundledRom(
 
   let romRel: string | undefined;
   let listingRel: string | undefined;
+  let sourceRel: string | undefined;
   let sourceTreeRel: string | undefined;
 
   for (const entry of manifest.files) {
@@ -273,6 +275,8 @@ export function materializeBundledRom(
       romRel = rel;
     } else if (entry.role === 'listing') {
       listingRel = rel;
+    } else if (entry.role === 'source') {
+      sourceRel = rel;
     } else if (entry.role === 'source_tree') {
       // Expect a directory copied recursively — for future use; single file roles above cover MON3 v1
       sourceTreeRel = rel;
@@ -288,6 +292,7 @@ export function materializeBundledRom(
     destinationRelative: manifest.workspaceLayout.destination,
     romRelativePath: romRel,
     ...(listingRel !== undefined ? { listingRelativePath: listingRel } : {}),
+    ...(sourceRel !== undefined ? { sourceRelativePath: sourceRel } : {}),
     ...(sourceTreeRel !== undefined ? { sourceRootRelative: sourceTreeRel } : {}),
   };
 }

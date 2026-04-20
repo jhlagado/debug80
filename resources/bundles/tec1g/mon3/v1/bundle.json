@@ -14,6 +14,46 @@
       "role": "listing",
       "path": "mon3.lst",
       "sha256": "f6f5032cc16dceed7e921efe863371d8f2773465860bd518c9d998d83a5b67bb"
+    },
+    {
+      "role": "source",
+      "path": "packages.z80",
+      "sha256": "c8fb2d98466d9aa5fa3c6b03f9f4918970e4760a9c5dfbeed51ab504315daa7b"
+    },
+    {
+      "role": "source",
+      "path": "mon3.z80",
+      "sha256": "cc23b4115834e5ba71fc1e78bc4defc4330df962bf4394bf502e65d3196e96cf"
+    },
+    {
+      "role": "source",
+      "path": "glcd_library.z80",
+      "sha256": "f1f1e1c62af9a159e3758cfd60e033c03ee7292bfa58882ffbc802a32b883949"
+    },
+    {
+      "role": "source",
+      "path": "pata_fat32.z80",
+      "sha256": "b515108216a3ce5bb70c5115d85eebeb3c3c729fe954106b8b329d98ac816aba"
+    },
+    {
+      "role": "source",
+      "path": "disassembler.z80",
+      "sha256": "6eb14672eee35eda6b17908f8752f612ac04346d2b9647f4ab6fce25c9a127a8"
+    },
+    {
+      "role": "source",
+      "path": "rtc.z80",
+      "sha256": "bbe25e69669ea487db5ef290101629194146545d2124d899940ae0fc8073338a"
+    },
+    {
+      "role": "source",
+      "path": "sound.z80",
+      "sha256": "43c55731b6e3e1c962af79b4700616f41b91211748a8b76290e09f8964898114"
+    },
+    {
+      "role": "source",
+      "path": "api_includes.z80",
+      "sha256": "5b3ab66ac51020e8cd3513b500ec60180e6b5e2683ee6420d8940ec96a5a6e62"
     }
   ],
   "workspaceLayout": {

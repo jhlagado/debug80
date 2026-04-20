@@ -7,7 +7,7 @@
 export const BUNDLE_MANIFEST_SCHEMA_VERSION = 1 as const;
 
 /** Single file shipped inside a bundle directory (under resources/bundles/...). */
-export type BundleFileRole = 'rom' | 'listing' | 'source_tree';
+export type BundleFileRole = 'rom' | 'listing' | 'source' | 'source_tree';
 
 export interface BundleFileEntry {
   role: BundleFileRole;
