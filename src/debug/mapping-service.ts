@@ -319,6 +319,19 @@ function writeDebugMap(
   }
 }
 
+function shouldRebuildCachedMap(
+  cachedMapping: MappingParseResult,
+  hasNativeMap: boolean,
+  listingPath: string
+): boolean {
+  if (hasNativeMap) {
+    return false; // native tool map wins; always use it
+  }
+  const cachedHasSource = cachedMapping.segments.some((s) => s.loc.file !== null);
+  const sourceNowExists = resolveListingSourcePath(listingPath) !== undefined;
+  return !cachedHasSource && sourceNowExists;
+}
+
 function loadExtraListingMapping(
   listingPaths: string[],
   service: MappingServiceOptions
@@ -349,24 +362,16 @@ function loadExtraListingMapping(
       let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
       if (debugMap) {
         const cachedMapping = buildMappingFromD8DebugMap(debugMap);
-        if (!hasNativeMap) {
-          // If the cached map has no source file info but a source file now exists next to the
-          // listing (e.g. the .asm was materialized after the map was first built), invalidate
-          // the cache so we rebuild with the source attached.
-          const cachedHasSource = cachedMapping.segments.some((s) => s.loc.file !== null);
-          const sourceNowExists = resolveListingSourcePath(listingPath) !== undefined;
-          if (!cachedHasSource && sourceNowExists) {
-            const prefix = `Debug80 [${service.platform}]`;
-            service.logger.info(
-              `${prefix}: Cached D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
-            );
-            debugMap = undefined;
-          }
-        }
-        if (debugMap !== undefined) {
+        if (!shouldRebuildCachedMap(cachedMapping, hasNativeMap, listingPath)) {
           combined.segments.push(...cachedMapping.segments);
           combined.anchors.push(...cachedMapping.anchors);
           continue;
+        }
+        if (!hasNativeMap) {
+          const prefix = `Debug80 [${service.platform}]`;
+          service.logger.info(
+            `${prefix}: Cached D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
+          );
         }
       }
 
