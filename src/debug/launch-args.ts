@@ -1,5 +1,11 @@
 /**
  * @fileoverview Launch argument resolution and config merging helpers.
+ *
+ * This file stays at the `src/debug/` top level (rather than `src/debug/launch/`)
+ * because it is imported by both `adapter.ts` (the public entry point) and by
+ * `src/platforms/manifest.ts`, making it a cross-cutting utility. Moving it into
+ * a subdir would require consumers to update their import paths without gaining
+ * any structural clarity.
  */
 
 import * as fs from 'fs';
