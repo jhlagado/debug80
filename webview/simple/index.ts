@@ -24,6 +24,7 @@ const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') a
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
+const platformInitButton = document.getElementById('platformInitButton') as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
@@ -65,8 +66,14 @@ platformSelectEl?.addEventListener('change', () => {
   }
 });
 
-setupPrimaryAction?.addEventListener('click', () => {
+function sendCreateProjectSimple(): void {
   const selected = currentRoots.find((r) => r.path === currentRootPath) ?? currentRoots[0];
+  if (selected !== undefined) {
+    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
+  }
+}
+
+setupPrimaryAction?.addEventListener('click', () => {
   if (setupPrimaryActionType === 'openWorkspaceFolder') {
     vscode.postMessage({ type: 'openWorkspaceFolder' });
     return;
@@ -75,9 +82,11 @@ setupPrimaryAction?.addEventListener('click', () => {
     vscode.postMessage({ type: 'selectProject' });
     return;
   }
-  if (selected !== undefined) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
-  }
+  sendCreateProjectSimple();
+});
+
+platformInitButton?.addEventListener('click', () => {
+  sendCreateProjectSimple();
 });
 
 homeTargetSelect?.addEventListener('change', () => {
@@ -196,7 +205,9 @@ function applyProjectStatus(payload: {
   setupCard.hidden = false;
   setupPrimaryActionType = setupState.primaryAction;
   setupCardText.textContent = setupState.text;
-  setupPrimaryAction.textContent = setupState.primaryLabel;
+  const isCreateProject = setupState.primaryAction === 'createProject';
+  setupPrimaryAction.hidden = isCreateProject;
+  setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
 }
 
 applyProjectStatus({});

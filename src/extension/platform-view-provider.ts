@@ -293,7 +293,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await vscode.commands.executeCommand('debug80.createProject', args);
         },
         handleOpenWorkspaceFolder: async () => {
-          await vscode.commands.executeCommand('vscode.openFolder');
+          await vscode.commands.executeCommand('debug80.addWorkspaceFolder');
         },
         handleSelectProject: async (args) => {
           await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);

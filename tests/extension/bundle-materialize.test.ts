@@ -332,11 +332,13 @@ describe('bundle-materialize', () => {
       files?: Array<Record<string, unknown>>;
     };
     if (Array.isArray(manifest.files)) {
-      manifest.files = manifest.files.map((entry) => {
-        const next = { ...entry };
-        delete next.sha256;
-        return next;
-      });
+      manifest.files = manifest.files
+        .filter((entry) => entry['role'] === 'rom' || entry['role'] === 'listing')
+        .map((entry) => {
+          const next = { ...entry };
+          delete next.sha256;
+          return next;
+        });
     }
     fs.writeFileSync(path.join(copiedBundleDir, 'bundle.json'), JSON.stringify(manifest, null, 2));
 

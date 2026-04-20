@@ -13,6 +13,7 @@ export type Tec1gProjectStatusElements = {
   setupCard: HTMLElement | null;
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
+  platformInitButton: HTMLButtonElement | null;
   homeTargetSelect: HTMLSelectElement | null;
   getPlatform?: () => string | undefined;
 };
@@ -78,6 +79,7 @@ export function createTec1gProjectStatusUi(
     setupCard,
     setupCardText,
     setupPrimaryAction,
+    platformInitButton,
     homeTargetSelect,
     getPlatform,
   } = elements;
@@ -89,8 +91,14 @@ export function createTec1gProjectStatusUi(
 
   const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
-  setupPrimaryAction?.addEventListener('click', () => {
+  function sendCreateProject(): void {
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
+    if (selected !== undefined) {
+      vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: getPlatform?.() });
+    }
+  }
+
+  setupPrimaryAction?.addEventListener('click', () => {
     if (setupPrimaryActionType === 'openWorkspaceFolder') {
       vscode.postMessage({ type: 'openWorkspaceFolder' });
       return;
@@ -99,9 +107,11 @@ export function createTec1gProjectStatusUi(
       vscode.postMessage({ type: 'selectProject' });
       return;
     }
-    if (selected !== undefined) {
-      vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: getPlatform?.() });
-    }
+    sendCreateProject();
+  });
+
+  platformInitButton?.addEventListener('click', () => {
+    sendCreateProject();
   });
 
   homeTargetSelect?.addEventListener('change', () => {
@@ -157,7 +167,11 @@ export function createTec1gProjectStatusUi(
     setupCard.hidden = false;
     setupPrimaryActionType = setupState.primaryAction;
     setupCardText.textContent = setupState.text;
-    setupPrimaryAction.textContent = setupState.primaryLabel;
+    // The Initialize button lives in the platform selector row when uninitialized;
+    // hide the card button so it isn't duplicated.
+    const isCreateProject = setupState.primaryAction === 'createProject';
+    setupPrimaryAction.hidden = isCreateProject;
+    setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
   }
 
   return {

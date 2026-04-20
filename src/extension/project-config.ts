@@ -256,6 +256,90 @@ function nextTargetEntrySource(
   };
 }
 
+/**
+ * Adds a new target to the project config, inheriting all settings from the
+ * default target (platform, profile, memory map, etc.) but with a different
+ * sourceFile and artifactBase. Used when the user selects a discovered source
+ * file from the target dropdown.
+ */
+function buildNewTargetEntry(
+  targets: Record<string, Record<string, unknown>>,
+  defaultTargetName: string | undefined,
+  targetName: string,
+  sourceFile: string
+): Record<string, unknown> {
+  const templateName =
+    typeof defaultTargetName === 'string' && targets[defaultTargetName] !== undefined
+      ? defaultTargetName
+      : Object.keys(targets)[0];
+  const template: Record<string, unknown> =
+    templateName !== undefined ? { ...(targets[templateName] ?? {}) } : {};
+
+  // Strip old source-specific keys; set new ones
+  delete template.sourceFile;
+  delete template.asm;
+  delete template.source;
+  delete template.artifactBase;
+  const ext = path.extname(sourceFile);
+  const baseName = path.basename(sourceFile, ext) || targetName;
+  const isZax = sourceFile.toLowerCase().endsWith('.zax');
+
+  return {
+    ...template,
+    sourceFile,
+    asm: sourceFile,
+    artifactBase: baseName,
+    ...(isZax ? { assembler: 'zax' } : {}),
+  };
+}
+
+export function addProjectTarget(
+  projectConfigPath: string,
+  targetName: string,
+  sourceFile: string
+): boolean {
+  try {
+    if (projectConfigPath.endsWith('package.json')) {
+      const pkgRaw = fs.readFileSync(projectConfigPath, 'utf-8');
+      const pkg = JSON.parse(pkgRaw) as { debug80?: ProjectConfig } & Record<string, unknown>;
+      const config = pkg.debug80 ?? { targets: {} };
+      const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
+      if (targets[targetName] !== undefined) {
+        return false;
+      }
+      targets[targetName] = buildNewTargetEntry(
+        targets,
+        config.defaultTarget ?? (config as ProjectConfig & { target?: string }).target,
+        targetName,
+        sourceFile
+      );
+      config.targets = targets as NonNullable<ProjectConfig['targets']>;
+      pkg.debug80 = config;
+      fs.writeFileSync(projectConfigPath, `${JSON.stringify(pkg, null, 2)}\n`);
+      return true;
+    }
+
+    const raw = fs.readFileSync(projectConfigPath, 'utf-8');
+    const config = JSON.parse(raw) as ProjectConfig;
+    const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
+    if (targets[targetName] !== undefined) {
+      return false; // already exists
+    }
+
+    targets[targetName] = buildNewTargetEntry(
+      targets,
+      config.defaultTarget ?? (config as ProjectConfig & { target?: string }).target,
+      targetName,
+      sourceFile
+    );
+    config.targets = targets as NonNullable<ProjectConfig['targets']>;
+    fs.writeFileSync(projectConfigPath, `${JSON.stringify(config, null, 2)}\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function updateProjectTargetSource(
   projectConfigPath: string,
   targetName: string,
@@ -295,7 +379,7 @@ export function listProjectSourceFiles(rootPath: string): string[] {
   return results;
 }
 
-const SKIP_DIRS = new Set(['.git', '.vscode', 'node_modules', 'out', 'dist', 'build', 'coverage']);
+const SKIP_DIRS = new Set(['.git', '.vscode', 'node_modules', 'out', 'dist', 'build', 'coverage', 'roms']);
 
 function collectProjectSourceFiles(rootPath: string, currentPath: string, results: string[]): void {
   const entries = fs.readdirSync(currentPath, { withFileTypes: true });

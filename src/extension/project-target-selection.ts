@@ -14,11 +14,29 @@ type ResolveTargetOptions = {
   placeHolder?: string;
 };
 
-type TargetChoice = {
+/** Public shape of a target choice — used for display in the webview. */
+export type ProjectTargetChoice = {
   name: string;
   description?: string;
   detail?: string;
 };
+
+/**
+ * Extends {@link ProjectTargetChoice} with the extra state needed to add an
+ * auto-discovered source file as a new target.  Returned by
+ * {@link listProjectTargetChoices} so that `commands.ts` can act on newly
+ * discovered files without a cast, while the webview payload (which declares
+ * `ProjectTargetChoice[]`) still accepts the result structurally.
+ */
+export type DiscoverableTargetChoice = ProjectTargetChoice & {
+  /** True for source files found on disk that are not yet configured as a target. */
+  discovered?: true;
+  /** The workspace-relative source file path for discovered targets. */
+  sourceFile?: string;
+};
+
+/** Alias kept for internal use. */
+type TargetChoice = DiscoverableTargetChoice;
 
 type TargetQuickPickItem = vscode.QuickPickItem & {
   targetName: string;
@@ -35,8 +53,6 @@ type LoadedTargetChoices = {
   choices: TargetChoice[];
   defaultTarget?: string;
 };
-
-export type ProjectTargetChoice = TargetChoice;
 
 export function getStoredTargetName(
   workspaceState: vscode.Memento,
@@ -93,8 +109,53 @@ export function resolveTargetNameForConfig(
   return keys.length === 1 ? keys[0] : undefined;
 }
 
-export function listProjectTargetChoices(projectConfigPath: string): ProjectTargetChoice[] {
-  return loadTargetChoices(projectConfigPath).choices;
+export function listProjectTargetChoices(projectConfigPath: string): DiscoverableTargetChoice[] {
+  const { choices } = loadTargetChoices(projectConfigPath);
+
+  // Build the set of source files already referenced by a configured target
+  const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
+  const config = readProjectConfig(projectConfigPath);
+  const coveredSources = new Set<string>();
+  for (const target of Object.values(config?.targets ?? {})) {
+    const src = target.sourceFile ?? target.asm ?? target.source;
+    if (typeof src === 'string') {
+      coveredSources.add(entrySourceKey(projectRoot, src));
+    }
+  }
+
+  // Discover source files in the project folder that are not yet a target
+  let allSourceFiles: string[] = [];
+  try {
+    allSourceFiles = listProjectSourceFiles(projectRoot);
+  } catch {
+    // filesystem errors — skip discovery silently
+  }
+
+  const existingNames = new Set(choices.map((c) => c.name));
+  for (const sourceFile of allSourceFiles) {
+    if (coveredSources.has(entrySourceKey(projectRoot, sourceFile))) {
+      continue;
+    }
+    // Derive a unique target name from the file basename
+    const baseName = path.basename(sourceFile, path.extname(sourceFile));
+    let candidateName = baseName;
+    let counter = 2;
+    while (existingNames.has(candidateName)) {
+      candidateName = `${baseName}-${counter}`;
+      counter += 1;
+    }
+    existingNames.add(candidateName);
+
+    choices.push({
+      name: candidateName,
+      description: `${sourceFile} • new`,
+      detail: sourceFile,
+      discovered: true,
+      sourceFile,
+    });
+  }
+
+  return choices;
 }
 
 function appendEntrySourceSection(
