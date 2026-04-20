@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
-import { buildRomSourcesResponse } from '../../src/debug/rom-requests';
+import { buildRomSourcesResponse } from '../../src/debug/requests/rom-requests';
 
 describe('rom-requests', () => {
   it('wraps ROM sources in response body', () => {

@@ -3,7 +3,6 @@
  */
 
 import * as path from 'path';
-import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
@@ -11,7 +10,6 @@ import {
   findProjectConfigPath,
   listProjectSourceFiles,
   readProjectConfig,
-  resolveProjectPlatform,
   writeProjectConfig,
   updateProjectTargetSource,
   addProjectTarget,
@@ -21,28 +19,34 @@ import {
   listProjectTargetChoices,
   resolvePreferredTargetName,
 } from './project-target-selection';
-import {
-  BUNDLED_MON1B_V1_REL,
-  BUNDLED_MON3_V1_REL,
-  materializeBundledAsset,
-  materializeBundledRom,
-} from './bundle-materialize';
+import { materializeBundledAsset } from './bundle-materialize';
 import { scaffoldProject } from './project-scaffolding';
 import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
-import type { BundledAssetReference, ProjectConfig } from '../debug/types';
-import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
+import type { ProjectConfig } from '../debug/session/types';
 import {
-  TEC1G_APP_START_DEFAULT,
-  TEC1G_RAM_END,
-  TEC1G_RAM_START,
-  TEC1G_ROM0_END,
-  TEC1G_ROM0_START,
-  TEC1G_ROM1_END,
-  TEC1G_ROM1_START,
-} from '../platforms/tec1g/constants';
+  buildBundledAssetFallbackPlans,
+  resolveProjectBundledAssetInstallPlan,
+} from './bundle-asset-installer';
+import {
+  createSimplePlatformDefaults,
+  createTec1PlatformDefaults,
+  createTec1gPlatformDefaults,
+} from './config-panel-html';
+import {
+  findWorkspaceFolder,
+  resolveFolderForProjectCreation,
+  resolveProjectFolderFromResource,
+} from './workspace-folder-resolver';
+import {
+  startCurrentProjectDebugging,
+  maybeAutoStartSingleTargetForRootChange,
+  resolveProjectPlatformForFolder,
+  resolveSessionProjectConfigPath,
+} from './debug-session-actions';
+import { openProjectConfigPanel } from './project-config-panel';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -74,431 +78,6 @@ type ConfigureFieldId =
   | 'outputDir'
   | 'artifactBase';
 
-type BundledAssetInstallPlan = {
-  label: string;
-  references: BundledAssetReference[];
-};
-
-function createSimplePlatformDefaults(): Record<string, unknown> {
-  return {
-    regions: [
-      { start: 0, end: 2047, kind: 'rom' },
-      { start: 2048, end: 65535, kind: 'ram' },
-    ],
-    appStart: 0x0900,
-    entry: 0,
-  };
-}
-
-function createTec1PlatformDefaults(): Record<string, unknown> {
-  return {
-    regions: [
-      { start: 0, end: 2047, kind: 'rom' },
-      { start: 2048, end: 4095, kind: 'ram' },
-    ],
-    appStart: TEC1_APP_START_DEFAULT,
-    entry: 0,
-  };
-}
-
-function createTec1gPlatformDefaults(): Record<string, unknown> {
-  return {
-    regions: [
-      { start: TEC1G_ROM0_START, end: TEC1G_ROM0_END, kind: 'rom' },
-      { start: TEC1G_RAM_START, end: TEC1G_RAM_END, kind: 'ram' },
-      { start: TEC1G_ROM1_START, end: TEC1G_ROM1_END, kind: 'rom' },
-    ],
-    appStart: TEC1G_APP_START_DEFAULT,
-    entry: 0,
-  };
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function createNonce(): string {
-  return randomBytes(16).toString('base64');
-}
-
-function buildProjectConfigPanelHtml(
-  config: ProjectConfig,
-  cspSource: string,
-  nonce: string
-): string {
-  const currentPlatform = resolveProjectPlatform(config) ?? 'simple';
-  const targetNames = Object.keys(config.targets ?? {});
-  const currentDefault = config.defaultTarget ?? config.target ?? targetNames[0] ?? '';
-  const platformOptions = ['simple', 'tec1', 'tec1g']
-    .map(
-      (platform) =>
-        `<option value="${platform}"${
-          platform === currentPlatform ? ' selected' : ''
-        }>${platform}</option>`
-    )
-    .join('');
-  const targetOptions = targetNames
-    .map(
-      (targetName) =>
-        `<option value="${escapeHtml(targetName)}"${
-          targetName === currentDefault ? ' selected' : ''
-        }>${escapeHtml(targetName)}</option>`
-    )
-    .join('');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
-  <title>Debug80 Project Config</title>
-  <style nonce="${nonce}">
-    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 16px; }
-    h2 { margin-top: 0; }
-    .row { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; max-width: 480px; }
-    label { font-size: 12px; opacity: 0.9; }
-    select, button { padding: 6px 8px; font: inherit; }
-    .hint { font-size: 12px; opacity: 0.8; margin-top: 8px; max-width: 600px; }
-  </style>
-</head>
-<body>
-  <h2>Debug80 Project Configuration</h2>
-  <div class="row">
-    <label for="platform">Project Default Platform</label>
-    <select id="platform">${platformOptions}</select>
-  </div>
-  <div class="row">
-    <label for="defaultTarget">Default Target</label>
-    <select id="defaultTarget">${targetOptions}</select>
-  </div>
-  <button id="save">Save Configuration</button>
-  <div class="hint">This panel edits project-level settings only. Per-target platform overrides remain available in target configuration flows.</div>
-  <script nonce="${nonce}">
-    const vscode = acquireVsCodeApi();
-    document.getElementById('save')?.addEventListener('click', () => {
-      const platform = document.getElementById('platform')?.value ?? '';
-      const defaultTarget = document.getElementById('defaultTarget')?.value ?? '';
-      vscode.postMessage({ type: 'saveProjectConfig', platform, defaultTarget });
-    });
-  </script>
-</body>
-</html>`;
-}
-
-function findWorkspaceFolder(rootPath: string | undefined): vscode.WorkspaceFolder | undefined {
-  if (rootPath === undefined || rootPath.length === 0) {
-    return undefined;
-  }
-  return vscode.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === rootPath);
-}
-
-async function resolveFolderForProjectCreation(
-  workspaceSelection: WorkspaceSelectionController,
-  rootPath?: string
-): Promise<vscode.WorkspaceFolder | undefined> {
-  const directFolder = findWorkspaceFolder(rootPath);
-  if (directFolder !== undefined) {
-    workspaceSelection.rememberWorkspace(directFolder);
-    return directFolder;
-  }
-
-  if (rootPath !== undefined && rootPath.length > 0) {
-    void vscode.window.showInformationMessage(
-      `Debug80: The workspace root ${rootPath} is not open in this window.`
-    );
-    return undefined;
-  }
-
-  const folder = await workspaceSelection.resolveWorkspaceFolder({
-    prompt: true,
-    placeHolder: 'Select a folder for the new Debug80 project',
-  });
-  if (folder !== undefined) {
-    return folder;
-  }
-
-  const hasWorkspaceFolders = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
-  if (hasWorkspaceFolders) {
-    return undefined;
-  }
-
-  const picked = await vscode.window.showOpenDialog({
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    openLabel: 'Use Folder for Debug80 Project',
-    title: 'Select a folder for the new Debug80 project',
-  });
-  const folderUri = picked?.[0];
-  if (folderUri === undefined) {
-    return undefined;
-  }
-
-  const existingFolder = vscode.workspace.getWorkspaceFolder(folderUri);
-  if (existingFolder !== undefined) {
-    workspaceSelection.rememberWorkspace(existingFolder);
-    return existingFolder;
-  }
-
-  const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
-  const added = vscode.workspace.updateWorkspaceFolders(insertAt, 0, {
-    uri: folderUri,
-    name: path.basename(folderUri.fsPath),
-  });
-  if (!added) {
-    void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
-    return undefined;
-  }
-
-  const addedFolder =
-    vscode.workspace.getWorkspaceFolder(folderUri) ??
-    ({
-      uri: folderUri,
-      name: path.basename(folderUri.fsPath),
-      index: insertAt,
-    } as vscode.WorkspaceFolder);
-  workspaceSelection.rememberWorkspace(addedFolder);
-  return addedFolder;
-}
-
-function resolveProjectFolderFromResource(
-  resource: vscode.Uri | undefined,
-  workspaceSelection: WorkspaceSelectionController
-): vscode.WorkspaceFolder | undefined {
-  if (resource === undefined) {
-    return undefined;
-  }
-
-  const folder = vscode.workspace.getWorkspaceFolder(resource);
-  if (folder === undefined) {
-    return undefined;
-  }
-
-  const projectConfig = findProjectConfigPath(folder);
-  if (projectConfig === undefined) {
-    return undefined;
-  }
-
-  workspaceSelection.rememberWorkspace(folder);
-  return folder;
-}
-
-/**
- * Silently copies any bundled ROM/listing assets that are referenced in the project config
- * but not yet present in the workspace. Called on every debug launch so that new projects
- * work without a manual "Install bundled assets" step.
- */
-function ensureBundledAssetsPresent(
-  extensionUri: vscode.Uri,
-  workspaceRoot: string,
-  config: ProjectConfig
-): void {
-  const plan = resolveProjectBundledAssetInstallPlan(config);
-  if (plan === undefined) {
-    return;
-  }
-  // Collect unique bundle IDs and re-materialize each bundle as a whole.
-  // materializeBundledRom copies every file in the bundle (rom, listing, and all
-  // source files), so multi-file source trees like MON-3 are recovered in full
-  // without needing every file enumerated individually in bundledAssets.
-  const bundleIds = new Set<string>();
-  for (const reference of plan.references) {
-    if (typeof reference.bundleId === 'string' && reference.bundleId.trim().length > 0) {
-      bundleIds.add(reference.bundleId.trim());
-    }
-  }
-  for (const bundleId of bundleIds) {
-    const result = materializeBundledRom(extensionUri, workspaceRoot, bundleId, { overwrite: false });
-    if (!result.ok) {
-      void vscode.window.showWarningMessage(
-        `Debug80: Could not install bundled ROM assets for "${bundleId}": ${result.reason}`
-      );
-    }
-  }
-}
-
-async function startCurrentProjectDebugging(
-  folder: vscode.WorkspaceFolder,
-  workspaceSelection: WorkspaceSelectionController,
-  stopOnEntry: boolean,
-  extensionUri: vscode.Uri
-): Promise<boolean> {
-  const projectConfig = findProjectConfigPath(folder);
-  if (projectConfig === undefined) {
-    void vscode.window.showErrorMessage(
-      `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
-    );
-    return false;
-  }
-
-  const config = readProjectConfig(projectConfig);
-  if (config !== undefined) {
-    ensureBundledAssetsPresent(extensionUri, folder.uri.fsPath, config);
-  }
-
-  workspaceSelection.rememberWorkspace(folder);
-  return vscode.debug.startDebugging(folder, {
-    type: 'z80',
-    request: 'launch',
-    name: 'Debug80: Current Project',
-    projectConfig,
-    stopOnEntry,
-  });
-}
-
-async function maybeAutoStartSingleTargetForRootChange(
-  folder: vscode.WorkspaceFolder,
-  workspaceSelection: WorkspaceSelectionController,
-  targetSelection: ProjectTargetSelectionController,
-  stopOnEntry: boolean,
-  extensionUri: vscode.Uri
-): Promise<string | undefined> {
-  const projectConfig = findProjectConfigPath(folder);
-  if (projectConfig === undefined) {
-    return undefined;
-  }
-
-  const choices = listProjectTargetChoices(projectConfig);
-  if (choices.length !== 1) {
-    return undefined;
-  }
-
-  const onlyTarget = choices[0]?.name;
-  if (onlyTarget === undefined) {
-    return undefined;
-  }
-
-  targetSelection.rememberTarget(projectConfig, onlyTarget);
-
-  const activeSession = vscode.debug.activeDebugSession;
-  if (activeSession?.type === 'z80') {
-    await vscode.debug.stopDebugging(activeSession);
-  }
-
-  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry, extensionUri);
-  if (!started) {
-    return undefined;
-  }
-
-  return onlyTarget;
-}
-
-function resolveProjectPlatformForFolder(folder: vscode.WorkspaceFolder): string | undefined {
-  const projectConfig = findProjectConfigPath(folder);
-  if (projectConfig === undefined) {
-    return undefined;
-  }
-  return resolveProjectPlatform(readProjectConfig(projectConfig));
-}
-
-function projectConfigFromSession(session: vscode.DebugSession): string | undefined {
-  const configuration = session.configuration as { projectConfig?: unknown } | undefined;
-  const projectConfigRaw = configuration?.projectConfig;
-  if (typeof projectConfigRaw !== 'string' || projectConfigRaw.trim() === '') {
-    return undefined;
-  }
-  return projectConfigRaw;
-}
-
-function resolveSessionProjectConfigPath(session: vscode.DebugSession): string | undefined {
-  const projectConfigRaw = projectConfigFromSession(session);
-  if (projectConfigRaw === undefined) {
-    return undefined;
-  }
-  return path.normalize(
-    path.isAbsolute(projectConfigRaw)
-      ? projectConfigRaw
-      : session.workspaceFolder !== undefined
-        ? path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw)
-        : projectConfigRaw
-  );
-}
-
-function normalizeBundledAssetInstallPlan(
-  label: string,
-  references: BundledAssetReference[]
-): BundledAssetInstallPlan | undefined {
-  const filtered = references.filter(
-    (reference) =>
-      typeof reference.bundleId === 'string' &&
-      reference.bundleId.trim().length > 0 &&
-      typeof reference.path === 'string' &&
-      reference.path.trim().length > 0
-  );
-  if (filtered.length === 0) {
-    return undefined;
-  }
-  return { label, references: filtered };
-}
-
-function resolveProjectBundledAssetInstallPlan(
-  config: ProjectConfig
-): BundledAssetInstallPlan | undefined {
-  const defaultProfileName =
-    typeof config.defaultProfile === 'string' && config.defaultProfile.trim().length > 0
-      ? config.defaultProfile.trim()
-      : undefined;
-  if (defaultProfileName !== undefined) {
-    const defaultProfile = config.profiles?.[defaultProfileName];
-    const profilePlan = normalizeBundledAssetInstallPlan(
-      `profile:${defaultProfileName}`,
-      Object.values(defaultProfile?.bundledAssets ?? {})
-    );
-    if (profilePlan !== undefined) {
-      return profilePlan;
-    }
-  }
-
-  const rootPlan = normalizeBundledAssetInstallPlan(
-    'bundledAssets',
-    Object.values(config.bundledAssets ?? {})
-  );
-  if (rootPlan !== undefined) {
-    return rootPlan;
-  }
-
-  const profileEntries = Object.entries(config.profiles ?? {}).filter(([, profile]) =>
-    Object.keys(profile?.bundledAssets ?? {}).length > 0
-  );
-  if (profileEntries.length === 1) {
-    const firstProfileEntry = profileEntries[0];
-    if (firstProfileEntry === undefined) {
-      return undefined;
-    }
-    const [profileName, profile] = firstProfileEntry;
-    return normalizeBundledAssetInstallPlan(
-      `profile:${profileName}`,
-      Object.values(profile?.bundledAssets ?? {})
-    );
-  }
-
-  return undefined;
-}
-
-function buildBundledAssetFallbackPlans(): BundledAssetInstallPlan[] {
-  return [
-    {
-      label: 'MON3 (TEC-1G)',
-      references: [
-        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.bin' },
-        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.lst' },
-      ],
-    },
-    {
-      label: 'MON-1B (TEC-1)',
-      references: [
-        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.bin' },
-        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.lst' },
-      ],
-    },
-  ];
-}
 
 export function registerExtensionCommands({
   context,
@@ -1137,90 +716,9 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openProjectConfigPanel', async () => {
-      const folder = await workspaceSelection.resolveWorkspaceFolder({
-        requireProject: true,
-        prompt: true,
-        placeHolder: 'Select the Debug80 project folder to configure',
-      });
-      if (!folder) {
-        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
-        return undefined;
-      }
-
-      const projectConfigPath = findProjectConfigPath(folder);
-      if (projectConfigPath === undefined) {
-        void vscode.window.showErrorMessage(
-          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
-        );
-        return undefined;
-      }
-
-      const initialConfig = readProjectConfig(projectConfigPath);
-      if (initialConfig === undefined) {
-        void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
-        return undefined;
-      }
-      let config: ProjectConfig = initialConfig;
-
-      const panel = vscode.window.createWebviewPanel(
-        'debug80ProjectConfig',
-        `Debug80 Project Settings: ${folder.name}`,
-        vscode.ViewColumn.Active,
-        { enableScripts: true, retainContextWhenHidden: true }
-      );
-      panel.webview.html = buildProjectConfigPanelHtml(config, panel.webview.cspSource, createNonce());
-
-      const messageDisposable = panel.webview.onDidReceiveMessage((msg: unknown) => {
-        const payload = msg as { type?: string; platform?: string; defaultTarget?: string };
-        if (payload.type !== 'saveProjectConfig') {
-          return;
-        }
-
-        const platform = payload.platform;
-        const defaultTarget = payload.defaultTarget;
-        if (
-          (platform !== 'simple' && platform !== 'tec1' && platform !== 'tec1g') ||
-          typeof defaultTarget !== 'string'
-        ) {
-          void vscode.window.showErrorMessage('Debug80: Invalid project configuration values.');
-          return;
-        }
-
-        const targets = config.targets ?? {};
-        if (targets[defaultTarget] === undefined) {
-          void vscode.window.showErrorMessage('Debug80: Selected default target no longer exists.');
-          return;
-        }
-
-        const next: ProjectConfig = {
-          ...config,
-          projectVersion: DEBUG80_PROJECT_VERSION,
-          projectPlatform: platform,
-          defaultTarget,
-          target: defaultTarget,
-        };
-        const written = writeProjectConfig(projectConfigPath, next);
-        if (!written) {
-          void vscode.window.showErrorMessage('Debug80: Failed to update project config.');
-          return;
-        }
-
-        config = next;
-        panel.webview.html = buildProjectConfigPanelHtml(
-          config,
-          panel.webview.cspSource,
-          createNonce()
-        );
-        platformViewProvider.refreshIdleView();
-        void vscode.window.showInformationMessage('Debug80: Project configuration updated.');
-      });
-      panel.onDidDispose(() => {
-        messageDisposable.dispose();
-      });
-
-      return true;
-    })
+    vscode.commands.registerCommand('debug80.openProjectConfigPanel', () =>
+      openProjectConfigPanel(workspaceSelection, platformViewProvider)
+    )
   );
 
   context.subscriptions.push(

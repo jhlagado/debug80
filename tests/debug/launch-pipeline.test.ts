@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { AssemblerBackend } from '../../src/debug/assembler-backend';
-import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from '../../src/debug/launch-pipeline';
-import type { LaunchRequestArguments } from '../../src/debug/types';
+import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
+import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from '../../src/debug/launch/launch-pipeline';
+import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-pipeline', () => {
   let backend: AssemblerBackend & {

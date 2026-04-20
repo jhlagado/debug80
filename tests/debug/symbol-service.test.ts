@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { MappingParseResult, SourceMapSegment } from '../../src/mapping/parser';
-import { buildSymbolIndex, findNearestSymbol } from '../../src/debug/symbol-service';
+import { buildSymbolIndex, findNearestSymbol } from '../../src/debug/mapping/symbol-service';
 
 const makeSegment = (start: number, end: number): SourceMapSegment => ({
   start,

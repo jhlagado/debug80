@@ -99,7 +99,7 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   platformInitButton,
   homeTargetSelect,
   getPlatform: () => platformSelectEl?.value ?? undefined,
-});
+}, 'tec1g');
 
 projectStatusUi.applyProjectStatus({});
 projectIsInitialized = applyInitializedProjectControls({}, {

@@ -4,11 +4,11 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { Event as DapEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
-import { applyStepInfo, runUntilReturnAsync, runUntilStopAsync } from '../../src/debug/runtime-control';
+import { applyStepInfo, runUntilReturnAsync, runUntilStopAsync } from '../../src/debug/session/runtime-control';
 import type {
   RuntimeControlCapabilities,
   RuntimeControlContext,
-} from '../../src/debug/runtime-control';
+} from '../../src/debug/session/runtime-control';
 import type { StepInfo } from '../../src/z80/types';
 import type { Z80Runtime } from '../../src/z80/runtime';
 

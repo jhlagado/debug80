@@ -15,16 +15,16 @@ import {
 import {
   buildPlatformIoHandlers,
   type PlatformIoBuildResult,
-} from '../../debug/platform-host';
+} from '../../debug/session/platform-host';
 import {
   handleKeyRequest,
   handleResetRequest,
   handleSerialRequest,
   handleSpeedRequest,
-} from '../../debug/platform-requests';
-import type { PlatformContribution } from '../../debug/platform-registry';
-import type { LaunchRequestArguments } from '../../debug/types';
-import { extractKeyCode } from '../../debug/message-types';
+} from '../../debug/requests/platform-requests';
+import type { PlatformContribution } from '../../debug/session/platform-registry';
+import type { LaunchRequestArguments } from '../../debug/session/types';
+import { extractKeyCode } from '../../debug/session/message-types';
 import type {
   PlatformAssetLoadContext,
   PlatformCommandContext,

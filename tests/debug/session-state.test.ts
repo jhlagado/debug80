@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as os from 'os';
-import { createSessionState, resetSessionState } from '../../src/debug/session-state';
+import { createSessionState, resetSessionState } from '../../src/debug/session/session-state';
 
 describe('session-state', () => {
   it('resets mutable state to defaults', () => {

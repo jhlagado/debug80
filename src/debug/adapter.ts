@@ -17,12 +17,12 @@ import {
   createSessionState,
   resetSessionState,
   type SessionStateShape,
-} from './session-state';
-import { setDiagnosticsEnabled } from './stack-service';
-import { BreakpointManager } from './breakpoint-manager';
-import { SourceStateManager } from './source-state-manager';
-import { CommandRouter } from './command-router';
-import { PlatformRegistry } from './platform-registry';
+} from './session/session-state';
+import { setDiagnosticsEnabled } from './mapping/stack-service';
+import { BreakpointManager } from './mapping/breakpoint-manager';
+import { SourceStateManager } from './mapping/source-state-manager';
+import { CommandRouter } from './requests/command-router';
+import { PlatformRegistry } from './session/platform-registry';
 import {
   applyLaunchBreakpoints,
   applyLaunchSessionArtifacts,
@@ -30,19 +30,19 @@ import {
   createLaunchSequenceContext,
   createRuntimeControlContext,
   RuntimeControlContext,
-} from './runtime-control';
-import { VariableService } from './variable-service';
+} from './session/runtime-control';
+import { VariableService } from './requests/variable-service';
 import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 
-import { LaunchRequestArguments } from './types';
-import { resolveBaseDir } from './path-resolver';
-import { emitAssemblyFailed, emitConsoleOutput } from './adapter-ui';
-import { AssembleFailureError } from './assembler';
-import { buildRomSourcesResponse } from './rom-requests';
-import { handleTerminalInput, handleTerminalBreak } from './terminal-request';
-import { handleMemorySnapshotRequest } from './memory-request';
-import { handleMemoryWriteRequest } from './memory-write';
-import { handleRegisterWriteRequest } from './register-request';
+import { LaunchRequestArguments } from './session/types';
+import { resolveBaseDir } from './mapping/path-resolver';
+import { emitAssemblyFailed, emitConsoleOutput } from './session/adapter-ui';
+import { AssembleFailureError } from './launch/assembler';
+import { buildRomSourcesResponse } from './requests/rom-requests';
+import { handleTerminalInput, handleTerminalBreak } from './requests/terminal-request';
+import { handleMemorySnapshotRequest } from './requests/memory-request';
+import { handleMemoryWriteRequest } from './requests/memory-write';
+import { handleRegisterWriteRequest } from './requests/register-request';
 import { populateFromConfig } from './launch-args';
 import {
   MissingLaunchArtifactsError,
@@ -51,11 +51,11 @@ import {
   hasLaunchInputs,
   respondToMissingArtifacts,
   respondToMissingLaunchInputs,
-} from './launch-sequence';
+} from './launch/launch-sequence';
 import { Logger, NullLogger } from '../util/logger';
-import { AdapterRequestController } from './adapter-request-controller';
-import { handleWarmRebuildRequest } from './rebuild-request';
-import { emitDebugSessionStatus } from './session-status';
+import { AdapterRequestController } from './requests/adapter-request-controller';
+import { handleWarmRebuildRequest } from './requests/rebuild-request';
+import { emitDebugSessionStatus } from './session/session-status';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;

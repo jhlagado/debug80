@@ -20,7 +20,7 @@ import {
   isFileResolutionError,
   isParseError,
   wrapError,
-} from '../../src/debug/errors';
+} from '../../src/debug/session/errors';
 
 describe('errors', () => {
   it('preserves code and context for Debug80Error', () => {

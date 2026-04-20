@@ -8,9 +8,9 @@ vi.mock('vscode', () => ({
   extensions: { getExtension: vi.fn() },
 }));
 
-import { resolveAssemblerBackend } from '../../src/debug/assembler-backend';
-import { Asm80Backend } from '../../src/debug/asm80-backend';
-import { ZaxBackend } from '../../src/debug/zax-backend';
+import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
+import { Asm80Backend } from '../../src/debug/launch/asm80-backend';
+import { ZaxBackend } from '../../src/debug/launch/zax-backend';
 
 describe('assembler-backend', () => {
   it('returns asm80 by default', () => {

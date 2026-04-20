@@ -15,7 +15,7 @@ import {
   fromPortablePath,
   toPortableRelative,
   normalizePathForKey,
-} from '../../src/debug/path-utils';
+} from '../../src/debug/mapping/path-utils';
 
 describe('path-utils', () => {
   describe('pathsEqual', () => {

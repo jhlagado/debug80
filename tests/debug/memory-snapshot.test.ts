@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildMemorySnapshotResponse } from '../../src/debug/memory-snapshot';
+import { buildMemorySnapshotResponse } from '../../src/debug/session/memory-snapshot';
 import { init as initCpu } from '../../src/z80/cpu';
 
 describe('memory-snapshot', () => {

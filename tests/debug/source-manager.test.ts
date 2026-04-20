@@ -8,12 +8,12 @@ import * as os from 'os';
 import * as path from 'path';
 import type { Logger } from '../../src/util/logger';
 
-vi.mock('../../src/debug/path-resolver', () => ({
+vi.mock('../../src/debug/mapping/path-resolver', () => ({
   resolveListingSourcePath: () => undefined,
 }));
 
-import * as mappingService from '../../src/debug/mapping-service';
-import { SourceManager } from '../../src/debug/source-manager';
+import * as mappingService from '../../src/debug/mapping/mapping-service';
+import { SourceManager } from '../../src/debug/mapping/source-manager';
 
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures');
 const listingContent = fs.readFileSync(path.join(fixturesDir, 'simple.lst'), 'utf-8');
