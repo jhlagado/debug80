@@ -49,8 +49,8 @@ describe('initialized project controls', () => {
     expect(targetSelect.disabled).toBe(false);
     expect(platformControl.hidden).toBe(true);
     expect(platformSelect.disabled).toBe(true);
-    expect(platformInfoControl.hidden).toBe(false);
-    expect(platformValue.textContent).toBe('TEC-1G');
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
     expect(stopOnEntryLabel.hidden).toBe(false);
     expect(restartButton.hidden).toBe(false);
     expect(tabs.hidden).toBe(false);
@@ -224,8 +224,8 @@ describe('initialized project controls', () => {
 
     expect(projectHeader.hidden).toBe(false);
     expect(platformControl.hidden).toBe(true);
-    expect(platformInfoControl.hidden).toBe(false);
-    expect(platformValue.textContent).toBe('TEC-1G');
+    expect(platformInfoControl.hidden).toBe(true);
+    expect(platformValue.textContent).toBe('');
 
     applyInitializedProjectControls(
       { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'simple' },
