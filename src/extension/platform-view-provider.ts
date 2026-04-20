@@ -7,6 +7,7 @@
  * in extension.ts; no changes are needed here.
  */
 
+import * as path from 'path';
 import * as vscode from 'vscode';
 import type { DebugSessionStatus } from '../debug/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
@@ -293,7 +294,28 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await vscode.commands.executeCommand('debug80.createProject', args);
         },
         handleOpenWorkspaceFolder: async () => {
-          await vscode.commands.executeCommand('vscode.openFolder');
+          const picked = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: 'Add Folder to Workspace',
+            title: 'Add a folder to the Debug80 workspace',
+          });
+          const folderUri = picked?.[0];
+          if (folderUri === undefined) {
+            return;
+          }
+          if (vscode.workspace.getWorkspaceFolder(folderUri) !== undefined) {
+            return; // already in workspace
+          }
+          const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
+          const added = vscode.workspace.updateWorkspaceFolders(insertAt, 0, {
+            uri: folderUri,
+            name: path.basename(folderUri.fsPath),
+          });
+          if (!added) {
+            void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
+          }
         },
         handleSelectProject: async (args) => {
           await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);
