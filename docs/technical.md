@@ -84,6 +84,9 @@ Registered commands (src/extension/commands.ts):
 - debug80.openTec1            — reveal the TEC-1 sidebar panel
 - debug80.openTec1Memory      — switch the TEC-1 panel to the CPU tab
 - debug80.openRomSource       — open ROM source files for the active session
+- debug80.openDebug80View     — reveal and focus the Debug80 sidebar panel
+- debug80.addWorkspaceFolder  — open a folder picker and add the chosen folder to the workspace
+- debug80.materializeBundledRom — manually install bundled ROM assets into the active workspace
 
 Important behavior for new VS Code extension developers:
 - The debug adapter is created with vscode.DebugAdapterInlineImplementation.
@@ -112,8 +115,8 @@ DAP lifecycle (simplified):
 
 Sources are searched in this order:
 1) launch args.projectConfig
-2) .vscode/debug80.json
-3) debug80.json
+2) debug80.json          ← checked first among file candidates (PROJECT_CONFIG_CANDIDATES)
+3) .vscode/debug80.json
 4) .debug80.json
 5) package.json (debug80 block)
 
@@ -239,6 +242,13 @@ prefers the existing D8 map directly and does not treat it as stale relative to
 the listing file or overwrite it with an LST-regenerated cache.
 
 Debug80 always writes a `*.d8.json` file alongside the build artifacts.
+
+The orchestration for loading, validating, building, and caching these maps lives in
+`src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is
+distinct from the data-format layer in `src/mapping/`. Extra ROM listings (from `extraListings`
+config) are handled separately via `loadExtraListingMapping`, which also detects when a cached
+map was built without source info (e.g. before the `.asm` file was materialized) and rebuilds
+it automatically once the source file appears next to the listing.
 
 ### 9.5 Platforms
 
@@ -368,7 +378,10 @@ Every platform panel includes a project header at the top with three controls:
 A setup card is shown at the top of the panel when the workspace is not ready:
 
 - No workspace roots available → "Select a workspace root to get started." + Open Folder button.
-- Workspace available but no project → "No debug80.json found..." + Create Project button.
+- Workspace available but no project → "No debug80.json found..." message. The **Create Project**
+  action is available via the inline **Initialize** button that appears next to the platform
+  selector in the project header row. The setup card's own primary action button is hidden in
+  this state to avoid duplication with the inline button.
 
 The setup card is **hidden entirely** once a project exists with at least one target. There is no
 "configured" or "ready" state shown — the project header controls are always visible and sufficient.

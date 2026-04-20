@@ -127,6 +127,15 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
             },
           }
         : {}),
+      ...(plan.kit.bundledProfile.sourcePath !== undefined
+        ? {
+            source: {
+              bundleId: plan.kit.bundledProfile.bundleRelPath,
+              path: path.basename(plan.kit.bundledProfile.sourcePath),
+              destination: plan.kit.bundledProfile.sourcePath,
+            },
+          }
+        : {}),
     };
   }
 
@@ -321,12 +330,13 @@ async function buildScaffoldPlan(
   const defaultKit = getDefaultProjectKitForPlatform(preselectedPlatform);
   if (defaultKit !== undefined) {
     const sourceFile = 'src/main.asm';
+    const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
     return {
       kit: defaultKit,
-      targetName: 'app',
+      targetName: artifactBase,
       sourceFile,
       outputDir: inferred.outputDir,
-      artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
+      artifactBase,
       starterLanguage: 'asm',
       starterFile: {
         path: sourceFile,
@@ -339,20 +349,6 @@ async function buildScaffoldPlan(
     return undefined;
   }
 
-  const targetName =
-    (
-      await vscode.window.showInputBox({
-        prompt: 'Debug80 target name',
-        placeHolder: 'app',
-        value: 'app',
-        validateInput: (value) =>
-          value.trim().length === 0 ? 'Target name cannot be empty.' : undefined,
-      })
-    )?.trim() ?? '';
-  if (targetName.length === 0) {
-    return undefined;
-  }
-
   const choice = await chooseEntrySource(folder, inferred.sourceFile);
   if (choice === undefined) {
     return undefined;
@@ -360,22 +356,24 @@ async function buildScaffoldPlan(
 
   if (choice.kind === 'existing') {
     const sourceFile = choice.sourceFile;
+    const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
     return {
       kit,
-      targetName,
+      targetName: artifactBase,
       sourceFile,
       outputDir: inferred.outputDir,
-      artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
+      artifactBase,
     };
   }
 
   const sourceFile = choice.language === 'zax' ? 'src/main.zax' : 'src/main.asm';
+  const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
   return {
     kit,
-    targetName,
+    targetName: artifactBase,
     sourceFile,
     outputDir: inferred.outputDir,
-    artifactBase: path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase,
+    artifactBase,
     starterLanguage: choice.language,
     starterFile: {
       path: sourceFile,

@@ -896,6 +896,6 @@ describe('PlatformViewProvider', () => {
 
     await handler?.({ type: 'openWorkspaceFolder' });
 
-    expect(executeCommand).toHaveBeenCalledWith('vscode.openFolder');
+    expect(executeCommand).toHaveBeenCalledWith('debug80.addWorkspaceFolder');
   });
 });

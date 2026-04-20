@@ -348,10 +348,26 @@ function loadExtraListingMapping(
 
       let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
       if (debugMap) {
-        const mapping = buildMappingFromD8DebugMap(debugMap);
-        combined.segments.push(...mapping.segments);
-        combined.anchors.push(...mapping.anchors);
-        continue;
+        const cachedMapping = buildMappingFromD8DebugMap(debugMap);
+        if (!hasNativeMap) {
+          // If the cached map has no source file info but a source file now exists next to the
+          // listing (e.g. the .asm was materialized after the map was first built), invalidate
+          // the cache so we rebuild with the source attached.
+          const cachedHasSource = cachedMapping.segments.some((s) => s.loc.file !== null);
+          const sourceNowExists = resolveListingSourcePath(listingPath) !== undefined;
+          if (!cachedHasSource && sourceNowExists) {
+            const prefix = `Debug80 [${service.platform}]`;
+            service.logger.info(
+              `${prefix}: Cached D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
+            );
+            debugMap = undefined;
+          }
+        }
+        if (debugMap !== undefined) {
+          combined.segments.push(...cachedMapping.segments);
+          combined.anchors.push(...cachedMapping.anchors);
+          continue;
+        }
       }
 
       const mapping = buildExtraListingMapping(listingPath, service);

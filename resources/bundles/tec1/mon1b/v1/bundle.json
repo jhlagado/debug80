@@ -14,6 +14,11 @@
       "role": "listing",
       "path": "mon-1b.lst",
       "sha256": "76bd761d226911b5aa0f53b7f0a4253a40e2d68154146c1506bf07ae7380ad89"
+    },
+    {
+      "role": "source",
+      "path": "mon-1b.asm",
+      "sha256": "69ceca17b6ff853d3eefe9876c5ec813a085680533d4294c43781e64048ae49e"
     }
   ],
   "workspaceLayout": {

@@ -212,6 +212,11 @@ describe('project-scaffolding helpers', () => {
               path: 'mon-1b.lst',
               destination: 'roms/tec1/mon1b/mon-1b.lst',
             },
+            source: {
+              bundleId: 'tec1/mon1b/v1',
+              path: 'mon-1b.asm',
+              destination: 'roms/tec1/mon1b/mon-1b.asm',
+            },
           },
         },
       },
@@ -394,8 +399,8 @@ describe('project-scaffolding helpers', () => {
       };
       expect(writtenConfig.projectPlatform).toBe('tec1');
       expect(writtenConfig.defaultProfile).toBe('mon1b');
-      expect(writtenConfig.defaultTarget).toBe('app');
-      expect(writtenConfig.targets?.app).toEqual(
+      expect(writtenConfig.defaultTarget).toBe('main');
+      expect(writtenConfig.targets?.main).toEqual(
         expect.objectContaining({
           sourceFile: 'src/main.asm',
           platform: 'tec1',
@@ -481,7 +486,6 @@ describe('project-scaffolding helpers', () => {
       showQuickPick.mockResolvedValueOnce({ kit: kit('tec1g/mon3') }).mockResolvedValueOnce({
         choice: { kind: 'starter', language: 'asm' },
       });
-      showInputBox.mockResolvedValueOnce('app');
 
       const created = await scaffoldProject(
         { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
@@ -490,7 +494,7 @@ describe('project-scaffolding helpers', () => {
 
       expect(created).toBe(true);
       expect(showQuickPick).toHaveBeenCalledTimes(2);
-      expect(showInputBox).toHaveBeenCalledOnce();
+      expect(showInputBox).not.toHaveBeenCalled();
       expect(writeFileSync).toHaveBeenCalled();
 
       const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
@@ -513,9 +517,9 @@ describe('project-scaffolding helpers', () => {
       expect(writtenConfig.profiles?.mon3?.bundledAssets?.romHex?.destination).toBe(
         'roms/tec1g/mon3/mon3.bin'
       );
-      expect(writtenConfig.targets?.app?.platform).toBe('tec1g');
-      expect(writtenConfig.targets?.app?.profile).toBe('mon3');
-      expect(writtenConfig.targets?.app?.tec1g).toEqual(
+      expect(writtenConfig.targets?.main?.platform).toBe('tec1g');
+      expect(writtenConfig.targets?.main?.profile).toBe('mon3');
+      expect(writtenConfig.targets?.main?.tec1g).toEqual(
         expect.objectContaining({
           appStart: 0x4000,
           entry: 0,
@@ -564,7 +568,6 @@ describe('project-scaffolding helpers', () => {
       showQuickPick.mockResolvedValueOnce({ kit: kit('tec1/mon1b') }).mockResolvedValueOnce({
         choice: { kind: 'starter', language: 'asm' },
       });
-      showInputBox.mockResolvedValueOnce('app');
 
       const created = await scaffoldProject(
         { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
@@ -573,7 +576,7 @@ describe('project-scaffolding helpers', () => {
 
       expect(created).toBe(true);
       expect(showQuickPick).toHaveBeenCalledTimes(2);
-      expect(showInputBox).toHaveBeenCalledOnce();
+      expect(showInputBox).not.toHaveBeenCalled();
       expect(writeFileSync).toHaveBeenCalled();
 
       const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
@@ -588,7 +591,7 @@ describe('project-scaffolding helpers', () => {
       };
       expect(writtenConfig.projectPlatform).toBe('tec1');
       expect(writtenConfig.defaultProfile).toBe('mon1b');
-      expect(writtenConfig.targets?.app?.tec1).toEqual(
+      expect(writtenConfig.targets?.main?.tec1).toEqual(
         expect.objectContaining({
           romHex: 'roms/tec1/mon1b/mon-1b.bin',
           extraListings: ['roms/tec1/mon1b/mon-1b.lst'],

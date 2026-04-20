@@ -36,6 +36,7 @@ const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') a
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
 const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
+const platformInitButton = document.getElementById('platformInitButton') as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
@@ -95,6 +96,7 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   setupCard,
   setupCardText,
   setupPrimaryAction,
+  platformInitButton,
   homeTargetSelect,
   getPlatform: () => platformSelectEl?.value ?? undefined,
 });
