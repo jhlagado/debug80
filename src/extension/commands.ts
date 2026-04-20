@@ -2,7 +2,6 @@
  * @file Command registration for the Debug80 extension.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
@@ -15,6 +14,7 @@ import {
   resolveProjectPlatform,
   writeProjectConfig,
   updateProjectTargetSource,
+  addProjectTarget,
 } from './project-config';
 import {
   ProjectTargetSelectionController,
@@ -25,6 +25,7 @@ import {
   BUNDLED_MON1B_V1_REL,
   BUNDLED_MON3_V1_REL,
   materializeBundledAsset,
+  materializeBundledRom,
 } from './bundle-materialize';
 import { scaffoldProject } from './project-scaffolding';
 import { fetchRomSources } from './rom-sources';
@@ -302,19 +303,21 @@ function ensureBundledAssetsPresent(
   if (plan === undefined) {
     return;
   }
+  // Collect unique bundle IDs and re-materialize each bundle as a whole.
+  // materializeBundledRom copies every file in the bundle (rom, listing, and all
+  // source files), so multi-file source trees like MON-3 are recovered in full
+  // without needing every file enumerated individually in bundledAssets.
+  const bundleIds = new Set<string>();
   for (const reference of plan.references) {
-    const destination = reference.destination;
-    if (typeof destination !== 'string' || destination.trim().length === 0) {
-      continue;
+    if (typeof reference.bundleId === 'string' && reference.bundleId.trim().length > 0) {
+      bundleIds.add(reference.bundleId.trim());
     }
-    const absoluteDest = path.resolve(workspaceRoot, destination.trim());
-    if (fs.existsSync(absoluteDest)) {
-      continue;
-    }
-    const result = materializeBundledAsset(extensionUri, workspaceRoot, reference, { overwrite: false });
+  }
+  for (const bundleId of bundleIds) {
+    const result = materializeBundledRom(extensionUri, workspaceRoot, bundleId, { overwrite: false });
     if (!result.ok) {
       void vscode.window.showWarningMessage(
-        `Debug80: Could not install bundled asset "${reference.path}": ${result.reason}`
+        `Debug80: Could not install bundled ROM assets for "${bundleId}": ${result.reason}`
       );
     }
   }
@@ -754,11 +757,23 @@ export function registerExtensionCommands({
 
         const previousTarget = resolvePreferredTargetName(context.workspaceState, projectConfig);
 
-        const directTarget =
+        const directTargetChoice =
           args?.targetName !== undefined
             ? listProjectTargetChoices(projectConfig).find((choice) => choice.name === args.targetName)
-                ?.name
             : undefined;
+
+        // If this is a discovered (unconfigured) source file, add it as a real target first
+        if (directTargetChoice?.discovered === true && directTargetChoice.sourceFile !== undefined) {
+          const ok = addProjectTarget(projectConfig, directTargetChoice.name, directTargetChoice.sourceFile);
+          if (!ok) {
+            void vscode.window.showErrorMessage(
+              `Debug80: Failed to add target "${directTargetChoice.name}" to debug80.json.`
+            );
+            return undefined;
+          }
+        }
+
+        const directTarget = directTargetChoice?.name;
         const target =
           directTarget ??
           (await targetSelection.resolveTarget(projectConfig, {
