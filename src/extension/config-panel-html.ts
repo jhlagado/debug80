@@ -4,7 +4,7 @@
 
 import { randomBytes } from 'crypto';
 import { resolveProjectPlatform } from './project-config';
-import type { ProjectConfig } from '../debug/types';
+import type { ProjectConfig } from '../debug/session/types';
 import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,

@@ -20,12 +20,12 @@ import {
   assertValidPlatform,
   assertHasSourcePaths,
   VALID_PLATFORMS,
-} from '../../src/debug/config-validation';
+} from '../../src/debug/launch/config-validation';
 import {
   ConfigurationError,
   MissingConfigError,
   UnsupportedPlatformError,
-} from '../../src/debug/errors';
+} from '../../src/debug/session/errors';
 
 describe('config-validation', () => {
   // ==========================================================================

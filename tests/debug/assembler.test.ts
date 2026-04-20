@@ -14,7 +14,7 @@ import {
   runAssembler,
   runAssemblerBin,
   shouldInvokeWithNode,
-} from '../../src/debug/assembler';
+} from '../../src/debug/launch/assembler';
 
 const spawnSync = vi.hoisted(() => vi.fn());
 

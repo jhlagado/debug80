@@ -2,8 +2,8 @@
  * @fileoverview Debug adapter provider for the simple platform.
  */
 
-import { buildPlatformIoHandlers } from "../../debug/platform-host";
-import type { LaunchRequestArguments } from "../../debug/types";
+import { buildPlatformIoHandlers } from "../../debug/session/platform-host";
+import type { LaunchRequestArguments } from "../../debug/session/types";
 import type { ResolvedPlatformProvider } from "../provider";
 import { normalizeSimpleConfig } from "./runtime";
 

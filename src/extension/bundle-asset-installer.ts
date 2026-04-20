@@ -8,7 +8,7 @@ import {
   BUNDLED_MON3_V1_REL,
   materializeBundledRom,
 } from './bundle-materialize';
-import type { BundledAssetReference, ProjectConfig } from '../debug/types';
+import type { BundledAssetReference, ProjectConfig } from '../debug/session/types';
 
 export type BundledAssetInstallPlan = {
   label: string;

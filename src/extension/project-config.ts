@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import type { ProjectConfig } from '../debug/types';
+import type { ProjectConfig } from '../debug/session/types';
 
 export const DEBUG80_PROJECT_VERSION = 2 as const;
 

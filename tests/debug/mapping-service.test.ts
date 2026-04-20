@@ -6,17 +6,17 @@ import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import type { AssemblerBackend } from '../../src/debug/assembler-backend';
-import * as assemblerBackendModule from '../../src/debug/assembler-backend';
+import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
+import * as assemblerBackendModule from '../../src/debug/launch/assembler-backend';
 import type { Logger } from '../../src/util/logger';
 
 const resolveListingSourcePathMock = vi.hoisted(() => vi.fn(() => undefined));
 
-vi.mock('../../src/debug/path-resolver', () => ({
+vi.mock('../../src/debug/mapping/path-resolver', () => ({
   resolveListingSourcePath: resolveListingSourcePathMock,
 }));
 
-import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping-service';
+import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
 import { parseMapping } from '../../src/mapping/parser';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 

@@ -9,7 +9,7 @@ import {
   parseMatrixKeyPayload,
   resolveMatrixAscii,
   buildMatrixKeyId,
-} from '../../src/debug/matrix-request';
+} from '../../src/debug/requests/matrix-request';
 import type { MatrixKeyCombo } from '../../src/platforms/tec1g/matrix-keymap';
 
 describe('matrix-request', () => {

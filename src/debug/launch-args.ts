@@ -5,11 +5,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { LaunchRequestArguments } from './types';
-import type { PlatformKind } from './program-loader';
+import { LaunchRequestArguments } from './session/types';
+import type { PlatformKind } from './launch/program-loader';
 import type { Tec1gPlatformConfig } from '../platforms/types';
-import { isPathWithin } from './path-utils';
-import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
+import { isPathWithin } from './mapping/path-utils';
+import { D8_DEBUG_MAP_EXT } from './mapping/d8-map-paths';
 
 /**
  * Shallow-merge nested platform blocks so a target can override e.g. `tec1g.appStart`

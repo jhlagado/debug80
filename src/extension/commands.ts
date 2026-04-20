@@ -25,7 +25,7 @@ import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
-import type { ProjectConfig } from '../debug/types';
+import type { ProjectConfig } from '../debug/session/types';
 import {
   buildBundledAssetFallbackPlans,
   resolveProjectBundledAssetInstallPlan,
