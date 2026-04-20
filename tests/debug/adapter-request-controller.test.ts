@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('vscode', () => ({}));
 
 import { Handles } from '@vscode/debugadapter';
-import { AdapterRequestController } from '../../src/debug/adapter-request-controller';
-import { createSessionState } from '../../src/debug/session-state';
-import * as runtimeControl from '../../src/debug/runtime-control';
-import { VariableService } from '../../src/debug/variable-service';
+import { AdapterRequestController } from '../../src/debug/requests/adapter-request-controller';
+import { createSessionState } from '../../src/debug/session/session-state';
+import * as runtimeControl from '../../src/debug/session/runtime-control';
+import { VariableService } from '../../src/debug/requests/variable-service';
 import { createZ80Runtime } from '../../src/z80/runtime';
 
 function createController() {

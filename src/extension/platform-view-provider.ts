@@ -8,7 +8,7 @@
  */
 
 import * as vscode from 'vscode';
-import type { DebugSessionStatus } from '../debug/session-status';
+import type { DebugSessionStatus } from '../debug/session/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import {

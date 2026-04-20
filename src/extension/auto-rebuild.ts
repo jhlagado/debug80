@@ -4,8 +4,8 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import type { WarmRebuildResult } from '../debug/message-types';
-import { isWarmRebuildResult } from '../debug/message-types';
+import type { WarmRebuildResult } from '../debug/session/message-types';
+import { isWarmRebuildResult } from '../debug/session/message-types';
 import { SessionStateManager } from './session-state-manager';
 
 const REBUILD_DEBOUNCE_MS = 250;

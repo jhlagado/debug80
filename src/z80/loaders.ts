@@ -3,7 +3,7 @@
  * Provides parsing utilities for loading Z80 programs and debug information.
  */
 
-import { HexParseError } from '../debug/errors';
+import { HexParseError } from '../debug/session/errors';
 
 /**
  * Parsed Intel HEX program data.

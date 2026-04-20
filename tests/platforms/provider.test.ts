@@ -32,7 +32,7 @@ vi.mock('vscode', () => ({
   },
 }));
 
-vi.mock('../../src/debug/platform-host', () => ({
+vi.mock('../../src/debug/session/platform-host', () => ({
   buildPlatformIoHandlers,
 }));
 
@@ -47,8 +47,8 @@ import {
   resolvePlatformProvider,
   type PlatformManifestEntry,
 } from '../../src/platforms/provider';
-import { PlatformRegistry } from '../../src/debug/platform-registry';
-import { createSessionState } from '../../src/debug/session-state';
+import { PlatformRegistry } from '../../src/debug/session/platform-registry';
+import { createSessionState } from '../../src/debug/session/session-state';
 import type { Tec1gRuntime } from '../../src/platforms/tec1g/runtime';
 
 function createCommandContext() {

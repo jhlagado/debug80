@@ -23,7 +23,7 @@ vi.mock('../../src/platforms/tec1g/runtime', () => ({
   })),
 }));
 
-import { buildPlatformIoHandlers } from '../../src/debug/platform-host';
+import { buildPlatformIoHandlers } from '../../src/debug/session/platform-host';
 
 describe('platform-host', () => {
   beforeEach(() => {

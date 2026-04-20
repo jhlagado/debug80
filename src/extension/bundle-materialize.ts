@@ -6,7 +6,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import type { BundledAssetReference } from '../debug/types';
+import type { BundledAssetReference } from '../debug/session/types';
 import type { BundleManifestV1 } from './bundle-manifest';
 import { isBundleManifestV1 } from './bundle-manifest';
 

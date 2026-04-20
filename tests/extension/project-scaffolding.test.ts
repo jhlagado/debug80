@@ -27,7 +27,7 @@ import {
   createStarterSourceContent,
   scaffoldProject,
 } from '../../src/extension/project-scaffolding';
-import { ensureDirExists } from '../../src/debug/config-utils';
+import { ensureDirExists } from '../../src/debug/launch/config-utils';
 import { DEBUG80_PROJECT_VERSION } from '../../src/extension/project-config';
 import { getProjectKitById } from '../../src/extension/project-kits';
 
@@ -58,7 +58,7 @@ vi.mock('fs', async () => {
   };
 });
 
-vi.mock('../../src/debug/config-utils', () => ({
+vi.mock('../../src/debug/launch/config-utils', () => ({
   ensureDirExists: vi.fn(),
   inferDefaultTarget: vi.fn(() => ({
     sourceFile: 'src/main.asm',

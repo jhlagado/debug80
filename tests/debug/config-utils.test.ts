@@ -3,7 +3,7 @@ import { describe, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ensureDirExists, inferDefaultTarget } from '../../src/debug/config-utils';
+import { ensureDirExists, inferDefaultTarget } from '../../src/debug/launch/config-utils';
 
 const withTempDir = (fn: (dir: string) => void): void => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-config-'));

@@ -4,8 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
-import { BreakpointManager } from '../../src/debug/breakpoint-manager';
-import { normalizePathForKey } from '../../src/debug/path-utils';
+import { BreakpointManager } from '../../src/debug/mapping/breakpoint-manager';
+import { normalizePathForKey } from '../../src/debug/mapping/path-utils';
 import type { ListingInfo } from '../../src/z80/loaders';
 import type { SourceMapIndex } from '../../src/mapping/source-map';
 import type { SourceMapSegment } from '../../src/mapping/parser';

@@ -3,11 +3,11 @@
  */
 
 import type { DebugProtocol } from "@vscode/debugprotocol";
-import type { PlatformIoBuildResult } from "../debug/platform-host";
-import type { PlatformRegistry } from "../debug/platform-registry";
-import type { PlatformKind } from "../debug/program-loader";
-import type { SessionStateShape } from "../debug/session-state";
-import type { TerminalConfig } from "../debug/terminal-types";
+import type { PlatformIoBuildResult } from "../debug/session/platform-host";
+import type { PlatformRegistry } from "../debug/session/platform-registry";
+import type { PlatformKind } from "../debug/launch/program-loader";
+import type { SessionStateShape } from "../debug/session/session-state";
+import type { TerminalConfig } from "../debug/session/terminal-types";
 import type { Z80Runtime } from "../z80/runtime";
 import type { Logger } from "../util/logger";
 import type {

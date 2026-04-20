@@ -3,8 +3,8 @@
  */
 
 import { normalizePlatformName } from '../debug/launch-args';
-import type { LaunchRequestArguments } from '../debug/types';
-import type { PlatformKind } from '../debug/program-loader';
+import type { LaunchRequestArguments } from '../debug/session/types';
+import type { PlatformKind } from '../debug/launch/program-loader';
 import type { ResolvedPlatformProvider } from './provider';
 
 type PlatformProviderLoader = (

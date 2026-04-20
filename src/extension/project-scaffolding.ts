@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ensureDirExists, inferDefaultTarget } from '../debug/config-utils';
+import { ensureDirExists, inferDefaultTarget } from '../debug/launch/config-utils';
 import {
   DEBUG80_PROJECT_VERSION,
   findProjectConfigPath,

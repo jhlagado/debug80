@@ -4,7 +4,7 @@
 
 import fs from 'fs';
 import { TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START } from '../tec-common';
-import { extractRomHex } from '../../debug/program-loader';
+import { extractRomHex } from '../../debug/launch/program-loader';
 import { parseIntelHex } from '../../z80/loaders';
 
 export type Tec1gCartridgeImage = {

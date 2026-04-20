@@ -52,8 +52,28 @@ Key concepts:
   - Browser-side source for all three platform panels (simple/, tec1/, tec1g/).
   - common/ — shared utilities: VS Code API bridge, session status, memory panel, serial helpers.
 - src/debug/adapter.ts
-  - Main debug adapter (Z80DebugSession).
+  - Main debug adapter (Z80DebugSession). Stays at the top level of src/debug/.
   - Launch/config merge, assembler invocation, breakpoint resolution, stepping.
+- src/debug/launch/
+  - Launch pipeline: assembler invocation, program loading, config validation, source-state setup.
+  - Key files: assembler.ts, assembler-backend.ts, asm80-backend.ts, zax-backend.ts,
+    launch-pipeline.ts, launch-sequence.ts, launch-source-state.ts,
+    program-loader.ts, config-utils.ts, config-validation.ts.
+- src/debug/requests/
+  - DAP request handlers extracted from the adapter: breakpoints, stepping, memory, registers,
+    terminal, ROM, matrix, platform commands, warm-rebuild, variable scope.
+  - Key files: adapter-request-controller.ts, command-router.ts, rebuild-request.ts, and
+    per-request modules (io-requests.ts, memory-request.ts, register-request.ts, etc.).
+- src/debug/mapping/
+  - Mapping utilities used at runtime: path resolution, source management, breakpoint tracking,
+    symbol service, stack frames, debug addressing.
+  - Key files: mapping-service.ts, path-resolver.ts, breakpoint-manager.ts, stack-service.ts,
+    source-manager.ts, source-state-manager.ts, symbol-service.ts.
+- src/debug/session/
+  - Session types and stateful helpers: session state shape, runtime control, adapter UI helpers,
+    platform host/registry, error classes, and message/type definitions.
+  - Key files: types.ts, session-state.ts, runtime-control.ts, platform-host.ts,
+    platform-registry.ts, adapter-ui.ts, errors.ts, message-types.ts, memory-*.ts.
 - src/mapping/*
   - Listing -> segments/anchors, layer 2 matching, and index building.
 - src/z80/*

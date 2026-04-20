@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Handles } from '@vscode/debugadapter';
-import { VariableService } from '../../src/debug/variable-service';
+import { VariableService } from '../../src/debug/requests/variable-service';
 import { Cpu } from '../../src/z80/types';
 
 const buildCpu = (): Cpu => ({

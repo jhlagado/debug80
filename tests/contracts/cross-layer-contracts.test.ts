@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const MESSAGE_TYPES_PATH = path.join(REPO_ROOT, 'src/debug/message-types.ts');
+const MESSAGE_TYPES_PATH = path.join(REPO_ROOT, 'src/debug/session/message-types.ts');
 const ADAPTER_PATH = path.join(REPO_ROOT, 'src/debug/adapter.ts');
 const EXTENSION_COMMANDS_PATH = path.join(REPO_ROOT, 'src/extension/commands.ts');
 const EXTENSION_ROM_SOURCES_PATH = path.join(REPO_ROOT, 'src/extension/rom-sources.ts');

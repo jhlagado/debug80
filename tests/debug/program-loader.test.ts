@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { loadProgramArtifacts } from '../../src/debug/program-loader';
+import { loadProgramArtifacts } from '../../src/debug/launch/program-loader';
 import { TEC1_ROM_LOAD_ADDR } from '../../src/platforms/tec-common';
 import type { Logger } from '../../src/util/logger';
 

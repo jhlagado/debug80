@@ -27,7 +27,7 @@ import {
   relativeIfPossible,
   resolveBaseDir,
 } from '../../src/debug/launch-args';
-import type { LaunchRequestArguments } from '../../src/debug/types';
+import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-args', () => {
   beforeEach(() => {

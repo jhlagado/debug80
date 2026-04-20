@@ -8,7 +8,7 @@ import {
   handleResetRequest,
   handleSerialRequest,
   handleSpeedRequest,
-} from '../../src/debug/platform-requests';
+} from '../../src/debug/requests/platform-requests';
 import { KEY_RESET } from '../../src/platforms/tec-common';
 
 describe('platform-requests', () => {

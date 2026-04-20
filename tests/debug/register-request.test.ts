@@ -3,12 +3,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createSessionState } from '../../src/debug/session-state';
+import { createSessionState } from '../../src/debug/session/session-state';
 import {
   handleRegisterWriteRequest,
   parseHexValue,
   writableRegisterKeyFromVariableName,
-} from '../../src/debug/register-request';
+} from '../../src/debug/requests/register-request';
 import { createZ80Runtime } from '../../src/z80/runtime';
 
 describe('register-request', () => {
