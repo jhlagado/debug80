@@ -17,7 +17,6 @@ export type SharedProjectControlElements = {
   panelMemory?: HTMLElement | null;
 };
 
-
 export function applyInitializedProjectControls(
   payload: {
     projectState?: ProjectStatusPayload['projectState'];
