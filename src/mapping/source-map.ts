@@ -4,7 +4,7 @@
  */
 
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
-import { normalizePathForKey } from '../debug/path-utils';
+import { normalizePathForKey } from '../debug/mapping/path-utils';
 
 let onSegmentWarning: ((message: string) => void) | undefined;
 

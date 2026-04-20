@@ -9,9 +9,9 @@ import * as path from 'path';
 import { buildSourceMapIndex } from '../../src/mapping/source-map';
 import { MappingParseResult, SourceMapSegment } from '../../src/mapping/parser';
 import { ListingInfo } from '../../src/z80/loaders';
-import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/stack-service';
+import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/mapping/stack-service';
 import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
-import { resolveMappedPath } from '../../src/debug/path-resolver';
+import { resolveMappedPath } from '../../src/debug/mapping/path-resolver';
 
 vi.mock('vscode', () => ({ workspace: { workspaceFolders: undefined } }));
 import { vi } from 'vitest';

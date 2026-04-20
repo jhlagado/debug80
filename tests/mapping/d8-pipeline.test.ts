@@ -16,7 +16,7 @@ import * as path from 'path';
 import { describe, it, expect } from 'vitest';
 import { parseD8DebugMap, buildMappingFromD8DebugMap } from '../../src/mapping/d8-map';
 import { buildSourceMapIndex, findSegmentForAddress } from '../../src/mapping/source-map';
-import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/stack-service';
+import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/mapping/stack-service';
 
 vi.mock('vscode', () => ({ workspace: { workspaceFolders: undefined } }));
 import { vi } from 'vitest';

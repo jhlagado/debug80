@@ -7,7 +7,7 @@ import type * as cp from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ZaxBackend } from '../../src/debug/zax-backend';
+import { ZaxBackend } from '../../src/debug/launch/zax-backend';
 
 const spawnSync = vi.hoisted(() => vi.fn());
 

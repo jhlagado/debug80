@@ -1,11 +1,9 @@
 import { createDigit } from '../common/digits';
 import { applyInitializedProjectControls } from '../common/project-controls';
-import { resolveProjectViewState } from '../common/project-state';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
-import { createProjectRootButtonController } from '../common/project-root-button';
-import { resolveSetupCardState } from '../common/setup-card-state';
+import { createProjectStatusUi } from '../common/project-status-ui';
 import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
@@ -88,10 +86,6 @@ let speedMode = 'fast';
 let uiRevision = 0;
 let projectIsInitialized = false;
 let shiftLatched = false;
-let currentRootPath = '';
-let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createProject' =
-  'openWorkspaceFolder';
 
 const audio = createAudioController(muteEl);
 
@@ -108,79 +102,14 @@ const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
-
-function sendCreateProjectTec1(): void {
-  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  if (selected !== undefined) {
-    vscode.postMessage({ type: 'createProject', rootPath: selected.path, platform: platformSelectEl?.value });
-  }
-}
-
-setupPrimaryAction?.addEventListener('click', () => {
-  if (setupPrimaryActionType === 'openWorkspaceFolder') {
-    vscode.postMessage({ type: 'openWorkspaceFolder' });
-    return;
-  }
-  if (setupPrimaryActionType === 'selectProject') {
-    vscode.postMessage({ type: 'selectProject' });
-    return;
-  }
-  sendCreateProjectTec1();
-});
-
-platformInitButton?.addEventListener('click', () => {
-  sendCreateProjectTec1();
-});
-
-homeTargetSelect?.addEventListener('change', () => {
-  const targetName = homeTargetSelect.value;
-  if (!targetName) {
-    return;
-  }
-  vscode.postMessage({
-    type: 'selectTarget',
-    rootPath: currentRootPath,
-    targetName,
-  });
-});
-
-function clearSelectOptions(select: HTMLSelectElement): void {
-  while (select.firstChild) {
-    select.removeChild(select.firstChild);
-  }
-}
-
-function setSelectPlaceholder(select: HTMLSelectElement, label: string): void {
-  const option = document.createElement('option');
-  option.value = '';
-  option.textContent = label;
-  option.disabled = true;
-  option.selected = true;
-  select.appendChild(option);
-}
-
-function setTargetOptions(options: Array<{ name: string; description?: string; detail?: string }>, selectedTargetName?: string): void {
-  if (!homeTargetSelect) {
-    return;
-  }
-  clearSelectOptions(homeTargetSelect);
-  if (options.length === 0) {
-    setSelectPlaceholder(homeTargetSelect, 'No targets available');
-    homeTargetSelect.disabled = true;
-    return;
-  }
-  setSelectPlaceholder(homeTargetSelect, 'Select target...');
-  for (const option of options) {
-    const el = document.createElement('option');
-    el.value = option.name;
-    el.textContent = option.name;
-    el.title = option.detail ?? option.description ?? option.name;
-    homeTargetSelect.appendChild(el);
-  }
-  homeTargetSelect.disabled = false;
-  homeTargetSelect.value = selectedTargetName ?? '';
-}
+const projectStatusUi = createProjectStatusUi(vscode, {
+  selectProjectButton,
+  setupCard,
+  setupCardText,
+  setupPrimaryAction,
+  platformInitButton,
+  homeTargetSelect,
+}, 'tec1');
 
 function applyProjectStatus(payload: {
   rootPath?: ProjectStatusPayload['rootPath'];
@@ -192,16 +121,7 @@ function applyProjectStatus(payload: {
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
 }): void {
-  const projectState = resolveProjectViewState(payload);
-  const initializedProject = projectState === 'initialized';
-  currentRootPath = payload.rootPath ?? '';
-  currentRoots = payload.roots ?? [];
-  projectRootController.applyProjectStatus({
-    rootPath: payload.rootPath,
-    roots: payload.roots ?? [],
-    targetCount: payload.targets?.length ?? 0,
-  });
-  setTargetOptions(initializedProject ? (payload.targets ?? []) : [], payload.targetName);
+  projectStatusUi.applyProjectStatus(payload);
   if (platformSelectEl && payload.platform !== undefined) {
     platformSelectEl.value = payload.platform;
   }
@@ -225,27 +145,6 @@ function applyProjectStatus(payload: {
     hasProject: initialized,
     stopOnEntry: payload.stopOnEntry,
   });
-  const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-  const targetCount = payload.targets?.length ?? 0;
-  if (!setupCard || !setupCardText || !setupPrimaryAction) {
-    return;
-  }
-  const setupState = resolveSetupCardState(
-    selected,
-    projectState,
-    targetCount,
-    currentRoots.length
-  );
-  if (setupState === null) {
-    setupCard.hidden = true;
-    return;
-  }
-  setupCard.hidden = false;
-  setupPrimaryActionType = setupState.primaryAction;
-  setupCardText.textContent = setupState.text;
-  const isCreateProject = setupState.primaryAction === 'createProject';
-  setupPrimaryAction.hidden = isCreateProject;
-  setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
 }
 
 applyProjectStatus({});
@@ -411,9 +310,6 @@ window.addEventListener('message', event => {
   if (!event.data) return;
   if (event.data.type === 'projectStatus') {
     applyProjectStatus(event.data);
-    if (platformSelectEl && event.data.platform !== undefined) {
-      platformSelectEl.value = event.data.platform;
-    }
     return;
   }
   if (event.data.type === 'sessionStatus') {
@@ -490,6 +386,6 @@ window.addEventListener('beforeunload', () => {
   serialUi.dispose();
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
-  projectRootController.dispose();
+  projectStatusUi.dispose();
 });
   

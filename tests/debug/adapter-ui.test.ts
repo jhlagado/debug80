@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
-import { emitConsoleOutput, emitMainSource } from '../../src/debug/adapter-ui';
+import { emitConsoleOutput, emitMainSource } from '../../src/debug/session/adapter-ui';
 
 describe('adapter-ui', () => {
   it('emits console output with newline by default', () => {
