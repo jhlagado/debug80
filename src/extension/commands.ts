@@ -548,6 +548,44 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.addWorkspaceFolder', async () => {
+      const picked = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: 'Add Folder to Workspace',
+        title: 'Add a folder to the Debug80 workspace',
+      });
+      const folderUri = picked?.[0];
+      if (folderUri === undefined) {
+        return;
+      }
+      const existing = vscode.workspace.getWorkspaceFolder(folderUri);
+      if (existing !== undefined) {
+        workspaceSelection.rememberWorkspace(existing);
+        return;
+      }
+      const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
+      const added = vscode.workspace.updateWorkspaceFolders(insertAt, 0, {
+        uri: folderUri,
+        name: path.basename(folderUri.fsPath),
+      });
+      if (!added) {
+        void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
+        return;
+      }
+      const addedFolder =
+        vscode.workspace.getWorkspaceFolder(folderUri) ??
+        ({
+          uri: folderUri,
+          name: path.basename(folderUri.fsPath),
+          index: insertAt,
+        } as vscode.WorkspaceFolder);
+      workspaceSelection.rememberWorkspace(addedFolder);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('debug80.materializeBundledRom', async () => {
       const folder = await workspaceSelection.resolveWorkspaceFolder({
         prompt: true,

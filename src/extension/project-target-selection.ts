@@ -14,15 +14,29 @@ type ResolveTargetOptions = {
   placeHolder?: string;
 };
 
-type TargetChoice = {
+/** Public shape of a target choice — used for display in the webview. */
+export type ProjectTargetChoice = {
   name: string;
   description?: string;
   detail?: string;
+};
+
+/**
+ * Extends {@link ProjectTargetChoice} with the extra state needed to add an
+ * auto-discovered source file as a new target.  Returned by
+ * {@link listProjectTargetChoices} so that `commands.ts` can act on newly
+ * discovered files without a cast, while the webview payload (which declares
+ * `ProjectTargetChoice[]`) still accepts the result structurally.
+ */
+export type DiscoverableTargetChoice = ProjectTargetChoice & {
   /** True for source files found on disk that are not yet configured as a target. */
   discovered?: true;
   /** The workspace-relative source file path for discovered targets. */
   sourceFile?: string;
 };
+
+/** Alias kept for internal use. */
+type TargetChoice = DiscoverableTargetChoice;
 
 type TargetQuickPickItem = vscode.QuickPickItem & {
   targetName: string;
@@ -39,8 +53,6 @@ type LoadedTargetChoices = {
   choices: TargetChoice[];
   defaultTarget?: string;
 };
-
-export type ProjectTargetChoice = TargetChoice;
 
 export function getStoredTargetName(
   workspaceState: vscode.Memento,
@@ -97,7 +109,7 @@ export function resolveTargetNameForConfig(
   return keys.length === 1 ? keys[0] : undefined;
 }
 
-export function listProjectTargetChoices(projectConfigPath: string): ProjectTargetChoice[] {
+export function listProjectTargetChoices(projectConfigPath: string): DiscoverableTargetChoice[] {
   const { choices } = loadTargetChoices(projectConfigPath);
 
   // Build the set of source files already referenced by a configured target
