@@ -81,7 +81,8 @@ export function createTec1gKeypad(
     }
     button.addEventListener('click', action);
     button.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // retain keypad focus when clicking keys
+      e.preventDefault(); // prevent default focus change
+      keypadEl.focus();   // claim keypad focus when any key is clicked
     });
     keypadEl.appendChild(button);
     return button;

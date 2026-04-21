@@ -280,6 +280,25 @@ keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) {
     return;
   }
+  if (event.key === ' ') {
+    keypad.sendKey(TEC1G_KEY_MAP['AD']);
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  if (event.key === 'r' || event.key === 'R') {
+    keypad.setShiftLatched(false);
+    vscode.postMessage({ type: 'reset' });
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  if (event.key === 'Shift') {
+    keypad.setShiftLatched(true);
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
   const key = event.key.toUpperCase();
   if (TEC1G_KEY_MAP[key] !== undefined) {
     keypad.sendKey(TEC1G_KEY_MAP[key]);
@@ -303,6 +322,11 @@ keypadEl.addEventListener('keydown', (event) => {
     keypad.sendKey(0x13);
     event.preventDefault();
     event.stopPropagation();
+  }
+});
+keypadEl.addEventListener('keyup', (event) => {
+  if (event.key === 'Shift' && keypad.getShiftLatched()) {
+    keypad.setShiftLatched(false);
   }
 });
 window.addEventListener('keyup', (event) => {
