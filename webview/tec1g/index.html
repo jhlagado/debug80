@@ -67,12 +67,12 @@
     </div>
     <div class="panel panel-ui" id="panel-ui">
       <div class="ui-controls" id="uiControls">
-        <label><input type="checkbox" data-section="lcd" checked /> LCD</label>
         <label><input type="checkbox" data-section="display" checked /> 7-SEG</label>
+        <label><input type="checkbox" data-section="lcd" checked /> LCD</label>
         <label><input type="checkbox" data-section="keypad" checked /> KEYPAD</label>
         <label><input type="checkbox" data-section="glcd" checked /> GLCD</label>
-        <label><input type="checkbox" data-section="serial" /> SERIAL</label>
         <label><input type="checkbox" data-section="matrix" /> 8X8</label>
+        <label><input type="checkbox" data-section="serial" /> SERIAL</label>
         <label><input type="checkbox" data-section="matrixKeyboard" /> KEYBD</label>
       </div>
       <div class="layout">
@@ -83,53 +83,38 @@
           </div>
           <div class="display-block ui-section" data-section="display">
             <div class="display" id="display"></div>
-            <div class="status">
-              <div class="key speed" id="speed">SLOW</div>
-              <div class="key mute" id="mute">MUTED</div>
-              <div class="speaker" id="speaker">
-                <span id="speakerLabel">SPEAKER</span>
+          </div>
+          <div class="keypad ui-section" id="keypad" data-section="keypad"></div>
+        </div>
+        <div class="right-col">
+          <div class="status">
+            <div class="key speed" id="speed">SLOW</div>
+            <div class="key mute" id="mute">MUTED</div>
+            <div class="speaker" id="speaker">
+              <span id="speakerLabel">SPEAKER</span>
+            </div>
+            <div class="status-leds" id="statusLeds">
+              <div class="status-led">
+                <span class="status-led-light" id="statusShadow"></span>
+                <span class="status-led-label">SHADOW</span>
               </div>
-              <div class="status-leds" id="statusLeds">
-                <div class="status-led">
-                  <span class="status-led-light" id="statusShadow"></span>
-                  <span class="status-led-label">SHADOW</span>
-                </div>
-                <div class="status-led">
-                  <span class="status-led-light" id="statusProtect"></span>
-                  <span class="status-led-label">PROTECT</span>
-                </div>
-                <div class="status-led">
-                  <span class="status-led-light" id="statusExpand"></span>
-                  <span class="status-led-label">EXPAND</span>
-                </div>
-                <div class="status-led">
-                  <span class="status-led-light" id="statusCaps"></span>
-                  <span class="status-led-label">CAPS</span>
-                </div>
+              <div class="status-led">
+                <span class="status-led-light" id="statusProtect"></span>
+                <span class="status-led-label">PROTECT</span>
+              </div>
+              <div class="status-led">
+                <span class="status-led-light" id="statusExpand"></span>
+                <span class="status-led-label">EXPAND</span>
+              </div>
+              <div class="status-led">
+                <span class="status-led-light" id="statusCaps"></span>
+                <span class="status-led-label">CAPS</span>
               </div>
             </div>
           </div>
-        </div>
-        <div class="right-col">
           <div class="glcd ui-section" data-section="glcd">
             <div class="glcd-title">GLCD (128x64)</div>
             <canvas class="glcd-canvas" id="glcdCanvas" width="320" height="160"></canvas>
-          </div>
-          <div class="keypad ui-section" id="keypad" data-section="keypad"></div>
-          <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
-            <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
-            <div class="matrix-keyboard-controls">
-              <div class="key" id="matrixModeToggle">MATRIX MODE</div>
-              <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
-              <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
-            </div>
-            <div class="matrix-keyboard-mods">
-              <div class="key" id="matrixShift">SHIFT</div>
-              <div class="key" id="matrixCtrl">CTRL</div>
-              <div class="key" id="matrixAlt">ALT</div>
-            </div>
-            <div class="matrix-keyboard-hint">Type or click keys to send input.</div>
-            <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
           </div>
           <div class="matrix ui-section" data-section="matrix">
             <div class="matrix-title">8x8 LED MATRIX</div>
@@ -151,6 +136,21 @@
           <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
           <div class="key" id="serialSend">SEND</div>
         </div>
+      </div>
+      <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
+        <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+        <div class="matrix-keyboard-controls">
+          <div class="key" id="matrixModeToggle">MATRIX MODE</div>
+          <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
+          <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
+        </div>
+        <div class="matrix-keyboard-mods">
+          <div class="key" id="matrixShift">SHIFT</div>
+          <div class="key" id="matrixCtrl">CTRL</div>
+          <div class="key" id="matrixAlt">ALT</div>
+        </div>
+        <div class="matrix-keyboard-hint">Type or click keys to send input.</div>
+        <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
       </div>
     </div>
     <div class="panel panel-memory" id="panel-memory">
