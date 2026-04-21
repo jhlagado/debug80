@@ -1,9 +1,5 @@
-/* TEC-1G — keycaps, GLCD, RGB matrix “.on”, section toggles, status LEDs. Shared: ../common/styles.css */
+/* TEC-1G — GLCD, RGB matrix “.on”, section toggles, status LEDs. Shared: ../common/styles.css */
 
-.layout {
-      justify-items: start;
-      justify-content: start;
-    }
     @container (min-width: 620px) {
       .layout {
         grid-template-columns: auto 320px;
@@ -89,12 +85,21 @@
       background: #000000;
       border-color: #1a1a1a;
     }
-    /* Off pixels: inherit mono LED shell from common (:root --matrix-off-*). No whole-element opacity — that hid “off” dots vs TEC-1. */
+    /* Off pixels: frosted RGB diffuser (not mono red — classic TEC-1 uses common --matrix-off-*). */
     .matrix-dot {
       --matrix-level: 0;
       --matrix-r: 0;
       --matrix-g: 0;
       --matrix-b: 0;
+      background: radial-gradient(
+        circle at 38% 32%,
+        rgba(255, 255, 255, 0.2) 0%,
+        rgba(200, 204, 212, 0.12) 45%,
+        rgba(110, 115, 125, 0.09) 100%
+      );
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.18),
+        inset 0 -1px 3px rgba(0, 0, 0, 0.4);
       transition: box-shadow 40ms linear, background 40ms linear, filter 40ms linear;
     }
     .matrix-dot.on {
