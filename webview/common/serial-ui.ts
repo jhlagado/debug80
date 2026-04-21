@@ -1,13 +1,13 @@
-import { appendSerialText, sendSerialInput } from '../common/serial';
-import type { VscodeApi } from '../common/vscode';
+import { appendSerialText, sendSerialInput } from './serial';
+import type { VscodeApi } from './vscode';
 
 const SERIAL_MAX = 8000;
 
-export type Tec1gSerialUiController = {
-  dispose: () => void;
-};
+export interface SerialUiController {
+  dispose(): void;
+}
 
-export function wireTec1gSerialUi(vscode: VscodeApi): Tec1gSerialUiController {
+export function wireSerialUi(vscode: VscodeApi): SerialUiController {
   const serialOutEl = document.getElementById('serialOut') as HTMLElement | null;
   const serialInputEl = document.getElementById('serialInput') as HTMLInputElement | null;
   const serialSendEl = document.getElementById('serialSend') as HTMLElement | null;
@@ -24,11 +24,13 @@ export function wireTec1gSerialUi(vscode: VscodeApi): Tec1gSerialUiController {
     !serialSaveEl ||
     !serialClearEl
   ) {
-    return { dispose: () => {} };
+    return { dispose: (): void => {} };
   }
 
-  const onMessage = (event: MessageEvent) => {
-    if (!event.data) return;
+  const onMessage = (event: MessageEvent): void => {
+    if (!event.data) {
+      return;
+    }
     if (event.data.type === 'serial') {
       appendSerialText(serialOutEl, event.data.text || '', SERIAL_MAX);
       return;
@@ -47,13 +49,12 @@ export function wireTec1gSerialUi(vscode: VscodeApi): Tec1gSerialUiController {
   serialSendEl.addEventListener('click', () => {
     sendSerialInput(serialInputEl, vscode);
   });
-  serialInputEl.addEventListener('keydown', event => {
+  serialInputEl.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       sendSerialInput(serialInputEl, vscode);
       event.preventDefault();
     }
   });
-
   serialSendFileEl.addEventListener('click', () => {
     vscode.postMessage({ type: 'serialSendFile' });
   });
@@ -71,7 +72,7 @@ export function wireTec1gSerialUi(vscode: VscodeApi): Tec1gSerialUiController {
   }
 
   return {
-    dispose: () => {
+    dispose(): void {
       window.removeEventListener('message', onMessage);
     },
   };

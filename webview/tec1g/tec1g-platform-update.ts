@@ -2,6 +2,7 @@
  * @file Applies adapter `update` payloads to TEC-1G renderers and keypad state.
  */
 
+import { updateDigit } from '../common/digits';
 import type { createGlcdRenderer } from './glcd-renderer';
 import type { createLcdRenderer } from './lcd-renderer';
 import type { createMatrixUiController } from './matrix-ui';
@@ -18,18 +19,6 @@ export type Tec1gPlatformUpdateDeps = {
   glcdRenderer: ReturnType<typeof createGlcdRenderer>;
   keypad: Tec1gKeypad;
 };
-
-function updateDigit(el: HTMLElement, value: number): void {
-  const segments = el.querySelectorAll('[data-mask]');
-  segments.forEach((seg) => {
-    const mask = parseInt(seg.dataset.mask || '0', 10);
-    if (value & mask) {
-      seg.classList.add('on');
-    } else {
-      seg.classList.remove('on');
-    }
-  });
-}
 
 /**
  * Maps a `update` message body onto digits, LCD/GLCD, matrix, audio, and SysCtrl.

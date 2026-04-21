@@ -1,3 +1,15 @@
+/**
+ * Update all segments of a digit element created by `createDigit()`.
+ * `value` is the segment bitmask as defined by the platform port mapping.
+ */
+export function updateDigit(el: Element, value: number): void {
+  const segments = el.querySelectorAll('[data-mask]');
+  segments.forEach((seg) => {
+    const mask = parseInt((seg as HTMLElement).dataset.mask || '0', 10);
+    seg.classList.toggle('on', (value & mask) !== 0);
+  });
+}
+
 const SEGMENTS = [
   { mask: 0x01, points: '1,1 2,0 8,0 9,1 8,2 2,2' },
   { mask: 0x08, points: '9,1 10,2 10,8 9,9 8,8 8,2' },

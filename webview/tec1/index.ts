@@ -1,4 +1,6 @@
-import { createDigit } from '../common/digits';
+import { createDigit, updateDigit } from '../common/digits';
+import { createMatrixRenderer } from '../common/matrix-renderer';
+import { wireSerialUi } from '../common/serial-ui';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
@@ -8,9 +10,7 @@ import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
-import { createMatrixRenderer } from './matrix-renderer';
 import { createPanelLayoutController, type PanelTab } from './panel-layout';
-import { wireTec1SerialUi } from './serial-ui';
 
 const vscode = acquireVscodeApi();
 const DEFAULT_TAB: PanelTab =
@@ -230,18 +230,6 @@ muteEl.addEventListener('click', () => {
   audio.toggleMute();
 });
 
-function updateDigit(el: Element, value: number): void {
-  const segments = el.querySelectorAll('[data-mask]');
-  segments.forEach(seg => {
-    const mask = parseInt(seg.dataset.mask || '0', 10);
-    if (value & mask) {
-      seg.classList.add('on');
-    } else {
-      seg.classList.remove('on');
-    }
-  });
-}
-
 function applyUpdate(payload: {
   digits?: number[];
   matrix?: number[];
@@ -321,7 +309,7 @@ memoryPanelController = new MemoryPanel({
   isActive: () => panelLayout.getActiveTab() === 'memory',
 });
 memoryPanelController.wire();
-const serialUi = wireTec1SerialUi(vscode);
+const serialUi = wireSerialUi(vscode);
 
 window.addEventListener('message', event => {
   if (!event.data) return;

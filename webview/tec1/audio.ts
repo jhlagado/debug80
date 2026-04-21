@@ -1,4 +1,4 @@
-type AudioContextCtor = typeof AudioContext;
+import { createAudioCore } from '../common/audio-core';
 
 export interface Tec1AudioController {
   applyMuteState(): void;
@@ -10,48 +10,15 @@ export interface Tec1AudioController {
 export function createAudioController(muteEl: HTMLElement | null): Tec1AudioController {
   let muted = true;
   let speakerHz = 0;
-  let audioCtx: AudioContext | null = null;
-  let osc: OscillatorNode | null = null;
-  let gain: GainNode | null = null;
-
-  const ensureAudio = (): void => {
-    if (!audioCtx) {
-      const Ctx =
-        window.AudioContext ??
-        (window as Window & { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
-      if (!Ctx) {
-        return;
-      }
-      audioCtx = new Ctx();
-      osc = audioCtx.createOscillator();
-      osc.type = 'square';
-      gain = audioCtx.createGain();
-      gain.gain.value = 0;
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start();
-    }
-    if (audioCtx.state === 'suspended') {
-      void audioCtx.resume();
-    }
-  };
+  const core = createAudioCore();
 
   const updateAudio = (): void => {
-    if (!audioCtx || !osc || !gain || muted || speakerHz <= 0) {
-      if (gain) {
-        gain.gain.value = 0;
-      }
-      return;
-    }
-    osc.frequency.setValueAtTime(speakerHz, audioCtx.currentTime);
-    gain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.01);
+    core.updateAudio(muted, speakerHz);
   };
 
   const applyMuteState = (): void => {
     if (muteEl) {
       muteEl.textContent = muted ? 'MUTED' : 'SOUND';
-    }
-    if (muted && gain) {
-      gain.gain.value = 0;
     }
     updateAudio();
   };
@@ -64,7 +31,7 @@ export function createAudioController(muteEl: HTMLElement | null): Tec1AudioCont
     toggleMute(): void {
       muted = !muted;
       if (!muted) {
-        ensureAudio();
+        core.ensureAudio();
       }
       applyMuteState();
     },

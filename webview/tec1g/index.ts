@@ -11,7 +11,7 @@ import { acquireVscodeApi } from '../common/vscode';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
-import { wireTec1gSerialUi } from './serial-ui';
+import { wireSerialUi } from '../common/serial-ui';
 import { createVisibilityController } from './visibility-controller';
 import type { IncomingMessage, Tec1gPanelTab, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
 import { TEC1G_DIGITS } from './keypad-layout';
@@ -269,7 +269,7 @@ window.addEventListener('resize', () => {
   tabMemory.scheduleMemoryResize();
 });
 tabMemory.updateMemoryLayout(false);
-wireTec1gSerialUi(vscode);
+wireSerialUi(vscode);
 
 // Matrix keyboard stays at window level — it has its own mode system
 window.addEventListener('keydown', (event) => {
