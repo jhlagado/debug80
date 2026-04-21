@@ -46,10 +46,11 @@ describe('shared restart control', () => {
     const slot = document.querySelector('.tabs-status-slot');
     const stopOnEntry = document.getElementById('stopOnEntry') as HTMLInputElement | null;
     const stopOnEntryLabel = document.querySelector('.stop-on-entry-label');
+    const projectHeader = document.getElementById('projectHeader');
     expect(slot).not.toBeNull();
     expect(slot?.contains(restartButton)).toBe(true);
     expect(stopOnEntry).not.toBeNull();
-    expect(slot?.contains(stopOnEntry)).toBe(true);
+    expect(projectHeader?.contains(stopOnEntry)).toBe(true);
     expect(stopOnEntryLabel).not.toBeNull();
     expect(stopOnEntryLabel?.title).toBe(
       'Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json.'
