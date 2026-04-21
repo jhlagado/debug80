@@ -2,16 +2,18 @@
       justify-items: start;
       justify-content: start;
     }
-    @container (min-width: 480px) {
+    @container (min-width: 620px) {
       .layout {
-        grid-template-columns: auto 300px;
+        grid-template-columns: auto 320px;
         width: fit-content;
         max-width: 100%;
       }
     }
     .right-col {
       align-items: stretch;
-      --keypad-width: 282px;
+    }
+    .right-col .status {
+      margin-bottom: 12px;
     }
     .status {
       flex-wrap: wrap;
@@ -51,7 +53,7 @@
       grid-template-rows: repeat(4, 42px);
       gap: 2px;
       align-items: center;
-      width: var(--keypad-width);
+      width: 282px;
       background: #1c1c1c;
       padding: 10px;
       border-radius: 6px;
@@ -154,7 +156,7 @@
       border-radius: 8px;
       padding: 10px 12px;
       border: 1px solid #243528;
-      width: var(--keypad-width);
+      width: 100%;
     }
     .glcd-title {
       font-size: 11px;
