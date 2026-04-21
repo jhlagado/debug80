@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { wireTec1gSerialUi } from '../../webview/tec1g/serial-ui';
+import { wireSerialUi } from '../../webview/common/serial-ui';
 
 const HTML_PATH = path.resolve(__dirname, '../../webview/tec1g/index.html');
 
@@ -35,7 +35,7 @@ describe('tec1g serial UI', () => {
   beforeEach(() => {
     doc = buildDom();
     messages = [];
-    controller = wireTec1gSerialUi(createVscodeMock(messages));
+    controller = wireSerialUi(createVscodeMock(messages));
   });
 
   it('routes serial messages into the output panel', () => {
