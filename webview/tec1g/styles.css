@@ -191,10 +191,10 @@
     }
     .matrix-grid {
       display: grid;
-      grid-template-columns: repeat(8, 16px);
-      gap: 6px;
+      grid-template-columns: repeat(8, 22px);
+      gap: 8px;
       width: fit-content;
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
       background: #000000;
       border: 1px solid #1a1a1a;
@@ -204,8 +204,8 @@
       --matrix-r: 0;
       --matrix-g: 0;
       --matrix-b: 0;
-      width: 16px;
-      height: 16px;
+      width: 22px;
+      height: 22px;
       border-radius: 999px;
       background: radial-gradient(circle at 35% 35%, #3d2018 0%, #221008 55%, #100604 100%);
       box-shadow:
@@ -235,7 +235,7 @@
         ) 100%
       );
       box-shadow:
-        0 0 calc(3px + (var(--matrix-level) * 14px))
+        0 0 calc(4px + (var(--matrix-level) * 18px))
           rgba(
             calc(100 + 155 * var(--matrix-r)),
             calc(100 + 155 * var(--matrix-g)),
