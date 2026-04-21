@@ -255,6 +255,7 @@ visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
 tabMemory.setTab(DEFAULT_TAB, false);
+keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => {
   tabMemory.scheduleMemoryResize();
@@ -262,39 +263,46 @@ window.addEventListener('resize', () => {
 tabMemory.updateMemoryLayout(false);
 wireTec1gSerialUi(vscode);
 
+// Matrix keyboard stays at window level — it has its own mode system
 window.addEventListener('keydown', (event) => {
   if (event.repeat) {
     return;
   }
   if (matrixUi.handleKeyEvent(event, true)) {
     event.preventDefault();
-    return;
   }
-  const target = event.target;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    return;
-  }
-  if (target && target.isContentEditable) {
+});
+
+// Keypad key routing is gated on keypad focus.
+// stopPropagation() prevents the window-level matrix handler from also seeing
+// a consumed key — the two key sets may overlap.
+keypadEl.addEventListener('keydown', (event) => {
+  if (event.repeat) {
     return;
   }
   const key = event.key.toUpperCase();
   if (TEC1G_KEY_MAP[key] !== undefined) {
     keypad.sendKey(TEC1G_KEY_MAP[key]);
     event.preventDefault();
+    event.stopPropagation();
     return;
   }
   if (event.key === 'Enter') {
     keypad.sendKey(0x12);
     event.preventDefault();
+    event.stopPropagation();
   } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
     keypad.sendKey(0x11);
     event.preventDefault();
+    event.stopPropagation();
   } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
     keypad.sendKey(0x10);
     event.preventDefault();
+    event.stopPropagation();
   } else if (event.key === 'Tab') {
     keypad.sendKey(0x13);
     event.preventDefault();
+    event.stopPropagation();
   }
 });
 window.addEventListener('keyup', (event) => {

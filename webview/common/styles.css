@@ -180,6 +180,7 @@ body {
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      min-width: 48px; /* Keeps speaker width constant */
     }
     .speaker.on {
       background: #ffb000;

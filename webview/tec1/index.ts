@@ -31,6 +31,7 @@ const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSele
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
+keypadEl.tabIndex = 0;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
@@ -179,6 +180,9 @@ function addButton(label: string, action: () => void, className?: string): HTMLE
   button.className = className ? 'key ' + className : 'key';
   button.textContent = label;
   button.addEventListener('click', action);
+  button.addEventListener('mousedown', (e) => {
+    e.preventDefault(); // retain keypad focus when clicking keys
+  });
   keypadEl.appendChild(button);
   return button;
 }
@@ -348,19 +352,13 @@ lcdRenderer.draw();
 matrixRenderer.build();
 matrixRenderer.draw();
 panelLayout.setTab(DEFAULT_TAB, false);
+keypadEl.focus();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());
 panelLayout.updateMemoryLayout(false);
 
-window.addEventListener('keydown', event => {
+keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
-  const target = event.target;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    return;
-  }
-  if (target && target.isContentEditable) {
-    return;
-  }
   const key = event.key.toUpperCase();
   if (keyMap[key] !== undefined) {
     sendKey(keyMap[key]);

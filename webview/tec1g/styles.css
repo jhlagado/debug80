@@ -56,6 +56,10 @@
       padding: 10px;
       border-radius: 6px;
     }
+    .keypad:focus-visible {
+      outline: 2px solid var(--vscode-focusBorder);
+      outline-offset: 2px;
+    }
     .keycap {
       width: 42px;
       height: 42px;
