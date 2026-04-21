@@ -239,6 +239,31 @@ function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo
   return null;
 }
 
+/**
+ * ED-prefixed block-repeat opcodes: LDIR, CPIR, INIR, OTIR, LDDR, CPDR, INDR, OTDR.
+ * These rewind PC to themselves on every iteration, so one call to step() would appear
+ * stuck on the same source line until the counter exhausts. Completing them in one
+ * logical step matches user expectations for bulk operations.
+ */
+const ED_BLOCK_REPEAT_SECOND = new Set<number>([
+  0xb0, 0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb,
+]);
+
+/** Max inner iterations when finishing a block instruction (guards pathological loops). */
+const MAX_BLOCK_REPEAT_ITERATIONS = 0x110000;
+
+function isBlockRepeatInstruction(
+  pc: number,
+  memRead: (addr: number) => number
+): boolean {
+  const start = pc & 0xffff;
+  if ((memRead(start) & 0xff) !== OP_PREFIX_ED) {
+    return false;
+  }
+  const op1 = memRead((start + 1) & 0xffff) & 0xff;
+  return ED_BLOCK_REPEAT_SECOND.has(op1);
+}
+
 function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
   const cpu = this.cpu;
   const hardware = this.hardware;
@@ -262,39 +287,56 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
     }
   }
 
-  const cycles = execute(cpu, {
+  const instructionStartPc = cpu.pc & 0xffff;
+  let totalCycles = 0;
+  let iterations = 0;
+
+  const execCallbacks = {
     mem_read: memRead,
     mem_write: memWrite,
-    io_read: (port: number) => hardware.ioRead(port & 0xffff),
-    io_write: (port: number, value: number) => {
+    io_read: (port: number): number => hardware.ioRead(port & 0xffff),
+    io_write: (port: number, value: number): void => {
       hardware.ioWrite(port & 0xffff, value & 0xff);
     },
-  });
+  };
 
-  const tickResult = (hardware.ioTick ? (hardware.ioTick() as TickResult | void) : undefined) as
-    | TickResult
-    | undefined;
-  if (tickResult?.interrupt !== undefined) {
-    const irq = tickResult.interrupt;
-    triggerInterrupt(cpu, {
-      mem_read: memRead,
-      mem_write: memWrite,
-      io_read: (port: number) => hardware.ioRead(port & 0xffff),
-      io_write: (port: number, value: number) => {
-        hardware.ioWrite(port & 0xffff, value & 0xff);
-      },
-    }, irq.nonMaskable === true, irq.data ?? 0);
-  }
-  if (tickResult !== undefined && tickResult.stop === true) {
-    return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles };
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const cycles = execute(cpu, execCallbacks);
+    totalCycles += cycles;
+    iterations += 1;
+
+    const tickResult = (hardware.ioTick ? (hardware.ioTick() as TickResult | void) : undefined) as
+      | TickResult
+      | undefined;
+    if (tickResult?.interrupt !== undefined) {
+      const irq = tickResult.interrupt;
+      triggerInterrupt(cpu, {
+        mem_read: memRead,
+        mem_write: memWrite,
+        io_read: (port: number) => hardware.ioRead(port & 0xffff),
+        io_write: (port: number, value: number) => {
+          hardware.ioWrite(port & 0xffff, value & 0xff);
+        },
+      }, irq.nonMaskable === true, irq.data ?? 0);
+    }
+    if (tickResult !== undefined && tickResult.stop === true) {
+      return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles: totalCycles };
+    }
+
+    if (cpu.pc >= hardware.memory.length || cpu.halted) {
+      cpu.halted = true;
+      return { halted: true, pc: cpu.pc, reason: 'halt', cycles: totalCycles };
+    }
+
+    const pcStayed = (cpu.pc & 0xffff) === instructionStartPc;
+    const repeat = pcStayed && isBlockRepeatInstruction(instructionStartPc, memRead);
+    if (!repeat || iterations >= MAX_BLOCK_REPEAT_ITERATIONS) {
+      break;
+    }
   }
 
-  if (cpu.pc >= hardware.memory.length || cpu.halted) {
-    cpu.halted = true;
-    return { halted: true, pc: cpu.pc, reason: 'halt', cycles };
-  }
-
-  return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles };
+  return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles: totalCycles };
 }
 
 function runUntilStopRuntime(this: Z80RuntimeImpl, breakpoints: Set<number>): RunResult {

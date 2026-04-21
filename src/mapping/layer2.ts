@@ -44,13 +44,20 @@ const SOURCE_EXTENSIONS = /\.(z80|asm)$/i;
  * Also run when loading a native `.d8.json` (ZAX etc.): those maps embed the same
  * asm80 paths and never went through {@link applyLayer2} from a listing rebuild.
  */
+export type IncludeAnchorRemap = {
+  address: number;
+  oldFile: string;
+  newFile: string;
+};
+
 export function remapAsm80MisassignedIncludeAnchors(
   anchors: SourceMapAnchor[],
   resolvePath: (file: string) => string | undefined
-): Set<number> {
-  const remappedAddresses = new Set<number>();
+): IncludeAnchorRemap[] {
+  const remaps: IncludeAnchorRemap[] = [];
   for (const anchor of anchors) {
-    const resolved = resolvePath(anchor.file);
+    const oldFile = anchor.file;
+    const resolved = resolvePath(oldFile);
     if (resolved === undefined || resolved.length === 0) {
       continue;
     }
@@ -70,7 +77,7 @@ export function remapAsm80MisassignedIncludeAnchors(
     } catch {
       continue;
     }
-    const base = path.basename(anchor.file);
+    const base = path.basename(oldFile);
     const matches: string[] = [];
     for (const name of names) {
       if (name === base) {
@@ -95,11 +102,11 @@ export function remapAsm80MisassignedIncludeAnchors(
       const only = matches[0];
       if (only !== undefined) {
         anchor.file = only;
-        remappedAddresses.add(anchor.address);
+        remaps.push({ address: anchor.address, oldFile, newFile: only });
       }
     }
   }
-  return remappedAddresses;
+  return remaps;
 }
 
 function lineDefinesLabel(symbol: string, rawLine: string): boolean {
@@ -142,6 +149,86 @@ export function syncSegmentLocationsFromAnchors(
 }
 
 /**
+ * First address after {@link remapAsm80MisassignedIncludeAnchors} region: next symbol that still
+ * maps to the parent file and whose label actually appears on that line in the parent source.
+ */
+function findIncludeRegionEnd(
+  remap: IncludeAnchorRemap,
+  mapping: MappingParseResult,
+  resolvePath: (file: string) => string | undefined
+): number {
+  const parentPath = resolvePath(remap.oldFile);
+  let parentLines: string[] | null = null;
+  if (parentPath !== undefined) {
+    try {
+      parentLines = fs.readFileSync(parentPath, 'utf-8').split(/\r?\n/);
+    } catch {
+      parentLines = null;
+    }
+  }
+
+  const sorted = [...mapping.anchors].sort((a, b) => a.address - b.address);
+  for (const next of sorted) {
+    if (next.address <= remap.address) {
+      continue;
+    }
+    if (next.file !== remap.oldFile) {
+      continue;
+    }
+    if (parentLines === null) {
+      continue;
+    }
+    const li = next.line - 1;
+    if (li >= 0 && li < parentLines.length && lineDefinesLabel(next.symbol, parentLines[li] ?? '')) {
+      return next.address;
+    }
+  }
+  return 0x10000;
+}
+
+/**
+ * asm80/D8 often tag every byte in an included routine with the parent file. After anchors are
+ * remapped to the real include (e.g. glcd_library.z80), copy that file onto all segments in the
+ * address range until the next genuine parent-file symbol so step-in/stack mapping follows GLCD
+ * source, not only the entry label.
+ */
+export function propagateMisassignedIncludeSegments(
+  mapping: MappingParseResult,
+  remaps: IncludeAnchorRemap[],
+  resolvePath: (file: string) => string | undefined
+): void {
+  if (remaps.length === 0) {
+    return;
+  }
+  const sortedRemaps = [...remaps].sort((a, b) => a.address - b.address);
+  const endByRemapAddress = new Map<number, number>();
+  for (const r of sortedRemaps) {
+    endByRemapAddress.set(r.address, findIncludeRegionEnd(r, mapping, resolvePath));
+  }
+
+  for (const seg of mapping.segments) {
+    if (seg.loc.file === null) {
+      continue;
+    }
+    let best: IncludeAnchorRemap | undefined;
+    let bestAddr = -1;
+    for (const r of sortedRemaps) {
+      if (r.oldFile !== seg.loc.file) {
+        continue;
+      }
+      const end = endByRemapAddress.get(r.address) ?? 0x10000;
+      if (seg.start >= r.address && seg.start < end && r.address >= bestAddr) {
+        best = r;
+        bestAddr = r.address;
+      }
+    }
+    if (best !== undefined) {
+      seg.loc.file = best.newFile;
+    }
+  }
+}
+
+/**
  * Applies Layer 2 refinement to improve source mapping accuracy.
  *
  * Layer 2 processing:
@@ -167,7 +254,8 @@ export function syncSegmentLocationsFromAnchors(
  * ```
  */
 export function applyLayer2(mapping: MappingParseResult, options: Layer2Options): Layer2Result {
-  remapAsm80MisassignedIncludeAnchors(mapping.anchors, options.resolvePath);
+  const includeRemaps = remapAsm80MisassignedIncludeAnchors(mapping.anchors, options.resolvePath);
+  propagateMisassignedIncludeSegments(mapping, includeRemaps, options.resolvePath);
 
   const files = collectSourceFiles(mapping);
   const { fileData, missingSources } = loadSourceFiles(files, options.resolvePath);
