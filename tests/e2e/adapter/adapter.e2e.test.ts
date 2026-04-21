@@ -1,62 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PassThrough } from 'stream';
-import path from 'path';
-import { Z80DebugSession } from '../../../src/debug/adapter';
-import { DapClient } from './dap-client';
 import { workspace } from './vscode-mock';
+import {
+  createHarness,
+  initialize,
+  launchWithDiagnostics,
+  fixtureRoot,
+  projectConfig,
+  sourcePath,
+  THREAD_ID,
+  type SessionHarness,
+} from './harness';
 
-const fixtureRoot = path.resolve(__dirname, '../fixtures/simple');
-const projectConfig = path.join(fixtureRoot, '.vscode', 'debug80.json');
-const sourcePath = path.join(fixtureRoot, 'src', 'simple.asm');
-
-const THREAD_ID = 1;
-
-type SessionHarness = {
-  session: Z80DebugSession;
-  client: DapClient;
-  input: PassThrough;
-  output: PassThrough;
-};
-
-function createHarness(): SessionHarness {
-  const input = new PassThrough();
-  const output = new PassThrough();
-  const session = new Z80DebugSession();
-  session.setRunAsServer(true);
-  session.start(input, output);
-  const client = new DapClient(input, output);
-  return { session, client, input, output };
-}
-
-async function initialize(client: DapClient): Promise<void> {
-  await client.sendRequest('initialize', {
-    adapterID: 'z80',
-    pathFormat: 'path',
-    linesStartAt1: true,
-    columnsStartAt1: true,
-  });
-  await client.waitForEvent('initialized');
-}
-
-async function launchWithDiagnostics(
-  client: DapClient,
-  args: Record<string, unknown>
-): Promise<void> {
-  try {
-    await client.sendRequest('launch', args);
-  } catch (err) {
-    let output = '';
-    try {
-      const event = await client.waitForEvent<{ body?: { output?: string } }>('output', undefined, 1000);
-      output = event.body?.output?.trim() ?? '';
-    } catch {
-      // ignore missing output
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    const detail = output.length > 0 ? `${message}\n${output}` : message;
-    throw new Error(detail);
-  }
-}
 describe('Debug80 adapter e2e (in-process)', () => {
   let harness: SessionHarness | undefined;
 
