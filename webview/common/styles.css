@@ -1,3 +1,17 @@
+/*
+ * Shared TEC panel UI (loaded before tec1/styles.css or tec1g/styles.css).
+ * Platform sheets should only override what actually differs — keypad grid,
+ * keycap chrome, GLCD, RGB matrix “on” state, visibility toggles — so both
+ * stay easy to compare without a single rigid template.
+ */
+:root {
+      --matrix-dot-size: 24px;
+      --matrix-off-bg: radial-gradient(circle at 30% 30%, #6b1515, #3a0a0a 70%);
+      --matrix-off-inset-shadow: inset 0 0 3px rgba(0, 0, 0, 0.6);
+      --matrix-on-bg: radial-gradient(circle at 30% 30%, #ff6b6b, #c01010 70%);
+      --matrix-on-glow: 0 0 8px rgba(255, 60, 60, 0.6);
+}
+
 body {
       margin: 0;
       padding: 16px;
@@ -150,6 +164,7 @@ body {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      min-width: 0;
     }
     .display {
       display: flex;
@@ -230,6 +245,115 @@ body {
     .key.shift {
       letter-spacing: 0.08em;
     }
+
+    /* TEC-1 + TEC-1G shared keycap keypad (SysCtrl strip is TEC-1G-only; see createTecKeypad). */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(6, 42px);
+      grid-template-rows: repeat(4, 42px);
+      gap: 2px;
+      align-items: center;
+      width: 282px;
+      background: #1c1c1c;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .keypad:focus-visible {
+      outline: 2px solid var(--vscode-focusBorder);
+      outline-offset: 2px;
+    }
+    .keycap {
+      width: 42px;
+      height: 42px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      box-shadow:
+        0 4px 0 #0a0a0a,
+        0 4px 2px rgba(0, 0, 0, 0.6);
+    }
+    .keycap::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 10px;
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.5) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(0, 0, 0, 0.1) 100%
+      );
+      box-shadow:
+        inset 0 2px 4px rgba(255, 255, 255, 0.5),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .keycap:active {
+      transform: translateY(2px);
+      box-shadow:
+        0 2px 0 #0a0a0a,
+        0 2px 1px rgba(0, 0, 0, 0.6);
+    }
+    .keycap .label {
+      position: relative;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f1f1f;
+      text-transform: uppercase;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    .keycap .label.short {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+    }
+    .keycap .label.long {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+    }
+    .keycap-light {
+      background: #e3dac2;
+    }
+    .keycap-cream {
+      background: #f0e4c4;
+    }
+    .keycap.spacer {
+      background: transparent;
+      box-shadow: none;
+      cursor: default;
+    }
+    .keycap.spacer::before {
+      display: none;
+    }
+    .keycap.active {
+      filter: brightness(0.92);
+    }
+    .sysctrl {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      background: #1f1f1f;
+      padding: 4px 10px;
+      border-radius: 999px;
+      color: #c8c8c8;
+    }
+    .sysctrl-seg {
+      width: 12px;
+      height: 8px;
+      border-radius: 2px;
+      background: #454545;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .sysctrl-seg.on {
+      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
+    }
+
     .serial {
       margin-top: 16px;
       background: #101010;
@@ -282,15 +406,15 @@ body {
       border: 1px solid #2f1111;
     }
     .matrix-dot {
-      width: 24px;
-      height: 24px;
+      width: var(--matrix-dot-size);
+      height: var(--matrix-dot-size);
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #6b1515, #3a0a0a 70%);
-      box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.6);
+      background: var(--matrix-off-bg);
+      box-shadow: var(--matrix-off-inset-shadow);
     }
     .matrix-dot.on {
-      background: radial-gradient(circle at 30% 30%, #ff6b6b, #c01010 70%);
-      box-shadow: 0 0 8px rgba(255, 60, 60, 0.6);
+      background: var(--matrix-on-bg);
+      box-shadow: var(--matrix-on-glow);
     }
     .serial-header {
       display: flex;
