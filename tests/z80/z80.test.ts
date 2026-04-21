@@ -83,4 +83,25 @@ describe('Z80 utilities', () => {
     assert.equal(result.reason, 'halt');
     assert.equal(runtime.getRegisters().a, 0x02);
   });
+
+  it('completes LDIR in one step (PC does not stick on the block instruction)', () => {
+    // LD HL,1000h; LD DE,1001h; LD BC,2; LD A,55h; LD (HL),A; LDIR; HALT
+    const hex = ':0F0000002100101101100102003E5577EDB0767E\n:00000001FF';
+    const program = parseIntelHex(hex);
+    const runtime = createZ80Runtime(program);
+    const mem = runtime.hardware.memory;
+
+    for (let i = 0; i < 6; i += 1) {
+      const r = runtime.step();
+      assert.equal(r.halted, false);
+    }
+    assert.equal(runtime.getPC() & 0xffff, 0x000e);
+    const last = runtime.step();
+    assert.equal(last.halted, true);
+    const regs = runtime.getRegisters();
+    assert.equal(regs.b | regs.c, 0);
+    assert.equal(mem[0x1000], 0x55);
+    assert.equal(mem[0x1001], 0x55);
+    assert.equal(mem[0x1002], 0x55);
+  });
 });

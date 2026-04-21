@@ -14,6 +14,7 @@ import { resolveAssemblerBackend } from '../launch/assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
 import {
   applyLayer2,
+  propagateMisassignedIncludeSegments,
   remapAsm80MisassignedIncludeAnchors,
   syncSegmentLocationsFromAnchors,
 } from '../../mapping/layer2';
@@ -169,11 +170,18 @@ export function buildMappingFromListing(options: {
   }
 
   // Native `.d8.json` maps skip the listing→Layer2 path; asm80 still attributes many
-  // labels to an include parent (e.g. packages.z80 vs glcd_library.z80). Remap and sync.
-  const remappedIncludeAnchors = remapAsm80MisassignedIncludeAnchors(mapping.anchors, (file) =>
+  // labels to an include parent (e.g. packages.z80 vs glcd_library.z80). Remap, propagate
+  // segment files across the whole included routine, then sync anchor lines onto segment starts.
+  const includeAnchorRemaps = remapAsm80MisassignedIncludeAnchors(mapping.anchors, (file) =>
     service.resolveMappedPath(file)
   );
-  syncSegmentLocationsFromAnchors(mapping, remappedIncludeAnchors);
+  propagateMisassignedIncludeSegments(mapping, includeAnchorRemaps, (file) =>
+    service.resolveMappedPath(file)
+  );
+  syncSegmentLocationsFromAnchors(
+    mapping,
+    new Set(includeAnchorRemaps.map((r) => r.address))
+  );
 
   setSegmentWarningHandler((msg) => service.logger.warn(`Debug80: ${msg}`));
 

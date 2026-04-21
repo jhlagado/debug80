@@ -179,7 +179,8 @@ export function createGlcdController(
   const setColumn = (value: number): void => {
     const bankSelected = (value & TEC1G_GLCD_COL_BANK_BIT) !== 0;
     state.glcdRowBase = bankSelected ? TEC1G_GLCD_ROW_BASE : 0;
-    state.glcdCol = value & TEC1G_GLCD_COL_MASK;
+    // Store the full 4-bit X address (0-15) so auto-increment can cross into the lower bank.
+    state.glcdCol = value & (TEC1G_GLCD_COL_BANK_BIT | TEC1G_GLCD_COL_MASK);
     state.glcdExpectColumn = false;
     state.glcdGdramPhase = 0;
     state.glcdReadPrimed = false;
@@ -295,7 +296,9 @@ export function createGlcdController(
       setBusy(GLCD_BUSY_US);
       return;
     }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
+    // Derive the active bank from the full X address (bit 3 = lower chip).
+    const colBank = (state.glcdCol & TEC1G_GLCD_COL_BANK_BIT) !== 0 ? TEC1G_GLCD_ROW_BASE : 0;
+    const row = (colBank + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
     const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
     const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
     if (index >= 0 && index < state.glcd.length) {
@@ -307,7 +310,12 @@ export function createGlcdController(
       state.glcdGdramPhase = 1;
     } else {
       state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
+      // X auto-increments after each 16-bit word; per ST7920 datasheet it stays at the
+      // boundary if out of range. Max valid X is 0x0F (lower bank, col 7).
+      const maxCol = TEC1G_GLCD_COL_BANK_BIT | TEC1G_GLCD_COL_MASK;
+      if (state.glcdCol < maxCol) {
+        state.glcdCol += 1;
+      }
     }
   };
 
@@ -315,7 +323,8 @@ export function createGlcdController(
     if (!state.glcdGraphics) {
       return readDdram();
     }
-    const row = (state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
+    const colBank = (state.glcdCol & TEC1G_GLCD_COL_BANK_BIT) !== 0 ? TEC1G_GLCD_ROW_BASE : 0;
+    const row = (colBank + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK;
     const col = state.glcdCol & TEC1G_GLCD_COL_MASK;
     const index = row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE + state.glcdGdramPhase;
     const value = index >= 0 && index < state.glcd.length ? (state.glcd[index] ?? 0) : 0;
@@ -329,10 +338,14 @@ export function createGlcdController(
       state.glcdGdramPhase = 1;
     } else {
       state.glcdGdramPhase = 0;
-      state.glcdCol = (state.glcdCol + 1) & TEC1G_GLCD_COL_MASK;
+      const maxCol = TEC1G_GLCD_COL_BANK_BIT | TEC1G_GLCD_COL_MASK;
+      if (state.glcdCol < maxCol) {
+        state.glcdCol += 1;
+      }
     }
+    const nextColBank = (state.glcdCol & TEC1G_GLCD_COL_BANK_BIT) !== 0 ? TEC1G_GLCD_ROW_BASE : 0;
     const nextIndex =
-      ((state.glcdRowBase + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) *
+      ((nextColBank + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) *
         TEC1G_GLCD_ROW_STRIDE +
       (state.glcdCol & TEC1G_GLCD_COL_MASK) * TEC1G_GLCD_COL_STRIDE +
       state.glcdGdramPhase;
