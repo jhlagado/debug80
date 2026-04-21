@@ -275,9 +275,10 @@ body {
       grid-template-columns: repeat(8, 24px);
       grid-template-rows: repeat(8, 24px);
       gap: 8px;
-      background: #120707;
+      width: fit-content;
       padding: 10px;
-      border-radius: 6px;
+      border-radius: 8px;
+      background: #120707;
       border: 1px solid #2f1111;
     }
     .matrix-dot {

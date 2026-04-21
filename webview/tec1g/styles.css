@@ -190,23 +190,14 @@
       text-transform: uppercase;
     }
     .matrix-grid {
-      display: grid;
-      grid-template-columns: repeat(8, 24px);
-      gap: 8px;
-      width: fit-content;
-      padding: 10px;
-      border-radius: 8px;
       background: #000000;
-      border: 1px solid #1a1a1a;
+      border-color: #1a1a1a;
     }
     .matrix-dot {
       --matrix-level: 0;
       --matrix-r: 0;
       --matrix-g: 0;
       --matrix-b: 0;
-      width: 24px;
-      height: 24px;
-      border-radius: 999px;
       background: radial-gradient(circle at 35% 35%, #3d2018 0%, #221008 55%, #100604 100%);
       box-shadow:
         inset 0 1px 2px rgba(255, 255, 255, 0.08),
