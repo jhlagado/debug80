@@ -2,6 +2,7 @@
  * @file TEC-1G on-screen keypad construction and SysCtrl / status LED helpers.
  */
 
+import { createKeypadCore } from '../common/keypad-core';
 import type { VscodeApi } from '../common/vscode';
 import {
   TEC1G_CONTROL_LABELS,
@@ -15,7 +16,6 @@ export type Tec1gKeypad = {
   sendKey: (code: number) => void;
   setShiftLatched: (value: boolean) => void;
   getShiftLatched: () => boolean;
-  shiftButton: HTMLDivElement;
   setSysCtrlValue: (value: number) => void;
   getSysCtrlValue: () => number;
   updateSysCtrl: () => void;
@@ -36,32 +36,9 @@ export function createTec1gKeypad(
     statusCaps: HTMLElement | null;
   }
 ): Tec1gKeypad {
-  keypadEl.tabIndex = 0;
-  keypadEl.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    keypadEl.focus();
-  });
+  const core = createKeypadCore(keypadEl, vscode, TEC1G_SHIFT_BIT);
   let sysCtrlSegs: HTMLElement[] = [];
   let sysCtrlValue = 0;
-  let shiftLatched = false;
-
-  function setShiftLatched(value: boolean): void {
-    shiftLatched = value;
-    shiftButton.classList.toggle('active', shiftLatched);
-  }
-
-  function sendKey(code: number): void {
-    let adjusted = code;
-    if (shiftLatched) {
-      adjusted = code & ~TEC1G_SHIFT_BIT;
-    } else {
-      adjusted = code | TEC1G_SHIFT_BIT;
-    }
-    vscode.postMessage({ type: 'key', code: adjusted });
-    if (shiftLatched) {
-      setShiftLatched(false);
-    }
-  }
 
   function addButton(
     label: string,
@@ -84,10 +61,7 @@ export function createTec1gKeypad(
       button.style.gridRow = String(row);
     }
     button.addEventListener('click', action);
-    button.addEventListener('mousedown', (e) => {
-      e.preventDefault(); // prevent default focus change
-      keypadEl.focus();   // claim keypad focus when any key is clicked
-    });
+    core.addButtonFocusHandler(button);
     keypadEl.appendChild(button);
     return button;
   }
@@ -142,7 +116,7 @@ export function createTec1gKeypad(
   addButton(
     'RESET',
     () => {
-      setShiftLatched(false);
+      core.setShiftLatched(false);
       vscode.postMessage({ type: 'reset' });
     },
     'keycap-light',
@@ -159,7 +133,7 @@ export function createTec1gKeypad(
     const isLong = controlLabel.length > 1;
     addButton(
       controlLabel,
-      () => sendKey(TEC1G_KEY_MAP[control]),
+      () => core.sendKey(TEC1G_KEY_MAP[control]),
       'keycap-light',
       2,
       rowNum,
@@ -170,7 +144,7 @@ export function createTec1gKeypad(
       const label = TEC1G_HEX_ORDER[rowStart + col];
       addButton(
         label,
-        () => sendKey(TEC1G_KEY_MAP[label]),
+        () => core.sendKey(TEC1G_KEY_MAP[label]),
         'keycap-cream',
         3 + col,
         rowNum,
@@ -181,27 +155,26 @@ export function createTec1gKeypad(
 
   const shiftButton = addButton(
     'FN',
-    () => {
-      setShiftLatched(!shiftLatched);
-    },
+    () => core.toggleShift(),
     'keycap-light',
     1,
     4,
     true
   );
 
+  core.setOnShiftChange((latched) => shiftButton.classList.toggle('active', latched));
+
   return {
-    sendKey,
-    setShiftLatched,
-    getShiftLatched: () => shiftLatched,
-    shiftButton,
+    sendKey: (code) => core.sendKey(code),
+    setShiftLatched: (value) => core.setShiftLatched(value),
+    getShiftLatched: () => core.getShiftLatched(),
     setSysCtrlValue: (value: number) => {
       sysCtrlValue = value;
     },
     getSysCtrlValue: () => sysCtrlValue,
     updateSysCtrl,
     updateStatusLeds,
-    focusKeypad: () => keypadEl.focus(),
+    focusKeypad: () => core.focusKeypad(),
   };
 }
 
