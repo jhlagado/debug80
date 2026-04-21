@@ -1,5 +1,6 @@
-import { createKeypadCore } from '../common/keypad-core';
 import { createMatrixRenderer } from '../common/matrix-renderer';
+import { createTecKeypad } from '../common/tec-keypad';
+import { TEC1G_DIGITS, TEC1G_KEY_MAP } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { applyInitializedProjectControls } from '../common/project-controls';
@@ -47,10 +48,8 @@ const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
-const SHIFT_BIT = 0x20;
-const DIGITS = 6;
-const display = createSevenSegDisplay(displayEl, DIGITS);
-const keypadCore = createKeypadCore(keypadEl, vscode, SHIFT_BIT);
+const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
+const keypad = createTecKeypad(vscode, keypadEl);
 
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createPanelLayoutController({
@@ -69,23 +68,8 @@ panelUi.addEventListener('mousedown', (event) => {
   const target = event.target as HTMLElement;
   if (target.closest('input, select, textarea, button')) return;
   event.preventDefault();
-  keypadEl.focus();
+  keypad.focusKeypad();
 });
-
-const keyMap = {
-  '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
-  '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
-  'A': 0x0A, 'B': 0x0B, 'C': 0x0C, 'D': 0x0D, 'E': 0x0E, 'F': 0x0F,
-  'AD': 0x13, 'UP': 0x10, 'GO': 0x12, 'DOWN': 0x11
-};
-
-const controlOrder = ['AD', 'GO', 'UP', 'DOWN'];
-const hexOrder = [
-  'F', 'E', 'D', 'C',
-  'B', 'A', '9', '8',
-  '7', '6', '5', '4',
-  '3', '2', '1', '0'
-];
 
 let speedMode = 'fast';
 let uiRevision = 0;
@@ -159,37 +143,6 @@ function applySpeed(mode: string): void {
   speedEl.classList.toggle('slow', mode === 'slow');
   speedEl.classList.toggle('fast', mode === 'fast');
 }
-
-function addButton(label: string, action: () => void, className?: string): HTMLElement {
-  const button = document.createElement('div');
-  button.className = className ? 'key ' + className : 'key';
-  button.textContent = label;
-  button.addEventListener('click', action);
-  keypadCore.addButtonFocusHandler(button);
-  keypadEl.appendChild(button);
-  return button;
-}
-
-addButton('RST', () => {
-  keypadCore.setShiftLatched(false);
-  vscode.postMessage({ type: 'reset' });
-});
-for (let i = 0; i < 4; i += 1) {
-  addButton('', () => {}, 'spacer');
-}
-
-for (let row = 0; row < 4; row += 1) {
-  const control = controlOrder[row];
-  addButton(control, () => keypadCore.sendKey(keyMap[control]));
-  const rowStart = row * 4;
-  for (let col = 0; col < 4; col += 1) {
-    const label = hexOrder[rowStart + col];
-    addButton(label, () => keypadCore.sendKey(keyMap[label]));
-  }
-}
-
-const shiftButton = addButton('SHIFT', () => keypadCore.toggleShift(), 'shift');
-keypadCore.setOnShiftChange((latched) => shiftButton.classList.toggle('active', latched));
 
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
@@ -320,7 +273,7 @@ lcdRenderer.draw();
 matrixRenderer.build();
 matrixRenderer.draw();
 panelLayout.setTab(DEFAULT_TAB, false);
-keypadEl.focus();
+keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());
 panelLayout.updateMemoryLayout(false);
@@ -328,44 +281,44 @@ panelLayout.updateMemoryLayout(false);
 keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
   if (event.key === ' ') {
-    keypadCore.sendKey(keyMap['AD']); // 0x13
+    keypad.sendKey(TEC1G_KEY_MAP['AD']);
     event.preventDefault();
     return;
   }
   if (event.key === 'Escape') {
-    keypadCore.setShiftLatched(false);
+    keypad.setShiftLatched(false);
     vscode.postMessage({ type: 'reset' });
     event.preventDefault();
     return;
   }
   if (event.key === 'Shift') {
-    keypadCore.setShiftLatched(true);
+    keypad.setShiftLatched(true);
     event.preventDefault();
     return;
   }
   const key = event.key.toUpperCase();
-  if (keyMap[key] !== undefined) {
-    keypadCore.sendKey(keyMap[key]);
+  if (TEC1G_KEY_MAP[key] !== undefined) {
+    keypad.sendKey(TEC1G_KEY_MAP[key]);
     event.preventDefault();
     return;
   }
   if (event.key === 'Enter') {
-    keypadCore.sendKey(0x12);
+    keypad.sendKey(0x12);
     event.preventDefault();
-  } else if (event.key === 'ArrowUp') {
-    keypadCore.sendKey(0x10);
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    keypad.sendKey(0x11);
     event.preventDefault();
-  } else if (event.key === 'ArrowDown') {
-    keypadCore.sendKey(0x11);
+  } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    keypad.sendKey(0x10);
     event.preventDefault();
   } else if (event.key === 'Tab') {
-    keypadCore.sendKey(0x13);
+    keypad.sendKey(0x13);
     event.preventDefault();
   }
 });
 keypadEl.addEventListener('keyup', (event) => {
-  if (event.key === 'Shift' && keypadCore.getShiftLatched()) {
-    keypadCore.setShiftLatched(false);
+  if (event.key === 'Shift' && keypad.getShiftLatched()) {
+    keypad.setShiftLatched(false);
   }
 });
 

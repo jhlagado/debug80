@@ -1,5 +1,5 @@
 /**
- * @file Declarative keypad layout for the TEC-1G webview (key codes and grid order).
+ * @file Shared keypad layout for TEC-1 and TEC-1G webviews (same MON codes and grid).
  */
 
 export const TEC1G_SHIFT_BIT = 0x20;
