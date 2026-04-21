@@ -1,6 +1,7 @@
-import { createDigit, updateDigit } from '../common/digits';
+import { createKeypadCore } from '../common/keypad-core';
 import { createMatrixRenderer } from '../common/matrix-renderer';
 import { wireSerialUi } from '../common/serial-ui';
+import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
@@ -31,11 +32,6 @@ const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSele
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
-keypadEl.tabIndex = 0;
-keypadEl.addEventListener('mousedown', (e) => {
-  e.preventDefault();
-  keypadEl.focus();
-});
 const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
@@ -53,12 +49,8 @@ const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const SHIFT_BIT = 0x20;
 const DIGITS = 6;
-const digitEls = [];
-for (let i = 0; i < DIGITS; i++) {
-  const digit = createDigit();
-  digitEls.push(digit);
-  displayEl.appendChild(digit);
-}
+const display = createSevenSegDisplay(displayEl, DIGITS);
+const keypadCore = createKeypadCore(keypadEl, vscode, SHIFT_BIT);
 
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createPanelLayoutController({
@@ -98,7 +90,6 @@ const hexOrder = [
 let speedMode = 'fast';
 let uiRevision = 0;
 let projectIsInitialized = false;
-let shiftLatched = false;
 
 const audio = createAudioController(muteEl);
 
@@ -169,39 +160,18 @@ function applySpeed(mode: string): void {
   speedEl.classList.toggle('fast', mode === 'fast');
 }
 
-function setShiftLatched(value: boolean): void {
-  shiftLatched = value;
-  shiftButton.classList.toggle('active', shiftLatched);
-}
-
-function sendKey(code: number): void {
-  let adjusted = code;
-  if (shiftLatched) {
-    adjusted = code & ~SHIFT_BIT;
-  } else {
-    adjusted = code | SHIFT_BIT;
-  }
-  vscode.postMessage({ type: 'key', code: adjusted });
-  if (shiftLatched) {
-    setShiftLatched(false);
-  }
-}
-
 function addButton(label: string, action: () => void, className?: string): HTMLElement {
   const button = document.createElement('div');
   button.className = className ? 'key ' + className : 'key';
   button.textContent = label;
   button.addEventListener('click', action);
-  button.addEventListener('mousedown', (e) => {
-    e.preventDefault(); // prevent default focus change
-    keypadEl.focus();   // claim keypad focus when any key is clicked
-  });
+  keypadCore.addButtonFocusHandler(button);
   keypadEl.appendChild(button);
   return button;
 }
 
 addButton('RST', () => {
-  setShiftLatched(false);
+  keypadCore.setShiftLatched(false);
   vscode.postMessage({ type: 'reset' });
 });
 for (let i = 0; i < 4; i += 1) {
@@ -210,17 +180,17 @@ for (let i = 0; i < 4; i += 1) {
 
 for (let row = 0; row < 4; row += 1) {
   const control = controlOrder[row];
-  addButton(control, () => sendKey(keyMap[control]));
+  addButton(control, () => keypadCore.sendKey(keyMap[control]));
   const rowStart = row * 4;
   for (let col = 0; col < 4; col += 1) {
     const label = hexOrder[rowStart + col];
-    addButton(label, () => sendKey(keyMap[label]));
+    addButton(label, () => keypadCore.sendKey(keyMap[label]));
   }
 }
 
-const shiftButton = addButton('SHIFT', () => {
-  setShiftLatched(!shiftLatched);
-}, 'shift');
+const shiftButton = addButton('SHIFT', () => keypadCore.toggleShift(), 'shift');
+keypadCore.setOnShiftChange((latched) => shiftButton.classList.toggle('active', latched));
+
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
   applySpeed(next);
@@ -238,10 +208,7 @@ function applyUpdate(payload: {
   lcd?: number[];
   speakerHz?: number;
 }): void {
-  const digits = payload.digits || [];
-  digitEls.forEach((el, idx) => {
-    updateDigit(el, digits[idx] || 0);
-  });
+  display.applyDigits(payload.digits || []);
   if (payload.speaker) {
     speakerEl.classList.add('on');
   } else {
@@ -361,44 +328,44 @@ panelLayout.updateMemoryLayout(false);
 keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
   if (event.key === ' ') {
-    sendKey(keyMap['AD']); // 0x13
+    keypadCore.sendKey(keyMap['AD']); // 0x13
     event.preventDefault();
     return;
   }
   if (event.key === 'Escape') {
-    setShiftLatched(false);
+    keypadCore.setShiftLatched(false);
     vscode.postMessage({ type: 'reset' });
     event.preventDefault();
     return;
   }
   if (event.key === 'Shift') {
-    setShiftLatched(true);
+    keypadCore.setShiftLatched(true);
     event.preventDefault();
     return;
   }
   const key = event.key.toUpperCase();
   if (keyMap[key] !== undefined) {
-    sendKey(keyMap[key]);
+    keypadCore.sendKey(keyMap[key]);
     event.preventDefault();
     return;
   }
   if (event.key === 'Enter') {
-    sendKey(0x12);
+    keypadCore.sendKey(0x12);
     event.preventDefault();
   } else if (event.key === 'ArrowUp') {
-    sendKey(0x10);
+    keypadCore.sendKey(0x10);
     event.preventDefault();
   } else if (event.key === 'ArrowDown') {
-    sendKey(0x11);
+    keypadCore.sendKey(0x11);
     event.preventDefault();
   } else if (event.key === 'Tab') {
-    sendKey(0x13);
+    keypadCore.sendKey(0x13);
     event.preventDefault();
   }
 });
 keypadEl.addEventListener('keyup', (event) => {
-  if (event.key === 'Shift' && shiftLatched) {
-    setShiftLatched(false);
+  if (event.key === 'Shift' && keypadCore.getShiftLatched()) {
+    keypadCore.setShiftLatched(false);
   }
 });
 

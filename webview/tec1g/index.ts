@@ -2,7 +2,7 @@
  * @file TEC-1G webview composition root: wires feature modules and extension messages.
  */
 
-import { createDigit } from '../common/digits';
+import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { MemoryPanel } from '../common/memory-panel';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
@@ -63,12 +63,7 @@ const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HT
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
 
-const digitEls: HTMLElement[] = [];
-for (let i = 0; i < TEC1G_DIGITS; i++) {
-  const digit = createDigit();
-  digitEls.push(digit);
-  displayEl.appendChild(digit);
-}
+const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
 
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
@@ -164,7 +159,7 @@ speedEl.addEventListener('click', () => {
 let uiRevision = 0;
 
 const platformUpdateDeps = {
-  digitEls,
+  display,
   audio,
   applySpeed,
   lcdRenderer,

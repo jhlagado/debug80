@@ -2,7 +2,7 @@
  * @file Applies adapter `update` payloads to TEC-1G renderers and keypad state.
  */
 
-import { updateDigit } from '../common/digits';
+import type { SevenSegDisplay } from '../common/seven-seg-display';
 import type { createGlcdRenderer } from './glcd-renderer';
 import type { createLcdRenderer } from './lcd-renderer';
 import type { createMatrixUiController } from './matrix-ui';
@@ -11,7 +11,7 @@ import type { createTec1gAudio } from './tec1g-audio';
 import type { Tec1gKeypad } from './tec1g-keypad';
 
 export type Tec1gPlatformUpdateDeps = {
-  digitEls: HTMLElement[];
+  display: SevenSegDisplay;
   audio: ReturnType<typeof createTec1gAudio>;
   applySpeed: (mode: 'slow' | 'fast') => void;
   lcdRenderer: ReturnType<typeof createLcdRenderer>;
@@ -28,10 +28,7 @@ export function applyTec1gPlatformUpdate(deps: Tec1gPlatformUpdateDeps, payload:
     return;
   }
   const data = payload;
-  const digits = Array.isArray(data.digits) ? data.digits : [];
-  deps.digitEls.forEach((el, idx) => {
-    updateDigit(el, digits[idx] || 0);
-  });
+  deps.display.applyDigits(Array.isArray(data.digits) ? data.digits : []);
 
   deps.audio.applySpeakerFromUpdate(data);
 
