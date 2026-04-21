@@ -32,6 +32,10 @@ const targetControl = homeTargetSelect?.closest('.project-control') as HTMLEleme
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 keypadEl.tabIndex = 0;
+keypadEl.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  keypadEl.focus();
+});
 const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;

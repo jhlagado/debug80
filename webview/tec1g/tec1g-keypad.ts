@@ -37,6 +37,10 @@ export function createTec1gKeypad(
   }
 ): Tec1gKeypad {
   keypadEl.tabIndex = 0;
+  keypadEl.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    keypadEl.focus();
+  });
   let sysCtrlSegs: HTMLElement[] = [];
   let sysCtrlValue = 0;
   let shiftLatched = false;
