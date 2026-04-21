@@ -1,3 +1,5 @@
+/* TEC-1G — keycaps, GLCD, RGB matrix “.on”, section toggles, status LEDs. Shared: ../common/styles.css */
+
 .layout {
       justify-items: start;
       justify-content: start;
@@ -8,9 +10,6 @@
         width: fit-content;
         max-width: 100%;
       }
-    }
-    .right-col {
-      align-items: stretch;
     }
     .right-col .status {
       margin-bottom: 12px;
@@ -44,109 +43,6 @@
       display: inline-block;
     }
     .status-led-light.on {
-      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
-      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
-    }
-    .keypad {
-      display: grid;
-      grid-template-columns: repeat(6, 42px);
-      grid-template-rows: repeat(4, 42px);
-      gap: 2px;
-      align-items: center;
-      width: 282px;
-      background: #1c1c1c;
-      padding: 10px;
-      border-radius: 6px;
-    }
-    .keypad:focus-visible {
-      outline: 2px solid var(--vscode-focusBorder);
-      outline-offset: 2px;
-    }
-    .keycap {
-      width: 42px;
-      height: 42px;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      cursor: pointer;
-      user-select: none;
-      box-shadow:
-        0 4px 0 #0a0a0a,
-        0 4px 2px rgba(0, 0, 0, 0.6);
-    }
-    .keycap::before {
-      content: '';
-      position: absolute;
-      inset: 2px;
-      border-radius: 10px;
-      background: linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0.5) 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        rgba(0, 0, 0, 0.1) 100%
-      );
-      box-shadow:
-        inset 0 2px 4px rgba(255, 255, 255, 0.5),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
-    }
-    .keycap:active {
-      transform: translateY(2px);
-      box-shadow:
-        0 2px 0 #0a0a0a,
-        0 2px 1px rgba(0, 0, 0, 0.6);
-    }
-    .keycap .label {
-      position: relative;
-      text-align: center;
-      font-size: 13px;
-      font-weight: 600;
-      color: #1f1f1f;
-      text-transform: uppercase;
-      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-    }
-    .keycap .label.short {
-      font-size: 12px;
-      letter-spacing: 0.12em;
-    }
-    .keycap .label.long {
-      font-size: 9px;
-      letter-spacing: 0.1em;
-    }
-    .keycap-light {
-      background: #e3dac2;
-    }
-    .keycap-cream {
-      background: #f0e4c4;
-    }
-    .keycap.spacer {
-      background: transparent;
-      box-shadow: none;
-      cursor: default;
-    }
-    .keycap.spacer::before {
-      display: none;
-    }
-    .sysctrl {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      background: #1f1f1f;
-      padding: 4px 10px;
-      border-radius: 999px;
-      color: #c8c8c8;
-    }
-    .sysctrl-seg {
-      width: 12px;
-      height: 8px;
-      border-radius: 2px;
-      background: #454545;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
-    }
-    .sysctrl-seg.on {
       background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
       box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
     }
@@ -193,17 +89,13 @@
       background: #000000;
       border-color: #1a1a1a;
     }
+    /* Off pixels: inherit mono LED shell from common (:root --matrix-off-*). No whole-element opacity — that hid “off” dots vs TEC-1. */
     .matrix-dot {
       --matrix-level: 0;
       --matrix-r: 0;
       --matrix-g: 0;
       --matrix-b: 0;
-      background: radial-gradient(circle at 35% 35%, #3d2018 0%, #221008 55%, #100604 100%);
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.08),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.65);
-      opacity: calc(0.35 + (var(--matrix-level) * 0.65));
-      transition: opacity 40ms linear, box-shadow 40ms linear, background 40ms linear, filter 40ms linear;
+      transition: box-shadow 40ms linear, background 40ms linear, filter 40ms linear;
     }
     .matrix-dot.on {
       /* Hot centre + saturated rim: reads closer to real RGB matrix / LED sign */
