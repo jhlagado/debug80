@@ -129,5 +129,41 @@ depending on merge order. Use per-target `tec1g` only for overrides (for example
 `matrixMode`, `protectOnReset`, and `expansionBankHi` correspond to the CONFIG DIP
 switches (keyboard mode, protect on reset, expansion bank select).
 
+## Panel keyboard shortcuts
+
+Keyboard input is routed to the keypad only when the keypad has focus. Click
+anywhere in the UI panel (display, background, keypad area) to claim focus. A
+focus ring appears around the keypad while it is active.
+
+### Hex / control keys
+
+| Key(s) | Keypad button | Code sent |
+|--------|--------------|-----------|
+| `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
+| `Space` or `Tab` | AD | 0x13 |
+| `Enter` | GO | 0x12 |
+| `←` / `↑` | ◀ (Left/Minus) | 0x11 |
+| `→` / `↓` | ▶ (Right/Plus) | 0x10 |
+
+### Special keys
+
+| Key | Action |
+|-----|--------|
+| `Escape` | Reset (clears FN latch first) |
+| `Shift` (hold) | FN modifier — hold while pressing another key to send that key in function mode; releasing Shift without pressing a key cancels |
+
+### FN key behaviour
+
+The on-screen FN button is a **latch**: click FN (it highlights), then click or
+press the target key — FN unlatches automatically after one key. Using the
+physical `Shift` key is equivalent: hold `Shift` + press a key.
+
+### Focus
+
+- The keypad auto-focuses when the panel loads.
+- Click anywhere in the UI tab (display, background, status area, between keys)
+  to restore focus after interacting with other controls.
+- Native controls (`input`, `select`, `button`) keep their own focus normally.
+
 ## Examples
 - See the separate `debug80-tec1g` repo for MON-3 example workspaces and demos.
