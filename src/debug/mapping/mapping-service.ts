@@ -12,7 +12,11 @@ import {
 } from '../../mapping/parser';
 import { resolveAssemblerBackend } from '../launch/assembler-backend';
 import { resolveListingSourcePath } from './path-resolver';
-import { applyLayer2 } from '../../mapping/layer2';
+import {
+  applyLayer2,
+  remapAsm80MisassignedIncludeAnchors,
+  syncSegmentLocationsFromAnchors,
+} from '../../mapping/layer2';
 import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn, setSegmentWarningHandler } from '../../mapping/source-map';
 import {
   buildD8DebugMap,
@@ -163,6 +167,13 @@ export function buildMappingFromListing(options: {
   if (service.platform === 'tec1g') {
     applyTec1gBootstrapAlias(mapping);
   }
+
+  // Native `.d8.json` maps skip the listing→Layer2 path; asm80 still attributes many
+  // labels to an include parent (e.g. packages.z80 vs glcd_library.z80). Remap and sync.
+  const remappedIncludeAnchors = remapAsm80MisassignedIncludeAnchors(mapping.anchors, (file) =>
+    service.resolveMappedPath(file)
+  );
+  syncSegmentLocationsFromAnchors(mapping, remappedIncludeAnchors);
 
   setSegmentWarningHandler((msg) => service.logger.warn(`Debug80: ${msg}`));
 
