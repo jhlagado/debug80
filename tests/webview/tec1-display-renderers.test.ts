@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLcdRenderer } from '../../webview/tec1/lcd-renderer';
-import { createMatrixRenderer } from '../../webview/tec1/matrix-renderer';
+import { createMatrixRenderer } from '../../webview/common/matrix-renderer';
 
 const HTML_PATH = path.resolve(__dirname, '../../webview/tec1/index.html');
 
