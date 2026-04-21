@@ -72,6 +72,14 @@ const panelLayout = createPanelLayoutController({
 });
 panelLayout.wireTabButtons();
 
+// Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
+panelUi.addEventListener('mousedown', (event) => {
+  const target = event.target as HTMLElement;
+  if (target.closest('input, select, textarea, button')) return;
+  event.preventDefault();
+  keypadEl.focus();
+});
+
 const keyMap = {
   '0': 0x00, '1': 0x01, '2': 0x02, '3': 0x03, '4': 0x04,
   '5': 0x05, '6': 0x06, '7': 0x07, '8': 0x08, '9': 0x09,
