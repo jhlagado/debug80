@@ -255,6 +255,7 @@ visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
 tabMemory.setTab(DEFAULT_TAB, false);
+keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => {
   tabMemory.scheduleMemoryResize();
@@ -262,19 +263,19 @@ window.addEventListener('resize', () => {
 tabMemory.updateMemoryLayout(false);
 wireTec1gSerialUi(vscode);
 
+// Matrix keyboard stays at window level — it has its own mode system
 window.addEventListener('keydown', (event) => {
   if (event.repeat) {
     return;
   }
   if (matrixUi.handleKeyEvent(event, true)) {
     event.preventDefault();
-    return;
   }
-  const target = event.target;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    return;
-  }
-  if (target && target.isContentEditable) {
+});
+
+// Keypad key routing is gated on keypad focus
+keypadEl.addEventListener('keydown', (event) => {
+  if (event.repeat) {
     return;
   }
   const key = event.key.toUpperCase();
