@@ -48,6 +48,7 @@ describe('tec1g ui-panel-html', () => {
     expect(html).toContain('panel-memory');
     expect(html).toContain('LCD (HD44780 A00)');
     expect(html).toContain('GLCD (128x64)');
+    expect(html).toContain('8x8 RGB LED MATRIX');
     expect(html).toContain('SERIAL (BIT 6)');
   });
 

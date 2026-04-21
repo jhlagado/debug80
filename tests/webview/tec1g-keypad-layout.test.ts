@@ -1,5 +1,5 @@
 /**
- * @file Pure layout data for the TEC-1G webview keypad (regression guard for refactor #228).
+ * @file Shared keypad layout tables for TEC-1 + TEC-1G webviews (regression guard for refactor #228).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -8,7 +8,7 @@ import {
   TEC1G_HEX_ORDER,
   TEC1G_KEY_MAP,
   TEC1G_SHIFT_BIT,
-} from '../../webview/tec1g/keypad-layout';
+} from '../../webview/common/tec-keypad-layout';
 
 describe('TEC-1G keypad layout tables', () => {
   it('keeps 16 hex keys in raster order', () => {

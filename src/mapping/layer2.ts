@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
 
 /**
@@ -32,6 +33,78 @@ interface SourceFileData {
 /** Pattern to detect data directives (DB, DW, etc.) */
 const DATA_DIRECTIVE = /^(DB|DW|DS|DEFB|DEFW|DEFS|INCBIN)\b/;
 
+const SOURCE_EXTENSIONS = /\.(z80|asm)$/i;
+
+/**
+ * asm80 symbol tables often report "DEFINED AT LINE N IN parent.z80" for code that
+ * was assembled from an included file (e.g. glcd_library.z80) while reusing the
+ * included file's line number but the parent's path. If the parent file has no such
+ * line or the line does not define the symbol, search sibling sources in the same folder.
+ */
+function remapAsm80MisassignedIncludeAnchors(
+  anchors: SourceMapAnchor[],
+  resolvePath: (file: string) => string | undefined
+): void {
+  for (const anchor of anchors) {
+    const resolved = resolvePath(anchor.file);
+    if (resolved === undefined || resolved.length === 0) {
+      continue;
+    }
+    let lines: string[];
+    try {
+      lines = fs.readFileSync(resolved, 'utf-8').split(/\r?\n/);
+    } catch {
+      continue;
+    }
+    const idx = anchor.line - 1;
+    if (idx >= 0 && idx < lines.length && lineDefinesLabel(anchor.symbol, lines[idx] ?? '')) {
+      continue;
+    }
+    let names: string[];
+    try {
+      names = fs.readdirSync(path.dirname(resolved)).filter((n) => SOURCE_EXTENSIONS.test(n));
+    } catch {
+      continue;
+    }
+    const base = path.basename(anchor.file);
+    const matches: string[] = [];
+    for (const name of names) {
+      if (name === base) {
+        continue;
+      }
+      const sibling = path.join(path.dirname(resolved), name);
+      let src: string[];
+      try {
+        src = fs.readFileSync(sibling, 'utf-8').split(/\r?\n/);
+      } catch {
+        continue;
+      }
+      const lineNo = anchor.line - 1;
+      if (lineNo < 0 || lineNo >= src.length) {
+        continue;
+      }
+      if (lineDefinesLabel(anchor.symbol, src[lineNo] ?? '')) {
+        matches.push(name);
+      }
+    }
+    if (matches.length === 1) {
+      const only = matches[0];
+      if (only !== undefined) {
+        anchor.file = only;
+      }
+    }
+  }
+}
+
+function lineDefinesLabel(symbol: string, rawLine: string): boolean {
+  const sym = symbol.replace(/:$/, '').trim();
+  if (sym.length === 0) {
+    return false;
+  }
+  const escaped = sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^\\s*${escaped}\\s*:`, 'i').test(rawLine.trim());
+}
+
 /**
  * Applies Layer 2 refinement to improve source mapping accuracy.
  *
@@ -58,6 +131,8 @@ const DATA_DIRECTIVE = /^(DB|DW|DS|DEFB|DEFW|DEFS|INCBIN)\b/;
  * ```
  */
 export function applyLayer2(mapping: MappingParseResult, options: Layer2Options): Layer2Result {
+  remapAsm80MisassignedIncludeAnchors(mapping.anchors, options.resolvePath);
+
   const files = collectSourceFiles(mapping);
   const { fileData, missingSources } = loadSourceFiles(files, options.resolvePath);
 

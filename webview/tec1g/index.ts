@@ -14,7 +14,7 @@ import { createMatrixUiController } from './matrix-ui';
 import { wireSerialUi } from '../common/serial-ui';
 import { createVisibilityController } from './visibility-controller';
 import type { IncomingMessage, Tec1gPanelTab, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
-import { TEC1G_DIGITS } from './keypad-layout';
+import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { createTec1gMemoryViews } from './tec1g-memory-views';
 import { createTec1gAudio } from './tec1g-audio';
 import { createTec1gKeypad, TEC1G_KEY_MAP } from './tec1g-keypad';
