@@ -40,11 +40,15 @@ const SOURCE_EXTENSIONS = /\.(z80|asm)$/i;
  * was assembled from an included file (e.g. glcd_library.z80) while reusing the
  * included file's line number but the parent's path. If the parent file has no such
  * line or the line does not define the symbol, search sibling sources in the same folder.
+ *
+ * Also run when loading a native `.d8.json` (ZAX etc.): those maps embed the same
+ * asm80 paths and never went through {@link applyLayer2} from a listing rebuild.
  */
-function remapAsm80MisassignedIncludeAnchors(
+export function remapAsm80MisassignedIncludeAnchors(
   anchors: SourceMapAnchor[],
   resolvePath: (file: string) => string | undefined
-): void {
+): Set<number> {
+  const remappedAddresses = new Set<number>();
   for (const anchor of anchors) {
     const resolved = resolvePath(anchor.file);
     if (resolved === undefined || resolved.length === 0) {
@@ -91,9 +95,11 @@ function remapAsm80MisassignedIncludeAnchors(
       const only = matches[0];
       if (only !== undefined) {
         anchor.file = only;
+        remappedAddresses.add(anchor.address);
       }
     }
   }
+  return remappedAddresses;
 }
 
 function lineDefinesLabel(symbol: string, rawLine: string): boolean {
@@ -103,6 +109,36 @@ function lineDefinesLabel(symbol: string, rawLine: string): boolean {
   }
   const escaped = sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`^\\s*${escaped}\\s*:`, 'i').test(rawLine.trim());
+}
+
+/**
+ * For segments whose start address had an anchor remapped, copy the anchor's
+ * file/line onto the segment. Scoped to {@link remapAsm80MisassignedIncludeAnchors}
+ * output so we do not override unrelated instruction mappings.
+ */
+export function syncSegmentLocationsFromAnchors(
+  mapping: MappingParseResult,
+  remappedAddresses: Set<number>
+): void {
+  if (remappedAddresses.size === 0) {
+    return;
+  }
+  const primary = new Map<number, SourceMapAnchor>();
+  for (const a of mapping.anchors) {
+    if (!primary.has(a.address)) {
+      primary.set(a.address, a);
+    }
+  }
+  for (const seg of mapping.segments) {
+    if (!remappedAddresses.has(seg.start)) {
+      continue;
+    }
+    const a = primary.get(seg.start);
+    if (a !== undefined) {
+      seg.loc.file = a.file;
+      seg.loc.line = a.line;
+    }
+  }
 }
 
 /**
