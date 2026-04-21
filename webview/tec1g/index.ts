@@ -118,6 +118,14 @@ projectIsInitialized = applyInitializedProjectControls({}, {
   panelMemory,
 });
 
+// Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
+panelUi.addEventListener('mousedown', (event) => {
+  const target = event.target as HTMLElement;
+  if (target.closest('input, select, textarea, button')) return;
+  event.preventDefault();
+  keypadEl.focus();
+});
+
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
 audio.wireMuteClick();
 
