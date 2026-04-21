@@ -181,7 +181,8 @@ function addButton(label: string, action: () => void, className?: string): HTMLE
   button.textContent = label;
   button.addEventListener('click', action);
   button.addEventListener('mousedown', (e) => {
-    e.preventDefault(); // retain keypad focus when clicking keys
+    e.preventDefault(); // prevent default focus change
+    keypadEl.focus();   // claim keypad focus when any key is clicked
   });
   keypadEl.appendChild(button);
   return button;
@@ -359,6 +360,22 @@ panelLayout.updateMemoryLayout(false);
 
 keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
+  if (event.key === ' ') {
+    sendKey(keyMap['AD']); // 0x13
+    event.preventDefault();
+    return;
+  }
+  if (event.key === 'r' || event.key === 'R') {
+    setShiftLatched(false);
+    vscode.postMessage({ type: 'reset' });
+    event.preventDefault();
+    return;
+  }
+  if (event.key === 'Shift') {
+    setShiftLatched(true);
+    event.preventDefault();
+    return;
+  }
   const key = event.key.toUpperCase();
   if (keyMap[key] !== undefined) {
     sendKey(keyMap[key]);
@@ -377,6 +394,11 @@ keypadEl.addEventListener('keydown', (event) => {
   } else if (event.key === 'Tab') {
     sendKey(0x13);
     event.preventDefault();
+  }
+});
+keypadEl.addEventListener('keyup', (event) => {
+  if (event.key === 'Shift' && shiftLatched) {
+    setShiftLatched(false);
   }
 });
 
