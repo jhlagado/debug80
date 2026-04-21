@@ -123,6 +123,45 @@ In Debug80, set `appStart` per ROM so that assembled programs do not overwrite
 reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
 (useful for shipping a small starter program at the correct address).
 
+## Panel keyboard shortcuts
+
+Keyboard input is routed to the keypad only when the keypad has focus. Click
+anywhere in the UI panel (display, background, keypad area) to claim focus. A
+focus ring appears around the keypad while it is active.
+
+### Hex / control keys
+
+| Key(s) | Keypad button | Code sent |
+|--------|--------------|-----------|
+| `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
+| `Space` or `Tab` | ADDRESS | 0x13 |
+| `Enter` | GO | 0x12 |
+| `↑` | UP | 0x10 |
+| `↓` | DOWN | 0x11 |
+
+### Special keys
+
+| Key | Action |
+|-----|--------|
+| `Escape` | Reset (clears SHIFT latch first) |
+| `Shift` (hold) | SHIFT modifier — hold while pressing another key to send that key with the shift bit cleared; releasing Shift without pressing a key cancels |
+
+### SHIFT key behaviour
+
+The on-screen SHIFT button is a **latch**: click SHIFT (it highlights), then
+click or press the target key — SHIFT unlatches automatically after one key.
+Using the physical `Shift` key is equivalent: hold `Shift` + press a key.
+
+Shift affects bit 5 of the keycode (0x20 is high when unshifted, low when
+shifted). The ROM uses this to distinguish extended key functions.
+
+### Focus
+
+- The keypad auto-focuses when the panel loads.
+- Click anywhere in the UI tab (display, background, status area, between keys)
+  to restore focus after interacting with other controls.
+- Native controls (`input`, `select`, `button`) keep their own focus normally.
+
 ## ROMs
 
 Bundled ROMs:
