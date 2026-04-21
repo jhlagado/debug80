@@ -294,7 +294,7 @@ keypadEl.addEventListener('keydown', (event) => {
     event.stopPropagation();
     return;
   }
-  if (event.key === 'r' || event.key === 'R') {
+  if (event.key === 'Escape') {
     keypad.setShiftLatched(false);
     vscode.postMessage({ type: 'reset' });
     event.preventDefault();
