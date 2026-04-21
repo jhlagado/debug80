@@ -7,6 +7,7 @@ import { parseMapping } from '../../src/mapping/parser';
 import { applyLayer2 } from '../../src/mapping/layer2';
 
 const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures');
+const includeAnchorRemapDir = path.join(fixtureDir, 'include-anchor-remap');
 const lstPath = path.join(fixtureDir, 'simple.lst');
 const asmPath = path.join(fixtureDir, 'simple.asm');
 const extraAsmPath = path.join(fixtureDir, 'layer2-extra.asm');
@@ -19,6 +20,16 @@ const resolveExtra = (file: string): string | undefined =>
   file === 'layer2-extra.asm' ? extraAsmPath : undefined;
 
 const resolveMissing = (_file: string): string | undefined => undefined;
+
+const resolveIncludeAnchorRemap = (file: string): string | undefined => {
+  if (file === 'packages.z80') {
+    return path.join(includeAnchorRemapDir, 'packages.z80');
+  }
+  if (file === 'glcd_library.z80') {
+    return path.join(includeAnchorRemapDir, 'glcd_library.z80');
+  }
+  return undefined;
+};
 
 describe('mapping-layer2', () => {
   it('updates line mappings when source files are present', () => {
@@ -161,6 +172,23 @@ describe('mapping-layer2', () => {
 
     const result = applyLayer2(mapping, { resolvePath: resolveExtra });
     expect(result).toBeDefined();
+  });
+
+  it('remaps asm80 include anchors when the parent file does not contain that source line', () => {
+    const mapping: MappingParseResult = {
+      segments: [],
+      anchors: [
+        {
+          symbol: 'INITLCD',
+          address: 0xd800,
+          file: 'packages.z80',
+          line: 5,
+        },
+      ],
+    };
+    applyLayer2(mapping, { resolvePath: resolveIncludeAnchorRemap });
+    expect(mapping.anchors[0]?.file).toBe('glcd_library.z80');
+    expect(mapping.anchors[0]?.line).toBe(5);
   });
 
   it('handles single-quoted strings with semicolons', () => {
