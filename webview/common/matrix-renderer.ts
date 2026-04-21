@@ -1,9 +1,15 @@
-export type Tec1MatrixPayload = {
+/**
+ * Monochrome 8×8 LED matrix display renderer.
+ * Each row is a bitmask (bit 0 = column 0). CSS class `.on` drives the lit state;
+ * appearance is controlled entirely by the platform stylesheet.
+ */
+
+export type MatrixPayload = {
   matrix?: number[];
 };
 
-export interface Tec1MatrixRenderer {
-  applyMatrixUpdate(payload: Tec1MatrixPayload): void;
+export interface MatrixRenderer {
+  applyMatrixUpdate(payload: MatrixPayload): void;
   build(): void;
   draw(): void;
 }
@@ -16,9 +22,9 @@ function copyPadded(source: number[], size: number, fill: number): number[] {
   return values;
 }
 
-export function createMatrixRenderer(): Tec1MatrixRenderer {
-  const matrixGrid = document.getElementById('matrixGrid') as HTMLElement | null;
-  let matrixRows = new Array(8).fill(0);
+export function createMatrixRenderer(gridId = 'matrixGrid'): MatrixRenderer {
+  const matrixGrid = document.getElementById(gridId) as HTMLElement | null;
+  let matrixRows = new Array<number>(8).fill(0);
 
   const build = (): void => {
     if (!matrixGrid) {
@@ -50,7 +56,7 @@ export function createMatrixRenderer(): Tec1MatrixRenderer {
   };
 
   return {
-    applyMatrixUpdate(payload: Tec1MatrixPayload): void {
+    applyMatrixUpdate(payload: MatrixPayload): void {
       if (!Array.isArray(payload.matrix)) {
         return;
       }
