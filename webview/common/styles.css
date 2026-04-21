@@ -272,17 +272,17 @@ body {
     }
     .matrix-grid {
       display: grid;
-      grid-template-columns: repeat(8, 18px);
-      grid-template-rows: repeat(8, 18px);
-      gap: 6px;
+      grid-template-columns: repeat(8, 24px);
+      grid-template-rows: repeat(8, 24px);
+      gap: 8px;
       background: #120707;
-      padding: 8px;
+      padding: 10px;
       border-radius: 6px;
       border: 1px solid #2f1111;
     }
     .matrix-dot {
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: radial-gradient(circle at 30% 30%, #6b1515, #3a0a0a 70%);
       box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.6);
