@@ -240,37 +240,28 @@ function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo
 }
 
 /**
- * ED-prefixed instructions that rewind PC to re-execute until a condition is met
- * (LDIR, CPIR, INIR, OTIR, LDDR, CPDR, INDR, OTDR). The CPU executes one transfer per
- * internal "iteration", but a single logical instruction should complete in one debugger step.
+ * ED-prefixed block-repeat opcodes: LDIR, CPIR, INIR, OTIR, LDDR, CPDR, INDR, OTDR.
+ * These rewind PC to themselves on every iteration, so one call to step() would appear
+ * stuck on the same source line until the counter exhausts. Completing them in one
+ * logical step matches user expectations for bulk operations.
  */
 const ED_BLOCK_REPEAT_SECOND = new Set<number>([
   0xb0, 0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb,
 ]);
 
-const OP_DJNZ = 0x10;
-
 /** Max inner iterations when finishing a block instruction (guards pathological loops). */
 const MAX_BLOCK_REPEAT_ITERATIONS = 0x110000;
 
-function shouldContinueRepeatingInstruction(
-  instructionStartPc: number,
-  currentPc: number,
+function isBlockRepeatInstruction(
+  pc: number,
   memRead: (addr: number) => number
 ): boolean {
-  const start = instructionStartPc & 0xffff;
-  if ((currentPc & 0xffff) !== start) {
+  const start = pc & 0xffff;
+  if ((memRead(start) & 0xff) !== OP_PREFIX_ED) {
     return false;
   }
-  const op0 = memRead(start) & 0xff;
-  if (op0 === OP_PREFIX_ED) {
-    const op1 = memRead((start + 1) & 0xffff) & 0xff;
-    return ED_BLOCK_REPEAT_SECOND.has(op1);
-  }
-  if (op0 === OP_DJNZ) {
-    return true;
-  }
-  return false;
+  const op1 = memRead((start + 1) & 0xffff) & 0xff;
+  return ED_BLOCK_REPEAT_SECOND.has(op1);
 }
 
 function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
@@ -338,7 +329,8 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
       return { halted: true, pc: cpu.pc, reason: 'halt', cycles: totalCycles };
     }
 
-    const repeat = shouldContinueRepeatingInstruction(instructionStartPc, cpu.pc, memRead);
+    const pcStayed = (cpu.pc & 0xffff) === instructionStartPc;
+    const repeat = pcStayed && isBlockRepeatInstruction(instructionStartPc, memRead);
     if (!repeat || iterations >= MAX_BLOCK_REPEAT_ITERATIONS) {
       break;
     }
