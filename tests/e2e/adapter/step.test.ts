@@ -44,7 +44,9 @@ describe('step and register read', () => {
     const stepped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
     expect(stepped.body?.reason).toBe('step');
 
-    // PC should now be at 0x0001 — verify via stack trace (line 3 of simple.asm)
+    // PC should now be at 0x0001 — verify via stack trace.
+    // Line 3 = the IN instruction in tests/e2e/fixtures/simple/src/simple.asm.
+    // If the fixture changes, update this assertion.
     const stack = await client.sendRequest<{
       body?: { stackFrames?: Array<{ id: number; line: number }> };
     }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
@@ -56,13 +58,12 @@ describe('step and register read', () => {
       body?: { scopes?: Array<{ name: string; variablesReference: number }> };
     }>('scopes', { frameId });
     const regScope = scopes.body?.scopes?.find((s) => /register/i.test(s.name));
-    if (regScope) {
-      const vars = await client.sendRequest<{
-        body?: { variables?: Array<{ name: string; value: string }> };
-      }>('variables', { variablesReference: regScope.variablesReference });
-      const pc = vars.body?.variables?.find((v) => v.name.toUpperCase() === 'PC');
-      expect(pc?.value).toMatch(/0001/i);
-    }
+    expect(regScope).toBeDefined();
+    const vars = await client.sendRequest<{
+      body?: { variables?: Array<{ name: string; value: string }> };
+    }>('variables', { variablesReference: regScope!.variablesReference });
+    const pc = vars.body?.variables?.find((v) => v.name.toUpperCase() === 'PC');
+    expect(pc?.value).toMatch(/0001/i);
 
     await client.sendRequest('disconnect');
   });

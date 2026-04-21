@@ -20,6 +20,7 @@ export type Tec1gKeypad = {
   getSysCtrlValue: () => number;
   updateSysCtrl: () => void;
   updateStatusLeds: () => void;
+  focusKeypad: () => void;
 };
 
 /**
@@ -35,6 +36,7 @@ export function createTec1gKeypad(
     statusCaps: HTMLElement | null;
   }
 ): Tec1gKeypad {
+  keypadEl.tabIndex = 0;
   let sysCtrlSegs: HTMLElement[] = [];
   let sysCtrlValue = 0;
   let shiftLatched = false;
@@ -78,6 +80,9 @@ export function createTec1gKeypad(
       button.style.gridRow = String(row);
     }
     button.addEventListener('click', action);
+    button.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // retain keypad focus when clicking keys
+    });
     keypadEl.appendChild(button);
     return button;
   }
@@ -191,6 +196,7 @@ export function createTec1gKeypad(
     getSysCtrlValue: () => sysCtrlValue,
     updateSysCtrl,
     updateStatusLeds,
+    focusKeypad: () => keypadEl.focus(),
   };
 }
 
