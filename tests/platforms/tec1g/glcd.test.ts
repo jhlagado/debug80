@@ -137,6 +137,46 @@ describe('TEC-1G GLCD instruction handling', () => {
     expect(rt.state.display.glcdCtrl.glcdScroll).toBe(10);
   });
 
+  it('GDRAM X auto-increment crosses into the lower bank (clearGrLCD pattern)', () => {
+    // This tests the ST7920 behaviour that clearGrLCD relies on:
+    //   clearGrLCD sets X=0 (0x80) and writes B=0x10 iterations × 2 bytes = 16 words per row.
+    //   Words 1-8 land at X=0-7 (upper bank, rows 0-31).
+    //   Words 9-16 land at X=8-15 (lower bank, rows 32-63).
+    // Without the fix the column counter wraps at 7 and the lower bank is never written.
+    const rt = makeRuntime();
+
+    // Fill the whole GDRAM with a sentinel so we can detect which bytes were written.
+    rt.state.display.glcdCtrl.glcd.fill(0xff);
+
+    // Enter extended graphics mode.
+    rt.ioHandlers.write(0x07, 0x36); // RE=1, G=1
+
+    // Set row 0 (Y=0), column 0 (X=0, no bank bit).
+    rt.ioHandlers.write(0x07, 0x80); // vertical Y=0
+    rt.ioHandlers.write(0x07, 0x80); // horizontal X=0, bank=0
+
+    // Write 32 bytes (16 words) of zeros — the clearGrLCD CLR_Y inner loop.
+    for (let i = 0; i < 32; i++) {
+      rt.ioHandlers.write(0x87, 0x00);
+    }
+
+    const glcd = rt.state.display.glcdCtrl.glcd;
+
+    // Upper bank (bank=0, glcdRowBase=0): row 0, cols 0-7 → bytes 0-15
+    for (let b = 0; b < 16; b++) {
+      expect(glcd[b]).toBe(0x00);
+    }
+
+    // Lower bank (bank=1, glcdRowBase=32): row 32+0=32, cols 0-7 → bytes 32*16 to 32*16+15 = 512-527
+    for (let b = 0; b < 16; b++) {
+      expect(glcd[512 + b]).toBe(0x00);
+    }
+
+    // The rest of the GDRAM should still be 0xff (not touched).
+    expect(glcd[16]).toBe(0xff);
+    expect(glcd[528]).toBe(0xff);
+  });
+
   it('shifts text after a complete DDRAM write when entry shift is enabled', () => {
     const rt = makeRuntime();
 
