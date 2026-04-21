@@ -36,6 +36,13 @@ export function registerLanguageAssociations(
   const ensureAsmLanguage = async (doc: vscode.TextDocument): Promise<void> =>
     ensureLanguage(doc, '.asm', ASM_LANGUAGE_ID);
 
+  /** Same extensions as package.json `languages` / `files.associations` for z80-asm. */
+  const ensureZ80AsmExtensionLanguages = async (doc: vscode.TextDocument): Promise<void> => {
+    for (const ext of ['.z80', '.a80', '.s'] as const) {
+      await ensureLanguage(doc, ext, ASM_LANGUAGE_ID);
+    }
+  };
+
   const ensureZaxLanguage = async (doc: vscode.TextDocument): Promise<void> =>
     ensureLanguage(doc, '.zax', ZAX_LANGUAGE_ID);
 
@@ -46,6 +53,7 @@ export function registerLanguageAssociations(
       for (const doc of vscode.workspace.textDocuments) {
         if (hasAsmLang) {
           void ensureAsmLanguage(doc);
+          void ensureZ80AsmExtensionLanguages(doc);
         }
         if (hasZaxLang) {
           void ensureZaxLanguage(doc);
@@ -57,6 +65,7 @@ export function registerLanguageAssociations(
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((doc) => {
       void ensureAsmLanguage(doc);
+      void ensureZ80AsmExtensionLanguages(doc);
       void ensureZaxLanguage(doc);
     })
   );
