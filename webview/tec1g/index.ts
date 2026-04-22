@@ -285,7 +285,7 @@ keypadEl.addEventListener('keydown', (event) => {
     return;
   }
   if (event.key === ' ') {
-    keypad.sendKey(TEC1G_KEY_MAP['AD']);
+    keypad.sendKey(TEC1G_KEY_MAP['0']);
     event.preventDefault();
     event.stopPropagation();
     return;
