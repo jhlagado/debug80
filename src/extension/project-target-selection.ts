@@ -2,6 +2,7 @@
  * @file Project target selection and persistence helpers.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { listProjectSourceFiles, readProjectConfig, updateProjectTargetSource } from './project-config';
@@ -111,16 +112,17 @@ export function resolveTargetNameForConfig(
   if (workspaceState !== undefined) {
     return resolvePreferredTargetName(workspaceState, projectConfigPath);
   }
-  const config = readProjectConfig(projectConfigPath);
-  if (config === undefined) {
+  const { choices, defaultTarget } = loadTargetChoices(projectConfigPath);
+  if (choices.length === 0) {
     return undefined;
   }
-  const preferred = config.defaultTarget ?? config.target;
-  if (typeof preferred === 'string' && config.targets?.[preferred] !== undefined) {
-    return preferred;
+  if (defaultTarget !== undefined && choices.some((c) => c.name === defaultTarget)) {
+    return defaultTarget;
   }
-  const keys = Object.keys(config.targets ?? {});
-  return keys.length === 1 ? keys[0] : undefined;
+  if (choices.length === 1) {
+    return choices[0]?.name;
+  }
+  return undefined;
 }
 
 export function listProjectTargetChoices(projectConfigPath: string): DiscoverableTargetChoice[] {
@@ -131,7 +133,14 @@ export function listProjectTargetChoices(projectConfigPath: string): Discoverabl
   const config = readProjectConfig(projectConfigPath);
   const coveredSources = new Set<string>();
   for (const target of Object.values(config?.targets ?? {})) {
-    const src = target.sourceFile ?? target.asm ?? target.source;
+    if (target === null || typeof target !== 'object' || Array.isArray(target)) {
+      continue;
+    }
+    const t = target as Record<string, unknown>;
+    if (!targetProgramFileExists(projectRoot, t)) {
+      continue;
+    }
+    const src = t.sourceFile ?? t.asm ?? t.source;
     if (typeof src === 'string') {
       coveredSources.add(entrySourceKey(projectRoot, src));
     }
@@ -350,10 +359,31 @@ export class ProjectTargetSelectionController {
 
 }
 
+function targetProgramFileExists(projectRoot: string, target: Record<string, unknown>): boolean {
+  const sourcePath = target.sourceFile ?? target.asm ?? target.source;
+  if (typeof sourcePath !== 'string' || sourcePath.trim().length === 0) {
+    return true;
+  }
+  const abs = path.isAbsolute(sourcePath)
+    ? sourcePath
+    : path.join(projectRoot, normalizeProjectRelativePath(sourcePath));
+  try {
+    return fs.existsSync(abs);
+  } catch {
+    return false;
+  }
+}
+
 function loadTargetChoices(projectConfigPath: string): LoadedTargetChoices {
+  const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
   const config = readProjectConfig(projectConfigPath);
   const targets = config?.targets ?? {};
-  const entries = Object.entries(targets);
+  const entries = Object.entries(targets).filter(([, t]) => {
+    if (t === null || typeof t !== 'object' || Array.isArray(t)) {
+      return false;
+    }
+    return targetProgramFileExists(projectRoot, t as Record<string, unknown>);
+  });
   const choices = entries.map(([name, target]) => {
     const sourcePath = target.sourceFile ?? target.asm ?? target.source;
     const isZax =

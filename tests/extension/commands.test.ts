@@ -76,9 +76,16 @@ describe('registerExtensionCommands', () => {
     vi.clearAllMocks();
     registeredCommands.clear();
     workspaceFolders = [{ name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 0 }];
-    existsSync.mockImplementation(
-      (candidate: string) => path.normalize(candidate) === projectConfigPath
-    );
+    existsSync.mockImplementation((candidate: string) => {
+      const n = path.normalize(candidate);
+      if (n === projectConfigPath) {
+        return true;
+      }
+      if (/\.(asm|zax)$/i.test(n)) {
+        return true;
+      }
+      return false;
+    });
     readFileSync.mockReturnValue(
       JSON.stringify({
         targets: {
