@@ -142,8 +142,9 @@ To make a folder debuggable quickly in VS Code:
 2) Type “Debug80: Create Project (config + launch)” and press Enter.
 
 This command scaffolds a built-in profile kit:
-- Creates `.vscode/debug80.json` with a default target (tries `src/main.asm`, or the first `.asm` it finds).
-- Creates `.vscode/launch.json` with a Debug80 launch configuration.
+- Creates `debug80.json` (or you may place it at `.vscode/debug80.json`) with a default target (tries `src/main.asm`, or the first `.asm` it finds).
+- Creates `.vscode/launch.json` with a Debug80 launch configuration when you choose a launch-enabled scaffold.
+- Merges a small **Debug80** block into `.gitignore` if missing: `.debug80/` cache, the default `outputDir`, `.vscode/launch.json` (local-only; the extension also contributes a default launch), and common OS junk. It does not ignore the whole `.vscode/` folder, because project config can live at `.vscode/debug80.json`.
 - Built-in kits cover Simple/default, TEC-1/MON-1B, TEC-1/Classic 2K, and TEC-1G/MON-3.
 - It does not generate `.vscode/settings.json`; the extension already contributes the relevant file associations.
 
@@ -156,8 +157,8 @@ To target a different platform (e.g., `tec1`):
 
 ## Z80 workflow
 
-1) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode/debug80.json` (defaults to `targets.app` with `src/main.asm`) and `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
-2) Start debugging with the generated debug80 launch; the adapter reads `.vscode/debug80.json`, runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
+1) Run “Debug80: Create Project (config + launch)” to scaffold `debug80.json` (defaults to `targets.app` with `src/main.asm`) and, if requested, `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
+2) Start debugging with the generated debug80 launch; the adapter reads `debug80.json` (or `.vscode/debug80.json` if you use that layout), runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
 3) Set breakpoints in `.asm` files (preferred). Listing breakpoints in `.lst` still work as a fallback.
 4) Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
 
