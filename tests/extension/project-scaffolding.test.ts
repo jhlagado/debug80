@@ -14,6 +14,9 @@ const { showQuickPick, showInputBox, showInformationMessage, showErrorMessage } 
 
 function defaultExistsSync(candidate: string): boolean {
   const normalized = candidate.replace(/\\/g, '/');
+  if (normalized.endsWith('/.gitignore')) {
+    return false;
+  }
   return (
     !normalized.endsWith('/debug80.json') &&
     !normalized.endsWith('/.vscode/debug80.json') &&
@@ -361,6 +364,9 @@ describe('project-scaffolding helpers', () => {
     try {
       existsSync.mockImplementation((candidate: string) => {
         const normalized = candidate.replace(/\\/g, '/');
+        if (normalized.endsWith('/.gitignore')) {
+          return false;
+        }
         return (
           !normalized.endsWith('/debug80.json') &&
           !normalized.endsWith('/.debug80.json') &&
@@ -428,6 +434,9 @@ describe('project-scaffolding helpers', () => {
     try {
       existsSync.mockImplementation((candidate: string) => {
         const normalized = candidate.replace(/\\/g, '/');
+        if (normalized.endsWith('/.gitignore')) {
+          return false;
+        }
         return (
           !normalized.endsWith('/debug80.json') &&
           !normalized.endsWith('/.debug80.json') &&

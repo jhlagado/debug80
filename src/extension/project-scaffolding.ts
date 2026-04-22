@@ -28,6 +28,7 @@ import {
   type StarterLanguage,
 } from './project-kits';
 import { materializeBundledRom } from './bundle-materialize';
+import { ensureDebug80Gitignore } from './project-gitignore';
 
 type ScaffoldPlan = {
   kit: ProjectKit;
@@ -317,6 +318,11 @@ export async function scaffoldProject(
         'Debug80: .vscode/launch.json already exists; not overwriting.'
       );
     }
+  }
+
+  if (created) {
+    const outputDirForGitignore = plan?.outputDir ?? inferred.outputDir;
+    ensureDebug80Gitignore(workspaceRoot, outputDirForGitignore);
   }
 
   return created;
