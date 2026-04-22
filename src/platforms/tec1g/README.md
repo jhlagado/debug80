@@ -39,7 +39,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 
 ### Input
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
-  - Keycodes: 0x00-0x0f (hex), 0x10 (+), 0x11 (-), 0x12 (GO), 0x13 (AD), 0x02 (FN).
+  - Keycodes: 0x00-0x0f (hex), 0x10 (▶ right), 0x11 (◀ left), 0x12 (GO), 0x13 (AD), 0x02 (FN). (ROMs may use K_PLUS/K_MINUS; keycaps are chevrons.)
 - `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
   - Bit 0 (0x01): SKEY — shift key (not yet emulated).
   - Bit 1 (0x02): PROTECT — fed back from SYS_CTRL.
@@ -142,8 +142,8 @@ focus ring appears around the keypad while it is active.
 | `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
 | `Space` or `Tab` | AD | 0x13 |
 | `Enter` | GO | 0x12 |
-| `←` / `↑` | ◀ (Left/Minus) | 0x11 |
-| `→` / `↓` | ▶ (Right/Plus) | 0x10 |
+| `←` / `↑` | ◀ (left) | 0x11 |
+| `→` / `↓` | ▶ (right) | 0x10 |
 
 ### Special keys
 

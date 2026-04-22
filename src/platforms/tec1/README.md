@@ -25,10 +25,10 @@ The TEC-1 panel has a toggle for slow/fast.
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7.
   - Keycode values:
     - 0x00–0x0f: hex digits 0–F
-    - 0x10: ADDRESS
-    - 0x11: UP
+    - 0x10: UP
+    - 0x11: DOWN
     - 0x12: GO
-    - 0x13: DOWN
+    - 0x13: ADDRESS
   - Shift latch:
     - Bit 5 (0x20) is **high** when unshifted.
     - Bit 5 is **low** when shift is latched.
@@ -66,7 +66,7 @@ Decimal points are used to indicate whether the address or data field is active.
 
 The TEC-1 keypad is 20 keys:
 - Hex digits 0–F
-- ADDRESS, GO, UP, DOWN
+- ADDRESS, GO, and two direction keys (◀/▶ on the emulated panel; many boards label them UP/DOWN)
 
 MON-1/2 rely on the NMI pulse on keypress. JMON instead polls port 0x03 (P_DAT)
 bit 6 to detect key activity. Many TEC-1D boards include the "JMON mod" (a
@@ -136,8 +136,8 @@ focus ring appears around the keypad while it is active.
 | `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
 | `Space` or `Tab` | ADDRESS | 0x13 |
 | `Enter` | GO | 0x12 |
-| `↑` | UP | 0x10 |
-| `↓` | DOWN | 0x11 |
+| `←` / `↑` | ◀ (left) / UP | 0x11 |
+| `→` / `↓` | ▶ (right) / DOWN | 0x10 |
 
 ### Special keys
 
