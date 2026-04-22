@@ -63,9 +63,10 @@ describe('tec1g visibility controller', () => {
 
   it('persists overrides and checkbox changes through vscode state', () => {
     const setState = vi.fn<(state: { uiVisibility?: Record<string, boolean> }) => void>();
+    const postMessage = vi.fn();
     const controller = createVisibilityController({
       getState: () => null,
-      postMessage: () => undefined,
+      postMessage,
       setState,
     });
     const glcdCheckbox = document.querySelector(
@@ -83,5 +84,10 @@ describe('tec1g visibility controller', () => {
     expect(firstState.uiVisibility?.glcd).toBe(true);
     expect(lastState.uiVisibility?.glcd).toBe(false);
     expect(document.querySelector('.glcd')?.classList.contains('ui-hidden')).toBe(true);
+    expect(
+      postMessage.mock.calls.some(
+        (c) => (c[0] as { type?: string }).type === 'saveTec1gPanelVisibility'
+      )
+    ).toBe(true);
   });
 });

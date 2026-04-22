@@ -17,6 +17,7 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleRestartDebug: vi.fn(() => undefined),
     handleSetEntrySource: vi.fn(() => undefined),
     currentPlatform: vi.fn(() => platform),
+    handleSaveTec1gPanelVisibility: vi.fn(),
     handleStartDebug: vi.fn(() => undefined),
     handleSerialSendFile: vi.fn(() => undefined),
     handleSerialSave: vi.fn(() => undefined),
@@ -64,6 +65,22 @@ describe('platform-view message routing', () => {
     expect(deps.handleSetStopOnEntry).toHaveBeenCalledWith(true);
     expect(deps.handleSerialSendFile).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSave).toHaveBeenCalledWith('hello');
+  });
+
+  it('routes saveTec1gPanelVisibility to the handler with visibility and optional target', async () => {
+    const deps = createDependencies('tec1g');
+    await handlePlatformViewMessage(
+      {
+        type: 'saveTec1gPanelVisibility',
+        targetName: 'main',
+        visibility: { glcd: false, matrix: true },
+      },
+      deps
+    );
+    expect(deps.handleSaveTec1gPanelVisibility).toHaveBeenCalledWith({
+      targetName: 'main',
+      visibility: { glcd: false, matrix: true },
+    });
   });
 
   it('clears the active serial buffer for TEC-1 and TEC-1G', async () => {
