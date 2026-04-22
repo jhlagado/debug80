@@ -285,7 +285,7 @@ ROM-specific RAM usage:
 - MON-2 user programs start at 0x0900 (0x0800–0x08ff reserved for variables).
 
 I/O map:
-- IN 0x00: keycode (0x00–0x0f hex digits, 0x13 ADDRESS, 0x10 UP (+), 0x12 GO, 0x11 DOWN (-))
+- IN 0x00: keycode (0x00–0x0f hex digits, 0x10 UP, 0x11 DOWN, 0x12 GO, 0x13 ADDRESS; ROMs may use K_PLUS/K_MINUS for UP/DOWN)
 - OUT 0x01: digit select (bits 0–5, one-hot) + serial TX on bit 6 + speaker on bit 7 (latched)
 - OUT 0x02: segment bits (latched)
 - NMI at 0x0066 on keypress

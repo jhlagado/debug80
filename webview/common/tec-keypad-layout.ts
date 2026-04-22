@@ -25,8 +25,10 @@ export const TEC1G_KEY_MAP: Record<string, number> = {
   E: 0x0e,
   F: 0x0f,
   AD: 0x13,
+  /** ▶ / “right” — same scancode some ROMs call K_PLUS. */
   RIGHT: 0x10,
   GO: 0x12,
+  /** ◀ / “left” — same scancode some ROMs call K_MINUS. */
   LEFT: 0x11,
 };
 
