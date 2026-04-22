@@ -219,4 +219,58 @@ describe('ProjectTargetSelectionController', () => {
 
     expect(resolveTargetNameForConfig(undefined, '/workspace/p/debug80.json')).toBeUndefined();
   });
+
+  it('omits targets whose program file is missing on disk', async () => {
+    const { listProjectTargetChoices } = await import('../../src/extension/project-target-selection');
+
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        defaultTarget: 'main',
+        targets: {
+          main: { sourceFile: 'src/main.asm' },
+          matrix: { sourceFile: 'src/matrixdemo.asm' },
+        },
+      })
+    );
+    existsSync.mockImplementation((p) => {
+      const s = String(p).replace(/\\/g, '/');
+      if (s.endsWith('/src/main.asm')) {
+        return false;
+      }
+      return true;
+    });
+
+    const choices = listProjectTargetChoices('/workspace/p/.vscode/debug80.json');
+    expect(choices.map((c: { name: string }) => c.name)).toEqual(['matrix']);
+  });
+
+  it('ignores a remembered target when that target’s program file was removed', async () => {
+    const { resolvePreferredTargetName } = await import('../../src/extension/project-target-selection');
+
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        defaultTarget: 'main',
+        targets: {
+          main: { sourceFile: 'src/main.asm' },
+          matrix: { sourceFile: 'src/matrixdemo.asm' },
+        },
+      })
+    );
+    existsSync.mockImplementation((p) => {
+      const s = String(p).replace(/\\/g, '/');
+      if (s.endsWith('/src/main.asm')) {
+        return false;
+      }
+      return true;
+    });
+
+    const memento = {
+      get: vi.fn(() => 'main'),
+      update: vi.fn(),
+    } as never;
+
+    expect(
+      resolvePreferredTargetName(memento, '/workspace/p/.vscode/debug80.json')
+    ).toBe('matrix');
+  });
 });
