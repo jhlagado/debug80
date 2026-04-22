@@ -31,6 +31,12 @@ import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import {
+  getMementoForTarget,
+  mergeTec1gPanelVisibility,
+  TEC1G_UI_VISIBILITY_MEMENTO_KEY,
+  type Tec1gVisibilityByTarget,
+} from './tec1g-ui-visibility-memento';
+import {
   findProjectConfigPath,
   readProjectConfig,
   resolveProjectPlatform,
@@ -89,8 +95,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   /** Per-platform mutable state, keyed by platform id. */
   private readonly platformStates = new Map<string, PerPlatformState>();
 
-  /** TEC-1G only: visibility overrides sent to the webview. */
-  private tec1gUiVisibilityOverride: Record<string, boolean> | undefined;
+  /** TEC-1G only: `tec1g.uiVisibility` from launch config (debug80.json) for this session. */
+  private tec1gAdapterVisibility: Record<string, boolean> | undefined;
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
@@ -132,6 +138,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postProjectStatus();
+    this.mergeAndPostTec1gPanelVisibility();
   }
 
   setPlatform(
@@ -164,18 +171,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: 'sessionStatus', status });
   }
 
-  setTec1gUiVisibility(visibility: Record<string, boolean> | undefined, persist = false): void {
-    if (!visibility) {
-      return;
-    }
-    this.tec1gUiVisibilityOverride = { ...visibility };
-    if (this.currentPlatform === 'tec1g') {
-      this.postMessage({
-        type: 'uiVisibility',
-        visibility: this.tec1gUiVisibilityOverride,
-        persist,
-      });
-    }
+  /**
+   * Applies `tec1g.uiVisibility` from the active launch (if any) and re-merges with
+   * workspace Memento. Does not run when `visibility` is empty (omitted from config).
+   */
+  setTec1gAdapterVisibility(visibility: Record<string, boolean> | undefined): void {
+    this.tec1gAdapterVisibility =
+      visibility !== undefined && Object.keys(visibility).length > 0 ? { ...visibility } : undefined;
+    this.mergeAndPostTec1gPanelVisibility();
   }
 
   updateTec1(payload: Tec1UpdatePayload, sessionId?: string): void {
@@ -266,6 +269,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     this.currentSession = undefined;
     this.currentSessionId = undefined;
+    this.tec1gAdapterVisibility = undefined;
     this.setSessionStatus('not running');
     this.stopAllPlatformRefresh();
     this.clear();
@@ -319,6 +323,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await vscode.commands.executeCommand('debug80.setEntrySource');
         },
         currentPlatform: () => this.currentPlatform,
+        handleSaveTec1gPanelVisibility: (args) => {
+          this.saveTec1gPanelVisibility(args.visibility, args.targetName);
+        },
         handleStartDebug: async (args) => {
           await vscode.commands.executeCommand('debug80.startDebug', args);
         },
@@ -397,24 +404,19 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postMessage(
         bundle.modules.buildUpdateMessage(bundle.state.uiState, this.nextUiRevision())
       );
-      if (this.currentPlatform === 'tec1g' && this.tec1gUiVisibilityOverride) {
-        this.postMessage({
-          type: 'uiVisibility',
-          visibility: this.tec1gUiVisibilityOverride,
-          persist: false,
-        });
-      }
       if (bundle.state.serialBuffer.text.length > 0) {
         this.postMessage({ type: 'serialInit', text: bundle.state.serialBuffer.text });
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
       this.syncMemoryRefresh(bundle, rehydrate);
+      this.mergeAndPostTec1gPanelVisibility();
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
       this.view.webview.html = getTec1gHtml('ui', this.view.webview, this.extensionUri);
       this.postProjectStatus();
       this.postSessionStatus();
+      this.mergeAndPostTec1gPanelVisibility();
     }
   }
 
@@ -545,6 +547,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postProjectStatus();
+    this.mergeAndPostTec1gPanelVisibility();
   }
 
   private normalizePlatformId(platform: string): PlatformId | undefined {
@@ -635,6 +638,54 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         ? { entrySource: projectStatus.entrySource }
         : {}),
     };
+  }
+
+  private mergeAndPostTec1gPanelVisibility(): void {
+    if (!this.view || this.currentPlatform !== 'tec1g') {
+      return;
+    }
+    const memento = this.readTec1gPanelVisibilityMemento();
+    const merged = mergeTec1gPanelVisibility(this.tec1gAdapterVisibility, memento);
+    this.postMessage({ type: 'uiVisibility', visibility: merged, persist: true });
+  }
+
+  private readTec1gPanelVisibilityMemento(): Record<string, boolean> | undefined {
+    if (this.workspaceState === undefined) {
+      return undefined;
+    }
+    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    if (folder === undefined) {
+      return undefined;
+    }
+    if (findProjectConfigPath(folder) === undefined) {
+      return undefined;
+    }
+    const summary = resolveProjectStatusSummary(this.workspaceState, folder);
+    const targetName = summary?.targetName ?? '__default__';
+    const byTarget = this.workspaceState.get<Tec1gVisibilityByTarget>(TEC1G_UI_VISIBILITY_MEMENTO_KEY);
+    return getMementoForTarget(byTarget, targetName);
+  }
+
+  private saveTec1gPanelVisibility(visibility: Record<string, boolean>, targetNameFromWebview?: string): void {
+    if (this.workspaceState === undefined) {
+      return;
+    }
+    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    if (folder === undefined) {
+      return;
+    }
+    if (findProjectConfigPath(folder) === undefined) {
+      return;
+    }
+    const resolved =
+      targetNameFromWebview !== undefined && targetNameFromWebview.length > 0
+        ? targetNameFromWebview
+        : (resolveProjectStatusSummary(this.workspaceState, folder)?.targetName ?? '__default__');
+    const byTarget: Tec1gVisibilityByTarget = {
+      ...(this.workspaceState.get<Tec1gVisibilityByTarget>(TEC1G_UI_VISIBILITY_MEMENTO_KEY) ?? {}),
+    };
+    byTarget[resolved] = { ...visibility };
+    void this.workspaceState.update(TEC1G_UI_VISIBILITY_MEMENTO_KEY, byTarget);
   }
 
   private buildSnapshotPayload(memoryViews: MemoryViewState): SnapshotRequest {
