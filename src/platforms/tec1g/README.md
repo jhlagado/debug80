@@ -140,7 +140,8 @@ focus ring appears around the keypad while it is active.
 | Key(s) | Keypad button | Code sent |
 |--------|--------------|-----------|
 | `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
-| `Space` or `Tab` | AD | 0x13 |
+| `Space` | `0` | 0x00 |
+| `Tab` | AD | 0x13 |
 | `Enter` | GO | 0x12 |
 | `←` / `↑` | ◀ (left) | 0x11 |
 | `→` / `↓` | ▶ (right) | 0x10 |
