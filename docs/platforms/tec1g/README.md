@@ -28,7 +28,7 @@ Practical implication for emulation:
 ---
 
 ## 2.1) Main menu at a glance
-MON-3 presents a menu on cold reset and expects the user to navigate with Plus/Minus and GO. AD exits back to data entry mode. Menus can be nested up to three levels.
+MON-3 presents a menu on cold reset and expects the user to navigate with the ◀ and ▶ keys (left/right) and GO. AD exits back to data entry mode. Menus can be nested up to three levels.
 
 Core menu items in v1.5:
 - Intel HEX load
@@ -141,11 +141,11 @@ MON-3’s debugging model is intentionally simple:
 - Breakpoint byte is **RST 30H = 0xF7** inserted into your program.
 - On hit, MON-3 displays registers: AF, BC, DE, HL, IX, IY, PC, SP plus flags.
 - GO continues execution; AD quits back to monitor.
-- Fn-Plus inserts a NOP at current address (convenient for “insert then change to F7”).
-- Fn-Minus removes an inserted breakpoint byte and shifts code back.
+- Fn-▶ (the right / “plus” scancode, 0x10) inserts a NOP at the current address (convenient for “insert then change to F7”).
+- Fn-◀ (the left / “minus” scancode, 0x11) removes an inserted breakpoint byte and shifts code back.
 
 Hardware escape hatch:
-- Breakpoints are ignored if + is connected to D5 on the G.IMP header.
+- Breakpoints are ignored if the `+` hardware strap (the “+” solder option on the PCB, not the ▶ key) is connected to D5 on the G.IMP header.
 
 Emulation implication:
 - If you want Debug80 to “feel like MON-3,” you emulate this exact breakpoint habit, not source-level fantasy.
