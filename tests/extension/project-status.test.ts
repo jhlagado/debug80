@@ -9,6 +9,10 @@ vi.mock('vscode', () => ({}));
 describe('project-status', () => {
   it('resolves the selected project target and program file', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
+    const srcDir = path.join(root, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+    fs.writeFileSync(path.join(srcDir, 'main.asm'), 'nop\n');
+    fs.writeFileSync(path.join(srcDir, 'serial.asm'), 'nop\n');
     fs.writeFileSync(
       path.join(root, 'debug80.json'),
       JSON.stringify({
