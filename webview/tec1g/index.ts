@@ -191,6 +191,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'projectStatus') {
+    visibilityController.setProjectTargetName(message.targetName);
     projectStatusUi.applyProjectStatus(message);
     if (platformSelectEl && message.platform !== undefined) {
       platformSelectEl.value = message.platform;

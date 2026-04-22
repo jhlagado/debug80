@@ -127,8 +127,8 @@ export function registerDebugSessionHandlers({
             reveal: true,
             tab: 'ui',
           });
-          if (id === 'tec1g' && body?.uiVisibility) {
-            platformViewProvider.setTec1gUiVisibility(body.uiVisibility, false);
+          if (id === 'tec1g') {
+            platformViewProvider.setTec1gAdapterVisibility(body?.uiVisibility);
           }
         } else {
           const columns = sourceColumns.getSessionColumns(evt.session);
