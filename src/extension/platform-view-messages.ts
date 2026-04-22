@@ -29,6 +29,10 @@ export interface PlatformViewMessageDependencies {
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
+  handleSaveTec1gPanelVisibility: (args: {
+    targetName?: string;
+    visibility: Record<string, boolean>;
+  }) => void;
   handleStartDebug: (args?: { rootPath?: string }) => PromiseLike<void>;
   handleSerialSendFile: () => PromiseLike<void>;
   handleSerialSave: (text: string) => PromiseLike<void>;
@@ -95,6 +99,18 @@ export async function handlePlatformViewMessage(
   }
   if (msg?.type === 'setEntrySource') {
     await deps.handleSetEntrySource();
+    return;
+  }
+  if (msg?.type === 'saveTec1gPanelVisibility') {
+    const vis = (msg as { visibility?: unknown }).visibility;
+    if (vis !== null && vis !== undefined && typeof vis === 'object' && !Array.isArray(vis)) {
+      const target = (msg as { targetName?: unknown }).targetName;
+      const targetName = typeof target === 'string' && target.length > 0 ? target : undefined;
+      deps.handleSaveTec1gPanelVisibility({
+        ...(targetName !== undefined ? { targetName } : {}),
+        visibility: vis as Record<string, boolean>,
+      });
+    }
     return;
   }
   if (msg?.type === 'startDebug') {
