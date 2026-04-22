@@ -281,7 +281,7 @@ panelLayout.updateMemoryLayout(false);
 keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
   if (event.key === ' ') {
-    keypad.sendKey(TEC1G_KEY_MAP['AD']);
+    keypad.sendKey(TEC1G_KEY_MAP['0']);
     event.preventDefault();
     return;
   }
