@@ -29,10 +29,9 @@ tests/**/*.js
 tests/**/*.d.ts
 tests/**/*.map
 
-# Temporary files
-*.tmp
-*.temp
-.debug80/
+# Local GitHub CLI repo audit exports (see scripts/github-repo-inventory.sh)
+github-repo-audit/
+
 
 # E2E fixtures
 !tests/e2e/fixtures/**/build/
