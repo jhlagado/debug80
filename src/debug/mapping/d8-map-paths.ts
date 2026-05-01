@@ -6,7 +6,7 @@
 export const D8_DEBUG_MAP_EXT = '.d8.json';
 
 /** Previous extension; still read for one release, removed after successful write to `.d8.json` */
-export const LEGACY_D8_DEBUG_MAP_EXT = '.d8dbg.json';
+const LEGACY_D8_DEBUG_MAP_EXT = '.d8dbg.json';
 
 /**
  * If `canonicalPath` ends with {@link D8_DEBUG_MAP_EXT}, returns the same path with the legacy suffix.

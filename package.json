@@ -377,7 +377,8 @@
     ]
   },
   "scripts": {
-    "build": "tsc && npm run build:webview",
+    "clean": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc && npm run build:webview",
     "bundle:sync-mon3": "node scripts/sync-mon3-bundle.cjs",
     "build:webview": "node scripts/build-webview.js",
     "prepare": "husky",
