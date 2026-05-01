@@ -1,0 +1,38 @@
+{
+  "entry": [
+    "webview/simple/index.ts",
+    "webview/tec1/index.ts",
+    "webview/tec1g/index.ts"
+  ],
+  "dynamicallyLoaded": [
+    "webview/*/index.html",
+    "webview/**/*.css"
+  ],
+  "ignoreDependencies": [
+    "@jhlagado/zax"
+  ],
+  "usedClassMembers": [
+    "createDebugAdapterDescriptor",
+    "provideDebugConfigurations",
+    "resolveDebugConfiguration",
+    "resolveDebugConfigurationWithSubstitutedVariables",
+    "setTec1gAdapterVisibility",
+    "appendTec1Serial",
+    "appendSimpleTerminal",
+    "appendTec1gSerial",
+    "hasPanel",
+    "open",
+    "appendOutput",
+    "selectWorkspaceFolder"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "webview/*/index.html"
+      ],
+      "rules": {
+        "unresolved-imports": "off"
+      }
+    }
+  ]
+}

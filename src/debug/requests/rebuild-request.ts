@@ -7,17 +7,23 @@ import * as path from 'path';
 import { BreakpointEvent } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import {
-  AssembleFailureError,
-  formatAssemblyDiagnostic,
-  resolveBundledTec1Rom,
+  AssembleFailureError, formatAssemblyDiagnostic, resolveBundledTec1Rom,
 } from '../launch/assembler';
 import { emitConsoleOutput, emitMainSource } from '../session/adapter-ui';
 import { resolveAssemblerBackend } from '../launch/assembler-backend';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
-import { resolveArtifacts, resolveAsmPath, resolveDebugMapPath, resolveExtraDebugMapPath, resolveRelative, relativeIfPossible } from '../launch-args';
 import { assembleIfRequested } from '../launch/launch-pipeline';
 import type { WarmRebuildResult } from '../session/message-types';
-import { resolveListingSourcePath, resolveMappedPath, resolveBaseDir, resolveCacheDir, buildListingCacheKey } from '../mapping/path-resolver';
+import {
+  resolveListingSourcePath,
+  resolveMappedPath,
+  resolveBaseDir,
+  resolveArtifacts,
+  resolveDebugMapPath,
+  resolveExtraDebugMapPath,
+  resolveRelative,
+  relativeIfPossible,
+} from '../mapping/path-resolver';
 import { loadProgramArtifacts } from '../launch/program-loader';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceStateManager } from '../mapping/source-state-manager';
@@ -105,10 +111,7 @@ export function handleWarmRebuildRequest(
 
   try {
     const baseDir = deps.sessionState.baseDir || resolveBaseDir(launchArgs);
-    const { asmPath, hexPath, listingPath } = resolveArtifacts(launchArgs, baseDir, {
-      resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-      resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-    });
+    const { asmPath, hexPath, listingPath } = resolveArtifacts(launchArgs, baseDir);
     const backend = resolveAssemblerBackend(launchArgs.assembler, asmPath);
 
     assembleIfRequested({
@@ -153,14 +156,9 @@ export function handleWarmRebuildRequest(
           resolveMappedPath: (file) =>
             resolveMappedPath(file, deps.sessionState.listingPath, deps.sessionState.sourceRoots),
           relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveExtraDebugMapPath: (p) =>
-            resolveExtraDebugMapPath(p, { resolveCacheDir, buildListingCacheKey }),
+          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, baseDir),
           resolveDebugMapPath: (args, dir, asm, listing) =>
-            resolveDebugMapPath(args as never, dir, asm, listing, {
-              resolveCacheDir,
-              buildListingCacheKey,
-              resolveRelative,
-            }),
+            resolveDebugMapPath(args as never, dir, asm, listing),
           resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
           logger: deps.logger,
         })

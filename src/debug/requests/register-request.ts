@@ -3,7 +3,6 @@
  */
 
 import type { SessionStateShape } from '../session/session-state';
-import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { Cpu } from '../../z80/types';
 
 type RegisterWriteArgs = {
@@ -166,18 +165,4 @@ export function handleRegisterWriteRequest(
   }
 
   return tryWriteRegisterByKey(sessionState, register, payload.value);
-}
-
-export function sendRegisterWriteResponse(
-  response: DebugProtocol.Response,
-  error: string | null,
-  sendResponse: (response: DebugProtocol.Response) => void,
-  sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void
-): boolean {
-  if (error !== null) {
-    sendErrorResponse(response, 1, error);
-    return true;
-  }
-  sendResponse(response);
-  return true;
 }

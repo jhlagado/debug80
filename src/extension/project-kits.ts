@@ -108,7 +108,7 @@ export type ProjectKitChoice = vscode.QuickPickItem & {
   kit: ProjectKit;
 };
 
-export function listProjectKits(preselectedPlatform?: string): ProjectKit[] {
+function listProjectKits(preselectedPlatform?: string): ProjectKit[] {
   const normalized = preselectedPlatform?.trim().toLowerCase();
   const kits = Object.values(PROJECT_KITS);
   if (normalized === 'simple' || normalized === 'tec1' || normalized === 'tec1g') {
@@ -143,7 +143,7 @@ export function getProjectKitChoices(preselectedPlatform?: string): ProjectKitCh
   }));
 }
 
-export function resolveProjectKitTemplatePath(
+function resolveProjectKitTemplatePath(
   kit: ProjectKit,
   language: StarterLanguage
 ): string {

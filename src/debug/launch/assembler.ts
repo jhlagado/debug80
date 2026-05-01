@@ -179,7 +179,7 @@ export function findAsm80Binary(startDir: string): string | undefined {
  *
  * @returns Path to bundled asm80, or undefined
  */
-export function resolveBundledAsm80(): string | undefined {
+function resolveBundledAsm80(): string | undefined {
   const tryResolve = (id: string): string | undefined => {
     try {
       return moduleRequire.resolve(id);

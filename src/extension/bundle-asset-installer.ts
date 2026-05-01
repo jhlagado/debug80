@@ -15,7 +15,7 @@ export type BundledAssetInstallPlan = {
   references: BundledAssetReference[];
 };
 
-export function normalizeBundledAssetInstallPlan(
+function normalizeBundledAssetInstallPlan(
   label: string,
   references: BundledAssetReference[]
 ): BundledAssetInstallPlan | undefined {

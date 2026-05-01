@@ -17,7 +17,7 @@ import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 /**
  * Length of cache key hash (hex digits).
  */
-export const CACHE_KEY_LENGTH = 12;
+const CACHE_KEY_LENGTH = 12;
 
 /**
  * Resolved artifact paths for a debug session.
@@ -81,6 +81,20 @@ export function resolveRelative(p: string, baseDir: string): string {
     return p;
   }
   return path.resolve(baseDir, p);
+}
+
+/**
+ * Normalizes a source path to an absolute path using the provided base directory.
+ *
+ * @param sourcePath - Source path to normalize
+ * @param baseDir - Base directory
+ * @returns Absolute normalized path
+ */
+export function normalizeSourcePath(sourcePath: string, baseDir: string): string {
+  if (path.isAbsolute(sourcePath)) {
+    return path.resolve(sourcePath);
+  }
+  return path.resolve(baseDir, sourcePath);
 }
 
 /**

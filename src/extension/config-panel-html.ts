@@ -50,7 +50,7 @@ export function createTec1gPlatformDefaults(): Record<string, unknown> {
   };
 }
 
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
