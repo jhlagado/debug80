@@ -149,37 +149,6 @@ export function extractKeyCode(value: unknown): number | undefined {
 }
 
 /**
- * Extracts matrix key payload from unknown value.
- */
-export function extractMatrixKeyPayload(value: unknown): MatrixKeyPayload | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  const payload = value as Partial<MatrixKeyPayload>;
-  if (typeof payload.key !== 'string' || typeof payload.pressed !== 'boolean') {
-    return undefined;
-  }
-  return {
-    key: payload.key,
-    pressed: payload.pressed,
-    ...(payload.shift !== undefined ? { shift: payload.shift === true } : {}),
-    ...(payload.ctrl !== undefined ? { ctrl: payload.ctrl === true } : {}),
-    ...(payload.alt !== undefined ? { alt: payload.alt === true } : {}),
-  };
-}
-
-/**
- * Extracts matrix mode enabled flag from unknown value.
- */
-export function extractMatrixModeEnabled(value: unknown): boolean | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  const payload = value as Partial<MatrixModePayload>;
-  return typeof payload.enabled === 'boolean' ? payload.enabled : undefined;
-}
-
-/**
  * Checks if value is a valid SpeedChangePayload.
  */
 export function isSpeedChangePayload(value: unknown): value is SpeedChangePayload {

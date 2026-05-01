@@ -16,8 +16,7 @@ import {
   runUntilStopAsync,
   type RuntimeControlContext,
 } from '../session/runtime-control';
-import { resolveMappedPath } from '../mapping/path-resolver';
-import { normalizeSourcePath } from '../launch-args';
+import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
 import { emitDebugSessionStatus } from '../session/session-status';
 import type { VariableService } from './variable-service';

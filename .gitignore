@@ -33,6 +33,8 @@ tests/**/*.map
 *.tmp
 *.temp
 .debug80/
+.fallow/
+.agent-test-cwd.txt
 
 # E2E fixtures
 !tests/e2e/fixtures/**/build/

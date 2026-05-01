@@ -14,8 +14,6 @@ import * as vscode from 'vscode';
 import { LaunchRequestArguments } from './session/types';
 import type { PlatformKind } from './launch/program-loader';
 import type { Tec1gPlatformConfig } from '../platforms/types';
-import { isPathWithin } from './mapping/path-utils';
-import { D8_DEBUG_MAP_EXT } from './mapping/d8-map-paths';
 
 /**
  * Shallow-merge nested platform blocks so a target can override e.g. `tec1g.appStart`
@@ -248,15 +246,6 @@ function resolveTec1gBaseForMerge(cfg: {
   return { ...inherited, ...(root ?? {}) };
 }
 
-export interface LaunchArgsHelpers {
-  resolveBaseDir: (args: LaunchRequestArguments) => string;
-  resolveAsmPath: (asm: string | undefined, baseDir: string) => string | undefined;
-  resolveRelative: (filePath: string, baseDir: string) => string;
-  resolveCacheDir: (baseDir: string) => string | undefined;
-  buildListingCacheKey: (listingPath: string) => string;
-  relativeIfPossible: (filePath: string, baseDir: string) => string;
-}
-
 export function normalizePlatformName(args: LaunchRequestArguments): PlatformKind {
   const raw = args.platform ?? 'simple';
   const name = raw.trim().toLowerCase();
@@ -268,7 +257,7 @@ export function normalizePlatformName(args: LaunchRequestArguments): PlatformKin
 
 export function populateFromConfig(
   args: LaunchRequestArguments,
-  helpers: Pick<LaunchArgsHelpers, 'resolveBaseDir'>
+  helpers: { resolveBaseDir: (args: LaunchRequestArguments) => string }
 ): LaunchRequestArguments {
   const configCandidates: string[] = [];
 
@@ -549,133 +538,4 @@ export function populateFromConfig(
   } catch {
     return args;
   }
-}
-
-export function resolveDebugMapPath(
-  args: LaunchRequestArguments,
-  baseDir: string,
-  asmPath: string | undefined,
-  listingPath: string,
-  helpers: Pick<LaunchArgsHelpers, 'resolveCacheDir' | 'buildListingCacheKey' | 'resolveRelative'>
-): string {
-  const artifactBase =
-    args.artifactBase ??
-    (asmPath === undefined
-      ? path.basename(listingPath, '.lst')
-      : path.basename(asmPath, path.extname(asmPath)));
-  const cacheDir = helpers.resolveCacheDir(baseDir);
-  if (cacheDir !== undefined && cacheDir.length > 0) {
-    const key = helpers.buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${artifactBase}.${key}${D8_DEBUG_MAP_EXT}`);
-  }
-  const outDirRaw = args.outputDir ?? path.dirname(listingPath);
-  const outDir = helpers.resolveRelative(outDirRaw, baseDir);
-  return path.join(outDir, `${artifactBase}${D8_DEBUG_MAP_EXT}`);
-}
-
-export function resolveExtraDebugMapPath(
-  listingPath: string,
-  helpers: Pick<LaunchArgsHelpers, 'resolveCacheDir' | 'buildListingCacheKey'>
-): string {
-  const base = path.basename(listingPath, path.extname(listingPath));
-  const cacheDir = helpers.resolveCacheDir(path.dirname(listingPath));
-  if (cacheDir !== undefined && cacheDir.length > 0) {
-    const key = helpers.buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${base}.${key}${D8_DEBUG_MAP_EXT}`);
-  }
-  const dir = path.dirname(listingPath);
-  return path.join(dir, `${base}${D8_DEBUG_MAP_EXT}`);
-}
-
-export function resolveRelative(filePath: string, baseDir: string): string {
-  if (path.isAbsolute(filePath)) {
-    return filePath;
-  }
-  return path.resolve(baseDir, filePath);
-}
-
-export function normalizeSourcePath(sourcePath: string, baseDir: string): string {
-  if (path.isAbsolute(sourcePath)) {
-    return path.resolve(sourcePath);
-  }
-  return path.resolve(baseDir, sourcePath);
-}
-
-export function resolveArtifacts(
-  args: LaunchRequestArguments,
-  baseDir: string,
-  helpers: Pick<LaunchArgsHelpers, 'resolveAsmPath' | 'resolveRelative'>
-): { hexPath: string; listingPath: string; asmPath?: string | undefined } {
-  const asmPath = helpers.resolveAsmPath(args.asm, baseDir);
-
-  let hexPath = args.hex;
-  let listingPath = args.listing;
-
-  const hexMissing = hexPath === undefined || hexPath === '';
-  const listingMissing = listingPath === undefined || listingPath === '';
-
-  if (hexMissing || listingMissing) {
-    if (asmPath === undefined || asmPath === '') {
-      throw new Error(
-        'Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.'
-      );
-    }
-    const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
-    const outDirRaw = args.outputDir ?? path.dirname(asmPath);
-    const outDir = helpers.resolveRelative(outDirRaw, baseDir);
-    hexPath = path.join(outDir, `${artifactBase}.hex`);
-    listingPath = path.join(outDir, `${artifactBase}.lst`);
-  }
-
-  if (
-    hexPath === undefined ||
-    listingPath === undefined ||
-    hexPath === '' ||
-    listingPath === ''
-  ) {
-    throw new Error('Z80 runtime requires resolvable HEX and LST paths.');
-  }
-
-  const hexAbs = helpers.resolveRelative(hexPath, baseDir);
-  const listingAbs = helpers.resolveRelative(listingPath, baseDir);
-
-  return { hexPath: hexAbs, listingPath: listingAbs, asmPath };
-}
-
-export function relativeIfPossible(filePath: string, baseDir: string): string {
-  const normalizedBase = path.resolve(baseDir);
-  const normalizedPath = path.resolve(filePath);
-  if (isPathWithin(normalizedPath, normalizedBase)) {
-    return path.relative(normalizedBase, normalizedPath) || normalizedPath;
-  }
-  return normalizedPath;
-}
-
-export function resolveAsmPath(asm: string | undefined, baseDir: string): string | undefined {
-  if (asm === undefined || asm === '') {
-    return undefined;
-  }
-  if (path.isAbsolute(asm)) {
-    return asm;
-  }
-  return path.resolve(baseDir, asm);
-}
-
-export function resolveBaseDir(args: LaunchRequestArguments): string {
-  const workspace = process.cwd();
-  if (args.projectConfig !== undefined && args.projectConfig !== '') {
-    const cfgPath = path.isAbsolute(args.projectConfig)
-      ? args.projectConfig
-      : path.join(workspace, args.projectConfig);
-
-    if (cfgPath.startsWith(workspace)) {
-      return workspace;
-    }
-    const cfgDir = path.dirname(cfgPath);
-    if (path.basename(cfgDir).toLowerCase() === '.vscode') {
-      return path.dirname(cfgDir);
-    }
-    return cfgDir;
-  }
-  return workspace;
 }

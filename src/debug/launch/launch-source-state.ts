@@ -11,9 +11,6 @@ import {
   resolveDebugMapPath,
   resolveExtraDebugMapPath,
   resolveRelative,
-  type LaunchArgsHelpers,
-} from '../launch-args';
-import {
   resolveListingSourcePath,
   resolveMappedPath,
 } from '../mapping/path-resolver';
@@ -43,7 +40,6 @@ export function buildLaunchSourceState(
   extraListings: string[],
   sourceState: SourceStateManager,
   sessionState: SessionStateShape,
-  launchArgsHelpers: LaunchArgsHelpers,
   logger: Logger
 ): LaunchSourceBuildResult {
   sessionState.listingPath = listingPath;
@@ -65,15 +61,9 @@ export function buildLaunchSourceState(
       resolveMappedPath: (file): string | undefined =>
         resolveMappedPath(file, sessionState.listingPath, sessionState.sourceRoots),
       relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-      resolveExtraDebugMapPath: (value) => resolveExtraDebugMapPath(value, launchArgsHelpers),
+      resolveExtraDebugMapPath: (value) => resolveExtraDebugMapPath(value, baseDir),
       resolveDebugMapPath: (launchArgs, dir, asm, listing) =>
-        resolveDebugMapPath(
-          launchArgs as LaunchRequestArguments,
-          dir,
-          asm,
-          listing,
-          launchArgsHelpers
-        ),
+        resolveDebugMapPath(launchArgs as LaunchRequestArguments, dir, asm, listing),
       resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
       logger,
     })

@@ -142,6 +142,41 @@ describe('PlatformViewProvider', () => {
     expect(webviewView.webview.html.length).toBeGreaterThan(0);
   });
 
+  it('reveals the current view using the current Debug80 view command', async () => {
+    const provider = new PlatformViewProvider(extensionRoot);
+    const show = vi.fn();
+    const webview = {
+      html: '',
+      options: {} as vscode.WebviewOptions,
+      onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
+      postMessage: vi.fn(),
+      cspSource: 'csp',
+      asWebviewUri: vi.fn((uri: unknown) => uri),
+    };
+    const webviewView = {
+      webview,
+      visible: true,
+      show,
+      onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
+      onDidChangeVisibility: vi.fn(() => ({ dispose: vi.fn() })),
+    } as unknown as vscode.WebviewView;
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    provider.reveal(true);
+    await flushPromises();
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.platformView.focus');
+    expect(show).toHaveBeenCalledWith(false);
+  });
+
   it('does not clear Tec1 HTML when selecting the same platform again', async () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();

@@ -42,7 +42,7 @@ export function buildSymbolIndex(options: {
   };
 }
 
-export function extractAnchorsFromListing(
+function extractAnchorsFromListing(
   listingContent: string,
   defaultFile: string | undefined
 ): SourceMapAnchor[] {

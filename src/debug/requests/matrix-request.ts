@@ -18,7 +18,7 @@ export type MatrixRuntime = {
   applyMatrixKey: (row: number, col: number, pressed: boolean) => void;
 };
 
-export function parseMatrixModeEnabled(args: unknown): boolean | undefined {
+function parseMatrixModeEnabled(args: unknown): boolean | undefined {
   if (typeof args !== 'object' || args === null) {
     return undefined;
   }

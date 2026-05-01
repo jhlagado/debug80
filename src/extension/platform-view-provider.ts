@@ -111,11 +111,25 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   // -------------------------------------------------------------------------
 
   reveal(focus = false): void {
-    void vscode.commands.executeCommand('workbench.view.extension.debug80').then(() => {
-      if (this.view?.show) {
-        this.view.show(!focus);
+    const focusCommand = `${PlatformViewProvider.viewType}.focus`;
+    const fallbackCommand = 'workbench.view.debug';
+    const command = focus ? focusCommand : fallbackCommand;
+
+    void vscode.commands.executeCommand(command).then(
+      () => {
+        this.view?.show?.(!focus);
+      },
+      () => {
+        void vscode.commands.executeCommand(fallbackCommand).then(
+          () => {
+            this.view?.show?.(!focus);
+          },
+          () => {
+            this.view?.show?.(!focus);
+          }
+        );
       }
-    });
+    );
   }
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {

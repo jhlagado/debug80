@@ -120,7 +120,7 @@ export function createRuntimeControlContext(
   };
 }
 
-export function createRuntimeControlCapabilities(options: {
+function createRuntimeControlCapabilities(options: {
   activePlatform: string;
   tec1Runtime: Tec1Runtime | undefined;
   tec1gRuntime: Tec1gRuntime | undefined;

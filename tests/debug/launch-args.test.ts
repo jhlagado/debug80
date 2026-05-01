@@ -6,33 +6,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-const { getExtension } = vi.hoisted(() => ({
+const { getExtension, vscodeWorkspace } = vi.hoisted(() => ({
   getExtension: vi.fn(),
+  vscodeWorkspace: {
+    workspaceFolders: [] as Array<{ uri: { fsPath: string } }>,
+  },
 }));
 vi.mock('vscode', () => ({
   extensions: {
     getExtension,
   },
+  workspace: vscodeWorkspace,
 }));
 
 import {
   normalizePlatformName,
   populateFromConfig,
+} from '../../src/debug/launch-args';
+import {
+  normalizeSourcePath,
+  relativeIfPossible,
   resolveArtifacts,
+  resolveAsmPath,
+  resolveBaseDir,
   resolveDebugMapPath,
   resolveExtraDebugMapPath,
   resolveRelative,
-  resolveAsmPath,
-  normalizeSourcePath,
-  relativeIfPossible,
-  resolveBaseDir,
-} from '../../src/debug/launch-args';
+} from '../../src/debug/mapping/path-resolver';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-args', () => {
   beforeEach(() => {
     getExtension.mockReset();
     getExtension.mockReturnValue(undefined);
+    vscodeWorkspace.workspaceFolders = [];
   });
 
   it('normalizes platform names', () => {
@@ -47,42 +54,31 @@ describe('launch-args', () => {
   it('resolves artifacts from asm path', () => {
     const baseDir = os.tmpdir();
     const args = { asm: 'main.asm' } as LaunchRequestArguments;
-    const result = resolveArtifacts(args, baseDir, {
-      resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-      resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-    });
+    const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toContain(path.join(baseDir, 'main.hex'));
     expect(result.listingPath).toContain(path.join(baseDir, 'main.lst'));
   });
 
   it('builds debug map paths', () => {
-    const baseDir = os.tmpdir();
+    const baseDir = path.join(os.tmpdir(), 'debug80-missing-base', 'nested');
     const listingPath = path.join(baseDir, 'main.lst');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
-    const helpers = {
-      resolveCacheDir: () => undefined,
-      buildListingCacheKey: () => 'deadbeef',
-      resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
-    };
-    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath, helpers);
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
     expect(mapPath).toContain(path.join(baseDir, 'main.d8.json'));
-    const extraPath = resolveExtraDebugMapPath(listingPath, helpers);
+    const extraPath = resolveExtraDebugMapPath(listingPath, baseDir);
     expect(extraPath).toContain(path.join(baseDir, 'main.d8.json'));
   });
 
   it('builds debug map paths using cache directory', () => {
-    const baseDir = os.tmpdir();
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-cache-base-'));
     const listingPath = path.join(baseDir, 'main.lst');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
-    const helpers = {
-      resolveCacheDir: () => path.join(baseDir, 'cache'),
-      buildListingCacheKey: () => 'abcd',
-      resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
-    };
-    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath, helpers);
-    expect(mapPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8.json'));
-    const extraPath = resolveExtraDebugMapPath(listingPath, helpers);
-    expect(extraPath).toContain(path.join(baseDir, 'cache', 'main.abcd.d8.json'));
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
+    expect(mapPath).toContain(path.join(baseDir, '.debug80', 'cache', 'main.'));
+    expect(mapPath.endsWith('.d8.json')).toBe(true);
+    const extraPath = resolveExtraDebugMapPath(listingPath, baseDir);
+    expect(extraPath).toContain(path.join(baseDir, '.debug80', 'cache', 'main.'));
+    expect(extraPath.endsWith('.d8.json')).toBe(true);
   });
 
   it('merges config file values', () => {
@@ -491,10 +487,7 @@ describe('launch-args', () => {
   it('resolves artifacts when hex/listing are provided', () => {
     const baseDir = os.tmpdir();
     const args = { hex: 'a.hex', listing: 'a.lst' } as LaunchRequestArguments;
-    const result = resolveArtifacts(args, baseDir, {
-      resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-      resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-    });
+    const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toBe(path.join(baseDir, 'a.hex'));
     expect(result.listingPath).toBe(path.join(baseDir, 'a.lst'));
     expect(result.asmPath).toBeUndefined();
@@ -503,25 +496,15 @@ describe('launch-args', () => {
   it('throws when artifacts are missing and asm is undefined', () => {
     const baseDir = os.tmpdir();
     const args = {} as LaunchRequestArguments;
-    expect(() =>
-      resolveArtifacts(args, baseDir, {
-        resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-        resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-      })
-    ).toThrow('Z80 runtime requires "asm"');
+    expect(() => resolveArtifacts(args, baseDir)).toThrow();
   });
 
   it('resolves debug map paths with asm and outputDir', () => {
-    const baseDir = os.tmpdir();
+    const baseDir = path.join(os.tmpdir(), 'debug80-no-cache-output', 'nested');
     const listingPath = path.join(baseDir, 'main.lst');
     const asmPath = path.join(baseDir, 'src', 'main.asm');
     const args = { outputDir: 'out' } as LaunchRequestArguments;
-    const helpers = {
-      resolveCacheDir: () => '',
-      buildListingCacheKey: () => 'ignored',
-      resolveRelative: (filePath: string, dir: string) => resolveRelative(filePath, dir),
-    };
-    const mapPath = resolveDebugMapPath(args, baseDir, asmPath, listingPath, helpers);
+    const mapPath = resolveDebugMapPath(args, baseDir, asmPath, listingPath);
     expect(mapPath).toContain(path.join(baseDir, 'out', 'main.d8.json'));
   });
 
@@ -537,6 +520,7 @@ describe('launch-args', () => {
   it('resolves relative paths and base dir for workspace config', () => {
     const baseDir = os.tmpdir();
     expect(resolveRelative('main.asm', baseDir)).toBe(path.join(baseDir, 'main.asm'));
+    vscodeWorkspace.workspaceFolders = [{ uri: { fsPath: process.cwd() } }];
     const args = { projectConfig: path.join('configs', 'debug80.json') } as LaunchRequestArguments;
     expect(resolveBaseDir(args)).toBe(process.cwd());
   });

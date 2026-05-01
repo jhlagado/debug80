@@ -10,13 +10,10 @@ import type { SourceStateManager } from '../mapping/source-state-manager';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { handleMatrixKeyRequest, handleMatrixModeRequest } from '../requests/matrix-request';
 import {
-  relativeIfPossible,
   resolveArtifacts,
-  resolveAsmPath,
   resolveRelative,
-  type LaunchArgsHelpers,
-} from '../launch-args';
-import { buildListingCacheKey, resolveBaseDir, resolveCacheDir } from '../mapping/path-resolver';
+  resolveBaseDir,
+} from '../mapping/path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
 import { resolveAssemblerBackend } from './assembler-backend';
@@ -39,16 +36,6 @@ import type { Z80Runtime } from '../../z80/runtime';
 import type { Tec1Runtime } from '../../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
 import type { ResolvedPlatformProvider } from '../../platforms/provider';
-
-
-const LAUNCH_ARGS_HELPERS: LaunchArgsHelpers = {
-  resolveBaseDir,
-  resolveAsmPath,
-  resolveRelative,
-  resolveCacheDir,
-  buildListingCacheKey,
-  relativeIfPossible,
-};
 
 export class MissingLaunchArtifactsError extends Error {
   constructor(
@@ -229,10 +216,7 @@ export async function buildLaunchSession(
 
   const baseDir = resolveBaseDir(merged);
   context.sessionState.baseDir = baseDir;
-  const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir, {
-    resolveAsmPath: (asm, dir) => resolveAsmPath(asm, dir),
-    resolveRelative: (filePath, dir) => resolveRelative(filePath, dir),
-  });
+  const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 
   assembleIfRequested({
@@ -274,7 +258,6 @@ export async function buildLaunchSession(
     extraListings,
     context.sourceState,
     context.sessionState,
-    LAUNCH_ARGS_HELPERS,
     context.logger
   );
 
