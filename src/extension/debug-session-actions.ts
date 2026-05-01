@@ -87,7 +87,7 @@ export function resolveProjectPlatformForFolder(folder: vscode.WorkspaceFolder):
   return resolveProjectPlatform(readProjectConfig(projectConfig));
 }
 
-export function projectConfigFromSession(session: vscode.DebugSession): string | undefined {
+function projectConfigFromSession(session: vscode.DebugSession): string | undefined {
   const configuration = session.configuration as { projectConfig?: unknown } | undefined;
   const projectConfigRaw = configuration?.projectConfig;
   if (typeof projectConfigRaw !== 'string' || projectConfigRaw.trim() === '') {

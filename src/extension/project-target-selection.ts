@@ -69,7 +69,7 @@ type LoadedTargetChoices = {
   defaultTarget?: string;
 };
 
-export function getStoredTargetName(
+function getStoredTargetName(
   workspaceState: vscode.Memento,
   projectConfigPath: string
 ): string | undefined {
