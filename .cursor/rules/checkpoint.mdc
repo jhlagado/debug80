@@ -1,0 +1,20 @@
+---
+description: When the user says "checkpoint", commit all changes and push to remote as a recovery point.
+alwaysApply: true
+---
+
+# Checkpoint workflow
+
+When the user says **checkpoint** (or clearly means the same intent, e.g. "save a checkpoint", "checkpoint this"), treat it as:
+
+1. **Meaning:** The current state is believed good; everything should be committed and **pushed** so it can be returned to later (`git revert`, reset, or checkout that commit).
+2. **Scope:** The **git repo(s)** tied to the active workspace (usually the workspace root). If the session clearly spans another repo (path open, recent edits there), include that repo too.
+3. **Steps:**
+   - `git status` (and briefly report what will be included).
+   - Stage all intended changes (`git add -A` or equivalent for new + modified tracked files — follow project norms if `.gitignore` excludes artifacts).
+   - **Commit:** If the user gave a short note with "checkpoint", use it in the subject, e.g. `checkpoint: <note>`. Otherwise `checkpoint:` plus a minimal summary of changed areas.
+   - **Push:** `git push` to the **tracking upstream** for the **current branch** (e.g. `origin main`). Do not leave the branch unpushed while claiming the checkpoint is done.
+4. **Hygiene:** Run the project's usual checks if they are fast and expected before push (tests, lint). If hooks run on commit, keep them unless the user overrides.
+5. **Optional:** If they want named recovery points, offer `git tag checkpoint-YYYY-MM-DD` (or with their note); only create tags when asked.
+
+Execute these steps yourself; do not hand the user a checklist instead of running git commands when the environment allows.
