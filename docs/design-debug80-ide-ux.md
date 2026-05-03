@@ -182,6 +182,20 @@ These questions are intentionally left open for later additions:
 - Should session status, project selectors, and restart controls stay pinned above all accordion sections?
 - At what point would a section deserve promotion into its own first-class VS Code debug view?
 
+## Restart Semantics Note
+
+Restart is the natural user action for forcing Debug80 to rebuild or redraw runtime-visible state.
+That makes it the right place to apply configuration changes that are not meant to hot-apply into a
+running emulation session.
+
+One explicit expectation should be preserved if this area is reworked:
+
+- when the platform remains the same across restart, restart should respect the current muted state
+
+In other words, restart should rebuild or relaunch the emulation session without unexpectedly
+unmuting the platform UI. Audio mute is user intent, not transient runtime noise, and should survive
+same-platform restarts unless the user explicitly changes it.
+
 ## Investigation: Project Picker State Loss
 
 There is a recurring UI state bug in the current project header.
@@ -251,3 +265,4 @@ Current design decision:
 ## Change Log
 
 - 2026-04-30: Initial draft created. Captures the `multiple debug views` alternative, the `single-view accordion` alternative, and the current preference for the accordion approach.
+- 2026-05-02: Added notes on restart semantics and mute-state persistence across same-platform restarts.
