@@ -8,11 +8,38 @@ and terminal output routing for the simple platform.
 
 These behaviors are intentionally preserved as implementation details that shape perceived UI correctness:
 
+- TEC seven-segment displays favor stable latched digit state over literal blanking-phase rendering.
 - TEC-1G matrix updates favor stable full-frame commits over per-write redraws.
 - Sidebar updates use session affinity guards to avoid stale cross-session updates.
 - Webview rehydration is message-driven and expects full-state replay after HTML replacement.
 - Serial send-file pacing is deliberately slow enough for monitor firmware input loops.
 - Simple platform terminal output is routed to the sidebar, not a VS Code terminal panel.
+
+## Seven-segment persistence model
+
+Sources: `src/platforms/tec-common/index.ts`, `src/platforms/tec1/runtime.ts`,
+`src/platforms/tec1g/io-handlers.ts`, `webview/common/seven-seg-display.ts`.
+
+The TEC and TEC-1G monitor ROMs scan the seven-segment display as multiplexed hardware:
+
+1. write segment data to the segment latch,
+2. enable one digit with a one-hot mask,
+3. delay briefly,
+4. blank the digits,
+5. move to the next digit.
+
+On real hardware this produces visible persistence through duty-cycle scanning. In the webview,
+rendering that scan literally would create needless flicker and dimness, so Debug80 does not model
+the blanking phase as a visible state.
+
+Instead, `updateDisplayDigits()` treats the active digit mask as a "write these digits now" signal:
+
+- every selected digit is updated with the current segment latch value,
+- non-selected digits retain their last latched segment value,
+- a zero digit mask does not clear the visible display.
+
+The result is a stable six-digit logical display buffer whose perceived output matches the intended
+monitor/UI result without simulating one-sixth duty-cycle brightness in the browser.
 
 ## TEC-1G matrix staging and idle flush
 
@@ -106,6 +133,7 @@ Note: TEC-1 and TEC-1G do not use `debug80/terminalOutput`. They emit `debug80/t
 
 When changing any of these areas, verify all of the following:
 
+- seven-segment updates still behave like stable latched digits rather than literal blanking pulses,
 - matrix updates still commit on full row coverage and idle timeout,
 - session-id filtering remains in front of state mutation,
 - rehydration still replays a full update snapshot before tab-specific behavior,
