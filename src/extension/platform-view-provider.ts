@@ -71,6 +71,7 @@ const MEMORY_REFRESH_INTERVAL_MS = 500;
 interface PerPlatformState {
   activeTab: PanelTab;
   uiState: unknown;
+  hasPostedRuntimeUpdate: boolean;
   serialBuffer: SerialBuffer;
   memoryViews: MemoryViewState;
   refreshController: RefreshController;
@@ -207,6 +208,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
+    bundle.state.hasPostedRuntimeUpdate = true;
     this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
   }
 
@@ -218,7 +220,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (bundle === undefined) {
       return;
     }
-    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
+    const forceFullUpdate = !bundle.state.hasPostedRuntimeUpdate;
+    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload, {
+      forceFullUpdate,
+    });
+    bundle.state.hasPostedRuntimeUpdate = true;
     this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
   }
 
@@ -270,6 +276,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       if (modules !== undefined) {
         modules.resetUiState(state.uiState);
         state.memoryViews = modules.createMemoryViewState();
+        state.hasPostedRuntimeUpdate = false;
       }
       clearSerialBuffer(state.serialBuffer);
     }
@@ -466,6 +473,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     const state: PerPlatformState = {
       activeTab: 'ui' as PanelTab,
       uiState: modules.createUiState(),
+      hasPostedRuntimeUpdate: false,
       serialBuffer: createSerialBuffer(),
       memoryViews: modules.createMemoryViewState(),
       // refreshController is created separately so its snapshotPayload

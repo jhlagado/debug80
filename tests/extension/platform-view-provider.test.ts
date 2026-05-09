@@ -915,6 +915,48 @@ describe('PlatformViewProvider', () => {
     expect(update?.speakerHz).toBe(payload.speakerHz);
   });
 
+  it('posts only changed Tec1g display fields after the first full update', async () => {
+    const provider = new PlatformViewProvider(extensionRoot);
+    const webviewView = createWebviewView();
+    await provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    const firstPayload: Tec1gUpdatePayload = {
+      digits: [0, 0, 0, 0, 0, 0],
+      matrix: [0, 0, 0, 0, 0, 0, 0, 0],
+      glcd: Array.from({ length: 1024 }, () => 0),
+      speaker: 0,
+      speedMode: 'fast',
+      lcd: Array.from({ length: 80 }, () => 0x20),
+      matrixGreen: Array.from({ length: 8 }, () => 0),
+      matrixBlue: Array.from({ length: 8 }, () => 0),
+    };
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.updateTec1g(firstPayload);
+    provider.updateTec1g({
+      ...firstPayload,
+      matrixGreen: [0x11, 0, 0, 0, 0, 0, 0, 0],
+    });
+
+    const updateCalls = getPostMessageCalls(webviewView).filter(([msg]) => msg.type === 'update');
+    expect(updateCalls).toHaveLength(2);
+    expect(updateCalls[0]?.[0].glcd).toEqual(firstPayload.glcd);
+    expect(updateCalls[1]?.[0]).toMatchObject({
+      type: 'update',
+      matrixGreen: [0x11, 0, 0, 0, 0, 0, 0, 0],
+    });
+    expect(updateCalls[1]?.[0]).not.toHaveProperty('glcd');
+    expect(updateCalls[1]?.[0]).not.toHaveProperty('lcd');
+    expect(updateCalls[1]?.[0]).not.toHaveProperty('matrix');
+  });
+
   it('routes configureProject messages as a no-op (Config tab removed)', async () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),
