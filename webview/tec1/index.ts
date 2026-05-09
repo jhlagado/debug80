@@ -236,7 +236,7 @@ memoryPanelController = new MemoryPanel({
   statusEl,
   views,
   getRowSize: () => panelLayout.getMemoryRowSize(),
-  isActive: () => panelLayout.isCpuOpen(),
+  isActive: () => panelLayout.isMemoryOpen(),
 });
 memoryPanelController.wire();
 const serialUi = wireSerialUi(vscode);
@@ -263,7 +263,7 @@ window.addEventListener('message', event => {
       uiRevision = event.data.uiRevision;
     }
     applyUpdate(event.data);
-    if (panelLayout.isCpuOpen()) {
+    if (panelLayout.isMemoryOpen()) {
       memoryPanelController?.requestSnapshot();
     }
     return;

@@ -92,8 +92,7 @@ export function createAccordionLayoutController(
     openState.memory = true;
   }
 
-  let providerTab: ProviderPanelTab =
-    openState.registers || openState.memory ? 'memory' : 'ui';
+  let providerTab: ProviderPanelTab = openState.memory ? 'memory' : 'ui';
   let memoryRowSize = 16;
   let resizeTimer: number | null = null;
 
@@ -117,7 +116,7 @@ export function createAccordionLayoutController(
   }
 
   function getNextProviderTab(): ProviderPanelTab {
-    return openState.registers || openState.memory ? 'memory' : 'ui';
+    return openState.memory ? 'memory' : 'ui';
   }
 
   function syncProviderTab(notify: boolean): void {
@@ -150,9 +149,6 @@ export function createAccordionLayoutController(
     syncProviderTab(notify);
     if (panel === 'memory' && open) {
       updateMemoryLayout(true);
-    }
-    if (panel === 'registers' && open) {
-      options.getMemoryPanelController()?.requestSnapshot();
     }
   }
 

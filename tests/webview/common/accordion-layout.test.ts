@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createAccordionLayoutController } from '../../../webview/common/accordion-layout';
 import type { MemoryPanel } from '../../../webview/common/memory-panel';
 import type { VscodeApi } from '../../../webview/common/vscode';
@@ -50,7 +50,7 @@ describe('accordion layout controller', () => {
     expect(controller.isMachineOpen()).toBe(true);
     expect(controller.isCpuOpen()).toBe(true);
     expect(controller.isMemoryOpen()).toBe(false);
-    expect(controller.getProviderTab()).toBe('memory');
+    expect(controller.getProviderTab()).toBe('ui');
 
     registersButton.click();
     expect(controller.isCpuOpen()).toBe(false);
@@ -99,5 +99,46 @@ describe('accordion layout controller', () => {
     expect(controller.isMemoryOpen()).toBe(true);
     expect(memoryContent.hidden).toBe(false);
     expect(controller.getProviderTab()).toBe('memory');
+  });
+
+  it('does not request memory snapshots when only registers are opened', () => {
+    const messages: PostedMessage[] = [];
+    const memoryPanel = document.createElement('div');
+    const requestSnapshot = vi.fn();
+    const memoryController = { requestSnapshot } as unknown as MemoryPanel;
+    const registersButton = button('registers');
+    const memoryButton = button('memory');
+    const vscode = createVscodeMock(messages, {
+      debug80Accordion: {
+        machine: true,
+        registers: false,
+        memory: false,
+      },
+    });
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: [button('machine'), registersButton, memoryButton],
+      panels: {
+        machine: document.createElement('div'),
+        registers: document.createElement('div'),
+        memory: document.createElement('div'),
+      },
+      memoryPanel,
+      defaultTab: 'ui',
+      getMemoryPanelController: () => memoryController,
+    });
+    controller.wireButtons();
+
+    registersButton.click();
+    expect(controller.isCpuOpen()).toBe(true);
+    expect(controller.isMemoryOpen()).toBe(false);
+    expect(controller.getProviderTab()).toBe('ui');
+    expect(requestSnapshot).not.toHaveBeenCalled();
+
+    memoryButton.click();
+    expect(controller.isMemoryOpen()).toBe(true);
+    expect(controller.getProviderTab()).toBe('memory');
+    expect(requestSnapshot).toHaveBeenCalledTimes(1);
   });
 });

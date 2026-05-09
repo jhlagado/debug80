@@ -192,7 +192,7 @@ memoryPanelController = new MemoryPanel({
   statusEl,
   views,
   getRowSize: () => panelLayout.getMemoryRowSize(),
-  isActive: () => panelLayout.isCpuOpen(),
+  isActive: () => panelLayout.isMemoryOpen(),
 });
 memoryPanelController.wire();
 
@@ -251,7 +251,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       uiRevision = message.uiRevision;
     }
     applyUpdateFromPayload(message);
-    if (panelLayout.isCpuOpen()) {
+    if (panelLayout.isMemoryOpen()) {
       memoryPanelController?.requestSnapshot();
     }
     return;
