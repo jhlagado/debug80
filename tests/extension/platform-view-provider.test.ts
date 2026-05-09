@@ -384,6 +384,41 @@ describe('PlatformViewProvider', () => {
     }
   });
 
+  it('rehydrates the selected workspace from workspaceState for multi-root projectStatus', () => {
+    workspaceFolders = [
+      { name: 'alpha', uri: { fsPath: '/workspace/alpha' } },
+      { name: 'beta', uri: { fsPath: '/workspace/beta' } },
+    ];
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn((key: string) =>
+        key === 'debug80.selectedWorkspace' ? '/workspace/beta' : undefined
+      ),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    expect(statusMessages.at(-1)).toMatchObject({
+      rootName: 'beta',
+      rootPath: '/workspace/beta',
+      projectState: 'initialized',
+      hasProject: true,
+      targetName: 'app',
+      entrySource: 'src/main.asm',
+    });
+  });
+
   it('ignores shared platform change messages once the project is initialized', async () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),

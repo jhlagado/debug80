@@ -121,7 +121,7 @@ panelUi.addEventListener('mousedown', (event) => {
   keypadEl.focus();
 });
 
-const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
+const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });
 audio.wireMuteClick();
 
 addWorkspaceFolderButton?.addEventListener('click', () => {

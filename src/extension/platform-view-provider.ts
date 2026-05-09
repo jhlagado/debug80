@@ -51,6 +51,7 @@ import {
   listPlatformUis,
   type PlatformUiModules,
 } from './platform-view-manifest';
+import { resolveRememberedWorkspaceFolder } from './workspace-selection';
 import type {
   PlatformId,
   PlatformViewInboundMessage,
@@ -544,7 +545,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Applies the shared platform selector only for uninitialized workspaces. */
   private handleSaveProjectConfig(platform: string): void {
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       void vscode.window.showErrorMessage('Debug80: No workspace folder selected.');
       return;
@@ -602,9 +603,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       path: folder.uri.fsPath,
       hasProject: findProjectConfigPath(folder) !== undefined,
     }));
-    const folder =
-      this.selectedWorkspace ??
-      (workspaceFolders.length === 1 ? workspaceFolders[0] : undefined);
+    const folder = this.resolveSelectedWorkspace(workspaceFolders);
     if (folder === undefined) {
       return {
         roots,
@@ -667,7 +666,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.workspaceState === undefined) {
       return undefined;
     }
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       return undefined;
     }
@@ -684,7 +683,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.workspaceState === undefined) {
       return;
     }
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       return;
     }
@@ -700,6 +699,21 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     };
     byTarget[resolved] = { ...visibility };
     void this.workspaceState.update(TEC1G_UI_VISIBILITY_MEMENTO_KEY, byTarget);
+  }
+
+  private resolveSelectedWorkspace(
+    folders: readonly vscode.WorkspaceFolder[] = vscode.workspace.workspaceFolders ?? []
+  ): vscode.WorkspaceFolder | undefined {
+    if (
+      this.selectedWorkspace !== undefined &&
+      folders.some((folder) => folder.uri.fsPath === this.selectedWorkspace?.uri.fsPath)
+    ) {
+      return this.selectedWorkspace;
+    }
+    return (
+      resolveRememberedWorkspaceFolder(this.workspaceState, folders) ??
+      (folders.length === 1 ? folders[0] : undefined)
+    );
   }
 
   private buildSnapshotPayload(memoryViews: MemoryViewState): SnapshotRequest {

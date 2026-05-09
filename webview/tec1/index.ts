@@ -75,7 +75,7 @@ let speedMode = 'fast';
 let uiRevision = 0;
 let projectIsInitialized = false;
 
-const audio = createAudioController(muteEl);
+const audio = createAudioController(muteEl, vscode);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'openWorkspaceFolder' });
