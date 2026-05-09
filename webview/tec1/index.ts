@@ -38,6 +38,9 @@ const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
 const muteEl = document.getElementById('mute') as HTMLElement;
 const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
+const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
+const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
@@ -60,9 +63,9 @@ const panelLayout = createAccordionLayoutController({
   defaultTab: DEFAULT_TAB,
   memoryPanel,
   panels: {
-    machine: panelUi,
-    registers: panelRegisters,
-    memory: panelMemory,
+    machine: accordionMachine,
+    registers: accordionRegisters,
+    memory: accordionMemory,
   },
   getMemoryPanelController: () => memoryPanelController,
 });

@@ -51,6 +51,9 @@ const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
 const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
+const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
+const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
@@ -80,9 +83,9 @@ const panelLayout = createAccordionLayoutController({
   memoryPanel: memoryPanelEl,
   defaultTab: DEFAULT_TAB,
   panels: {
-    machine: panelUi,
-    registers: panelRegisters,
-    memory: panelMemory,
+    machine: accordionMachine,
+    registers: accordionRegisters,
+    memory: accordionMemory,
   },
   getMemoryPanelController: () => memoryPanelController,
 });
