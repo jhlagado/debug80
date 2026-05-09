@@ -227,8 +227,8 @@ export class MemoryPanel {
       { label: 'IY', register: 'iy', value: formatRegisterHex((data.iy as number) || 0, 4), width: 4, editable: true },
       { label: 'AF', register: 'af', value: formatRegisterHex((data.af as number) || 0, 4), width: 4, editable: true },
       { label: "AF'", register: 'afp', value: formatRegisterHex((data.afp as number) || 0, 4), width: 4, editable: true },
-      { label: 'F', value: (data.flags as string) || '--', flags: true },
-      { label: "F'", value: (data.flagsPrime as string) || '--', flags: true },
+      { label: 'Flags', register: 'flags', value: (data.flags as string) || '--------', editable: true, flags: true },
+      { label: "Flags'", register: 'flagsp', value: (data.flagsPrime as string) || '--------', editable: true, flags: true },
       { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
       { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
     ];
@@ -240,17 +240,21 @@ export class MemoryPanel {
       label.className = 'register-label';
       label.textContent = item.label;
       row.appendChild(label);
-      if (item.editable && item.register !== undefined && item.width !== undefined) {
+      if (item.editable && item.register !== undefined) {
         const input = document.createElement('input');
-        input.className = 'register-input';
+        input.className = item.flags ? 'register-input register-flags' : 'register-input';
         input.type = 'text';
         input.value = item.value;
         input.spellcheck = false;
         input.autocomplete = 'off';
         input.inputMode = 'text';
-        input.maxLength = item.width;
+        if (item.width !== undefined) {
+          input.maxLength = item.width;
+        }
         input.dataset.register = item.register;
-        input.dataset.width = String(item.width);
+        if (item.width !== undefined) {
+          input.dataset.width = String(item.width);
+        }
         input.addEventListener('keydown', (event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
@@ -285,7 +289,9 @@ export class MemoryPanel {
   private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
     const register = input.dataset.register;
     const width = Number.parseInt(input.dataset.width ?? '', 10);
-    const value = normalizeHexInput(input.value, width);
+    const value = register === 'flags' || register === 'flagsp'
+      ? input.value.trim()
+      : normalizeHexInput(input.value, width);
     if (!register || value === null) {
       input.value = previousValue;
       if (this.options.statusEl) {

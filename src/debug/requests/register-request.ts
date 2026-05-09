@@ -19,6 +19,8 @@ const WRITABLE_REGISTERS = new Set([
   'afp',
   'bcp',
   'dep',
+  'flagsp',
+  'flags',
   'hlp',
   'ix',
   'iy',
@@ -60,6 +62,9 @@ export function writableRegisterKeyFromVariableName(variableName: string): strin
   const base = prime ? lower.slice(0, -1) : lower;
 
   if (prime) {
+    if (base === 'flags') {
+      return 'flagsp';
+    }
     if (base === 'af') {
       return 'afp';
     }
@@ -75,6 +80,9 @@ export function writableRegisterKeyFromVariableName(variableName: string): strin
     return null;
   }
 
+  if (base === 'flags') {
+    return 'flags';
+  }
   if (base === 'af') {
     return 'af';
   }
@@ -118,6 +126,16 @@ export function tryWriteRegisterByKey(
   }
 
   const parsed = parseHexValue(value);
+  if (registerKey === 'flags' || registerKey === 'flagsp') {
+    if (typeof value !== 'string') {
+      return 'Debug80: Invalid flag value.';
+    }
+    applyFlagString(
+      registerKey === 'flagsp' ? sessionState.runtime.getRegisters().flags_prime : sessionState.runtime.getRegisters().flags,
+      value
+    );
+    return null;
+  }
   if (parsed === null) {
     return 'Debug80: Invalid hex value.';
   }
@@ -125,6 +143,27 @@ export function tryWriteRegisterByKey(
   const cpu = sessionState.runtime.getRegisters();
   setRegisterPair(cpu, registerKey, parsed);
   return null;
+}
+
+function applyFlagString(flags: Cpu['flags'], value: string): void {
+  for (const ch of value) {
+    const upper = ch.toUpperCase();
+    if (!isFlagName(upper)) {
+      continue;
+    }
+    flags[upper] = ch === upper ? 1 : 0;
+  }
+}
+
+function isFlagName(value: string): value is keyof Cpu['flags'] {
+  return value === 'S'
+    || value === 'Z'
+    || value === 'Y'
+    || value === 'H'
+    || value === 'X'
+    || value === 'P'
+    || value === 'N'
+    || value === 'C';
 }
 
 function setRegisterPair(cpu: Cpu, name: string, value: number): void {

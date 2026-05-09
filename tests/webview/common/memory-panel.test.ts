@@ -186,4 +186,37 @@ describe('shared memory panel', () => {
     expect(af?.closest('.register-item')?.classList.contains('editable')).toBe(true);
     expect(afp?.closest('.register-item')?.classList.contains('editable')).toBe(true);
   });
+
+  it('renders Flags and alternate Flags as editable register inputs', () => {
+    const postMessage = vi.fn();
+    const { panel, registerStrip } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      registers: {
+        flags: 'SzYhXpNc',
+        flagsPrime: 'sZyHxPnC',
+      },
+    });
+
+    const flags = registerStrip.querySelector<HTMLInputElement>('input[data-register="flags"]');
+    const flagsPrime = registerStrip.querySelector<HTMLInputElement>('input[data-register="flagsp"]');
+    expect(flags).not.toBeNull();
+    expect(flagsPrime).not.toBeNull();
+    expect(flags?.value).toBe('SzYhXpNc');
+    expect(flagsPrime?.value).toBe('sZyHxPnC');
+
+    flags!.value = 'CSz';
+    flags!.dispatchEvent(new Event('blur'));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'registerEdit',
+      register: 'flags',
+      value: 'CSz',
+    });
+  });
 });
