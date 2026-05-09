@@ -25,6 +25,7 @@ type SnapshotView = {
   address?: number;
   start: number;
   bytes: number[];
+  writable?: boolean[];
   focus?: number;
   symbol?: string;
   symbolOffset?: number;
@@ -49,10 +50,12 @@ export class MemoryPanel {
   private readonly pickerMap = new Map<HTMLSelectElement, HTMLInputElement>();
   private symbolsKey = '';
   private editingEnabled = false;
+  private allowReadOnlyWrites = false;
 
   constructor(private readonly options: MemoryPanelOptions) {}
 
   wire(): void {
+    this.installReadOnlyToggle();
     this.options.views.forEach((entry) => {
       this.createAnchorPicker(entry);
       entry.view?.addEventListener('change', () => {
@@ -426,7 +429,16 @@ export class MemoryPanel {
       }
       target.addr.textContent = formatHex(entry.address ?? 0, 4);
       if (!this.isEditingMemoryDump(target.dump)) {
-        renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize, this.editingEnabled);
+        renderDump(
+          target.dump,
+          entry.start,
+          entry.bytes,
+          entry.writable ?? [],
+          entry.focus ?? 0,
+          rowSize,
+          this.editingEnabled,
+          this.allowReadOnlyWrites
+        );
       }
       if (entry.symbol) {
         if (entry.symbolOffset) {
@@ -446,7 +458,9 @@ export class MemoryPanel {
       entry.dump
         ?.querySelectorAll<HTMLInputElement>('input.memory-byte-input')
         .forEach((input) => {
-          input.disabled = !this.editingEnabled;
+          input.disabled =
+            !this.editingEnabled ||
+            (input.dataset.readOnly === 'true' && !this.allowReadOnlyWrites);
         });
     });
   }
@@ -460,6 +474,14 @@ export class MemoryPanel {
     const address = Number.parseInt(input.dataset.address ?? '', 16);
     const previousValue = input.dataset.previous ?? input.value;
     const value = normalizeHexInput(input.value, 2);
+    const isReadOnly = input.dataset.readOnly === 'true';
+    if (isReadOnly && !this.allowReadOnlyWrites) {
+      input.value = previousValue;
+      if (this.options.statusEl) {
+        this.options.statusEl.textContent = 'Read-only memory locked';
+      }
+      return;
+    }
     if (!Number.isFinite(address) || value === null) {
       input.value = previousValue;
       if (this.options.statusEl) {
@@ -476,7 +498,27 @@ export class MemoryPanel {
       type: 'memoryEdit',
       address: address & 0xffff,
       value,
+      ...(isReadOnly && this.allowReadOnlyWrites ? { allowReadOnly: true } : {}),
     });
+  }
+
+  private installReadOnlyToggle(): void {
+    const shell = this.options.views[0]?.dump?.closest('#memoryPanel .shell');
+    if (!shell || shell.querySelector('.readonly-memory-toggle')) {
+      return;
+    }
+    const label = document.createElement('label');
+    label.className = 'readonly-memory-toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = this.allowReadOnlyWrites;
+    label.append(checkbox, document.createTextNode(' Unlock read-only memory'));
+    checkbox.addEventListener('change', () => {
+      this.allowReadOnlyWrites = checkbox.checked;
+      this.updateMemoryInputsState();
+      this.requestSnapshot();
+    });
+    shell.prepend(label);
   }
 }
 
@@ -522,9 +564,11 @@ function renderDump(
   el: HTMLElement,
   start: number,
   bytes: number[],
+  writable: boolean[],
   focusOffset: number,
   rowSize: number,
-  editingEnabled: boolean
+  editingEnabled: boolean,
+  allowReadOnlyWrites: boolean
 ): void {
   let html = '';
   for (let i = 0; i < bytes.length; i += rowSize) {
@@ -534,7 +578,11 @@ function renderDump(
     for (let j = 0; j < rowSize && i + j < bytes.length; j++) {
       const idx = i + j;
       const value = bytes[idx];
-      const cls = idx === focusOffset ? 'byte focus' : 'byte';
+      const isWritable = writable[idx] !== false;
+      const cls =
+        'byte' +
+        (idx === focusOffset ? ' focus' : '') +
+        (!isWritable ? ' read-only-memory-byte' : '');
       const byteValue = formatByteHex(value);
       html +=
         '<input class="' +
@@ -543,10 +591,12 @@ function renderDump(
         formatByteHex((rowAddr + j) & 0xffff, 4) +
         '" data-previous="' +
         byteValue +
+        '" data-read-only="' +
+        (!isWritable ? 'true' : 'false') +
         '" value="' +
         byteValue +
         '"' +
-        (editingEnabled ? '' : ' disabled') +
+        (editingEnabled && (isWritable || allowReadOnlyWrites) ? '' : ' disabled') +
         ' />';
       ascii += value >= 32 && value <= 126 ? String.fromCharCode(value) : '.';
     }

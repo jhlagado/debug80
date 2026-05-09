@@ -775,6 +775,19 @@ body {
     #memoryPanel .section {
       margin-top: 8px;
     }
+    #memoryPanel .readonly-memory-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #9aa0a6;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    #memoryPanel .readonly-memory-toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
     #memoryPanel .section-header {
       display: flex;
       align-items: center;
@@ -880,6 +893,16 @@ body {
     #memoryPanel .memory-byte-input:disabled {
       opacity: 0.72;
       cursor: default;
+    }
+    #memoryPanel .memory-byte-input.read-only-memory-byte {
+      color: #7d8791;
+      background: rgba(125, 135, 145, 0.08);
+      border-color: rgba(125, 135, 145, 0.2);
+    }
+    #memoryPanel .memory-byte-input.read-only-memory-byte:not(:disabled) {
+      color: #f5d08b;
+      background: rgba(245, 208, 139, 0.1);
+      border-color: rgba(245, 208, 139, 0.35);
     }
     #memoryPanel .byte.focus {
       color: #111;

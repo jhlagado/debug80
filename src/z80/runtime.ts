@@ -140,6 +140,10 @@ export function createZ80Runtime(
     }
     memory[masked] = value & 0xff;
   };
+  hardware.forceMemWrite = (addr: number, value: number): void => {
+    memory[addr & 0xffff] = value & 0xff;
+  };
+  hardware.isMemoryWritable = (addr: number): boolean => !isRomAddress(addr & 0xffff);
   cpu.hardware = hardware;
   hardware.cpu = cpu;
 

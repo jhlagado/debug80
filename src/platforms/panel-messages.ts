@@ -17,6 +17,7 @@ export type PanelMessage = {
   register?: string;
   address?: number;
   value?: string;
+  allowReadOnly?: boolean;
   text?: string;
   tab?: string;
   views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
@@ -132,10 +133,12 @@ export async function handleCommonPanelMessage<TTab extends string>(
     if (session?.type !== 'z80') {
       return true;
     }
-    const ok = await sendCommand(session, commands.memoryWrite, {
+    const payload = {
       address: msg.address,
       value: msg.value,
-    });
+      ...(msg.allowReadOnly === true ? { allowReadOnly: true } : {}),
+    };
+    const ok = await sendCommand(session, commands.memoryWrite, payload);
     if (!ok && ctx.isPanelVisible()) {
       void refreshSnapshot(
         ctx.refreshController.state,

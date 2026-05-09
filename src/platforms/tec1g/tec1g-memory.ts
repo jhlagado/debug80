@@ -21,6 +21,8 @@ export type Tec1gMemoryHooks = {
   expandBanks: Uint8Array[];
   memRead: (addr: number) => number;
   memWrite: (addr: number, value: number) => void;
+  forceMemWrite: (addr: number, value: number) => void;
+  isMemoryWritable: (addr: number) => boolean;
 };
 
 /**
@@ -75,14 +77,18 @@ export function createTec1gMemoryHooks(
     return baseMemory[masked] ?? 0;
   };
 
-  const memWrite = (addr: number, value: number): void => {
+  const isMemoryWritable = (addr: number): boolean => {
     const masked = addr & ADDR_MASK;
     if (masked >= TEC1G_SHADOW_SIZE && isRomAddress(masked)) {
-      return;
+      return false;
     }
     if (state.protectEnabled && masked >= TEC1G_PROTECT_START && masked <= TEC1G_PROTECT_END) {
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const writeVisibleMemory = (masked: number, value: number): void => {
     if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
       if (state.expandEnabled) {
         getExpandBank()[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
@@ -92,5 +98,17 @@ export function createTec1gMemoryHooks(
     baseMemory[masked] = value & BYTE_MASK;
   };
 
-  return { expandBanks, memRead, memWrite };
+  const memWrite = (addr: number, value: number): void => {
+    const masked = addr & ADDR_MASK;
+    if (!isMemoryWritable(masked)) {
+      return;
+    }
+    writeVisibleMemory(masked, value);
+  };
+
+  const forceMemWrite = (addr: number, value: number): void => {
+    writeVisibleMemory(addr & ADDR_MASK, value);
+  };
+
+  return { expandBanks, memRead, memWrite, forceMemWrite, isMemoryWritable };
 }

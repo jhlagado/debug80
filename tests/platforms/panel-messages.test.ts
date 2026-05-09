@@ -159,4 +159,42 @@ describe('panel-messages', () => {
     });
     expect(postSnapshot).toHaveBeenCalled();
   });
+
+  it('forwards explicit read-only memory override requests', async () => {
+    const memoryViews = createMemoryViewState();
+    const postSnapshot = vi.fn().mockResolvedValue(undefined);
+    const refreshController = createRefreshController(() => ({ views: [] }), {
+      postSnapshot,
+      onSnapshotPosted: vi.fn(),
+      onSnapshotFailed: vi.fn(),
+    });
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    const handled = await handleCommonPanelMessage(
+      { type: 'memoryEdit', address: 0x1234, value: 'AB', allowReadOnly: true },
+      {
+        getSession: () => ({ type: 'z80', customRequest }),
+        refreshController,
+        autoRefreshMs: 150,
+        setActiveTab: vi.fn(),
+        getActiveTab: vi.fn(() => 'memory'),
+        isPanelVisible: vi.fn(() => true),
+        memoryViews,
+      },
+      {
+        key: 'debug80/tec1Key',
+        reset: 'debug80/tec1Reset',
+        speed: 'debug80/tec1Speed',
+        serialSend: 'debug80/tec1SerialInput',
+        registerWrite: 'debug80/registerWrite',
+        memoryWrite: 'debug80/memoryWrite',
+      }
+    );
+
+    expect(handled).toBe(true);
+    expect(customRequest).toHaveBeenCalledWith('debug80/memoryWrite', {
+      address: 0x1234,
+      value: 'AB',
+      allowReadOnly: true,
+    });
+  });
 });

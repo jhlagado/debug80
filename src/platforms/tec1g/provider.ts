@@ -142,6 +142,8 @@ function finalizeTec1gRuntime(
   const hooks = createTec1gMemoryHooks(baseMemory, config.romRanges, tec1gRuntime.state.system);
   context.runtime.hardware.memRead = hooks.memRead;
   context.runtime.hardware.memWrite = hooks.memWrite;
+  context.runtime.hardware.forceMemWrite = hooks.forceMemWrite;
+  context.runtime.hardware.isMemoryWritable = hooks.isMemoryWritable;
   if (assets.cartridgeImage) {
     applyCartridgeMemory(hooks.expandBanks, assets.cartridgeImage.memory);
     tec1gRuntime.setCartridgePresent(true);

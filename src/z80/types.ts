@@ -12,6 +12,8 @@ export interface HardwareContext {
   ioTick?: () => unknown;
   memRead?: (addr: number) => number;
   memWrite?: (addr: number, value: number) => void;
+  forceMemWrite?: (addr: number, value: number) => void;
+  isMemoryWritable?: (addr: number) => boolean;
   cpu?: Cpu;
 }
 

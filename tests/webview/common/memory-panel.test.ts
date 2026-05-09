@@ -19,7 +19,7 @@ function createElement<T extends HTMLElement>(
   return element;
 }
 
-function createPanel(vscode: VscodeApi) {
+function createPanel(vscode: VscodeApi, options: { withShell?: boolean } = {}) {
   const registerStrip = createElement<HTMLDivElement>('div');
   const statusEl = createElement<HTMLDivElement>('div');
   const dump = createElement<HTMLDivElement>('div');
@@ -43,7 +43,16 @@ function createPanel(vscode: VscodeApi) {
   const addr = createElement<HTMLSpanElement>('span');
   const symbol = createElement<HTMLSpanElement>('span');
 
-  document.body.append(registerStrip, statusEl, dump, view, address, addr, symbol);
+  if (options.withShell === true) {
+    const panelRoot = createElement<HTMLDivElement>('div');
+    panelRoot.id = 'memoryPanel';
+    const shell = createElement<HTMLDivElement>('div', 'shell');
+    shell.append(dump);
+    panelRoot.append(shell);
+    document.body.append(registerStrip, statusEl, panelRoot, view, address, addr, symbol);
+  } else {
+    document.body.append(registerStrip, statusEl, dump, view, address, addr, symbol);
+  }
 
   const panel = new MemoryPanel({
     vscode,
@@ -236,6 +245,53 @@ describe('shared memory panel', () => {
     expect(inputs).toHaveLength(2);
     expect(inputs[0]?.disabled).toBe(true);
     expect(inputs[1]?.disabled).toBe(true);
+  });
+
+  it('marks read-only bytes and requires the unlock toggle before editing them', () => {
+    const postMessage = vi.fn();
+    const { panel, dump } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    }, { withShell: true });
+
+    panel.handleSnapshot({
+      running: false,
+      views: [
+        {
+          id: 'a',
+          address: 0x3000,
+          start: 0x3000,
+          bytes: [0xaa, 0xbb],
+          writable: [false, true],
+          focus: 0,
+        },
+      ],
+    });
+
+    const inputs = dump.querySelectorAll<HTMLInputElement>('input.memory-byte-input');
+    expect(inputs[0]?.disabled).toBe(true);
+    expect(inputs[0]?.classList.contains('read-only-memory-byte')).toBe(true);
+    expect(inputs[1]?.disabled).toBe(false);
+
+    const toggle = document.querySelector<HTMLInputElement>('.readonly-memory-toggle input');
+    expect(toggle).not.toBeNull();
+    if (!toggle || !inputs[0]) {
+      throw new Error('read-only toggle or memory byte missing');
+    }
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(inputs[0].disabled).toBe(false);
+    inputs[0].value = 'cc';
+    inputs[0].dispatchEvent(new Event('focusout', { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'memoryEdit',
+      address: 0x3000,
+      value: 'CC',
+      allowReadOnly: true,
+    });
   });
 
   it('does not replace a focused register input during snapshot refresh', () => {
