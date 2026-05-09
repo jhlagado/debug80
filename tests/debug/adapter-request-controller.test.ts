@@ -149,7 +149,7 @@ describe('AdapterRequestController setVariableRequest', () => {
     expect(cpu.e).toBe(0x02);
   });
 
-  it('rejects setVariable for read-only register names', () => {
+  it('writes AF through setVariable', () => {
     const sessionState = createSessionState();
     sessionState.runtime = createZ80Runtime({
       memory: new Uint8Array(0x10000),
@@ -185,10 +185,16 @@ describe('AdapterRequestController setVariableRequest', () => {
     controller.setVariableRequest({} as never, {
       variablesReference: registersRef,
       name: 'AF',
-      value: '0x0000',
+      value: '0xA5C3',
     });
 
-    expect(deps.sendResponse).not.toHaveBeenCalled();
-    expect(deps.sendErrorResponse).toHaveBeenCalledTimes(1);
+    expect(deps.sendErrorResponse).not.toHaveBeenCalled();
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    const cpu = sessionState.runtime.getRegisters();
+    expect(cpu.a).toBe(0xa5);
+    expect(cpu.flags.S).toBe(1);
+    expect(cpu.flags.Z).toBe(1);
+    expect(cpu.flags.N).toBe(1);
+    expect(cpu.flags.C).toBe(1);
   });
 });

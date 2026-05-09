@@ -31,6 +31,48 @@ describe('register-request', () => {
     expect(cpu.c).toBe(0x34);
   });
 
+  it('writes AF and alternate AF as editable register pairs', () => {
+    const sessionState = createSessionState();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    sessionState.runState.isRunning = false;
+
+    expect(handleRegisterWriteRequest(sessionState, {
+      register: 'af',
+      value: 'A5C3',
+    })).toBeNull();
+    expect(handleRegisterWriteRequest(sessionState, {
+      register: 'afp',
+      value: '5A3C',
+    })).toBeNull();
+
+    const cpu = sessionState.runtime.getRegisters();
+    expect(cpu.a).toBe(0xa5);
+    expect(cpu.flags).toEqual({
+      S: 1,
+      Z: 1,
+      Y: 0,
+      H: 0,
+      X: 0,
+      P: 0,
+      N: 1,
+      C: 1,
+    });
+    expect(cpu.a_prime).toBe(0x5a);
+    expect(cpu.flags_prime).toEqual({
+      S: 0,
+      Z: 0,
+      Y: 1,
+      H: 1,
+      X: 1,
+      P: 1,
+      N: 0,
+      C: 0,
+    });
+  });
+
   it('rejects writes while the session is running', () => {
     const sessionState = createSessionState();
     sessionState.runtime = createZ80Runtime({
@@ -70,8 +112,8 @@ describe('register-request', () => {
     expect(writableRegisterKeyFromVariableName('BC')).toBe('bc');
     expect(writableRegisterKeyFromVariableName("BC'")).toBe('bcp');
     expect(writableRegisterKeyFromVariableName('IX')).toBe('ix');
-    expect(writableRegisterKeyFromVariableName('AF')).toBeNull();
-    expect(writableRegisterKeyFromVariableName("AF'")).toBeNull();
+    expect(writableRegisterKeyFromVariableName('AF')).toBe('af');
+    expect(writableRegisterKeyFromVariableName("AF'")).toBe('afp');
   });
 
   it('parses hex with optional 0x prefix', () => {

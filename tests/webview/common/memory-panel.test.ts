@@ -160,4 +160,30 @@ describe('shared memory panel', () => {
     expect(registerStrip.querySelector<HTMLInputElement>('input[data-register="bc"]')).toBe(input);
     expect(input.value).toBe('ABCD');
   });
+
+  it('renders AF and alternate AF as editable register inputs', () => {
+    const postMessage = vi.fn();
+    const { panel, registerStrip } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      registers: {
+        af: 0xa5c3,
+        afp: 0x5a3c,
+      },
+    });
+
+    const af = registerStrip.querySelector<HTMLInputElement>('input[data-register="af"]');
+    const afp = registerStrip.querySelector<HTMLInputElement>('input[data-register="afp"]');
+    expect(af).not.toBeNull();
+    expect(afp).not.toBeNull();
+    expect(af?.value).toBe('A5C3');
+    expect(afp?.value).toBe('5A3C');
+    expect(af?.closest('.register-item')?.classList.contains('editable')).toBe(true);
+    expect(afp?.closest('.register-item')?.classList.contains('editable')).toBe(true);
+  });
 });

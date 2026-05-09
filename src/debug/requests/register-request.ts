@@ -4,13 +4,27 @@
 
 import type { SessionStateShape } from '../session/session-state';
 import type { Cpu } from '../../z80/types';
+import { setFlagsFromByte } from '../../z80/core-helpers';
 
 type RegisterWriteArgs = {
   register?: string;
   value?: unknown;
 };
 
-const WRITABLE_REGISTERS = new Set(['bc', 'de', 'hl', 'bcp', 'dep', 'hlp', 'ix', 'iy', 'pc', 'sp']);
+const WRITABLE_REGISTERS = new Set([
+  'af',
+  'bc',
+  'de',
+  'hl',
+  'afp',
+  'bcp',
+  'dep',
+  'hlp',
+  'ix',
+  'iy',
+  'pc',
+  'sp',
+]);
 
 /** Parses hex for register writes; accepts plain hex or `0x` / `0X` prefixed values. */
 export function parseHexValue(value: unknown): number | null {
@@ -46,6 +60,9 @@ export function writableRegisterKeyFromVariableName(variableName: string): strin
   const base = prime ? lower.slice(0, -1) : lower;
 
   if (prime) {
+    if (base === 'af') {
+      return 'afp';
+    }
     if (base === 'bc') {
       return 'bcp';
     }
@@ -58,6 +75,9 @@ export function writableRegisterKeyFromVariableName(variableName: string): strin
     return null;
   }
 
+  if (base === 'af') {
+    return 'af';
+  }
   if (base === 'pc') {
     return 'pc';
   }
@@ -109,6 +129,10 @@ export function tryWriteRegisterByKey(
 
 function setRegisterPair(cpu: Cpu, name: string, value: number): void {
   switch (name) {
+    case 'af':
+      cpu.a = (value >> 8) & 0xff;
+      setFlagsFromByte(cpu.flags, value & 0xff);
+      return;
     case 'bc':
       cpu.b = (value >> 8) & 0xff;
       cpu.c = value & 0xff;
@@ -120,6 +144,10 @@ function setRegisterPair(cpu: Cpu, name: string, value: number): void {
     case 'hl':
       cpu.h = (value >> 8) & 0xff;
       cpu.l = value & 0xff;
+      return;
+    case 'afp':
+      cpu.a_prime = (value >> 8) & 0xff;
+      setFlagsFromByte(cpu.flags_prime, value & 0xff);
       return;
     case 'bcp':
       cpu.b_prime = (value >> 8) & 0xff;
