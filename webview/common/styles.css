@@ -726,6 +726,10 @@ body {
     .register-panel .register-item.editable {
       min-width: 108px;
     }
+    #memoryPanel .register-item.flag-register,
+    .register-panel .register-item.flag-register {
+      min-width: 132px;
+    }
     #memoryPanel .register-label,
     .register-panel .register-label {
       color: #9aa0a6;
@@ -759,7 +763,7 @@ body {
     }
     #memoryPanel .register-input.register-flags,
     .register-panel .register-input.register-flags {
-      width: 7.5ch;
+      width: 9ch;
       text-transform: none;
     }
     #memoryPanel .register-input:focus,

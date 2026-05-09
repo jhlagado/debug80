@@ -236,6 +236,7 @@ export class MemoryPanel {
     items.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'register-item' + (item.editable ? ' editable' : '');
+      row.classList.toggle('flag-register', item.flags === true);
       const label = document.createElement('span');
       label.className = 'register-label';
       label.textContent = item.label;
