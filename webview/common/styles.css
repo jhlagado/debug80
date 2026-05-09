@@ -468,7 +468,8 @@ body {
     .serial-input input:focus {
       outline: 1px solid #555;
     }
-    .tabs {
+    .tabs,
+    .debug80-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -482,7 +483,8 @@ body {
       min-width: 0;
       flex: 1;
     }
-    .tabs-status-slot {
+    .tabs-status-slot,
+    .debug80-status-slot {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -527,6 +529,53 @@ body {
       color: #fff;
       border-color: #5a5a5a;
     }
+    .debug80-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .debug80-accordion-section {
+      border: 1px solid #2f2f2f;
+      border-radius: 12px;
+      background: #151515;
+      overflow: hidden;
+    }
+    .debug80-accordion-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 0;
+      border-bottom: 1px solid transparent;
+      background: #202020;
+      color: #d8d8d8;
+      padding: 8px 12px;
+      font-size: 11px;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-align: left;
+    }
+    .debug80-accordion-header::after {
+      content: '▸';
+      color: #8a8a8a;
+      font-size: 10px;
+      transition: transform 120ms ease;
+    }
+    .debug80-accordion-header.active {
+      border-bottom-color: #303030;
+      color: #fff;
+    }
+    .debug80-accordion-header.active::after {
+      transform: rotate(90deg);
+    }
+    .debug80-accordion-content {
+      padding: 10px;
+    }
+    .debug80-accordion-content[hidden] {
+      display: none;
+    }
     .session-status {
       border: 1px solid #3b3b3b;
       border-radius: 999px;
@@ -568,6 +617,9 @@ body {
       display: none;
     }
     .panel.active {
+      display: block;
+    }
+    .debug80-accordion-content .panel {
       display: block;
     }
     .config-panel {
@@ -644,7 +696,8 @@ body {
       font-size: 14px;
       margin: 0 0 6px 0;
     }
-    #memoryPanel .register-strip {
+    #memoryPanel .register-strip,
+    .register-panel .register-strip {
       display: flex;
       flex-wrap: wrap;
       gap: 8px 16px;
@@ -652,9 +705,13 @@ body {
         'Liberation Mono', 'Courier New', monospace;
       font-size: 11px;
       color: #d8d8d8;
+      margin-bottom: 0;
+    }
+    #memoryPanel .register-strip {
       margin-bottom: 12px;
     }
-    #memoryPanel .register-item {
+    #memoryPanel .register-item,
+    .register-panel .register-item {
       display: inline-flex;
       gap: 6px;
       align-items: center;
@@ -665,24 +722,29 @@ body {
       min-width: 92px;
       justify-content: space-between;
     }
-    #memoryPanel .register-item.editable {
+    #memoryPanel .register-item.editable,
+    .register-panel .register-item.editable {
       min-width: 108px;
     }
-    #memoryPanel .register-label {
+    #memoryPanel .register-label,
+    .register-panel .register-label {
       color: #9aa0a6;
       font-size: 10px;
       min-width: 3ch;
       text-align: left;
     }
-    #memoryPanel .register-value {
+    #memoryPanel .register-value,
+    .register-panel .register-value {
       color: #cde6ff;
       font-weight: 600;
     }
-    #memoryPanel .register-flags {
+    #memoryPanel .register-flags,
+    .register-panel .register-flags {
       color: #f5d08b;
       font-weight: 600;
     }
-    #memoryPanel .register-input {
+    #memoryPanel .register-input,
+    .register-panel .register-input {
       width: 6.5ch;
       border: 1px solid #374151;
       border-radius: 4px;
@@ -695,7 +757,8 @@ body {
       text-transform: uppercase;
       text-align: right;
     }
-    #memoryPanel .register-input:focus {
+    #memoryPanel .register-input:focus,
+    .register-panel .register-input:focus {
       outline: none;
       border-color: #7aa2f7;
       box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.35);

@@ -119,7 +119,8 @@ Adopt Option B first:
 - keep a single `Debug80` VS Code view
 - replace the top-level `UI` / `CPU` tabs visually with accordion sections
 - allow multiple sections to be open simultaneously
-- plan for `CPU` to be further decomposed over time, starting with separate `Registers` and `Memory` sections
+- split the old CPU tab into separate `Registers` and `Memory` sections immediately
+- persist the open/closed accordion state in the webview state
 
 This should be treated as the default design path unless later evidence shows that the single-view surface
 has become too dense or too heterogeneous.
@@ -133,12 +134,11 @@ sees without bundling in a protocol rewrite.
 
 ## Initial Accordion Shape
 
-The first likely target shape is:
+The first target shape is:
 
-- `UI`
-- `CPU`
-  - `Registers`
-  - `Memory`
+- `Machine`
+- `Registers`
+- `Memory`
 
 This should not be implemented as tabs disguised as accordions. The value comes from allowing more than one
 section to remain open at the same time.

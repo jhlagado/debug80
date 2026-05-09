@@ -3,7 +3,7 @@
  */
 
 import { appendSerialText } from '../common/serial';
-import { MemoryPanel } from '../common/memory-panel';
+import { MemoryPanel, type MemoryViewEntry } from '../common/memory-panel';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
@@ -127,35 +127,35 @@ tabButtons.forEach((button) => {
   });
 });
 
-const views = [
+const views: MemoryViewEntry[] = [
   {
     id: 'a',
-    view: document.getElementById('view-a'),
-    address: document.getElementById('address-a'),
+    view: document.getElementById('view-a') as HTMLSelectElement | null,
+    address: document.getElementById('address-a') as HTMLInputElement | null,
     addr: document.getElementById('addr-a'),
     symbol: document.getElementById('sym-a'),
     dump: document.getElementById('dump-a'),
   },
   {
     id: 'b',
-    view: document.getElementById('view-b'),
-    address: document.getElementById('address-b'),
+    view: document.getElementById('view-b') as HTMLSelectElement | null,
+    address: document.getElementById('address-b') as HTMLInputElement | null,
     addr: document.getElementById('addr-b'),
     symbol: document.getElementById('sym-b'),
     dump: document.getElementById('dump-b'),
   },
   {
     id: 'c',
-    view: document.getElementById('view-c'),
-    address: document.getElementById('address-c'),
+    view: document.getElementById('view-c') as HTMLSelectElement | null,
+    address: document.getElementById('address-c') as HTMLInputElement | null,
     addr: document.getElementById('addr-c'),
     symbol: document.getElementById('sym-c'),
     dump: document.getElementById('dump-c'),
   },
   {
     id: 'd',
-    view: document.getElementById('view-d'),
-    address: document.getElementById('address-d'),
+    view: document.getElementById('view-d') as HTMLSelectElement | null,
+    address: document.getElementById('address-d') as HTMLInputElement | null,
     addr: document.getElementById('addr-d'),
     symbol: document.getElementById('sym-d'),
     dump: document.getElementById('dump-d'),
