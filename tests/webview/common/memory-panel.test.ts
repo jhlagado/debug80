@@ -99,6 +99,53 @@ describe('shared memory panel', () => {
     });
   });
 
+  it('does not replace a focused memory byte input during snapshot refresh', () => {
+    const { panel, dump } = createPanel({
+      postMessage: vi.fn(),
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      views: [
+        {
+          id: 'a',
+          address: 0x1000,
+          start: 0x1000,
+          bytes: [0x41, 0x42, 0x43, 0x44],
+          focus: 1,
+        },
+      ],
+    });
+
+    const input = dump.querySelector<HTMLInputElement>('input[data-address="1001"]');
+    expect(input).not.toBeNull();
+    if (!input) {
+      throw new Error('memory byte input missing');
+    }
+
+    input.focus();
+    input.value = 'ab';
+
+    panel.handleSnapshot({
+      running: false,
+      views: [
+        {
+          id: 'a',
+          address: 0x1000,
+          start: 0x1000,
+          bytes: [0xff, 0xee, 0xdd, 0xcc],
+          focus: 0,
+        },
+      ],
+    });
+
+    expect(document.activeElement).toBe(input);
+    expect(dump.querySelector<HTMLInputElement>('input[data-address="1001"]')).toBe(input);
+    expect(input.value).toBe('ab');
+  });
+
   it('disables byte inputs while the runtime is running', () => {
     const { panel, dump } = createPanel({
       postMessage: vi.fn(),

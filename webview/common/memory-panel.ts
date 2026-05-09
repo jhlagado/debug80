@@ -319,7 +319,9 @@ export class MemoryPanel {
         return;
       }
       target.addr.textContent = formatHex(entry.address ?? 0, 4);
-      renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize, this.editingEnabled);
+      if (!this.isEditingMemoryDump(target.dump)) {
+        renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize, this.editingEnabled);
+      }
       if (entry.symbol) {
         if (entry.symbolOffset) {
           const offset = entry.symbolOffset.toString(16).toUpperCase();
@@ -341,6 +343,11 @@ export class MemoryPanel {
           input.disabled = !this.editingEnabled;
         });
     });
+  }
+
+  private isEditingMemoryDump(dump: HTMLElement): boolean {
+    const active = document.activeElement;
+    return isMemoryByteInput(active) && dump.contains(active);
   }
 
   private commitMemoryEdit(input: HTMLInputElement): void {
