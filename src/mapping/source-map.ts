@@ -175,6 +175,30 @@ export function findSegmentForAddress(
  * @returns Array of memory addresses (may be empty)
  */
 export function resolveLocation(index: SourceMapIndex, filePath: string, line: number): number[] {
+  return resolveLocationInternal(index, filePath, line, false);
+}
+
+/**
+ * Resolves a source location to executable memory addresses only.
+ *
+ * Zero-width segments represent labels, constants, and assembler directives in
+ * asm80 listings. They are useful for stack display context but must not become
+ * active breakpoints.
+ */
+export function resolveExecutableLocation(
+  index: SourceMapIndex,
+  filePath: string,
+  line: number
+): number[] {
+  return resolveLocationInternal(index, filePath, line, true);
+}
+
+function resolveLocationInternal(
+  index: SourceMapIndex,
+  filePath: string,
+  line: number,
+  executableOnly: boolean
+): number[] {
   // Normalize path for case-insensitive matching on Windows
   const key = normalizePathForKey(filePath);
   const fileMap = index.segmentsByFileLine.get(key);
@@ -187,9 +211,18 @@ export function resolveLocation(index: SourceMapIndex, filePath: string, line: n
       }
       const segments = fileMap.get(tryLine);
       if (segments && segments.length > 0) {
-        return segments.map((seg) => seg.start);
+        const filtered = executableOnly
+          ? segments.filter((seg) => seg.end > seg.start)
+          : segments;
+        if (filtered.length > 0) {
+          return filtered.map((seg) => seg.start);
+        }
       }
     }
+  }
+
+  if (executableOnly) {
+    return [];
   }
 
   const anchors = index.anchorsByFile.get(key);

@@ -19,6 +19,7 @@ vi.mock('../../src/debug/mapping/path-resolver', () => ({
 import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
 import { parseMapping } from '../../src/mapping/parser';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
+import { resolveLocation } from '../../src/mapping/source-map';
 
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures');
 const listingContent = fs.readFileSync(path.join(fixturesDir, 'simple.lst'), 'utf-8');
@@ -87,6 +88,85 @@ describe('mapping-service', () => {
     expect(result.mapping.segments.length).toBeGreaterThan(0);
     expect(result.index.segmentsByAddress.length).toBeGreaterThan(0);
     expect(fs.existsSync(mapPath)).toBe(true);
+  });
+
+  it('maps executable lines in the root source even when anchors only mention includes', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const listingPath = path.join(dir, 'build', 'tetro.lst');
+    const asmPath = path.join(dir, 'src', 'tetro.asm');
+    const constantsPath = path.join(dir, 'src', 'inc', 'constants.asm');
+    const modulePath = path.join(dir, 'src', 'modules', 'game_init.asm');
+    const mapPath = path.join(dir, '.debug80', 'cache', 'tetro.d8.json');
+    const listing = [
+      '4000                          .ORG   0x4000',
+      '4000                             ; constants',
+      '4000                K_DROP:   EQU   0x00',
+      '4000                START:',
+      '4000   CD 14 45               CALL   INIT_STATE',
+      '4003                MAIN_LOOP:',
+      '4003   18 FE                  JR   MAIN_LOOP',
+      '4514                INIT_STATE:',
+      '4514   C9                     RET',
+      '',
+      'K_DROP:             0000 DEFINED AT LINE 24 IN inc/constants.asm',
+      'INIT_STATE:         4514 DEFINED AT LINE 1 IN modules/game_init.asm',
+    ].join('\n');
+
+    writeFile(listingPath, listing);
+    writeFile(
+      asmPath,
+      [
+        '        ORG     0x4000',
+        '        .include "inc/constants.asm"',
+        '',
+        'START:',
+        '        CALL    INIT_STATE',
+        '',
+        'MAIN_LOOP:',
+        '        JR      MAIN_LOOP',
+        '',
+        '        .include "modules/game_init.asm"',
+      ].join('\n')
+    );
+    writeFile(constantsPath, 'K_DROP: EQU 0x00\n');
+    writeFile(modulePath, 'INIT_STATE:\n        RET\n');
+
+    const staleMap = buildD8DebugMap(parseMapping(listing), {
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      generator: { name: 'debug80' },
+    });
+    writeFile(mapPath, JSON.stringify(staleMap, null, 2));
+    const future = new Date(Date.now() + 1000);
+    fs.utimesSync(mapPath, future, future);
+
+    const logs: string[] = [];
+    const result = buildMappingFromListing({
+      listingContent: listing,
+      listingPath,
+      asmPath,
+      sourceFile: asmPath,
+      extraListingPaths: [],
+      mapArgs: {},
+      service: {
+        platform: 'tec1g',
+        baseDir: dir,
+        resolveMappedPath: (file) => {
+          const candidate = path.isAbsolute(file) ? file : path.resolve(dir, 'src', file);
+          return fs.existsSync(candidate) ? candidate : undefined;
+        },
+        relativeIfPossible: (filePath, baseDir) =>
+          path.relative(baseDir, filePath) || filePath,
+        resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
+        resolveDebugMapPath: () => mapPath,
+        logger: createLogger(logs),
+      },
+    });
+
+    expect(resolveLocation(result.index, asmPath, 5)).toContain(0x4000);
+    expect(result.mapping.segments.some((seg) => seg.loc.file === asmPath)).toBe(true);
+    expect(logs.some((line) => line.includes('did not include target source'))).toBe(true);
   });
 
   it('loads a fresh debug map when available', () => {

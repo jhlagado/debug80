@@ -21,7 +21,9 @@ function createMockListing(lineToAddress: Map<number, number>): ListingInfo {
   };
 }
 
-function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMapIndex {
+function createMockIndex(
+  fileMap: Map<string, Map<number, Array<number | { start: number; end: number }>>>
+): SourceMapIndex {
   const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
   for (const [file, lines] of fileMap) {
     const key = normalizePathForKey(file);
@@ -29,13 +31,17 @@ function createMockIndex(fileMap: Map<string, Map<number, number[]>>): SourceMap
     for (const [line, addrs] of lines) {
       lineMap.set(
         line,
-        addrs.map((a) => ({
-          start: a,
-          end: a + 1,
-          confidence: 'HIGH' as const,
-          loc: { file, line },
-          lst: { line: 1, text: '' },
-        }))
+        addrs.map((entry) => {
+          const start = typeof entry === 'number' ? entry : entry.start;
+          const end = typeof entry === 'number' ? entry + 1 : entry.end;
+          return {
+            start,
+            end,
+            confidence: 'HIGH' as const,
+            loc: { file, line },
+            lst: { line: 1, text: '' },
+          };
+        })
       );
     }
     segmentsByFileLine.set(key, lineMap);
@@ -136,7 +142,7 @@ describe('BreakpointManager', () => {
     expect(applied[0]?.verified).toBe(true);
   });
 
-  it('falls back to listing line for asm-like source when mapping misses', () => {
+  it('does not fall back to listing line for source files when mapping misses', () => {
     const mgr = new BreakpointManager();
     const listing = createMockListing(new Map([[171, 0xc000]]));
     const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
@@ -147,10 +153,43 @@ describe('BreakpointManager', () => {
     const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
 
     expect(applied.length).toBe(1);
-    expect(applied[0]?.verified).toBe(true);
+    expect(applied[0]?.verified).toBe(false);
 
     mgr.rebuild(listing, listingPath, index);
-    expect(mgr.hasAddress(0xc000)).toBe(true);
+    expect(mgr.hasAddress(0xc000)).toBe(false);
+  });
+
+  it('does not bind source breakpoints to zero-width directive or constant segments', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map([[39, 0x4000]]));
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
+    const sourcePath = path.resolve('/workspace/src/inc/constants.asm');
+    const index = createMockIndex(
+      new Map([[sourcePath, new Map([[39, [{ start: 0x4000, end: 0x4000 }]]])]])
+    );
+
+    mgr.setPending(sourcePath, [{ line: 39 }]);
+    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 39 }]);
+
+    expect(applied).toEqual([{ line: 39, verified: false }]);
+    mgr.rebuild(listing, listingPath, index);
+    expect(mgr.hasAddress(0x4000)).toBe(false);
+  });
+
+  it('activates every executable address mapped to the same source line', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map());
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
+    const sourcePath = path.resolve('/workspace/src/main.asm');
+    const index = createMockIndex(new Map([[sourcePath, new Map([[12, [0x4100, 0x4104]]])]]));
+
+    mgr.setPending(sourcePath, [{ line: 12 }]);
+    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 12 }]);
+
+    expect(applied).toEqual([{ line: 12, verified: true }]);
+    mgr.rebuild(listing, listingPath, index);
+    expect(mgr.hasAddress(0x4100)).toBe(true);
+    expect(mgr.hasAddress(0x4104)).toBe(true);
   });
 
   it('falls back to the next available listing entry', () => {

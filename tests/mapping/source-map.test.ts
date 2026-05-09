@@ -8,6 +8,7 @@ import {
   buildSourceMapIndex,
   findAnchorLine,
   findSegmentForAddress,
+  resolveExecutableLocation,
   resolveLocation,
 } from '../../src/mapping/source-map';
 
@@ -41,6 +42,43 @@ describe('source-map', () => {
   it('falls back to anchors when no segment matches the line', () => {
     const address = resolveLocation(index, asmPath, 99);
     assert.deepEqual(address, [0x0003]);
+  });
+
+  it('does not resolve constants or labels as executable breakpoint locations', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4000,
+          loc: { file: 'constants.asm', line: 39 },
+          lst: { line: 69, text: 'GRAVITY_PACE_DELTA: EQU 12' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4003,
+          loc: { file: 'tetro.asm', line: 39 },
+          lst: { line: 97, text: 'CALL INIT_STATE' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x4000, symbol: 'START', file: 'tetro.asm', line: 38 }],
+    };
+    const constants = path.join(fixtureDir, 'constants.asm');
+    const tetro = path.join(fixtureDir, 'tetro.asm');
+    const idx = buildSourceMapIndex(mapping, (file) => {
+      if (file === 'constants.asm') {
+        return constants;
+      }
+      if (file === 'tetro.asm') {
+        return tetro;
+      }
+      return undefined;
+    });
+
+    assert.deepEqual(resolveLocation(idx, constants, 39), [0x4000]);
+    assert.deepEqual(resolveExecutableLocation(idx, constants, 39), []);
+    assert.deepEqual(resolveExecutableLocation(idx, tetro, 39), [0x4000]);
   });
 
   it('skips unresolved files and null locations', () => {
