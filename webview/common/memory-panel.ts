@@ -30,6 +30,11 @@ type SnapshotView = {
   symbolOffset?: number;
 };
 
+type MemoryAnchor = {
+  view: string;
+  address?: number;
+};
+
 type MemoryPanelOptions = {
   vscode: VscodeApi;
   registerStrip: HTMLElement | null;
@@ -41,6 +46,7 @@ type MemoryPanelOptions = {
 
 export class MemoryPanel {
   private readonly symbolMap = new Map<string, number>();
+  private readonly pickerMap = new Map<HTMLSelectElement, HTMLInputElement>();
   private symbolsKey = '';
   private editingEnabled = false;
 
@@ -48,15 +54,9 @@ export class MemoryPanel {
 
   wire(): void {
     this.options.views.forEach((entry) => {
+      this.createAnchorPicker(entry);
       entry.view?.addEventListener('change', () => {
-        const value = entry.view?.value ?? '';
-        if (value.startsWith('symbol:')) {
-          const name = value.slice(7);
-          const address = this.symbolMap.get(name);
-          if (address !== undefined && entry.address) {
-            entry.address.value = formatHex(address, 4);
-          }
-        }
+        this.syncPickerFromSelect(entry);
         this.requestSnapshot();
       });
       entry.address?.addEventListener('change', () => this.requestSnapshot());
@@ -99,17 +99,9 @@ export class MemoryPanel {
     }
     const rowSize = this.options.getRowSize();
     const payloadViews = this.options.views.map((entry) => {
-      const viewValue = entry.view?.value ?? '';
-      let viewMode = viewValue;
-      let addressValue: number | undefined;
-      if (viewValue.startsWith('symbol:')) {
-        const name = viewValue.slice(7);
-        const symAddress = this.symbolMap.get(name);
-        if (symAddress !== undefined) {
-          viewMode = 'absolute';
-          addressValue = symAddress;
-        }
-      }
+      const anchor = this.resolveAnchor(entry);
+      const viewMode = anchor.view;
+      let addressValue = anchor.address;
       if (viewMode === 'absolute' && addressValue === undefined) {
         addressValue = parseAddress(entry.address?.value ?? '');
       }
@@ -163,6 +155,120 @@ export class MemoryPanel {
     }
   }
 
+  private createAnchorPicker(entry: MemoryViewEntry): void {
+    if (!entry.view || this.pickerMap.has(entry.view)) {
+      return;
+    }
+    const select = entry.view;
+    const input = document.createElement('input');
+    const list = document.createElement('datalist');
+    const listId = 'memory-anchor-list-' + entry.id;
+    list.id = listId;
+    input.className = 'memory-anchor-picker';
+    input.type = 'text';
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+    input.setAttribute('list', listId);
+    input.value = selectedOptionLabel(select);
+    input.setAttribute('aria-label', 'Memory anchor ' + entry.id.toUpperCase());
+    select.hidden = true;
+    select.after(input, list);
+    this.pickerMap.set(select, input);
+    this.populateAnchorList(list);
+    const commit = (): void => {
+      const anchor = this.resolveAnchor(entry);
+      this.applyAnchor(entry, anchor);
+      this.requestSnapshot();
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commit();
+        input.blur();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.syncPickerFromSelect(entry);
+        input.blur();
+      }
+    });
+  }
+
+  private syncPickerFromSelect(entry: MemoryViewEntry): void {
+    if (!entry.view) {
+      return;
+    }
+    const picker = this.pickerMap.get(entry.view);
+    if (picker) {
+      picker.value = selectedOptionLabel(entry.view);
+    }
+  }
+
+  private resolveAnchor(entry: MemoryViewEntry): MemoryAnchor {
+    const raw = entry.view ? this.pickerMap.get(entry.view)?.value.trim() ?? entry.view.value : '';
+    const lower = raw.toLowerCase();
+    const register = registerAnchorFromText(lower);
+    if (register !== null) {
+      return { view: register };
+    }
+    const parsed = parseAddress(raw);
+    if (lower === 'absolute' || lower === 'abs' || parsed !== undefined) {
+      if (parsed !== undefined && entry.address) {
+        entry.address.value = formatHex(parsed, 4);
+      }
+      return { view: 'absolute', address: parsed };
+    }
+    const symbol = this.findSymbol(raw);
+    if (symbol !== null) {
+      if (entry.address) {
+        entry.address.value = formatHex(symbol.address, 4);
+      }
+      return { view: 'absolute', address: symbol.address };
+    }
+    return { view: entry.view?.value ?? 'pc' };
+  }
+
+  private applyAnchor(entry: MemoryViewEntry, anchor: MemoryAnchor): void {
+    if (!entry.view) {
+      return;
+    }
+    entry.view.value = anchor.view;
+    const picker = this.pickerMap.get(entry.view);
+    if (picker) {
+      picker.value = anchor.view === 'absolute' && anchor.address !== undefined
+        ? this.findSymbolByAddress(anchor.address)?.name ?? formatHex(anchor.address, 4)
+        : selectedOptionLabel(entry.view);
+    }
+  }
+
+  private findSymbol(query: string): { name: string; address: number } | null {
+    const normalized = query.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return null;
+    }
+    for (const [name, address] of this.symbolMap) {
+      if (name.toLowerCase() === normalized) {
+        return { name, address };
+      }
+    }
+    for (const [name, address] of this.symbolMap) {
+      if (name.toLowerCase().includes(normalized)) {
+        return { name, address };
+      }
+    }
+    return null;
+  }
+
+  private findSymbolByAddress(address: number): { name: string; address: number } | null {
+    for (const [name, symAddress] of this.symbolMap) {
+      if (symAddress === (address & 0xffff)) {
+        return { name, address: symAddress };
+      }
+    }
+    return null;
+  }
+
   private updateSymbols(symbols: Array<{ name: string; address: number }>): void {
     const nextKey = symbols
       .map((sym) =>
@@ -179,32 +285,32 @@ export class MemoryPanel {
         this.symbolMap.set(sym.name, sym.address & 0xffff);
       }
     });
-    this.options.views.forEach((entry) => {
-      const select = entry.view;
-      if (!select) {
-        return;
-      }
-      const existing = select.querySelector('optgroup[data-symbols="true"]');
-      if (existing) {
-        existing.remove();
-      }
-      if (this.symbolMap.size === 0) {
-        return;
-      }
-      const group = document.createElement('optgroup');
-      group.label = 'Symbols';
-      group.dataset.symbols = 'true';
-      symbols.forEach((sym) => {
-        if (!sym || typeof sym.name !== 'string' || !Number.isFinite(sym.address)) {
-          return;
-        }
-        const option = document.createElement('option');
-        option.value = 'symbol:' + sym.name;
-        option.textContent = sym.name;
-        group.appendChild(option);
-      });
-      select.appendChild(group);
-    });
+    this.options.views.forEach((entry) => this.updatePickerList(entry));
+  }
+
+  private updatePickerList(entry: MemoryViewEntry): void {
+    if (!entry.view) {
+      return;
+    }
+    const picker = this.pickerMap.get(entry.view);
+    const list = picker?.list;
+    if (list) {
+      this.populateAnchorList(list);
+    }
+  }
+
+  private populateAnchorList(list: HTMLDataListElement): void {
+    list.innerHTML = '';
+    for (const option of ['PC', 'SP', 'BC', 'DE', 'HL', 'IX', 'IY', 'Absolute']) {
+      const element = document.createElement('option');
+      element.value = option;
+      list.appendChild(element);
+    }
+    for (const name of this.symbolMap.keys()) {
+      const element = document.createElement('option');
+      element.value = name;
+      list.appendChild(element);
+    }
   }
 
   private renderRegisters(data: RegisterData): void {
@@ -380,6 +486,25 @@ function formatRegisterHex(value: number, width: number): string {
 
 function formatHex(value: number, width: number): string {
   return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
+}
+
+function selectedOptionLabel(select: HTMLSelectElement): string {
+  return select.selectedOptions[0]?.textContent?.trim() || select.value.toUpperCase();
+}
+
+function registerAnchorFromText(value: string): string | null {
+  switch (value) {
+    case 'pc':
+    case 'sp':
+    case 'bc':
+    case 'de':
+    case 'hl':
+    case 'ix':
+    case 'iy':
+      return value;
+    default:
+      return null;
+  }
 }
 
 function normalizeHexInput(value: string, width: number): string | null {

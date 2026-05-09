@@ -807,6 +807,10 @@ body {
       padding: 4px 6px;
       font-size: 11px;
     }
+    #memoryPanel .controls .memory-anchor-picker {
+      min-width: 180px;
+      width: min(32vw, 320px);
+    }
     #memoryPanel .controls input {
       width: 86px;
     }

@@ -24,6 +24,21 @@ function createPanel(vscode: VscodeApi) {
   const statusEl = createElement<HTMLDivElement>('div');
   const dump = createElement<HTMLDivElement>('div');
   const view = document.createElement('select');
+  for (const [value, label] of [
+    ['pc', 'PC'],
+    ['sp', 'SP'],
+    ['bc', 'BC'],
+    ['de', 'DE'],
+    ['hl', 'HL'],
+    ['ix', 'IX'],
+    ['iy', 'IY'],
+    ['absolute', 'Absolute'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    view.appendChild(option);
+  }
   const address = document.createElement('input');
   const addr = createElement<HTMLSpanElement>('span');
   const symbol = createElement<HTMLSpanElement>('span');
@@ -50,7 +65,7 @@ function createPanel(vscode: VscodeApi) {
 
   panel.wire();
 
-  return { panel, dump, registerStrip, statusEl };
+  return { panel, dump, registerStrip, statusEl, view, address };
 }
 
 afterEach(() => {
@@ -96,6 +111,57 @@ describe('shared memory panel', () => {
       type: 'memoryEdit',
       address: 0x1000,
       value: 'AB',
+    });
+  });
+
+  it('uses searchable memory anchors for register, absolute, and partial symbol matches', () => {
+    const postMessage = vi.fn();
+    const { panel, view, address } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      symbols: [
+        { name: 'LCD_TEXT_TETRO_RUNNING', address: 0x4567 },
+      ],
+    });
+
+    const picker = document.querySelector<HTMLInputElement>('.memory-anchor-picker');
+    expect(picker).not.toBeNull();
+    if (!picker) {
+      throw new Error('memory anchor picker missing');
+    }
+
+    picker.value = 'running';
+    picker.dispatchEvent(new Event('change'));
+    expect(view.value).toBe('absolute');
+    expect(address.value).toBe('0x4567');
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'refresh',
+      rowSize: 8,
+      views: [{ id: 'a', view: 'absolute', after: 16, address: 0x4567 }],
+    });
+
+    picker.value = 'EF80';
+    picker.dispatchEvent(new Event('change'));
+    expect(view.value).toBe('absolute');
+    expect(address.value).toBe('0xEF80');
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'refresh',
+      rowSize: 8,
+      views: [{ id: 'a', view: 'absolute', after: 16, address: 0xef80 }],
+    });
+
+    picker.value = 'sp';
+    picker.dispatchEvent(new Event('change'));
+    expect(view.value).toBe('sp');
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'refresh',
+      rowSize: 8,
+      views: [{ id: 'a', view: 'sp', after: 16, address: undefined }],
     });
   });
 
