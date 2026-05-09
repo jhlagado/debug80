@@ -757,6 +757,11 @@ body {
       text-transform: uppercase;
       text-align: right;
     }
+    #memoryPanel .register-input.register-flags,
+    .register-panel .register-input.register-flags {
+      width: 7.5ch;
+      text-transform: none;
+    }
     #memoryPanel .register-input:focus,
     .register-panel .register-input:focus {
       outline: none;
