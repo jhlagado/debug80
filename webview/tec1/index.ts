@@ -263,9 +263,6 @@ window.addEventListener('message', event => {
       uiRevision = event.data.uiRevision;
     }
     applyUpdate(event.data);
-    if (panelLayout.isMemoryOpen()) {
-      memoryPanelController?.requestSnapshot();
-    }
     return;
   }
   if (event.data.type === 'snapshot') {

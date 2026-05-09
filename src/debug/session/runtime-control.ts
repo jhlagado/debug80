@@ -19,6 +19,8 @@ import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CpuStateSnapshot } from '../../z80/runtime';
 import { emitDebugSessionStatus } from './session-status';
 
+const HOST_FAIRNESS_YIELD_MS = 0;
+
 export interface RuntimeControlContext {
   getRuntime: () => Z80Runtime | undefined;
   getRuntimeCapabilities: () => RuntimeControlCapabilities | undefined;
@@ -195,6 +197,14 @@ export function applyLaunchSessionArtifacts(
   target.sessionState.runState.callDepth = 0;
   target.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
   target.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
+}
+
+function yieldToTimer(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function yieldToImmediate(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 export interface LaunchBreakpointsTarget {
@@ -377,11 +387,11 @@ export async function runUntilStopAsync(
         const elapsed = now - lastThrottleMs;
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          await yieldToTimer(waitMs);
         } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
+          await yieldToTimer(capabilities?.getYieldMs() ?? 0);
         } else {
-          await new Promise((resolve) => setImmediate(resolve));
+          await yieldToTimer(HOST_FAIRNESS_YIELD_MS);
         }
         lastThrottleMs = Date.now();
         cyclesSinceThrottle = 0;
@@ -392,9 +402,9 @@ export async function runUntilStopAsync(
     lastThrottleMs = Date.now();
     const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      await yieldToTimer(yieldMs);
     } else {
-      await new Promise((resolve) => setImmediate(resolve));
+      await yieldToImmediate();
     }
   }
 }
@@ -506,11 +516,11 @@ export async function runUntilReturnAsync(
         const elapsed = now - lastThrottleMs;
         const waitMs = targetMs - elapsed;
         if (waitMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          await yieldToTimer(waitMs);
         } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
+          await yieldToTimer(capabilities?.getYieldMs() ?? 0);
         } else {
-          await new Promise((resolve) => setImmediate(resolve));
+          await yieldToTimer(HOST_FAIRNESS_YIELD_MS);
         }
         lastThrottleMs = Date.now();
         cyclesSinceThrottle = 0;
@@ -521,9 +531,9 @@ export async function runUntilReturnAsync(
     lastThrottleMs = Date.now();
     const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      await yieldToTimer(yieldMs);
     } else {
-      await new Promise((resolve) => setImmediate(resolve));
+      await yieldToImmediate();
     }
   }
 }

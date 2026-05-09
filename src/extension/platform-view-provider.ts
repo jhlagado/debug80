@@ -58,6 +58,8 @@ import type {
   ProjectStatusPayload,
 } from '../contracts/platform-view';
 
+const MEMORY_REFRESH_INTERVAL_MS = 500;
+
 // ---------------------------------------------------------------------------
 // Per-platform runtime state
 // ---------------------------------------------------------------------------
@@ -367,7 +369,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await bundle.modules.handleMessage(platformMsg, {
             getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
             refreshController: bundle.state.refreshController,
-            autoRefreshMs: 150,
+            autoRefreshMs: MEMORY_REFRESH_INTERVAL_MS,
             setActiveTab: (tab) => {
               bundle.state.activeTab = tab;
             },
@@ -515,7 +517,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       stopAutoRefresh(bundle.state.refreshController.state);
       return;
     }
-    startAutoRefresh(bundle.state.refreshController.state, 150, () => {
+    startAutoRefresh(bundle.state.refreshController.state, MEMORY_REFRESH_INTERVAL_MS, () => {
       void refreshSnapshot(
         bundle.state.refreshController.state,
         bundle.state.refreshController.handlers,

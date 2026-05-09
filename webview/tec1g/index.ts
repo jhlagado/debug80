@@ -251,9 +251,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       uiRevision = message.uiRevision;
     }
     applyUpdateFromPayload(message);
-    if (panelLayout.isMemoryOpen()) {
-      memoryPanelController?.requestSnapshot();
-    }
     return;
   }
   if (message.type === 'snapshot') {
