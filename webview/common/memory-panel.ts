@@ -227,10 +227,10 @@ export class MemoryPanel {
       { label: 'IY', register: 'iy', value: formatRegisterHex((data.iy as number) || 0, 4), width: 4, editable: true },
       { label: 'AF', register: 'af', value: formatRegisterHex((data.af as number) || 0, 4), width: 4, editable: true },
       { label: "AF'", register: 'afp', value: formatRegisterHex((data.afp as number) || 0, 4), width: 4, editable: true },
-      { label: 'Flags', register: 'flags', value: (data.flags as string) || '--------', editable: true, flags: true },
-      { label: "Flags'", register: 'flagsp', value: (data.flagsPrime as string) || '--------', editable: true, flags: true },
       { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
       { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
+      { label: 'Flags', register: 'flags', value: (data.flags as string) || '--------', editable: true, flags: true },
+      { label: "Flags'", register: 'flagsp', value: (data.flagsPrime as string) || '--------', editable: true, flags: true },
     ];
     this.options.registerStrip.innerHTML = '';
     items.forEach((item) => {
