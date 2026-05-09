@@ -50,7 +50,7 @@ function createPanel(vscode: VscodeApi) {
 
   panel.wire();
 
-  return { panel, dump, statusEl };
+  return { panel, dump, registerStrip, statusEl };
 }
 
 afterEach(() => {
@@ -123,5 +123,41 @@ describe('shared memory panel', () => {
     expect(inputs).toHaveLength(2);
     expect(inputs[0]?.disabled).toBe(true);
     expect(inputs[1]?.disabled).toBe(true);
+  });
+
+  it('does not replace a focused register input during snapshot refresh', () => {
+    const postMessage = vi.fn();
+    const { panel, registerStrip } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    });
+
+    panel.handleSnapshot({
+      running: false,
+      registers: {
+        bc: 0x1234,
+      },
+    });
+
+    const input = registerStrip.querySelector<HTMLInputElement>('input[data-register="bc"]');
+    expect(input).not.toBeNull();
+    if (!input) {
+      throw new Error('BC register input missing');
+    }
+
+    input.focus();
+    input.value = 'ABCD';
+
+    panel.handleSnapshot({
+      running: false,
+      registers: {
+        bc: 0x5678,
+      },
+    });
+
+    expect(document.activeElement).toBe(input);
+    expect(registerStrip.querySelector<HTMLInputElement>('input[data-register="bc"]')).toBe(input);
+    expect(input.value).toBe('ABCD');
   });
 });

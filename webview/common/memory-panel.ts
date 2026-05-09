@@ -211,6 +211,9 @@ export class MemoryPanel {
     if (!this.options.registerStrip || !data) {
       return;
     }
+    if (this.isEditingRegister()) {
+      return;
+    }
     const items: RegisterItem[] = [
       { label: 'BC', register: 'bc', value: formatRegisterHex((data.bc as number) || 0, 4), width: 4, editable: true },
       { label: 'DE', register: 'de', value: formatRegisterHex((data.de as number) || 0, 4), width: 4, editable: true },
@@ -270,6 +273,13 @@ export class MemoryPanel {
       }
       this.options.registerStrip?.appendChild(row);
     });
+  }
+
+  private isEditingRegister(): boolean {
+    const active = document.activeElement;
+    return active instanceof HTMLInputElement
+      && active.classList.contains('register-input')
+      && this.options.registerStrip?.contains(active) === true;
   }
 
   private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
