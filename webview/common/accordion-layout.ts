@@ -157,7 +157,12 @@ export function createAccordionLayoutController(
       setOpen('memory', true, notify);
       return;
     }
-    setOpen('machine', true, notify);
+    openState.machine = true;
+    openState.memory = false;
+    applyPanelState('machine');
+    applyPanelState('memory');
+    writeStoredOpenState(options.vscode, openState);
+    syncProviderTab(notify);
   }
 
   (Object.keys(openState) as AccordionPanel[]).forEach(applyPanelState);

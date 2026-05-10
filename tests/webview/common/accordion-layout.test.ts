@@ -141,4 +141,55 @@ describe('accordion layout controller', () => {
     expect(controller.getProviderTab()).toBe('memory');
     expect(requestSnapshot).toHaveBeenCalledTimes(1);
   });
+
+  it('closes memory when the provider selects the UI tab', () => {
+    const messages: PostedMessage[] = [];
+    const memoryPanel = document.createElement('div');
+    const machineContent = document.createElement('div');
+    const memoryContent = document.createElement('div');
+    const memoryButton = button('memory');
+    const requestSnapshot = vi.fn();
+    const memoryController = { requestSnapshot } as unknown as MemoryPanel;
+    const vscode = createVscodeMock(messages, {
+      debug80Accordion: {
+        machine: true,
+        registers: true,
+        memory: true,
+      },
+    });
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: [button('machine'), button('registers'), memoryButton],
+      panels: {
+        machine: machineContent,
+        registers: document.createElement('div'),
+        memory: memoryContent,
+      },
+      memoryPanel,
+      defaultTab: 'ui',
+      getMemoryPanelController: () => memoryController,
+    });
+
+    expect(controller.getProviderTab()).toBe('memory');
+    expect(controller.isMemoryOpen()).toBe(true);
+
+    controller.setProviderTab('ui', true);
+
+    expect(controller.getProviderTab()).toBe('ui');
+    expect(controller.isMachineOpen()).toBe(true);
+    expect(controller.isMemoryOpen()).toBe(false);
+    expect(machineContent.hidden).toBe(false);
+    expect(memoryContent.hidden).toBe(true);
+    expect(memoryButton.getAttribute('aria-expanded')).toBe('false');
+    expect(messages.at(-1)).toEqual({ type: 'tab', tab: 'ui' });
+    expect(requestSnapshot).not.toHaveBeenCalled();
+    expect(vscode.getState()).toEqual({
+      debug80Accordion: {
+        machine: true,
+        registers: true,
+        memory: false,
+      },
+    });
+  });
 });
