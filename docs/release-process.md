@@ -14,11 +14,20 @@ one-off process.
   host code.
 - Manual VSIX testing comes before marketplace publishing.
 
-## Local Candidate Build
+## Local VSIX Test Build
+
+Use this process when you want to test Debug80 as a real installed VS Code extension rather than
+through the Extension Development Host.
+
+This is the closest local equivalent to how a user will experience the extension after download:
+VS Code loads the packaged files from the VSIX, not the TypeScript source tree.
+
+### Build the VSIX
 
 Use this command before sharing a candidate VSIX:
 
 ```bash
+cd /Users/johnhardy/Documents/projects/debug80
 npm ci
 npm run package:check
 ```
@@ -34,6 +43,70 @@ npm run package:check
 The package step runs `vscode:prepublish`, which rebuilds the extension and webview output before
 `vsce package` creates the VSIX. The verification step inspects the `vsce ls` package manifest and
 fails if required runtime files are missing or top-level development debris is present.
+
+The generated VSIX is written to the repo root, for example:
+
+```text
+debug80-0.0.1.vsix
+```
+
+### Install into normal VS Code
+
+Install the generated VSIX into your regular VS Code:
+
+```bash
+code --install-extension debug80-0.0.1.vsix --force
+```
+
+The `--force` flag is useful when replacing an already installed local build with a newer VSIX.
+
+If you want to remove the existing extension first:
+
+```bash
+code --uninstall-extension jhlagado.debug80
+code --install-extension debug80-0.0.1.vsix
+```
+
+Restart VS Code after installation. Then open a normal Debug80 project workspace and test from the
+Run and Debug sidebar.
+
+### What this tests
+
+This path verifies things that F5 development-host testing can miss:
+
+- The extension manifest activates correctly after packaging.
+- `out/` extension-host code and webview bundles are present.
+- Webview CSS, JavaScript, images, ROM bundles, syntax files, schemas, and resources are packaged.
+- Runtime dependencies such as `asm80` and `@jhlagado/zax` are available from inside the installed
+  extension, without relying on global tools, `npm link`, sibling repos, or the development checkout.
+- The Debug80 view appears in the normal VS Code Run and Debug sidebar.
+- Existing `debug80.json` projects can auto-start and restart.
+- Breakpoints, included-source mapping, register editing, memory editing, and sound mute behavior
+  work in the packaged extension.
+
+### Local smoke checklist
+
+After installing the VSIX, test at least:
+
+- Open a workspace with an initialized Debug80 project.
+- Confirm the Debug80 panel appears under Run and Debug.
+- Launch a TEC-1G MON3 target.
+- Confirm asm80 target assembly works.
+- Confirm ZAX target assembly works.
+- Confirm restart works.
+- Confirm breakpoints work in a project with include files.
+- Confirm register editing works while paused.
+- Confirm memory editing works for RAM, and ROM edit protection/unlock behavior is clear.
+- Confirm the speaker starts muted and only unmutes after user interaction.
+
+### Uninstall the local package
+
+Remove the installed package when you want to return to development-host testing or install a fresh
+candidate:
+
+```bash
+code --uninstall-extension jhlagado.debug80
+```
 
 ## VSIX Content Check
 
@@ -53,30 +126,6 @@ The verification gate requires:
   and `.vscode/` are absent.
 
 If unwanted files appear, fix `.vscodeignore` before publishing.
-
-## Manual Mac Test
-
-Install the local candidate into normal VS Code:
-
-```bash
-code --install-extension debug80-0.0.1.vsix --force
-```
-
-Then test:
-
-- Open a workspace with an initialized Debug80 project.
-- Confirm the Debug80 view appears under the VS Code Run and Debug side bar.
-- Launch a TEC-1G MON3 target.
-- Confirm asm80 target assembly works.
-- Confirm ZAX target assembly works.
-- Confirm project restart works.
-- Confirm breakpoints and source mapping work in a project with include files.
-
-Uninstall if needed:
-
-```bash
-code --uninstall-extension jhlagado.debug80
-```
 
 ## Versioning
 
