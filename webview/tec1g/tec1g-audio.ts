@@ -16,6 +16,7 @@ export function createTec1gAudio(options: {
 }): {
   applySpeakerFromUpdate: (data: Tec1gUpdatePayload) => void;
   applyMuteState: () => void;
+  unlockAudio: () => void;
   updateAudio: () => void;
   wireMuteClick: () => void;
 } {
@@ -35,6 +36,13 @@ export function createTec1gAudio(options: {
       core.ensureAudio();
     }
     updateAudio();
+  }
+
+  function unlockAudio(): void {
+    if (!muted) {
+      core.unlockAudio();
+      updateAudio();
+    }
   }
 
   function applySpeakerFromUpdate(data: Tec1gUpdatePayload): void {
@@ -66,5 +74,5 @@ export function createTec1gAudio(options: {
     });
   }
 
-  return { applySpeakerFromUpdate, applyMuteState, updateAudio, wireMuteClick };
+  return { applySpeakerFromUpdate, applyMuteState, unlockAudio, updateAudio, wireMuteClick };
 }

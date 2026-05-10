@@ -276,6 +276,8 @@ window.addEventListener('message', event => {
 
 applySpeed(speedMode);
 audio.applyMuteState();
+document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
+document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 lcdRenderer.draw();
 matrixRenderer.build();
 matrixRenderer.draw();

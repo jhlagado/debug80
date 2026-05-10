@@ -21,10 +21,12 @@ function createStatefulVscode(initialState: unknown = null): VscodeApi {
 
 function createAudioCoreMock(): AudioCore & {
   ensureAudio: ReturnType<typeof vi.fn>;
+  unlockAudio: ReturnType<typeof vi.fn>;
   updateAudio: ReturnType<typeof vi.fn>;
 } {
   return {
     ensureAudio: vi.fn(),
+    unlockAudio: vi.fn(),
     updateAudio: vi.fn(),
   };
 }
@@ -75,6 +77,20 @@ describe('webview audio mute state', () => {
     expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
   });
 
+  it('unlocks TEC-1 audio on later user gesture when persisted state is unmuted', () => {
+    const audioCore = createAudioCoreMock();
+    const audio = createAudioController(
+      document.createElement('div'),
+      createStatefulVscode({ audioMute: { tec1: false } }),
+      audioCore
+    );
+
+    audio.unlockAudio();
+
+    expect(audioCore.unlockAudio).toHaveBeenCalledTimes(1);
+    expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
+  });
+
   it('persists TEC-1G mute toggles through vscode state', () => {
     const vscode = createStatefulVscode();
     const muteEl = document.createElement('div');
@@ -119,6 +135,22 @@ describe('webview audio mute state', () => {
 
     expect(muteEl.textContent).toBe('SOUND');
     expect(audioCore.ensureAudio).toHaveBeenCalledTimes(1);
+    expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
+  });
+
+  it('unlocks TEC-1G audio on later user gesture when persisted state is unmuted', () => {
+    const audioCore = createAudioCoreMock();
+    const audio = createTec1gAudio({
+      muteEl: document.createElement('div'),
+      speakerEl: document.createElement('div'),
+      speakerLabel: document.createElement('div'),
+      vscode: createStatefulVscode({ audioMute: { tec1g: false } }),
+      audioCore,
+    });
+
+    audio.unlockAudio();
+
+    expect(audioCore.unlockAudio).toHaveBeenCalledTimes(1);
     expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
   });
 });

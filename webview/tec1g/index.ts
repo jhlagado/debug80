@@ -264,6 +264,8 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
 
 applySpeed(speedMode);
 audio.applyMuteState();
+document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
+document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
 visibilityController.wire();
 lcdRenderer.draw();

@@ -4,6 +4,7 @@ import type { VscodeApi } from '../common/vscode';
 
 export interface Tec1AudioController {
   applyMuteState(): void;
+  unlockAudio(): void;
   setSpeakerHz(hz: number): void;
   toggleMute(): void;
   updateAudio(): void;
@@ -34,6 +35,12 @@ export function createAudioController(
 
   return {
     applyMuteState,
+    unlockAudio(): void {
+      if (!muted) {
+        core.unlockAudio();
+        updateAudio();
+      }
+    },
     setSpeakerHz(hz: number): void {
       speakerHz = hz;
     },
