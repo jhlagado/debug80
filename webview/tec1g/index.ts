@@ -233,6 +233,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
   }
   if (message.type === 'sessionStatus') {
     sessionStatusController.setStatus(message.status);
+    if (message.status === 'running' || message.status === 'paused') {
+      panelLayout.refreshOpenRegisters();
+    }
     return;
   }
   if (message.type === 'selectTab') {

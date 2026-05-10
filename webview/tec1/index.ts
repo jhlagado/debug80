@@ -249,6 +249,9 @@ window.addEventListener('message', event => {
   }
   if (event.data.type === 'sessionStatus') {
     sessionStatusController.setStatus(event.data.status);
+    if (event.data.status === 'running' || event.data.status === 'paused') {
+      panelLayout.refreshOpenRegisters();
+    }
     return;
   }
   if (event.data.type === 'selectTab') {

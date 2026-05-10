@@ -23,6 +23,7 @@ export type AccordionLayoutController = {
   isMachineOpen: () => boolean;
   isCpuOpen: () => boolean;
   isMemoryOpen: () => boolean;
+  refreshOpenRegisters: () => void;
   setProviderTab: (tab: string, notify: boolean) => void;
   scheduleMemoryResize: () => void;
   updateMemoryLayout: (forceRefresh: boolean) => void;
@@ -142,6 +143,12 @@ export function createAccordionLayoutController(
     }
   }
 
+  function refreshOpenRegisters(): void {
+    if (openState.registers) {
+      options.getMemoryPanelController()?.requestRegisterSnapshot();
+    }
+  }
+
   function setOpen(panel: AccordionPanel, open: boolean, notify: boolean): void {
     openState[panel] = open;
     applyPanelState(panel);
@@ -149,6 +156,9 @@ export function createAccordionLayoutController(
     syncProviderTab(notify);
     if (panel === 'memory' && open) {
       updateMemoryLayout(true);
+    }
+    if (panel === 'registers' && open) {
+      refreshOpenRegisters();
     }
   }
 
@@ -175,6 +185,7 @@ export function createAccordionLayoutController(
     isMachineOpen: () => openState.machine,
     isCpuOpen: () => openState.registers || openState.memory,
     isMemoryOpen: () => openState.memory,
+    refreshOpenRegisters,
     setProviderTab,
     scheduleMemoryResize(): void {
       if (resizeTimer !== null) {

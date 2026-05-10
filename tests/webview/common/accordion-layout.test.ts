@@ -28,7 +28,10 @@ describe('accordion layout controller', () => {
   it('defaults to machine and registers open and persists toggled sections', () => {
     const messages: PostedMessage[] = [];
     const memoryPanel = document.createElement('div');
-    const memoryController = { requestSnapshot: () => {} } as unknown as MemoryPanel;
+    const memoryController = {
+      requestSnapshot: () => {},
+      requestRegisterSnapshot: () => {},
+    } as unknown as MemoryPanel;
     const registersButton = button('registers');
     const memoryButton = button('memory');
     const vscode = createVscodeMock(messages);
@@ -101,11 +104,12 @@ describe('accordion layout controller', () => {
     expect(controller.getProviderTab()).toBe('memory');
   });
 
-  it('does not request memory snapshots when only registers are opened', () => {
+  it('requests a register snapshot when registers are opened without activating memory', () => {
     const messages: PostedMessage[] = [];
     const memoryPanel = document.createElement('div');
     const requestSnapshot = vi.fn();
-    const memoryController = { requestSnapshot } as unknown as MemoryPanel;
+    const requestRegisterSnapshot = vi.fn();
+    const memoryController = { requestSnapshot, requestRegisterSnapshot } as unknown as MemoryPanel;
     const registersButton = button('registers');
     const memoryButton = button('memory');
     const vscode = createVscodeMock(messages, {
@@ -135,11 +139,13 @@ describe('accordion layout controller', () => {
     expect(controller.isMemoryOpen()).toBe(false);
     expect(controller.getProviderTab()).toBe('ui');
     expect(requestSnapshot).not.toHaveBeenCalled();
+    expect(requestRegisterSnapshot).toHaveBeenCalledTimes(1);
 
     memoryButton.click();
     expect(controller.isMemoryOpen()).toBe(true);
     expect(controller.getProviderTab()).toBe('memory');
     expect(requestSnapshot).toHaveBeenCalledTimes(1);
+    expect(requestRegisterSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it('closes memory when the provider selects the UI tab', () => {
@@ -149,7 +155,10 @@ describe('accordion layout controller', () => {
     const memoryContent = document.createElement('div');
     const memoryButton = button('memory');
     const requestSnapshot = vi.fn();
-    const memoryController = { requestSnapshot } as unknown as MemoryPanel;
+    const memoryController = {
+      requestSnapshot,
+      requestRegisterSnapshot: () => {},
+    } as unknown as MemoryPanel;
     const vscode = createVscodeMock(messages, {
       debug80Accordion: {
         machine: true,
