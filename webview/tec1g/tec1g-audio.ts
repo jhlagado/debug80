@@ -2,7 +2,7 @@
  * @file Speaker UI and Web Audio wiring for the TEC-1G webview.
  */
 
-import { createAudioCore } from '../common/audio-core';
+import { createAudioCore, type AudioCore } from '../common/audio-core';
 import { readAudioMuted, writeAudioMuted } from '../common/audio-mute-state';
 import type { VscodeApi } from '../common/vscode';
 import type { Tec1gUpdatePayload } from './entry-types';
@@ -12,6 +12,7 @@ export function createTec1gAudio(options: {
   speakerEl: HTMLElement;
   speakerLabel: HTMLElement | null;
   vscode?: Pick<VscodeApi, 'getState' | 'setState'>;
+  audioCore?: AudioCore;
 }): {
   applySpeakerFromUpdate: (data: Tec1gUpdatePayload) => void;
   applyMuteState: () => void;
@@ -22,7 +23,7 @@ export function createTec1gAudio(options: {
 
   let muted = readAudioMuted(vscode, 'tec1g');
   let lastSpeakerHz = 0;
-  const core = createAudioCore();
+  const core = options.audioCore ?? createAudioCore();
 
   function updateAudio(): void {
     core.updateAudio(muted, lastSpeakerHz);
@@ -30,6 +31,9 @@ export function createTec1gAudio(options: {
 
   function applyMuteState(): void {
     muteEl.textContent = muted ? 'MUTED' : 'SOUND';
+    if (!muted) {
+      core.ensureAudio();
+    }
     updateAudio();
   }
 
