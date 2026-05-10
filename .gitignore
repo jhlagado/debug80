@@ -28,6 +28,7 @@ coverage/
 tests/**/*.js
 tests/**/*.d.ts
 tests/**/*.map
+!tests/integration-vscode/**/*.js
 
 # Temporary files
 *.tmp
