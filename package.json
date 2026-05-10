@@ -381,6 +381,7 @@
     "build": "npm run clean && tsc && npm run build:webview",
     "bundle:sync-mon3": "node scripts/sync-mon3-bundle.cjs",
     "build:webview": "node scripts/build-webview.js",
+    "vscode:prepublish": "npm run build",
     "prepare": "husky",
     "typecheck": "tsc --noEmit",
     "typecheck:webview": "tsc -p webview/tsconfig.json --noEmit",
@@ -396,6 +397,8 @@
     "coverage": "vitest run --coverage",
     "perf:z80": "npm run build && node scripts/perf-z80.js",
     "package": "vsce package",
+    "package:check": "npm run typecheck && npm run typecheck:webview && npm test && npm run package",
+    "publish:marketplace": "vsce publish",
     "test:webview": "vitest run -c vitest.webview.config.ts",
     "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",
     "test:e2e": "npm run test:e2e:adapter"

@@ -49,11 +49,7 @@ deliberate compatibility project.
    - Project initialization must work from an empty folder with no `.vscode` folder requirement.
 
 5. **Verification before release**
-   - `npm run typecheck`
-   - `npm test`
-   - `npm run typecheck:webview`
-   - `npm run test:webview`
-   - `npm run package`
+   - `npm run package:check`
    - Inspect VSIX contents for required runtime dependencies and bundled assets.
 
 ## Module-System Policy
@@ -91,5 +87,5 @@ treated as the active backlog.
 - Evaluate full Debug80 ESM runtime output.
 - Add a stable top-level ZAX library export so Debug80 can import `@jhlagado/zax` rather than deep
   `dist/src/...` modules.
-- Add a release checklist or script that builds the VSIX and reports included runtime dependencies.
+- Follow `docs/release-process.md` for local VSIX testing and eventual Marketplace publishing.
 - Add Windows-specific smoke testing for project creation, assembly, source mapping, and launch.

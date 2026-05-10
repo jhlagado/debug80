@@ -78,6 +78,16 @@ npm run build
 npm test
 ```
 
+## Local VSIX Candidate
+
+```bash
+npm ci
+npm run package:check
+code --install-extension debug80-0.0.1.vsix --force
+```
+
+The full release checklist is in `docs/release-process.md`.
+
 ## Quick start
 
 - Open the separate [`debug80-tec1g`](https://github.com/jhlagado/debug80-tec1g) repo for TEC-1G monitor + serial workflows (or `debug80-tec1g-mon3` for MON-3–oriented workspaces).
