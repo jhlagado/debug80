@@ -1,6 +1,6 @@
 import { HexProgram } from './loaders';
 import { Cpu, execute, initCpu, resetCpu, interrupt as triggerInterrupt } from './cpu';
-import { HardwareContext, StepInfo } from './types';
+import { Callbacks, HardwareContext, StepInfo } from './types';
 import {
   OP_CALL_C,
   OP_CALL_M,
@@ -87,7 +87,7 @@ export interface IoHandlers {
   tick?: () => TickResult | void;
 }
 
-type Z80RuntimeImpl = Z80Runtime & { cpu: Cpu; hardware: HardwareContext };
+type Z80RuntimeImpl = Z80Runtime & { cpu: Cpu; hardware: HardwareContext; execCallbacks: Callbacks };
 
 interface TickResult {
   interrupt?: {
@@ -147,11 +147,23 @@ export function createZ80Runtime(
   cpu.hardware = hardware;
   hardware.cpu = cpu;
 
+  const execCallbacks: Callbacks = {
+    mem_read: (addr: number): number => readMemory(hardware, addr),
+    mem_write: (addr: number, value: number): void => {
+      writeMemory(hardware, addr, value);
+    },
+    io_read: (port: number): number => hardware.ioRead(port & 0xffff),
+    io_write: (port: number, value: number): void => {
+      hardware.ioWrite(port & 0xffff, value & 0xff);
+    },
+  };
+
   loadProgram(hardware, cpu, program, entry);
 
   const runtime: Z80RuntimeImpl = {
     cpu,
     hardware,
+    execCallbacks,
     step: stepRuntime,
     runUntilStop: runUntilStopRuntime,
     getRegisters,
@@ -163,6 +175,21 @@ export function createZ80Runtime(
   };
 
   return runtime;
+}
+
+function readMemory(hardware: HardwareContext, addr: number): number {
+  return (hardware.memRead ?? ((address: number): number => hardware.memory[address & 0xffff] ?? 0))(
+    addr & 0xffff
+  );
+}
+
+function writeMemory(hardware: HardwareContext, addr: number, value: number): void {
+  const write =
+    hardware.memWrite ??
+    ((address: number, byte: number): void => {
+      hardware.memory[address & 0xffff] = byte & 0xff;
+    });
+  write(addr & 0xffff, value & 0xff);
 }
 
 function loadProgram(
@@ -271,13 +298,7 @@ function isBlockRepeatInstruction(
 function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunResult {
   const cpu = this.cpu;
   const hardware = this.hardware;
-  const memRead =
-    hardware.memRead ?? ((addr: number): number => hardware.memory[addr & 0xffff] ?? 0);
-  const memWrite =
-    hardware.memWrite ??
-    ((addr: number, value: number): void => {
-      hardware.memory[addr & 0xffff] = value & 0xff;
-    });
+  const memRead = (addr: number): number => readMemory(hardware, addr);
   if (cpu.halted) {
     return { halted: true, pc: cpu.pc, reason: 'halt', cycles: 0 };
   }
@@ -295,18 +316,9 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
   let totalCycles = 0;
   let iterations = 0;
 
-  const execCallbacks = {
-    mem_read: memRead,
-    mem_write: memWrite,
-    io_read: (port: number): number => hardware.ioRead(port & 0xffff),
-    io_write: (port: number, value: number): void => {
-      hardware.ioWrite(port & 0xffff, value & 0xff);
-    },
-  };
-
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const cycles = execute(cpu, execCallbacks);
+    const cycles = execute(cpu, this.execCallbacks);
     totalCycles += cycles;
     iterations += 1;
 
@@ -315,14 +327,7 @@ function stepRuntime(this: Z80RuntimeImpl, options?: { trace?: StepInfo }): RunR
       | undefined;
     if (tickResult?.interrupt !== undefined) {
       const irq = tickResult.interrupt;
-      triggerInterrupt(cpu, {
-        mem_read: memRead,
-        mem_write: memWrite,
-        io_read: (port: number) => hardware.ioRead(port & 0xffff),
-        io_write: (port: number, value: number) => {
-          hardware.ioWrite(port & 0xffff, value & 0xff);
-        },
-      }, irq.nonMaskable === true, irq.data ?? 0);
+      triggerInterrupt(cpu, this.execCallbacks, irq.nonMaskable === true, irq.data ?? 0);
     }
     if (tickResult !== undefined && tickResult.stop === true) {
       return { halted: false, pc: cpu.pc, reason: 'breakpoint', cycles: totalCycles };

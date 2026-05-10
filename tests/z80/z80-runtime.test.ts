@@ -80,6 +80,36 @@ describe('z80-runtime', () => {
     assert.deepEqual(reads, [0x5604]);
   });
 
+  it('uses updated memory hooks without rebuilding execution callbacks', () => {
+    const program = makeProgram(
+      [
+        0x3a,
+        0x00,
+        0x20, // LD A,(0x2000)
+        0x32,
+        0x01,
+        0x20, // LD (0x2001),A
+        0x76, // HALT
+      ],
+      0x0000
+    );
+    const runtime = createZ80Runtime(program);
+    const writes: Array<{ address: number; value: number }> = [];
+
+    runtime.hardware.memRead = (address: number): number =>
+      (address & 0xffff) === 0x2000 ? 0x5a : runtime.hardware.memory[address & 0xffff] ?? 0;
+    runtime.hardware.memWrite = (address: number, value: number): void => {
+      writes.push({ address: address & 0xffff, value: value & 0xff });
+      runtime.hardware.memory[address & 0xffff] = value & 0xff;
+    };
+
+    runtime.step();
+    runtime.step();
+
+    assert.equal(runtime.getRegisters().a, 0x5a);
+    assert.deepEqual(writes, [{ address: 0x2001, value: 0x5a }]);
+  });
+
   it('captures and restores CPU state snapshots', () => {
     const program = makeProgram([
       0x31,
