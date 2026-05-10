@@ -28,8 +28,8 @@ export interface AssembleBinOptions {
 
 export interface AssemblerBackend {
   readonly id: string;
-  assemble(options: AssembleOptions): AssembleResult;
-  assembleBin?(options: AssembleBinOptions): AssembleResult;
+  assemble(options: AssembleOptions): Promise<AssembleResult>;
+  assembleBin?(options: AssembleBinOptions): Promise<AssembleResult>;
   compileMappingInProcess?(sourcePath: string, baseDir: string): MappingParseResult | undefined;
 }
 

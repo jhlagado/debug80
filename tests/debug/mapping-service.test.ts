@@ -409,7 +409,7 @@ describe('mapping-service', () => {
     }));
     const backend: AssemblerBackend = {
       id: 'mock-asm',
-      assemble: () => ({ success: true }),
+      assemble: () => Promise.resolve({ success: true }),
       compileMappingInProcess,
     };
     const resolveAssemblerBackend = vi
@@ -460,7 +460,7 @@ describe('mapping-service', () => {
     resolveListingSourcePathMock.mockReturnValue(extraSourcePath);
     const backend: AssemblerBackend = {
       id: 'mock-asm',
-      assemble: () => ({ success: true }),
+      assemble: () => Promise.resolve({ success: true }),
     };
     const resolveAssemblerBackend = vi
       .spyOn(assemblerBackendModule, 'resolveAssemblerBackend')

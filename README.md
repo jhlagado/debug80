@@ -15,7 +15,7 @@ This repository keeps the shared debugger and a small `test/fixtures` stub for t
 <table>
   <tr>
     <td bgcolor="#0b0b0b" align="center">
-      <img src="assets/debug80_pixel_art_flat.svg" width="360" alt="Debug80 pixel art logo">
+      <img src="assets/debug80_pixel_art_flat.png" width="360" alt="Debug80 pixel art logo">
     </td>
   </tr>
 </table>

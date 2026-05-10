@@ -166,8 +166,8 @@ export class Z80DebugSession extends DebugSession {
       this.sendResponse(response);
       return true;
     });
-    this.commandRouter.register('debug80/rebuildWarm', (response) =>
-      handleWarmRebuildRequest(response, {
+    this.commandRouter.register('debug80/rebuildWarm', (response) => {
+      void handleWarmRebuildRequest(response, {
         logger: this.logger,
         sessionState: this.sessionState,
         sourceState: this.sourceState,
@@ -176,8 +176,9 @@ export class Z80DebugSession extends DebugSession {
         sendEvent: (event) => this.sendEvent(event),
         sendResponse: (resp) => this.sendResponse(resp),
         sendErrorResponse: (resp, id, message) => this.sendErrorResponse(resp, id, message),
-      })
-    );
+      });
+      return true;
+    });
   }
 
   protected initializeRequest(
