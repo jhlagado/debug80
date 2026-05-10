@@ -219,7 +219,7 @@ export async function buildLaunchSession(
   const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 
-  assembleIfRequested({
+  await assembleIfRequested({
     backend: assemblerBackend,
     args: merged,
     asmPath,

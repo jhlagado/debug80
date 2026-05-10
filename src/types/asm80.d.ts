@@ -29,6 +29,10 @@ declare module 'asm80/asm.js' {
     machine: unknown
   ): [Asm80Error | null, Asm80CompileResult, Asm80SymbolTable | null];
 
+  export function hex(lines: Asm80CompileLine[], segment?: string): string;
+
+  export function lst(lines: Asm80CompileLine[], symbols: unknown, compact?: boolean): string;
+
   export function fileGet(
     resolver: (file: string, binary?: boolean) => string | Buffer | null
   ): void;
@@ -36,4 +40,8 @@ declare module 'asm80/asm.js' {
 
 declare module 'asm80/monolith.js' {
   export const Z80: unknown;
+}
+
+declare module 'asm80/hextools.js' {
+  export function hex2bin(hex: string, from: number, to: number): Buffer | Uint8Array | string;
 }

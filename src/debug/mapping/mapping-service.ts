@@ -135,12 +135,41 @@ export function buildMappingFromListing(options: {
     applySourceFallback(baseMapping, sourceFile, service.baseDir, service.resolveMappedPath);
     const layer2 = applyLayer2(baseMapping, {
       resolvePath: (file) => service.resolveMappedPath(file),
+      ...(sourceFile !== undefined && sourceFile.length > 0
+        ? { candidateFiles: [sourceFile] }
+        : {}),
     });
     missingSources = layer2.missingSources;
     if (missingSources.length > 0) {
       const unique = Array.from(new Set(missingSources));
       service.logger.warn(`Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`);
     }
+    debugMap = buildD8DebugMap(baseMapping, {
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      generator: { name: 'debug80' },
+    });
+    writeDebugMap(debugMap, mapPath, service, listingPath);
+  }
+
+  if (
+    debugMap !== undefined &&
+    !hasNativeMap &&
+    sourceFile !== undefined &&
+    sourceFile.length > 0 &&
+    !debugMapContainsSource(debugMap, sourceFile, service)
+  ) {
+    service.logger.info(
+      `Debug80: Cached D8 map did not include target source "${sourceFile}". Regenerating from LST.`
+    );
+    const baseMapping = parseListingMapping(listingContent);
+    applySourceFallback(baseMapping, sourceFile, service.baseDir, service.resolveMappedPath);
+    const layer2 = applyLayer2(baseMapping, {
+      resolvePath: (file) => service.resolveMappedPath(file),
+      candidateFiles: [sourceFile],
+    });
+    missingSources = layer2.missingSources;
     debugMap = buildD8DebugMap(baseMapping, {
       arch: 'z80',
       addressWidth: 16,
@@ -273,6 +302,21 @@ function loadDebugMap(
     );
     return undefined;
   }
+}
+
+function debugMapContainsSource(
+  map: D8DebugMap,
+  sourceFile: string,
+  service: MappingServiceOptions
+): boolean {
+  const sourceResolved = service.resolveMappedPath(sourceFile) ?? path.resolve(service.baseDir, sourceFile);
+  for (const file of Object.keys(map.files)) {
+    const resolved = service.resolveMappedPath(file) ?? path.resolve(service.baseDir, file);
+    if (path.resolve(resolved) === path.resolve(sourceResolved)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function isNativeDebugMap(map: D8DebugMap): boolean {

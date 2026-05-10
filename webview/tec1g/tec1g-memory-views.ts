@@ -2,48 +2,41 @@
  * @file DOM descriptors for the four memory dump columns (A–D) in the TEC-1G memory tab.
  */
 
-export type Tec1gMemoryViewRow = {
-  id: string;
-  view: HTMLElement | null;
-  address: HTMLElement | null;
-  addr: HTMLElement | null;
-  symbol: HTMLElement | null;
-  dump: HTMLElement | null;
-};
+import type { MemoryViewEntry } from '../common/memory-panel';
 
 /**
  * Resolves the fixed `view-a` … `view-d` regions from `index.html`.
  */
-export function createTec1gMemoryViews(): Tec1gMemoryViewRow[] {
+export function createTec1gMemoryViews(): MemoryViewEntry[] {
   return [
     {
       id: 'a',
-      view: document.getElementById('view-a'),
-      address: document.getElementById('address-a'),
+      view: document.getElementById('view-a') as HTMLSelectElement | null,
+      address: document.getElementById('address-a') as HTMLInputElement | null,
       addr: document.getElementById('addr-a'),
       symbol: document.getElementById('sym-a'),
       dump: document.getElementById('dump-a'),
     },
     {
       id: 'b',
-      view: document.getElementById('view-b'),
-      address: document.getElementById('address-b'),
+      view: document.getElementById('view-b') as HTMLSelectElement | null,
+      address: document.getElementById('address-b') as HTMLInputElement | null,
       addr: document.getElementById('addr-b'),
       symbol: document.getElementById('sym-b'),
       dump: document.getElementById('dump-b'),
     },
     {
       id: 'c',
-      view: document.getElementById('view-c'),
-      address: document.getElementById('address-c'),
+      view: document.getElementById('view-c') as HTMLSelectElement | null,
+      address: document.getElementById('address-c') as HTMLInputElement | null,
       addr: document.getElementById('addr-c'),
       symbol: document.getElementById('sym-c'),
       dump: document.getElementById('dump-c'),
     },
     {
       id: 'd',
-      view: document.getElementById('view-d'),
-      address: document.getElementById('address-d'),
+      view: document.getElementById('view-d') as HTMLSelectElement | null,
+      address: document.getElementById('address-d') as HTMLInputElement | null,
       addr: document.getElementById('addr-d'),
       symbol: document.getElementById('sym-d'),
       dump: document.getElementById('dump-d'),

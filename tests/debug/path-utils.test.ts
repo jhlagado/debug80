@@ -91,6 +91,12 @@ describe('path-utils', () => {
     it('should preserve forward slashes', () => {
       expect(toPortablePath('foo/bar/baz')).toBe('foo/bar/baz');
     });
+
+    it('should convert Windows backslashes to portable slashes on any host OS', () => {
+      expect(toPortablePath('C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\main.asm')).toBe(
+        'C:/Users/Ada Lovelace/Debug80 Project/src/main.asm'
+      );
+    });
   });
 
   describe('fromPortablePath', () => {
@@ -122,18 +128,33 @@ describe('path-utils', () => {
       expect(result).toContain('bar');
       expect(result).not.toContain('foo');
     });
+
+    it('should normalize Windows drive paths without prefixing the POSIX cwd', () => {
+      const key = normalizePathForKey('C:\\Users\\Ada\\Project\\src\\MAIN.ASM');
+      expect(key).toBe('c:/users/ada/project/src/main.asm');
+    });
   });
 
   describe('windows-specific behavior', () => {
-    const maybeIt = IS_WINDOWS ? it : it.skip;
-
-    maybeIt('compares paths case-insensitively', () => {
+    it('compares Windows drive paths case-insensitively on any host OS', () => {
       expect(pathsEqual('C:\\Temp\\File.asm', 'c:\\temp\\file.asm')).toBe(true);
     });
 
-    maybeIt('treats base path case-insensitively for containment', () => {
+    it('treats Windows drive base paths case-insensitively for containment on any host OS', () => {
       expect(isPathWithin('C:\\Temp\\Project\\src\\file.asm', 'c:\\temp\\project')).toBe(true);
     });
+
+    it('does not match partial Windows directory names', () => {
+      expect(isPathWithin('C:\\Temp\\ProjectX\\src\\file.asm', 'c:\\temp\\project')).toBe(false);
+    });
+
+    it('returns Windows relative paths when Windows paths are within the base', () => {
+      expect(relativeIfWithin('C:\\Temp\\Project\\src\\file.asm', 'c:\\temp\\project')).toBe(
+        'src\\file.asm'
+      );
+    });
+
+    const maybeIt = IS_WINDOWS ? it : it.skip;
 
     maybeIt('converts backslashes to forward slashes for portable paths', () => {
       expect(toPortablePath('C:\\Temp\\Project\\file.asm')).toBe('C:/Temp/Project/file.asm');

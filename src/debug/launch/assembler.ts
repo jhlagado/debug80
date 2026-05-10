@@ -5,21 +5,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as cp from 'child_process';
 import { createRequire } from 'module';
-import { toPortablePath } from '../mapping/path-utils';
+import * as asm80Module from 'asm80/asm.js';
+import * as asm80Monolith from 'asm80/monolith.js';
 
 const moduleRequire = createRequire(__filename);
-
-/**
- * Represents the asm80 command and its arguments.
- */
-export interface Asm80Command {
-  /** The command to run (may be node) */
-  command: string;
-  /** Arguments to prepend (e.g., script path when using node) */
-  argsPrefix: string[];
-}
 
 /**
  * Result of running the assembler.
@@ -76,6 +66,37 @@ function extractNumericValue(output: string, key: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
+function formatAsm80Error(err: unknown, asmPath?: string): string {
+  if (typeof err === 'string') {
+    return err;
+  }
+  if (err !== null && typeof err === 'object') {
+    const record = err as Record<string, unknown>;
+    const message = typeof record.msg === 'string' ? record.msg : JSON.stringify(record);
+    const source = record.s;
+    const line =
+      source !== null &&
+      typeof source === 'object' &&
+      typeof (source as Record<string, unknown>).numline === 'number'
+        ? (source as Record<string, number>).numline
+        : undefined;
+    const sourceLine =
+      source !== null &&
+      typeof source === 'object' &&
+      typeof (source as Record<string, unknown>).line === 'string'
+        ? (source as Record<string, string>).line
+        : undefined;
+    const diagnostic: AssemblyDiagnostic = {
+      message,
+      ...(asmPath !== undefined ? { path: asmPath } : {}),
+      ...(line !== undefined ? { line } : {}),
+      ...(sourceLine !== undefined ? { sourceLine: sourceLine.trim() } : {}),
+    };
+    return formatAssemblyDiagnostic(diagnostic);
+  }
+  return String(err);
+}
+
 export function parseAsm80Diagnostic(output: string, asmPath?: string): AssemblyDiagnostic | undefined {
   const trimmed = output.trim();
   if (trimmed.length === 0) {
@@ -128,186 +149,83 @@ export function formatAssemblyDiagnostic(diagnostic: AssemblyDiagnostic): string
     .join('\n');
 }
 
-/**
- * Finds the asm80 binary by searching up from a directory.
- *
- * @param startDir - Directory to start searching from
- * @returns Path to asm80 binary, or undefined if not found
- */
-export function findAsm80Binary(startDir: string): string | undefined {
-  const candidates =
-    process.platform === 'win32' ? ['asm80.cmd', 'asm80.exe', 'asm80.ps1', 'asm80'] : ['asm80'];
+function configureAsm80FileResolver(sourceDir: string): void {
+  asm80Module.fileGet((file: string, binary?: boolean) => {
+    const resolved = path.resolve(sourceDir, file);
+    if (!fs.existsSync(resolved)) {
+      return null;
+    }
+    return binary === true ? fs.readFileSync(resolved) : fs.readFileSync(resolved, 'utf-8');
+  });
+}
 
-  for (let dir = startDir; ; ) {
-    const binDir = path.join(dir, 'node_modules', '.bin');
-    for (const name of candidates) {
-      const candidate = path.join(binDir, name);
-      if (fs.existsSync(candidate)) {
-        return candidate;
+function compileAsm80Source(
+  asmPath: string
+): [ReturnType<typeof asm80Module.compile>[0], NonNullable<ReturnType<typeof asm80Module.compile>[1]>] {
+  const asmDir = path.dirname(asmPath);
+  configureAsm80FileResolver(asmDir);
+  const sourceText = fs.readFileSync(asmPath, 'utf-8');
+  // asm80 logs caught compile errors to console before returning them. Suppress that
+  // here so failed project builds report through Debug80 diagnostics only.
+  // eslint-disable-next-line no-console
+  const originalConsoleLog = console.log;
+  // eslint-disable-next-line no-console
+  console.log = (): void => undefined;
+  let result: ReturnType<typeof asm80Module.compile>;
+  try {
+    result = asm80Module.compile(sourceText, asm80Monolith.Z80);
+  } finally {
+    // eslint-disable-next-line no-console
+    console.log = originalConsoleLog;
+  }
+  const [err, compiled] = result;
+  if (compiled === null) {
+    return [err ?? 'asm80 did not produce compiled output', [[], {}]];
+  }
+  return [err, compiled];
+}
+
+function binaryFromCompiledLines(
+  lines: asm80Module.Asm80CompileLine[],
+  from = 0x0000,
+  to = 0xffff
+): Buffer {
+  const bytes = new Map<number, number>();
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (const line of lines) {
+    if (typeof line.addr !== 'number' || !Array.isArray(line.lens)) {
+      continue;
+    }
+    for (let offset = 0; offset < line.lens.length; offset += 1) {
+      const address = line.addr + offset;
+      if (address < from || address > to) {
+        continue;
       }
+      const value = line.lens[offset];
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        continue;
+      }
+      bytes.set(address, value & 0xff);
+      min = Math.min(min, address);
+      max = Math.max(max, address);
     }
-
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
   }
 
-  // Try bundled asm80 relative to extension root (out/debug/ -> ../../node_modules)
-  const extensionRoot = path.resolve(__dirname, '..', '..');
-  const binStub = path.join(extensionRoot, 'node_modules', '.bin', 'asm80');
-  if (fs.existsSync(binStub)) {
-    return binStub;
-  }
-  const bundledJs = path.join(extensionRoot, 'node_modules', 'asm80', 'asm80.js');
-  if (fs.existsSync(bundledJs)) {
-    return bundledJs;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return Buffer.alloc(0);
   }
 
-  // Try require.resolve as last resort
-  const bundled = resolveBundledAsm80();
-  if (bundled !== undefined) {
-    return bundled;
+  const out = Buffer.alloc(max - min + 1);
+  for (let address = min; address <= max; address += 1) {
+    out[address - min] = bytes.get(address) ?? 0;
   }
-
-  return undefined;
+  return out;
 }
 
-/**
- * Resolves the bundled asm80 package.
- *
- * @returns Path to bundled asm80, or undefined
- */
-function resolveBundledAsm80(): string | undefined {
-  const tryResolve = (id: string): string | undefined => {
-    try {
-      return moduleRequire.resolve(id);
-    } catch {
-      return undefined;
-    }
-  };
-
-  // Try the actual binary entry from asm80's package.json ("bin": {"asm80": "./asm80.js"})
-  const entry = tryResolve('asm80/asm80.js');
-  if (entry !== undefined) {
-    return entry;
-  }
-
-  const direct = tryResolve('asm80/bin/asm80') ?? tryResolve('asm80/bin/asm80.js');
-  if (direct !== undefined) {
-    return direct;
-  }
-
-  const pkg = tryResolve('asm80/package.json');
-  if (pkg !== undefined) {
-    const root = path.dirname(pkg);
-
-    // Check for the bin entry at the package root
-    const rootBin = path.join(root, 'asm80.js');
-    if (fs.existsSync(rootBin)) {
-      return rootBin;
-    }
-
-    const bin = path.join(root, 'bin', 'asm80');
-    if (fs.existsSync(bin)) {
-      return bin;
-    }
-    const binJs = `${bin}.js`;
-    if (fs.existsSync(binJs)) {
-      return binJs;
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Resolves the asm80 command for running assembly.
- *
- * @param asmDir - Directory containing assembly source
- * @returns Command and argument prefix
- */
-export function resolveAsm80Command(asmDir: string): Asm80Command {
-  const resolved = findAsm80Binary(asmDir) ?? 'asm80';
-  if (shouldInvokeWithNode(resolved)) {
-    // process.execPath in VS Code's Extension Host is the Electron binary, not node.
-    // Find the real node binary instead.
-    const node = findNodeBinary();
-    return { command: node, argsPrefix: [resolved] };
-  }
-  return { command: resolved, argsPrefix: [] };
-}
-
-/**
- * Finds the real Node.js binary (not the Electron helper).
- */
-function findNodeBinary(): string {
-  // If process.execPath looks like a real node binary, use it
-  const exec = process.execPath;
-  if (exec.endsWith('/node') || exec.endsWith('\\node.exe') || exec.endsWith('/node.exe')) {
-    return exec;
-  }
-
-  // Look for node on PATH
-  const which = process.platform === 'win32' ? 'where' : 'which';
-  try {
-    const result = cp.spawnSync(which, ['node'], { encoding: 'utf-8' });
-    const nodePath = result.stdout?.trim().split('\n')[0]?.trim();
-    if (nodePath !== undefined && nodePath !== '' && fs.existsSync(nodePath)) {
-      return nodePath;
-    }
-  } catch {
-    // fall through
-  }
-
-  return 'node';
-}
-
-/**
- * Determines if a command should be invoked via Node.js.
- *
- * @param command - The command path
- * @returns True if the command needs to be run with node
- */
-export function shouldInvokeWithNode(command: string): boolean {
-  const lower = command.toLowerCase();
-
-  // node_modules/.bin/ stubs are executable scripts that find node themselves
-  if (command.includes(`node_modules${path.sep}.bin`) || command.includes('node_modules/.bin')) {
-    return false;
-  }
-
-  // Windows executables run directly
-  if (
-    process.platform === 'win32' &&
-    (lower.endsWith('.cmd') || lower.endsWith('.exe') || lower.endsWith('.ps1'))
-  ) {
-    return false;
-  }
-
-  // Commands without paths (system commands) run directly
-  if (!(command.includes(path.sep) || command.includes('/'))) {
-    return false;
-  }
-
-  // JavaScript files need node
-  const ext = path.extname(command).toLowerCase();
-  if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
-    return true;
-  }
-
-  // Check for Node.js shebang
-  try {
-    const fd = fs.openSync(command, 'r');
-    const buffer = Buffer.alloc(160);
-    const bytes = fs.readSync(fd, buffer, 0, buffer.length, 0);
-    fs.closeSync(fd);
-    const firstLine = buffer.toString('utf-8', 0, bytes).split('\n')[0] ?? '';
-    return firstLine.startsWith('#!') && firstLine.includes('node');
-  } catch {
-    return false;
-  }
+function resolveBinPath(hexPath: string): string {
+  return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
 }
 
 /**
@@ -325,74 +243,45 @@ export function runAssembler(
   listingPath: string,
   onOutput?: (message: string) => void
 ): AssembleResult {
-  const asmDir = path.dirname(asmPath);
   const outDir = path.dirname(hexPath);
 
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
 
-  const asm80 = resolveAsm80Command(asmDir);
-  // Use forward slashes for cross-platform compatibility with asm80
-  const outArg = toPortablePath(path.relative(asmDir, hexPath));
-
-  const result = cp.spawnSync(
-    asm80.command,
-    [...asm80.argsPrefix, '-m', 'Z80', '-t', 'hex', '-o', outArg, path.basename(asmPath)],
-    {
-      cwd: asmDir,
-      encoding: 'utf-8',
-    }
-  );
-
-  if (result.error) {
-    const enoent = (result.error as NodeJS.ErrnoException)?.code === 'ENOENT';
-    const message = enoent
-      ? `asm80 not found. Tried command="${asm80.command}" args=${JSON.stringify(asm80.argsPrefix)} asmDir="${asmDir}" __dirname="${__dirname}"`
-      : `asm80 failed to start: ${result.error.message ?? String(result.error)}`;
-
-    if (onOutput) {
-      onOutput(`${message}\n`);
+  try {
+    const [err, compiled] = compileAsm80Source(asmPath);
+    if (err !== null && err !== undefined) {
+      const error = formatAsm80Error(err, asmPath);
+      const diagnostic = parseAsm80Diagnostic(error, asmPath);
+      return {
+        success: false,
+        error,
+        ...(diagnostic !== undefined ? { diagnostic } : {}),
+      };
     }
 
-    return { success: false, error: message };
-  }
+    const [lines, symbols] = compiled;
+    fs.writeFileSync(hexPath, asm80Module.hex(lines), 'utf-8');
+    fs.writeFileSync(resolveBinPath(hexPath), binaryFromCompiledLines(lines));
 
-  if (result.status !== 0) {
-    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-    const diagnostic = parseAsm80Diagnostic(output, asmPath);
-    const error =
-      diagnostic !== undefined
-        ? formatAssemblyDiagnostic(diagnostic)
-        : `asm80 exited with code ${result.status}`;
-    return {
-      success: false,
-      error,
-      stdout: result.stdout ?? undefined,
-      stderr: result.stderr ?? undefined,
-      ...(diagnostic !== undefined ? { diagnostic } : {}),
-    };
-  }
-
-  // Copy listing to target location if different
-  const producedListing = path.join(
-    path.dirname(hexPath),
-    `${path.basename(hexPath, path.extname(hexPath))}.lst`
-  );
-
-  if (listingPath !== producedListing && fs.existsSync(producedListing)) {
     const listingDir = path.dirname(listingPath);
     if (!fs.existsSync(listingDir)) {
       fs.mkdirSync(listingDir, { recursive: true });
     }
-    fs.copyFileSync(producedListing, listingPath);
-  }
+    fs.writeFileSync(listingPath, asm80Module.lst(lines, symbols), 'utf-8');
 
-  return {
-    success: true,
-    stdout: result.stdout ?? undefined,
-    stderr: result.stderr ?? undefined,
-  };
+    return {
+      success: true,
+    };
+  } catch (err) {
+    const message = `asm80 failed: ${err instanceof Error ? err.message : String(err)}`;
+    onOutput?.(`${message}\n`);
+    return {
+      success: false,
+      error: message,
+    };
+  }
 }
 
 /**
@@ -412,69 +301,33 @@ export function runAssemblerBin(
   binTo: number,
   onOutput?: (message: string) => void
 ): AssembleResult {
-  const asmDir = path.dirname(asmPath);
   const outDir = path.dirname(hexPath);
-  const binPath = path.join(outDir, `${path.basename(hexPath, path.extname(hexPath))}.bin`);
-  const wrapperName = `.${path.basename(asmPath, path.extname(asmPath))}.bin.asm`;
-  const wrapperPath = path.join(asmDir, wrapperName);
+  const binPath = resolveBinPath(hexPath);
 
-  const wrapper = `.BINFROM ${binFrom}\n.BINTO ${binTo}\n.INCLUDE "${path.basename(asmPath)}"\n`;
-  fs.writeFileSync(wrapperPath, wrapper);
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
 
-  const asm80 = resolveAsm80Command(asmDir);
-  // Use forward slashes for cross-platform compatibility with asm80
-  const outArg = toPortablePath(path.relative(asmDir, binPath));
-  const wrapperArg = toPortablePath(path.relative(asmDir, wrapperPath));
-
-  const result = cp.spawnSync(
-    asm80.command,
-    [...asm80.argsPrefix, '-m', 'Z80', '-t', 'bin', '-o', outArg, wrapperArg],
-    {
-      cwd: asmDir,
-      encoding: 'utf-8',
-    }
-  );
-
-  // Clean up wrapper file
   try {
-    fs.unlinkSync(wrapperPath);
-  } catch {
-    /* ignore */
-  }
-
-  if (result.error) {
-    const message = `asm80 bin failed to start: ${result.error.message ?? String(result.error)}`;
-    if (onOutput) {
-      onOutput(`${message}\n`);
-    }
-    return { success: false, error: message };
-  }
-
-  if (result.status !== 0) {
-    if (onOutput) {
-      if (result.stdout) {
-        onOutput(`asm80 stdout:\n${result.stdout}\n`);
-      }
-      if (result.stderr) {
-        onOutput(`asm80 stderr:\n${result.stderr}\n`);
-      }
+    const [err, compiled] = compileAsm80Source(asmPath);
+    if (err !== null && err !== undefined) {
+      return { success: false, error: formatAsm80Error(err, asmPath) };
     }
 
-    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-    const suffix = output.length > 0 ? `: ${output}` : '';
+    const [lines] = compiled;
+    fs.writeFileSync(binPath, binaryFromCompiledLines(lines, binFrom, binTo));
+
+    return {
+      success: true,
+    };
+  } catch (err) {
+    const message = `asm80 bin failed: ${err instanceof Error ? err.message : String(err)}`;
+    onOutput?.(`${message}\n`);
     return {
       success: false,
-      error: `asm80 bin exited with code ${result.status}${suffix}`,
-      stdout: result.stdout ?? undefined,
-      stderr: result.stderr ?? undefined,
+      error: message,
     };
   }
-
-  return {
-    success: true,
-    stdout: result.stdout ?? undefined,
-    stderr: result.stderr ?? undefined,
-  };
 }
 
 /**

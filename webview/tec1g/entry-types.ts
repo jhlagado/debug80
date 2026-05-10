@@ -27,6 +27,7 @@ export type MemorySnapshotPayload = {
     address?: number;
     start: number;
     bytes: number[];
+    writable?: boolean[];
     focus?: number;
     symbol?: string;
     symbolOffset?: number;

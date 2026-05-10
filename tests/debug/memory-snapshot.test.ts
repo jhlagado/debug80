@@ -25,7 +25,10 @@ describe('memory-snapshot', () => {
     cpu.iy = 0x40;
     const runtime = {
       getRegisters: () => cpu,
-      hardware: { memory },
+      hardware: {
+        memory,
+        isMemoryWritable: (addr: number): boolean => addr !== 0x10,
+      },
     };
 
     const snapshot = buildMemorySnapshotResponse(
@@ -48,6 +51,7 @@ describe('memory-snapshot', () => {
     expect(snapshot.running).toBe(false);
     expect(snapshot.views).toHaveLength(1);
     expect(snapshot.views[0]?.address).toBe(0x10);
+    expect(snapshot.views[0]?.writable[snapshot.views[0].focus]).toBe(false);
     expect(snapshot.symbols).toEqual([{ name: 'ENTRY', address: 0x10 }]);
   });
 });

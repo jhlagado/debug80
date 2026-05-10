@@ -9,6 +9,7 @@ import * as path from 'path';
 import {
   buildListingCacheKey,
   isDebugMapStale,
+  normalizeSourcePath,
   relativeIfPossible,
   resolveArtifacts,
   resolveBaseDir,
@@ -172,5 +173,19 @@ describe('path-resolver', () => {
     const baseDir = path.join(tmpDir, 'project');
     const filePath = path.join(baseDir, 'src', 'demo.asm');
     expect(relativeIfPossible(filePath, baseDir)).toBe(path.join('src', 'demo.asm'));
+  });
+
+  it('treats Windows drive paths as absolute on non-Windows hosts', () => {
+    const sourcePath = 'C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\main.asm';
+    expect(normalizeSourcePath(sourcePath, '/tmp/workspace')).toBe(sourcePath);
+  });
+
+  it('returns relative paths for Windows drive paths inside the base', () => {
+    expect(
+      relativeIfPossible(
+        'C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\main.asm',
+        'c:\\users\\ada lovelace\\debug80 project'
+      )
+    ).toBe('src\\main.asm');
   });
 });

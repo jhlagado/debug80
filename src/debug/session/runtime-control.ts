@@ -18,6 +18,9 @@ import type { LaunchSessionArtifacts } from '../launch/launch-sequence';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CpuStateSnapshot } from '../../z80/runtime';
 import { emitDebugSessionStatus } from './session-status';
+import { createRuntimePerformanceMonitor } from './performance-monitor';
+
+const HOST_FAIRNESS_YIELD_MS = 0;
 
 export interface RuntimeControlContext {
   getRuntime: () => Z80Runtime | undefined;
@@ -41,6 +44,7 @@ export interface RuntimeControlContext {
   isBreakpointAddress: (address: number | null) => boolean;
   handleHaltStop: () => void;
   sendEvent: (event: unknown) => void;
+  getLogger?: () => Logger;
 }
 
 export interface RuntimeControlCapabilities {
@@ -56,6 +60,7 @@ export interface RuntimeControlContextInput {
   isBreakpointAddress: (address: number | null) => boolean;
   handleHaltStop: () => void;
   sendEvent: (event: unknown) => void;
+  logger: Logger;
 }
 
 export interface LaunchSequenceContextInput {
@@ -117,6 +122,7 @@ export function createRuntimeControlContext(
     isBreakpointAddress: (address: number | null): boolean => input.isBreakpointAddress(address),
     handleHaltStop: (): void => input.handleHaltStop(),
     sendEvent: (event: unknown): void => input.sendEvent(event),
+    getLogger: (): Logger => input.logger,
   };
 }
 
@@ -195,6 +201,38 @@ export function applyLaunchSessionArtifacts(
   target.sessionState.runState.callDepth = 0;
   target.sessionState.runState.stepOverMaxInstructions = artifacts.stepOverMaxInstructions;
   target.sessionState.runState.stepOutMaxInstructions = artifacts.stepOutMaxInstructions;
+}
+
+function yieldToTimer(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function yieldToImmediate(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function monitoredYield(
+  monitor: ReturnType<typeof createRuntimePerformanceMonitor>,
+  waitMs: number
+): Promise<void> {
+  const startedMs = Date.now();
+  if (waitMs > 0) {
+    await yieldToTimer(waitMs);
+  } else {
+    await yieldToImmediate();
+  }
+  monitor.recordYield(waitMs, Date.now() - startedMs);
+}
+
+const nullPerformanceLogger: Logger = {
+  debug: () => undefined,
+  info: () => undefined,
+  warn: () => undefined,
+  error: () => undefined,
+};
+
+function getPerformanceLogger(context: RuntimeControlContext): Logger {
+  return context.getLogger?.() ?? nullPerformanceLogger;
 }
 
 export interface LaunchBreakpointsTarget {
@@ -286,9 +324,17 @@ export async function runUntilStopAsync(
   let lastThrottleMs = Date.now();
   const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
     context.getRuntimeCapabilities();
+  const initialCapabilities = getRuntimeCapabilities();
+  const monitor = createRuntimePerformanceMonitor({
+    logger: getPerformanceLogger(context),
+    label: 'run',
+    platform: context.getActivePlatform(),
+    clockHz: initialCapabilities?.getClockHz() ?? 0,
+  });
   emitDebugSessionStatus(context.sendEvent, 'running');
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    const chunkStartedMs = Date.now();
     for (let i = 0; i < CHUNK; i += 1) {
       const activeRuntime = context.getRuntime();
       if (activeRuntime === undefined) {
@@ -316,6 +362,7 @@ export async function runUntilStopAsync(
         captureEntryCpuStateIfNeeded(context);
         executed += 1;
         cyclesSinceThrottle += stepped.cycles ?? 0;
+        monitor.recordStep(stepped.cycles ?? 0);
         getRuntimeCapabilities()?.recordCycles(stepped.cycles ?? 0);
         if (stepped.halted) {
           context.handleHaltStop();
@@ -347,6 +394,7 @@ export async function runUntilStopAsync(
       captureEntryCpuStateIfNeeded(context);
       executed += 1;
       cyclesSinceThrottle += result.cycles ?? 0;
+      monitor.recordStep(result.cycles ?? 0);
       getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
       if (result.halted) {
         context.setRunning(false);
@@ -376,12 +424,13 @@ export async function runUntilStopAsync(
         const now = Date.now();
         const elapsed = now - lastThrottleMs;
         const waitMs = targetMs - elapsed;
+        monitor.recordChunk(now - chunkStartedMs, targetMs);
         if (waitMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          await monitoredYield(monitor, waitMs);
         } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
+          await monitoredYield(monitor, capabilities?.getYieldMs() ?? 0);
         } else {
-          await new Promise((resolve) => setImmediate(resolve));
+          await monitoredYield(monitor, HOST_FAIRNESS_YIELD_MS);
         }
         lastThrottleMs = Date.now();
         cyclesSinceThrottle = 0;
@@ -392,9 +441,9 @@ export async function runUntilStopAsync(
     lastThrottleMs = Date.now();
     const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      await monitoredYield(monitor, yieldMs);
     } else {
-      await new Promise((resolve) => setImmediate(resolve));
+      await monitoredYield(monitor, 0);
     }
   }
 }
@@ -415,9 +464,17 @@ export async function runUntilReturnAsync(
   let lastThrottleMs = Date.now();
   const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
     context.getRuntimeCapabilities();
+  const initialCapabilities = getRuntimeCapabilities();
+  const monitor = createRuntimePerformanceMonitor({
+    logger: getPerformanceLogger(context),
+    label: 'step-out',
+    platform: context.getActivePlatform(),
+    clockHz: initialCapabilities?.getClockHz() ?? 0,
+  });
   emitDebugSessionStatus(context.sendEvent, 'running');
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    const chunkStartedMs = Date.now();
     for (let i = 0; i < CHUNK; i += 1) {
       const activeRuntime = context.getRuntime();
       if (activeRuntime === undefined) {
@@ -443,6 +500,7 @@ export async function runUntilReturnAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += stepped.cycles ?? 0;
+        monitor.recordStep(stepped.cycles ?? 0);
         if (stepped.halted) {
           context.handleHaltStop();
           return;
@@ -462,6 +520,7 @@ export async function runUntilReturnAsync(
         applyStepInfo(context, trace);
         executed += 1;
         cyclesSinceThrottle += result.cycles ?? 0;
+        monitor.recordStep(result.cycles ?? 0);
         getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
         if (result.halted) {
           context.setRunning(false);
@@ -505,12 +564,13 @@ export async function runUntilReturnAsync(
         const now = Date.now();
         const elapsed = now - lastThrottleMs;
         const waitMs = targetMs - elapsed;
+        monitor.recordChunk(now - chunkStartedMs, targetMs);
         if (waitMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          await monitoredYield(monitor, waitMs);
         } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await new Promise((resolve) => setTimeout(resolve, capabilities?.getYieldMs() ?? 0));
+          await monitoredYield(monitor, capabilities?.getYieldMs() ?? 0);
         } else {
-          await new Promise((resolve) => setImmediate(resolve));
+          await monitoredYield(monitor, HOST_FAIRNESS_YIELD_MS);
         }
         lastThrottleMs = Date.now();
         cyclesSinceThrottle = 0;
@@ -521,9 +581,9 @@ export async function runUntilReturnAsync(
     lastThrottleMs = Date.now();
     const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
     if (yieldMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, yieldMs));
+      await monitoredYield(monitor, yieldMs);
     } else {
-      await new Promise((resolve) => setImmediate(resolve));
+      await monitoredYield(monitor, 0);
     }
   }
 }

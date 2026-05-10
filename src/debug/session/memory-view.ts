@@ -25,6 +25,7 @@ export interface MemorySnapshotOptions {
   views: MemoryViewEntry[];
   registers: MemoryRegisters;
   memRead: (addr: number) => number;
+  isWritable?: (addr: number) => boolean;
   findNearestSymbol?: (address: number) => { name: string; address: number } | null;
 }
 
@@ -44,12 +45,13 @@ export function buildMemorySnapshotViews(options: MemorySnapshotOptions): Array<
   address: number;
   start: number;
   bytes: number[];
+  writable: boolean[];
   focus: number;
   after: number;
   symbol: string | null;
   symbolOffset: number | null;
 }> {
-  const { before, rowSize, views, registers, memRead, findNearestSymbol } = options;
+  const { before, rowSize, views, registers, memRead, isWritable, findNearestSymbol } = options;
   const pickAddress = (viewValue: string, addressValue: number | null): number => {
     switch (viewValue) {
       case 'pc':
@@ -75,7 +77,7 @@ export function buildMemorySnapshotViews(options: MemorySnapshotOptions): Array<
 
   return views.map((entry) => {
     const target = pickAddress(entry.view, entry.address);
-    const window = readMemoryWindow(target, before, entry.after, rowSize, memRead);
+    const window = readMemoryWindow(target, before, entry.after, rowSize, memRead, isWritable);
     const nearest = findNearestSymbol ? findNearestSymbol(target) : null;
     return {
       ...(entry.id !== undefined ? { id: entry.id } : {}),
@@ -83,6 +85,7 @@ export function buildMemorySnapshotViews(options: MemorySnapshotOptions): Array<
       address: target,
       start: window.start,
       bytes: window.bytes,
+      writable: window.writable,
       focus: window.focus,
       after: entry.after,
       symbol: nearest?.name ?? null,
@@ -96,17 +99,21 @@ export function readMemoryWindow(
   before: number,
   after: number,
   rowSize: number,
-  memRead: (addr: number) => number
-): { start: number; bytes: number[]; focus: number } {
+  memRead: (addr: number) => number,
+  isWritable?: (addr: number) => boolean
+): { start: number; bytes: number[]; writable: boolean[]; focus: number } {
   const centerAddr = center & 0xffff;
   const rawStart = (centerAddr - before) & 0xffff;
   const alignedStart = rawStart - (rawStart % rowSize);
   const windowSize = before + after + 1;
   const paddedSize = Math.ceil(windowSize / rowSize) * rowSize;
   const bytes = new Array<number>(paddedSize);
+  const writable = new Array<boolean>(paddedSize);
   for (let i = 0; i < paddedSize; i += 1) {
-    bytes[i] = memRead((alignedStart + i) & 0xffff) & 0xff;
+    const addr = (alignedStart + i) & 0xffff;
+    bytes[i] = memRead(addr) & 0xff;
+    writable[i] = isWritable ? isWritable(addr) : true;
   }
   const focus = (centerAddr - alignedStart) & 0xffff;
-  return { start: alignedStart & 0xffff, bytes, focus };
+  return { start: alignedStart & 0xffff, bytes, writable, focus };
 }

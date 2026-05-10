@@ -15,7 +15,7 @@ This repository keeps the shared debugger and a small `test/fixtures` stub for t
 <table>
   <tr>
     <td bgcolor="#0b0b0b" align="center">
-      <img src="assets/debug80_pixel_art_flat.svg" width="360" alt="Debug80 pixel art logo">
+      <img src="assets/debug80_pixel_art_flat.png" width="360" alt="Debug80 pixel art logo">
     </td>
   </tr>
 </table>
@@ -77,6 +77,16 @@ npm install
 npm run build
 npm test
 ```
+
+## Local VSIX Candidate
+
+```bash
+npm ci
+npm run package:check
+code --install-extension debug80-0.0.1.vsix --force
+```
+
+The full release checklist is in `docs/release-process.md`.
 
 ## Quick start
 

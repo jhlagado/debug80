@@ -51,11 +51,14 @@ import {
   listPlatformUis,
   type PlatformUiModules,
 } from './platform-view-manifest';
+import { resolveRememberedWorkspaceFolder } from './workspace-selection';
 import type {
   PlatformId,
   PlatformViewInboundMessage,
   ProjectStatusPayload,
 } from '../contracts/platform-view';
+
+const MEMORY_REFRESH_INTERVAL_MS = 500;
 
 // ---------------------------------------------------------------------------
 // Per-platform runtime state
@@ -68,6 +71,7 @@ import type {
 interface PerPlatformState {
   activeTab: PanelTab;
   uiState: unknown;
+  hasPostedRuntimeUpdate: boolean;
   serialBuffer: SerialBuffer;
   memoryViews: MemoryViewState;
   refreshController: RefreshController;
@@ -204,6 +208,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
+    bundle.state.hasPostedRuntimeUpdate = true;
     this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
   }
 
@@ -215,7 +220,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (bundle === undefined) {
       return;
     }
-    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
+    const forceFullUpdate = !bundle.state.hasPostedRuntimeUpdate;
+    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload, {
+      forceFullUpdate,
+    });
+    bundle.state.hasPostedRuntimeUpdate = true;
     this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
   }
 
@@ -267,6 +276,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       if (modules !== undefined) {
         modules.resetUiState(state.uiState);
         state.memoryViews = modules.createMemoryViewState();
+        state.hasPostedRuntimeUpdate = false;
       }
       clearSerialBuffer(state.serialBuffer);
     }
@@ -366,7 +376,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           await bundle.modules.handleMessage(platformMsg, {
             getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
             refreshController: bundle.state.refreshController,
-            autoRefreshMs: 150,
+            autoRefreshMs: MEMORY_REFRESH_INTERVAL_MS,
             setActiveTab: (tab) => {
               bundle.state.activeTab = tab;
             },
@@ -463,6 +473,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     const state: PerPlatformState = {
       activeTab: 'ui' as PanelTab,
       uiState: modules.createUiState(),
+      hasPostedRuntimeUpdate: false,
       serialBuffer: createSerialBuffer(),
       memoryViews: modules.createMemoryViewState(),
       // refreshController is created separately so its snapshotPayload
@@ -514,7 +525,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       stopAutoRefresh(bundle.state.refreshController.state);
       return;
     }
-    startAutoRefresh(bundle.state.refreshController.state, 150, () => {
+    startAutoRefresh(bundle.state.refreshController.state, MEMORY_REFRESH_INTERVAL_MS, () => {
       void refreshSnapshot(
         bundle.state.refreshController.state,
         bundle.state.refreshController.handlers,
@@ -544,7 +555,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Applies the shared platform selector only for uninitialized workspaces. */
   private handleSaveProjectConfig(platform: string): void {
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       void vscode.window.showErrorMessage('Debug80: No workspace folder selected.');
       return;
@@ -602,9 +613,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       path: folder.uri.fsPath,
       hasProject: findProjectConfigPath(folder) !== undefined,
     }));
-    const folder =
-      this.selectedWorkspace ??
-      (workspaceFolders.length === 1 ? workspaceFolders[0] : undefined);
+    const folder = this.resolveSelectedWorkspace(workspaceFolders);
     if (folder === undefined) {
       return {
         roots,
@@ -667,7 +676,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.workspaceState === undefined) {
       return undefined;
     }
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       return undefined;
     }
@@ -684,7 +693,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (this.workspaceState === undefined) {
       return;
     }
-    const folder = this.selectedWorkspace ?? vscode.workspace.workspaceFolders?.[0];
+    const folder = this.resolveSelectedWorkspace();
     if (folder === undefined) {
       return;
     }
@@ -700,6 +709,21 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     };
     byTarget[resolved] = { ...visibility };
     void this.workspaceState.update(TEC1G_UI_VISIBILITY_MEMENTO_KEY, byTarget);
+  }
+
+  private resolveSelectedWorkspace(
+    folders: readonly vscode.WorkspaceFolder[] = vscode.workspace.workspaceFolders ?? []
+  ): vscode.WorkspaceFolder | undefined {
+    if (
+      this.selectedWorkspace !== undefined &&
+      folders.some((folder) => folder.uri.fsPath === this.selectedWorkspace?.uri.fsPath)
+    ) {
+      return this.selectedWorkspace;
+    }
+    return (
+      resolveRememberedWorkspaceFolder(this.workspaceState, folders) ??
+      (folders.length === 1 ? folders[0] : undefined)
+    );
   }
 
   private buildSnapshotPayload(memoryViews: MemoryViewState): SnapshotRequest {

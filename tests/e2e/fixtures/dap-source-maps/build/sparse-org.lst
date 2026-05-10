@@ -1,0 +1,5 @@
+0400                ORG 0400
+0400                SPARSE_ENTRY:
+0400   00           NOP
+0401   76           HALT
+SPARSE_ENTRY: 0400 DEFINED AT LINE 2 IN sparse.asm

@@ -1,196 +1,212 @@
 /**
- * @fileoverview ZAX CLI-backed implementation of the debug80 assembler backend interface.
+ * @fileoverview ZAX library-backed implementation of the debug80 assembler backend interface.
  */
 
-import * as cp from 'child_process';
-import { createRequire } from 'module';
 import * as fs from 'fs';
 import * as path from 'path';
 import { D8_DEBUG_MAP_EXT } from '../mapping/d8-map-paths';
-import { toPortablePath } from '../mapping/path-utils';
-import type { AssembleResult } from './assembler';
+import type { AssemblyDiagnostic, AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
-const moduleRequire = createRequire(__filename);
+type ZaxSeverity = 'error' | 'warning' | 'info';
 
-/**
- * Resolution order:
- * 1) Optional env overrides (one-off debugging; see README).
- * 2) `require.resolve('@jhlagado/zax/cli')` (package `exports`; required when ZAX uses `exports`).
- * 3) Legacy `dist/src/cli.js` / `package.json` fallback for older installs.
- * 4) Walk parents for `node_modules/@jhlagado/zax` (e.g. workspace with hoisted deps).
- *
- * Normal local ZAX development: keep `package.json` on the published semver
- * (`@jhlagado/zax`) and use `npm link` — no committed `file:` dependency.
- */
-function resolveZaxCliFromEnv(): string | undefined {
-  const cli = process.env.DEBUG80_ZAX_CLI?.trim();
-  if (cli !== undefined && cli !== '') {
-    const abs = path.resolve(cli);
-    if (fs.existsSync(abs)) {
-      return abs;
-    }
-  }
-  const root = process.env.DEBUG80_ZAX_ROOT?.trim();
-  if (root !== undefined && root !== '') {
-    const candidate = path.join(path.resolve(root), 'dist', 'src', 'cli.js');
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
+interface ZaxDiagnostic {
+  id: string;
+  severity: ZaxSeverity;
+  message: string;
+  file: string;
+  line?: number;
+  column?: number;
 }
 
-function findLocalZaxCli(startDir: string): string | undefined {
-  for (let dir = startDir; ; ) {
-    const candidate = path.join(dir, 'node_modules', '@jhlagado', 'zax', 'dist', 'src', 'cli.js');
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-
-  return undefined;
+interface ZaxTextArtifact {
+  kind: 'hex' | 'lst' | 'asm80';
+  text: string;
 }
 
-function resolveZaxCliPath(startDir: string): string | undefined {
-  const fromEnv = resolveZaxCliFromEnv();
-  if (fromEnv !== undefined) {
-    return fromEnv;
-  }
-
-  try {
-    return moduleRequire.resolve('@jhlagado/zax/cli');
-  } catch {
-    /* fall through */
-  }
-
-  try {
-    return moduleRequire.resolve('@jhlagado/zax/dist/src/cli.js');
-  } catch {
-    /* fall through */
-  }
-
-  try {
-    const pkg = moduleRequire.resolve('@jhlagado/zax/package.json');
-    const root = path.dirname(pkg);
-    const cliPath = path.join(root, 'dist', 'src', 'cli.js');
-    if (fs.existsSync(cliPath)) {
-      return cliPath;
-    }
-  } catch {
-    /* fall through */
-  }
-
-  return findLocalZaxCli(startDir);
+interface ZaxBinArtifact {
+  kind: 'bin';
+  bytes: Uint8Array;
 }
 
-function zaxNotFoundMessage(): string {
-  return (
-    'zax not found. Install with "npm install -D @jhlagado/zax", or link a local ZAX build ' +
-    '("cd ZAX && npm run build && npm link" then "cd debug80 && npm link @jhlagado/zax"). ' +
-    'Optional: DEBUG80_ZAX_ROOT / DEBUG80_ZAX_CLI (see Debug80 README).'
-  );
+interface ZaxD8mArtifact {
+  kind: 'd8m';
+  json: unknown;
+}
+
+type ZaxArtifact = ZaxTextArtifact | ZaxBinArtifact | ZaxD8mArtifact;
+
+interface ZaxCompileResult {
+  diagnostics: ZaxDiagnostic[];
+  artifacts: ZaxArtifact[];
+}
+
+type ZaxCompile = (
+  entryFile: string,
+  options: {
+    emitBin: boolean;
+    emitHex: boolean;
+    emitD8m: boolean;
+    emitListing: boolean;
+    emitAsm80: boolean;
+    requireMain: boolean;
+    defaultCodeBase: number;
+  },
+  deps: { formats: unknown }
+) => Promise<ZaxCompileResult>;
+
+interface ZaxModules {
+  compile: ZaxCompile;
+  defaultFormatWriters: unknown;
+}
+
+async function loadZaxModules(): Promise<ZaxModules> {
+  const [{ compile }, { defaultFormatWriters }] = await Promise.all([
+    import('@jhlagado/zax/dist/src/compile.js') as Promise<{ compile: ZaxCompile }>,
+    import('@jhlagado/zax/dist/src/formats/index.js') as Promise<{
+      defaultFormatWriters: unknown;
+    }>,
+  ]);
+  return { compile, defaultFormatWriters };
+}
+
+function artifactBase(filePath: string): string {
+  const extension = path.extname(filePath);
+  return extension.length > 0 ? filePath.slice(0, -extension.length) : filePath;
+}
+
+function findArtifact(artifacts: ZaxArtifact[], kind: ZaxArtifact['kind']): ZaxArtifact | undefined {
+  return artifacts.find((artifact) => artifact.kind === kind);
+}
+
+function compareDiagnostics(a: ZaxDiagnostic, b: ZaxDiagnostic): number {
+  const fileCmp = a.file.localeCompare(b.file);
+  if (fileCmp !== 0) {
+    return fileCmp;
+  }
+  const lineCmp = (a.line ?? Number.POSITIVE_INFINITY) - (b.line ?? Number.POSITIVE_INFINITY);
+  if (lineCmp !== 0) {
+    return lineCmp;
+  }
+  return (a.column ?? Number.POSITIVE_INFINITY) - (b.column ?? Number.POSITIVE_INFINITY);
+}
+
+function formatDiagnostic(diagnostic: ZaxDiagnostic): string {
+  const location =
+    diagnostic.line !== undefined && diagnostic.column !== undefined
+      ? `${diagnostic.file}:${diagnostic.line}:${diagnostic.column}`
+      : diagnostic.line !== undefined
+        ? `${diagnostic.file}:${diagnostic.line}`
+        : diagnostic.file;
+  return `${location}: ${diagnostic.severity}: [${diagnostic.id}] ${diagnostic.message}`;
+}
+
+function toAssemblyDiagnostic(diagnostic: ZaxDiagnostic): AssemblyDiagnostic {
+  return {
+    path: diagnostic.file,
+    ...(diagnostic.line !== undefined ? { line: diagnostic.line } : {}),
+    ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
+    message: diagnostic.message,
+  };
+}
+
+function writeTextArtifact(filePath: string, text: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, text, 'utf-8');
+}
+
+function writeJsonArtifact(filePath: string, value: unknown): void {
+  writeTextArtifact(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function zaxFailure(message: string, diagnostic?: AssemblyDiagnostic): AssembleResult {
+  return {
+    success: false,
+    error: message,
+    ...(diagnostic !== undefined ? { diagnostic } : {}),
+  };
 }
 
 export class ZaxBackend implements AssemblerBackend {
   public readonly id = 'zax';
 
-  public assemble(options: AssembleOptions): AssembleResult {
-    const asmDir = path.dirname(options.asmPath);
+  public async assemble(options: AssembleOptions): Promise<AssembleResult> {
     const outDir = path.dirname(options.hexPath);
-    const cliPath = resolveZaxCliPath(asmDir);
+    fs.mkdirSync(outDir, { recursive: true });
 
-    if (!fs.existsSync(outDir)) {
-      fs.mkdirSync(outDir, { recursive: true });
-    }
-
-    if (cliPath === undefined) {
-      const message = zaxNotFoundMessage();
+    let modules: ZaxModules;
+    try {
+      modules = await loadZaxModules();
+    } catch (err) {
+      const message = `zax library failed to load: ${err instanceof Error ? err.message : String(err)}`;
       options.onOutput?.(`${message}\n`);
-      return { success: false, error: message };
+      return zaxFailure(message);
     }
 
-    const outArg = toPortablePath(path.relative(asmDir, options.hexPath));
-    // ZAX --asm80: emit ASM80-compatible lowered source (.z80) beside the HEX for inspection.
-    const args = [cliPath, '--nobin', '--asm80', '-o', outArg, path.basename(options.asmPath)];
-    const result = cp.spawnSync(process.execPath, args, {
-      cwd: asmDir,
-      encoding: 'utf-8',
-    });
-
-    if (result.error) {
-      const enoent = (result.error as NodeJS.ErrnoException)?.code === 'ENOENT';
-      const message = enoent
-        ? zaxNotFoundMessage()
-        : `zax failed to start: ${result.error.message ?? String(result.error)}`;
+    let result: ZaxCompileResult;
+    try {
+      result = await modules.compile(
+        options.asmPath,
+        {
+          emitBin: false,
+          emitHex: true,
+          emitD8m: true,
+          emitListing: true,
+          emitAsm80: true,
+          requireMain: true,
+          defaultCodeBase: 0x0100,
+        },
+        { formats: modules.defaultFormatWriters }
+      );
+    } catch (err) {
+      const message = `zax failed: ${err instanceof Error ? err.message : String(err)}`;
       options.onOutput?.(`${message}\n`);
-      return { success: false, error: message };
+      return zaxFailure(message);
     }
 
-    if (result.status !== 0) {
-      if (result.stdout) {
-        options.onOutput?.(`zax stdout:\n${result.stdout}\n`);
-      }
-      if (result.stderr) {
-        options.onOutput?.(`zax stderr:\n${result.stderr}\n`);
-      }
-      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-      const suffix = output.length > 0 ? `: ${output}` : '';
-      return {
-        success: false,
-        error: `zax exited with code ${result.status}${suffix}`,
-        stdout: result.stdout ?? undefined,
-        stderr: result.stderr ?? undefined,
-      };
+    const diagnostics = [...result.diagnostics].sort(compareDiagnostics);
+    if (diagnostics.length > 0) {
+      options.onOutput?.(`${diagnostics.map(formatDiagnostic).join('\n')}\n`);
+    }
+    const firstError = diagnostics.find((diagnostic) => diagnostic.severity === 'error');
+    if (firstError !== undefined) {
+      return zaxFailure(formatDiagnostic(firstError), toAssemblyDiagnostic(firstError));
     }
 
-    const producedListing = path.join(
-      path.dirname(options.hexPath),
-      `${path.basename(options.hexPath, path.extname(options.hexPath))}.lst`
-    );
-
-    if (!fs.existsSync(options.hexPath)) {
-      return {
-        success: false,
-        error: `zax succeeded but did not produce HEX output at "${options.hexPath}".`,
-        stdout: result.stdout ?? undefined,
-        stderr: result.stderr ?? undefined,
-      };
+    const hex = findArtifact(result.artifacts, 'hex');
+    const listing = findArtifact(result.artifacts, 'lst');
+    if (hex === undefined || hex.kind !== 'hex') {
+      return zaxFailure(`zax succeeded but did not produce HEX output for "${options.asmPath}".`);
+    }
+    if (listing === undefined || listing.kind !== 'lst') {
+      return zaxFailure(`zax succeeded but did not produce listing output for "${options.asmPath}".`);
     }
 
-    if (!fs.existsSync(producedListing)) {
-      return {
-        success: false,
-        error: `zax succeeded but did not produce listing output at "${producedListing}".`,
-        stdout: result.stdout ?? undefined,
-        stderr: result.stderr ?? undefined,
-      };
+    writeTextArtifact(options.hexPath, hex.text);
+    writeTextArtifact(options.listingPath, listing.text);
+
+    const base = artifactBase(options.hexPath);
+    const d8 = findArtifact(result.artifacts, 'd8m');
+    if (d8 !== undefined && d8.kind === 'd8m') {
+      const hexD8Path = `${base}${D8_DEBUG_MAP_EXT}`;
+      writeJsonArtifact(hexD8Path, d8.json);
+      const listingD8Path = path.join(
+        path.dirname(options.listingPath),
+        `${path.basename(base)}${D8_DEBUG_MAP_EXT}`
+      );
+      if (listingD8Path !== hexD8Path) {
+        writeJsonArtifact(listingD8Path, d8.json);
+      }
     }
 
-    if (options.listingPath !== producedListing) {
-      const listingDir = path.dirname(options.listingPath);
-      if (!fs.existsSync(listingDir)) {
-        fs.mkdirSync(listingDir, { recursive: true });
-      }
-      fs.copyFileSync(producedListing, options.listingPath);
-      const artifactBase = path.basename(options.hexPath, path.extname(options.hexPath));
-      const producedD8 = path.join(path.dirname(options.hexPath), `${artifactBase}${D8_DEBUG_MAP_EXT}`);
-      const targetD8 = path.join(path.dirname(options.listingPath), `${artifactBase}${D8_DEBUG_MAP_EXT}`);
-      if (fs.existsSync(producedD8) && producedD8 !== targetD8) {
-        fs.copyFileSync(producedD8, targetD8);
-      }
+    const asm80 = findArtifact(result.artifacts, 'asm80');
+    if (asm80 !== undefined && asm80.kind === 'asm80') {
+      writeTextArtifact(`${base}.z80`, asm80.text);
     }
 
     return {
       success: true,
-      stdout: result.stdout ?? undefined,
-      stderr: result.stderr ?? undefined,
+      stdout: `${options.hexPath}\n`,
     };
   }
 }

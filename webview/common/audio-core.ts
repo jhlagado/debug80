@@ -7,6 +7,7 @@ type AudioContextCtor = typeof AudioContext;
 
 export interface AudioCore {
   ensureAudio(): void;
+  unlockAudio(): void;
   updateAudio(muted: boolean, hz: number): void;
 }
 
@@ -36,6 +37,10 @@ export function createAudioCore(): AudioCore {
     }
   }
 
+  function unlockAudio(): void {
+    ensureAudio();
+  }
+
   function updateAudio(muted: boolean, hz: number): void {
     if (!audioCtx || !osc || !gain || muted || hz <= 0) {
       if (gain) {
@@ -47,5 +52,5 @@ export function createAudioCore(): AudioCore {
     gain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.01);
   }
 
-  return { ensureAudio, updateAudio };
+  return { ensureAudio, unlockAudio, updateAudio };
 }

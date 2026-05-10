@@ -8,23 +8,23 @@ import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { acquireVscodeApi } from '../common/vscode';
+import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
 import { wireSerialUi } from '../common/serial-ui';
 import { createVisibilityController } from './visibility-controller';
-import type { IncomingMessage, Tec1gPanelTab, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
+import type { IncomingMessage, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { createTec1gMemoryViews } from './tec1g-memory-views';
 import { createTec1gAudio } from './tec1g-audio';
 import { createTec1gKeypad, TEC1G_KEY_MAP } from './tec1g-keypad';
 import { applyTec1gPlatformUpdate } from './tec1g-platform-update';
 import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
-import { createTec1gTabMemory } from './tec1g-tab-memory';
 
 const vscode = acquireVscodeApi();
 
-const DEFAULT_TAB: Tec1gPanelTab =
+const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
     : 'ui';
@@ -50,15 +50,20 @@ const statusShadow = document.getElementById('statusShadow') as HTMLElement;
 const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
-const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
+const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
+const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
+const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
+const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
 const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
 const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
-const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
+const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
+const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
@@ -72,18 +77,21 @@ const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
 
 let memoryPanelController: MemoryPanel | null = null;
-
-const tabMemory = createTec1gTabMemory({
+const panelLayout = createAccordionLayoutController({
   vscode,
-  tabButtons,
-  panelUi,
-  panelMemory,
+  buttons: accordionButtons,
   memoryPanel: memoryPanelEl,
   defaultTab: DEFAULT_TAB,
+  panels: {
+    machine: accordionMachine,
+    registers: accordionRegisters,
+    memory: accordionMemory,
+  },
   getMemoryPanelController: () => memoryPanelController,
 });
+panelLayout.wireButtons();
 
-const matrixUi = createMatrixUiController(vscode, () => tabMemory.getActiveTab() === 'ui');
+const matrixUi = createMatrixUiController(vscode, () => panelLayout.isMachineOpen());
 const visibilityController = createVisibilityController(vscode);
 
 const projectStatusUi = createTec1gProjectStatusUi(vscode, {
@@ -95,6 +103,8 @@ const projectStatusUi = createTec1gProjectStatusUi(vscode, {
   homeTargetSelect,
   getPlatform: () => platformSelectEl?.value ?? undefined,
 }, 'tec1g');
+
+let projectIsInitialized = false;
 
 projectStatusUi.applyProjectStatus({});
 projectIsInitialized = applyInitializedProjectControls({}, {
@@ -108,8 +118,10 @@ projectIsInitialized = applyInitializedProjectControls({}, {
   platformSelect: platformSelectEl,
   stopOnEntryLabel,
   restartButton: restartDebugButton,
-  tabs: tabsEl,
+  tabs: toolbarEl,
+  accordion: accordionEl,
   panelUi,
+  panelRegisters,
   panelMemory,
 });
 
@@ -121,21 +133,7 @@ panelUi.addEventListener('mousedown', (event) => {
   keypadEl.focus();
 });
 
-const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
-audio.wireMuteClick();
-
-addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder' });
-});
-
-platformSelectEl?.addEventListener('change', () => {
-  if (projectIsInitialized) {
-    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
-  }
-});
-
 let speedMode: Tec1gSpeedMode = 'fast';
-let projectIsInitialized = false;
 function applySpeed(mode: Tec1gSpeedMode): void {
   speedMode = mode;
   speedEl.textContent = mode.toUpperCase();
@@ -148,6 +146,19 @@ const keypad = createTec1gKeypad(vscode, keypadEl, {
   statusProtect,
   statusExpand,
   statusCaps,
+});
+
+const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });
+audio.wireMuteClick();
+
+addWorkspaceFolderButton?.addEventListener('click', () => {
+  vscode.postMessage({ type: 'openWorkspaceFolder' });
+});
+
+platformSelectEl?.addEventListener('change', () => {
+  if (projectIsInitialized) {
+    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
+  }
 });
 
 speedEl.addEventListener('click', () => {
@@ -180,8 +191,8 @@ memoryPanelController = new MemoryPanel({
   registerStrip,
   statusEl,
   views,
-  getRowSize: () => tabMemory.getMemoryRowSize(),
-  isActive: () => tabMemory.getActiveTab() === 'memory',
+  getRowSize: () => panelLayout.getMemoryRowSize(),
+  isActive: () => panelLayout.isMemoryOpen(),
 });
 memoryPanelController.wire();
 
@@ -207,8 +218,10 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       platformValue: platformValueEl,
       stopOnEntryLabel,
       restartButton: restartDebugButton,
-      tabs: tabsEl,
+      tabs: toolbarEl,
+      accordion: accordionEl,
       panelUi,
+      panelRegisters,
       panelMemory,
     });
     projectIsInitialized = initialized;
@@ -223,7 +236,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'selectTab') {
-    tabMemory.setTab(message.tab, false);
+    panelLayout.setProviderTab(message.tab, false);
     return;
   }
   if (message.type === 'uiVisibility') {
@@ -238,9 +251,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       uiRevision = message.uiRevision;
     }
     applyUpdateFromPayload(message);
-    if (tabMemory.getActiveTab() === 'memory') {
-      memoryPanelController?.requestSnapshot();
-    }
     return;
   }
   if (message.type === 'snapshot') {
@@ -254,17 +264,20 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
 
 applySpeed(speedMode);
 audio.applyMuteState();
+document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
+document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
 visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
-tabMemory.setTab(DEFAULT_TAB, false);
+panelLayout.setProviderTab(DEFAULT_TAB, false);
+vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => {
-  tabMemory.scheduleMemoryResize();
+  panelLayout.scheduleMemoryResize();
 });
-tabMemory.updateMemoryLayout(false);
+panelLayout.updateMemoryLayout(false);
 wireSerialUi(vscode);
 
 // Matrix keyboard stays at window level — it has its own mode system

@@ -20,19 +20,23 @@ function loadAssemblerModule(): typeof import('./assembler') {
 export class Asm80Backend implements AssemblerBackend {
   public readonly id = 'asm80';
 
-  public assemble(options: AssembleOptions): AssembleResult {
+  public assemble(options: AssembleOptions): Promise<AssembleResult> {
     const { runAssembler } = loadAssemblerModule();
-    return runAssembler(options.asmPath, options.hexPath, options.listingPath, options.onOutput);
+    return Promise.resolve(
+      runAssembler(options.asmPath, options.hexPath, options.listingPath, options.onOutput)
+    );
   }
 
-  public assembleBin(options: AssembleBinOptions): AssembleResult {
+  public assembleBin(options: AssembleBinOptions): Promise<AssembleResult> {
     const { runAssemblerBin } = loadAssemblerModule();
-    return runAssemblerBin(
-      options.asmPath,
-      options.hexPath,
-      options.binFrom,
-      options.binTo,
-      options.onOutput
+    return Promise.resolve(
+      runAssemblerBin(
+        options.asmPath,
+        options.hexPath,
+        options.binFrom,
+        options.binTo,
+        options.onOutput
+      )
     );
   }
 

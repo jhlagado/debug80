@@ -109,6 +109,7 @@ export function createMatrixUiController(
   }
 
   function applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]) {
+    const hadMatrixBrightness = hasMatrixBrightness;
     hasMatrixBrightness = true;
     const pad64 = (source: number[] | undefined, fill: number): number[] =>
       Array.from({ length: 64 }, (_, index) => {
@@ -119,11 +120,14 @@ export function createMatrixUiController(
         return Math.max(0, Math.min(255, Math.trunc(value)));
       });
     matrixBrightnessR = pad64(levels, 0);
-    if (green !== undefined || blue !== undefined) {
+    if (green !== undefined) {
       matrixBrightnessG = pad64(green, 0);
-      matrixBrightnessB = pad64(blue, 0);
-    } else {
+    } else if (!hadMatrixBrightness) {
       matrixBrightnessG = new Array(64).fill(0);
+    }
+    if (blue !== undefined) {
+      matrixBrightnessB = pad64(blue, 0);
+    } else if (!hadMatrixBrightness) {
       matrixBrightnessB = new Array(64).fill(0);
     }
     drawMatrix();

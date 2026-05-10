@@ -1,0 +1,8 @@
+0000                START:
+0000   00           NOP
+0001   C3 04 00     JP INCLUDED_ENTRY
+0004                INCLUDED_ENTRY:
+0004   00           NOP
+0005   76           HALT
+START: 0000 DEFINED AT LINE 1 IN main.asm
+INCLUDED_ENTRY: 0004 DEFINED AT LINE 1 IN inc/included.asm

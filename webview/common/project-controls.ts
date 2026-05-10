@@ -13,7 +13,9 @@ export type SharedProjectControlElements = {
   stopOnEntryLabel?: HTMLElement | null;
   restartButton?: HTMLElement | null;
   tabs?: HTMLElement | null;
+  accordion?: HTMLElement | null;
   panelUi?: HTMLElement | null;
+  panelRegisters?: HTMLElement | null;
   panelMemory?: HTMLElement | null;
 };
 
@@ -71,8 +73,14 @@ export function applyInitializedProjectControls(
   if (elements.tabs) {
     elements.tabs.hidden = !initialized;
   }
+  if (elements.accordion) {
+    elements.accordion.hidden = !initialized;
+  }
   if (elements.panelUi) {
     elements.panelUi.hidden = !initialized;
+  }
+  if (elements.panelRegisters) {
+    elements.panelRegisters.hidden = !initialized;
   }
   if (elements.panelMemory) {
     elements.panelMemory.hidden = !initialized;
