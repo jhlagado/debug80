@@ -4,11 +4,11 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { PlatformViewProvider } from './platform-view-provider';
+import type { PlatformViewProvider } from './platform-view-provider';
 import { findProjectConfigPath } from './project-config';
 import { resolvePreferredTargetName } from './project-target-selection';
 
-const WORKSPACE_KEY = 'debug80.selectedWorkspace';
+export const SELECTED_WORKSPACE_MEMENTO_KEY = 'debug80.selectedWorkspace';
 const PROJECT_CONFIG_WATCH_GLOBS = ['**/debug80.json', '**/.vscode/debug80.json', '**/.debug80.json'];
 
 export type ResolveWorkspaceFolderOptions = {
@@ -16,6 +16,17 @@ export type ResolveWorkspaceFolderOptions = {
   requireProject?: boolean;
   placeHolder?: string;
 };
+
+export function resolveRememberedWorkspaceFolder(
+  workspaceState: vscode.Memento | undefined,
+  folders: readonly vscode.WorkspaceFolder[]
+): vscode.WorkspaceFolder | undefined {
+  const storedPath = workspaceState?.get<string>(SELECTED_WORKSPACE_MEMENTO_KEY);
+  if (storedPath === undefined || storedPath === '') {
+    return undefined;
+  }
+  return folders.find((folder) => folder.uri.fsPath === storedPath);
+}
 
 export class WorkspaceSelectionController {
   private startupAutoStartAttempted = false;
@@ -49,7 +60,7 @@ export class WorkspaceSelectionController {
     if (!folder) {
       return;
     }
-    void this.context.workspaceState.update(WORKSPACE_KEY, folder.uri.fsPath);
+    void this.context.workspaceState.update(SELECTED_WORKSPACE_MEMENTO_KEY, folder.uri.fsPath);
     this.platformViewProvider.setSelectedWorkspace(folder);
   }
 
@@ -138,11 +149,7 @@ export class WorkspaceSelectionController {
 
   private resolveSelectedWorkspace(): vscode.WorkspaceFolder | undefined {
     const folders = vscode.workspace.workspaceFolders ?? [];
-    const storedPath = this.context.workspaceState.get<string>(WORKSPACE_KEY);
-    if (storedPath === undefined || storedPath === '') {
-      return undefined;
-    }
-    return folders.find((folder) => folder.uri.fsPath === storedPath);
+    return resolveRememberedWorkspaceFolder(this.context.workspaceState, folders);
   }
 
   private hasProject(folder: vscode.WorkspaceFolder): boolean {

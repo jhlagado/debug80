@@ -28,7 +28,9 @@ export function applyTec1gPlatformUpdate(deps: Tec1gPlatformUpdateDeps, payload:
     return;
   }
   const data = payload;
-  deps.display.applyDigits(Array.isArray(data.digits) ? data.digits : []);
+  if (Array.isArray(data.digits)) {
+    deps.display.applyDigits(data.digits);
+  }
 
   deps.audio.applySpeakerFromUpdate(data);
 

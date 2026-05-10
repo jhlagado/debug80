@@ -4,18 +4,18 @@ import { TEC1G_DIGITS, TEC1G_KEY_MAP } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { applyInitializedProjectControls } from '../common/project-controls';
-import { MemoryPanel } from '../common/memory-panel';
+import { MemoryPanel, type MemoryViewEntry } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
 import { acquireVscodeApi } from '../common/vscode';
+import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
-import { createPanelLayoutController, type PanelTab } from './panel-layout';
 
 const vscode = acquireVscodeApi();
-const DEFAULT_TAB: PanelTab =
+const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory'
     ? 'memory'
     : 'ui';
@@ -37,8 +37,12 @@ const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
 const muteEl = document.getElementById('mute') as HTMLElement;
-const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
+const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
+const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
+const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
+const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
@@ -46,22 +50,26 @@ const platformInfoControl = document.getElementById('platformInfoControl') as HT
 const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
-const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
+const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
+const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
 const keypad = createTecKeypad(vscode, keypadEl);
 
 let memoryPanelController: MemoryPanel | null = null;
-const panelLayout = createPanelLayoutController({
+const panelLayout = createAccordionLayoutController({
+  vscode,
+  buttons: accordionButtons,
   defaultTab: DEFAULT_TAB,
   memoryPanel,
-  panelMemory,
-  panelUi,
-  postMessage: (message) => vscode.postMessage(message),
-  requestSnapshot: () => memoryPanelController?.requestSnapshot(),
-  tabButtons,
+  panels: {
+    machine: accordionMachine,
+    registers: accordionRegisters,
+    memory: accordionMemory,
+  },
+  getMemoryPanelController: () => memoryPanelController,
 });
-panelLayout.wireTabButtons();
+panelLayout.wireButtons();
 
 // Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
 panelUi.addEventListener('mousedown', (event) => {
@@ -75,7 +83,7 @@ let speedMode = 'fast';
 let uiRevision = 0;
 let projectIsInitialized = false;
 
-const audio = createAudioController(muteEl);
+const audio = createAudioController(muteEl, vscode);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'openWorkspaceFolder' });
@@ -124,8 +132,10 @@ function applyProjectStatus(payload: {
     platformValue: platformValueEl,
     stopOnEntryLabel,
     restartButton: restartDebugButton,
-    tabs: tabsEl,
+    tabs: toolbarEl,
+    accordion: accordionEl,
     panelUi,
+    panelRegisters,
     panelMemory,
   });
   projectIsInitialized = initialized;
@@ -185,35 +195,35 @@ function applyUpdate(payload: {
 }
 
 const statusEl = document.getElementById('status');
-const views = [
+const views: MemoryViewEntry[] = [
   {
     id: 'a',
-    view: document.getElementById('view-a'),
-    address: document.getElementById('address-a'),
+    view: document.getElementById('view-a') as HTMLSelectElement | null,
+    address: document.getElementById('address-a') as HTMLInputElement | null,
     addr: document.getElementById('addr-a'),
     symbol: document.getElementById('sym-a'),
     dump: document.getElementById('dump-a'),
   },
   {
     id: 'b',
-    view: document.getElementById('view-b'),
-    address: document.getElementById('address-b'),
+    view: document.getElementById('view-b') as HTMLSelectElement | null,
+    address: document.getElementById('address-b') as HTMLInputElement | null,
     addr: document.getElementById('addr-b'),
     symbol: document.getElementById('sym-b'),
     dump: document.getElementById('dump-b'),
   },
   {
     id: 'c',
-    view: document.getElementById('view-c'),
-    address: document.getElementById('address-c'),
+    view: document.getElementById('view-c') as HTMLSelectElement | null,
+    address: document.getElementById('address-c') as HTMLInputElement | null,
     addr: document.getElementById('addr-c'),
     symbol: document.getElementById('sym-c'),
     dump: document.getElementById('dump-c'),
   },
   {
     id: 'd',
-    view: document.getElementById('view-d'),
-    address: document.getElementById('address-d'),
+    view: document.getElementById('view-d') as HTMLSelectElement | null,
+    address: document.getElementById('address-d') as HTMLInputElement | null,
     addr: document.getElementById('addr-d'),
     symbol: document.getElementById('sym-d'),
     dump: document.getElementById('dump-d'),
@@ -226,7 +236,7 @@ memoryPanelController = new MemoryPanel({
   statusEl,
   views,
   getRowSize: () => panelLayout.getMemoryRowSize(),
-  isActive: () => panelLayout.getActiveTab() === 'memory',
+  isActive: () => panelLayout.isMemoryOpen(),
 });
 memoryPanelController.wire();
 const serialUi = wireSerialUi(vscode);
@@ -242,7 +252,7 @@ window.addEventListener('message', event => {
     return;
   }
   if (event.data.type === 'selectTab') {
-    panelLayout.setTab(event.data.tab, false);
+    panelLayout.setProviderTab(event.data.tab, false);
     return;
   }
   if (event.data.type === 'update') {
@@ -253,9 +263,6 @@ window.addEventListener('message', event => {
       uiRevision = event.data.uiRevision;
     }
     applyUpdate(event.data);
-    if (panelLayout.getActiveTab() === 'memory') {
-      memoryPanelController?.requestSnapshot();
-    }
     return;
   }
   if (event.data.type === 'snapshot') {
@@ -269,10 +276,13 @@ window.addEventListener('message', event => {
 
 applySpeed(speedMode);
 audio.applyMuteState();
+document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
+document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 lcdRenderer.draw();
 matrixRenderer.build();
 matrixRenderer.draw();
-panelLayout.setTab(DEFAULT_TAB, false);
+panelLayout.setProviderTab(DEFAULT_TAB, false);
+vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());

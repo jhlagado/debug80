@@ -35,6 +35,7 @@ export function handleMemorySnapshotRequest(
   response.body = {
     before: snapshot.before,
     rowSize: snapshot.rowSize,
+    running: snapshot.running,
     views: snapshot.views,
     symbols: snapshot.symbols,
     registers: snapshot.registers,

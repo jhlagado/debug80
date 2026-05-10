@@ -16,8 +16,8 @@ describe('launch-pipeline', () => {
   beforeEach(() => {
     backend = {
       id: 'mock-asm',
-      assemble: vi.fn(() => ({ success: true })),
-      assembleBin: vi.fn(() => ({ success: true })),
+      assemble: vi.fn(() => Promise.resolve({ success: true })),
+      assembleBin: vi.fn(() => Promise.resolve({ success: true })),
     };
   });
 
@@ -36,9 +36,9 @@ describe('launch-pipeline', () => {
   });
 
 
-  it('skips assembly when disabled', () => {
+  it('skips assembly when disabled', async () => {
     const args = { assemble: false } as LaunchRequestArguments;
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend,
         args,
@@ -48,16 +48,16 @@ describe('launch-pipeline', () => {
         platform: 'simple',
         sendEvent: () => undefined,
       })
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 
-  it('throws when assembler fails', () => {
-    backend.assemble.mockReturnValue({
+  it('throws when assembler fails', async () => {
+    backend.assemble.mockResolvedValue({
       success: false,
       error: 'bad asm',
     });
     const args = {} as LaunchRequestArguments;
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend,
         args,
@@ -67,12 +67,12 @@ describe('launch-pipeline', () => {
         platform: 'simple',
         sendEvent: () => undefined,
       })
-    ).toThrow('bad asm');
+    ).rejects.toThrow('bad asm');
   });
 
-  it('invokes binary assembly for simple platform', () => {
+  it('invokes binary assembly for simple platform', async () => {
     const args = {} as LaunchRequestArguments;
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend,
         args,
@@ -83,19 +83,19 @@ describe('launch-pipeline', () => {
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
       })
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
     expect(backend.assemble).toHaveBeenCalled();
     expect(backend.assembleBin).toHaveBeenCalled();
   });
 
-  it('throws when binary assembly fails', () => {
-    backend.assemble.mockReturnValue({ success: true });
-    backend.assembleBin.mockReturnValue({
+  it('throws when binary assembly fails', async () => {
+    backend.assemble.mockResolvedValue({ success: true });
+    backend.assembleBin.mockResolvedValue({
       success: false,
       error: 'bad bin',
     });
     const args = {} as LaunchRequestArguments;
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend,
         args,
@@ -106,17 +106,17 @@ describe('launch-pipeline', () => {
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
       })
-    ).toThrow('bad bin');
+    ).rejects.toThrow('bad bin');
   });
 
-  it('skips binary assembly when backend does not support it', () => {
+  it('skips binary assembly when backend does not support it', async () => {
     const noBinBackend: AssemblerBackend = {
       id: backend.id,
       assemble: backend.assemble,
     };
     const args = {} as LaunchRequestArguments;
 
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend: noBinBackend,
         args,
@@ -127,14 +127,14 @@ describe('launch-pipeline', () => {
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
       })
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 
-  it('uses the backend id in fallback error messages', () => {
-    backend.assemble.mockReturnValue({ success: false });
+  it('uses the backend id in fallback error messages', async () => {
+    backend.assemble.mockResolvedValue({ success: false });
     const args = {} as LaunchRequestArguments;
 
-    expect(() =>
+    await expect(
       assembleIfRequested({
         backend,
         args,
@@ -144,6 +144,6 @@ describe('launch-pipeline', () => {
         platform: 'simple',
         sendEvent: () => undefined,
       })
-    ).toThrow('mock-asm failed to assemble');
+    ).rejects.toThrow('mock-asm failed to assemble');
   });
 });

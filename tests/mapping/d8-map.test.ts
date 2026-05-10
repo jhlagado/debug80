@@ -74,6 +74,38 @@ describe('d8-map', () => {
     expect(roundTrip).toEqual(mapping);
   });
 
+  it('keeps D8 file keys portable when mapping contains Windows source paths', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x1000,
+          end: 0x1001,
+          loc: { file: 'src\\Main File.asm', line: 3 },
+          lst: { line: 9, text: 'NOP' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [
+        {
+          address: 0x1000,
+          symbol: 'START',
+          file: 'src\\Main File.asm',
+          line: 3,
+        },
+      ],
+    };
+
+    const map = buildD8DebugMap(mapping, {
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+    });
+
+    expect(map.files['src/Main File.asm']).toBeDefined();
+    expect(map.files['src\\Main File.asm']).toBeUndefined();
+    expect(buildMappingFromD8DebugMap(map).segments[0]?.loc.file).toBe('src/Main File.asm');
+  });
+
   it('parses invalid JSON with a readable error', () => {
     const { error } = parseD8DebugMap('{');
     expect(error).toMatch(/Invalid JSON/);

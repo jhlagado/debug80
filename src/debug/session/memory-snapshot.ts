@@ -12,6 +12,7 @@ export type SnapshotRuntime = {
   getRegisters: () => Cpu;
   hardware: {
     memRead?: (addr: number) => number;
+    isMemoryWritable?: (addr: number) => boolean;
     memory: Uint8Array;
   };
 };
@@ -75,6 +76,7 @@ export function buildMemorySnapshotResponse(
   const memRead =
     ctx.runtime.hardware.memRead ??
     ((addr: number): number => ctx.runtime.hardware.memory[addr & 0xffff] ?? 0);
+  const isWritable = ctx.runtime.hardware.isMemoryWritable ?? ((): boolean => true);
   const viewRequests = payload.views ?? [];
   const views = buildMemorySnapshotViews({
     before,
@@ -84,6 +86,7 @@ export function buildMemorySnapshotResponse(
     ),
     registers: { pc, sp, bc, de, hl, ix, iy },
     memRead,
+    isWritable,
     findNearestSymbol: (target) =>
       findNearestSymbol(target, {
         anchors: ctx.symbolAnchors,

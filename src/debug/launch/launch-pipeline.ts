@@ -30,7 +30,7 @@ export function resolveExtraListings(
   return [];
 }
 
-export function assembleIfRequested(options: {
+export async function assembleIfRequested(options: {
   backend: AssemblerBackend;
   args: LaunchRequestArguments;
   asmPath: string | undefined;
@@ -39,13 +39,13 @@ export function assembleIfRequested(options: {
   platform: string;
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent: EventSender;
-}): void {
+}): Promise<void> {
   const { backend, args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } = options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }
 
-  const result = backend.assemble({ asmPath, hexPath, listingPath, onOutput: (message) => {
+  const result = await backend.assemble({ asmPath, hexPath, listingPath, onOutput: (message) => {
     emitConsoleOutput(sendEvent, message, { newline: false });
   } });
   if (!result.success) {
@@ -60,7 +60,7 @@ export function assembleIfRequested(options: {
     simpleConfig?.binFrom !== undefined &&
     simpleConfig.binTo !== undefined
   ) {
-    const binResult = backend.assembleBin?.({
+    const binResult = await backend.assembleBin?.({
       asmPath,
       hexPath,
       binFrom: simpleConfig.binFrom,

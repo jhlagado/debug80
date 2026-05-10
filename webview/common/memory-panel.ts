@@ -25,9 +25,15 @@ type SnapshotView = {
   address?: number;
   start: number;
   bytes: number[];
+  writable?: boolean[];
   focus?: number;
   symbol?: string;
   symbolOffset?: number;
+};
+
+type MemoryAnchor = {
+  view: string;
+  address?: number;
 };
 
 type MemoryPanelOptions = {
@@ -41,22 +47,19 @@ type MemoryPanelOptions = {
 
 export class MemoryPanel {
   private readonly symbolMap = new Map<string, number>();
+  private readonly pickerMap = new Map<HTMLSelectElement, HTMLInputElement>();
   private symbolsKey = '';
   private editingEnabled = false;
+  private allowReadOnlyWrites = false;
 
   constructor(private readonly options: MemoryPanelOptions) {}
 
   wire(): void {
+    this.installReadOnlyToggle();
     this.options.views.forEach((entry) => {
+      this.createAnchorPicker(entry);
       entry.view?.addEventListener('change', () => {
-        const value = entry.view?.value ?? '';
-        if (value.startsWith('symbol:')) {
-          const name = value.slice(7);
-          const address = this.symbolMap.get(name);
-          if (address !== undefined && entry.address) {
-            entry.address.value = formatHex(address, 4);
-          }
-        }
+        this.syncPickerFromSelect(entry);
         this.requestSnapshot();
       });
       entry.address?.addEventListener('change', () => this.requestSnapshot());
@@ -99,17 +102,9 @@ export class MemoryPanel {
     }
     const rowSize = this.options.getRowSize();
     const payloadViews = this.options.views.map((entry) => {
-      const viewValue = entry.view?.value ?? '';
-      let viewMode = viewValue;
-      let addressValue: number | undefined;
-      if (viewValue.startsWith('symbol:')) {
-        const name = viewValue.slice(7);
-        const symAddress = this.symbolMap.get(name);
-        if (symAddress !== undefined) {
-          viewMode = 'absolute';
-          addressValue = symAddress;
-        }
-      }
+      const anchor = this.resolveAnchor(entry);
+      const viewMode = anchor.view;
+      let addressValue = anchor.address;
       if (viewMode === 'absolute' && addressValue === undefined) {
         addressValue = parseAddress(entry.address?.value ?? '');
       }
@@ -163,6 +158,120 @@ export class MemoryPanel {
     }
   }
 
+  private createAnchorPicker(entry: MemoryViewEntry): void {
+    if (!entry.view || this.pickerMap.has(entry.view)) {
+      return;
+    }
+    const select = entry.view;
+    const input = document.createElement('input');
+    const list = document.createElement('datalist');
+    const listId = 'memory-anchor-list-' + entry.id;
+    list.id = listId;
+    input.className = 'memory-anchor-picker';
+    input.type = 'text';
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+    input.setAttribute('list', listId);
+    input.value = selectedOptionLabel(select);
+    input.setAttribute('aria-label', 'Memory anchor ' + entry.id.toUpperCase());
+    select.hidden = true;
+    select.after(input, list);
+    this.pickerMap.set(select, input);
+    this.populateAnchorList(list);
+    const commit = (): void => {
+      const anchor = this.resolveAnchor(entry);
+      this.applyAnchor(entry, anchor);
+      this.requestSnapshot();
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commit();
+        input.blur();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.syncPickerFromSelect(entry);
+        input.blur();
+      }
+    });
+  }
+
+  private syncPickerFromSelect(entry: MemoryViewEntry): void {
+    if (!entry.view) {
+      return;
+    }
+    const picker = this.pickerMap.get(entry.view);
+    if (picker) {
+      picker.value = selectedOptionLabel(entry.view);
+    }
+  }
+
+  private resolveAnchor(entry: MemoryViewEntry): MemoryAnchor {
+    const raw = entry.view ? this.pickerMap.get(entry.view)?.value.trim() ?? entry.view.value : '';
+    const lower = raw.toLowerCase();
+    const register = registerAnchorFromText(lower);
+    if (register !== null) {
+      return { view: register };
+    }
+    const parsed = parseAddress(raw);
+    if (lower === 'absolute' || lower === 'abs' || parsed !== undefined) {
+      if (parsed !== undefined && entry.address) {
+        entry.address.value = formatHex(parsed, 4);
+      }
+      return { view: 'absolute', address: parsed };
+    }
+    const symbol = this.findSymbol(raw);
+    if (symbol !== null) {
+      if (entry.address) {
+        entry.address.value = formatHex(symbol.address, 4);
+      }
+      return { view: 'absolute', address: symbol.address };
+    }
+    return { view: entry.view?.value ?? 'pc' };
+  }
+
+  private applyAnchor(entry: MemoryViewEntry, anchor: MemoryAnchor): void {
+    if (!entry.view) {
+      return;
+    }
+    entry.view.value = anchor.view;
+    const picker = this.pickerMap.get(entry.view);
+    if (picker) {
+      picker.value = anchor.view === 'absolute' && anchor.address !== undefined
+        ? this.findSymbolByAddress(anchor.address)?.name ?? formatHex(anchor.address, 4)
+        : selectedOptionLabel(entry.view);
+    }
+  }
+
+  private findSymbol(query: string): { name: string; address: number } | null {
+    const normalized = query.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return null;
+    }
+    for (const [name, address] of this.symbolMap) {
+      if (name.toLowerCase() === normalized) {
+        return { name, address };
+      }
+    }
+    for (const [name, address] of this.symbolMap) {
+      if (name.toLowerCase().includes(normalized)) {
+        return { name, address };
+      }
+    }
+    return null;
+  }
+
+  private findSymbolByAddress(address: number): { name: string; address: number } | null {
+    for (const [name, symAddress] of this.symbolMap) {
+      if (symAddress === (address & 0xffff)) {
+        return { name, address: symAddress };
+      }
+    }
+    return null;
+  }
+
   private updateSymbols(symbols: Array<{ name: string; address: number }>): void {
     const nextKey = symbols
       .map((sym) =>
@@ -179,36 +288,39 @@ export class MemoryPanel {
         this.symbolMap.set(sym.name, sym.address & 0xffff);
       }
     });
-    this.options.views.forEach((entry) => {
-      const select = entry.view;
-      if (!select) {
-        return;
-      }
-      const existing = select.querySelector('optgroup[data-symbols="true"]');
-      if (existing) {
-        existing.remove();
-      }
-      if (this.symbolMap.size === 0) {
-        return;
-      }
-      const group = document.createElement('optgroup');
-      group.label = 'Symbols';
-      group.dataset.symbols = 'true';
-      symbols.forEach((sym) => {
-        if (!sym || typeof sym.name !== 'string' || !Number.isFinite(sym.address)) {
-          return;
-        }
-        const option = document.createElement('option');
-        option.value = 'symbol:' + sym.name;
-        option.textContent = sym.name;
-        group.appendChild(option);
-      });
-      select.appendChild(group);
-    });
+    this.options.views.forEach((entry) => this.updatePickerList(entry));
+  }
+
+  private updatePickerList(entry: MemoryViewEntry): void {
+    if (!entry.view) {
+      return;
+    }
+    const picker = this.pickerMap.get(entry.view);
+    const list = picker?.list;
+    if (list) {
+      this.populateAnchorList(list);
+    }
+  }
+
+  private populateAnchorList(list: HTMLDataListElement): void {
+    list.innerHTML = '';
+    for (const option of ['PC', 'SP', 'BC', 'DE', 'HL', 'IX', 'IY', 'Absolute']) {
+      const element = document.createElement('option');
+      element.value = option;
+      list.appendChild(element);
+    }
+    for (const name of this.symbolMap.keys()) {
+      const element = document.createElement('option');
+      element.value = name;
+      list.appendChild(element);
+    }
   }
 
   private renderRegisters(data: RegisterData): void {
     if (!this.options.registerStrip || !data) {
+      return;
+    }
+    if (this.isEditingRegister()) {
       return;
     }
     const items: RegisterItem[] = [
@@ -222,32 +334,37 @@ export class MemoryPanel {
       { label: 'SP', register: 'sp', value: formatRegisterHex((data.sp as number) || 0, 4), width: 4, editable: true },
       { label: 'IX', register: 'ix', value: formatRegisterHex((data.ix as number) || 0, 4), width: 4, editable: true },
       { label: 'IY', register: 'iy', value: formatRegisterHex((data.iy as number) || 0, 4), width: 4, editable: true },
-      { label: 'AF', value: formatRegisterHex((data.af as number) || 0, 4), width: 4 },
-      { label: "AF'", value: formatRegisterHex((data.afp as number) || 0, 4), width: 4 },
-      { label: 'F', value: (data.flags as string) || '--', flags: true },
-      { label: "F'", value: (data.flagsPrime as string) || '--', flags: true },
+      { label: 'AF', register: 'af', value: formatRegisterHex((data.af as number) || 0, 4), width: 4, editable: true },
+      { label: "AF'", register: 'afp', value: formatRegisterHex((data.afp as number) || 0, 4), width: 4, editable: true },
       { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
       { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
+      { label: 'Flags', register: 'flags', value: (data.flags as string) || '--------', editable: true, flags: true },
+      { label: "Flags'", register: 'flagsp', value: (data.flagsPrime as string) || '--------', editable: true, flags: true },
     ];
     this.options.registerStrip.innerHTML = '';
     items.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'register-item' + (item.editable ? ' editable' : '');
+      row.classList.toggle('flag-register', item.flags === true);
       const label = document.createElement('span');
       label.className = 'register-label';
       label.textContent = item.label;
       row.appendChild(label);
-      if (item.editable && item.register !== undefined && item.width !== undefined) {
+      if (item.editable && item.register !== undefined) {
         const input = document.createElement('input');
-        input.className = 'register-input';
+        input.className = item.flags ? 'register-input register-flags' : 'register-input';
         input.type = 'text';
         input.value = item.value;
         input.spellcheck = false;
         input.autocomplete = 'off';
         input.inputMode = 'text';
-        input.maxLength = item.width;
+        if (item.width !== undefined) {
+          input.maxLength = item.width;
+        }
         input.dataset.register = item.register;
-        input.dataset.width = String(item.width);
+        if (item.width !== undefined) {
+          input.dataset.width = String(item.width);
+        }
         input.addEventListener('keydown', (event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
@@ -272,10 +389,19 @@ export class MemoryPanel {
     });
   }
 
+  private isEditingRegister(): boolean {
+    const active = document.activeElement;
+    return active instanceof HTMLInputElement
+      && active.classList.contains('register-input')
+      && this.options.registerStrip?.contains(active) === true;
+  }
+
   private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
     const register = input.dataset.register;
     const width = Number.parseInt(input.dataset.width ?? '', 10);
-    const value = normalizeHexInput(input.value, width);
+    const value = register === 'flags' || register === 'flagsp'
+      ? input.value.trim()
+      : normalizeHexInput(input.value, width);
     if (!register || value === null) {
       input.value = previousValue;
       if (this.options.statusEl) {
@@ -302,7 +428,18 @@ export class MemoryPanel {
         return;
       }
       target.addr.textContent = formatHex(entry.address ?? 0, 4);
-      renderDump(target.dump, entry.start, entry.bytes, entry.focus ?? 0, rowSize, this.editingEnabled);
+      if (!this.isEditingMemoryDump(target.dump)) {
+        renderDump(
+          target.dump,
+          entry.start,
+          entry.bytes,
+          entry.writable ?? [],
+          entry.focus ?? 0,
+          rowSize,
+          this.editingEnabled,
+          this.allowReadOnlyWrites
+        );
+      }
       if (entry.symbol) {
         if (entry.symbolOffset) {
           const offset = entry.symbolOffset.toString(16).toUpperCase();
@@ -321,15 +458,30 @@ export class MemoryPanel {
       entry.dump
         ?.querySelectorAll<HTMLInputElement>('input.memory-byte-input')
         .forEach((input) => {
-          input.disabled = !this.editingEnabled;
+          input.disabled =
+            !this.editingEnabled ||
+            (input.dataset.readOnly === 'true' && !this.allowReadOnlyWrites);
         });
     });
+  }
+
+  private isEditingMemoryDump(dump: HTMLElement): boolean {
+    const active = document.activeElement;
+    return isMemoryByteInput(active) && dump.contains(active);
   }
 
   private commitMemoryEdit(input: HTMLInputElement): void {
     const address = Number.parseInt(input.dataset.address ?? '', 16);
     const previousValue = input.dataset.previous ?? input.value;
     const value = normalizeHexInput(input.value, 2);
+    const isReadOnly = input.dataset.readOnly === 'true';
+    if (isReadOnly && !this.allowReadOnlyWrites) {
+      input.value = previousValue;
+      if (this.options.statusEl) {
+        this.options.statusEl.textContent = 'Read-only memory locked';
+      }
+      return;
+    }
     if (!Number.isFinite(address) || value === null) {
       input.value = previousValue;
       if (this.options.statusEl) {
@@ -346,7 +498,27 @@ export class MemoryPanel {
       type: 'memoryEdit',
       address: address & 0xffff,
       value,
+      ...(isReadOnly && this.allowReadOnlyWrites ? { allowReadOnly: true } : {}),
     });
+  }
+
+  private installReadOnlyToggle(): void {
+    const shell = this.options.views[0]?.dump?.closest('#memoryPanel .shell');
+    if (!shell || shell.querySelector('.readonly-memory-toggle')) {
+      return;
+    }
+    const label = document.createElement('label');
+    label.className = 'readonly-memory-toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = this.allowReadOnlyWrites;
+    label.append(checkbox, document.createTextNode(' Unlock read-only memory'));
+    checkbox.addEventListener('change', () => {
+      this.allowReadOnlyWrites = checkbox.checked;
+      this.updateMemoryInputsState();
+      this.requestSnapshot();
+    });
+    shell.prepend(label);
   }
 }
 
@@ -356,6 +528,25 @@ function formatRegisterHex(value: number, width: number): string {
 
 function formatHex(value: number, width: number): string {
   return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
+}
+
+function selectedOptionLabel(select: HTMLSelectElement): string {
+  return select.selectedOptions[0]?.textContent?.trim() || select.value.toUpperCase();
+}
+
+function registerAnchorFromText(value: string): string | null {
+  switch (value) {
+    case 'pc':
+    case 'sp':
+    case 'bc':
+    case 'de':
+    case 'hl':
+    case 'ix':
+    case 'iy':
+      return value;
+    default:
+      return null;
+  }
 }
 
 function normalizeHexInput(value: string, width: number): string | null {
@@ -373,9 +564,11 @@ function renderDump(
   el: HTMLElement,
   start: number,
   bytes: number[],
+  writable: boolean[],
   focusOffset: number,
   rowSize: number,
-  editingEnabled: boolean
+  editingEnabled: boolean,
+  allowReadOnlyWrites: boolean
 ): void {
   let html = '';
   for (let i = 0; i < bytes.length; i += rowSize) {
@@ -385,7 +578,11 @@ function renderDump(
     for (let j = 0; j < rowSize && i + j < bytes.length; j++) {
       const idx = i + j;
       const value = bytes[idx];
-      const cls = idx === focusOffset ? 'byte focus' : 'byte';
+      const isWritable = writable[idx] !== false;
+      const cls =
+        'byte' +
+        (idx === focusOffset ? ' focus' : '') +
+        (!isWritable ? ' read-only-memory-byte' : '');
       const byteValue = formatByteHex(value);
       html +=
         '<input class="' +
@@ -394,10 +591,12 @@ function renderDump(
         formatByteHex((rowAddr + j) & 0xffff, 4) +
         '" data-previous="' +
         byteValue +
+        '" data-read-only="' +
+        (!isWritable ? 'true' : 'false') +
         '" value="' +
         byteValue +
         '"' +
-        (editingEnabled ? '' : ' disabled') +
+        (editingEnabled && (isWritable || allowReadOnlyWrites) ? '' : ' disabled') +
         ' />';
       ascii += value >= 32 && value <= 126 ? String.fromCharCode(value) : '.';
     }

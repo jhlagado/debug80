@@ -2,16 +2,20 @@
  * @file Speaker UI and Web Audio wiring for the TEC-1G webview.
  */
 
-import { createAudioCore } from '../common/audio-core';
+import { createAudioCore, type AudioCore } from '../common/audio-core';
+import type { VscodeApi } from '../common/vscode';
 import type { Tec1gUpdatePayload } from './entry-types';
 
 export function createTec1gAudio(options: {
   muteEl: HTMLElement;
   speakerEl: HTMLElement;
   speakerLabel: HTMLElement | null;
+  vscode?: Pick<VscodeApi, 'getState' | 'setState'>;
+  audioCore?: AudioCore;
 }): {
   applySpeakerFromUpdate: (data: Tec1gUpdatePayload) => void;
   applyMuteState: () => void;
+  unlockAudio: () => void;
   updateAudio: () => void;
   wireMuteClick: () => void;
 } {
@@ -19,7 +23,7 @@ export function createTec1gAudio(options: {
 
   let muted = true;
   let lastSpeakerHz = 0;
-  const core = createAudioCore();
+  const core = options.audioCore ?? createAudioCore();
 
   function updateAudio(): void {
     core.updateAudio(muted, lastSpeakerHz);
@@ -27,7 +31,17 @@ export function createTec1gAudio(options: {
 
   function applyMuteState(): void {
     muteEl.textContent = muted ? 'MUTED' : 'SOUND';
+    if (!muted) {
+      core.ensureAudio();
+    }
     updateAudio();
+  }
+
+  function unlockAudio(): void {
+    if (!muted) {
+      core.unlockAudio();
+      updateAudio();
+    }
   }
 
   function applySpeakerFromUpdate(data: Tec1gUpdatePayload): void {
@@ -51,12 +65,9 @@ export function createTec1gAudio(options: {
   function wireMuteClick(): void {
     muteEl.addEventListener('click', () => {
       muted = !muted;
-      if (!muted) {
-        core.ensureAudio();
-      }
       applyMuteState();
     });
   }
 
-  return { applySpeakerFromUpdate, applyMuteState, updateAudio, wireMuteClick };
+  return { applySpeakerFromUpdate, applyMuteState, unlockAudio, updateAudio, wireMuteClick };
 }

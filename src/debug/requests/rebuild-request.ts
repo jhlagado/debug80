@@ -94,19 +94,20 @@ function buildCompactFailureDetail(err: AssembleFailureError): string | undefine
   return err.result.error;
 }
 
-export function handleWarmRebuildRequest(
+export async function handleWarmRebuildRequest(
   response: DebugProtocol.Response,
   deps: RebuildDeps
-): boolean {
+): Promise<void> {
   const launchArgs = deps.sessionState.launchArgs;
   const runtime = deps.sessionState.runtime;
   if (!launchArgs || !runtime) {
-    return sendWarmRebuildResult(
+    sendWarmRebuildResult(
       response,
       deps,
       createWarmRebuildFailureResult('Debug80: No active launch to rebuild.'),
       false
     );
+    return;
   }
 
   try {
@@ -114,7 +115,7 @@ export function handleWarmRebuildRequest(
     const { asmPath, hexPath, listingPath } = resolveArtifacts(launchArgs, baseDir);
     const backend = resolveAssemblerBackend(launchArgs.assembler, asmPath);
 
-    assembleIfRequested({
+    await assembleIfRequested({
       backend,
       args: launchArgs,
       asmPath,
@@ -125,11 +126,12 @@ export function handleWarmRebuildRequest(
     });
 
     if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
-      return sendWarmRebuildResult(
+      sendWarmRebuildResult(
         response,
         deps,
         createWarmRebuildFailureResult('Debug80: Rebuild did not produce HEX/LST artifacts.')
       );
+      return;
     }
 
     const simpleConfig = launchArgs.simple;
@@ -229,7 +231,7 @@ export function handleWarmRebuildRequest(
     }
 
     const successSummary = `${path.basename(asmPath ?? listingPath)} rebuilt and restarted`;
-    return sendWarmRebuildResult(
+    sendWarmRebuildResult(
       response,
       deps,
       {
@@ -239,6 +241,7 @@ export function handleWarmRebuildRequest(
       },
       true
     );
+    return;
   } catch (err) {
     if (err instanceof AssembleFailureError) {
       const diagnostic = err.result.diagnostic;
@@ -259,7 +262,7 @@ export function handleWarmRebuildRequest(
       const detail = buildCompactFailureDetail(err) ?? formatAssemblyDiagnostic(diagnostic ?? {
         message: err.result.error ?? String(err),
       });
-      return sendWarmRebuildResult(
+      sendWarmRebuildResult(
         response,
         deps,
         createWarmRebuildFailureResult(summary, {
@@ -267,13 +270,15 @@ export function handleWarmRebuildRequest(
           ...(location !== undefined ? { location } : {}),
         })
       );
+      return;
     }
 
     const detail = String(err);
-    return sendWarmRebuildResult(
+    sendWarmRebuildResult(
       response,
       deps,
       createWarmRebuildFailureResult('Rebuild failed', { detail })
     );
+    return;
   }
 }

@@ -3,13 +3,26 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as cp from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { ZaxBackend } from '../../src/debug/launch/zax-backend';
 
+const compile = vi.hoisted(() => vi.fn());
 const spawnSync = vi.hoisted(() => vi.fn());
+
+vi.mock('@jhlagado/zax/dist/src/compile.js', () => ({
+  compile,
+}));
+
+vi.mock('@jhlagado/zax/dist/src/formats/index.js', () => ({
+  defaultFormatWriters: {
+    writeHex: vi.fn(),
+    writeD8m: vi.fn(),
+    writeListing: vi.fn(),
+    writeAsm80: vi.fn(),
+  },
+}));
 
 vi.mock('child_process', () => ({
   spawnSync,
@@ -19,153 +32,110 @@ describe('zax-backend', () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    compile.mockReset();
     spawnSync.mockReset();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-'));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    delete process.env.DEBUG80_ZAX_CLI;
-    delete process.env.DEBUG80_ZAX_ROOT;
   });
 
-  it('uses DEBUG80_ZAX_CLI when set to an existing cli.js', () => {
-    const fakeCli = path.join(tmpDir, 'cli.js');
-    fs.writeFileSync(fakeCli, '// zax cli stub');
-    process.env.DEBUG80_ZAX_CLI = fakeCli;
-
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
-
-    fs.writeFileSync(asmPath, 'export func main() nop end\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(listingPath, 'LISTING\n');
-    spawnSync.mockReturnValue({ status: 0, stdout: `${hexPath}\n`, stderr: '' });
-
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
-
-    expect(result.success).toBe(true);
-    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
-    expect(calls[0]?.[1]?.[0]).toBe(fakeCli);
-  });
-
-  it('uses DEBUG80_ZAX_ROOT when dist/src/cli.js exists', () => {
-    const root = path.join(tmpDir, 'ZAX');
-    const cliPath = path.join(root, 'dist', 'src', 'cli.js');
-    fs.mkdirSync(path.dirname(cliPath), { recursive: true });
-    fs.writeFileSync(cliPath, '// zax cli');
-    process.env.DEBUG80_ZAX_ROOT = root;
-
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
-
-    fs.writeFileSync(asmPath, 'export func main() nop end\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(listingPath, 'LISTING\n');
-    spawnSync.mockReturnValue({ status: 0, stdout: `${hexPath}\n`, stderr: '' });
-
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
-
-    expect(result.success).toBe(true);
-    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
-    expect(calls[0]?.[1]?.[0]).toBe(cliPath);
-  });
-
-  it('assembles successfully and copies listings when needed', () => {
+  it('assembles through the ZAX library and writes Debug80-controlled artifacts', async () => {
     const backend = new ZaxBackend();
     const asmPath = path.join(tmpDir, 'prog.zax');
     const outDir = path.join(tmpDir, 'build');
     const hexPath = path.join(outDir, 'prog.hex');
     const listingPath = path.join(outDir, 'listings', 'prog.lst');
-    const producedListing = path.join(outDir, 'prog.lst');
 
     fs.writeFileSync(asmPath, 'main { nop; }\n');
-    fs.mkdirSync(outDir, { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(producedListing, 'LISTING\n');
-    spawnSync.mockReturnValue({ status: 0, stdout: `${hexPath}\n`, stderr: '' });
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [
+        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'lst', text: 'LISTING\n' },
+        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
+        { kind: 'asm80', text: 'ORG 0100h\nNOP\n' },
+      ],
+    });
 
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assemble({ asmPath, hexPath, listingPath });
 
     expect(result.success).toBe(true);
-    expect(spawnSync).toHaveBeenCalledTimes(1);
-    const calls = spawnSync.mock.calls as Array<[string, string[], cp.SpawnSyncOptions]>;
-    const firstCall = calls[0];
-    expect(firstCall).toBeDefined();
-    const [command, args, spawnOptions] = firstCall;
-    expect(command).toBe(process.execPath);
-    expect(args).toContain('--nobin');
-    expect(args).toContain('--asm80');
-    expect(args).toContain('-o');
-    expect(args).toContain(path.join('build', 'prog.hex').replace(/\\/g, '/'));
-    expect(args).toContain(path.basename(asmPath));
-    expect(spawnOptions).toMatchObject({
-      cwd: path.dirname(asmPath),
-      encoding: 'utf-8',
-    });
+    expect(spawnSync).not.toHaveBeenCalled();
+    expect(compile).toHaveBeenCalledWith(
+      asmPath,
+      {
+        emitBin: false,
+        emitHex: true,
+        emitD8m: true,
+        emitListing: true,
+        emitAsm80: true,
+        requireMain: true,
+        defaultCodeBase: 0x0100,
+      },
+      expect.objectContaining({ formats: expect.any(Object) })
+    );
+    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
     expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
+    expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
+    expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
+    expect(fs.readFileSync(path.join(outDir, 'prog.z80'), 'utf-8')).toBe('ORG 0100h\nNOP\n');
   });
 
-  it('returns compile errors from the CLI', () => {
+  it('returns compile diagnostics as Debug80 assembly failures', async () => {
     const backend = new ZaxBackend();
     const asmPath = path.join(tmpDir, 'prog.zax');
     const hexPath = path.join(tmpDir, 'prog.hex');
     const listingPath = path.join(tmpDir, 'prog.lst');
+    const output: string[] = [];
 
     fs.writeFileSync(asmPath, 'bad\n');
-    spawnSync.mockReturnValue({ status: 1, stdout: '', stderr: 'prog.zax:1:1: error: bad\n' });
+    compile.mockResolvedValue({
+      diagnostics: [
+        {
+          id: 'SemanticsError',
+          severity: 'error',
+          message: 'Program must define main.',
+          file: asmPath,
+          line: 1,
+          column: 1,
+        },
+      ],
+      artifacts: [],
+    });
 
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assemble({
+      asmPath,
+      hexPath,
+      listingPath,
+      onOutput: (message) => output.push(message),
+    });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('zax exited with code 1');
-    expect(result.error).toContain('error: bad');
+    expect(result.error).toContain('Program must define main.');
+    expect(result.diagnostic).toMatchObject({
+      path: asmPath,
+      line: 1,
+      column: 1,
+      message: 'Program must define main.',
+    });
+    expect(output.join('')).toContain('SemanticsError');
   });
 
-  it('returns CLI errors from the CLI', () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
-
-    fs.writeFileSync(asmPath, 'bad\n');
-    spawnSync.mockReturnValue({ status: 2, stdout: '', stderr: 'zax: Unknown option\n' });
-
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('zax exited with code 2');
-  });
-
-  it('returns a helpful error when zax cannot start', () => {
+  it('fails when ZAX succeeds but required artifacts are missing', async () => {
     const backend = new ZaxBackend();
     const asmPath = path.join(tmpDir, 'prog.zax');
     const hexPath = path.join(tmpDir, 'prog.hex');
     const listingPath = path.join(tmpDir, 'prog.lst');
 
     fs.writeFileSync(asmPath, 'main { nop; }\n');
-    spawnSync.mockReturnValue({ error: { code: 'ENOENT', message: 'not found' } });
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [{ kind: 'lst', text: 'LISTING\n' }],
+    });
 
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('zax not found');
-  });
-
-  it('fails when zax succeeds but required artifacts are missing', () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
-
-    fs.writeFileSync(asmPath, 'main { nop; }\n');
-    spawnSync.mockReturnValue({ status: 0, stdout: '', stderr: '' });
-
-    const result = backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assemble({ asmPath, hexPath, listingPath });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('did not produce HEX output');

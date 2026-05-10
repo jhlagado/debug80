@@ -11,7 +11,12 @@ import { fileURLToPath } from 'url';
 import * as vscode from 'vscode';
 import { LaunchRequestArguments } from '../session/types';
 import { FileResolutionError } from '../session/errors';
-import { canonicalizeDebuggerSourcePath, isPathWithin } from './path-utils';
+import {
+  canonicalizeDebuggerSourcePath,
+  isPathWithin,
+  isWindowsAbsolutePath,
+  relativeIfWithin,
+} from './path-utils';
 import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 
 /**
@@ -77,8 +82,11 @@ export function resolveBaseDir(args: LaunchRequestArguments): string {
  * @returns Absolute path
  */
 export function resolveRelative(p: string, baseDir: string): string {
-  if (path.isAbsolute(p)) {
+  if (path.isAbsolute(p) || isWindowsAbsolutePath(p)) {
     return p;
+  }
+  if (isWindowsAbsolutePath(baseDir)) {
+    return path.win32.resolve(baseDir, p);
   }
   return path.resolve(baseDir, p);
 }
@@ -91,8 +99,14 @@ export function resolveRelative(p: string, baseDir: string): string {
  * @returns Absolute normalized path
  */
 export function normalizeSourcePath(sourcePath: string, baseDir: string): string {
+  if (isWindowsAbsolutePath(sourcePath)) {
+    return sourcePath;
+  }
   if (path.isAbsolute(sourcePath)) {
     return path.resolve(sourcePath);
+  }
+  if (isWindowsAbsolutePath(baseDir)) {
+    return path.win32.resolve(baseDir, sourcePath);
   }
   return path.resolve(baseDir, sourcePath);
 }
@@ -266,6 +280,10 @@ export function resolveExtraDebugMapPath(listingPath: string, baseDir: string): 
  * @returns Relative path if within base, otherwise absolute
  */
 export function relativeIfPossible(filePath: string, baseDir: string): string {
+  if (isWindowsAbsolutePath(filePath) || isWindowsAbsolutePath(baseDir)) {
+    return relativeIfWithin(filePath, baseDir);
+  }
+
   const normalizedBase = path.resolve(baseDir);
   const normalizedPath = path.resolve(filePath);
 
@@ -398,8 +416,8 @@ export function resolveMappedPath(
   sourceRoots: string[]
 ): string | undefined {
   const raw = stripFileScheme(file);
-  if (path.isAbsolute(raw)) {
-    const normalized = path.normalize(raw);
+  if (path.isAbsolute(raw) || isWindowsAbsolutePath(raw)) {
+    const normalized = isWindowsAbsolutePath(raw) ? path.win32.normalize(raw) : path.normalize(raw);
     if (fs.existsSync(normalized)) {
       return canonicalizeDebuggerSourcePath(normalized);
     }

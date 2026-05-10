@@ -13,6 +13,8 @@ import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser'
 export interface Layer2Options {
   /** Function to resolve file paths to absolute paths */
   resolvePath: (file: string) => string | undefined;
+  /** Additional source files to consider when the listing has no reliable file anchor. */
+  candidateFiles?: string[];
 }
 
 /**
@@ -258,6 +260,9 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
   propagateMisassignedIncludeSegments(mapping, includeRemaps, options.resolvePath);
 
   const files = collectSourceFiles(mapping);
+  for (const file of options.candidateFiles ?? []) {
+    files.add(file);
+  }
   const { fileData, missingSources } = loadSourceFiles(files, options.resolvePath);
 
   const anchorByAddress = new Map<number, SourceMapAnchor>();
@@ -321,8 +326,18 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
     }
 
     const isData = DATA_DIRECTIVE.test(norm);
+    let matchedFile = currentFile;
     const matches = findMatches(fileInfo.normLines, norm, hintLine);
-    const { line, ambiguous } = chooseMatch(matches, hintLine);
+    let { line, ambiguous } = chooseMatch(matches, hintLine);
+
+    if (line === null && options.candidateFiles !== undefined) {
+      const candidate = findCandidateMatch(options.candidateFiles, fileData, norm, hintLine);
+      if (candidate !== null) {
+        matchedFile = candidate.file;
+        line = candidate.line;
+        ambiguous = candidate.ambiguous;
+      }
+    }
 
     if (line === null) {
       if ((isData || macroBlock) && segment.confidence !== 'HIGH') {
@@ -338,6 +353,7 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
       continue;
     }
 
+    segment.loc.file = matchedFile;
     segment.loc.line = line;
     if (segment.confidence !== 'HIGH') {
       if (isData || macroBlock) {
@@ -352,6 +368,26 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
   }
 
   return { missingSources };
+}
+
+function findCandidateMatch(
+  candidateFiles: string[],
+  fileData: Map<string, SourceFileData>,
+  norm: string,
+  hintLine: number | null
+): { file: string; line: number; ambiguous: boolean } | null {
+  for (const candidateFile of candidateFiles) {
+    const candidateInfo = fileData.get(candidateFile);
+    if (!candidateInfo) {
+      continue;
+    }
+    const matches = findMatches(candidateInfo.normLines, norm, hintLine);
+    const { line, ambiguous } = chooseMatch(matches, hintLine);
+    if (line !== null) {
+      return { file: candidateFile, line, ambiguous };
+    }
+  }
+  return null;
 }
 
 function collectSourceFiles(mapping: MappingParseResult): Set<string> {

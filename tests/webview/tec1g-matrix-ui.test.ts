@@ -108,6 +108,19 @@ describe('tec1g matrix ui', () => {
     expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
   });
 
+  it('preserves omitted brightness planes on partial RGB updates', () => {
+    const firstDot = document.querySelector('.matrix-dot') as HTMLElement;
+
+    controller.applyMatrixBrightness([0], [255], [0]);
+    expect(firstDot.style.getPropertyValue('--matrix-g')).toBe('1.000');
+
+    controller.applyMatrixBrightness([255]);
+
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-g')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-b')).toBe('0.000');
+  });
+
   it('tracks modifier state when clicking matrix keys', () => {
     controller.applyMatrixMode(true);
     const matrixShift = document.getElementById('matrixShift') as HTMLElement;

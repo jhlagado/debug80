@@ -7,6 +7,7 @@ import type { SessionStateShape } from '../session/session-state';
 type MemoryWriteArgs = {
   address?: unknown;
   value?: unknown;
+  allowReadOnly?: unknown;
 };
 
 function parseAddress(value: unknown): number | null {
@@ -70,10 +71,21 @@ export function handleMemoryWriteRequest(
   }
 
   const runtime = sessionState.runtime;
-  if (typeof runtime.hardware.memWrite === 'function') {
+  const allowReadOnly = payload.allowReadOnly === true;
+  if (allowReadOnly && typeof runtime.hardware.forceMemWrite === 'function') {
+    runtime.hardware.forceMemWrite(address, value);
+  } else if (typeof runtime.hardware.memWrite === 'function') {
     runtime.hardware.memWrite(address, value);
   } else {
     runtime.hardware.memory[address] = value;
+  }
+  const memRead =
+    runtime.hardware.memRead ??
+    ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
+  if ((memRead(address) & 0xff) !== value) {
+    return allowReadOnly
+      ? 'Debug80: Memory write did not stick.'
+      : 'Debug80: Memory address is read-only or write-protected.';
   }
   return null;
 }

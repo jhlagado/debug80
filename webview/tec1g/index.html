@@ -47,12 +47,9 @@
         <button class="project-action-button" id="setupPrimaryAction" type="button">Open Folder</button>
       </div>
     </div>
-    <div class="tabs">
-      <div class="tabs-buttons">
-        <button class="tab" data-tab="ui">UI</button>
-        <button class="tab" data-tab="memory">CPU</button>
-      </div>
-      <div class="tabs-status-slot">
+    <div class="debug80-toolbar">
+      <div></div>
+      <div class="debug80-status-slot">
         <button
           class="session-status"
           id="restartDebug"
@@ -65,8 +62,12 @@
         >Restart</button>
       </div>
     </div>
-    <div class="panel panel-ui" id="panel-ui">
-      <div class="ui-controls" id="uiControls">
+    <div class="debug80-accordion" id="debug80Accordion">
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="machine" aria-expanded="true">Machine</button>
+        <div class="debug80-accordion-content" id="accordion-machine">
+          <div class="panel panel-ui" id="panel-ui">
+            <div class="ui-controls" id="uiControls">
         <label><input type="checkbox" data-section="display" checked /> 7-SEG</label>
         <label><input type="checkbox" data-section="lcd" checked /> LCD</label>
         <label><input type="checkbox" data-section="keypad" checked /> KEYPAD</label>
@@ -74,9 +75,9 @@
         <label><input type="checkbox" data-section="matrix" /> 8X8</label>
         <label><input type="checkbox" data-section="serial" /> SERIAL</label>
         <label><input type="checkbox" data-section="matrixKeyboard" /> KEYBD</label>
-      </div>
-      <div class="layout">
-        <div class="left-col">
+            </div>
+            <div class="layout">
+              <div class="left-col">
           <div class="lcd ui-section" data-section="lcd">
             <div class="lcd-title">LCD (HD44780 A00)</div>
             <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
@@ -85,8 +86,8 @@
             <div class="display" id="display"></div>
           </div>
           <div class="keypad ui-section" id="keypad" data-section="keypad"></div>
-        </div>
-        <div class="right-col">
+              </div>
+              <div class="right-col">
           <div class="status">
             <div class="key speed" id="speed">SLOW</div>
             <div class="key mute" id="mute">MUTED</div>
@@ -120,43 +121,55 @@
             <div class="matrix-title">8x8 RGB LED MATRIX</div>
             <div class="matrix-grid" id="matrixGrid"></div>
           </div>
-        </div>
-      </div>
-      <div class="serial ui-section" data-section="serial">
-        <div class="serial-header">
-          <div class="serial-title">SERIAL (BIT 6)</div>
-          <div class="serial-buttons">
-            <div class="key key-small" id="serialSendFile">SEND FILE</div>
-            <div class="key key-small" id="serialSave">SAVE</div>
-            <div class="key key-small" id="serialClear">CLEAR</div>
+              </div>
+            </div>
+            <div class="serial ui-section" data-section="serial">
+              <div class="serial-header">
+                <div class="serial-title">SERIAL (BIT 6)</div>
+                <div class="serial-buttons">
+                  <div class="key key-small" id="serialSendFile">SEND FILE</div>
+                  <div class="key key-small" id="serialSave">SAVE</div>
+                  <div class="key key-small" id="serialClear">CLEAR</div>
+                </div>
+              </div>
+              <pre class="serial-body" id="serialOut"></pre>
+              <div class="serial-input">
+                <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
+                <div class="key" id="serialSend">SEND</div>
+              </div>
+            </div>
+            <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
+              <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+              <div class="matrix-keyboard-controls">
+                <div class="key" id="matrixModeToggle">MATRIX MODE</div>
+                <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
+                <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
+              </div>
+              <div class="matrix-keyboard-mods">
+                <div class="key" id="matrixShift">SHIFT</div>
+                <div class="key" id="matrixCtrl">CTRL</div>
+                <div class="key" id="matrixAlt">ALT</div>
+              </div>
+              <div class="matrix-keyboard-hint">Type or click keys to send input.</div>
+              <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
+            </div>
           </div>
         </div>
-        <pre class="serial-body" id="serialOut"></pre>
-        <div class="serial-input">
-          <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
-          <div class="key" id="serialSend">SEND</div>
+      </section>
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="registers" aria-expanded="true">Registers</button>
+        <div class="debug80-accordion-content" id="accordion-registers">
+          <div class="panel panel-registers register-panel" id="panel-registers">
+            <div class="register-strip" id="registerStrip"></div>
+          </div>
         </div>
-      </div>
-      <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
-        <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
-        <div class="matrix-keyboard-controls">
-          <div class="key" id="matrixModeToggle">MATRIX MODE</div>
-          <div class="matrix-keyboard-indicator" id="matrixModeStatus">OFF</div>
-          <div class="matrix-keyboard-indicator" id="matrixCapsStatus">CAPS</div>
-        </div>
-        <div class="matrix-keyboard-mods">
-          <div class="key" id="matrixShift">SHIFT</div>
-          <div class="key" id="matrixCtrl">CTRL</div>
-          <div class="key" id="matrixAlt">ALT</div>
-        </div>
-        <div class="matrix-keyboard-hint">Type or click keys to send input.</div>
-        <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
-      </div>
-    </div>
-    <div class="panel panel-memory" id="panel-memory">
-      <div class="memory-panel" id="memoryPanel">
-        <div class="shell">
-          <div class="register-strip" id="registerStrip"></div>
+      </section>
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="memory" aria-expanded="false">Memory</button>
+        <div class="debug80-accordion-content" id="accordion-memory">
+          <div class="panel panel-memory" id="panel-memory">
+            <div class="memory-panel" id="memoryPanel">
+              <div class="shell">
           <div class="section">
             <div class="section-header">
               <div class="controls">
@@ -237,8 +250,11 @@
             </div>
             <div class="dump" id="dump-d"></div>
           </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   </div>
   <script nonce="{{nonce}}" src="{{scriptUri}}"></script>

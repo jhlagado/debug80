@@ -8,6 +8,7 @@ import {
   buildSourceMapIndex,
   findAnchorLine,
   findSegmentForAddress,
+  resolveExecutableLocation,
   resolveLocation,
 } from '../../src/mapping/source-map';
 
@@ -32,6 +33,34 @@ describe('source-map', () => {
     assert.deepEqual(resolveLocation(index, path.join(fixtureDir, 'missing.asm'), 1), []);
   });
 
+  it('matches Windows source paths case-insensitively on any host OS', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x2000,
+          end: 0x2001,
+          loc: { file: 'src\\Main.asm', line: 7 },
+          lst: { line: 12, text: 'NOP' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x2000, symbol: 'START', file: 'src\\Main.asm', line: 7 }],
+    };
+    const windowsPath = 'C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\Main.asm';
+    const idx = buildSourceMapIndex(mapping, (file) =>
+      file.toLowerCase() === 'src\\main.asm' ? windowsPath : undefined
+    );
+
+    assert.deepEqual(
+      resolveLocation(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 7),
+      [0x2000]
+    );
+    assert.equal(
+      findAnchorLine(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 0x2000),
+      7
+    );
+  });
+
   it('finds a segment by address', () => {
     const segment = findSegmentForAddress(index, 0x0001);
     assert.ok(segment);
@@ -41,6 +70,43 @@ describe('source-map', () => {
   it('falls back to anchors when no segment matches the line', () => {
     const address = resolveLocation(index, asmPath, 99);
     assert.deepEqual(address, [0x0003]);
+  });
+
+  it('does not resolve constants or labels as executable breakpoint locations', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4000,
+          loc: { file: 'constants.asm', line: 39 },
+          lst: { line: 69, text: 'GRAVITY_PACE_DELTA: EQU 12' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4003,
+          loc: { file: 'tetro.asm', line: 39 },
+          lst: { line: 97, text: 'CALL INIT_STATE' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x4000, symbol: 'START', file: 'tetro.asm', line: 38 }],
+    };
+    const constants = path.join(fixtureDir, 'constants.asm');
+    const tetro = path.join(fixtureDir, 'tetro.asm');
+    const idx = buildSourceMapIndex(mapping, (file) => {
+      if (file === 'constants.asm') {
+        return constants;
+      }
+      if (file === 'tetro.asm') {
+        return tetro;
+      }
+      return undefined;
+    });
+
+    assert.deepEqual(resolveLocation(idx, constants, 39), [0x4000]);
+    assert.deepEqual(resolveExecutableLocation(idx, constants, 39), []);
+    assert.deepEqual(resolveExecutableLocation(idx, tetro, 39), [0x4000]);
   });
 
   it('skips unresolved files and null locations', () => {

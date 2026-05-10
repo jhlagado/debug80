@@ -117,23 +117,28 @@ It solves the main usability problem with the current `UI` / `CPU` tabs while pr
 Adopt Option B first:
 
 - keep a single `Debug80` VS Code view
-- replace the top-level `UI` / `CPU` tabs with accordion sections
+- replace the top-level `UI` / `CPU` tabs visually with accordion sections
 - allow multiple sections to be open simultaneously
-- plan for `CPU` to be further decomposed over time, starting with separate `Registers` and `Memory` sections
+- split the old CPU tab into separate `Registers` and `Memory` sections immediately
+- persist the open/closed accordion state in the webview state
 
 This should be treated as the default design path unless later evidence shows that the single-view surface
 has become too dense or too heterogeneous.
 
 If that happens, some internal accordion sections can later be promoted into first-class VS Code views.
 
+The accordion should be implemented as presentation first. It should preserve the existing webview/provider
+contract, including the `{ type: 'tab', tab: 'memory' }` protocol shape and the provider-side `PanelTab`
+model, until there is a separate reason to change that model. The first slice should improve what the user
+sees without bundling in a protocol rewrite.
+
 ## Initial Accordion Shape
 
-The first likely target shape is:
+The first target shape is:
 
-- `UI`
-- `CPU`
-  - `Registers`
-  - `Memory`
+- `Machine`
+- `Registers`
+- `Memory`
 
 This should not be implemented as tabs disguised as accordions. The value comes from allowing more than one
 section to remain open at the same time.
@@ -156,10 +161,12 @@ Separating them is useful because it allows:
 
 At a high level, the likely implementation path is:
 
-1. replace the current top-level tab switch with accordion sections
-2. preserve current data flow and state as much as possible
-3. split the current CPU area into internal subsections
-4. refine each subsection one at a time
+1. stabilize the project picker state model and rendering
+2. preserve restart/mute intent across same-platform restarts
+3. replace the current top-level tab presentation with accordion sections
+4. preserve current data flow, protocol shape, and provider-side tab model as much as possible
+5. split the current CPU area into internal subsections
+6. refine each subsection one at a time
 
 This should be approached as a layout refactor first, not as a behavioral redesign of all sub-panels at once.
 
@@ -254,6 +261,40 @@ Losing the visible selected project while the active project remains valid is no
 This should remain an explicit investigation item until the root cause is understood. It should not be
 rolled into broader layout work silently.
 
+This is the highest-priority UX stability issue. The accordion work should not be allowed to obscure it:
+the project picker must remain visibly stable across focus changes, visibility changes, and webview redraws.
+
+## Register and Memory Editing Baseline
+
+Register and memory editing are not missing foundational capabilities. The existing path already includes:
+
+- `webview/common/memory-panel.ts`
+- custom `registerWrite` and `memoryWrite` messages
+- DAP `setVariable` support
+
+The next work here is UI polish rather than a new editing architecture. In particular:
+
+- register inputs should be disabled while the emulator is running
+- refresh and revert behavior should be visually clear and predictable
+- hex entry and display should stay plain and consistent
+
+This should remain separate from the first accordion slice unless a small presentation change is needed to
+keep the panel coherent.
+
+## Recommended Work Lanes
+
+The recommended near-term lanes are:
+
+1. project picker stability
+2. same-platform restart/mute persistence
+3. first Simple accordion presentation slice
+4. register and memory polish
+5. docs/spec upkeep as decisions settle
+
+After those lanes are under control, continue with the broader TEC-1 and TEC-1G accordion rollout. The intent
+is sequencing, not a ticket dump: each lane should stay small enough to preserve the debugger state model and
+avoid mixing unrelated UX fixes.
+
 ## Current Decision
 
 Current design decision:
@@ -261,8 +302,11 @@ Current design decision:
 - reject a first-pass split into multiple first-class VS Code debug views
 - proceed conceptually with a single Debug80 view using internal accordion sections
 - plan to separate registers from memory as part of that direction
+- treat project picker state stability as the top UX priority before broader layout rollout
+- keep restart/mute persistence as a small parallel fix, not a blocker for the accordion direction
 
 ## Change Log
 
 - 2026-04-30: Initial draft created. Captures the `multiple debug views` alternative, the `single-view accordion` alternative, and the current preference for the accordion approach.
 - 2026-05-02: Added notes on restart semantics and mute-state persistence across same-platform restarts.
+- 2026-05-09: Consolidated refined UX sequencing: project picker stability first, restart/mute persistence as a parallel fix, accordion as presentation-first, and register/memory work as UI polish on existing editing paths.

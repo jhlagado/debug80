@@ -6,7 +6,7 @@ import { DebugProtocol } from '@vscode/debugprotocol';
 import * as path from 'path';
 import type { ListingInfo } from '../../z80/loaders';
 import type { SourceMapIndex } from '../../mapping/source-map';
-import { resolveLocation } from '../../mapping/source-map';
+import { resolveExecutableLocation } from '../../mapping/source-map';
 import { pathsEqual } from './path-utils';
 
 type SourceBreakpointResolution = {
@@ -65,23 +65,6 @@ export class BreakpointManager {
           return { addresses: [], verified: false };
         },
         continueOnEmpty: true,
-      },
-      {
-        matches: (sourcePath: string, listingPath: string): boolean =>
-          !this.isListingSource(listingPath, sourcePath) && this.isAsmLikeSource(sourcePath),
-        resolve: (
-          listing: ListingInfo,
-          _mappingIndex: SourceMapIndex | undefined,
-          _sourcePath: string,
-          line: number
-        ): SourceBreakpointResolution => {
-          const address = this.resolveListingLineAddress(listing, line);
-          return {
-            addresses: address !== undefined ? [address] : [],
-            verified: address !== undefined,
-          };
-        },
-        continueOnEmpty: false,
       },
     ];
   }
@@ -158,9 +141,8 @@ export class BreakpointManager {
           source,
           line
         );
-        const [first] = resolution.addresses;
-        if (first !== undefined) {
-          this.active.add(first);
+        for (const address of resolution.addresses) {
+          this.active.add(address);
         }
       }
     }
@@ -198,7 +180,7 @@ export class BreakpointManager {
     if (!mappingIndex) {
       return [];
     }
-    const direct = resolveLocation(mappingIndex, sourcePath, line);
+    const direct = resolveExecutableLocation(mappingIndex, sourcePath, line);
     if (direct.length > 0) {
       return direct;
     }
@@ -223,7 +205,10 @@ export class BreakpointManager {
         }
         const segments = fileMap.get(tryLine);
         if (segments && segments.length > 0) {
-          return segments.map((seg) => seg.start);
+          const executable = segments.filter((seg) => seg.end > seg.start);
+          if (executable.length > 0) {
+            return executable.map((seg) => seg.start);
+          }
         }
       }
     }
@@ -254,8 +239,4 @@ export class BreakpointManager {
     return undefined;
   }
 
-  private isAsmLikeSource(sourcePath: string): boolean {
-    const lower = sourcePath.toLowerCase();
-    return lower.endsWith('.asm') || lower.endsWith('.z80') || lower.endsWith('.zax');
-  }
 }
