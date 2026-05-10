@@ -40,78 +40,6 @@ export function serializeTec1gUpdateFromUiState(state: Tec1gUiState, speakerHz?:
 }
 
 /**
- * Snapshot payload containing only fields that changed between two retained UI states.
- */
-export function serializeTec1gChangedUpdateFromUiState(
-  previous: Tec1gUiState,
-  next: Tec1gUiState,
-  speakerHz?: number
-): Partial<Tec1gUpdatePayload> {
-  const payload: Partial<Tec1gUpdatePayload> = {};
-  if (!arraysEqual(previous.digits, next.digits)) {
-    payload.digits = [...next.digits];
-  }
-  if (!arraysEqual(previous.matrix, next.matrix)) {
-    payload.matrix = [...next.matrix];
-  }
-  if (!arraysEqual(previous.matrixGreen, next.matrixGreen)) {
-    payload.matrixGreen = [...next.matrixGreen];
-  }
-  if (!arraysEqual(previous.matrixBlue, next.matrixBlue)) {
-    payload.matrixBlue = [...next.matrixBlue];
-  }
-  if (!arraysEqual(previous.matrixBrightness, next.matrixBrightness)) {
-    payload.matrixBrightness = [...next.matrixBrightness];
-  }
-  if (!arraysEqual(previous.matrixBrightnessG, next.matrixBrightnessG)) {
-    payload.matrixBrightnessG = [...next.matrixBrightnessG];
-  }
-  if (!arraysEqual(previous.matrixBrightnessB, next.matrixBrightnessB)) {
-    payload.matrixBrightnessB = [...next.matrixBrightnessB];
-  }
-  if (previous.matrixMode !== next.matrixMode) {
-    payload.matrixMode = next.matrixMode;
-  }
-  if (!arraysEqual(previous.glcd, next.glcd)) {
-    payload.glcd = [...next.glcd];
-  }
-  if (!arraysEqual(previous.glcdDdram, next.glcdDdram)) {
-    payload.glcdDdram = [...next.glcdDdram];
-  }
-  if (!objectsEqual(previous.glcdState, next.glcdState)) {
-    payload.glcdState = { ...next.glcdState };
-  }
-  if (previous.sysCtrlValue !== next.sysCtrlValue) {
-    payload.sysCtrl = next.sysCtrlValue;
-  }
-  if (previous.bankA14 !== next.bankA14) {
-    payload.bankA14 = next.bankA14;
-  }
-  if (previous.capsLock !== next.capsLock) {
-    payload.capsLock = next.capsLock;
-  }
-  if (!objectsEqual(previous.lcdState, next.lcdState)) {
-    payload.lcdState = { ...next.lcdState };
-  }
-  if (!arraysEqual(previous.lcdCgram, next.lcdCgram)) {
-    payload.lcdCgram = [...next.lcdCgram];
-  }
-  if (previous.speaker !== next.speaker) {
-    payload.speaker = next.speaker ? 1 : 0;
-  }
-  if (previous.speedMode !== next.speedMode) {
-    payload.speedMode = next.speedMode;
-  }
-  if (!arraysEqual(previous.lcd, next.lcd)) {
-    payload.lcd = [...next.lcd];
-  }
-  if (speakerHz !== undefined) {
-    payload.speakerHz = speakerHz;
-  }
-  return payload;
-}
-
-/**
  * Partial update when clearing serial / resetting speaker (matches legacy sidebar clear payload).
  */
 export function serializeTec1gClearPanelUpdateFromUiState(state: Tec1gUiState): Tec1gUpdatePayload {
@@ -133,32 +61,6 @@ export function serializeTec1gClearPanelUpdateFromUiState(state: Tec1gUiState): 
 /** Type guard for TEC-1G speed mode literals in unknown event data. */
 function isTec1gSpeedMode(value: unknown): value is Tec1gSpeedMode {
   return value === 'slow' || value === 'fast';
-}
-
-/** Returns true when two numeric arrays have identical contents. */
-function arraysEqual(left: readonly number[], right: readonly number[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-  for (let i = 0; i < left.length; i += 1) {
-    if (left[i] !== right[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** Returns true when two flat state objects have identical primitive fields. */
-function objectsEqual(
-  left: Record<string, boolean | number>,
-  right: Record<string, boolean | number>
-): boolean {
-  const leftKeys = Object.keys(left);
-  const rightKeys = Object.keys(right);
-  if (leftKeys.length !== rightKeys.length) {
-    return false;
-  }
-  return leftKeys.every((key) => left[key] === right[key]);
 }
 
 /** True when `value` is an array of numbers (for DAP event body parsing). */
