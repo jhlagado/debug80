@@ -76,13 +76,17 @@ These documents still describe active or recently active decisions:
 - `docs/design-debug80-ide-ux.md`
 - `docs/design-project-workflow.md`
 - `docs/design-platform-ui-runtime-behaviors.md`
-- `docs/design-zax-source-support.md`
-- `docs/design-prefer-native-d8-maps.md`
-- `docs/design-assembler-abstraction.md`
-- `docs/codebase-status-and-e2e-plan.md`
+- `docs/regression-test-strategy.md`
+- `docs/release-process.md`
 
-`docs/codebase-improvement-plan.md` is historical plus residual cleanup guidance; it should not be
-treated as the active backlog.
+The following documents are archived historical context and should not be treated as the active
+backlog:
+
+- `docs/archive/codebase-improvement-plan.md`
+- `docs/archive/codebase-status-and-e2e-plan.md`
+- `docs/archive/design-assembler-abstraction.md`
+- `docs/archive/design-prefer-native-d8-maps.md`
+- `docs/archive/design-zax-source-support.md`
 
 ## Deferred Work
 

@@ -1,5 +1,8 @@
 # Debug80 Codebase Status + E2E Test Plan (Supplement)
 
+**Status:** Archived historical supplement. The current test and release gates are documented in
+`../regression-test-strategy.md` and `../release-process.md`.
+
 Date: 2026-02-03 (updated 2026-04-20)
 Scope: Objective status of the codebase after phases 0–4, plus an end-to-end testing plan.
 
@@ -227,4 +230,3 @@ Example approach:
 - Choose the DAP test harness dependency (official test support vs custom client).
 - Decide whether to test webview UI DOM in e2e (likely defer until Phase 4 stabilizes).
 - Decide if TEC-1G ROM dependencies should be included in fixtures or kept as optional follow-up.
-

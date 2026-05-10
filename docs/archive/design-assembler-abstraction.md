@@ -1,5 +1,8 @@
 # Design: Assembler Backend Abstraction
 
+**Status:** Archived. The assembler backend abstraction and linked asm80/ZAX backends are now part
+of the implementation; see `../design-production-readiness.md` for the current packaging policy.
+
 **Issue:** #78 — Refactor assembler integration to support multiple backends  
 **Type:** Additive refactor (no breaking changes to current behaviour)  
 **Invariant stress:** None — asm80 remains default; abstraction adds a seam  

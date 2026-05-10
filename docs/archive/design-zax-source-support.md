@@ -1,5 +1,8 @@
 # Design: First-Class .zax Source Support
 
+**Status:** Archived. First-class `.zax` language/source support is implemented; linked ZAX
+packaging policy now lives in `../design-production-readiness.md`.
+
 **Issue:** #81 — Add first-class .zax source support to debug80  
 **Type:** Additive (new language contribution, no changes to existing behaviour)  
 **Parallel with:** #78 (assembler abstraction). No dependency between these two.
