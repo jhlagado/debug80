@@ -17,6 +17,7 @@ vi.mock('../../src/debug/mapping/path-resolver', () => ({
 }));
 
 import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
+import { pathsEqual } from '../../src/debug/mapping/path-utils';
 import { parseMapping } from '../../src/mapping/parser';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 import { resolveLocation } from '../../src/mapping/source-map';
@@ -165,7 +166,11 @@ describe('mapping-service', () => {
     });
 
     expect(resolveLocation(result.index, asmPath, 5)).toContain(0x4000);
-    expect(result.mapping.segments.some((seg) => seg.loc.file === asmPath)).toBe(true);
+    expect(
+      result.mapping.segments.some(
+        (seg) => seg.loc.file !== null && pathsEqual(seg.loc.file, asmPath)
+      )
+    ).toBe(true);
     expect(logs.some((line) => line.includes('did not include target source'))).toBe(true);
   });
 
@@ -493,7 +498,8 @@ describe('mapping-service', () => {
         (segment) =>
           segment.start === 0x100 &&
           segment.end === 0x101 &&
-          segment.loc.file === extraSourcePath &&
+          segment.loc.file !== null &&
+          pathsEqual(segment.loc.file, extraSourcePath) &&
           segment.loc.line === 1
       )
     ).toBe(true);

@@ -102,7 +102,7 @@ export function canonicalizeDebuggerSourcePath(filePath: string): string {
  */
 export function normalizePathForKey(filePath: string): string {
   const resolved = canonicalizeExistingPath(filePath);
-  if (isWindowsPathLike(filePath)) {
+  if (IS_WINDOWS || isWindowsPathLike(filePath)) {
     return toPortablePath(resolved).toLowerCase();
   }
   return isCaseInsensitiveFs() ? resolved.toLowerCase() : resolved;
