@@ -1,0 +1,61 @@
+{
+  "defaultTarget": "include-app",
+  "targets": {
+    "include-app": {
+      "sourceFile": "src/main.asm",
+      "outputDir": "build",
+      "artifactBase": "include-app",
+      "platform": "simple",
+      "assemble": false,
+      "hex": "build/include-app.hex",
+      "listing": "build/include-app.lst",
+      "simple": {
+        "regions": [
+          {
+            "start": 0,
+            "end": 2047,
+            "kind": "rom"
+          },
+          {
+            "start": 2048,
+            "end": 65535,
+            "kind": "ram"
+          }
+        ],
+        "appStart": 0,
+        "entry": 0
+      },
+      "sourceRoots": [
+        "."
+      ]
+    },
+    "sparse-org": {
+      "sourceFile": "src/sparse.asm",
+      "outputDir": "build",
+      "artifactBase": "sparse-org",
+      "platform": "simple",
+      "assemble": false,
+      "hex": "build/sparse-org.hex",
+      "listing": "build/sparse-org.lst",
+      "simple": {
+        "regions": [
+          {
+            "start": 0,
+            "end": 2047,
+            "kind": "rom"
+          },
+          {
+            "start": 2048,
+            "end": 65535,
+            "kind": "ram"
+          }
+        ],
+        "appStart": 1024,
+        "entry": 1024
+      },
+      "sourceRoots": [
+        "."
+      ]
+    }
+  }
+}

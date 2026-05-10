@@ -11,6 +11,7 @@ webview/**
 .claude/**
 .cursor/**
 .fallow/**
+.vscode-test/**
 .husky/**
 --help/**
 out/test/**

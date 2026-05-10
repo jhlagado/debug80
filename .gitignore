@@ -34,6 +34,7 @@ tests/**/*.map
 *.temp
 .debug80/
 .fallow/
+.vscode-test/
 .agent-test-cwd.txt
 
 # E2E fixtures

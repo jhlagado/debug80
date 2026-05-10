@@ -9,6 +9,20 @@ import * as path from 'path';
 /** Whether the current platform is Windows */
 export const IS_WINDOWS = process.platform === 'win32';
 
+const WINDOWS_DRIVE_ABSOLUTE_RE = /^[a-zA-Z]:[\\/]/;
+const WINDOWS_UNC_ABSOLUTE_RE = /^\\\\[^\\/]+[\\/][^\\/]+/;
+
+/**
+ * Detects Windows absolute paths even when tests run on POSIX hosts.
+ */
+export function isWindowsAbsolutePath(filePath: string): boolean {
+  return WINDOWS_DRIVE_ABSOLUTE_RE.test(filePath) || WINDOWS_UNC_ABSOLUTE_RE.test(filePath);
+}
+
+function isWindowsPathLike(filePath: string): boolean {
+  return isWindowsAbsolutePath(filePath);
+}
+
 /**
  * Probes the filesystem under `dir` for case sensitivity by checking whether
  * accessing the directory name in opposite case resolves to the same inode.
@@ -56,6 +70,10 @@ function isCaseInsensitiveFs(): boolean {
  * Resolves to an absolute path and follows symlinks when the path exists (e.g. npm-linked trees).
  */
 function canonicalizeExistingPath(filePath: string): string {
+  if (isWindowsPathLike(filePath) && !IS_WINDOWS) {
+    return path.win32.normalize(filePath);
+  }
+
   const resolved = path.resolve(filePath);
   try {
     if (fs.existsSync(resolved)) {
@@ -84,6 +102,9 @@ export function canonicalizeDebuggerSourcePath(filePath: string): string {
  */
 export function normalizePathForKey(filePath: string): string {
   const resolved = canonicalizeExistingPath(filePath);
+  if (isWindowsPathLike(filePath)) {
+    return toPortablePath(resolved).toLowerCase();
+  }
   return isCaseInsensitiveFs() ? resolved.toLowerCase() : resolved;
 }
 
@@ -109,6 +130,17 @@ export function pathsEqual(path1: string, path2: string): boolean {
  * @returns True if filePath is within baseDir
  */
 export function isPathWithin(filePath: string, baseDir: string): boolean {
+  if (isWindowsPathLike(filePath) || isWindowsPathLike(baseDir)) {
+    const normalizedPath = path.win32.resolve(filePath);
+    const normalizedBase = path.win32.resolve(baseDir);
+    const baseWithSep = normalizedBase.endsWith(path.win32.sep)
+      ? normalizedBase
+      : normalizedBase + path.win32.sep;
+    const pathLower = normalizedPath.toLowerCase();
+    const baseLower = normalizedBase.toLowerCase();
+    return pathLower === baseLower || pathLower.startsWith(baseWithSep.toLowerCase());
+  }
+
   const normalizedPath = path.resolve(filePath);
   const normalizedBase = path.resolve(baseDir);
 
@@ -136,6 +168,15 @@ export function isPathWithin(filePath: string, baseDir: string): boolean {
  * @returns Relative path if within base, otherwise absolute resolved path
  */
 export function relativeIfWithin(filePath: string, baseDir: string): string {
+  if (isWindowsPathLike(filePath) || isWindowsPathLike(baseDir)) {
+    const normalizedPath = path.win32.resolve(filePath);
+    const normalizedBase = path.win32.resolve(baseDir);
+    if (isPathWithin(normalizedPath, normalizedBase)) {
+      return path.win32.relative(normalizedBase, normalizedPath) || normalizedPath;
+    }
+    return normalizedPath;
+  }
+
   const normalizedPath = path.resolve(filePath);
   const normalizedBase = path.resolve(baseDir);
 
@@ -154,7 +195,7 @@ export function relativeIfWithin(filePath: string, baseDir: string): string {
  * @returns Path with forward slashes
  */
 export function toPortablePath(filePath: string): string {
-  return filePath.split(path.sep).join('/');
+  return filePath.replace(/\\/g, '/');
 }
 
 /**
@@ -177,6 +218,11 @@ export function fromPortablePath(portablePath: string): string {
  * @returns Portable relative path with forward slashes
  */
 export function toPortableRelative(root: string, absolutePath: string): string {
+  if (isWindowsPathLike(root) || isWindowsPathLike(absolutePath)) {
+    const rel = path.win32.relative(root, absolutePath) || path.win32.basename(absolutePath);
+    return toPortablePath(rel);
+  }
+
   const rel = path.relative(root, absolutePath) || path.basename(absolutePath);
   return toPortablePath(rel);
 }

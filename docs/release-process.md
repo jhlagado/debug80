@@ -29,25 +29,28 @@ npm run package:check
 - `npm run typecheck:webview`
 - `npm test`
 - `npm run package`
+- `npm run package:verify`
 
 The package step runs `vscode:prepublish`, which rebuilds the extension and webview output before
-`vsce package` creates the VSIX.
+`vsce package` creates the VSIX. The verification step inspects the `vsce ls` package manifest and
+fails if required runtime files are missing or top-level development debris is present.
 
 ## VSIX Content Check
 
-After packaging, inspect the generated extension:
+After packaging, verify the generated extension contents:
 
 ```bash
-npx vsce ls | rg 'node_modules/(asm80|@jhlagado/zax)|^coverage/|^tests/|^docs/|^src/'
+npm run package:verify
 ```
 
-Expected:
+The verification gate requires:
 
 - `node_modules/asm80/...` is present.
 - `node_modules/@jhlagado/zax/...` is present.
-- `coverage/`, `tests/`, `docs/`, and `src/` are absent.
-- `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt`, and
-  `THIRD_PARTY_NOTICES.md` are present.
+- `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt` or `LICENSE`,
+  and `THIRD_PARTY_NOTICES.md` are present.
+- Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.claude/`, `.cursor/`, `.github/`,
+  and `.vscode/` are absent.
 
 If unwanted files appear, fix `.vscodeignore` before publishing.
 

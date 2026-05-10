@@ -33,6 +33,34 @@ describe('source-map', () => {
     assert.deepEqual(resolveLocation(index, path.join(fixtureDir, 'missing.asm'), 1), []);
   });
 
+  it('matches Windows source paths case-insensitively on any host OS', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x2000,
+          end: 0x2001,
+          loc: { file: 'src\\Main.asm', line: 7 },
+          lst: { line: 12, text: 'NOP' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x2000, symbol: 'START', file: 'src\\Main.asm', line: 7 }],
+    };
+    const windowsPath = 'C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\Main.asm';
+    const idx = buildSourceMapIndex(mapping, (file) =>
+      file.toLowerCase() === 'src\\main.asm' ? windowsPath : undefined
+    );
+
+    assert.deepEqual(
+      resolveLocation(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 7),
+      [0x2000]
+    );
+    assert.equal(
+      findAnchorLine(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 0x2000),
+      7
+    );
+  });
+
   it('finds a segment by address', () => {
     const segment = findSegmentForAddress(index, 0x0001);
     assert.ok(segment);

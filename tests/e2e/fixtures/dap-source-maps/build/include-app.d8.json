@@ -1,0 +1,80 @@
+{
+  "format": "d8-debug-map",
+  "version": 1,
+  "arch": "z80",
+  "addressWidth": 16,
+  "endianness": "little",
+  "generator": {
+    "name": "asm80-fixture"
+  },
+  "files": {
+    "src/main.asm": {
+      "segments": [
+        {
+          "start": 0,
+          "end": 1,
+          "line": 2,
+          "lstLine": 2,
+          "lstText": "NOP",
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 1,
+          "end": 4,
+          "line": 3,
+          "lstLine": 3,
+          "lstText": "JP INCLUDED_ENTRY",
+          "kind": "code",
+          "confidence": "high"
+        }
+      ],
+      "symbols": [
+        {
+          "name": "START",
+          "address": 0,
+          "line": 1,
+          "kind": "label",
+          "scope": "global"
+        }
+      ]
+    },
+    "src/inc/included.asm": {
+      "segments": [
+        {
+          "start": 4,
+          "end": 5,
+          "line": 2,
+          "lstLine": 5,
+          "lstText": "NOP",
+          "kind": "code",
+          "confidence": "high",
+          "includeChain": [
+            "src/main.asm"
+          ]
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "line": 3,
+          "lstLine": 6,
+          "lstText": "HALT",
+          "kind": "code",
+          "confidence": "high",
+          "includeChain": [
+            "src/main.asm"
+          ]
+        }
+      ],
+      "symbols": [
+        {
+          "name": "INCLUDED_ENTRY",
+          "address": 4,
+          "line": 1,
+          "kind": "label",
+          "scope": "global"
+        }
+      ]
+    }
+  }
+}

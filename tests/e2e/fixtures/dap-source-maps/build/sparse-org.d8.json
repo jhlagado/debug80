@@ -1,0 +1,43 @@
+{
+  "format": "d8-debug-map",
+  "version": 1,
+  "arch": "z80",
+  "addressWidth": 16,
+  "endianness": "little",
+  "generator": {
+    "name": "asm80-fixture"
+  },
+  "files": {
+    "src/sparse.asm": {
+      "segments": [
+        {
+          "start": 1024,
+          "end": 1025,
+          "line": 3,
+          "lstLine": 3,
+          "lstText": "NOP",
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 1025,
+          "end": 1026,
+          "line": 4,
+          "lstLine": 4,
+          "lstText": "HALT",
+          "kind": "code",
+          "confidence": "high"
+        }
+      ],
+      "symbols": [
+        {
+          "name": "SPARSE_ENTRY",
+          "address": 1024,
+          "line": 2,
+          "kind": "label",
+          "scope": "global"
+        }
+      ]
+    }
+  }
+}

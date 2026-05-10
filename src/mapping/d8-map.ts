@@ -595,7 +595,7 @@ function toFileKey(file: string | null | undefined): string {
   if (file === null || file === undefined || file.length === 0) {
     return UNKNOWN_FILE_KEY;
   }
-  return file;
+  return file.replace(/\\/g, '/');
 }
 
 function fromFileKey(fileKey: string): string | null {
