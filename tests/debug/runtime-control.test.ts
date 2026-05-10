@@ -11,6 +11,7 @@ import type {
 } from '../../src/debug/session/runtime-control';
 import type { StepInfo } from '../../src/z80/types';
 import type { Z80Runtime } from '../../src/z80/runtime';
+import { NullLogger } from '../../src/util/logger';
 
 const makeContext = (options?: {
   pauseRequested?: boolean;
@@ -72,6 +73,7 @@ const makeContext = (options?: {
     sendEvent: (event) => {
       events.push(event);
     },
+    getLogger: () => new NullLogger(),
   };
 };
 

@@ -84,6 +84,7 @@ export class Z80DebugSession extends DebugSession {
       sendEvent: (event: unknown): void => {
         this.sendEvent(event as DebugProtocol.Event);
       },
+      logger: this.logger,
     });
 
   public constructor(logger: Logger = new NullLogger()) {
