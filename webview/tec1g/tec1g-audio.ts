@@ -3,7 +3,6 @@
  */
 
 import { createAudioCore, type AudioCore } from '../common/audio-core';
-import { readAudioMuted, writeAudioMuted } from '../common/audio-mute-state';
 import type { VscodeApi } from '../common/vscode';
 import type { Tec1gUpdatePayload } from './entry-types';
 
@@ -20,9 +19,9 @@ export function createTec1gAudio(options: {
   updateAudio: () => void;
   wireMuteClick: () => void;
 } {
-  const { muteEl, speakerEl, speakerLabel, vscode } = options;
+  const { muteEl, speakerEl, speakerLabel } = options;
 
-  let muted = readAudioMuted(vscode, 'tec1g');
+  let muted = true;
   let lastSpeakerHz = 0;
   const core = options.audioCore ?? createAudioCore();
 
@@ -66,10 +65,6 @@ export function createTec1gAudio(options: {
   function wireMuteClick(): void {
     muteEl.addEventListener('click', () => {
       muted = !muted;
-      writeAudioMuted(vscode, 'tec1g', muted);
-      if (!muted) {
-        core.ensureAudio();
-      }
       applyMuteState();
     });
   }

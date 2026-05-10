@@ -1,23 +1,11 @@
 /**
- * @file Regression tests: TEC speaker mute state survives webview reloads.
+ * @file Regression tests: TEC speaker mute state is session-local.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAudioController } from '../../webview/tec1/audio';
 import { createTec1gAudio } from '../../webview/tec1g/tec1g-audio';
-import type { VscodeApi } from '../../webview/common/vscode';
 import type { AudioCore } from '../../webview/common/audio-core';
-
-function createStatefulVscode(initialState: unknown = null): VscodeApi {
-  let state = initialState;
-  return {
-    postMessage: vi.fn(),
-    getState: () => state,
-    setState: (nextState: unknown) => {
-      state = nextState;
-    },
-  };
-}
 
 function createAudioCoreMock(): AudioCore & {
   ensureAudio: ReturnType<typeof vi.fn>;
@@ -38,52 +26,43 @@ describe('webview audio mute state', () => {
 
   it('defaults TEC-1 audio to muted', () => {
     const muteEl = document.createElement('div');
-    const vscode = createStatefulVscode();
-
-    const audio = createAudioController(muteEl, vscode);
+    const audio = createAudioController(muteEl);
     audio.applyMuteState();
 
     expect(muteEl.textContent).toBe('MUTED');
   });
 
-  it('restores TEC-1 unmuted state after a simulated reload', () => {
-    const vscode = createStatefulVscode();
+  it('does not persist TEC-1 unmuted state after a simulated reload', () => {
     const firstMuteEl = document.createElement('div');
-    const firstAudio = createAudioController(firstMuteEl, vscode);
+    const firstAudio = createAudioController(firstMuteEl);
 
     firstAudio.toggleMute();
 
     const reloadedMuteEl = document.createElement('div');
-    const reloadedAudio = createAudioController(reloadedMuteEl, vscode);
+    const reloadedAudio = createAudioController(reloadedMuteEl);
     reloadedAudio.applyMuteState();
 
     expect(firstMuteEl.textContent).toBe('SOUND');
-    expect(reloadedMuteEl.textContent).toBe('SOUND');
+    expect(reloadedMuteEl.textContent).toBe('MUTED');
   });
 
-  it('re-applies TEC-1 audio core when persisted state is unmuted', () => {
+  it('enables TEC-1 audio core when unmuted in the current session', () => {
     const muteEl = document.createElement('div');
     const audioCore = createAudioCoreMock();
-    const audio = createAudioController(
-      muteEl,
-      createStatefulVscode({ audioMute: { tec1: false } }),
-      audioCore
-    );
+    const audio = createAudioController(muteEl, undefined, audioCore);
 
-    audio.applyMuteState();
+    audio.toggleMute();
 
     expect(muteEl.textContent).toBe('SOUND');
     expect(audioCore.ensureAudio).toHaveBeenCalledTimes(1);
     expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
   });
 
-  it('unlocks TEC-1 audio on later user gesture when persisted state is unmuted', () => {
+  it('unlocks TEC-1 audio on later user gesture when unmuted in the current session', () => {
     const audioCore = createAudioCoreMock();
-    const audio = createAudioController(
-      document.createElement('div'),
-      createStatefulVscode({ audioMute: { tec1: false } }),
-      audioCore
-    );
+    const audio = createAudioController(document.createElement('div'), undefined, audioCore);
+
+    audio.toggleMute();
 
     audio.unlockAudio();
 
@@ -91,13 +70,12 @@ describe('webview audio mute state', () => {
     expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
   });
 
-  it('persists TEC-1G mute toggles through vscode state', () => {
-    const vscode = createStatefulVscode();
+  it('does not persist TEC-1G mute toggles through webview reloads', () => {
     const muteEl = document.createElement('div');
     const speakerEl = document.createElement('div');
     const speakerLabel = document.createElement('div');
 
-    const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });
+    const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel });
     audio.wireMuteClick();
     audio.applyMuteState();
 
@@ -111,14 +89,13 @@ describe('webview audio mute state', () => {
       muteEl: reloadedMuteEl,
       speakerEl,
       speakerLabel,
-      vscode,
     });
     reloadedAudio.applyMuteState();
 
-    expect(reloadedMuteEl.textContent).toBe('SOUND');
+    expect(reloadedMuteEl.textContent).toBe('MUTED');
   });
 
-  it('re-applies TEC-1G audio core when persisted state is unmuted', () => {
+  it('enables TEC-1G audio core when unmuted in the current session', () => {
     const muteEl = document.createElement('div');
     const speakerEl = document.createElement('div');
     const speakerLabel = document.createElement('div');
@@ -127,26 +104,29 @@ describe('webview audio mute state', () => {
       muteEl,
       speakerEl,
       speakerLabel,
-      vscode: createStatefulVscode({ audioMute: { tec1g: false } }),
       audioCore,
     });
+    audio.wireMuteClick();
 
-    audio.applyMuteState();
+    muteEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(muteEl.textContent).toBe('SOUND');
     expect(audioCore.ensureAudio).toHaveBeenCalledTimes(1);
     expect(audioCore.updateAudio).toHaveBeenCalledWith(false, 0);
   });
 
-  it('unlocks TEC-1G audio on later user gesture when persisted state is unmuted', () => {
+  it('unlocks TEC-1G audio on later user gesture when unmuted in the current session', () => {
     const audioCore = createAudioCoreMock();
+    const muteEl = document.createElement('div');
     const audio = createTec1gAudio({
-      muteEl: document.createElement('div'),
+      muteEl,
       speakerEl: document.createElement('div'),
       speakerLabel: document.createElement('div'),
-      vscode: createStatefulVscode({ audioMute: { tec1g: false } }),
       audioCore,
     });
+    audio.wireMuteClick();
+
+    muteEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     audio.unlockAudio();
 

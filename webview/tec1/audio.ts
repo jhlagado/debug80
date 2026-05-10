@@ -1,5 +1,4 @@
 import { createAudioCore, type AudioCore } from '../common/audio-core';
-import { readAudioMuted, writeAudioMuted } from '../common/audio-mute-state';
 import type { VscodeApi } from '../common/vscode';
 
 export interface Tec1AudioController {
@@ -15,7 +14,7 @@ export function createAudioController(
   vscode?: Pick<VscodeApi, 'getState' | 'setState'>,
   audioCore?: AudioCore
 ): Tec1AudioController {
-  let muted = readAudioMuted(vscode, 'tec1');
+  let muted = true;
   let speakerHz = 0;
   const core = audioCore ?? createAudioCore();
 
@@ -46,10 +45,6 @@ export function createAudioController(
     },
     toggleMute(): void {
       muted = !muted;
-      writeAudioMuted(vscode, 'tec1', muted);
-      if (!muted) {
-        core.ensureAudio();
-      }
       applyMuteState();
     },
     updateAudio,
