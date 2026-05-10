@@ -48,6 +48,28 @@ platform-specific emulation. No single test style can cover all of that reliably
 - Register writes apply to the runtime.
 - RAM writes apply; ROM writes obey protect/unprotect policy.
 
+### Performance Regression Contracts
+
+Debug80 should treat performance as a regression surface, not only as manual UX feedback. The
+highest-risk pattern is accidentally rebuilding large structures or re-rendering large payloads
+inside high-frequency loops.
+
+- Z80 runtime tests should guard decoder/cache reuse and instruction throughput.
+- Source-map and symbol lookup tests should guard repeated breakpoint/memory lookups from becoming
+  linear scans over large maps.
+- Memory/register snapshot tests should guard payload generation from rebuilding avoidable state on
+  every refresh.
+- Webview tests should guard project controls, registers, memory rows, and display renderers from
+  re-rendering unchanged DOM/canvas state unnecessarily.
+- Integration smoke tests should run a representative TEC-1G target for a fixed window and record
+  instruction rate, effective emulated speed, yield lag, and UI update rate.
+- Runtime instrumentation should remain available for manual diagnosis via `DEBUG80_PERF=1`, while
+  severe starvation warnings should remain visible in the Debug80 output channel.
+
+These tests should use broad regression thresholds rather than fragile absolute benchmarks. The goal
+is to catch order-of-magnitude mistakes such as rebuilding decoder tables per instruction, not to
+fail CI because one runner is slightly slower.
+
 ### Project and Webview State
 
 - Initialized project shows project and target selectors.
@@ -104,6 +126,7 @@ platform-specific emulation. No single test style can cover all of that reliably
 | C | Adapter E2E | Include-file breakpoint and artifact launch scenarios |
 | D | Webview regressions | Project selector/platform/target state invariants |
 | E | Windows/path hardening | Path normalization and D8/source-map portability tests |
+| F | Performance contracts | Runtime/cache/webview throughput checks and starvation instrumentation |
 
 Each lane should stay isolated until review. Integration happens only after the lane-specific
 verification command passes.

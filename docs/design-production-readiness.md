@@ -51,6 +51,8 @@ deliberate compatibility project.
 5. **Verification before release**
    - `npm run package:check`
    - Inspect VSIX contents for required runtime dependencies and bundled assets.
+   - Keep performance regression checks current in `docs/regression-test-strategy.md`; Debug80
+     should catch high-frequency rebuild/render loops before release.
 
 ## Module-System Policy
 
@@ -89,3 +91,5 @@ treated as the active backlog.
   `dist/src/...` modules.
 - Follow `docs/release-process.md` for local VSIX testing and eventual Marketplace publishing.
 - Add Windows-specific smoke testing for project creation, assembly, source mapping, and launch.
+- Add performance-contract tests for runtime throughput, source-map lookup, memory/register
+  snapshot generation, and webview render/update pressure.
