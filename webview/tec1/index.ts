@@ -249,9 +249,7 @@ window.addEventListener('message', event => {
   }
   if (event.data.type === 'sessionStatus') {
     sessionStatusController.setStatus(event.data.status);
-    if (event.data.status === 'running' || event.data.status === 'paused') {
-      panelLayout.refreshOpenRegisters();
-    }
+    panelLayout.setRegisterRefreshActive(event.data.status === 'running' || event.data.status === 'paused');
     return;
   }
   if (event.data.type === 'selectTab') {
@@ -288,6 +286,7 @@ panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
+panelLayout.setRegisterRefreshActive(false);
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());
 panelLayout.updateMemoryLayout(false);
 

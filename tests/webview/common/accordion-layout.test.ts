@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAccordionLayoutController } from '../../../webview/common/accordion-layout';
 import type { MemoryPanel } from '../../../webview/common/memory-panel';
 import type { VscodeApi } from '../../../webview/common/vscode';
@@ -25,6 +25,10 @@ function createVscodeMock(messages: PostedMessage[], initialState: unknown = nul
 }
 
 describe('accordion layout controller', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('defaults to machine and registers open and persists toggled sections', () => {
     const messages: PostedMessage[] = [];
     const memoryPanel = document.createElement('div');
@@ -200,5 +204,49 @@ describe('accordion layout controller', () => {
         memory: false,
       },
     });
+  });
+
+  it('polls registers while registers are open and memory is closed', () => {
+    vi.useFakeTimers();
+    const messages: PostedMessage[] = [];
+    const memoryPanel = document.createElement('div');
+    const requestSnapshot = vi.fn();
+    const requestRegisterSnapshot = vi.fn();
+    const memoryController = { requestSnapshot, requestRegisterSnapshot } as unknown as MemoryPanel;
+    const memoryButton = button('memory');
+    const vscode = createVscodeMock(messages, {
+      debug80Accordion: {
+        machine: true,
+        registers: true,
+        memory: false,
+      },
+    });
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: [button('machine'), button('registers'), memoryButton],
+      panels: {
+        machine: document.createElement('div'),
+        registers: document.createElement('div'),
+        memory: document.createElement('div'),
+      },
+      memoryPanel,
+      defaultTab: 'ui',
+      getMemoryPanelController: () => memoryController,
+    });
+    controller.wireButtons();
+
+    controller.setRegisterRefreshActive(true);
+    expect(requestRegisterSnapshot).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1000);
+    expect(requestRegisterSnapshot).toHaveBeenCalledTimes(3);
+    expect(requestSnapshot).not.toHaveBeenCalled();
+
+    memoryButton.click();
+    expect(requestSnapshot).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1000);
+    expect(requestRegisterSnapshot).toHaveBeenCalledTimes(3);
   });
 });
