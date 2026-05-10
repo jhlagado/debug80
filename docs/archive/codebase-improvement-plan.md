@@ -1,5 +1,8 @@
 # Debug80 Codebase Improvement Plan
 
+**Status:** Archived historical plan. Use `../README.md` for the current documentation index and
+GitHub issues/PRs for the active backlog.
+
 Date: 2026-02-03
 Last Updated: 2026-04-03
 

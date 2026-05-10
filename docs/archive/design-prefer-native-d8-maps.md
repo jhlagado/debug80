@@ -1,5 +1,8 @@
 # Design: Prefer Native ZAX D8 Maps
 
+**Status:** Archived. Native D8 map preference and stale-map handling are implemented; keep
+`../d8-debug-map.md` as the stable format reference.
+
 **Issue:** #80 — Prefer native ZAX D8 maps for source mapping and stepping  
 **Depends on:** #78 (PR #82, merged), #79 (PR #85, merged), #81 (PR #83, merged)  
 **Upstream:** ZAX#1349 (segment.line population — already present in current ZAX output)  
