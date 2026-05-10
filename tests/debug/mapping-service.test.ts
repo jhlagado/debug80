@@ -580,7 +580,8 @@ describe('mapping-service', () => {
         (segment) =>
           segment.start === 0x100 &&
           segment.end === 0x101 &&
-          segment.loc.file === extraSourcePath &&
+          segment.loc.file !== null &&
+          pathsEqual(segment.loc.file, extraSourcePath) &&
           segment.loc.line === 7
       )
     ).toBe(true);
