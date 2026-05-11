@@ -99,8 +99,11 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 - Expand exposes a banked 16K window at 0x8000-0xBFFF.
 
 ## ROMs and config
-Debug80 does not bundle MON-3 ROM images. Provide `romHex` in the platform
-config (and optionally ROM listings via `extraListings`).
+Debug80 ships a bundled MON-3 profile for scaffolded projects. New projects
+record bundled asset references in `debug80.json`; launch resolves the extension
+bundle directly when no workspace copy exists. You can still provide `romHex` in
+the platform config (and optionally ROM listings via `extraListings`) to override
+the bundled profile or debug a custom ROM.
 
 **Shared MON-3 settings (recommended):** Put `romHex`, `entry`, and any other
 fields that are the same for every build under **`debug80.json` root** `tec1g`,

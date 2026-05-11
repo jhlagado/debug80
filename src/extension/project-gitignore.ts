@@ -25,6 +25,8 @@ export function ensureDebug80Gitignore(workspaceRoot: string, defaultOutputDir: 
     `${relOut}/`,
     'out/',
     'dist/',
+    '# Materialized platform ROM bundles are local copies; debug80.json references extension bundles by profile',
+    'roms/',
     '# Optional local launch; the extension also contributes "Debug80: Current Project"',
     '.vscode/launch.json',
     '# OS / editor',

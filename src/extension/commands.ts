@@ -250,7 +250,7 @@ export function registerExtensionCommands({
         );
         return false;
       }
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
     })
   );
 
@@ -271,7 +271,7 @@ export function registerExtensionCommands({
         await vscode.debug.stopDebugging(activeSession);
       }
 
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
+      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
     })
   );
 
@@ -308,7 +308,7 @@ export function registerExtensionCommands({
             path.normalize(nextProjectConfig) !== previousProjectConfig
           ) {
             await vscode.debug.stopDebugging(activeSession);
-            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry, context.extensionUri);
+            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
             restartedForRootChange = restarted;
             if (restarted) {
               const nextPlatform = resolveProjectPlatformForFolder(folder);
@@ -327,8 +327,7 @@ export function registerExtensionCommands({
               folder,
               workspaceSelection,
               targetSelection,
-              platformViewProvider.stopOnEntry,
-              context.extensionUri
+              platformViewProvider.stopOnEntry
             );
         if (singleTarget !== undefined) {
           void vscode.window.showInformationMessage(

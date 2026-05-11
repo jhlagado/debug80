@@ -13,6 +13,7 @@ describe('ensureDebug80Gitignore', () => {
       const g1 = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
       expect(g1).toContain('.debug80/');
       expect(g1).toContain('build/');
+      expect(g1).toContain('roms/');
       ensureDebug80Gitignore(root, 'build');
       const g2 = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
       expect(g2.split('### Debug80').length - 1).toBe(1);
