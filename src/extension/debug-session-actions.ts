@@ -11,13 +11,11 @@ import {
 } from './project-config';
 import { ProjectTargetSelectionController, listProjectTargetChoices } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
-import { ensureBundledAssetsPresent } from './bundle-asset-installer';
 
 export async function startCurrentProjectDebugging(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
-  stopOnEntry: boolean,
-  extensionUri: vscode.Uri
+  stopOnEntry: boolean
 ): Promise<boolean> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -25,11 +23,6 @@ export async function startCurrentProjectDebugging(
       `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
     );
     return false;
-  }
-
-  const config = readProjectConfig(projectConfig);
-  if (config !== undefined) {
-    ensureBundledAssetsPresent(extensionUri, folder.uri.fsPath, config);
   }
 
   workspaceSelection.rememberWorkspace(folder);
@@ -46,8 +39,7 @@ export async function maybeAutoStartSingleTargetForRootChange(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
   targetSelection: ProjectTargetSelectionController,
-  stopOnEntry: boolean,
-  extensionUri: vscode.Uri
+  stopOnEntry: boolean
 ): Promise<string | undefined> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -71,7 +63,7 @@ export async function maybeAutoStartSingleTargetForRootChange(
     await vscode.debug.stopDebugging(activeSession);
   }
 
-  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry, extensionUri);
+  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry);
   if (!started) {
     return undefined;
   }
