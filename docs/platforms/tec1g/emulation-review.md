@@ -181,10 +181,9 @@ Write protection (0x4000-0x7FFF) — **Complete**
 Expansion window enable (0x8000-0xBFFF) — **Complete**
 :   Bit 2 of port 0xFF
 
-Expansion bank select via E_A14 — **Missing**
+Expansion bank select via E_A14 — **Complete**
 :   Schematic confirms bit 3 of port 0xFF drives A14 of expansion
-    socket. Currently not decoded — only one bank exists in
-    emulation
+    socket. The emulator decodes `bankA14` and selects expansion bank 0 or 1.
 
 ROM select switches (SW5A/B) — **N/A**
 :   Not relevant to emulation — user provides ROM hex directly
@@ -227,17 +226,17 @@ Multiplexed scanning — **Complete**
 
 ### 6. Matrix keyboard (J4 + U4 74HCT688)
 
-Matrix scan via full 16-bit port address — **Missing**
+Matrix scan via full 16-bit port address — **Complete**
 :   Schematic confirms U4 (74HCT688) compares high address byte.
-    IO read handler only uses low byte
+    The emulation now uses the high port byte for row selection when matrix mode is enabled.
 
-Row select via A8-A15 — **Missing**
+Row select via A8-A15 — **Complete**
 :   J4 exposes A8-A15, D0-D7, CAPS, RSET
 
-CONFIG switch 1 (keypad vs matrix mode) — **Missing**
-:   No matrix mode state in emulation
+CONFIG switch 1 (keypad vs matrix mode) — **Complete**
+:   Matrix mode state is represented in the runtime and exposed through the platform UI.
 
-Keypad disable when matrix active — **Missing**
+Keypad disable when matrix active — **Complete**
 
 Joystick input (J9) — **Missing**
 :   J9 is a 9-pin joystick connector on the schematic
@@ -290,14 +289,14 @@ Joystick input (J9) — **Missing**
 | Bit 0 — ~{SHADOW} (active low)             | **Complete** | Correctly inverted in `decodeSysCtrl`              |
 | Bit 1 — PROTECT                            | **Complete** |                                                    |
 | Bit 2 — EXPAND                             | **Complete** |                                                    |
-| Bit 3 — FF-D3 -> E_A14 (bank select)       | **Missing**  | Schematic confirms this drives A14 of expansion U9 |
-| Bit 4 — FF-D4 (reserved, to expansion bus) | **Missing**  | Not decoded; exposed on bus connectors             |
-| Bit 5 — CAPS (caps lock)                   | **Missing**  | Not decoded; used by matrix keyboard mode          |
-| Bit 6 — FF-D5 (reserved, to expansion bus) | **Missing**  | Not decoded                                        |
-| Bit 7 — FF-D6 (reserved, to expansion bus) | **Missing**  | Not decoded                                        |
+| Bit 3 — FF-D3 -> E_A14 (bank select)       | **Complete** | Schematic confirms this drives A14 of expansion U9 |
+| Bit 4 — FF-D4 (reserved, to expansion bus) | **Complete** | Decoded and retained as a latch bit                |
+| Bit 5 — CAPS (caps lock)                   | **Complete** | Decoded and exposed to matrix keyboard state       |
+| Bit 6 — FF-D5 (reserved, to expansion bus) | **Complete** | Decoded and retained as a latch bit                |
+| Bit 7 — FF-D6 (reserved, to expansion bus) | **Complete** | Decoded and retained as a latch bit                |
 
-**Current `decodeSysCtrl` only reads bits 0-2. Bits 3-7 are latched (raw value stored in `state.sysCtrl`) but not
-decoded or acted upon.**
+`decodeSysCtrl` now decodes all 8 latched bits. Reserved expansion-bus bits are retained even when
+no higher-level device currently consumes them.
 
 ### 11. System input — port 0x03 read (U19 74HCT245)
 
@@ -308,10 +307,9 @@ Bit 1 — PROTECT — **Complete**
 
 Bit 2 — EXPAND — **Complete**
 
-Bit 3 — CART (cartridge present) — **Bug**
-:   Currently mirrors EXPAND (sets 0x08 when expand enabled).
-    Schematic confirms this is a separate CART signal from
-    expansion connector
+Bit 3 — CART (cartridge present) — **Complete**
+:   Schematic confirms this is a separate CART signal from the expansion connector.
+    The emulation now drives it from cartridge presence.
 
 Bit 4 — RKEY (raw key detection) — **Missing**
 :   Not emulated
@@ -324,8 +322,9 @@ Bit 6 — KDA (key data available, inverted) — **Complete**
 
 Bit 7 — RX (serial receive, idle high) — **Complete**
 
-**Bug confirmed:** The current code at runtime.ts:618-621 sets bit 3 (0x08) based on `expandEnabled`. The schematic
-shows bit 3 is CART (cartridge), not expand. This should be a separate flag.
+**Historical bug:** Earlier runtime code set bit 3 (0x08) based on `expandEnabled`. The schematic
+shows bit 3 is CART (cartridge), not expand. Current runtime state tracks cartridge presence
+separately.
 
 ### 12. RTC (DS1302) — port 0xFC
 
@@ -336,8 +335,8 @@ Schematic confirms: RTC is NOT on the main board. It connects through J10 pin ~{
 
 ### 13. SD card SPI — port 0xFD
 
-All features — **Missing**
-: External add-on via GPI/O (J10). Port 0xFD writes logged only, reads return 0xFF
+All features — **Complete**
+: External add-on via GPI/O (J10). Port 0xFD is emulated by the TEC-1G SD-card controller.
 
 Schematic confirms: SD card is NOT on the main board. It connects through J10 pin ~{P}-SD.
 
@@ -410,18 +409,17 @@ Disco LEDs (Fullisik under mechanical keys) — **N/A**
 | Joystick                  | Low  | **Missing**         | 0%   |
 | Status LED bar            | Low  | **Missing**         | 0%   |
 
-Expansion window: enable works, bank select missing.
-SYS_CTRL: 3 of 8 bits decoded.
-SYS_INPUT: bit 3 bug, bits 0/4/5 missing.
+Expansion window: enable and bank select work.
+SYS_CTRL: all 8 bits decoded; reserved bits are retained as latch state.
+SYS_INPUT: bits 0/4/5 missing; CART bit is handled separately from EXPAND.
 
 ---
 
 ## Bugs found
 
-1. **Port 0x03 bit 3 mirrors EXPAND instead of CART** —
-   [runtime.ts:618-621](src/platforms/tec1g/runtime.ts#L618-L621). The schematic confirms bit 3 is CART (cartridge
-   present), a distinct signal from the expansion connector. Current code sets bit 3 when `expandEnabled` is true.
-   Fix: bit 3 should be a separate `cartridgePresent` flag (default false).
+1. **Historical: port 0x03 bit 3 mirrored EXPAND instead of CART** —
+   The schematic confirms bit 3 is CART (cartridge present), a distinct signal from the expansion
+   connector. This is now represented separately from `expandEnabled`.
 
 ---
 
@@ -463,8 +461,8 @@ These tasks are independent and can be worked in parallel. No architectural risk
 - [x] Correct `IN 0x04` description (returns busy flag + address counter, not 0x00)
 - [x] Add full SYS_CTRL bit map (all 8 bits, from schematic section of this review)
 - [x] Add full SYS_INPUT bit map (all 8 bits, from schematic section of this review)
-- [x] Document stub ports: 0xFC (RTC), 0xFD (SD) return 0xFF
-- [x] Note matrix keyboard 0xFE returns 0xFF (stub)
+- [x] Document RTC and SD-card behavior on ports 0xFC and 0xFD
+- [x] Document matrix keyboard scanning on port 0xFE
 
 ---
 
