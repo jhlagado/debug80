@@ -87,7 +87,11 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   const assemblyDiagnostics = vscode.languages.createDiagnosticCollection('debug80-assembly');
   const logger = new OutputChannelLogger(output);
   const factory = new Z80DebugAdapterFactory(logger);
-  const platformViewProvider = new PlatformViewProvider(context.extensionUri, context.workspaceState);
+  const platformViewProvider = new PlatformViewProvider(
+    context.extensionUri,
+    context.workspaceState,
+    logger
+  );
   const workspaceSelection = new WorkspaceSelectionController(context, platformViewProvider);
   const targetSelection = new ProjectTargetSelectionController(context);
   const debugConfigurationProvider = new Debug80ConfigurationProvider(

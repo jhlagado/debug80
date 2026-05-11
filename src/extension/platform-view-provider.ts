@@ -57,6 +57,11 @@ import type {
   PlatformViewInboundMessage,
   ProjectStatusPayload,
 } from '../contracts/platform-view';
+import { NullLogger, type Logger } from '../util/logger';
+import {
+  createUiPerformanceMonitor,
+  type UiPerformanceMonitor,
+} from './ui-performance-monitor';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -93,6 +98,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private sessionStatus: DebugSessionStatus = 'not running';
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
+  private readonly performanceMonitor: UiPerformanceMonitor;
 
   /** Cached loaded modules, keyed by platform id. */
   private readonly loadedModules = new Map<string, PlatformUiModules>();
@@ -105,9 +111,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
 
-  constructor(extensionUri: vscode.Uri, workspaceState?: vscode.Memento) {
+  constructor(extensionUri: vscode.Uri, workspaceState?: vscode.Memento, logger: Logger = new NullLogger()) {
     this.extensionUri = extensionUri;
     this.workspaceState = workspaceState;
+    this.performanceMonitor = createUiPerformanceMonitor({
+      logger,
+      label: 'platform-view',
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -747,6 +757,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       return;
     }
+    this.performanceMonitor.recordMessage(String(payload.type ?? 'unknown'), payload);
     void this.view.webview.postMessage(payload);
   }
 
