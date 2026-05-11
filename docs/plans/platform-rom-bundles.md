@@ -1,44 +1,45 @@
-# Plan: Platform ROM bundles, materialization, and overrides
+# Plan: Platform ROM bundles, profile resolution, and overrides
 
-This document captures the agreed product direction (extension as default vendor of ROM + listing + source; workspace as overridable runtime; multi-ROM readiness; manual projects without wizard) and breaks work into **sequenced tickets**.
+This document captures the agreed product direction: the extension is the default vendor of ROM,
+listing, and read-only source assets; project workspaces reference those assets by profile and
+only materialize local copies when the user explicitly asks for them.
 
 ## Goals
 
 1. **Bundled defaults**: Ship canonical ROM artifacts (bin/hex), listings, and optional source snapshots inside the Debug80 VSIX for supported platform profiles (starting with TEC-1G + MON3).
-2. **Materialize on scaffold**: When creating a project (or explicit “install bundled assets”), copy defaults into **stable workspace paths** so `debug80.json` uses normal project-relative paths and the debugger maps sources like any other project.
-3. **Always overridable**: Users may replace files or change paths in `debug80.json`; no hidden dependency on extension paths for day-to-day debugging.
-4. **Manual projects**: A repo created without the wizard must work if `debug80.json` + files on disk are valid.
-5. **Multi-ROM / future platforms**: Design config and loaders so **multiple ROM regions** (e.g. TEC-1G low + high ROM) are first-class, not ad hoc single `romHex` special cases.
-6. **Lazy load**: Do not load large bundles at activation; load when a profile needs them.
+2. **Resolve on launch**: Scaffolded projects record bundled asset references in `debug80.json`; the launch resolver uses the extension bundle when no workspace copy exists.
+3. **Materialize explicitly**: Keep a command for users who intentionally want local ROM/listing/source copies, but do not copy stock ROMs into new projects by default.
+4. **Always overridable**: Users may replace files or change paths in `debug80.json`; local files take precedence over extension bundles.
+5. **Manual projects**: A repo created without the wizard must work if `debug80.json` + files on disk are valid.
+6. **Multi-ROM / future platforms**: Design config and loaders so **multiple ROM regions** (e.g. TEC-1G low + high ROM) are first-class, not ad hoc single `romHex` special cases.
+7. **Lazy load**: Do not load large bundles at activation; load when a profile needs them.
 
 ## Design principles
 
 | Principle | Implication |
 |-----------|-------------|
 | **Extension = distribution** | Versioned payloads + manifest (checksums, profile id, compatible Debug80 version range). |
-| **Workspace = execution** | `debug80.json` points at workspace files; adapter reads those paths. |
-| **Config is the contract** | Override = edit JSON and/or replace files under those paths. |
+| **Project = source** | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
+| **Config is the contract** | Override = edit JSON and/or explicitly materialize/replace files under those paths. |
 | **No mandatory wizard** | Wizard only accelerates layout; same behavior if user hand-authors config. |
 
-## Suggested on-disk layout (workspace)
+## Workspace layout policy
 
-Convention only; final names should be validated in **TICKET-02**.
+New scaffolded projects should be small:
 
 ```
 <project>/
-  .vscode/debug80.json
-  roms/
-    tec1g/
-      mon3/                    # one “bundle id” folder
-        mon3.bin               # or .hex — whatever program-loader already accepts
-        mon3.lst               # for extraListings / D8
-        src/                   # optional; for editor + mapping
-          ...
-  .debug80/                    # optional cache (already exists); not source of truth
-    cache/
+  debug80.json                 # committed project contract
+  src/
+    main.asm                   # committed user source
+  .gitignore                   # ignores build output and local materialized ROM copies
+  build/                       # generated, ignored
+  roms/                        # optional explicit materialization/override, ignored by default
 ```
 
-Alternative: `.debug80/vendor/mon3/…` for “generated from extension” vs `roms/` for user-owned — decide in TICKET-02 to avoid two competing trees.
+`roms/` is reserved for local copies created by **Debug80: Copy Bundled MON3 ROM into Workspace**
+or for deliberate user overrides. If a user is authoring a monitor ROM, that should be a separate
+advanced project profile and the user can remove the ignore rule intentionally.
 
 ## Phases (high level)
 
@@ -51,7 +52,7 @@ flowchart LR
 ```
 
 - **P0**: Manifest format, extension resource layout, read-only access from extension code.
-- **P1**: Materialize MON3 default into scaffold; wire `tec1g.romHex` + `extraListings` + `sourceRoots` to copied paths.
+- **P1**: Resolve MON3/MON-1B bundle references at launch without copying into scaffolded workspaces.
 - **P2**: Override UX, upgrade/repair command, documentation for manual projects.
 - **P3**: Generalize program loader + `debug80.json` schema for **N** ROM regions on TEC-1G (backward compatible).
 - **P4**: Additional bundled profiles, CI for bundle checksums, size budgets.
@@ -296,8 +297,8 @@ Copy ticket IDs into your issue tracker (GitHub Issues, Jira, etc.) and link thi
 
 | Milestone | Status | Notes |
 |-----------|--------|--------|
-| **M1** (TICKET-01–03) | **Done** | `src/extension/bundle-manifest.ts` (schema v1 + `isBundleManifestV1`), `resources/bundles/tec1g/mon3/v1/` layout, `src/extension/bundle-materialize.ts` (`materializeBundledRom`, lazy copy). Unit tests: `tests/extension/bundle-materialize.test.ts`. |
-| **M2** (TICKET-04–06) | **Done** | Same as above, plus bundled **`mon3.lst`** (ASM80 listing from upstream BC25 source zip; see bundle `README.md`). TICKET-01 remains this plan + TS types; separate ADR not written. |
+| **M1** (TICKET-01–03) | **Done** | `src/extension/bundle-manifest.ts` (schema v1 + `isBundleManifestV1`), `resources/bundles/tec1g/mon3/v1/` and `resources/bundles/tec1/mon1b/v1/` layouts, `src/extension/bundle-materialize.ts` (`materializeBundledRom`, explicit lazy copy). Unit tests: `tests/extension/bundle-materialize.test.ts`. |
+| **M2** (TICKET-04–06) | **Done** | Bundled MON3/MON-1B assets are referenced from project profiles and resolved from extension resources when workspace copies are absent. Scaffold no longer copies stock ROM assets by default; `.gitignore` ignores `roms/` for explicit materialized local copies. |
 | **M3+** | Not started | Overrides docs, refresh command, multi-ROM (P3), etc. |
 
 VSIX packaging: `.vscodeignore` excludes `src/**` and `test/**` but **not** `resources/`, so `resources/bundles/**` is included in the packaged extension.
