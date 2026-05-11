@@ -19,7 +19,7 @@ function createElement<T extends HTMLElement>(
   return element;
 }
 
-function createPanel(vscode: VscodeApi, options: { withShell?: boolean } = {}) {
+function createPanel(vscode: VscodeApi, options: { withShell?: boolean; active?: boolean } = {}) {
   const registerStrip = createElement<HTMLDivElement>('div');
   const statusEl = createElement<HTMLDivElement>('div');
   const dump = createElement<HTMLDivElement>('div');
@@ -69,7 +69,7 @@ function createPanel(vscode: VscodeApi, options: { withShell?: boolean } = {}) {
       },
     ],
     getRowSize: () => 8,
-    isActive: () => true,
+    isActive: () => options.active ?? true,
   });
 
   panel.wire();
@@ -171,6 +171,23 @@ describe('shared memory panel', () => {
       type: 'refresh',
       rowSize: 8,
       views: [{ id: 'a', view: 'sp', after: 16, address: undefined }],
+    });
+  });
+
+  it('can request a register-only snapshot while the memory panel is inactive', () => {
+    const postMessage = vi.fn();
+    const { panel } = createPanel({
+      postMessage,
+      getState: vi.fn(),
+      setState: vi.fn(),
+    }, { active: false });
+
+    panel.requestRegisterSnapshot();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'refresh',
+      rowSize: 8,
+      views: [],
     });
   });
 

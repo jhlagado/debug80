@@ -233,6 +233,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
   }
   if (message.type === 'sessionStatus') {
     sessionStatusController.setStatus(message.status);
+    panelLayout.setRegisterRefreshActive(message.status === 'running' || message.status === 'paused');
     return;
   }
   if (message.type === 'selectTab') {
@@ -274,6 +275,7 @@ panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
+panelLayout.setRegisterRefreshActive(false);
 window.addEventListener('resize', () => {
   panelLayout.scheduleMemoryResize();
 });
