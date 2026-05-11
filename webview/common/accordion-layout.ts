@@ -23,6 +23,8 @@ export type AccordionLayoutController = {
   isMachineOpen: () => boolean;
   isCpuOpen: () => boolean;
   isMemoryOpen: () => boolean;
+  refreshOpenRegisters: () => void;
+  setRegisterRefreshActive: (active: boolean) => void;
   setProviderTab: (tab: string, notify: boolean) => void;
   scheduleMemoryResize: () => void;
   updateMemoryLayout: (forceRefresh: boolean) => void;
@@ -31,6 +33,7 @@ export type AccordionLayoutController = {
 
 const MEMORY_NARROW_MAX = 480;
 const MEMORY_WIDE_MIN = 520;
+const REGISTER_REFRESH_INTERVAL_MS = 500;
 const DEFAULT_OPEN_STATE: Record<AccordionPanel, boolean> = {
   machine: true,
   registers: true,
@@ -95,6 +98,8 @@ export function createAccordionLayoutController(
   let providerTab: ProviderPanelTab = openState.memory ? 'memory' : 'ui';
   let memoryRowSize = 16;
   let resizeTimer: number | null = null;
+  let registerRefreshActive = false;
+  let registerRefreshTimer: number | null = null;
 
   function getContent(panel: AccordionPanel): HTMLElement | null {
     return options.panels[panel] ?? null;
@@ -142,6 +147,33 @@ export function createAccordionLayoutController(
     }
   }
 
+  function refreshOpenRegisters(): void {
+    if (openState.registers) {
+      options.getMemoryPanelController()?.requestRegisterSnapshot();
+    }
+  }
+
+  function syncRegisterRefresh(): void {
+    const shouldRefresh = registerRefreshActive && openState.registers && !openState.memory;
+    if (!shouldRefresh) {
+      if (registerRefreshTimer !== null) {
+        clearInterval(registerRefreshTimer);
+        registerRefreshTimer = null;
+      }
+      return;
+    }
+    if (registerRefreshTimer !== null) {
+      return;
+    }
+    refreshOpenRegisters();
+    registerRefreshTimer = window.setInterval(refreshOpenRegisters, REGISTER_REFRESH_INTERVAL_MS);
+  }
+
+  function setRegisterRefreshActive(active: boolean): void {
+    registerRefreshActive = active;
+    syncRegisterRefresh();
+  }
+
   function setOpen(panel: AccordionPanel, open: boolean, notify: boolean): void {
     openState[panel] = open;
     applyPanelState(panel);
@@ -150,6 +182,10 @@ export function createAccordionLayoutController(
     if (panel === 'memory' && open) {
       updateMemoryLayout(true);
     }
+    if (panel === 'registers' && open) {
+      refreshOpenRegisters();
+    }
+    syncRegisterRefresh();
   }
 
   function setProviderTab(tab: string, notify: boolean): void {
@@ -163,6 +199,7 @@ export function createAccordionLayoutController(
     applyPanelState('memory');
     writeStoredOpenState(options.vscode, openState);
     syncProviderTab(notify);
+    syncRegisterRefresh();
   }
 
   (Object.keys(openState) as AccordionPanel[]).forEach(applyPanelState);
@@ -175,6 +212,8 @@ export function createAccordionLayoutController(
     isMachineOpen: () => openState.machine,
     isCpuOpen: () => openState.registers || openState.memory,
     isMemoryOpen: () => openState.memory,
+    refreshOpenRegisters,
+    setRegisterRefreshActive,
     setProviderTab,
     scheduleMemoryResize(): void {
       if (resizeTimer !== null) {

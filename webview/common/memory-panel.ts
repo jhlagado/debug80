@@ -100,8 +100,20 @@ export class MemoryPanel {
     if (!this.options.isActive()) {
       return;
     }
-    const rowSize = this.options.getRowSize();
-    const payloadViews = this.options.views.map((entry) => {
+    this.postSnapshotRequest(this.buildMemoryViewRequests());
+  }
+
+  requestRegisterSnapshot(): void {
+    this.postSnapshotRequest([]);
+  }
+
+  private buildMemoryViewRequests(): Array<{
+    id: string;
+    view: string;
+    after: number;
+    address: number | undefined;
+  }> {
+    return this.options.views.map((entry) => {
       const anchor = this.resolveAnchor(entry);
       const viewMode = anchor.view;
       let addressValue = anchor.address;
@@ -119,6 +131,17 @@ export class MemoryPanel {
         address: addressValue,
       };
     });
+  }
+
+  private postSnapshotRequest(
+    payloadViews: Array<{
+      id: string;
+      view: string;
+      after: number;
+      address: number | undefined;
+    }>
+  ): void {
+    const rowSize = this.options.getRowSize();
     this.options.vscode.postMessage({
       type: 'refresh',
       rowSize,
