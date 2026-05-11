@@ -3,6 +3,7 @@
  */
 
 import type { Logger } from '../../util/logger';
+import { isPerformanceLoggingEnabled } from '../../util/performance';
 
 const REPORT_INTERVAL_MS = 5000;
 const SLOW_CHUNK_MS = 50;
@@ -135,9 +136,4 @@ class DefaultRuntimePerformanceMonitor implements RuntimePerformanceMonitor {
     this.lastWarnMs = nowMs;
     this.logger.warn(message);
   }
-}
-
-function isPerformanceLoggingEnabled(): boolean {
-  const value = process.env.DEBUG80_PERF;
-  return value === '1' || value === 'true' || value === 'yes';
 }

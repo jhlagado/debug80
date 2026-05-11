@@ -14,6 +14,7 @@ These documents describe current behavior or stable interfaces:
 - [D8 debug map format](d8-debug-map.md)
 - [Timing model](timing-model.md)
 - [Regression test strategy](regression-test-strategy.md)
+- [Performance diagnostics](performance-diagnostics.md)
 - [Release process](release-process.md)
 
 ## Active Design Notes
