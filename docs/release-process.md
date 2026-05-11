@@ -91,6 +91,7 @@ After installing the VSIX, test at least:
 - Open a workspace with an initialized Debug80 project.
 - Confirm the Debug80 panel appears under Run and Debug.
 - Launch a TEC-1G MON3 target.
+- Confirm the target still launches after deleting any project-local `roms/` folder, proving bundled ROM profile resolution works from the installed extension.
 - Confirm asm80 target assembly works.
 - Confirm ZAX target assembly works.
 - Confirm restart works.

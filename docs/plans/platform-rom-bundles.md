@@ -274,7 +274,7 @@ Tickets are ordered by **recommended implementation sequence**. Dependencies are
 | Milestone | Tickets | Outcome |
 |-----------|---------|---------|
 | **M1** | 01–03 | Can ship bytes in VSIX and read them reliably. |
-| **M2** | 04–06 | New TEC-1G project gets materialized MON3 + debuggable listing/source. |
+| **M2** | 04–06 | New TEC-1G project references bundled MON3 and debugs ROM listing/source without project-local copies. |
 | **M3** | 07–09 | Overrides and refresh story documented / optional. |
 | **M4** | 10–12 | Multi-ROM TEC-1G config + tests. |
 | **M5** | 13–14 | Repeatable process + size strategy. |

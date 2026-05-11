@@ -11,7 +11,7 @@ MON-3 is not a tiny bootstrap stub; it is the lived environment of the machine. 
 
 This document is a working brief for emulation. When it contradicts other docs, MON-3 is the primary reference unless schematics prove otherwise.
 
-For **Debug80 defaults** (copying bundled MON3 into a workspace, `debug80.json` fields, and the materialize command), see **TEC-1G: bundled MON3** in `docs/platforms.md`.
+For **Debug80 defaults** (bundled MON3 profile resolution, `debug80.json` fields, and the explicit materialize command), see **TEC-1G: bundled MON3** in `docs/platforms.md`.
 
 ---
 
