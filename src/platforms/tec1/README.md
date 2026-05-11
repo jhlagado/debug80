@@ -165,10 +165,8 @@ shifted). The ROM uses this to distinguish extended key functions.
 
 ## ROMs
 
-Bundled ROMs:
-- `roms/tec1/mon-1b/mon-1b.hex` (MON-1B, RAM @ 0x0800)
-- `roms/tec1/mon-2/mon-2.hex` (MON-2, RAM @ 0x0900)
-- `roms/tec1/jmon/jmon.hex` (JMON_SOURCE_01, RAM @ 0x0900, polled keypad)
+Bundled ROMs are resolved from the extension by default for scaffolded projects.
+Local `roms/` files are optional overrides/materialized inspection copies.
 
 You can override with `romHex` in the platform config.
 

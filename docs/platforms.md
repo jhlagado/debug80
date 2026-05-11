@@ -76,7 +76,8 @@ src/
 Each platform can have its own dependencies. Shared serial helpers and TEC
 constants live alongside the platform code. TEC-1 and TEC-1G now have their
 runtime, controller, and webview panel modules under `src/platforms/`, while
-the adapter and extension still orchestrate wiring. ROMs live under `roms/`.
+the adapter and extension still orchestrate wiring. Bundled ROM assets live
+under `resources/bundles/`; project-local `roms/` files are optional overrides.
 
 ## Core interfaces
 
@@ -346,7 +347,7 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 
 For **TEC-1G**, Debug80 can ship a **MON3** ROM snapshot inside the VSIX and
 resolve it directly at launch, with an explicit command available if you want
-to copy it into your workspace under stable paths (see
+to materialize local inspection/override files under stable paths (see
 `docs/plans/platform-rom-bundles.md`).
 
 **After “Create Project” (TEC-1G)** the extension records the MON-3 bundle
@@ -357,12 +358,11 @@ workspace copy is present:
 - `roms/tec1g/mon3/mon3.lst` — ASM80 listing for ROM source mapping (`tec1g.extraListings`).
 - `tec1g.sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
 
-**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files on demand.
+These `roms/` paths are stable project override paths. If the files are absent,
+Debug80 resolves the bundled extension copies. If the files are present, local
+workspace files take precedence.
 
-New TEC-1G projects keep the MON-3 bundle reference in `debug80.json` by
-default. At launch, Debug80 resolves the shipped bundle directly when the
-workspace copy is absent, and the explicit materialize command remains
-available if you want local ROM/listing files.
+**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files on demand for local inspection or override.
 
 **Manual project (no wizard):** point `tec1g.romHex` and `tec1g.extraListings` at workspace-relative paths (or absolute paths). Example:
 
@@ -392,9 +392,9 @@ available if you want local ROM/listing files.
 }
 ```
 
-**Overrides:** replace the files on disk and keep the same paths, or change `romHex` /
-`extraListings` / `sourceRoots` to your own MON3 build. Day-to-day debugging uses only
-workspace paths, not paths inside the extension.
+**Overrides:** materialize the bundled files and replace them on disk, or change
+`romHex` / `extraListings` / `sourceRoots` to your own MON3 build. Day-to-day
+debugging does not require project-local ROM files.
 
 More hardware and I/O detail: `docs/platforms/tec1g/README.md`.
 
