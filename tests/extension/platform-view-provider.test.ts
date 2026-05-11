@@ -915,7 +915,7 @@ describe('PlatformViewProvider', () => {
     expect(update?.speakerHz).toBe(payload.speakerHz);
   });
 
-  it('posts only changed Tec1g display fields after the first full update', async () => {
+  it('posts full Tec1g display fields on every runtime update', async () => {
     const provider = new PlatformViewProvider(extensionRoot);
     const webviewView = createWebviewView();
     await provider.resolveWebviewView(
@@ -950,11 +950,13 @@ describe('PlatformViewProvider', () => {
     expect(updateCalls[0]?.[0].glcd).toEqual(firstPayload.glcd);
     expect(updateCalls[1]?.[0]).toMatchObject({
       type: 'update',
+      digits: firstPayload.digits,
+      matrix: firstPayload.matrix,
       matrixGreen: [0x11, 0, 0, 0, 0, 0, 0, 0],
+      matrixBlue: firstPayload.matrixBlue,
+      glcd: firstPayload.glcd,
+      lcd: firstPayload.lcd,
     });
-    expect(updateCalls[1]?.[0]).not.toHaveProperty('glcd');
-    expect(updateCalls[1]?.[0]).not.toHaveProperty('lcd');
-    expect(updateCalls[1]?.[0]).not.toHaveProperty('matrix');
   });
 
   it('routes configureProject messages as a no-op (Config tab removed)', async () => {

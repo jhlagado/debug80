@@ -47,4 +47,22 @@ describe('tec1g platform update application', () => {
 
     expect(deps.display.applyDigits).toHaveBeenCalledWith([1, 2, 3, 4, 5, 6]);
   });
+
+  it('applies partial brightness updates when only green or blue changes', () => {
+    const deps = makeDeps();
+
+    applyTec1gPlatformUpdate(deps, {
+      matrixBrightnessG: [128],
+    });
+
+    expect(deps.matrixUi.applyMatrixBrightness).toHaveBeenCalledWith(undefined, [128], undefined);
+
+    deps.matrixUi.applyMatrixBrightness.mockClear();
+
+    applyTec1gPlatformUpdate(deps, {
+      matrixBrightnessB: [64],
+    });
+
+    expect(deps.matrixUi.applyMatrixBrightness).toHaveBeenCalledWith(undefined, undefined, [64]);
+  });
 });

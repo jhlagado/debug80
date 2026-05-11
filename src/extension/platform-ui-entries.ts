@@ -13,7 +13,6 @@ import {
 } from '../platforms/tec1/serialize-update-payload';
 import type { SimpleUiState } from '../platforms/simple/ui-panel-state';
 import {
-  serializeTec1gChangedUpdateFromUiState,
   serializeTec1gClearPanelUpdateFromUiState,
   serializeTec1gUpdateFromUiState,
 } from '../platforms/tec1g/serialize-ui-update-payload';
@@ -90,18 +89,10 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
         getHtml: html.getTec1gHtml,
         createUiState: state.createTec1gUiState,
         resetUiState: (uiState): void => state.resetTec1gUiState(uiState as Tec1gUiState),
-        applyUpdate: (uiState, payload, options): Record<string, unknown> => {
+        applyUpdate: (uiState, payload): Record<string, unknown> => {
           const tec1gState = uiState as Tec1gUiState;
           const tec1gPayload = payload as Parameters<typeof state.applyTec1gUpdate>[1];
-          const previous = cloneTec1gUiState(tec1gState);
           state.applyTec1gUpdate(tec1gState, tec1gPayload);
-          if (options?.forceFullUpdate !== true) {
-            return serializeTec1gChangedUpdateFromUiState(
-              previous,
-              tec1gState,
-              tec1gPayload.speakerHz
-            ) as Record<string, unknown>;
-          }
           // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1G-shaped after apply.
           return serializeTec1gUpdateFromUiState(tec1gState, tec1gPayload.speakerHz) as unknown as Record<
             string,
@@ -126,45 +117,6 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
         snapshotCommand: 'debug80/memorySnapshot',
       };
     },
-  };
-}
-
-function cloneTec1gUiState<T extends {
-  digits: number[];
-  matrix: number[];
-  matrixGreen: number[];
-  matrixBlue: number[];
-  matrixBrightness: number[];
-  matrixBrightnessG: number[];
-  matrixBrightnessB: number[];
-  matrixMode: boolean;
-  glcd: number[];
-  glcdDdram: number[];
-  glcdState: Record<string, boolean | number>;
-  speaker: boolean;
-  speedMode: unknown;
-  sysCtrlValue: number;
-  bankA14: boolean;
-  capsLock: boolean;
-  lcdState: Record<string, boolean | number>;
-  lcdCgram: number[];
-  lcd: number[];
-}>(state: T): T {
-  return {
-    ...state,
-    digits: [...state.digits],
-    matrix: [...state.matrix],
-    matrixGreen: [...state.matrixGreen],
-    matrixBlue: [...state.matrixBlue],
-    matrixBrightness: [...state.matrixBrightness],
-    matrixBrightnessG: [...state.matrixBrightnessG],
-    matrixBrightnessB: [...state.matrixBrightnessB],
-    glcd: [...state.glcd],
-    glcdDdram: [...state.glcdDdram],
-    glcdState: { ...state.glcdState },
-    lcdState: { ...state.lcdState },
-    lcdCgram: [...state.lcdCgram],
-    lcd: [...state.lcd],
   };
 }
 

@@ -13,7 +13,6 @@ import { createTec1Runtime, normalizeTec1Config } from '../../src/platforms/tec1
 import { createTec1UiState } from '../../src/platforms/tec1/ui-panel-state';
 import { serializeTec1gUpdateFromRuntimeState } from '../../src/platforms/tec1g/update-controller';
 import {
-  serializeTec1gChangedUpdateFromUiState,
   serializeTec1gClearPanelUpdateFromUiState,
   serializeTec1gUpdateFromUiState,
   tec1gUpdatePayloadFromDebugEventBody,
@@ -101,22 +100,5 @@ describe('TEC-1G update payload serialization', () => {
 
   it('exports runtime serializer used by update controller', () => {
     expect(typeof serializeTec1gUpdateFromRuntimeState).toBe('function');
-  });
-
-  it('serializes only changed TEC-1G fields for runtime updates', () => {
-    const previous = createTec1gUiState();
-    const next = createTec1gUiState();
-    next.matrixGreen[0] = 0x12;
-    next.glcd[10] = 0x34;
-    next.speaker = true;
-
-    const changed = serializeTec1gChangedUpdateFromUiState(previous, next, 880);
-
-    expect(changed).toEqual({
-      matrixGreen: next.matrixGreen,
-      glcd: next.glcd,
-      speaker: 1,
-      speakerHz: 880,
-    });
   });
 });

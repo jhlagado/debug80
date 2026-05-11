@@ -24,11 +24,7 @@ export interface PlatformUiModules<TUiState = unknown> {
   getHtml: (tab: PanelTab, webview: vscode.Webview, extensionUri: vscode.Uri) => string;
   createUiState: () => TUiState;
   resetUiState: (state: TUiState) => void;
-  applyUpdate: (
-    state: TUiState,
-    payload: unknown,
-    options?: { forceFullUpdate?: boolean }
-  ) => Record<string, unknown>;
+  applyUpdate: (state: TUiState, payload: unknown) => Record<string, unknown>;
   createMemoryViewState: () => MemoryViewState;
   handleMessage: (
     message: PlatformViewMessage,

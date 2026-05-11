@@ -47,9 +47,13 @@ export function applyTec1gPlatformUpdate(deps: Tec1gPlatformUpdateDeps, payload:
   if (Array.isArray(data.matrixBlue)) {
     deps.matrixUi.applyMatrixBlueRows(data.matrixBlue);
   }
-  if (Array.isArray(data.matrixBrightness)) {
+  if (
+    Array.isArray(data.matrixBrightness) ||
+    Array.isArray(data.matrixBrightnessG) ||
+    Array.isArray(data.matrixBrightnessB)
+  ) {
     deps.matrixUi.applyMatrixBrightness(
-      data.matrixBrightness,
+      Array.isArray(data.matrixBrightness) ? data.matrixBrightness : undefined,
       Array.isArray(data.matrixBrightnessG) ? data.matrixBrightnessG : undefined,
       Array.isArray(data.matrixBrightnessB) ? data.matrixBrightnessB : undefined
     );

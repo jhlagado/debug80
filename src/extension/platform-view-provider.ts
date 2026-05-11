@@ -220,10 +220,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (bundle === undefined) {
       return;
     }
-    const forceFullUpdate = !bundle.state.hasPostedRuntimeUpdate;
-    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload, {
-      forceFullUpdate,
-    });
+    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
     bundle.state.hasPostedRuntimeUpdate = true;
     this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
   }
