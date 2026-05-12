@@ -45,6 +45,7 @@ import {
   maybeAutoStartSingleTargetForRootChange,
   resolveProjectPlatformForFolder,
   resolveSessionProjectConfigPath,
+  resolveSessionWorkspaceFolder,
 } from './debug-session-actions';
 import { openProjectConfigPanel } from './project-config-panel';
 
@@ -256,17 +257,25 @@ export function registerExtensionCommands({
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.restartDebug', async () => {
-      const folder = await workspaceSelection.resolveWorkspaceFolder({
-        prompt: true,
-        requireProject: true,
-        placeHolder: 'Select the Debug80 project folder to debug',
-      });
+      const activeSession = vscode.debug.activeDebugSession;
+      const folder =
+        activeSession?.type === 'z80'
+          ? resolveSessionWorkspaceFolder(activeSession) ??
+            (await workspaceSelection.resolveWorkspaceFolder({
+              prompt: true,
+              requireProject: true,
+              placeHolder: 'Select the Debug80 project folder to debug',
+            }))
+          : await workspaceSelection.resolveWorkspaceFolder({
+              prompt: true,
+              requireProject: true,
+              placeHolder: 'Select the Debug80 project folder to debug',
+            });
       if (!folder) {
         void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
         return false;
       }
 
-      const activeSession = vscode.debug.activeDebugSession;
       if (activeSession?.type === 'z80') {
         await vscode.debug.stopDebugging(activeSession);
       }

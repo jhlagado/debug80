@@ -1167,6 +1167,259 @@ describe('registerExtensionCommands', () => {
     );
   });
 
+  it('restarts the active z80 session from its session project without prompting for a project', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const tetroRoot = '/workspace/tetro';
+    const otherRoot = '/workspace/other';
+    const tetroConfigPath = path.normalize(`${tetroRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'other', uri: { fsPath: otherRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: tetroRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized === tetroConfigPath ||
+        normalized === path.normalize(`${otherRoot}/debug80.json`) ||
+        /\.(asm|zax)$/i.test(normalized)
+      );
+    });
+    const resolveWorkspaceFolder = vi.fn();
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-tetro',
+      configuration: { projectConfig: tetroConfigPath },
+      workspaceFolder: { uri: { fsPath: tetroRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-tetro' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: tetroRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: tetroConfigPath,
+      })
+    );
+  });
+
+  it('recovers the restart project from open workspace folders when the active session folder is wrong', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const staleRoot = '/workspace/stale';
+    const tetroRoot = '/workspace/tetro';
+    const tetroConfigPath = path.normalize(`${tetroRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'stale', uri: { fsPath: staleRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: tetroRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized === tetroConfigPath ||
+        normalized === path.normalize(`${staleRoot}/debug80.json`) ||
+        /\.(asm|zax)$/i.test(normalized)
+      );
+    });
+    const resolveWorkspaceFolder = vi.fn();
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-stale-folder',
+      configuration: { projectConfig: tetroConfigPath },
+      workspaceFolder: { uri: { fsPath: staleRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: tetroRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: tetroConfigPath,
+      })
+    );
+  });
+
+  it('prompts on restart when an active z80 session has no project config and its folder is not a project', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const artifactRoot = '/workspace/artifacts-only';
+    const projectRoot = '/workspace/tetro';
+    const projectConfig = path.normalize(`${projectRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'artifacts-only', uri: { fsPath: artifactRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: projectRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => path.normalize(candidate) === projectConfig);
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-no-project-config',
+      configuration: { asm: 'standalone.asm' },
+      workspaceFolder: { uri: { fsPath: artifactRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: projectRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig,
+      })
+    );
+  });
+
+  it('prompts on restart when an active z80 session folder has an invalid project config', async () => {
+    const vscode = await import('vscode');
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+
+    const staleRoot = '/workspace/stale';
+    const projectRoot = '/workspace/tetro';
+    const staleConfig = path.normalize(`${staleRoot}/debug80.json`);
+    const projectConfig = path.normalize(`${projectRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'stale', uri: { fsPath: staleRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: projectRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === staleConfig || normalized === projectConfig;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === staleConfig) {
+        return JSON.stringify({ targets: {} });
+      }
+      if (normalized === projectConfig) {
+        return JSON.stringify({ targets: { tetro: { sourceFile: 'src/tetro.asm' } } });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+
+    registerExtensionCommands({
+      context: { subscriptions: [] } as never,
+      platformViewProvider: { refreshIdleView: vi.fn() } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {} as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-invalid-config',
+      configuration: { asm: 'standalone.asm' },
+      workspaceFolder: { uri: { fsPath: staleRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: projectRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig,
+      })
+    );
+  });
+
   it('restarts with the current stop-on-entry state', async () => {
     const vscode = await import('vscode');
     const { registerExtensionCommands } = await import('../../src/extension/commands');

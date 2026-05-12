@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   findProjectConfigPath,
+  isInitializedDebug80Project,
   readProjectConfig,
   resolveProjectPlatform,
 } from './project-config';
@@ -100,4 +101,32 @@ export function resolveSessionProjectConfigPath(session: vscode.DebugSession): s
         ? path.join(session.workspaceFolder.uri.fsPath, projectConfigRaw)
         : projectConfigRaw
   );
+}
+
+export function resolveSessionWorkspaceFolder(
+  session: vscode.DebugSession
+): vscode.WorkspaceFolder | undefined {
+  const projectConfigPath = resolveSessionProjectConfigPath(session);
+  if (projectConfigPath === undefined) {
+    const sessionFolder = session.workspaceFolder;
+    return sessionFolder !== undefined && isInitializedDebug80Project(sessionFolder)
+      ? sessionFolder
+      : undefined;
+  }
+
+  const sessionFolder = session.workspaceFolder;
+  const sessionProjectConfig =
+    sessionFolder !== undefined ? findProjectConfigPath(sessionFolder) : undefined;
+  if (
+    sessionFolder !== undefined &&
+    sessionProjectConfig !== undefined &&
+    path.normalize(sessionProjectConfig) === projectConfigPath
+  ) {
+    return sessionFolder;
+  }
+
+  return (vscode.workspace.workspaceFolders ?? []).find((folder) => {
+    const candidate = findProjectConfigPath(folder);
+    return candidate !== undefined && path.normalize(candidate) === projectConfigPath;
+  });
 }
