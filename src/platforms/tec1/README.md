@@ -137,8 +137,10 @@ focus ring appears around the keypad while it is active.
 | `Space` | `0` | 0x00 |
 | `Tab` | ADDRESS | 0x13 |
 | `Enter` | GO | 0x12 |
-| `←` / `↑` | ◀ (left) / UP | 0x11 |
-| `→` / `↓` | ▶ (right) / DOWN | 0x10 |
+| `←` | ◀ (left) | 0x11 |
+| `→` | ▶ (right) | 0x10 |
+| `↑` | ADDRESS | 0x13 |
+| `↓` | GO | 0x12 |
 
 ### Special keys
 
