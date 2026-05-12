@@ -1,6 +1,7 @@
 import { createMatrixRenderer } from '../common/matrix-renderer';
 import { createTecKeypad } from '../common/tec-keypad';
-import { TEC1G_DIGITS, TEC1G_KEY_MAP } from '../common/tec-keypad-layout';
+import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
+import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { applyInitializedProjectControls } from '../common/project-controls';
@@ -292,39 +293,16 @@ panelLayout.updateMemoryLayout(false);
 
 keypadEl.addEventListener('keydown', (event) => {
   if (event.repeat) return;
-  if (event.key === ' ') {
-    keypad.sendKey(TEC1G_KEY_MAP['0']);
+  const shortcut = resolveTecKeypadShortcut(event.key);
+  if (shortcut.kind === 'key') {
+    keypad.sendKey(shortcut.code);
     event.preventDefault();
-    return;
-  }
-  if (event.key === 'Escape') {
+  } else if (shortcut.kind === 'reset') {
     keypad.setShiftLatched(false);
     vscode.postMessage({ type: 'reset' });
     event.preventDefault();
-    return;
-  }
-  if (event.key === 'Shift') {
-    keypad.setShiftLatched(true);
-    event.preventDefault();
-    return;
-  }
-  const key = event.key.toUpperCase();
-  if (TEC1G_KEY_MAP[key] !== undefined) {
-    keypad.sendKey(TEC1G_KEY_MAP[key]);
-    event.preventDefault();
-    return;
-  }
-  if (event.key === 'Enter') {
-    keypad.sendKey(0x12);
-    event.preventDefault();
-  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-    keypad.sendKey(0x11);
-    event.preventDefault();
-  } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-    keypad.sendKey(0x10);
-    event.preventDefault();
-  } else if (event.key === 'Tab') {
-    keypad.sendKey(0x13);
+  } else if (shortcut.kind === 'shift') {
+    keypad.setShiftLatched(shortcut.latched);
     event.preventDefault();
   }
 });
