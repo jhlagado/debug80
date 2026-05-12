@@ -347,22 +347,20 @@ export function updateProjectTargetSource(
 
 export function listProjectSourceFiles(rootPath: string): string[] {
   const results: string[] = [];
-  collectProjectSourceFiles(rootPath, rootPath, results);
+  const sourceRoot = path.join(rootPath, 'src');
+  const scanRoot = fs.existsSync(sourceRoot) && fs.statSync(sourceRoot).isDirectory()
+    ? sourceRoot
+    : rootPath;
+  collectProjectSourceFiles(rootPath, scanRoot, results);
   results.sort((left, right) => left.localeCompare(right));
   return results;
 }
-
-const SKIP_DIRS = new Set(['.git', '.vscode', 'node_modules', 'out', 'dist', 'build', 'coverage', 'roms']);
 
 function collectProjectSourceFiles(rootPath: string, currentPath: string, results: string[]): void {
   const entries = fs.readdirSync(currentPath, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(currentPath, entry.name);
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) {
-        continue;
-      }
-      collectProjectSourceFiles(rootPath, fullPath, results);
       continue;
     }
 
