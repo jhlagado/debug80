@@ -21,16 +21,30 @@ describe('project-config helpers', () => {
   it('lists asm and zax source files relative to the project root', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-sources-'));
     fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src', 'shared'), { recursive: true });
     fs.mkdirSync(path.join(root, 'tools'), { recursive: true });
     fs.mkdirSync(path.join(root, 'build'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'main.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'src', 'helpers.zax'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'src', 'shared', 'include.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'tools', 'ignore.txt'), 'x\n');
     fs.writeFileSync(path.join(root, 'build', 'generated.asm'), 'nop\n');
 
     const files = listProjectSourceFiles(root);
 
     expect(files).toEqual(['src/helpers.zax', 'src/main.asm']);
+  });
+
+  it('falls back to top-level project source files when no src folder exists', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-root-sources-'));
+    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'main.asm'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'alt.zax'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'lib', 'include.asm'), 'nop\n');
+
+    const files = listProjectSourceFiles(root);
+
+    expect(files).toEqual(['alt.zax', 'main.asm']);
   });
 
   it('updates the selected target source in debug80.json', () => {
