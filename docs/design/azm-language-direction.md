@@ -1,0 +1,350 @@
+# AZM language direction
+
+Status: design discussion capture
+Date: 2026-05-12
+
+## Purpose
+
+AZM is the new project direction split from the ZAX codebase after the 0.3
+release line. ZAX 0.3 remains the preserved structured-assembler release. AZM
+starts from the focused Z80 assembler baseline and builds upward one small,
+assembly-first feature at a time.
+
+The project name is **AZM** because it contains both "assembler" and "Z80" in a
+short form that works as a project name, CLI name, and source extension. The
+native extended source extension should be `.azm`, while ordinary `.asm` and
+`.z80` source can remain accepted compatibility inputs where they fit the
+documented baseline.
+
+AZM should not present itself as a full ASM80 replacement. ASM80 is permissive,
+forgiving, and syntax-heavy. AZM uses a proven ASM80-style subset as a practical
+starting point, but it should become a stricter and more focused assembler.
+
+## Project split
+
+The split is conceptual first and repository-level second:
+
+- ZAX 0.3 is the preserved public release line for the earlier structured
+  assembler language.
+- AZM is a new project built from the current assembler-compatible codebase.
+- AZM should keep the compatibility smoke gates as its foundation, but should
+  not inherit every ZAX or ASM80 feature by default.
+- Old ZAX/Zags ideas are a reservoir, not a migration checklist.
+
+The core question for every feature is not "can old ZAX do this?" or "does
+ASM80 accept this?" The question is whether the feature helps a Z80 assembly
+programmer express machine-level intent more clearly.
+
+## Language stance
+
+AZM should be strict, modern, and assembly-first:
+
+- The machine must remain visible.
+- Compatibility should be corpus-driven.
+- Errors should be precise rather than forgiving.
+- Native AZM style should prefer a clean dotted directive family such as
+  `.org`, `.equ`, `.db`, `.dw`, `.ds`, and `.include`.
+- Legacy forms such as `ORG`, `EQU`, `DB`, `DW`, and `DS` can be accepted as
+  compatibility aliases, but should not be the style taught in AZM-native
+  examples.
+- Macros, broad directive coverage, alias dialects, and unusual assembler
+  variants should stay out of scope unless a real corpus forces a concrete
+  decision.
+
+The long-term posture is:
+
+> AZM accepts enough legacy assembly to be useful, but teaches and enforces a
+> cleaner assembler dialect over time.
+
+## Compatibility input and AZM-native style
+
+AZM should distinguish compatibility input from native style.
+
+Compatibility input:
+
+- accepts documented ASM80-style forms needed by real source corpora
+- keeps `.asm` and `.z80` useful for existing programs
+- allows directive aliases where they normalize to the same underlying
+  assembler operation
+
+AZM-native style:
+
+- uses `.azm` as the preferred extension
+- documents dotted directives as canonical
+- introduces new language features only where they compose with ordinary
+  assembly
+- may eventually support a strict native mode that rejects undotted legacy
+  directives unless compatibility aliases are explicitly enabled
+
+This gives AZM a migration path without letting old assembler permissiveness
+define the language.
+
+## Directive aliases
+
+Directive aliases are a narrow compatibility and style mechanism. They are not
+macros and should not add computation power.
+
+Examples:
+
+- `DB` aliases `.db`
+- `DW` aliases `.dw`
+- `DS` aliases `.ds`
+- `ORG` aliases `.org`
+- `EQU` aliases `.equ`
+
+The alias mechanism should be limited to directives whose variant syntax has the
+same semantics after normalization. It should not become a general text
+substitution system, an opcode alias system, or a way to emulate every historical
+assembler dialect.
+
+Over time, AZM can add linting or formatting support that encourages canonical
+native spelling:
+
+```asm
+.org 4000h
+start:
+    ld a, 42
+message:
+    .db "OK", 0
+buffer:
+    .ds 32
+```
+
+## AST ops instead of text macros
+
+AZM should continue to reject text macros as a core language feature. Macro
+systems encourage string substitution, accidental capture, generated symbol
+names, and obscure control flow.
+
+The preferred abstraction mechanism is the existing ZAX-style `op` concept,
+adapted carefully for AZM:
+
+- parsed as AST, not text
+- overloadable by operand shape and type
+- able to expand into ordinary assembly
+- constrained by explicit rules rather than textual substitution
+- suitable for reusable instruction patterns and small assembly idioms
+
+AST ops should come back fairly early because they provide power without
+requiring the return of high-level structured syntax. They also give programmers
+a disciplined alternative to macros.
+
+The design goal is:
+
+> Users should build reusable assembly idioms with typed, overloadable ops, not
+> with text substitution.
+
+## Structured programming should not come first
+
+AZM should not rush back into old ZAX structured programming. Assembly
+programmers need to see and reason about jumps, labels, branches, registers,
+stack effects, and memory layout.
+
+Before adding built-in `if`, `while`, `repeat`, or function-like syntax, AZM
+should first provide lower-level compile-time facilities that let programmers
+construct structured assembly from first principles.
+
+The most promising facility is a small Forth-inspired assembly control stack.
+
+## Assembly control stack
+
+AZM should consider a narrow compile-time control stack inspired by Forth
+control-flow compilation. This is not Forth as a language. It is not a second
+expression evaluator, runtime stack model, or self-hosting metaprogramming
+system.
+
+The control stack exists for:
+
+- forward references
+- backpatching
+- loop marks
+- unresolved branch sites
+- structured nesting validation
+- compile-time construction of branch-based control flow
+
+The value of the stack is that it removes the need to create user-visible local
+symbol names for every small control-flow shape. Instead of manually inventing
+labels such as `skip_1`, `else_2`, or `loop_3`, structured ops can push and
+resolve typed compile-time items.
+
+The stack should be structured, not general-purpose:
+
+- top-of-stack operations only at first
+- no arbitrary `swap`, `rot`, `pick`, or similar stack shuffling
+- typed entries rather than raw numbers
+- every pushed item must be resolved, consumed, or explicitly discarded in a
+  valid way
+- diagnostics should explain structural mismatches
+- user-defined ops that interact with the control stack should declare their
+  stack effect
+
+## Control stack item types
+
+The control stack should not store only the current value of `$`. A forward
+branch needs more than a location; it needs a patchable site and a resolution
+rule.
+
+Likely item types:
+
+- `mark`: a resolved assembly location, usually the current assembly pointer
+- `patch`: a handle to an emitted but unresolved operand
+- `frame`: an optional typed grouping marker for higher-level structures
+
+A patch item should carry enough metadata to validate and resolve it:
+
+```text
+patch {
+  site: emitted operand location
+  kind: rel8 | abs16
+  source: branch instruction location
+  owner: optional structure id
+}
+```
+
+This lets AZM check that:
+
+- `jr` targets fit in `rel8`
+- `jp` targets fit in `abs16`
+- a patch is resolved exactly once
+- a `then`-style operation closes the right pending patch
+- an `else`-style operation transforms the right pending structure
+- end of assembly rejects unresolved control-stack entries
+
+## Primitive surface
+
+The primitive syntax is undecided. Two plausible directions are:
+
+1. dot-prefixed directives, such as `.mark`, `.patch`, and `.resolve`
+2. a distinct compile-time prefix, such as `@mark` and `@resolve`
+
+Dot directives fit assembler tradition because these are assembler-time
+actions. A distinct prefix makes AZM compile-time control visibly separate from
+ordinary directives.
+
+The important design decision is not the prefix yet. The important decision is
+that the primitive surface should expose typed patch and mark operations, not
+hidden high-level control flow.
+
+Conceptual examples:
+
+```asm
+; Push a mark for the current location.
+.mark
+
+; Emit a branch with an unresolved rel8 target and push a patch handle.
+; Exact syntax still needs design.
+jr z, <patch>
+
+; Resolve the top patch to the current location.
+.resolve
+
+; Emit a backward branch to the top mark.
+jr <mark>
+```
+
+These examples are illustrative. They are not final syntax.
+
+## Ops layered over the control stack
+
+The main reason to expose a small control stack is to allow structured assembly
+to be built as library-level ops rather than as privileged syntax.
+
+Conceptually:
+
+```asm
+op if_z  ( -- patch )
+    jr nz, <patch>
+end
+
+op then  ( patch -- )
+    .resolve
+end
+```
+
+A loop shape could be built similarly:
+
+```asm
+op begin  ( -- mark )
+    .mark
+end
+
+op again  ( mark -- )
+    jr <mark>
+end
+```
+
+Again, this is design notation, not final AZM syntax. The point is that AZM can
+ship primitive control-stack operations and allow disciplined `op`s to build
+structured control flow on top.
+
+This gives AZM structured power without making structure magical.
+
+## Formal arguments, locals, globals, arrays, and records
+
+The long-term typed features should also be reintroduced assembly-first.
+
+Likely order:
+
+1. value-level globals and named memory declarations
+2. typed arrays and records as layout tools
+3. named access syntax for memory slots and fields
+4. explicit calling-convention annotations
+5. formal arguments and locals as names for register, stack, or frame-relative
+   conventions
+6. structured control conveniences only after the lower-level mechanisms are
+   clear
+
+This means avoiding early resurrection of old `func` semantics if they imply too
+much hidden machinery. A routine or procedure model should describe a calling
+convention, not pretend the Z80 has native functions.
+
+Typed storage should remain a value-level feature. Raw labels remain
+address-level assembler symbols. That distinction should survive the split from
+ZAX.
+
+## Non-goals
+
+AZM should not try to become:
+
+- a full ASM80 clone
+- a permissive historical assembler dialect aggregator
+- a macro preprocessor
+- a Forth system
+- a Pascal or C compiler with Z80 syntax
+- a resurrection of all old ZAX/Zags features
+
+The guiding principle is to add only features that help an assembly programmer
+write clearer, safer, more maintainable Z80 code while preserving direct
+visibility of the generated machine behavior.
+
+## Open design questions
+
+These questions should be resolved before implementation:
+
+1. Should control-stack primitives use dotted directives, a new `@` prefix, or a
+   namespaced directive form?
+2. How should an `op` declare its control-stack effect?
+3. Should directive aliases be fixed, configurable, or mode-dependent?
+4. Should `.azm` default to stricter native style than `.asm` and `.z80`?
+5. How much of the existing ZAX `op` implementation can be reused without
+   reintroducing old high-level assumptions?
+6. What is the smallest branch/fixup primitive set that can express useful
+   `if`/`then`, `if`/`else`/`then`, `begin`/`again`, and `begin`/conditional
+   loop patterns?
+
+## Near-term recommendation
+
+Preserve the current compatibility baseline as the floor, then design AZM in
+this order:
+
+1. rename and reposition project identity around AZM
+2. document compatibility mode versus AZM-native mode
+3. implement or formalize directive alias normalization
+4. bring back AST ops as the macro replacement
+5. design the compile-time control stack before adding built-in structured
+   control
+6. add typed memory layout only when its assembler-facing model is clear
+
+The next development step should be a focused design spec for directive aliases,
+AST ops, and the assembly control stack. Implementation should wait until those
+interfaces are explicit enough to test.
