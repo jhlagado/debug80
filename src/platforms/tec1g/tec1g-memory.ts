@@ -38,10 +38,7 @@ export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Arr
   bank1.fill(0x00);
   bank0.set(memory.slice(TEC1G_EXPAND_START, TEC1G_EXPAND_END + 1));
   bank1.set(
-    memory.slice(
-      TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE,
-      TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2
-    )
+    memory.slice(TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2)
   );
 }
 
@@ -51,7 +48,10 @@ export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Arr
 export function createTec1gMemoryHooks(
   baseMemory: Uint8Array,
   romRanges: Array<{ start: number; end: number }>,
-  state: Pick<Tec1gState['system'], 'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'>
+  state: Pick<
+    Tec1gState['system'],
+    'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'
+  >
 ): Tec1gMemoryHooks {
   const expandBanks: [Uint8Array, Uint8Array] = [
     new Uint8Array(TEC1G_EXPAND_SIZE),

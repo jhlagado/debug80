@@ -38,7 +38,7 @@ export function applyMemoryViews(
     state.viewModes[id] = typeof entry.view === 'string' ? entry.view : currentView;
     state.viewAddress[id] =
       typeof entry.address === 'number' && Number.isFinite(entry.address)
-        ? (entry.address & 0xffff)
+        ? entry.address & 0xffff
         : undefined;
   }
 }

@@ -37,7 +37,7 @@ New scaffolded projects should be small:
   roms/                        # optional explicit materialization/override, ignored by default
 ```
 
-`roms/` is reserved for local copies created by **Debug80: Copy Bundled MON3 ROM into Workspace**
+`roms/` is reserved for local copies created by **Debug80: Copy Bundled Assets into Workspace**
 or for deliberate user overrides. If a user is authoring a monitor ROM, that should be a separate
 advanced project profile and the user can remove the ignore rule intentionally.
 
@@ -301,4 +301,4 @@ Copy ticket IDs into your issue tracker (GitHub Issues, Jira, etc.) and link thi
 | **M2** (TICKET-04–06) | **Done** | Bundled MON3/MON-1B assets are referenced from project profiles and resolved from extension resources when workspace copies are absent. Scaffold no longer copies stock ROM assets by default; `.gitignore` ignores `roms/` for explicit materialized local copies. |
 | **M3+** | Not started | Overrides docs, refresh command, multi-ROM (P3), etc. |
 
-VSIX packaging: `.vscodeignore` excludes `src/**` and `test/**` but **not** `resources/`, so `resources/bundles/**` is included in the packaged extension.
+VSIX packaging: `.vscodeignore` excludes `src/**`, `tests/**`, and `test/**` but **not** `resources/`, so `resources/bundles/**` is included in the packaged extension.

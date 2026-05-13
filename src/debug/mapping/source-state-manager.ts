@@ -48,7 +48,9 @@ export class SourceStateManager {
     };
   }
 
-  collectRomSources(extraListingPaths: string[]): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
+  collectRomSources(
+    extraListingPaths: string[]
+  ): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
     if (!this.manager) {
       return [];
     }

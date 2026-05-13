@@ -54,7 +54,8 @@ export function resolveAssemblerBackend(
   asmPath: string | undefined
 ): AssemblerBackend {
   const explicitId = assembler?.trim().toLowerCase();
-  const id = explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
+  const id =
+    explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
 
   if (id === undefined || id === '' || id === 'asm80') {
     return new Asm80Backend();

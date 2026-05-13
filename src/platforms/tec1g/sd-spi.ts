@@ -44,15 +44,13 @@ export class SdSpi {
   private appCommand = false;
   private initTries = 0;
   private ready = false;
-  private writeState:
-    | {
-        start: number;
-        awaitingToken: boolean;
-        buffer: Uint8Array;
-        index: number;
-        crcRemaining: number;
-      }
-    | null = null;
+  private writeState: {
+    start: number;
+    awaitingToken: boolean;
+    buffer: Uint8Array;
+    index: number;
+    crcRemaining: number;
+  } | null = null;
 
   /**
    * Creates a new SD SPI bit-bang helper.
@@ -303,7 +301,7 @@ export class SdSpi {
   }
 
   private resolveAddress(arg: number): number {
-    return this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : (arg >>> 0);
+    return this.highCapacity ? ((arg >>> 0) << 9) >>> 0 : arg >>> 0;
   }
 
   private readBlock(arg: number): number[] {

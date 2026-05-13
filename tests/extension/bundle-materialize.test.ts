@@ -276,7 +276,10 @@ describe('bundle-materialize', () => {
     const listingLf = '0000: NOP\n0001: HALT\n';
     const listingCrlf = listingLf.replace(/\n/g, '\r\n');
     fs.writeFileSync(path.join(bundleDir, 'rom.lst'), listingCrlf, 'utf-8');
-    const listingLfHash = crypto.createHash('sha256').update(Buffer.from(listingLf, 'utf-8')).digest('hex');
+    const listingLfHash = crypto
+      .createHash('sha256')
+      .update(Buffer.from(listingLf, 'utf-8'))
+      .digest('hex');
 
     const manifest = {
       schemaVersion: 1,
@@ -298,14 +301,7 @@ describe('bundle-materialize', () => {
 
   it('materializes the committed MON3 bundle (checksums in bundle.json)', () => {
     const repoRoot = path.resolve(__dirname, '..', '..');
-    const bundleDir = path.join(
-      repoRoot,
-      'resources',
-      'bundles',
-      'tec1g',
-      'mon3',
-      'v1'
-    );
+    const bundleDir = path.join(repoRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     const bundleJson = path.join(bundleDir, 'bundle.json');
     if (!fs.existsSync(bundleJson)) {
       return;
@@ -317,14 +313,7 @@ describe('bundle-materialize', () => {
     // with checksum fields removed while still sourcing committed assets.
     const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-real-'));
     tmpDirs.push(extensionRoot);
-    const copiedBundleDir = path.join(
-      extensionRoot,
-      'resources',
-      'bundles',
-      'tec1g',
-      'mon3',
-      'v1'
-    );
+    const copiedBundleDir = path.join(extensionRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     fs.mkdirSync(copiedBundleDir, { recursive: true });
     fs.copyFileSync(path.join(bundleDir, 'mon3.bin'), path.join(copiedBundleDir, 'mon3.bin'));
     fs.copyFileSync(path.join(bundleDir, 'mon3.lst'), path.join(copiedBundleDir, 'mon3.lst'));
@@ -357,11 +346,7 @@ describe('bundle-materialize', () => {
     }
     expect(result.romRelativePath).toBe('roms/tec1g/mon3/mon3.bin');
     expect(result.listingRelativePath).toBe('roms/tec1g/mon3/mon3.lst');
-    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.bin'))).toBe(
-      true
-    );
-    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.lst'))).toBe(
-      true
-    );
+    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.bin'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.lst'))).toBe(true);
   });
 });

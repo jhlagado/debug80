@@ -238,5 +238,4 @@ export class BreakpointManager {
     }
     return undefined;
   }
-
 }

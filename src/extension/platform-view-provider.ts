@@ -36,21 +36,13 @@ import {
   TEC1G_UI_VISIBILITY_MEMENTO_KEY,
   type Tec1gVisibilityByTarget,
 } from './tec1g-ui-visibility-memento';
-import {
-  findProjectConfigPath,
-  readProjectConfig,
-  resolveProjectPlatform,
-} from './project-config';
+import { findProjectConfigPath, readProjectConfig, resolveProjectPlatform } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
   handlePlatformSerialSendFile,
 } from './platform-view-serial-actions';
-import {
-  loadPlatformUi,
-  listPlatformUis,
-  type PlatformUiModules,
-} from './platform-view-manifest';
+import { loadPlatformUi, listPlatformUis, type PlatformUiModules } from './platform-view-manifest';
 import { resolveRememberedWorkspaceFolder } from './workspace-selection';
 import type {
   PlatformId,
@@ -58,10 +50,7 @@ import type {
   ProjectStatusPayload,
 } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
-import {
-  createUiPerformanceMonitor,
-  type UiPerformanceMonitor,
-} from './ui-performance-monitor';
+import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -111,7 +100,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
 
-  constructor(extensionUri: vscode.Uri, workspaceState?: vscode.Memento, logger: Logger = new NullLogger()) {
+  constructor(
+    extensionUri: vscode.Uri,
+    workspaceState?: vscode.Memento,
+    logger: Logger = new NullLogger()
+  ) {
     this.extensionUri = extensionUri;
     this.workspaceState = workspaceState;
     this.performanceMonitor = createUiPerformanceMonitor({
@@ -205,7 +198,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
    */
   setTec1gAdapterVisibility(visibility: Record<string, boolean> | undefined): void {
     this.tec1gAdapterVisibility =
-      visibility !== undefined && Object.keys(visibility).length > 0 ? { ...visibility } : undefined;
+      visibility !== undefined && Object.keys(visibility).length > 0
+        ? { ...visibility }
+        : undefined;
     this.mergeAndPostTec1gPanelVisibility();
   }
 
@@ -289,7 +284,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     const bundle = this.getCurrentBundle();
     if (bundle !== undefined) {
-      this.postMessage(bundle.modules.buildClearMessage(bundle.state.uiState, this.nextUiRevision()));
+      this.postMessage(
+        bundle.modules.buildClearMessage(bundle.state.uiState, this.nextUiRevision())
+      );
       this.postMessage({ type: 'serialClear' });
     }
   }
@@ -512,9 +509,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   /** Returns the bundle for the currently active platform, or undefined. */
-  private getCurrentBundle():
-    | { modules: PlatformUiModules; state: PerPlatformState }
-    | undefined {
+  private getCurrentBundle(): { modules: PlatformUiModules; state: PerPlatformState } | undefined {
     if (this.currentPlatform === undefined) {
       return undefined;
     }
@@ -692,11 +687,16 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     const summary = resolveProjectStatusSummary(this.workspaceState, folder);
     const targetName = summary?.targetName ?? '__default__';
-    const byTarget = this.workspaceState.get<Tec1gVisibilityByTarget>(TEC1G_UI_VISIBILITY_MEMENTO_KEY);
+    const byTarget = this.workspaceState.get<Tec1gVisibilityByTarget>(
+      TEC1G_UI_VISIBILITY_MEMENTO_KEY
+    );
     return getMementoForTarget(byTarget, targetName);
   }
 
-  private saveTec1gPanelVisibility(visibility: Record<string, boolean>, targetNameFromWebview?: string): void {
+  private saveTec1gPanelVisibility(
+    visibility: Record<string, boolean>,
+    targetNameFromWebview?: string
+  ): void {
     if (this.workspaceState === undefined) {
       return;
     }

@@ -51,7 +51,7 @@ export function buildLaunchSourceState(
     preSourceRoots.push(path.dirname(resolveRelative(asmPath, baseDir)));
   }
   sessionState.sourceRoots = preSourceRoots;
-  const resolvedSourceRoots = preSourceRoots.length > 0 ? preSourceRoots : args.sourceRoots ?? [];
+  const resolvedSourceRoots = preSourceRoots.length > 0 ? preSourceRoots : (args.sourceRoots ?? []);
 
   sourceState.setManager(
     new SourceManager({

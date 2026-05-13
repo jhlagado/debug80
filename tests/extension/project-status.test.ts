@@ -27,9 +27,7 @@ describe('project-status', () => {
     const summary = resolveProjectStatusSummary(
       {
         get: vi.fn((key: string) =>
-          key === `debug80.selectedTarget:${path.join(root, 'debug80.json')}`
-            ? 'serial'
-            : undefined
+          key === `debug80.selectedTarget:${path.join(root, 'debug80.json')}` ? 'serial' : undefined
         ),
         update: vi.fn(),
       } as never,

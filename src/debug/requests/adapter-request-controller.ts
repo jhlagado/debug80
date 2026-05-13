@@ -23,10 +23,7 @@ import type { VariableService } from './variable-service';
 import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { ADDR_MASK } from '../../platforms/tec-common';
-import {
-  tryWriteRegisterByKey,
-  writableRegisterKeyFromVariableName,
-} from './register-request';
+import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
 
 export interface AdapterRequestControllerDeps {
   threadId: number;
@@ -123,7 +120,10 @@ export class AdapterRequestController {
     this.continueExecution(response);
   }
 
-  public nextRequest(response: DebugProtocol.NextResponse, _args: DebugProtocol.NextArguments): void {
+  public nextRequest(
+    response: DebugProtocol.NextResponse,
+    _args: DebugProtocol.NextArguments
+  ): void {
     if (this.deps.sessionState.runtime === undefined) {
       this.deps.sendErrorResponse(response, 1, 'No program loaded');
       return;
@@ -242,16 +242,24 @@ export class AdapterRequestController {
     }
     const pc = this.deps.sessionState.runtime.getPC();
     const resolveFn = (file: string): string | undefined =>
-      resolveMappedPath(file, this.deps.sessionState.listingPath, this.deps.sessionState.sourceRoots);
+      resolveMappedPath(
+        file,
+        this.deps.sessionState.listingPath,
+        this.deps.sessionState.sourceRoots
+      );
     const responseBody = buildStackFrames(pc, {
-      ...(this.deps.sessionState.listing !== undefined ? { listing: this.deps.sessionState.listing } : {}),
+      ...(this.deps.sessionState.listing !== undefined
+        ? { listing: this.deps.sessionState.listing }
+        : {}),
       ...(this.deps.sessionState.listingPath !== undefined
         ? { listingPath: this.deps.sessionState.listingPath }
         : {}),
       ...(this.deps.sessionState.mappingIndex !== undefined
         ? { mappingIndex: this.deps.sessionState.mappingIndex }
         : {}),
-      ...(this.deps.sourceState.file !== undefined ? { sourceFile: this.deps.sourceState.file } : {}),
+      ...(this.deps.sourceState.file !== undefined
+        ? { sourceFile: this.deps.sourceState.file }
+        : {}),
       resolveMappedPath: resolveFn,
       getAddressAliases: (address) => {
         const masked = address & ADDR_MASK;
@@ -433,7 +441,7 @@ export class AdapterRequestController {
   private runUntilStop(
     extraBreakpoints?: Set<number>,
     maxInstructions?: number,
-    limitLabel = 'step',
+    limitLabel = 'step'
   ): void {
     this.deps.sessionState.runState.isRunning = true;
     void runUntilStopAsync(this.deps.getRuntimeControlContext(), {
@@ -449,7 +457,9 @@ export class AdapterRequestController {
       return null;
     }
     const cpu = runtime.getRegisters();
-    const memRead = runtime.hardware.memRead ?? ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
+    const memRead =
+      runtime.hardware.memRead ??
+      ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
     return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
   }
 
@@ -469,7 +479,10 @@ export class AdapterRequestController {
       return;
     }
     if (trace.kind === 'ret') {
-      this.deps.sessionState.runState.callDepth = Math.max(0, this.deps.sessionState.runState.callDepth - 1);
+      this.deps.sessionState.runState.callDepth = Math.max(
+        0,
+        this.deps.sessionState.runState.callDepth - 1
+      );
     }
   }
 }

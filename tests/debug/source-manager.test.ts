@@ -24,10 +24,14 @@ const writeFile = (filePath: string, content: string): void => {
 };
 
 const createLogger = (logs: string[]): Logger => ({
-  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  debug: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
 });
 
 describe('source-manager', () => {
@@ -47,8 +51,7 @@ describe('source-manager', () => {
         const candidate = path.resolve(dir, filePath);
         return fs.existsSync(candidate) ? candidate : undefined;
       },
-      relativeIfPossible: (filePath, baseDir) =>
-        path.relative(baseDir, filePath) || filePath,
+      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_args, _baseDir, _asm, listing) =>
         path.join(dir, `${path.basename(listing)}.d8.json`),
       resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
@@ -92,8 +95,7 @@ describe('source-manager', () => {
         const candidate = path.resolve(dir, filePath);
         return fs.existsSync(candidate) ? candidate : undefined;
       },
-      relativeIfPossible: (filePath, baseDir) =>
-        path.relative(baseDir, filePath) || filePath,
+      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_a, _b, _c, listing) =>
         path.join(path.dirname(listing), `${path.basename(listing, '.lst')}.d8.json`),
       resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
@@ -128,8 +130,7 @@ describe('source-manager', () => {
       baseDir: dir,
       resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
       resolveMappedPath: () => undefined,
-      relativeIfPossible: (filePath, baseDir) =>
-        path.relative(baseDir, filePath) || filePath,
+      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: () => path.join(dir, 'map.json'),
       resolveExtraDebugMapPath: () => path.join(dir, 'extra.json'),
       resolveListingSourcePath: (listing) =>

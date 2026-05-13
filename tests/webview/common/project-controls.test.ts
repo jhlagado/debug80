@@ -23,7 +23,12 @@ describe('initialized project controls', () => {
     const panelMemory = createElement();
 
     const initialized = applyInitializedProjectControls(
-      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      {
+        projectState: 'initialized',
+        rootPath: '/workspace/demo',
+        hasProject: true,
+        platform: 'tec1g',
+      },
       {
         appRoot,
         projectHeader,
@@ -208,7 +213,12 @@ describe('initialized project controls', () => {
     const platformValue = createElement();
 
     applyInitializedProjectControls(
-      { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'tec1' },
+      {
+        projectState: 'uninitialized',
+        rootPath: '/workspace/demo',
+        hasProject: false,
+        platform: 'tec1',
+      },
       { projectHeader, platformControl, platformInfoControl, platformValue }
     );
 
@@ -218,7 +228,12 @@ describe('initialized project controls', () => {
     expect(platformValue.textContent).toBe('');
 
     applyInitializedProjectControls(
-      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      {
+        projectState: 'initialized',
+        rootPath: '/workspace/demo',
+        hasProject: true,
+        platform: 'tec1g',
+      },
       { projectHeader, platformControl, platformInfoControl, platformValue }
     );
 
@@ -228,7 +243,12 @@ describe('initialized project controls', () => {
     expect(platformValue.textContent).toBe('');
 
     applyInitializedProjectControls(
-      { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'simple' },
+      {
+        projectState: 'uninitialized',
+        rootPath: '/workspace/demo',
+        hasProject: false,
+        platform: 'simple',
+      },
       { projectHeader, platformControl, platformInfoControl, platformValue }
     );
 
@@ -255,7 +275,12 @@ describe('initialized project controls', () => {
     const panelMemory = createElement();
 
     applyInitializedProjectControls(
-      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      {
+        projectState: 'initialized',
+        rootPath: '/workspace/demo',
+        hasProject: true,
+        platform: 'tec1g',
+      },
       {
         appRoot,
         projectHeader,
@@ -274,7 +299,12 @@ describe('initialized project controls', () => {
     );
 
     const initialized = applyInitializedProjectControls(
-      { projectState: 'uninitialized', rootPath: '/workspace/demo', hasProject: false, platform: 'tec1g' },
+      {
+        projectState: 'uninitialized',
+        rootPath: '/workspace/demo',
+        hasProject: false,
+        platform: 'tec1g',
+      },
       {
         appRoot,
         projectHeader,
@@ -325,7 +355,12 @@ describe('initialized project controls', () => {
     const panelMemory = createElement();
 
     applyInitializedProjectControls(
-      { projectState: 'initialized', rootPath: '/workspace/demo', hasProject: true, platform: 'tec1g' },
+      {
+        projectState: 'initialized',
+        rootPath: '/workspace/demo',
+        hasProject: true,
+        platform: 'tec1g',
+      },
       {
         appRoot,
         projectHeader,

@@ -168,58 +168,138 @@ export function createSessionState(): SessionStateShape {
   // These close over `flat` so reads/writes go directly to the same
   // backing slots as the flat fields on the final merged state object.
   const source: SessionSourceState = {
-    get listing() { return flat.listing; },
-    set listing(v) { flat.listing = v; },
-    get listingPath() { return flat.listingPath; },
-    set listingPath(v) { flat.listingPath = v; },
-    get mapping() { return flat.mapping; },
-    set mapping(v) { flat.mapping = v; },
-    get mappingIndex() { return flat.mappingIndex; },
-    set mappingIndex(v) { flat.mappingIndex = v; },
-    get symbolAnchors() { return flat.symbolAnchors; },
-    set symbolAnchors(v) { flat.symbolAnchors = v; },
-    get symbolList() { return flat.symbolList; },
-    set symbolList(v) { flat.symbolList = v; },
-    get sourceRoots() { return flat.sourceRoots; },
-    set sourceRoots(v) { flat.sourceRoots = v; },
-    get extraListingPaths() { return flat.extraListingPaths; },
-    set extraListingPaths(v) { flat.extraListingPaths = v; },
+    get listing() {
+      return flat.listing;
+    },
+    set listing(v) {
+      flat.listing = v;
+    },
+    get listingPath() {
+      return flat.listingPath;
+    },
+    set listingPath(v) {
+      flat.listingPath = v;
+    },
+    get mapping() {
+      return flat.mapping;
+    },
+    set mapping(v) {
+      flat.mapping = v;
+    },
+    get mappingIndex() {
+      return flat.mappingIndex;
+    },
+    set mappingIndex(v) {
+      flat.mappingIndex = v;
+    },
+    get symbolAnchors() {
+      return flat.symbolAnchors;
+    },
+    set symbolAnchors(v) {
+      flat.symbolAnchors = v;
+    },
+    get symbolList() {
+      return flat.symbolList;
+    },
+    set symbolList(v) {
+      flat.symbolList = v;
+    },
+    get sourceRoots() {
+      return flat.sourceRoots;
+    },
+    set sourceRoots(v) {
+      flat.sourceRoots = v;
+    },
+    get extraListingPaths() {
+      return flat.extraListingPaths;
+    },
+    set extraListingPaths(v) {
+      flat.extraListingPaths = v;
+    },
   };
 
   const launch: SessionLaunchState = {
-    get baseDir() { return flat.baseDir; },
-    set baseDir(v) { flat.baseDir = v; },
-    get loadedProgram() { return flat.loadedProgram; },
-    set loadedProgram(v) { flat.loadedProgram = v; },
-    get loadedEntry() { return flat.loadedEntry; },
-    set loadedEntry(v) { flat.loadedEntry = v; },
-    get restartCaptureAddress() { return flat.restartCaptureAddress; },
-    set restartCaptureAddress(v) { flat.restartCaptureAddress = v; },
-    get entryCpuState() { return flat.entryCpuState; },
-    set entryCpuState(v) { flat.entryCpuState = v; },
-    get launchArgs() { return flat.launchArgs; },
-    set launchArgs(v) { flat.launchArgs = v; },
+    get baseDir() {
+      return flat.baseDir;
+    },
+    set baseDir(v) {
+      flat.baseDir = v;
+    },
+    get loadedProgram() {
+      return flat.loadedProgram;
+    },
+    set loadedProgram(v) {
+      flat.loadedProgram = v;
+    },
+    get loadedEntry() {
+      return flat.loadedEntry;
+    },
+    set loadedEntry(v) {
+      flat.loadedEntry = v;
+    },
+    get restartCaptureAddress() {
+      return flat.restartCaptureAddress;
+    },
+    set restartCaptureAddress(v) {
+      flat.restartCaptureAddress = v;
+    },
+    get entryCpuState() {
+      return flat.entryCpuState;
+    },
+    set entryCpuState(v) {
+      flat.entryCpuState = v;
+    },
+    get launchArgs() {
+      return flat.launchArgs;
+    },
+    set launchArgs(v) {
+      flat.launchArgs = v;
+    },
   };
 
   const runtimeState: SessionRuntimeState = {
-    get execution() { return flat.runtime; },
-    set execution(v) { flat.runtime = v; },
+    get execution() {
+      return flat.runtime;
+    },
+    set execution(v) {
+      flat.runtime = v;
+    },
   };
 
   const platform: SessionPlatformState = {
-    get tec1Runtime() { return flat.tec1Runtime; },
-    set tec1Runtime(v) { flat.tec1Runtime = v; },
-    get tec1gRuntime() { return flat.tec1gRuntime; },
-    set tec1gRuntime(v) { flat.tec1gRuntime = v; },
-    get platformRuntime() { return flat.platformRuntime; },
-    set platformRuntime(v) { flat.platformRuntime = v; },
-    get tec1gConfig() { return flat.tec1gConfig; },
-    set tec1gConfig(v) { flat.tec1gConfig = v; },
+    get tec1Runtime() {
+      return flat.tec1Runtime;
+    },
+    set tec1Runtime(v) {
+      flat.tec1Runtime = v;
+    },
+    get tec1gRuntime() {
+      return flat.tec1gRuntime;
+    },
+    set tec1gRuntime(v) {
+      flat.tec1gRuntime = v;
+    },
+    get platformRuntime() {
+      return flat.platformRuntime;
+    },
+    set platformRuntime(v) {
+      flat.platformRuntime = v;
+    },
+    get tec1gConfig() {
+      return flat.tec1gConfig;
+    },
+    set tec1gConfig(v) {
+      flat.tec1gConfig = v;
+    },
   };
 
   const ui: SessionUiState = {
-    get terminalState() { return flat.terminalState; },
-    set terminalState(v) { flat.terminalState = v; },
+    get terminalState() {
+      return flat.terminalState;
+    },
+    set terminalState(v) {
+      flat.terminalState = v;
+    },
   };
 
   // Merge flat backing store + proxy views into the returned state.

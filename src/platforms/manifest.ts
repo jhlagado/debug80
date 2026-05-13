@@ -7,9 +7,7 @@ import type { LaunchRequestArguments } from '../debug/session/types';
 import type { PlatformKind } from '../debug/launch/program-loader';
 import type { ResolvedPlatformProvider } from './provider';
 
-type PlatformProviderLoader = (
-  args: LaunchRequestArguments
-) => Promise<ResolvedPlatformProvider>;
+type PlatformProviderLoader = (args: LaunchRequestArguments) => Promise<ResolvedPlatformProvider>;
 
 export interface PlatformManifestEntry {
   id: PlatformKind;

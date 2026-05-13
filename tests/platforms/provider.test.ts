@@ -9,19 +9,17 @@ const { getExtension } = vi.hoisted(() => ({
   getExtension: vi.fn(),
 }));
 
-const {
-  buildPlatformIoHandlers,
-  createTec1gMemoryHooks,
-  applyCartridgeMemory,
-} = vi.hoisted(() => ({
-  buildPlatformIoHandlers: vi.fn(() => ({ ioHandlers: undefined })),
-  createTec1gMemoryHooks: vi.fn(() => ({
-    memRead: vi.fn(() => 0),
-    memWrite: vi.fn(() => undefined),
-    expandBanks: ['bank'],
-  })),
-  applyCartridgeMemory: vi.fn(() => undefined),
-}));
+const { buildPlatformIoHandlers, createTec1gMemoryHooks, applyCartridgeMemory } = vi.hoisted(
+  () => ({
+    buildPlatformIoHandlers: vi.fn(() => ({ ioHandlers: undefined })),
+    createTec1gMemoryHooks: vi.fn(() => ({
+      memRead: vi.fn(() => 0),
+      memWrite: vi.fn(() => undefined),
+      expandBanks: ['bank'],
+    })),
+    applyCartridgeMemory: vi.fn(() => undefined),
+  })
+);
 
 vi.mock('vscode', () => ({
   extensions: {

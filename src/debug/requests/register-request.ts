@@ -48,7 +48,10 @@ export function parseHexValue(value: unknown): number | null {
 }
 
 function normalizeRegisterVariableQuotes(name: string): string {
-  return name.trim().replace(/\u2032/g, "'").replace(/\u2019/g, "'");
+  return name
+    .trim()
+    .replace(/\u2032/g, "'")
+    .replace(/\u2019/g, "'");
 }
 
 /**
@@ -131,7 +134,9 @@ export function tryWriteRegisterByKey(
       return 'Debug80: Invalid flag value.';
     }
     applyFlagString(
-      registerKey === 'flagsp' ? sessionState.runtime.getRegisters().flags_prime : sessionState.runtime.getRegisters().flags,
+      registerKey === 'flagsp'
+        ? sessionState.runtime.getRegisters().flags_prime
+        : sessionState.runtime.getRegisters().flags,
       value
     );
     return null;
@@ -156,14 +161,16 @@ function applyFlagString(flags: Cpu['flags'], value: string): void {
 }
 
 function isFlagName(value: string): value is keyof Cpu['flags'] {
-  return value === 'S'
-    || value === 'Z'
-    || value === 'Y'
-    || value === 'H'
-    || value === 'X'
-    || value === 'P'
-    || value === 'N'
-    || value === 'C';
+  return (
+    value === 'S' ||
+    value === 'Z' ||
+    value === 'Y' ||
+    value === 'H' ||
+    value === 'X' ||
+    value === 'P' ||
+    value === 'N' ||
+    value === 'C'
+  );
 }
 
 function setRegisterPair(cpu: Cpu, name: string, value: number): void {

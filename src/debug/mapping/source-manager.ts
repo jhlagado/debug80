@@ -171,7 +171,9 @@ export class SourceManager {
     listingPath: string
   ): string {
     if (asmPath !== undefined && asmPath.length > 0) {
-      return path.isAbsolute(asmPath) ? path.normalize(asmPath) : this.resolveRelative(asmPath, this.baseDir);
+      return path.isAbsolute(asmPath)
+        ? path.normalize(asmPath)
+        : this.resolveRelative(asmPath, this.baseDir);
     }
     if (sourceFile !== undefined && sourceFile.length > 0) {
       return this.resolveRelative(sourceFile, this.baseDir);

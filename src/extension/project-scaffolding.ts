@@ -149,28 +149,30 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
 
   if (plan.kit.platform === 'tec1') {
     const base = createTec1Defaults(plan.kit.appStart);
-    targetConfig.tec1 = plan.kit.bundledProfile !== undefined
-      ? {
-          ...base,
-          romHex: plan.kit.bundledProfile.romPath,
-          ...(plan.kit.bundledProfile.listingPath !== undefined
-            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
-            : {}),
-          sourceRoots: plan.kit.bundledProfile.sourceRoots,
-        }
-      : base;
+    targetConfig.tec1 =
+      plan.kit.bundledProfile !== undefined
+        ? {
+            ...base,
+            romHex: plan.kit.bundledProfile.romPath,
+            ...(plan.kit.bundledProfile.listingPath !== undefined
+              ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+              : {}),
+            sourceRoots: plan.kit.bundledProfile.sourceRoots,
+          }
+        : base;
   } else if (plan.kit.platform === 'tec1g') {
     const base = createTec1gDefaults(plan.kit.appStart);
-    targetConfig.tec1g = plan.kit.bundledProfile !== undefined
-      ? {
-          ...base,
-          romHex: plan.kit.bundledProfile.romPath,
-          ...(plan.kit.bundledProfile.listingPath !== undefined
-            ? { extraListings: [plan.kit.bundledProfile.listingPath] }
-            : {}),
-          sourceRoots: plan.kit.bundledProfile.sourceRoots,
-        }
-      : base;
+    targetConfig.tec1g =
+      plan.kit.bundledProfile !== undefined
+        ? {
+            ...base,
+            romHex: plan.kit.bundledProfile.romPath,
+            ...(plan.kit.bundledProfile.listingPath !== undefined
+              ? { extraListings: [plan.kit.bundledProfile.listingPath] }
+              : {}),
+            sourceRoots: plan.kit.bundledProfile.sourceRoots,
+          }
+        : base;
   } else {
     targetConfig.simple = createSimpleDefaults();
   }
@@ -240,9 +242,7 @@ export async function scaffoldProject(
     return false;
   }
 
-  ensureDirExists(
-    path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile))
-  );
+  ensureDirExists(path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile)));
   ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
 
   let created = false;
@@ -275,9 +275,7 @@ export async function scaffoldProject(
       );
       created = true;
     } catch (err) {
-      void vscode.window.showErrorMessage(
-        `Debug80: Failed to write debug80.json: ${String(err)}`
-      );
+      void vscode.window.showErrorMessage(`Debug80: Failed to write debug80.json: ${String(err)}`);
       return false;
     }
   } else if (!includeLaunch) {
@@ -323,7 +321,8 @@ async function buildScaffoldPlan(
   const defaultKit = getDefaultProjectKitForPlatform(preselectedPlatform);
   if (defaultKit !== undefined) {
     const sourceFile = 'src/main.asm';
-    const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
+    const artifactBase =
+      path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
     return {
       kit: defaultKit,
       targetName: artifactBase,
@@ -349,7 +348,8 @@ async function buildScaffoldPlan(
 
   if (choice.kind === 'existing') {
     const sourceFile = choice.sourceFile;
-    const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
+    const artifactBase =
+      path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
     return {
       kit,
       targetName: artifactBase,

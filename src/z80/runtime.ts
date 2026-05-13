@@ -87,7 +87,11 @@ export interface IoHandlers {
   tick?: () => TickResult | void;
 }
 
-type Z80RuntimeImpl = Z80Runtime & { cpu: Cpu; hardware: HardwareContext; execCallbacks: Callbacks };
+type Z80RuntimeImpl = Z80Runtime & {
+  cpu: Cpu;
+  hardware: HardwareContext;
+  execCallbacks: Callbacks;
+};
 
 interface TickResult {
   interrupt?: {
@@ -178,9 +182,9 @@ export function createZ80Runtime(
 }
 
 function readMemory(hardware: HardwareContext, addr: number): number {
-  return (hardware.memRead ?? ((address: number): number => hardware.memory[address & 0xffff] ?? 0))(
-    addr & 0xffff
-  );
+  return (
+    hardware.memRead ?? ((address: number): number => hardware.memory[address & 0xffff] ?? 0)
+  )(addr & 0xffff);
 }
 
 function writeMemory(hardware: HardwareContext, addr: number, value: number): void {
@@ -192,12 +196,7 @@ function writeMemory(hardware: HardwareContext, addr: number, value: number): vo
   write(addr & 0xffff, value & 0xff);
 }
 
-function loadProgram(
-  hardware: HardwareContext,
-  cpu: Cpu,
-  prog: HexProgram,
-  ent?: number
-): void {
+function loadProgram(hardware: HardwareContext, cpu: Cpu, prog: HexProgram, ent?: number): void {
   hardware.memory.fill(0);
   hardware.memory.set(prog.memory);
   cpu.pc = ent !== undefined && ent >= 0 && ent < 0x10000 ? ent : prog.startAddress;
@@ -276,17 +275,12 @@ function classifyStepOver(cpu: Cpu, memRead: (addr: number) => number): StepInfo
  * stuck on the same source line until the counter exhausts. Completing them in one
  * logical step matches user expectations for bulk operations.
  */
-const ED_BLOCK_REPEAT_SECOND = new Set<number>([
-  0xb0, 0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb,
-]);
+const ED_BLOCK_REPEAT_SECOND = new Set<number>([0xb0, 0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb]);
 
 /** Max inner iterations when finishing a block instruction (guards pathological loops). */
 const MAX_BLOCK_REPEAT_ITERATIONS = 0x110000;
 
-function isBlockRepeatInstruction(
-  pc: number,
-  memRead: (addr: number) => number
-): boolean {
+function isBlockRepeatInstruction(pc: number, memRead: (addr: number) => number): boolean {
   const start = pc & 0xffff;
   if ((memRead(start) & 0xff) !== OP_PREFIX_ED) {
     return false;

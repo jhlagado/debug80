@@ -80,11 +80,15 @@ function resolveSourceForAddressInternal(
     return null;
   }
   if (segment.loc.file === null) {
-    diagLog(`  [internal] segment [0x${segment.start.toString(16)}-0x${segment.end.toString(16)}] loc.file=null`);
+    diagLog(
+      `  [internal] segment [0x${segment.start.toString(16)}-0x${segment.end.toString(16)}] loc.file=null`
+    );
     return null;
   }
 
-  diagLog(`  [internal] segment [0x${segment.start.toString(16)}-0x${segment.end.toString(16)}] file="${segment.loc.file}" line=${segment.loc.line}`);
+  diagLog(
+    `  [internal] segment [0x${segment.start.toString(16)}-0x${segment.end.toString(16)}] file="${segment.loc.file}" line=${segment.loc.line}`
+  );
   const resolvedPath = options.resolveMappedPath(segment.loc.file);
   if (resolvedPath === undefined || resolvedPath.length === 0) {
     diagLog(`  [internal] resolveMappedPath("${segment.loc.file}") → undefined`);

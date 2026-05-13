@@ -57,10 +57,7 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
   };
 }
 
-function writeStoredOpenState(
-  vscode: VscodeApi,
-  openState: Record<AccordionPanel, boolean>
-): void {
+function writeStoredOpenState(vscode: VscodeApi, openState: Record<AccordionPanel, boolean>): void {
   const current = vscode.getState();
   const base = isRecord(current) ? current : {};
   const next: StoredAccordionState & Record<string, unknown> = {
@@ -91,7 +88,11 @@ export function createAccordionLayoutController(
     ...DEFAULT_OPEN_STATE,
     ...stored,
   };
-  if (options.defaultTab === 'memory' && stored.memory === undefined && stored.registers === undefined) {
+  if (
+    options.defaultTab === 'memory' &&
+    stored.memory === undefined &&
+    stored.registers === undefined
+  ) {
     openState.memory = true;
   }
 

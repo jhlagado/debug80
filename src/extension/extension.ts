@@ -16,9 +16,7 @@ import { ProjectTargetSelectionController } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { Debug80ConfigurationProvider } from './debug-configuration-provider';
 import { OutputChannelLogger } from '../util/logger';
-import {
-  type PlatformManifestEntry,
-} from '../platforms/provider';
+import { type PlatformManifestEntry } from '../platforms/provider';
 import {
   createSimplePlatformUiEntry,
   createTec1PlatformUiEntry,
@@ -105,9 +103,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
     context.extensionUri
   );
 
-  context.subscriptions.push(
-    vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory)
-  );
+  context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('z80', factory));
 
   context.subscriptions.push(
     vscode.debug.registerDebugConfigurationProvider('z80', debugConfigurationProvider)
@@ -122,10 +118,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   );
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      PlatformViewProvider.viewType,
-      platformViewProvider
-    )
+    vscode.window.registerWebviewViewProvider(PlatformViewProvider.viewType, platformViewProvider)
   );
   context.subscriptions.push(output);
   context.subscriptions.push(rebuildDiagnostics);

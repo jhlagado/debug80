@@ -32,10 +32,14 @@ const writeFile = (filePath: string, content: string): void => {
 };
 
 const createLogger = (logs: string[]): Logger => ({
-  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  debug: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
 });
 
 describe('mapping-service', () => {
@@ -78,8 +82,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),
@@ -157,8 +160,7 @@ describe('mapping-service', () => {
           const candidate = path.isAbsolute(file) ? file : path.resolve(dir, 'src', file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),
@@ -213,8 +215,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),
@@ -277,8 +278,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),
@@ -330,8 +330,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger([]),
@@ -374,8 +373,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),
@@ -435,8 +433,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger([]),
@@ -444,8 +441,13 @@ describe('mapping-service', () => {
     });
 
     expect(resolveAssemblerBackend).toHaveBeenCalledWith(undefined, extraSourcePath);
-    expect(compileMappingInProcess).toHaveBeenCalledWith(extraSourcePath, path.dirname(extraSourcePath));
-    expect(result.mapping.segments.some((segment) => segment.loc.file === extraSourcePath)).toBe(true);
+    expect(compileMappingInProcess).toHaveBeenCalledWith(
+      extraSourcePath,
+      path.dirname(extraSourcePath)
+    );
+    expect(result.mapping.segments.some((segment) => segment.loc.file === extraSourcePath)).toBe(
+      true
+    );
     resolveAssemblerBackend.mockRestore();
   });
 
@@ -485,8 +487,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: (p) => path.join(dir, `${path.basename(p)}.extra.json`),
         resolveDebugMapPath: () => mapPath,
         logger: createLogger([]),
@@ -567,8 +568,7 @@ describe('mapping-service', () => {
           const candidate = path.resolve(dir, file);
           return fs.existsSync(candidate) ? candidate : undefined;
         },
-        relativeIfPossible: (filePath, baseDir) =>
-          path.relative(baseDir, filePath) || filePath,
+        relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
         resolveExtraDebugMapPath: () => extraMapPath,
         resolveDebugMapPath: () => mapPath,
         logger: createLogger(logs),

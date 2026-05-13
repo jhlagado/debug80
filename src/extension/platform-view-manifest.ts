@@ -5,9 +5,7 @@
 import type * as vscode from 'vscode';
 import type { PanelTab } from '../platforms/panel-html';
 import type { MemoryViewState } from '../platforms/panel-memory';
-import type {
-  RefreshController,
-} from '../platforms/panel-refresh';
+import type { RefreshController } from '../platforms/panel-refresh';
 import type { PlatformViewMessage } from './platform-view-messages';
 
 export interface PlatformUiMessageContext {
@@ -26,10 +24,7 @@ export interface PlatformUiModules<TUiState = unknown> {
   resetUiState: (state: TUiState) => void;
   applyUpdate: (state: TUiState, payload: unknown) => Record<string, unknown>;
   createMemoryViewState: () => MemoryViewState;
-  handleMessage: (
-    message: PlatformViewMessage,
-    context: PlatformUiMessageContext
-  ) => Promise<void>;
+  handleMessage: (message: PlatformViewMessage, context: PlatformUiMessageContext) => Promise<void>;
   buildUpdateMessage: (state: TUiState, uiRevision: number) => Record<string, unknown>;
   buildClearMessage: (state: TUiState, uiRevision: number) => Record<string, unknown>;
   snapshotCommand: 'debug80/memorySnapshot';

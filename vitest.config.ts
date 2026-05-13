@@ -25,7 +25,6 @@ export default defineConfig({
         // These extension helpers are integration-heavy and currently produce low-signal unit coverage.
         'src/extension/commands.ts',
         'src/extension/debug-session-events.ts',
-        'src/extension/platform-view-state.ts',
         'src/extension/project-scaffolding.ts',
         'src/extension/rom-sources.ts',
         'src/extension/session-state-manager.ts',
@@ -34,7 +33,6 @@ export default defineConfig({
         // The DAP session is covered by adapter integration tests rather than direct unit coverage.
         'src/debug/adapter.ts',
         // These are barrel/configuration files with negligible runtime branching.
-        'src/debug/types.ts',
         'src/debug/index.ts',
         // Runtime orchestrators are still integration-heavy; keep only the concrete files excluded.
         'src/platforms/tec1/runtime.ts',
@@ -43,12 +41,8 @@ export default defineConfig({
         'src/platforms/**/types.ts',
         'src/platforms/serial/bitbang-uart.ts',
         'src/platforms/cycle-clock.ts',
-        // Bundled font/ROM lookup data is static and not meaningful for coverage accounting.
-        'src/platforms/tec1g/hd44780-a00.ts',
-        'src/platforms/tec1g/st7920-font.ts',
         // Core Z80 execution is currently covered through higher-level runtime and adapter tests.
         'src/z80/decode.ts',
-        'src/z80/decode-tables.ts',
         'src/z80/cpu.ts',
         'src/z80/runtime.ts',
         'src/z80/types.ts',

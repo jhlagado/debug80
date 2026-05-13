@@ -7,7 +7,11 @@ export function resolveProjectViewState(payload: {
   rootPath?: ProjectStatusPayload['rootPath'];
   hasProject?: ProjectStatusPayload['hasProject'];
 }): ProjectViewState {
-  if (payload.projectState === 'noWorkspace' || payload.projectState === 'uninitialized' || payload.projectState === 'initialized') {
+  if (
+    payload.projectState === 'noWorkspace' ||
+    payload.projectState === 'uninitialized' ||
+    payload.projectState === 'initialized'
+  ) {
     return payload.projectState;
   }
   if (payload.hasProject === true) {

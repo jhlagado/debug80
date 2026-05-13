@@ -203,9 +203,7 @@ describe('BreakpointManager', () => {
     const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
 
     mgr.setPending(listingPath, [{ line: 1 }]);
-    const applied = mgr.applyForSource(listing, listingPath, undefined, listingPath, [
-      { line: 1 },
-    ]);
+    const applied = mgr.applyForSource(listing, listingPath, undefined, listingPath, [{ line: 1 }]);
 
     expect(applied[0]?.verified).toBe(true);
     mgr.rebuild(listing, listingPath, undefined);

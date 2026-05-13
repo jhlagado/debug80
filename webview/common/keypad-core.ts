@@ -44,7 +44,7 @@ export function createKeypadCore(
   }
 
   function sendKey(code: number): void {
-    const adjusted = shiftLatched ? (code & ~shiftBit) : (code | shiftBit);
+    const adjusted = shiftLatched ? code & ~shiftBit : code | shiftBit;
     vscode.postMessage({ type: 'key', code: adjusted });
     if (shiftLatched) {
       setShiftLatched(false);

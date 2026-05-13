@@ -35,11 +35,7 @@ import {
   TEC1G_MASK_LOW7,
   TEC1G_ADDR_MAX,
 } from './constants';
-import {
-  TEC_SILENCE_CYCLES,
-  calculateSpeakerFrequency,
-  updateDisplayDigits,
-} from '../tec-common';
+import { TEC_SILENCE_CYCLES, calculateSpeakerFrequency, updateDisplayDigits } from '../tec-common';
 import { decodeSysCtrl } from './sysctrl';
 import type { IoHandlers } from '../../z80/runtime';
 

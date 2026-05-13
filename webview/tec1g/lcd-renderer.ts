@@ -8,10 +8,20 @@ const LCD_CGRAM_BYTES = 64;
 type LcdPayload = {
   lcd?: number[];
   lcdCgram?: number[];
-  lcdState?: { displayOn?: boolean; cursorOn?: boolean; cursorBlink?: boolean; cursorAddr?: number; displayShift?: number; };
+  lcdState?: {
+    displayOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    cursorAddr?: number;
+    displayShift?: number;
+  };
 };
 
-export interface LcdRenderer { applyLcdUpdate(payload: LcdPayload): void; dispose(): void; draw(): void; }
+export interface LcdRenderer {
+  applyLcdUpdate(payload: LcdPayload): void;
+  dispose(): void;
+  draw(): void;
+}
 
 const copyPadded = (source: number[], size: number, fill: number) => {
   const values = source.slice(0, size);
@@ -55,14 +65,17 @@ export function createLcdRenderer(): LcdRenderer {
     const image = ctx.createImageData(width, height);
     const data = image.data;
     for (let i = 0; i < data.length; i += 4) {
-      data[i] = 11; data[i + 1] = 26; data[i + 2] = 16; data[i + 3] = 255;
+      data[i] = 11;
+      data[i + 1] = 26;
+      data[i + 2] = 16;
+      data[i + 3] = 255;
     }
     const cursorVisible = displayOn && (cursorOn || (cursorBlink && cursorBlinkVisible));
     const cursorIndex = getIndex(cursorAddr);
     for (let row = 0; row < LCD_ROWS; row += 1) {
       for (let col = 0; col < LCD_COLS; col += 1) {
         const index = row * LCD_COLS + ((col + displayShift + LCD_COLS) % LCD_COLS);
-        const charCode = displayOn ? ((bytes[index] || 0x20) & 0xff) : 0x20;
+        const charCode = displayOn ? (bytes[index] || 0x20) & 0xff : 0x20;
         const ox = col * cellW + 1;
         const oy = row * cellH + 1;
         for (let dy = 0; dy < 8; dy += 1) {
@@ -74,7 +87,9 @@ export function createLcdRenderer(): LcdRenderer {
               for (let px = 0; px < dot; px += 1) {
                 const pixel = ((oy + dy * dot + py) * width + (ox + dx * dot + px)) * 4;
                 if (pixel >= data.length - 3) continue;
-                data[pixel] = 180; data[pixel + 1] = 245; data[pixel + 2] = 180;
+                data[pixel] = 180;
+                data[pixel + 1] = 245;
+                data[pixel + 2] = 180;
               }
             }
           }
@@ -84,7 +99,9 @@ export function createLcdRenderer(): LcdRenderer {
           for (let py = 0; py < dot; py += 1) {
             for (let px = 0; px < dot; px += 1) {
               const pixel = ((oy + 7 * dot + py) * width + (ox + dx * dot + px)) * 4;
-              data[pixel] = 180; data[pixel + 1] = 245; data[pixel + 2] = 180;
+              data[pixel] = 180;
+              data[pixel + 1] = 245;
+              data[pixel + 2] = 180;
             }
           }
         }
@@ -107,13 +124,21 @@ export function createLcdRenderer(): LcdRenderer {
   return {
     applyLcdUpdate(payload) {
       let shouldDraw = false;
-      if (Array.isArray(payload.lcd)) { bytes = copyPadded(payload.lcd, LCD_BYTES, 0x20); shouldDraw = true; }
-      if (Array.isArray(payload.lcdCgram)) { cgram = copyPadded(payload.lcdCgram, LCD_CGRAM_BYTES, 0x00); shouldDraw = true; }
+      if (Array.isArray(payload.lcd)) {
+        bytes = copyPadded(payload.lcd, LCD_BYTES, 0x20);
+        shouldDraw = true;
+      }
+      if (Array.isArray(payload.lcdCgram)) {
+        cgram = copyPadded(payload.lcdCgram, LCD_CGRAM_BYTES, 0x00);
+        shouldDraw = true;
+      }
       if (payload.lcdState && typeof payload.lcdState === 'object') {
         if (typeof payload.lcdState.displayOn === 'boolean') displayOn = payload.lcdState.displayOn;
         if (typeof payload.lcdState.cursorOn === 'boolean') cursorOn = payload.lcdState.cursorOn;
-        if (typeof payload.lcdState.cursorBlink === 'boolean') cursorBlink = payload.lcdState.cursorBlink;
-        if (typeof payload.lcdState.cursorAddr === 'number') cursorAddr = payload.lcdState.cursorAddr & 0xff;
+        if (typeof payload.lcdState.cursorBlink === 'boolean')
+          cursorBlink = payload.lcdState.cursorBlink;
+        if (typeof payload.lcdState.cursorAddr === 'number')
+          cursorAddr = payload.lcdState.cursorAddr & 0xff;
         if (typeof payload.lcdState.displayShift === 'number') {
           const shift = Math.trunc(payload.lcdState.displayShift || 0);
           displayShift = ((shift % LCD_COLS) + LCD_COLS) % LCD_COLS;
@@ -123,7 +148,9 @@ export function createLcdRenderer(): LcdRenderer {
       }
       if (shouldDraw) draw();
     },
-    dispose() { if (cursorBlinkTimer !== null) clearInterval(cursorBlinkTimer); },
+    dispose() {
+      if (cursorBlinkTimer !== null) clearInterval(cursorBlinkTimer);
+    },
     draw,
   };
 }

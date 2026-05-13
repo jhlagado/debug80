@@ -127,9 +127,7 @@ describe('source-map', () => {
           confidence: 'LOW',
         },
       ],
-      anchors: [
-        { address: 0x2000, symbol: 'HERE', file: 'missing.asm', line: 1 },
-      ],
+      anchors: [{ address: 0x2000, symbol: 'HERE', file: 'missing.asm', line: 1 }],
     };
     const resolveNone = (_file: string): string | undefined => undefined;
     const custom = buildSourceMapIndex(mapping, resolveNone);

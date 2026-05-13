@@ -30,7 +30,7 @@ describe('matrix-request', () => {
       const result = selectMatrixCombo(
         [plain, shifted, ctrl],
         { key: 'a', pressed: true, shift: true },
-        false,
+        false
       );
       expect(result).toBe(shifted);
     });
@@ -39,17 +39,13 @@ describe('matrix-request', () => {
       const result = selectMatrixCombo(
         [plain, shifted, ctrl],
         { key: 'a', pressed: true, ctrl: true },
-        false,
+        false
       );
       expect(result).toBe(ctrl);
     });
 
     it('prefers fn combo when alt is pressed', () => {
-      const result = selectMatrixCombo(
-        [plain, fn],
-        { key: 'a', pressed: true, alt: true },
-        false,
-      );
+      const result = selectMatrixCombo([plain, fn], { key: 'a', pressed: true, alt: true }, false);
       expect(result).toBe(fn);
     });
 

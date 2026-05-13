@@ -45,7 +45,11 @@ export async function launchWithDiagnostics(
   } catch (err) {
     let output = '';
     try {
-      const event = await client.waitForEvent<{ body?: { output?: string } }>('output', undefined, 1000);
+      const event = await client.waitForEvent<{ body?: { output?: string } }>(
+        'output',
+        undefined,
+        1000
+      );
       output = event.body?.output?.trim() ?? '';
     } catch {
       // ignore missing output

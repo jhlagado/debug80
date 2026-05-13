@@ -63,9 +63,7 @@ describe('D8 JSON Schema contract', () => {
           confidence: 'HIGH',
         },
       ],
-      anchors: [
-        { address: 0x1000, symbol: 'START', file: 'test.asm', line: 10 },
-      ],
+      anchors: [{ address: 0x1000, symbol: 'START', file: 'test.asm', line: 10 }],
     };
     const map = buildD8DebugMap(mapping, {
       arch: 'z80',
@@ -96,7 +94,14 @@ describe('D8 JSON Schema contract', () => {
   });
 
   it('rejects a D8 map with invalid format field', () => {
-    const bad = { format: 'wrong', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {} };
+    const bad = {
+      format: 'wrong',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {},
+    };
     expect(validate(bad)).toBe(false);
   });
 

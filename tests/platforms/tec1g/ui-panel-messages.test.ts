@@ -26,7 +26,10 @@ describe('tec1g ui-panel-messages', () => {
     const refreshController = createRefreshController(() => ({ views: [] }), handlers);
     let activeTab: 'home' | 'ui' | 'memory' = 'ui';
     const ctx = {
-      getSession: () => undefined as { type: string; customRequest: (c: string, p: unknown) => Promise<unknown> } | undefined,
+      getSession: () =>
+        undefined as
+          | { type: string; customRequest: (c: string, p: unknown) => Promise<unknown> }
+          | undefined,
       refreshController,
       autoRefreshMs: 250,
       setActiveTab: (tab: 'home' | 'ui' | 'memory') => {

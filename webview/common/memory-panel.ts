@@ -152,14 +152,12 @@ export class MemoryPanel {
     }
   }
 
-  handleSnapshot(
-    payload: {
-      symbols?: Array<{ name: string; address: number }>;
-      registers?: RegisterData;
-      views?: SnapshotView[];
-      running?: boolean;
-    }
-  ): void {
+  handleSnapshot(payload: {
+    symbols?: Array<{ name: string; address: number }>;
+    registers?: RegisterData;
+    views?: SnapshotView[];
+    running?: boolean;
+  }): void {
     this.updateSymbols(payload.symbols || []);
     if (typeof payload.running === 'boolean') {
       this.setEditingEnabled(!payload.running);
@@ -232,7 +230,9 @@ export class MemoryPanel {
   }
 
   private resolveAnchor(entry: MemoryViewEntry): MemoryAnchor {
-    const raw = entry.view ? this.pickerMap.get(entry.view)?.value.trim() ?? entry.view.value : '';
+    const raw = entry.view
+      ? (this.pickerMap.get(entry.view)?.value.trim() ?? entry.view.value)
+      : '';
     const lower = raw.toLowerCase();
     const register = registerAnchorFromText(lower);
     if (register !== null) {
@@ -262,9 +262,10 @@ export class MemoryPanel {
     entry.view.value = anchor.view;
     const picker = this.pickerMap.get(entry.view);
     if (picker) {
-      picker.value = anchor.view === 'absolute' && anchor.address !== undefined
-        ? this.findSymbolByAddress(anchor.address)?.name ?? formatHex(anchor.address, 4)
-        : selectedOptionLabel(entry.view);
+      picker.value =
+        anchor.view === 'absolute' && anchor.address !== undefined
+          ? (this.findSymbolByAddress(anchor.address)?.name ?? formatHex(anchor.address, 4))
+          : selectedOptionLabel(entry.view);
     }
   }
 
@@ -347,22 +348,106 @@ export class MemoryPanel {
       return;
     }
     const items: RegisterItem[] = [
-      { label: 'BC', register: 'bc', value: formatRegisterHex((data.bc as number) || 0, 4), width: 4, editable: true },
-      { label: 'DE', register: 'de', value: formatRegisterHex((data.de as number) || 0, 4), width: 4, editable: true },
-      { label: 'HL', register: 'hl', value: formatRegisterHex((data.hl as number) || 0, 4), width: 4, editable: true },
-      { label: "BC'", register: 'bcp', value: formatRegisterHex((data.bcp as number) || 0, 4), width: 4, editable: true },
-      { label: "DE'", register: 'dep', value: formatRegisterHex((data.dep as number) || 0, 4), width: 4, editable: true },
-      { label: "HL'", register: 'hlp', value: formatRegisterHex((data.hlp as number) || 0, 4), width: 4, editable: true },
-      { label: 'PC', register: 'pc', value: formatRegisterHex((data.pc as number) || 0, 4), width: 4, editable: true },
-      { label: 'SP', register: 'sp', value: formatRegisterHex((data.sp as number) || 0, 4), width: 4, editable: true },
-      { label: 'IX', register: 'ix', value: formatRegisterHex((data.ix as number) || 0, 4), width: 4, editable: true },
-      { label: 'IY', register: 'iy', value: formatRegisterHex((data.iy as number) || 0, 4), width: 4, editable: true },
-      { label: 'AF', register: 'af', value: formatRegisterHex((data.af as number) || 0, 4), width: 4, editable: true },
-      { label: "AF'", register: 'afp', value: formatRegisterHex((data.afp as number) || 0, 4), width: 4, editable: true },
+      {
+        label: 'BC',
+        register: 'bc',
+        value: formatRegisterHex((data.bc as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'DE',
+        register: 'de',
+        value: formatRegisterHex((data.de as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'HL',
+        register: 'hl',
+        value: formatRegisterHex((data.hl as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: "BC'",
+        register: 'bcp',
+        value: formatRegisterHex((data.bcp as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: "DE'",
+        register: 'dep',
+        value: formatRegisterHex((data.dep as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: "HL'",
+        register: 'hlp',
+        value: formatRegisterHex((data.hlp as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'PC',
+        register: 'pc',
+        value: formatRegisterHex((data.pc as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'SP',
+        register: 'sp',
+        value: formatRegisterHex((data.sp as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'IX',
+        register: 'ix',
+        value: formatRegisterHex((data.ix as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'IY',
+        register: 'iy',
+        value: formatRegisterHex((data.iy as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: 'AF',
+        register: 'af',
+        value: formatRegisterHex((data.af as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
+      {
+        label: "AF'",
+        register: 'afp',
+        value: formatRegisterHex((data.afp as number) || 0, 4),
+        width: 4,
+        editable: true,
+      },
       { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
       { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
-      { label: 'Flags', register: 'flags', value: (data.flags as string) || '--------', editable: true, flags: true },
-      { label: "Flags'", register: 'flagsp', value: (data.flagsPrime as string) || '--------', editable: true, flags: true },
+      {
+        label: 'Flags',
+        register: 'flags',
+        value: (data.flags as string) || '--------',
+        editable: true,
+        flags: true,
+      },
+      {
+        label: "Flags'",
+        register: 'flagsp',
+        value: (data.flagsPrime as string) || '--------',
+        editable: true,
+        flags: true,
+      },
     ];
     this.options.registerStrip.innerHTML = '';
     items.forEach((item) => {
@@ -414,17 +499,20 @@ export class MemoryPanel {
 
   private isEditingRegister(): boolean {
     const active = document.activeElement;
-    return active instanceof HTMLInputElement
-      && active.classList.contains('register-input')
-      && this.options.registerStrip?.contains(active) === true;
+    return (
+      active instanceof HTMLInputElement &&
+      active.classList.contains('register-input') &&
+      this.options.registerStrip?.contains(active) === true
+    );
   }
 
   private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
     const register = input.dataset.register;
     const width = Number.parseInt(input.dataset.width ?? '', 10);
-    const value = register === 'flags' || register === 'flagsp'
-      ? input.value.trim()
-      : normalizeHexInput(input.value, width);
+    const value =
+      register === 'flags' || register === 'flagsp'
+        ? input.value.trim()
+        : normalizeHexInput(input.value, width);
     if (!register || value === null) {
       input.value = previousValue;
       if (this.options.statusEl) {
@@ -478,13 +566,10 @@ export class MemoryPanel {
 
   private updateMemoryInputsState(): void {
     this.options.views.forEach((entry) => {
-      entry.dump
-        ?.querySelectorAll<HTMLInputElement>('input.memory-byte-input')
-        .forEach((input) => {
-          input.disabled =
-            !this.editingEnabled ||
-            (input.dataset.readOnly === 'true' && !this.allowReadOnlyWrites);
-        });
+      entry.dump?.querySelectorAll<HTMLInputElement>('input.memory-byte-input').forEach((input) => {
+        input.disabled =
+          !this.editingEnabled || (input.dataset.readOnly === 'true' && !this.allowReadOnlyWrites);
+      });
     });
   }
 

@@ -35,7 +35,12 @@ export function silenceTec1gSpeaker(state: Tec1gState, queueUpdate: () => void):
  */
 export function resetTec1gRuntimeState(
   state: Tec1gState,
-  defaults: { matrixMode: boolean; sysCtrl: number; gimpSignal: boolean; cartridgePresent: boolean },
+  defaults: {
+    matrixMode: boolean;
+    sysCtrl: number;
+    gimpSignal: boolean;
+    cartridgePresent: boolean;
+  },
   controllers: ResetControllers,
   queueUpdate: () => void
 ): void {

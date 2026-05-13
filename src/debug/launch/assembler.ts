@@ -97,7 +97,10 @@ function formatAsm80Error(err: unknown, asmPath?: string): string {
   return String(err);
 }
 
-export function parseAsm80Diagnostic(output: string, asmPath?: string): AssemblyDiagnostic | undefined {
+export function parseAsm80Diagnostic(
+  output: string,
+  asmPath?: string
+): AssemblyDiagnostic | undefined {
   const trimmed = output.trim();
   if (trimmed.length === 0) {
     return undefined;
@@ -130,7 +133,9 @@ export function parseAsm80Diagnostic(output: string, asmPath?: string): Assembly
         ? { path: asmPath }
         : {}),
     ...(parsedLine !== undefined && Number.isFinite(parsedLine) ? { line: parsedLine } : {}),
-    ...(parsedColumn !== undefined && Number.isFinite(parsedColumn) ? { column: parsedColumn } : {}),
+    ...(parsedColumn !== undefined && Number.isFinite(parsedColumn)
+      ? { column: parsedColumn }
+      : {}),
     ...(sourceLine !== undefined && sourceLine.length > 0 ? { sourceLine } : {}),
   };
 }
@@ -161,7 +166,10 @@ function configureAsm80FileResolver(sourceDir: string): void {
 
 function compileAsm80Source(
   asmPath: string
-): [ReturnType<typeof asm80Module.compile>[0], NonNullable<ReturnType<typeof asm80Module.compile>[1]>] {
+): [
+  ReturnType<typeof asm80Module.compile>[0],
+  NonNullable<ReturnType<typeof asm80Module.compile>[1]>,
+] {
   const asmDir = path.dirname(asmPath);
   configureAsm80FileResolver(asmDir);
   const sourceText = fs.readFileSync(asmPath, 'utf-8');
