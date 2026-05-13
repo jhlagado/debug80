@@ -4,7 +4,7 @@
  */
 
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
-import { normalizePathForKey } from '../debug/mapping/path-utils';
+import { normalizePathForKey } from '../common/path-utils';
 
 let onSegmentWarning: ((message: string) => void) | undefined;
 
@@ -154,8 +154,8 @@ export function findSegmentForAddress(
     if (!bestHasValidLine) {
       onSegmentWarning(
         `findSegmentForAddress(0x${address.toString(16)}): best segment ` +
-        `[0x${best.start.toString(16)}-0x${best.end.toString(16)}] has no valid source line ` +
-        `(line=${best.loc.line ?? 'null'})`
+          `[0x${best.start.toString(16)}-0x${best.end.toString(16)}] has no valid source line ` +
+          `(line=${best.loc.line ?? 'null'})`
       );
     }
   }
@@ -211,9 +211,7 @@ function resolveLocationInternal(
       }
       const segments = fileMap.get(tryLine);
       if (segments && segments.length > 0) {
-        const filtered = executableOnly
-          ? segments.filter((seg) => seg.end > seg.start)
-          : segments;
+        const filtered = executableOnly ? segments.filter((seg) => seg.end > seg.start) : segments;
         if (filtered.length > 0) {
           return filtered.map((seg) => seg.start);
         }

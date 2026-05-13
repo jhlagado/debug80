@@ -18,7 +18,12 @@ import {
   remapAsm80MisassignedIncludeAnchors,
   syncSegmentLocationsFromAnchors,
 } from '../../mapping/layer2';
-import { buildSourceMapIndex, SourceMapIndex, ResolvePathFn, setSegmentWarningHandler } from '../../mapping/source-map';
+import {
+  buildSourceMapIndex,
+  SourceMapIndex,
+  ResolvePathFn,
+  setSegmentWarningHandler,
+} from '../../mapping/source-map';
 import {
   buildD8DebugMap,
   buildMappingFromD8DebugMap,
@@ -94,15 +99,8 @@ export function buildMappingFromListing(options: {
   mapArgs: { artifactBase?: string; outputDir?: string };
   service: MappingServiceOptions;
 }): MappingBuildResult {
-  const {
-    listingContent,
-    listingPath,
-    asmPath,
-    sourceFile,
-    extraListingPaths,
-    mapArgs,
-    service,
-  } = options;
+  const { listingContent, listingPath, asmPath, sourceFile, extraListingPaths, mapArgs, service } =
+    options;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
   const debugMapCandidates = collectDebugMapCandidates(mapPath, listingPath);
@@ -124,8 +122,7 @@ export function buildMappingFromListing(options: {
   // Only apply listing-vs-map mtime for Debug80-generated maps. Native assembler maps (e.g. ZAX
   // `.d8.json`) must not be invalidated when the `.lst` is newer — ZAX emits both; mtimes are
   // not a reliable ordering signal, and the listing parser is asm80-oriented, not a substitute.
-  const mapStale =
-    !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
+  const mapStale = !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
 
   let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
   let missingSources: string[] = [];
@@ -142,7 +139,9 @@ export function buildMappingFromListing(options: {
     missingSources = layer2.missingSources;
     if (missingSources.length > 0) {
       const unique = Array.from(new Set(missingSources));
-      service.logger.warn(`Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`);
+      service.logger.warn(
+        `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`
+      );
     }
     debugMap = buildD8DebugMap(baseMapping, {
       arch: 'z80',
@@ -187,7 +186,7 @@ export function buildMappingFromListing(options: {
   }
   service.logger.info(
     `Debug80: mapping has ${mapping.segments.length} segments, ` +
-    `${mapping.anchors.length} anchors, files=[${[...fileSet].map(f => f ?? '(null)').join(', ')}]`
+      `${mapping.anchors.length} anchors, files=[${[...fileSet].map((f) => f ?? '(null)').join(', ')}]`
   );
 
   const extraMapping = loadExtraListingMapping(extraListingPaths, service);
@@ -207,10 +206,7 @@ export function buildMappingFromListing(options: {
   propagateMisassignedIncludeSegments(mapping, includeAnchorRemaps, (file) =>
     service.resolveMappedPath(file)
   );
-  syncSegmentLocationsFromAnchors(
-    mapping,
-    new Set(includeAnchorRemaps.map((r) => r.address))
-  );
+  syncSegmentLocationsFromAnchors(mapping, new Set(includeAnchorRemaps.map((r) => r.address)));
 
   setSegmentWarningHandler((msg) => service.logger.warn(`Debug80: ${msg}`));
 
@@ -218,7 +214,7 @@ export function buildMappingFromListing(options: {
 
   service.logger.info(
     `Debug80: index built with ${index.segmentsByAddress.length} address-sorted segments, ` +
-    `${index.segmentsByFileLine.size} file entries, ${index.anchorsByFile.size} anchor files`
+      `${index.segmentsByFileLine.size} file entries, ${index.anchorsByFile.size} anchor files`
   );
 
   return { mapping, index, missingSources };
@@ -309,7 +305,8 @@ function debugMapContainsSource(
   sourceFile: string,
   service: MappingServiceOptions
 ): boolean {
-  const sourceResolved = service.resolveMappedPath(sourceFile) ?? path.resolve(service.baseDir, sourceFile);
+  const sourceResolved =
+    service.resolveMappedPath(sourceFile) ?? path.resolve(service.baseDir, sourceFile);
   for (const file of Object.keys(map.files)) {
     const resolved = service.resolveMappedPath(file) ?? path.resolve(service.baseDir, file);
     if (path.resolve(resolved) === path.resolve(sourceResolved)) {
@@ -422,7 +419,11 @@ function loadExtraListingMapping(
         );
       }
 
-      let debugMap = hasNativeMap ? loadedMap : !mapStale && fs.existsSync(mapPath) ? loadedMap : undefined;
+      let debugMap = hasNativeMap
+        ? loadedMap
+        : !mapStale && fs.existsSync(mapPath)
+          ? loadedMap
+          : undefined;
       if (debugMap) {
         const cachedMapping = buildMappingFromD8DebugMap(debugMap);
         if (!shouldRebuildCachedMap(cachedMapping, hasNativeMap, listingPath)) {
@@ -453,7 +454,9 @@ function loadExtraListingMapping(
       writeDebugMap(debugMap, mapPath, service, listingPath);
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
-      service.logger.error(`${prefix}: failed to read extra listing "${listingPath}": ${String(err)}`);
+      service.logger.error(
+        `${prefix}: failed to read extra listing "${listingPath}": ${String(err)}`
+      );
     }
   }
   if (combined.segments.length === 0 && combined.anchors.length === 0) {
@@ -479,7 +482,9 @@ function buildExtraListingMapping(
       }
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
-      service.logger.error(`${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`);
+      service.logger.error(
+        `${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`
+      );
     }
   }
   const content = fs.readFileSync(listingPath, 'utf-8');

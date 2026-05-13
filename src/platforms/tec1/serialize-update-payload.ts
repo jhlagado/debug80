@@ -23,7 +23,10 @@ export function serializeTec1UpdateFromRuntimeState(state: Tec1State): Tec1Updat
 /**
  * Snapshot payload from sidebar UI state after applying an update (extension → webview).
  */
-export function serializeTec1UpdateFromUiState(state: Tec1UiState, speakerHz?: number): Tec1UpdatePayload {
+export function serializeTec1UpdateFromUiState(
+  state: Tec1UiState,
+  speakerHz?: number
+): Tec1UpdatePayload {
   const payload: Tec1UpdatePayload = {
     digits: [...state.digits],
     matrix: [...state.matrix],

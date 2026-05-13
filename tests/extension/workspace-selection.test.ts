@@ -56,9 +56,8 @@ describe('WorkspaceSelectionController', () => {
       { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
     ];
 
-    const { WorkspaceSelectionController } = await import(
-      '../../src/extension/workspace-selection'
-    );
+    const { WorkspaceSelectionController } =
+      await import('../../src/extension/workspace-selection');
     const update = vi.fn();
     const platformViewProvider = {
       setSelectedWorkspace: vi.fn(),
@@ -90,9 +89,8 @@ describe('WorkspaceSelectionController', () => {
         path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
     );
 
-    const { WorkspaceSelectionController } = await import(
-      '../../src/extension/workspace-selection'
-    );
+    const { WorkspaceSelectionController } =
+      await import('../../src/extension/workspace-selection');
     const update = vi.fn();
     const platformViewProvider = {
       setSelectedWorkspace: vi.fn(),
@@ -129,9 +127,8 @@ describe('WorkspaceSelectionController', () => {
       folder: workspaceFolders[1],
     });
 
-    const { WorkspaceSelectionController } = await import(
-      '../../src/extension/workspace-selection'
-    );
+    const { WorkspaceSelectionController } =
+      await import('../../src/extension/workspace-selection');
     const update = vi.fn();
     const platformViewProvider = {
       setSelectedWorkspace: vi.fn(),
@@ -171,9 +168,8 @@ describe('WorkspaceSelectionController', () => {
     );
     resolvePreferredTargetName.mockReturnValue('app');
 
-    const { WorkspaceSelectionController } = await import(
-      '../../src/extension/workspace-selection'
-    );
+    const { WorkspaceSelectionController } =
+      await import('../../src/extension/workspace-selection');
     const platformViewProvider = {
       setSelectedWorkspace: vi.fn(),
       setHasProject: vi.fn(),

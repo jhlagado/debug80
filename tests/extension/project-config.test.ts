@@ -261,5 +261,4 @@ describe('project-config helpers', () => {
     expect(config?.targets?.app?.asm).toBe('src/main.zax');
     expect(config?.targets?.app?.assembler).toBe('zax');
   });
-
 });

@@ -73,7 +73,8 @@ export function validateD8Segments(map: D8DebugMap): D8ValidationWarning[] {
         }
         const narrow: D8Segment = segments[j]!;
         if (narrow.start >= wide.start && narrow.end <= wide.end) {
-          const narrowHasLine = narrow.line !== undefined && narrow.line !== null && narrow.line >= 1;
+          const narrowHasLine =
+            narrow.line !== undefined && narrow.line !== null && narrow.line >= 1;
           if (narrowHasLine) {
             warnings.push({
               file: fileKey,

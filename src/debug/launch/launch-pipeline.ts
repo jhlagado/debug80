@@ -40,14 +40,20 @@ export async function assembleIfRequested(options: {
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent: EventSender;
 }): Promise<void> {
-  const { backend, args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } = options;
+  const { backend, args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } =
+    options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }
 
-  const result = await backend.assemble({ asmPath, hexPath, listingPath, onOutput: (message) => {
-    emitConsoleOutput(sendEvent, message, { newline: false });
-  } });
+  const result = await backend.assemble({
+    asmPath,
+    hexPath,
+    listingPath,
+    onOutput: (message) => {
+      emitConsoleOutput(sendEvent, message, { newline: false });
+    },
+  });
   if (!result.success) {
     throw new AssembleFailureError({
       ...result,

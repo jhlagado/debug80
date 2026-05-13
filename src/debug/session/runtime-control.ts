@@ -274,8 +274,8 @@ export function applyStepInfo(context: RuntimeControlContext, trace: StepInfo): 
 
 export function captureEntryCpuStateIfNeeded(context: RuntimeControlContext): void {
   const getEntryCpuState = (context as Partial<RuntimeControlContext>).getEntryCpuState;
-  const getRestartCaptureAddress =
-    (context as Partial<RuntimeControlContext>).getRestartCaptureAddress;
+  const getRestartCaptureAddress = (context as Partial<RuntimeControlContext>)
+    .getRestartCaptureAddress;
   const setEntryCpuState = (context as Partial<RuntimeControlContext>).setEntryCpuState;
   if (
     typeof getEntryCpuState !== 'function' ||

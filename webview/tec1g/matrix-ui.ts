@@ -15,7 +15,7 @@ interface VscodeApi {
 
 export function createMatrixUiController(
   vscode: VscodeApi,
-  isUiTabActive: () => boolean,
+  isUiTabActive: () => boolean
 ): MatrixUiController {
   const matrixGrid = document.getElementById('matrixGrid') as HTMLElement;
   const matrixModeToggle = document.getElementById('matrixModeToggle') as HTMLElement;
@@ -74,7 +74,7 @@ export function createMatrixUiController(
   function drawMatrix() {
     if (!matrixGrid) return;
     const dots = matrixGrid.querySelectorAll('.matrix-dot');
-    dots.forEach(dot => {
+    dots.forEach((dot) => {
       const row = parseInt((dot as HTMLElement).dataset.row || '0', 10);
       const col = parseInt((dot as HTMLElement).dataset.col || '0', 10);
       const mask = 1 << col;
@@ -155,9 +155,7 @@ export function createMatrixUiController(
     const target = event.target;
     return (
       target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT')
+      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
     );
   }
 
@@ -166,8 +164,7 @@ export function createMatrixUiController(
       return;
     }
     const direct = matrixKeyElements.get(key);
-    const fallback =
-      key.length === 1 ? matrixKeyElements.get(key.toLowerCase()) : undefined;
+    const fallback = key.length === 1 ? matrixKeyElements.get(key.toLowerCase()) : undefined;
     const el = direct ?? fallback;
     if (el) {
       el.classList.toggle('pressed', pressed);
@@ -267,24 +264,29 @@ export function createMatrixUiController(
           label === 'Space'
             ? ' '
             : label === 'Backspace'
-            ? 'Backspace'
-            : label === 'Enter'
-            ? 'Enter'
-            : label === 'Esc'
-            ? 'Escape'
-            : label === 'Tab'
-            ? 'Tab'
-            : label === 'Caps'
-            ? 'CapsLock'
-            : label === 'Shift'
-            ? 'Shift'
-            : label === 'Ctrl'
-            ? 'Control'
-            : label === 'Alt'
-            ? 'Alt'
-            : label;
+              ? 'Backspace'
+              : label === 'Enter'
+                ? 'Enter'
+                : label === 'Esc'
+                  ? 'Escape'
+                  : label === 'Tab'
+                    ? 'Tab'
+                    : label === 'Caps'
+                      ? 'CapsLock'
+                      : label === 'Shift'
+                        ? 'Shift'
+                        : label === 'Ctrl'
+                          ? 'Control'
+                          : label === 'Alt'
+                            ? 'Alt'
+                            : label;
         keyEl.dataset.key = keyValue;
-        if (keyValue !== 'Shift' && keyValue !== 'Control' && keyValue !== 'Alt' && keyValue !== 'CapsLock') {
+        if (
+          keyValue !== 'Shift' &&
+          keyValue !== 'Control' &&
+          keyValue !== 'Alt' &&
+          keyValue !== 'CapsLock'
+        ) {
           matrixKeyElements.set(keyValue, keyEl);
         }
         keyEl.addEventListener('mousedown', (event) => {

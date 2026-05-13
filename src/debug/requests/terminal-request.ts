@@ -15,7 +15,7 @@ export type TerminalRequestDeps = {
 export function handleTerminalInput(
   response: DebugProtocol.Response,
   args: unknown,
-  deps: TerminalRequestDeps,
+  deps: TerminalRequestDeps
 ): boolean {
   const terminalState = deps.getTerminalState();
   if (terminalState === undefined) {
@@ -29,7 +29,7 @@ export function handleTerminalInput(
 
 export function handleTerminalBreak(
   response: DebugProtocol.Response,
-  deps: TerminalRequestDeps,
+  deps: TerminalRequestDeps
 ): boolean {
   const terminalState = deps.getTerminalState();
   if (terminalState === undefined) {

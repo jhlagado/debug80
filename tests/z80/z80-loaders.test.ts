@@ -26,11 +26,7 @@ describe('z80-loaders', () => {
   });
 
   it('tracks written ranges from HEX data records', () => {
-    const hex = [
-      ':020100000102FA',
-      ':01020000AA53',
-      ':00000001FF',
-    ].join('\n');
+    const hex = [':020100000102FA', ':01020000AA53', ':00000001FF'].join('\n');
     const program = parseIntelHex(hex);
 
     assert.deepEqual(program.writeRanges, [

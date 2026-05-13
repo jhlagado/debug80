@@ -32,7 +32,9 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
     config: Debug80LaunchConfig
   ): Promise<vscode.DebugConfiguration | null | undefined> {
     // Handle F5 with no launch.json / empty config — VS Code passes {}
-    const configKeys = Object.keys(config).filter((k) => k !== 'name' && k !== 'request' && k !== 'type');
+    const configKeys = Object.keys(config).filter(
+      (k) => k !== 'name' && k !== 'request' && k !== 'type'
+    );
     const isEmptyConfig = !config.type && configKeys.length === 0;
     if (isEmptyConfig) {
       config = this.createCurrentProjectConfig();
@@ -83,9 +85,7 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
         return null;
       }
 
-      const createdResult: unknown = await vscode.commands.executeCommand(
-        'debug80.createProject'
-      );
+      const createdResult: unknown = await vscode.commands.executeCommand('debug80.createProject');
       if (createdResult !== true) {
         return null;
       }
@@ -174,9 +174,9 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
   private hasExplicitArtifactInputs(config: Debug80LaunchConfig): boolean {
     return Boolean(
       (config.asm !== undefined && config.asm !== '') ||
-        (config.sourceFile !== undefined && config.sourceFile !== '') ||
-        (config.hex !== undefined && config.hex !== '') ||
-        (config.listing !== undefined && config.listing !== '')
+      (config.sourceFile !== undefined && config.sourceFile !== '') ||
+      (config.hex !== undefined && config.hex !== '') ||
+      (config.listing !== undefined && config.listing !== '')
     );
   }
 }

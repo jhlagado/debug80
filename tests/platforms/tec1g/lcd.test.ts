@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CycleClock } from '../../../src/platforms/cycle-clock';
 import { TEC_FAST_HZ } from '../../../src/platforms/tec-common';
-import {
-  createTec1gLcdController,
-  type Tec1gLcdState,
-} from '../../../src/platforms/tec1g/lcd';
+import { createTec1gLcdController, type Tec1gLcdState } from '../../../src/platforms/tec1g/lcd';
 import { TEC1G_LCD_ROW0_START, TEC1G_LCD_SPACE } from '../../../src/platforms/tec1g/constants';
 
 function makeState(): Tec1gLcdState {

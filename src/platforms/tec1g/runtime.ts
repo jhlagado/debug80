@@ -23,12 +23,7 @@ import {
   TEC1G_MASK_LOW7,
   TEC1G_NMI_VECTOR,
 } from './constants';
-import {
-  TEC_SLOW_HZ,
-  TEC_FAST_HZ,
-  TEC_KEY_HOLD_MS,
-  calculateKeyHoldCycles,
-} from '../tec-common';
+import { TEC_SLOW_HZ, TEC_FAST_HZ, TEC_KEY_HOLD_MS, calculateKeyHoldCycles } from '../tec-common';
 import { createTec1gIoHandlers } from './io-handlers';
 import { handleMatrixPortWrite, maybeCommitMatrixOnIdle } from './runtime-matrix';
 import { createTec1gSdSpi } from './runtime-storage';

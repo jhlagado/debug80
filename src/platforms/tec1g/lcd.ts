@@ -194,8 +194,7 @@ export function createTec1gLcdController(
       return value & TEC1G_MASK_BYTE;
     }
     const index = lcdIndexForAddr(state.lcdAddr);
-    const value =
-      index !== null ? (state.lcd[index] ?? TEC1G_LCD_SPACE) : TEC1G_LCD_SPACE;
+    const value = index !== null ? (state.lcd[index] ?? TEC1G_LCD_SPACE) : TEC1G_LCD_SPACE;
     state.lcdAddr = lcdAdvanceAddr(state.lcdAddr, state.lcdEntryIncrement);
     if (state.lcdEntryShift) {
       shiftLcdDisplay(state.lcdEntryIncrement ? 1 : -1);

@@ -181,7 +181,11 @@ function findIncludeRegionEnd(
       continue;
     }
     const li = next.line - 1;
-    if (li >= 0 && li < parentLines.length && lineDefinesLabel(next.symbol, parentLines[li] ?? '')) {
+    if (
+      li >= 0 &&
+      li < parentLines.length &&
+      lineDefinesLabel(next.symbol, parentLines[li] ?? '')
+    ) {
       return next.address;
     }
   }

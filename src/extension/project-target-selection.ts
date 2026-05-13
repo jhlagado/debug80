@@ -5,7 +5,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { listProjectSourceFiles, readProjectConfig, updateProjectTargetSource } from './project-config';
+import {
+  listProjectSourceFiles,
+  readProjectConfig,
+  updateProjectTargetSource,
+} from './project-config';
 
 const TARGET_KEY_PREFIX = 'debug80.selectedTarget:';
 
@@ -275,19 +279,13 @@ export class ProjectTargetSelectionController {
 
     const items: Array<vscode.QuickPickItem | TargetQuickPickItem> = choices.map((choice) => {
       const status =
-        choice.name === stored
-          ? 'current'
-          : choice.name === defaultTarget
-            ? 'default'
-            : undefined;
+        choice.name === stored ? 'current' : choice.name === defaultTarget ? 'default' : undefined;
       const descriptionParts = [choice.description, status].filter(
         (value): value is string => value !== undefined && value.length > 0
       );
       const row: TargetQuickPickItem = {
         label: choice.name,
-        ...(descriptionParts.length > 0
-          ? { description: descriptionParts.join(' • ') }
-          : {}),
+        ...(descriptionParts.length > 0 ? { description: descriptionParts.join(' • ') } : {}),
         ...(choice.detail !== undefined ? { detail: choice.detail } : {}),
         targetName: choice.name,
       };
@@ -328,8 +326,24 @@ export class ProjectTargetSelectionController {
       asmPaths = [];
     }
 
-    appendEntrySourceSection(items, zaxPaths, 'ZAX sources', 'ZAX', projectRoot, targetsPerZaxPath, bindTarget);
-    appendEntrySourceSection(items, asmPaths, 'ASM sources', 'ASM', projectRoot, targetsPerAsmPath, bindTarget);
+    appendEntrySourceSection(
+      items,
+      zaxPaths,
+      'ZAX sources',
+      'ZAX',
+      projectRoot,
+      targetsPerZaxPath,
+      bindTarget
+    );
+    appendEntrySourceSection(
+      items,
+      asmPaths,
+      'ASM sources',
+      'ASM',
+      projectRoot,
+      targetsPerAsmPath,
+      bindTarget
+    );
 
     const picked = await vscode.window.showQuickPick(items, {
       placeHolder: options.placeHolder ?? 'Select the Debug80 target',
@@ -344,7 +358,11 @@ export class ProjectTargetSelectionController {
     }
 
     if (picked.applyEntrySource !== undefined) {
-      const ok = updateProjectTargetSource(projectConfigPath, picked.targetName, picked.applyEntrySource);
+      const ok = updateProjectTargetSource(
+        projectConfigPath,
+        picked.targetName,
+        picked.applyEntrySource
+      );
       if (!ok) {
         void vscode.window.showErrorMessage('Debug80: Failed to update the project program file.');
         return null;
@@ -356,7 +374,6 @@ export class ProjectTargetSelectionController {
     this.rememberTarget(projectConfigPath, picked.targetName);
     return picked.targetName;
   }
-
 }
 
 function targetProgramFileExists(projectRoot: string, target: Record<string, unknown>): boolean {

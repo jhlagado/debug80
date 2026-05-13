@@ -17,17 +17,21 @@ import { createLcdRenderer } from './lcd-renderer';
 
 const vscode = acquireVscodeApi();
 const DEFAULT_TAB: ProviderPanelTab =
-  document.body.dataset.activeTab === 'memory'
-    ? 'memory'
-    : 'ui';
+  document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') as HTMLButtonElement | null;
+const addWorkspaceFolderButton = document.getElementById(
+  'addWorkspaceFolder'
+) as HTMLButtonElement | null;
 const appRoot = document.getElementById('app') as HTMLElement | null;
 const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const platformInitButton = document.getElementById('platformInitButton') as HTMLButtonElement | null;
+const setupPrimaryAction = document.getElementById(
+  'setupPrimaryAction'
+) as HTMLButtonElement | null;
+const platformInitButton = document.getElementById(
+  'platformInitButton'
+) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
@@ -38,7 +42,9 @@ const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
 const muteEl = document.getElementById('mute') as HTMLElement;
-const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionButtons = Array.from(
+  document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
+);
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
 const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
@@ -99,14 +105,18 @@ const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const projectStatusUi = createProjectStatusUi(vscode, {
-  selectProjectButton,
-  setupCard,
-  setupCardText,
-  setupPrimaryAction,
-  platformInitButton,
-  homeTargetSelect,
-}, 'tec1');
+const projectStatusUi = createProjectStatusUi(
+  vscode,
+  {
+    selectProjectButton,
+    setupCard,
+    setupCardText,
+    setupPrimaryAction,
+    platformInitButton,
+    homeTargetSelect,
+  },
+  'tec1'
+);
 
 function applyProjectStatus(payload: {
   rootPath?: ProjectStatusPayload['rootPath'];
@@ -242,7 +252,7 @@ memoryPanelController = new MemoryPanel({
 memoryPanelController.wire();
 const serialUi = wireSerialUi(vscode);
 
-window.addEventListener('message', event => {
+window.addEventListener('message', (event) => {
   if (!event.data) return;
   if (event.data.type === 'projectStatus') {
     applyProjectStatus(event.data);
@@ -250,7 +260,9 @@ window.addEventListener('message', event => {
   }
   if (event.data.type === 'sessionStatus') {
     sessionStatusController.setStatus(event.data.status);
-    panelLayout.setRegisterRefreshActive(event.data.status === 'running' || event.data.status === 'paused');
+    panelLayout.setRegisterRefreshActive(
+      event.data.status === 'running' || event.data.status === 'paused'
+    );
     return;
   }
   if (event.data.type === 'selectTab') {
@@ -318,4 +330,3 @@ window.addEventListener('beforeunload', () => {
   stopOnEntryControl.dispose();
   projectStatusUi.dispose();
 });
-  

@@ -21,13 +21,15 @@ const applyVisibility = (
     }
     node.classList.toggle('ui-hidden', visibility[key] === false);
   });
-  controls?.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-section]').forEach((input) => {
-    const key = input.dataset.section;
-    if (!key) {
-      return;
-    }
-    input.checked = visibility[key] !== false;
-  });
+  controls
+    ?.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-section]')
+    .forEach((input) => {
+      const key = input.dataset.section;
+      if (!key) {
+        return;
+      }
+      input.checked = visibility[key] !== false;
+    });
 };
 
 export function createVisibilityController(vscode: VscodeApi): VisibilityController {

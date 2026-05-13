@@ -4,14 +4,8 @@
 
 import * as fs from 'fs';
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import {
-  applyCartridgeMemory,
-  createTec1gMemoryHooks,
-} from './tec1g-memory';
-import {
-  loadTec1gCartridgeImage,
-  type Tec1gCartridgeImage,
-} from './tec1g-cartridge';
+import { applyCartridgeMemory, createTec1gMemoryHooks } from './tec1g-memory';
+import { loadTec1gCartridgeImage, type Tec1gCartridgeImage } from './tec1g-cartridge';
 import {
   buildPlatformIoHandlers,
   type PlatformIoBuildResult,
@@ -185,8 +179,7 @@ export function createTec1gPlatformProvider(
     loadAssets: (context): Tec1gPlatformAssets =>
       loadTec1gAssets(tec1gConfig.cartridgeHex, context),
     resolveEntry: (assets): number | undefined =>
-      ((assets as Tec1gPlatformAssets | undefined)?.cartridgeImage?.bootEntry ??
-        tec1gConfig.entry),
+      (assets as Tec1gPlatformAssets | undefined)?.cartridgeImage?.bootEntry ?? tec1gConfig.entry,
     finalizeRuntime: (context): void => finalizeTec1gRuntime(tec1gConfig, context),
   };
 }

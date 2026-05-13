@@ -11,11 +11,10 @@ export function normalizeSimpleRegions(
   regions?: SimpleMemoryRegion[],
   fallback?: SimpleMemoryRegion[]
 ): SimpleMemoryRegion[] {
-  const defaults =
-    fallback ?? [
-      { start: 0x0000, end: 0x07ff, kind: 'rom' },
-      { start: 0x0800, end: 0xffff, kind: 'ram' },
-    ];
+  const defaults = fallback ?? [
+    { start: 0x0000, end: 0x07ff, kind: 'rom' },
+    { start: 0x0800, end: 0xffff, kind: 'ram' },
+  ];
   if (!Array.isArray(regions) || regions.length === 0) {
     return defaults;
   }
@@ -45,9 +44,7 @@ export function normalizeSimpleRegions(
 /**
  * Normalizes the simple platform config with defaults.
  */
-export function normalizeSimpleConfig(
-  cfg?: SimplePlatformConfig
-): SimplePlatformConfigNormalized {
+export function normalizeSimpleConfig(cfg?: SimplePlatformConfig): SimplePlatformConfigNormalized {
   const config = cfg ?? {};
   const regions = normalizeSimpleRegions(config.regions, [
     { start: 0x0000, end: 0x07ff, kind: 'rom' },
@@ -57,13 +54,11 @@ export function normalizeSimpleConfig(
     .filter((region) => region.kind === 'rom' || region.readOnly === true)
     .map((region) => ({ start: region.start, end: region.end }));
   const appStart =
-    Number.isFinite(config.appStart) && config.appStart !== undefined
-      ? config.appStart
-      : 0x0900;
+    Number.isFinite(config.appStart) && config.appStart !== undefined ? config.appStart : 0x0900;
   const entry =
     Number.isFinite(config.entry) && config.entry !== undefined
       ? config.entry
-      : romRanges[0]?.start ?? 0x0000;
+      : (romRanges[0]?.start ?? 0x0000);
   const binFrom =
     Number.isFinite(config.binFrom) && config.binFrom !== undefined ? config.binFrom : undefined;
   const binTo =

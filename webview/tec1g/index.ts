@@ -26,18 +26,22 @@ import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
 const vscode = acquireVscodeApi();
 
 const DEFAULT_TAB: ProviderPanelTab =
-  document.body.dataset.activeTab === 'memory'
-    ? 'memory'
-    : 'ui';
+  document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
 
 const appRoot = document.getElementById('app') as HTMLElement | null;
 const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') as HTMLButtonElement | null;
+const addWorkspaceFolderButton = document.getElementById(
+  'addWorkspaceFolder'
+) as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const platformInitButton = document.getElementById('platformInitButton') as HTMLButtonElement | null;
+const setupPrimaryAction = document.getElementById(
+  'setupPrimaryAction'
+) as HTMLButtonElement | null;
+const platformInitButton = document.getElementById(
+  'platformInitButton'
+) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
@@ -51,7 +55,9 @@ const statusShadow = document.getElementById('statusShadow') as HTMLElement;
 const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
-const accordionButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-accordion-toggle]'));
+const accordionButtons = Array.from(
+  document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
+);
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
 const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
@@ -95,36 +101,43 @@ panelLayout.wireButtons();
 const matrixUi = createMatrixUiController(vscode, () => panelLayout.isMachineOpen());
 const visibilityController = createVisibilityController(vscode);
 
-const projectStatusUi = createTec1gProjectStatusUi(vscode, {
-  selectProjectButton,
-  setupCard,
-  setupCardText,
-  setupPrimaryAction,
-  platformInitButton,
-  homeTargetSelect,
-  getPlatform: () => platformSelectEl?.value ?? undefined,
-}, 'tec1g');
+const projectStatusUi = createTec1gProjectStatusUi(
+  vscode,
+  {
+    selectProjectButton,
+    setupCard,
+    setupCardText,
+    setupPrimaryAction,
+    platformInitButton,
+    homeTargetSelect,
+    getPlatform: () => platformSelectEl?.value ?? undefined,
+  },
+  'tec1g'
+);
 
 let projectIsInitialized = false;
 
 projectStatusUi.applyProjectStatus({});
-projectIsInitialized = applyInitializedProjectControls({}, {
-  appRoot,
-  projectHeader,
-  targetControl,
-  targetSelect: homeTargetSelect,
-  platformControl,
-  platformInfoControl,
-  platformValue: platformValueEl,
-  platformSelect: platformSelectEl,
-  stopOnEntryLabel,
-  restartButton: restartDebugButton,
-  tabs: toolbarEl,
-  accordion: accordionEl,
-  panelUi,
-  panelRegisters,
-  panelMemory,
-});
+projectIsInitialized = applyInitializedProjectControls(
+  {},
+  {
+    appRoot,
+    projectHeader,
+    targetControl,
+    targetSelect: homeTargetSelect,
+    platformControl,
+    platformInfoControl,
+    platformValue: platformValueEl,
+    platformSelect: platformSelectEl,
+    stopOnEntryLabel,
+    restartButton: restartDebugButton,
+    tabs: toolbarEl,
+    accordion: accordionEl,
+    panelUi,
+    panelRegisters,
+    panelMemory,
+  }
+);
 
 // Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
 panelUi.addEventListener('mousedown', (event) => {
@@ -234,7 +247,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
   }
   if (message.type === 'sessionStatus') {
     sessionStatusController.setStatus(message.status);
-    panelLayout.setRegisterRefreshActive(message.status === 'running' || message.status === 'paused');
+    panelLayout.setRegisterRefreshActive(
+      message.status === 'running' || message.status === 'paused'
+    );
     return;
   }
   if (message.type === 'selectTab') {

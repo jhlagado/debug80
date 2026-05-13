@@ -11,13 +11,23 @@ type GlcdPayload = {
   glcd?: number[];
   glcdDdram?: number[];
   glcdState?: {
-    displayOn?: boolean; graphicsOn?: boolean; cursorOn?: boolean; cursorBlink?: boolean;
-    blinkVisible?: boolean; ddramAddr?: number; ddramPhase?: number; textShift?: number;
-    scroll?: number; reverseMask?: number;
+    displayOn?: boolean;
+    graphicsOn?: boolean;
+    cursorOn?: boolean;
+    cursorBlink?: boolean;
+    blinkVisible?: boolean;
+    ddramAddr?: number;
+    ddramPhase?: number;
+    textShift?: number;
+    scroll?: number;
+    reverseMask?: number;
   };
 };
 
-export interface GlcdRenderer { applyGlcdUpdate(payload: GlcdPayload): void; draw(): void; }
+export interface GlcdRenderer {
+  applyGlcdUpdate(payload: GlcdPayload): void;
+  draw(): void;
+}
 
 const copyPadded = (source: number[], size: number, fill: number) => {
   const values = source.slice(0, size);
@@ -30,7 +40,10 @@ export function createGlcdRenderer(): GlcdRenderer {
   const ctx = canvas?.getContext('2d') ?? null;
   const baseCanvas = ctx ? document.createElement('canvas') : null;
   const baseCtx = baseCanvas?.getContext('2d') ?? null;
-  if (baseCanvas) { baseCanvas.width = GLCD_WIDTH; baseCanvas.height = GLCD_HEIGHT; }
+  if (baseCanvas) {
+    baseCanvas.width = GLCD_WIDTH;
+    baseCanvas.height = GLCD_HEIGHT;
+  }
   const image = baseCtx && baseCanvas ? baseCtx.createImageData(GLCD_WIDTH, GLCD_HEIGHT) : null;
   let ddram = new Array(GLCD_DDRAM_SIZE).fill(0x20);
   let displayOn = true;
@@ -52,7 +65,10 @@ export function createGlcdRenderer(): GlcdRenderer {
     const scrollOffset = scroll & 0x3f;
     let ptr = 0;
     for (let i = 0; i < data.length; i += 4) {
-      data[i] = 158; data[i + 1] = 182; data[i + 2] = 99; data[i + 3] = 255;
+      data[i] = 158;
+      data[i + 1] = 182;
+      data[i + 2] = 99;
+      data[i + 3] = 255;
     }
     if (displayOn && graphicsOn) {
       for (let row = 0; row < GLCD_HEIGHT; row += 1) {
@@ -87,7 +103,11 @@ export function createGlcdRenderer(): GlcdRenderer {
           if (bits === 0) continue;
           for (let dx = 0; dx < 8; dx += 1) {
             if ((bits & (0x80 >> dx)) === 0) continue;
-            const pixel = (((textRow * 16 + dy - scrollOffset + GLCD_HEIGHT) & 0x3f) * GLCD_WIDTH + textCol * 8 + dx) * 4;
+            const pixel =
+              (((textRow * 16 + dy - scrollOffset + GLCD_HEIGHT) & 0x3f) * GLCD_WIDTH +
+                textCol * 8 +
+                dx) *
+              4;
             const lit = data[pixel] === 32 && data[pixel + 1] === 58 && data[pixel + 2] === 22;
             data[pixel] = graphicsOn && lit ? 158 : 32;
             data[pixel + 1] = graphicsOn && lit ? 182 : 58;
@@ -118,7 +138,9 @@ export function createGlcdRenderer(): GlcdRenderer {
         const underlineY = (row * 16 + 15 - scrollOffset + GLCD_HEIGHT) & 0x3f;
         for (let dx = 0; dx < 8; dx += 1) {
           const pixel = (underlineY * GLCD_WIDTH + dispCol * 8 + dx) * 4;
-          data[pixel] = 32; data[pixel + 1] = 58; data[pixel + 2] = 22;
+          data[pixel] = 32;
+          data[pixel + 1] = 58;
+          data[pixel + 2] = 22;
         }
       }
     }
@@ -131,21 +153,35 @@ export function createGlcdRenderer(): GlcdRenderer {
   return {
     applyGlcdUpdate(payload) {
       let shouldDraw = false;
-      if (Array.isArray(payload.glcdDdram)) { ddram = copyPadded(payload.glcdDdram, GLCD_DDRAM_SIZE, 0x20); shouldDraw = true; }
-      if (payload.glcdState && typeof payload.glcdState === 'object') {
-        if (typeof payload.glcdState.displayOn === 'boolean') displayOn = payload.glcdState.displayOn;
-        if (typeof payload.glcdState.graphicsOn === 'boolean') graphicsOn = payload.glcdState.graphicsOn;
-        if (typeof payload.glcdState.cursorOn === 'boolean') cursorOn = payload.glcdState.cursorOn;
-        if (typeof payload.glcdState.cursorBlink === 'boolean') cursorBlink = payload.glcdState.cursorBlink;
-        if (typeof payload.glcdState.blinkVisible === 'boolean') blinkVisible = payload.glcdState.blinkVisible;
-        if (typeof payload.glcdState.ddramAddr === 'number') cursorAddr = payload.glcdState.ddramAddr & 0xff;
-        if (typeof payload.glcdState.ddramPhase === 'number') cursorPhase = payload.glcdState.ddramPhase ? 1 : 0;
-        if (typeof payload.glcdState.textShift === 'number') textShift = payload.glcdState.textShift;
-        if (typeof payload.glcdState.scroll === 'number') scroll = payload.glcdState.scroll & 0x3f;
-        if (typeof payload.glcdState.reverseMask === 'number') reverseMask = payload.glcdState.reverseMask & 0x0f;
+      if (Array.isArray(payload.glcdDdram)) {
+        ddram = copyPadded(payload.glcdDdram, GLCD_DDRAM_SIZE, 0x20);
         shouldDraw = true;
       }
-      if (Array.isArray(payload.glcd)) { bytes = copyPadded(payload.glcd, GLCD_BYTES, 0x00); shouldDraw = true; }
+      if (payload.glcdState && typeof payload.glcdState === 'object') {
+        if (typeof payload.glcdState.displayOn === 'boolean')
+          displayOn = payload.glcdState.displayOn;
+        if (typeof payload.glcdState.graphicsOn === 'boolean')
+          graphicsOn = payload.glcdState.graphicsOn;
+        if (typeof payload.glcdState.cursorOn === 'boolean') cursorOn = payload.glcdState.cursorOn;
+        if (typeof payload.glcdState.cursorBlink === 'boolean')
+          cursorBlink = payload.glcdState.cursorBlink;
+        if (typeof payload.glcdState.blinkVisible === 'boolean')
+          blinkVisible = payload.glcdState.blinkVisible;
+        if (typeof payload.glcdState.ddramAddr === 'number')
+          cursorAddr = payload.glcdState.ddramAddr & 0xff;
+        if (typeof payload.glcdState.ddramPhase === 'number')
+          cursorPhase = payload.glcdState.ddramPhase ? 1 : 0;
+        if (typeof payload.glcdState.textShift === 'number')
+          textShift = payload.glcdState.textShift;
+        if (typeof payload.glcdState.scroll === 'number') scroll = payload.glcdState.scroll & 0x3f;
+        if (typeof payload.glcdState.reverseMask === 'number')
+          reverseMask = payload.glcdState.reverseMask & 0x0f;
+        shouldDraw = true;
+      }
+      if (Array.isArray(payload.glcd)) {
+        bytes = copyPadded(payload.glcd, GLCD_BYTES, 0x00);
+        shouldDraw = true;
+      }
       if (shouldDraw) draw();
     },
     draw,

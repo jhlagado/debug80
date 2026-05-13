@@ -2,11 +2,7 @@
  * @file Unified extension platform registration model.
  */
 
-import {
-  registerPlatform,
-  type PlatformManifestEntry,
-  listPlatforms,
-} from '../platforms/provider';
+import { registerPlatform, type PlatformManifestEntry, listPlatforms } from '../platforms/provider';
 import {
   registerPlatformUi,
   type PlatformUiEntry,

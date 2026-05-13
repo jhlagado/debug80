@@ -97,7 +97,7 @@ describe('z80-runtime', () => {
     const writes: Array<{ address: number; value: number }> = [];
 
     runtime.hardware.memRead = (address: number): number =>
-      (address & 0xffff) === 0x2000 ? 0x5a : runtime.hardware.memory[address & 0xffff] ?? 0;
+      (address & 0xffff) === 0x2000 ? 0x5a : (runtime.hardware.memory[address & 0xffff] ?? 0);
     runtime.hardware.memWrite = (address: number, value: number): void => {
       writes.push({ address: address & 0xffff, value: value & 0xff });
       runtime.hardware.memory[address & 0xffff] = value & 0xff;

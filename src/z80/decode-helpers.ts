@@ -3,12 +3,7 @@
  */
 
 import { parity_bits } from './constants';
-import {
-  flagsToByte,
-  pushWord,
-  setFlagsFromByte,
-  updateXYFlags,
-} from './core-helpers';
+import { flagsToByte, pushWord, setFlagsFromByte, updateXYFlags } from './core-helpers';
 import {
   do_rl as do_rl_base,
   do_rlc as do_rlc_base,
@@ -148,8 +143,7 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     cpu.flags.S = result & 0x80 ? 1 : 0;
     cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = ((operand & 0x0f) + (cpu.a & 0x0f)) & 0x10 ? 1 : 0;
-    cpu.flags.P =
-      (cpu.a & 0x80) === (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
+    cpu.flags.P = (cpu.a & 0x80) === (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
     cpu.flags.N = 0;
     cpu.flags.C = result & 0x100 ? 1 : 0;
 
@@ -163,8 +157,7 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     cpu.flags.S = result & 0x80 ? 1 : 0;
     cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = ((operand & 0x0f) + (cpu.a & 0x0f) + cpu.flags.C) & 0x10 ? 1 : 0;
-    cpu.flags.P =
-      (cpu.a & 0x80) === (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
+    cpu.flags.P = (cpu.a & 0x80) === (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
     cpu.flags.N = 0;
     cpu.flags.C = result & 0x100 ? 1 : 0;
 
@@ -178,8 +171,7 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     cpu.flags.S = result & 0x80 ? 1 : 0;
     cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = ((cpu.a & 0x0f) - (operand & 0x0f)) & 0x10 ? 1 : 0;
-    cpu.flags.P =
-      (cpu.a & 0x80) !== (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
+    cpu.flags.P = (cpu.a & 0x80) !== (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
     cpu.flags.N = 1;
     cpu.flags.C = result & 0x100 ? 1 : 0;
 
@@ -193,8 +185,7 @@ export const buildDecoderHelpers = (cpu: Cpu, cb: Callbacks): DecoderHelpers => 
     cpu.flags.S = result & 0x80 ? 1 : 0;
     cpu.flags.Z = !(result & 0xff) ? 1 : 0;
     cpu.flags.H = ((cpu.a & 0x0f) - (operand & 0x0f) - cpu.flags.C) & 0x10 ? 1 : 0;
-    cpu.flags.P =
-      (cpu.a & 0x80) !== (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
+    cpu.flags.P = (cpu.a & 0x80) !== (operand & 0x80) && (cpu.a & 0x80) !== (result & 0x80) ? 1 : 0;
     cpu.flags.N = 1;
     cpu.flags.C = result & 0x100 ? 1 : 0;
 

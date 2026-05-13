@@ -97,10 +97,7 @@ export class SourceColumnController {
   }
 }
 
-function normalizeColumn(
-  value: unknown,
-  fallback: vscode.ViewColumn
-): vscode.ViewColumn {
+function normalizeColumn(value: unknown, fallback: vscode.ViewColumn): vscode.ViewColumn {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const rounded = Math.trunc(value);
     if (rounded >= 1 && rounded <= Number(vscode.ViewColumn.Nine)) {
@@ -118,10 +115,7 @@ function isSourceDocument(doc: vscode.TextDocument): boolean {
   return ext === '.asm' || ext === '.lst';
 }
 
-function closeDocumentTabsInOtherGroups(
-  uri: vscode.Uri,
-  keepColumn: vscode.ViewColumn
-): void {
+function closeDocumentTabsInOtherGroups(uri: vscode.Uri, keepColumn: vscode.ViewColumn): void {
   const target = uri.toString();
   for (const group of vscode.window.tabGroups.all) {
     if (group.viewColumn === keepColumn) {

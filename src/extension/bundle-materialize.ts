@@ -16,26 +16,30 @@ export const BUNDLED_MON3_V1_REL = 'tec1g/mon3/v1' as const;
 /** Default MON-1B profile shipped under resources/bundles/tec1/mon1b/v1 */
 export const BUNDLED_MON1B_V1_REL = 'tec1/mon1b/v1' as const;
 
-export type MaterializeBundledRomResult = {
-  ok: true;
-  destinationRelative: string;
-  romRelativePath: string;
-  listingRelativePath?: string;
-  sourceRelativePath?: string;
-  sourceRootRelative?: string;
-} | {
-  ok: false;
-  reason: string;
-};
+export type MaterializeBundledRomResult =
+  | {
+      ok: true;
+      destinationRelative: string;
+      romRelativePath: string;
+      listingRelativePath?: string;
+      sourceRelativePath?: string;
+      sourceRootRelative?: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
-export type MaterializeBundledAssetResult = {
-  ok: true;
-  destinationRelative: string;
-  materializedRelativePath: string;
-} | {
-  ok: false;
-  reason: string;
-};
+export type MaterializeBundledAssetResult =
+  | {
+      ok: true;
+      destinationRelative: string;
+      materializedRelativePath: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
 function bundleRootUri(extensionUri: vscode.Uri, bundleRelPath: string): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'resources', 'bundles', ...bundleRelPath.split('/'));
@@ -45,7 +49,10 @@ function readManifest(
   extensionUri: vscode.Uri,
   bundleRelPath: string
 ): BundleManifestV1 | undefined {
-  const manifestUri = vscode.Uri.joinPath(bundleRootUri(extensionUri, bundleRelPath), 'bundle.json');
+  const manifestUri = vscode.Uri.joinPath(
+    bundleRootUri(extensionUri, bundleRelPath),
+    'bundle.json'
+  );
   try {
     const raw = fs.readFileSync(manifestUri.fsPath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
@@ -126,7 +133,10 @@ function resolveWorkspaceDestination(
   }
 
   if (path.isAbsolute(trimmed)) {
-    return { ok: false, reason: `Bundled asset destination must be workspace-relative: ${trimmed}` };
+    return {
+      ok: false,
+      reason: `Bundled asset destination must be workspace-relative: ${trimmed}`,
+    };
   }
 
   const normalizedRelative = normalizeRelativePath(path.normalize(trimmed));
@@ -202,7 +212,10 @@ export function materializeBundledAsset(
     try {
       fs.copyFileSync(from, destination.absolutePath);
     } catch (e) {
-      return { ok: false, reason: `Copy failed ${from} -> ${destination.absolutePath}: ${String(e)}` };
+      return {
+        ok: false,
+        reason: `Copy failed ${from} -> ${destination.absolutePath}: ${String(e)}`,
+      };
     }
   }
 
