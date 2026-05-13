@@ -3,11 +3,7 @@
  */
 
 import type { VscodeApi } from '../common/vscode';
-import {
-  createTecKeypad,
-  type TecKeypad,
-  type TecKeypadStatusEls,
-} from '../common/tec-keypad';
+import { createTecKeypad, type TecKeypad, type TecKeypadStatusEls } from '../common/tec-keypad';
 
 export type Tec1gKeypad = TecKeypad;
 

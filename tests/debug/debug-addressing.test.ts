@@ -96,12 +96,18 @@ describe('debug-addressing', () => {
   });
 
   it('returns null when shadow is disabled', () => {
-    const alias = getShadowAlias(0x10, { activePlatform: 'tec1g', tec1gRuntime: makeRuntime(false) });
+    const alias = getShadowAlias(0x10, {
+      activePlatform: 'tec1g',
+      tec1gRuntime: makeRuntime(false),
+    });
     expect(alias).toBeNull();
   });
 
   it('returns shadow alias within range', () => {
-    const alias = getShadowAlias(0x10, { activePlatform: 'tec1g', tec1gRuntime: makeRuntime(true) });
+    const alias = getShadowAlias(0x10, {
+      activePlatform: 'tec1g',
+      tec1gRuntime: makeRuntime(true),
+    });
     const expected = (TEC1G_SHADOW_START + 0x10) & ADDR_MASK;
     expect(alias).toBe(expected);
   });
@@ -116,8 +122,7 @@ describe('debug-addressing', () => {
 
   it('matches breakpoints at shadow aliases', () => {
     const runtime = makeRuntime(true);
-    const hasBreakpoint = (addr: number) =>
-      addr === ((TEC1G_SHADOW_START + 0x20) & ADDR_MASK);
+    const hasBreakpoint = (addr: number) => addr === ((TEC1G_SHADOW_START + 0x20) & ADDR_MASK);
     const hit = isBreakpointAddress(0x20, {
       hasBreakpoint,
       activePlatform: 'tec1g',

@@ -1,10 +1,6 @@
 import type { VscodeApi } from './vscode';
 
-export function appendSerialText(
-  serialOutEl: HTMLElement,
-  text: string,
-  max: number
-): void {
+export function appendSerialText(serialOutEl: HTMLElement, text: string, max: number): void {
   if (!text) {
     return;
   }
@@ -17,10 +13,7 @@ export function appendSerialText(
   serialOutEl.scrollTop = serialOutEl.scrollHeight;
 }
 
-export function sendSerialInput(
-  serialInputEl: HTMLInputElement,
-  vscode: VscodeApi
-): void {
+export function sendSerialInput(serialInputEl: HTMLInputElement, vscode: VscodeApi): void {
   const text = (serialInputEl.value || '').trimEnd();
   if (!text) {
     return;

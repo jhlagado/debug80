@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { TEC1G_FAST_HZ, TEC1G_SLOW_HZ, createTec1gRuntime } from '../../../src/platforms/tec1g/runtime';
+import {
+  TEC1G_FAST_HZ,
+  TEC1G_SLOW_HZ,
+  createTec1gRuntime,
+} from '../../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
 
 function makeRuntime() {

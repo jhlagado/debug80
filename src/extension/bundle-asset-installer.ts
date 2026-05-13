@@ -58,8 +58,8 @@ export function resolveProjectBundledAssetInstallPlan(
     return rootPlan;
   }
 
-  const profileEntries = Object.entries(config.profiles ?? {}).filter(([, profile]) =>
-    Object.keys(profile?.bundledAssets ?? {}).length > 0
+  const profileEntries = Object.entries(config.profiles ?? {}).filter(
+    ([, profile]) => Object.keys(profile?.bundledAssets ?? {}).length > 0
   );
   if (profileEntries.length === 1) {
     const firstProfileEntry = profileEntries[0];
@@ -120,7 +120,9 @@ export function ensureBundledAssetsPresent(
     }
   }
   for (const bundleId of bundleIds) {
-    const result = materializeBundledRom(extensionUri, workspaceRoot, bundleId, { overwrite: false });
+    const result = materializeBundledRom(extensionUri, workspaceRoot, bundleId, {
+      overwrite: false,
+    });
     if (!result.ok) {
       void vscode.window.showWarningMessage(
         `Debug80: Could not install bundled ROM assets for "${bundleId}": ${result.reason}`

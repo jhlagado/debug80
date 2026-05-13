@@ -41,9 +41,7 @@ vi.mock('vscode', () => ({
       onDidOpenHandler = handler;
       return { dispose: vi.fn() };
     }),
-    textDocuments: [
-      { uri: { path: '/tmp/test.asm', scheme: 'file' }, languageId: 'plaintext' },
-    ],
+    textDocuments: [{ uri: { path: '/tmp/test.asm', scheme: 'file' }, languageId: 'plaintext' }],
     workspaceFolders: undefined,
     getWorkspaceFolder: vi.fn(),
     updateWorkspaceFolders: vi.fn(() => true),
@@ -100,8 +98,10 @@ describe('extension activation', () => {
         listPlatforms: () => Array<{ id: string; displayName: string }>;
       };
     };
-    const uiManifest = (await import('../../src/extension/platform-view-manifest')) as typeof import('../../src/extension/platform-view-manifest');
-    const unifiedManifest = (await import('../../src/extension/platform-extension-model')) as typeof import('../../src/extension/platform-extension-model');
+    const uiManifest =
+      (await import('../../src/extension/platform-view-manifest')) as typeof import('../../src/extension/platform-view-manifest');
+    const unifiedManifest =
+      (await import('../../src/extension/platform-extension-model')) as typeof import('../../src/extension/platform-extension-model');
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },
@@ -110,11 +110,7 @@ describe('extension activation', () => {
     const api = extension.activate(context);
 
     expect(registerDebugAdapterDescriptorFactory).toHaveBeenCalledWith('z80', expect.anything());
-    expect(registerDebugConfigurationProvider).toHaveBeenNthCalledWith(
-      1,
-      'z80',
-      expect.anything()
-    );
+    expect(registerDebugConfigurationProvider).toHaveBeenNthCalledWith(1, 'z80', expect.anything());
     expect(registerDebugConfigurationProvider).toHaveBeenNthCalledWith(
       2,
       'z80',
@@ -124,7 +120,10 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.createProject', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.startDebug', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.restartDebug', expect.anything());
-    expect(registerCommand).toHaveBeenCalledWith('debug80.selectWorkspaceFolder', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith(
+      'debug80.selectWorkspaceFolder',
+      expect.anything()
+    );
     expect(registerCommand).toHaveBeenCalledWith('debug80.selectTarget', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.setEntrySource', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());

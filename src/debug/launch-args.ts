@@ -42,13 +42,14 @@ type LaunchConfigManifest = Partial<LaunchRequestArguments> & {
   >;
   profiles?: Record<
     string,
-    {
-      platform?: string;
-      bundledAssets?: Record<
-        string,
-        { bundleId?: string; path?: string; destination?: string } | undefined
-      >;
-    } | undefined
+    | {
+        platform?: string;
+        bundledAssets?: Record<
+          string,
+          { bundleId?: string; path?: string; destination?: string } | undefined
+        >;
+      }
+    | undefined
   >;
   targets?: Record<
     string,
@@ -201,9 +202,7 @@ function resolveLaunchPlatform(
     return defaultProfile;
   }
 
-  const profiles = Object.values(
-    cfg.profiles ?? {}
-  ) as Array<{ platform?: string } | undefined>;
+  const profiles = Object.values(cfg.profiles ?? {}) as Array<{ platform?: string } | undefined>;
   for (const profile of profiles) {
     const platform = normalizeNonEmptyString(profile?.platform);
     if (platform !== undefined) {
@@ -358,7 +357,7 @@ export function populateFromConfig(
     const mergedTec1g = mergeNestedPlatformBlock(
       resolveTec1gBaseForMerge(cfg),
       targetCfg?.tec1g,
-      args.tec1g,
+      args.tec1g
     );
     if (mergedTec1g !== undefined) {
       merged.tec1g = mergedTec1g;
@@ -437,7 +436,7 @@ export function populateFromConfig(
     const stopOnEntryResolved =
       args.stopOnEntry !== undefined
         ? args.stopOnEntry
-        : targetCfg?.stopOnEntry ?? cfg.stopOnEntry;
+        : (targetCfg?.stopOnEntry ?? cfg.stopOnEntry);
     if (stopOnEntryResolved !== undefined) {
       merged.stopOnEntry = stopOnEntryResolved;
     }

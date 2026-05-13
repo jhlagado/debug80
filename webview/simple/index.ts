@@ -18,11 +18,17 @@ const vscode = acquireVscodeApi();
 const appRoot = document.getElementById('app') as HTMLElement | null;
 const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
 const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById('addWorkspaceFolder') as HTMLButtonElement | null;
+const addWorkspaceFolderButton = document.getElementById(
+  'addWorkspaceFolder'
+) as HTMLButtonElement | null;
 const setupCard = document.getElementById('setupCard') as HTMLElement | null;
 const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById('setupPrimaryAction') as HTMLButtonElement | null;
-const platformInitButton = document.getElementById('platformInitButton') as HTMLButtonElement | null;
+const setupPrimaryAction = document.getElementById(
+  'setupPrimaryAction'
+) as HTMLButtonElement | null;
+const platformInitButton = document.getElementById(
+  'platformInitButton'
+) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
@@ -48,14 +54,18 @@ let resizeTimer: number | null = null;
 
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const projectStatusUi = createProjectStatusUi(vscode, {
-  selectProjectButton,
-  setupCard,
-  setupCardText,
-  setupPrimaryAction,
-  platformInitButton,
-  homeTargetSelect,
-}, 'simple');
+const projectStatusUi = createProjectStatusUi(
+  vscode,
+  {
+    selectProjectButton,
+    setupCard,
+    setupCardText,
+    setupPrimaryAction,
+    platformInitButton,
+    homeTargetSelect,
+  },
+  'simple'
+);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'openWorkspaceFolder' });

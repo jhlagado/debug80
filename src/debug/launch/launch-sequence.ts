@@ -9,11 +9,7 @@ import { emitConsoleOutput } from '../session/adapter-ui';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { handleMatrixKeyRequest, handleMatrixModeRequest } from '../requests/matrix-request';
-import {
-  resolveArtifacts,
-  resolveRelative,
-  resolveBaseDir,
-} from '../mapping/path-resolver';
+import { resolveArtifacts, resolveRelative, resolveBaseDir } from '../mapping/path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
 import { resolveAssemblerBackend } from './assembler-backend';
@@ -28,10 +24,7 @@ import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
 import type { ListingInfo, HexProgram } from '../../z80/loaders';
 import type { LaunchRequestArguments } from '../session/types';
 import type { TerminalState } from '../session/terminal-types';
-import type {
-  ActivePlatformRuntime,
-  SessionStateShape,
-} from '../session/session-state';
+import type { ActivePlatformRuntime, SessionStateShape } from '../session/session-state';
 import type { Z80Runtime } from '../../z80/runtime';
 import type { Tec1Runtime } from '../../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
@@ -49,7 +42,7 @@ export class MissingLaunchArtifactsError extends Error {
 
 export function createLaunchLogger(
   baseLogger: Logger,
-  sendEvent: (event: DebugProtocol.Event) => void,
+  sendEvent: (event: DebugProtocol.Event) => void
 ): Logger {
   const emitOutput = (message: string): void => {
     emitConsoleOutput((event) => sendEvent(event as DebugProtocol.Event), message);
@@ -57,16 +50,20 @@ export function createLaunchLogger(
   const tee = (
     sink: (message: string, ...args: unknown[]) => void,
     message: string,
-    args: unknown[],
+    args: unknown[]
   ): void => {
     sink(message, ...args);
     emitOutput(formatLogMessage(message, args));
   };
   return {
-    debug: (message: string, ...args: unknown[]) => tee(baseLogger.debug.bind(baseLogger), message, args),
-    info: (message: string, ...args: unknown[]) => tee(baseLogger.info.bind(baseLogger), message, args),
-    warn: (message: string, ...args: unknown[]) => tee(baseLogger.warn.bind(baseLogger), message, args),
-    error: (message: string, ...args: unknown[]) => tee(baseLogger.error.bind(baseLogger), message, args),
+    debug: (message: string, ...args: unknown[]) =>
+      tee(baseLogger.debug.bind(baseLogger), message, args),
+    info: (message: string, ...args: unknown[]) =>
+      tee(baseLogger.info.bind(baseLogger), message, args),
+    warn: (message: string, ...args: unknown[]) =>
+      tee(baseLogger.warn.bind(baseLogger), message, args),
+    error: (message: string, ...args: unknown[]) =>
+      tee(baseLogger.error.bind(baseLogger), message, args),
   };
 }
 
@@ -81,11 +78,7 @@ export function hasLaunchInputs(args: LaunchRequestArguments): boolean {
 export async function respondToMissingLaunchInputs(
   response: DebugProtocol.LaunchResponse,
   promptForConfigCreation: () => Promise<boolean>,
-  sendErrorResponse: (
-    response: DebugProtocol.LaunchResponse,
-    id: number,
-    message: string
-  ) => void
+  sendErrorResponse: (response: DebugProtocol.LaunchResponse, id: number, message: string) => void
 ): Promise<void> {
   try {
     const created = await promptForConfigCreation();
@@ -103,11 +96,7 @@ export async function respondToMissingLaunchInputs(
       'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
     );
   } catch (err) {
-    sendErrorResponse(
-      response,
-      1,
-      `Debug80: Failed to create project config: ${String(err)}`
-    );
+    sendErrorResponse(response, 1, `Debug80: Failed to create project config: ${String(err)}`);
   }
 }
 
@@ -115,11 +104,7 @@ export async function respondToMissingArtifacts(
   response: DebugProtocol.LaunchResponse,
   err: MissingLaunchArtifactsError,
   promptForConfigCreation: () => Promise<boolean>,
-  sendErrorResponse: (
-    response: DebugProtocol.LaunchResponse,
-    id: number,
-    message: string
-  ) => void
+  sendErrorResponse: (response: DebugProtocol.LaunchResponse, id: number, message: string) => void
 ): Promise<void> {
   try {
     const created = await promptForConfigCreation();
@@ -261,7 +246,10 @@ export async function buildLaunchSession(
     context.logger
   );
 
-  emitMainSource((event) => context.emitEvent(event as DebugProtocol.Event), context.sourceState.file);
+  emitMainSource(
+    (event) => context.emitEvent(event as DebugProtocol.Event),
+    context.sourceState.file
+  );
 
   const emitPlatformEvent = (name: string) => (payload: unknown) =>
     context.emitDapEvent(name, payload);
@@ -287,13 +275,18 @@ export async function buildLaunchSession(
   const entry = platformProvider.resolveEntry(platformAssets);
   const restartCaptureAddress =
     platform === 'simple'
-      ? simpleConfig?.appStart ?? entry
+      ? (simpleConfig?.appStart ?? entry)
       : platform === 'tec1'
-        ? tec1Config?.appStart ?? entry
+        ? (tec1Config?.appStart ?? entry)
         : platform === 'tec1g'
-          ? tec1gConfig?.appStart ?? entry
+          ? (tec1gConfig?.appStart ?? entry)
           : entry;
-  const runtime = createZ80Runtime(program, entry, platformIo.ioHandlers, platformProvider.runtimeOptions);
+  const runtime = createZ80Runtime(
+    program,
+    entry,
+    platformIo.ioHandlers,
+    platformProvider.runtimeOptions
+  );
   context.sessionState.runtime = runtime;
   if (runtime !== undefined) {
     platformProvider.finalizeRuntime?.({

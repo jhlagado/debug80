@@ -53,10 +53,7 @@ export function handleResetRequest(
   return null;
 }
 
-export function handleSpeedRequest(
-  runtime: SpeedTarget | undefined,
-  args: unknown
-): string | null {
+export function handleSpeedRequest(runtime: SpeedTarget | undefined, args: unknown): string | null {
   if (!runtime) {
     return 'Debug80: Platform not active.';
   }

@@ -7,7 +7,9 @@ import * as path from 'path';
 import { BreakpointEvent } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import {
-  AssembleFailureError, formatAssemblyDiagnostic, resolveBundledTec1Rom,
+  AssembleFailureError,
+  formatAssemblyDiagnostic,
+  resolveBundledTec1Rom,
 } from '../launch/assembler';
 import { emitConsoleOutput, emitMainSource } from '../session/adapter-ui';
 import { resolveAssemblerBackend } from '../launch/assembler-backend';
@@ -177,10 +179,10 @@ export async function handleWarmRebuildRequest(
       sourceRoots: launchArgs.sourceRoots ?? [],
       extraListings:
         deps.platformState.active === 'simple'
-          ? simpleConfig?.extraListings ?? []
+          ? (simpleConfig?.extraListings ?? [])
           : deps.platformState.active === 'tec1'
-            ? tec1Config?.extraListings ?? []
-            : tec1gConfig?.extraListings ?? [],
+            ? (tec1Config?.extraListings ?? [])
+            : (tec1gConfig?.extraListings ?? []),
       mapArgs: {
         ...(launchArgs.artifactBase !== undefined && launchArgs.artifactBase.length > 0
           ? { artifactBase: launchArgs.artifactBase }
@@ -251,17 +253,19 @@ export async function handleWarmRebuildRequest(
               path: diagnostic.path,
               line: diagnostic.line,
               ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
-              ...(diagnostic.sourceLine !== undefined
-                ? { sourceLine: diagnostic.sourceLine }
-                : {}),
+              ...(diagnostic.sourceLine !== undefined ? { sourceLine: diagnostic.sourceLine } : {}),
             }
           : undefined;
       const locationLabel =
         location !== undefined ? `${path.basename(location.path)}:${location.line}` : 'assembly';
       const summary = locationLabel;
-      const detail = buildCompactFailureDetail(err) ?? formatAssemblyDiagnostic(diagnostic ?? {
-        message: err.result.error ?? String(err),
-      });
+      const detail =
+        buildCompactFailureDetail(err) ??
+        formatAssemblyDiagnostic(
+          diagnostic ?? {
+            message: err.result.error ?? String(err),
+          }
+        );
       sendWarmRebuildResult(
         response,
         deps,

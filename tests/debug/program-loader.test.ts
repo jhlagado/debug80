@@ -23,10 +23,14 @@ const writeHexFile = (filePath: string, address: number, value: number): void =>
 };
 
 const createLogger = (logs: string[]): Logger => ({
-  debug: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  info: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  warn: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
-  error: (message: string, ...args: unknown[]) => logs.push([message, ...args].map(String).join(' ')),
+  debug: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
 });
 
 describe('program-loader', () => {

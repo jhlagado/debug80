@@ -120,9 +120,7 @@ describe('stack-service ZAX D8 integration', () => {
             { start: 0xc000, end: 0xc001, line: 2, lstLine: 1, lstText: 'NOP' },
             { start: 0xc001, end: 0xc002, line: 3, lstLine: 2, lstText: 'HALT' },
           ],
-          symbols: [
-            { name: 'START', address: 0xc000, line: 1 },
-          ],
+          symbols: [{ name: 'START', address: 0xc000, line: 1 }],
         },
       },
     });
@@ -216,9 +214,7 @@ describe('stack-service ZAX D8 integration', () => {
       endianness: 'little',
       files: {
         'matrix.zax': {
-          segments: [
-            { start: 0xc000, end: 0xc001, line: 5, lstLine: 1, lstText: 'NOP' },
-          ],
+          segments: [{ start: 0xc000, end: 0xc001, line: 5, lstLine: 1, lstText: 'NOP' }],
         },
       },
     });

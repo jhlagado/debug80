@@ -51,7 +51,7 @@ function expectRgb(
   width: number,
   x: number,
   y: number,
-  rgb: [number, number, number],
+  rgb: [number, number, number]
 ) {
   expect(readRgb(image, width, x, y)).toEqual(rgb);
 }
@@ -92,7 +92,11 @@ describe('tec1g display renderers', () => {
     lcdRenderer?.dispose();
     lcdRenderer = null;
     if (originalGetContextDescriptor) {
-      Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', originalGetContextDescriptor);
+      Object.defineProperty(
+        HTMLCanvasElement.prototype,
+        'getContext',
+        originalGetContextDescriptor
+      );
     }
     vi.useRealTimers();
   });

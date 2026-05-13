@@ -41,9 +41,7 @@ describe('validateD8Segments', () => {
     const map = makeMinimalMap({
       files: {
         'main.asm': {
-          segments: [
-            { start: 0x1000, end: 0x1033, lstLine: 0 },
-          ],
+          segments: [{ start: 0x1000, end: 0x1033, lstLine: 0 }],
         },
       },
     });
@@ -56,9 +54,7 @@ describe('validateD8Segments', () => {
     const map = makeMinimalMap({
       files: {
         'main.asm': {
-          segments: [
-            { start: 0x1000, end: 0x1002, line: 0, lstLine: 1 },
-          ],
+          segments: [{ start: 0x1000, end: 0x1002, line: 0, lstLine: 1 }],
         },
       },
     });
@@ -70,9 +66,7 @@ describe('validateD8Segments', () => {
     const map = makeMinimalMap({
       files: {
         'main.asm': {
-          segments: [
-            { start: 0x1000, end: 0x1002, line: -1, lstLine: 1 },
-          ],
+          segments: [{ start: 0x1000, end: 0x1002, line: -1, lstLine: 1 }],
         },
       },
     });
@@ -84,9 +78,7 @@ describe('validateD8Segments', () => {
     const map = makeMinimalMap({
       files: {
         'main.asm': {
-          segments: [
-            { start: 0x1002, end: 0x1000, line: 5, lstLine: 1 },
-          ],
+          segments: [{ start: 0x1002, end: 0x1000, line: 5, lstLine: 1 }],
         },
       },
     });

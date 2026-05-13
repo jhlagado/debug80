@@ -13,9 +13,27 @@ const { openRomSourcesForSession } = vi.hoisted(() => ({
   openRomSourcesForSession: vi.fn(() => Promise.resolve(true)),
 }));
 
-const startHandlers: Array<(session: { id: string; type: string; configuration?: Record<string, unknown>; workspaceFolder?: unknown }) => void> = [];
+const startHandlers: Array<
+  (session: {
+    id: string;
+    type: string;
+    configuration?: Record<string, unknown>;
+    workspaceFolder?: unknown;
+  }) => void
+> = [];
 const terminateHandlers: Array<(session: { id: string; type: string }) => void> = [];
-const customHandlers: Array<(evt: { session: { id: string; type: string; configuration?: Record<string, unknown>; workspaceFolder?: unknown }; event: string; body?: unknown }) => void> = [];
+const customHandlers: Array<
+  (evt: {
+    session: {
+      id: string;
+      type: string;
+      configuration?: Record<string, unknown>;
+      workspaceFolder?: unknown;
+    };
+    event: string;
+    body?: unknown;
+  }) => void
+> = [];
 
 vi.mock('vscode', () => ({
   debug: {

@@ -45,10 +45,8 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
       'debug80/tec1Key': (response, args) =>
         sendPlatformResponse(
           response,
-          handleKeyRequest(
-            context.sessionState.tec1Runtime,
-            extractKeyCode(args),
-            () => context.sessionState.tec1gRuntime?.silenceSpeaker()
+          handleKeyRequest(context.sessionState.tec1Runtime, extractKeyCode(args), () =>
+            context.sessionState.tec1gRuntime?.silenceSpeaker()
           ),
           context
         ),
@@ -82,9 +80,7 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
 /**
  * Creates the debug adapter provider for TEC-1 launches.
  */
-export function createTec1PlatformProvider(
-  args: LaunchRequestArguments
-): ResolvedPlatformProvider {
+export function createTec1PlatformProvider(args: LaunchRequestArguments): ResolvedPlatformProvider {
   const tec1Config = normalizeTec1Config(args.tec1);
   return {
     id: 'tec1',

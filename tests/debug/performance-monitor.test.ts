@@ -6,7 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRuntimePerformanceMonitor } from '../../src/debug/session/performance-monitor';
 import type { Logger } from '../../src/util/logger';
 
-function createLogger(): Logger & { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> } {
+function createLogger(): Logger & {
+  info: ReturnType<typeof vi.fn>;
+  warn: ReturnType<typeof vi.fn>;
+} {
   return {
     debug: vi.fn(),
     info: vi.fn(),

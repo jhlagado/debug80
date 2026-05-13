@@ -39,14 +39,18 @@ describe('register-request', () => {
     });
     sessionState.runState.isRunning = false;
 
-    expect(handleRegisterWriteRequest(sessionState, {
-      register: 'af',
-      value: 'A5C3',
-    })).toBeNull();
-    expect(handleRegisterWriteRequest(sessionState, {
-      register: 'afp',
-      value: '5A3C',
-    })).toBeNull();
+    expect(
+      handleRegisterWriteRequest(sessionState, {
+        register: 'af',
+        value: 'A5C3',
+      })
+    ).toBeNull();
+    expect(
+      handleRegisterWriteRequest(sessionState, {
+        register: 'afp',
+        value: '5A3C',
+      })
+    ).toBeNull();
 
     const cpu = sessionState.runtime.getRegisters();
     expect(cpu.a).toBe(0xa5);
@@ -84,14 +88,18 @@ describe('register-request', () => {
     cpu.flags = { S: 0, Z: 1, Y: 0, H: 1, X: 0, P: 1, N: 0, C: 0 };
     cpu.flags_prime = { S: 1, Z: 0, Y: 1, H: 0, X: 1, P: 0, N: 1, C: 1 };
 
-    expect(handleRegisterWriteRequest(sessionState, {
-      register: 'flags',
-      value: 'CSz?',
-    })).toBeNull();
-    expect(handleRegisterWriteRequest(sessionState, {
-      register: 'flagsp',
-      value: 'nh',
-    })).toBeNull();
+    expect(
+      handleRegisterWriteRequest(sessionState, {
+        register: 'flags',
+        value: 'CSz?',
+      })
+    ).toBeNull();
+    expect(
+      handleRegisterWriteRequest(sessionState, {
+        register: 'flagsp',
+        value: 'nh',
+      })
+    ).toBeNull();
 
     expect(cpu.flags).toEqual({ S: 1, Z: 0, Y: 0, H: 1, X: 0, P: 1, N: 0, C: 1 });
     expect(cpu.flags_prime).toEqual({ S: 1, Z: 0, Y: 1, H: 0, X: 1, P: 0, N: 0, C: 1 });

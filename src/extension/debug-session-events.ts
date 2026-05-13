@@ -49,9 +49,13 @@ function applyLaunchAssemblyDiagnostic(
   const range = new vscode.Range(startLine, startCharacter, startLine, endCharacter);
   const message =
     (typeof d.message === 'string' && d.message.trim().length > 0 ? d.message.trim() : undefined) ??
-    (typeof payload.error === 'string' && payload.error.length > 0 ? payload.error.split(/\r?\n/, 1)[0] : undefined) ??
+    (typeof payload.error === 'string' && payload.error.length > 0
+      ? payload.error.split(/\r?\n/, 1)[0]
+      : undefined) ??
     'Assembly failed';
-  assemblyDiagnostics.set(uri, [new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Error)]);
+  assemblyDiagnostics.set(uri, [
+    new vscode.Diagnostic(range, message, vscode.DiagnosticSeverity.Error),
+  ]);
 }
 
 export function registerDebugSessionHandlers({
@@ -115,7 +119,9 @@ export function registerDebugSessionHandlers({
         return;
       }
       if (evt.event === 'debug80/platform') {
-        const body = evt.body as { id?: string; uiVisibility?: Record<string, boolean> } | undefined;
+        const body = evt.body as
+          | { id?: string; uiVisibility?: Record<string, boolean> }
+          | undefined;
         const id = body?.id;
         if (id !== undefined && id.length > 0) {
           sessionState.sessionPlatforms.set(evt.session.id, id);

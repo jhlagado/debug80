@@ -828,20 +828,9 @@ export const buildPrimaryInstructions = (ctx: PrimaryInstructionContext): Opcode
 export const executePrimaryOpcode = (
   ctx: PrimaryInstructionContext,
   opcode: number,
-  instructions: OpcodeTable,
+  instructions: OpcodeTable
 ): void => {
-  const {
-    cpu,
-    cb,
-    do_add,
-    do_adc,
-    do_sub,
-    do_sbc,
-    do_and,
-    do_xor,
-    do_or,
-    do_cp,
-  } = ctx;
+  const { cpu, cb, do_add, do_adc, do_sub, do_sbc, do_and, do_xor, do_or, do_cp } = ctx;
   // ==========================================================================
   // DIRECT DECODER FOR REGULAR OPCODE RANGES
   // ==========================================================================

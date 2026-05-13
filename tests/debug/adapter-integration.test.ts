@@ -40,9 +40,10 @@ type SessionHarness = {
   output: PassThrough;
 };
 
-function createFreshProjectFixture(
-  kitId: 'tec1/mon1b' | 'tec1g/mon3'
-): { root: string; sourcePath: string } {
+function createFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
+  root: string;
+  sourcePath: string;
+} {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-fresh-project-'));
   const sourceDir = path.join(root, 'src');
   const buildDir = path.join(root, 'build');
@@ -63,9 +64,7 @@ function createFreshProjectFixture(
   );
   fs.writeFileSync(
     path.join(buildDir, 'main.hex'),
-    kitId === 'tec1g/mon3'
-      ? ':034000000018FDA8\n:00000001FF\n'
-      : ':030800000018FDE0\n:00000001FF\n'
+    kitId === 'tec1g/mon3' ? ':034000000018FDA8\n:00000001FF\n' : ':030800000018FDE0\n:00000001FF\n'
   );
   fs.writeFileSync(
     path.join(buildDir, 'main.lst'),
@@ -354,13 +353,10 @@ describe('adapter integration', () => {
       openMainSourceOnLaunch: false,
     });
 
-    const output = await client.waitForEvent<{ body?: { output?: string } }>(
-      'output',
-      (event) => {
-        const body = event.body as { output?: unknown } | undefined;
-        return typeof body?.output === 'string' && body.output.includes('TEC-1 ROM not found');
-      }
-    );
+    const output = await client.waitForEvent<{ body?: { output?: string } }>('output', (event) => {
+      const body = event.body as { output?: unknown } | undefined;
+      return typeof body?.output === 'string' && body.output.includes('TEC-1 ROM not found');
+    });
     expect(output.body?.output).toContain('TEC-1 ROM not found');
 
     await client.sendRequest('setBreakpoints', {

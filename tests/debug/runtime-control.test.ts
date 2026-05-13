@@ -4,7 +4,11 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { Event as DapEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
-import { applyStepInfo, runUntilReturnAsync, runUntilStopAsync } from '../../src/debug/session/runtime-control';
+import {
+  applyStepInfo,
+  runUntilReturnAsync,
+  runUntilStopAsync,
+} from '../../src/debug/session/runtime-control';
 import type {
   RuntimeControlCapabilities,
   RuntimeControlContext,
@@ -342,26 +346,22 @@ describe('runtime-control', () => {
   it('re-reads clockHz from the runtime capability during throttling', async () => {
     let runtimeCalls = 0;
     let capabilityCalls = 0;
-    const setTimeoutSpy = vi
-      .spyOn(globalThis, 'setTimeout')
-      .mockImplementation(
-        ((handler: Parameters<typeof setTimeout>[0]) => {
-          if (typeof handler === 'function') {
-            handler();
-          }
-          return 0 as ReturnType<typeof setTimeout>;
-        }) as typeof setTimeout
-      );
-    const setImmediateSpy = vi
-      .spyOn(globalThis, 'setImmediate')
-      .mockImplementation(
-        ((handler: Parameters<typeof setImmediate>[0]) => {
-          if (typeof handler === 'function') {
-            handler();
-          }
-          return 0 as ReturnType<typeof setImmediate>;
-        }) as typeof setImmediate
-      );
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      handler: Parameters<typeof setTimeout>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+    const setImmediateSpy = vi.spyOn(globalThis, 'setImmediate').mockImplementation(((
+      handler: Parameters<typeof setImmediate>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setImmediate>;
+    }) as typeof setImmediate);
     const runtime = {
       getPC: () => 0x8000,
       step({ trace }: { trace: StepInfo }) {
@@ -461,26 +461,22 @@ describe('runtime-control', () => {
   it('re-reads yieldMs from the runtime capability during yielding', async () => {
     let runtimeCalls = 0;
     let capabilityCalls = 0;
-    const setTimeoutSpy = vi
-      .spyOn(globalThis, 'setTimeout')
-      .mockImplementation(
-        ((handler: Parameters<typeof setTimeout>[0]) => {
-          if (typeof handler === 'function') {
-            handler();
-          }
-          return 0 as ReturnType<typeof setTimeout>;
-        }) as typeof setTimeout
-      );
-    const setImmediateSpy = vi
-      .spyOn(globalThis, 'setImmediate')
-      .mockImplementation(
-        ((handler: Parameters<typeof setImmediate>[0]) => {
-          if (typeof handler === 'function') {
-            handler();
-          }
-          return 0 as ReturnType<typeof setImmediate>;
-        }) as typeof setImmediate
-      );
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      handler: Parameters<typeof setTimeout>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+    const setImmediateSpy = vi.spyOn(globalThis, 'setImmediate').mockImplementation(((
+      handler: Parameters<typeof setImmediate>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setImmediate>;
+    }) as typeof setImmediate);
     const runtime = {
       getPC: () => 0x8000,
       step({ trace }: { trace: StepInfo }) {

@@ -23,9 +23,9 @@ import {
 import { canonicalizeDebuggerSourcePath } from '../../src/debug/mapping/path-utils';
 import { LaunchRequestArguments } from '../../src/debug/session/types';
 
-const workspaceState = vi.hoisted(
-  () => ({ workspaceFolders: undefined as Array<{ uri: { fsPath: string } }> | undefined })
-);
+const workspaceState = vi.hoisted(() => ({
+  workspaceFolders: undefined as Array<{ uri: { fsPath: string } }> | undefined,
+}));
 
 vi.mock('vscode', () => ({
   workspace: workspaceState,

@@ -21,10 +21,7 @@ const CSS_PATH = path.resolve(__dirname, '../../webview/tec1g/styles.css');
 function buildDom(): Document {
   const html = fs.readFileSync(HTML_PATH, 'utf8').replace(/\{\{\w+\}\}/g, '');
   const css = fs.readFileSync(CSS_PATH, 'utf8');
-  document.documentElement.innerHTML = html.replace(
-    '</head>',
-    `<style>${css}</style></head>`
-  );
+  document.documentElement.innerHTML = html.replace('</head>', `<style>${css}</style></head>`);
   return document;
 }
 
@@ -42,9 +39,7 @@ describe('tec1g UI visibility controls', () => {
 
   it('every checkbox data-section has a matching .ui-section element', () => {
     const checkboxes = Array.from(
-      doc.querySelectorAll<HTMLInputElement>(
-        '#uiControls input[type="checkbox"][data-section]'
-      )
+      doc.querySelectorAll<HTMLInputElement>('#uiControls input[type="checkbox"][data-section]')
     );
     expect(checkboxes.length).toBeGreaterThan(0);
 
@@ -56,9 +51,7 @@ describe('tec1g UI visibility controls', () => {
   });
 
   it('every .ui-section element has a matching checkbox', () => {
-    const sections = Array.from(
-      doc.querySelectorAll<HTMLElement>('.ui-section[data-section]')
-    );
+    const sections = Array.from(doc.querySelectorAll<HTMLElement>('.ui-section[data-section]'));
     expect(sections.length).toBeGreaterThan(0);
 
     for (const section of sections) {

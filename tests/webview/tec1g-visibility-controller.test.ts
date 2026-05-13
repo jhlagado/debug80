@@ -30,12 +30,24 @@ describe('tec1g visibility controller', () => {
     controller.wire();
 
     expect((document.querySelector('[data-section="lcd"]') as HTMLInputElement).checked).toBe(true);
-    expect((document.querySelector('[data-section="display"]') as HTMLInputElement).checked).toBe(true);
-    expect((document.querySelector('[data-section="keypad"]') as HTMLInputElement).checked).toBe(true);
-    expect((document.querySelector('[data-section="glcd"]') as HTMLInputElement).checked).toBe(true);
-    expect((document.querySelector('[data-section="serial"]') as HTMLInputElement).checked).toBe(false);
-    expect((document.querySelector('[data-section="matrix"]') as HTMLInputElement).checked).toBe(false);
-    expect((document.querySelector('[data-section="matrixKeyboard"]') as HTMLInputElement).checked).toBe(false);
+    expect((document.querySelector('[data-section="display"]') as HTMLInputElement).checked).toBe(
+      true
+    );
+    expect((document.querySelector('[data-section="keypad"]') as HTMLInputElement).checked).toBe(
+      true
+    );
+    expect((document.querySelector('[data-section="glcd"]') as HTMLInputElement).checked).toBe(
+      true
+    );
+    expect((document.querySelector('[data-section="serial"]') as HTMLInputElement).checked).toBe(
+      false
+    );
+    expect((document.querySelector('[data-section="matrix"]') as HTMLInputElement).checked).toBe(
+      false
+    );
+    expect(
+      (document.querySelector('[data-section="matrixKeyboard"]') as HTMLInputElement).checked
+    ).toBe(false);
   });
 
   it('loads persisted visibility state into the DOM and checkboxes', () => {
@@ -53,12 +65,12 @@ describe('tec1g visibility controller', () => {
     expect(
       document.querySelector('.ui-section[data-section="serial"]')?.classList.contains('ui-hidden')
     ).toBe(true);
-    expect(
-      (document.querySelector('[data-section="glcd"]') as HTMLInputElement).checked
-    ).toBe(true);
-    expect(
-      (document.querySelector('[data-section="serial"]') as HTMLInputElement).checked
-    ).toBe(false);
+    expect((document.querySelector('[data-section="glcd"]') as HTMLInputElement).checked).toBe(
+      true
+    );
+    expect((document.querySelector('[data-section="serial"]') as HTMLInputElement).checked).toBe(
+      false
+    );
   });
 
   it('persists overrides and checkbox changes through vscode state', () => {

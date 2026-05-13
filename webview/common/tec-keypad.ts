@@ -166,14 +166,7 @@ export function createTecKeypad(
     }
   }
 
-  const shiftButton = addButton(
-    'FN',
-    () => core.toggleShift(),
-    'keycap-light',
-    1,
-    4,
-    true
-  );
+  const shiftButton = addButton('FN', () => core.toggleShift(), 'keycap-light', 1, 4, true);
 
   core.setOnShiftChange((latched) => shiftButton.classList.toggle('active', latched));
 

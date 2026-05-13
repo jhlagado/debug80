@@ -39,7 +39,7 @@ vi.mock('vscode', () => ({
     file: (fsPath: string) => ({ fsPath }),
     joinPath: (...segments: Array<{ fsPath?: string } | string>) => {
       const parts = segments.map((segment) =>
-        typeof segment === 'string' ? segment : segment.fsPath ?? ''
+        typeof segment === 'string' ? segment : (segment.fsPath ?? '')
       );
       return { fsPath: path.join(...parts) };
     },
@@ -515,8 +515,17 @@ describe('project-scaffolding helpers', () => {
         projectVersion?: number;
         projectPlatform?: string;
         defaultProfile?: string;
-        profiles?: Record<string, { platform?: string; bundledAssets?: Record<string, { bundleId?: string; destination?: string }> }>;
-        targets?: Record<string, { platform?: string; profile?: string; tec1g?: Record<string, unknown> }>;
+        profiles?: Record<
+          string,
+          {
+            platform?: string;
+            bundledAssets?: Record<string, { bundleId?: string; destination?: string }>;
+          }
+        >;
+        targets?: Record<
+          string,
+          { platform?: string; profile?: string; tec1g?: Record<string, unknown> }
+        >;
       };
       expect(writtenConfig.projectVersion).toBe(DEBUG80_PROJECT_VERSION);
       expect(writtenConfig.projectPlatform).toBe('tec1g');

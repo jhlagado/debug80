@@ -23,10 +23,12 @@ export type PanelMessage = {
   views?: Array<{ id?: string; view?: string; after?: number; address?: number }>;
 };
 
-export type PanelSession = {
-  type: string;
-  customRequest: (command: string, payload: unknown) => Promise<unknown> | Thenable<unknown>;
-} | undefined;
+export type PanelSession =
+  | {
+      type: string;
+      customRequest: (command: string, payload: unknown) => Promise<unknown> | Thenable<unknown>;
+    }
+  | undefined;
 
 export type PanelMessageContext<TTab extends string> = {
   getSession: () => PanelSession;
@@ -39,10 +41,10 @@ export type PanelMessageContext<TTab extends string> = {
 };
 
 export type PanelCommands = {
-  key: string;
-  reset: string;
-  speed: string;
-  serialSend: string;
+  key?: string;
+  reset?: string;
+  speed?: string;
+  serialSend?: string;
   registerWrite: string;
   memoryWrite: string;
 };
@@ -103,7 +105,11 @@ export async function handleCommonPanelMessage<TTab extends string>(
     return true;
   }
   const session = ctx.getSession();
-  if (msg.type === 'registerEdit' && typeof msg.register === 'string' && typeof msg.value === 'string') {
+  if (
+    msg.type === 'registerEdit' &&
+    typeof msg.register === 'string' &&
+    typeof msg.value === 'string'
+  ) {
     if (session?.type !== 'z80') {
       return true;
     }
@@ -129,7 +135,11 @@ export async function handleCommonPanelMessage<TTab extends string>(
     );
     return true;
   }
-  if (msg.type === 'memoryEdit' && typeof msg.address === 'number' && typeof msg.value === 'string') {
+  if (
+    msg.type === 'memoryEdit' &&
+    typeof msg.address === 'number' &&
+    typeof msg.value === 'string'
+  ) {
     if (session?.type !== 'z80') {
       return true;
     }
@@ -157,24 +167,38 @@ export async function handleCommonPanelMessage<TTab extends string>(
     return true;
   }
   if (session?.type !== 'z80') {
-    return msg.type === 'key' ||
+    return (
+      msg.type === 'key' ||
       msg.type === 'reset' ||
       msg.type === 'speed' ||
-      msg.type === 'serialSend';
+      msg.type === 'serialSend'
+    );
   }
   if (msg.type === 'key' && typeof msg.code === 'number') {
+    if (commands.key === undefined) {
+      return false;
+    }
     await sendCommand(session, commands.key, { code: msg.code });
     return true;
   }
   if (msg.type === 'reset') {
+    if (commands.reset === undefined) {
+      return false;
+    }
     await sendCommand(session, commands.reset, {});
     return true;
   }
   if (msg.type === 'speed' && (msg.mode === 'slow' || msg.mode === 'fast')) {
+    if (commands.speed === undefined) {
+      return false;
+    }
     await sendCommand(session, commands.speed, { mode: msg.mode });
     return true;
   }
   if (msg.type === 'serialSend' && typeof msg.text === 'string') {
+    if (commands.serialSend === undefined) {
+      return false;
+    }
     await sendCommand(session, commands.serialSend, { text: msg.text });
     return true;
   }

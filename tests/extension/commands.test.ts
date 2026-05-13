@@ -122,9 +122,7 @@ describe('registerExtensionCommands', () => {
     });
   });
 
-  it(
-    'starts debugging with the current project config instead of the selected launch config',
-    async () => {
+  it('starts debugging with the current project config instead of the selected launch config', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
@@ -165,9 +163,7 @@ describe('registerExtensionCommands', () => {
       })
     );
     expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.debug.start');
-  },
-    15000
-  );
+  }, 15000);
 
   it('starts debugging directly from a provided rootPath', async () => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
@@ -1043,7 +1039,7 @@ describe('registerExtensionCommands', () => {
 
     expect(createWebviewPanel).toHaveBeenCalled();
     expect(panelHtml).toContain('Content-Security-Policy');
-    expect(panelHtml).toContain('script-src \'nonce-');
+    expect(panelHtml).toContain("script-src 'nonce-");
     expect(panelHtml).toContain('<option value="tec1g" selected>');
     expect(panelHtml).toContain('<option value="serial" selected>');
   });
@@ -1074,11 +1070,13 @@ describe('registerExtensionCommands', () => {
     expect(openPanel).toBeTypeOf('function');
     await openPanel?.();
 
-    panelMessageHandler?.({ type: 'saveProjectConfig', platform: 'bad-platform', defaultTarget: 'app' });
+    panelMessageHandler?.({
+      type: 'saveProjectConfig',
+      platform: 'bad-platform',
+      defaultTarget: 'app',
+    });
 
-    expect(showErrorMessage).toHaveBeenCalledWith(
-      'Debug80: Invalid project configuration values.'
-    );
+    expect(showErrorMessage).toHaveBeenCalledWith('Debug80: Invalid project configuration values.');
     expect(writeFileSync).not.toHaveBeenCalled();
   });
 
@@ -1108,7 +1106,11 @@ describe('registerExtensionCommands', () => {
     expect(openPanel).toBeTypeOf('function');
     await openPanel?.();
 
-    panelMessageHandler?.({ type: 'saveProjectConfig', platform: 'tec1g', defaultTarget: 'serial' });
+    panelMessageHandler?.({
+      type: 'saveProjectConfig',
+      platform: 'tec1g',
+      defaultTarget: 'serial',
+    });
 
     expect(writeFileSync).toHaveBeenCalled();
     const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
@@ -1301,7 +1303,9 @@ describe('registerExtensionCommands', () => {
       { name: 'artifacts-only', uri: { fsPath: artifactRoot }, index: 0 },
       { name: 'tetro', uri: { fsPath: projectRoot }, index: 1 },
     ];
-    existsSync.mockImplementation((candidate: string) => path.normalize(candidate) === projectConfig);
+    existsSync.mockImplementation(
+      (candidate: string) => path.normalize(candidate) === projectConfig
+    );
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
 
     registerExtensionCommands({

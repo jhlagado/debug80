@@ -7,7 +7,9 @@ import * as vscode from 'vscode';
 import { findProjectConfigPath } from './project-config';
 import { WorkspaceSelectionController } from './workspace-selection';
 
-export function findWorkspaceFolder(rootPath: string | undefined): vscode.WorkspaceFolder | undefined {
+export function findWorkspaceFolder(
+  rootPath: string | undefined
+): vscode.WorkspaceFolder | undefined {
   if (rootPath === undefined || rootPath.length === 0) {
     return undefined;
   }
@@ -68,7 +70,9 @@ export async function resolveFolderForProjectCreation(
     name: path.basename(folderUri.fsPath),
   });
   if (!added) {
-    void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
+    void vscode.window.showErrorMessage(
+      'Debug80: Failed to add the selected folder to the workspace.'
+    );
     return undefined;
   }
 

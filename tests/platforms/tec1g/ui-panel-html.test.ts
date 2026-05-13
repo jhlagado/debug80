@@ -10,7 +10,8 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return {
     ...actual,
-    existsSync: (filePath: string) => !filePath.includes(`${path.sep}out${path.sep}webview${path.sep}`),
+    existsSync: (filePath: string) =>
+      !filePath.includes(`${path.sep}out${path.sep}webview${path.sep}`),
   };
 });
 

@@ -25,8 +25,9 @@ describe('platform-requests', () => {
 
   it('returns errors for missing runtime or code', () => {
     expect(handleKeyRequest(undefined, 1)).toBe('Debug80: Platform not active.');
-    expect(handleKeyRequest({ applyKey: () => undefined, silenceSpeaker: () => undefined }, undefined))
-      .toBe('Debug80: Missing key code.');
+    expect(
+      handleKeyRequest({ applyKey: () => undefined, silenceSpeaker: () => undefined }, undefined)
+    ).toBe('Debug80: Missing key code.');
   });
 
   it('handles reset requests', () => {

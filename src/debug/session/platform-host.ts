@@ -3,7 +3,10 @@
  */
 
 import type { IoHandlers } from '../../z80/runtime';
-import type { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../../platforms/types';
+import type {
+  Tec1PlatformConfigNormalized,
+  Tec1gPlatformConfigNormalized,
+} from '../../platforms/types';
 import type { PlatformKind } from '../launch/program-loader';
 import type { TerminalConfig, TerminalConfigNormalized, TerminalState } from './terminal-types';
 import type { Tec1Runtime } from '../../platforms/tec1/runtime';

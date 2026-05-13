@@ -4,15 +4,7 @@
 
 export type Tec1MemoryPanelViewId = 'a' | 'b' | 'c' | 'd';
 
-export type Tec1MemoryPanelViewMode =
-  | 'pc'
-  | 'sp'
-  | 'bc'
-  | 'de'
-  | 'hl'
-  | 'ix'
-  | 'iy'
-  | 'absolute';
+export type Tec1MemoryPanelViewMode = 'pc' | 'sp' | 'bc' | 'de' | 'hl' | 'ix' | 'iy' | 'absolute';
 
 export interface Tec1MemoryPanelViewDefinition {
   id: Tec1MemoryPanelViewId;
@@ -47,7 +39,7 @@ export const TEC1_MEMORY_PANEL_AFTER_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
  * Builds the browser-side script embedded in the TEC-1 memory panel.
  */
 export function getTec1MemoryPanelScript(
-  viewDefinitions: readonly Tec1MemoryPanelViewDefinition[] = TEC1_MEMORY_PANEL_VIEW_DEFINITIONS,
+  viewDefinitions: readonly Tec1MemoryPanelViewDefinition[] = TEC1_MEMORY_PANEL_VIEW_DEFINITIONS
 ): string {
   const viewIds = viewDefinitions.map(({ id }) => id);
 

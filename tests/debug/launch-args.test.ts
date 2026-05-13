@@ -19,10 +19,7 @@ vi.mock('vscode', () => ({
   workspace: vscodeWorkspace,
 }));
 
-import {
-  normalizePlatformName,
-  populateFromConfig,
-} from '../../src/debug/launch-args';
+import { normalizePlatformName, populateFromConfig } from '../../src/debug/launch-args';
 import {
   normalizeSourcePath,
   relativeIfPossible,
@@ -88,10 +85,9 @@ describe('launch-args', () => {
       configPath,
       JSON.stringify({ asm: 'a.asm', assembler: 'asm80', entry: 4660, target: 'default' })
     );
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
     expect(merged.asm).toBe('a.asm');
     expect(merged.assembler).toBe('asm80');
     expect(merged.entry).toBe(4660);
@@ -111,10 +107,9 @@ describe('launch-args', () => {
         },
       })
     );
-    const merged = populateFromConfig(
-      { projectConfig: pkgPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: pkgPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
     expect(merged.asm).toBe('main.asm');
     expect(merged.outputDir).toBe('build');
   });
@@ -140,10 +135,9 @@ describe('launch-args', () => {
       })
     );
 
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
 
     expect(merged.platform).toBe('tec1g');
   });
@@ -169,10 +163,9 @@ describe('launch-args', () => {
       })
     );
 
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
 
     expect(merged.platform).toBe('tec1g');
   });
@@ -181,7 +174,15 @@ describe('launch-args', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1g-'));
     const configPath = path.join(dir, 'debug80.json');
     const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-extension-'));
-    const bundledRom = path.join(extensionRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1', 'mon3.bin');
+    const bundledRom = path.join(
+      extensionRoot,
+      'resources',
+      'bundles',
+      'tec1g',
+      'mon3',
+      'v1',
+      'mon3.bin'
+    );
     const bundledListing = path.join(
       extensionRoot,
       'resources',
@@ -226,10 +227,9 @@ describe('launch-args', () => {
       })
     );
 
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
 
     expect(merged.platform).toBe('tec1g');
     expect(merged.tec1g?.romHex).toBe(bundledRom);
@@ -293,10 +293,9 @@ describe('launch-args', () => {
       })
     );
 
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
 
     expect(merged.platform).toBe('tec1');
     expect(merged.tec1?.romHex).toBe(bundledRom);
@@ -346,10 +345,9 @@ describe('launch-args', () => {
       })
     );
 
-    const merged = populateFromConfig(
-      { projectConfig: configPath } as LaunchRequestArguments,
-      { resolveBaseDir: () => dir }
-    );
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
 
     expect(merged.tec1g?.romHex).toBe(workspaceRom);
     expect(merged.tec1g?.extraListings).toEqual([workspaceListing]);

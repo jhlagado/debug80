@@ -10,7 +10,10 @@ import {
   readProjectConfig,
   resolveProjectPlatform,
 } from './project-config';
-import { ProjectTargetSelectionController, listProjectTargetChoices } from './project-target-selection';
+import {
+  ProjectTargetSelectionController,
+  listProjectTargetChoices,
+} from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 
 export async function startCurrentProjectDebugging(
@@ -72,7 +75,9 @@ export async function maybeAutoStartSingleTargetForRootChange(
   return onlyTarget;
 }
 
-export function resolveProjectPlatformForFolder(folder: vscode.WorkspaceFolder): string | undefined {
+export function resolveProjectPlatformForFolder(
+  folder: vscode.WorkspaceFolder
+): string | undefined {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
     return undefined;
