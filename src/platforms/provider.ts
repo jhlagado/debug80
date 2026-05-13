@@ -2,28 +2,24 @@
  * @fileoverview Platform provider abstraction for debug adapter launch/setup.
  */
 
-import type { DebugProtocol } from "@vscode/debugprotocol";
-import type { PlatformIoBuildResult } from "../debug/session/platform-host";
-import type { PlatformRegistry } from "../debug/session/platform-registry";
-import type { PlatformKind } from "../debug/launch/program-loader";
-import type { SessionStateShape } from "../debug/session/session-state";
-import type { TerminalConfig } from "../debug/session/terminal-types";
-import type { Z80Runtime } from "../z80/runtime";
-import type { Logger } from "../util/logger";
+import type { DebugProtocol } from '@vscode/debugprotocol';
+import type { PlatformIoBuildResult } from '../debug/session/platform-host';
+import type { PlatformRegistry } from '../debug/session/platform-registry';
+import type { PlatformKind } from '../debug/launch/program-loader';
+import type { SessionStateShape } from '../debug/session/session-state';
+import type { TerminalConfig } from '../debug/session/terminal-types';
+import type { Z80Runtime } from '../z80/runtime';
+import type { Logger } from '../util/logger';
 import type {
   SimplePlatformConfigNormalized,
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
-} from "./types";
+} from './types';
 
 export interface PlatformCommandContext {
   sessionState: SessionStateShape;
   sendResponse: (response: DebugProtocol.Response) => void;
-  sendErrorResponse: (
-    response: DebugProtocol.Response,
-    id: number,
-    message: string
-  ) => void;
+  sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
   handleMatrixModeRequest: (args: unknown) => string | null;
   handleMatrixKeyRequest: (args: unknown) => string | null;
   clearMatrixHeldKeys: () => void;
@@ -52,7 +48,7 @@ export interface PlatformRuntimeFinalizeContext {
 
 export interface ResolvedPlatformProvider {
   id: PlatformKind;
-  payload: { id: PlatformKind; uiVisibility?: Tec1gPlatformConfigNormalized["uiVisibility"] };
+  payload: { id: PlatformKind; uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'] };
   simpleConfig?: SimplePlatformConfigNormalized;
   tec1Config?: Tec1PlatformConfigNormalized;
   tec1gConfig?: Tec1gPlatformConfigNormalized;

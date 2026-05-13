@@ -43,7 +43,8 @@ export async function handlePlatformSerialSendFile(
     return;
   }
 
-  const command = ctx.getPlatform() === 'tec1g' ? 'debug80/tec1gSerialInput' : 'debug80/tec1SerialInput';
+  const command =
+    ctx.getPlatform() === 'tec1g' ? 'debug80/tec1gSerialInput' : 'debug80/tec1SerialInput';
   const charDelayMs = 2;
   const lineDelayMs = 10;
 
@@ -105,7 +106,8 @@ export async function handlePlatformSerialSave(text: string): Promise<void> {
   }
 
   const lines = text.split(/\r?\n/).filter((line) => line.length > 0);
-  const isHex = lines.length > 0 && lines.every((line) => line.startsWith(':') || line.trim() === '');
+  const isHex =
+    lines.length > 0 && lines.every((line) => line.startsWith(':') || line.trim() === '');
   const filters: Record<string, string[]> = isHex
     ? { 'Intel HEX': ['hex'], 'Text Files': ['txt'] }
     : { 'Text Files': ['txt'], 'All Files': ['*'] };

@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildMemorySnapshotViews, clampMemoryWindow, readMemoryWindow } from '../../src/debug/session/memory-view';
+import {
+  buildMemorySnapshotViews,
+  clampMemoryWindow,
+  readMemoryWindow,
+} from '../../src/debug/session/memory-view';
 
 describe('memory-view', () => {
   it('clamps memory window sizes', () => {

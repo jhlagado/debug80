@@ -107,10 +107,7 @@ export interface ProjectConfig {
   /** Alternative name for defaultTarget */
   target?: string;
   /** Named target configurations */
-  targets?: Record<
-    string,
-    Partial<LaunchRequestArguments> & { source?: string; profile?: string }
-  >;
+  targets?: Record<string, Partial<LaunchRequestArguments> & { source?: string; profile?: string }>;
   /** Fields that can be specified at the root level */
   asm?: string;
   assembler?: string;

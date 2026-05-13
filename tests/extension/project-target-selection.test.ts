@@ -28,9 +28,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('uses the remembered target when it is still valid', async () => {
-    const { ProjectTargetSelectionController } = await import(
-      '../../src/extension/project-target-selection'
-    );
+    const { ProjectTargetSelectionController } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -61,9 +60,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('uses the default target when no remembered target exists', async () => {
-    const { ProjectTargetSelectionController } = await import(
-      '../../src/extension/project-target-selection'
-    );
+    const { ProjectTargetSelectionController } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -90,9 +88,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('prompts when multiple targets exist without a remembered or default target', async () => {
-    const { ProjectTargetSelectionController } = await import(
-      '../../src/extension/project-target-selection'
-    );
+    const { ProjectTargetSelectionController } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -133,9 +130,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('prompts even when a default target exists if forcePrompt is enabled', async () => {
-    const { ProjectTargetSelectionController } = await import(
-      '../../src/extension/project-target-selection'
-    );
+    const { ProjectTargetSelectionController } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -176,7 +172,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('resolveTargetNameForConfig uses defaultTarget when workspace memento is absent', async () => {
-    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+    const { resolveTargetNameForConfig } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -192,7 +189,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('resolveTargetNameForConfig returns the sole target when there is no default', async () => {
-    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+    const { resolveTargetNameForConfig } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -206,7 +204,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('resolveTargetNameForConfig returns undefined when multiple targets lack a default', async () => {
-    const { resolveTargetNameForConfig } = await import('../../src/extension/project-target-selection');
+    const { resolveTargetNameForConfig } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -221,7 +220,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('omits targets whose program file is missing on disk', async () => {
-    const { listProjectTargetChoices } = await import('../../src/extension/project-target-selection');
+    const { listProjectTargetChoices } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -245,7 +245,8 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('ignores a remembered target when that target’s program file was removed', async () => {
-    const { resolvePreferredTargetName } = await import('../../src/extension/project-target-selection');
+    const { resolvePreferredTargetName } =
+      await import('../../src/extension/project-target-selection');
 
     readFileSync.mockReturnValue(
       JSON.stringify({
@@ -269,8 +270,6 @@ describe('ProjectTargetSelectionController', () => {
       update: vi.fn(),
     } as never;
 
-    expect(
-      resolvePreferredTargetName(memento, '/workspace/p/.vscode/debug80.json')
-    ).toBe('matrix');
+    expect(resolvePreferredTargetName(memento, '/workspace/p/.vscode/debug80.json')).toBe('matrix');
   });
 });

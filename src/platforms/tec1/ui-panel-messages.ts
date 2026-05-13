@@ -2,7 +2,11 @@
  * @file TEC-1 panel message handlers.
  */
 
-import { handleCommonPanelMessage, type PanelMessage, type PanelMessageContext } from '../panel-messages';
+import {
+  handleCommonPanelMessage,
+  type PanelMessage,
+  type PanelMessageContext,
+} from '../panel-messages';
 
 export type Tec1Message = PanelMessage;
 

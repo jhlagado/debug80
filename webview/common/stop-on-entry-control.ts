@@ -22,10 +22,7 @@ export function wireStopOnEntryControl(
 
   let applying = false;
 
-  const applyProjectStatus = (payload: {
-    hasProject?: boolean;
-    stopOnEntry?: boolean;
-  }): void => {
+  const applyProjectStatus = (payload: { hasProject?: boolean; stopOnEntry?: boolean }): void => {
     const hasProject = payload.hasProject === true;
     input.disabled = !hasProject;
     applying = true;

@@ -104,9 +104,7 @@ describe('tec1 ui helpers', () => {
 describe('tec1g ui helpers', () => {
   it('clamps and applies memory view settings', () => {
     const state = createTec1gMemoryViewState();
-    applyTec1gMemoryViews(state, [
-      { id: 'b', view: 'hl', after: 2048, address: 0x1 },
-    ]);
+    applyTec1gMemoryViews(state, [{ id: 'b', view: 'hl', after: 2048, address: 0x1 }]);
     expect(state.viewModes.b).toBe('hl');
     expect(state.viewAfter.b).toBe(1024);
     expect(state.viewAddress.b).toBe(0x1);

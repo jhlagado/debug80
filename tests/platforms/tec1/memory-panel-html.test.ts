@@ -190,9 +190,7 @@ describe('tec1 memory panel html', () => {
       ],
     };
 
-    window.dispatchEvent(
-      new MessageEvent('message', { data: { type: 'snapshot', ...snapshot } })
-    );
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'snapshot', ...snapshot } }));
 
     expect(harness.status.textContent).toBe('Updated');
     expect(harness.labelA.textContent).toBe('ABSOLUTE');
@@ -239,7 +237,7 @@ describe('tec1 memory panel html', () => {
           ],
           symbols: [{ name: 'START', address: 0x1234 }],
         },
-      }),
+      })
     );
 
     expect(harness.status.textContent).toBe('Updated');
@@ -250,7 +248,7 @@ describe('tec1 memory panel html', () => {
     window.dispatchEvent(
       new MessageEvent('message', {
         data: { type: 'snapshotError', message: 'No active z80 session.' },
-      }),
+      })
     );
 
     expect(harness.status.textContent).toBe('No active z80 session.');
@@ -266,7 +264,7 @@ describe('tec1 memory panel html', () => {
           views: [],
           symbols: [{ name: 'START', address: 0x1234 }],
         },
-      }),
+      })
     );
 
     harness.viewA.value = 'symbol:START';

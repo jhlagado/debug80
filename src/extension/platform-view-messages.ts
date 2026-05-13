@@ -50,7 +50,8 @@ export async function handlePlatformViewMessage(
   if (msg?.type === 'createProject') {
     const rootPath = rootPathFrom(msg);
     const platformRaw = (msg as { platform?: unknown }).platform;
-    const platform = typeof platformRaw === 'string' && platformRaw.length > 0 ? platformRaw : undefined;
+    const platform =
+      typeof platformRaw === 'string' && platformRaw.length > 0 ? platformRaw : undefined;
     await deps.handleCreateProject({
       ...(rootPath !== undefined ? { rootPath } : {}),
       ...(platform !== undefined ? { platform } : {}),

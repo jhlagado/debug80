@@ -79,7 +79,6 @@ type ConfigureFieldId =
   | 'outputDir'
   | 'artifactBase';
 
-
 export function registerExtensionCommands({
   context,
   platformViewProvider,
@@ -90,34 +89,42 @@ export function registerExtensionCommands({
 }: CommandDependencies): void {
   let creatingProject = false;
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.createProject', async (args?: { rootPath?: string; platform?: string }) => {
-      if (creatingProject) {
-        return false;
-      }
-      creatingProject = true;
-      try {
-        // Defer one event-loop tick so that the trailing mouseup from a welcome-view
-        // link click settles before any quick-pick or open-dialog is shown.
-        // Without this the picker opens and is immediately dismissed.
-        await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
-        if (!folder) {
-          void vscode.window.showErrorMessage(
-            'Debug80: No workspace folder available for project creation.'
-          );
+    vscode.commands.registerCommand(
+      'debug80.createProject',
+      async (args?: { rootPath?: string; platform?: string }) => {
+        if (creatingProject) {
           return false;
         }
-        const created = await scaffoldProject(folder, false, context.extensionUri, args?.platform);
-        if (created) {
-          workspaceSelection.rememberWorkspace(folder);
-          platformViewProvider.refreshIdleView();
-          platformViewProvider.reveal?.(false);
+        creatingProject = true;
+        try {
+          // Defer one event-loop tick so that the trailing mouseup from a welcome-view
+          // link click settles before any quick-pick or open-dialog is shown.
+          // Without this the picker opens and is immediately dismissed.
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
+          if (!folder) {
+            void vscode.window.showErrorMessage(
+              'Debug80: No workspace folder available for project creation.'
+            );
+            return false;
+          }
+          const created = await scaffoldProject(
+            folder,
+            false,
+            context.extensionUri,
+            args?.platform
+          );
+          if (created) {
+            workspaceSelection.rememberWorkspace(folder);
+            platformViewProvider.refreshIdleView();
+            platformViewProvider.reveal?.(false);
+          }
+          return created;
+        } finally {
+          creatingProject = false;
         }
-        return created;
-      } finally {
-        creatingProject = false;
       }
-    })
+    )
   );
 
   context.subscriptions.push(
@@ -151,7 +158,9 @@ export function registerExtensionCommands({
         name: path.basename(folderUri.fsPath),
       });
       if (!added) {
-        void vscode.window.showErrorMessage('Debug80: Failed to add the selected folder to the workspace.');
+        void vscode.window.showErrorMessage(
+          'Debug80: Failed to add the selected folder to the workspace.'
+        );
         return;
       }
       const addedFolder =
@@ -179,7 +188,9 @@ export function registerExtensionCommands({
       const projectConfig =
         projectConfigPath !== undefined ? readProjectConfig(projectConfigPath) : undefined;
       const projectPlan =
-        projectConfig !== undefined ? resolveProjectBundledAssetInstallPlan(projectConfig) : undefined;
+        projectConfig !== undefined
+          ? resolveProjectBundledAssetInstallPlan(projectConfig)
+          : undefined;
       let installPlan = projectPlan;
       if (installPlan === undefined) {
         const pick = await vscode.window.showQuickPick(
@@ -211,12 +222,9 @@ export function registerExtensionCommands({
       }
       const installed: string[] = [];
       for (const reference of installPlan.references) {
-        const result = materializeBundledAsset(
-          context.extensionUri,
-          folder.uri.fsPath,
-          reference,
-          { overwrite: pick.value }
-        );
+        const result = materializeBundledAsset(context.extensionUri, folder.uri.fsPath, reference, {
+          overwrite: pick.value,
+        });
         if (!result.ok) {
           void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
           return false;
@@ -234,8 +242,7 @@ export function registerExtensionCommands({
     vscode.commands.registerCommand('debug80.startDebug', async (args?: StartDebugArgs) => {
       const directFolder = findWorkspaceFolder(args?.rootPath);
       const folder =
-        directFolder &&
-        findProjectConfigPath(directFolder) !== undefined
+        directFolder && findProjectConfigPath(directFolder) !== undefined
           ? directFolder
           : await workspaceSelection.resolveWorkspaceFolder({
               prompt: true,
@@ -251,7 +258,11 @@ export function registerExtensionCommands({
         );
         return false;
       }
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+      return startCurrentProjectDebugging(
+        folder,
+        workspaceSelection,
+        platformViewProvider.stopOnEntry
+      );
     })
   );
 
@@ -260,12 +271,12 @@ export function registerExtensionCommands({
       const activeSession = vscode.debug.activeDebugSession;
       const folder =
         activeSession?.type === 'z80'
-          ? resolveSessionWorkspaceFolder(activeSession) ??
+          ? (resolveSessionWorkspaceFolder(activeSession) ??
             (await workspaceSelection.resolveWorkspaceFolder({
               prompt: true,
               requireProject: true,
               placeHolder: 'Select the Debug80 project folder to debug',
-            }))
+            })))
           : await workspaceSelection.resolveWorkspaceFolder({
               prompt: true,
               requireProject: true,
@@ -280,7 +291,11 @@ export function registerExtensionCommands({
         await vscode.debug.stopDebugging(activeSession);
       }
 
-      return startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+      return startCurrentProjectDebugging(
+        folder,
+        workspaceSelection,
+        platformViewProvider.stopOnEntry
+      );
     })
   );
 
@@ -317,7 +332,11 @@ export function registerExtensionCommands({
             path.normalize(nextProjectConfig) !== previousProjectConfig
           ) {
             await vscode.debug.stopDebugging(activeSession);
-            const restarted = await startCurrentProjectDebugging(folder, workspaceSelection, platformViewProvider.stopOnEntry);
+            const restarted = await startCurrentProjectDebugging(
+              folder,
+              workspaceSelection,
+              platformViewProvider.stopOnEntry
+            );
             restartedForRootChange = restarted;
             if (restarted) {
               const nextPlatform = resolveProjectPlatformForFolder(folder);
@@ -349,94 +368,97 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'debug80.selectTarget',
-      async (args?: SelectTargetArgs) => {
-        const folder =
-          findWorkspaceFolder(args?.rootPath) ??
-          (args?.rootPath === undefined
-            ? await workspaceSelection.resolveWorkspaceFolder({
-                requireProject: true,
-                prompt: true,
-                placeHolder: 'Select the Debug80 project folder',
-              })
-            : undefined);
-        if (!folder) {
-          if (args?.rootPath !== undefined) {
-            void vscode.window.showInformationMessage(
-              `Debug80: The workspace root ${args.rootPath} is not open in this window.`
-            );
-            return undefined;
-          }
-          void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+    vscode.commands.registerCommand('debug80.selectTarget', async (args?: SelectTargetArgs) => {
+      const folder =
+        findWorkspaceFolder(args?.rootPath) ??
+        (args?.rootPath === undefined
+          ? await workspaceSelection.resolveWorkspaceFolder({
+              requireProject: true,
+              prompt: true,
+              placeHolder: 'Select the Debug80 project folder',
+            })
+          : undefined);
+      if (!folder) {
+        if (args?.rootPath !== undefined) {
+          void vscode.window.showInformationMessage(
+            `Debug80: The workspace root ${args.rootPath} is not open in this window.`
+          );
           return undefined;
         }
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
 
-        const projectConfig = findProjectConfigPath(folder);
-        if (projectConfig === undefined) {
+      const projectConfig = findProjectConfigPath(folder);
+      if (projectConfig === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+        );
+        return undefined;
+      }
+
+      const previousTarget = resolvePreferredTargetName(context.workspaceState, projectConfig);
+
+      const directTargetChoice =
+        args?.targetName !== undefined
+          ? listProjectTargetChoices(projectConfig).find(
+              (choice) => choice.name === args.targetName
+            )
+          : undefined;
+
+      // If this is a discovered (unconfigured) source file, add it as a real target first
+      if (directTargetChoice?.discovered === true && directTargetChoice.sourceFile !== undefined) {
+        const ok = addProjectTarget(
+          projectConfig,
+          directTargetChoice.name,
+          directTargetChoice.sourceFile
+        );
+        if (!ok) {
           void vscode.window.showErrorMessage(
-            `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+            `Debug80: Failed to add target "${directTargetChoice.name}" to debug80.json.`
           );
           return undefined;
         }
+      }
 
-        const previousTarget = resolvePreferredTargetName(context.workspaceState, projectConfig);
-
-        const directTargetChoice =
-          args?.targetName !== undefined
-            ? listProjectTargetChoices(projectConfig).find((choice) => choice.name === args.targetName)
-            : undefined;
-
-        // If this is a discovered (unconfigured) source file, add it as a real target first
-        if (directTargetChoice?.discovered === true && directTargetChoice.sourceFile !== undefined) {
-          const ok = addProjectTarget(projectConfig, directTargetChoice.name, directTargetChoice.sourceFile);
-          if (!ok) {
-            void vscode.window.showErrorMessage(
-              `Debug80: Failed to add target "${directTargetChoice.name}" to debug80.json.`
-            );
-            return undefined;
-          }
-        }
-
-        const directTarget = directTargetChoice?.name;
-        const target =
-          directTarget ??
-          (await targetSelection.resolveTarget(projectConfig, {
-            prompt: true,
-            forcePrompt: true,
-            placeHolder: 'Select the active Debug80 target',
-          }));
-        if (target === null) {
-          return undefined;
-        }
-        if (target === undefined) {
-          if (args?.targetName !== undefined) {
-            void vscode.window.showInformationMessage(
-              `Debug80: Target ${args.targetName} is not defined in this project.`
-            );
-            return undefined;
-          }
+      const directTarget = directTargetChoice?.name;
+      const target =
+        directTarget ??
+        (await targetSelection.resolveTarget(projectConfig, {
+          prompt: true,
+          forcePrompt: true,
+          placeHolder: 'Select the active Debug80 target',
+        }));
+      if (target === null) {
+        return undefined;
+      }
+      if (target === undefined) {
+        if (args?.targetName !== undefined) {
           void vscode.window.showInformationMessage(
-            'Debug80: This project does not define any named targets.'
+            `Debug80: Target ${args.targetName} is not defined in this project.`
           );
           return undefined;
         }
+        void vscode.window.showInformationMessage(
+          'Debug80: This project does not define any named targets.'
+        );
+        return undefined;
+      }
 
-        targetSelection.rememberTarget(projectConfig, target);
-        platformViewProvider.refreshIdleView();
+      targetSelection.rememberTarget(projectConfig, target);
+      platformViewProvider.refreshIdleView();
 
-        const activeSession = vscode.debug.activeDebugSession;
-        if (activeSession?.type === 'z80' && target !== previousTarget) {
-          void vscode.window.showInformationMessage(
-            `Debug80: Selected target ${target}. Press Restart to apply it to the current session.`
-          );
-          return target;
-        }
-
-        void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
+      const activeSession = vscode.debug.activeDebugSession;
+      if (activeSession?.type === 'z80' && target !== previousTarget) {
+        void vscode.window.showInformationMessage(
+          `Debug80: Selected target ${target}. Press Restart to apply it to the current session.`
+        );
         return target;
       }
-    )
+
+      void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
+      return target;
+    })
   );
 
   context.subscriptions.push(
@@ -476,7 +498,10 @@ export function registerExtensionCommands({
 
       const pick = await vscode.window.showQuickPick(
         [
-          { label: 'Target Platform Override', value: 'targetPlatformOverride' as ConfigureFieldId },
+          {
+            label: 'Target Platform Override',
+            value: 'targetPlatformOverride' as ConfigureFieldId,
+          },
           { label: 'Program File', value: 'program' as ConfigureFieldId },
           { label: 'Assembler', value: 'assembler' as ConfigureFieldId },
           { label: 'Target Name', value: 'targetName' as ConfigureFieldId },
@@ -570,20 +595,22 @@ export function registerExtensionCommands({
           updatedTarget.assembler = assemblerPick.label;
         }
       } else if (pick.value === 'targetName') {
-        const targetName = (await vscode.window.showInputBox({
-          prompt: 'Debug80 target name',
-          value: target,
-          validateInput: (value) => {
-            const trimmed = value.trim();
-            if (trimmed.length === 0) {
-              return 'Target name cannot be empty.';
-            }
-            if (trimmed !== target && targets[trimmed] !== undefined) {
-              return 'A target with this name already exists.';
-            }
-            return undefined;
-          },
-        }))?.trim();
+        const targetName = (
+          await vscode.window.showInputBox({
+            prompt: 'Debug80 target name',
+            value: target,
+            validateInput: (value) => {
+              const trimmed = value.trim();
+              if (trimmed.length === 0) {
+                return 'Target name cannot be empty.';
+              }
+              if (trimmed !== target && targets[trimmed] !== undefined) {
+                return 'A target with this name already exists.';
+              }
+              return undefined;
+            },
+          })
+        )?.trim();
         if (targetName === undefined || targetName.length === 0 || targetName === target) {
           return undefined;
         }
@@ -597,21 +624,25 @@ export function registerExtensionCommands({
           config.target = targetName;
         }
       } else if (pick.value === 'outputDir') {
-        const outputDir = (await vscode.window.showInputBox({
-          prompt: 'Output directory',
-          value: String(updatedTarget.outputDir ?? ''),
-          placeHolder: 'build',
-        }))?.trim();
+        const outputDir = (
+          await vscode.window.showInputBox({
+            prompt: 'Output directory',
+            value: String(updatedTarget.outputDir ?? ''),
+            placeHolder: 'build',
+          })
+        )?.trim();
         if (outputDir === undefined || outputDir.length === 0) {
           return undefined;
         }
         updatedTarget.outputDir = outputDir;
       } else if (pick.value === 'artifactBase') {
-        const artifactBase = (await vscode.window.showInputBox({
-          prompt: 'Artifact base',
-          value: String(updatedTarget.artifactBase ?? ''),
-          placeHolder: 'main',
-        }))?.trim();
+        const artifactBase = (
+          await vscode.window.showInputBox({
+            prompt: 'Artifact base',
+            value: String(updatedTarget.artifactBase ?? ''),
+            placeHolder: 'main',
+          })
+        )?.trim();
         if (artifactBase === undefined || artifactBase.length === 0) {
           return undefined;
         }
@@ -835,9 +866,7 @@ export function registerExtensionCommands({
         const columns = sourceColumns.getSessionColumns(session);
         await vscode.window.showTextDocument(doc, { preview: false, viewColumn: columns.source });
       } catch (err) {
-        void vscode.window.showErrorMessage(
-          `Debug80: Failed to list ROM sources: ${String(err)}`
-        );
+        void vscode.window.showErrorMessage(`Debug80: Failed to list ROM sources: ${String(err)}`);
       }
     })
   );

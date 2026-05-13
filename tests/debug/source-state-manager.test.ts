@@ -5,9 +5,15 @@
 import { describe, it, expect } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
-import type { BuildSourceStateArgs, SourceManagerState } from '../../src/debug/mapping/source-manager';
+import type {
+  BuildSourceStateArgs,
+  SourceManagerState,
+} from '../../src/debug/mapping/source-manager';
 import type { SourceMapIndex } from '../../src/mapping/source-map';
-import { SourceStateManager, SourceManagerLike } from '../../src/debug/mapping/source-state-manager';
+import {
+  SourceStateManager,
+  SourceManagerLike,
+} from '../../src/debug/mapping/source-state-manager';
 
 describe('SourceStateManager', () => {
   it('throws if build is called before manager is set', () => {

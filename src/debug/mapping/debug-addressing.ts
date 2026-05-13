@@ -2,11 +2,7 @@
  * @fileoverview Address aliasing and breakpoint checks.
  */
 
-import {
-  ADDR_MASK,
-  TEC1G_SHADOW_START,
-  TEC1G_SHADOW_SIZE,
-} from '../../platforms/tec-common';
+import { ADDR_MASK, TEC1G_SHADOW_START, TEC1G_SHADOW_SIZE } from '../../platforms/tec-common';
 import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
 
 export function getShadowAlias(

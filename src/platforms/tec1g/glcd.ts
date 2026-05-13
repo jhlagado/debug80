@@ -164,7 +164,7 @@ export function createGlcdController(
   state: GlcdState,
   cycleClock: CycleClock,
   clockHz: number,
-  onUpdate: () => void,
+  onUpdate: () => void
 ): GlcdController {
   let glcdBusyUntil = 0;
   let currentClockHz = clockHz;
@@ -188,8 +188,7 @@ export function createGlcdController(
 
   const ddramIndex = (addr: number): number => {
     const a = addr & TEC1G_MASK_LOW7;
-    const row =
-      ((a & TEC1G_GLCD_DDRAM_ROW1_BIT) >> 4) | ((a & TEC1G_GLCD_DDRAM_ROW0_BIT) >> 2);
+    const row = ((a & TEC1G_GLCD_DDRAM_ROW1_BIT) >> 4) | ((a & TEC1G_GLCD_DDRAM_ROW0_BIT) >> 2);
     const col = a & TEC1G_GLCD_COL_MASK;
     return row * TEC1G_GLCD_ROW_STRIDE + col * TEC1G_GLCD_COL_STRIDE;
   };
@@ -345,8 +344,7 @@ export function createGlcdController(
     }
     const nextColBank = (state.glcdCol & TEC1G_GLCD_COL_BANK_BIT) !== 0 ? TEC1G_GLCD_ROW_BASE : 0;
     const nextIndex =
-      ((nextColBank + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) *
-        TEC1G_GLCD_ROW_STRIDE +
+      ((nextColBank + state.glcdRowAddr) & TEC1G_GLCD_ROW_MASK) * TEC1G_GLCD_ROW_STRIDE +
       (state.glcdCol & TEC1G_GLCD_COL_MASK) * TEC1G_GLCD_COL_STRIDE +
       state.glcdGdramPhase;
     state.glcdReadLatch =

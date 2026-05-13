@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { applySerialInput, applySpeedChange, applyTerminalBreak, applyTerminalInput } from '../../src/debug/requests/io-requests';
+import {
+  applySerialInput,
+  applySpeedChange,
+  applyTerminalBreak,
+  applyTerminalInput,
+} from '../../src/debug/requests/io-requests';
 import type { TerminalState } from '../../src/debug/session/terminal-types';
 
 describe('io-requests', () => {
@@ -27,7 +32,11 @@ describe('io-requests', () => {
 
   it('validates speed mode', () => {
     let mode: string | null = null;
-    const target = { setSpeed: (value: 'slow' | 'fast') => { mode = value; } };
+    const target = {
+      setSpeed: (value: 'slow' | 'fast') => {
+        mode = value;
+      },
+    };
     expect(applySpeedChange({ mode: 'fast' }, target)).toBeNull();
     expect(mode).toBe('fast');
     expect(applySpeedChange({ mode: 'nope' }, target)).toContain('Missing speed mode');

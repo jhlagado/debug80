@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { applyMemoryViews, createMemoryViewState } from '../../../src/platforms/tec1g/ui-panel-memory';
+import {
+  applyMemoryViews,
+  createMemoryViewState,
+} from '../../../src/platforms/tec1g/ui-panel-memory';
 
 describe('tec1g ui-panel-memory', () => {
   it('creates default memory view state', () => {

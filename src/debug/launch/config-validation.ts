@@ -5,10 +5,18 @@
  * @module debug/config-validation
  */
 
-import { ConfigurationError, MissingConfigError, UnsupportedPlatformError } from '../session/errors';
+import {
+  ConfigurationError,
+  MissingConfigError,
+  UnsupportedPlatformError,
+} from '../session/errors';
 import { LaunchRequestArguments } from '../session/types';
 import type { TerminalConfig } from '../session/terminal-types';
-import { Tec1PlatformConfig, Tec1gPlatformConfig, SimplePlatformConfig } from '../../platforms/types';
+import {
+  Tec1PlatformConfig,
+  Tec1gPlatformConfig,
+  SimplePlatformConfig,
+} from '../../platforms/types';
 
 // ============================================================================
 // Constants

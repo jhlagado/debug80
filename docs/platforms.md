@@ -362,7 +362,7 @@ These `roms/` paths are stable project override paths. If the files are absent,
 Debug80 resolves the bundled extension copies. If the files are present, local
 workspace files take precedence.
 
-**Command:** **Debug80: Copy Bundled MON3 ROM into Workspace** (`debug80.materializeBundledRom`) — pick a folder and optional overwrite; copies the same files on demand for local inspection or override.
+**Command:** **Debug80: Copy Bundled Assets into Workspace** (`debug80.materializeBundledRom`) — pick a bundled asset set, folder, and optional overwrite; copies bundled ROM/listing/source assets such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection or override.
 
 **Manual project (no wizard):** point `tec1g.romHex` and `tec1g.extraListings` at workspace-relative paths (or absolute paths). Example:
 

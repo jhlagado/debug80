@@ -8,10 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryPanel } from '../../../webview/common/memory-panel';
 import type { VscodeApi } from '../../../webview/common/vscode';
 
-function createElement<T extends HTMLElement>(
-  tagName: string,
-  className?: string
-): T {
+function createElement<T extends HTMLElement>(tagName: string, className?: string): T {
   const element = document.createElement(tagName) as T;
   if (className !== undefined) {
     element.className = className;
@@ -133,9 +130,7 @@ describe('shared memory panel', () => {
 
     panel.handleSnapshot({
       running: false,
-      symbols: [
-        { name: 'LCD_TEXT_TETRO_RUNNING', address: 0x4567 },
-      ],
+      symbols: [{ name: 'LCD_TEXT_TETRO_RUNNING', address: 0x4567 }],
     });
 
     const picker = document.querySelector<HTMLInputElement>('.memory-anchor-picker');
@@ -176,11 +171,14 @@ describe('shared memory panel', () => {
 
   it('can request a register-only snapshot while the memory panel is inactive', () => {
     const postMessage = vi.fn();
-    const { panel } = createPanel({
-      postMessage,
-      getState: vi.fn(),
-      setState: vi.fn(),
-    }, { active: false });
+    const { panel } = createPanel(
+      {
+        postMessage,
+        getState: vi.fn(),
+        setState: vi.fn(),
+      },
+      { active: false }
+    );
 
     panel.requestRegisterSnapshot();
 
@@ -266,11 +264,14 @@ describe('shared memory panel', () => {
 
   it('marks read-only bytes and requires the unlock toggle before editing them', () => {
     const postMessage = vi.fn();
-    const { panel, dump } = createPanel({
-      postMessage,
-      getState: vi.fn(),
-      setState: vi.fn(),
-    }, { withShell: true });
+    const { panel, dump } = createPanel(
+      {
+        postMessage,
+        getState: vi.fn(),
+        setState: vi.fn(),
+      },
+      { withShell: true }
+    );
 
     panel.handleSnapshot({
       running: false,
@@ -390,7 +391,9 @@ describe('shared memory panel', () => {
     });
 
     const flags = registerStrip.querySelector<HTMLInputElement>('input[data-register="flags"]');
-    const flagsPrime = registerStrip.querySelector<HTMLInputElement>('input[data-register="flagsp"]');
+    const flagsPrime = registerStrip.querySelector<HTMLInputElement>(
+      'input[data-register="flagsp"]'
+    );
     expect(flags).not.toBeNull();
     expect(flagsPrime).not.toBeNull();
     expect(flags?.value).toBe('SzYhXpNc');

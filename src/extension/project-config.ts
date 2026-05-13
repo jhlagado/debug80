@@ -20,8 +20,10 @@ function isBundledAssetReference(value: unknown): boolean {
     return false;
   }
   const o = value as Record<string, unknown>;
-  return isNonEmptyString(o.bundleId) && isNonEmptyString(o.path) && (
-    o.destination === undefined || isNonEmptyString(o.destination)
+  return (
+    isNonEmptyString(o.bundleId) &&
+    isNonEmptyString(o.path) &&
+    (o.destination === undefined || isNonEmptyString(o.destination))
   );
 }
 
@@ -94,7 +96,11 @@ export function isDebug80ProjectConfig(config: ProjectConfig | undefined): confi
 
   const bundledAssets = config.bundledAssets;
   if (bundledAssets !== undefined) {
-    if (bundledAssets === null || typeof bundledAssets !== 'object' || Array.isArray(bundledAssets)) {
+    if (
+      bundledAssets === null ||
+      typeof bundledAssets !== 'object' ||
+      Array.isArray(bundledAssets)
+    ) {
       return false;
     }
     if (!Object.values(bundledAssets).every((asset) => isBundledAssetReference(asset))) {
@@ -208,7 +214,10 @@ export function readProjectConfig(projectConfigPath: string): ProjectConfig | un
 
 export function writeProjectConfig(projectConfigPath: string, config: ProjectConfig): boolean {
   try {
-    fs.writeFileSync(projectConfigPath, `${JSON.stringify(normalizeProjectVersion(config), null, 2)}\n`);
+    fs.writeFileSync(
+      projectConfigPath,
+      `${JSON.stringify(normalizeProjectVersion(config), null, 2)}\n`
+    );
     return true;
   } catch {
     return false;
@@ -348,9 +357,8 @@ export function updateProjectTargetSource(
 export function listProjectSourceFiles(rootPath: string): string[] {
   const results: string[] = [];
   const sourceRoot = path.join(rootPath, 'src');
-  const scanRoot = fs.existsSync(sourceRoot) && fs.statSync(sourceRoot).isDirectory()
-    ? sourceRoot
-    : rootPath;
+  const scanRoot =
+    fs.existsSync(sourceRoot) && fs.statSync(sourceRoot).isDirectory() ? sourceRoot : rootPath;
   collectProjectSourceFiles(rootPath, scanRoot, results);
   results.sort((left, right) => left.localeCompare(right));
   return results;

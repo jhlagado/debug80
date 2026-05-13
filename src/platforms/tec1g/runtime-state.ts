@@ -95,7 +95,8 @@ export function createTec1gInitialState(params: {
   };
   cartridgePresentDefault: boolean;
 }): Tec1gState {
-  const { config, matrixMode, initialSysCtrl, initialSysCtrlDecoded, cartridgePresentDefault } = params;
+  const { config, matrixMode, initialSysCtrl, initialSysCtrlDecoded, cartridgePresentDefault } =
+    params;
   const state: Tec1gState = {
     display: {
       digits: Array.from({ length: 6 }, () => 0),

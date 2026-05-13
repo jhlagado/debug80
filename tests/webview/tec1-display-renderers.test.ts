@@ -82,6 +82,8 @@ describe('tec1 display renderers', () => {
 
     expect(grid.querySelectorAll('.matrix-dot')).toHaveLength(64);
     expect(grid.querySelector('[data-row="0"][data-col="0"]')?.classList.contains('on')).toBe(true);
-    expect(grid.querySelector('[data-row="0"][data-col="1"]')?.classList.contains('on')).toBe(false);
+    expect(grid.querySelector('[data-row="0"][data-col="1"]')?.classList.contains('on')).toBe(
+      false
+    );
   });
 });

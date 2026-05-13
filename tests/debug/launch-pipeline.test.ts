@@ -4,7 +4,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
-import { assembleIfRequested, normalizeStepLimit, resolveExtraListings } from '../../src/debug/launch/launch-pipeline';
+import {
+  assembleIfRequested,
+  normalizeStepLimit,
+  resolveExtraListings,
+} from '../../src/debug/launch/launch-pipeline';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-pipeline', () => {
@@ -34,7 +38,6 @@ describe('launch-pipeline', () => {
     expect(list).toEqual(['a.lst']);
     expect(resolveExtraListings('tec1')).toEqual([]);
   });
-
 
   it('skips assembly when disabled', async () => {
     const args = { assemble: false } as LaunchRequestArguments;

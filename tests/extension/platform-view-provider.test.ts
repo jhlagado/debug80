@@ -321,7 +321,9 @@ describe('PlatformViewProvider', () => {
       provider.setPlatform('simple', undefined, { reveal: false, tab: 'ui' });
 
       const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
-        .calls[0]?.[0] as ((msg: { type?: string; platform?: string }) => Promise<void>) | undefined;
+        .calls[0]?.[0] as
+        | ((msg: { type?: string; platform?: string }) => Promise<void>)
+        | undefined;
       expect(handler).toBeTypeOf('function');
 
       (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
@@ -479,7 +481,9 @@ describe('PlatformViewProvider', () => {
     provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
 
     const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
-      .calls[0]?.[0] as ((msg: { type?: string; stopOnEntry?: boolean }) => Promise<void>) | undefined;
+      .calls[0]?.[0] as
+      | ((msg: { type?: string; stopOnEntry?: boolean }) => Promise<void>)
+      | undefined;
     expect(handler).toBeTypeOf('function');
 
     executeCommand.mockClear();
@@ -984,7 +988,9 @@ describe('PlatformViewProvider', () => {
     await handler?.({ type: 'configureProject' });
 
     // configureProject is now a no-op; no selectTab message should be sent
-    const tabMessages = getPostMessageCalls(webviewView).filter(([msg]) => msg.type === 'selectTab');
+    const tabMessages = getPostMessageCalls(webviewView).filter(
+      ([msg]) => msg.type === 'selectTab'
+    );
     expect(tabMessages).toHaveLength(0);
   });
 

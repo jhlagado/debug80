@@ -11,7 +11,10 @@ import type { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 /**
  * Sidebar UI state → webview message body after `applyTec1gUpdate`.
  */
-export function serializeTec1gUpdateFromUiState(state: Tec1gUiState, speakerHz?: number): Tec1gUpdatePayload {
+export function serializeTec1gUpdateFromUiState(
+  state: Tec1gUiState,
+  speakerHz?: number
+): Tec1gUpdatePayload {
   const payload: Tec1gUpdatePayload = {
     digits: [...state.digits],
     matrix: [...state.matrix],
@@ -71,7 +74,9 @@ function isNumberArray(value: unknown): value is number[] {
 /**
  * Normalizes a `debug80/tec1gUpdate` custom event body to a UI payload, or `undefined` if invalid.
  */
-export function tec1gUpdatePayloadFromDebugEventBody(body: unknown): Tec1gUpdatePayload | undefined {
+export function tec1gUpdatePayloadFromDebugEventBody(
+  body: unknown
+): Tec1gUpdatePayload | undefined {
   if (body === null || typeof body !== 'object') {
     return undefined;
   }
@@ -80,7 +85,12 @@ export function tec1gUpdatePayloadFromDebugEventBody(body: unknown): Tec1gUpdate
   const matrix = payload.matrix;
   const lcd = payload.lcd;
   const glcd = payload.glcd;
-  if (!isNumberArray(digits) || !isNumberArray(matrix) || !isNumberArray(lcd) || !isNumberArray(glcd)) {
+  if (
+    !isNumberArray(digits) ||
+    !isNumberArray(matrix) ||
+    !isNumberArray(lcd) ||
+    !isNumberArray(glcd)
+  ) {
     return undefined;
   }
   const speakerRaw = payload.speaker;

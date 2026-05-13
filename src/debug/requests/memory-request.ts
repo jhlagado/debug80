@@ -3,7 +3,10 @@
  */
 
 import { DebugProtocol } from '@vscode/debugprotocol';
-import { buildMemorySnapshotResponse, type MemorySnapshotContext } from '../session/memory-snapshot';
+import {
+  buildMemorySnapshotResponse,
+  type MemorySnapshotContext,
+} from '../session/memory-snapshot';
 
 export type MemoryRequestDeps = {
   getRuntime: () => MemorySnapshotContext['runtime'] | undefined;
@@ -18,7 +21,7 @@ export type MemoryRequestDeps = {
 export function handleMemorySnapshotRequest(
   response: DebugProtocol.Response,
   args: unknown,
-  deps: MemoryRequestDeps,
+  deps: MemoryRequestDeps
 ): boolean {
   const runtime = deps.getRuntime();
   if (runtime === undefined) {

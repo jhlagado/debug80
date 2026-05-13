@@ -63,16 +63,24 @@ describe('platform-view serial actions', () => {
     const fileUri = { path: '/tmp/send.txt' };
     mocks.showOpenDialog.mockResolvedValueOnce([fileUri]);
     mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode('AB'));
-    mocks.withProgress.mockImplementationOnce(async (_opts, callback: (progress: { report: (value: unknown) => void }, token: { isCancellationRequested: boolean }) => Promise<void> | void) => {
-      await callback(
-        {
-          report: vi.fn<(value: unknown) => void>(),
-        },
-        {
-          isCancellationRequested: false,
-        }
-      );
-    });
+    mocks.withProgress.mockImplementationOnce(
+      async (
+        _opts,
+        callback: (
+          progress: { report: (value: unknown) => void },
+          token: { isCancellationRequested: boolean }
+        ) => Promise<void> | void
+      ) => {
+        await callback(
+          {
+            report: vi.fn<(value: unknown) => void>(),
+          },
+          {
+            isCancellationRequested: false,
+          }
+        );
+      }
+    );
     vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: TimerHandler) => {
       if (typeof callback === 'function') {
         callback();

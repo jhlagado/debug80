@@ -75,7 +75,10 @@ function artifactBase(filePath: string): string {
   return extension.length > 0 ? filePath.slice(0, -extension.length) : filePath;
 }
 
-function findArtifact(artifacts: ZaxArtifact[], kind: ZaxArtifact['kind']): ZaxArtifact | undefined {
+function findArtifact(
+  artifacts: ZaxArtifact[],
+  kind: ZaxArtifact['kind']
+): ZaxArtifact | undefined {
   return artifacts.find((artifact) => artifact.kind === kind);
 }
 
@@ -179,7 +182,9 @@ export class ZaxBackend implements AssemblerBackend {
       return zaxFailure(`zax succeeded but did not produce HEX output for "${options.asmPath}".`);
     }
     if (listing === undefined || listing.kind !== 'lst') {
-      return zaxFailure(`zax succeeded but did not produce listing output for "${options.asmPath}".`);
+      return zaxFailure(
+        `zax succeeded but did not produce listing output for "${options.asmPath}".`
+      );
     }
 
     writeTextArtifact(options.hexPath, hex.text);

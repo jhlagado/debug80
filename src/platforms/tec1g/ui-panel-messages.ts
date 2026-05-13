@@ -2,7 +2,11 @@
  * @file TEC-1G panel message handlers.
  */
 
-import { handleCommonPanelMessage, type PanelMessage, type PanelMessageContext } from '../panel-messages';
+import {
+  handleCommonPanelMessage,
+  type PanelMessage,
+  type PanelMessageContext,
+} from '../panel-messages';
 
 export type Tec1gMessage = PanelMessage & {
   key?: string;
@@ -22,14 +26,16 @@ export type MessageContext = PanelMessageContext<'ui' | 'memory'>;
  * Handles inbound webview messages for the TEC-1G panel.
  */
 export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext): Promise<void> {
-  if (await handleCommonPanelMessage(msg, ctx, {
-    key: 'debug80/tec1gKey',
-    reset: 'debug80/tec1gReset',
-    speed: 'debug80/tec1gSpeed',
-    serialSend: 'debug80/tec1gSerialInput',
-    registerWrite: 'debug80/registerWrite',
-    memoryWrite: 'debug80/memoryWrite',
-  })) {
+  if (
+    await handleCommonPanelMessage(msg, ctx, {
+      key: 'debug80/tec1gKey',
+      reset: 'debug80/tec1gReset',
+      speed: 'debug80/tec1gSpeed',
+      serialSend: 'debug80/tec1gSerialInput',
+      registerWrite: 'debug80/registerWrite',
+      memoryWrite: 'debug80/memoryWrite',
+    })
+  ) {
     return;
   }
   const target = ctx.getSession();

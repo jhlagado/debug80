@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildD8DebugMap, buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
+import {
+  buildD8DebugMap,
+  buildMappingFromD8DebugMap,
+  parseD8DebugMap,
+} from '../../src/mapping/d8-map';
 import { MappingParseResult } from '../../src/mapping/parser';
 
 const makeMapping = (): MappingParseResult => ({
@@ -121,9 +125,7 @@ describe('d8-map', () => {
       lstText: ['line 0'],
       files: {
         'src/main.asm': {
-          segments: [
-            { start: 0, end: 1, lstLine: 1, lstTextId: 99 },
-          ],
+          segments: [{ start: 0, end: 1, lstLine: 1, lstTextId: 99 }],
         },
       },
     };
@@ -243,39 +245,380 @@ describe('d8-map', () => {
   it('rejects invalid map shapes and field types', () => {
     const cases: Array<[string, unknown]> = [
       ['Expected a JSON object.', 'not-an-object'],
-      ['Missing or invalid format field.', { format: 'nope', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {} }],
-      ['Unsupported D8 map version.', { format: 'd8-debug-map', version: 2, arch: 'z80', addressWidth: 16, endianness: 'little', files: {} }],
-      ['Missing arch.', { format: 'd8-debug-map', version: 1, arch: '', addressWidth: 16, endianness: 'little', files: {} }],
-      ['Missing addressWidth.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: NaN, endianness: 'little', files: {} }],
-      ['Missing endianness.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'sideways', files: {} }],
-      ['Missing files map.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: null }],
-      ['segmentDefaults must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, segmentDefaults: 5 }],
-      ['segmentDefaults.kind is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, segmentDefaults: { kind: 'bad' } }],
-      ['segmentDefaults.confidence is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, segmentDefaults: { confidence: 'bad' } }],
-      ['symbolDefaults must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, symbolDefaults: 5 }],
-      ['symbolDefaults.kind is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, symbolDefaults: { kind: 'bad' } }],
-      ['symbolDefaults.scope is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, symbolDefaults: { scope: 'bad' } }],
-      ['lstText must be an array when present.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: {}, lstText: 'not-array' }],
-      ['File entry must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': 'bad' } }],
-      ['File meta must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { meta: 'bad' } } }],
-      ['File meta sha256 must be a string.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { meta: { sha256: 1 } } } }],
-      ['File meta lineCount must be a number.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { meta: { lineCount: 'no' } } } }],
-      ['File segments must be an array.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: 'no' } } }],
-      ['Segment entry must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: ['bad'] } } }],
-      ['Segment start/end must be numbers.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 'a', end: 1, lstLine: 1 }] } } }],
-      ['Segment line must be a number or null.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, line: 'no', lstLine: 1 }] } } }],
-      ['Segment kind is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, kind: 'bad' }] } } }],
-      ['Segment confidence is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, confidence: 'bad' }] } } }],
-      ['Segment lstLine must be a number.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 'no' }] } } }],
-      ['Segment lstText must be a string.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, lstText: 1 }] } } }],
-      ['Segment lstTextId must be a number.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, lstTextId: 'no' }] } } }],
-      ['File symbols must be an array.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: 'no' } } }],
-      ['Symbol entry must be an object.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: ['bad'] } } }],
-      ['Symbol name must be a string.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: [{ name: '', address: 0 }] } } }],
-      ['Symbol address must be a number.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: [{ name: 'X', address: 'no' }] } } }],
-      ['Symbol line must be a number or null.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, line: 'no' }] } } }],
-      ['Symbol kind is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, kind: 'bad' }] } } }],
-      ['Symbol scope is invalid.', { format: 'd8-debug-map', version: 1, arch: 'z80', addressWidth: 16, endianness: 'little', files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, scope: 'bad' }] } } }],
+      [
+        'Missing or invalid format field.',
+        {
+          format: 'nope',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+        },
+      ],
+      [
+        'Unsupported D8 map version.',
+        {
+          format: 'd8-debug-map',
+          version: 2,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+        },
+      ],
+      [
+        'Missing arch.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: '',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+        },
+      ],
+      [
+        'Missing addressWidth.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: NaN,
+          endianness: 'little',
+          files: {},
+        },
+      ],
+      [
+        'Missing endianness.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'sideways',
+          files: {},
+        },
+      ],
+      [
+        'Missing files map.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: null,
+        },
+      ],
+      [
+        'segmentDefaults must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          segmentDefaults: 5,
+        },
+      ],
+      [
+        'segmentDefaults.kind is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          segmentDefaults: { kind: 'bad' },
+        },
+      ],
+      [
+        'segmentDefaults.confidence is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          segmentDefaults: { confidence: 'bad' },
+        },
+      ],
+      [
+        'symbolDefaults must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          symbolDefaults: 5,
+        },
+      ],
+      [
+        'symbolDefaults.kind is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          symbolDefaults: { kind: 'bad' },
+        },
+      ],
+      [
+        'symbolDefaults.scope is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          symbolDefaults: { scope: 'bad' },
+        },
+      ],
+      [
+        'lstText must be an array when present.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {},
+          lstText: 'not-array',
+        },
+      ],
+      [
+        'File entry must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': 'bad' },
+        },
+      ],
+      [
+        'File meta must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { meta: 'bad' } },
+        },
+      ],
+      [
+        'File meta sha256 must be a string.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { meta: { sha256: 1 } } },
+        },
+      ],
+      [
+        'File meta lineCount must be a number.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { meta: { lineCount: 'no' } } },
+        },
+      ],
+      [
+        'File segments must be an array.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: 'no' } },
+        },
+      ],
+      [
+        'Segment entry must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: ['bad'] } },
+        },
+      ],
+      [
+        'Segment start/end must be numbers.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: [{ start: 'a', end: 1, lstLine: 1 }] } },
+        },
+      ],
+      [
+        'Segment line must be a number or null.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: [{ start: 0, end: 1, line: 'no', lstLine: 1 }] } },
+        },
+      ],
+      [
+        'Segment kind is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, kind: 'bad' }] } },
+        },
+      ],
+      [
+        'Segment confidence is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {
+            'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, confidence: 'bad' }] },
+          },
+        },
+      ],
+      [
+        'Segment lstLine must be a number.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 'no' }] } },
+        },
+      ],
+      [
+        'Segment lstText must be a string.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, lstText: 1 }] } },
+        },
+      ],
+      [
+        'Segment lstTextId must be a number.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {
+            'src/main.asm': { segments: [{ start: 0, end: 1, lstLine: 1, lstTextId: 'no' }] },
+          },
+        },
+      ],
+      [
+        'File symbols must be an array.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: 'no' } },
+        },
+      ],
+      [
+        'Symbol entry must be an object.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: ['bad'] } },
+        },
+      ],
+      [
+        'Symbol name must be a string.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: [{ name: '', address: 0 }] } },
+        },
+      ],
+      [
+        'Symbol address must be a number.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: [{ name: 'X', address: 'no' }] } },
+        },
+      ],
+      [
+        'Symbol line must be a number or null.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, line: 'no' }] } },
+        },
+      ],
+      [
+        'Symbol kind is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, kind: 'bad' }] } },
+        },
+      ],
+      [
+        'Symbol scope is invalid.',
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: { 'src/main.asm': { symbols: [{ name: 'X', address: 0, scope: 'bad' }] } },
+        },
+      ],
     ];
 
     for (const [message, payload] of cases) {

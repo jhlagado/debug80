@@ -126,7 +126,7 @@ Fields per target:
 - `sourceFile`: root asm file to assemble
 - `outputDir`: where artifacts go
 - `artifactBase`: basename for artifacts
-- `platform`: currently `simple`
+- `platform`: supported built-in ids are `simple`, `tec1`, and `tec1g`
 - `simple`: platform config (memory `regions` with `kind` + `readOnly`; CPU starts at 0x0000 / 0, app at 0x0900 / 2304)
 - `simple.binFrom`/`simple.binTo`: optional, emits a `.bin` via an extra asm80 pass
 - `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).

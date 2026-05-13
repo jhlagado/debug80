@@ -23,7 +23,10 @@ export type Tec1gPlatformUpdateDeps = {
 /**
  * Maps a `update` message body onto digits, LCD/GLCD, matrix, audio, and SysCtrl.
  */
-export function applyTec1gPlatformUpdate(deps: Tec1gPlatformUpdateDeps, payload: Tec1gUpdatePayload | null | undefined): void {
+export function applyTec1gPlatformUpdate(
+  deps: Tec1gPlatformUpdateDeps,
+  payload: Tec1gUpdatePayload | null | undefined
+): void {
   if (!payload || typeof payload !== 'object') {
     return;
   }

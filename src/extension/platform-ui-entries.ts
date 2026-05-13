@@ -43,16 +43,19 @@ export function createTec1PlatformUiEntry(): PlatformUiEntry {
           const tec1Payload = payload as Parameters<typeof state.applyTec1Update>[1];
           state.applyTec1Update(tec1State, tec1Payload);
           // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1-shaped after apply.
-          return serializeTec1UpdateFromUiState(tec1State, tec1Payload.speakerHz) as unknown as Record<
-            string,
-            unknown
-          >;
+          return serializeTec1UpdateFromUiState(
+            tec1State,
+            tec1Payload.speakerHz
+          ) as unknown as Record<string, unknown>;
         },
         createMemoryViewState: memory.createMemoryViewState,
         handleMessage: (message, context): Promise<void> =>
           // Cast getActiveTab/setActiveTab to the narrower 'ui'|'memory' type expected by the
           // panel message handler; 'config' never reaches handleTec1Message in practice.
-          messages.handleTec1Message(message, context as Parameters<typeof messages.handleTec1Message>[1]),
+          messages.handleTec1Message(
+            message,
+            context as Parameters<typeof messages.handleTec1Message>[1]
+          ),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,
@@ -94,16 +97,19 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
           const tec1gPayload = payload as Parameters<typeof state.applyTec1gUpdate>[1];
           state.applyTec1gUpdate(tec1gState, tec1gPayload);
           // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1G-shaped after apply.
-          return serializeTec1gUpdateFromUiState(tec1gState, tec1gPayload.speakerHz) as unknown as Record<
-            string,
-            unknown
-          >;
+          return serializeTec1gUpdateFromUiState(
+            tec1gState,
+            tec1gPayload.speakerHz
+          ) as unknown as Record<string, unknown>;
         },
         createMemoryViewState: memory.createMemoryViewState,
         handleMessage: (message, context): Promise<void> =>
           // Cast getActiveTab/setActiveTab to the narrower 'ui'|'memory' type expected by the
           // panel message handler; 'config' never reaches handleTec1gMessage in practice.
-          messages.handleTec1gMessage(message, context as Parameters<typeof messages.handleTec1gMessage>[1]),
+          messages.handleTec1gMessage(
+            message,
+            context as Parameters<typeof messages.handleTec1gMessage>[1]
+          ),
         buildUpdateMessage: (uiState, uiRevision): Record<string, unknown> => ({
           type: 'update',
           uiRevision,

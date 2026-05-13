@@ -127,7 +127,9 @@ export function getProjectKitById(id: string | undefined): ProjectKit | undefine
   return PROJECT_KITS[id as ProjectKitId];
 }
 
-export function getDefaultProjectKitForPlatform(platform: string | undefined): ProjectKit | undefined {
+export function getDefaultProjectKitForPlatform(
+  platform: string | undefined
+): ProjectKit | undefined {
   const normalized = platform?.trim().toLowerCase();
   if (normalized !== 'simple' && normalized !== 'tec1' && normalized !== 'tec1g') {
     return undefined;
@@ -143,10 +145,7 @@ export function getProjectKitChoices(preselectedPlatform?: string): ProjectKitCh
   }));
 }
 
-function resolveProjectKitTemplatePath(
-  kit: ProjectKit,
-  language: StarterLanguage
-): string {
+function resolveProjectKitTemplatePath(kit: ProjectKit, language: StarterLanguage): string {
   return path.join('resources', 'project-kits', kit.starterTemplates[language]);
 }
 

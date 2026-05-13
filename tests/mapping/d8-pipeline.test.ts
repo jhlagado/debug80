@@ -33,8 +33,7 @@ function buildPipeline() {
   expect(map).toBeDefined();
 
   const mapping = buildMappingFromD8DebugMap(map!);
-  const resolve = (file: string) =>
-    file === 'matrix.zax' ? FAKE_SOURCE_PATH : undefined;
+  const resolve = (file: string) => (file === 'matrix.zax' ? FAKE_SOURCE_PATH : undefined);
   const index = buildSourceMapIndex(mapping, resolve);
 
   return { map: map!, mapping, index, resolve };
@@ -62,21 +61,15 @@ describe('D8 golden fixture pipeline (matrix.zax)', () => {
     const { index } = buildPipeline();
 
     const codeAddresses = [
-      0x4000, 0x4002, 0x4004, 0x4007, 0x4008, 0x400a,
-      0x400b, 0x400d, 0x400e, 0x400f, 0x4011, 0x4012,
-      0x4013, 0x4015, 0x4016, 0x4017, 0x4019, 0x401b,
-      0x401c, 0x401e, 0x4020, 0x4021, 0x4023, 0x4025,
-      0x4027, 0x4028, 0x402a, 0x402c, 0x402e, 0x402f,
-      0x4031, 0x4032,
+      0x4000, 0x4002, 0x4004, 0x4007, 0x4008, 0x400a, 0x400b, 0x400d, 0x400e, 0x400f, 0x4011,
+      0x4012, 0x4013, 0x4015, 0x4016, 0x4017, 0x4019, 0x401b, 0x401c, 0x401e, 0x4020, 0x4021,
+      0x4023, 0x4025, 0x4027, 0x4028, 0x402a, 0x402c, 0x402e, 0x402f, 0x4031, 0x4032,
     ];
 
     for (const addr of codeAddresses) {
       const seg = findSegmentForAddress(index, addr);
       expect(seg, `no segment for 0x${addr.toString(16)}`).toBeDefined();
-      expect(
-        seg!.loc.line,
-        `segment at 0x${addr.toString(16)} has null line`
-      ).not.toBeNull();
+      expect(seg!.loc.line, `segment at 0x${addr.toString(16)} has null line`).not.toBeNull();
       expect(
         seg!.loc.line! >= 1,
         `segment at 0x${addr.toString(16)} has line=${seg!.loc.line} (expected >= 1)`

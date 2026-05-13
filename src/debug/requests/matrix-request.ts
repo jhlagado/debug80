@@ -82,7 +82,7 @@ export function buildMatrixKeyId(payload: MatrixKeyPayload): string {
 export function selectMatrixCombo(
   combos: MatrixKeyCombo[],
   payload: MatrixKeyPayload,
-  capsLock: boolean,
+  capsLock: boolean
 ): MatrixKeyCombo | undefined {
   const preferred =
     payload.ctrl === true
@@ -96,7 +96,7 @@ export function selectMatrixCombo(
     combo.capsLock === undefined || combo.capsLock === capsLock;
   if (preferred !== undefined) {
     const preferredMatch = combos.find(
-      (combo) => combo.modifier === preferred && matchesCaps(combo),
+      (combo) => combo.modifier === preferred && matchesCaps(combo)
     );
     if (preferredMatch) {
       return preferredMatch;
@@ -125,7 +125,7 @@ export function expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; c
 export function handleMatrixModeRequest(
   runtime: MatrixRuntime | undefined,
   heldKeys: Map<string, MatrixKeyCombo[]>,
-  args: unknown,
+  args: unknown
 ): string | null {
   if (!runtime) {
     return 'Debug80: Platform not active.';
@@ -144,7 +144,7 @@ export function handleMatrixModeRequest(
 export function handleMatrixKeyRequest(
   runtime: MatrixRuntime | undefined,
   heldKeys: Map<string, MatrixKeyCombo[]>,
-  args: unknown,
+  args: unknown
 ): string | null {
   if (!runtime) {
     return 'Debug80: Platform not active.';

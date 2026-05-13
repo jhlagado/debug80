@@ -162,8 +162,6 @@ export const createDecoder = (cpu: Cpu, cb: Callbacks): Decoder => {
     do_outd,
   });
 
-
-
   const cb_handler = buildCbHandler({
     cpu,
     cb,

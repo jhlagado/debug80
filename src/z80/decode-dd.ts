@@ -8,7 +8,6 @@ import { noop, OpcodeHandler, OpcodeTable } from './opcode-types';
 import { buildDdcbHandler } from './decode-ddcb';
 import { Callbacks, Cpu } from './types';
 
-
 export type DdContext = {
   cpu: Cpu;
   cb: Callbacks;
