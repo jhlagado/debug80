@@ -19,7 +19,6 @@ import {
   buildTec1gVisibilityMessage,
   saveTec1gPanelVisibility,
 } from './platform-view-tec1g-visibility';
-import { findProjectConfigPath } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
@@ -38,6 +37,7 @@ import {
   stopMemoryRefresh,
   syncMemoryRefresh,
 } from './platform-view-memory-refresh';
+import { resolveSaveProjectConfigAction } from './platform-view-config-controls';
 import {
   appendPlatformSerial,
   buildSerialInitMessage,
@@ -516,32 +516,24 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Applies the shared platform selector only for uninitialized workspaces. */
   private handleSaveProjectConfig(platform: string): void {
-    const folder = this.resolveSelectedWorkspace();
-    if (folder === undefined) {
+    const action = resolveSaveProjectConfigAction(platform, {
+      resolveWorkspace: () => this.resolveSelectedWorkspace(),
+    });
+    if (action.kind === 'noWorkspace') {
       void vscode.window.showErrorMessage('Debug80: No workspace folder selected.');
       return;
     }
-    const configPath = findProjectConfigPath(folder);
-    if (configPath === undefined) {
-      const normalized = this.normalizePlatformId(platform);
-      if (normalized !== undefined) {
-        this.currentPlatform = normalized;
-        this.renderCurrentView(true);
-        return;
-      }
+    if (action.kind === 'selectPlatform') {
+      this.currentPlatform = action.platform;
+      this.renderCurrentView(true);
+      return;
+    }
+    if (action.kind === 'invalidPlatform') {
       void vscode.window.showErrorMessage('Debug80: No project config found in workspace.');
       return;
     }
     this.postProjectStatus();
     this.mergeAndPostTec1gPanelVisibility();
-  }
-
-  private normalizePlatformId(platform: string): PlatformId | undefined {
-    const normalized = platform.trim().toLowerCase();
-    if (normalized === 'simple' || normalized === 'tec1' || normalized === 'tec1g') {
-      return normalized;
-    }
-    return undefined;
   }
 
   private handleSetStopOnEntry(value: boolean): void {
