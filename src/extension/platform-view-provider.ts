@@ -50,6 +50,16 @@ import {
   clearPlatformRuntimeState,
   type PlatformRuntimeState,
 } from './platform-view-runtime-state';
+import {
+  buildPlatformViewSessionStatusMessage,
+  clearPlatformViewSession,
+  createPlatformViewSessionState,
+  isCurrentPlatformViewSession,
+  resolvePlatformViewDebugSession,
+  setPlatformViewSession,
+  setPlatformViewSessionStatus,
+  shouldAcceptPlatformViewSession,
+} from './platform-view-session-state';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -75,11 +85,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   private view: vscode.WebviewView | undefined;
   private currentPlatform: PlatformId | undefined;
-  private currentSession: vscode.DebugSession | undefined;
-  private currentSessionId: string | undefined;
+  private readonly sessionState = createPlatformViewSessionState();
   private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
-  private sessionStatus: DebugSessionStatus = 'not running';
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
   private readonly performanceMonitor: UiPerformanceMonitor;
@@ -164,8 +172,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   ): void {
     this.currentPlatform = platform;
     if (session !== undefined) {
-      this.currentSession = session;
-      this.currentSessionId = session.id;
+      setPlatformViewSession(this.sessionState, session);
     }
     if (options?.tab === 'ui' || options?.tab === 'memory') {
       const bundle = this.getActiveBundle(platform);
@@ -180,11 +187,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   setSessionStatus(status: DebugSessionStatus): void {
-    this.sessionStatus = status;
+    setPlatformViewSessionStatus(this.sessionState, status);
     if (!this.currentPlatform) {
       return;
     }
-    this.postMessage({ type: 'sessionStatus', status });
+    this.postMessage(buildPlatformViewSessionStatusMessage(this.sessionState));
   }
 
   /**
@@ -200,7 +207,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   updateTec1(payload: Tec1UpdatePayload, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId) || this.currentPlatform !== 'tec1') {
+    if (
+      !shouldAcceptPlatformViewSession(this.sessionState, sessionId) ||
+      this.currentPlatform !== 'tec1'
+    ) {
       return;
     }
     const bundle = this.getActiveBundle('tec1');
@@ -213,7 +223,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   updateTec1g(payload: Tec1gUpdatePayload, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId) || this.currentPlatform !== 'tec1g') {
+    if (
+      !shouldAcceptPlatformViewSession(this.sessionState, sessionId) ||
+      this.currentPlatform !== 'tec1g'
+    ) {
       return;
     }
     const bundle = this.getActiveBundle('tec1g');
@@ -256,11 +269,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   handleSessionTerminated(sessionId: string): void {
-    if (this.currentSessionId !== sessionId) {
+    if (!isCurrentPlatformViewSession(this.sessionState, sessionId)) {
       return;
     }
-    this.currentSession = undefined;
-    this.currentSessionId = undefined;
+    clearPlatformViewSession(this.sessionState);
     this.tec1gAdapterVisibility = undefined;
     this.setSessionStatus('not running');
     this.stopAllPlatformRefresh();
@@ -323,7 +335,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         },
         handleSerialSendFile: async () => {
           await handlePlatformSerialSendFile({
-            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            getSession: () =>
+              resolvePlatformViewDebugSession(this.sessionState, vscode.debug.activeDebugSession),
             getPlatform: () => this.currentPlatform,
           });
         },
@@ -342,7 +355,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
             return;
           }
           await bundle.modules.handleMessage(platformMsg, {
-            getSession: () => this.currentSession ?? vscode.debug.activeDebugSession,
+            getSession: () =>
+              resolvePlatformViewDebugSession(this.sessionState, vscode.debug.activeDebugSession),
             refreshController: bundle.state.refreshController,
             autoRefreshMs: MEMORY_REFRESH_INTERVAL_MS,
             setActiveTab: (tab) => {
@@ -488,7 +502,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private appendSerial(platform: PlatformId, text: string, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId)) {
+    if (!shouldAcceptPlatformViewSession(this.sessionState, sessionId)) {
       return;
     }
     const bundle = this.getActiveBundle(platform);
@@ -564,7 +578,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view || !this.currentPlatform) {
       return;
     }
-    this.postMessage({ type: 'sessionStatus', status: this.sessionStatus });
+    this.postMessage(buildPlatformViewSessionStatusMessage(this.sessionState));
   }
 
   private mergeAndPostTec1gPanelVisibility(): void {
@@ -613,13 +627,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     void this.view.webview.postMessage(payload);
   }
 
-  private shouldAcceptSession(sessionId?: string): boolean {
-    if (sessionId === undefined || this.currentSessionId === undefined) {
-      return true;
-    }
-    return this.currentSessionId === sessionId;
-  }
-
   private nextUiRevision(): number {
     this.uiRevision += 1;
     return this.uiRevision;
@@ -632,7 +639,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       throw new Error('Debug80: view unavailable');
     }
-    const target = this.currentSession ?? vscode.debug.activeDebugSession;
+    const target = resolvePlatformViewDebugSession(
+      this.sessionState,
+      vscode.debug.activeDebugSession
+    );
     if (!target || target.type !== 'z80') {
       throw new Error('Debug80: No active z80 session.');
     }
