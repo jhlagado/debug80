@@ -22,13 +22,10 @@ import {
 import type { MemoryViewState } from '../platforms/panel-memory';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
-import { resolveProjectStatusSummary } from './project-status';
 import {
-  getMementoForTarget,
-  mergeTec1gPanelVisibility,
-  TEC1G_UI_VISIBILITY_MEMENTO_KEY,
-  type Tec1gVisibilityByTarget,
-} from './tec1g-ui-visibility-memento';
+  buildTec1gVisibilityMessage,
+  saveTec1gPanelVisibility,
+} from './platform-view-tec1g-visibility';
 import { findProjectConfigPath } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
@@ -321,7 +318,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         },
         currentPlatform: () => this.currentPlatform,
         handleSaveTec1gPanelVisibility: (args) => {
-          this.saveTec1gPanelVisibility(args.visibility, args.targetName);
+          this.persistTec1gPanelVisibility(args.visibility, args.targetName);
         },
         handleStartDebug: async (args) => {
           await vscode.commands.executeCommand('debug80.startDebug', args);
@@ -607,53 +604,22 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view || this.currentPlatform !== 'tec1g') {
       return;
     }
-    const memento = this.readTec1gPanelVisibilityMemento();
-    const merged = mergeTec1gPanelVisibility(this.tec1gAdapterVisibility, memento);
-    this.postMessage({ type: 'uiVisibility', visibility: merged, persist: true });
-  }
-
-  private readTec1gPanelVisibilityMemento(): Record<string, boolean> | undefined {
-    if (this.workspaceState === undefined) {
-      return undefined;
-    }
-    const folder = this.resolveSelectedWorkspace();
-    if (folder === undefined) {
-      return undefined;
-    }
-    if (findProjectConfigPath(folder) === undefined) {
-      return undefined;
-    }
-    const summary = resolveProjectStatusSummary(this.workspaceState, folder);
-    const targetName = summary?.targetName ?? '__default__';
-    const byTarget = this.workspaceState.get<Tec1gVisibilityByTarget>(
-      TEC1G_UI_VISIBILITY_MEMENTO_KEY
+    this.postMessage(
+      buildTec1gVisibilityMessage(this.tec1gAdapterVisibility, {
+        workspaceState: this.workspaceState,
+        resolveWorkspace: () => this.resolveSelectedWorkspace(),
+      })
     );
-    return getMementoForTarget(byTarget, targetName);
   }
 
-  private saveTec1gPanelVisibility(
+  private persistTec1gPanelVisibility(
     visibility: Record<string, boolean>,
     targetNameFromWebview?: string
   ): void {
-    if (this.workspaceState === undefined) {
-      return;
-    }
-    const folder = this.resolveSelectedWorkspace();
-    if (folder === undefined) {
-      return;
-    }
-    if (findProjectConfigPath(folder) === undefined) {
-      return;
-    }
-    const resolved =
-      targetNameFromWebview !== undefined && targetNameFromWebview.length > 0
-        ? targetNameFromWebview
-        : (resolveProjectStatusSummary(this.workspaceState, folder)?.targetName ?? '__default__');
-    const byTarget: Tec1gVisibilityByTarget = {
-      ...(this.workspaceState.get<Tec1gVisibilityByTarget>(TEC1G_UI_VISIBILITY_MEMENTO_KEY) ?? {}),
-    };
-    byTarget[resolved] = { ...visibility };
-    void this.workspaceState.update(TEC1G_UI_VISIBILITY_MEMENTO_KEY, byTarget);
+    saveTec1gPanelVisibility(visibility, targetNameFromWebview, {
+      workspaceState: this.workspaceState,
+      resolveWorkspace: () => this.resolveSelectedWorkspace(),
+    });
   }
 
   private resolveSelectedWorkspace(
