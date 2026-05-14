@@ -12,12 +12,6 @@ import type { DebugSessionStatus } from '../debug/session/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import {
-  appendSerialText,
-  clearSerialBuffer,
-  createSerialBuffer,
-  type SerialBuffer,
-} from '../platforms/panel-serial';
-import {
   createRefreshController,
   refreshSnapshot,
   startAutoRefresh,
@@ -49,6 +43,13 @@ import {
   buildPlatformViewProjectStatus,
   resolvePlatformViewWorkspace,
 } from './platform-view-project-status';
+import {
+  appendPlatformSerial,
+  buildSerialInitMessage,
+  clearPlatformSerial,
+  createSerialBuffer,
+  type SerialBuffer,
+} from './platform-view-serial-state';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -229,45 +230,15 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   appendTec1Serial(text: string, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId) || text.length === 0) {
-      return;
-    }
-    const bundle = this.getActiveBundle('tec1');
-    if (bundle === undefined) {
-      return;
-    }
-    appendSerialText(bundle.state.serialBuffer, text);
-    if (this.currentPlatform === 'tec1') {
-      this.postMessage({ type: 'serial', text });
-    }
+    this.appendSerial('tec1', text, sessionId);
   }
 
   appendSimpleTerminal(text: string, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId) || text.length === 0) {
-      return;
-    }
-    const bundle = this.getActiveBundle('simple');
-    if (bundle === undefined) {
-      return;
-    }
-    appendSerialText(bundle.state.serialBuffer, text);
-    if (this.currentPlatform === 'simple') {
-      this.postMessage({ type: 'serial', text });
-    }
+    this.appendSerial('simple', text, sessionId);
   }
 
   appendTec1gSerial(text: string, sessionId?: string): void {
-    if (!this.shouldAcceptSession(sessionId) || text.length === 0) {
-      return;
-    }
-    const bundle = this.getActiveBundle('tec1g');
-    if (bundle === undefined) {
-      return;
-    }
-    appendSerialText(bundle.state.serialBuffer, text);
-    if (this.currentPlatform === 'tec1g') {
-      this.postMessage({ type: 'serial', text });
-    }
+    this.appendSerial('tec1g', text, sessionId);
   }
 
   clear(): void {
@@ -278,7 +249,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         state.memoryViews = modules.createMemoryViewState();
         state.hasPostedRuntimeUpdate = false;
       }
-      clearSerialBuffer(state.serialBuffer);
+      clearPlatformSerial(state.serialBuffer);
     }
     const bundle = this.getCurrentBundle();
     if (bundle !== undefined) {
@@ -367,7 +338,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         clearSerialBuffer: (platform) => {
           const bundle = this.getActiveBundle(platform);
           if (bundle !== undefined) {
-            clearSerialBuffer(bundle.state.serialBuffer);
+            clearPlatformSerial(bundle.state.serialBuffer);
           }
         },
         handlePlatformMessage: async (platform, platformMsg) => {
@@ -430,8 +401,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postMessage(
         bundle.modules.buildUpdateMessage(bundle.state.uiState, this.nextUiRevision())
       );
-      if (bundle.state.serialBuffer.text.length > 0) {
-        this.postMessage({ type: 'serialInit', text: bundle.state.serialBuffer.text });
+      const serialInitMessage = buildSerialInitMessage(bundle.state.serialBuffer);
+      if (serialInitMessage !== undefined) {
+        this.postMessage(serialInitMessage);
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
       this.syncMemoryRefresh(bundle, rehydrate);
@@ -512,6 +484,23 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return undefined;
     }
     return this.getActiveBundle(this.currentPlatform);
+  }
+
+  private appendSerial(platform: PlatformId, text: string, sessionId?: string): void {
+    if (!this.shouldAcceptSession(sessionId)) {
+      return;
+    }
+    const bundle = this.getActiveBundle(platform);
+    if (bundle === undefined) {
+      return;
+    }
+    const message = appendPlatformSerial(bundle.state.serialBuffer, text, {
+      platform,
+      currentPlatform: this.currentPlatform,
+    });
+    if (message !== undefined) {
+      this.postMessage(message);
+    }
   }
 
   private syncMemoryRefresh(
