@@ -1,7 +1,7 @@
 # AZM language direction
 
 Status: design discussion capture
-Date: 2026-05-12
+Date: 2026-05-14
 
 ## Purpose
 
@@ -302,6 +302,163 @@ Typed storage should remain a value-level feature. Raw labels remain
 address-level assembler symbols. That distinction should survive the split from
 ZAX.
 
+## Calling conventions and procedure contracts
+
+AZM should take the useful calling-convention mechanics proven in ZAX and expose
+them as optional, explicit assembler-level contracts. The goal is not to hide
+subroutines behind a higher-level function model. The goal is to reduce stack and
+register bookkeeping errors while keeping every generated instruction visible and
+ordinary.
+
+The guiding principle is convenience through clarity, not abstraction. A
+procedure declaration should document what a subroutine expects, what it returns,
+what it clobbers, and what frame layout it uses. It should not make the Z80 look
+as though it has native functions.
+
+### Caller-managed frames
+
+The preferred AZM procedure model should be caller-managed:
+
+- the caller pushes formal arguments
+- the caller allocates local storage by adjusting `SP`
+- the caller executes the `call`
+- the caller cleans up the entire frame after return
+
+The callee has no mandatory preamble or postamble in this model. Because the
+procedure body pushes nothing solely for frame setup, an unconditional or
+conditional `ret` can appear anywhere in the body without an unwind obligation.
+
+On procedure entry, `SP` points at the return address. Locals and arguments are
+then addressed at positive offsets beyond that return address:
+
+```text
+SP+0    return address
+SP+2    local_1
+SP+4    local_2
+...
+SP+2n   arg_1
+SP+2n+2 arg_2
+...
+```
+
+Under this model, locals are layout-wise the same as arguments: caller-allocated
+frame slots that happen to be uninitialized on entry. A procedure declaration can
+therefore list both as part of one complete frame contract.
+
+### Frame access registers
+
+The Z80 has no general stack-relative addressing mode, so symbolic frame access
+needs an index base. AZM should support a small set of explicit patterns rather
+than one hidden convention.
+
+The simplest pattern is to burn a register pair. The procedure copies `SP` into a
+declared-clobbered register pair and uses that register as the frame base:
+
+```asm
+ld  hl, 0
+add hl, sp
+; symbolic frame references can now lower through helper code based on HL
+```
+
+No save or restore is required, and early `ret` remains simple. The cost is that
+the procedure contract must declare the chosen register pair as clobbered.
+
+When a frame register such as `IX` or `IY` must be preserved, AZM may generate a
+matched save/setup/restore sequence:
+
+```asm
+push iy
+ld   iy, 0
+add  iy, sp
+; body using IY-relative access
+pop  iy
+ret
+```
+
+This shifts frame offsets and introduces a real postamble requirement. AZM can
+support this mode, but it should be visibly different from the caller-managed
+early-return-friendly mode because arbitrary mid-body `ret` is no longer safe
+unless it goes through the restore path.
+
+The third pattern is to declare the frame register volatile and leave
+preservation to the caller. For example, a procedure can declare `IY` clobbered,
+use it freely for frame access, and retain unconditional early-return capability.
+If the caller cares about `IY`, the caller saves it.
+
+### Procedure declaration shape
+
+The exact syntax is still open, but the declaration should describe the whole
+interface in one place:
+
+```asm
+proc foo(arg1, arg2 ; local_x, local_y) returns(a, hl) clobbers(iy)
+```
+
+The semicolon form is attractive because it shows that arguments and locals share
+one caller-managed frame while still distinguishing initialized inputs from local
+scratch slots. Local declarations should appear at the start of the procedure, or
+in the declaration itself, so AZM knows the full frame layout before emitting body
+code.
+
+Plain subroutines remain unchanged. A programmer can still write `call label`,
+`jp label`, raw `ret`, and hand-managed stack code. A procedure declaration adds
+symbolic frame names, call-site validation, and documented contracts; it should
+not make a normal machine-level call surprising.
+
+### Register returns and clobbers
+
+Register contracts should be explicit and checkable. Each register is in one of
+three states with respect to a declared procedure:
+
+| State | Declared in | Meaning |
+|-------|-------------|---------|
+| Returned | `returns(...)` | Contains a meaningful output value on exit and may be modified. |
+| Clobbered | `clobbers(...)` | Modified as a side effect; callers preserve it if needed. |
+| Preserved | unlisted | Guaranteed unchanged on return. |
+
+Return registers are implicitly volatile. A declaration such as:
+
+```asm
+proc add16(val1, val2) returns(hl)
+```
+
+says that `HL` is the output. A declaration such as:
+
+```asm
+proc foo(arg1 ; local_x) returns(a) clobbers(iy, de)
+```
+
+says that `A` is the output and that `IY` and `DE` are side effects the caller
+must account for. Registers in neither list are promised preserved.
+
+AZM can use this contract at two levels. First, a strict or lint mode can warn if
+the procedure body modifies a register that is not listed as returned or
+clobbered. Second, call sites can be annotated with caller preservation choices:
+
+```asm
+call foo preserve(bc, de)
+```
+
+The exact enforcement model is open, but the intent is clear: register-management
+mistakes should become assembly-time diagnostics where possible, not delayed
+runtime failures.
+
+### Transparency requirement
+
+Any code AZM generates for procedure calls, frame allocation, preambles,
+postambles, or cleanup must be completely transparent:
+
+- generated code must be equivalent to code an experienced Z80 programmer would
+  write manually
+- listings should be able to show generated instructions for inspection
+- generated setup should be opt-in through declarations or annotations
+- nothing should happen that changes the programmer's mental model of the stack,
+  registers, or machine call instruction
+
+This is the key difference from resurrecting old ZAX `func` semantics. AZM can
+reuse proven mechanics, but the abstraction belongs in declarations,
+validation, and symbolic naming. The machine remains visible.
+
 ## Non-goals
 
 AZM should not try to become:
@@ -312,6 +469,7 @@ AZM should not try to become:
 - a Forth system
 - a Pascal or C compiler with Z80 syntax
 - a resurrection of all old ZAX/Zags features
+- a hidden runtime or callee-managed calling-convention system
 
 The guiding principle is to add only features that help an assembly programmer
 write clearer, safer, more maintainable Z80 code while preserving direct
@@ -331,6 +489,18 @@ These questions should be resolved before implementation:
 6. What is the smallest branch/fixup primitive set that can express useful
    `if`/`then`, `if`/`else`/`then`, `begin`/`again`, and `begin`/conditional
    loop patterns?
+7. What final procedure declaration syntax best separates arguments from locals
+   while keeping the frame model obvious?
+8. Should call-site `preserve(...)` annotations be required, optional, lint-only,
+   or inferred from explicit save/restore code?
+9. How should listings display generated procedure frame setup, preambles,
+   postambles, and call-site cleanup?
+10. Should strict native mode diagnose procedure bodies that modify unlisted
+    registers?
+11. How do procedure declarations interact with `.include`, modules, and
+    cross-file visibility?
+12. Should `IX` and `IY` be symmetrical frame-register choices, or should AZM
+    recommend one as the native convention?
 
 ## Near-term recommendation
 
@@ -343,8 +513,10 @@ this order:
 4. bring back AST ops as the macro replacement
 5. design the compile-time control stack before adding built-in structured
    control
-6. add typed memory layout only when its assembler-facing model is clear
+6. design procedure contracts and caller-managed frame conventions before
+   reintroducing formal arguments or locals
+7. add typed memory layout only when its assembler-facing model is clear
 
 The next development step should be a focused design spec for directive aliases,
-AST ops, and the assembly control stack. Implementation should wait until those
-interfaces are explicit enough to test.
+AST ops, the assembly control stack, and transparent procedure contracts.
+Implementation should wait until those interfaces are explicit enough to test.
