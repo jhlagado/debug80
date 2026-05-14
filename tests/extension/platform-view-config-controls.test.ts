@@ -59,7 +59,9 @@ describe('platform-view-config-controls', () => {
   });
 
   it('keeps initialized projects unchanged', () => {
-    vi.mocked(existsSync).mockImplementation((path) => String(path).endsWith('/debug80.json'));
+    vi.mocked(existsSync).mockImplementation((candidate) =>
+      String(candidate).replace(/\\/g, '/').endsWith('/debug80.json')
+    );
 
     expect(
       resolveSaveProjectConfigAction('simple', {
