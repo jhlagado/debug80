@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as vscode from 'vscode';
 
 const {
   findProjectConfigPath,
@@ -16,7 +17,7 @@ const {
   resolveRememberedWorkspaceFolder: vi.fn(),
 }));
 
-let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
+let workspaceFolders: vscode.WorkspaceFolder[] | undefined;
 
 vi.mock('vscode', () => ({
   workspace: {
@@ -49,7 +50,8 @@ import {
   resolvePlatformViewWorkspace,
 } from '../../src/extension/platform-view-project-status';
 
-const folder = (name: string, fsPath: string) => ({ name, uri: { fsPath } });
+const folder = (name: string, fsPath: string, index = 0): vscode.WorkspaceFolder =>
+  ({ name, index, uri: { fsPath } }) as vscode.WorkspaceFolder;
 
 describe('platform-view-project-status', () => {
   beforeEach(() => {
@@ -75,21 +77,46 @@ describe('platform-view-project-status', () => {
     const selected = folder('project', '/workspace/project');
     const openFolders = [folder('other', '/workspace/other'), selected];
 
-    expect(resolvePlatformViewWorkspace({ selectedWorkspace: selected }, openFolders)).toBe(
-      selected
-    );
+    expect(
+      resolvePlatformViewWorkspace(
+        { workspaceState: undefined, selectedWorkspace: selected },
+        openFolders
+      )
+    ).toBe(selected);
     expect(resolveRememberedWorkspaceFolder).not.toHaveBeenCalled();
   });
 
   it('falls back to remembered workspace before single-folder fallback', () => {
     const remembered = folder('project', '/workspace/project');
+    const singleFolder = folder('fallback', '/workspace/fallback');
     const workspaceState = { get: vi.fn(), update: vi.fn() };
     resolveRememberedWorkspaceFolder.mockReturnValue(remembered);
 
-    expect(resolvePlatformViewWorkspace({ workspaceState: workspaceState as never }, [])).toBe(
-      remembered
-    );
-    expect(resolveRememberedWorkspaceFolder).toHaveBeenCalledWith(workspaceState, []);
+    expect(
+      resolvePlatformViewWorkspace(
+        { workspaceState: workspaceState as never, selectedWorkspace: undefined },
+        [singleFolder]
+      )
+    ).toBe(remembered);
+    expect(resolveRememberedWorkspaceFolder).toHaveBeenCalledWith(workspaceState, [singleFolder]);
+  });
+
+  it('builds a no-workspace project status payload when no folders are open', () => {
+    expect(
+      buildPlatformViewProjectStatus({
+        workspaceState: undefined,
+        selectedWorkspace: undefined,
+        currentPlatform: undefined,
+        stopOnEntry: false,
+      })
+    ).toEqual({
+      roots: [],
+      targets: [],
+      projectState: 'noWorkspace',
+      hasProject: false,
+      platform: 'simple',
+      stopOnEntry: false,
+    });
   });
 
   it('builds an initialized project status payload with target and entry source', () => {
@@ -124,7 +151,12 @@ describe('platform-view-project-status', () => {
 
     expect(
       buildPlatformViewProjectStatus(
-        { selectedWorkspace: openFolder, currentPlatform: 'tec1', stopOnEntry: false },
+        {
+          workspaceState: undefined,
+          selectedWorkspace: openFolder,
+          currentPlatform: 'tec1',
+          stopOnEntry: false,
+        },
         [openFolder]
       )
     ).toMatchObject({
