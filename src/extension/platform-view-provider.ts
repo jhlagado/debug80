@@ -12,7 +12,6 @@ import type { DebugSessionStatus } from '../debug/session/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import { createRefreshController, type RefreshController } from '../platforms/panel-refresh';
-import type { MemoryViewState } from '../platforms/panel-memory';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import {
@@ -43,8 +42,14 @@ import {
   buildSerialInitMessage,
   clearPlatformSerial,
   createSerialBuffer,
-  type SerialBuffer,
 } from './platform-view-serial-state';
+import {
+  applyPlatformRuntimeUpdate,
+  buildPlatformRuntimeClearMessage,
+  buildPlatformRuntimeUpdateMessage,
+  clearPlatformRuntimeState,
+  type PlatformRuntimeState,
+} from './platform-view-runtime-state';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -56,12 +61,8 @@ const MEMORY_REFRESH_INTERVAL_MS = 500;
  * Mutable state held by the provider for each loaded platform.
  * One instance exists per registered platform for the lifetime of the provider.
  */
-interface PerPlatformState {
+interface PerPlatformState extends PlatformRuntimeState {
   activeTab: PanelTab;
-  uiState: unknown;
-  hasPostedRuntimeUpdate: boolean;
-  serialBuffer: SerialBuffer;
-  memoryViews: MemoryViewState;
   refreshController: RefreshController;
 }
 
@@ -206,9 +207,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (bundle === undefined) {
       return;
     }
-    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
-    bundle.state.hasPostedRuntimeUpdate = true;
-    this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
+    this.postMessage(
+      applyPlatformRuntimeUpdate(bundle.modules, bundle.state, payload, this.nextUiRevision())
+    );
   }
 
   updateTec1g(payload: Tec1gUpdatePayload, sessionId?: string): void {
@@ -219,9 +220,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (bundle === undefined) {
       return;
     }
-    const updateFields = bundle.modules.applyUpdate(bundle.state.uiState, payload);
-    bundle.state.hasPostedRuntimeUpdate = true;
-    this.postMessage({ type: 'update', uiRevision: this.nextUiRevision(), ...updateFields });
+    this.postMessage(
+      applyPlatformRuntimeUpdate(bundle.modules, bundle.state, payload, this.nextUiRevision())
+    );
   }
 
   appendTec1Serial(text: string, sessionId?: string): void {
@@ -240,16 +241,15 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     for (const [id, state] of this.platformStates) {
       const modules = this.loadedModules.get(id);
       if (modules !== undefined) {
-        modules.resetUiState(state.uiState);
-        state.memoryViews = modules.createMemoryViewState();
-        state.hasPostedRuntimeUpdate = false;
+        clearPlatformRuntimeState(modules, state);
+      } else {
+        clearPlatformSerial(state.serialBuffer);
       }
-      clearPlatformSerial(state.serialBuffer);
     }
     const bundle = this.getCurrentBundle();
     if (bundle !== undefined) {
       this.postMessage(
-        bundle.modules.buildClearMessage(bundle.state.uiState, this.nextUiRevision())
+        buildPlatformRuntimeClearMessage(bundle.modules, bundle.state, this.nextUiRevision())
       );
       this.postMessage({ type: 'serialClear' });
     }
@@ -394,7 +394,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postProjectStatus();
       this.postSessionStatus();
       this.postMessage(
-        bundle.modules.buildUpdateMessage(bundle.state.uiState, this.nextUiRevision())
+        buildPlatformRuntimeUpdateMessage(bundle.modules, bundle.state, this.nextUiRevision())
       );
       const serialInitMessage = buildSerialInitMessage(bundle.state.serialBuffer);
       if (serialInitMessage !== undefined) {
