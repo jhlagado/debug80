@@ -28,7 +28,6 @@ import {
 import type { MemoryViewState } from '../platforms/panel-memory';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
-import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import {
   getMementoForTarget,
@@ -36,21 +35,20 @@ import {
   TEC1G_UI_VISIBILITY_MEMENTO_KEY,
   type Tec1gVisibilityByTarget,
 } from './tec1g-ui-visibility-memento';
-import { findProjectConfigPath, readProjectConfig, resolveProjectPlatform } from './project-config';
+import { findProjectConfigPath } from './project-config';
 import { handlePlatformViewMessage } from './platform-view-messages';
 import {
   handlePlatformSerialSave,
   handlePlatformSerialSendFile,
 } from './platform-view-serial-actions';
 import { loadPlatformUi, listPlatformUis, type PlatformUiModules } from './platform-view-manifest';
-import { resolveRememberedWorkspaceFolder } from './workspace-selection';
-import type {
-  PlatformId,
-  PlatformViewInboundMessage,
-  ProjectStatusPayload,
-} from '../contracts/platform-view';
+import type { PlatformId, PlatformViewInboundMessage } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
 import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
+import {
+  buildPlatformViewProjectStatus,
+  resolvePlatformViewWorkspace,
+} from './platform-view-project-status';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -598,7 +596,15 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       return;
     }
-    this.postMessage({ type: 'projectStatus', ...this.getProjectStatusPayload() });
+    this.postMessage({
+      type: 'projectStatus',
+      ...buildPlatformViewProjectStatus({
+        workspaceState: this.workspaceState,
+        selectedWorkspace: this.selectedWorkspace,
+        currentPlatform: this.currentPlatform,
+        stopOnEntry: this.stopOnEntry,
+      }),
+    });
   }
 
   private postSessionStatus(): void {
@@ -606,63 +612,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postMessage({ type: 'sessionStatus', status: this.sessionStatus });
-  }
-
-  private getProjectStatusPayload(): ProjectStatusPayload {
-    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
-    const roots = workspaceFolders.map((folder) => ({
-      name: folder.name,
-      path: folder.uri.fsPath,
-      hasProject: findProjectConfigPath(folder) !== undefined,
-    }));
-    const folder = this.resolveSelectedWorkspace(workspaceFolders);
-    if (folder === undefined) {
-      return {
-        roots,
-        targets: [],
-        projectState: roots.length === 0 ? 'noWorkspace' : 'uninitialized',
-        hasProject: false,
-        platform: this.currentPlatform ?? 'simple',
-        stopOnEntry: this.stopOnEntry,
-      };
-    }
-
-    const projectConfigPath = findProjectConfigPath(folder);
-    const hasProject = projectConfigPath !== undefined;
-    const projectStatus =
-      hasProject && this.workspaceState !== undefined
-        ? resolveProjectStatusSummary(this.workspaceState, folder)
-        : undefined;
-    if (!hasProject) {
-      return {
-        roots,
-        targets: [],
-        rootName: folder.name,
-        rootPath: folder.uri.fsPath,
-        projectState: 'uninitialized',
-        hasProject: false,
-        platform: this.currentPlatform ?? 'simple',
-        stopOnEntry: this.stopOnEntry,
-      };
-    }
-
-    const config = readProjectConfig(projectConfigPath);
-    const platform = resolveProjectPlatform(config) ?? 'simple';
-
-    return {
-      roots,
-      targets: listProjectTargetChoices(projectConfigPath),
-      rootName: folder.name,
-      rootPath: folder.uri.fsPath,
-      projectState: 'initialized',
-      hasProject: true,
-      platform,
-      stopOnEntry: this.stopOnEntry,
-      ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
-      ...(projectStatus?.entrySource !== undefined
-        ? { entrySource: projectStatus.entrySource }
-        : {}),
-    };
   }
 
   private mergeAndPostTec1gPanelVisibility(): void {
@@ -721,15 +670,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private resolveSelectedWorkspace(
     folders: readonly vscode.WorkspaceFolder[] = vscode.workspace.workspaceFolders ?? []
   ): vscode.WorkspaceFolder | undefined {
-    if (
-      this.selectedWorkspace !== undefined &&
-      folders.some((folder) => folder.uri.fsPath === this.selectedWorkspace?.uri.fsPath)
-    ) {
-      return this.selectedWorkspace;
-    }
-    return (
-      resolveRememberedWorkspaceFolder(this.workspaceState, folders) ??
-      (folders.length === 1 ? folders[0] : undefined)
+    return resolvePlatformViewWorkspace(
+      { workspaceState: this.workspaceState, selectedWorkspace: this.selectedWorkspace },
+      folders
     );
   }
 
