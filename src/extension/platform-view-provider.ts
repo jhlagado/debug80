@@ -11,14 +11,7 @@ import * as vscode from 'vscode';
 import type { DebugSessionStatus } from '../debug/session/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
-import {
-  createRefreshController,
-  refreshSnapshot,
-  startAutoRefresh,
-  stopAutoRefresh,
-  type RefreshController,
-  type SnapshotRequest,
-} from '../platforms/panel-refresh';
+import { createRefreshController, type RefreshController } from '../platforms/panel-refresh';
 import type { MemoryViewState } from '../platforms/panel-memory';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
@@ -40,6 +33,11 @@ import {
   buildPlatformViewProjectStatus,
   resolvePlatformViewWorkspace,
 } from './platform-view-project-status';
+import {
+  buildMemorySnapshotPayload,
+  stopMemoryRefresh,
+  syncMemoryRefresh,
+} from './platform-view-memory-refresh';
 import {
   appendPlatformSerial,
   buildSerialInitMessage,
@@ -403,7 +401,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.postMessage(serialInitMessage);
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
-      this.syncMemoryRefresh(bundle, rehydrate);
+      syncMemoryRefresh({
+        visible: this.view.visible,
+        activeTab: bundle.state.activeTab,
+        refreshController: bundle.state.refreshController,
+        intervalMs: MEMORY_REFRESH_INTERVAL_MS,
+        rehydrate,
+      });
       this.mergeAndPostTec1gPanelVisibility();
       return;
     }
@@ -452,7 +456,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       refreshController: null as unknown as RefreshController,
     };
     state.refreshController = createRefreshController(
-      () => this.buildSnapshotPayload(state.memoryViews),
+      () => buildMemorySnapshotPayload(state.memoryViews),
       {
         postSnapshot: (payload) => this.postSnapshot(modules.snapshotCommand, payload),
         onSnapshotPosted: () => undefined,
@@ -500,38 +504,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private syncMemoryRefresh(
-    bundle: { modules: PlatformUiModules; state: PerPlatformState },
-    rehydrate: boolean
-  ): void {
-    if (this.view?.visible !== true) {
-      return;
-    }
-    if (bundle.state.activeTab !== 'memory') {
-      stopAutoRefresh(bundle.state.refreshController.state);
-      return;
-    }
-    startAutoRefresh(bundle.state.refreshController.state, MEMORY_REFRESH_INTERVAL_MS, () => {
-      void refreshSnapshot(
-        bundle.state.refreshController.state,
-        bundle.state.refreshController.handlers,
-        bundle.state.refreshController.snapshotPayload(),
-        { allowErrors: false }
-      );
-    });
-    if (rehydrate) {
-      void refreshSnapshot(
-        bundle.state.refreshController.state,
-        bundle.state.refreshController.handlers,
-        bundle.state.refreshController.snapshotPayload(),
-        { allowErrors: true }
-      );
-    }
-  }
-
   private stopAllPlatformRefresh(): void {
     for (const state of this.platformStates.values()) {
-      stopAutoRefresh(state.refreshController.state);
+      stopMemoryRefresh(state.refreshController);
     }
   }
 
@@ -631,19 +606,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     );
   }
 
-  private buildSnapshotPayload(memoryViews: MemoryViewState): SnapshotRequest {
-    const { viewModes, viewAfter, viewAddress } = memoryViews;
-    const views = Object.keys(viewModes).map((id) => ({
-      id,
-      view: viewModes[id] ?? 'hl',
-      after: viewAfter[id] ?? 16,
-      ...(viewModes[id] === 'absolute' && typeof viewAddress[id] === 'number'
-        ? { address: viewAddress[id] }
-        : {}),
-    }));
-    return { views };
-  }
-
   private onSnapshotFailed(allowErrors: boolean): void {
     if (!allowErrors || !this.view) {
       return;
@@ -673,7 +635,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   private async postSnapshot(
     command: 'debug80/memorySnapshot',
-    payload: SnapshotRequest
+    payload: ReturnType<typeof buildMemorySnapshotPayload>
   ): Promise<void> {
     if (!this.view) {
       throw new Error('Debug80: view unavailable');
