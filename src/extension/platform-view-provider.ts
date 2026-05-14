@@ -60,6 +60,7 @@ import {
   setPlatformViewSessionStatus,
   shouldAcceptPlatformViewSession,
 } from './platform-view-session-state';
+import { revealPlatformView } from './platform-view-reveal';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
 
@@ -121,25 +122,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   // -------------------------------------------------------------------------
 
   reveal(focus = false): void {
-    const focusCommand = `${PlatformViewProvider.viewType}.focus`;
-    const fallbackCommand = 'workbench.view.debug';
-    const command = focus ? focusCommand : fallbackCommand;
-
-    void vscode.commands.executeCommand(command).then(
-      () => {
-        this.view?.show?.(!focus);
-      },
-      () => {
-        void vscode.commands.executeCommand(fallbackCommand).then(
-          () => {
-            this.view?.show?.(!focus);
-          },
-          () => {
-            this.view?.show?.(!focus);
-          }
-        );
-      }
-    );
+    revealPlatformView({
+      focusCommand: `${PlatformViewProvider.viewType}.focus`,
+      fallbackCommand: 'workbench.view.debug',
+      focus,
+      target: this.view,
+    });
   }
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
