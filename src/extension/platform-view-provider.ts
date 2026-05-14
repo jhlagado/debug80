@@ -126,7 +126,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       focusCommand: `${PlatformViewProvider.viewType}.focus`,
       fallbackCommand: 'workbench.view.debug',
       focus,
-      target: this.view,
+      target: () => this.view,
     });
   }
 

@@ -16,7 +16,7 @@ export interface PlatformViewRevealOptions {
   focusCommand: string;
   fallbackCommand: string;
   focus: boolean;
-  target: PlatformViewRevealTarget | undefined;
+  target: () => PlatformViewRevealTarget | undefined;
   commands?: PlatformViewRevealCommands;
 }
 
@@ -29,15 +29,15 @@ export function revealPlatformView(options: PlatformViewRevealOptions): void {
 
   void commands.executeCommand(command).then(
     () => {
-      target?.show?.(!focus);
+      target()?.show?.(!focus);
     },
     () => {
       void commands.executeCommand(fallbackCommand).then(
         () => {
-          target?.show?.(!focus);
+          target()?.show?.(!focus);
         },
         () => {
-          target?.show?.(!focus);
+          target()?.show?.(!focus);
         }
       );
     }

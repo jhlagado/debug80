@@ -20,7 +20,7 @@ describe('platform-view-reveal', () => {
       focusCommand: 'debug80.platformView.focus',
       fallbackCommand: 'workbench.view.debug',
       focus: true,
-      target: { show },
+      target: () => ({ show }),
       commands: { executeCommand },
     });
 
@@ -36,7 +36,7 @@ describe('platform-view-reveal', () => {
       focusCommand: 'debug80.platformView.focus',
       fallbackCommand: 'workbench.view.debug',
       focus: false,
-      target: { show },
+      target: () => ({ show }),
       commands: { executeCommand },
     });
 
@@ -55,7 +55,7 @@ describe('platform-view-reveal', () => {
       focusCommand: 'debug80.platformView.focus',
       fallbackCommand: 'workbench.view.debug',
       focus: true,
-      target: { show },
+      target: () => ({ show }),
       commands: { executeCommand },
     });
 
@@ -72,9 +72,28 @@ describe('platform-view-reveal', () => {
       focusCommand: 'debug80.platformView.focus',
       fallbackCommand: 'workbench.view.debug',
       focus: true,
-      target: { show },
+      target: () => ({ show }),
       commands: { executeCommand },
     });
+    expect(show).toHaveBeenCalledWith(false);
+  });
+
+  it('looks up the target after the command resolves', () => {
+    const show = vi.fn();
+    let target: { show: typeof show } | undefined;
+    const executeCommand = vi.fn(() => {
+      target = { show };
+      return resolvedThenable();
+    });
+
+    revealPlatformView({
+      focusCommand: 'debug80.platformView.focus',
+      fallbackCommand: 'workbench.view.debug',
+      focus: true,
+      target: () => target,
+      commands: { executeCommand },
+    });
+
     expect(show).toHaveBeenCalledWith(false);
   });
 });
