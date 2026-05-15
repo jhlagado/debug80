@@ -9,7 +9,12 @@ import * as path from 'path';
 import { ZaxBackend } from '../../src/debug/launch/zax-backend';
 
 const compile = vi.hoisted(() => vi.fn());
-const spawnSync = vi.hoisted(() => vi.fn());
+const childProcess = vi.hoisted(() => ({
+  execFileSync: vi.fn(),
+  execSync: vi.fn(),
+  spawn: vi.fn(),
+  spawnSync: vi.fn(),
+}));
 
 vi.mock('@jhlagado/zax/dist/src/compile.js', () => ({
   compile,
@@ -25,7 +30,7 @@ vi.mock('@jhlagado/zax/dist/src/formats/index.js', () => ({
 }));
 
 vi.mock('child_process', () => ({
-  spawnSync,
+  ...childProcess,
 }));
 
 describe('zax-backend', () => {
@@ -33,7 +38,7 @@ describe('zax-backend', () => {
 
   beforeEach(() => {
     compile.mockReset();
-    spawnSync.mockReset();
+    Object.values(childProcess).forEach((mock) => mock.mockReset());
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-'));
   });
 
@@ -62,7 +67,7 @@ describe('zax-backend', () => {
     const result = await backend.assemble({ asmPath, hexPath, listingPath });
 
     expect(result.success).toBe(true);
-    expect(spawnSync).not.toHaveBeenCalled();
+    expectNoExternalProcess();
     expect(compile).toHaveBeenCalledWith(
       asmPath,
       {
@@ -81,6 +86,36 @@ describe('zax-backend', () => {
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
     expect(fs.readFileSync(path.join(outDir, 'prog.z80'), 'utf-8')).toBe('ORG 0100h\nNOP\n');
+  });
+
+  it('passes paths with spaces and backslash-shaped segments directly to the ZAX library', async () => {
+    const backend = new ZaxBackend();
+    const asmPath = path.join(tmpDir, 'source dir', 'win\\project folder', 'program file.zax');
+    const outDir = path.join(tmpDir, 'build dir', 'win\\output folder');
+    const hexPath = path.join(outDir, 'program file.hex');
+    const listingPath = path.join(outDir, 'listing dir', 'program file.lst');
+
+    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
+    fs.writeFileSync(asmPath, 'main { nop; }\n');
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [
+        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'lst', text: 'LISTING\n' },
+      ],
+    });
+
+    const result = await backend.assemble({ asmPath, hexPath, listingPath });
+
+    expect(result.success).toBe(true);
+    expectNoExternalProcess();
+    expect(compile).toHaveBeenCalledWith(
+      asmPath,
+      expect.any(Object),
+      expect.objectContaining({ formats: expect.any(Object) })
+    );
+    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
+    expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
   });
 
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
@@ -148,3 +183,9 @@ describe('zax-backend', () => {
     expect('compileMappingInProcess' in backend).toBe(false);
   });
 });
+
+function expectNoExternalProcess(): void {
+  for (const mock of Object.values(childProcess)) {
+    expect(mock).not.toHaveBeenCalled();
+  }
+}
