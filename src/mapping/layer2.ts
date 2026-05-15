@@ -6,6 +6,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
+import {
+  chooseMatch,
+  DATA_DIRECTIVE,
+  findCandidateMatch,
+  findMatches,
+  normalizeAsm,
+} from './layer2-match';
 
 /**
  * Options for Layer 2 processing.
@@ -31,9 +38,6 @@ interface SourceFileData {
   lines: string[];
   normLines: string[];
 }
-
-/** Pattern to detect data directives (DB, DW, etc.) */
-const DATA_DIRECTIVE = /^(DB|DW|DS|DEFB|DEFW|DEFS|INCBIN)\b/;
 
 const SOURCE_EXTENSIONS = /\.(z80|asm)$/i;
 
@@ -374,26 +378,6 @@ export function applyLayer2(mapping: MappingParseResult, options: Layer2Options)
   return { missingSources };
 }
 
-function findCandidateMatch(
-  candidateFiles: string[],
-  fileData: Map<string, SourceFileData>,
-  norm: string,
-  hintLine: number | null
-): { file: string; line: number; ambiguous: boolean } | null {
-  for (const candidateFile of candidateFiles) {
-    const candidateInfo = fileData.get(candidateFile);
-    if (!candidateInfo) {
-      continue;
-    }
-    const matches = findMatches(candidateInfo.normLines, norm, hintLine);
-    const { line, ambiguous } = chooseMatch(matches, hintLine);
-    if (line !== null) {
-      return { file: candidateFile, line, ambiguous };
-    }
-  }
-  return null;
-}
-
 function collectSourceFiles(mapping: MappingParseResult): Set<string> {
   const files = new Set<string>();
   for (const anchor of mapping.anchors) {
@@ -430,77 +414,6 @@ function loadSourceFiles(
   }
 
   return { fileData, missingSources };
-}
-
-function normalizeAsm(line: string): string {
-  const stripped = stripComment(line);
-  let text = stripped.trim();
-  if (text.length === 0) {
-    return '';
-  }
-  text = text.replace(/\s+/g, ' ');
-  text = text.toUpperCase();
-  text = text.replace(/\s*,\s*/g, ',');
-  text = text.replace(/\s*([+\-*/()])\s*/g, '$1');
-  return text;
-}
-
-function stripComment(line: string): string {
-  let inSingle = false;
-  let inDouble = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    if (ch === '\\') {
-      i += 1;
-      continue;
-    }
-    if (ch === "'" && !inDouble) {
-      inSingle = !inSingle;
-      continue;
-    }
-    if (ch === '"' && !inSingle) {
-      inDouble = !inDouble;
-      continue;
-    }
-    if (ch === ';' && !inSingle && !inDouble) {
-      return line.slice(0, i);
-    }
-  }
-  return line;
-}
-
-function findMatches(normLines: string[], target: string, hintLine: number | null): number[] {
-  const total = normLines.length;
-  let start = 1;
-  let end = total;
-  if (hintLine !== null) {
-    start = Math.max(1, hintLine - 40);
-    end = Math.min(total, hintLine + 200);
-  }
-  const matches: number[] = [];
-  for (let i = start; i <= end; i += 1) {
-    if (normLines[i - 1] === target) {
-      matches.push(i);
-    }
-  }
-  return matches;
-}
-
-function chooseMatch(
-  matches: number[],
-  hintLine: number | null
-): { line: number | null; ambiguous: boolean } {
-  if (matches.length === 0) {
-    return { line: null, ambiguous: false };
-  }
-  let chosen = matches[0];
-  if (hintLine !== null) {
-    const forward = matches.find((m) => m >= hintLine);
-    if (forward !== undefined) {
-      chosen = forward;
-    }
-  }
-  return { line: chosen ?? null, ambiguous: matches.length > 1 };
 }
 
 function isMacroMarker(text: string): boolean {
