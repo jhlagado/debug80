@@ -151,6 +151,30 @@ describe('runtime-control', () => {
     expect(context.getSkipBreakpointOnce()).toBeNull();
   });
 
+  it('preserves step-out skip-breakpoint cycle behavior', async () => {
+    const recordCycles = vi.fn();
+    const context = makeContext({
+      pc: 0x2000,
+      runtimeStep: (trace) => {
+        trace.kind = 'ret';
+        trace.taken = true;
+        return { halted: false, cycles: 2 };
+      },
+      runtimeCapabilities: {
+        recordCycles,
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    context.setSkipBreakpointOnce(0x2000);
+
+    await runUntilReturnAsync(context, 0, 0);
+
+    expect(context.getSkipBreakpointOnce()).toBeNull();
+    expect(recordCycles).not.toHaveBeenCalled();
+  });
+
   it('stops on breakpoint address', async () => {
     let stopReason: string | undefined;
     let stopAddress: number | null | undefined;
