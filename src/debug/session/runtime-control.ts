@@ -235,6 +235,32 @@ function getPerformanceLogger(context: RuntimeControlContext): Logger {
   return context.getLogger?.() ?? nullPerformanceLogger;
 }
 
+function markStopped(
+  context: RuntimeControlContext,
+  reason: StopReason,
+  breakpointAddress: number | null
+): void {
+  context.setHaltNotified(false);
+  context.setRunning(false);
+  context.setLastStopReason(reason);
+  context.setLastBreakpointAddress(breakpointAddress);
+}
+
+function emitStopped(context: RuntimeControlContext, reason: string): void {
+  emitDebugSessionStatus(context.sendEvent, 'paused');
+  context.sendEvent(new StoppedEvent(reason, 1));
+}
+
+function stopAndEmit(
+  context: RuntimeControlContext,
+  stateReason: StopReason,
+  eventReason: string,
+  breakpointAddress: number | null
+): void {
+  markStopped(context, stateReason, breakpointAddress);
+  emitStopped(context, eventReason);
+}
+
 export interface LaunchBreakpointsTarget {
   listing: LaunchSessionArtifacts['listing'] | undefined;
   listingPath: string | undefined;
@@ -343,13 +369,9 @@ export async function runUntilStopAsync(
       captureEntryCpuStateIfNeeded(context);
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
-        context.setRunning(false);
-        context.setHaltNotified(false);
-        context.setLastStopReason('pause');
-        context.setLastBreakpointAddress(null);
+        markStopped(context, 'pause', null);
         getRuntimeCapabilities()?.silenceSpeaker();
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(new StoppedEvent('pause', 1));
+        emitStopped(context, 'pause');
         return;
       }
       if (
@@ -372,21 +394,11 @@ export async function runUntilStopAsync(
       }
       const pc = activeRuntime.getPC();
       if (context.isBreakpointAddress(pc)) {
-        context.setHaltNotified(false);
-        context.setRunning(false);
-        context.setLastStopReason('breakpoint');
-        context.setLastBreakpointAddress(pc);
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(new StoppedEvent('breakpoint', 1));
+        stopAndEmit(context, 'breakpoint', 'breakpoint', pc);
         return;
       }
       if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
-        context.setHaltNotified(false);
-        context.setRunning(false);
-        context.setLastStopReason('step');
-        context.setLastBreakpointAddress(null);
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(new StoppedEvent('step', 1));
+        stopAndEmit(context, 'step', 'step', null);
         return;
       }
       const result = activeRuntime.step({ trace });
@@ -402,10 +414,7 @@ export async function runUntilStopAsync(
         return;
       }
       if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
-        context.setHaltNotified(false);
-        context.setRunning(false);
-        context.setLastStopReason('step');
-        context.setLastBreakpointAddress(null);
+        markStopped(context, 'step', null);
         emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(
           new OutputEvent(
@@ -482,13 +491,9 @@ export async function runUntilReturnAsync(
       }
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
-        context.setRunning(false);
-        context.setHaltNotified(false);
-        context.setLastStopReason('pause');
-        context.setLastBreakpointAddress(null);
+        markStopped(context, 'pause', null);
         getRuntimeCapabilities()?.silenceSpeaker();
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(new StoppedEvent('pause', 1));
+        emitStopped(context, 'pause');
         return;
       }
       if (
@@ -508,12 +513,7 @@ export async function runUntilReturnAsync(
       } else {
         const pc = activeRuntime.getPC();
         if (context.isBreakpointAddress(pc)) {
-          context.setHaltNotified(false);
-          context.setRunning(false);
-          context.setLastStopReason('breakpoint');
-          context.setLastBreakpointAddress(pc);
-          emitDebugSessionStatus(context.sendEvent, 'paused');
-          context.sendEvent(new StoppedEvent('breakpoint', 1));
+          stopAndEmit(context, 'breakpoint', 'breakpoint', pc);
           return;
         }
         const result = activeRuntime.step({ trace });
@@ -531,21 +531,13 @@ export async function runUntilReturnAsync(
 
       if (trace.kind === 'ret' && trace.taken) {
         if (baselineDepth === 0 || context.getCallDepth() < baselineDepth) {
-          context.setHaltNotified(false);
-          context.setRunning(false);
-          context.setLastStopReason('step');
-          context.setLastBreakpointAddress(null);
-          emitDebugSessionStatus(context.sendEvent, 'paused');
-          context.sendEvent(new StoppedEvent('step', 1));
+          stopAndEmit(context, 'step', 'step', null);
           return;
         }
       }
 
       if (maxInstructions > 0 && executed >= maxInstructions) {
-        context.setHaltNotified(false);
-        context.setRunning(false);
-        context.setLastStopReason('step');
-        context.setLastBreakpointAddress(null);
+        markStopped(context, 'step', null);
         emitDebugSessionStatus(context.sendEvent, 'paused');
         context.sendEvent(
           new OutputEvent(
