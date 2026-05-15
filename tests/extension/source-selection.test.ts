@@ -26,6 +26,14 @@ describe('source-selection', () => {
     ).toBeUndefined();
   });
 
+  it('allows in-project filenames that begin with two dots', () => {
+    expect(
+      resolveResourceSourceSelection('/workspace/proj/..main.asm', '/workspace/proj', [
+        '..main.asm',
+      ])
+    ).toBe('..main.asm');
+  });
+
   it('normalizes host path separators to Debug80 project paths', () => {
     const folder = path.join('/workspace', 'proj');
     const resource = path.join(folder, 'src', 'main.asm');
