@@ -228,6 +228,45 @@ describe('registerExtensionCommands', () => {
     );
   });
 
+  it('prompts for a configured project when a provided debug root is not a project', async () => {
+    workspaceFolders = [
+      { name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 },
+      { name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 1 },
+    ];
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === projectConfigPath || /\.(asm|zax)$/i.test(normalized);
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const startDebug = registeredCommands.get('debug80.startDebug');
+    expect(startDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await startDebug?.({ rootPath: '/workspace/empty-root' });
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+        placeHolder: 'Select the Debug80 project folder to debug',
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({ projectConfig: projectConfigPath })
+    );
+  });
+
   it('creates a project directly in an already-open empty workspace root', async () => {
     workspaceFolders = [{ name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 }];
     const folder = {
@@ -793,6 +832,33 @@ describe('registerExtensionCommands', () => {
     });
 
     expect(result).toBe('serial');
+  });
+
+  it('reports an explicit target root that is not open without prompting', async () => {
+    const resolveWorkspaceFolder = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget: vi.fn(),
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommands.get('debug80.selectTarget');
+    expect(selectTarget).toBeTypeOf('function');
+
+    const result = await selectTarget?.({ rootPath: '/workspace/missing' });
+
+    expect(result).toBeUndefined();
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: The workspace root /workspace/missing is not open in this window.'
+    );
   });
 
   it('configures target platform through debug80.configureProject', async () => {
