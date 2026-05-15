@@ -328,6 +328,32 @@ export function captureEntryCpuStateIfNeeded(context: RuntimeControlContext): vo
   setEntryCpuState.call(context, runtime.captureCpuState());
 }
 
+type RuntimeStepResult = {
+  halted: boolean;
+  cycles: number;
+};
+
+function stepRuntimeOnce(options: {
+  context: RuntimeControlContext;
+  runtime: Z80Runtime;
+  trace: StepInfo;
+  monitor: ReturnType<typeof createRuntimePerformanceMonitor>;
+  recordCycles: boolean;
+  captureEntry: boolean;
+}): RuntimeStepResult {
+  const result = options.runtime.step({ trace: options.trace });
+  applyStepInfo(options.context, options.trace);
+  if (options.captureEntry) {
+    captureEntryCpuStateIfNeeded(options.context);
+  }
+  const cycles = result.cycles ?? 0;
+  options.monitor.recordStep(cycles);
+  if (options.recordCycles) {
+    options.context.getRuntimeCapabilities()?.recordCycles(cycles);
+  }
+  return { halted: result.halted, cycles };
+}
+
 export async function runUntilStopAsync(
   context: RuntimeControlContext,
   options?: {
@@ -379,13 +405,16 @@ export async function runUntilStopAsync(
         activeRuntime.getPC() === context.getSkipBreakpointOnce()
       ) {
         context.setSkipBreakpointOnce(null);
-        const stepped = activeRuntime.step({ trace });
-        applyStepInfo(context, trace);
-        captureEntryCpuStateIfNeeded(context);
+        const stepped = stepRuntimeOnce({
+          context,
+          runtime: activeRuntime,
+          trace,
+          monitor,
+          recordCycles: true,
+          captureEntry: true,
+        });
         executed += 1;
-        cyclesSinceThrottle += stepped.cycles ?? 0;
-        monitor.recordStep(stepped.cycles ?? 0);
-        getRuntimeCapabilities()?.recordCycles(stepped.cycles ?? 0);
+        cyclesSinceThrottle += stepped.cycles;
         if (stepped.halted) {
           context.handleHaltStop();
           return;
@@ -401,13 +430,16 @@ export async function runUntilStopAsync(
         stopAndEmit(context, 'step', 'step', null);
         return;
       }
-      const result = activeRuntime.step({ trace });
-      applyStepInfo(context, trace);
-      captureEntryCpuStateIfNeeded(context);
+      const result = stepRuntimeOnce({
+        context,
+        runtime: activeRuntime,
+        trace,
+        monitor,
+        recordCycles: true,
+        captureEntry: true,
+      });
       executed += 1;
-      cyclesSinceThrottle += result.cycles ?? 0;
-      monitor.recordStep(result.cycles ?? 0);
-      getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
+      cyclesSinceThrottle += result.cycles;
       if (result.halted) {
         context.setRunning(false);
         context.handleHaltStop();
@@ -501,11 +533,16 @@ export async function runUntilReturnAsync(
         activeRuntime.getPC() === context.getSkipBreakpointOnce()
       ) {
         context.setSkipBreakpointOnce(null);
-        const stepped = activeRuntime.step({ trace });
-        applyStepInfo(context, trace);
+        const stepped = stepRuntimeOnce({
+          context,
+          runtime: activeRuntime,
+          trace,
+          monitor,
+          recordCycles: false,
+          captureEntry: false,
+        });
         executed += 1;
-        cyclesSinceThrottle += stepped.cycles ?? 0;
-        monitor.recordStep(stepped.cycles ?? 0);
+        cyclesSinceThrottle += stepped.cycles;
         if (stepped.halted) {
           context.handleHaltStop();
           return;
@@ -516,12 +553,16 @@ export async function runUntilReturnAsync(
           stopAndEmit(context, 'breakpoint', 'breakpoint', pc);
           return;
         }
-        const result = activeRuntime.step({ trace });
-        applyStepInfo(context, trace);
+        const result = stepRuntimeOnce({
+          context,
+          runtime: activeRuntime,
+          trace,
+          monitor,
+          recordCycles: true,
+          captureEntry: false,
+        });
         executed += 1;
-        cyclesSinceThrottle += result.cycles ?? 0;
-        monitor.recordStep(result.cycles ?? 0);
-        getRuntimeCapabilities()?.recordCycles(result.cycles ?? 0);
+        cyclesSinceThrottle += result.cycles;
         if (result.halted) {
           context.setRunning(false);
           context.handleHaltStop();
