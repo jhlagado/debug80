@@ -17,12 +17,7 @@ import {
   buildTec1gVisibilityMessage,
   saveTec1gPanelVisibility,
 } from './platform-view-tec1g-visibility';
-import { handlePlatformViewMessage } from './platform-view-messages';
-import {
-  handlePlatformSerialSave,
-  handlePlatformSerialSendFile,
-} from './platform-view-serial-actions';
-import type { PlatformId, PlatformViewInboundMessage } from '../contracts/platform-view';
+import type { PlatformId } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
 import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
 import {
@@ -58,8 +53,8 @@ import {
 } from './platform-view-session-state';
 import { revealPlatformView } from './platform-view-reveal';
 import { PlatformViewRegistry, type PlatformViewBundle } from './platform-view-registry';
-
-const MEMORY_REFRESH_INTERVAL_MS = 500;
+import { createPlatformViewWebviewHandler } from './platform-view-webview-handler';
+import { MEMORY_REFRESH_INTERVAL_MS } from './platform-view-constants';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -266,80 +261,19 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
     };
 
-    webviewView.webview.onDidReceiveMessage(async (msg: PlatformViewInboundMessage) => {
-      await handlePlatformViewMessage(msg, {
-        handleCreateProject: async (args) => {
-          await vscode.commands.executeCommand('debug80.createProject', args);
-        },
-        handleOpenWorkspaceFolder: async () => {
-          await vscode.commands.executeCommand('debug80.addWorkspaceFolder');
-        },
-        handleSelectProject: async (args) => {
-          await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);
-        },
-        handleConfigureProject: () => {
-          return Promise.resolve();
-        },
-        handleSaveProjectConfig: (platform) => {
-          this.handleSaveProjectConfig(platform);
-          return Promise.resolve();
-        },
-        handleSetStopOnEntry: (value) => {
-          this.handleSetStopOnEntry(value);
-          return Promise.resolve();
-        },
-        handleSelectTarget: async (args) => {
-          await vscode.commands.executeCommand('debug80.selectTarget', args);
-        },
-        handleRestartDebug: async () => {
-          await vscode.commands.executeCommand('debug80.restartDebug');
-        },
-        handleSetEntrySource: async () => {
-          await vscode.commands.executeCommand('debug80.setEntrySource');
-        },
+    webviewView.webview.onDidReceiveMessage(
+      createPlatformViewWebviewHandler({
         currentPlatform: () => this.currentPlatform,
-        handleSaveTec1gPanelVisibility: (args) => {
-          this.persistTec1gPanelVisibility(args.visibility, args.targetName);
+        sessionState: this.sessionState,
+        getActiveBundle: (platform) => this.getActiveBundle(platform),
+        handleSaveProjectConfig: (platform) => this.handleSaveProjectConfig(platform),
+        handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
+        persistTec1gPanelVisibility: (visibility, targetNameFromWebview) => {
+          this.persistTec1gPanelVisibility(visibility, targetNameFromWebview);
         },
-        handleStartDebug: async (args) => {
-          await vscode.commands.executeCommand('debug80.startDebug', args);
-        },
-        handleSerialSendFile: async () => {
-          await handlePlatformSerialSendFile({
-            getSession: () =>
-              resolvePlatformViewDebugSession(this.sessionState, vscode.debug.activeDebugSession),
-            getPlatform: () => this.currentPlatform,
-          });
-        },
-        handleSerialSave: async (text) => {
-          await handlePlatformSerialSave(text);
-        },
-        clearSerialBuffer: (platform) => {
-          const bundle = this.getActiveBundle(platform);
-          if (bundle !== undefined) {
-            clearPlatformSerial(bundle.state.serialBuffer);
-          }
-        },
-        handlePlatformMessage: async (platform, platformMsg) => {
-          const bundle = this.getActiveBundle(platform);
-          if (bundle === undefined) {
-            return;
-          }
-          await bundle.modules.handleMessage(platformMsg, {
-            getSession: () =>
-              resolvePlatformViewDebugSession(this.sessionState, vscode.debug.activeDebugSession),
-            refreshController: bundle.state.refreshController,
-            autoRefreshMs: MEMORY_REFRESH_INTERVAL_MS,
-            setActiveTab: (tab) => {
-              bundle.state.activeTab = tab;
-            },
-            getActiveTab: () => bundle.state.activeTab,
-            isPanelVisible: () => this.view?.visible === true,
-            memoryViews: bundle.state.memoryViews,
-          });
-        },
-      });
-    });
+        isPanelVisible: () => this.view?.visible === true,
+      })
+    );
 
     webviewView.onDidDispose(() => {
       this.view = undefined;
