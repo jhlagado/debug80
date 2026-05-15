@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('vscode', () => ({}));
 
@@ -8,6 +8,10 @@ import { createSessionState } from '../../src/debug/session/session-state';
 import * as runtimeControl from '../../src/debug/session/runtime-control';
 import { VariableService } from '../../src/debug/requests/variable-service';
 import { createZ80Runtime } from '../../src/z80/runtime';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function createController() {
   const sessionState = createSessionState();
@@ -40,18 +44,32 @@ function createController() {
       getRuntime: () => sessionState.runtime,
       getRuntimeCapabilities: () => undefined,
       getActivePlatform: () => 'simple',
-      getCallDepth: () => 0,
-      setCallDepth: () => undefined,
+      getCallDepth: () => sessionState.runState.callDepth,
+      setCallDepth: (depth: number) => {
+        sessionState.runState.callDepth = depth;
+      },
       getPauseRequested: () => false,
-      setPauseRequested: () => undefined,
-      getRunning: () => false,
-      setRunning: () => undefined,
-      getSkipBreakpointOnce: () => null,
-      setSkipBreakpointOnce: () => undefined,
-      getHaltNotified: () => false,
-      setHaltNotified: () => undefined,
-      setLastStopReason: () => undefined,
-      setLastBreakpointAddress: () => undefined,
+      setPauseRequested: (value: boolean) => {
+        sessionState.runState.pauseRequested = value;
+      },
+      getRunning: () => sessionState.runState.isRunning,
+      setRunning: (value: boolean) => {
+        sessionState.runState.isRunning = value;
+      },
+      getSkipBreakpointOnce: () => sessionState.runState.skipBreakpointOnce,
+      setSkipBreakpointOnce: (address: number | null) => {
+        sessionState.runState.skipBreakpointOnce = address;
+      },
+      getHaltNotified: () => sessionState.runState.haltNotified,
+      setHaltNotified: (value: boolean) => {
+        sessionState.runState.haltNotified = value;
+      },
+      setLastStopReason: (reason: string) => {
+        sessionState.runState.lastStopReason = reason;
+      },
+      setLastBreakpointAddress: (address: number | null) => {
+        sessionState.runState.lastBreakpointAddress = address;
+      },
       isBreakpointAddress: () => false,
       handleHaltStop: () => undefined,
       sendEvent: () => undefined,
@@ -97,6 +115,82 @@ describe('adapter-request-controller startup sequencing', () => {
     controller.startConfiguredExecutionIfReady();
 
     expect(runUntilStopSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('AdapterRequestController single-step flow', () => {
+  it('sends the next response before the stopped event for a plain step', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = {
+      getPC: () => 0,
+      step: ({ trace }: { trace: { taken: boolean } }) => {
+        trace.taken = false;
+        return { halted: false, cycles: 1 };
+      },
+    } as never;
+
+    controller.nextRequest({} as never, {} as never);
+
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    expect(deps.sendEvent).toHaveBeenCalledTimes(1);
+    expect(deps.sendResponse.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.sendEvent.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(sessionState.runState.isRunning).toBe(false);
+    expect(sessionState.runState.lastStopReason).toBe('step');
+  });
+
+  it('sends the next response before starting step-over continuation', () => {
+    const runUntilStopSpy = vi
+      .spyOn(runtimeControl, 'runUntilStopAsync')
+      .mockResolvedValue(undefined);
+    const { controller, deps, sessionState } = createController();
+    sessionState.runState.stepOverMaxInstructions = 123;
+    sessionState.runtime = {
+      getPC: () => 0,
+      step: ({ trace }: { trace: { kind?: string; taken: boolean; returnAddress?: number } }) => {
+        trace.kind = 'call';
+        trace.taken = true;
+        trace.returnAddress = 0x3456;
+        return { halted: false, cycles: 1 };
+      },
+    } as never;
+
+    controller.nextRequest({} as never, {} as never);
+
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
+      extraBreakpoints: new Set([0x3456]),
+      maxInstructions: 123,
+      limitLabel: 'step over',
+    });
+    expect(deps.sendResponse.mock.invocationCallOrder[0]).toBeLessThan(
+      runUntilStopSpy.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(deps.sendEvent).not.toHaveBeenCalled();
+    expect(sessionState.runState.isRunning).toBe(true);
+    expect(sessionState.runState.callDepth).toBe(1);
+  });
+
+  it('sends the step-in response before the stopped event for a plain step', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = {
+      getPC: () => 0,
+      step: ({ trace }: { trace: { taken: boolean } }) => {
+        trace.taken = false;
+        return { halted: false, cycles: 1 };
+      },
+    } as never;
+
+    controller.stepInRequest({} as never, {} as never);
+
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    expect(deps.sendEvent).toHaveBeenCalledTimes(1);
+    expect(deps.sendResponse.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.sendEvent.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(sessionState.runState.isRunning).toBe(false);
+    expect(sessionState.runState.lastStopReason).toBe('step');
   });
 });
 

@@ -11,6 +11,7 @@ import { getShadowAlias, isBreakpointAddress } from '../mapping/debug-addressing
 import { buildStackFrames, flushDiagLog, isDiagnosticsEnabled } from '../mapping/stack-service';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import {
+  applyStepInfo,
   captureEntryCpuStateIfNeeded,
   runUntilReturnAsync,
   runUntilStopAsync,
@@ -124,83 +125,25 @@ export class AdapterRequestController {
     response: DebugProtocol.NextResponse,
     _args: DebugProtocol.NextArguments
   ): void {
-    if (this.deps.sessionState.runtime === undefined) {
-      this.deps.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-
-    const trace: StepInfo = { taken: false };
-    const result = this.deps.sessionState.runtime.step({ trace });
-    this.applyStepInfo(trace);
-    this.deps.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
-    captureEntryCpuStateIfNeeded(this.deps.getRuntimeControlContext());
-    this.deps.sessionState.runState.pauseRequested = false;
-    this.deps.sendResponse(response);
-
-    if (result.halted) {
-      this.handleHaltStop();
-    } else {
-      if (trace.kind && trace.taken && trace.returnAddress !== undefined) {
-        this.deps.sessionState.runState.haltNotified = false;
-        this.deps.sessionState.runState.isRunning = true;
-        this.deps.sessionState.runState.lastStopReason = 'step';
-        this.deps.sessionState.runState.lastBreakpointAddress = null;
-        this.runUntilStop(
-          new Set([trace.returnAddress]),
-          this.deps.sessionState.runState.stepOverMaxInstructions,
-          'step over'
-        );
-        return;
-      }
-      this.deps.sessionState.runState.haltNotified = false;
-      this.deps.sessionState.runState.isRunning = false;
-      this.deps.sessionState.runState.lastStopReason = 'step';
-      this.deps.sessionState.runState.lastBreakpointAddress = null;
-      this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
-    }
+    this.handleSingleStepRequest(response, {
+      getStepOverReturnAddress: (trace) =>
+        trace.kind && trace.taken ? trace.returnAddress : undefined,
+      stepOverPrecedesHalt: false,
+    });
   }
 
   public stepInRequest(
     response: DebugProtocol.StepInResponse,
     _args: DebugProtocol.StepInArguments
   ): void {
-    if (this.deps.sessionState.runtime === undefined) {
-      this.deps.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-
     const unmappedReturn = this.resolveUnmappedCall();
-    const trace: StepInfo = { taken: false };
-    const result = this.deps.sessionState.runtime.step({ trace });
-    this.applyStepInfo(trace);
-    this.deps.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
-    captureEntryCpuStateIfNeeded(this.deps.getRuntimeControlContext());
-    this.deps.sessionState.runState.pauseRequested = false;
-    this.deps.sendResponse(response);
-
-    if (unmappedReturn !== null && trace.kind && trace.taken) {
-      const returnAddress = trace.returnAddress ?? unmappedReturn;
-      this.deps.sessionState.runState.haltNotified = false;
-      this.deps.sessionState.runState.isRunning = true;
-      this.deps.sessionState.runState.lastStopReason = 'step';
-      this.deps.sessionState.runState.lastBreakpointAddress = null;
-      this.runUntilStop(
-        new Set([returnAddress]),
-        this.deps.sessionState.runState.stepOverMaxInstructions,
-        'step over'
-      );
-      return;
-    }
-
-    if (result.halted) {
-      this.handleHaltStop();
-    } else {
-      this.deps.sessionState.runState.haltNotified = false;
-      this.deps.sessionState.runState.isRunning = false;
-      this.deps.sessionState.runState.lastStopReason = 'step';
-      this.deps.sessionState.runState.lastBreakpointAddress = null;
-      this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
-    }
+    this.handleSingleStepRequest(response, {
+      getStepOverReturnAddress: (trace) =>
+        unmappedReturn !== null && trace.kind && trace.taken
+          ? (trace.returnAddress ?? unmappedReturn)
+          : undefined,
+      stepOverPrecedesHalt: true,
+    });
   }
 
   public stepOutRequest(
@@ -451,6 +394,79 @@ export class AdapterRequestController {
     });
   }
 
+  private handleSingleStepRequest(
+    response: DebugProtocol.Response,
+    options: {
+      getStepOverReturnAddress: (trace: StepInfo) => number | undefined;
+      stepOverPrecedesHalt: boolean;
+    }
+  ): void {
+    const runtime = this.deps.sessionState.runtime;
+    if (runtime === undefined) {
+      this.deps.sendErrorResponse(response, 1, 'No program loaded');
+      return;
+    }
+
+    const trace: StepInfo = { taken: false };
+    const result = runtime.step({ trace });
+    const context = this.deps.getRuntimeControlContext();
+    applyStepInfo(context, trace);
+    this.deps.sessionState.platformRuntime?.recordCycles(result.cycles ?? 0);
+    captureEntryCpuStateIfNeeded(context);
+    this.deps.sessionState.runState.pauseRequested = false;
+    this.deps.sendResponse(response);
+
+    if (options.stepOverPrecedesHalt && this.continueStepOverIfNeeded(options, trace)) {
+      return;
+    }
+
+    if (result.halted) {
+      this.handleHaltStop();
+      return;
+    }
+
+    if (!options.stepOverPrecedesHalt && this.continueStepOverIfNeeded(options, trace)) {
+      return;
+    }
+
+    this.markStepStopped();
+    this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
+  }
+
+  private continueStepOverIfNeeded(
+    options: {
+      getStepOverReturnAddress: (trace: StepInfo) => number | undefined;
+    },
+    trace: StepInfo
+  ): boolean {
+    const returnAddress = options.getStepOverReturnAddress(trace);
+    if (returnAddress === undefined) {
+      return false;
+    }
+
+    this.markStepRunning();
+    this.runUntilStop(
+      new Set([returnAddress]),
+      this.deps.sessionState.runState.stepOverMaxInstructions,
+      'step over'
+    );
+    return true;
+  }
+
+  private markStepRunning(): void {
+    this.deps.sessionState.runState.haltNotified = false;
+    this.deps.sessionState.runState.isRunning = true;
+    this.deps.sessionState.runState.lastStopReason = 'step';
+    this.deps.sessionState.runState.lastBreakpointAddress = null;
+  }
+
+  private markStepStopped(): void {
+    this.deps.sessionState.runState.haltNotified = false;
+    this.deps.sessionState.runState.isRunning = false;
+    this.deps.sessionState.runState.lastStopReason = 'step';
+    this.deps.sessionState.runState.lastBreakpointAddress = null;
+  }
+
   private resolveUnmappedCall(): number | null {
     const { runtime, mappingIndex } = this.deps.sessionState;
     if (runtime === undefined || mappingIndex === undefined) {
@@ -468,21 +484,5 @@ export class AdapterRequestController {
       activePlatform: this.deps.platformState.active,
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
-  }
-
-  private applyStepInfo(trace: StepInfo): void {
-    if (!trace.kind || !trace.taken) {
-      return;
-    }
-    if (trace.kind === 'call' || trace.kind === 'rst') {
-      this.deps.sessionState.runState.callDepth += 1;
-      return;
-    }
-    if (trace.kind === 'ret') {
-      this.deps.sessionState.runState.callDepth = Math.max(
-        0,
-        this.deps.sessionState.runState.callDepth - 1
-      );
-    }
   }
 }
