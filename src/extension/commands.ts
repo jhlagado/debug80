@@ -40,6 +40,7 @@ import {
   resolveFolderForProjectCreation,
   resolveProjectFolderFromResource,
 } from './workspace-folder-resolver';
+import { buildSourcePickItems, resolveResourceSourceSelection } from './source-selection';
 import {
   startCurrentProjectDebugging,
   maybeAutoStartSingleTargetForRootChange,
@@ -712,28 +713,19 @@ export function registerExtensionCommands({
         return undefined;
       }
 
-      const resourceRelative =
-        resource !== undefined && resource.fsPath.startsWith(folder.uri.fsPath)
-          ? path.relative(folder.uri.fsPath, resource.fsPath).split(path.sep).join('/')
-          : undefined;
-      const initialSelection =
-        resourceRelative !== undefined && candidates.includes(resourceRelative)
-          ? resourceRelative
-          : undefined;
+      const initialSelection = resolveResourceSourceSelection(
+        resource?.fsPath,
+        folder.uri.fsPath,
+        candidates
+      );
 
       const picked =
         initialSelection ??
         (
-          await vscode.window.showQuickPick(
-            candidates.map((candidate) => ({
-              label: candidate,
-              ...(candidate === currentSource ? { description: 'current program file' } : {}),
-            })),
-            {
-              placeHolder: 'Select the program file for the active Debug80 target',
-              matchOnDescription: true,
-            }
-          )
+          await vscode.window.showQuickPick(buildSourcePickItems(candidates, currentSource), {
+            placeHolder: 'Select the program file for the active Debug80 target',
+            matchOnDescription: true,
+          })
         )?.label;
 
       if (picked === undefined) {
