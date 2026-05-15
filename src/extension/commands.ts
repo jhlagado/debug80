@@ -6,7 +6,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
-  DEBUG80_PROJECT_VERSION,
   findProjectConfigPath,
   listProjectSourceFiles,
   readProjectConfig,
@@ -25,16 +24,11 @@ import { fetchRomSources } from './rom-sources';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
-import type { ProjectConfig } from '../debug/session/types';
+import type { Debug80PlatformId } from '../debug/session/types';
 import {
   buildBundledAssetFallbackPlans,
   resolveProjectBundledAssetInstallPlan,
 } from './bundle-asset-installer';
-import {
-  createSimplePlatformDefaults,
-  createTec1PlatformDefaults,
-  createTec1gPlatformDefaults,
-} from './config-panel-html';
 import {
   findWorkspaceFolder,
   resolveFolderForProjectCreation,
@@ -49,6 +43,10 @@ import {
   resolveSessionWorkspaceFolder,
 } from './debug-session-actions';
 import { openProjectConfigPanel } from './project-config-panel';
+import {
+  applyConfigureProjectTargetEdit,
+  type ConfigureProjectTargetEdit,
+} from './configure-project-edit';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -517,15 +515,13 @@ export function registerExtensionCommands({
         return undefined;
       }
 
-      const targets = (config.targets ?? {}) as Record<string, Record<string, unknown>>;
-      const currentTarget = targets[target];
+      const currentTarget = config.targets?.[target];
       if (currentTarget === undefined) {
         void vscode.window.showErrorMessage(`Debug80: Target ${target} no longer exists.`);
         return undefined;
       }
 
-      const updatedTarget: Record<string, unknown> = { ...currentTarget };
-      let nextTargetName = target;
+      let edit: ConfigureProjectTargetEdit | undefined;
 
       if (pick.value === 'targetPlatformOverride') {
         const platformPick = await vscode.window.showQuickPick(
@@ -539,23 +535,10 @@ export function registerExtensionCommands({
         if (!platformPick) {
           return undefined;
         }
-        const platform = platformPick.label as 'simple' | 'tec1' | 'tec1g';
-        updatedTarget.platform = platform;
-        delete updatedTarget.simple;
-        delete updatedTarget.tec1;
-        delete updatedTarget.tec1g;
-        if (platform === 'tec1') {
-          updatedTarget.tec1 = createTec1PlatformDefaults();
-        } else if (platform === 'tec1g') {
-          updatedTarget.tec1g = createTec1gPlatformDefaults();
-        } else {
-          updatedTarget.simple = createSimplePlatformDefaults();
-        }
-        config.projectVersion = DEBUG80_PROJECT_VERSION;
-        // Keep project-level platform stable for mixed-target projects.
-        if (Object.keys(targets).length <= 1) {
-          config.projectPlatform = platform;
-        }
+        edit = {
+          kind: 'targetPlatformOverride',
+          platform: platformPick.label as Debug80PlatformId,
+        };
       } else if (pick.value === 'program') {
         const sources = listProjectSourceFiles(folder.uri.fsPath);
         if (sources.length === 0) {
@@ -571,13 +554,7 @@ export function registerExtensionCommands({
         if (!sourcePick) {
           return undefined;
         }
-        updatedTarget.sourceFile = sourcePick.label;
-        updatedTarget.asm = sourcePick.label;
-        if (sourcePick.label.toLowerCase().endsWith('.zax')) {
-          updatedTarget.assembler = 'zax';
-        } else if (updatedTarget.assembler === 'zax') {
-          delete updatedTarget.assembler;
-        }
+        edit = { kind: 'program', sourceFile: sourcePick.label };
       } else if (pick.value === 'assembler') {
         const assemblerPick = await vscode.window.showQuickPick(
           [
@@ -590,12 +567,12 @@ export function registerExtensionCommands({
         if (!assemblerPick) {
           return undefined;
         }
-        if (assemblerPick.label === 'default') {
-          delete updatedTarget.assembler;
-        } else {
-          updatedTarget.assembler = assemblerPick.label;
-        }
+        edit = {
+          kind: 'assembler',
+          assembler: assemblerPick.label === 'default' ? undefined : assemblerPick.label,
+        };
       } else if (pick.value === 'targetName') {
+        const targets = config.targets ?? {};
         const targetName = (
           await vscode.window.showInputBox({
             prompt: 'Debug80 target name',
@@ -615,55 +592,56 @@ export function registerExtensionCommands({
         if (targetName === undefined || targetName.length === 0 || targetName === target) {
           return undefined;
         }
-        delete targets[target];
-        targets[targetName] = updatedTarget;
-        nextTargetName = targetName;
-        if (config.defaultTarget === target) {
-          config.defaultTarget = targetName;
-        }
-        if (config.target === target) {
-          config.target = targetName;
-        }
+        edit = { kind: 'targetName', targetName };
       } else if (pick.value === 'outputDir') {
         const outputDir = (
           await vscode.window.showInputBox({
             prompt: 'Output directory',
-            value: String(updatedTarget.outputDir ?? ''),
+            value: String(config.targets?.[target]?.outputDir ?? ''),
             placeHolder: 'build',
           })
         )?.trim();
         if (outputDir === undefined || outputDir.length === 0) {
           return undefined;
         }
-        updatedTarget.outputDir = outputDir;
+        edit = { kind: 'outputDir', outputDir };
       } else if (pick.value === 'artifactBase') {
         const artifactBase = (
           await vscode.window.showInputBox({
             prompt: 'Artifact base',
-            value: String(updatedTarget.artifactBase ?? ''),
+            value: String(config.targets?.[target]?.artifactBase ?? ''),
             placeHolder: 'main',
           })
         )?.trim();
         if (artifactBase === undefined || artifactBase.length === 0) {
           return undefined;
         }
-        updatedTarget.artifactBase = artifactBase;
+        edit = { kind: 'artifactBase', artifactBase };
       }
 
-      targets[nextTargetName] = updatedTarget;
-      config.targets = targets as NonNullable<ProjectConfig['targets']>;
+      if (edit === undefined) {
+        return undefined;
+      }
+      const editResult = applyConfigureProjectTargetEdit(config, target, edit);
+      if (editResult.kind === 'missingTarget') {
+        void vscode.window.showErrorMessage(`Debug80: Target ${target} no longer exists.`);
+        return undefined;
+      }
+      if (editResult.kind === 'noChange') {
+        return undefined;
+      }
       const written = writeProjectConfig(projectConfigPath, config);
       if (!written) {
         void vscode.window.showErrorMessage('Debug80: Failed to update project config.');
         return undefined;
       }
 
-      targetSelection.rememberTarget(projectConfigPath, nextTargetName);
+      targetSelection.rememberTarget(projectConfigPath, editResult.targetName);
       platformViewProvider.refreshIdleView();
       void vscode.window.showInformationMessage(
-        `Debug80: Updated ${nextTargetName} (${pick.label}).`
+        `Debug80: Updated ${editResult.targetName} (${pick.label}).`
       );
-      return nextTargetName;
+      return editResult.targetName;
     })
   );
 
