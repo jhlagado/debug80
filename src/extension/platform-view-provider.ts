@@ -11,7 +11,6 @@ import * as vscode from 'vscode';
 import type { DebugSessionStatus } from '../debug/session/session-status';
 import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
-import { createRefreshController, type RefreshController } from '../platforms/panel-refresh';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import {
@@ -23,7 +22,6 @@ import {
   handlePlatformSerialSave,
   handlePlatformSerialSendFile,
 } from './platform-view-serial-actions';
-import { loadPlatformUi, listPlatformUis, type PlatformUiModules } from './platform-view-manifest';
 import type { PlatformId, PlatformViewInboundMessage } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
 import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
@@ -41,14 +39,12 @@ import {
   appendPlatformSerial,
   buildSerialInitMessage,
   clearPlatformSerial,
-  createSerialBuffer,
 } from './platform-view-serial-state';
 import {
   applyPlatformRuntimeUpdate,
   buildPlatformRuntimeClearMessage,
   buildPlatformRuntimeUpdateMessage,
   clearPlatformRuntimeState,
-  type PlatformRuntimeState,
 } from './platform-view-runtime-state';
 import {
   buildPlatformViewSessionStatusMessage,
@@ -61,21 +57,9 @@ import {
   shouldAcceptPlatformViewSession,
 } from './platform-view-session-state';
 import { revealPlatformView } from './platform-view-reveal';
+import { PlatformViewRegistry, type PlatformViewBundle } from './platform-view-registry';
 
 const MEMORY_REFRESH_INTERVAL_MS = 500;
-
-// ---------------------------------------------------------------------------
-// Per-platform runtime state
-// ---------------------------------------------------------------------------
-
-/**
- * Mutable state held by the provider for each loaded platform.
- * One instance exists per registered platform for the lifetime of the provider.
- */
-interface PerPlatformState extends PlatformRuntimeState {
-  activeTab: PanelTab;
-  refreshController: RefreshController;
-}
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -92,11 +76,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
   private readonly performanceMonitor: UiPerformanceMonitor;
-
-  /** Cached loaded modules, keyed by platform id. */
-  private readonly loadedModules = new Map<string, PlatformUiModules>();
-  /** Per-platform mutable state, keyed by platform id. */
-  private readonly platformStates = new Map<string, PerPlatformState>();
+  private readonly registry: PlatformViewRegistry;
 
   /** TEC-1G only: `tec1g.uiVisibility` from launch config (debug80.json) for this session. */
   private tec1gAdapterVisibility: Record<string, boolean> | undefined;
@@ -114,6 +94,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.performanceMonitor = createUiPerformanceMonitor({
       logger,
       label: 'platform-view',
+    });
+    this.registry = new PlatformViewRegistry({
+      postSnapshot: (command, payload): Promise<void> => this.postSnapshot(command, payload),
+      onSnapshotFailed: (allowErrors): void => this.onSnapshotFailed(allowErrors),
     });
   }
 
@@ -239,14 +223,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   clear(): void {
-    for (const [id, state] of this.platformStates) {
-      const modules = this.loadedModules.get(id);
+    this.registry.forEachState((_id, state, modules) => {
       if (modules !== undefined) {
         clearPlatformRuntimeState(modules, state);
       } else {
         clearPlatformSerial(state.serialBuffer);
       }
-    }
+    });
     const bundle = this.getCurrentBundle();
     if (bundle !== undefined) {
       this.postMessage(
@@ -373,7 +356,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
     // Load all registered platform UIs eagerly so subsequent synchronous
     // operations (updateTec1, clear, etc.) can access modules without async.
-    return this.preloadAllPlatforms().then(() => {
+    return this.registry.preloadAll().then(() => {
       this.renderCurrentView(false);
     });
   }
@@ -421,68 +404,13 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /**
-   * Loads all registered platform UI modules and initialises per-platform
-   * state for each.  Subsequent synchronous operations can rely on the
-   * Maps being populated.
-   */
-  private async preloadAllPlatforms(): Promise<void> {
-    await Promise.all(
-      listPlatformUis().map(async (entry) => {
-        if (!this.loadedModules.has(entry.id)) {
-          const modules = await loadPlatformUi(entry.id);
-          this.loadedModules.set(entry.id, modules);
-          this.initPlatformState(entry.id, modules);
-        }
-      })
-    );
-  }
-
-  /**
-   * Creates and caches the {@link PerPlatformState} for a platform whose
-   * modules have just been loaded.
-   */
-  private initPlatformState(id: string, modules: PlatformUiModules): PerPlatformState {
-    const existing = this.platformStates.get(id);
-    if (existing !== undefined) {
-      return existing;
-    }
-    const state: PerPlatformState = {
-      activeTab: 'ui' as PanelTab,
-      uiState: modules.createUiState(),
-      hasPostedRuntimeUpdate: false,
-      serialBuffer: createSerialBuffer(),
-      memoryViews: modules.createMemoryViewState(),
-      // refreshController is created separately so its snapshotPayload
-      // closure captures the state object reference (not a stale copy).
-      refreshController: null as unknown as RefreshController,
-    };
-    state.refreshController = createRefreshController(
-      () => buildMemorySnapshotPayload(state.memoryViews),
-      {
-        postSnapshot: (payload) => this.postSnapshot(modules.snapshotCommand, payload),
-        onSnapshotPosted: () => undefined,
-        onSnapshotFailed: (allowErrors) => this.onSnapshotFailed(allowErrors),
-      }
-    );
-    this.platformStates.set(id, state);
-    return state;
-  }
-
   /** Returns the loaded modules + state bundle for the given platform id, or undefined. */
-  private getActiveBundle(
-    id: string
-  ): { modules: PlatformUiModules; state: PerPlatformState } | undefined {
-    const modules = this.loadedModules.get(id);
-    const state = this.platformStates.get(id);
-    if (modules === undefined || state === undefined) {
-      return undefined;
-    }
-    return { modules, state };
+  private getActiveBundle(id: string): PlatformViewBundle | undefined {
+    return this.registry.getBundle(id);
   }
 
   /** Returns the bundle for the currently active platform, or undefined. */
-  private getCurrentBundle(): { modules: PlatformUiModules; state: PerPlatformState } | undefined {
+  private getCurrentBundle(): PlatformViewBundle | undefined {
     if (this.currentPlatform === undefined) {
       return undefined;
     }
@@ -507,9 +435,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private stopAllPlatformRefresh(): void {
-    for (const state of this.platformStates.values()) {
+    this.registry.forEachState((_id, state) => {
       stopMemoryRefresh(state.refreshController);
-    }
+    });
   }
 
   // -------------------------------------------------------------------------
