@@ -1,4 +1,5 @@
 import path from 'path';
+import type { registerExtensionCommands as registerExtensionCommandsType } from '../../src/extension/commands';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const projectConfigPath = path.normalize('/workspace/tec1g-mon3/debug80.json');
@@ -71,7 +72,46 @@ vi.mock('../../src/extension/bundle-materialize', () => ({
   materializeBundledRom,
 }));
 
+type ExtensionCommandOptions = Parameters<typeof registerExtensionCommandsType>[0];
+type ExtensionCommandOverrides = Partial<
+  Omit<
+    ExtensionCommandOptions,
+    'context' | 'platformViewProvider' | 'workspaceSelection' | 'targetSelection'
+  >
+> & {
+  context?: Record<string, unknown>;
+  platformViewProvider?: Record<string, unknown>;
+  workspaceSelection?: Record<string, unknown>;
+  targetSelection?: Record<string, unknown>;
+};
+
 describe('registerExtensionCommands', () => {
+  const registerCommands = async (overrides: ExtensionCommandOverrides = {}) => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+    const { context, platformViewProvider, workspaceSelection, targetSelection, ...rest } =
+      overrides;
+
+    registerExtensionCommands({
+      ...rest,
+      context: { subscriptions: [], ...context } as never,
+      platformViewProvider: {
+        refreshIdleView: vi.fn(),
+        ...platformViewProvider,
+      } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+        ...workspaceSelection,
+      } as never,
+      targetSelection: {
+        ...targetSelection,
+      } as never,
+    });
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     registeredCommands.clear();
@@ -123,8 +163,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('starts debugging with the current project config instead of the selected launch config', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
@@ -133,17 +171,13 @@ describe('registerExtensionCommands', () => {
     const rememberWorkspace = vi.fn();
     const platformViewProvider = { refreshIdleView: vi.fn() };
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: platformViewProvider as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace,
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const startDebug = registeredCommands.get('debug80.startDebug');
@@ -166,20 +200,13 @@ describe('registerExtensionCommands', () => {
   }, 15000);
 
   it('starts debugging directly from a provided rootPath', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const rememberWorkspace = vi.fn();
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace,
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const startDebug = registeredCommands.get('debug80.startDebug');
@@ -202,8 +229,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('creates a project directly in an already-open empty workspace root', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     workspaceFolders = [{ name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 }];
     const folder = {
       name: 'empty-root',
@@ -214,17 +239,13 @@ describe('registerExtensionCommands', () => {
     const refreshIdleView = vi.fn();
     const reveal = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView, reveal } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace,
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const createProject = registeredCommands.get('debug80.createProject');
@@ -241,20 +262,14 @@ describe('registerExtensionCommands', () => {
   });
 
   it('reveals the Debug80 view through the dedicated command', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const reveal = vi.fn();
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView: vi.fn(), reveal } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const openDebug80View = registeredCommands.get('debug80.openDebug80View');
@@ -268,7 +283,6 @@ describe('registerExtensionCommands', () => {
 
   it('materializes manifest-backed bundled asset references from the project config', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const folder = {
       name: 'tec1g-mon3',
@@ -314,17 +328,12 @@ describe('registerExtensionCommands', () => {
       })
     );
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const materializeBundledRomCommand = registeredCommands.get('debug80.materializeBundledRom');
@@ -363,7 +372,6 @@ describe('registerExtensionCommands', () => {
 
   it('forces a prompt when selecting the active target', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -372,14 +380,11 @@ describe('registerExtensionCommands', () => {
     });
     const resolveTarget = vi.fn().mockResolvedValue('serial');
 
-    registerExtensionCommands({
+    await registerCommands({
       context: {
         subscriptions: [],
         workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
       } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -405,8 +410,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('selects a configured root without starting debugging', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const folder = {
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
@@ -417,17 +420,13 @@ describe('registerExtensionCommands', () => {
     const refreshIdleView = vi.fn();
     const reveal = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView, reveal } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace,
         selectWorkspaceFolder,
       } as never,
-      targetSelection: {} as never,
     });
 
     const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
@@ -443,8 +442,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('uses a direct root selection without prompting', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const folder = {
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
@@ -453,18 +450,14 @@ describe('registerExtensionCommands', () => {
 
     const refreshIdleView = vi.fn();
     const reveal = vi.fn();
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView, reveal } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
@@ -480,7 +473,6 @@ describe('registerExtensionCommands', () => {
 
   it('restarts active z80 session when selected root changes platform', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const oldRoot = '/workspace/tec1g-mon3';
     const newRoot = '/workspace/tec1-mon1';
@@ -511,17 +503,12 @@ describe('registerExtensionCommands', () => {
       return JSON.stringify({ targets: {} });
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
@@ -554,7 +541,6 @@ describe('registerExtensionCommands', () => {
 
   it('restarts an active z80 session when selected root changes project but keeps the same platform', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const rootA = '/workspace/tec1-mon1';
     const rootB = '/workspace/tec1-mon2';
@@ -582,17 +568,12 @@ describe('registerExtensionCommands', () => {
       return JSON.stringify({ targets: {} });
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
@@ -624,8 +605,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('auto-starts when a selected root exposes exactly one target', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     readFileSync.mockReturnValueOnce(
       JSON.stringify({
         targets: {
@@ -642,11 +621,7 @@ describe('registerExtensionCommands', () => {
     const rememberWorkspace = vi.fn();
     const rememberTarget = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace,
@@ -677,8 +652,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('remembers a direct root selection even when no project config exists', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const folder = {
       name: 'notes',
       uri: { fsPath: '/workspace/notes' },
@@ -687,17 +660,12 @@ describe('registerExtensionCommands', () => {
     workspaceFolders = [folder];
     const rememberWorkspace = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace,
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
@@ -712,7 +680,6 @@ describe('registerExtensionCommands', () => {
 
   it('keeps target changes pending while an active z80 session continues running', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -721,14 +688,11 @@ describe('registerExtensionCommands', () => {
     });
     const resolveTarget = vi.fn().mockResolvedValue('glcd-maze');
 
-    registerExtensionCommands({
+    await registerCommands({
       context: {
         subscriptions: [],
         workspaceState: { get: vi.fn(() => 'serial'), update: vi.fn() },
       } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -759,8 +723,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('keeps target changes pending when no debug session is running', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
@@ -769,14 +731,11 @@ describe('registerExtensionCommands', () => {
     const resolveTarget = vi.fn().mockResolvedValue('serial');
     const rememberTarget = vi.fn();
 
-    registerExtensionCommands({
+    await registerCommands({
       context: {
         subscriptions: [],
         workspaceState: { get: vi.fn(() => 'app'), update: vi.fn() },
       } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -801,7 +760,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('uses a direct target selection without prompting', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
     workspaceFolders = [
       {
         name: 'tec1g-mon3',
@@ -810,14 +768,11 @@ describe('registerExtensionCommands', () => {
       },
     ];
 
-    registerExtensionCommands({
+    await registerCommands({
       context: {
         subscriptions: [],
         workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
       } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder: vi.fn(),
         rememberWorkspace: vi.fn(),
@@ -842,7 +797,6 @@ describe('registerExtensionCommands', () => {
 
   it('configures target platform through debug80.configureProject', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -864,11 +818,7 @@ describe('registerExtensionCommands', () => {
     });
     showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -894,7 +844,6 @@ describe('registerExtensionCommands', () => {
 
   it('does not overwrite projectPlatform when editing one target in multi-target config', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -919,11 +868,7 @@ describe('registerExtensionCommands', () => {
     });
     showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -949,7 +894,6 @@ describe('registerExtensionCommands', () => {
 
   it('renames target and updates target alias when config.target points to old name', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -971,11 +915,7 @@ describe('registerExtensionCommands', () => {
     const showInputBoxMock = vscode.window.showInputBox as ReturnType<typeof vi.fn>;
     showInputBoxMock.mockResolvedValueOnce('renamed');
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -1001,8 +941,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('renders project config panel with manifest-selected defaults and CSP nonce', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
@@ -1019,11 +957,7 @@ describe('registerExtensionCommands', () => {
       })
     );
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -1045,19 +979,13 @@ describe('registerExtensionCommands', () => {
   });
 
   it('rejects invalid save payload in project config panel', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
-
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
       uri: { fsPath: '/workspace/tec1g-mon3' },
       index: 0,
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -1081,7 +1009,6 @@ describe('registerExtensionCommands', () => {
   });
 
   it('saves project config panel updates and refreshes idle view', async () => {
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
     const refreshIdleView = vi.fn();
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -1089,11 +1016,8 @@ describe('registerExtensionCommands', () => {
       index: 0,
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
@@ -1122,7 +1046,6 @@ describe('registerExtensionCommands', () => {
 
   it('restarts the active z80 session against the current project target', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -1130,17 +1053,12 @@ describe('registerExtensionCommands', () => {
       index: 0,
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
@@ -1171,7 +1089,6 @@ describe('registerExtensionCommands', () => {
 
   it('restarts the active z80 session from its session project without prompting for a project', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const tetroRoot = '/workspace/tetro';
     const otherRoot = '/workspace/other';
@@ -1190,17 +1107,12 @@ describe('registerExtensionCommands', () => {
     });
     const resolveWorkspaceFolder = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
@@ -1234,7 +1146,6 @@ describe('registerExtensionCommands', () => {
 
   it('recovers the restart project from open workspace folders when the active session folder is wrong', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const staleRoot = '/workspace/stale';
     const tetroRoot = '/workspace/tetro';
@@ -1253,17 +1164,12 @@ describe('registerExtensionCommands', () => {
     });
     const resolveWorkspaceFolder = vi.fn();
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
@@ -1294,7 +1200,6 @@ describe('registerExtensionCommands', () => {
 
   it('prompts on restart when an active z80 session has no project config and its folder is not a project', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const artifactRoot = '/workspace/artifacts-only';
     const projectRoot = '/workspace/tetro';
@@ -1308,17 +1213,12 @@ describe('registerExtensionCommands', () => {
     );
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
@@ -1354,7 +1254,6 @@ describe('registerExtensionCommands', () => {
 
   it('prompts on restart when an active z80 session folder has an invalid project config', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const staleRoot = '/workspace/stale';
     const projectRoot = '/workspace/tetro';
@@ -1380,17 +1279,12 @@ describe('registerExtensionCommands', () => {
     });
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
-      platformViewProvider: { refreshIdleView: vi.fn() } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
+    await registerCommands({
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
@@ -1426,7 +1320,6 @@ describe('registerExtensionCommands', () => {
 
   it('restarts with the current stop-on-entry state', async () => {
     const vscode = await import('vscode');
-    const { registerExtensionCommands } = await import('../../src/extension/commands');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
       name: 'tec1g-mon3',
@@ -1434,17 +1327,13 @@ describe('registerExtensionCommands', () => {
       index: 0,
     });
 
-    registerExtensionCommands({
-      context: { subscriptions: [] } as never,
+    await registerCommands({
       platformViewProvider: { refreshIdleView: vi.fn(), stopOnEntry: true } as never,
-      sourceColumns: {} as never,
-      terminalPanel: {} as never,
       workspaceSelection: {
         resolveWorkspaceFolder,
         rememberWorkspace: vi.fn(),
         selectWorkspaceFolder: vi.fn(),
       } as never,
-      targetSelection: {} as never,
     });
 
     const restartDebug = registeredCommands.get('debug80.restartDebug');
