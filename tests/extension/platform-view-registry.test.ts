@@ -2,17 +2,20 @@
  * @file Platform view registry tests.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryViewState } from '../../src/platforms/panel-memory';
-import type { PlatformUiModules } from '../../src/extension/platform-view-manifest';
-import {
-  registerPlatformUi,
-  type PlatformUiEntry,
+import type {
+  PlatformUiEntry,
+  PlatformUiModules,
 } from '../../src/extension/platform-view-manifest';
-import { PlatformViewRegistry } from '../../src/extension/platform-view-registry';
 
 describe('platform-view-registry', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
   it('preloads registered modules and creates per-platform state', async () => {
+    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
     const modules = createModules();
     registerPlatformUi(createEntry('registry-test-a', modules));
     const registry = new PlatformViewRegistry({
@@ -32,6 +35,7 @@ describe('platform-view-registry', () => {
   });
 
   it('does not reload modules that are already cached', async () => {
+    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
     const modules = createModules();
     const loadUiModules = vi.fn().mockResolvedValue(modules);
     registerPlatformUi({ id: 'registry-test-b', loadUiModules });
@@ -56,6 +60,7 @@ describe('platform-view-registry', () => {
   });
 
   it('wires snapshot handlers through the registry callbacks', async () => {
+    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
     const modules = createModules();
     const postSnapshot = vi.fn().mockResolvedValue(undefined);
     const onSnapshotFailed = vi.fn();
@@ -76,6 +81,7 @@ describe('platform-view-registry', () => {
   });
 
   it('iterates known platform states with their modules', async () => {
+    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
     const modules = createModules();
     registerPlatformUi(createEntry('registry-test-d', modules));
     const registry = new PlatformViewRegistry({
@@ -102,6 +108,17 @@ function createEntry(id: string, modules: PlatformUiModules): PlatformUiEntry {
     id,
     loadUiModules: vi.fn().mockResolvedValue(modules),
   };
+}
+
+async function loadRegistryModules(): Promise<{
+  PlatformViewRegistry: typeof import('../../src/extension/platform-view-registry').PlatformViewRegistry;
+  registerPlatformUi: typeof import('../../src/extension/platform-view-manifest').registerPlatformUi;
+}> {
+  const [{ PlatformViewRegistry }, { registerPlatformUi }] = await Promise.all([
+    import('../../src/extension/platform-view-registry'),
+    import('../../src/extension/platform-view-manifest'),
+  ]);
+  return { PlatformViewRegistry, registerPlatformUi };
 }
 
 function createModules(): PlatformUiModules {
