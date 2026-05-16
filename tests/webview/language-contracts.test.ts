@@ -4,7 +4,7 @@
  * Validates that:
  * 1. The language IDs used in the extension language-association module are contributed.
  * 2. Every contributed language has a breakpoint entry.
- * 3. .asm files are associated with the contributed language.
+ * 3. ASM-family files are associated with the contributed language.
  * 4. The debugger languages list includes every breakpoint language.
  */
 
@@ -68,15 +68,19 @@ describe('package.json language contracts', () => {
     expect(bpLangs).toContain(asmLanguageId);
   });
 
-  it('.asm files are associated with ASM_LANGUAGE_ID', () => {
+  it('ASM-family files are associated with ASM_LANGUAGE_ID', () => {
     const assoc = contributes.configurationDefaults['files.associations'];
-    expect(assoc['*.asm']).toBe(asmLanguageId);
+    for (const extension of ['asm', 'z80', 'a80', 's']) {
+      expect(assoc[`*.${extension}`]).toBe(asmLanguageId);
+    }
   });
 
-  it('contributed language claims .asm extension', () => {
+  it('contributed language claims ASM-family extensions', () => {
     const lang = contributes.languages.find((l) => l.id === asmLanguageId);
     expect(lang).toBeDefined();
-    expect(lang!.extensions).toContain('.asm');
+    for (const extension of ['.asm', '.z80', '.a80', '.s']) {
+      expect(lang!.extensions).toContain(extension);
+    }
   });
 
   it('ASM_LANGUAGE_ID has a TextMate grammar contribution', () => {

@@ -26,9 +26,6 @@
     "onLanguage:z80-asm",
     "onLanguage:z80-macroasm"
   ],
-  "extensionPack": [
-    "imanolea.z80-asm"
-  ],
   "main": "./out/extension/extension.js",
   "contributes": {
     "views": {
