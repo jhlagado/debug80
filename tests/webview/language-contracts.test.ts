@@ -24,6 +24,7 @@ interface PackageJson {
       'files.associations': Record<string, string>;
     };
     languages: Array<{ id: string; extensions?: string[] }>;
+    grammars: Array<{ language: string; scopeName: string; path: string }>;
     breakpoints: Array<{ language: string }>;
     debuggers: Array<{ type: string; languages: string[] }>;
   };
@@ -76,6 +77,14 @@ describe('package.json language contracts', () => {
     const lang = contributes.languages.find((l) => l.id === asmLanguageId);
     expect(lang).toBeDefined();
     expect(lang!.extensions).toContain('.asm');
+  });
+
+  it('ASM_LANGUAGE_ID has a TextMate grammar contribution', () => {
+    const grammar = contributes.grammars.find((g) => g.language === asmLanguageId);
+    expect(grammar).toBeDefined();
+    expect(grammar!.scopeName).toBe('source.z80.asm');
+    expect(grammar!.path).toBe('./syntaxes/z80-asm.tmLanguage.json');
+    expect(fs.existsSync(path.resolve(__dirname, '../..', grammar!.path))).toBe(true);
   });
 
   it('ZAX_LANGUAGE_ID is a contributed language', () => {

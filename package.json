@@ -67,7 +67,8 @@
           ".z80",
           ".a80",
           ".s"
-        ]
+        ],
+        "configuration": "./language-configuration/z80-asm.json"
       },
       {
         "id": "z80-lst",
@@ -91,6 +92,11 @@
       }
     ],
     "grammars": [
+      {
+        "language": "z80-asm",
+        "scopeName": "source.z80.asm",
+        "path": "./syntaxes/z80-asm.tmLanguage.json"
+      },
       {
         "language": "z80-lst",
         "scopeName": "source.z80.lst",
