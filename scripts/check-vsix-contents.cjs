@@ -17,6 +17,7 @@ const REQUIRED_ENTRIES = [
   { label: 'resources/', matches: hasTopLevelDirectory('resources') },
   { label: 'roms/', matches: hasTopLevelDirectory('roms') },
   { label: 'schemas/', matches: hasTopLevelDirectory('schemas') },
+  { label: 'language-configuration/', matches: hasTopLevelDirectory('language-configuration') },
   { label: 'syntaxes/', matches: hasTopLevelDirectory('syntaxes') },
   { label: 'README.md', matches: (entry) => entry === 'README.md' },
   {
