@@ -16,6 +16,9 @@
       "include": "#directives"
     },
     {
+      "include": "#condition-instructions"
+    },
+    {
       "include": "#instructions"
     },
     {
@@ -32,8 +35,72 @@
     "comments": {
       "patterns": [
         {
+          "begin": ";",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.z80-asm"
+            }
+          },
+          "end": "$",
           "name": "comment.line.semicolon.z80-asm",
-          "match": ";.*$"
+          "patterns": [
+            {
+              "include": "#routine-comments"
+            }
+          ]
+        }
+      ]
+    },
+    "routine-comments": {
+      "patterns": [
+        {
+          "name": "meta.comment.separator.z80-asm",
+          "match": "[-=]{3,}"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.annotation.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.function.z80-asm"
+            }
+          },
+          "match": "(@(?:routine|proc|extern)\\b)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.annotation.z80-asm"
+            },
+            "2": {
+              "name": "meta.annotation.parameters.z80-asm"
+            }
+          },
+          "match": "(@(?:in|out|clobbers|preserves|expect-out)\\b)\\s+(\\{?\\b(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P))*\\b\\}?)"
+        },
+        {
+          "name": "storage.type.annotation.z80-asm",
+          "match": "@end\\b"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.comment-header.z80-asm"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.z80-asm"
+            }
+          },
+          "match": "\\b(Inputs?|Outputs?|Returns?|Entry|Exit|Clobbers|Preserves|Destroys|Uses|Requires|Note|Notes|Routine|Subroutine)\\s*(:)"
+        },
+        {
+          "name": "variable.language.register.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:AF'|AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R)(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "variable.language.flag.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -66,20 +133,29 @@
     "labels": {
       "patterns": [
         {
-          "name": "entity.name.label.z80-asm",
-          "match": "^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*:)",
-          "captures": {
-            "1": {
-              "name": "entity.name.label.z80-asm"
-            }
-          }
-        },
-        {
           "name": "entity.name.label.local.z80-asm",
           "match": "^\\s*(@[A-Za-z0-9_.$?@]+)(?=\\s*:?)",
           "captures": {
             "1": {
               "name": "entity.name.label.local.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "entity.name.label.local.z80-asm",
+          "match": "^\\s*(\\.[A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*:)",
+          "captures": {
+            "1": {
+              "name": "entity.name.label.local.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "entity.name.label.z80-asm",
+          "match": "^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*:)",
+          "captures": {
+            "1": {
+              "name": "entity.name.label.z80-asm"
             }
           }
         }
@@ -93,11 +169,26 @@
         }
       ]
     },
+    "condition-instructions": {
+      "patterns": [
+        {
+          "captures": {
+            "1": {
+              "name": "keyword.instruction.z80-asm"
+            },
+            "2": {
+              "name": "variable.language.condition.z80-asm"
+            }
+          },
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(CALL|JP|JR|RET)\\s+(Z|NZ|C|NC|PE|PO|M|P)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
     "instructions": {
       "patterns": [
         {
           "name": "keyword.instruction.z80-asm",
-          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SRA|SRL|SUB|XOR)(?![A-Za-z0-9_.$?@])"
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SLI|SRA|SRL|SUB|XOR)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -126,6 +217,10 @@
         {
           "name": "constant.numeric.decimal.z80-asm",
           "match": "(?<![A-Za-z0-9_.$?@])\\d+(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "constant.language.current-location.z80-asm",
+          "match": "(?<![A-Za-z0-9_.$?@])\\$(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -134,6 +229,14 @@
         {
           "name": "keyword.operator.z80-asm",
           "match": "\\+|-|\\*|/|=|<|>|\\||&|\\^|~|:"
+        },
+        {
+          "name": "punctuation.section.parens.z80-asm",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.separator.comma.z80-asm",
+          "match": ","
         }
       ]
     }
