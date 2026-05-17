@@ -77,7 +77,8 @@ export function createMatrixUiController(
     dots.forEach((dot) => {
       const row = parseInt((dot as HTMLElement).dataset.row || '0', 10);
       const col = parseInt((dot as HTMLElement).dataset.col || '0', 10);
-      const mask = 1 << col;
+      const hardwareCol = 7 - col;
+      const mask = 1 << hardwareCol;
       const idx = row * 8 + col;
       let br: number;
       let bg: number;

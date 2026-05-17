@@ -9,6 +9,11 @@ import type { Tec1gState } from './runtime-state';
 /** If no matrix port OUT for this long, commit partial staging (~25 fps). */
 const TEC1G_MATRIX_IDLE_FLUSH_MS = 40;
 
+/** Maps hardware column bits into left-to-right visible matrix pixels. */
+function matrixDisplayIndex(row: number, hardwareColumn: number): number {
+  return row * 8 + (7 - hardwareColumn);
+}
+
 /**
  * Matrix display: accumulate row RGB into staging; commit when all rows visited.
  */
@@ -69,13 +74,12 @@ function accumulateMatrixStagingFromRows(display: Tec1gState['display']): void {
     if ((rowMask & (1 << row)) === 0) {
       continue;
     }
-    const base = row * 8;
     const rPlane = ledMatrixRedRows[row] ?? 0;
     const gPlane = ledMatrixGreenRows[row] ?? 0;
     const bPlane = ledMatrixBlueRows[row] ?? 0;
     for (let col = 0; col < 8; col += 1) {
       const bit = 1 << col;
-      const idx = base + col;
+      const idx = matrixDisplayIndex(row, col);
       display.matrixStagingR[idx] = (rPlane & bit) !== 0 ? 255 : 0;
       display.matrixStagingG[idx] = (gPlane & bit) !== 0 ? 255 : 0;
       display.matrixStagingB[idx] = (bPlane & bit) !== 0 ? 255 : 0;

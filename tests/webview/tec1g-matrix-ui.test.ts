@@ -99,13 +99,17 @@ describe('tec1g matrix ui', () => {
   });
 
   it('falls back to latch rows before brightness data arrives', () => {
-    const firstDot = document.querySelector('.matrix-dot') as HTMLElement;
+    const dots = document.querySelectorAll('.matrix-dot');
+    const firstDot = dots[0] as HTMLElement;
+    const lastDotInFirstRow = dots[7] as HTMLElement;
 
     controller.applyMatrixRows([0x01]);
 
-    expect(firstDot.classList.contains('on')).toBe(true);
-    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('1.000');
-    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
+    expect(firstDot.classList.contains('on')).toBe(false);
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.000');
+    expect(lastDotInFirstRow.classList.contains('on')).toBe(true);
+    expect(lastDotInFirstRow.style.getPropertyValue('--matrix-level')).toBe('1.000');
+    expect(lastDotInFirstRow.style.getPropertyValue('--matrix-r')).toBe('1.000');
   });
 
   it('preserves omitted brightness planes on partial RGB updates', () => {
