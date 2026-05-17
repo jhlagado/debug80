@@ -51,6 +51,20 @@
         "*.a80": "z80-asm",
         "*.s": "z80-asm",
         "*.zax": "zax"
+      },
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": [
+              "comment.line.semicolon.z80-asm",
+              "punctuation.definition.comment.z80-asm",
+              "comment.line.semicolon.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#6A9955"
+            }
+          }
+        ]
       }
     },
     "languages": [
