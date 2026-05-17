@@ -1,40 +1,182 @@
 {
   "name": "Z80 Listing",
   "scopeName": "source.z80.lst",
-  "fileTypes": [
-    "lst"
-  ],
+  "fileTypes": ["lst"],
   "patterns": [
     {
-      "name": "comment.line.semicolon.z80-lst",
-      "match": ";.*$"
+      "include": "#listing-row"
     },
     {
-      "name": "string.quoted.double.z80-lst",
-      "begin": "\"",
-      "end": "\"",
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    }
+  ],
+  "repository": {
+    "listing-row": {
+      "begin": "(?i)^\\s*[0-9A-F]{4,5}(?:\\s{3}(?:(?:(?:[0-9A-F]{2}|DB|DC|DM|DS|DW)\\s(?=(?:[0-9A-F]{2}|DB|DC|DM|DS|DW)(?:\\s|$)))+(?!(?:DB|DC|DM|DS|DW)\\b)[0-9A-F]{2}(?=\\s|$)|(?:(?:DB|DC|DM|DS|DW)(?=\\s*$|\\s{2,}(?=(?:DB|DC|DM|DS|DW|[0-9A-F]{2})(?:\\s|$))|\\s+(?=[0-9A-F]{2}(?:\\s|$)))|(?!(?:DB|DC|DM|DS|DW)(?:\\s{2,}|\\s*$))[0-9A-F]{2})(?:\\s+(?=[0-9A-F]{2}(?:\\s|$))|\\s{2,}|\\s*$)*)|\\s{15,})\\s*",
+      "beginCaptures": {
+        "0": {
+          "patterns": [
+            {
+              "name": "constant.numeric.address.z80-lst",
+              "match": "^\\s*[0-9A-Fa-f]{4,5}\\b"
+            },
+            {
+              "name": "constant.numeric.hexbyte.z80-lst",
+              "match": "(?i)\\b(?:[0-9A-F]{2}|DB|DC|DM|DS|DW)\\b"
+            }
+          ]
+        }
+      },
+      "end": "$",
       "patterns": [
         {
-          "name": "constant.character.escape.z80-lst",
-          "match": "\\\\."
+          "include": "#comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#labels"
+        },
+        {
+          "include": "#directives"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#condition-instructions"
+        },
+        {
+          "include": "#registers"
+        },
+        {
+          "include": "#instructions"
+        },
+        {
+          "include": "#symbols"
+        },
+        {
+          "include": "#operators"
         }
       ]
     },
-    {
-      "name": "constant.numeric.address.z80-lst",
-      "match": "^\\s*[0-9A-Fa-f]{4}\\b"
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.semicolon.z80-lst",
+          "match": ";.*$"
+        }
+      ]
     },
-    {
-      "name": "constant.numeric.hexbyte.z80-lst",
-      "match": "\\b[0-9A-Fa-f]{2}\\b"
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.z80-lst",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.z80-lst",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
     },
-    {
-      "name": "entity.name.label.z80-lst",
-      "match": "\\b[A-Za-z_][A-Za-z0-9_]*:"
+    "labels": {
+      "patterns": [
+        {
+          "name": "entity.name.label.z80-lst",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*:"
+        }
+      ]
     },
-    {
-      "name": "keyword.instruction.z80-lst",
-      "match": "\\b(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SRA|SRL|SUB|XOR|EQU|ORG|DB|DS)\\b"
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.?(?:ALIGN|AREA|ASSERT|BINCLUDE|BLOCK|BYTE|CODE|CPU|DATA|DB|DC|DEFB|DEFS|DEFW|DM|DS|DW|ELSE|END|ENDIF|ENDM|ENDR|EQU|EXPORT|EXTERN|GLOBAL|IF|IFDEF|IFNDEF|INCBIN|INCLUDE|LIST|MACRO|MODULE|ORG|PHASE|PUBLIC|REPT|SECTION|TEXT|WORD|XDEF|XREF)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:0x[0-9A-F]+|\\$[0-9A-F]+|#[0-9A-F]+|[0-9][0-9A-F]*H)(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "constant.numeric.binary.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:%[01]+|[01]+B)(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "constant.numeric.decimal.z80-lst",
+          "match": "(?<![A-Za-z0-9_.$?@])\\d+(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "constant.language.current-location.z80-lst",
+          "match": "(?<![A-Za-z0-9_.$?@])\\$(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "condition-instructions": {
+      "patterns": [
+        {
+          "captures": {
+            "1": {
+              "name": "keyword.instruction.z80-lst"
+            },
+            "2": {
+              "name": "variable.language.condition.z80-lst"
+            }
+          },
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(CALL|JP|JR|RET)\\s+(Z|NZ|C|NC|PE|PO|M|P)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "registers": {
+      "patterns": [
+        {
+          "name": "variable.language.register.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:A|B|C|D|E|H|L|AF|BC|DE|HL|IX|IY|SP|PC|I|R|IXH|IXL|IYH|IYL|AF')(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "instructions": {
+      "patterns": [
+        {
+          "name": "keyword.instruction.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SLI|SRA|SRL|SUB|XOR)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "symbols": {
+      "patterns": [
+        {
+          "name": "variable.other.symbol.z80-lst",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?!(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SLI|SRA|SRL|SUB|XOR|A|B|C|D|E|H|L|AF|BC|DE|HL|IX|IY|SP|PC|I|R|IXH|IXL|IYH|IYL|AF'|NZ|Z|NC|PO|PE|P|M)\\b)[A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.z80-lst",
+          "match": "\\+|-|\\*|/|=|<|>|\\||&|\\^|~|:"
+        },
+        {
+          "name": "punctuation.section.parens.z80-lst",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.separator.comma.z80-lst",
+          "match": ","
+        }
+      ]
     }
-  ]
+  }
 }

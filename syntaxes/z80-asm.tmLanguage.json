@@ -28,6 +28,9 @@
       "include": "#numbers"
     },
     {
+      "include": "#symbols"
+    },
+    {
       "include": "#operators"
     }
   ],
@@ -165,7 +168,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.z80-asm",
-          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.?(?:ALIGN|AREA|ASSERT|BINCLUDE|BLOCK|BYTE|CODE|CPU|DATA|DB|DC|DEFB|DEFS|DEFW|DM|DS|DW|ELSE|END|ENDIF|ENDM|ENDR|EQU|EXPORT|EXTERN|GLOBAL|IF|IFDEF|IFNDEF|INCBIN|INCLUDE|LIST|MACRO|MODULE|ORG|PHASE|PUBLIC|REPT|SECTION|SET|TEXT|WORD|XDEF|XREF)(?![A-Za-z0-9_.$?@])"
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.?(?:ALIGN|AREA|ASSERT|BINCLUDE|BLOCK|BYTE|CODE|CPU|DATA|DB|DC|DEFB|DEFS|DEFW|DM|DS|DW|ELSE|END|ENDIF|ENDM|ENDR|EQU|EXPORT|EXTERN|GLOBAL|IF|IFDEF|IFNDEF|INCBIN|INCLUDE|LIST|MACRO|MODULE|ORG|PHASE|PUBLIC|REPT|SECTION|TEXT|WORD|XDEF|XREF)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -221,6 +224,14 @@
         {
           "name": "constant.language.current-location.z80-asm",
           "match": "(?<![A-Za-z0-9_.$?@])\\$(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "symbols": {
+      "patterns": [
+        {
+          "name": "variable.other.symbol.z80-asm",
+          "match": "(?<![A-Za-z0-9_.$?@])[A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
