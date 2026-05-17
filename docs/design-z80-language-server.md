@@ -1,7 +1,7 @@
 # Design: Z80 Assembly Language Server
 
-**Status:** Draft  
-**Type:** Additive editor tooling  
+**Status:** Draft
+**Type:** Additive editor tooling
 **Scope:** `.asm`, `.z80`, `.a80`, `.s`, and later `.zax` where the dialect overlap is safe
 
 ---
