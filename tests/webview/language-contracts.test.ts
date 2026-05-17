@@ -65,6 +65,21 @@ function getGrammarPatternContaining(repositoryName: string, text: string): { ma
   return { match: pattern.match };
 }
 
+function getFirstMatchingGrammarScope(repositoryName: string, source: string): string {
+  const grammar = loadZ80AsmGrammar() as {
+    repository?: Record<string, { patterns?: Array<{ name?: string; match?: string }> }>;
+  };
+  for (const pattern of grammar.repository?.[repositoryName]?.patterns ?? []) {
+    if (pattern.name === undefined || pattern.match === undefined) {
+      continue;
+    }
+    if (toJavaScriptRegex(pattern.match).test(source)) {
+      return pattern.name;
+    }
+  }
+  throw new Error(`No grammar pattern in ${repositoryName} matched ${source}`);
+}
+
 function toJavaScriptRegex(textMatePattern: string): RegExp {
   if (textMatePattern.startsWith('(?i)')) {
     return new RegExp(textMatePattern.slice(4), 'i');
@@ -167,6 +182,12 @@ describe('package.json language contracts', () => {
     expect(regex.test('$ + 2')).toBe(true);
     expect(regex.test('$SCREEN')).toBe(false);
     expect(regex.test('$label')).toBe(false);
+  });
+
+  it('Z80 assembly grammar classifies dotted local labels before global labels', () => {
+    expect(getFirstMatchingGrammarScope('labels', '.loop:')).toBe(
+      'entity.name.label.local.z80-asm'
+    );
   });
 
   it('ZAX_LANGUAGE_ID is a contributed language', () => {
