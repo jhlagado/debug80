@@ -17,6 +17,7 @@ const LANGUAGE_ASSOCIATION_PATH = path.resolve(
   __dirname,
   '../../src/extension/language-association.ts'
 );
+const Z80_ASM_GRAMMAR_PATH = path.resolve(__dirname, '../../syntaxes/z80-asm.tmLanguage.json');
 
 interface PackageJson {
   contributes: {
@@ -32,6 +33,10 @@ interface PackageJson {
 
 function loadPackageJson(): PackageJson {
   return JSON.parse(fs.readFileSync(PKG_PATH, 'utf8')) as PackageJson;
+}
+
+function loadZ80AsmGrammar(): unknown {
+  return JSON.parse(fs.readFileSync(Z80_ASM_GRAMMAR_PATH, 'utf8'));
 }
 
 function extractAsmLanguageId(): string {
@@ -89,6 +94,14 @@ describe('package.json language contracts', () => {
     expect(grammar!.scopeName).toBe('source.z80.asm');
     expect(grammar!.path).toBe('./syntaxes/z80-asm.tmLanguage.json');
     expect(fs.existsSync(path.resolve(__dirname, '../..', grammar!.path))).toBe(true);
+  });
+
+  it('Z80 assembly grammar highlights routine comment headers', () => {
+    const serializedGrammar = JSON.stringify(loadZ80AsmGrammar());
+    expect(serializedGrammar).toContain('#routine-comments');
+    expect(serializedGrammar).toContain('@(?:routine|proc|extern)');
+    expect(serializedGrammar).toContain('Inputs?|Outputs?');
+    expect(serializedGrammar).toContain('storage.type.comment-header.z80-asm');
   });
 
   it('ZAX_LANGUAGE_ID is a contributed language', () => {

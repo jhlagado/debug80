@@ -32,8 +32,72 @@
     "comments": {
       "patterns": [
         {
+          "begin": ";",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.z80-asm"
+            }
+          },
+          "end": "$",
           "name": "comment.line.semicolon.z80-asm",
-          "match": ";.*$"
+          "patterns": [
+            {
+              "include": "#routine-comments"
+            }
+          ]
+        }
+      ]
+    },
+    "routine-comments": {
+      "patterns": [
+        {
+          "name": "meta.comment.separator.z80-asm",
+          "match": "[-=]{3,}"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.annotation.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.function.z80-asm"
+            }
+          },
+          "match": "(@(?:routine|proc|extern)\\b)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.annotation.z80-asm"
+            },
+            "2": {
+              "name": "meta.annotation.parameters.z80-asm"
+            }
+          },
+          "match": "(@(?:in|out|clobbers|preserves|expect-out)\\b)\\s+(\\{?\\b(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P))*\\b\\}?)"
+        },
+        {
+          "name": "storage.type.annotation.z80-asm",
+          "match": "@end\\b"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.comment-header.z80-asm"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.z80-asm"
+            }
+          },
+          "match": "\\b(Inputs?|Outputs?|Returns?|Entry|Exit|Clobbers|Preserves|Destroys|Uses|Requires|Note|Notes|Routine|Subroutine)\\s*(:)"
+        },
+        {
+          "name": "variable.language.register.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:AF'|AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R)(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "variable.language.flag.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
