@@ -104,6 +104,16 @@ describe('package.json language contracts', () => {
     expect(serializedGrammar).toContain('storage.type.comment-header.z80-asm');
   });
 
+  it('Z80 assembly grammar includes AZM-derived punctuation and condition scopes', () => {
+    const serializedGrammar = JSON.stringify(loadZ80AsmGrammar());
+    expect(serializedGrammar).toContain('#condition-instructions');
+    expect(serializedGrammar).toContain('constant.language.current-location.z80-asm');
+    expect(serializedGrammar).toContain('punctuation.section.parens.z80-asm');
+    expect(serializedGrammar).toContain('punctuation.separator.comma.z80-asm');
+    expect(serializedGrammar).toContain('SLI');
+    expect(serializedGrammar).toContain('\\\\.[A-Za-z_.$?@]');
+  });
+
   it('ZAX_LANGUAGE_ID is a contributed language', () => {
     const ids = contributes.languages.map((l) => l.id);
     expect(ids).toContain(zaxLanguageId);

@@ -16,6 +16,9 @@
       "include": "#directives"
     },
     {
+      "include": "#condition-instructions"
+    },
+    {
       "include": "#instructions"
     },
     {
@@ -146,6 +149,15 @@
               "name": "entity.name.label.local.z80-asm"
             }
           }
+        },
+        {
+          "name": "entity.name.label.local.z80-asm",
+          "match": "^\\s*(\\.[A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*:)",
+          "captures": {
+            "1": {
+              "name": "entity.name.label.local.z80-asm"
+            }
+          }
         }
       ]
     },
@@ -157,11 +169,26 @@
         }
       ]
     },
+    "condition-instructions": {
+      "patterns": [
+        {
+          "captures": {
+            "1": {
+              "name": "keyword.instruction.z80-asm"
+            },
+            "2": {
+              "name": "variable.language.condition.z80-asm"
+            }
+          },
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:CALL|JP|JR|RET)\\s+(Z|NZ|C|NC|PE|PO|M|P)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
     "instructions": {
       "patterns": [
         {
           "name": "keyword.instruction.z80-asm",
-          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SRA|SRL|SUB|XOR)(?![A-Za-z0-9_.$?@])"
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:ADC|ADD|AND|BIT|CALL|CCF|CP|CPD|CPDR|CPI|CPIR|CPL|DAA|DEC|DI|DJNZ|EI|EX|EXX|HALT|IM|IN|INC|IND|INDR|INI|INIR|JP|JR|LD|LDD|LDDR|LDI|LDIR|NEG|NOP|OR|OTDR|OTIR|OUT|OUTD|OUTI|POP|PUSH|RES|RET|RETI|RETN|RL|RLA|RLC|RLCA|RLD|RR|RRA|RRC|RRCA|RRD|RST|SBC|SCF|SET|SLA|SLL|SLI|SRA|SRL|SUB|XOR)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -190,6 +217,10 @@
         {
           "name": "constant.numeric.decimal.z80-asm",
           "match": "(?<![A-Za-z0-9_.$?@])\\d+(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "constant.language.current-location.z80-asm",
+          "match": "(?<![A-Za-z0-9_.$?@])\\$(?![0-9A-Fa-f])"
         }
       ]
     },
@@ -198,6 +229,14 @@
         {
           "name": "keyword.operator.z80-asm",
           "match": "\\+|-|\\*|/|=|<|>|\\||&|\\^|~|:"
+        },
+        {
+          "name": "punctuation.section.parens.z80-asm",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.separator.comma.z80-asm",
+          "match": ","
         }
       ]
     }
