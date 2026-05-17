@@ -39,6 +39,39 @@ function loadZ80AsmGrammar(): unknown {
   return JSON.parse(fs.readFileSync(Z80_ASM_GRAMMAR_PATH, 'utf8'));
 }
 
+function getGrammarPattern(repositoryName: string, scopeName: string): { match: string } {
+  const grammar = loadZ80AsmGrammar() as {
+    repository?: Record<string, { patterns?: Array<{ name?: string; match?: string }> }>;
+  };
+  const pattern = grammar.repository?.[repositoryName]?.patterns?.find((candidate) => {
+    return candidate.name === scopeName && candidate.match !== undefined;
+  });
+  if (pattern?.match === undefined) {
+    throw new Error(`Could not find grammar pattern ${repositoryName}/${scopeName}`);
+  }
+  return { match: pattern.match };
+}
+
+function getGrammarPatternContaining(repositoryName: string, text: string): { match: string } {
+  const grammar = loadZ80AsmGrammar() as {
+    repository?: Record<string, { patterns?: Array<{ match?: string }> }>;
+  };
+  const pattern = grammar.repository?.[repositoryName]?.patterns?.find((candidate) => {
+    return candidate.match?.includes(text) === true;
+  });
+  if (pattern?.match === undefined) {
+    throw new Error(`Could not find grammar pattern ${repositoryName} containing ${text}`);
+  }
+  return { match: pattern.match };
+}
+
+function toJavaScriptRegex(textMatePattern: string): RegExp {
+  if (textMatePattern.startsWith('(?i)')) {
+    return new RegExp(textMatePattern.slice(4), 'i');
+  }
+  return new RegExp(textMatePattern);
+}
+
 function extractAsmLanguageId(): string {
   const src = fs.readFileSync(LANGUAGE_ASSOCIATION_PATH, 'utf8');
   const match = src.match(/const ASM_LANGUAGE_ID\s*=\s*'([^']+)'/);
@@ -112,6 +145,28 @@ describe('package.json language contracts', () => {
     expect(serializedGrammar).toContain('punctuation.separator.comma.z80-asm');
     expect(serializedGrammar).toContain('SLI');
     expect(serializedGrammar).toContain('\\\\.[A-Za-z_.$?@]');
+  });
+
+  it('Z80 assembly grammar condition instruction regex captures mnemonic and condition', () => {
+    const conditionPattern = getGrammarPatternContaining(
+      'condition-instructions',
+      'CALL|JP|JR|RET'
+    );
+    const regex = toJavaScriptRegex(conditionPattern.match);
+    const match = regex.exec('JR NZ,label');
+    expect(match?.[1]).toBe('JR');
+    expect(match?.[2]).toBe('NZ');
+  });
+
+  it('Z80 assembly grammar current-location regex does not match dollar labels', () => {
+    const currentLocationPattern = getGrammarPattern(
+      'numbers',
+      'constant.language.current-location.z80-asm'
+    );
+    const regex = toJavaScriptRegex(currentLocationPattern.match);
+    expect(regex.test('$ + 2')).toBe(true);
+    expect(regex.test('$SCREEN')).toBe(false);
+    expect(regex.test('$label')).toBe(false);
   });
 
   it('ZAX_LANGUAGE_ID is a contributed language', () => {
