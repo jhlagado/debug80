@@ -23,6 +23,14 @@ interface PackageJson {
   contributes: {
     configurationDefaults: {
       'files.associations': Record<string, string>;
+      'editor.tokenColorCustomizations'?: {
+        textMateRules?: Array<{
+          scope?: string | string[];
+          settings?: {
+            foreground?: string;
+          };
+        }>;
+      };
     };
     languages: Array<{ id: string; extensions?: string[] }>;
     grammars: Array<{ language: string; scopeName: string; path: string }>;
@@ -150,6 +158,19 @@ describe('package.json language contracts', () => {
     expect(serializedGrammar).toContain('@(?:routine|proc|extern)');
     expect(serializedGrammar).toContain('Inputs?|Outputs?');
     expect(serializedGrammar).toContain('storage.type.comment-header.z80-asm');
+  });
+
+  it('contributes green token colors for Debug80 assembly comments', () => {
+    const rules =
+      contributes.configurationDefaults['editor.tokenColorCustomizations']?.textMateRules ?? [];
+    const commentRule = rules.find((rule) => {
+      return Array.isArray(rule.scope) && rule.scope.includes('comment.line.semicolon.z80-asm');
+    });
+
+    expect(commentRule).toBeDefined();
+    expect(commentRule!.scope).toContain('punctuation.definition.comment.z80-asm');
+    expect(commentRule!.scope).toContain('comment.line.semicolon.z80-lst');
+    expect(commentRule!.settings?.foreground).toBe('#6A9955');
   });
 
   it('Z80 assembly grammar includes AZM-derived punctuation and condition scopes', () => {
