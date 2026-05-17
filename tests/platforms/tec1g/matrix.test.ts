@@ -47,7 +47,8 @@ describe('TEC-1G matrix keyboard', () => {
     // Brightness commits on idle (~40ms) or when all 8 row lines have been selected — not on every OUT.
     const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
     rt.recordCycles(idleCycles);
-    expect(rt.state.display.ledMatrixBrightnessR[17]).toBe(255);
+    expect(rt.state.display.ledMatrixBrightnessR[17]).toBe(0);
+    expect(rt.state.display.ledMatrixBrightnessR[22]).toBe(255);
     expect(rt.ioHandlers.read(0x02fe) & (1 << 4)).toBe(0);
   });
 
@@ -149,9 +150,30 @@ describe('TEC-1G matrix keyboard', () => {
 
     const idleCycles = millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000;
     rt.recordCycles(idleCycles);
-    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(255);
-    expect(rt.state.display.ledMatrixBrightnessR[1]).toBe(255);
-    expect(rt.state.display.ledMatrixBrightnessR[2]).toBe(0);
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(0);
+    expect(rt.state.display.ledMatrixBrightnessR[5]).toBe(0);
+    expect(rt.state.display.ledMatrixBrightnessR[6]).toBe(255);
+    expect(rt.state.display.ledMatrixBrightnessR[7]).toBe(255);
+  });
+
+  it('mirrors hardware columns into visible 8x8 brightness columns', () => {
+    const rightmostRt = makeRuntime(true);
+
+    rightmostRt.ioHandlers.write(0x06, 0x01);
+    rightmostRt.ioHandlers.write(0x05, 0x01);
+    rightmostRt.recordCycles(millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000);
+
+    expect(rightmostRt.state.display.ledMatrixBrightnessR[0]).toBe(0);
+    expect(rightmostRt.state.display.ledMatrixBrightnessR[7]).toBe(255);
+
+    const leftmostRt = makeRuntime(true);
+
+    leftmostRt.ioHandlers.write(0x06, 0x80);
+    leftmostRt.ioHandlers.write(0x05, 0x01);
+    leftmostRt.recordCycles(millisecondsToClocks(TEC1G_FAST_HZ, 45) + 1000);
+
+    expect(leftmostRt.state.display.ledMatrixBrightnessR[0]).toBe(255);
+    expect(leftmostRt.state.display.ledMatrixBrightnessR[7]).toBe(0);
   });
 
   it('suppresses keypad NMI when matrix mode is enabled', () => {
