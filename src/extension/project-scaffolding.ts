@@ -145,6 +145,9 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     artifactBase: plan.artifactBase,
     platform: plan.kit.platform,
     profile: plan.kit.profileName,
+    ...(plan.kit.bundledProfile !== undefined
+      ? { sourceRoots: plan.kit.bundledProfile.sourceRoots }
+      : {}),
   };
 
   if (plan.kit.platform === 'tec1') {
@@ -157,7 +160,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
             ...(plan.kit.bundledProfile.listingPath !== undefined
               ? { extraListings: [plan.kit.bundledProfile.listingPath] }
               : {}),
-            sourceRoots: plan.kit.bundledProfile.sourceRoots,
           }
         : base;
   } else if (plan.kit.platform === 'tec1g') {
@@ -170,7 +172,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
             ...(plan.kit.bundledProfile.listingPath !== undefined
               ? { extraListings: [plan.kit.bundledProfile.listingPath] }
               : {}),
-            sourceRoots: plan.kit.bundledProfile.sourceRoots,
           }
         : base;
   } else {

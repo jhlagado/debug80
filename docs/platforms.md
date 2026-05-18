@@ -76,8 +76,9 @@ src/
 Each platform can have its own dependencies. Shared serial helpers and TEC
 constants live alongside the platform code. TEC-1 and TEC-1G now have their
 runtime, controller, and webview panel modules under `src/platforms/`, while
-the adapter and extension still orchestrate wiring. Bundled ROM assets live
-under `resources/bundles/`; project-local `roms/` files are optional overrides.
+the adapter and extension still orchestrate wiring. Bundled ROM, listing, and
+source assets live under `resources/bundles/`; project-local `roms/` files are
+optional overrides or explicit inspection copies.
 
 ## Core interfaces
 
@@ -123,7 +124,7 @@ export interface MemoryRegion {
   name: string;
   start: number;
   end: number; // exclusive
-  kind: "rom" | "ram" | "io" | "banked" | "unknown";
+  kind: 'rom' | 'ram' | 'io' | 'banked' | 'unknown';
   bank?: number;
   readOnly?: boolean;
 }
@@ -176,6 +177,7 @@ export interface PlatformContext {
 ### Simple platform
 
 The current environment becomes the `simple` platform:
+
 - ROM region `0x0000`–`0x07ff` (`0`–`2047`) (system layer).
 - RAM region `0x0800`–`0xffff` (`2048`–`65535`) (program + data).
 - CPU starts at `0x0000` (`0`), system init runs, then jumps to `0x0900` (`2304`).
@@ -209,6 +211,7 @@ Terminal I/O is still configurable via the `terminal` block.
 ```
 
 Notes:
+
 - `newline` defines what the terminal sends for Enter.
 - `echo` controls local echo in the webview terminal.
 - `statusBits` allows different bit conventions per platform.
@@ -226,6 +229,7 @@ this spec.
 ### TEC-1 (v0.1)
 
 TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
+
 - ROM: 0x0000 - 0x07ff (0 - 2047)
 - RAM: 0x0800 - 0x0fff (2048 - 4095, 2 KB)
 - Entry: 0x0000 (0), user programs start at 0x0800 (2048)
@@ -240,30 +244,35 @@ TEC-1 is a small ROM+RAM machine with keypad and 7-segment display:
     ],
     "appStart": 2048,
     "entry": 0,
-    "romHex": "roms/tec1/mon-1b/mon-1b.hex"
+    "romHex": "roms/tec1/mon1b/mon-1b.bin"
   }
 }
 ```
 
-`romHex` points at an Intel HEX file for the monitor ROM. If omitted, Debug80
-uses the bundled `roms/tec1/mon-1b/mon-1b.hex`. Debug80 also bundles
-`roms/tec1/mon-2/mon-2.hex` and `roms/tec1/jmon/jmon.hex` (both use RAM @ 0x0900). If you
-already have a TypeScript module like
+`romHex` points at an Intel HEX/BIN file for the monitor ROM. Scaffolded MON-1B
+projects point at the stable override path `roms/tec1/mon1b/mon-1b.bin`, but
+Debug80 resolves the bundled extension copy when that workspace file is absent.
+If you already have a TypeScript module like
 `MON-1B.ts` that exports a template string, Debug80 will accept that file and
 extract the embedded HEX string.
 
 Optional tuning fields:
+
 - `updateMs` (default 16): min milliseconds between TEC-1 panel updates.
 - `yieldMs` (default 0): extra yield delay when the emulator is ahead of real time.
 - `ramInitHex`: optional Intel HEX file to preload RAM (e.g. a starter program).
 - `extraListings`: optional list of additional `.lst` files to load for ROM/debug mapping.
 
 Extra ROM listings:
-- Use `extraListings` to load ROM listings that live outside the project (for example, in a
-  platform repo). Paths are resolved relative to the `debug80.json` base directory; absolute
-  paths also work.
-- If a listing sits next to a matching `.asm`, `.zax`, or `.z80` source file, Debug80 will offer that source in the
-  ROM source picker and use it for line-based breakpoints.
+
+- Use `extraListings` to load ROM listings for monitor/debug ROMs. Paths are
+  resolved relative to the `debug80.json` base directory; absolute paths also
+  work. For scaffolded bundled profiles, a missing workspace-relative listing
+  is smart-resolved to the copy shipped inside the extension.
+- If a listing sits next to a matching `.asm`, `.zax`, or `.z80` source file,
+  Debug80 will offer that source in the ROM source picker and use it for
+  line-based breakpoints. Bundled profiles provide source snapshots for this
+  where available; local files with the same configured paths take precedence.
 - Debug80 caches a D8 debug map under `<workspace>/.debug80/cache` as
   `<listing-base>.<hash>.d8.json` (hash from the listing path). If the workspace cache
   directory cannot be used, it falls back to the listing directory.
@@ -275,23 +284,26 @@ Extra ROM listings:
 {
   "platform": "tec1",
   "tec1": {
-    "romHex": "roms/tec1/mon-1b/mon-1b.hex",
-    "extraListings": ["../platform/roms/tec1/mon-1b/mon-1b.lst"]
+    "romHex": "roms/tec1/mon1b/mon-1b.bin",
+    "extraListings": ["roms/tec1/mon1b/mon-1b.lst"]
   }
 }
 ```
 
 ROM-specific RAM usage:
+
 - MON-1 user programs start at 0x0800.
 - MON-2 user programs start at 0x0900 (0x0800–0x08ff reserved for variables).
 
 I/O map:
+
 - IN 0x00: keycode (0x00–0x0f hex digits, 0x10 UP, 0x11 DOWN, 0x12 GO, 0x13 ADDRESS; ROMs may use K_PLUS/K_MINUS for UP/DOWN)
 - OUT 0x01: digit select (bits 0–5, one-hot) + serial TX on bit 6 + speaker on bit 7 (latched)
 - OUT 0x02: segment bits (latched)
 - NMI at 0x0066 on keypress
 
 Serial (bitbang):
+
 - TX on bit 6 of OUT 0x01 (idle high).
 - RX on bit 7 of IN 0x00 (idle high).
 - Debug80 decodes TX at 9600 baud assuming FAST = 4.0 MHz.
@@ -301,6 +313,7 @@ Serial (bitbang):
   first receive or perform a one-byte flush at startup.
 
 Segment bit mapping (PORTSEGS):
+
 - 0x01 = a (top)
 - 0x02 = f (upper-left)
 - 0x04 = g (middle)
@@ -345,10 +358,9 @@ Mon-2 example (RAM reserved 0x0800–0x08ff, user programs at 0x0900):
 
 ### TEC-1G: bundled MON3 (wizard and manual projects)
 
-For **TEC-1G**, Debug80 can ship a **MON3** ROM snapshot inside the VSIX and
-resolve it directly at launch, with an explicit command available if you want
-to materialize local inspection/override files under stable paths (see
-`docs/plans/platform-rom-bundles.md`).
+For **TEC-1G**, Debug80 ships a **MON3** ROM snapshot inside the VSIX and
+resolves it directly at launch. Local files are optional: use the explicit copy
+command only when you want inspection/override files under stable paths.
 
 **After “Create Project” (TEC-1G)** the extension records the MON-3 bundle
 reference in `debug80.json` and resolves the shipped bundle on launch when no
@@ -356,15 +368,26 @@ workspace copy is present:
 
 - `roms/tec1g/mon3/mon3.bin` — monitor ROM image (`tec1g.romHex`; `.bin` or `.hex` per program loader rules).
 - `roms/tec1g/mon3/mon3.lst` — ASM80 listing for ROM source mapping (`tec1g.extraListings`).
-- `tec1g.sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
+- root or target `sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
 
 These `roms/` paths are stable project override paths. If the files are absent,
 Debug80 resolves the bundled extension copies. If the files are present, local
 workspace files take precedence.
 
-**Command:** **Debug80: Copy Bundled Assets into Workspace** (`debug80.materializeBundledRom`) — pick a bundled asset set, folder, and optional overwrite; copies bundled ROM/listing/source assets such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection or override.
+**Commands:**
 
-**Manual project (no wizard):** point `tec1g.romHex` and `tec1g.extraListings` at workspace-relative paths (or absolute paths). Example:
+- **Debug80: Open ROM Listing/Source** (`debug80.openRomSource`) opens the
+  ROM listing/source files available to the active debug session.
+- **Debug80: Copy Bundled Assets into Workspace**
+  (`debug80.materializeBundledRom`) copies bundled ROM/listing/source assets
+  such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection or
+  override.
+
+**Manual project (no wizard):** either point `tec1g.romHex` and
+`tec1g.extraListings` at your own workspace-relative/absolute files, or use a
+scaffolded project as a template so the `profiles.<name>.bundledAssets`
+references can smart-resolve missing local ROM files to the extension bundle.
+Example with explicit local files:
 
 ```json
 {
@@ -375,6 +398,7 @@ workspace files take precedence.
       "outputDir": "build",
       "artifactBase": "main",
       "platform": "tec1g",
+      "sourceRoots": ["src", "roms/tec1g/mon3"],
       "tec1g": {
         "regions": [
           { "start": 0, "end": 2047, "kind": "rom" },
@@ -384,8 +408,7 @@ workspace files take precedence.
         "appStart": 16384,
         "entry": 0,
         "romHex": "roms/tec1g/mon3/mon3.bin",
-        "extraListings": ["roms/tec1g/mon3/mon3.lst"],
-        "sourceRoots": ["src", "roms/tec1g/mon3"]
+        "extraListings": ["roms/tec1g/mon3/mon3.lst"]
       }
     }
   }
@@ -400,13 +423,14 @@ More hardware and I/O detail: `docs/platforms/tec1g/README.md`.
 
 ## Build and launch flow
 
-1) User selects a target in the debug config (via `projectConfig` + `target`).
-2) Debug80 reads `platform`, resolves the matching manifest entry, and lazy-loads
-  the platform provider.
-3) Platform sets up memory and devices, then the CPU runs normally.
-4) Mapping, breakpoints, and stepping are unchanged.
+1. User selects a target in the debug config (via `projectConfig` + `target`).
+2. Debug80 reads `platform`, resolves the matching manifest entry, and lazy-loads
+   the platform provider.
+3. Platform sets up memory and devices, then the CPU runs normally.
+4. Mapping, breakpoints, and stepping are unchanged.
 
 Reset behavior:
+
 - A reset clears CPU and device state.
 - Debug80 reloads the HEX into memory after reset.
 - Platform `onReset` should reset device state and bank selection.

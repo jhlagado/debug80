@@ -1,8 +1,13 @@
-# Plan: Platform ROM bundles, profile resolution, and overrides
+# Platform ROM bundles, profile resolution, and overrides
 
-This document captures the agreed product direction: the extension is the default vendor of ROM,
-listing, and read-only source assets; project workspaces reference those assets by profile and
-only materialize local copies when the user explicitly asks for them.
+This document captures the current bundled-ROM model. The extension is the
+default vendor of ROM, listing, and read-only source assets; project workspaces
+reference those assets by profile and only materialize local copies when the
+user explicitly asks for them.
+
+**Current status:** the single-profile bundled ROM flow is implemented for
+TEC-1 MON-1B and TEC-1G MON3. Treat the original ticket list below as historical
+design context unless a future task explicitly reopens multi-ROM schema work.
 
 ## Goals
 
@@ -16,12 +21,12 @@ only materialize local copies when the user explicitly asks for them.
 
 ## Design principles
 
-| Principle | Implication |
-|-----------|-------------|
-| **Extension = distribution** | Versioned payloads + manifest (checksums, profile id, compatible Debug80 version range). |
-| **Project = source** | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
-| **Config is the contract** | Override = edit JSON and/or explicitly materialize/replace files under those paths. |
-| **No mandatory wizard** | Wizard only accelerates layout; same behavior if user hand-authors config. |
+| Principle                    | Implication                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Extension = distribution** | Versioned payloads + manifest (checksums, profile id, compatible Debug80 version range).        |
+| **Project = source**         | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
+| **Config is the contract**   | Override = edit JSON and/or explicitly materialize/replace files under those paths.             |
+| **No mandatory wizard**      | Wizard only accelerates layout; same behavior if user hand-authors config.                      |
 
 ## Workspace layout policy
 
@@ -41,7 +46,24 @@ New scaffolded projects should be small:
 or for deliberate user overrides. If a user is authoring a monitor ROM, that should be a separate
 advanced project profile and the user can remove the ignore rule intentionally.
 
-## Phases (high level)
+## Current behavior
+
+- Bundled assets live under `resources/bundles/<platform>/<profile>/<version>/`
+  with a `bundle.json` manifest and checksum metadata.
+- Scaffolded projects record stable workspace-relative ROM/listing/source paths
+  in `debug80.json`, plus `profiles.<name>.bundledAssets` references that map
+  those paths to the extension bundle.
+- Launch smart-resolves configured ROM/listing paths: if the workspace file
+  exists, it wins; if it is absent and a bundled asset reference exists, Debug80
+  uses the extension copy.
+- `roms/` is ignored by default because it is for explicit local copies or user
+  overrides, not required project source.
+- **Debug80: Open ROM Listing/Source** opens ROM listing/source files available
+  to the active session.
+- **Debug80: Copy Bundled Assets into Workspace** materializes bundled assets
+  only when the user asks for local inspection or replacement files.
+
+## Original phases (historical)
 
 ```mermaid
 flowchart LR
@@ -54,7 +76,7 @@ flowchart LR
 - **P0**: Manifest format, extension resource layout, read-only access from extension code.
 - **P1**: Resolve MON3/MON-1B bundle references at launch without copying into scaffolded workspaces.
 - **P2**: Override UX, upgrade/repair command, documentation for manual projects.
-- **P3**: Generalize program loader + `debug80.json` schema for **N** ROM regions on TEC-1G (backward compatible).
+- **P3**: Generalize program loader + `debug80.json` schema for **N** ROM regions on TEC-1G (backward compatible). This is not currently required for the shipped MON-1B/MON3 flow.
 - **P4**: Additional bundled profiles, CI for bundle checksums, size budgets.
 
 ---
@@ -128,7 +150,7 @@ Tickets are ordered by **recommended implementation sequence**. Dependencies are
 
 #### TICKET-05 — Wire default `debug80.json` for TEC-1G to materialized paths
 
-**Summary**: Project scaffolding templates (`project-scaffolding.ts` / templates) should set `tec1g.romHex`, `tec1g.extraListings`, `tec1g.sourceRoots` (as needed) to **workspace-relative** paths after TICKET-04.
+**Summary**: Project scaffolding templates (`project-scaffolding.ts` / templates) should set `tec1g.romHex`, `tec1g.extraListings`, and root/target `sourceRoots` (as needed) to **workspace-relative** paths after TICKET-04.
 
 **Acceptance criteria**
 
@@ -271,13 +293,13 @@ Tickets are ordered by **recommended implementation sequence**. Dependencies are
 
 ## Recommended sequencing (milestones)
 
-| Milestone | Tickets | Outcome |
-|-----------|---------|---------|
-| **M1** | 01–03 | Can ship bytes in VSIX and read them reliably. |
-| **M2** | 04–06 | New TEC-1G project references bundled MON3 and debugs ROM listing/source without project-local copies. |
-| **M3** | 07–09 | Overrides and refresh story documented / optional. |
-| **M4** | 10–12 | Multi-ROM TEC-1G config + tests. |
-| **M5** | 13–14 | Repeatable process + size strategy. |
+| Milestone | Tickets | Outcome                                                                                                |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| **M1**    | 01–03   | Can ship bytes in VSIX and read them reliably.                                                         |
+| **M2**    | 04–06   | New TEC-1G project references bundled MON3 and debugs ROM listing/source without project-local copies. |
+| **M3**    | 07–09   | Overrides and refresh story documented / optional.                                                     |
+| **M4**    | 10–12   | Multi-ROM TEC-1G config + tests.                                                                       |
+| **M5**    | 13–14   | Repeatable process + size strategy.                                                                    |
 
 ---
 
@@ -295,10 +317,10 @@ Copy ticket IDs into your issue tracker (GitHub Issues, Jira, etc.) and link thi
 
 ### Implementation status (Debug80 repo)
 
-| Milestone | Status | Notes |
-|-----------|--------|--------|
-| **M1** (TICKET-01–03) | **Done** | `src/extension/bundle-manifest.ts` (schema v1 + `isBundleManifestV1`), `resources/bundles/tec1g/mon3/v1/` and `resources/bundles/tec1/mon1b/v1/` layouts, `src/extension/bundle-materialize.ts` (`materializeBundledRom`, explicit lazy copy). Unit tests: `tests/extension/bundle-materialize.test.ts`. |
-| **M2** (TICKET-04–06) | **Done** | Bundled MON3/MON-1B assets are referenced from project profiles and resolved from extension resources when workspace copies are absent. Scaffold no longer copies stock ROM assets by default; `.gitignore` ignores `roms/` for explicit materialized local copies. |
-| **M3+** | Not started | Overrides docs, refresh command, multi-ROM (P3), etc. |
+| Milestone             | Status              | Notes                                                                                                                                                                                                                                                                                                    |
+| --------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M1** (TICKET-01–03) | **Done**            | `src/extension/bundle-manifest.ts` (schema v1 + `isBundleManifestV1`), `resources/bundles/tec1g/mon3/v1/` and `resources/bundles/tec1/mon1b/v1/` layouts, `src/extension/bundle-materialize.ts` (`materializeBundledRom`, explicit lazy copy). Unit tests: `tests/extension/bundle-materialize.test.ts`. |
+| **M2** (TICKET-04–06) | **Done**            | Bundled MON3/MON-1B assets are referenced from project profiles and resolved from extension resources when workspace copies are absent. Scaffold no longer copies stock ROM assets by default; `.gitignore` ignores `roms/` for explicit materialized local copies.                                      |
+| **M3+**               | Optional / deferred | Multi-ROM schema, bundle refresh/repair, and size-strategy work are future enhancements, not current blockers. The present shipped flow uses smart bundle resolution plus explicit materialization/override.                                                                                             |
 
 VSIX packaging: `.vscodeignore` excludes `src/**`, `tests/**`, and `test/**` but **not** `resources/`, so `resources/bundles/**` is included in the packaged extension.

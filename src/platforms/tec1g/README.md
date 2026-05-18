@@ -5,6 +5,7 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 `docs/platforms/tec1g/README.md`.
 
 ## Current support
+
 - Keypad + NMI on keypress, seven-seg display, speaker.
 - LCD write/read emulation (HD44780-style), including busy-flag status.
 - Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
@@ -13,12 +14,14 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 - RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
 
 ## Not yet emulated
+
 - Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
 - SYS_CTRL bits 3-7: latched and decoded but bank switching not yet wired to memory.
 - SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
 ## Memory map (MON-3 view)
+
 - 0x0000-0x00FF: RAM (RST vectors).
 - 0x0100-0x07FF: RAM.
 - 0x0800-0x0FFF: monitor RAM.
@@ -30,6 +33,7 @@ workflow and hardware contract. For full MON-3 behavior notes, see
 Shadow mode maps ROM 0xC000-0xC7FF into 0x0000-0x07FF for legacy monitors.
 
 ## Clock speeds
+
 - Slow: 400 kHz
 - Fast: 4 MHz
 
@@ -38,6 +42,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 ## Ports
 
 ### Input
+
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
   - Keycodes: 0x00-0x0f (hex), 0x10 (▶ right), 0x11 (◀ left), 0x12 (GO), 0x13 (AD), 0x02 (FN). (ROMs may use K_PLUS/K_MINUS; keycaps are chevrons.)
 - `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
@@ -54,6 +59,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `IN 0xFE`: matrix keyboard rows (returns 0xFF when matrix mode is disabled).
 
 ### Output
+
 - `OUT 0x01` (SCAN): digit select + speaker + serial TX.
   - Bits 0-5: digit select (one-hot).
   - Bit 6 (0x40): serial TX (idle high).
@@ -77,12 +83,15 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0xFD`: SD card SPI (bit-banged emulation, SPI mode; read + write single block).
 
 ## Serial (bitbang)
+
 - TX uses bit 6 on `OUT 0x01`; RX uses bit 7 on `IN 0x00` (mirrored on `IN 0x03`).
 - 4800 baud, 8 data bits, no parity, 2 stop bits.
 - Debug80 decodes TX into the panel serial view and can inject RX bytes.
 
 ## DIAG ROM expectations
+
 The TEC-1G DIAG ROM exercises several device behaviors directly:
+
 - LCD busy-flag polling: `IN 0x04` bit 7 is polled before each LCD write.
 - LCD data read: after init, the DIAG checks for a space (0x20) from `IN 0x84`.
 - FTDI loopback test: toggles TX on `OUT 0x01` bit 6 and expects RX state on `IN 0x03` bit 7.
@@ -94,29 +103,33 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
   and read back on the data line (see `Diags_RTC.asm`).
 
 ## Shadow / Protect / Expand
+
 - Shadow mirrors ROM into 0x0000-0x07FF for legacy monitors; writes go to RAM.
 - Protect makes 0x4000-0x7FFF read-only.
 - Expand exposes a banked 16K window at 0x8000-0xBFFF.
 
 ## ROMs and config
+
 Debug80 ships a bundled MON-3 profile for scaffolded projects. New projects
 record bundled asset references in `debug80.json`; launch resolves the extension
 bundle directly when no workspace copy exists. You can still provide `romHex` in
 the platform config (and optionally ROM listings via `extraListings`) to override
 the bundled profile or debug a custom ROM.
 
-**Shared MON-3 settings (recommended):** Put `romHex`, `entry`, and any other
-fields that are the same for every build under **`debug80.json` root** `tec1g`,
-not only under each `targets.<name>` entry. That way every target (ASM, ZAX,
-different demos) loads the same monitor ROM without duplicating paths or
-depending on merge order. Use per-target `tec1g` only for overrides (for example
-`appStart`, `matrixMode`, or `extraListings`).
+**Shared MON-3 settings (recommended):** Scaffolded projects record MON-3 under
+a shared profile and point `tec1g.romHex` / `tec1g.extraListings` at stable
+workspace-relative override paths. When those local files are absent, launch
+uses the bundled extension copies. Put per-target `tec1g` fields only where a
+target actually differs, for example `appStart`, `matrixMode`, or
+`extraListings`.
 
 ```json
 {
   "platform": "tec1g",
+  "sourceRoots": ["src", "roms/tec1g/mon3"],
   "tec1g": {
-    "romHex": "../roms/tec1g/mon-3/mon-3.hex",
+    "romHex": "roms/tec1g/mon3/mon3.bin",
+    "extraListings": ["roms/tec1g/mon3/mon3.lst"],
     "appStart": 16384,
     "entry": 0,
     "matrixMode": false,
@@ -140,22 +153,22 @@ focus ring appears around the keypad while it is active.
 
 ### Hex / control keys
 
-| Key(s) | Keypad button | Code sent |
-|--------|--------------|-----------|
-| `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
-| `Space` | `0` | 0x00 |
-| `Tab` | AD | 0x13 |
-| `Enter` | GO | 0x12 |
-| `←` | ◀ (left) | 0x11 |
-| `→` | ▶ (right) | 0x10 |
-| `↑` | AD | 0x13 |
-| `↓` | GO | 0x12 |
+| Key(s)           | Keypad button | Code sent |
+| ---------------- | ------------- | --------- |
+| `0`–`9`, `A`–`F` | Hex digit     | 0x00–0x0F |
+| `Space`          | `0`           | 0x00      |
+| `Tab`            | AD            | 0x13      |
+| `Enter`          | GO            | 0x12      |
+| `←`              | ◀ (left)      | 0x11      |
+| `→`              | ▶ (right)     | 0x10      |
+| `↑`              | AD            | 0x13      |
+| `↓`              | GO            | 0x12      |
 
 ### Special keys
 
-| Key | Action |
-|-----|--------|
-| `Escape` | Reset (clears FN latch first) |
+| Key            | Action                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Escape`       | Reset (clears FN latch first)                                                                                                   |
 | `Shift` (hold) | FN modifier — hold while pressing another key to send that key in function mode; releasing Shift without pressing a key cancels |
 
 ### FN key behaviour
@@ -172,4 +185,5 @@ physical `Shift` key is equivalent: hold `Shift` + press a key.
 - Native controls (`input`, `select`, `button`) keep their own focus normally.
 
 ## Examples
+
 - See the separate `debug80-tec1g` repo for MON-3 example workspaces and demos.
