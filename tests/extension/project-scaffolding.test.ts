@@ -230,6 +230,7 @@ describe('project-scaffolding helpers', () => {
           artifactBase: 'main',
           platform: 'tec1',
           profile: 'mon1b',
+          sourceRoots: ['src', 'roms/tec1/mon1b'],
           tec1: {
             regions: [
               { start: 0, end: 2047, kind: 'rom' },
@@ -239,7 +240,6 @@ describe('project-scaffolding helpers', () => {
             entry: 0,
             romHex: 'roms/tec1/mon1b/mon-1b.bin',
             extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
-            sourceRoots: ['src', 'roms/tec1/mon1b'],
           },
         },
       },
@@ -325,6 +325,7 @@ describe('project-scaffolding helpers', () => {
           artifactBase: 'main',
           platform: 'tec1g',
           profile: 'mon3',
+          sourceRoots: ['src', 'roms/tec1g/mon3'],
           tec1g: {
             regions: [
               { start: 0, end: 2047, kind: 'rom' },
@@ -335,7 +336,6 @@ describe('project-scaffolding helpers', () => {
             entry: 0,
             romHex: 'roms/tec1g/mon3/mon3.bin',
             extraListings: ['roms/tec1g/mon3/mon3.lst'],
-            sourceRoots: ['src', 'roms/tec1g/mon3'],
           },
         },
       },
