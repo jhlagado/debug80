@@ -25,6 +25,7 @@ These are still useful for product and implementation decisions:
 - [Project workflow](design-project-workflow.md)
 - [Platform UI runtime behavior](design-platform-ui-runtime-behaviors.md)
 - [Production readiness](design-production-readiness.md)
+- [Hardware serial link](design-hardware-serial-link.md)
 
 ## Platform Notes
 

@@ -7,6 +7,7 @@ interested in the assembler pipeline, source mapping, and stepping behavior.
 ## 1. What Debug80 is
 
 Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
+
 - Loads Intel HEX for runtime memory.
 - Reads an asm80 .lst listing for address-to-source mapping.
 - Optionally runs asm80 before each launch.
@@ -17,13 +18,14 @@ Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
 Text diagram (left -> right = flow of control):
 
 VS Code UI
-  -> Extension activation (src/extension/extension.ts)
-  -> Debug Adapter Factory (src/debug/adapter.ts)
-  -> Z80DebugSession (DAP server)
-  -> Z80 runtime + memory (src/z80/*)
-  -> Mapping pipeline (src/mapping/*)
+-> Extension activation (src/extension/extension.ts)
+-> Debug Adapter Factory (src/debug/adapter.ts)
+-> Z80DebugSession (DAP server)
+-> Z80 runtime + memory (src/z80/_)
+-> Mapping pipeline (src/mapping/_)
 
 Key concepts:
+
 - The extension registers a debug adapter type named `z80`.
 - The debug adapter runs in-process (inline implementation), not as a separate server.
 - The runtime executes Z80 instructions directly in JS/TS.
@@ -46,7 +48,7 @@ Key concepts:
   - Routes `debug80/terminalOutput` to the sidebar (simple) or terminal panel (others).
 - src/extension/platform-ui-entries.ts
   - Factory functions for built-in platform UI module bundles (Simple, TEC-1, TEC-1G).
-- src/platforms/*/ui-panel-*.ts
+- src/platforms/_/ui-panel-_.ts
   - Per-platform UI modules: HTML generation, state management, message handling, memory views.
 - webview/
   - Browser-side source for all three platform panels (simple/, tec1/, tec1g/).
@@ -73,10 +75,10 @@ Key concepts:
   - Session types and stateful helpers: session state shape, runtime control, adapter UI helpers,
     platform host/registry, error classes, and message/type definitions.
   - Key files: types.ts, session-state.ts, runtime-control.ts, platform-host.ts,
-    platform-registry.ts, adapter-ui.ts, errors.ts, message-types.ts, memory-*.ts.
-- src/mapping/*
+    platform-registry.ts, adapter-ui.ts, errors.ts, message-types.ts, memory-\*.ts.
+- src/mapping/\*
   - Listing -> segments/anchors, layer 2 matching, and index building.
-- src/z80/*
+- src/z80/\*
   - CPU, runtime, and instruction execution.
   - HEX and listing loaders.
 
@@ -85,30 +87,33 @@ Key concepts:
 Entry point: src/extension/extension.ts
 
 Activation does four important things:
-1) Registers the three built-in platform UIs (Simple, TEC-1, TEC-1G) via `registerBuiltInPlatformUis()`.
-2) Registers the debug adapter for type `z80`.
-3) Registers the `PlatformViewProvider` sidebar WebviewView (`debug80.platformView`).
-4) Registers commands and debug session event handlers.
+
+1. Registers the three built-in platform UIs (Simple, TEC-1, TEC-1G) via `registerBuiltInPlatformUis()`.
+2. Registers the debug adapter for type `z80`.
+3. Registers the `PlatformViewProvider` sidebar WebviewView (`debug80.platformView`).
+4. Registers commands and debug session event handlers.
 
 Registered commands (src/extension/commands.ts):
-- debug80.createProject       — scaffold a debug80.json in the workspace
-- debug80.startDebug          — launch a debug session for the selected target
-- debug80.restartDebug        — restart the active debug session
+
+- debug80.createProject — scaffold a debug80.json in the workspace
+- debug80.startDebug — launch a debug session for the selected target
+- debug80.restartDebug — restart the active debug session
 - debug80.selectWorkspaceFolder — change the active workspace root
-- debug80.selectTarget        — change the active launch target
-- debug80.configureProject    — open project config (currently a no-op; config is via project header)
+- debug80.selectTarget — change the active launch target
+- debug80.configureProject — open project config (currently a no-op; config is via project header)
 - debug80.openProjectConfigPanel — open the project config JSON in an editor
-- debug80.setEntrySource      — set the main source file for the active target
-- debug80.openTerminal        — open the terminal panel (non-platform sessions)
-- debug80.terminalInput       — send text input to the active debug session terminal
-- debug80.openTec1            — reveal the TEC-1 sidebar panel
-- debug80.openTec1Memory      — switch the TEC-1 panel to the CPU tab
-- debug80.openRomSource       — open ROM source files for the active session
-- debug80.openDebug80View     — reveal and focus the Debug80 sidebar panel
-- debug80.addWorkspaceFolder  — open a folder picker and add the chosen folder to the workspace
+- debug80.setEntrySource — set the main source file for the active target
+- debug80.openTerminal — open the terminal panel (non-platform sessions)
+- debug80.terminalInput — send text input to the active debug session terminal
+- debug80.openTec1 — reveal the TEC-1 sidebar panel
+- debug80.openTec1Memory — switch the TEC-1 panel to the CPU tab
+- debug80.openRomSource — open ROM source files for the active session
+- debug80.openDebug80View — reveal and focus the Debug80 sidebar panel
+- debug80.addWorkspaceFolder — open a folder picker and add the chosen folder to the workspace
 - debug80.materializeBundledRom — manually install bundled ROM assets into the active workspace
 
 Important behavior for new VS Code extension developers:
+
 - The debug adapter is created with vscode.DebugAdapterInlineImplementation.
 - Terminal output is sent from the adapter via custom DAP events (see section 13).
 - Platform UI is served from the sidebar WebviewView, not from a WebviewPanel.
@@ -118,29 +123,32 @@ Important behavior for new VS Code extension developers:
 Class: Z80DebugSession in src/debug/adapter.ts
 
 DAP lifecycle (simplified):
-1) initializeRequest
+
+1. initializeRequest
    - Announces adapter capabilities.
-2) launchRequest
+2. launchRequest
    - Merges launch args with debug80.json.
    - Resolves artifacts (HEX, LST) and runs asm80 if enabled.
    - Parses HEX and LST.
    - Builds source mapping and indexes.
    - Creates the runtime and applies breakpoints.
-3) configurationDoneRequest (implicit behavior)
-4) continue / step / pause / disconnect
+3. configurationDoneRequest (implicit behavior)
+4. continue / step / pause / disconnect
 
 ## 6. Project configuration
 
 ### 6.1 Config file discovery
 
 Sources are searched in this order:
-1) launch args.projectConfig
-2) debug80.json          ← checked first among file candidates (PROJECT_CONFIG_CANDIDATES)
-3) .vscode/debug80.json
-4) .debug80.json
-5) package.json (debug80 block)
+
+1. launch args.projectConfig
+2. debug80.json ← checked first among file candidates (PROJECT_CONFIG_CANDIDATES)
+3. .vscode/debug80.json
+4. .debug80.json
+5. package.json (debug80 block)
 
 Search origin:
+
 - args.asm -> args.sourceFile -> process.cwd()
 - Walk upward to filesystem root, first match wins.
 
@@ -151,6 +159,7 @@ so root-based discovery may miss the user workspace unless debug80.json is prese
 
 Launch args are merged with config targets in populateFromConfig().
 Common fields:
+
 - sourceFile (aka asm)
 - outputDir
 - artifactBase
@@ -161,14 +170,24 @@ Common fields:
 - stepOverMaxInstructions / stepOutMaxInstructions
 - terminal (I/O bridge config)
 
+Bundled profile assets are resolved during this merge step. Scaffolded TEC-1
+and TEC-1G projects keep stable workspace-relative paths such as
+`roms/tec1/mon1b/mon-1b.bin` or `roms/tec1g/mon3/mon3.bin` in the platform
+config. If the file exists in the workspace it is used as an override; if it is
+absent and `profiles.<name>.bundledAssets` maps that logical path to a shipped
+bundle, Debug80 uses the copy under `resources/bundles/`.
+
 Debug80 always writes a D8 debug map to `<artifactBase>.d8.json` in outputDir.
 
 ### 6.3 Scaffold command
 
 Command: debug80.createProject
-- Writes .vscode/debug80.json using inferDefaultTarget().
+
+- Writes debug80.json using the selected project kit and target source.
 - Writes .vscode/launch.json if missing.
 - Creates directories (outputDir, .vscode, etc).
+- For bundled TEC-1/TEC-1G kits, writes profile-level `bundledAssets`
+  references instead of copying stock ROM files into the workspace.
 
 ## 7. Assembler integration
 
@@ -177,6 +196,7 @@ The current default backend is `asm80`, implemented in `src/debug/launch/asm80-b
 `zax` is also available, implemented in `src/debug/launch/zax-backend.ts`.
 
 If `assemble !== false` and `sourceFile`/`asm` is provided:
+
 - The selected backend assembles the program to HEX and LST artifacts.
 - For `asm80`, Debug80 links the `asm80` package directly in-process and writes HEX, compact BIN,
   and LST artifacts from the compiled output.
@@ -187,10 +207,12 @@ If `assemble !== false` and `sourceFile`/`asm` is provided:
 - Errors are printed to the Debug Console and returned as structured assembly diagnostics when possible.
 
 The backend also optionally supports:
+
 - A binary output pass for `simple.binFrom` / `simple.binTo`.
 - In-process mapping compilation for extra ROM listings.
 
 Expected tools:
+
 - `asm80` and `@jhlagado/zax` are normal extension dependencies and must be included in the VSIX.
 - Debug80 should not depend on globally installed assembler CLIs for published-extension behavior.
 - Module-system compatibility is contained inside backend adapters: asm80 is CommonJS-compatible,
@@ -201,11 +223,13 @@ Expected tools:
 Runtime entry point: src/z80/runtime.ts
 
 Key ideas:
+
 - The runtime loads a 64K memory image from HEX.
 - Each step executes a single instruction via execute() (src/z80/cpu.ts).
 - runUntilStop loops instruction execution until a breakpoint, HALT, or pause.
 
 Register display:
+
 - The adapter exposes standard Z80 registers (AF, BC, DE, HL, IX, IY, etc).
 
 ## 9. Source mapping pipeline
@@ -228,10 +252,12 @@ File: src/mapping/parser.ts
   "DEFINED AT LINE <n> IN <file>"
 
 Outputs:
+
 - segments[]: address ranges with lst text and optional source location.
 - anchors[]: address -> file/line symbols.
 
 Confidence:
+
 - HIGH: exact anchor hit.
 - MEDIUM: duplicate address or inferred between anchors.
 - LOW: no anchors yet.
@@ -252,6 +278,7 @@ Missing source files are reported to the Debug Console but are non-fatal.
 File: src/mapping/source-map.ts
 
 Indexes built at launch:
+
 - segmentsByAddress (sorted, for PC -> location)
 - segmentsByFileLine (for breakpoint resolution)
 - anchorsByFile (for fallback when no exact line match exists)
@@ -317,6 +344,7 @@ Stepping combines runtime instruction execution and adapter logic.
 - Otherwise, step a single instruction.
 
 Return address rules:
+
 - CALL nn or conditional CALL: pc + 3
 - RST n: pc + 1
 
@@ -328,10 +356,12 @@ Return address rules:
 ### 11.4 Step limits
 
 Optional caps:
+
 - stepOverMaxInstructions
 - stepOutMaxInstructions
 
 When a cap is hit:
+
 - Execution stops and logs a console message.
 - The session remains active.
 
@@ -344,12 +374,14 @@ When a cap is hit:
 ## 13. Terminal and I/O bridge
 
 Launch args.terminal configures a basic port-based terminal:
+
 - txPort: output port
 - rxPort: input port
 - statusPort: ready/available flags
 - interrupt: optional break-to-NMI behavior
 
 Custom requests:
+
 - debug80/terminalInput (send text to rx buffer)
 - debug80/terminalBreak (trigger interrupt on next tick)
 
@@ -373,11 +405,11 @@ share this one sidebar location.
 
 Built-in platforms and their sidebar behavior:
 
-| Platform | UI tab content           | CPU tab content |
-|----------|--------------------------|-----------------|
-| Simple   | Terminal output (TERMINAL area + CLEAR button) | Z80 memory viewer (4 sections) |
-| TEC-1    | Hardware display, keypad, LCD, 8×8 LED matrix, serial terminal | Z80 memory viewer |
-| TEC-1G   | Hardware display, keypad, GLCD, RGB LED matrix, serial terminal | Z80 memory viewer |
+| Platform | UI tab content                                                  | CPU tab content                |
+| -------- | --------------------------------------------------------------- | ------------------------------ |
+| Simple   | Terminal output (TERMINAL area + CLEAR button)                  | Z80 memory viewer (4 sections) |
+| TEC-1    | Hardware display, keypad, LCD, 8×8 LED matrix, serial terminal  | Z80 memory viewer              |
+| TEC-1G   | Hardware display, keypad, GLCD, RGB LED matrix, serial terminal | Z80 memory viewer              |
 
 ### 14.2 Platform registration
 
@@ -472,42 +504,43 @@ host replays state in this order:
 
 **Extension → webview:**
 
-| type          | Description |
-|---------------|-------------|
-| `projectStatus` | Workspace roots, targets, selected target name, active platform ID |
-| `sessionStatus` | Debug session state: `starting`, `running`, `paused`, `not running` |
-| `update`      | Full platform UI state snapshot (carries `uiRevision` monotonic guard) |
-| `uiVisibility` | TEC-1G component show/hide flags |
-| `serial`      | Incremental text appended to the serial/terminal output |
-| `serialInit`  | Full serial/terminal buffer on rehydration |
-| `serialClear` | Clear the serial/terminal display |
-| `selectTab`   | Restore the active tab (`ui` or `memory`) |
-| `snapshot`    | Memory dump for the CPU tab (register strip + hex sections) |
-| `snapshotError` | Error message when snapshot fails |
+| type            | Description                                                            |
+| --------------- | ---------------------------------------------------------------------- |
+| `projectStatus` | Workspace roots, targets, selected target name, active platform ID     |
+| `sessionStatus` | Debug session state: `starting`, `running`, `paused`, `not running`    |
+| `update`        | Full platform UI state snapshot (carries `uiRevision` monotonic guard) |
+| `uiVisibility`  | TEC-1G component show/hide flags                                       |
+| `serial`        | Incremental text appended to the serial/terminal output                |
+| `serialInit`    | Full serial/terminal buffer on rehydration                             |
+| `serialClear`   | Clear the serial/terminal display                                      |
+| `selectTab`     | Restore the active tab (`ui` or `memory`)                              |
+| `snapshot`      | Memory dump for the CPU tab (register strip + hex sections)            |
+| `snapshotError` | Error message when snapshot fails                                      |
 
 **Webview → extension:**
 
-| type             | Description |
-|------------------|-------------|
-| `tab`            | User switched to `ui` or `memory` tab |
-| `saveProjectConfig` | User changed Platform dropdown; payload: `{ platform: string }` |
-| `selectTarget`   | User changed Target dropdown |
-| `openWorkspaceFolder` | User clicked the workspace folder button |
-| `createProject`  | User clicked Create Project in the setup card |
-| `refresh`        | Memory panel requests a snapshot with updated view configuration |
-| `registerEdit`   | User edited a register value in the CPU tab |
-| `memoryEdit`     | User edited a memory byte in the CPU tab |
-| `serialSend`     | User sent text via the serial input field |
-| `serialSendFile` | User triggered a file send via serial |
-| `serialSave`     | User saved serial output to a file |
-| `serialClear`    | User cleared the serial/terminal display |
-| `key`            | Keypad key press (TEC-1/TEC-1G) |
-| `reset`          | Reset button (TEC-1/TEC-1G) |
-| `speed`          | Speed toggle slow/fast (TEC-1/TEC-1G) |
+| type                  | Description                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| `tab`                 | User switched to `ui` or `memory` tab                            |
+| `saveProjectConfig`   | User changed Platform dropdown; payload: `{ platform: string }`  |
+| `selectTarget`        | User changed Target dropdown                                     |
+| `openWorkspaceFolder` | User clicked the workspace folder button                         |
+| `createProject`       | User clicked Create Project in the setup card                    |
+| `refresh`             | Memory panel requests a snapshot with updated view configuration |
+| `registerEdit`        | User edited a register value in the CPU tab                      |
+| `memoryEdit`          | User edited a memory byte in the CPU tab                         |
+| `serialSend`          | User sent text via the serial input field                        |
+| `serialSendFile`      | User triggered a file send via serial                            |
+| `serialSave`          | User saved serial output to a file                               |
+| `serialClear`         | User cleared the serial/terminal display                         |
+| `key`                 | Keypad key press (TEC-1/TEC-1G)                                  |
+| `reset`               | Reset button (TEC-1/TEC-1G)                                      |
+| `speed`               | Speed toggle slow/fast (TEC-1/TEC-1G)                            |
 
 ## 15. For developers new to VS Code extensions
 
 Key VS Code concepts used here:
+
 - Extension activation: register commands and debug adapter factory.
 - Debug Adapter Protocol: the adapter responds to DAP requests.
 - Inline debug adapter: adapter runs in the extension host process.
@@ -515,9 +548,10 @@ Key VS Code concepts used here:
   that swaps HTML on platform change; see section 14.
 
 If you want to add features, start here:
+
 - New launch args: update LaunchRequestArguments in src/debug/adapter.ts.
 - New terminal behavior: update buildIoHandlers() in src/debug/adapter.ts.
-- New mapping logic: update src/mapping/* and the index builder.
+- New mapping logic: update src/mapping/\* and the index builder.
 - New platform UI: see docs/platform-development-guide.md and docs/platform-extension-api.md.
 
 ## 16. Known limitations

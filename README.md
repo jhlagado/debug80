@@ -99,6 +99,7 @@ Platform-focused repos ship their own `.vscode` configs; use those for full demo
 ## Project config (recommended)
 
 Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80.json` at the repo root also works). Example:
+
 ```json
 {
   "defaultTarget": "app",
@@ -122,7 +123,9 @@ Add `.vscode/debug80.json` so F5 doesn’t depend on the active editor (`debug80
   }
 }
 ```
+
 Fields per target:
+
 - `sourceFile`: root asm file to assemble
 - `outputDir`: where artifacts go
 - `artifactBase`: basename for artifacts
@@ -138,7 +141,15 @@ Fields per target:
 - `terminal`: optional terminal port map for the `simple` platform
 - You can define multiple targets (e.g., `app`, `unit`, `integration`) and set `defaultTarget`.
 
+Platform ROM fields such as `tec1.romHex`, `tec1.extraListings`,
+`tec1g.romHex`, and `tec1g.extraListings` may point at stable
+workspace-relative override paths. Scaffolded TEC-1 and TEC-1G projects use
+those paths for configuration, but Debug80 resolves the bundled extension copy
+when the workspace file is absent. Put files under `roms/` only when you want a
+local override or an inspection copy.
+
 Launch config (`.vscode/launch.json`) option:
+
 - `openRomSourcesOnLaunch`: opens ROM listing/source files automatically when a session starts (default true).
 - `openMainSourceOnLaunch`: opens the primary source file automatically when a session starts.
 - `sourceColumn`: editor column (1-9) for source files opened on launch (default 1).
@@ -148,10 +159,11 @@ Launch config (`.vscode/launch.json`) option:
 
 To make a folder debuggable quickly in VS Code:
 
-1) Press `Cmd-Shift-P` (macOS) or `Ctrl-Shift-P` (Windows/Linux) to open the Command Palette.
-2) Type “Debug80: Create Project (config + launch)” and press Enter.
+1. Press `Cmd-Shift-P` (macOS) or `Ctrl-Shift-P` (Windows/Linux) to open the Command Palette.
+2. Type “Debug80: Create Project (config + launch)” and press Enter.
 
 This command scaffolds a built-in profile kit:
+
 - Creates `debug80.json` (or you may place it at `.vscode/debug80.json`) with a default target (tries `src/main.asm`, or the first `.asm` it finds).
 - Creates `.vscode/launch.json` with a Debug80 launch configuration when you choose a launch-enabled scaffold.
 - Merges a small **Debug80** block into `.gitignore` if missing: `.debug80/` cache, the default `outputDir`, `.vscode/launch.json` (local-only; the extension also contributes a default launch), and common OS junk. It does not ignore the whole `.vscode/` folder, because project config can live at `.vscode/debug80.json`.
@@ -160,30 +172,33 @@ This command scaffolds a built-in profile kit:
 
 After scaffolding, adjust the `sourceFile`, `outputDir`, and `artifactBase` as needed, then press F5.
 
-To target a different platform (e.g., `tec1`):
-- Set `platform: "tec1"` in `.vscode/debug80.json`.
-- Copy relevant fields from the dedicated `debug80-tec1` repo’s `.vscode/debug80.json` (e.g., memory regions, ROM, `ramInitHex`).
-- Update `sourceFile` to your program and build outputs.
+For TEC-1 and TEC-1G kits, the generated config records bundled ROM/listing
+references. Day-to-day debugging does not require copying stock monitor ROMs
+into the workspace. Use **Debug80: Copy Bundled Assets into Workspace** only
+when you want local files to inspect or replace.
 
 ## Z80 workflow
 
-1) Run “Debug80: Create Project (config + launch)” to scaffold `debug80.json` (defaults to `targets.app` with `src/main.asm`) and, if requested, `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
-2) Start debugging with the generated debug80 launch; the adapter reads `debug80.json` (or `.vscode/debug80.json` if you use that layout), runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
-3) Set breakpoints in `.asm` files (preferred). Listing breakpoints in `.lst` still work as a fallback.
-4) Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
+1. Run “Debug80: Create Project (config + launch)” to scaffold `debug80.json` (defaults to `targets.app` with `src/main.asm`) and, if requested, `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
+2. Start debugging with the generated debug80 launch; the adapter reads `debug80.json` (or `.vscode/debug80.json` if you use that layout), runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
+3. Set breakpoints in `.asm` files (preferred). Listing breakpoints in `.lst` still work as a fallback.
+4. Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
 
 Notes:
+
 - HALT stops execution; Continue again to terminate.
 - Listing/HEX are required; ensure asm80 completes successfully or provide existing artifacts.
+- ROM source/listing files can be opened with **Debug80: Open ROM Listing/Source** during a debug session.
 - Step Over/Step Out can run for a long time in tight loops; use Pause to interrupt if needed.
 
 ## External projects (e.g., caverns80)
 
 For external repos:
-1) Open the external project as your workspace (e.g., `caverns80`).
-2) Run “Debug80: Create Project (config + launch)” to scaffold `.vscode`.
-3) Update the selected profile kit and `sourceFile` to match the project and platform (Simple/TEC-1).
-4) Press F5.
+
+1. Open the external project as your workspace (e.g., `caverns80`).
+2. Run “Debug80: Create Project (config + launch)” to scaffold `.vscode`.
+3. Update the selected profile kit and `sourceFile` to match the project and platform (Simple/TEC-1).
+4. Press F5.
 
 This keeps example configs inside Debug80 while letting external projects own their debug setup.
 

@@ -14,6 +14,7 @@ display, speaker, and bitbanged serial.
 ## Clock speeds
 
 Debug80 exposes two modes:
+
 - Slow: 400 kHz (default for MON-1 style timing)
 - Fast: 4 MHz
 
@@ -22,6 +23,7 @@ The TEC-1 panel has a toggle for slow/fast.
 ## Ports
 
 ### Input
+
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7.
   - Keycode values:
     - 0x00–0x0f: hex digits 0–F
@@ -36,6 +38,7 @@ The TEC-1 panel has a toggle for slow/fast.
   - Bit 7 (0x80) is serial RX (DIN).
 
 ### Output
+
 - `OUT 0x01` (SCAN): digit select + speaker + serial TX.
   - Bits 0–5: digit select (one-hot). Bit 0 is rightmost digit, bit 5 is leftmost.
   - Bit 6 (0x40): serial TX (DOUT), idle high.
@@ -43,6 +46,7 @@ The TEC-1 panel has a toggle for slow/fast.
 - `OUT 0x02` (DISPLY): segment bits (latched).
 
 ### NMI
+
 - NMI vector at 0x0066 on keypress.
 
 ## 7-seg display
@@ -51,6 +55,7 @@ The TEC-1 panel has a toggle for slow/fast.
 `OUT 0x01` selects which digit is active; `OUT 0x02` provides the segment pattern.
 
 Segment bit mapping (PORTSEGS):
+
 - 0x01 = a (top)
 - 0x02 = f (upper-left)
 - 0x04 = g (middle)
@@ -65,6 +70,7 @@ Decimal points are used to indicate whether the address or data field is active.
 ## Keypad
 
 The TEC-1 keypad is 20 keys:
+
 - Hex digits 0–F
 - ADDRESS, GO, and two direction keys (◀/▶ on the emulated panel; many boards label them UP/DOWN)
 
@@ -78,6 +84,7 @@ Shift is a normal momentary push-button in hardware (not a latch). Debug80’s U
 uses a latch for convenience; it clears after the next key press.
 
 Shift affects bit 5 in the keycode:
+
 - Bit 5 (0x20) is **high** when unshifted.
 - Bit 5 is **low** when shift is held.
 
@@ -97,6 +104,7 @@ TEC-1 uses a simple async serial bitbang on the keypad/display ports:
 Debug80 only models the bitbang line for TEC-1 (no ACIA support).
 
 Protocol details (from MINT1.2 ROM):
+
 - Idle = high.
 - Start bit = low.
 - 8 data bits, LSB first.
@@ -114,6 +122,7 @@ activity.
 ## ROM-specific RAM usage
 
 Not every ROM uses RAM the same way:
+
 - MON-1: user programs typically start at 0x0800.
 - Later ROMs (e.g. MON-2): user programs typically start at 0x0900 to leave
   0x0800–0x08ff for variables/workspace.
@@ -131,22 +140,22 @@ focus ring appears around the keypad while it is active.
 
 ### Hex / control keys
 
-| Key(s) | Keypad button | Code sent |
-|--------|--------------|-----------|
-| `0`–`9`, `A`–`F` | Hex digit | 0x00–0x0F |
-| `Space` | `0` | 0x00 |
-| `Tab` | ADDRESS | 0x13 |
-| `Enter` | GO | 0x12 |
-| `←` | ◀ (left) | 0x11 |
-| `→` | ▶ (right) | 0x10 |
-| `↑` | ADDRESS | 0x13 |
-| `↓` | GO | 0x12 |
+| Key(s)           | Keypad button | Code sent |
+| ---------------- | ------------- | --------- |
+| `0`–`9`, `A`–`F` | Hex digit     | 0x00–0x0F |
+| `Space`          | `0`           | 0x00      |
+| `Tab`            | ADDRESS       | 0x13      |
+| `Enter`          | GO            | 0x12      |
+| `←`              | ◀ (left)      | 0x11      |
+| `→`              | ▶ (right)     | 0x10      |
+| `↑`              | ADDRESS       | 0x13      |
+| `↓`              | GO            | 0x12      |
 
 ### Special keys
 
-| Key | Action |
-|-----|--------|
-| `Escape` | Reset (clears SHIFT latch first) |
+| Key            | Action                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Escape`       | Reset (clears SHIFT latch first)                                                                                                             |
 | `Shift` (hold) | SHIFT modifier — hold while pressing another key to send that key with the shift bit cleared; releasing Shift without pressing a key cancels |
 
 ### SHIFT key behaviour
@@ -184,7 +193,8 @@ You can override with `romHex` in the platform config.
     ],
     "appStart": 2048,
     "entry": 0,
-    "romHex": "roms/tec1/mon-1b/mon-1b.hex",
+    "romHex": "roms/tec1/mon1b/mon-1b.bin",
+    "extraListings": ["roms/tec1/mon1b/mon-1b.lst"],
     "ramInitHex": "build/main.hex",
     "updateMs": 16,
     "yieldMs": 0
@@ -197,4 +207,5 @@ You can override with `romHex` in the platform config.
 - Emulator and I/O: `src/platforms/tec1/runtime.ts`
 - Debug adapter wiring and TEC-1 custom requests: `src/platforms/tec1/provider.ts`
 - Memory panel HTML/browser helpers: `src/platforms/tec1/memory-panel-html.ts` and `src/platforms/tec1/memory-panel-browser.ts`
-- Bundled ROM: `roms/tec1/mon-1b/mon-1b.hex`
+- Bundled ROM override path: `roms/tec1/mon1b/mon-1b.bin`
+- Bundled listing override path: `roms/tec1/mon1b/mon-1b.lst`
