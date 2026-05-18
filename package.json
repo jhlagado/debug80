@@ -63,6 +63,124 @@
             "settings": {
               "foreground": "#6A9955"
             }
+          },
+          {
+            "scope": [
+              "entity.name.label.z80-asm",
+              "entity.name.label.local.z80-asm",
+              "entity.name.label.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#B77DFF"
+            }
+          },
+          {
+            "scope": [
+              "variable.other.symbol.z80-asm",
+              "variable.other.symbol.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#FF4D6D"
+            }
+          },
+          {
+            "scope": [
+              "keyword.control.directive.z80-asm",
+              "keyword.control.directive.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#FF66C4"
+            }
+          },
+          {
+            "scope": [
+              "storage.type.annotation.z80-asm",
+              "storage.type.comment-header.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#00D1A7"
+            }
+          },
+          {
+            "scope": [
+              "keyword.instruction.z80-asm",
+              "keyword.instruction.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#FF9D00"
+            }
+          },
+          {
+            "scope": [
+              "variable.language.register.z80-asm",
+              "variable.language.register.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#00C2FF"
+            }
+          },
+          {
+            "scope": [
+              "variable.language.condition.z80-asm",
+              "variable.language.condition.z80-lst",
+              "variable.language.flag.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#3B82F6"
+            }
+          },
+          {
+            "scope": [
+              "string.quoted.double.z80-asm",
+              "string.quoted.single.z80-asm",
+              "string.quoted.double.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#A3E635"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.function.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FDE047"
+            }
+          },
+          {
+            "scope": [
+              "keyword.operator.z80-asm",
+              "punctuation.section.parens.z80-asm",
+              "punctuation.separator.comma.z80-asm",
+              "punctuation.separator.key-value.z80-asm",
+              "keyword.operator.z80-lst",
+              "punctuation.section.parens.z80-lst",
+              "punctuation.separator.comma.z80-lst",
+              "meta.comment.separator.z80-asm",
+              "meta.annotation.parameters.z80-asm",
+              "constant.character.escape.z80-asm",
+              "constant.character.escape.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#A0AEC0"
+            }
+          },
+          {
+            "scope": [
+              "constant.numeric.hex.z80-asm",
+              "constant.numeric.binary.z80-asm",
+              "constant.numeric.decimal.z80-asm",
+              "constant.language.current-location.z80-asm",
+              "constant.numeric.address.z80-lst",
+              "constant.numeric.hex.z80-lst",
+              "constant.numeric.binary.z80-lst",
+              "constant.numeric.decimal.z80-lst",
+              "constant.language.current-location.z80-lst",
+              "constant.numeric.hexbyte.z80-lst"
+            ],
+            "settings": {
+              "foreground": "#FFD166"
+            }
           }
         ]
       }
