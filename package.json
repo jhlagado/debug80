@@ -181,6 +181,21 @@
             "settings": {
               "foreground": "#FFD166"
             }
+          },
+          {
+            "scope": [
+              "comment.line.semicolon.z80-asm storage.type.annotation.z80-asm",
+              "comment.line.semicolon.z80-asm storage.type.comment-header.z80-asm",
+              "comment.line.semicolon.z80-asm entity.name.function.z80-asm",
+              "comment.line.semicolon.z80-asm meta.annotation.parameters.z80-asm",
+              "comment.line.semicolon.z80-asm variable.language.register.z80-asm",
+              "comment.line.semicolon.z80-asm variable.language.flag.z80-asm",
+              "comment.line.semicolon.z80-asm punctuation.separator.key-value.z80-asm",
+              "comment.line.semicolon.z80-asm meta.comment.separator.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#6A9955"
+            }
           }
         ]
       }
