@@ -10,6 +10,9 @@
       "include": "#strings"
     },
     {
+      "include": "#equ-constants"
+    },
+    {
       "include": "#labels"
     },
     {
@@ -37,6 +40,21 @@
   "repository": {
     "comments": {
       "patterns": [
+        {
+          "begin": ";!",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.z80-asm"
+            }
+          },
+          "end": "$",
+          "name": "comment.line.documentation.z80-asm",
+          "patterns": [
+            {
+              "include": "#routine-comments"
+            }
+          ]
+        },
         {
           "begin": ";",
           "beginCaptures": {
@@ -130,6 +148,19 @@
               "match": "\\\\."
             }
           ]
+        }
+      ]
+    },
+    "equ-constants": {
+      "patterns": [
+        {
+          "name": "meta.equ.constant.z80-asm",
+          "match": "^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*:?\\s*EQU\\b)",
+          "captures": {
+            "1": {
+              "name": "entity.name.constant.equ.z80-asm"
+            }
+          }
         }
       ]
     },

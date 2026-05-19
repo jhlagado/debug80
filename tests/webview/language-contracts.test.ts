@@ -393,6 +393,27 @@ describe('package.json language contracts', () => {
     expect(serializedGrammar).toContain('storage.type.comment-header.z80-asm');
   });
 
+  it('Z80 assembly grammar treats bang comments as documentation comments', () => {
+    const grammar = loadZ80AsmGrammar() as {
+      repository?: Record<
+        string,
+        {
+          patterns?: Array<{
+            begin?: string;
+            name?: string;
+            patterns?: Array<{ include?: string }>;
+          }>;
+        }
+      >;
+    };
+    const docComment = grammar.repository?.comments?.patterns?.find(
+      (pattern) => pattern.begin === ';!'
+    );
+
+    expect(docComment?.name).toBe('comment.line.documentation.z80-asm');
+    expect(docComment?.patterns).toContainEqual({ include: '#routine-comments' });
+  });
+
   it('contributes green token colors for Debug80 assembly comments', () => {
     const commentRule = findTokenColorRule('comment.line.semicolon.z80-asm');
 
@@ -413,11 +434,28 @@ describe('package.json language contracts', () => {
     for (const scope of nestedCommentScopes) {
       expect(findTokenColor(scope)).toBe('#6A9955');
     }
+
+    const documentationCommentScopes = [
+      'comment.line.documentation.z80-asm',
+      'comment.line.documentation.z80-asm punctuation.definition.comment.z80-asm',
+      'comment.line.documentation.z80-asm storage.type.annotation.z80-asm',
+      'comment.line.documentation.z80-asm storage.type.comment-header.z80-asm',
+      'comment.line.documentation.z80-asm entity.name.function.z80-asm',
+      'comment.line.documentation.z80-asm meta.annotation.parameters.z80-asm',
+      'comment.line.documentation.z80-asm variable.language.register.z80-asm',
+      'comment.line.documentation.z80-asm variable.language.flag.z80-asm',
+      'comment.line.documentation.z80-asm punctuation.separator.key-value.z80-asm',
+      'comment.line.documentation.z80-asm meta.comment.separator.z80-asm',
+    ];
+    for (const scope of documentationCommentScopes) {
+      expect(findTokenColor(scope)).toBe('#8ED97C');
+    }
   });
 
   it('contributes a balanced token color palette for Z80 assembly scopes', () => {
     const labelRule = findTokenColorRule('entity.name.label.z80-asm');
     const symbolRule = findTokenColorRule('variable.other.symbol.z80-asm');
+    const equConstantRule = findTokenColorRule('entity.name.constant.equ.z80-asm');
     const directiveRule = findTokenColorRule('keyword.control.directive.z80-asm');
     const annotationRule = findTokenColorRule('storage.type.annotation.z80-asm');
     const instructionRule = findTokenColorRule('keyword.instruction.z80-asm');
@@ -433,6 +471,8 @@ describe('package.json language contracts', () => {
     expect(labelRule.settings?.foreground).toBe('#B77DFF');
     expect(symbolRule.scope).toContain('variable.other.symbol.z80-lst');
     expect(symbolRule.settings?.foreground).toBe('#FF4D6D');
+    expect(equConstantRule.scope).toContain('entity.name.constant.equ.z80-lst');
+    expect(equConstantRule.settings?.foreground).toBe('#4DA3FF');
     expect(directiveRule.scope).toContain('keyword.control.directive.z80-lst');
     expect(directiveRule.settings?.foreground).toBe('#FF66C4');
     expect(annotationRule.scope).toContain('storage.type.comment-header.z80-asm');
@@ -467,6 +507,7 @@ describe('package.json language contracts', () => {
       'comment.line.semicolon.z80-asm',
       'entity.name.label.z80-asm',
       'variable.other.symbol.z80-asm',
+      'entity.name.constant.equ.z80-asm',
       'keyword.control.directive.z80-asm',
       'storage.type.annotation.z80-asm',
       'keyword.instruction.z80-asm',
@@ -612,6 +653,13 @@ describe('package.json language contracts', () => {
     expect(getFirstMatchingGrammarScope('symbols', 'PACMO_SPLASH_ACTIVE')).toBe(
       'variable.other.symbol.z80-asm'
     );
+    expect(
+      getFirstGrammarCaptureScope(
+        'equ-constants',
+        'PACMO_SPLASH_ACTIVE EQU 1',
+        'PACMO_SPLASH_ACTIVE'
+      )
+    ).toBe('entity.name.constant.equ.z80-asm');
   });
 
   it('Z80 assembly examples keep definitions, references, and registers separate', () => {
@@ -640,6 +688,9 @@ describe('package.json language contracts', () => {
     expect(getFirstListingCaptureScope('0003   C3 00 00     JP START', 'START')).toBe(
       'variable.other.symbol.z80-lst'
     );
+    expect(
+      getFirstListingCaptureScope('FF48                RTC_PORT:   EQU   0FCH', 'RTC_PORT')
+    ).toBe('entity.name.constant.equ.z80-lst');
     expect(
       getFirstListingCaptureScope('0001   DB 02        IN   A,(TERM_STATUS)', 'TERM_STATUS')
     ).toBe('variable.other.symbol.z80-lst');
