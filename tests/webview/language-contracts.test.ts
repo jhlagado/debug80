@@ -399,6 +399,20 @@ describe('package.json language contracts', () => {
     expect(commentRule.scope).toContain('punctuation.definition.comment.z80-asm');
     expect(commentRule.scope).toContain('comment.line.semicolon.z80-lst');
     expect(commentRule.settings?.foreground).toBe('#6A9955');
+
+    const nestedCommentScopes = [
+      'comment.line.semicolon.z80-asm storage.type.annotation.z80-asm',
+      'comment.line.semicolon.z80-asm storage.type.comment-header.z80-asm',
+      'comment.line.semicolon.z80-asm entity.name.function.z80-asm',
+      'comment.line.semicolon.z80-asm meta.annotation.parameters.z80-asm',
+      'comment.line.semicolon.z80-asm variable.language.register.z80-asm',
+      'comment.line.semicolon.z80-asm variable.language.flag.z80-asm',
+      'comment.line.semicolon.z80-asm punctuation.separator.key-value.z80-asm',
+      'comment.line.semicolon.z80-asm meta.comment.separator.z80-asm',
+    ];
+    for (const scope of nestedCommentScopes) {
+      expect(findTokenColor(scope)).toBe('#6A9955');
+    }
   });
 
   it('contributes a balanced token color palette for Z80 assembly scopes', () => {
