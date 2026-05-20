@@ -25,4 +25,18 @@ describe('PR137: CB rotate/shift invalid two-operand diagnostics', () => {
     expectDiagnostic(res.diagnostics, { message: 'rl (ix/iy+disp),r expects reg8 destination' });
     expectDiagnostic(res.diagnostics, { message: 'rr (ix/iy+disp),r expects reg8 destination' });
   });
+
+  it('rejects legacy bracket spelling for indexed memory operands', async () => {
+    const entry = join(__dirname, 'fixtures', 'pr137_indexed_bracket_syntax_invalid.asm');
+    const res = await compile(entry, {}, { formats: defaultFormatWriters });
+
+    expectDiagnostic(res.diagnostics, {
+      severity: 'error',
+      message: 'Indexed memory operands use (ix+disp)/(iy+disp), not ix[1].',
+    });
+    expectDiagnostic(res.diagnostics, {
+      severity: 'error',
+      message: 'Indexed memory operands use (ix+disp)/(iy+disp), not iy[-2].',
+    });
+  });
 });
