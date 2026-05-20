@@ -11,9 +11,9 @@
 
 **Include/import graph cycles detected** (see section below).
 
-Total fixture files (excludes sentinels): 488
+Total fixture files (excludes sentinels): 476
 Sentinel files: 1
-Reachable from tests (direct refs ∪ fixture closure): 140
+Reachable from tests (direct refs ∪ fixture closure): 128
 Potentially unreferenced fixtures: 348
 
 ## Direct test reference counts
@@ -222,7 +222,6 @@ Potentially unreferenced fixtures: 348
 | pr196_parser_control_interruption_matrix.zax | 0 |
 | pr197_untracked_stack_invariants.zax | 0 |
 | pr198_lowering_unknown_stack_states.zax | 0 |
-| pr199_lowering_mismatch_propagation.zax | 1 |
 | pr2_binary_literals.zax | 0 |
 | pr2_const_data.zax | 0 |
 | pr2_div_zero.zax | 1 |
@@ -251,14 +250,6 @@ Potentially unreferenced fixtures: 348
 | pr219_lowering_unknown_retcc_while_backedge.zax | 1 |
 | pr219_lowering_untracked_retcc_select_join.zax | 1 |
 | pr22_call_ea_index_nested.zax | 0 |
-| pr220_lowering_unknown_retcc_if_else_join.zax | 1 |
-| pr220_lowering_unknown_retcc_repeat_until.zax | 1 |
-| pr220_lowering_untracked_retcc_if_else_join.zax | 1 |
-| pr220_lowering_untracked_retcc_repeat_until.zax | 1 |
-| pr221_lowering_op_unknown_if_else_retcc.zax | 1 |
-| pr221_lowering_op_unknown_multi_return.zax | 1 |
-| pr221_lowering_op_unknown_retcc_fallthrough.zax | 1 |
-| pr221_lowering_op_unknown_while_retcc.zax | 1 |
 | pr222_locals_multiple_retcc.zax | 0 |
 | pr222_locals_retcc_and_ret.zax | 0 |
 | pr222_neutral_op_structured_retcc.zax | 0 |
@@ -481,9 +472,6 @@ Potentially unreferenced fixtures: 348
 | pr900_step.zax | 0 |
 | pr91_isa_hl16_adc_sbc_invalid.zax | 1 |
 | pr91_isa_hl16_adc_sbc.zax | 1 |
-| pr92_balanced_nested_locals_ops.zax | 1 |
-| pr92_fallthrough_stack_delta.zax | 1 |
-| pr92_select_stack_mismatch_with_locals.zax | 1 |
 | pr922_backslash_separator.zax | 0 |
 | pr922_paren_imm_indirection.zax | 0 |
 | pr950_bad_include_entry.zax | 1 |
@@ -1080,7 +1068,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr196_parser_control_interruption_matrix.zax |  |
 | pr197_untracked_stack_invariants.zax |  |
 | pr198_lowering_unknown_stack_states.zax |  |
-| pr199_lowering_mismatch_propagation.zax | test/pr199_lowering_mismatch_propagation.test.ts |
 | pr2_binary_literals.zax |  |
 | pr2_const_data.zax |  |
 | pr2_div_zero.zax | test/pr2_div_zero.test.ts |
@@ -1109,14 +1096,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr219_lowering_unknown_retcc_while_backedge.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
 | pr219_lowering_untracked_retcc_select_join.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
 | pr22_call_ea_index_nested.zax |  |
-| pr220_lowering_unknown_retcc_if_else_join.zax | test/pr220_lowering_retcc_ifelse_repeat_matrix.test.ts |
-| pr220_lowering_unknown_retcc_repeat_until.zax | test/pr220_lowering_retcc_ifelse_repeat_matrix.test.ts |
-| pr220_lowering_untracked_retcc_if_else_join.zax | test/pr220_lowering_retcc_ifelse_repeat_matrix.test.ts |
-| pr220_lowering_untracked_retcc_repeat_until.zax | test/pr220_lowering_retcc_ifelse_repeat_matrix.test.ts |
-| pr221_lowering_op_unknown_if_else_retcc.zax | test/pr221_lowering_op_expansion_retcc_interactions.test.ts |
-| pr221_lowering_op_unknown_multi_return.zax | test/pr221_lowering_op_expansion_retcc_interactions.test.ts |
-| pr221_lowering_op_unknown_retcc_fallthrough.zax | test/pr221_lowering_op_expansion_retcc_interactions.test.ts |
-| pr221_lowering_op_unknown_while_retcc.zax | test/pr221_lowering_op_expansion_retcc_interactions.test.ts |
 | pr222_locals_multiple_retcc.zax |  |
 | pr222_locals_retcc_and_ret.zax |  |
 | pr222_neutral_op_structured_retcc.zax |  |
@@ -1339,9 +1318,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr900_step.zax |  |
 | pr91_isa_hl16_adc_sbc_invalid.zax | test/backend/pr91_isa_hl16_adc_sbc.test.ts |
 | pr91_isa_hl16_adc_sbc.zax | test/backend/pr91_isa_hl16_adc_sbc.test.ts |
-| pr92_balanced_nested_locals_ops.zax | test/pr92_lowering_interactions.test.ts |
-| pr92_fallthrough_stack_delta.zax | test/pr92_lowering_interactions.test.ts |
-| pr92_select_stack_mismatch_with_locals.zax | test/pr92_lowering_interactions.test.ts |
 | pr922_backslash_separator.zax |  |
 | pr922_paren_imm_indirection.zax |  |
 | pr950_bad_include_entry.zax | test/pr950_include_text_only.test.ts |
