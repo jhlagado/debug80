@@ -131,7 +131,7 @@ export function mergeEmitFinalizationContext(
   return { ...lowered, ...env };
 }
 
-/** Deterministic empty result when compilation aborts before lowering (e.g. no modules). */
+/** Deterministic empty result when compilation aborts before lowering (e.g. no source files). */
 export function emitProgramEmptyResult(): EmitProgramResult {
   return {
     map: { bytes: new Map() },

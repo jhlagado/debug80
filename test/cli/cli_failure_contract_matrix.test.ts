@@ -126,7 +126,7 @@ describe('cli failure contract matrix', () => {
     await rm(work, { recursive: true, force: true });
   });
 
-  it('returns code 1 for empty entry modules and writes no artifacts', async () => {
+  it('returns code 1 for empty entry source and writes no artifacts', async () => {
     const work = await mkdtemp(join(tmpdir(), 'azm-cli-empty-entry-'));
     const entry = join(work, 'empty.asm');
     const outHex = join(work, 'out.hex');

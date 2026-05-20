@@ -1,6 +1,6 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 
-import type { ImmExprNode, RawDataDeclNode, SourceSpan } from './ast.js';
+import type { AsmRawDataNode, ImmExprNode, SourceSpan } from './ast.js';
 import { parseImmExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 
@@ -72,7 +72,7 @@ function parseRawDataValues(
   lineSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
-): RawDataDeclNode | undefined {
+): AsmRawDataNode | undefined {
   const parts = splitTopLevelComma(valuesText).map((part) => part.trim());
   if (parts.length === 0 || parts.every((part) => part.length === 0)) {
     diag(diagnostics, filePath, `"${directive}" expects one or more imm expressions`, {
@@ -94,7 +94,7 @@ function parseRawDataValues(
     if (!expr) return undefined;
     values.push(expr);
   }
-  return { kind: 'RawDataDecl', span: lineSpan, name: '', directive, values };
+  return { kind: 'AsmRawData', span: lineSpan, name: '', directive, values, valuesText };
 }
 
 function parseRawDataSize(
@@ -103,7 +103,7 @@ function parseRawDataSize(
   lineSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
-): RawDataDeclNode | undefined {
+): AsmRawDataNode | undefined {
   const parts = splitTopLevelComma(sizeText).map((part) => part.trim());
   if (parts.length !== 1 || parts[0]!.length === 0) {
     diag(diagnostics, filePath, '"ds" expects a single imm expression size', {
@@ -114,7 +114,7 @@ function parseRawDataSize(
   }
   const expr = parseImmExprFromText(filePath, parts[0]!, lineSpan, diagnostics);
   if (!expr) return undefined;
-  return { kind: 'RawDataDecl', span: lineSpan, name: '', directive: 'ds', size: expr };
+  return { kind: 'AsmRawData', span: lineSpan, name: '', directive: 'ds', size: expr, valuesText: sizeText };
 }
 
 /**
@@ -126,7 +126,7 @@ export function parseBareRawDataDirective(
   lineSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
-): RawDataDeclNode | undefined {
+): AsmRawDataNode | undefined {
   const match = /^(db|dw|ds)\b(.*)$/i.exec(directiveText.trim());
   if (!match) return undefined;
   const directive = match[1]!.toLowerCase() as 'db' | 'dw' | 'ds';
@@ -146,7 +146,7 @@ export function parseRawDataDirective(
   lineSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
-): RawDataDeclNode | undefined {
+): AsmRawDataNode | undefined {
   const match = /^(db|dw|ds)\b(.*)$/i.exec(directiveText.trim());
   if (!match) return undefined;
   const directive = match[1]!.toLowerCase() as 'db' | 'dw' | 'ds';

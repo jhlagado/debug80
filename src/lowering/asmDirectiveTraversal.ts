@@ -47,7 +47,7 @@ export function isAsmAlignDirective(item: { kind: string }): boolean {
 }
 
 export function isAsmRawDataDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmRawData', 'AsmRawDataDecl') || 'valuesText' in item;
+  return isKind(item, 'AsmRawData') || 'valuesText' in item;
 }
 
 export function isAsmBinFromDirective(item: { kind: string }): boolean {

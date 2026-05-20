@@ -138,7 +138,6 @@ export type SourceItemNode =
   | TypeDeclNode
   | OpDeclNode
   | AlignDirectiveNode
-  | RawDataDeclNode
   | AsmLabelNode
   | AsmInstructionNode
   | UnimplementedNode;
@@ -187,27 +186,6 @@ export interface EnumDeclNode extends BaseNode {
   name: string;
   members: string[];
 }
-
-/**
- * Raw data declaration emitted by assembler data directives.
- */
-export type RawDataDeclNode =
-  | {
-      kind: 'RawDataDecl';
-      span: SourceSpan;
-      name: string;
-      directive: 'db' | 'dw';
-      values: ImmExprNode[];
-      valuesText?: string;
-    }
-  | {
-      kind: 'RawDataDecl';
-      span: SourceSpan;
-      name: string;
-      directive: 'ds';
-      size: ImmExprNode;
-      fill?: ImmExprNode;
-    };
 
 /**
  * `op` (macro-instruction) declaration.
@@ -377,7 +355,6 @@ export type Node =
   | AsmSourceFileNode
   | AsmSourceItemNode
   | SourceItemNode
-  | RawDataDeclNode
   | OpParamNode
   | RecordFieldNode
   | AsmBlockNode

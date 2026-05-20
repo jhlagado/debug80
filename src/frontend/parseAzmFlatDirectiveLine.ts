@@ -1,5 +1,5 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type { SourceItemNode, RawDataDeclNode, SourceSpan } from './ast.js';
+import type { SourceItemNode, SourceSpan } from './ast.js';
 import { parseAsmLine } from './asm80/asmLine.js';
 import { parseAsmRawValues } from './asm80/parseAsmSource.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
@@ -25,27 +25,6 @@ function normalizeRawDataDirectiveText(text: string): string | undefined {
   const match = /^\.?(db|dw|ds)\b(.*)$/i.exec(text.trim());
   if (!match) return undefined;
   return `${match[1]!.toLowerCase()}${match[2]!}`;
-}
-
-function rawDataDeclToAsm(decl: RawDataDeclNode): SourceItemNode {
-  if (decl.directive === 'ds') {
-    return {
-      kind: 'AsmRawData',
-      span: decl.span,
-      name: decl.name,
-      directive: 'ds',
-      size: decl.size,
-      valuesText: '',
-    } as SourceItemNode;
-  }
-  return {
-    kind: 'AsmRawData',
-    span: decl.span,
-    name: decl.name,
-    directive: decl.directive,
-    values: decl.values,
-    valuesText: '',
-  } as SourceItemNode;
 }
 
 function asmRawDataToNode(
@@ -128,7 +107,7 @@ export function parseAzmFlatDirectiveLine(args: {
       ? parseRawDataDirective(pending, normalizedRaw, lineNo, stmtSpan, filePath, diagnostics)
       : undefined;
     delete ctx.azmPendingRawLabel;
-    if (parsedRaw) return [rawDataDeclToAsm(parsedRaw)];
+    if (parsedRaw) return [parsedRaw];
     diag(diagnostics, filePath, `Raw data label "${pending.name}" is missing a directive`, {
       line: pending.lineNo,
       column: 1,
@@ -152,7 +131,7 @@ export function parseAzmFlatDirectiveLine(args: {
       filePath,
       diagnostics,
     );
-    return parsedRaw ? [rawDataDeclToAsm(parsedRaw)] : [];
+    return parsedRaw ? [parsedRaw] : [];
   }
 
   const inlineLabelEqu = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\.?equ\b\s*(.+)$/i.exec(trimmed);
@@ -193,7 +172,7 @@ export function parseAzmFlatDirectiveLine(args: {
   const bareRaw = bareRawText
     ? parseBareRawDataDirective(bareRawText, lineNo, stmtSpan, filePath, diagnostics)
     : undefined;
-  if (bareRaw) return [rawDataDeclToAsm(bareRaw)];
+  if (bareRaw) return [bareRaw];
 
   const orgMatch = /^\.?org\b\s*(.*)$/i.exec(trimmed);
   if (orgMatch) {

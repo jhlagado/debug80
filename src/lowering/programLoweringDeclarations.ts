@@ -1,7 +1,4 @@
-import type {
-  ImmExprNode,
-  RawDataDeclNode,
-} from '../frontend/ast.js';
+import type { ImmExprNode } from '../frontend/ast.js';
 
 import type { Context } from './programLowering.js';
 import {
@@ -10,7 +7,6 @@ import {
 } from './asmRawDataLowering.js';
 
 export function createProgramLoweringDeclarationHelpers(ctx: Context): {
-  lowerRawDataDecl: (decl: RawDataDeclNode) => void;
   lowerAsmRawDataDirective: (decl: RawDataLike) => void;
 } {
   const symbolicTargetFromExpr = (
@@ -38,11 +34,7 @@ export function createProgramLoweringDeclarationHelpers(ctx: Context): {
     return undefined;
   };
 
-  const lowerRawDataDecl = (decl: RawDataDeclNode): void => {
-    ctx.diag(ctx.diagnostics, decl.span.file, `Raw data declaration nodes are not valid AZM syntax.`);
-  };
-
   const lowerAsmRawDataDirective = createAsmRawDataLowerer(ctx, symbolicTargetFromExpr);
 
-  return { lowerRawDataDecl, lowerAsmRawDataDirective };
+  return { lowerAsmRawDataDirective };
 }

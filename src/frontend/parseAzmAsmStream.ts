@@ -6,7 +6,7 @@ import type { AsmInstructionNode, AsmItemNode, AsmLabelNode, SourceSpan } from '
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
-import { isAzmNativePath } from './sourceExtensions.js';
+import { isSupportedSourcePath } from './sourceExtensions.js';
 
 export type AzmAsmStreamItem = AsmLabelNode | AsmInstructionNode;
 
@@ -18,7 +18,7 @@ export function parseAzmAsmStreamLine(args: {
   nativeMode?: boolean;
 }): AzmAsmStreamItem[] | undefined {
   const { rest, filePath, stmtSpan, diagnostics, nativeMode = false } = args;
-  if (!nativeMode && !isAzmNativePath(filePath)) return undefined;
+  if (!nativeMode && !isSupportedSourcePath(filePath)) return undefined;
   if (topLevelStartKeyword(rest) !== undefined) return undefined;
 
   const content = rest.trim();
