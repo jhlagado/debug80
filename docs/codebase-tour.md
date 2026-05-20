@@ -105,7 +105,7 @@ src/
 │   ├── parseModuleItemTable.ts # Retained AZM top-level declaration table
 │   ├── parseTopLevelSimple.ts # align declarations
 │   ├── parseOp.ts             # op declaration
-│   ├── parseCallableHeader.ts # Shared op header parsing
+│   ├── parseOpHeader.ts      # op header parsing
 │   ├── parseEnum.ts           # enum declaration
 │   ├── parseTypes.ts          # type and union declarations
 │   ├── parseParams.ts         # Parameter list parsing
@@ -417,7 +417,7 @@ Simple top-level keywords such as `align` are handled in `parseTopLevelSimple.ts
 ### 7.5 Parsing Ops
 
 `parseOp.ts` remains part of AZM because visible `op` expansion is a retained
-feature. The parser uses `parseCallableHeader.ts` for op headers and
+feature. The parser uses `parseOpHeader.ts` for op headers and
 `parseOpParamsFromText()` for matcher declarations such as `dst: reg8, src:
 reg16`.
 

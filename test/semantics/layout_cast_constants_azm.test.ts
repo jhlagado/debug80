@@ -183,7 +183,7 @@ describe('AZM layout-cast constant folding', () => {
     }
   });
 
-  it('rejects uncast typed-path syntax in AZM-native source', async () => {
+  it('rejects unresolved layout-path syntax in AZM-native source', async () => {
     const { entry, cleanup } = writeTempSource('asm', [
       ...spriteType,
       ...spriteBase,
@@ -199,7 +199,7 @@ describe('AZM layout-cast constant folding', () => {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          message: expect.stringMatching(/does not accept typed storage operands/i),
+          message: expect.stringMatching(/does not accept unresolved layout operands/i),
         }),
       );
     } finally {

@@ -82,7 +82,7 @@ export function createLdEncodingHelpers(ctx: LdEncodingContext) {
         (srcScalarExact === 'byte' && isWordCompatibleScalarKind(dstScalarExact)) ||
         (dstScalarExact === 'byte' && isWordCompatibleScalarKind(srcScalarExact))
       ) {
-        diagAt(diagnostics, inst.span, 'Word mem->mem transfer requires word-typed source and destination.');
+        diagAt(diagnostics, inst.span, 'Word mem->mem transfer requires word-sized source and destination.');
         return true;
       }
       if (!scalarMemToMem) return false;

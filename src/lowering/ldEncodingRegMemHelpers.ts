@@ -85,7 +85,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     const r16 = dst.name.toUpperCase();
     if (r16 === 'HL') {
       if (srcScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register load requires a word-typed source.');
+        diagAt(diagnostics, inst.span, 'Word register load requires a word-sized source.');
         return true;
       }
       if (srcResolved?.kind === 'abs') {
@@ -100,7 +100,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'DE') {
       if (srcScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register load requires a word-typed source.');
+        diagAt(diagnostics, inst.span, 'Word register load requires a word-sized source.');
         return true;
       }
       if (srcResolved?.kind === 'abs') {
@@ -115,7 +115,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'BC') {
       if (srcScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register load requires a word-typed source.');
+        diagAt(diagnostics, inst.span, 'Word register load requires a word-sized source.');
         return true;
       }
       if (srcResolved?.kind === 'abs') {
@@ -197,7 +197,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     const r16 = src.name.toUpperCase();
     if (r16 === 'HL') {
       if (dstScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register store requires a word-typed destination.');
+        diagAt(diagnostics, inst.span, 'Word register store requires a word-sized destination.');
         return true;
       }
       if (dstResolved?.kind === 'abs') {
@@ -211,7 +211,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'DE') {
       if (dstScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register store requires a word-typed destination.');
+        diagAt(diagnostics, inst.span, 'Word register store requires a word-sized destination.');
         return true;
       }
       if (dstResolved?.kind === 'abs') {
@@ -226,7 +226,7 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'BC') {
       if (dstScalarExact === 'byte') {
-        diagAt(diagnostics, inst.span, 'Word register store requires a word-typed destination.');
+        diagAt(diagnostics, inst.span, 'Word register store requires a word-sized destination.');
         return true;
       }
       if (dstResolved?.kind === 'abs') {

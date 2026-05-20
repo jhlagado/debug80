@@ -196,7 +196,7 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
           const base = go(expr.base, visitingAliases);
           if (!base) return undefined;
           if (!base.typeExpr) {
-            ctx.diagAt(ctx.diagnostics, span, `Cannot resolve field "${expr.field}" without a typed base.`);
+            ctx.diagAt(ctx.diagnostics, span, `Cannot resolve field "${expr.field}" without layout type information.`);
             return undefined;
           }
           const agg =
@@ -237,7 +237,7 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
           const base = go(expr.base, visitingAliases);
           if (!base) return undefined;
           if (!base.typeExpr) {
-            ctx.diagAt(ctx.diagnostics, span, `Cannot resolve indexing without a typed base.`);
+            ctx.diagAt(ctx.diagnostics, span, `Cannot resolve indexing without layout type information.`);
             return undefined;
           }
           if (base.typeExpr.kind !== 'ArrayType') {

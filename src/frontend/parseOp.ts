@@ -12,7 +12,7 @@ import {
 } from './parseModuleCommon.js';
 import type { ParseParamsContext } from './parseParams.js';
 import { stripLineComment as stripComment } from './parseParserShared.js';
-import { parseCallableHeader } from './parseCallableHeader.js';
+import { parseOpHeader } from './parseOpHeader.js';
 
 type RawLine = {
   raw: string;
@@ -59,8 +59,7 @@ export function parseTopLevelOpDecl(
     isReservedTopLevelName,
     parseOpParamsFromText,
   } = ctx;
-  const parsedHeader = parseCallableHeader({
-    kind: 'op',
+  const parsedHeader = parseOpHeader({
     header: opTail,
     stmtText,
     stmtSpan,
