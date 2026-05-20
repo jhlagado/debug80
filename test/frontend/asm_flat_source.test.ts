@@ -87,11 +87,11 @@ describe('.asm source assembly', () => {
   it('assembles top-level org and data directives', async () => {
     const { entry, cleanup } = writeTempAsm(
       [
-        'type Sprite',
-        '  x: byte',
-        '  y: byte',
-        '  flags: byte',
-        'end',
+        '.type Sprite',
+        'x     .byte',
+        'y     .byte',
+        'flags .byte',
+        '.endtype',
         '',
         'org $2000',
         'SPRITES:',

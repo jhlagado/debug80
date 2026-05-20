@@ -1,4 +1,4 @@
-import type { AlignDirectiveNode, EnumDeclNode } from '../frontend/ast.js';
+import type { EnumDeclNode } from '../frontend/ast.js';
 import type { LoweringContext, LoweringResult } from './programLowering.js';
 import type { PlacementKind } from './loweringTypes.js';
 import { createProgramLoweringDeclarationHelpers } from './programLoweringDeclarations.js';
@@ -60,30 +60,6 @@ function lowerItem(
         scope: 'global',
       });
     }
-    return;
-  }
-
-  if (item.kind === 'Align') {
-    const align = item as AlignDirectiveNode;
-    const value = ctx.evalImmExpr(align.value, ctx.env, ctx.diagnostics);
-    if (value === undefined) {
-      ctx.diag(ctx.diagnostics, align.span.file, `Failed to evaluate align value.`);
-      return;
-    }
-    if (value <= 0) {
-      ctx.diag(ctx.diagnostics, align.span.file, `align value must be > 0.`);
-      return;
-    }
-    const current =
-      ctx.activePlacementRef.current === 'code'
-        ? ctx.codeOffsetRef.current
-        : ctx.dataOffsetRef.current;
-    const aligned = ctx.alignTo(current, value);
-    const pad = aligned - current;
-    if (pad > 0) {
-      ctx.recordLoweredAsmItem({ kind: 'ds', size: { kind: 'literal', value: pad } }, align.span);
-    }
-    ctx.advanceAlign(value);
     return;
   }
 

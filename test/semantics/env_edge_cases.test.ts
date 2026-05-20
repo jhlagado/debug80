@@ -152,7 +152,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
   it('rejects equate names that collide with type names (AZM400)', () => {
     const { program, diagnostics } = parseSingleFileProgram(
       'edge_type_collision.asm',
-      ['type T', '  x: byte', 'end', 'T .equ 1'].join('\n'),
+      ['.type T', 'x .byte', '.endtype', 'T .equ 1'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
@@ -168,7 +168,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
   it('propagates offset unknown field as a type error', () => {
     const { program, diagnostics } = parseSingleFileProgram(
       'edge_offset.asm',
-      ['type R', '  x: byte', '  y: byte', 'end', 'o .equ offset(R, z)'].join('\n'),
+      ['.type R', 'x .byte', 'y .byte', '.endtype', 'o .equ offset(R, z)'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
     buildEnv(program, diagnostics);

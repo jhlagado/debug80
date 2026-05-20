@@ -19,7 +19,7 @@ function parseSingleFileProgram(path: string, sourceText: string, diagnostics: D
 
 describe('PR476 type and union parser extraction', () => {
   it('keeps type helper parsing intact', () => {
-    const sourceText = ['type Pair', 'left: byte', 'right: word', 'end', ''].join('\n');
+    const sourceText = ['.type Pair', 'left .byte', 'right .word', '.endtype', ''].join('\n');
     const file = makeSourceFile('pr476_parse_types_helpers.asm', sourceText);
     const diagnostics: Diagnostic[] = [];
 
@@ -44,7 +44,7 @@ describe('PR476 type and union parser extraction', () => {
       };
     }
 
-    const parsed = parseTypeDecl('Pair', 'type Pair', span(file, 0, 9), 1, 0, {
+    const parsed = parseTypeDecl('Pair', '.type Pair', span(file, 0, 10), 1, 0, {
       file,
       lineCount: file.lineStarts.length,
       diagnostics,
@@ -69,7 +69,7 @@ describe('PR476 type and union parser extraction', () => {
   });
 
   it('keeps union helper parsing intact', () => {
-    const sourceText = ['union Either', 'left: byte', 'right: word', 'end', ''].join('\n');
+    const sourceText = ['.union Either', 'left .byte', 'right .word', '.endunion', ''].join('\n');
     const file = makeSourceFile('pr476_parse_types_helpers.asm', sourceText);
     const diagnostics: Diagnostic[] = [];
 
@@ -94,7 +94,7 @@ describe('PR476 type and union parser extraction', () => {
       };
     }
 
-    const parsed = parseUnionDecl('Either', 'union Either', span(file, 0, 12), 1, 0, {
+    const parsed = parseUnionDecl('Either', '.union Either', span(file, 0, 13), 1, 0, {
       file,
       lineCount: file.lineStarts.length,
       diagnostics,
@@ -119,7 +119,14 @@ describe('PR476 type and union parser extraction', () => {
     const diagnostics: Diagnostic[] = [];
     const program = parseSingleFileProgram(
       'pr476_parse_types_helpers.asm',
-      ['type Pair byte[2]', 'union Either', 'left: byte', 'right: word', 'end', ''].join('\n'),
+      [
+        '.type Pair byte[2]',
+        '.union Either',
+        'left .byte',
+        'right .word',
+        '.endunion',
+        '',
+      ].join('\n'),
       diagnostics,
     );
 

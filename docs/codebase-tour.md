@@ -103,7 +103,6 @@ src/
 │   ├── parseTopLevelCommon.ts   # topLevelStartKeyword(), diagInvalidHeaderLine()
 │   ├── parseSourceItemDispatch.ts # Shared line coordinator
 │   ├── parseSourceItemTable.ts # Retained AZM top-level declaration table
-│   ├── parseTopLevelSimple.ts # align declarations
 │   ├── parseOp.ts             # op declaration
 │   ├── parseOpHeader.ts      # op header parsing
 │   ├── parseEnum.ts           # enum declaration
@@ -398,16 +397,14 @@ Parsing is **best-effort**: errors are reported and parsing continues so the use
 
 ### 7.4 Dispatch and Item Handlers
 
-`parseSourceItemDispatch.ts` coordinates one logical line: AZM `.asm` handoff, dispatch-table lookup, and recovery. `parseSourceItemTable.ts` contains retained top-level AZM declarations such as `type`, `union`, `enum`, `op`, and `align`. Each retained entry is a function that takes a `ParseItemArgs` context (the line text, span, current line index, etc.) and returns a `ParseItemResult` — a `{ nextIndex, node? }` result.
+`parseSourceItemDispatch.ts` coordinates one logical line: AZM `.asm` handoff, dispatch-table lookup, and recovery. `parseSourceItemTable.ts` contains retained top-level AZM declarations such as `.type`, `.union`, `enum`, and `op`. Each retained entry is a function that takes a `ParseItemArgs` context (the line text, span, current line index, etc.) and returns a `ParseItemResult` — a `{ nextIndex, node? }` result.
 
-The `nextIndex` field is important: handlers may consume multiple lines (for example `op`, `type`, and `union` declarations consume lines until their matching `end`), so the parser needs to know where to resume.
-
-Simple top-level keywords such as `align` are handled in `parseTopLevelSimple.ts`. More complex ones have dedicated files:
+The `nextIndex` field is important: handlers may consume multiple lines (for example `op`, `.type`, and `.union` declarations consume lines until their matching terminator), so the parser needs to know where to resume.
 
 | Keyword         | File            |
 | --------------- | --------------- |
 | `op`            | `parseOp.ts`    |
-| `type`, `union` | `parseTypes.ts` |
+| `.type`, `.union` | `parseTypes.ts` |
 | `enum`          | `parseEnum.ts`  |
 
 ### 7.5 Parsing Ops
@@ -486,7 +483,7 @@ ProgramNode
 ```
 AsmEquNode | EnumDeclNode
 | UnionDeclNode | TypeDeclNode
-| OpDeclNode | AlignDirectiveNode
+| OpDeclNode
 | AsmLabelNode | AsmInstructionNode
 ```
 
@@ -622,7 +619,7 @@ Returns a `PrescanResult` that phase 3 unpacks.
 
 `lowerProgramDeclarations()` in `programLowering.ts` is the main emission loop. It iterates through every retained source item in flattened include order and dispatches each to an appropriate handler in `programLoweringDeclarations.ts`:
 
-- **`AlignDirectiveNode`** → advances the active placement offset to the next alignment boundary.
+- **`AsmAlignNode`** → advances the active placement offset to the next alignment boundary through the ASM80 directive path.
 - **`AsmEquNode`** / **`EnumDeclNode`** / **`TypeDeclNode`** → already processed by `buildEnv()`; no code is emitted.
 
 Returns a `LoweringResult` which is the fully populated byte maps plus all pending fixups and symbols.

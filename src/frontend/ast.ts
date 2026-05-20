@@ -117,16 +117,7 @@ export type SourceItemNode =
   | EnumDeclNode
   | UnionDeclNode
   | TypeDeclNode
-  | OpDeclNode
-  | AlignDirectiveNode;
-
-/**
- * Alignment directive.
- */
-export interface AlignDirectiveNode extends BaseNode {
-  kind: 'Align';
-  value: ImmExprNode;
-}
+  | OpDeclNode;
 
 /**
  * Type alias declaration.
