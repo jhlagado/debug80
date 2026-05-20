@@ -69,9 +69,9 @@ export interface FunctionFramePhase {
   readonly preserveSet: ReadonlyArray<string>;
   /** SP tracking summary: `invalid` when analysis cannot trust SP. */
   readonly trackedSp: { valid: boolean; delta: number; invalid: boolean };
-  /** Nested op-expansion frames for structured control. */
+  /** Nested op-expansion frames for visible op diagnostics. */
   readonly opExpansionStack: OpExpansionFrame[];
-  /** Reads current structured-control flow state. */
+  /** Reads current flow state. */
   readonly getFlow: () => FlowState;
   /** Replaces flow state (e.g. after branches). */
   readonly setFlow: (state: FlowState) => void;
@@ -81,11 +81,7 @@ export interface FunctionFramePhase {
   readonly syncFromFlow: () => void;
   /** Pushes lowering scratch state back into `flowRef`. */
   readonly syncToFlow: () => void;
-  /** Captures flow for nested regions. */
-  readonly snapshotFlow: () => FlowState;
-  /** Restores a prior snapshot. */
-  readonly restoreFlow: (state: FlowState) => void;
-  /** Emits diagnostic for invalid op expansion in structured control. */
+  /** Emits diagnostic for invalid visible op expansion. */
   readonly appendInvalidOpExpansionDiagnostic: ReturnType<
     typeof createFunctionBodySetupHelpers
   >['appendInvalidOpExpansionDiagnostic'];
@@ -103,34 +99,10 @@ export interface FunctionFramePhase {
   readonly emitJumpTo: ReturnType<typeof createFunctionBodySetupHelpers>['emitJumpTo'];
   /** Conditional jump emitter. */
   readonly emitJumpCondTo: ReturnType<typeof createFunctionBodySetupHelpers>['emitJumpCondTo'];
-  /** False-edge jump for structured `if`. */
-  readonly emitJumpIfFalse: ReturnType<typeof createFunctionBodySetupHelpers>['emitJumpIfFalse'];
   /** Virtual 16-bit register move (lowering helper). */
   readonly emitVirtualReg16Transfer: ReturnType<
     typeof createFunctionBodySetupHelpers
   >['emitVirtualReg16Transfer'];
-  /** Merges control-flow at join points. */
-  readonly joinFlows: ReturnType<typeof createFunctionBodySetupHelpers>['joinFlows'];
-  /** `select` compare to imm16. */
-  readonly emitSelectCompareToImm16: ReturnType<
-    typeof createFunctionBodySetupHelpers
-  >['emitSelectCompareToImm16'];
-  /** `select` compare reg8 to imm8. */
-  readonly emitSelectCompareReg8ToImm8: ReturnType<
-    typeof createFunctionBodySetupHelpers
-  >['emitSelectCompareReg8ToImm8'];
-  /** `select` compare reg8 range. */
-  readonly emitSelectCompareReg8Range: ReturnType<
-    typeof createFunctionBodySetupHelpers
-  >['emitSelectCompareReg8Range'];
-  /** `select` compare imm16 range. */
-  readonly emitSelectCompareImm16Range: ReturnType<
-    typeof createFunctionBodySetupHelpers
-  >['emitSelectCompareImm16Range'];
-  /** Loads `select` discriminator into HL. */
-  readonly loadSelectorIntoHL: ReturnType<
-    typeof createFunctionBodySetupHelpers
-  >['loadSelectorIntoHL'];
 }
 
 export type FunctionBodyPhase = Readonly<ReturnType<typeof createAsmBodyOrchestrationHelpers>>;
@@ -143,7 +115,7 @@ export type BodyContext = FunctionLoweringSetupPhase & {
 
 /** #1123 — frame + body orchestration product for finalization. */
 export type RewriteContext = BodyContext & {
-  /** Asm body orchestration helpers (structured control, instruction lowering). */
+  /** Asm body orchestration helpers. */
   readonly body: FunctionBodyPhase;
 };
 
@@ -300,14 +272,6 @@ function buildFunctionFramePhase(
       diagAt,
       diagAtWithId,
       conditionNameFromOpcode,
-      inverseConditionName,
-      conditionOpcodeFromName,
-      emitRawCodeBytes,
-      pushEaAddress,
-      pushMemValue,
-      evalImmExpr,
-      env,
-      reg8,
       formatAsmOperandForOpDiag,
       generatedLabelCounterRef,
       emitAbs16Fixup,
@@ -340,20 +304,11 @@ function buildFunctionFramePhase(
     withCodeSourceTag,
     syncFromFlow: syncFromFlowBase,
     syncToFlow: syncToFlowBase,
-    snapshotFlow,
-    restoreFlow: restoreFlowBase,
     newHiddenLabel,
     defineCodeLabel,
     emitJumpTo,
     emitJumpCondTo,
-    emitJumpIfFalse,
     emitVirtualReg16Transfer,
-    joinFlows,
-    emitSelectCompareToImm16,
-    emitSelectCompareReg8ToImm8,
-    emitSelectCompareReg8Range,
-    emitSelectCompareImm16Range,
-    loadSelectorIntoHL,
   } = createFunctionBodySetupHelpers({
     diagnostics,
     diagAt,
@@ -366,15 +321,7 @@ function buildFunctionFramePhase(
     getCodeOffset,
     emitAbs16Fixup,
     conditionNameFromOpcode,
-    inverseConditionName,
-    conditionOpcodeFromName,
     emitInstr,
-    emitRawCodeBytes,
-    loadImm16ToHL: setup.ctx.loadImm16ToHL,
-    pushEaAddress,
-    pushMemValue,
-    evalImmExpr: (expr) => evalImmExpr(expr, env, diagnostics),
-    reg8,
     generatedLabelCounterRef,
     formatAsmOperandForOpDiag,
   });
@@ -385,21 +332,6 @@ function buildFunctionFramePhase(
   const syncToFlow = (): void => {
     syncToFlowBase(flow, trackedSp);
   };
-  const restoreFlow = (state: FlowState): void => {
-    restoreFlowBase(
-      {
-        get current() {
-          return flow;
-        },
-        set current(value: FlowState) {
-          flow = value;
-        },
-      },
-      state,
-      trackedSp,
-    );
-  };
-
   return {
     hasStackSlots,
     emitSyntheticEpilogue,
@@ -414,8 +346,6 @@ function buildFunctionFramePhase(
     flowRef,
     syncFromFlow,
     syncToFlow,
-    snapshotFlow: () => snapshotFlow(flow),
-    restoreFlow,
     appendInvalidOpExpansionDiagnostic,
     sourceTagForSpan,
     withCodeSourceTag,
@@ -423,14 +353,7 @@ function buildFunctionFramePhase(
     defineCodeLabel,
     emitJumpTo,
     emitJumpCondTo,
-    emitJumpIfFalse,
     emitVirtualReg16Transfer,
-    joinFlows,
-    emitSelectCompareToImm16,
-    emitSelectCompareReg8ToImm8,
-    emitSelectCompareReg8Range,
-    emitSelectCompareImm16Range,
-    loadSelectorIntoHL,
   };
 }
 
