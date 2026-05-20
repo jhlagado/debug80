@@ -1,4 +1,4 @@
-export func main()
+main:
     rl a, b
     rr c, d
     sla e, h
@@ -7,6 +7,5 @@ export func main()
     sll d, e
     rlc h, l
     rrc a, b
-    rl (ix[1]), ix
-    rr (iy[2]), iy
-end
+    rl (ix+1), ix
+    rr (iy+2), iy

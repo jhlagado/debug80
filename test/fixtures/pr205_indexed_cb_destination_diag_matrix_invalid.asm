@@ -1,4 +1,4 @@
-export func main()
+main:
     res 1, (ix + 1), ixh
     res 1, (ix + 1), iyh
     set 2, (iy + 1), iyl
@@ -7,4 +7,3 @@ export func main()
     rl (ix + 1), iyh
     rrc (iy + 1), iyl
     rrc (iy + 1), ixl
-  end

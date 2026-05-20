@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const PR225_FIXTURE = join(
   __dirname,
   'fixtures',
-  'pr225_indexed_rotate_destination_diag_matrix_invalid.zax',
+  'pr225_indexed_rotate_destination_diag_matrix_invalid.asm',
 );
 
 const HEADS = ['rlc', 'rrc', 'rl', 'rr', 'sla', 'sra', 'sll', 'srl'] as const;
