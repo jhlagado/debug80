@@ -68,7 +68,6 @@ describe('PR200 D8M appendix mapping closure', () => {
     expect(byName.get('Big')).toMatchObject({
       kind: 'constant',
       value: 70000,
-      address: 70000 & 0xffff,
     });
   });
 });

@@ -45,13 +45,6 @@ Lowering turns parsed source and semantic state into:
 - `asmDirectiveTraversal.ts` (assembler directive traversal/address helpers)
 - `emitVisibility.ts` (op visibility)
 
-### Removed lowering boundary
-
-Function/module/section lowering, typed assignment, typed storage, and runtime
-typed effective-address materialization are not part of native AZM.
-Remaining references to those paths should be treated as deletion work, not as
-normal lowering architecture.
-
 ### LD lowering
 
 - `ldLowering.ts`
@@ -69,8 +62,6 @@ normal lowering architecture.
 
 - **Entry flow + handoffs**: `emit.ts` → `emitPipeline.ts` → `programLowering.ts`
 - **Assembler source lowering**: `programLowering.ts` → `programLoweringTraversal.ts` → `nativeAsmLowering.ts`
-- **Removed feature cleanup**: start from deletion-boundary docs before touching
-  any old helper
 - **LD lowering**: `ldLowering.ts` → `ldFormSelection.ts` → `ldEncoding.ts`
 - **Placement/fixups**: `emitFinalization.ts` → `programLoweringFinalize.ts`
 

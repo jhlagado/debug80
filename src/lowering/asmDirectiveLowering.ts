@@ -50,7 +50,6 @@ function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     kind: 'constant',
     name: item.name,
     value,
-    address: value & 0xffff,
     file: item.span.file,
     line: item.span.start.line,
     scope: 'global',
@@ -229,14 +228,12 @@ function lowerAsmBinRangeSymbol(
   );
   if (existing?.kind === 'constant') {
     existing.value = value;
-    existing.address = value;
     return;
   }
   ctx.symbols.push({
     kind: 'constant',
     name: symbolName,
     value,
-    address: value,
     file: item.span.file,
     line: item.span.start.line,
     scope: 'global',

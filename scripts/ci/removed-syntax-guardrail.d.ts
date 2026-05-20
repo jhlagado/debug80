@@ -1,4 +1,4 @@
-export type LegacySyntaxViolation = {
+export type RemovedSyntaxViolation = {
   file: string;
   line: number;
   column: number;
@@ -14,10 +14,10 @@ export declare const FORBIDDEN_RULES: ReadonlyArray<{
 
 export declare const DEFAULT_SCAN_ROOTS: ReadonlyArray<string>;
 
-export declare function scanForbiddenLegacySyntax(options?: {
+export declare function scanForbiddenRemovedSyntax(options?: {
   repoRoot?: string;
   roots?: string[];
   filePaths?: string[];
 }): {
-  violations: LegacySyntaxViolation[];
+  violations: RemovedSyntaxViolation[];
 };

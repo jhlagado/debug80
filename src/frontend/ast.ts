@@ -229,7 +229,7 @@ export type AsmItemNode = AsmInstructionNode | AsmLabelNode;
 export interface AsmLabelNode extends BaseNode {
   kind: 'AsmLabel';
   name: string;
-  /** True when the source label used the ASM80-compatible `@Name:` entry marker. */
+  /** True when the source label used the ASM80-style `@Name:` entry marker. */
   isEntry?: boolean;
 }
 

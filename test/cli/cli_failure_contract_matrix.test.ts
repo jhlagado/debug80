@@ -152,7 +152,7 @@ describe('cli failure contract matrix', () => {
 
     const cases: Array<{ args: string[]; message: string }> = [
       { args: ['--badflag', entry], message: 'Unknown option' },
-      { args: ['--legacy-syntax-warn', entry], message: 'Unknown option "--legacy-syntax-warn"' },
+      { args: ['--removed-syntax-warn', entry], message: 'Unknown option "--removed-syntax-warn"' },
       { args: ['--output'], message: '--output expects a value' },
       { args: ['--output=', entry], message: '--output expects a value' },
       { args: ['--type=', entry], message: '--type expects a value' },

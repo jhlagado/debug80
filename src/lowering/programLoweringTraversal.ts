@@ -58,7 +58,6 @@ function lowerItem(
         kind: 'constant',
         name,
         value: idx,
-        address: idx & 0xffff,
         file: enumDecl.span.file,
         line: enumDecl.span.start.line,
         scope: 'global',

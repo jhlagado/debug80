@@ -89,7 +89,7 @@ describe('PR144: ED/CB diagnostics parity matrix', () => {
     {
       label: 'sla indexed dest',
       id: DiagnosticIds.EncodeError,
-      message: 'sla indexed destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'sla indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'sra reg8 dest',
