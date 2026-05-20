@@ -175,7 +175,7 @@ describe('AZM layout-cast constant folding', () => {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          message: expect.stringMatching(/typed effective-address syntax is not supported/i),
+          message: expect.stringMatching(/ld expects a supported register\/memory\/immediate transfer form/i),
         }),
       );
     } finally {
@@ -199,7 +199,7 @@ describe('AZM layout-cast constant folding', () => {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          message: expect.stringMatching(/typed effective-address syntax is not supported/i),
+          message: expect.stringMatching(/does not accept typed storage operands/i),
         }),
       );
     } finally {

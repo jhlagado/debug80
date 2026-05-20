@@ -91,7 +91,7 @@ describe('parseAzmNativeTopLevel', () => {
     expect(parsed).toEqual({ nextIndex: 3 });
     expect(diagnostics).toContainEqual(
       expect.objectContaining({
-        id: DiagnosticIds.AzmRemovedZaxConstruct,
+        id: DiagnosticIds.ParseError,
         severity: 'error',
         message: expect.stringContaining('Export declarations'),
       }),

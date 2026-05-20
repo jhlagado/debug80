@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { compile } from '../../src/compile.js';
-import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import { inferSourceMode } from '../../src/frontend/sourceMode.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 
@@ -71,11 +70,6 @@ describe('AZM source mode ZAX removals', () => {
         { formats: defaultFormatWriters },
       );
 
-      expect(res.diagnostics).not.toContainEqual(
-        expect.objectContaining({
-          id: DiagnosticIds.AzmRemovedZaxConstruct,
-        }),
-      );
       expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     } finally {
       cleanup();
