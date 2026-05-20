@@ -1,7 +1,6 @@
 import type {
   AlignDirectiveNode,
   EnumDeclNode,
-  RawDataDeclNode,
 } from '../frontend/ast.js';
 import type { LoweringContext, LoweringResult } from './programLowering.js';
 import type { SectionKind } from './loweringTypes.js';
@@ -29,7 +28,6 @@ function sectionForAsmOrg(items: readonly unknown[], index: number): SectionKind
 
 function lowerItem(
   ctx: LoweringContext,
-  lowerRawDataDecl: ReturnType<typeof createProgramLoweringDeclarationHelpers>['lowerRawDataDecl'],
   lowerAsmRawDataDirective: ReturnType<
     typeof createProgramLoweringDeclarationHelpers
   >['lowerAsmRawDataDirective'],
@@ -104,16 +102,10 @@ function lowerItem(
     return;
   }
 
-  if (item.kind === 'RawDataDecl') {
-    lowerRawDataDecl(item as RawDataDeclNode);
-    return;
-  }
-
 }
 
 export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
-  const { lowerRawDataDecl, lowerAsmRawDataDirective } =
-    createProgramLoweringDeclarationHelpers(ctx);
+  const { lowerAsmRawDataDirective } = createProgramLoweringDeclarationHelpers(ctx);
 
   for (const sourceFile of ctx.program.files) {
     ctx.activeSectionRef.current = 'code';
@@ -128,7 +120,7 @@ export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
       if (isAsmOrgDirective(item)) {
         ctx.activeSectionRef.current = sectionForAsmOrg(sourceFile.items, index);
       }
-      lowerItem(ctx, lowerRawDataDecl, lowerAsmRawDataDirective, item);
+      lowerItem(ctx, lowerAsmRawDataDirective, item);
     }
   }
 
