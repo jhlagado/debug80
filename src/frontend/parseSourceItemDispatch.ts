@@ -13,6 +13,7 @@ import type { SourceFile } from './source.js';
 
 export type ParseItemContext = {
   scope: 'source';
+  asmEnded?: boolean;
   asmPendingRawLabel?: PendingRawLabel;
 };
 
@@ -58,6 +59,7 @@ type DispatchSourceItemContext = {
   sourceItemDispatchTable: SourceItemDispatchTable;
   sourcePath: string;
   asmSourceMode: boolean;
+  asmStringEquates: Map<string, string>;
   span: typeof import('./source.js').span;
 };
 
@@ -75,6 +77,7 @@ export function dispatchSourceItem(
     sourceItemDispatchTable,
     sourcePath,
     asmSourceMode,
+    asmStringEquates,
     span,
   } = dispatchContext;
   const { raw, startOffset: lineStartOffset, endOffset: lineEndOffset } = getRawLine(index);
@@ -97,6 +100,7 @@ export function dispatchSourceItem(
       diagnostics,
       ctx,
       ...(aliasPolicy ? { aliasPolicy } : {}),
+      asmStringEquates,
     });
     if (parsedAsm) return parsedAsm;
   }

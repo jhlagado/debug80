@@ -9,15 +9,14 @@ import type {
   SourceSpan,
 } from '../../src/frontend/ast.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
-import { parseAsmSourceFile } from '../../src/frontend/asm80/parseAsmSource.js';
-import { parseProgram as parseAssemblerProgram } from '../../src/frontend/parser.js';
+import { parseProgram as parseAssemblerProgram, parseSourceFile } from '../../src/frontend/parser.js';
 import { buildRegisterCareProgramModel } from '../../src/registerCare/programModel.js';
 import { inferRoutineSummary } from '../../src/registerCare/summary.js';
 
 function parseAsmProgram(path: string, text: string): ProgramNode {
   const diagnostics: Diagnostic[] = [];
   const sf = makeSourceFile(path, text);
-  const file = parseAsmSourceFile(path, text, diagnostics, sf) as SourceFileNode;
+  const file = parseSourceFile(path, text, diagnostics, sf, undefined, true) as SourceFileNode;
   if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return { kind: 'Program', entryFile: path, files: [file], span: span(sf, 0, text.length) };
 }
@@ -25,7 +24,7 @@ function parseAsmProgram(path: string, text: string): ProgramNode {
 function parseAsmFile(path: string, text: string): SourceFileNode {
   const diagnostics: Diagnostic[] = [];
   const sf = makeSourceFile(path, text);
-  const file = parseAsmSourceFile(path, text, diagnostics, sf) as SourceFileNode;
+  const file = parseSourceFile(path, text, diagnostics, sf, undefined, true) as SourceFileNode;
   if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return file;
 }

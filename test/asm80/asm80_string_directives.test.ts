@@ -1,7 +1,6 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -10,11 +9,6 @@ import { parseAsmLine } from '../../src/frontend/asm80/asmLine.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { Asm80Artifact, BinArtifact, D8mArtifact } from '../../src/formats/types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const repoRoot = join(__dirname, '..', '..');
-const asmParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseAsmSource.ts');
-const asm80ParserAvailable = existsSync(asmParserPath);
 const asmSourceLoweringAvailable = true;
 const describeAsmCompile = asmSourceLoweringAvailable ? describe : describe.skip;
 
@@ -70,7 +64,7 @@ describeAsmCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
   });
 });
 
-if (!asm80ParserAvailable || !asmSourceLoweringAvailable) {
+if (!asmSourceLoweringAvailable) {
   describe('ASM80 string directives (.cstr/.pstr/.istr)', () => {
     it.todo('BLOCKED: enable compile assertion when ASM source parsing/lowering emits raw data');
   });

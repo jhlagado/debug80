@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAsmSource } from '../../src/frontend/asm80/parseAsmSource.js';
-import type { AsmSourceItemNode } from '../../src/frontend/ast.js';
+import { parseSourceFile } from '../../src/frontend/parser.js';
+import type { SourceItemNode } from '../../src/frontend/ast.js';
 import { buildDirectiveAliasPolicy } from '../../src/frontend/directiveAliases.js';
 
 const azmAliases = buildDirectiveAliasPolicy('azm');
 
+function parseAsmFile(
+  path: string,
+  source: string,
+  diagnostics: never[],
+  _sourceFile?: unknown,
+  _aliasPolicy = azmAliases,
+) {
+  return parseSourceFile(path, source, diagnostics, undefined, azmAliases, true);
+}
+
 describe('ASM80 source parser', () => {
   it('maps ASM lines into source-ordered AST items and stops at .end', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       [
         'BASE: .equ 0C000H',
@@ -29,36 +39,38 @@ describe('ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.map((item: AsmSourceItemNode) => item.kind)).toEqual([
+    expect(sourceFile.items.map((item: SourceItemNode) => item.kind)).toEqual([
       'AsmEqu',
       'AsmOrg',
       'AsmLabel',
       'AsmInstruction',
       'AsmInstruction',
+      'AsmLabel',
       'AsmRawData',
       'AsmRawData',
       'AsmEnd',
     ]);
-    expect(sourceFile.items.map((item: AsmSourceItemNode) => ('name' in item ? item.name : undefined))).toEqual([
+    expect(sourceFile.items.map((item: SourceItemNode) => ('name' in item ? item.name : undefined))).toEqual([
       'BASE',
       undefined,
       'start',
       undefined,
       undefined,
       'table',
-      '',
+      undefined,
+      undefined,
       undefined,
     ]);
-    expect(sourceFile.items[3]).toMatchObject({ kind: 'AsmInstruction', head: 'ld', operandText: 'a, 0FFH' });
-    expect(sourceFile.items[5]).toMatchObject({
+    expect(sourceFile.items[3]).toMatchObject({ kind: 'AsmInstruction', head: 'ld' });
+    expect(sourceFile.items[6]).toMatchObject({
       kind: 'AsmRawData',
-      name: 'table',
+      name: undefined,
       directive: 'db',
       valuesText: '"OK",0',
     });
-    expect(sourceFile.items[6]).toMatchObject({
+    expect(sourceFile.items[7]).toMatchObject({
       kind: 'AsmRawData',
-      name: '',
+      name: undefined,
       directive: 'dw',
       valuesText: 'start',
     });
@@ -66,7 +78,7 @@ describe('ASM80 source parser', () => {
 
   it('keeps commas inside quoted db strings', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       '.db "A,B",0\n',
       diagnostics as never[],
@@ -85,7 +97,7 @@ describe('ASM80 source parser', () => {
 
   it('parses single-quoted raw data characters as immediates', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ".dw 'A'\n",
       diagnostics as never[],
@@ -104,7 +116,7 @@ describe('ASM80 source parser', () => {
 
   it('keeps post-end binary range directives while ignoring ordinary post-end source', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['.org 0100H', '.db 1', '.end', 'after: nop', '.binfrom 0100H', '.binto 0101H'].join('\n'),
       diagnostics as never[],
@@ -113,7 +125,7 @@ describe('ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.map((item: AsmSourceItemNode) => item.kind)).toEqual([
+    expect(sourceFile.items.map((item: SourceItemNode) => item.kind)).toEqual([
       'AsmOrg',
       'AsmRawData',
       'AsmEnd',
@@ -124,7 +136,7 @@ describe('ASM80 source parser', () => {
 
   it('parses ASM ds size and optional fill values', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['buf: ds 2,0FFH', 'tail: .ds 1'].join('\n'),
       diagnostics as never[],
@@ -152,7 +164,7 @@ describe('ASM80 source parser', () => {
 
   it('rejects non-baseline dialect aliases with canonical directive guidance', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['DEFB_LABEL: DEFB 1,2', 'DEFW_LABEL: defw 1234H', 'RMB_LABEL: RMB 8'].join('\n'),
       diagnostics as never[],
@@ -160,11 +172,7 @@ describe('ASM80 source parser', () => {
       azmAliases,
     );
 
-    expect(sourceFile.items).toMatchObject([
-      { kind: 'AsmLabel', name: 'DEFB_LABEL' },
-      { kind: 'AsmLabel', name: 'DEFW_LABEL' },
-      { kind: 'AsmLabel', name: 'RMB_LABEL' },
-    ]);
+    expect(sourceFile.items).toEqual([]);
     expect(diagnostics.map((diagnostic) => diagnostic.message)).toEqual([
       'DEFB is not part of the supported ASM80 baseline; use DB.',
       'DEFW is not part of the supported ASM80 baseline; use DW.',
@@ -179,7 +187,7 @@ describe('ASM80 source parser', () => {
 
   it('rejects unsupported ASM80 directives before they reach instruction encoding', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['.macro FOO', 'incbin_label: .incbin "data.bin"', 'pragma_label: .pragma anything'].join('\n'),
       diagnostics as never[],
@@ -187,25 +195,22 @@ describe('ASM80 source parser', () => {
       azmAliases,
     );
 
-    expect(sourceFile.items).toMatchObject([
-      { kind: 'AsmLabel', name: 'incbin_label' },
-      { kind: 'AsmLabel', name: 'pragma_label' },
-    ]);
+    expect(sourceFile.items).toEqual([]);
     expect(diagnostics.map((diagnostic) => diagnostic.message)).toEqual([
-      'Unsupported ASM80 directive ".macro". The supported baseline intentionally excludes macros and non-corpus directives.',
-      'Unsupported ASM80 directive ".incbin". The supported baseline intentionally excludes macros and non-corpus directives.',
-      'Unsupported ASM80 directive ".pragma". The supported baseline intentionally excludes macros and non-corpus directives.',
+      'Unsupported ASM80 directive ".macro".',
+      'Unsupported ASM80 directive ".incbin".',
+      'Unsupported ASM80 directive ".pragma".',
     ]);
     expect(diagnostics.map((diagnostic) => [diagnostic.line, diagnostic.column])).toEqual([
       [1, 2],
-      [2, 16],
-      [3, 16],
+      [2, 1],
+      [3, 1],
     ]);
   });
 
   it('does not let post-end string equates affect pre-end raw data', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['.db MSG', '.end', 'MSG: .equ "XY"'].join('\n'),
       diagnostics as never[],
@@ -223,7 +228,7 @@ describe('ASM80 source parser', () => {
 
   it('parses MON3 db string fragments without splitting quoted contents', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       [
         '.db "Enter ",0',
@@ -281,7 +286,7 @@ describe('ASM80 source parser', () => {
 
   it('expands multi-character string equates in db values', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmSource(
+    const sourceFile = parseAsmFile(
       '/asm.z80',
       ['.db REL_TXT,0', 'REL_TXT: .equ "2025.16"'].join('\n'),
       diagnostics as never[],

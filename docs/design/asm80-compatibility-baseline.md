@@ -307,7 +307,7 @@ Debug80 integration and downstream workflows are updated.
 Do not spend the next phase adding speculative ASM80 syntax. The remaining
 engineering candidates are code-quality work:
 
-- split `src/frontend/asm80/parseAsmSource.ts` once more real corpus-driven
+- split the current `.asm` parser path once more real corpus-driven
   parser cases appear
 - keep reducing incidental coupling in assembler instruction lowering
 - preserve the current range behavior in `src/lowering/asmRangeLowering.ts`

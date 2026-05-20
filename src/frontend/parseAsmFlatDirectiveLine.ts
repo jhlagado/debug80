@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceItemNode, SourceSpan } from './ast.js';
 import { parseAsmLine } from './asm80/asmLine.js';
-import { parseAsmRawValues } from './asm80/parseAsmSource.js';
+import { parseAsmRawValues } from './asm80/parseAsmRawValues.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
 import { parseImmExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
@@ -27,14 +27,25 @@ function normalizeRawDataDirectiveText(text: string): string | undefined {
   return `${match[1]!.toLowerCase()}${match[2]!}`;
 }
 
+function isStringEquate(name: string, stringEquates: Map<string, string>): boolean {
+  const normalized = name.startsWith('@') ? name.slice(1) : name;
+  return stringEquates.has(normalized.toLowerCase());
+}
+
+function directiveColumn(text: string, directive: string): number {
+  const index = text.toLowerCase().indexOf(directive.toLowerCase());
+  return index < 0 ? 1 : index + 1;
+}
+
 function asmRawDataToNode(
   parsed: Extract<ReturnType<typeof parseAsmLine>, { kind: 'rawData' }>,
   stmtSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
+  stringEquates: Map<string, string>,
   label?: PendingRawLabel,
 ): SourceItemNode {
-  const values = parseAsmRawValues(filePath, parsed.valuesText, stmtSpan, diagnostics, new Map());
+  const values = parseAsmRawValues(filePath, parsed.valuesText, stmtSpan, diagnostics, stringEquates);
   if (parsed.directive === 'ds') {
     return {
       kind: 'AsmRawData',
@@ -66,10 +77,14 @@ export function parseAsmFlatDirectiveLine(args: {
   diagnostics: Diagnostic[];
   ctx: Extract<ParseItemContext, { scope: 'source' }>;
   aliasPolicy?: DirectiveAliasPolicy;
+  stringEquates: Map<string, string>;
 }): SourceItemNode[] | undefined {
-  const { rest, stmtSpan, filePath, lineNo, diagnostics, ctx, aliasPolicy } = args;
+  const { rest, stmtSpan, filePath, lineNo, diagnostics, ctx, aliasPolicy, stringEquates } = args;
   const trimmed = rest.trim();
   const parsedAsm = parseAsmLine(filePath, trimmed, lineNo, stmtSpan.start.offset, aliasPolicy);
+  if (ctx.asmEnded && parsedAsm?.kind !== 'binfrom' && parsedAsm?.kind !== 'binto') {
+    return [];
+  }
   if (
     !isAsmFlatDirectiveLine(trimmed, ctx.asmPendingRawLabel) &&
     parsedAsm?.kind !== 'rawData' &&
@@ -88,7 +103,7 @@ export function parseAsmFlatDirectiveLine(args: {
     const pending = ctx.asmPendingRawLabel;
     if (parsedAsm?.kind === 'rawData') {
       delete ctx.asmPendingRawLabel;
-      return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, pending)];
+      return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, stringEquates, pending)];
     }
     const normalizedRaw = normalizeRawDataDirectiveText(trimmed);
     const parsedRaw = normalizedRaw
@@ -105,21 +120,9 @@ export function parseAsmFlatDirectiveLine(args: {
 
   const inlineLabelRaw = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\.?(db|dw|ds)\b(.*)$/i.exec(trimmed);
   if (inlineLabelRaw) {
-    const label: PendingRawLabel = {
-      name: inlineLabelRaw[1]!,
-      span: stmtSpan,
-      lineNo,
-      filePath,
-    };
-    const parsedRaw = parseRawDataDirective(
-      label,
-      inlineLabelRaw[2]! + inlineLabelRaw[3]!,
-      lineNo,
-      stmtSpan,
-      filePath,
-      diagnostics,
-    );
-    return parsedRaw ? [parsedRaw] : [];
+    return parsedAsm?.kind === 'rawData'
+      ? [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, stringEquates)]
+      : [];
   }
 
   const inlineLabelEqu = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\.?equ\b\s*(.+)$/i.exec(trimmed);
@@ -131,7 +134,13 @@ export function parseAsmFlatDirectiveLine(args: {
         span: stmtSpan,
         name: inlineLabelEqu[1]!,
         exprText,
-        value: parseImmExprFromText(filePath, exprText, stmtSpan, diagnostics),
+        value: parseImmExprFromText(
+          filePath,
+          exprText,
+          stmtSpan,
+          diagnostics,
+          !isStringEquate(inlineLabelEqu[1]!, stringEquates),
+        ),
       } as SourceItemNode,
     ];
   }
@@ -145,7 +154,13 @@ export function parseAsmFlatDirectiveLine(args: {
         span: stmtSpan,
         name: bareEqu[1]!,
         exprText,
-        value: parseImmExprFromText(filePath, exprText, stmtSpan, diagnostics),
+        value: parseImmExprFromText(
+          filePath,
+          exprText,
+          stmtSpan,
+          diagnostics,
+          !isStringEquate(bareEqu[1]!, stringEquates),
+        ),
       } as SourceItemNode,
     ];
   }
@@ -154,6 +169,10 @@ export function parseAsmFlatDirectiveLine(args: {
   if (labelOnly) {
     ctx.asmPendingRawLabel = { name: labelOnly[1]!, span: stmtSpan, lineNo, filePath };
     return [];
+  }
+
+  if (parsedAsm?.kind === 'rawData') {
+    return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, stringEquates)];
   }
 
   const bareRawText = normalizeRawDataDirectiveText(trimmed);
@@ -180,8 +199,6 @@ export function parseAsmFlatDirectiveLine(args: {
   if (parsed.kind === 'instruction' || parsed.kind === 'label') return undefined;
 
   switch (parsed.kind) {
-    case 'rawData':
-      return [asmRawDataToNode(parsed, stmtSpan, filePath, diagnostics)];
     case 'equ':
       return [
         {
@@ -189,7 +206,13 @@ export function parseAsmFlatDirectiveLine(args: {
           span: stmtSpan,
           name: parsed.name,
           exprText: parsed.exprText,
-          value: parseImmExprFromText(filePath, parsed.exprText, stmtSpan, diagnostics),
+          value: parseImmExprFromText(
+            filePath,
+            parsed.exprText,
+            stmtSpan,
+            diagnostics,
+            !isStringEquate(parsed.name, stringEquates),
+          ),
         } as SourceItemNode,
       ];
     case 'org':
@@ -224,11 +247,12 @@ export function parseAsmFlatDirectiveLine(args: {
       return value ? [{ kind: 'AsmAlign', span: stmtSpan, value } as SourceItemNode] : [];
     }
     case 'end':
+      ctx.asmEnded = true;
       return [{ kind: 'AsmEnd', span: stmtSpan } as SourceItemNode];
     case 'unsupportedDirective':
       diag(diagnostics, filePath, `Unsupported ASM80 directive ".${parsed.directive}".`, {
         line: lineNo,
-        column: 1,
+        column: directiveColumn(trimmed, parsed.directive),
       });
       return [];
     default:

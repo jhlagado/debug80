@@ -1,6 +1,4 @@
 import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -16,11 +14,6 @@ import {
   summarizeDiagnostics,
 } from '../helpers/index.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const repoRoot = join(__dirname, '..', '..');
-const asmParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseAsmSource.ts');
-const asm80ParserAvailable = existsSync(asmParserPath);
 const asmSourceLoweringAvailable = true;
 const manifest = {
   source: process.env.MON3_SOURCE ?? '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80',
@@ -30,11 +23,7 @@ const asm80 = findAsm80Executable();
 const mon3FilesAvailable = existsSync(manifest.source);
 const runMon3Acceptance = process.env.AZM_RUN_MON3_ACCEPTANCE === '1';
 const describeMon3 =
-  asm80ParserAvailable &&
-  asmSourceLoweringAvailable &&
-  mon3FilesAvailable &&
-  asm80 &&
-  runMon3Acceptance
+  asmSourceLoweringAvailable && mon3FilesAvailable && asm80 && runMon3Acceptance
     ? describe
     : describe.skip;
 
@@ -136,7 +125,7 @@ if (runMon3Acceptance && !mon3FilesAvailable) {
       throw new Error('asm80 executable is unavailable. Set ASM80 or ASM80_PATH.');
     });
   });
-} else if (!asm80ParserAvailable || !asmSourceLoweringAvailable) {
+} else if (!asmSourceLoweringAvailable) {
   describe('ASM80 MON3 acceptance', () => {
     it.todo('BLOCKED: enable when ASM80 source parsing/lowering is wired into compile()');
   });
