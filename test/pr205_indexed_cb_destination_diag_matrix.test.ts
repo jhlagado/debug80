@@ -25,7 +25,7 @@ type Row = {
 describe('PR205: indexed CB destination diagnostics parity', () => {
   it.each([
     {
-      label: 'res legacy reg',
+      label: 'res plain reg',
       id: DiagnosticIds.EncodeError,
       message: 'res indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
@@ -35,7 +35,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
       message: 'res indexed destination family must match source index base',
     },
     {
-      label: 'set legacy reg',
+      label: 'set plain reg',
       id: DiagnosticIds.EncodeError,
       message: 'set indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
@@ -45,7 +45,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
       message: 'set indexed destination family must match source index base',
     },
     {
-      label: 'rl legacy reg',
+      label: 'rl plain reg',
       id: DiagnosticIds.EncodeError,
       message: 'rl indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
@@ -55,7 +55,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
       message: 'rl indexed destination family must match source index base',
     },
     {
-      label: 'rrc legacy reg',
+      label: 'rrc plain reg',
       id: DiagnosticIds.EncodeError,
       message: 'rrc indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },

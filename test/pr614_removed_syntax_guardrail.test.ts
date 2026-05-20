@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { scanForbiddenRemovedSyntax } from '../scripts/ci/removed-syntax-guardrail.js';
+import {
+  FORBIDDEN_SOURCE_EXTENSIONS,
+  scanForbiddenRemovedSyntax,
+} from '../scripts/ci/removed-syntax-guardrail.js';
 
 describe('PR614 removed syntax guardrail', () => {
   it('passes for repository assembly sources and assembly markdown fences', () => {
@@ -40,8 +43,9 @@ describe('PR614 removed syntax guardrail', () => {
   it('rejects removed source file extensions in scanned roots', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-ext-'));
     const examples = join(dir, 'examples');
+    const removedFile = `removed${FORBIDDEN_SOURCE_EXTENSIONS[0]}`;
     await mkdir(examples);
-    await writeFile(join(examples, 'removed.azm'), 'main:\n  ret\n', 'utf8');
+    await writeFile(join(examples, removedFile), 'main:\n  ret\n', 'utf8');
 
     const { violations } = scanForbiddenRemovedSyntax({
       repoRoot: dir,
@@ -49,7 +53,7 @@ describe('PR614 removed syntax guardrail', () => {
     });
     expect(violations).toEqual([
       expect.objectContaining({
-        file: 'examples/removed.azm',
+        file: `examples/${removedFile}`,
         ruleId: 'removed-source-extension',
       }),
     ]);

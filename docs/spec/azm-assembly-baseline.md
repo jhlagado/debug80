@@ -31,7 +31,7 @@ AZM is defined as a small stack of compatible standards:
   analyzer to describe register inputs, outputs, clobbers, and preservation.
 
 These standards must remain compatible with ordinary ASM80-style source. AZMDoc
-metadata is carried in comments, so legacy assemblers ignore it.
+metadata is carried in comments, so other assemblers ignore it.
 
 ## Source modes
 
@@ -220,7 +220,7 @@ embedded data after instructions need an explicit convention before the
 register-care analyzer can safely reason about them.
 
 This policy matters because AZM's register-care checker infers contracts over
-routine bodies. In legacy plain-label mode, an internal branch target written as
+routine bodies. In plain-label mode, an internal branch target written as
 a non-local label must be treated as a possible new routine. That can split a
 push/pop-protected routine in the middle and make preserved scratch registers
 look like outputs or clobbers. The `@` entry policy avoids that failure by
