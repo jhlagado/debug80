@@ -5,7 +5,6 @@
 import type { AsmOperandNode } from '../frontend/ast.js';
 import { evalImmExpr } from '../semantics/env.js';
 import { sizeOfTypeExpr } from '../semantics/layout.js';
-import { lowerFunctionDecl } from './functionLowering.js';
 import {
   cloneEaExpr,
   cloneImmExpr,
@@ -224,7 +223,6 @@ export function buildEmitProgramLoweringContext(
       loadHexInput,
       resolveAggregateType,
       sizeOfTypeExpr: (typeExpr) => sizeOfTypeExpr(typeExpr, ctx.env, ctx.diagnostics),
-      lowerFunctionDecl,
       recordLoweredAsmItem,
       lowerImmExprForLoweredAsm,
       currentCodeSegmentTagRef,

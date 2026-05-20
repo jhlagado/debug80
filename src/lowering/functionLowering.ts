@@ -4,7 +4,6 @@ import type {
   AsmInstructionNode,
   AsmOperandNode,
   EaExprNode,
-  FuncDeclNode,
   ImmExprNode,
   OpDeclNode,
   SourceSpan,
@@ -17,21 +16,10 @@ import type { OpOverloadSelection } from './opMatching.js';
 import type { OpStackSummary } from './opStackAnalysis.js';
 import type { EaResolution } from './eaResolution.js';
 import type { AggregateType, ScalarKind } from './typeResolution.js';
-import {
-  finalizeFunctionLoweringPhase,
-  prepareFunctionBodyLoweringPhase,
-  prepareFunctionLoweringSetupPhase,
-  runFunctionFrameSetupPhase,
-} from './functionLoweringPhases.js';
-
 // This module owns the per-function lowering coordinator. It assembles the
 // function-local helpers, state, and diagnostics around the extracted
 // rewriting, frame-setup, body-setup, and call-lowering submodules.
 export type { ResolvedArrayType } from './loweringTypes.js';
-export type FunctionLoweringItemContext = {
-  /** Set by: program lowering construction. Used by: frame setup, body orchestration. */
-  readonly item: FuncDeclNode;
-};
 
 export type FunctionLoweringDiagnosticsContext = {
   /** Set by: emit/context construction. Mutated by: frame setup, body setup, call lowering, asm instruction lowering, body orchestration. */
@@ -68,7 +56,7 @@ export type FunctionLoweringSymbolContext = {
   readonly traceComment: (offset: number, text: string) => void;
   /** Set by: emit/context construction. Used by: frame setup, body setup, body orchestration. */
   readonly traceLabel: (offset: number, name: string, span?: SourceSpan) => void;
-  /** Set by: emit/context construction. Mutated by: lowerFunctionDecl coordination, frame setup, body setup, call lowering, body orchestration. Used by: frame setup, body setup, call lowering. */
+  /** Set by: emit/context construction. Mutated while lowering native assembler instructions and op expansions. */
   readonly currentCodeSegmentTagRef: { current: SourceSegmentTag | undefined };
   /** Set by: emit/context construction. Mutated by: frame setup and body setup. Used by: frame setup and body setup. */
   readonly generatedLabelCounterRef: { current: number };
@@ -317,25 +305,4 @@ export function mergeFunctionLoweringSharedContext(
   };
 }
 
-/**
- * Entry context for lowering one function: the AST node plus the shared per-function lowering
- * hooks. {@link FunctionLoweringSharedContext} is the hook bundle reused when merging into program
- * lowering; this type adds {@link FunctionLoweringItemContext.item}.
- *
- * Narrower phase views: {@link FrameContext}, {@link BodyContext}, {@link RewriteContext} (#1123).
- */
-export type FunctionLoweringContext = FunctionLoweringItemContext & FunctionLoweringSharedContext;
-
-export type { BodyContext, FrameContext, RewriteContext } from './functionLoweringPhases.js';
-
-export {
-  splitFunctionLoweringContext,
-  splitFunctionLoweringSharedContext,
-} from './functionLoweringSplit.js';
-
-export function lowerFunctionDecl(ctx: FunctionLoweringContext): void {
-  const setup = prepareFunctionLoweringSetupPhase(ctx);
-  const frame = runFunctionFrameSetupPhase(setup);
-  const body = prepareFunctionBodyLoweringPhase({ ...setup, frame });
-  finalizeFunctionLoweringPhase({ ...setup, frame, body });
-}
+export { splitFunctionLoweringSharedContext } from './functionLoweringSplit.js';

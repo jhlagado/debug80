@@ -7,7 +7,7 @@ export type DiagAt = (diagnostics: Diagnostic[], span: SourceSpan, message: stri
 
 /**
  * Shared dependency surface for value / EA materialization helpers.
- * Semantics align with the same-named members on {@link import('./functionLowering.js').FunctionLoweringContext} where applicable.
+ * Semantics align with the same-named members on the shared assembler-lowering context where applicable.
  */
 export type ValueMaterializationContext = {
   /** Mutable diagnostic list. */

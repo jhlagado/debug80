@@ -73,8 +73,6 @@ export type EmitProgramLoweringContextInputs = {
   /** @inheritdoc ProgramLoweringContext */
   sizeOfTypeExpr: ProgramLoweringContext['sizeOfTypeExpr'];
   /** @inheritdoc ProgramLoweringContext */
-  lowerFunctionDecl: ProgramLoweringContext['lowerFunctionDecl'];
-  /** @inheritdoc ProgramLoweringContext */
   recordLoweredAsmItem: ProgramLoweringContext['recordLoweredAsmItem'];
   /** @inheritdoc ProgramLoweringContext */
   lowerImmExprForLoweredAsm: ProgramLoweringContext['lowerImmExprForLoweredAsm'];
@@ -124,7 +122,6 @@ export function createProgramLoweringContext(
     loadHexInput: input.loadHexInput,
     resolveAggregateType: input.resolveAggregateType,
     sizeOfTypeExpr: input.sizeOfTypeExpr,
-    lowerFunctionDecl: input.lowerFunctionDecl,
     recordLoweredAsmItem: input.recordLoweredAsmItem,
     lowerImmExprForLoweredAsm: input.lowerImmExprForLoweredAsm,
   };

@@ -14,7 +14,7 @@ import type {
   SymbolEntry,
 } from '../formats/types.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { FunctionLoweringContext, FunctionLoweringSharedContext } from './functionLowering.js';
+import type { FunctionLoweringSharedContext } from './functionLowering.js';
 import type {
   PendingSymbol,
   SectionKind,
@@ -108,8 +108,6 @@ export type Context = FunctionLoweringSharedContext & {
     env: CompileEnv,
     diagnostics: Diagnostic[],
   ) => number | undefined;
-  /** Lowers one function body using the shared context. */
-  lowerFunctionDecl: (ctx: FunctionLoweringContext) => void;
   /** Records one lowered asm item for tracing; `span` optional for synthetic items. */
   recordLoweredAsmItem: (item: LoweredAsmItem, span?: SourceSpan) => void;
   /** Lowers an imm AST node to the trace IR. */

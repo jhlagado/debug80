@@ -6,7 +6,6 @@
 
 import type {
   FunctionLoweringComponentContexts,
-  FunctionLoweringContext,
   FunctionLoweringSharedContext,
 } from './functionLowering.js';
 
@@ -105,12 +104,4 @@ export function splitFunctionLoweringSharedContext(
       reg16: shared.reg16,
     },
   };
-}
-
-export function splitFunctionLoweringContext(
-  ctx: FunctionLoweringContext,
-): FunctionLoweringComponentContexts {
-  const { item: _item, ...shared } = ctx;
-  void _item;
-  return splitFunctionLoweringSharedContext(shared);
 }
