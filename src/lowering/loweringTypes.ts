@@ -16,7 +16,7 @@ export type PendingSymbol = {
   file?: string;
   /** 1-based source line when known. */
   line?: number;
-  /** Local vs global visibility when applicable. */
+  /** Local vs global source scope when applicable. */
   scope?: 'global' | 'local';
   /** Byte size for data when known. */
   size?: number;

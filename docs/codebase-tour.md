@@ -132,7 +132,7 @@ src/
 │   ├── emitPhase1Helpers.ts   # Phase-1 helper construction
 │   ├── emitProgramContext.ts  # ProgramLoweringContext wiring
 │   ├── emitState.ts           # Mutable emission state
-│   ├── emitVisibility.ts      # Symbol visibility tracking
+│   ├── opCandidateRegistry.ts # Op candidate lookup
 │   ├── emitFinalization.ts    # Phase 4: fixup resolution + placement
 │   ├── emitFinalizationSetup.ts # Finalization env setup
 │   │
@@ -226,7 +226,7 @@ Compiling an AZM source file happens in a clearly phased pipeline. Before lookin
 ┌─────────────────┐
 │   Semantics     │  Build CompileEnv, validate accepted instructions/steps
 └────────┬────────┘
-         │  CompileEnv (equates, enums, types, visibility)
+         │  CompileEnv (equates, enums, types, ASM equ expressions)
          ▼
 ┌──────────────────────────────────────────────────────────┐
 │  Lowering (lowering/)                                    │
@@ -331,11 +331,11 @@ Contains `resolveIncludeCandidates()` for textual includes. AZM source organizat
 Expands textual `.include` / `include` directives before parsing and preserves
 per-line source provenance for diagnostics and register-care comments.
 
-### Compile-Time Visibility
+### Compile-Time Scope
 
 Textual includes are parsed as part of the including source unit. Constants,
 enums, types, unions, ops, and labels therefore use ordinary source-order and
-symbol-table rules instead of a source import/export visibility graph.
+symbol-table rules instead of a source import/export graph.
 
 ---
 
@@ -531,10 +531,7 @@ interface CompileEnv {
   equates: Map<string, number>; // All assembler equate values, keyed by name
   enums: Map<string, number>; // All enum member values, keyed by "Enum.member"
   types: Map<string, TypeDeclNode | UnionDeclNode>; // Named types
-  // Retained only where old visibility scaffolding has not been deleted:
-  visibleConsts?: Map<string, number>;
-  visibleEnums?: Map<string, number>;
-  visibleTypes?: Map<string, TypeDeclNode | UnionDeclNode>;
+  asmEquExprs?: Map<string, { expr: ImmExprNode; currentLocation?: number }>;
 }
 ```
 
@@ -603,9 +600,9 @@ const finalized = runEmitPlacementAndArtifactPhase(
 
 - **`emission`:** merged and per-placement byte maps, listing `codeSourceSegments`, and the lowered-asm stream buffers.
 - **`symbols`:** symbol tables, `PendingSymbol` queues, `taken` names, and `fixups` / `rel8Fixups` pending relocation entries.
-- **`ops`:** retained op maps, declared `op`/`bin` name sets, and visibility resolver closures.
+- **`ops`:** retained op maps, declared `op`/`bin` name sets, and op candidate resolver closures.
 - **`config`:** `primaryFile` and `includeDirs`.
-- **`storage`:** alias maps, raw-address symbols, and placement `baseExprs` used by retained assembler paths.
+- **`placement`:** alias maps and placement `baseExprs` used by retained assembler paths.
 
 Phase 1 helpers still create per-phase offset refs (`codeOffsetRef`, and similar) inside `createEmitStateHelpers`; those live alongside the workspace, not inside it.
 
