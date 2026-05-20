@@ -40,7 +40,6 @@ type OpExpansionOrchestrationContext = LoweringDiagnosticsWithSeverityCapability
   HiddenLabelCapability &
   AsmRangeLoweringCapability &
   FlowSyncCapability & {
-  hasStackSlots: boolean;
   opExpansionStack: OpExpansionStackEntry[];
 };
 

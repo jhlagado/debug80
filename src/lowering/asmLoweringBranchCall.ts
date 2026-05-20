@@ -30,10 +30,6 @@ export type BranchCallLoweringContext = {
     span: AsmInstructionNode['span'];
     mnemonic?: string;
   }) => void;
-  emitSyntheticEpilogue: boolean;
-  epilogueLabel: string;
-  emitJumpTo: (label: string, span: AsmInstructionNode['span']) => void;
-  emitJumpCondTo: (opcode: number, label: string, span: AsmInstructionNode['span']) => void;
   syncToFlow: () => void;
   flowRef: { current: { reachable: boolean } };
 };
@@ -180,11 +176,7 @@ export function tryLowerBranchCallInstruction(
   if (head === 'ret') {
     if (asmItem.operands.length === 0) {
       ctx.diagIfRetStackImbalanced(asmItem.span);
-      if (ctx.emitSyntheticEpilogue) {
-        ctx.emitJumpTo(ctx.epilogueLabel, asmItem.span);
-      } else {
-        ctx.emitInstr('ret', [], asmItem.span);
-      }
+      ctx.emitInstr('ret', [], asmItem.span);
       ctx.flowRef.current.reachable = false;
       ctx.syncToFlow();
       return true;
@@ -196,11 +188,7 @@ export function tryLowerBranchCallInstruction(
         return true;
       }
       ctx.diagIfRetStackImbalanced(asmItem.span);
-      if (ctx.emitSyntheticEpilogue) {
-        ctx.emitJumpCondTo(op, ctx.epilogueLabel, asmItem.span);
-      } else {
-        ctx.emitInstr('ret', [asmItem.operands[0]!], asmItem.span);
-      }
+      ctx.emitInstr('ret', [asmItem.operands[0]!], asmItem.span);
       ctx.syncToFlow();
       return true;
     }
@@ -208,13 +196,6 @@ export function tryLowerBranchCallInstruction(
 
   if ((head === 'retn' || head === 'reti') && asmItem.operands.length === 0) {
     ctx.diagIfRetStackImbalanced(asmItem.span, head);
-    if (ctx.emitSyntheticEpilogue) {
-      ctx.diagAt(
-        ctx.diagnostics,
-        asmItem.span,
-        `${head} is not supported in functions that require cleanup; use ret/ret cc so cleanup epilogue can run.`,
-      );
-    }
     ctx.emitInstr(head, [], asmItem.span);
     ctx.flowRef.current.reachable = false;
     ctx.syncToFlow();

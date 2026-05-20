@@ -35,7 +35,6 @@ describe('#510 op expansion orchestration helpers', () => {
         name.toLowerCase() === opDecl.name.toLowerCase() ? [opDecl] : undefined,
       diagnostics,
       env: {} as never,
-      hasStackSlots: false,
       opExpansionStack: [],
       diagAt: () => {},
       diagAtWithId: (list, sourceSpan, id, message) => {

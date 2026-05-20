@@ -46,14 +46,6 @@ export interface AssemblerInstructionSetup {
 }
 
 export interface FunctionFramePhase {
-  /** True when the frame allocates stack slots. */
-  readonly hasStackSlots: boolean;
-  /** Whether a synthetic epilogue must be emitted at exits. */
-  readonly emitSyntheticEpilogue: boolean;
-  /** Label name for the shared epilogue target. */
-  readonly epilogueLabel: string;
-  /** Callee-saved registers that must be preserved across the body. */
-  readonly preserveSet: ReadonlyArray<string>;
   /** SP tracking summary: `invalid` when analysis cannot trust SP. */
   readonly trackedSp: { valid: boolean; delta: number; invalid: boolean };
   /** Nested op-expansion frames for visible op diagnostics. */
@@ -82,10 +74,6 @@ export interface FunctionFramePhase {
   readonly newHiddenLabel: ReturnType<typeof createFunctionBodySetupHelpers>['newHiddenLabel'];
   /** Defines a code label at the current offset. */
   readonly defineCodeLabel: ReturnType<typeof createFunctionBodySetupHelpers>['defineCodeLabel'];
-  /** Unconditional jump emitter. */
-  readonly emitJumpTo: ReturnType<typeof createFunctionBodySetupHelpers>['emitJumpTo'];
-  /** Conditional jump emitter. */
-  readonly emitJumpCondTo: ReturnType<typeof createFunctionBodySetupHelpers>['emitJumpCondTo'];
   /** Virtual 16-bit register move (lowering helper). */
   readonly emitVirtualReg16Transfer: ReturnType<
     typeof createFunctionBodySetupHelpers
@@ -143,10 +131,6 @@ export function prepareAssemblerInstructionSetupPhase(
 function buildFunctionFramePhase(
   setup: AssemblerInstructionSetup,
   frameInit: {
-    hasStackSlots: boolean;
-    emitSyntheticEpilogue: boolean;
-    epilogueLabel: string;
-    preserveSet: readonly string[];
     trackedSp: { delta: number; valid: boolean; invalid: boolean };
   },
 ): FunctionFramePhase {
@@ -155,10 +139,8 @@ function buildFunctionFramePhase(
       diagnostics,
       diagAt,
       diagAtWithId,
-      conditionNameFromOpcode,
       formatAsmOperandForOpDiag,
       generatedLabelCounterRef,
-      emitAbs16Fixup,
       taken,
     },
     pending,
@@ -168,7 +150,7 @@ function buildFunctionFramePhase(
     getCurrentCodeSegmentTag,
     setCurrentCodeSegmentTag,
   } = setup;
-  const { hasStackSlots, emitSyntheticEpilogue, epilogueLabel, preserveSet, trackedSp } = frameInit;
+  const { trackedSp } = frameInit;
 
   let flow: FlowState = {
     reachable: true,
@@ -190,8 +172,6 @@ function buildFunctionFramePhase(
     syncToFlow: syncToFlowBase,
     newHiddenLabel,
     defineCodeLabel,
-    emitJumpTo,
-    emitJumpCondTo,
     emitVirtualReg16Transfer,
   } = createFunctionBodySetupHelpers({
     diagnostics,
@@ -203,8 +183,6 @@ function buildFunctionFramePhase(
     traceLabel,
     pending,
     getCodeOffset,
-    emitAbs16Fixup,
-    conditionNameFromOpcode,
     emitInstr,
     generatedLabelCounterRef,
     formatAsmOperandForOpDiag,
@@ -217,10 +195,6 @@ function buildFunctionFramePhase(
     syncToFlowBase(flow, trackedSp);
   };
   return {
-    hasStackSlots,
-    emitSyntheticEpilogue,
-    epilogueLabel,
-    preserveSet,
     trackedSp,
     opExpansionStack,
     getFlow: () => flow,
@@ -235,8 +209,6 @@ function buildFunctionFramePhase(
     withCodeSourceTag,
     newHiddenLabel,
     defineCodeLabel,
-    emitJumpTo,
-    emitJumpCondTo,
     emitVirtualReg16Transfer,
   };
 }
@@ -251,10 +223,6 @@ export function createNativeAssemblerFramePhase(
   localAliasTargets.clear();
   setup.bindSpTracking(undefined);
   return buildFunctionFramePhase(setup, {
-    hasStackSlots: false,
-    emitSyntheticEpilogue: false,
-    epilogueLabel: '__azm_native_unused_epilogue',
-    preserveSet: [],
     trackedSp: { delta: 0, valid: true, invalid: false },
   });
 }
@@ -297,7 +265,6 @@ export function createAssemblerInstructionEmitters(
     resolveScalarTypeForLd: fp.types.resolveScalarTypeForLd,
     resolveEa: fp.materialization.resolveEa,
     diagIfRetStackImbalanced: (span, mnemonic) => {
-      if (frame.emitSyntheticEpilogue) return;
       if (frame.trackedSp.valid && frame.trackedSp.delta !== 0) {
         fp.diagnostics.diagAt(
           diagnostics,
@@ -306,54 +273,12 @@ export function createAssemblerInstructionEmitters(
         );
         return;
       }
-      if (!frame.trackedSp.valid && frame.trackedSp.invalid && frame.hasStackSlots) {
-        fp.diagnostics.diagAt(
-          diagnostics,
-          span,
-          `${mnemonic ?? 'ret'} reached after untracked SP mutation; cannot verify function stack balance.`,
-        );
-        return;
-      }
-      if (!frame.trackedSp.valid && frame.hasStackSlots) {
-        fp.diagnostics.diagAt(
-          diagnostics,
-          span,
-          `${mnemonic ?? 'ret'} reached with unknown stack depth; cannot verify function stack balance.`,
-        );
-      }
+      return;
     },
     diagIfCallStackUnverifiable: (options) => {
-      const span = options.span;
-      const mnemonic = options.mnemonic ?? 'call';
-      if (frame.hasStackSlots && frame.trackedSp.valid && frame.trackedSp.delta > 0) {
-        fp.diagnostics.diagAt(
-          diagnostics,
-          span,
-          `${mnemonic} reached with positive tracked stack delta (${frame.trackedSp.delta}); cannot verify callee stack contract.`,
-        );
-        return;
-      }
-      if (frame.hasStackSlots && !frame.trackedSp.valid && frame.trackedSp.invalid) {
-        fp.diagnostics.diagAt(
-          diagnostics,
-          span,
-          `${mnemonic} reached after untracked SP mutation; cannot verify callee stack contract.`,
-        );
-        return;
-      }
-      if (frame.hasStackSlots && !frame.trackedSp.valid) {
-        fp.diagnostics.diagAt(
-          diagnostics,
-          span,
-          `${mnemonic} reached with unknown stack depth; cannot verify callee stack contract.`,
-        );
-      }
+      void options;
     },
     emitVirtualReg16Transfer: frame.emitVirtualReg16Transfer,
-    emitSyntheticEpilogue: frame.emitSyntheticEpilogue,
-    epilogueLabel: frame.epilogueLabel,
-    emitJumpTo: frame.emitJumpTo,
-    emitJumpCondTo: frame.emitJumpCondTo,
     syncToFlow: frame.syncToFlow,
     flowRef: frame.flowRef,
   });
@@ -370,20 +295,6 @@ export function createAssemblerInstructionEmitters(
     setCurrentCodeSegmentTag,
     appendInvalidOpExpansionDiagnostic: frame.appendInvalidOpExpansionDiagnostic,
     enforceEaRuntimeAtomBudget: fp.materialization.enforceEaRuntimeAtomBudget,
-    hasStackSlots: frame.hasStackSlots,
-    emitSyntheticEpilogue: frame.emitSyntheticEpilogue,
-    getTrackedSpDelta: () => frame.trackedSp.delta,
-    setTrackedSpDelta: (value) => {
-      frame.trackedSp.delta = value;
-    },
-    getTrackedSpValid: () => frame.trackedSp.valid,
-    setTrackedSpValid: (value) => {
-      frame.trackedSp.valid = value;
-    },
-    getTrackedSpInvalid: () => frame.trackedSp.invalid,
-    setTrackedSpInvalid: (value) => {
-      frame.trackedSp.invalid = value;
-    },
     materialization: callMaterialization,
     diagAt: fp.diagnostics.diagAt,
     diagAtWithSeverityAndId: fp.diagnostics.diagAtWithSeverityAndId,
