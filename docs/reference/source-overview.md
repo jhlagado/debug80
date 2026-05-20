@@ -68,7 +68,7 @@ src/
   semantics/
     env.ts                  Compile-time environment construction
     layout.ts               Size and offset computation
-    instructionAcceptance.ts Instruction acceptance checks
+    typeQueries.ts          Type and layout query helpers
 
   lowering/
     asmDirectiveLowering.ts ASM80/AZM directive lowering
