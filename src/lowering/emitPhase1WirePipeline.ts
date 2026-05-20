@@ -58,7 +58,7 @@ export type EmitPhase1WireResult = {
   traceLabel: ReturnType<typeof createEmitStateHelpers>['traceLabel'];
   traceComment: ReturnType<typeof createEmitStateHelpers>['traceComment'];
   advanceAlign: ReturnType<typeof createEmitStateHelpers>['advanceAlign'];
-  activeSectionRef: ReturnType<typeof createEmitStateHelpers>['activeSectionRef'];
+  activePlacementRef: ReturnType<typeof createEmitStateHelpers>['activePlacementRef'];
   codeOffsetRef: ReturnType<typeof createEmitStateHelpers>['codeOffsetRef'];
   dataOffsetRef: ReturnType<typeof createEmitStateHelpers>['dataOffsetRef'];
   currentCodeSegmentTagRef: ReturnType<typeof createEmitStateHelpers>['currentCodeSegmentTagRef'];
@@ -123,7 +123,7 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
   };
 
   const {
-    activeSectionRef,
+    activePlacementRef,
     codeOffsetRef,
     dataOffsetRef,
     currentCodeSegmentTagRef,
@@ -299,7 +299,7 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     traceLabel,
     traceComment,
     advanceAlign,
-    activeSectionRef,
+    activePlacementRef,
     codeOffsetRef,
     dataOffsetRef,
     currentCodeSegmentTagRef,

@@ -1,6 +1,6 @@
 import type { AlignDirectiveNode, EnumDeclNode } from '../frontend/ast.js';
 import type { LoweringContext, LoweringResult } from './programLowering.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import { createProgramLoweringDeclarationHelpers } from './programLoweringDeclarations.js';
 import { tryLowerAsmDirective } from './asmDirectiveLowering.js';
 import { lowerAsmSourceInstruction } from './asmSourceInstructionLowering.js';
@@ -12,7 +12,7 @@ import {
   isAsmRawDataDirective,
 } from './asmDirectiveTraversal.js';
 
-function sectionForAsmOrg(items: readonly unknown[], index: number): SectionKind {
+function placementForAsmOrg(items: readonly unknown[], index: number): PlacementKind {
   for (let lookahead = index + 1; lookahead < items.length; lookahead++) {
     const next = items[lookahead] as { kind?: string } | undefined;
     if (!next?.kind) continue;
@@ -75,7 +75,7 @@ function lowerItem(
       return;
     }
     const current =
-      ctx.activeSectionRef.current === 'code'
+      ctx.activePlacementRef.current === 'code'
         ? ctx.codeOffsetRef.current
         : ctx.dataOffsetRef.current;
     const aligned = ctx.alignTo(current, value);
@@ -104,7 +104,7 @@ export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
   const { lowerAsmRawDataDirective } = createProgramLoweringDeclarationHelpers(ctx);
 
   for (const sourceFile of ctx.program.files) {
-    ctx.activeSectionRef.current = 'code';
+    ctx.activePlacementRef.current = 'code';
     let asmEndReached = false;
     for (let index = 0; index < sourceFile.items.length; index++) {
       const item = sourceFile.items[index]!;
@@ -114,7 +114,7 @@ export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
       }
       if (asmEndReached && !isAsmBinFromDirective(item) && !isAsmBinToDirective(item)) continue;
       if (isAsmOrgDirective(item)) {
-        ctx.activeSectionRef.current = sectionForAsmOrg(sourceFile.items, index);
+        ctx.activePlacementRef.current = placementForAsmOrg(sourceFile.items, index);
       }
       lowerItem(ctx, lowerAsmRawDataDirective, item);
     }

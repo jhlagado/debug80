@@ -10,7 +10,7 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import type { AddressRange, EmittedSourceSegment, SymbolEntry } from '../formats/types.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { AssemblerLoweringSharedContext } from './assemblerLoweringContext.js';
-import type { PendingSymbol, SectionKind } from './loweringTypes.js';
+import type { PendingSymbol, PlacementKind } from './loweringTypes.js';
 import type { LoweredAsmItem, LoweredImmExpr } from './loweredAsmTypes.js';
 import type { PrescanResult } from './prescanTypes.js';
 import type { AggregateType } from '../semantics/typeQueries.js';
@@ -18,7 +18,7 @@ import { preScanProgramDeclarations as runProgramPrescan } from './programPresca
 import { lowerProgramDeclarations as runProgramLoweringTraversal } from './programLoweringTraversal.js';
 
 // Program lowering owns source-wide declaration traversal and the final
-// emission/fixup passes after all symbols and section bases are known.
+// emission/fixup passes after all symbols and placement bases are known.
 // --- Phase 0: shared context and products ---
 export type Context = AssemblerLoweringSharedContext & {
   /** Full program AST being lowered. */
@@ -33,18 +33,18 @@ export type Context = AssemblerLoweringSharedContext & {
   absoluteSymbols: SymbolEntry[];
   /** Running symbol table. */
   symbols: SymbolEntry[];
-  /** Data section byte map. */
+  /** Data-placement byte map. */
   dataBytes: Map<number, number>;
-  /** Code section byte map. */
+  /** Code-placement byte map. */
   codeBytes: Map<number, number>;
-  /** Currently selected section for emission. */
-  activeSectionRef: { current: SectionKind };
+  /** Currently selected code/data placement for emission. */
+  activePlacementRef: { current: PlacementKind };
   /** Next code allocation offset (mutable cursor). */
   codeOffsetRef: { current: number };
   /** Next data allocation offset. */
   dataOffsetRef: { current: number };
-  /** Optional base imm per section. */
-  baseExprs: Partial<Record<SectionKind, ImmExprNode>>;
+  /** Optional base imm per placement. */
+  baseExprs: Partial<Record<PlacementKind, ImmExprNode>>;
   /** Advances alignment state for `align` directives. */
   advanceAlign: (a: number) => void;
   /** Rounds `n` up to `alignment` bytes. */
@@ -87,9 +87,9 @@ export type LoweringContext = Context & {
 
 // --- Phase 2 product: lowered bytes and symbols ---
 export type LoweringResult = {
-  /** Final code section size cursor. */
+  /** Final code-placement size cursor. */
   codeOffset: number;
-  /** Final data section size cursor. */
+  /** Final data-placement size cursor. */
   dataOffset: number;
   /** Still-unresolved symbols after lowering. */
   pending: Context['pending'];
@@ -104,7 +104,7 @@ export type LoweringResult = {
 };
 
 /**
- * Phase 3 — inputs for section placement, fixup resolution, and merged byte emission
+ * Phase 3 — inputs for placement, fixup resolution, and merged byte emission
  * (`finalizeProgramEmission`).
  */
 export type ProgramEmissionFinalizeContext = {
@@ -115,7 +115,7 @@ export type ProgramEmissionFinalizeContext = {
   /** Primary source path. */
   primaryFile: string;
   /** Section base imm expressions. */
-  baseExprs: Partial<Record<SectionKind, ImmExprNode>>;
+  baseExprs: Partial<Record<PlacementKind, ImmExprNode>>;
   /** Imm evaluator; `undefined` when expression is not const. */
   evalImmExpr: (
     expr: ImmExprNode,

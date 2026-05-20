@@ -2,11 +2,11 @@ import type {
   AddressRange,
   EmittedSourceSegment,
 } from '../formats/types.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import type { ProgramEmissionFinalizeContext } from './programLowering.js';
 import { createFixupBaseResolver } from './fixupBaseResolution.js';
 
-export function computeSectionBases(
+export function computePlacementBases(
   ctx: Pick<ProgramEmissionFinalizeContext, 'baseExprs' | 'evalImmExpr' | 'env' | 'diagnostics' | 'diag' | 'primaryFile' | 'alignTo' | 'codeOffset' | 'dataOffset'>,
   defaultCodeBase?: number,
   options?: { quiet?: boolean },
@@ -18,16 +18,16 @@ export function computeSectionBases(
 } {
   const diagnostics = options?.quiet ? [] : ctx.diagnostics;
   const diagFn = options?.quiet ? () => {} : ctx.diag;
-  const evalBase = (kind: SectionKind): number | undefined => {
+  const evalBase = (kind: PlacementKind): number | undefined => {
     const at = ctx.baseExprs[kind];
     if (!at) return undefined;
     const value = ctx.evalImmExpr(at, ctx.env, diagnostics);
     if (value === undefined) {
-      diagFn(diagnostics, at.span.file, `Failed to evaluate section "${kind}" base address.`);
+      diagFn(diagnostics, at.span.file, `Failed to evaluate placement "${kind}" base address.`);
       return undefined;
     }
     if (value < 0 || value > 0xffff) {
-      diagFn(diagnostics, at.span.file, `Section "${kind}" base address out of range (0..65535).`);
+      diagFn(diagnostics, at.span.file, `Placement "${kind}" base address out of range (0..65535).`);
       return undefined;
     }
     return value;
@@ -60,15 +60,15 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   writtenRange: AddressRange;
   sourceSegments: EmittedSourceSegment[];
 } {
-  const { codeBase, dataBase, codeOk, dataOk } = computeSectionBases(
+  const { codeBase, dataBase, codeOk, dataOk } = computePlacementBases(
     ctx,
     ctx.defaultCodeBase,
   );
 
   const addrByNameLower = new Map<string, number>();
   for (const ps of ctx.pending) {
-    const base = ps.section === 'code' ? codeBase : dataBase;
-    const ok = ps.section === 'code' ? codeOk : dataOk;
+    const base = ps.placement === 'code' ? codeBase : dataBase;
+    const ok = ps.placement === 'code' ? codeOk : dataOk;
     if (!ok) continue;
     addrByNameLower.set(ps.name.toLowerCase(), base + ps.offset);
   }
@@ -140,8 +140,8 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   }
 
   for (const ps of ctx.pending) {
-    const base = ps.section === 'code' ? codeBase : dataBase;
-    const ok = ps.section === 'code' ? codeOk : dataOk;
+    const base = ps.placement === 'code' ? codeBase : dataBase;
+    const ok = ps.placement === 'code' ? codeOk : dataOk;
     if (!ok) continue;
     ctx.symbols.push({
       kind: ps.kind,

@@ -1,5 +1,5 @@
 import type { SourceSpan, ImmExprNode, EaExprNode, EaIndexNode, AsmOperandNode, TypeExprNode } from '../frontend/ast.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import type {
   LoweredAsmItem,
   LoweredAsmStream,
@@ -17,7 +17,7 @@ type PendingUserComments = {
 };
 
 export type LoweredAsmStreamRecordingContext = {
-  activeSectionRef: { current: SectionKind };
+  activePlacementRef: { current: PlacementKind };
   loweredAsmBlocksByKey: Map<string, LoweredAsmStreamBlock>;
   loweredAsmStream: LoweredAsmStream;
   sourceLineComments?: Map<string, Map<number, string>>;
@@ -30,7 +30,7 @@ export type LoweredAsmStreamRecordingContext = {
 
 export function createLoweredAsmStreamRecordingHelpers(ctx: LoweredAsmStreamRecordingContext) {
   const {
-    activeSectionRef,
+    activePlacementRef,
     loweredAsmBlocksByKey,
     loweredAsmStream,
     sourceLineComments,
@@ -42,13 +42,13 @@ export function createLoweredAsmStreamRecordingHelpers(ctx: LoweredAsmStreamReco
   } = ctx;
 
   const getLoweredAsmBlock = (): LoweredAsmStreamBlock => {
-    const section = activeSectionRef.current;
-    const key = `base:${section}`;
+    const placement = activePlacementRef.current;
+    const key = `base:${placement}`;
     let block = loweredAsmBlocksByKey.get(key);
     if (!block) {
       block = {
         kind: 'base',
-        section,
+        placement,
         items: [],
       };
       loweredAsmBlocksByKey.set(key, block);

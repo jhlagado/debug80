@@ -5,7 +5,7 @@ import type {
   AsmOperandNode,
   SourceSpan,
 } from '../frontend/ast.js';
-import type { SourceSegmentTag } from './loweringTypes.js';
+import type { PendingSymbol, SourceSegmentTag } from './loweringTypes.js';
 
 export type FlowState = {
   reachable: boolean;
@@ -34,16 +34,7 @@ type AssemblerFlowSetupContext = {
   setCurrentCodeSegmentTag: (tag: SourceSegmentTag | undefined) => void;
   taken: Set<string>;
   traceLabel: (offset: number, name: string, span?: SourceSpan) => void;
-  pending: Array<{
-    kind: 'label' | 'data';
-    name: string;
-    section: 'code' | 'data';
-    offset: number;
-    file?: string;
-    line?: number;
-    scope?: 'global' | 'local';
-    size?: number;
-  }>;
+  pending: PendingSymbol[];
   getCodeOffset: () => number;
   emitInstr: (head: string, operands: AsmOperandNode[], span: SourceSpan) => boolean;
   generatedLabelCounterRef: { current: number };
@@ -173,7 +164,7 @@ export function createAssemblerFlowSetupHelpers({
     pending.push({
       kind: 'label',
       name,
-      section: 'code',
+      placement: 'code',
       offset: getCodeOffset(),
       file: span.file,
       line: span.start.line,

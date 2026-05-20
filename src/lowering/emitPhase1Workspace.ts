@@ -11,9 +11,9 @@ import { createEmitVisibilityHelpers } from './emitVisibility.js';
 export type EmitPhase1EmissionState = {
   /** Merged map of all emitted bytes across sections (code/data). */
   bytes: Map<number, number>;
-  /** Code section bytes only (before merge into `bytes` for some paths). */
+  /** Code-placement bytes only (before merge into `bytes` for some paths). */
   codeBytes: Map<number, number>;
-  /** Data section bytes. */
+  /** Data-placement bytes. */
   dataBytes: Map<number, number>;
   /** Source ranges for emitted code bytes (listing/debug). */
   codeSourceSegments: EmittedSourceSegment[];
@@ -75,7 +75,7 @@ export type EmitPhase1EmitConfig = {
 
 /** Mutable placement maps for the current lowering context. */
 export type EmitPhase1PlacementState = {
-  /** Optional base imm expressions per section for placement. */
+  /** Optional base imm expressions per placement. */
   baseExprs: Partial<Record<'code' | 'data', ImmExprNode>>;
 };
 

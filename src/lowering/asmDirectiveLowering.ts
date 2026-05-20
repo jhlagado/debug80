@@ -1,8 +1,8 @@
 import { evalImmExpr as evalImmExprWithEnv } from '../semantics/env.js';
 import type { LoweringContext } from './programLowering.js';
 import {
-  activeSectionAddress,
-  activeSectionOffset,
+  activePlacementAddress,
+  activePlacementOffset,
   asmDirectiveExpr,
   isAsmAlignDirective,
   isAsmBinFromDirective,
@@ -25,7 +25,7 @@ function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
   }
   ctx.taken.add(lower);
   const expr = asmDirectiveExpr(item);
-  const currentLocation = activeSectionAddress(ctx);
+  const currentLocation = activePlacementAddress(ctx);
   if (expr) {
     const record =
       currentLocation === undefined ? { expr } : { expr, currentLocation };
@@ -75,17 +75,17 @@ function lowerAsmOrgDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     ctx.diag(ctx.diagnostics, item.span.file, `org address out of range (0..65535).`);
     return;
   }
-  const activeSection = ctx.activeSectionRef.current === 'data' ? 'data' : 'code';
-  const offsetRef = activeSection === 'data' ? ctx.dataOffsetRef : ctx.codeOffsetRef;
-  if (offsetRef.current === 0 && ctx.baseExprs[activeSection] === undefined) {
-    ctx.baseExprs[activeSection] = expr;
+  const activePlacement = ctx.activePlacementRef.current === 'data' ? 'data' : 'code';
+  const offsetRef = activePlacement === 'data' ? ctx.dataOffsetRef : ctx.codeOffsetRef;
+  if (offsetRef.current === 0 && ctx.baseExprs[activePlacement] === undefined) {
+    ctx.baseExprs[activePlacement] = expr;
     return;
   }
-  const base = ctx.baseExprs[activeSection]
-    ? ctx.evalImmExpr(ctx.baseExprs[activeSection], ctx.env, ctx.diagnostics)
+  const base = ctx.baseExprs[activePlacement]
+    ? ctx.evalImmExpr(ctx.baseExprs[activePlacement], ctx.env, ctx.diagnostics)
     : 0;
   if (base === undefined) {
-    ctx.diag(ctx.diagnostics, item.span.file, `Failed to evaluate current ${activeSection} base address.`);
+    ctx.diag(ctx.diagnostics, item.span.file, `Failed to evaluate current ${activePlacement} base address.`);
     return;
   }
   const offset = target - base;
@@ -93,12 +93,12 @@ function lowerAsmOrgDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     ctx.diag(
       ctx.diagnostics,
       item.span.file,
-      `org address is outside the current ${activeSection} placement range.`,
+      `org address is outside the current ${activePlacement} placement range.`,
     );
     return;
   }
   if (offset < offsetRef.current) {
-    ctx.diag(ctx.diagnostics, item.span.file, `org address overlaps earlier emitted ${activeSection}.`);
+    ctx.diag(ctx.diagnostics, item.span.file, `org address overlaps earlier emitted ${activePlacement}.`);
     return;
   }
   const gap = offset - offsetRef.current;
@@ -123,7 +123,7 @@ function lowerAsmAlignDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode
     ctx.diag(ctx.diagnostics, item.span.file, `align value must be > 0.`);
     return;
   }
-  if (ctx.activeSectionRef.current === 'data') {
+  if (ctx.activePlacementRef.current === 'data') {
     const base = ctx.baseExprs.data
       ? ctx.evalImmExpr(ctx.baseExprs.data, ctx.env, ctx.diagnostics)
       : 0;
@@ -182,8 +182,8 @@ function lowerAsmAlignDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode
 
 function lowerAsmLabel(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
   if (!item.name) return;
-  const offset = activeSectionOffset(ctx);
-  const address = activeSectionAddress(ctx);
+  const offset = activePlacementOffset(ctx);
+  const address = activePlacementAddress(ctx);
   const lower = item.name.toLowerCase();
   if (ctx.taken.has(lower)) {
     ctx.diag(ctx.diagnostics, item.span.file, `Duplicate symbol name "${item.name}".`);
@@ -194,7 +194,7 @@ function lowerAsmLabel(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
   ctx.pending.push({
     kind: 'label',
     name: item.name,
-    section: ctx.activeSectionRef.current,
+    placement: ctx.activePlacementRef.current,
     offset,
     file: item.span.file,
     line: item.span.start.line,

@@ -24,7 +24,7 @@ Lowering turns parsed source and semantic state into:
 | -------------------- | --------------------------------------------------- |
 | `emit.ts`            | Top-level orchestration for lowering phases.        |
 | `emitPipeline.ts`    | Defines prescan, lowering, and finalization phases. |
-| `programLowering.ts` | Program traversal, symbol setup, section offsets.   |
+| `programLowering.ts` | Program traversal, symbol setup, placement offsets. |
 
 ## Subsystem groups (where to look)
 
