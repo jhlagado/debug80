@@ -9,7 +9,6 @@ import {
   parseBinDecl,
   parseConstDecl,
   parseHexDecl,
-  parseImportDecl,
 } from './parseTopLevelSimple.js';
 import type { LogicalLine } from './parseLogicalLines.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
@@ -44,34 +43,6 @@ export function createZaxModuleItemTable(ctx: CreateZaxModuleItemTableContext) {
     parseOpParamsFromText,
     parseParamsFromText,
   } = ctx;
-
-  function parseImportItem({
-    index,
-    lineNo,
-    filePath,
-    text,
-    rest,
-    stmtSpan,
-    ctx,
-  }: ParseModuleItemDispatchArgs): ParseItemResult {
-    const importTail = consumeTopKeyword(rest, 'import') ?? '';
-    if (ctx.scope === 'module') {
-      const importNode = parseImportDecl(importTail, {
-        diagnostics,
-        modulePath: filePath,
-        lineNo,
-        text,
-        span: stmtSpan,
-        isReservedTopLevelName,
-      });
-      return { nextIndex: index + 1, ...(importNode ? { node: importNode } : {}) };
-    }
-    diag(diagnostics, filePath, `import is only permitted at module scope`, {
-      line: lineNo,
-      column: 1,
-    });
-    return { nextIndex: index + 1 };
-  }
 
   function parseTypeItem({
     index,
@@ -299,7 +270,6 @@ export function createZaxModuleItemTable(ctx: CreateZaxModuleItemTableContext) {
   }
 
   return {
-    import: parseImportItem,
     type: parseTypeItem,
     union: parseUnionItem,
     op: parseOpItem,

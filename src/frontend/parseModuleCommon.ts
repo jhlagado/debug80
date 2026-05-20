@@ -16,7 +16,6 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
   kind: string;
   expected: string;
 }> = [
-  { keyword: 'import', kind: 'import statement', expected: '"<path>.zax" or <moduleId>' },
   { keyword: 'type', kind: 'type declaration', expected: '<name> [<typeExpr>]' },
   { keyword: 'union', kind: 'union declaration', expected: '<name>' },
   { keyword: 'op', kind: 'op header', expected: '<name>(...)' },
@@ -33,7 +32,6 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
 ];
 
 export const unsupportedExportTargetKind: Readonly<Partial<Record<string, string>>> = {
-  import: 'import statements',
   type: 'type declarations',
   union: 'union declarations',
   extern: 'extern declarations',

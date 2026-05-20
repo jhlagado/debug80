@@ -1,7 +1,6 @@
 export const TOP_LEVEL_KEYWORD_LIST = [
   'const',
   'enum',
-  'import',
   'type',
   'union',
   'extern',

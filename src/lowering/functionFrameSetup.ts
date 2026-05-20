@@ -8,7 +8,6 @@ import type {
   TypeExprNode,
 } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import { resolveVisibleConst, resolveVisibleEnum } from '../zaxImportVisibility.js';
 import type { PendingSymbol, SourceSegmentTag } from './loweringTypes.js';
 import type { AggregateType, ScalarKind } from './typeResolution.js';
 
@@ -121,8 +120,9 @@ function classifyLocalInitializerName(
   localAliasTargets: Map<string, EaExprNode>,
   storageTypes: Map<string, TypeExprNode>,
 ): LocalInitializerNameStatus {
-  if (resolveVisibleConst(name, file, env) !== undefined) return 'constant';
-  if (resolveVisibleEnum(name, file, env) !== undefined) return 'constant';
+  void file;
+  if ((env.consts.get(name) ?? env.consts.get(name.toLowerCase())) !== undefined) return 'constant';
+  if (env.enums.get(name) !== undefined) return 'constant';
 
   const lower = name.toLowerCase();
   if (

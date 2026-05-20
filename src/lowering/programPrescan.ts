@@ -52,11 +52,9 @@ function preScanItem(
     addFileOp(ctx, localSourceUnitFile, key, op);
     if (op.span.file !== localSourceUnitFile) addFileOp(ctx, op.span.file, key, op);
     if (op.exported) {
-      const moduleId = (ctx.env.moduleIds?.get(localSourceUnitFile) ?? localSourceUnitFile).toLowerCase();
-      const qualified = `${moduleId}.${key}`;
-      const visible = ctx.visibleOpsByName.get(qualified);
+      const visible = ctx.visibleOpsByName.get(key);
       if (visible) visible.push(op);
-      else ctx.visibleOpsByName.set(qualified, [op]);
+      else ctx.visibleOpsByName.set(key, [op]);
     }
     return;
   }

@@ -79,7 +79,6 @@ describe('PR762 grammar-data conformance', () => {
     const samples: Record<(typeof TOP_LEVEL_KEYWORD_LIST)[number], string> = {
       const: 'const FOO = 1',
       enum: 'enum Mode A',
-      import: 'import "mod.zax"',
       type: ['type Pair', 'left: word', 'right: word', 'end'].join('\n'),
       union: ['union Value', 'w: word', 'end'].join('\n'),
       extern: ['extern', 'func ext(): HL at $1234', 'end'].join('\n'),

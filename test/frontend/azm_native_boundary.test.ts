@@ -44,16 +44,6 @@ describe('AZM native source boundary', () => {
       message: 'Typed extern declarations are not supported in AZM-native source',
     },
     {
-      name: 'ZAX import path',
-      source: ['import "lib.azm"', 'main:', '  ret', ''].join('\n'),
-      message: 'ZAX import modules are not supported in AZM-native source',
-    },
-    {
-      name: 'ZAX import module id',
-      source: ['import core', 'main:', '  ret', ''].join('\n'),
-      message: 'ZAX import modules are not supported in AZM-native source',
-    },
-    {
       name: 'ZAX export modifier',
       source: ['export const VALUE = 1', 'main:', '  ret', ''].join('\n'),
       message: 'Export declarations are not supported in AZM-native source',
@@ -78,6 +68,37 @@ describe('AZM native source boundary', () => {
         expect.objectContaining({
           severity: 'error',
           id: DiagnosticIds.AzmRemovedZaxConstruct,
+          message: expect.stringContaining(message),
+        }),
+      );
+    } finally {
+      cleanup();
+    }
+  });
+
+  it.each([
+    {
+      name: 'old import path syntax',
+      source: ['import "lib.azm"', 'main:', '  ret', ''].join('\n'),
+      message: 'Unsupported operand: "lib.azm"',
+    },
+    {
+      name: 'old import module syntax',
+      source: ['import core', 'main:', '  ret', ''].join('\n'),
+      message: 'Unsupported instruction: import',
+    },
+  ])('treats $name as ordinary unsupported native AZM syntax', async ({ source, message }) => {
+    const { entry, cleanup } = writeTempSource('azm', source);
+
+    try {
+      const res = await compile(
+        entry,
+        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
+        { formats: defaultFormatWriters },
+      );
+      expect(res.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: 'error',
           message: expect.stringContaining(message),
         }),
       );

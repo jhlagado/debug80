@@ -54,7 +54,6 @@ describe('native AZM textual includes', () => {
 
       expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       expect(res.loadedProgram?.program.files).toHaveLength(1);
-      expect(res.loadedProgram?.resolvedImportGraph.get(entry)).toEqual([]);
       const itemKinds = res.loadedProgram?.program.files[0]?.items.map((item) => item.kind);
       expect(itemKinds).toContain('ClassicRawData');
     });

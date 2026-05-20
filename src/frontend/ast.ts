@@ -112,7 +112,6 @@ export type AsmEndDirectiveNode = ClassicEndNode;
  * Top-level items permitted in a module file.
  */
 export type ModuleItemNode =
-  | ImportNode
   | ClassicItemNode
   | ConstDeclNode
   | EnumDeclNode
@@ -138,15 +137,6 @@ export type ModuleItemNode =
 export interface UnimplementedNode extends BaseNode {
   kind: 'Unimplemented';
   note: string;
-}
-
-/**
- * Import statement.
- */
-export interface ImportNode extends BaseNode {
-  kind: 'Import';
-  specifier: string;
-  form: 'moduleId' | 'path';
 }
 
 /**
