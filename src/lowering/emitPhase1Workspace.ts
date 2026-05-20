@@ -9,7 +9,7 @@ import { createOpCandidateRegistryHelpers } from './opCandidateRegistry.js';
 
 /** Byte maps, listing segments, and lowered-asm recording for phase 1. */
 export type EmitPhase1EmissionState = {
-  /** Merged map of all emitted bytes across sections (code/data). */
+  /** Merged map of all emitted bytes across code/data placement. */
   bytes: Map<number, number>;
   /** Code-placement bytes only (before merge into `bytes` for some paths). */
   codeBytes: Map<number, number>;

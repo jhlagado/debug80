@@ -198,7 +198,7 @@ export interface AsmBlockNode extends BaseNode {
 }
 
 /**
- * Items that can appear inside an `asm` block.
+ * Items that can appear inside an instruction stream.
  */
 export type AsmItemNode = AsmInstructionNode | AsmLabelNode;
 

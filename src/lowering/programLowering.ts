@@ -114,7 +114,7 @@ export type ProgramEmissionFinalizeContext = {
   diag: (diagnostics: Diagnostic[], file: string, message: string) => void;
   /** Primary source path. */
   primaryFile: string;
-  /** Section base imm expressions. */
+  /** Code/data placement base imm expressions. */
   baseExprs: Partial<Record<PlacementKind, ImmExprNode>>;
   /** Imm evaluator; `undefined` when expression is not const. */
   evalImmExpr: (

@@ -12,7 +12,7 @@ export type AsmLoweringLdHelperSlice = Omit<LdHelperContext, 'emitInstr' | 'emit
 export type AsmLoweringLdSlice = Pick<LdLoweringContext, 'resolveEa'>;
 
 /**
- * Dispatcher paths shared by assignment lowering and the non-`ld` `lowerLdWithEa` fallback.
+ * Dispatcher path shared by the non-`ld` `lowerLdWithEa` fallback.
  */
 export type AsmLoweringDispatcherSlice = {
   lowerLdWithEa: (asmItem: AsmInstructionNode) => boolean;
@@ -20,8 +20,8 @@ export type AsmLoweringDispatcherSlice = {
 
 /**
  * Narrow surface for {@link createAsmInstructionLoweringHelpers}: branch/call, LD helpers,
- * assignment, and raw-instruction fallback. Composed from helper-family contracts plus LD-helper
- * and dispatcher-only fields (no unused legacy fields).
+ * and raw-instruction fallback. Composed from helper-family contracts plus LD-helper
+ * and dispatcher-only fields.
  */
 export type AsmLoweringHost = BranchCallLoweringContext &
   AsmLoweringLdHelperSlice &
