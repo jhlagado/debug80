@@ -1,4 +1,4 @@
-import type { ImmExprNode, OffsetofPathNode, SourceSpan, TypeExprNode } from './ast.js';
+import type { ImmExprNode, OffsetPathNode, SourceSpan, TypeExprNode } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import {
@@ -324,14 +324,14 @@ export function parseImmExprFromText(
     return typeExpr;
   }
 
-  function parseOffsetofPathArg(): OffsetofPathNode | undefined {
+  function parseOffsetPathArg(): OffsetPathNode | undefined {
     const root = tokens[idx];
     if (!root || (root.kind !== 'ident' && root.kind !== 'lbrack')) return undefined;
     const base = root.kind === 'ident' ? root.text : undefined;
     if (base !== undefined) idx++;
 
-    const path: OffsetofPathNode = {
-      kind: 'OffsetofPath',
+    const path: OffsetPathNode = {
+      kind: 'OffsetPath',
       span: exprSpan,
       ...(base !== undefined ? { base } : {}),
       steps: [],
@@ -343,7 +343,7 @@ export function parseImmExprFromText(
         const fieldTok = tokens[idx];
         if (!fieldTok || fieldTok.kind !== 'ident') return undefined;
         idx++;
-        path.steps.push({ kind: 'OffsetofField', span: exprSpan, name: fieldTok.text });
+        path.steps.push({ kind: 'OffsetField', span: exprSpan, name: fieldTok.text });
         continue;
       }
       if (tokens[idx]?.kind === 'lbrack') {
@@ -352,7 +352,7 @@ export function parseImmExprFromText(
         if (!inner) return undefined;
         if (tokens[idx]?.kind !== 'rbrack') return undefined;
         idx++;
-        path.steps.push({ kind: 'OffsetofIndex', span: exprSpan, expr: inner });
+        path.steps.push({ kind: 'OffsetIndex', span: exprSpan, expr: inner });
         continue;
       }
       break;
@@ -405,11 +405,11 @@ export function parseImmExprFromText(
         if (!typeExpr) return undefined;
         if (tokens[idx]?.kind !== 'comma') return undefined;
         idx++;
-        const path = parseOffsetofPathArg();
+        const path = parseOffsetPathArg();
         if (!path) return undefined;
         if (tokens[idx]?.kind !== 'rparen') return undefined;
         idx++;
-        return { kind: 'ImmOffsetof', span: exprSpan, typeExpr, path };
+        return { kind: 'ImmOffset', span: exprSpan, typeExpr, path };
       }
       const parts = [t.text];
       idx++;

@@ -2,8 +2,8 @@ import type {
   AsmOperandNode,
   EaExprNode,
   ImmExprNode,
-  OffsetofPathNode,
-  OffsetofPathStepNode,
+  OffsetPathNode,
+  OffsetPathStepNode,
   SourceSpan,
 } from '../frontend/ast.js';
 import type {
@@ -22,13 +22,13 @@ type OpSubstitutionContext = LoweringDiagnosticsCapability &
   };
 
 export function createOpSubstitutionHelpers(ctx: OpSubstitutionContext) {
-  const substituteOffsetofPath = (
-    path: OffsetofPathNode,
+  const substituteOffsetPath = (
+    path: OffsetPathNode,
     substituteImmExpr: (expr: ImmExprNode) => ImmExprNode,
-  ): OffsetofPathNode => ({
+  ): OffsetPathNode => ({
     ...path,
-    steps: path.steps.map((step): OffsetofPathStepNode =>
-      step.kind === 'OffsetofIndex'
+    steps: path.steps.map((step): OffsetPathStepNode =>
+      step.kind === 'OffsetIndex'
         ? { ...step, expr: substituteImmExpr(step.expr) }
         : { ...step },
     ),
@@ -53,8 +53,8 @@ export function createOpSubstitutionHelpers(ctx: OpSubstitutionContext) {
       if (immBound) return immBound;
       return { ...expr };
     }
-    if (expr.kind === 'ImmOffsetof') {
-      return { ...expr, path: substituteOffsetofPath(expr.path, substituteImm) };
+    if (expr.kind === 'ImmOffset') {
+      return { ...expr, path: substituteOffsetPath(expr.path, substituteImm) };
     }
     if (expr.kind === 'ImmUnary') return { ...expr, expr: substituteImm(expr.expr) };
     if (expr.kind === 'ImmBinary') {
@@ -111,10 +111,10 @@ export function createOpSubstitutionHelpers(ctx: OpSubstitutionContext) {
       if (mapped) return { kind: 'ImmName', span: expr.span, name: mapped };
       return { ...expr };
     }
-    if (expr.kind === 'ImmOffsetof') {
+    if (expr.kind === 'ImmOffset') {
       return {
         ...expr,
-        path: substituteOffsetofPath(expr.path, (inner) =>
+        path: substituteOffsetPath(expr.path, (inner) =>
           substituteImmWithOpLabels(inner, localLabelMap),
         ),
       };

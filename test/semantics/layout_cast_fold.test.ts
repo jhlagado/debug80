@@ -78,12 +78,12 @@ describe('layoutCastFold semantics', () => {
     const env = envWithSprite();
     const evalImm = (expr: Parameters<typeof evalImmExpr>[0]) => evalImmExpr(expr, env, []);
 
-    const path: import('../../src/frontend/ast.js').OffsetofPathNode = {
-      kind: 'OffsetofPath',
+    const path: import('../../src/frontend/ast.js').OffsetPathNode = {
+      kind: 'OffsetPath',
       span,
       steps: [
-        { kind: 'OffsetofIndex', span, expr: { kind: 'ImmLiteral', span, value: 3 } },
-        { kind: 'OffsetofField', span, name: 'flags' },
+        { kind: 'OffsetIndex', span, expr: { kind: 'ImmLiteral', span, value: 3 } },
+        { kind: 'OffsetField', span, name: 'flags' },
       ],
     };
 

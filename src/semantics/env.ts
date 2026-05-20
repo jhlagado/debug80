@@ -10,7 +10,7 @@ import type {
   UnionDeclNode,
   SourceSpan,
 } from '../frontend/ast.js';
-import { offsetOfPathInTypeExpr, sizeOfTypeExpr } from './layout.js';
+import { offsetPathInTypeExpr, sizeOfTypeExpr } from './layout.js';
 import { visitDeclTree } from './declVisitor.js';
 import { diagSemanticsError } from './semanticsDiagnostics.js';
 
@@ -113,8 +113,8 @@ export function evalImmExpr(
     case 'ImmSizeof': {
       return sizeOfTypeExpr(expr.typeExpr, env, diagnostics);
     }
-    case 'ImmOffsetof': {
-      return offsetOfPathInTypeExpr(
+    case 'ImmOffset': {
+      return offsetPathInTypeExpr(
         expr.typeExpr,
         expr.path,
         env,
