@@ -3,7 +3,6 @@ import type {
   BinDeclNode,
   ConstDeclNode,
   HexDeclNode,
-  ImportNode,
   SourceSpan,
 } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
@@ -20,39 +19,6 @@ type SimpleTopLevelContext = {
   span: SourceSpan;
   isReservedTopLevelName: (name: string) => boolean;
 };
-
-export function parseImportDecl(
-  importTail: string,
-  ctx: SimpleTopLevelContext,
-): ImportNode | undefined {
-  const { diagnostics, modulePath, lineNo, text, span } = ctx;
-  const spec = importTail.trim();
-  if (spec.startsWith('"') && spec.endsWith('"') && spec.length >= 2) {
-    return {
-      kind: 'Import',
-      span,
-      specifier: spec.slice(1, -1),
-      form: 'path',
-    };
-  }
-  if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(spec)) {
-    return {
-      kind: 'Import',
-      span,
-      specifier: spec,
-      form: 'moduleId',
-    };
-  }
-  diagInvalidHeaderLine(
-    diagnostics,
-    modulePath,
-    'import statement',
-    text,
-    '"<path>.zax" or <moduleId>',
-    lineNo,
-  );
-  return undefined;
-}
 
 export function parseAlignDirectiveDecl(
   rest: string,

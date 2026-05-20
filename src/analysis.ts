@@ -1,5 +1,3 @@
-import { dirname } from 'node:path';
-
 import { hasErrors } from './compileShared.js';
 import type { Diagnostic } from './diagnosticTypes.js';
 import { DiagnosticIds } from './diagnosticTypes.js';
@@ -30,11 +28,9 @@ export function analyzeLoadedProgram(
   options: AnalyzeProgramOptions = {},
 ): AnalyzeProgramResult {
   const diagnostics: Diagnostic[] = [];
-  const { program, sourceTexts, resolvedImportGraph } = loadedProgram;
-  const hasNonImportDeclaration = program.files.some((moduleFile) =>
-    moduleFile.items.some((item) => item.kind !== 'Import'),
-  );
-  if (!hasNonImportDeclaration) {
+  const { program, sourceTexts } = loadedProgram;
+  const hasProgramItems = program.files.some((moduleFile) => moduleFile.items.length > 0);
+  if (!hasProgramItems) {
     diagnostics.push({
       id: DiagnosticIds.SemanticsError,
       severity: 'error',
@@ -62,10 +58,7 @@ export function analyzeLoadedProgram(
 
   lintCaseStyle(program, sourceTexts, options.caseStyle ?? 'off', diagnostics);
 
-  const env = buildEnv(program, diagnostics, {
-    moduleIdRootDir: dirname(program.entryFile),
-    resolvedImportGraph,
-  });
+  const env = buildEnv(program, diagnostics);
   if (hasErrors(diagnostics)) return { diagnostics };
 
   validateAssignmentAcceptance(program, env, diagnostics);

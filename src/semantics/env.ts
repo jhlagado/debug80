@@ -1,11 +1,9 @@
 import type { Diagnostic, DiagnosticId } from '../diagnosticTypes.js';
 import { DiagnosticIds } from '../diagnosticTypes.js';
-import { dirname, resolve } from 'node:path';
 import type {
   EnumDeclNode,
   ConstDeclNode,
   ExternDeclNode,
-  ImportNode,
   ImmExprNode,
   AsmInstructionNode,
   AsmOperandNode,
@@ -14,8 +12,6 @@ import type {
   UnionDeclNode,
   SourceSpan,
 } from '../frontend/ast.js';
-import { canonicalModuleId } from '../moduleIdentity.js';
-import { resolveVisibleConst, resolveVisibleEnum } from '../zaxImportVisibility.js';
 import { offsetOfPathInTypeExpr, sizeOfTypeExpr } from './layout.js';
 import { visitDeclTree } from './declVisitor.js';
 import { diagSemanticsError } from './semanticsDiagnostics.js';
@@ -61,11 +57,6 @@ export interface CompileEnv {
    */
   types: Map<string, TypeDeclNode | UnionDeclNode>;
 
-  moduleIds?: Map<string, string>;
-  importedModuleIds?: Map<string, Set<string>>;
-  visibleConsts?: Map<string, number>;
-  visibleEnums?: Map<string, number>;
-  visibleTypes?: Map<string, TypeDeclNode | UnionDeclNode>;
   asmEquExprs?: Map<string, { expr: ImmExprNode; currentLocation?: number }>;
 }
 
@@ -100,9 +91,9 @@ export function evalImmExpr(
     case 'ImmCurrentLocation':
       return options?.currentLocation;
     case 'ImmName': {
-      const fromConst = resolveVisibleConst(expr.name, expr.span.file, env);
+      const fromConst = env.consts.get(expr.name) ?? env.consts.get(expr.name.toLowerCase());
       if (fromConst !== undefined) return fromConst;
-      const fromEnum = resolveVisibleEnum(expr.name, expr.span.file, env);
+      const fromEnum = env.enums.get(expr.name);
       if (fromEnum !== undefined) return fromEnum;
       const enumMatches = unqualifiedEnumCandidates(expr.name);
       if (enumMatches.length > 0 && diagnostics) {
@@ -196,13 +187,7 @@ export function evalImmExpr(
   }
 }
 
-type BuildEnvOptions = {
-  moduleIdRootDir?: string;
-  resolvedImportGraph?: ReadonlyMap<string, ReadonlyArray<string>>;
-};
-
 type CollectedDecls = {
-  imports: ImportNode[];
   types: Array<TypeDeclNode | UnionDeclNode>;
   callables: ExternDeclNode[];
   enums: EnumDeclNode[];
@@ -441,31 +426,6 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
   }
 }
 
-function importedModuleIdsForFile(
-  moduleFile: ProgramNode['files'][number],
-  imports: ImportNode[],
-  moduleIdRootDir: string,
-  options?: BuildEnvOptions,
-): Set<string> {
-  const graph = options?.resolvedImportGraph;
-  if (graph) {
-    const resolvedTargets = graph.get(moduleFile.path);
-    if (!resolvedTargets) return new Set();
-    return new Set(
-      resolvedTargets.map((targetPath) => canonicalModuleId(targetPath, moduleIdRootDir)),
-    );
-  }
-  return new Set(
-    imports.map((importNode) => {
-      const target =
-        importNode.form === 'path'
-          ? resolve(dirname(moduleFile.path), importNode.specifier)
-          : importNode.specifier;
-      return canonicalModuleId(target, moduleIdRootDir);
-    }),
-  );
-}
-
 /**
  * Build the PR2 compile environment by resolving module-scope `enum` and `const` declarations.
  *
@@ -476,17 +436,11 @@ function importedModuleIdsForFile(
 export function buildEnv(
   program: ProgramNode,
   diagnostics: Diagnostic[],
-  options?: BuildEnvOptions,
 ): CompileEnv {
   const consts = new Map<string, number>();
   const asmEquExprs = new Map<string, { expr: ImmExprNode; currentLocation?: number }>();
   const enums = new Map<string, number>();
   const types = new Map<string, TypeDeclNode | UnionDeclNode>();
-  const moduleIds = new Map<string, string>();
-  const importedModuleIds = new Map<string, Set<string>>();
-  const visibleConsts = new Map<string, number>();
-  const visibleEnums = new Map<string, number>();
-  const visibleTypes = new Map<string, TypeDeclNode | UnionDeclNode>();
 
   if (program.files.length === 0) {
     diag(diagnostics, program.entryFile, 'No module files to compile.');
@@ -494,30 +448,18 @@ export function buildEnv(
       consts,
       enums,
       types,
-      moduleIds,
-      importedModuleIds,
-      visibleConsts,
-      visibleEnums,
-      visibleTypes,
     };
   }
 
-  const moduleIdRootDir = options?.moduleIdRootDir ?? dirname(program.entryFile);
   const collectedByFile = new Map<string, CollectedDecls>();
   for (const mf of program.files) {
-    moduleIds.set(mf.path, canonicalModuleId(mf.path, moduleIdRootDir));
     const collected: CollectedDecls = {
-      imports: [],
       types: [],
       callables: [],
       enums: [],
       consts: [],
     };
     visitDeclTree(mf.items, (item) => {
-      if (item.kind === 'Import') {
-        collected.imports.push(item);
-        return;
-      }
       if (item.kind === 'TypeDecl' || item.kind === 'UnionDecl') {
         collected.types.push(item);
         return;
@@ -539,10 +481,6 @@ export function buildEnv(
       }
     });
     collectedByFile.set(mf.path, collected);
-    importedModuleIds.set(
-      mf.path,
-      importedModuleIdsForFile(mf, collected.imports, moduleIdRootDir, options),
-    );
   }
 
   const globalLower = new Map<string, { kind: string; name: string; file: string }>();
@@ -565,12 +503,6 @@ export function buildEnv(
       const name = item.name;
       if (!claim(kind, name, item.span.file)) continue;
       types.set(name, item);
-      if (item.exported) {
-        const moduleId =
-          moduleIds.get(item.span.file) ?? canonicalModuleId(item.span.file, moduleIdRootDir);
-        const qualifiedName = `${moduleId}.${name}`;
-        visibleTypes.set(qualifiedName, item);
-      }
     }
   }
 
@@ -597,12 +529,6 @@ export function buildEnv(
         const qualifiedName = `${e.name}.${name}`;
         if (!claim('enum member', qualifiedName, e.span.file)) continue;
         enums.set(qualifiedName, idx);
-        if (e.exported) {
-          const moduleId =
-            moduleIds.get(e.span.file) ?? canonicalModuleId(e.span.file, moduleIdRootDir);
-          const exportedName = `${moduleId}.${qualifiedName}`;
-          visibleEnums.set(exportedName, idx);
-        }
       }
     }
   }
@@ -611,11 +537,6 @@ export function buildEnv(
     consts,
     enums,
     types,
-    moduleIds,
-    importedModuleIds,
-    visibleConsts,
-    visibleEnums,
-    visibleTypes,
     asmEquExprs,
   };
 
@@ -651,12 +572,6 @@ export function buildEnv(
       }
       consts.set(item.name, v);
       if (isAsmCaseInsensitiveConst(item)) consts.set(item.name.toLowerCase(), v);
-      if (item.exported) {
-        const moduleId =
-          moduleIds.get(item.span.file) ?? canonicalModuleId(item.span.file, moduleIdRootDir);
-        const qualifiedName = `${moduleId}.${item.name}`;
-        visibleConsts.set(qualifiedName, v);
-      }
     }
   }
 

@@ -86,12 +86,9 @@ src/
 ├── compileShared.ts           # Tiny shared helpers (hasErrors, normalizePath)
 ├── diagnosticTypes.ts         # Diagnostic ID constants and Diagnostic interface
 ├── pipeline.ts                # CompilerOptions and PipelineDeps interfaces
-├── moduleIdentity.ts          # Canonical module-ID generation
-├── moduleLoader.ts            # Source-file loading and ZAX import compatibility
+├── moduleLoader.ts            # Source-file loading and textual includes
 ├── sourceIncludeExpansion.ts  # Textual include expansion with provenance
 ├── sourceIncludePaths.ts      # Textual include candidate resolution
-├── zaxImportResolution.ts     # Temporary .zax import candidate resolution
-├── zaxImportVisibility.ts     # Temporary .zax import-graph visibility rules
 ├── lintCaseStyle.ts           # Case-style linting (keywords/registers)
 │
 ├── frontend/                  # Parsing: text → AST
@@ -259,9 +256,9 @@ Compiling an AZM source file happens in a clearly phased pipeline. Before lookin
        │
        ▼
 ┌─────────────────┐
-│  Source Loading │  Read files, expand textual includes, resolve ZAX imports
+│  Source Loading │  Read entry file and expand textual includes
 └────────┬────────┘
-         │  ProgramNode (source-file units; ZAX imports remain compatibility-only)
+         │  ProgramNode (single expanded source unit)
          ▼
 ┌─────────────────┐
 │    Parsing      │  Text → AST (frontend/)
@@ -360,22 +357,14 @@ Notice the `withDefaults()` helper at the top of `compile.ts`. If the caller spe
 
 ### What it does
 
-`loadProgram()` in `moduleLoader.ts` is responsible for turning an entry-file path into a `LoadedProgram`. Native `.azm` source is loaded as a source file with textual includes expanded before parsing. `.zax` compatibility input may still add imported files to the returned `ProgramNode`. The result also carries auxiliary maps:
+`loadProgram()` in `moduleLoader.ts` is responsible for turning an entry-file path into a `LoadedProgram`. Native `.azm` source is loaded as a source file with textual includes expanded before parsing. The result also carries auxiliary maps:
 
 - `sourceTexts` — the raw text of each file (for the listing writer and debug map).
 - `sourceLineComments` — a per-file, per-line index of inline comments (used in listings).
-- `moduleTraversal` — the deterministic traversal order for `.zax` compatibility imports; native `.azm` include-only loads normally contain the entry source file.
-- `resolvedImportGraph` — the resolved `.zax` import dependency graph. Textual includes are captured in `sourceTexts` and line provenance instead.
 
 ### Include expansion
 
 AZM and ASM80-compatible source use textual includes. `expandTextIncludesForFile()` is an internal async helper that reads a source file, scans it line by line for `.include` / `include` directives after directive-alias normalization, and splices the included file's lines in-place. The included file extension does not switch parser mode; included text is parsed as part of the including source unit. The result is a flat expanded-source object with parallel `lineFiles[]` and `lineBaseLines[]` arrays so that diagnostics can always point to the original file and line number, even after inclusion. This expanded source is what actually gets parsed.
-
-### Import resolution
-
-After expansion, `.zax` compatibility `import` statements are discovered by the parser. The loader re-reads those import targets (following `includeDirs` if provided), builds the `edges` map of dependencies, detects cycles (returning an error diagnostic if found), and assembles imported files into the final `ProgramNode` in deterministic topological order. Native `.azm` should use textual includes rather than this import graph.
-
-**Key invariant:** module IDs are canonical (absolute or root-relative) strings. `canonicalModuleId()` in `moduleIdentity.ts` ensures two paths to the same file always produce the same module ID.
 
 ### `sourceIncludePaths.ts`
 
@@ -386,16 +375,11 @@ Contains `resolveIncludeCandidates()` for textual includes. Native AZM source or
 Expands textual `.include` / `include` directives before parsing and preserves
 per-line source provenance for diagnostics and register-care comments.
 
-### `zaxImportResolution.ts`
+### Compile-Time Visibility
 
-Contains the temporary `.zax` import candidate helpers used by the retirement lane. Native AZM must not grow a semantic import graph around these helpers.
-
-### `zaxImportVisibility.ts`
-
-Owns the temporary ZAX import-graph visibility rules: which constants and
-types exported from one `.zax` source unit are visible to another imported
-source unit. Native AZM should not use this as a module system; native
-multi-file assembly stays on textual includes.
+Textual includes are parsed as part of the including source unit. Constants,
+enums, types, unions, ops, and labels therefore use ordinary source-order and
+symbol-table rules instead of a module import/export visibility graph.
 
 ---
 
@@ -550,7 +534,7 @@ ProgramNode
 `ModuleItemNode` is a union of all possible top-level declarations:
 
 ```
-ImportNode | ConstDeclNode | EnumDeclNode
+ConstDeclNode | EnumDeclNode
 | VarBlockNode | UnionDeclNode
 | TypeDeclNode | ExternDeclNode | BinDeclNode | HexDeclNode
 | OpDeclNode | AlignDirectiveNode | UnimplementedNode
@@ -1031,12 +1015,9 @@ The format writers are injected via `PipelineDeps` rather than imported directly
 | `compileShared.ts`                    | `hasErrors()`, `normalizePath()`                                                |
 | `diagnosticTypes.ts`                  | `Diagnostic` interface, `DiagnosticIds` enum                                    |
 | `pipeline.ts`                         | `CompilerOptions`, `PipelineDeps`, `CompileFn` interfaces                       |
-| `moduleIdentity.ts`                   | `canonicalModuleId()`                                                           |
-| `moduleLoader.ts`                     | `loadProgram()` — file I/O, source assembly, ZAX import compatibility           |
+| `moduleLoader.ts`                     | `loadProgram()` — file I/O and source assembly                                  |
 | `sourceIncludeExpansion.ts`           | Textual include expansion with source-line provenance                           |
 | `sourceIncludePaths.ts`                | Textual include candidate path resolution                                       |
-| `zaxImportResolution.ts`              | Temporary `.zax` import candidate path resolution                               |
-| `zaxImportVisibility.ts`              | Temporary `.zax` import-graph visibility rules                                  |
 | `lintCaseStyle.ts`                    | Case-style linting pass                                                         |
 | `frontend/ast.ts`                     | All AST types (no logic)                                                        |
 | `frontend/parser.ts`                  | `parseModuleFile()`, `parseProgram()`                                           |

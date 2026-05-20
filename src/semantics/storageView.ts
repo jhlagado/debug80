@@ -16,7 +16,6 @@ import type {
   TypeExprNode,
   VarDeclNode,
 } from '../frontend/ast.js';
-import { resolveVisibleType } from '../zaxImportVisibility.js';
 import { visitDeclTree } from './declVisitor.js';
 import type { CompileEnv } from './env.js';
 
@@ -42,7 +41,7 @@ export function resolveScalarKindInEnv(
   if (lower === 'byte' || lower === 'word' || lower === 'addr') return lower;
   if (seen.has(lower)) return undefined;
   seen.add(lower);
-  const decl = resolveVisibleType(typeExpr.name, typeExpr.span.file, env);
+  const decl = env.types.get(typeExpr.name);
   if (!decl || decl.kind !== 'TypeDecl') return undefined;
   return resolveScalarKindInEnv(decl.typeExpr, env, seen);
 }

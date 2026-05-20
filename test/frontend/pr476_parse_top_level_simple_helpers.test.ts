@@ -6,7 +6,6 @@ import {
   parseBinDecl,
   parseConstDecl,
   parseHexDecl,
-  parseImportDecl,
 } from '../../src/frontend/parseTopLevelSimple.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 import { parseProgram } from '../../src/frontend/parser.js';
@@ -24,11 +23,6 @@ describe('PR476 simple top-level parser extraction', () => {
   };
 
   it('keeps simple helper parsing intact', () => {
-    expect(parseImportDecl('"mod.zax"', { ...ctx, text: 'import "mod.zax"' })).toMatchObject({
-      kind: 'Import',
-      specifier: 'mod.zax',
-      form: 'path',
-    });
     expect(
       parseAlignDirectiveDecl('align $10', '$10', { ...ctx, text: 'align $10' }),
     ).toMatchObject({
@@ -67,7 +61,7 @@ describe('PR476 simple top-level parser extraction', () => {
     const diagnostics: Diagnostic[] = [];
     const program = parseProgram(
       file.path,
-      'import "mod.zax"\nexport const FOO = 1\nsection data at $1000\nalign $10\n',
+      'export const FOO = 1\nsection data at $1000\nalign $10\n',
       diagnostics,
     );
 
@@ -77,13 +71,12 @@ describe('PR476 simple top-level parser extraction', () => {
         message: 'Unsupported top-level construct: section data at $1000',
       }),
     ]);
-    expect(program.files[0]?.items).toHaveLength(3);
-    expect(program.files[0]?.items[0]).toMatchObject({ kind: 'Import', specifier: 'mod.zax' });
-    expect(program.files[0]?.items[1]).toMatchObject({
+    expect(program.files[0]?.items).toHaveLength(2);
+    expect(program.files[0]?.items[0]).toMatchObject({
       kind: 'ConstDecl',
       name: 'FOO',
       exported: true,
     });
-    expect(program.files[0]?.items[2]).toMatchObject({ kind: 'Align' });
+    expect(program.files[0]?.items[1]).toMatchObject({ kind: 'Align' });
   });
 });

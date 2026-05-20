@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  ImportNode,
-  ModuleItemNode,
-  SourceSpan,
-} from '../src/frontend/ast.js';
+import type { ModuleItemNode, SourceSpan } from '../src/frontend/ast.js';
 import { visitDeclTree } from '../src/semantics/declVisitor.js';
 
 const span: SourceSpan = {
@@ -15,14 +11,7 @@ const span: SourceSpan = {
 
 describe('PR646 declaration-tree visitor', () => {
   it('walks module declarations with context', () => {
-    const importNode: ImportNode = {
-      kind: 'Import',
-      span,
-      specifier: 'dep',
-      form: 'moduleId',
-    };
     const items: ModuleItemNode[] = [
-      importNode,
       {
         kind: 'ConstDecl',
         span,
@@ -40,7 +29,6 @@ describe('PR646 declaration-tree visitor', () => {
     });
 
     expect(visited).toEqual([
-      { kind: 'Import' },
       { kind: 'ConstDecl' },
     ]);
   });

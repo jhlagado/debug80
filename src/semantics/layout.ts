@@ -8,7 +8,6 @@ import type {
   TypeExprNode,
   UnionDeclNode,
 } from '../frontend/ast.js';
-import { resolveVisibleType } from '../zaxImportVisibility.js';
 import type { CompileEnv } from './env.js';
 
 export interface TypeStorageInfo {
@@ -46,7 +45,7 @@ function resolveNamedType<T>(
     diag(te.span.file, `Recursive type definition detected for "${te.name}".`);
     return undefined;
   }
-  const decl = resolveVisibleType(te.name, te.span.file, env);
+  const decl = env.types.get(te.name);
   if (!decl) {
     diag(te.span.file, `Unknown type "${te.name}".`);
     return undefined;

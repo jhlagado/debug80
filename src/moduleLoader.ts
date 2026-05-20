@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
 
 import { hasErrors, normalizePath } from './compileShared.js';
 import type { Diagnostic } from './diagnosticTypes.js';
@@ -14,23 +13,13 @@ import {
 import { parseModuleFile } from './frontend/parser.js';
 import { makeSourceFile } from './frontend/source.js';
 import { inferSourceMode, type SourceMode } from './frontend/sourceMode.js';
-import { canonicalModuleId } from './moduleIdentity.js';
 import { expandTextIncludesForFile, type ExpandedSource } from './sourceIncludeExpansion.js';
-import { resolveZaxImportCandidates, zaxImportTargets } from './zaxImportResolution.js';
 import type { CompilerOptions } from './pipeline.js';
-
-function isIgnorableImportProbeError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const code = (err as { code?: unknown }).code;
-  return code === 'ENOENT' || code === 'ENOTDIR';
-}
 
 export type LoadedProgram = {
   program: ProgramNode;
   sourceTexts: Map<string, string>;
   sourceLineComments: Map<string, Map<number, string>>;
-  moduleTraversal: string[];
-  resolvedImportGraph: Map<string, string[]>;
 };
 
 export interface LoadProgramOptions extends Pick<CompilerOptions, 'includeDirs' | 'sourceMode'> {
@@ -38,11 +27,6 @@ export interface LoadProgramOptions extends Pick<CompilerOptions, 'includeDirs' 
   preloadedText?: string;
   signal?: AbortSignal;
 }
-
-type ModuleEdges = Map<string, Map<string, { line: number; column: number }>>;
-// ImportNode loading is retained only for the temporary `.zax` retirement lane.
-// Native AZM uses textual includes.
-type ImportTarget = ReturnType<typeof zaxImportTargets>[number];
 
 function throwIfAborted(signal?: AbortSignal): void {
   signal?.throwIfAborted();
@@ -63,7 +47,7 @@ async function readSourceFileText(
       id: DiagnosticIds.IoReadFailed,
       severity: 'error',
       message: importer
-        ? `Failed to read imported source file "${sourcePath}" (imported by "${importer}"): ${String(err)}`
+        ? `Failed to read included source file "${sourcePath}" (included by "${importer}"): ${String(err)}`
         : `Failed to read entry file: ${String(err)}`,
       file: importer ?? sourcePath,
     });
@@ -125,245 +109,60 @@ function parseExpandedModuleFile(
   }
 }
 
-async function resolveImportSource(
-  modulePath: string,
-  imp: ImportTarget,
-  includeDirs: string[],
-  diagnostics: Diagnostic[],
-  signal?: AbortSignal,
-): Promise<{ resolved: string; resolvedText: string } | 'hard-failure' | undefined> {
-  const candidates = resolveZaxImportCandidates(modulePath, imp, includeDirs);
-
-  for (const c of candidates) {
-    throwIfAborted(signal);
-    try {
-      return { resolved: c, resolvedText: await readFile(c, 'utf8') };
-    } catch (err) {
-      if (isIgnorableImportProbeError(err)) continue;
-      diagnostics.push({
-        id: DiagnosticIds.IoReadFailed,
-        severity: 'error',
-        message: `Failed to read import candidate "${c}" while resolving imports for "${modulePath}": ${String(
-          err,
-        )}`,
-        file: modulePath,
-        line: imp.span.start.line,
-        column: imp.span.start.column,
-      });
-      return 'hard-failure';
-    }
-  }
-
-  const pretty = imp.form === 'path' ? `"${imp.specifier}"` : imp.specifier;
-  diagnostics.push({
-    id: DiagnosticIds.ImportNotFound,
-    severity: 'error',
-    message: `Failed to resolve import ${pretty} from "${modulePath}". Tried:\n${candidates
-      .map((c) => `- ${c}`)
-      .join('\n')}`,
-    file: modulePath,
-    line: imp.span.start.line,
-    column: imp.span.start.column,
-  });
-  return undefined;
-}
-
-function recordImportEdge(
-  edges: ModuleEdges,
-  modulePath: string,
-  resolved: string,
-  imp: ImportTarget,
-): void {
-  const moduleEdges = edges.get(modulePath)!;
-  if (!moduleEdges.has(resolved)) {
-    moduleEdges.set(resolved, {
-      line: imp.span.start.line,
-      column: imp.span.start.column,
-    });
-  }
-}
-
-function validateCanonicalModuleIds(
-  modules: Map<string, ModuleFileNode>,
-  moduleIdRootDir: string,
-  diagnostics: Diagnostic[],
-): boolean {
-  const idSeen = new Map<string, string>();
-  for (const modulePath of modules.keys()) {
-    const id = canonicalModuleId(modulePath, moduleIdRootDir);
-    const loweredId = id.toLowerCase();
-    const prev = idSeen.get(loweredId);
-    if (prev && prev !== modulePath) {
-      const moduleSpan = modules.get(modulePath)?.span.start;
-      diagnostics.push({
-        id: DiagnosticIds.SemanticsError,
-        severity: 'error',
-        message: `Module ID collision: "${id}" maps to both "${prev}" and "${modulePath}".`,
-        file: modulePath,
-        ...(moduleSpan !== undefined ? { line: moduleSpan.line, column: moduleSpan.column } : {}),
-      });
-    } else {
-      idSeen.set(loweredId, modulePath);
-    }
-  }
-  return !hasErrors(diagnostics);
-}
-
-function topologicallyOrderModules(
-  entryPath: string,
-  edges: ModuleEdges,
-  moduleIdRootDir: string,
-  diagnostics: Diagnostic[],
-): string[] | undefined {
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const order: string[] = [];
-  const sortKey = (modulePath: string) =>
-    `${canonicalModuleId(modulePath, moduleIdRootDir).toLowerCase()}\n${modulePath}`;
-
-  const visit = (modulePath: string, stack: string[], fromModule?: string): void => {
-    if (visited.has(modulePath)) return;
-    if (visiting.has(modulePath)) {
-      const cycleStart = stack.indexOf(modulePath);
-      const cycle =
-        cycleStart >= 0 ? stack.slice(cycleStart).concat([modulePath]) : stack.concat([modulePath]);
-      const edge = fromModule ? edges.get(fromModule)?.get(modulePath) : undefined;
-      diagnostics.push({
-        id: DiagnosticIds.SemanticsError,
-        severity: 'error',
-        message: `Import cycle detected: ${cycle.join(' -> ')}`,
-        file: fromModule ?? entryPath,
-        ...(edge !== undefined ? { line: edge.line, column: edge.column } : {}),
-      });
-      return;
-    }
-
-    visiting.add(modulePath);
-    const deps = Array.from((edges.get(modulePath) ?? new Map()).keys()).sort((a, b) =>
-      sortKey(a).localeCompare(sortKey(b)),
-    );
-    for (const dep of deps) {
-      visit(dep, stack.concat([modulePath]), modulePath);
-      if (hasErrors(diagnostics)) return;
-    }
-    visiting.delete(modulePath);
-    visited.add(modulePath);
-    order.push(modulePath);
-  };
-
-  visit(entryPath, []);
-  if (hasErrors(diagnostics)) return undefined;
-  return order;
-}
-
-function collectModuleTraversal(entryPath: string, edges: ModuleEdges): string[] {
-  const traversalVisited = new Set<string>();
-  const moduleTraversal: string[] = [];
-
-  const walkTraversal = (modulePath: string): void => {
-    if (traversalVisited.has(modulePath)) return;
-    traversalVisited.add(modulePath);
-    moduleTraversal.push(modulePath);
-    for (const dep of (edges.get(modulePath) ?? new Map()).keys()) {
-      walkTraversal(dep);
-    }
-  };
-
-  walkTraversal(entryPath);
-  return moduleTraversal;
-}
-
 export async function loadProgram(
   entryFile: string,
   diagnostics: Diagnostic[],
   options: LoadProgramOptions,
 ): Promise<LoadedProgram | undefined> {
   const entryPath = normalizePath(entryFile);
-  const modules = new Map<string, ModuleFileNode>();
   const sourceTexts = new Map<string, string>();
   const sourceLineComments = new Map<string, Map<number, string>>();
-  const edges = new Map<string, Map<string, { line: number; column: number }>>();
   const includeDirs = (options.includeDirs ?? []).map(normalizePath);
   const aliasPolicy =
     options.directiveAliasPolicy ?? buildDirectiveAliasPolicy(defaultDirectiveAliasProfileName());
-  const moduleIdRootDir = dirname(entryPath);
   const signal = options.signal;
   const explicitSourceMode = options.sourceMode;
 
-  const loadModule = async (
-    modulePath: string,
-    importer?: string,
-    preloadedText?: string,
-  ): Promise<void> => {
-    throwIfAborted(signal);
-    const p = normalizePath(modulePath);
-    if (modules.has(p)) return;
-
-    const sourceText = await readSourceFileText(p, diagnostics, importer, preloadedText, signal);
-    if (sourceText === undefined) return;
-    if (!sourceTexts.has(p)) sourceTexts.set(p, sourceText);
-    const sourceMode = explicitSourceMode ?? inferSourceMode(p);
-    if (!sourceMode) {
-      diagnostics.push({
-        id: DiagnosticIds.Unknown,
-        severity: 'error',
-        message: 'Unsupported source file extension (expected .azm, .asm, or .z80)',
-        file: p,
-      });
-      return;
-    }
-    const expanded = await expandTextIncludesForFile({
-      sourcePath: p,
-      sourceText,
-      includeDirs,
-      diagnostics,
-      sourceTexts,
-      includeStack: [p],
-      ...(aliasPolicy ? { aliasPolicy } : {}),
-      ...(signal ? { signal } : {}),
+  throwIfAborted(signal);
+  const sourceText = await readSourceFileText(entryPath, diagnostics, undefined, options.preloadedText, signal);
+  if (sourceText === undefined) return undefined;
+  sourceTexts.set(entryPath, sourceText);
+  const sourceMode = explicitSourceMode ?? inferSourceMode(entryPath);
+  if (!sourceMode) {
+    diagnostics.push({
+      id: DiagnosticIds.Unknown,
+      severity: 'error',
+      message: 'Unsupported source file extension (expected .azm, .asm, or .z80)',
+      file: entryPath,
     });
-    if (expanded === undefined) return;
-
-    const moduleFile = parseExpandedModuleFile(p, expanded, diagnostics, sourceMode, aliasPolicy);
-    if (!moduleFile) return;
-    modules.set(p, moduleFile);
-    recordSourceLineComments(sourceLineComments, expanded);
-    edges.set(p, new Map());
-
-    if (sourceMode !== 'azm') {
-      for (const imp of zaxImportTargets(moduleFile)) {
-        const resolvedImport = await resolveImportSource(p, imp, includeDirs, diagnostics, signal);
-        if (resolvedImport === 'hard-failure') return;
-        if (!resolvedImport) continue;
-
-        recordImportEdge(edges, p, resolvedImport.resolved, imp);
-        await loadModule(resolvedImport.resolved, p, resolvedImport.resolvedText);
-      }
-    }
-  };
-
-  await loadModule(entryPath, undefined, options.preloadedText);
+    return undefined;
+  }
+  const expanded = await expandTextIncludesForFile({
+    sourcePath: entryPath,
+    sourceText,
+    includeDirs,
+    diagnostics,
+    sourceTexts,
+    includeStack: [entryPath],
+    ...(aliasPolicy ? { aliasPolicy } : {}),
+    ...(signal ? { signal } : {}),
+  });
+  if (expanded === undefined) return undefined;
   if (hasErrors(diagnostics)) return undefined;
 
-  if (!validateCanonicalModuleIds(modules, moduleIdRootDir, diagnostics)) return undefined;
-
-  const order = topologicallyOrderModules(entryPath, edges, moduleIdRootDir, diagnostics);
-  if (!order) return undefined;
-
-  const moduleFiles = order.map((p) => modules.get(p)!).filter(Boolean);
-  const entryModule = modules.get(entryPath);
+  const entryModule = parseExpandedModuleFile(
+    entryPath,
+    expanded,
+    diagnostics,
+    sourceMode,
+    aliasPolicy,
+  );
   if (!entryModule) return undefined;
+  recordSourceLineComments(sourceLineComments, expanded);
 
   return {
-    program: { kind: 'Program', span: entryModule.span, entryFile: entryPath, files: moduleFiles },
+    program: { kind: 'Program', span: entryModule.span, entryFile: entryPath, files: [entryModule] },
     sourceTexts,
     sourceLineComments,
-    moduleTraversal: collectModuleTraversal(entryPath, edges),
-    resolvedImportGraph: new Map(
-      Array.from(edges.entries(), ([modulePath, moduleEdges]) => [
-        modulePath,
-        Array.from(moduleEdges.keys()),
-      ]),
-    ),
   };
 }

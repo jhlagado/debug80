@@ -38,16 +38,13 @@ AZM removes from native `.azm`:
 - structured control keywords such as `if`, `while`, `repeat`, and `select`
 - runtime typed effective-address lowering
 
-The temporary `.zax` lane exists only while old tests are being rewritten or
-deleted. It is not a compatibility promise.
-
 ## Repository Layout
 
 ```text
 src/
   cli.ts                    CLI argument parsing and file I/O
   compile.ts                Top-level compile orchestration
-  moduleLoader.ts           Entry loading and remaining .zax import bridge
+  moduleLoader.ts           Entry loading and textual include expansion
   sourceIncludeExpansion.ts Textual include expansion with provenance
   sourceIncludePaths.ts     Include candidate path ordering
   pipeline.ts               Public pipeline option/result contracts
@@ -119,7 +116,6 @@ compile(entry, options, deps)
   +- load source
   |    +- expand textual includes for .azm/.asm/.z80
   |    +- parse ASM80/classic or native AZM source
-  |    +- keep .zax import loading only for retirement tests
   |
   +- optional lint passes
   |

@@ -4,7 +4,6 @@ import type {
   ProgramNode,
 } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
-import { canonicalModuleId } from '../moduleIdentity.js';
 import { buildLogicalLines, getLogicalLine, type LogicalLine } from './parseLogicalLines.js';
 import {
   dispatchModuleItem,
@@ -18,11 +17,10 @@ import { makeSourceFile, span, type SourceFile } from './source.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
 
 /**
- * Parse a single `.zax` module file from an in-memory source string.
+ * Parse a single AZM module file from an in-memory source string.
  *
  * Implementation note:
  * - Parsing is best-effort: on errors, diagnostics are appended and parsing continues.
- * - The module may include `import` statements, but import resolution/loading is handled by the compiler.
  */
 export function parseModuleFile(
   modulePath: string,
@@ -98,7 +96,7 @@ export function parseModuleFile(
     kind: 'ModuleFile',
     span: moduleSpan,
     path: modulePath,
-    moduleId: canonicalModuleId(modulePath),
+    moduleId: modulePath,
     items,
   };
 
@@ -106,9 +104,7 @@ export function parseModuleFile(
 }
 
 /**
- * Parse a ZAX program from a single in-memory source file.
- *
- * Note: this helper parses only the entry module. Import resolution/loading is handled by the compiler.
+ * Parse an AZM program from a single in-memory source file.
  */
 export function parseProgram(
   entryFile: string,
