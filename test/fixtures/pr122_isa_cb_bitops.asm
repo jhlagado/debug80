@@ -1,4 +1,4 @@
-export func main()
+main:
     bit 0, b
     bit 7, a
     bit 3, (hl)
@@ -6,4 +6,3 @@ export func main()
     res 6, (hl)
     set 2, d
     set 5, (hl)
-  end

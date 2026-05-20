@@ -1,4 +1,4 @@
-export func main()
+main:
     rlc b
     rlc c
     rlc d
@@ -55,4 +55,3 @@ export func main()
     srl l
     srl (hl)
     srl a
-  end

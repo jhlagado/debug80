@@ -1,6 +1,4 @@
-export func main()
+main:
     jp (hl)
     jp (ix)
     jp (iy)
-end
-
