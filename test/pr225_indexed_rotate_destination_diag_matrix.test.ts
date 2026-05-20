@@ -29,7 +29,7 @@ function rowsForHead(head: (typeof HEADS)[number]): Row[] {
     {
       label: `${head} legacy reg`,
       id: DiagnosticIds.EncodeError,
-      message: `${head} indexed destination must use legacy reg8 B/C/D/E/H/L/A`,
+      message: `${head} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
     },
     {
       label: `${head} index family`,
@@ -43,7 +43,7 @@ const PR225_ROWS = HEADS.flatMap(rowsForHead);
 
 describe('PR225: indexed rotate/shift destination diagnostics parity matrix', () => {
   it.each(PR225_ROWS)(
-    '$label — explicit legacy-reg and index-family diagnostics for indexed rotate/shift heads',
+    '$label — explicit plain-reg and index-family diagnostics for indexed rotate/shift heads',
     async (row) => {
       const res = await compile(PR225_FIXTURE, {}, { formats: defaultFormatWriters });
       expectDiagnostic(res.diagnostics, {

@@ -117,7 +117,7 @@ describe('PR447: direct IXH/IXL/IYH/IYL forms', () => {
 
     const { res } = await compileSource(buildProgram(lines));
     expectDiagnostic(res.diagnostics, {
-      message: 'ld with IX*/IY* does not support legacy H/L counterpart operands',
+      message: 'ld with IX*/IY* does not support plain H/L counterpart operands',
     });
     expectDiagnostic(res.diagnostics, {
       message: 'ld between IX* and IY* byte registers is not supported',

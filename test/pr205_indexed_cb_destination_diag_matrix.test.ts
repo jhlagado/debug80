@@ -27,7 +27,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
     {
       label: 'res legacy reg',
       id: DiagnosticIds.EncodeError,
-      message: 'res indexed destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'res indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'res index family',
@@ -37,7 +37,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
     {
       label: 'set legacy reg',
       id: DiagnosticIds.EncodeError,
-      message: 'set indexed destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'set indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'set index family',
@@ -47,7 +47,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
     {
       label: 'rl legacy reg',
       id: DiagnosticIds.EncodeError,
-      message: 'rl indexed destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'rl indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'rl index family',
@@ -57,7 +57,7 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
     {
       label: 'rrc legacy reg',
       id: DiagnosticIds.EncodeError,
-      message: 'rrc indexed destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'rrc indexed destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'rrc index family',

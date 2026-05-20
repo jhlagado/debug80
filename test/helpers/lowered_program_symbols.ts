@@ -42,8 +42,9 @@ export function findRawAbs16Target(
   spec: RawAbs16TargetSpec,
 ): ResolvedRawAbs16TargetView | undefined {
   const symbol = findSymbol(lowered.symbols, spec.target);
-  if (!symbol || !('address' in symbol)) return undefined;
-  const expectedAddress = (symbol.address + (spec.addend ?? 0)) & 0xffff;
+  if (!symbol) return undefined;
+  const symbolAddress = symbol.kind === 'constant' ? symbol.value : symbol.address;
+  const expectedAddress = (symbolAddress + (spec.addend ?? 0)) & 0xffff;
   const search = spec.range
     ? instructionsInLabelRange(lowered, spec.range.startLabel, spec.range.endLabel)
     : flattenLoweredInstructions(lowered.program, lowered.map);

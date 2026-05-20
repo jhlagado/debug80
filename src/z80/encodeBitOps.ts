@@ -56,7 +56,7 @@ function encodeBitLike(
           ctx.diag(
             diagnostics,
             node,
-            `${mnemonic} indexed destination must use legacy reg8 B/C/D/E/H/L/A`,
+            `${mnemonic} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
           );
         }
         return undefined;
@@ -121,7 +121,7 @@ function encodeCbRotateShift(
         ctx.diag(
           diagnostics,
           node,
-          `${mnemonic} indexed destination must use legacy reg8 B/C/D/E/H/L/A`,
+          `${mnemonic} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
         );
       }
       return undefined;

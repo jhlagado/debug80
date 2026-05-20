@@ -67,7 +67,7 @@ export function encodeIoInstruction(
 
     if (dst8 === undefined) {
       if (ctx.indexedReg8(ops[0]!)) {
-        ctx.diag(diagnostics, node, `in destination must use legacy reg8 B/C/D/E/H/L/A`);
+        ctx.diag(diagnostics, node, `in destination must use plain reg8 B/C/D/E/H/L/A`);
         return undefined;
       }
       ctx.diag(diagnostics, node, `in expects a reg8 destination`);
@@ -116,7 +116,7 @@ export function encodeIoInstruction(
       }
       if (src8 === undefined) {
         if (srcIndexed) {
-          ctx.diag(diagnostics, node, `out source must use legacy reg8 B/C/D/E/H/L/A`);
+          ctx.diag(diagnostics, node, `out source must use plain reg8 B/C/D/E/H/L/A`);
           return undefined;
         }
         ctx.diag(diagnostics, node, `out expects a reg8 source`);
@@ -127,7 +127,7 @@ export function encodeIoInstruction(
     if (port.kind === 'PortImm8') {
       if (src8 === undefined) {
         if (srcIndexed) {
-          ctx.diag(diagnostics, node, `out source must use legacy reg8 B/C/D/E/H/L/A`);
+          ctx.diag(diagnostics, node, `out source must use plain reg8 B/C/D/E/H/L/A`);
           return undefined;
         }
         ctx.diag(diagnostics, node, `out expects a reg8 source`);

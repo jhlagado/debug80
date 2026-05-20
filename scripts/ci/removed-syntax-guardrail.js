@@ -8,14 +8,29 @@ export const FORBIDDEN_RULES = [
     message: 'Bare `data` marker lines are forbidden; use labels plus .db/.dw/.ds.',
   },
   {
-    id: 'legacy-globals-block',
+    id: 'removed-globals-block',
     pattern: /^\s*globals\b/i,
     message: '`globals ... end` is forbidden; use labels plus .db/.dw/.ds.',
   },
   {
-    id: 'legacy-active-counter-section',
-    pattern: /^\s*section\s+(?:code|data|var)(?:\s+at\b|\s*$)/i,
+    id: 'removed-active-counter-section',
+    pattern: /^\s*section\s+(?:code|data|var)\b/i,
     message: 'Active-counter section directives are forbidden; use .org, labels, and .db/.dw/.ds.',
+  },
+  {
+    id: 'removed-function-decl',
+    pattern: /^\s*(?:export\s+)?func\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
+    message: '`func` declarations are forbidden; use labels and explicit Z80 instructions.',
+  },
+  {
+    id: 'removed-module-import',
+    pattern: /^\s*(?:module|import)\b/i,
+    message: '`module`/`import` declarations are forbidden; use textual .include.',
+  },
+  {
+    id: 'removed-var-decl',
+    pattern: /^\s*(?:export\s+)?var\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
+    message: '`var` declarations are forbidden; use labels plus .db/.dw/.ds.',
   },
   {
     id: 'top-level-const-decl',
@@ -106,7 +121,7 @@ function* iterMarkdownFenceLines(text) {
  *   filePaths?: string[];
  * }} [options]
  */
-export function scanForbiddenLegacySyntax(options = {}) {
+export function scanForbiddenRemovedSyntax(options = {}) {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   const files = options.filePaths
     ? options.filePaths.map((p) => resolve(repoRoot, p)).sort()
@@ -143,14 +158,14 @@ export function scanForbiddenLegacySyntax(options = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { violations } = scanForbiddenLegacySyntax();
+  const { violations } = scanForbiddenRemovedSyntax();
   if (violations.length === 0) {
-    process.stdout.write('legacy syntax guardrail: no violations\n');
+    process.stdout.write('removed syntax guardrail: no violations\n');
     process.exit(0);
   }
   for (const v of violations) {
     process.stderr.write(`${v.file}:${v.line}:${v.column} [${v.ruleId}] ${v.message}\n`);
   }
-  process.stderr.write(`legacy syntax guardrail: ${violations.length} violation(s)\n`);
+  process.stderr.write(`removed syntax guardrail: ${violations.length} violation(s)\n`);
   process.exit(1);
 }

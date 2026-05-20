@@ -37,7 +37,6 @@ type D8mSerializedSymbol =
       name: string;
       kind: 'constant';
       value: number;
-      address?: number;
       file?: string;
       line?: number;
       scope?: 'global' | 'local';
@@ -57,7 +56,6 @@ type D8mFileSymbol =
       name: string;
       kind: 'constant';
       value: number;
-      address?: number;
       line?: number;
       scope?: 'global' | 'local';
     }
@@ -81,7 +79,6 @@ function toSerializedSymbol(symbol: SymbolEntry): D8mSerializedSymbol {
       name: symbol.name,
       kind: 'constant',
       value: symbol.value,
-      ...(symbol.address !== undefined ? { address: symbol.address } : {}),
       ...(symbol.file !== undefined ? { file: symbol.file } : {}),
       ...(symbol.line !== undefined ? { line: symbol.line } : {}),
       ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
@@ -103,8 +100,8 @@ function compareSerializedSymbols(a: D8mSerializedSymbol, b: D8mSerializedSymbol
   const bClass = b.kind === 'constant' ? 1 : 0;
   if (aClass !== bClass) return aClass - bClass;
 
-  const aAddress = a.kind === 'constant' ? (a.address ?? a.value & 0xffff) : a.address;
-  const bAddress = b.kind === 'constant' ? (b.address ?? b.value & 0xffff) : b.address;
+  const aAddress = a.kind === 'constant' ? a.value & 0xffff : a.address;
+  const bAddress = b.kind === 'constant' ? b.value & 0xffff : b.address;
   if (aAddress !== bAddress) return aAddress - bAddress;
 
   const nameCmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());

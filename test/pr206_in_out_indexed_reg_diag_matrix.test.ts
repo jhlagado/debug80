@@ -23,12 +23,12 @@ describe('PR206: in/out indexed-byte-register diagnostics parity', () => {
     {
       label: 'in destination',
       id: DiagnosticIds.EncodeError,
-      message: 'in destination must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'in destination must use plain reg8 B/C/D/E/H/L/A',
     },
     {
       label: 'out source',
       id: DiagnosticIds.EncodeError,
-      message: 'out source must use legacy reg8 B/C/D/E/H/L/A',
+      message: 'out source must use plain reg8 B/C/D/E/H/L/A',
     },
   ] satisfies Row[])('$label — explicit diagnostics for ED in/out forms using IX*/IY* byte registers', async (row) => {
     const res = await compile(PR206_FIXTURE, {}, { formats: defaultFormatWriters });

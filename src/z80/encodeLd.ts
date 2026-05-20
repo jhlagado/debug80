@@ -97,7 +97,7 @@ export function encodeLdInstruction(
       (indexedDst && !indexedSrc && ctx.isLegacyHLReg8(src)) ||
       (indexedSrc && !indexedDst && ctx.isLegacyHLReg8(dst))
     ) {
-      diag(diagnostics, node, `ld with IX*/IY* does not support legacy H/L counterpart operands`);
+      diag(diagnostics, node, `ld with IX*/IY* does not support plain H/L counterpart operands`);
       return undefined;
     }
     const d = indexedDst ? indexedDst.code : dst ? reg8Code(dst) : undefined;

@@ -270,7 +270,7 @@ describe('PR1140 encodeInstruction error paths', () => {
       expect(
         encodeInstruction(instruction('in', [reg('IXH'), portC()]), env, diagnostics),
       ).toBeUndefined();
-      expectEncodeError(diagnostics, 'in destination must use legacy reg8');
+      expectEncodeError(diagnostics, 'in destination must use plain reg8');
     });
 
     it('in: B with immediate port (needs A)', () => {

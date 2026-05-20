@@ -51,12 +51,6 @@ export type SymbolEntry =
        * D8M serialization includes this as `value`.
        */
       value: number;
-      /**
-       * Back-compat: legacy constant representation stored the value in `address`.
-       *
-       * Writers may include this field for compatibility with older tooling.
-       */
-      address?: number;
       file?: string;
       line?: number;
       scope?: 'global' | 'local';
