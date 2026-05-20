@@ -11,7 +11,6 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
   { keyword: 'union', kind: 'union declaration', expected: '<name>' },
   { keyword: 'op', kind: 'op header', expected: '<name>(...)' },
   { keyword: 'enum', kind: 'enum declaration', expected: '<name> <member>[, ...]' },
-  { keyword: 'align', kind: 'align directive', expected: '<imm16>' },
 ];
 
 function consumeKeywordPrefix(input: string, keyword: string): string | undefined {
@@ -22,6 +21,9 @@ function consumeKeywordPrefix(input: string, keyword: string): string | undefine
 
 export function topLevelStartKeyword(t: string): string | undefined {
   const rawKeyword = (t.split(/\s/, 1)[0] ?? '').toLowerCase();
+  if (!rawKeyword.startsWith('.') && (rawKeyword === 'type' || rawKeyword === 'union')) {
+    return undefined;
+  }
   const keyword = rawKeyword.startsWith('.') ? rawKeyword.slice(1) : rawKeyword;
   return TOP_LEVEL_KEYWORDS.has(keyword) ? keyword : undefined;
 }

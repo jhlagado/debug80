@@ -15,10 +15,10 @@ describe('PR160 parser: type/union missing-end recovery', () => {
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, {
-      message: 'Unterminated type "Point": expected "end" before "op"',
+      message: 'Unterminated type "Point": expected ".endtype" before "op"',
     });
     expectDiagnostic(res.diagnostics, {
-      message: 'Unterminated union "Pair": expected "end" before "enum"',
+      message: 'Unterminated union "Pair": expected ".endunion" before "enum"',
     });
     expectNoDiagnostic(res.diagnostics, {
       messageIncludes: 'Invalid record field declaration',

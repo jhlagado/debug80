@@ -3,7 +3,6 @@ import { consumeTopKeyword } from './parseTopLevelCommon.js';
 import { parseEnumDecl } from './parseEnum.js';
 import { parseTopLevelOpDecl } from './parseOp.js';
 import { parseTypeDecl, parseUnionDecl } from './parseTypes.js';
-import { parseAlignDirectiveDecl } from './parseTopLevelSimple.js';
 import type { LogicalLine } from './parseLogicalLines.js';
 import type { SourceFile } from './source.js';
 import type {
@@ -143,31 +142,10 @@ export function createSourceItemTable(ctx: CreateSourceItemTableContext) {
     return { nextIndex: index + 1, ...(enumNode ? { node: enumNode } : {}) };
   }
 
-  function parseAlignItem({
-    index,
-    lineNo,
-    filePath,
-    text,
-    rest,
-    stmtSpan,
-  }: ParseSourceItemDispatchArgs): ParseItemResult {
-    const alignTail = consumeTopKeyword(rest, 'align') ?? '';
-    const alignNode = parseAlignDirectiveDecl(rest, alignTail, {
-      diagnostics,
-      sourcePath: filePath,
-      lineNo,
-      text,
-      span: stmtSpan,
-      isReservedTopLevelName,
-    });
-    return { nextIndex: index + 1, ...(alignNode ? { node: alignNode } : {}) };
-  }
-
   return {
     type: parseTypeItem,
     union: parseUnionItem,
     op: parseOpItem,
     enum: parseEnumItem,
-    align: parseAlignItem,
   } as SourceItemDispatchTable;
 }

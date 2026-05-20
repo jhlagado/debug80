@@ -77,11 +77,11 @@ describe('.asm source boundary', () => {
     const { entry, cleanup } = writeTempSource(
       'asm',
       [
-        'type Sprite',
-        '    x: byte',
-        '    y: byte',
-        '    flags: byte',
-        'end',
+        '.type Sprite',
+        'x     .byte',
+        'y     .byte',
+        'flags .byte',
+        '.endtype',
         '',
         'SpriteSize .equ sizeof(Sprite)',
         'FlagsOffset .equ offset(Sprite, flags)',
@@ -101,15 +101,66 @@ describe('.asm source boundary', () => {
     }
   });
 
+  it('rejects retired colon-style layout declarations', async () => {
+    const { entry, cleanup } = writeTempSource(
+      'asm',
+      [
+        '.type Sprite',
+        'x: byte',
+        '.endtype',
+        '',
+      ].join('\n'),
+    );
+
+    try {
+      const res = await compile(
+        entry,
+        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
+        { formats: defaultFormatWriters },
+      );
+      expect(res.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: 'error',
+          message: expect.stringContaining('Invalid record field declaration line "x: byte"'),
+        }),
+      );
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('treats bare type declarations as unsupported assembler text', async () => {
+    const { entry, cleanup } = writeTempSource(
+      'asm',
+      ['type Sprite', 'main:', '  ret', ''].join('\n'),
+    );
+
+    try {
+      const res = await compile(
+        entry,
+        { emitListing: false, emitD8m: false },
+        { formats: defaultFormatWriters },
+      );
+      expect(res.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: 'error',
+          message: expect.stringContaining('Unsupported instruction: type'),
+        }),
+      );
+    } finally {
+      cleanup();
+    }
+  });
+
   it('allows label-based layout-cast address expressions without diagnostics', async () => {
     const { entry, cleanup } = writeTempSource(
       'asm',
       [
-        'type Sprite',
-        '    x: byte',
-        '    y: byte',
-        '    flags: byte',
-        'end',
+        '.type Sprite',
+        'x     .byte',
+        'y     .byte',
+        'flags .byte',
+        '.endtype',
         '',
         '.org $2000',
         'SPRITES:',

@@ -63,9 +63,9 @@ function parseRecordFieldDecl(
 ): RecordFieldNode | undefined {
   const { file, diagnostics, sourcePath, isReservedTopLevelName } = ctx;
   const { startOffset, endOffset, lineNo, filePath } = line;
-  const match =
-    /^([^:]+)\s*:\s*(.+)$/.exec(fieldText) ??
-    /^([A-Za-z_][A-Za-z0-9_]*)\s+(\.(?:field|byte|word|addr))(?:\s+(.+))?$/i.exec(fieldText);
+  const match = /^([A-Za-z_][A-Za-z0-9_]*)\s+(\.(?:field|byte|word|addr))(?:\s+(.+))?$/i.exec(
+    fieldText,
+  );
   if (!match) {
     diagInvalidBlockLine(
       diagnostics,
@@ -207,6 +207,7 @@ function parseRecordFields(
   startIndex: number,
   ctx: RecordFieldBlockContext,
   declarationName: string,
+  endKeyword: '.endtype' | '.endunion',
 ): ParsedRecordFields {
   const { file, lineCount, diagnostics, sourcePath, getRawLine, isReservedTopLevelName } = ctx;
   const fields: RecordFieldNode[] = [];
@@ -227,11 +228,7 @@ function parseRecordFields(
       index++;
       continue;
     }
-    if (
-      fieldTextLower === 'end' ||
-      fieldTextLower === '.endtype' ||
-      fieldTextLower === '.endunion'
-    ) {
+    if (fieldTextLower === endKeyword) {
       terminated = true;
       endOffset = lineEndOffset;
       index++;
@@ -245,7 +242,7 @@ function parseRecordFields(
           filePath,
           `${fieldKind} field declaration`,
           fieldText,
-          '<name>: <type>',
+          '<name> .field <size> or <name> .byte/.word/.addr',
           lineNo,
         );
         index++;
@@ -302,7 +299,8 @@ export function parseRecordFieldBlock(params: {
     ctx,
   } = params;
   const { file, diagnostics, sourcePath } = ctx;
-  const parsed = parseRecordFields(fieldKind, startIndex, ctx, declarationName);
+  const endKeyword = declarationKind === 'type' ? '.endtype' : '.endunion';
+  const parsed = parseRecordFields(fieldKind, startIndex, ctx, declarationName, endKeyword);
 
   if (!parsed.terminated) {
     if (
@@ -313,14 +311,14 @@ export function parseRecordFieldBlock(params: {
       diag(
         diagnostics,
         parsed.interruptedByFilePath,
-        `Unterminated ${declarationKind} "${declarationName}": expected "end" before "${parsed.interruptedByKeyword}"`,
+        `Unterminated ${declarationKind} "${declarationName}": expected "${endKeyword}" before "${parsed.interruptedByKeyword}"`,
         { line: parsed.interruptedByLine, column: 1 },
       );
     } else {
       diag(
         diagnostics,
         sourcePath,
-        `Unterminated ${declarationKind} "${declarationName}": missing "end"`,
+        `Unterminated ${declarationKind} "${declarationName}": missing "${endKeyword}"`,
         { line: declarationLineNo, column: 1 },
       );
     }

@@ -28,11 +28,11 @@ describe('assembler source extension surface', () => {
     const { entry, cleanup } = writeTempSource(
       'asm',
       [
-        'type Sprite',
-        '    x: byte',
-        '    y: byte',
-        '    flags: byte',
-        'end',
+        '.type Sprite',
+        'x     .byte',
+        'y     .byte',
+        'flags .byte',
+        '.endtype',
         'SpriteSize .equ sizeof(Sprite)',
         'FlagsOffset .equ offset(Sprite, flags)',
         '',

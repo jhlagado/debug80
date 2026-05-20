@@ -1,4 +1,4 @@
-const TOP_LEVEL_KEYWORD_LIST = ['enum', 'type', 'union', 'op', 'align'] as const;
+const TOP_LEVEL_KEYWORD_LIST = ['enum', 'type', 'union', 'op'] as const;
 
 export const TOP_LEVEL_KEYWORDS = new Set<string>(TOP_LEVEL_KEYWORD_LIST);
 
