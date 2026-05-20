@@ -11,6 +11,8 @@ import { parseOpParamsFromText } from './parseParams.js';
 import { isReservedTopLevelDeclName } from './parseParserShared.js';
 import { makeSourceFile, span, type SourceFile } from './source.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
+import { parseAsmLine } from './asm80/asmLine.js';
+import { parseWholeQuotedString } from './asm80/parseAsmRawValues.js';
 
 /**
  * Parse a single AZM source file from an in-memory source string.
@@ -48,6 +50,27 @@ export function parseSourceFile(
   }
 
   const items: SourceItemNode[] = [];
+  const asmStringEquates = new Map<string, string>();
+
+  if (asmSourceMode) {
+    for (let index = 0; index < lineCount; index++) {
+      const line = getRawLine(index);
+      const parsed = parseAsmLine(
+        line.filePath,
+        line.raw,
+        line.lineNo,
+        line.startOffset,
+        aliasPolicy,
+      );
+      if (parsed?.kind === 'end') break;
+      if (parsed?.kind !== 'equ') continue;
+      const rawString = parseWholeQuotedString(parsed.exprText);
+      if (rawString !== undefined && rawString.length > 1) {
+        const name = parsed.name.startsWith('@') ? parsed.name.slice(1) : parsed.name;
+        asmStringEquates.set(name.toLowerCase(), rawString);
+      }
+    }
+  }
 
   function isReservedTopLevelName(name: string): boolean {
     return isReservedTopLevelDeclName(name);
@@ -73,6 +96,7 @@ export function parseSourceFile(
       sourceItemDispatchTable,
       sourcePath,
       asmSourceMode,
+      asmStringEquates,
       ...(aliasPolicy ? { aliasPolicy } : {}),
       span,
     });
