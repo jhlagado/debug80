@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 
 describe('PR24 ISA core tranche', () => {
   it('encodes sub/cp/and/or/xor and rel8 branches', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_isa_core.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr24_isa_core.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
     expect(
@@ -34,7 +34,7 @@ describe('PR24 ISA core tranche', () => {
   });
 
   it('diagnoses rel8 out-of-range label branches', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_jr_label_out_of_range.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr24_jr_label_out_of_range.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
@@ -45,7 +45,7 @@ describe('PR24 ISA core tranche', () => {
   });
 
   it('encodes backwards rel8 branch displacements', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_rel8_backward.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr24_rel8_backward.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
     expect(containsSubsequence(binBytes(res.artifacts), [0x10, 0xfe])).toBe(true);

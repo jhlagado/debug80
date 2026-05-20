@@ -1,4 +1,4 @@
 enum ModeA On, Off
 enum ModeB On, Off
 
-const Bad = On
+Bad .equ On

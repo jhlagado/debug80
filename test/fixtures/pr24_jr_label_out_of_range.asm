@@ -1,4 +1,4 @@
-export func main()
+main:
     jr far
     nop
     nop
@@ -132,4 +132,3 @@ export func main()
     nop
   far:
     nop
-end

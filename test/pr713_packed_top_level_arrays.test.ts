@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR713 packed top-level array emission', () => {
   it('does not round top-level array initializers up before following symbols', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr713_packed_top_level_arrays.zax');
+    const entry = join(__dirname, 'fixtures', 'pr713_packed_top_level_arrays.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
 

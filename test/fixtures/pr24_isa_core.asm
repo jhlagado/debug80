@@ -1,4 +1,4 @@
-export func main()
+main:
     ld b, 2
     ld a, 5
     sub a, b
@@ -11,4 +11,3 @@ export func main()
     djnz skip
   skip:
     nop
-end

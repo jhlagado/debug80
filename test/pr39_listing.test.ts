@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 describe('PR39 listing (.lst) artifact', () => {
   it('emits a deterministic byte-dump listing by default', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr991_comment_preservation.zax');
+    const entry = join(__dirname, 'fixtures', 'pr991_comment_preservation.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
 
@@ -22,15 +22,15 @@ describe('PR39 listing (.lst) artifact', () => {
     const [header] = lst!.text.split('\n');
     expect(header).toBe('; AZM listing');
     expect(header).not.toContain('ZAX');
-    expect(lst!.text).toContain('; range: $0100..$026E (end exclusive)');
+    expect(lst!.text).toContain('; range: $0100..$0204 (end exclusive)');
     expect(lst!.text).toContain('; ... gap $0110..$01FF (15 lines)');
-    expect(lst!.text).toContain('0200: DD E5 DD 21 00 00 DD 39');
-    expect(lst!.text).toMatch(/;\s+data\s+count\s+=\s+\$0100/);
+    expect(lst!.text).toContain('0200: 3A 00 01 C9');
+    expect(lst!.text).toMatch(/;\s+label\s+count\s+=\s+\$0100/);
     expect(lst!.text).toMatch(/;\s+label\s+main\s+=\s+\$0200/);
   });
 
   it('allows suppressing listing without changing other defaults', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr1_minimal.zax');
+    const entry = join(__dirname, 'fixtures', 'pr1_minimal.asm');
     const res = await compile(entry, { emitListing: false }, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
 

@@ -1,4 +1,0 @@
-export func main()
-  loop:
-    djnz loop
-end
