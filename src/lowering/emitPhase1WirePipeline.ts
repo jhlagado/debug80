@@ -81,7 +81,6 @@ export type EmitPhase1WireResult = {
   activeSectionRef: ReturnType<typeof createEmitStateHelpers>['activeSectionRef'];
   codeOffsetRef: ReturnType<typeof createEmitStateHelpers>['codeOffsetRef'];
   dataOffsetRef: ReturnType<typeof createEmitStateHelpers>['dataOffsetRef'];
-  varOffsetRef: ReturnType<typeof createEmitStateHelpers>['varOffsetRef'];
   currentCodeSegmentTagRef: ReturnType<typeof createEmitStateHelpers>['currentCodeSegmentTagRef'];
   generatedLabelCounterRef: ReturnType<typeof createEmitStateHelpers>['generatedLabelCounterRef'];
   recordLoweredAsmItem: ReturnType<typeof createEmitStateHelpers>['recordLoweredAsmItem'];
@@ -171,7 +170,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     activeSectionRef,
     codeOffsetRef,
     dataOffsetRef,
-    varOffsetRef,
     currentCodeSegmentTagRef,
     generatedLabelCounterRef,
     getCurrentCodeOffset,
@@ -471,7 +469,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     activeSectionRef,
     codeOffsetRef,
     dataOffsetRef,
-    varOffsetRef,
     currentCodeSegmentTagRef,
     generatedLabelCounterRef,
     recordLoweredAsmItem,

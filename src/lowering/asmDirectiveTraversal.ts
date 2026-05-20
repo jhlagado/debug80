@@ -23,7 +23,6 @@ type AsmAddressContext = Pick<
   | 'baseExprs'
   | 'codeOffsetRef'
   | 'dataOffsetRef'
-  | 'varOffsetRef'
   | 'evalImmExpr'
   | 'env'
   | 'diagnostics'
@@ -77,12 +76,7 @@ export function activeSectionAddress(ctx: AsmAddressContext): number | undefined
 
 export function activeAsmAddress(ctx: AsmAddressContext): number | undefined {
   const section = ctx.activeSectionRef.current;
-  const offset =
-    section === 'data'
-      ? ctx.dataOffsetRef.current
-      : section === 'var'
-        ? ctx.varOffsetRef.current
-        : ctx.codeOffsetRef.current;
+  const offset = section === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
   return sectionAddressAtOffset(ctx, section, offset);
 }
 
@@ -91,7 +85,7 @@ export function sectionAddressAtOffset(
   section: SectionKind,
   offset: number,
 ): number | undefined {
-  const baseExpr = section === 'data' ? ctx.baseExprs.data : section === 'var' ? undefined : ctx.baseExprs.code;
+  const baseExpr = section === 'data' ? ctx.baseExprs.data : ctx.baseExprs.code;
   if (!baseExpr) return offset;
   const base = ctx.evalImmExpr(baseExpr, ctx.env, ctx.diagnostics);
   return base === undefined ? undefined : base + offset;

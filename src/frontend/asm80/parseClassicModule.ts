@@ -356,7 +356,6 @@ export function parseClassicModuleFile(
     kind: 'ModuleFile',
     span: parsed.span,
     path,
-    moduleId: path,
     items: parsed.items,
   };
 }

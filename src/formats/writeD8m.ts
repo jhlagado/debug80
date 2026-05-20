@@ -44,7 +44,7 @@ type D8mSerializedSymbol =
     }
   | {
       name: string;
-      kind: 'label' | 'data' | 'var' | 'unknown';
+      kind: 'label' | 'data' | 'unknown';
       address: number;
       file?: string;
       line?: number;
@@ -63,7 +63,7 @@ type D8mFileSymbol =
     }
   | {
       name: string;
-      kind: 'label' | 'data' | 'var' | 'unknown';
+      kind: 'label' | 'data' | 'unknown';
       address: number;
       line?: number;
       scope?: 'global' | 'local';

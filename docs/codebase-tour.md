@@ -175,7 +175,6 @@ src/
 │   ├── runtimeAtomBudget.ts   # Runtime atom budget enforcement
 │   ├── runtimeImmediates.ts   # Runtime immediate handling
 │   ├── capabilities.ts        # Capability checking
-│   ├── startupInit.ts         # Startup initialisation helpers
 │   ├── inputAssets.ts         # bin/hex asset loading
 │   ├── sectionLayout.ts       # Section layout management
 │   ├── scalarWordAccessors.ts # Scalar word accessor helpers

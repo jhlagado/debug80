@@ -35,9 +35,9 @@ type AssemblerFlowSetupContext = {
   taken: Set<string>;
   traceLabel: (offset: number, name: string, span?: SourceSpan) => void;
   pending: Array<{
-    kind: 'label' | 'data' | 'var';
+    kind: 'label' | 'data';
     name: string;
-    section: 'code' | 'data' | 'var';
+    section: 'code' | 'data';
     offset: number;
     file?: string;
     line?: number;

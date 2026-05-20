@@ -16,7 +16,6 @@ export type LoweredAsmPlacementContext = {
   baseAddresses: {
     codeBase: number;
     dataBase: number;
-    varBase: number;
   };
 };
 
@@ -29,8 +28,6 @@ function baseOriginForSection(
       return baseAddresses.codeBase;
     case 'data':
       return baseAddresses.dataBase;
-    case 'var':
-      return baseAddresses.varBase;
   }
 }
 

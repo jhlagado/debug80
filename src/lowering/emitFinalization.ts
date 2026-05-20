@@ -39,8 +39,6 @@ export type EmitFinalizationContext = {
   codeOffset: number;
   /** Current data section size cursor. */
   dataOffset: number;
-  /** Current var section size cursor. */
-  varOffset: number;
   /** Pending forward symbols from lowering. */
   pending: ProgramEmissionFinalizeContext['pending'];
   /** Symbol table. */
@@ -78,7 +76,7 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
   symbols: SymbolEntry[];
   placedLoweredAsmProgram: LoweredAsmProgram;
 } {
-  const { codeBase, dataBase, varBase } = computeSectionBases(
+  const { codeBase, dataBase } = computeSectionBases(
     {
       baseExprs: context.baseExprs,
       evalImmExpr: context.evalImmExpr,
@@ -97,7 +95,7 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
     diagnostics: context.diagnostics,
     diag: context.diag,
     primaryFile: context.primaryFile,
-    baseAddresses: { codeBase, dataBase, varBase },
+    baseAddresses: { codeBase, dataBase },
   });
   const emission = emitLoweredAsmProgramBytes(placedProgram, {
     diagnostics: context.diagnostics,
@@ -117,7 +115,6 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
     env: context.env,
     codeOffset: context.codeOffset,
     dataOffset: context.dataOffset,
-    varOffset: context.varOffset,
     pending: context.pending,
     symbols: context.symbols,
     absoluteSymbols: context.absoluteSymbols,

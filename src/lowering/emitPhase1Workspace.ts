@@ -9,7 +9,7 @@ import { createEmitVisibilityHelpers } from './emitVisibility.js';
 
 /** Byte maps, listing segments, and lowered-asm recording for phase 1. */
 export type EmitPhase1EmissionState = {
-  /** Merged map of all emitted bytes across sections (code/data/var). */
+  /** Merged map of all emitted bytes across sections (code/data). */
   bytes: Map<number, number>;
   /** Code section bytes only (before merge into `bytes` for some paths). */
   codeBytes: Map<number, number>;
@@ -90,7 +90,7 @@ export type EmitPhase1StorageState = {
   /** Names used as raw addresses (no typed storage). */
   rawAddressSymbols: Set<string>;
   /** Optional base imm expressions per section for placement. */
-  baseExprs: Partial<Record<'code' | 'data' | 'var', ImmExprNode>>;
+  baseExprs: Partial<Record<'code' | 'data', ImmExprNode>>;
 };
 
 /** Root workspace for emit phase 1: grouped sub-objects replace a single flat struct. */
@@ -128,7 +128,7 @@ export function createEmitPhase1Workspace(
   });
   const storageTypes = new Map<string, TypeExprNode>();
   const rawAddressSymbols = new Set<string>();
-  const baseExprs: Partial<Record<'code' | 'data' | 'var', ImmExprNode>> = {};
+  const baseExprs: Partial<Record<'code' | 'data', ImmExprNode>> = {};
 
   const firstModule = program.files[0]!;
 

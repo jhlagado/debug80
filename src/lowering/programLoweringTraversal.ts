@@ -91,9 +91,7 @@ function lowerItem(
     }
     const current = ctx.activeSectionRef.current === 'code'
         ? ctx.codeOffsetRef.current
-        : ctx.activeSectionRef.current === 'data'
-          ? ctx.dataOffsetRef.current
-          : ctx.varOffsetRef.current;
+        : ctx.dataOffsetRef.current;
     const aligned = ctx.alignTo(current, value);
     const pad = aligned - current;
     if (pad > 0) {
@@ -146,7 +144,6 @@ export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
   return {
     codeOffset: ctx.codeOffsetRef.current,
     dataOffset: ctx.dataOffsetRef.current,
-    varOffset: ctx.varOffsetRef.current,
     pending: ctx.pending,
     symbols: ctx.symbols,
     absoluteSymbols: ctx.absoluteSymbols,

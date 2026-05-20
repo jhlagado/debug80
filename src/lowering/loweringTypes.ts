@@ -1,11 +1,11 @@
 import type { TypeExprNode } from '../frontend/ast.js';
 import type { EmittedSourceSegment } from '../formats/types.js';
 
-export type SectionKind = 'code' | 'data' | 'var';
+export type SectionKind = 'code' | 'data';
 
 export type PendingSymbol = {
   /** What kind of symbol is pending resolution. */
-  kind: 'label' | 'data' | 'var';
+  kind: 'label' | 'data';
   /** Declared name (not yet bound to an address). */
   name: string;
   /** Target section for the symbol. */
@@ -18,7 +18,7 @@ export type PendingSymbol = {
   line?: number;
   /** Local vs global visibility when applicable. */
   scope?: 'global' | 'local';
-  /** Byte size for data/var when known. */
+  /** Byte size for data when known. */
   size?: number;
 };
 

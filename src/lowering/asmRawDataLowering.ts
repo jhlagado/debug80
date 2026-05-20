@@ -72,15 +72,6 @@ export function createAsmRawDataLowerer(
 ): (decl: RawDataLike) => void {
   return (decl: RawDataLike): void => {
     const activeSection = ctx.activeSectionRef.current;
-    if (activeSection === 'var') {
-      ctx.diag(
-        ctx.diagnostics,
-        decl.span.file,
-        `Raw data declarations cannot target section "var".`,
-      );
-      return;
-    }
-
     const name = decl.name ?? '';
     if (name.length > 0) {
       const lower = name.toLowerCase();

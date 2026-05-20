@@ -62,7 +62,7 @@ export type SymbolEntry =
       scope?: 'global' | 'local';
     }
   | {
-      kind: 'label' | 'data' | 'var' | 'unknown';
+      kind: 'label' | 'data' | 'unknown';
       name: string;
       address: number;
       file?: string;
