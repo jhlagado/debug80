@@ -13,7 +13,7 @@ import {
   type PendingRawLabel,
 } from './parseRawDataDirectives.js';
 
-function isAzmFlatDirectiveLine(rest: string, pending?: PendingRawLabel): boolean {
+function isAsmFlatDirectiveLine(rest: string, pending?: PendingRawLabel): boolean {
   const trimmed = rest.trim();
   if (pending) return true;
   if (looksLikeRawDataDirectiveStart(trimmed)) return true;
@@ -57,8 +57,8 @@ function asmRawDataToNode(
   } as SourceItemNode;
 }
 
-/** Parses one source-file line of AZM flat assembler directives. */
-export function parseAzmFlatDirectiveLine(args: {
+/** Parses one source-file line of ASM flat assembler directives. */
+export function parseAsmFlatDirectiveLine(args: {
   rest: string;
   stmtSpan: SourceSpan;
   filePath: string;
@@ -71,7 +71,7 @@ export function parseAzmFlatDirectiveLine(args: {
   const trimmed = rest.trim();
   const parsedAsm = parseAsmLine(filePath, trimmed, lineNo, stmtSpan.start.offset, aliasPolicy);
   if (
-    !isAzmFlatDirectiveLine(trimmed, ctx.azmPendingRawLabel) &&
+    !isAsmFlatDirectiveLine(trimmed, ctx.asmPendingRawLabel) &&
     parsedAsm?.kind !== 'rawData' &&
     parsedAsm?.kind !== 'equ' &&
     parsedAsm?.kind !== 'org' &&
@@ -84,17 +84,17 @@ export function parseAzmFlatDirectiveLine(args: {
     return undefined;
   }
 
-  if (ctx.azmPendingRawLabel) {
-    const pending = ctx.azmPendingRawLabel;
+  if (ctx.asmPendingRawLabel) {
+    const pending = ctx.asmPendingRawLabel;
     if (parsedAsm?.kind === 'rawData') {
-      delete ctx.azmPendingRawLabel;
+      delete ctx.asmPendingRawLabel;
       return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, pending)];
     }
     const normalizedRaw = normalizeRawDataDirectiveText(trimmed);
     const parsedRaw = normalizedRaw
       ? parseRawDataDirective(pending, normalizedRaw, lineNo, stmtSpan, filePath, diagnostics)
       : undefined;
-    delete ctx.azmPendingRawLabel;
+    delete ctx.asmPendingRawLabel;
     if (parsedRaw) return [parsedRaw];
     diag(diagnostics, filePath, `Raw data label "${pending.name}" is missing a directive`, {
       line: pending.lineNo,
@@ -152,7 +152,7 @@ export function parseAzmFlatDirectiveLine(args: {
 
   const labelOnly = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*$/.exec(trimmed);
   if (labelOnly) {
-    ctx.azmPendingRawLabel = { name: labelOnly[1]!, span: stmtSpan, lineNo, filePath };
+    ctx.asmPendingRawLabel = { name: labelOnly[1]!, span: stmtSpan, lineNo, filePath };
     return [];
   }
 

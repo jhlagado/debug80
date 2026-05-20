@@ -57,7 +57,7 @@ src/
     asm80/                  ASM80-baseline line parsing helpers
     directiveAliases.ts     Configurable directive head aliases
     parseAsmTopLevel.ts ASM source top-level parser
-    parseAzmAsmStream.ts    Flat assembler stream parser
+    parseAsmStream.ts    Flat assembler stream parser
     parseImm.ts             Immediate expression parser
     parseOperands.ts        Instruction operand parser
     parseOp.ts              Op declaration parser
