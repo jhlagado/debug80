@@ -15,9 +15,9 @@ describe('syncLoweredAsmInstructionBytesFromFinalBytes', () => {
     const program: LoweredAsmProgram = {
       blocks: [
         {
-          kind: 'section',
+          kind: 'placed',
           origin: 0x4000,
-          section: 'code',
+          placement: 'code',
           items: [{ kind: 'instr', head: '@raw', operands: [], bytes: [0x21, 0x00, 0x00] }],
         },
       ],
@@ -35,9 +35,9 @@ describe('syncLoweredAsmInstructionBytesFromFinalBytes', () => {
     const program: LoweredAsmProgram = {
       blocks: [
         {
-          kind: 'section',
+          kind: 'placed',
           origin: 0x4100,
-          section: 'data',
+          placement: 'data',
           items: [
             { kind: 'db', values: [{ kind: 'literal', value: 1 }] },
             { kind: 'instr', head: '@raw', operands: [], bytes: [0x20, 0x00] },

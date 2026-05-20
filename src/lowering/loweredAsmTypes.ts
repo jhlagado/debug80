@@ -1,4 +1,4 @@
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 
 export type LoweredAsmStream = {
   /** Ordered blocks as emitted during lowering (pre-placement). */
@@ -6,10 +6,10 @@ export type LoweredAsmStream = {
 };
 
 export type LoweredAsmStreamBlock = {
-  /** Base section chunk. */
+  /** Base placement chunk. */
   kind: 'base';
-  /** Which logical section this block belongs to. */
-  section: SectionKind;
+  /** Which logical placement this block belongs to. */
+  placement: PlacementKind;
   /** Lowered items in emission order. */
   items: LoweredAsmItem[];
 };
@@ -22,12 +22,12 @@ export type LoweredAsmProgram = {
 };
 
 export type LoweredAsmBlock = {
-  /** Section-relative block vs absolute-origin blob. */
-  kind: 'section' | 'absolute';
+  /** Placement-relative block vs absolute-origin blob. */
+  kind: 'placed' | 'absolute';
   /** Base address for this block’s bytes. */
   origin: number;
-  /** Section kind when `kind === 'section'`. */
-  section?: SectionKind;
+  /** Code/data placement when `kind === 'placed'`. */
+  placement?: PlacementKind;
   /** Lowered items. */
   items: LoweredAsmItem[];
 };

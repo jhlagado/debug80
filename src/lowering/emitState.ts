@@ -1,7 +1,7 @@
 import type { EmittedSourceSegment } from '../formats/types.js';
 import { createLoweredAsmStreamRecordingHelpers } from './loweredAsmStreamRecording.js';
 import type { SourceSpan, ImmExprNode } from '../frontend/ast.js';
-import type { SectionKind, SourceSegmentTag } from './loweringTypes.js';
+import type { PlacementKind, SourceSegmentTag } from './loweringTypes.js';
 import type {
   LoweredAsmStream,
   LoweredAsmStreamBlock,
@@ -12,7 +12,7 @@ type EmitStateContext = {
   sourceTexts?: Map<string, string>;
   /** Line-end comments keyed by file and line. */
   sourceLineComments?: Map<string, Map<number, string>>;
-  /** Code section byte map. */
+  /** Code-placement byte map. */
   codeBytes: Map<number, number>;
   /** Source segment ranges for code bytes. */
   codeSourceSegments: EmittedSourceSegment[];
@@ -46,7 +46,7 @@ type EmitStateContext = {
 };
 
 export function createEmitStateHelpers(ctx: EmitStateContext) {
-  let activeSection: SectionKind = 'code';
+  let activePlacement: PlacementKind = 'code';
   let codeOffset = 0;
   let dataOffset = 0;
   let currentCodeSegmentTag: SourceSegmentTag | undefined;
@@ -70,12 +70,12 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
     segments.push({ ...currentCodeSegmentTag, start, end });
   };
 
-  const activeSectionRef = {
+  const activePlacementRef = {
     get current() {
-      return activeSection;
+      return activePlacement;
     },
-    set current(value: SectionKind) {
-      activeSection = value;
+    set current(value: PlacementKind) {
+      activePlacement = value;
     },
   };
   const codeOffsetRef = {
@@ -137,7 +137,7 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
   };
 
   const advanceAlign = (a: number): void => {
-    switch (activeSection) {
+    switch (activePlacement) {
       case 'code':
         codeOffset = ctx.alignTo(codeOffset, a);
         return;
@@ -153,7 +153,7 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
     lowerOperandForLoweredAsm,
     recordLoweredAsmItem,
   } = createLoweredAsmStreamRecordingHelpers({
-    activeSectionRef,
+    activePlacementRef,
     loweredAsmBlocksByKey: ctx.loweredAsmBlocksByKey,
     loweredAsmStream: ctx.loweredAsmStream,
     ...(ctx.sourceLineComments ? { sourceLineComments: ctx.sourceLineComments } : {}),
@@ -173,7 +173,7 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
   };
 
   return {
-    activeSectionRef,
+    activePlacementRef,
     codeOffsetRef,
     dataOffsetRef,
     currentCodeSegmentTagRef,

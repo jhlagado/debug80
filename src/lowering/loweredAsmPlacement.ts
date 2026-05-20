@@ -1,5 +1,5 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import type {
   LoweredAsmBlock,
   LoweredAsmItem,
@@ -19,11 +19,11 @@ export type LoweredAsmPlacementContext = {
   };
 };
 
-function baseOriginForSection(
-  section: SectionKind,
+function baseOriginForPlacement(
+  placement: PlacementKind,
   baseAddresses: LoweredAsmPlacementContext['baseAddresses'],
 ): number {
-  switch (section) {
+  switch (placement) {
     case 'code':
       return baseAddresses.codeBase;
     case 'data':
@@ -32,7 +32,7 @@ function baseOriginForSection(
 }
 
 function resolveBlockOrigin(block: LoweredAsmStreamBlock, ctx: LoweredAsmPlacementContext): number {
-  return baseOriginForSection(block.section, ctx.baseAddresses);
+  return baseOriginForPlacement(block.placement, ctx.baseAddresses);
 }
 
 export function placeLoweredAsmStream(
@@ -42,9 +42,9 @@ export function placeLoweredAsmStream(
   const blocks: LoweredAsmBlock[] = [];
   for (const block of stream.blocks) {
     blocks.push({
-      kind: 'section',
+      kind: 'placed',
       origin: resolveBlockOrigin(block, ctx),
-      section: block.section,
+      placement: block.placement,
       items: block.items,
     });
   }

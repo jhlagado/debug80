@@ -1,16 +1,16 @@
 import type { TypeExprNode } from '../frontend/ast.js';
 import type { EmittedSourceSegment } from '../formats/types.js';
 
-export type SectionKind = 'code' | 'data';
+export type PlacementKind = 'code' | 'data';
 
 export type PendingSymbol = {
   /** What kind of symbol is pending resolution. */
   kind: 'label' | 'data';
   /** Declared name (not yet bound to an address). */
   name: string;
-  /** Target section for the symbol. */
-  section: SectionKind;
-  /** Tentative offset within the section; refined at finalize. */
+  /** Target placement for the symbol. */
+  placement: PlacementKind;
+  /** Tentative offset within the placement; refined at finalize. */
   offset: number;
   /** Source file when known; omit for synthetic entries. */
   file?: string;

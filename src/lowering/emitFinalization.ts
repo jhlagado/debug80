@@ -10,7 +10,7 @@ import {
   finalizeProgramEmission,
   type ProgramEmissionFinalizeContext,
 } from './programLowering.js';
-import { computeSectionBases } from './programLoweringFinalize.js';
+import { computePlacementBases } from './programLoweringFinalize.js';
 import { placeLoweredAsmStream } from './loweredAsmPlacement.js';
 import {
   emitLoweredAsmProgramBytes,
@@ -27,7 +27,7 @@ export type EmitFinalizationContext = {
   diagAt: (diagnostics: Diagnostic[], span: SourceSpan, message: string) => void;
   /** Entry file path for diagnostics. */
   primaryFile: string;
-  /** Optional section base expressions. */
+  /** Optional placement base expressions. */
   baseExprs: ProgramEmissionFinalizeContext['baseExprs'];
   /** Imm evaluator for bases and fixups. */
   evalImmExpr: ProgramEmissionFinalizeContext['evalImmExpr'];
@@ -35,9 +35,9 @@ export type EmitFinalizationContext = {
   env: CompileEnv;
   /** Lowered asm stream before placement. */
   loweredAsmStream: LoweredAsmStream;
-  /** Current code section size cursor after lowering. */
+  /** Current code-placement size cursor after lowering. */
   codeOffset: number;
-  /** Current data section size cursor. */
+  /** Current data-placement size cursor. */
   dataOffset: number;
   /** Pending forward symbols from lowering. */
   pending: ProgramEmissionFinalizeContext['pending'];
@@ -49,9 +49,9 @@ export type EmitFinalizationContext = {
   fixups: ProgramEmissionFinalizeContext['fixups'];
   /** Relative fixup queue. */
   rel8Fixups: ProgramEmissionFinalizeContext['rel8Fixups'];
-  /** Code section bytes. */
+  /** Code-placement bytes. */
   codeBytes: ProgramEmissionFinalizeContext['codeBytes'];
-  /** Data section bytes. */
+  /** Data-placement bytes. */
   dataBytes: ProgramEmissionFinalizeContext['dataBytes'];
   /** Merged working byte map. */
   bytes: Map<number, number>;
@@ -74,7 +74,7 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
   symbols: SymbolEntry[];
   placedLoweredAsmProgram: LoweredAsmProgram;
 } {
-  const { codeBase, dataBase } = computeSectionBases(
+  const { codeBase, dataBase } = computePlacementBases(
     {
       baseExprs: context.baseExprs,
       evalImmExpr: context.evalImmExpr,

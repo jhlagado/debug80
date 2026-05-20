@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { LoweredAsmBlock, LoweredAsmProgram, LoweredAsmItem, LoweredImmExpr } from './loweredAsmTypes.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import { resolveAsmEquSymbol } from './asmEquResolution.js';
 
 export type LoweredAsmByteEmissionContext = {
@@ -81,11 +81,11 @@ function evalLoweredImmExpr(expr: LoweredImmExpr, env: CompileEnv): number | und
   }
 }
 
-function blockSectionKey(section: SectionKind): string {
-  return `base:${section}`;
+function blockPlacementKey(placement: PlacementKind): string {
+  return `base:${placement}`;
 }
 
-/** Byte length of a lowered item as emitted into a section (matches {@link emitLoweredAsmItemBytes}). */
+/** Byte length of a lowered item as emitted into a placement (matches {@link emitLoweredAsmItemBytes}). */
 export function loweredAsmItemEmittedSize(item: LoweredAsmItem, env: CompileEnv): number {
   switch (item.kind) {
     case 'label':
@@ -117,7 +117,7 @@ export function syncLoweredAsmInstructionBytesFromFinalBytes(
   env: CompileEnv,
 ): void {
   for (const block of program.blocks) {
-    if (block.kind !== 'section') continue;
+    if (block.kind !== 'placed') continue;
     let offset = 0;
     const origin = block.origin;
     for (const item of block.items) {
@@ -219,10 +219,10 @@ export function emitLoweredAsmProgramBytes(
   const maxAddressRef = { current: -1 };
 
   for (const block of program.blocks) {
-    if (block.kind !== 'section') continue;
-    const section = block.section ?? 'code';
-    const key = blockSectionKey(section);
-    const target = section === 'code' ? codeBytes : section === 'data' ? dataBytes : new Map<number, number>();
+    if (block.kind !== 'placed') continue;
+    const placement = block.placement ?? 'code';
+    const key = blockPlacementKey(placement);
+    const target = placement === 'code' ? codeBytes : placement === 'data' ? dataBytes : new Map<number, number>();
 
     const offsetRef = { current: 0 };
     for (const item of block.items) {

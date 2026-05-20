@@ -1,10 +1,10 @@
 import type { ImmExprNode, SourceSpan } from '../frontend/ast.js';
 import type { Context } from './programLowering.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import {
   containsCurrentLocation,
   evalAsmImmAtCurrent,
-  sectionAddressAtOffset,
+  placementAddressAtOffset,
 } from './asmDirectiveTraversal.js';
 
 export type RawValueLike =
@@ -55,10 +55,10 @@ function rawImmValue(value: RawValueLike): ImmExprNode | undefined {
 function publishAsmAddressConst(
   ctx: Context,
   name: string,
-  activeSection: SectionKind,
+  activePlacement: PlacementKind,
   offset: number,
 ): void {
-  const baseExpr = activeSection === 'code' ? ctx.baseExprs.code : ctx.baseExprs.data;
+  const baseExpr = activePlacement === 'code' ? ctx.baseExprs.code : ctx.baseExprs.data;
   const base = baseExpr ? ctx.evalImmExpr(baseExpr, ctx.env, ctx.diagnostics) : 0;
   if (base === undefined) return;
   const address = base + offset;
@@ -71,7 +71,7 @@ export function createAsmRawDataLowerer(
   symbolicTargetFromExpr: SymbolicTargetResolver,
 ): (decl: RawDataLike) => void {
   return (decl: RawDataLike): void => {
-    const activeSection = ctx.activeSectionRef.current;
+    const activePlacement = ctx.activePlacementRef.current;
     const name = decl.name ?? '';
     if (name.length > 0) {
       const lower = name.toLowerCase();
@@ -80,12 +80,12 @@ export function createAsmRawDataLowerer(
         if (!alreadyPending) ctx.diag(ctx.diagnostics, decl.span.file, `Duplicate symbol name "${name}".`);
       } else {
         ctx.taken.add(lower);
-        const offset = activeSection === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
-        publishAsmAddressConst(ctx, name, activeSection, offset);
+        const offset = activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
+        publishAsmAddressConst(ctx, name, activePlacement, offset);
         const pending = {
           kind: 'label' as const,
           name,
-          section: activeSection,
+          placement: activePlacement,
           offset,
           file: decl.span.file,
           line: decl.span.start.line,
@@ -97,7 +97,7 @@ export function createAsmRawDataLowerer(
     }
 
     const writeByte = (value: number): void => {
-      if (activeSection === 'code') {
+      if (activePlacement === 'code') {
         const offset = ctx.codeOffsetRef.current;
         ctx.codeBytes.set(offset, value & 0xff);
         ctx.codeOffsetRef.current = offset + 1;
@@ -114,8 +114,8 @@ export function createAsmRawDataLowerer(
     };
 
     const currentAddress = (): number | undefined => {
-      const offset = activeSection === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
-      return sectionAddressAtOffset(ctx, activeSection, offset);
+      const offset = activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
+      return placementAddressAtOffset(ctx, activePlacement, offset);
     };
 
     if (decl.directive === 'ds') {
@@ -146,7 +146,7 @@ export function createAsmRawDataLowerer(
         decl.span,
       );
       if (fill === undefined) {
-        if (activeSection === 'code') {
+        if (activePlacement === 'code') {
           ctx.codeOffsetRef.current += size;
         } else {
           ctx.dataOffsetRef.current += size;

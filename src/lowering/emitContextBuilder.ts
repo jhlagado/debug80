@@ -35,7 +35,7 @@ export type EmitProgramLoweringContextInputs = {
   /** @inheritdoc ProgramLoweringContext */
   codeBytes: ProgramLoweringContext['codeBytes'];
   /** @inheritdoc ProgramLoweringContext */
-  activeSectionRef: ProgramLoweringContext['activeSectionRef'];
+  activePlacementRef: ProgramLoweringContext['activePlacementRef'];
   /** @inheritdoc ProgramLoweringContext */
   codeOffsetRef: ProgramLoweringContext['codeOffsetRef'];
   /** @inheritdoc ProgramLoweringContext */
@@ -83,7 +83,7 @@ export function createProgramLoweringContext(
     symbols: input.symbols,
     dataBytes: input.dataBytes,
     codeBytes: input.codeBytes,
-    activeSectionRef: input.activeSectionRef,
+    activePlacementRef: input.activePlacementRef,
     codeOffsetRef: input.codeOffsetRef,
     dataOffsetRef: input.dataOffsetRef,
     baseExprs: input.baseExprs,

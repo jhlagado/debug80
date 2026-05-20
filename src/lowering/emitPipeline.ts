@@ -3,7 +3,7 @@
  *
  * Pipeline (conceptual):
  *
- * 1. **Workspace setup** — lives in `emit.ts`: section byte maps, fixup queues, visibility,
+ * 1. **Workspace setup** — lives in `emit.ts`: placement byte maps, fixup queues, visibility,
  *    resolution helpers, and the program-lowering context (`createEmitProgramContext`). This
  *    phase wires mutable state and callbacks; it does not traverse the whole program yet.
  *
@@ -11,7 +11,7 @@
  *    raw-address names so later lowering can resolve symbols. Product: {@link PrescanResult}.
  *
  * 3. **Lowering** — `runEmitLoweringPhase`: traverse declarations and instruction streams, emit bytes
- *    into section maps, enqueue fixups. Product: {@link LoweringResult}.
+ *    into placement maps, enqueue fixups. Product: {@link LoweringResult}.
  *
  * 4. **Placement & artifacts** — `runEmitPlacementAndArtifactPhase`: fixup resolution,
  *    merged `EmittedByteMap`, symbol table, placed lowered-ASM program.
@@ -38,9 +38,9 @@ export type EmitPrescanPhaseResult = PrescanResult;
 export type EmitLoweringPhaseContext = ProgramLoweringContext;
 
 export interface EmitLoweringPhaseResult {
-  /** Next code section allocation offset after lowering. */
+  /** Next code-placement allocation offset after lowering. */
   readonly codeOffset: LoweringResult['codeOffset'];
-  /** Next data section offset. */
+  /** Next data-placement offset. */
   readonly dataOffset: LoweringResult['dataOffset'];
   /** Symbols still pending resolution. */
   readonly pending: LoweringResult['pending'];
@@ -110,7 +110,7 @@ export interface EmitFinalizationPhaseEnv {
   readonly writeBytePlacement: EmitFinalizationContext['writeBytePlacement'];
   /** Computes written byte ranges for overlap checks. */
   readonly computeWrittenRange: EmitFinalizationContext['computeWrittenRange'];
-  /** Rebases source map after section moves. */
+  /** Rebases source map after placement moves. */
   readonly rebaseCodeSourceSegments: EmitFinalizationContext['rebaseCodeSourceSegments'];
   /** Optional default code base override. */
   readonly defaultCodeBase?: number;
@@ -148,7 +148,7 @@ export function runEmitPrescanPhase(ctx: EmitPrescanPhaseContext): EmitPrescanPh
 }
 
 // --- Phase 3: lowering (emit bytes, fixups, lowered ASM stream) ---
-/** Phase 3 — lowering: emit declarations and instruction streams into section bytes and fixup queues. */
+/** Phase 3 — lowering: emit declarations and instruction streams into placement bytes and fixup queues. */
 export function runEmitLoweringPhase(
   ctx: EmitLoweringPhaseContext,
   prescan: EmitPrescanPhaseResult,

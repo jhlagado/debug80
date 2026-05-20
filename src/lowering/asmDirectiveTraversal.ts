@@ -1,6 +1,6 @@
 import type { AsmOperandNode, ImmExprNode, SourceSpan } from '../frontend/ast.js';
 import { evalImmExpr as evalImmExprWithEnv } from '../semantics/env.js';
-import type { SectionKind } from './loweringTypes.js';
+import type { PlacementKind } from './loweringTypes.js';
 import type { LoweringContext } from './programLowering.js';
 
 export type AsmDirectiveLikeNode = {
@@ -19,7 +19,7 @@ export type AsmDirectiveLikeNode = {
 
 type AsmAddressContext = Pick<
   LoweringContext,
-  | 'activeSectionRef'
+  | 'activePlacementRef'
   | 'baseExprs'
   | 'codeOffsetRef'
   | 'dataOffsetRef'
@@ -66,26 +66,26 @@ export function asmDirectiveExpr(item: AsmDirectiveLikeNode): ImmExprNode | unde
   return item.value ?? item.expr;
 }
 
-export function activeSectionOffset(ctx: AsmAddressContext): number {
-  return ctx.activeSectionRef.current === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
+export function activePlacementOffset(ctx: AsmAddressContext): number {
+  return ctx.activePlacementRef.current === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
 }
 
-export function activeSectionAddress(ctx: AsmAddressContext): number | undefined {
-  return sectionAddressAtOffset(ctx, ctx.activeSectionRef.current, activeSectionOffset(ctx));
+export function activePlacementAddress(ctx: AsmAddressContext): number | undefined {
+  return placementAddressAtOffset(ctx, ctx.activePlacementRef.current, activePlacementOffset(ctx));
 }
 
 export function activeAsmAddress(ctx: AsmAddressContext): number | undefined {
-  const section = ctx.activeSectionRef.current;
-  const offset = section === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
-  return sectionAddressAtOffset(ctx, section, offset);
+  const placement = ctx.activePlacementRef.current;
+  const offset = placement === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
+  return placementAddressAtOffset(ctx, placement, offset);
 }
 
-export function sectionAddressAtOffset(
+export function placementAddressAtOffset(
   ctx: Pick<AsmAddressContext, 'baseExprs' | 'evalImmExpr' | 'env' | 'diagnostics'>,
-  section: SectionKind,
+  placement: PlacementKind,
   offset: number,
 ): number | undefined {
-  const baseExpr = section === 'data' ? ctx.baseExprs.data : ctx.baseExprs.code;
+  const baseExpr = placement === 'data' ? ctx.baseExprs.data : ctx.baseExprs.code;
   if (!baseExpr) return offset;
   const base = ctx.evalImmExpr(baseExpr, ctx.env, ctx.diagnostics);
   return base === undefined ? undefined : base + offset;
