@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR136: bit indexed-destination invalid form', () => {
   it('diagnoses unsupported three-operand bit form with indexed source', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr136_bit_indexed_dest_invalid.zax');
+    const entry = join(__dirname, 'fixtures', 'pr136_bit_indexed_dest_invalid.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'bit expects two operands' });

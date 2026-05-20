@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 
 describe('PR113 ISA: indexed set/res with destination register', () => {
   it('encodes set/res b,(ix/iy+disp),r forms', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr113_isa_indexed_bit_setres_dst.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr113_isa_indexed_bit_setres_dst.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
     expect(
@@ -28,12 +28,11 @@ describe('PR113 ISA: indexed set/res with destination register', () => {
   });
 
   it('diagnoses invalid 3-operand source/destination forms', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'tmp-pr113-indexed-setres-invalid.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'tmp-pr113-indexed-setres-invalid.asm');
     const source = [
-      'export func main()',
+      'main:',
       '    set 1, (hl), a',
-      '    res 2, (ix[0]), ix',
-      'end',
+      '    res 2, (ix+0), ix',
       '',
     ].join('\n');
     await writeFile(entry, source, 'utf8');

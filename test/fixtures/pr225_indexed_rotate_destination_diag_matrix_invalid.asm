@@ -1,4 +1,4 @@
-export func main()
+main:
   rlc (ix + 1), ixh
   rlc (ix + 1), iyh
   rrc (iy + 1), iyl
@@ -18,4 +18,3 @@ export func main()
   sll (ix + 1), iyl
   srl (iy + 1), iyh
   srl (iy + 1), ixh
-end

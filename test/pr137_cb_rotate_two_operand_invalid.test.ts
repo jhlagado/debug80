@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR137: CB rotate/shift invalid two-operand diagnostics', () => {
   it('reports explicit diagnostics for malformed two-operand rotate/shift forms', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr137_cb_rotate_two_operand_invalid.zax');
+    const entry = join(__dirname, 'fixtures', 'pr137_cb_rotate_two_operand_invalid.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'rl two-operand form requires (ix/iy+disp) source' });

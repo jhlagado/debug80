@@ -1,6 +1,5 @@
-export func main()
+main:
     in ixh, (c)
     in iyl, (1)
     out (c), ixl
     out (1), iyh
-  end
