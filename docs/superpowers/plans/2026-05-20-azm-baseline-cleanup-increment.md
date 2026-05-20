@@ -42,7 +42,7 @@ Keep native AZM:
 - Register-care analysis, AZMDoc / `.azmi`, and annotation rewriting.
 - Directive alias layer.
 - Op system and visible op expansion before register-care.
-- `type` / `union`, `sizeof`, `offset`, legacy `offsetof`, and constant layout-cast expressions such as `<Sprite[16]>SPRITES[3].pos.x`.
+- `type` / `union`, `sizeof`, `offset`, legacy `offset`, and constant layout-cast expressions such as `<Sprite[16]>SPRITES[3].pos.x`.
 
 Quarantine or remove from native AZM:
 

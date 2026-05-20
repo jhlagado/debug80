@@ -104,7 +104,7 @@ describe('layout edge cases (#1138)', () => {
     expectNoDiagnostics(diagnostics);
   });
 
-  it('computes offsetof through nested records and into a leaf field', () => {
+  it('computes offset through nested records and into a leaf field', () => {
     const leaf = typeDecl('Leaf', { kind: 'RecordType', span, fields: [mkField('z', byteType)] });
     const mid = typeDecl('Mid', {
       kind: 'RecordType',
@@ -142,7 +142,7 @@ describe('layout edge cases (#1138)', () => {
     expectNoDiagnostics(diagnostics);
   });
 
-  it('computes offsetof into an array of records, using index stride', () => {
+  it('computes offset into an array of records, using index stride', () => {
     const cell = typeDecl('Cell', {
       kind: 'RecordType',
       span,
@@ -182,7 +182,7 @@ describe('layout edge cases (#1138)', () => {
     expectNoDiagnostics(diagnostics);
   });
 
-  it('union offsetof keeps total at 0 for any member (no cumulative offset between union variants)', () => {
+  it('union offset keeps total at 0 for any member (no cumulative offset between union variants)', () => {
     const u = unionDecl('Tag', [mkField('a', byteType), mkField('w', wordType)]);
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Tag', u]]) };
     const path: OffsetofPathNode = { kind: 'OffsetofPath', span, base: 'w', steps: [] };

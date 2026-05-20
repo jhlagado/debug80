@@ -19,10 +19,10 @@ type Scene
   sprites: Point[4]
 end
 
-const OffY = offsetof(Point, y)
+const OffY = offset(Point, y)
 const Idx = 3
-const OffSpritesIdxColor = offsetof(Scene, sprites[Idx].color)
-const OffPayloadWord = offsetof(Node, payload.asWord)
+const OffSpritesIdxColor = offset(Scene, sprites[Idx].color)
+const OffPayloadWord = offset(Node, payload.asWord)
 
 export func main()
   ld a, OffY

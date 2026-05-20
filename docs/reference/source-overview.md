@@ -108,7 +108,7 @@ src/
 
   semantics/
     env.ts                Build CompileEnv: resolve consts, enums, type declarations
-    layout.ts             Type size (sizeof) and field offset (offsetof) computation
+    layout.ts             Type size (sizeof) and field offset (offset) computation
 
   z80/
     encode.ts             Main Z80 instruction encoder dispatch
@@ -243,7 +243,7 @@ then ZAX bindings), mirroring the spec but implemented ad hoc.
 `semantics/layout.ts` implements:
 
 - `sizeOfTypeExpr` — returns the exact semantic size
-- `offsetOfPathInTypeExpr` — resolves `offsetof(T, a.b[2])` paths to byte offsets
+- `offsetOfPathInTypeExpr` — resolves `offset(T, a.b[2])` paths to byte offsets
 
 Type resolution is recursive with cycle detection via `visiting` sets.
 

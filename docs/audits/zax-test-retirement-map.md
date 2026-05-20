@@ -8,17 +8,14 @@ Date: 2026-05-19
 Classify tests inherited from ZAX so AZM can retire high-level behavior without
 accidentally removing assembler foundation coverage.
 
-This map is intentionally conservative. A test appearing here is not approved
-for deletion. It is assigned to a bucket so later work can decide whether it
-belongs in normal AZM CI, an AZM-focused rewritten form, a preserved ZAX
-compatibility lane, or an archive branch.
+This map is an active deletion aid. It assigns tests to buckets so later work can decide whether each test belongs in normal AZM CI, an AZM-focused rewritten form, or deletion with the old ZAX subsystem.
 
 ## Categories
 
 - **AZM foundation:** keep in normal CI.
 - **AZM layout constants:** keep or adapt to exact layout-only semantics.
 - **Ops:** keep if it validates AST-level op expansion.
-- **ZAX compatibility:** preserve temporarily, but not part of AZM alpha.
+- **ZAX removal lane:** temporary tests for behavior being deleted.
 - **Retirement candidate:** old high-level behavior with no AZM path.
 
 ## Classification rules
@@ -26,7 +23,7 @@ compatibility lane, or an archive branch.
 - Tests for ASM80 parsing, directive compatibility, includes, Z80 encoding,
   binary writers, diagnostics, register-care analysis, and AZMDoc are AZM
   foundation.
-- Tests for `type`, records, unions, arrays, `sizeof`, `offsetof`, and explicit
+- Tests for `type`, records, unions, arrays, `sizeof`, `offset`, and explicit
   layout-cast expressions are AZM layout constants when they only protect
   compile-time layout facts.
 - Tests for `op` declaration, matching, substitution, expansion diagnostics, and
@@ -35,7 +32,7 @@ compatibility lane, or an archive branch.
 - Tests for `func`, generated frames, local `var`, typed arguments, typed calls,
   ZAX `import`, named `section`, structured `if`/`while`/`repeat`/`select`,
   `:=`, typed storage lowering, and implicit typed effective-address lowering
-  are ZAX compatibility or retirement candidates.
+  are ZAX removal lane or retirement candidates.
 - Tests that mix a kept feature with old high-level lowering should be split
   before any deletion. Preserve the assembler or layout assertion separately
   from the high-level ZAX behavior.
@@ -88,24 +85,24 @@ compatibility lane, or an archive branch.
 | `test/lowering/pr510_op_substitution_helpers.test.ts`              | op operand substitution            | Ops                  | Keep; AST substitution rather than text macros.                                         |
 | `test/pr268_op_diagnostics_matrix.test.ts`                         | op diagnostics                     | Ops                  | Keep; useful for a constrained op feature.                                              |
 | `test/pr271_op_stack_policy_alignment.test.ts`                     | op stack policy                    | Ops                  | Keep under review; stack safety still matters for ops.                                  |
-| `test/pr104_lowering_op_control_interactions.test.ts`              | ops mixed with structured control  | ZAX compatibility    | Split later; op facts may survive, structured-control interaction likely not AZM alpha. |
-| `test/frontend/pr689_callable_header_parser.test.ts`               | callable header parser             | ZAX compatibility    | Preserve temporarily; tied to `func`/old callable declarations.                         |
-| `test/frontend/pr638_return_regs_canonicalization.test.ts`         | function return register lists     | ZAX compatibility    | Preserve temporarily; not current AZM register-care syntax.                             |
-| `test/frontend/pr171_func_missing_asm_recovery.test.ts`            | malformed `func` recovery          | ZAX compatibility    | Keep only in compatibility lane.                                                        |
-| `test/frontend/pr192_func_var_end_block.test.ts`                   | `func` plus `var` block parsing    | ZAX compatibility    | Keep only in compatibility lane.                                                        |
-| `test/pr102_lowering_frame_invariants.test.ts`                     | generated function frames          | ZAX compatibility    | Preserve temporarily; candidate for archive once frame lowering is retired.             |
-| `test/pr103_lowering_mixed_return_paths.test.ts`                   | mixed generated return paths       | ZAX compatibility    | Preserve temporarily; old frame/retcc lowering.                                         |
-| `test/pr330_frames_epilogue_and_access.test.ts`                    | frames, epilogues, access          | ZAX compatibility    | Preserve temporarily; high-level frame machinery.                                       |
-| `test/pr364_call_with_arg_and_local_regression.test.ts`            | args/locals baseline               | ZAX compatibility    | Preserve temporarily; old function-frame behavior.                                      |
-| `test/pr365_args_locals_basics_regression.test.ts`                 | arguments and locals               | ZAX compatibility    | Preserve temporarily; old function-frame behavior.                                      |
-| `test/pr405_byte_call_scalar_arg.test.ts`                          | typed scalar call arguments        | ZAX compatibility    | Preserve temporarily; not AZM-native calling convention.                                |
-| `test/pr320_extern_call_preservation.test.ts`                      | typed extern call preservation     | ZAX compatibility    | Preserve temporarily; replace with AZMDoc `.azmi` contracts where possible.             |
-| `test/pr159_extern_base_block_unsupported.test.ts`                 | extern base blocks                 | ZAX compatibility    | Preserve temporarily; external AZM interfaces should use `.azmi`.                       |
-| `test/pr163_import_extern_base_relative_call.test.ts`              | ZAX import plus extern base calls  | ZAX compatibility    | Preserve temporarily; native AZM uses textual includes instead.                         |
-| `test/pr242_import_resolution_diag_spans.test.ts`                  | ZAX import diagnostics             | ZAX compatibility    | Preserve temporarily; native AZM should reject ZAX import.                              |
-| `test/pr243_module_id_collision_diag_span.test.ts`                 | ZAX module identity diagnostics    | ZAX compatibility    | Preserve temporarily; native AZM should not grow module identity rules.                 |
-| `test/frontend/pr158_extern_block_multifunc.test.ts`               | extern function blocks             | ZAX compatibility    | Preserve temporarily; old typed extern declarations.                                    |
-| `test/frontend/pr184_func_extern_param_return_diag_matrix.test.ts` | func/extern diagnostics            | ZAX compatibility    | Preserve temporarily; old callable syntax diagnostics.                                  |
+| `test/pr104_lowering_op_control_interactions.test.ts`              | ops mixed with structured control  | ZAX removal lane    | Split later; op facts may survive, structured-control interaction likely not AZM alpha. |
+| `test/frontend/pr689_callable_header_parser.test.ts`               | callable header parser             | ZAX removal lane    | Temporary removal coverage; tied to `func`/old callable declarations.                         |
+| `test/frontend/pr638_return_regs_canonicalization.test.ts`         | function return register lists     | ZAX removal lane    | Temporary removal coverage; not current AZM register-care syntax.                             |
+| `test/frontend/pr171_func_missing_asm_recovery.test.ts`            | malformed `func` recovery          | ZAX removal lane    | Keep only while deleting the old parser path.                                                        |
+| `test/frontend/pr192_func_var_end_block.test.ts`                   | `func` plus `var` block parsing    | ZAX removal lane    | Keep only while deleting the old parser path.                                                        |
+| `test/pr102_lowering_frame_invariants.test.ts`                     | generated function frames          | ZAX removal lane    | Temporary removal coverage; candidate for archive once frame lowering is retired.             |
+| `test/pr103_lowering_mixed_return_paths.test.ts`                   | mixed generated return paths       | ZAX removal lane    | Temporary removal coverage; old frame/retcc lowering.                                         |
+| `test/pr330_frames_epilogue_and_access.test.ts`                    | frames, epilogues, access          | ZAX removal lane    | Temporary removal coverage; high-level frame machinery.                                       |
+| `test/pr364_call_with_arg_and_local_regression.test.ts`            | args/locals baseline               | ZAX removal lane    | Temporary removal coverage; old function-frame behavior.                                      |
+| `test/pr365_args_locals_basics_regression.test.ts`                 | arguments and locals               | ZAX removal lane    | Temporary removal coverage; old function-frame behavior.                                      |
+| `test/pr405_byte_call_scalar_arg.test.ts`                          | typed scalar call arguments        | ZAX removal lane    | Temporary removal coverage; not AZM-native calling convention.                                |
+| `test/pr320_extern_call_preservation.test.ts`                      | typed extern call preservation     | ZAX removal lane    | Temporary removal coverage; replace with AZMDoc `.azmi` contracts where possible.             |
+| `test/pr159_extern_base_block_unsupported.test.ts`                 | extern base blocks                 | ZAX removal lane    | Temporary removal coverage; external AZM interfaces should use `.azmi`.                       |
+| `test/pr163_import_extern_base_relative_call.test.ts`              | ZAX import plus extern base calls  | ZAX removal lane    | Temporary removal coverage; native AZM uses textual includes; delete or rewrite this old import behavior.                         |
+| `test/pr242_import_resolution_diag_spans.test.ts`                  | ZAX import diagnostics             | ZAX removal lane    | Temporary removal coverage; native AZM rejects ZAX import; delete or rewrite this diagnostic behavior.                              |
+| `test/pr243_module_id_collision_diag_span.test.ts`                 | ZAX module identity diagnostics    | ZAX removal lane    | Temporary removal coverage; native AZM must not grow module identity rules; delete this behavior.                 |
+| `test/frontend/pr158_extern_block_multifunc.test.ts`               | extern function blocks             | ZAX removal lane    | Temporary removal coverage; old typed extern declarations.                                    |
+| `test/frontend/pr184_func_extern_param_return_diag_matrix.test.ts` | func/extern diagnostics            | ZAX removal lane    | Temporary removal coverage; old callable syntax diagnostics.                                  |
 | `test/pr848_break_continue_integration.test.ts`                    | structured loop escape             | Retirement candidate | High-level structured control is not an AZM alpha goal.                                 |
 | `test/pr738_select_case_ranges.test.ts`                            | structured `select` lowering       | Retirement candidate | Old high-level control lowering; archive unless ops need a piece split out.             |
 | `test/pr219_lowering_retcc_structured_control_matrix.test.ts`      | retcc through structured control   | Retirement candidate | Old structured lowering plus generated return paths.                                    |
@@ -125,8 +122,8 @@ compatibility lane, or an archive branch.
 | `test/frontend/pr189_globals_parser_matrix.test.ts`                | `globals` parser matrix            | Retirement candidate | Old typed global storage grammar.                                                       |
 | `test/pr254_module_var_renamed_globals.test.ts`                    | module `var` renamed globals       | Retirement candidate | Old storage declaration migration.                                                      |
 | `test/semantics/pr849_local_init_consts.test.ts`                   | local `var` initializers           | Retirement candidate | Old local storage machinery; constant expression pieces should be split if useful.      |
-| `test/language-tour/*.zax`                                         | ZAX course/language examples       | ZAX compatibility    | Preserve as historical compatibility corpus, not AZM alpha teaching material.           |
-| `test/codegen-corpus/*.zax`                                        | generated ZAX lowering corpus      | ZAX compatibility    | Preserve temporarily; use to identify deletion blast radius before archive.             |
+| `test/language-tour/*.zax`                                         | ZAX course/language examples       | ZAX removal lane    | Preserve as historical ZAX corpus, not AZM alpha teaching material.           |
+| `test/codegen-corpus/*.zax`                                        | generated ZAX lowering corpus      | ZAX removal lane    | Temporary removal coverage; use to identify deletion blast radius before archive.             |
 
 ## First quarantine batch
 
@@ -158,28 +155,28 @@ Current runner state: this checkout has `npm run test:azm:alpha` and
 The safe first quarantine batch is limited to files already named in that
 compatibility runner.
 
-First compatibility-only batch:
+First ZAX-removal batch:
 
 | Test file                                               | Forbidden dependency              | Quarantine status    | Notes                                                       |
 | ------------------------------------------------------- | --------------------------------- | -------------------- | ----------------------------------------------------------- |
 | `test/pr770_typed_reinterpretation_integration.test.ts` | typed reinterpretation paths      | In `test:zax:compat` | Hidden typed EA behavior; not AZM-native layout constants.  |
 | `test/pr781_ld_typed_storage_migration_diag.test.ts`    | typed storage migration           | In `test:zax:compat` | Migration diagnostics for old typed storage.                |
 | `test/pr863_assignment_lowering.test.ts`                | typed `:=` lowering               | In `test:zax:compat` | Unit-level lowering helper tests for hidden typed transfer. |
-| `test/pr869_assignment_reg8_integration.test.ts`        | register typed `:=` integration   | In `test:zax:compat` | `.zax` compatibility behavior.                              |
-| `test/pr875_assignment_ixiy_integration.test.ts`        | IX/IY typed `:=` integration      | In `test:zax:compat` | `.zax` compatibility behavior.                              |
-| `test/pr887_assignment_half_index_integration.test.ts`  | half-index typed `:=` integration | In `test:zax:compat` | `.zax` compatibility behavior.                              |
-| `test/semantics/pr895_assignment_acceptance.test.ts`    | assignment semantics acceptance   | In `test:zax:compat` | `.zax` compatibility behavior.                              |
+| `test/pr869_assignment_reg8_integration.test.ts`        | register typed `:=` integration   | In `test:zax:compat` | `.zax` removal behavior.                                    |
+| `test/pr875_assignment_ixiy_integration.test.ts`        | IX/IY typed `:=` integration      | In `test:zax:compat` | `.zax` removal behavior.                                    |
+| `test/pr887_assignment_half_index_integration.test.ts`  | half-index typed `:=` integration | In `test:zax:compat` | `.zax` removal behavior.                                    |
+| `test/semantics/pr895_assignment_acceptance.test.ts`    | assignment semantics acceptance   | In `test:zax:compat` | `.zax` removal behavior.                                    |
 | `test/pr896_assignment_ea_ea_integration.test.ts`       | typed EA-to-EA assignment         | In `test:zax:compat` | Hidden typed transfer behavior.                             |
 | `test/pr1049_record_named_init_data_lowering.test.ts`   | typed record data initializers    | In `test:zax:compat` | Old typed data lowering; keep layout facts elsewhere.       |
 | `test/lowering/pr1334_typed_aggregate_local.test.ts`    | typed aggregate locals            | In `test:zax:compat` | Old local aggregate lowering.                               |
 | `test/lowering/pr1340_aggregate_param.test.ts`          | typed aggregate parameters        | In `test:zax:compat` | Old typed call/frame lowering.                              |
 | `test/lowering/pr1344_addr_of_type.test.ts`             | address-of typed storage          | In `test:zax:compat` | Old typed storage/addressing behavior.                      |
 
-Next compatibility candidates, not yet covered by the runner:
+Next removal candidates, not yet covered by the runner:
 
 | Test file                                                  | Forbidden dependency                        | Status            | Notes                                                                          |
 | ---------------------------------------------------------- | ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------ |
-| `test/pr163_import_extern_base_relative_call.test.ts`      | ZAX `import` graph                          | Not yet in runner | Native AZM uses textual include; old import behavior belongs in compatibility. |
+| `test/pr163_import_extern_base_relative_call.test.ts`      | ZAX `import` graph                          | Not yet in runner | Native AZM uses textual include; delete or rewrite old import behavior.        |
 | `test/pr242_import_resolution_diag_spans.test.ts`          | ZAX import diagnostics                      | Not yet in runner | Add before deleting import-resolution diagnostics.                             |
 | `test/pr243_module_id_collision_diag_span.test.ts`         | ZAX module identity diagnostics             | Not yet in runner | Add before deleting module identity behavior.                                  |
 | `test/frontend/pr638_return_regs_canonicalization.test.ts` | function return register lists              | Not yet in runner | Old callable metadata; not current native register-care syntax.                |
@@ -195,9 +192,9 @@ Next compatibility candidates, not yet covered by the runner:
 | `test/pr738_select_case_ranges.test.ts`                    | structured `select` lowering                | Not yet in runner | `.zax` fixtures only; retirement candidate.                                    |
 | `test/pr848_break_continue_integration.test.ts`            | structured `while`/`repeat` escape lowering | Not yet in runner | `.zax` fixtures only; retirement candidate.                                    |
 
-No compiler implementation files are approved for deletion by this batch. The
-next safe action is to keep the compatibility runner green, then add the next
-candidate set explicitly before moving, skipping, or deleting any tests.
+Compiler implementation files are deletion candidates when they only support
+ZAX behavior. The safe action is to keep AZM/ASM80 guardrails green while
+removing or rewriting the old tests.
 
 ## High-risk split candidates
 
@@ -215,10 +212,11 @@ ZAX lowering. They should be split before any retirement PR:
 5. `test/semantics/pr849_local_init_consts.test.ts`: constant-expression
    evaluation is useful; local `var` initializer semantics are not.
 
-## First ZAX Compatibility Runner
+## First ZAX Removal Runner
 
-The first explicit compatibility lane is `npm run test:zax:compat`. It keeps the
-following inherited high-level `.zax` tests out of the default AZM alpha lane:
+The first explicit removal lane is `npm run test:zax:compat`. It keeps the
+following inherited high-level `.zax` tests visible while they are being deleted
+or rewritten:
 
 - `test/pr770_typed_reinterpretation_integration.test.ts`
 - `test/pr781_ld_typed_storage_migration_diag.test.ts`
@@ -235,16 +233,15 @@ following inherited high-level `.zax` tests out of the default AZM alpha lane:
 
 This first runner is intentionally narrow. It covers typed high-level ZAX
 behavior first; it does not yet cover every import, function-frame,
-named-section, or structured-control test that should eventually live in the
-compatibility lane.
+named-section, or structured-control test that should be deleted or rewritten.
 
 ## Recommended next actions
 
-1. Expand `npm run test:zax:compat` with the next import/function/section
-   compatibility batch before deleting those parser or lowering paths.
+1. Remove or rewrite the next import/function/section batch while keeping
+   AZM/ASM80 guardrails green.
 2. Split the high-risk candidates above into AZM foundation/layout tests and
-   ZAX compatibility tests.
-3. Move `language-tour` and `codegen-corpus` expectations behind a preserved
-   ZAX compatibility lane before deleting lowering code.
+   ZAX removal lane tests.
+3. Move `language-tour` and `codegen-corpus` expectations out of the AZM path
+   before deleting lowering code.
 4. Do not remove any test until its row in this map has been reviewed and either
    migrated, archived, or explicitly accepted as obsolete.

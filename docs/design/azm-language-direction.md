@@ -13,8 +13,8 @@ assembly-first feature at a time.
 The project name is **AZM** because it contains both "assembler" and "Z80" in a
 short form that works as a project name, CLI name, and source extension. The
 native extended source extension should be `.azm`, while ordinary `.asm` and
-`.z80` source can remain accepted compatibility inputs where they fit the
-documented baseline.
+`.z80` source remain accepted only to the extent they fit the documented ASM80
+baseline.
 
 The current repository and package still contain inherited ZAX public names.
 Those names are tracked in
@@ -32,8 +32,8 @@ The split is conceptual first and repository-level second:
 - ZAX 0.3 is the preserved public release line for the earlier structured
   assembler language.
 - AZM is a new project built from the current assembler-compatible codebase.
-- AZM should keep the compatibility smoke gates as its foundation, but should
-  not inherit every ZAX or ASM80 feature by default.
+- AZM should keep the ASM80 corpus gates as its foundation, but should not
+  inherit any ZAX feature by default.
 - Old ZAX/Zags ideas are a reservoir, not a migration checklist.
 
 The core question for every feature is not "can old ZAX do this?" or "does
@@ -74,8 +74,8 @@ blocks. Subroutines are ordinary Z80 assembly:
   ZAX `section` blocks
 
 Inherited ZAX `func` / `export func` and `section code/data` syntax are **rejected**
-in `.azm` source. They may remain available temporarily in `.zax` compatibility
-mode only.
+in `.azm` source. Any remaining `.zax` support is a removal target, not an AZM
+compatibility guarantee.
 
 Native `.azm` source files are flat. They accept layout declarations, constants,
 `op` declarations, labels, Z80 instructions, `.org`, `.equ`, raw data
@@ -209,9 +209,9 @@ deletion boundary for parser and lowering work:
 - runtime typed effective-address lowering, including register-indexed layout
   paths that require generated address code.
 
-The compatibility path for old `.zax` tests must stay explicit. Default AZM
-guardrails should exercise flat assembly, register-care, directive aliases,
-ops, and layout constants.
+The temporary `.zax` test path must stay explicit until deleted. Default AZM
+guardrails exercise flat assembly, register-care, directive aliases, ops, and
+layout constants.
 
 ## AZMDoc comments
 
@@ -239,7 +239,7 @@ The normative draft is `docs/spec/azmdoc.md`.
 
 Normative spec: `docs/design/azm-directive-aliases.md`.
 
-Directive aliases are a narrow compatibility mechanism: map legacy directive
+Directive aliases are a narrow import mechanism: map external assembler directive
 **heads** (`DEFB`, `DB`, …) onto the canonical dotted set (`.db`, …) before
 parse. They are not macros and must not rewrite expressions or inject
 instructions.
@@ -679,11 +679,11 @@ These questions should be resolved before implementation:
 
 ## Near-term recommendation
 
-Preserve the current compatibility baseline as the floor, then design AZM in
-this order:
+Preserve the ASM80 baseline as the floor, delete ZAX language features, then
+design AZM in this order:
 
 1. rename and reposition project identity around AZM
-2. document compatibility mode versus AZM-native mode
+2. document ASM80 baseline mode versus AZM-native mode
 3. implement or formalize directive alias normalization
 4. bring back AST ops as the macro replacement
 5. design the compile-time control stack before adding built-in structured

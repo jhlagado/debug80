@@ -76,7 +76,7 @@ describe('PR476 operand parsing extraction', () => {
     const diagnostics: Diagnostic[] = [];
     const instr = parseAsmInstruction(
       file.path,
-      'out (offsetof(Packet, field)), a',
+      'out (offset(Packet, field)), a',
       zeroSpan,
       diagnostics,
     );

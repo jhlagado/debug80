@@ -399,7 +399,7 @@ export function parseImmExprFromText(
         idx++;
         return { kind: 'ImmSizeof', span: exprSpan, typeExpr };
       }
-      if ((t.text === 'offset' || t.text === 'offsetof') && tokens[idx + 1]?.kind === 'lparen') {
+      if (t.text === 'offset' && tokens[idx + 1]?.kind === 'lparen') {
         idx += 2;
         const typeExpr = parseBuiltinTypeExprArg();
         if (!typeExpr) return undefined;

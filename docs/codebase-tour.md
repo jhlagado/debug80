@@ -493,7 +493,7 @@ The header parser, `parseCallableHeader.ts`, is shared between `func` and `op`. 
 
 - Decimal, hex (`$xx` or `0xXX`), binary (`%xxxxxxxx`) and character literals (`'c'`).
 - Named constants and enum members.
-- `sizeof(TypeExpr)` and `offsetof(TypeExpr, path)`.
+- `sizeof(TypeExpr)` and `offset(TypeExpr, path)`.
 - Unary `+`, `-`, `~`.
 - Binary `*`, `/`, `%`, `+`, `-`, `<<`, `>>`, `&`, `^`, `|`.
 
@@ -613,7 +613,7 @@ Division by zero is caught and reported as a diagnostic.
 - `ArrayType` → `element_size * length`.
 - `RecordType` → sum of all field sizes.
 
-`offsetOfPathInTypeExpr(typeExpr, path, env)` computes the byte offset of a field path within a record type. This is what `offsetof(T, field)` evaluates to at compile time, and it is also what the lowering phase uses when accessing named fields.
+`offsetOfPathInTypeExpr(typeExpr, path, env)` computes the byte offset of a field path within a record type. This is what `offset(T, field)` evaluates to at compile time, and it is also what the lowering phase uses when accessing named fields.
 
 ### 9.3 Semantic Validation Passes
 
