@@ -33,7 +33,7 @@ resolution). All alias targets must map to one of them.
 | `.ds` | Reserve storage |
 | `.align` | Alignment |
 | `.include` | Include file |
-| `.end` | End module / pass |
+| `.end` | End source / pass |
 | `.cstr` | C-style string |
 | `.pstr` | Pascal-style string |
 | `.istr` | Inline string form |
