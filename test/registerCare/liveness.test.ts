@@ -261,7 +261,7 @@ describe('register-care liveness conflicts', () => {
     expect(conflicts).toEqual([]);
   });
 
-  it('does not report carriers accepted by an immediate @expect-out hint', () => {
+  it('does not report carriers accepted by an immediate expects-out hint', () => {
     const hints: LocatedSmartComment[] = [
       { file: TEST_FILE, line: 2, comment: { kind: 'expectOut', carriers: ['D', 'E'] } },
     ];

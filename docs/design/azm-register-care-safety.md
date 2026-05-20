@@ -417,7 +417,7 @@ output. For legacy code or one-off exceptions, the caller should be able to add 
 narrow AZMDoc hint near the call site:
 
 ```asm
-        ; @expect-out DE normalized_coord
+        ; expects out DE
         call    NORMALISE_COORD_IN_DE
         ld      a,(de)
 ```
@@ -439,29 +439,33 @@ or source that the analyzer cannot inspect. Ordinary project-local routines can
 also get inferred summaries from their opcode stream, and AZM should be able to
 generate AZMDoc contracts from those summaries.
 
-For ASM80-compatible source, hand-written contracts can be represented as AZMDoc
-comments: ordinary semicolon comments with known `@` metadata tags inside the
-prose. Old assemblers ignore them, while AZM treats them as structured metadata.
-The normative draft is `docs/spec/azmdoc.md`.
+For ASM80-compatible source, contracts are represented as compact AZMDoc comment
+lines immediately before the routine entry. Old assemblers ignore them as
+ordinary comments, while AZM treats them as structured metadata. The normative
+draft is `docs/spec/azmdoc.md`.
 
 ```asm
 ; CHECK_COLLISION_AT_DE
 ; Tests candidate active-piece placement against walls, floor, and board rows.
-; Candidate x is supplied in @in D candidate_x.
-; Candidate y is supplied in @in E candidate_y.
-; The result is returned in @out carry collision.
-; Scratch use is limited to @clobbers A.
+; D contains candidate x.
+; E contains candidate y.
+; Carry is returned set on collision.
+;!      in        DE
+;!      out       carry
+;!      clobbers  A
 CHECK_COLLISION_AT_DE:
 ```
 
 For routines that intentionally transform an input register into an output
-register, the same carrier should appear as both `@in` and `@out`:
+register, the same carrier should appear as both `in` and `out`:
 
 ```asm
 ; NORMALISE_COORD_IN_DE
-; Reads @in DE raw_coord.
-; Returns @out DE normalized_coord.
-; Uses @clobbers A.
+; DE contains the raw coordinate.
+; DE is returned as the normalized coordinate.
+;!      in        DE
+;!      out       DE
+;!      clobbers  A
 NORMALISE_COORD_IN_DE:
 ```
 
@@ -470,7 +474,7 @@ The assembler can then build or override a symbol table of routine effects:
 - registers read as inputs
 - registers or flags returned as meaningful outputs
 - registers consumed and returned as transformed values, represented by matching
-  `@in` and `@out` carriers
+  `in` and `out` carriers
 - registers clobbered as scratch
 - registers explicitly preserved, only when the API needs to say so
 - flags returned as semantic outputs
@@ -478,7 +482,7 @@ The assembler can then build or override a symbol table of routine effects:
 
 The callee contract should describe externally visible effects, not every
 temporary used internally. If a routine pushes `HL`, uses it, and pops it before
-returning, `HL` is preserved from the caller's perspective. Likewise, `@in`
+returning, `HL` is preserved from the caller's perspective. Likewise, `in`
 means semantic input from the caller, not every physical read the implementation
 performs while saving, restoring, or shuffling scratch state.
 
@@ -516,11 +520,9 @@ maintainable interface layer for existing ASM80-style code. The programmer can
 then edit the generated contract when inference cannot distinguish a scratch
 clobber from an intentional input-to-output transformation.
 
-When regeneration runs again, AZM replaces the existing `AZM` block rather than
-appending another one. Prose outside the block is user-owned and must be left
-unchanged. During migration, older interspersed `@in`, `@out`, and `@clobbers`
-lines can either be retained as prose for compatibility or converted into plain
-human comments once the generated block carries the machine-readable contract.
+When regeneration runs again, AZM replaces the existing compact `;!` block
+rather than appending another one. Prose outside the block is user-owned and
+must be left unchanged.
 For in-place source annotation, AZM should append new generated blocks only to
 labels that already have a contiguous routine comment block, while still
 replacing any existing generated block. This prevents internal branch labels
@@ -585,16 +587,18 @@ explicit. A stable routine API should use a callee AZMDoc contract:
 
 ```asm
 ; CHECK_SOMETHING
-; Reads @in DE.
-; Returns @out DE.
-; Uses @clobbers A.
+; DE contains the raw coordinate.
+; DE is returned normalized.
+;!      in        DE
+;!      out       DE
+;!      clobbers  A
 CHECK_SOMETHING:
 ```
 
 A local exception can use a call-site AZMDoc hint:
 
 ```asm
-        ; @expect-out DE normalized_coord
+        ; expects out DE
         call    CHECK_SOMETHING
 ```
 
@@ -1039,21 +1043,18 @@ instructions read them. If `CHECK_COLLISION_AT_DE` is inferred to preserve them,
 there is no diagnostic. If another call may modify them, the analyzer reports the
 conflict.
 
-Optional contract syntax should remain available for external boundaries only:
+External boundary contracts should live in `.asmi` files:
 
-```asm
-; platform profile or optional compatibility comment
-; @extern API_SCANKEYS
-; @out A key_code
-; @out carry new_key
-; @out zero key_pressed
-; @end
+```text
+extern API_SCANKEYS
+out A
+out carry
+out zero
+end
 ```
 
-AZM should keep this metadata in comments. Human prose uses `@` tags for
-interspersed metadata; generated source contracts use compact `;!` lines without
-`@`. Older `;! @tag` and divider-block spellings remain compatibility input, but
-current tools should not emit them.
+AZM should keep source metadata in compact `;!` comments. `.asmi` carries
+external register-care contracts without comment leaders.
 
 ## What this avoids
 
@@ -1127,9 +1128,8 @@ and reports places where those expectations cannot hold.
 8. Register renaming should be treated as value preservation through a different
    carrier. `PUSH DE` followed by `POP HL` can preserve the old `DE` value as
    `HL`; later uses decide whether that rename is correct.
-9. Callee contracts should use ASM80-compatible AZMDoc comments with known
-   `@` tags inside ordinary `;` comments, and AZM should be able to generate
-   those contracts from inference.
+9. Callee contracts should use ASM80-compatible compact `;!` AZMDoc comments,
+   and AZM should be able to generate those contracts from inference.
 10. Caller hints should also use AZMDoc comments, but only as narrow suppressions
     for ambiguous call-site intent. Their presence may suppress a warning or
     error for the named conflict.

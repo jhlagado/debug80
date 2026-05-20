@@ -11,7 +11,6 @@ interface RegisterCareAnnotationInput {
   summary: RoutineSummary;
 }
 
-const GENERATED_DIVIDER_RE = /^\s*;\s*=+\s+AZM\s*$/i;
 const GENERATED_COMPACT_LINE_RE =
   /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
 
@@ -40,10 +39,6 @@ function isCommentLine(line: string): boolean {
   return /^\s*;/.test(line);
 }
 
-function isGeneratedDivider(line: string): boolean {
-  return GENERATED_DIVIDER_RE.test(line);
-}
-
 function isGeneratedCompactLine(line: string): boolean {
   return GENERATED_COMPACT_LINE_RE.test(line);
 }
@@ -64,15 +59,7 @@ function generatedBlockBeforeLabel(
     compactStart -= 1;
   }
   if (compactStart < labelIndex) return { start: compactStart, end: labelIndex - 1 };
-
-  const commentStart = precedingCommentBlockStart(lines, labelIndex);
-  if (commentStart === undefined) return undefined;
-  const dividers: number[] = [];
-  for (let index = commentStart; index < labelIndex; index += 1) {
-    if (isGeneratedDivider(lines[index] ?? '')) dividers.push(index);
-  }
-  if (dividers.length < 2) return undefined;
-  return { start: dividers[dividers.length - 2]!, end: dividers[dividers.length - 1]! };
+  return undefined;
 }
 
 function hasPrecedingCommentBlock(lines: string[], labelIndex: number): boolean {

@@ -45,7 +45,6 @@ export interface InstructionEffect {
 }
 
 export type SmartComment =
-  | { kind: 'proc'; name: string }
   | { kind: 'extern'; name: string }
   | { kind: 'end' }
   | { kind: 'in'; carriers: RegisterCareUnit[]; name?: string }

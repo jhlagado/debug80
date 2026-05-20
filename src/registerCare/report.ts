@@ -12,7 +12,7 @@ const FLAG_UNITS = new Set<RegisterCareUnit>([
   'halfCarry',
 ]);
 
-const AZMDOC_PAIRS: Array<{
+const CONTRACT_CARRIER_PAIRS: Array<{
   label: string;
   hi: RegisterCareUnit;
   lo: RegisterCareUnit;
@@ -25,7 +25,7 @@ const AZMDOC_PAIRS: Array<{
   { label: 'SP', hi: 'SPH', lo: 'SPL' },
 ];
 
-export function azmDocList(units: RegisterCareUnit[]): string {
+export function contractCarrierList(units: RegisterCareUnit[]): string {
   const unique = [...new Set(units)];
   const unitSet = new Set(unique);
   const emitted = new Set<RegisterCareUnit>();
@@ -33,7 +33,7 @@ export function azmDocList(units: RegisterCareUnit[]): string {
 
   for (const unit of unique) {
     if (emitted.has(unit)) continue;
-    const pair = AZMDOC_PAIRS.find(
+    const pair = CONTRACT_CARRIER_PAIRS.find(
       (candidate) =>
         (candidate.hi === unit || candidate.lo === unit) &&
         unitSet.has(candidate.hi) &&
@@ -64,28 +64,28 @@ function relationOutputUnits(relations: RoutineSummary['valueRelations']): Regis
 function contractEntries(summary: RoutineSummary): ContractEntry[] {
   const out: ContractEntry[] = [];
   if (summary.mayRead.length > 0)
-    out.push({ keyword: 'in', carriers: azmDocList(summary.mayRead) });
+    out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
   const outputUnits = relationOutputUnits(summary.valueRelations);
-  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: azmDocList(outputUnits) });
+  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
   const relationOut = relationOutUnits(summary);
   const clobbers = summary.mayWrite.filter((unit) => !relationOut.has(unit));
-  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: azmDocList(clobbers) });
+  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
   return out;
 }
 
 function sourceContractEntries(summary: RoutineSummary): ContractEntry[] {
   const out: ContractEntry[] = [];
   if (summary.mayRead.length > 0)
-    out.push({ keyword: 'in', carriers: azmDocList(summary.mayRead) });
+    out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
   const relationOut = relationOutUnits(summary);
   const candidates = (summary.outputCandidates ?? []).filter((unit) => !relationOut.has(unit));
-  if (candidates.length > 0) out.push({ keyword: 'maybe-out', carriers: azmDocList(candidates) });
+  if (candidates.length > 0) out.push({ keyword: 'maybe-out', carriers: contractCarrierList(candidates) });
   const outputUnits = relationOutputUnits(summary.valueRelations);
-  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: azmDocList(outputUnits) });
+  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
   const clobbers = summary.mayWrite.filter(
     (unit) => !relationOut.has(unit) && !FLAG_UNITS.has(unit),
   );
-  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: azmDocList(clobbers) });
+  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
   return out;
 }
 

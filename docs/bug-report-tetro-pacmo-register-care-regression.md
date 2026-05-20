@@ -130,10 +130,10 @@ The failure mode here is not that AZM detected too much. The failure is that con
 3. Classify fixes as either contract fixes or code fixes.
 
    Contract fixes:
-   - update `@in`
-   - update `@out`
-   - update `@clobbers`
-   - update `@preserves`
+   - update compact `;!      in` lines
+   - update compact `;!      out` lines
+   - update compact `;!      clobbers` lines
+   - update compact `;!      preserves` lines
 
    Code fixes:
    - add/remove `PUSH` or `POP`
@@ -195,4 +195,3 @@ For the Tetro/Pacmo repository, the safe recovery path is:
 2. Reapply only comment/contract additions from PR #34 after manually excluding behavior changes.
 3. Rebuild Pacmo and compare the binary against `36e30b5` when the intended change is comment-only.
 4. Only after Pacmo is confirmed stable, resume the later label/path harmonisation work.
-

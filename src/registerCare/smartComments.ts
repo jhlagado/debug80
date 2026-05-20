@@ -6,13 +6,9 @@ import type {
   SmartComment,
 } from './types.js';
 
-const TAG_RE = /^;?\s*!\s*@([A-Za-z-]+)(?:\s+(.*))?$/;
 const COMPACT_SOURCE_TAG_RE = /^;?\s*!\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
 const COMPACT_SOURCE_LINE_RE =
   /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
-const AZMDOC_TAG_RE = /(?:^|[\s([{])@([A-Za-z-]+)(?:\s+(.+))?$/;
-const AZM_BLOCK_DIVIDER_RE = /^\s*;\s*=+\s+AZM\s*$/i;
-const AZM_BLOCK_TAG_RE = /^;?\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
 const INTERFACE_TAG_RE = /^\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
 const CARRIER_RE = /^\{([^}]+)\}(?:\s+(.+))?$/;
 
@@ -59,46 +55,12 @@ export function parseSmartCommentLine(line: string): SmartComment | undefined {
     return { kind: 'expectOut', carriers, ...(payload.name ? { name: payload.name } : {}) };
   }
 
-  const match =
-    COMPACT_SOURCE_TAG_RE.exec(trimmed) ?? TAG_RE.exec(trimmed) ?? AZMDOC_TAG_RE.exec(trimmed);
+  const match = COMPACT_SOURCE_TAG_RE.exec(trimmed);
   if (!match) return undefined;
   const tag = match[1]!.toLowerCase();
   const rest = match[2]?.trim();
 
-  if (tag === 'proc' || tag === 'routine') {
-    return rest ? { kind: 'proc', name: rest } : undefined;
-  }
-  if (tag === 'extern') {
-    return rest ? { kind: 'extern', name: rest } : undefined;
-  }
-  if (tag === 'end') {
-    return { kind: 'end' };
-  }
-
   const payload = parseCarrierPayload(rest);
-  if (!payload) return undefined;
-  const carriers = expandCarrierList(payload.carriers);
-  if (!carriers || carriers.length === 0) return undefined;
-
-  if (tag === 'in')
-    return { kind: 'in', carriers, ...(payload.name ? { name: payload.name } : {}) };
-  if (tag === 'out')
-    return { kind: 'out', carriers, ...(payload.name ? { name: payload.name } : {}) };
-  if (tag === 'clobbers') return { kind: 'clobbers', carriers };
-  if (tag === 'preserves') return { kind: 'preserves', carriers };
-  if (tag === 'expect-out') {
-    return { kind: 'expectOut', carriers, ...(payload.name ? { name: payload.name } : {}) };
-  }
-
-  return undefined;
-}
-
-function parseGeneratedBlockLine(line: string): SmartComment | undefined {
-  const trimmed = line.trim();
-  const match = AZM_BLOCK_TAG_RE.exec(trimmed);
-  if (!match) return undefined;
-  const tag = match[1]!.toLowerCase();
-  const payload = parseCarrierPayload(match[2]?.trim());
   if (!payload) return undefined;
   const carriers = expandCarrierList(payload.carriers);
   if (!carriers || carriers.length === 0) return undefined;
@@ -136,10 +98,6 @@ function parseInterfaceContractLine(line: string): SmartComment | undefined {
   if (tag === 'clobbers') return { kind: 'clobbers', carriers };
   if (tag === 'preserves') return { kind: 'preserves', carriers };
   return undefined;
-}
-
-function isGeneratedBlockDivider(line: string): boolean {
-  return AZM_BLOCK_DIVIDER_RE.test(line);
 }
 
 function isCompactSourceContractLine(line: string): boolean {
@@ -217,22 +175,6 @@ function collectPrecedingCommentBlock(
     };
   }
 
-  const dividers: number[] = [];
-  rawBlock.forEach((item, index) => {
-    if (isGeneratedBlockDivider(item.text)) dividers.push(index);
-  });
-  if (dividers.length >= 2) {
-    const start = dividers[dividers.length - 2]!;
-    const end = dividers[dividers.length - 1]!;
-    return {
-      complete: true,
-      comments: rawBlock.slice(start + 1, end).flatMap((item) => {
-        const parsed = parseGeneratedBlockLine(item.text);
-        return parsed ? [{ file: routine.span.file, line: item.line, comment: parsed }] : [];
-      }),
-    };
-  }
-
   return {
     complete: false,
     comments: rawBlock.flatMap((item) => {
@@ -252,7 +194,6 @@ function buildImplicitRoutineContracts(
     if (
       docBlock.comments.some(
         (item) =>
-          item.comment.kind === 'proc' ||
           item.comment.kind === 'extern' ||
           item.comment.kind === 'end',
       )
@@ -285,7 +226,7 @@ export function buildRoutineContracts(
 
   for (const item of comments) {
     const comment = item.comment;
-    if (comment.kind === 'proc' || comment.kind === 'extern') {
+    if (comment.kind === 'extern') {
       current = {
         name: comment.name,
         in: [],

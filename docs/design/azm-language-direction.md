@@ -271,16 +271,17 @@ ops, layout constants, and explicit rejection of retired ZAX constructs.
 
 ## AZMDoc comments
 
-AZMDoc is the metadata-comment standard for AZM source. It follows the JSDoc
-principle that documentation remains ordinary prose, while known `@` tags add
-machine-readable structure inside comments.
+AZMDoc is the metadata-comment standard for AZM source. Documentation remains
+ordinary prose, while compact `;!` lines carry machine-readable register
+contracts.
 
 The canonical style is:
 
 ```asm
 ; Loads the pending candidate coordinate.
-; Returns @out D as pending x and @out E as pending y.
-; Uses @clobbers A as scratch.
+; D and E contain the pending candidate coordinate.
+;!      out       DE
+;!      clobbers  A
 LOAD_DE_FROM_PENDING:
 ```
 

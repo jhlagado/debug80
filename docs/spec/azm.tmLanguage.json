@@ -72,32 +72,6 @@
           "match": "(!\\s*)(in|out|maybe-out|clobbers|preserves)\\b\\s+(\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P))*\\b)"
         },
         {
-          "captures": {
-            "1": {
-              "name": "storage.type.annotation.azmdoc.asm"
-            },
-            "2": {
-              "name": "meta.azmdoc.carriers.asm"
-            }
-          },
-          "match": "(@(?:in|out|clobbers|preserves|expect-out)\\b)\\s+(\\{?\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P))*\\b\\}?)"
-        },
-        {
-          "captures": {
-            "1": {
-              "name": "storage.type.annotation.azmdoc.asm"
-            },
-            "2": {
-              "name": "entity.name.function.azmdoc.asm"
-            }
-          },
-          "match": "(@(?:routine|proc|extern)\\b)\\s+([A-Za-z_.$?][A-Za-z0-9_.$?]*)"
-        },
-        {
-          "name": "storage.type.annotation.azmdoc.asm",
-          "match": "@end\\b"
-        },
-        {
           "name": "support.type.register.azmdoc.asm",
           "match": "\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|H|L|IXH|IXL|IYH|IYL|SPH|SPL)\\b"
         },
