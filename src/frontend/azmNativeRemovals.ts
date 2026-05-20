@@ -9,7 +9,6 @@ import type {
   OpDeclNode,
   ProgramNode,
   SourceSpan,
-  VarBlockNode,
 } from './ast.js';
 import { isLabelConstantLayoutCastEa } from '../semantics/layoutCastFold.js';
 
@@ -22,13 +21,6 @@ function removed(span: SourceSpan, message: string): Diagnostic {
     line: span.start.line,
     column: span.start.column,
   };
-}
-
-function removedVarBlock(node: VarBlockNode): Diagnostic {
-  return removed(
-    node.span,
-    'Typed storage blocks are not supported in AZM-native source; use explicit labels and assembler directives.',
-  );
 }
 
 function typedEaDiagnostic(expr: EaExprNode): Diagnostic | undefined {
@@ -102,8 +94,6 @@ function isAzmAsmStreamItem(
 function itemDiagnostics(item: ModuleItemNode): Diagnostic[] {
   if (isAzmAsmStreamItem(item)) return asmStreamDiagnostics(item);
   switch (item.kind) {
-    case 'VarBlock':
-      return [removedVarBlock(item)];
     case 'OpDecl':
       return opDiagnostics(item);
     default:

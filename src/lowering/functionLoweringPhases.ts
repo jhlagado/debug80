@@ -1,7 +1,5 @@
-import { DiagnosticIds } from '../diagnosticTypes.js';
 import type { SourceSegmentTag } from './loweringTypes.js';
 import { createAsmInstructionLoweringHelpers } from './asmInstructionLowering.js';
-import { createAsmBodyOrchestrationHelpers } from './asmBodyOrchestration.js';
 import {
   createFunctionBodySetupHelpers,
   type FlowState,
@@ -9,16 +7,8 @@ import {
 } from './functionBodySetup.js';
 import { createFunctionAsmRewritingHelpers } from './functionAsmRewriting.js';
 import { createFunctionCallLoweringHelpers } from './functionCallLowering.js';
-import type { FunctionFrameSetupContext } from './functionFrameSetup.js';
-import { initializeFunctionFrame } from './functionFrameSetup.js';
-import type { FunctionLoweringContext, FunctionLoweringSharedContext } from './functionLowering.js';
-import {
-  splitFunctionLoweringContext,
-  splitFunctionLoweringSharedContext,
-} from './functionLoweringSplit.js';
-
-/** #1123 — inputs to {@link initializeFunctionFrame} (alias of {@link FunctionFrameSetupContext}). */
-export type FrameContext = FunctionFrameSetupContext;
+import type { FunctionLoweringSharedContext } from './functionLowering.js';
+import { splitFunctionLoweringSharedContext } from './functionLoweringSplit.js';
 
 export interface AssemblerInstructionSetup {
   /** Shared assembler-lowering context. */
@@ -53,15 +43,6 @@ export interface AssemblerInstructionSetup {
   ) => { baseLower: string; addend: number } | undefined;
   /** Instruction emitter bound for asm lowering (same as `emitInstr`). */
   readonly emitInstrForAsm: FunctionLoweringSharedContext['emitInstr'];
-}
-
-export interface FunctionLoweringSetupPhase extends AssemblerInstructionSetup {
-  /** Full function-lowering context. */
-  readonly ctx: FunctionLoweringContext;
-  /** Function being lowered. */
-  readonly item: FunctionLoweringContext['item'];
-  /** Narrow context passed into frame setup. */
-  readonly frameSetupContext: ReturnType<typeof buildFrameSetupContext>;
 }
 
 export interface FunctionFramePhase {
@@ -111,94 +92,6 @@ export interface FunctionFramePhase {
   >['emitVirtualReg16Transfer'];
 }
 
-export type FunctionBodyPhase = Readonly<ReturnType<typeof createAsmBodyOrchestrationHelpers>>;
-
-/** #1123 — setup bundle plus frame phase result (before body lowering). */
-export type BodyContext = FunctionLoweringSetupPhase & {
-  /** Frame layout, flow state, and synthetic prologue/epilogue helpers after frame setup. */
-  readonly frame: FunctionFramePhase;
-};
-
-/** #1123 — frame + body orchestration product for finalization. */
-export type RewriteContext = BodyContext & {
-  /** Asm body orchestration helpers. */
-  readonly body: FunctionBodyPhase;
-};
-
-function buildFrameSetupContext(
-  ctx: FunctionLoweringContext,
-  currentCodeSegmentTagRef: { current: SourceSegmentTag | undefined },
-) {
-  const {
-    item,
-    diagnostics,
-    diag,
-    diagAt,
-    taken,
-    pending,
-    traceComment,
-    traceLabel,
-    bindSpTracking,
-    getCodeOffset,
-    emitInstr,
-    env,
-    resolveScalarBinding,
-    resolveScalarKind,
-    resolveAggregateType: resolveAggregateTypeForFrame,
-    resolveEaTypeExpr,
-    evalImmExpr,
-    stackSlotOffsets,
-    stackSlotTypes,
-    localAliasTargets,
-    storageTypes,
-    moduleAliasTargets,
-    generatedLabelCounterRef,
-    loadImm16ToHL,
-  } = ctx;
-  const setCurrentCodeSegmentTag = (tag: SourceSegmentTag | undefined): void => {
-    currentCodeSegmentTagRef.current = tag;
-  };
-
-  return {
-    item,
-    diagnostics,
-    diag,
-    diagAt,
-    typing: {
-      env,
-      resolveScalarBinding,
-      resolveScalarKind,
-      resolveAggregateType: resolveAggregateTypeForFrame,
-      resolveEaTypeExpr,
-      evalImmExpr,
-    },
-    storage: {
-      stackSlotOffsets,
-      stackSlotTypes,
-      localAliasTargets,
-      storageTypes,
-      moduleAliasTargets,
-    },
-    symbols: {
-      taken,
-      pending,
-      traceComment,
-      traceLabel,
-      generatedLabelCounterRef,
-    },
-    emission: {
-      getCodeOffset,
-      getCurrentCodeSegmentTag: () => currentCodeSegmentTagRef.current,
-      setCurrentCodeSegmentTag,
-      emitInstr,
-      loadImm16ToHL,
-    },
-    spTracking: {
-      bindSpTracking,
-    },
-  } as const;
-}
-
 export function prepareAssemblerInstructionSetupPhase(
   ctx: FunctionLoweringSharedContext,
 ): AssemblerInstructionSetup {
@@ -244,30 +137,6 @@ export function prepareAssemblerInstructionSetupPhase(
     getCurrentCodeSegmentTag: () => currentCodeSegmentTag,
     setCurrentCodeSegmentTag,
     ...asmRewriting,
-  };
-}
-
-export function prepareFunctionLoweringSetupPhase(
-  ctx: FunctionLoweringContext,
-): FunctionLoweringSetupPhase {
-  const setup = prepareAssemblerInstructionSetupPhase(ctx);
-  const frameSetupContext = buildFrameSetupContext(
-    { ...ctx, emitInstr: setup.emitInstr },
-    {
-      get current() {
-        return setup.getCurrentCodeSegmentTag();
-      },
-      set current(value: SourceSegmentTag | undefined) {
-        setup.setCurrentCodeSegmentTag(value);
-      },
-    },
-  );
-
-  return {
-    ...setup,
-    ctx,
-    item: ctx.item,
-    frameSetupContext,
   };
 }
 
@@ -370,12 +239,6 @@ function buildFunctionFramePhase(
     emitJumpCondTo,
     emitVirtualReg16Transfer,
   };
-}
-
-export function runFunctionFrameSetupPhase(setup: FunctionLoweringSetupPhase): FunctionFramePhase {
-  const { frameSetupContext } = setup;
-  const frameInit = initializeFunctionFrame(frameSetupContext);
-  return buildFunctionFramePhase(setup, frameInit);
 }
 
 /** Frame helpers for native `.azm` assembler source — no function prologue, epilogue, or locals. */
@@ -546,72 +409,4 @@ export function createAssemblerInstructionEmitters(
     flowRef: frame.flowRef,
     syncFromFlow: frame.syncFromFlow,
   });
-}
-
-export function prepareFunctionBodyLoweringPhase(ctx: BodyContext): FunctionBodyPhase {
-  const { frame, ...setup } = ctx;
-  const fp = splitFunctionLoweringContext(setup.ctx);
-  const diagnostics = fp.diagnostics.diagnostics;
-  const { item } = setup.ctx;
-  const { pending, traceComment, traceLabel, emitInstr } = setup;
-  const { lowerAsmRange } = createAssemblerInstructionEmitters(setup, frame);
-
-  return createAsmBodyOrchestrationHelpers({
-    asmItems: item.asm.items,
-    itemName: item.name,
-    itemSpan: item.span,
-    emitSyntheticEpilogue: frame.emitSyntheticEpilogue,
-    hasStackSlots: frame.hasStackSlots,
-    lowerAsmRange,
-    syncToFlow: frame.syncToFlow,
-    getFlow: frame.getFlow,
-    setFlow: frame.setFlow,
-    diagAt: (span, message) => fp.diagnostics.diagAt(diagnostics, span, message),
-    emitImplicitRet: () => {
-      frame.withCodeSourceTag(frame.sourceTagForSpan(item.span, frame.opExpansionStack), () => {
-        emitInstr('ret', [], item.span);
-      });
-    },
-    emitSyntheticEpilogueBody: () => {
-      frame.withCodeSourceTag(frame.sourceTagForSpan(item.span, frame.opExpansionStack), () => {
-        pending.push({
-          kind: 'label',
-          name: frame.epilogueLabel,
-          section: 'code',
-          offset: setup.getCodeOffset(),
-          file: item.span.file,
-          line: item.span.start.line,
-          scope: 'local',
-        });
-        traceLabel(setup.getCodeOffset(), frame.epilogueLabel);
-        const popOrder = frame.preserveSet.slice().reverse();
-        for (const reg of popOrder) {
-          emitInstr('pop', [{ kind: 'Reg', span: item.span, name: reg }], item.span);
-        }
-        if (frame.hasStackSlots) {
-          emitInstr(
-            'ld',
-            [
-              { kind: 'Reg', span: item.span, name: 'SP' },
-              { kind: 'Reg', span: item.span, name: 'IX' },
-            ],
-            item.span,
-          );
-          emitInstr('pop', [{ kind: 'Reg', span: item.span, name: 'IX' }], item.span);
-        }
-        emitInstr('ret', [], item.span);
-      });
-    },
-    traceFunctionEnd: () => {
-      traceComment(setup.getCodeOffset(), `func ${item.name} end`);
-    },
-  });
-}
-
-export function finalizeFunctionLoweringPhase(ctx: RewriteContext): void {
-  const { body, frame, ...setup } = ctx;
-  void frame;
-  body.lowerAndFinalizeFunctionBody();
-  setup.bindSpTracking(undefined);
-  setup.setCurrentCodeSegmentTag(setup.getCurrentCodeSegmentTag());
 }
