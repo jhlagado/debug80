@@ -102,7 +102,7 @@ Every chapter must be buildable from this skeleton:
 1. What changed from the previous chapter, or what problem this chapter addresses
 2. A first program or example that uses the new concept
 3. Sections that teach one concept each, with code grounding
-4. The examples section (referencing the companion .zax files)
+4. The examples section (referencing the companion .asm files)
 5. A summary bullet list
 
 A chapter introduction must:
