@@ -10,7 +10,7 @@ import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PR151_FIXTURE = join(__dirname, 'fixtures', 'pr151_zero_operand_head_diag_matrix.zax');
+const PR151_FIXTURE = join(__dirname, 'fixtures', 'pr151_zero_operand_head_diag_matrix.asm');
 
 type Row = {
   label: string;

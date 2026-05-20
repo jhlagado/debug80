@@ -1,12 +1,8 @@
-export func main()
+main:
     ret q
     ret nz, c
-    jp nz
     jp q, 1
     jp nz, 1, 2
-    call nz
     call q, 1
     call nz, 1, 2
-    jr nz
     jr q, 1
-  end

@@ -10,7 +10,7 @@ import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PR202_ADD_MATRIX_FIXTURE = join(__dirname, 'fixtures', 'pr202_add_diag_matrix_invalid.zax');
+const PR202_ADD_MATRIX_FIXTURE = join(__dirname, 'fixtures', 'pr202_add_diag_matrix_invalid.asm');
 
 type AddMatrixRow = {
   label: string;

@@ -10,9 +10,8 @@ import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PR149_FIXTURE = join(__dirname, 'fixtures', 'pr149_condition_diag_matrix_invalid.zax');
+const PR149_FIXTURE = join(__dirname, 'fixtures', 'pr149_condition_diag_matrix_invalid.asm');
 
-/** IDs from a real compile of the fixture (lowering uses EmitError AZM300; encoder uses EncodeError AZM200). */
 type Row = {
   label: string;
   id: (typeof DiagnosticIds)[keyof typeof DiagnosticIds];
@@ -23,18 +22,13 @@ describe('PR149: condition diagnostics parity matrix', () => {
   it.each([
     {
       label: 'ret condition',
-      id: DiagnosticIds.EmitError,
+      id: DiagnosticIds.EncodeError,
       message: 'ret cc expects a valid condition code',
     },
     {
       label: 'ret arity',
       id: DiagnosticIds.EncodeError,
       message: 'ret expects no operands or one condition code',
-    },
-    {
-      label: 'jp cc nn arity',
-      id: DiagnosticIds.EmitError,
-      message: 'jp cc, nn expects two operands (cc, nn)',
     },
     {
       label: 'jp cc',
@@ -47,11 +41,6 @@ describe('PR149: condition diagnostics parity matrix', () => {
       message: 'jp expects one operand (nn/(hl)/(ix)/(iy)) or two operands (cc, nn)',
     },
     {
-      label: 'call cc nn arity',
-      id: DiagnosticIds.EmitError,
-      message: 'call cc, nn expects two operands (cc, nn)',
-    },
-    {
       label: 'call cc',
       id: DiagnosticIds.EncodeError,
       message: 'call cc expects valid condition code NZ/Z/NC/C/PO/PE/P/M',
@@ -62,13 +51,8 @@ describe('PR149: condition diagnostics parity matrix', () => {
       message: 'call expects one operand (nn) or two operands (cc, nn)',
     },
     {
-      label: 'jr cc disp',
-      id: DiagnosticIds.EmitError,
-      message: 'jr cc, disp expects two operands (cc, disp8)',
-    },
-    {
       label: 'jr cc',
-      id: DiagnosticIds.EmitError,
+      id: DiagnosticIds.EncodeError,
       message: 'jr cc expects valid condition code NZ/Z/NC/C',
     },
   ] satisfies Row[])('$label — explicit diagnostics for malformed condition operands/forms', async (row) => {

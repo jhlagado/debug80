@@ -1,4 +1,4 @@
-export func main()
+main:
     ld (bc), (de)
     ld b, (bc)
     ld (de), c
@@ -8,4 +8,3 @@ export func main()
     ld ix, iy
     ld (ix + 1), (iy + 2)
     ld (hl), (ix + 1)
-  end

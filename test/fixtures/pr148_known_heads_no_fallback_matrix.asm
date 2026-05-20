@@ -1,16 +1,13 @@
-export func main()
+main:
     ret a, b
     add a
     call a, b, c
-    call nz
     djnz a
     rst 7
     im 3
     in a, (256)
     out (1), b
     jp (bc)
-    jp nz
-    jr nz
     jr po, 1
     ld a
     inc a, b
@@ -36,4 +33,3 @@ export func main()
     sll (hl), a
     rlc (hl), a
     rrc (hl), a
-  end

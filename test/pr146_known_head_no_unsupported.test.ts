@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR146: known-head diagnostics avoid unsupported fallback', () => {
   it('uses specific diagnostics for malformed known instruction heads', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr146_known_head_no_unsupported.zax');
+    const entry = join(__dirname, 'fixtures', 'pr146_known_head_no_unsupported.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'ld IXH, source expects (ix+disp)' });

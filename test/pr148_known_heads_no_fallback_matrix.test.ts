@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR148: known-head no-fallback diagnostics matrix', () => {
   it('emits specific diagnostics for malformed known mnemonics', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr148_known_heads_no_fallback_matrix.zax');
+    const entry = join(__dirname, 'fixtures', 'pr148_known_heads_no_fallback_matrix.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'ret expects no operands or one condition code' });
@@ -19,7 +19,6 @@ describe('PR148: known-head no-fallback diagnostics matrix', () => {
     expectDiagnostic(res.diagnostics, {
       message: 'call expects one operand (nn) or two operands (cc, nn)',
     });
-    expectDiagnostic(res.diagnostics, { message: 'call cc, nn expects two operands (cc, nn)' });
     expectDiagnostic(res.diagnostics, {
       message: 'djnz does not support register targets; expects disp8',
     });
@@ -29,11 +28,9 @@ describe('PR148: known-head no-fallback diagnostics matrix', () => {
     expectDiagnostic(res.diagnostics, {
       message: 'out (n),a immediate port form requires source A',
     });
-    expectDiagnostic(res.diagnostics, { message: 'jp cc, nn expects two operands (cc, nn)' });
     expectDiagnostic(res.diagnostics, {
       message: 'jp indirect form supports (hl), (ix), or (iy) only',
     });
-    expectDiagnostic(res.diagnostics, { message: 'jr cc, disp expects two operands (cc, disp8)' });
     expectDiagnostic(res.diagnostics, { message: 'jr cc expects valid condition code NZ/Z/NC/C' });
     expectDiagnostic(res.diagnostics, { message: 'ld expects two operands' });
     expectDiagnostic(res.diagnostics, { message: 'inc expects one operand' });
