@@ -1,4 +1,4 @@
-export func main()
+main:
     reti a
     retn 1
     ldi b
@@ -7,4 +7,3 @@ export func main()
     cpdr e
     ini h
     otdr l
-end
