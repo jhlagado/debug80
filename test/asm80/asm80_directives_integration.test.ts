@@ -56,7 +56,6 @@ function program(items: unknown[]): ProgramNode {
         kind: 'ModuleFile',
         span: span(1),
         path: file,
-        moduleId: 'directives',
         items: items as ProgramNode['files'][number]['items'],
       },
     ],

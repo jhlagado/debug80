@@ -96,7 +96,6 @@ export function parseModuleFile(
     kind: 'ModuleFile',
     span: moduleSpan,
     path: modulePath,
-    moduleId: modulePath,
     items,
   };
 

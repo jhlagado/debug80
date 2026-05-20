@@ -14,7 +14,6 @@ import { inferSourceMode } from './frontend/sourceMode.js';
 import type { CompileFn, CompilerOptions, CompileResult, PipelineDeps } from './pipeline.js';
 
 import { emitProgram } from './lowering/emit.js';
-import { STARTUP_ENTRY_LABEL } from './lowering/startupInit.js';
 import type { Artifact } from './formats/types.js';
 import { loadProgram } from './moduleLoader.js';
 import { analyzeRegisterCare } from './registerCare/analyze.js';
@@ -159,9 +158,6 @@ export const compile: CompileFn = async (
   }
   if (emit.emitD8m) {
     const mainEntry =
-      (symbols.find((s) => s.kind === 'label' && s.name.toLowerCase() === STARTUP_ENTRY_LABEL) as
-        | { kind: 'label'; name: string; address: number }
-        | undefined) ??
       (symbols.find((s) => s.kind === 'label' && s.name.toLowerCase() === 'main') as
         | { kind: 'label'; name: string; address: number }
         | undefined);

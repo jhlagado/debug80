@@ -42,8 +42,6 @@ export interface EmitLoweringPhaseResult {
   readonly codeOffset: LoweringResult['codeOffset'];
   /** Next data section offset. */
   readonly dataOffset: LoweringResult['dataOffset'];
-  /** Next var section offset. */
-  readonly varOffset: LoweringResult['varOffset'];
   /** Symbols still pending resolution. */
   readonly pending: LoweringResult['pending'];
   /** Emitted symbol table entries. */

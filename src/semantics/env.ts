@@ -51,7 +51,7 @@ export interface CompileEnv {
   /**
    * Map of type name -> type declaration.
    *
-   * PR3 uses this for layout calculation for module-scope `var` declarations.
+   * Layout declarations used by sizeof/offset and typed layout casts.
    */
   types: Map<string, TypeDeclNode | UnionDeclNode>;
 
@@ -416,10 +416,10 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
 }
 
 /**
- * Build the compile environment by resolving module-scope enums and assembler equates.
+ * Build the compile environment by resolving source-order enums and assembler equates.
  *
  * Implementation note:
- * - Resolves names across all parsed module files (entry + imports) in program order.
+ * - Resolves names across parsed source units in program order.
  * - Equates may reference previously defined constants and enum members (forward refs not yet supported).
  */
 export function buildEnv(

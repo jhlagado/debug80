@@ -49,7 +49,6 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
   let activeSection: SectionKind = 'code';
   let codeOffset = 0;
   let dataOffset = 0;
-  let varOffset = 0;
   let currentCodeSegmentTag: SourceSegmentTag | undefined;
   let generatedLabelCounter = 0;
 
@@ -93,14 +92,6 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
     },
     set current(value: number) {
       dataOffset = value;
-    },
-  };
-  const varOffsetRef = {
-    get current() {
-      return varOffset;
-    },
-    set current(value: number) {
-      varOffset = value;
     },
   };
   const currentCodeSegmentTagRef = {
@@ -153,9 +144,6 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
       case 'data':
         dataOffset = ctx.alignTo(dataOffset, a);
         return;
-      case 'var':
-        varOffset = ctx.alignTo(varOffset, a);
-        return;
     }
   };
 
@@ -188,7 +176,6 @@ export function createEmitStateHelpers(ctx: EmitStateContext) {
     activeSectionRef,
     codeOffsetRef,
     dataOffsetRef,
-    varOffsetRef,
     currentCodeSegmentTagRef,
     generatedLabelCounterRef,
     getCurrentCodeOffset,

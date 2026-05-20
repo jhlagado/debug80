@@ -66,7 +66,6 @@ normal lowering architecture.
 - `programLoweringFinalize.ts`
 - `sectionLayout.ts`
 - `loweredAsmPlacement.ts`, `loweredAsmByteEmission.ts`
-- `startupInit.ts`
 
 ## Read order by task
 

@@ -67,8 +67,6 @@ export type Context = AssemblerLoweringSharedContext & {
   codeOffsetRef: { current: number };
   /** Next data allocation offset. */
   dataOffsetRef: { current: number };
-  /** Next var allocation offset. */
-  varOffsetRef: { current: number };
   /** Optional base imm per section. */
   baseExprs: Partial<Record<SectionKind, ImmExprNode>>;
   /** Advances alignment state for `align` directives. */
@@ -96,7 +94,7 @@ export type Context = AssemblerLoweringSharedContext & {
   lowerImmExprForLoweredAsm: (expr: ImmExprNode) => LoweredImmExpr;
 };
 
-/** Phase 1 — inputs mutated while discovering ops and module-scope metadata. */
+/** Phase 1 — inputs mutated while discovering ops and source-order metadata. */
 export type PrescanContext = Pick<
   Context,
   | 'program'
@@ -124,8 +122,6 @@ export type LoweringResult = {
   codeOffset: number;
   /** Final data section size cursor. */
   dataOffset: number;
-  /** Final var section size cursor. */
-  varOffset: number;
   /** Still-unresolved symbols after lowering. */
   pending: Context['pending'];
   /** Emitted symbol table. */
@@ -165,8 +161,6 @@ export type ProgramEmissionFinalizeContext = {
   codeOffset: number;
   /** Data size after lowering. */
   dataOffset: number;
-  /** Var size after lowering. */
-  varOffset: number;
   /** Pending symbols. */
   pending: PendingSymbol[];
   /** Symbol table (may grow during placement). */

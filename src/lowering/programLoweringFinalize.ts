@@ -13,10 +13,8 @@ export function computeSectionBases(
 ): {
   codeBase: number;
   dataBase: number;
-  varBase: number;
   codeOk: boolean;
   dataOk: boolean;
-  varOk: boolean;
 } {
   const diagnostics = options?.quiet ? [] : ctx.diagnostics;
   const diagFn = options?.quiet ? () => {} : ctx.diag;
@@ -37,7 +35,6 @@ export function computeSectionBases(
 
   const explicitCodeBase = evalBase('code');
   const explicitDataBase = evalBase('data');
-  const explicitVarBase = evalBase('var');
   const codeOk = explicitCodeBase !== undefined || !ctx.baseExprs.code;
   const codeBase = explicitCodeBase ?? (defaultCodeBase ?? 0);
   const dataBase =
@@ -51,40 +48,27 @@ export function computeSectionBases(
         ),
         0));
   const dataOk = explicitDataBase !== undefined || (ctx.baseExprs.data === undefined && codeOk);
-  const varBase =
-    explicitVarBase ??
-    (dataOk
-      ? ctx.alignTo(dataBase + ctx.dataOffset, 2)
-      : (diagFn(
-          diagnostics,
-          ctx.primaryFile,
-          `Cannot compute default var base address because data base address is invalid.`,
-        ),
-        0));
-  const varOk = explicitVarBase !== undefined || (ctx.baseExprs.var === undefined && dataOk);
 
-  return { codeBase, dataBase, varBase, codeOk, dataOk, varOk };
+  return { codeBase, dataBase, codeOk, dataOk };
 }
 
 export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   codeBase: number;
   dataBase: number;
-  varBase: number;
   codeOk: boolean;
   dataOk: boolean;
-  varOk: boolean;
   writtenRange: AddressRange;
   sourceSegments: EmittedSourceSegment[];
 } {
-  const { codeBase, dataBase, varBase, codeOk, dataOk, varOk } = computeSectionBases(
+  const { codeBase, dataBase, codeOk, dataOk } = computeSectionBases(
     ctx,
     ctx.defaultCodeBase,
   );
 
   const addrByNameLower = new Map<string, number>();
   for (const ps of ctx.pending) {
-    const base = ps.section === 'code' ? codeBase : ps.section === 'data' ? dataBase : varBase;
-    const ok = ps.section === 'code' ? codeOk : ps.section === 'data' ? dataOk : varOk;
+    const base = ps.section === 'code' ? codeBase : dataBase;
+    const ok = ps.section === 'code' ? codeOk : dataOk;
     if (!ok) continue;
     addrByNameLower.set(ps.name.toLowerCase(), base + ps.offset);
   }
@@ -186,8 +170,8 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   }
 
   for (const ps of ctx.pending) {
-    const base = ps.section === 'code' ? codeBase : ps.section === 'data' ? dataBase : varBase;
-    const ok = ps.section === 'code' ? codeOk : ps.section === 'data' ? dataOk : varOk;
+    const base = ps.section === 'code' ? codeBase : dataBase;
+    const ok = ps.section === 'code' ? codeOk : dataOk;
     if (!ok) continue;
     ctx.symbols.push({
       kind: ps.kind,
@@ -204,10 +188,8 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   return {
     codeBase,
     dataBase,
-    varBase,
     codeOk,
     dataOk,
-    varOk,
     writtenRange: ctx.computeWrittenRange(ctx.bytes),
     sourceSegments: codeOk ? ctx.rebaseCodeSourceSegments(codeBase, ctx.codeSourceSegments) : [],
   };

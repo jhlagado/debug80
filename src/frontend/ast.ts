@@ -47,7 +47,6 @@ export interface ProgramNode extends BaseNode {
 export interface ModuleFileNode extends BaseNode {
   kind: 'ModuleFile';
   path: string;
-  moduleId: string;
   items: ModuleItemNode[];
 }
 

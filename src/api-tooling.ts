@@ -46,7 +46,7 @@ export interface ToolingLoadProgramResult {
 }
 
 /**
- * Layer A: expand textual includes, resolve compatibility imports, and parse without emitting artifacts.
+ * Layer A: expand textual includes and parse without emitting artifacts.
  */
 export async function loadProgram(
   options: LoadProgramOptions & { entryFile: string },

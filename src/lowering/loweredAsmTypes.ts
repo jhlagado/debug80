@@ -43,7 +43,7 @@ export type LoweredAsmSymbol =
     }
   | {
       /** Runtime label or storage symbol. */
-      kind: 'label' | 'data' | 'var' | 'unknown';
+      kind: 'label' | 'data' | 'unknown';
       /** Symbol name. */
       name: string;
       /** Address expression (may reference other symbols). */
