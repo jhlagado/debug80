@@ -11,7 +11,7 @@ describe('PR476 parameter parser extraction', () => {
   const zeroSpan = span(file, 0, 0);
   const ctx = { isReservedTopLevelName: () => false };
 
-  it('keeps func parameter parsing intact', () => {
+  it('keeps typed parameter parsing intact for the remaining extern surface', () => {
     const diagnostics: Diagnostic[] = [];
     const params = parseParamsFromText(
       file.path,
@@ -70,16 +70,15 @@ describe('PR476 parameter parser extraction', () => {
     ]);
   });
 
-  it('preserves top-level func/op parsing through parser.ts', () => {
+  it('preserves top-level op parsing through parser.ts', () => {
     const diagnostics: Diagnostic[] = [];
     const program = parseProgram(
       file.path,
-      'func add(lhs: word, rhs: word): HL\n  ret\nend\n\nop copy16(dst: reg16, src: reg16)\n  ld dst, src\nend\n',
+      'op copy16(dst: reg16, src: reg16)\n  ld dst, src\nend\n',
       diagnostics,
     );
 
     expectNoDiagnostics(diagnostics);
-    expect(program.files[0]?.items[0]).toMatchObject({ kind: 'FuncDecl', name: 'add' });
-    expect(program.files[0]?.items[1]).toMatchObject({ kind: 'OpDecl', name: 'copy16' });
+    expect(program.files[0]?.items[0]).toMatchObject({ kind: 'OpDecl', name: 'copy16' });
   });
 });

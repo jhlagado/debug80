@@ -3,7 +3,6 @@ import type {
   AsmInstructionNode,
   AsmLabelNode,
   ClassicItemNode,
-  FuncDeclNode,
   ModuleItemNode,
   ProgramNode,
   SourceSpan,
@@ -38,33 +37,12 @@ function flattenAsmBlock(
   }
 }
 
-function flattenFuncDecl(
-  func: FuncDeclNode,
-  out: FlatItem[],
-  expandInstruction: (inst: AsmInstructionNode) => FlatItem[],
-): void {
-  out.push({
-    kind: 'label',
-    label: {
-      kind: 'AsmLabel',
-      name: func.name,
-      span: func.span,
-      ...(func.exported ? { isEntry: true } : {}),
-    },
-  });
-  flattenAsmBlock(func.asm, out, expandInstruction);
-}
-
 function flattenItems(
   items: FlattenableItem[],
   out: FlatItem[],
   expandInstruction: (inst: AsmInstructionNode) => FlatItem[],
 ): void {
   for (const item of items) {
-    if (item.kind === 'FuncDecl') {
-      flattenFuncDecl(item, out, expandInstruction);
-      continue;
-    }
     if (item.kind === 'AsmLabel') {
       out.push({ kind: 'label', label: item });
       continue;

@@ -67,7 +67,7 @@ describe('AZM flat module assembly', () => {
     }
   });
 
-  it('rejects function declarations in AZM-native source', async () => {
+  it('treats function declarations as unsupported instructions in AZM-native source', async () => {
     const { entry, cleanup } = writeTempAzm(['func main()', '  ret', 'end', ''].join('\n'));
 
     try {
@@ -79,7 +79,7 @@ describe('AZM flat module assembly', () => {
       expect(res.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          message: expect.stringContaining('Function declarations are not supported in AZM-native source'),
+          message: expect.stringContaining('Unsupported operand: main()'),
         }),
       );
     } finally {

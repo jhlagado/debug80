@@ -1,5 +1,4 @@
 export const TOP_LEVEL_KEYWORD_LIST = [
-  'func',
   'const',
   'enum',
   'import',

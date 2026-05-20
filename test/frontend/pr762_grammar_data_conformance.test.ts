@@ -77,7 +77,6 @@ describe('PR762 grammar-data conformance', () => {
 
   it('recognizes every top-level grammar keyword without falling through to unsupported-construct diagnostics', () => {
     const samples: Record<(typeof TOP_LEVEL_KEYWORD_LIST)[number], string> = {
-      func: ['func main()', 'end'].join('\n'),
       const: 'const FOO = 1',
       enum: 'enum Mode A',
       import: 'import "mod.zax"',

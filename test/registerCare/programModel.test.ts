@@ -332,10 +332,10 @@ describe('register-care program model', () => {
     expect(model.routines).toEqual([]);
   });
 
-  it('collects routines and call targets from function declarations', () => {
-    const program = parseZax(
-      '/tmp/main.zax',
-      ['func typed_call()', '  call HELPER', 'end', ''].join('\n'),
+  it('collects routines and call targets from labels', () => {
+    const program = parseClassicProgram(
+      '/tmp/main.asm',
+      ['typed_call:', '  call HELPER', ''].join('\n'),
     );
 
     const model = buildRegisterCareProgramModel(program);

@@ -29,11 +29,6 @@ function parsedLabelNames(path: string, source: string): string[] {
 describe('AZM native source boundary', () => {
   const rejectedAzmSources = [
     {
-      name: 'function declaration',
-      source: ['func main()', '  ret', 'end', ''].join('\n'),
-      message: 'Function declarations are not supported in AZM-native source',
-    },
-    {
       name: 'typed assignment',
       source: ['main:', '  A := count', '  ret', 'count: .db 1', ''].join('\n'),
       message: 'Typed assignment is not supported in AZM-native source',
@@ -91,7 +86,7 @@ describe('AZM native source boundary', () => {
     }
   });
 
-  it('does not leak rejected function bodies into native AZM output', async () => {
+  it('treats old function syntax as ordinary unsupported native AZM syntax', async () => {
     const source = ['func main()', 'BAD_LABEL:', '  db $99', 'end', 'GOOD_LABEL:', '  db $42', ''].join('\n');
     const { entry, cleanup } = writeTempSource(
       'azm',
@@ -107,11 +102,11 @@ describe('AZM native source boundary', () => {
       expect(res.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          id: DiagnosticIds.AzmRemovedZaxConstruct,
-          message: expect.stringContaining('Function declarations'),
+          id: DiagnosticIds.ParseError,
+          message: expect.stringContaining('Unsupported operand: main()'),
         }),
       );
-      expect(parsedLabelNames(entry, source)).toEqual(['GOOD_LABEL']);
+      expect(parsedLabelNames(entry, source)).toEqual(['BAD_LABEL', 'GOOD_LABEL']);
     } finally {
       cleanup();
     }

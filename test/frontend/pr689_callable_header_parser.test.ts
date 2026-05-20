@@ -7,19 +7,19 @@ import { makeSourceFile, span } from '../../src/frontend/source.js';
 import { expectDiagnostic } from '../helpers/diagnostics/index.js';
 
 describe('PR689 callable header parser primitive', () => {
-  it('parses shared callable header shape and params', () => {
-    const file = makeSourceFile('pr689_callable_header_parser.zax', 'func add(lhs: word, rhs: word): HL');
+  it('parses op callable header shape and params', () => {
+    const file = makeSourceFile('pr689_callable_header_parser.zax', 'op add(lhs: word, rhs: word)');
     const diagnostics: Diagnostic[] = [];
     const stmtSpan = span(file, 0, file.text.length);
     const parsed = parseCallableHeader({
-      kind: 'func',
-      header: 'add(lhs: word, rhs: word): HL',
-      stmtText: 'func add(lhs: word, rhs: word): HL',
+      kind: 'op',
+      header: 'add(lhs: word, rhs: word)',
+      stmtText: 'op add(lhs: word, rhs: word)',
       stmtSpan,
       lineNo: 1,
       diagnostics,
       modulePath: file.path,
-      expectedHeader: '<name>(...): <retType>',
+      expectedHeader: '<name>(...)',
       isReservedTopLevelName: () => false,
       parseParams: (paramsText) => paramsText.split(',').map((part) => part.trim()),
     });
@@ -28,7 +28,7 @@ describe('PR689 callable header parser primitive', () => {
     expect(parsed).toEqual({
       name: 'add',
       params: ['lhs: word', 'rhs: word'],
-      trailing: ': HL',
+      trailing: '',
     });
   });
 

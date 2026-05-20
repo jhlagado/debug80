@@ -1,7 +1,6 @@
 import type {
   BinDeclNode,
   ExternDeclNode,
-  FuncDeclNode,
   ModuleItemNode,
   OpDeclNode,
   RawDataDeclNode,
@@ -46,17 +45,6 @@ function preScanItem(
   sourceUnitFile?: string,
 ): void {
   const localSourceUnitFile = sourceUnitFile ?? item.span?.file ?? ctx.program.entryFile;
-
-  if (item.kind === 'FuncDecl') {
-    const func = item as FuncDeclNode;
-    const fileCallables = getOrCreateFileCallables(ctx, localSourceUnitFile);
-    fileCallables.set(func.name.toLowerCase(), { kind: 'func', node: func });
-    if (func.exported) {
-      const moduleId = (ctx.env.moduleIds?.get(localSourceUnitFile) ?? localSourceUnitFile).toLowerCase();
-      ctx.visibleCallables.set(`${moduleId}.${func.name.toLowerCase()}`, { kind: 'func', node: func });
-    }
-    return;
-  }
 
   if (item.kind === 'OpDecl') {
     const op = item as OpDeclNode;

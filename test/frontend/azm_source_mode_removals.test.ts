@@ -23,7 +23,7 @@ describe('AZM source mode ZAX removals', () => {
     expect(inferSourceMode('/tmp/program.z80')).toBe('asm80');
   });
 
-  it('rejects ZAX function syntax in AZM-native source', async () => {
+  it('treats ZAX function syntax as unsupported native assembly', async () => {
     const { entry, cleanup } = writeTempSource(
       'azm',
       ['func main()', '    ret', 'end', ''].join('\n'),
@@ -39,7 +39,7 @@ describe('AZM source mode ZAX removals', () => {
       expect(res.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: 'error',
-          message: expect.stringContaining('Function declarations are not supported in AZM-native source'),
+          message: expect.stringContaining('Unsupported operand: main()'),
           line: 1,
           column: 1,
         }),
@@ -82,7 +82,7 @@ describe('AZM source mode ZAX removals', () => {
     }
   });
 
-  it('keeps the .zax retirement lane quiet for quarantined ZAX syntax', async () => {
+  it('lets removed .zax function syntax fail through the ordinary path', async () => {
     const { entry, cleanup } = writeTempSource(
       'zax',
       ['func main()', '    ret', 'end', ''].join('\n'),
@@ -95,9 +95,10 @@ describe('AZM source mode ZAX removals', () => {
         { formats: defaultFormatWriters },
       );
 
-      expect(res.diagnostics).not.toContainEqual(
+      expect(res.diagnostics).toContainEqual(
         expect.objectContaining({
-          id: DiagnosticIds.AzmRemovedZaxConstruct,
+          severity: 'error',
+          message: expect.stringContaining('Unsupported top-level construct: func main()'),
         }),
       );
     } finally {

@@ -5,7 +5,6 @@ import type {
   EnumDeclNode,
   ConstDeclNode,
   ExternDeclNode,
-  FuncDeclNode,
   ImportNode,
   ImmExprNode,
   AsmInstructionNode,
@@ -205,7 +204,7 @@ type BuildEnvOptions = {
 type CollectedDecls = {
   imports: ImportNode[];
   types: Array<TypeDeclNode | UnionDeclNode>;
-  callables: Array<FuncDeclNode | ExternDeclNode>;
+  callables: ExternDeclNode[];
   enums: EnumDeclNode[];
   consts: ConstLikeDecl[];
 };
@@ -523,7 +522,7 @@ export function buildEnv(
         collected.types.push(item);
         return;
       }
-      if (item.kind === 'FuncDecl' || item.kind === 'ExternDecl') {
+      if (item.kind === 'ExternDecl') {
         collected.callables.push(item);
         return;
       }
@@ -579,14 +578,9 @@ export function buildEnv(
     const collected = collectedByFile.get(mf.path);
     if (!collected) continue;
     for (const item of collected.callables) {
-      if (item.kind === 'FuncDecl') {
-        const f = item as FuncDeclNode;
-        claim('func', f.name, f.span.file);
-      } else if (item.kind === 'ExternDecl') {
-        const ex = item as ExternDeclNode;
-        for (const fn of ex.funcs) {
-          claim('extern func', fn.name, fn.span.file);
-        }
+      const ex = item as ExternDeclNode;
+      for (const fn of ex.funcs) {
+        claim('extern func', fn.name, fn.span.file);
       }
     }
   }
