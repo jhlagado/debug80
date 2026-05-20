@@ -12,13 +12,13 @@ describe('cli case-style linting', () => {
   }, 180_000);
 
   it('prints warnings and still exits 0 when --case-style triggers lint findings', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-case-style-'));
-    const entry = join(work, 'main.zax');
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-case-style-'));
+    const entry = join(work, 'main.asm');
     const outBin = join(work, 'bundle.bin');
 
     await writeFile(
       entry,
-      ['export func main()', '  ld a, 1', '  ret', 'end', ''].join('\n'),
+      ['main:', '  ld a, 1', '  ret', ''].join('\n'),
       'utf8',
     );
 
@@ -33,13 +33,13 @@ describe('cli case-style linting', () => {
   });
 
   it('does not lint label prefixes or hex immediates as register tokens', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-case-style-label-hex-'));
-    const entry = join(work, 'main.zax');
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-case-style-label-hex-'));
+    const entry = join(work, 'main.asm');
     const outBin = join(work, 'bundle.bin');
 
     await writeFile(
       entry,
-      ['export func main()', '  loop: ld a, $af', '  ret', 'end', ''].join('\n'),
+      ['main:', '  loop: ld a, $af', '  ret', ''].join('\n'),
       'utf8',
     );
 

@@ -1,3 +1,0 @@
-export func main()
-    jp missing_label
-  end

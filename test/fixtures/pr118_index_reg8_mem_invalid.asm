@@ -1,0 +1,4 @@
+main:
+    ld ixh, (iy+1)
+    ld (hl), ixh
+    ld (iy+2), ixh

@@ -85,7 +85,7 @@ A VS Code extension can consume the grammar like this:
     "grammars": [
       {
         "language": "azm",
-        "scopeName": "source.azm",
+        "scopeName": "source.asm",
         "path": "./syntaxes/azm.tmLanguage.json"
       }
     ]

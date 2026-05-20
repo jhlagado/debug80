@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "AZM",
-  "scopeName": "source.azm",
+  "scopeName": "source.asm",
   "fileTypes": [
     "asm",
     "z80"
@@ -42,11 +42,11 @@
           "begin": ";",
           "beginCaptures": {
             "0": {
-              "name": "punctuation.definition.comment.azm"
+              "name": "punctuation.definition.comment.asm"
             }
           },
           "end": "$",
-          "name": "comment.line.semicolon.azm",
+          "name": "comment.line.semicolon.asm",
           "patterns": [
             {
               "include": "#azmdoc"
@@ -60,13 +60,13 @@
         {
           "captures": {
             "1": {
-              "name": "punctuation.definition.azmdoc.generated.azm"
+              "name": "punctuation.definition.azmdoc.generated.asm"
             },
             "2": {
-              "name": "storage.type.annotation.azmdoc.azm"
+              "name": "storage.type.annotation.azmdoc.asm"
             },
             "3": {
-              "name": "meta.azmdoc.carriers.azm"
+              "name": "meta.azmdoc.carriers.asm"
             }
           },
           "match": "(!\\s*)(in|out|maybe-out|clobbers|preserves)\\b\\s+(\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P))*\\b)"
@@ -74,10 +74,10 @@
         {
           "captures": {
             "1": {
-              "name": "storage.type.annotation.azmdoc.azm"
+              "name": "storage.type.annotation.azmdoc.asm"
             },
             "2": {
-              "name": "meta.azmdoc.carriers.azm"
+              "name": "meta.azmdoc.carriers.asm"
             }
           },
           "match": "(@(?:in|out|clobbers|preserves|expect-out)\\b)\\s+(\\{?\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|SPH|SPL|carry|zero|sign|parity|halfCarry|Z|NZ|NC|PE|PO|M|P))*\\b\\}?)"
@@ -85,24 +85,24 @@
         {
           "captures": {
             "1": {
-              "name": "storage.type.annotation.azmdoc.azm"
+              "name": "storage.type.annotation.azmdoc.asm"
             },
             "2": {
-              "name": "entity.name.function.azmdoc.azm"
+              "name": "entity.name.function.azmdoc.asm"
             }
           },
           "match": "(@(?:routine|proc|extern)\\b)\\s+([A-Za-z_.$?][A-Za-z0-9_.$?]*)"
         },
         {
-          "name": "storage.type.annotation.azmdoc.azm",
+          "name": "storage.type.annotation.azmdoc.asm",
           "match": "@end\\b"
         },
         {
-          "name": "support.type.register.azmdoc.azm",
+          "name": "support.type.register.azmdoc.asm",
           "match": "\\b(?:AF|BC|DE|HL|IX|IY|SP|A|B|C|D|E|H|L|IXH|IXL|IYH|IYL|SPH|SPL)\\b"
         },
         {
-          "name": "support.type.flag.azmdoc.azm",
+          "name": "support.type.flag.azmdoc.asm",
           "match": "\\b(?:carry|zero|sign|parity|halfCarry)\\b"
         }
       ]
@@ -112,10 +112,10 @@
         {
           "captures": {
             "1": {
-              "name": "entity.name.label.global.azm"
+              "name": "entity.name.label.global.asm"
             },
             "2": {
-              "name": "punctuation.separator.label.azm"
+              "name": "punctuation.separator.label.asm"
             }
           },
           "match": "^\\s*([A-Za-z_?$][A-Za-z0-9_.$?]*)(:)"
@@ -123,10 +123,10 @@
         {
           "captures": {
             "1": {
-              "name": "entity.name.label.local.azm"
+              "name": "entity.name.label.local.asm"
             },
             "2": {
-              "name": "punctuation.separator.label.azm"
+              "name": "punctuation.separator.label.asm"
             }
           },
           "match": "^\\s*(\\.[A-Za-z_?$][A-Za-z0-9_.$?]*)(:)"
@@ -136,11 +136,11 @@
     "directives": {
       "patterns": [
         {
-          "name": "keyword.control.directive.azm",
+          "name": "keyword.control.directive.asm",
           "match": "(?i)(?<![A-Za-z0-9_.$?])\\.(?:org|include|equ|db|dw|ds|align|cstr|pstr|istr|binfrom|binto|end)\\b"
         },
         {
-          "name": "keyword.control.directive.legacy.azm",
+          "name": "keyword.control.directive.legacy.asm",
           "match": "(?i)^\\s*(?:ORG|EQU|DB|DW|DS|INCLUDE|ALIGN|END)\\b"
         }
       ]
@@ -148,7 +148,7 @@
     "instructions": {
       "patterns": [
         {
-          "name": "keyword.mnemonic.z80.azm",
+          "name": "keyword.mnemonic.z80.asm",
           "match": "(?i)(?<![A-Za-z0-9_.$?])(?:adc|add|and|bit|call|ccf|cp|cpd|cpdr|cpi|cpir|cpl|daa|dec|di|djnz|ei|ex|exx|halt|im|in|inc|ind|indr|ini|inir|jp|jr|ld|ldd|lddr|ldi|ldir|neg|nop|or|otdr|otir|out|outd|outi|pop|push|res|ret|reti|retn|rl|rla|rlc|rlca|rld|rr|rra|rrc|rrca|rrd|rst|sbc|scf|set|sla|sll|sli|sra|srl|sub|xor)\\b"
         }
       ]
@@ -156,7 +156,7 @@
     "registers": {
       "patterns": [
         {
-          "name": "support.type.register.z80.azm",
+          "name": "support.type.register.z80.asm",
           "match": "(?i)(?<![A-Za-z0-9_.$?])(?:af'|af|bc|de|hl|ix|iy|sp|ixh|ixl|iyh|iyl|a|b|c|d|e|f|h|l|i|r)\\b"
         }
       ]
@@ -166,10 +166,10 @@
         {
           "captures": {
             "1": {
-              "name": "keyword.mnemonic.z80.azm"
+              "name": "keyword.mnemonic.z80.asm"
             },
             "2": {
-              "name": "keyword.operator.condition.z80.azm"
+              "name": "keyword.operator.condition.z80.asm"
             }
           },
           "match": "(?i)\\b(call|jp|jr|ret)\\s+(z|nz|c|nc|pe|po|m|p)\\b"
@@ -179,19 +179,19 @@
     "numbers": {
       "patterns": [
         {
-          "name": "constant.numeric.hex.azm",
+          "name": "constant.numeric.hex.asm",
           "match": "(?i)(?<![A-Za-z0-9_.$?])(?:0x[0-9a-f]+|\\$[0-9a-f]+|[0-9][0-9a-f]*h)\\b"
         },
         {
-          "name": "constant.numeric.binary.azm",
+          "name": "constant.numeric.binary.asm",
           "match": "(?i)(?<![A-Za-z0-9_.$?])(?:%[01]+|[01]+b)\\b"
         },
         {
-          "name": "constant.numeric.decimal.azm",
+          "name": "constant.numeric.decimal.asm",
           "match": "(?<![A-Za-z0-9_.$?])\\d+\\b"
         },
         {
-          "name": "constant.language.current-location.azm",
+          "name": "constant.language.current-location.asm",
           "match": "\\$"
         }
       ]
@@ -202,19 +202,19 @@
           "begin": "\"",
           "beginCaptures": {
             "0": {
-              "name": "punctuation.definition.string.begin.azm"
+              "name": "punctuation.definition.string.begin.asm"
             }
           },
           "end": "\"",
           "endCaptures": {
             "0": {
-              "name": "punctuation.definition.string.end.azm"
+              "name": "punctuation.definition.string.end.asm"
             }
           },
-          "name": "string.quoted.double.azm",
+          "name": "string.quoted.double.asm",
           "patterns": [
             {
-              "name": "constant.character.escape.azm",
+              "name": "constant.character.escape.asm",
               "match": "\\\\."
             }
           ]
@@ -223,19 +223,19 @@
           "begin": "'",
           "beginCaptures": {
             "0": {
-              "name": "punctuation.definition.string.begin.azm"
+              "name": "punctuation.definition.string.begin.asm"
             }
           },
           "end": "'",
           "endCaptures": {
             "0": {
-              "name": "punctuation.definition.string.end.azm"
+              "name": "punctuation.definition.string.end.asm"
             }
           },
-          "name": "string.quoted.single.azm",
+          "name": "string.quoted.single.asm",
           "patterns": [
             {
-              "name": "constant.character.escape.azm",
+              "name": "constant.character.escape.asm",
               "match": "\\\\."
             }
           ]
@@ -245,15 +245,15 @@
     "operators": {
       "patterns": [
         {
-          "name": "keyword.operator.arithmetic.azm",
+          "name": "keyword.operator.arithmetic.asm",
           "match": "[+\\-*/]"
         },
         {
-          "name": "punctuation.section.parens.azm",
+          "name": "punctuation.section.parens.asm",
           "match": "[()]"
         },
         {
-          "name": "punctuation.separator.comma.azm",
+          "name": "punctuation.separator.comma.asm",
           "match": ","
         }
       ]

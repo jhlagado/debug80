@@ -1,4 +1,0 @@
-export func main()
-  loop: ld a, $af
-  ret
-end

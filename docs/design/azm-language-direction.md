@@ -18,7 +18,7 @@ expansion, directive aliases, and layout constants.
 
 The project name is **AZM** because it contains both "assembler" and "Z80" in a
 short form that works as a project name and CLI name. AZM source uses ordinary
-`.asm` and `.z80` file extensions; there is no separate `.azm` source extension.
+`.asm` and `.z80` file extensions; there is no AZM-specific source extension.
 
 The current repository and package still contain inherited ZAX public names.
 Those names are cleanup debt unless they describe source-history internals that
@@ -79,12 +79,12 @@ blocks, or module graph. Subroutines are ordinary Z80 assembly:
   ZAX `section` blocks
 
 Inherited ZAX `func` / `export func` and `section code/data` syntax are **rejected**
-in `.asm` source. Any remaining `.zax` support is a removal target, not an AZM
-compatibility guarantee.
+in `.asm` source. Unsupported source extensions are not an AZM compatibility
+guarantee.
 
 Native `.asm` source files are flat. They accept layout declarations, constants,
 `op` declarations, labels, Z80 instructions, `.org`, `.equ`, raw data
-directives, includes, and directive aliases. They do not use a `.zax`
+directives, includes, and directive aliases. They do not use the inherited ZAX
 function/section shim.
 
 Native AZM does not use the inherited ZAX `import` module system. It uses
@@ -259,9 +259,9 @@ deletion boundary for parser and lowering work:
 - runtime typed effective-address lowering, including register-indexed layout
   paths that require generated address code.
 
-The temporary `.zax` test path must stay explicit until deleted. Default AZM
-guardrails exercise flat assembly, register-care, directive aliases, ops, and
-layout constants.
+Any unsupported-extension test path must stay explicit until deleted. Default
+AZM guardrails exercise flat assembly, register-care, directive aliases, ops,
+and layout constants.
 
 ## AZMDoc comments
 

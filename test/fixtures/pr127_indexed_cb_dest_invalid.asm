@@ -1,0 +1,4 @@
+main:
+    rl (hl), b
+    set 1, (hl), a
+    res 2, (ix+1), (hl)

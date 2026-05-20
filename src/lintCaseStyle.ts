@@ -1,10 +1,5 @@
 import { DiagnosticIds, type Diagnostic } from './diagnosticTypes.js';
-import type {
-  AsmItemNode,
-  OpDeclNode,
-  ProgramNode,
-  SourceSpan,
-} from './frontend/ast.js';
+import type { AsmItemNode, OpDeclNode, ProgramNode, SourceSpan } from './frontend/ast.js';
 import type { CaseStyleMode } from './pipeline.js';
 
 type TokenStyle = 'upper' | 'lower' | 'mixed';
@@ -154,6 +149,10 @@ export function lintCaseStyle(
     const source = sourceTexts.get(moduleFile.path);
     if (!source) continue;
     for (const item of moduleFile.items) {
+      if (item.kind === 'AsmInstruction') {
+        lintAsmItems([item], source, mode, state, diagnostics);
+        continue;
+      }
       if (item.kind === 'OpDecl') {
         lintAsmItems((item as OpDeclNode).body.items, source, mode, state, diagnostics);
       }

@@ -1,0 +1,8 @@
+main:
+    jp nz, 1 + target
+    call z, 2 + target
+    jp 3 + target
+    call 4 + target
+  target:
+    nop
+    ret
