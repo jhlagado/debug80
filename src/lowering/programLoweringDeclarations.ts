@@ -39,7 +39,7 @@ export function createProgramLoweringDeclarationHelpers(ctx: Context): {
   };
 
   const lowerRawDataDecl = (decl: RawDataDeclNode): void => {
-    ctx.diag(ctx.diagnostics, decl.span.file, `Raw data declaration nodes are retired ZAX syntax.`);
+    ctx.diag(ctx.diagnostics, decl.span.file, `Raw data declaration nodes are not valid AZM syntax.`);
   };
 
   const lowerAsmRawDataDirective = createAsmRawDataLowerer(ctx, symbolicTargetFromExpr);

@@ -26,7 +26,7 @@ type D8mSegment = {
   start: number;
   end: number;
   lstLine: number;
-  /** 1-based `.zax` source line when known; omitted for synthetic / unknown-line segments. */
+  /** 1-based source line when known; omitted for synthetic / unknown-line segments. */
   line?: number;
   kind: 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
   confidence: 'high' | 'medium' | 'low';
