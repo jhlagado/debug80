@@ -48,10 +48,10 @@ AZM removes from native `.azm`:
 - Runtime typed effective-address lowering.
 - Any generated stack frame, argument marshalling, or typed memory pipeline.
 
-The compatibility lane remains temporary:
+The ZAX removal lane remains temporary:
 
-- `.zax` keeps old structured-assembler behavior until tests are quarantined,
-  rewritten, or deleted.
+- `.zax` holds old structured-assembler tests only while they are rewritten or
+  deleted.
 - `.asm` / `.z80` remain assembler compatibility inputs and are not part of the
   ZAX removal target.
 
@@ -214,8 +214,7 @@ accepted shape is:
 - `.equ` constants;
 - includes and directive aliases where they normalize legacy assembler
   vocabulary;
-- `type` / `union`, `sizeof`, `offset`, legacy `offsetof`, and layout-cast
-  address constants;
+- `type` / `union`, `sizeof`, `offset`, and layout-cast address constants;
 - `op` declarations and visible call-site expansion.
 
 Native AZM uses ASM80-style textual includes, not the inherited ZAX `import`
@@ -241,19 +240,17 @@ Current landed lanes:
   register-care, native flat AZM frontend tests, AZM deprecation/boundary tests,
   layout-constant tests, directive aliases, ASM80 directives, includes, and op
   expansion coverage.
-- `npm run test:zax:compat` runs the first explicit compatibility batch for old
-  `.zax` behavior: typed reinterpretation, typed storage migration diagnostics,
-  typed assignment lowering, typed EA assignment, record data initializers,
-  aggregate locals/params, and typed address-of behavior.
+- `npm run test:zax:compat` runs a temporary removal batch for old `.zax`
+  behavior: typed reinterpretation, typed storage migration diagnostics, typed
+  assignment lowering, typed EA assignment, record data initializers, aggregate
+  locals/params, and typed address-of behavior.
 
-The compatibility lane is a quarantine boundary, not a deletion approval. Keep
-it green until each old behavior is rewritten for AZM, archived, or deliberately
-removed.
+The `.zax` lane is not a compatibility promise. Passing it should help organize
+removal work, not block deliberate deletion of ZAX-only behavior.
 
-Compatibility coverage still needs expansion before broad deletion. ZAX
-`import` tests, function/frame tests, named-section tests, and structured-control
-lowering tests are compatibility candidates, but they are not all in the first
-`test:zax:compat` batch yet.
+ZAX `import` tests, function/frame tests, named-section tests, and
+structured-control lowering tests should either be rewritten into AZM/ASM80
+guardrails or deleted with the subsystem they exercise.
 
 ### Corpus guardrail
 
@@ -331,8 +328,8 @@ Do not delete the entire backend just because it is called `lowering`. The
 right end state is either:
 
 1. keep the assembler backend but rename/reorganize it around emission, or
-2. delete only the ZAX-specific lowering subsystems once compatibility tests are
-   quarantined or removed.
+2. delete the ZAX-specific lowering subsystems once AZM/ASM80 guardrails do not
+   need them.
 
 ## Direct Roadmap Ahead
 
@@ -356,14 +353,15 @@ Tasks:
   bare directives only, or both. Current behavior accepts both in the relevant
   places where supported.
 
-### 2. Track C: quarantine ZAX tests
+### 2. Track C: delete or rewrite ZAX tests
 
 Goal: default CI should represent AZM, not the inherited ZAX language.
 
 Tasks:
 
 - Use `docs/audits/zax-test-retirement-map.md` as the source of truth.
-- Move or mark old high-level tests into a compatibility lane:
+- Move old high-level tests into the temporary removal lane only while deleting
+  or rewriting them:
   - `func` frame tests,
   - structured control lowering tests,
   - typed assignment tests,
@@ -380,8 +378,8 @@ Tasks:
   - typecheck/build,
   - `npm run test:azm:alpha`,
   - lint if enabled.
-- Keep `.zax` compatibility tests in `npm run test:zax:compat` until deletion is
-  approved.
+- Keep `.zax` removal tests in `npm run test:zax:compat` only while they help
+  organize the deletion work.
 
 ### 3. Track D: register-care after op expansion
 
@@ -510,8 +508,8 @@ Tasks:
   diagnostics.
 - Register-care currently needs follow-up work so visible `op` expansion is the
   truth for effects.
-- `.zax` compatibility may mask dead code. The test quarantine must come before
-  deletion, or deletion will look more dangerous than it is.
+- `.zax` tests may mask dead code. Use the removal map to make deletion
+  deliberate and reviewable.
 
 ## Suggested Next Commit
 
@@ -519,8 +517,7 @@ The next implementation chunk should be one of:
 
 1. Add explicit rejection tests for every ZAX-only syntax still mentioned in the
    removal inventory.
-2. Start Track C by moving the most obvious `.zax`-only tests into a
-   compatibility lane.
+2. Start Track C by deleting or rewriting the most obvious `.zax`-only tests.
 3. Start Track D by making register-care analyze expanded `op` instructions.
 
 The highest leverage next step is Track C, because it creates the safety boundary

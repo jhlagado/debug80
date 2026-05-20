@@ -322,8 +322,8 @@ Potentially unreferenced fixtures: 213
 | pr25_isa_advanced.zax | 0 |
 | pr254_module_var_renamed_globals.zax | 1 |
 | pr256_value_semantics_scalar_ld.zax | 0 |
-| pr257_offsetof_invalid.zax | 0 |
-| pr257_offsetof_valid.zax | 0 |
+| pr257_offset_invalid.zax | 0 |
+| pr257_offset_valid.zax | 0 |
 | pr258_op_cc_matcher_invalid.zax | 0 |
 | pr258_op_cc_matcher.zax | 0 |
 | pr258_op_idx16_matcher.zax | 0 |
@@ -709,8 +709,8 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr23_ret_cc_stack_imbalance.zax
 - pr23_ret_stack_imbalance.zax
 - pr256_value_semantics_scalar_ld.zax
-- pr257_offsetof_invalid.zax
-- pr257_offsetof_valid.zax
+- pr257_offset_invalid.zax
+- pr257_offset_valid.zax
 - pr258_op_cc_matcher.zax
 - pr258_op_cc_matcher_invalid.zax
 - pr258_op_idx16_matcher.zax
@@ -1089,8 +1089,8 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr25_isa_advanced.zax |  |
 | pr254_module_var_renamed_globals.zax | test/frontend/pr254_module_var_renamed_globals.test.ts |
 | pr256_value_semantics_scalar_ld.zax |  |
-| pr257_offsetof_invalid.zax |  |
-| pr257_offsetof_valid.zax |  |
+| pr257_offset_invalid.zax |  |
+| pr257_offset_valid.zax |  |
 | pr258_op_cc_matcher_invalid.zax |  |
 | pr258_op_cc_matcher.zax |  |
 | pr258_op_idx16_matcher.zax |  |

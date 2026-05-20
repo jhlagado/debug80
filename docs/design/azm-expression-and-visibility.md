@@ -102,17 +102,17 @@ Avoid routing layout casts through:
 - `valueMaterializationRuntimeEa` / exact-scale indexing helpers
 - `:=` assignment lowering
 
-Inherited ZAX `import` modules may remain for `.zax` compatibility until
-retired. Native `.azm` should not depend on them for layout constants or
-cross-file organization. AZM’s multi-file mechanism is ASM80-style textual
-include, where included text participates in the same assembly unit.
+Inherited ZAX `import` modules are a removal target. Native `.azm` must not
+depend on them for layout constants or cross-file organization. AZM’s
+multi-file mechanism is ASM80-style textual include, where included text
+participates in the same assembly unit.
 
 ## What AZM deliberately keeps (not “hidden compiler”)
 
 Three mechanisms add power without turning AZM into ZAX. They must stay
 distinct in documentation and implementation.
 
-### 1. Directive aliases (compatibility normalization)
+### 1. Directive aliases (input normalization)
 
 **What:** A fixed, small set of canonical directives (`.db`, `.dw`, `.ds`,
 `.org`, `.equ`, …) plus a **directive-alias** table that rewrites legacy heads
@@ -195,9 +195,9 @@ New work should cite **expression folding**, not “layout LD lowering”.
 flat native frontend, ASM80 baseline, directive aliases, includes,
 register-care, ops, and layout constants.
 
-`npm run test:zax:compat` is the explicit compatibility lane for old `.zax`
-behavior. Keep it green until those tests are rewritten, archived, or
-deliberately retired.
+`npm run test:zax:compat` is the temporary removal lane for old `.zax`
+behavior. Tests in that lane should be rewritten, archived, or deliberately
+retired; they are not an AZM compatibility contract.
 
 `npm run test:azm:corpus` is the optional local corpus guardrail. It compares
 read-only Tetro and Pacmo inputs against ASM80 output. MON3 remains skipped

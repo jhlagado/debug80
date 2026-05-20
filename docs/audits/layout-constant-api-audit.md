@@ -36,7 +36,7 @@ locking tests.
 - `test/pr8_sizeof.test.ts`: compile-level smoke coverage for `sizeof(TypeName)` and unknown-type diagnostics. It is small and should be expanded or complemented by AZM-native layout constant tests.
 - `test/semantics/semantics_layout.test.ts`: direct semantic tests for unknown types, recursion diagnostics, inferred-array rejection, union max size, and scalar `addr` size.
 - `test/semantics/layout_edge_cases.test.ts`: direct semantic tests for empty records/unions, nested record sizes, union fields with array members, arrays of unions, nested `offset`, array-index `offset`, and union offset rules.
-- `test/fixtures/pr257_offsetof_valid.zax`: legacy compile fixture proving nested record/array/union offset forms such as `offsetof(Scene, sprites[Idx].color)` and `offsetof(Node, payload.asWord)`.
+- `test/fixtures/pr257_offset_valid.zax`: legacy compile fixture proving nested record/array/union offset forms such as `offset(Scene, sprites[Idx].color)` and `offset(Node, payload.asWord)`.
 - `test/pr1049_record_named_init_data_lowering.test.ts`: protects inherited named/positional record initializer lowering. Preserve as ZAX compatibility evidence, but do not treat it as an AZM-native requirement.
 - `test/pr770_typed_reinterpretation_diagnostics.test.ts`: exercises diagnostics for typed reinterpretation paths. Preserve while deciding how constant layout casts should be split from hidden typed access.
 - `test/pr819_exact_scale_lowering.test.ts`: protects inherited exact-scale runtime indexing helpers. This should be quarantined from the first AZM layout-constant slice unless an AST op or explicit lowering feature is deliberately retained.

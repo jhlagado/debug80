@@ -30,7 +30,7 @@ Keep:
 - unions as overlay layouts
 - array type expressions for byte counts
 - `sizeof(...)`
-- `offsetof(...)`
+- `offset(...)`
 - explicit layout-cast address expressions such as
   `<Sprite[16]>SPRITES[BASE + 1].flags`
 - ordinary constants derived from layout expressions
@@ -103,7 +103,7 @@ and which pieces belong to the high-level ZAX lowering surface.
 Retirement work should not delete layout-related parser, semantic, or lowering
 helpers until the layout-constant tests are locked. The intended split is:
 
-- keep `type`, `union`, arrays, `sizeof`, `offsetof`, and explicit constant
+- keep `type`, `union`, arrays, `sizeof`, `offset`, and explicit constant
   layout casts as metadata/constant features
 - quarantine typed `data`, `var`/`globals`, typed assignment, and hidden runtime
   typed-address lowering as ZAX compatibility behavior

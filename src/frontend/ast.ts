@@ -572,7 +572,7 @@ export type EaIndexNode =
   | { kind: 'IndexEa'; span: SourceSpan; expr: EaExprNode };
 
 /**
- * Field path used by the `offset(Type, path)` / legacy `offsetof(Type, path)` built-ins.
+ * Field path used by the `offset(Type, path)` built-in.
  */
 export interface OffsetofPathNode extends BaseNode {
   kind: 'OffsetofPath';
