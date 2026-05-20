@@ -104,10 +104,10 @@ export interface EmitFinalizationPhaseEnv {
   readonly bytes: EmitFinalizationContext['bytes'];
   /** Code source segments for rebasing. */
   readonly codeSourceSegments: EmitFinalizationContext['codeSourceSegments'];
-  /** Section alignment helper. */
+  /** Byte alignment helper. */
   readonly alignTo: EmitFinalizationContext['alignTo'];
-  /** Writes a section slice into the byte map. */
-  readonly writeSection: EmitFinalizationContext['writeSection'];
+  /** Writes a byte-offset slice into the byte map. */
+  readonly writeBytePlacement: EmitFinalizationContext['writeBytePlacement'];
   /** Computes written byte ranges for overlap checks. */
   readonly computeWrittenRange: EmitFinalizationContext['computeWrittenRange'];
   /** Rebases source map after section moves. */

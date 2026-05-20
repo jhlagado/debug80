@@ -172,7 +172,7 @@ src/
 │   ├── emissionCore.ts        # Core emission helpers
 │   ├── capabilities.ts        # Capability checking
 │   ├── inputAssets.ts         # bin/hex asset loading
-│   ├── sectionLayout.ts       # Section layout management
+│   ├── bytePlacement.ts       # Byte placement helpers
 │   └── traceFormat.ts         # Debug trace formatting
 │
 ├── z80/                       # Z80 instruction encoding

@@ -149,7 +149,7 @@ export type ProgramEmissionFinalizeContext = {
   codeBytes: Map<number, number>;
   /** Data bytes. */
   dataBytes: Map<number, number>;
-  /** Merged working map across sections. */
+  /** Merged working byte map. */
   bytes: Map<number, number>;
   /** Code source segments for listing. */
   codeSourceSegments: EmittedSourceSegment[];
@@ -157,10 +157,10 @@ export type ProgramEmissionFinalizeContext = {
   defaultCodeBase?: number;
   /** Alignment helper. */
   alignTo: (n: number, alignment: number) => number;
-  /** Copies one section map into the merged `bytes` map. */
-  writeSection: (
+  /** Copies one byte-offset map into the merged `bytes` map. */
+  writeBytePlacement: (
     base: number,
-    section: Map<number, number>,
+    byteOffsets: Map<number, number>,
     bytes: Map<number, number>,
     report: (message: string) => void,
   ) => void;

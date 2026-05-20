@@ -53,14 +53,14 @@ export type EmitFinalizationContext = {
   codeBytes: ProgramEmissionFinalizeContext['codeBytes'];
   /** Data section bytes. */
   dataBytes: ProgramEmissionFinalizeContext['dataBytes'];
-  /** Merged working byte map across sections. */
+  /** Merged working byte map. */
   bytes: Map<number, number>;
   /** Code source segment map for listings. */
   codeSourceSegments: EmittedSourceSegment[];
-  /** Align helper (section padding). */
+  /** Align helper. */
   alignTo: ProgramEmissionFinalizeContext['alignTo'];
-  /** Writes a section range into `bytes`. */
-  writeSection: ProgramEmissionFinalizeContext['writeSection'];
+  /** Writes a byte-offset range into `bytes`. */
+  writeBytePlacement: ProgramEmissionFinalizeContext['writeBytePlacement'];
   /** Computes min/max written for overlap detection. */
   computeWrittenRange: ProgramEmissionFinalizeContext['computeWrittenRange'];
   /** Rebases source segments after moves. */
@@ -123,7 +123,7 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
     bytes: context.bytes,
     codeSourceSegments: context.codeSourceSegments,
     alignTo: context.alignTo,
-    writeSection: context.writeSection,
+    writeBytePlacement: context.writeBytePlacement,
     computeWrittenRange: context.computeWrittenRange,
     rebaseCodeSourceSegments: context.rebaseCodeSourceSegments,
     ...(context.defaultCodeBase !== undefined
