@@ -490,7 +490,8 @@ ProgramNode
 ```
 AsmEquNode | EnumDeclNode
 | UnionDeclNode | TypeDeclNode
-| OpDeclNode | AlignDirectiveNode | UnimplementedNode
+| OpDeclNode | AlignDirectiveNode
+| AsmLabelNode | AsmInstructionNode
 ```
 
 An `AsmBlockNode` holds a flat list of `AsmItemNode[]` for labels and instruction nodes. Retired structured-control tokens may still appear in old scaffolding, but native AZM treats them as removed syntax rather than as a lowering contract.

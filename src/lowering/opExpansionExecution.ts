@@ -57,7 +57,7 @@ export function expandVisibleOpBodyItems({
         name: localLabelMap.get(bodyItem.name.toLowerCase()) ?? bodyItem.name,
       };
     }
-    return { ...bodyItem };
+    return bodyItem;
   });
 };
 
