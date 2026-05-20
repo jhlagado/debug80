@@ -10,7 +10,7 @@ import type {
 } from '../../src/frontend/ast.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 import { parseClassicModuleFile } from '../../src/frontend/asm80/parseClassicModule.js';
-import { parseProgram as parseZaxProgram } from '../../src/frontend/parser.js';
+import { parseProgram as parseAzmProgram } from '../../src/frontend/parser.js';
 import { buildRegisterCareProgramModel } from '../../src/registerCare/programModel.js';
 import { inferRoutineSummary } from '../../src/registerCare/summary.js';
 
@@ -30,14 +30,14 @@ function parseClassicFile(path: string, text: string): ModuleFileNode {
   return file;
 }
 
-function parseZax(path: string, text: string): ProgramNode {
+function parseAzm(path: string, text: string): ProgramNode {
   const diagnostics: Diagnostic[] = [];
-  const program = parseZaxProgram(path, text, diagnostics);
+  const program = parseAzmProgram(path, text, diagnostics);
   if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return program;
 }
 
-function testSpan(file = '/tmp/main.zax'): SourceSpan {
+function testSpan(file = '/tmp/main.asm'): SourceSpan {
   return {
     file,
     start: { line: 1, column: 1, offset: 0 },
@@ -321,8 +321,8 @@ describe('register-care program model', () => {
   });
 
   it('does not collect direct call targets from op declarations', () => {
-    const program = parseZax(
-      '/tmp/main.zax',
+    const program = parseAzm(
+      '/tmp/main.asm',
       ['op macro_call()', '  call HELPER', 'end', ''].join('\n'),
     );
 

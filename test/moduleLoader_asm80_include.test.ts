@@ -18,7 +18,7 @@ async function withTempDir<T>(prefix: string, fn: (dir: string) => Promise<T>): 
 
 describe('asm80 source mode and classic includes', () => {
   it.each(['main.z80', 'main.asm'])('infers asm80 source mode from %s', async (filename) => {
-    await withTempDir('zax-asm80-mode-', async (dir) => {
+    await withTempDir('azm-asm80-mode-', async (dir) => {
       const entry = join(dir, filename);
       await writeFile(entry, 'LD A,1\n', 'utf8');
 
@@ -33,7 +33,7 @@ describe('asm80 source mode and classic includes', () => {
   });
 
   it('expands classic .include directives relative to the including file before asm80 parsing', async () => {
-    await withTempDir('zax-asm80-include-', async (dir) => {
+    await withTempDir('azm-asm80-include-', async (dir) => {
       await mkdir(join(dir, 'sub'));
       const entry = join(dir, 'main.z80');
       const child = join(dir, 'sub', 'child.inc');

@@ -74,7 +74,7 @@ function emitBytes(items: unknown[]): { bytes: number[]; diagnostics: Diagnostic
 
 describe('asm80 directive lowering integration', () => {
   it('compiles EX AF,AF prime with a trailing comment', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-af-prime-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-af-prime-'));
     const entry = join(dir, 'af-prime.z80');
     writeFileSync(
       entry,
@@ -183,7 +183,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles undotted directives, ds fill, 0x literals, and binto from classic source', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-tec1g-directives-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-tec1g-directives-'));
     const entry = join(dir, 'tec1g-directives.z80');
     writeFileSync(
       entry,
@@ -251,7 +251,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic source without org from address zero', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-no-org-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-no-org-'));
     const entry = join(dir, 'no-org.z80');
     writeFileSync(entry, ['xor a', 'jr $', '.binto 0003H'].join('\n'), 'utf8');
 
@@ -296,7 +296,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic source current-location expressions in branches and raw words', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-current-location-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-current-location-'));
     const entry = join(dir, 'current-location.z80');
     writeFileSync(
       entry,
@@ -314,7 +314,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('treats classic JR and DJNZ numeric operands as absolute targets', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-absolute-branches-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-absolute-branches-'));
     const entry = join(dir, 'absolute-branches.z80');
     writeFileSync(
       entry,
@@ -332,7 +332,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('rejects out-of-range classic numeric relative branch targets', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-absolute-branch-oob-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-absolute-branch-oob-'));
     const entry = join(dir, 'absolute-branch-oob.z80');
     writeFileSync(entry, ['.org 0100H', 'jr 2', 'djnz 2', '.binfrom 0100H', '.end'].join('\n'), 'utf8');
 
@@ -353,7 +353,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic dollar-prefixed hex and RST trailing-H operands', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-hex-rst-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-hex-rst-'));
     const entry = join(dir, 'hex-rst.z80');
     writeFileSync(
       entry,
@@ -371,7 +371,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles single-quoted character literals in raw words', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-word-char-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-word-char-'));
     const entry = join(dir, 'word-char.z80');
     writeFileSync(entry, ['.org 0100H', ".dw 'A'", '.binfrom 0100H', '.end'].join('\n'), 'utf8');
 
@@ -385,7 +385,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic IX/IY indexed memory operands', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-ixiy-indexed-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ixiy-indexed-'));
     const entry = join(dir, 'ixiy-indexed.z80');
     writeFileSync(
       entry,
@@ -403,7 +403,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic absolute 16-bit register stores', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-ld-mem-reg16-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ld-mem-reg16-'));
     const entry = join(dir, 'ld-mem-reg16.z80');
     writeFileSync(
       entry,
@@ -435,7 +435,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('does not include trailing reserve-only classic DS in the loadable binary', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-trailing-ds-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-trailing-ds-'));
     const entry = join(dir, 'trailing-ds.asm');
     writeFileSync(
       entry,
@@ -453,7 +453,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('preserves reserve-only classic DS in emitted asm80', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-reserve-ds-asm80-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-reserve-ds-asm80-'));
     const entry = join(dir, 'reserve-ds-asm80.asm');
     writeFileSync(
       entry,
@@ -474,7 +474,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles classic SRA A', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-sra-a-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-sra-a-'));
     const entry = join(dir, 'sra-a.z80');
     writeFileSync(entry, ['org 0100H', 'SRA A', 'binfrom 0100H', 'end'].join('\n'), 'utf8');
 
@@ -488,7 +488,7 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('reports diagnostics from classic ASM80 includes at the included file', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-include-diag-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-include-diag-'));
     const entry = join(dir, 'entry.z80');
     const child = join(dir, 'child.z80');
     writeFileSync(

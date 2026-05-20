@@ -13,7 +13,7 @@ import type {
 } from '../../src/frontend/ast.js';
 import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
 
-const s = (file = 'test.zax'): SourceSpan => ({
+const s = (file = 'test.asm'): SourceSpan => ({
   file,
   start: { line: 1, column: 1, offset: 0 },
   end: { line: 1, column: 1, offset: 0 },

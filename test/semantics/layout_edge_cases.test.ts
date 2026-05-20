@@ -14,7 +14,7 @@ import type {
 } from '../../src/frontend/ast.js';
 
 const span = {
-  file: 'layout_edge.zax',
+  file: 'layout_edge.asm',
   start: { line: 1, column: 1, offset: 0 },
   end: { line: 1, column: 1, offset: 0 },
 };

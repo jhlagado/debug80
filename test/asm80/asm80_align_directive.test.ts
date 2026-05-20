@@ -34,7 +34,7 @@ describe('ASM80 .align directive recognition', () => {
 
 describeClassicCompile('ASM80 .align directive', () => {
   it('advances the current output address to the next alignment boundary', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-align-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-align-'));
     const entry = join(dir, 'align-directive.z80');
     writeFileSync(entry, ['.org 0101H', '.db 0AAH', '.align 4', '.db 055H'].join('\n'), 'utf8');
     const res = await compile(entry, { emitAsm80: true }, { formats: defaultFormatWriters });

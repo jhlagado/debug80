@@ -42,7 +42,7 @@ describe('ASM80 string directive recognition (.cstr/.pstr/.istr)', () => {
 
 describeClassicCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
   it('emits null-terminated, length-prefixed, and high-bit-terminated strings', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-string-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-string-'));
     const entry = join(dir, 'string-directives.z80');
     writeFileSync(
       entry,

@@ -18,7 +18,7 @@ import type {
 } from '../../src/frontend/ast.js';
 
 const span = {
-  file: 'test.zax',
+  file: 'test.asm',
   start: { line: 1, column: 1, offset: 0 },
   end: { line: 1, column: 1, offset: 0 },
 };

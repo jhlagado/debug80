@@ -10,7 +10,7 @@ import type { Asm80Artifact, BinArtifact } from '../../src/formats/types.js';
 
 describe('ASM80 classic EQU aliases', () => {
   it('resolves classic equates used as absolute memory operands', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-equ-abs-mem-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-equ-abs-mem-'));
     const entry = join(dir, 'equ-abs-mem.z80');
     writeFileSync(
       entry,
@@ -28,7 +28,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves classic equ aliases to exact labels after DS reservations', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-ds-equ-alias-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ds-equ-alias-'));
     const entry = join(dir, 'ds-equ-alias.asm');
     writeFileSync(
       entry,
@@ -68,7 +68,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves classic equ aliases declared before their target label', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-forward-equ-target-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-forward-equ-target-'));
     const entry = join(dir, 'forward-equ-target.asm');
     writeFileSync(
       entry,
@@ -94,7 +94,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves compound classic equ aliases through forward aliases', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-compound-forward-equ-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-compound-forward-equ-'));
     const entry = join(dir, 'compound-forward-equ.asm');
     writeFileSync(
       entry,
@@ -121,7 +121,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves repeated aliases inside a classic equ expression', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-repeated-forward-equ-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-repeated-forward-equ-'));
     const entry = join(dir, 'repeated-forward-equ.asm');
     writeFileSync(
       entry,
@@ -148,7 +148,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('preserves current-location context for deferred classic equ aliases', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-forward-equ-current-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-forward-equ-current-'));
     const entry = join(dir, 'forward-equ-current.asm');
     writeFileSync(
       entry,
@@ -174,7 +174,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('rejects labels that shadow unresolved classic equ aliases', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-equ-shadow-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-equ-shadow-'));
     const entry = join(dir, 'equ-shadow.asm');
     writeFileSync(
       entry,
@@ -202,7 +202,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves forward classic equ aliases in word data', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-forward-equ-dw-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-forward-equ-dw-'));
     const entry = join(dir, 'forward-equ-dw.asm');
     writeFileSync(
       entry,
@@ -228,7 +228,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('keeps forward classic equ aliases self-contained in emitted asm80', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-forward-equ-asm80-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-forward-equ-asm80-'));
     const entry = join(dir, 'forward-equ-asm80.asm');
     writeFileSync(
       entry,
@@ -255,7 +255,7 @@ describe('ASM80 classic EQU aliases', () => {
   });
 
   it('resolves forward classic equ aliases in byte data', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'zax-asm80-forward-equ-db-'));
+    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-forward-equ-db-'));
     const entry = join(dir, 'forward-equ-db.asm');
     writeFileSync(
       entry,

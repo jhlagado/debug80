@@ -22,7 +22,7 @@ function parseProgram(modulePath: string, source: string): { program: ProgramNod
 describe('env edge cases (buildEnv + evalImmExpr)', () => {
   it('diagnoses divide by zero in imm const (AZM401)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_div.zax',
+      'edge_div.asm',
       ['const Bad = 1 / 0'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -41,7 +41,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('diagnoses modulo by zero in imm const (AZM402)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_mod.zax',
+      'edge_mod.asm',
       ['const Bad = 1 % 0'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -60,7 +60,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('fails closed on mutually referential consts (no silent cycle; AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_cycle.zax',
+      'edge_cycle.asm',
       ['const a = b', 'const b = a'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -78,7 +78,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
   });
 
   it('fails closed on self-referential const (AZM400)', () => {
-    const { program, diagnostics } = parseProgram('edge_self.zax', 'const a = a');
+    const { program, diagnostics } = parseProgram('edge_self.asm', 'const a = a');
     expectNoDiagnostics(diagnostics);
     buildEnv(program, diagnostics);
     expectDiagnostic(diagnostics, {
@@ -90,7 +90,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('does not resolve forward references between consts (intentional; later wins only after earlier fails)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_forward.zax',
+      'edge_forward.asm',
       ['const first = second', 'const second = 1'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -106,7 +106,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('rejects unqualified enum member when only one qualified name is possible (AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_enum_unqual.zax',
+      'edge_enum_unqual.asm',
       ['enum E1 Off, On', 'const k = Off'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -125,7 +125,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('rejects ambiguous unqualified enum members across enums (AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_enum_ambiguous.zax',
+      'edge_enum_ambiguous.asm',
       ['enum E1 Off, On', 'enum E2 Off, X', 'const k = Off'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -149,7 +149,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('evaluates qualified enum members in const initializers', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_enum_ok.zax',
+      'edge_enum_ok.asm',
       ['enum Mode Off, On', 'const k = Mode.Off'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -161,7 +161,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('propagates sizeof unknown type as TypeError and failed const (AZM403 + AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_sizeof.zax',
+      'edge_sizeof.asm',
       ['const Sz = sizeof(Nope)'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -180,7 +180,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('rejects const names that collide with type names (AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_type_collision.zax',
+      'edge_type_collision.asm',
       ['type T', '  x: byte', 'end', 'const T = 1'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -196,7 +196,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('propagates offset unknown field as TypeError and failed const (AZM403 + AZM400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_offset.zax',
+      'edge_offset.asm',
       ['type R', '  x: byte', '  y: byte', 'end', 'const o = offset(R, z)'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
@@ -215,7 +215,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
 
   it('evaluates evalImmExpr on a built env for binary arithmetic and bitwise edge cases', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_numeric.zax',
+      'edge_numeric.asm',
       ['const A = 65535', 'const C = (A >> 15) & 1'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);

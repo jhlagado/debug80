@@ -57,7 +57,7 @@ describe('AZM flat module assembly', () => {
       expect(asm!.text).toContain('helper:');
       expect(asm!.text).not.toContain('__azm_native__');
       expect(asm!.text).not.toContain('__azm_native_unused_epilogue');
-      expect(asm!.text).not.toContain('__zax_epilogue');
+      expect(asm!.text).not.toContain('__azm_epilogue');
       expect(asm!.text.toLowerCase()).not.toContain('push ix');
       expect(asm!.text.toLowerCase()).not.toContain('ld ix');
       expect(asm!.text.toLowerCase()).not.toContain('ld sp,ix');
