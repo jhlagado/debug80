@@ -3,20 +3,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import {
-  FIXTURE_ALLOWLIST,
-  scanForbiddenLegacySyntax,
-} from '../scripts/ci/legacy-syntax-guardrail.js';
+import { scanForbiddenLegacySyntax } from '../scripts/ci/legacy-syntax-guardrail.js';
 
 describe('PR614 legacy syntax guardrail', () => {
-  it('passes for repository zax sources under the current fixture allowlist', () => {
+  it('passes for repository assembly sources and assembly markdown fences', () => {
     const { violations } = scanForbiddenLegacySyntax();
     expect(violations).toEqual([]);
   });
 
-  it('rejects a new bare data marker outside the allowlist', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'zax-pr614-'));
-    const fixture = join(dir, 'new-legacy-form.zax');
+  it('rejects a bare data marker in ASM source', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-'));
+    const fixture = join(dir, 'new-legacy-form.asm');
     await writeFile(fixture, 'section data vars at $1000\n  data\n  x: byte\nend\n', 'utf8');
 
     const { violations } = scanForbiddenLegacySyntax({ filePaths: [fixture] });
@@ -26,9 +23,9 @@ describe('PR614 legacy syntax guardrail', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('rejects top-level const declarations in AZM sources', async () => {
+  it('rejects top-level const declarations in ASM sources', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-'));
-    const fixture = join(dir, 'new-const-form.azm');
+    const fixture = join(dir, 'new-const-form.asm');
     await writeFile(fixture, 'const VALUE = 1\nmain:\n  ret\n', 'utf8');
 
     const { violations } = scanForbiddenLegacySyntax({ filePaths: [fixture] });
@@ -38,20 +35,12 @@ describe('PR614 legacy syntax guardrail', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('keeps explicit fixture allowlist entries exempt', () => {
-    const knownLegacyFixture = 'test/fixtures/pr170_block_termination_recovery_matrix.zax';
-    expect(FIXTURE_ALLOWLIST.has(knownLegacyFixture)).toBe(true);
-
-    const { violations } = scanForbiddenLegacySyntax({ filePaths: [knownLegacyFixture] });
-    expect(violations).toEqual([]);
-  });
-
   it('flags forbidden legacy forms inside markdown code fences', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'zax-pr614-md-'));
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-md-'));
     const md = join(dir, 'legacy-example.md');
     await writeFile(
       md,
-      ['# Notes', '', '```zax', 'section code at $0100', 'func main()', '  ret', 'end', '```', ''].join('\n'),
+      ['# Notes', '', '```azm', 'section code at $0100', 'func main()', '  ret', 'end', '```', ''].join('\n'),
       'utf8',
     );
 
@@ -79,7 +68,7 @@ describe('PR614 legacy syntax guardrail', () => {
   });
 
   it('ignores prose-only mentions in markdown files', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'zax-pr614-md-prose-'));
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-md-prose-'));
     const md = join(dir, 'prose-only.md');
     await writeFile(
       md,

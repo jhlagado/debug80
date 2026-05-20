@@ -13,7 +13,6 @@ export declare const FORBIDDEN_RULES: ReadonlyArray<{
 }>;
 
 export declare const DEFAULT_SCAN_ROOTS: ReadonlyArray<string>;
-export declare const FIXTURE_ALLOWLIST: ReadonlySet<string>;
 
 export declare function scanForbiddenLegacySyntax(options?: {
   repoRoot?: string;

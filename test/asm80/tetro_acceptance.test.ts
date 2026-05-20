@@ -23,14 +23,14 @@ const manifest = {
 
 const asm80 = findAsm80Executable();
 const tetroFilesAvailable = existsSync(manifest.source);
-const runTetroAcceptance = process.env.ZAX_RUN_TETRO_ACCEPTANCE === '1';
+const runTetroAcceptance = process.env.AZM_RUN_TETRO_ACCEPTANCE === '1';
 const describeTetro = tetroFilesAvailable && asm80 && runTetroAcceptance ? describe : describe.skip;
 
 function buildAsm80Reference(source: string): Buffer {
   return runAsm80Reference({
     asm80,
     source,
-    tempPrefix: 'zax-tetro-asm80-reference-',
+    tempPrefix: 'azm-tetro-asm80-reference-',
     outputName: 'tetro-reference.bin',
     prepareSourceTree: copySourceRoot,
     transformOutput: (bytes, outDir) =>
@@ -84,6 +84,6 @@ if (runTetroAcceptance && !tetroFilesAvailable) {
   });
 } else if (!runTetroAcceptance) {
   describe('ASM80 Tetro acceptance', () => {
-    it.todo('set ZAX_RUN_TETRO_ACCEPTANCE=1 to run the local Tetro acceptance check');
+    it.todo('set AZM_RUN_TETRO_ACCEPTANCE=1 to run the local Tetro acceptance check');
   });
 }

@@ -28,7 +28,7 @@ const manifest = {
 
 const asm80 = findAsm80Executable();
 const mon3FilesAvailable = existsSync(manifest.source);
-const runMon3Acceptance = process.env.ZAX_RUN_MON3_ACCEPTANCE === '1';
+const runMon3Acceptance = process.env.AZM_RUN_MON3_ACCEPTANCE === '1';
 const describeMon3 =
   classicAsm80Available &&
   classicModuleLoweringAvailable &&
@@ -42,7 +42,7 @@ function buildAsm80Reference(source: string): Buffer {
   return runAsm80Reference({
     asm80,
     source,
-    tempPrefix: 'zax-mon3-asm80-reference-',
+    tempPrefix: 'azm-mon3-asm80-reference-',
     outputName: 'mon3-reference.bin',
     prepareSourceTree: copyZ80Siblings,
   });
@@ -150,6 +150,6 @@ if (runMon3Acceptance && !mon3FilesAvailable) {
   });
 } else if (!runMon3Acceptance) {
   describe('ASM80 MON3 acceptance', () => {
-    it.todo('set ZAX_RUN_MON3_ACCEPTANCE=1 to run the local MON3 byte-for-byte acceptance check');
+    it.todo('set AZM_RUN_MON3_ACCEPTANCE=1 to run the local MON3 byte-for-byte acceptance check');
   });
 }
