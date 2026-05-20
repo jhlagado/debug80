@@ -2,7 +2,7 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceItemNode, SourceSpan } from './ast.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
 import type { LogicalLine } from './parseLogicalLines.js';
-import { parseAzmNativeTopLevel } from './parseAzmNativeTopLevel.js';
+import { parseAsmTopLevel } from './parseAsmTopLevel.js';
 import type { PendingRawLabel } from './parseRawDataDirectives.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
@@ -57,7 +57,7 @@ type DispatchSourceItemContext = {
   logicalLines: LogicalLine[];
   sourceItemDispatchTable: SourceItemDispatchTable;
   sourcePath: string;
-  nativeMode: boolean;
+  asmSourceMode: boolean;
   span: typeof import('./source.js').span;
 };
 
@@ -74,7 +74,7 @@ export function dispatchSourceItem(
     logicalLines,
     sourceItemDispatchTable,
     sourcePath,
-    nativeMode,
+    asmSourceMode,
     span,
   } = dispatchContext;
   const { raw, startOffset: lineStartOffset, endOffset: lineEndOffset } = getRawLine(index);
@@ -87,8 +87,8 @@ export function dispatchSourceItem(
   const rest = text;
   const stmtSpan = span(file, lineStartOffset, lineEndOffset);
 
-  if (nativeMode) {
-    const parsedNative = parseAzmNativeTopLevel({
+  if (asmSourceMode) {
+    const parsedAsm = parseAsmTopLevel({
       index,
       filePath,
       lineNo,
@@ -98,10 +98,10 @@ export function dispatchSourceItem(
       ctx,
       ...(aliasPolicy ? { aliasPolicy } : {}),
     });
-    if (parsedNative) return parsedNative;
+    if (parsedAsm) return parsedAsm;
   }
 
-  if (looksLikeRawDataDirectiveStart(rest) && !nativeMode) {
+  if (looksLikeRawDataDirectiveStart(rest) && !asmSourceMode) {
     diag(
       diagnostics,
       filePath,

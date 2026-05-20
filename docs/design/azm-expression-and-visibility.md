@@ -15,7 +15,7 @@ features**. They exist to make constants easier to write than long
 `offset(...)` / `sizeof(...)` forms. They must not reintroduce ZAX-style typed
 memory access or runtime address generation.
 
-For native `.asm`, the accepted source shape is flat source-file assembly:
+For ASM `.asm`, the accepted source shape is flat source-file assembly:
 labels, Z80 instructions, `.org`, `.equ`, raw data directives, textual includes,
 directive aliases, layout metadata, and `op` declarations. The rejected shape is
 the old ZAX high-level surface: `func`, named `section` blocks, `:=`,

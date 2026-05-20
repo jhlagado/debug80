@@ -15,12 +15,12 @@ import type { FlowState, OpExpansionFrame } from './assemblerFlowSetup.js';
 import { createAsmRangeLoweringHelpers } from './asmRangeLowering.js';
 import { createOpExpansionOrchestrationHelpers } from './opExpansionOrchestration.js';
 
-type CallAddressingContext = {
+type AsmInstructionStreamAddressingContext = {
   enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
   flattenEaDottedName: (ea: EaExprNode) => string | undefined;
 };
 
-type CallLoweringHelpersContext = {
+type AsmInstructionStreamContext = {
   diagnostics: Diagnostic[];
   asmItemSpanSourceTag: (span: SourceSpan) => SourceSegmentTag;
   getCurrentCodeSegmentTag: () => SourceSegmentTag | undefined;
@@ -31,7 +31,7 @@ type CallLoweringHelpersContext = {
     stack: OpExpansionFrame[],
   ) => void;
   enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
-  addressing: Readonly<CallAddressingContext>;
+  addressing: Readonly<AsmInstructionStreamAddressingContext>;
   diagAt: (diagnostics: Diagnostic[], span: SourceSpan, message: string) => void;
   diagAtWithSeverityAndId: (
     diagnostics: Diagnostic[],
@@ -72,7 +72,7 @@ type CallLoweringHelpersContext = {
   syncFromFlow: () => void;
 };
 
-export function createCallLoweringHelpers(ctx: CallLoweringHelpersContext) {
+export function createAsmInstructionStreamHelpers(ctx: AsmInstructionStreamContext) {
   const emitAsmInstruction = (asmItem: AsmInstructionNode): void => {
     const prevTag = ctx.getCurrentCodeSegmentTag();
     const diagnosticsStart = ctx.diagnostics.length;

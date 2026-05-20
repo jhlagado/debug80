@@ -56,7 +56,7 @@ export interface CompilerOptions {
   acceptRegisterOutputCandidates?: string[];
   /** Register-care analysis profile. */
   registerCareProfile?: 'mon3';
-  /** Register-care interface files that provide contracts for external/library routines. */
+  /** Register-care contract files that provide contracts for external/library routines. */
   registerCareInterfaces?: string[];
 }
 

@@ -1050,7 +1050,7 @@ Optional contract syntax should remain available for external boundaries only:
 ; @end
 ```
 
-Native AZM should keep this metadata in comments. Human prose uses `@` tags for
+AZM should keep this metadata in comments. Human prose uses `@` tags for
 interspersed metadata; generated source contracts use compact `;!` lines without
 `@`. Older `;! @tag` and divider-block spellings remain compatibility input, but
 current tools should not emit them.
@@ -1087,7 +1087,7 @@ The first useful slice should support:
 9. caller-side liveness across calls in straight-line code and simple loops
 10. diagnostics when a live pre-call register or flag value is killed by a call
 11. parsing AZMDoc callee contracts and caller hints
-12. emitting inferred callee contracts as AZMDoc comments or external contract artifacts
+12. emitting inferred callee contracts as AZMDoc comments or external register-care contract data
 13. built-in external contracts for MON-3 `RST` services
 
 The first useful slice should defer:

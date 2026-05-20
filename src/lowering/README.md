@@ -20,11 +20,11 @@ Lowering turns parsed source and semantic state into:
 
 ## Entry points and boundaries
 
-| File                  | Why it matters                                      |
-| --------------------- | --------------------------------------------------- |
-| `emit.ts`             | Top-level orchestration for lowering phases.        |
-| `emitPipeline.ts`     | Defines prescan, lowering, and finalization phases. |
-| `programLowering.ts`  | Program traversal, symbol setup, section offsets.   |
+| File                 | Why it matters                                      |
+| -------------------- | --------------------------------------------------- |
+| `emit.ts`            | Top-level orchestration for lowering phases.        |
+| `emitPipeline.ts`    | Defines prescan, lowering, and finalization phases. |
+| `programLowering.ts` | Program traversal, symbol setup, section offsets.   |
 
 ## Subsystem groups (where to look)
 
@@ -61,7 +61,7 @@ Lowering turns parsed source and semantic state into:
 ## Read order by task
 
 - **Entry flow + handoffs**: `emit.ts` → `emitPipeline.ts` → `programLowering.ts`
-- **Assembler source lowering**: `programLowering.ts` → `programLoweringTraversal.ts` → `nativeAsmLowering.ts`
+- **Assembler source lowering**: `programLowering.ts` → `programLoweringTraversal.ts` → `asmSourceInstructionLowering.ts`
 - **LD lowering**: `ldLowering.ts` → `ldFormSelection.ts` → `ldEncoding.ts`
 - **Placement/fixups**: `emitFinalization.ts` → `programLoweringFinalize.ts`
 

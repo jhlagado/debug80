@@ -3,20 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { DiagnosticIds, type Diagnostic } from '../../src/diagnosticTypes.js';
 import type { SourceItemNode } from '../../src/frontend/ast.js';
 import {
-  parseAzmNativeTopLevel,
-  type ParseAzmNativeTopLevelInput,
-} from '../../src/frontend/parseAzmNativeTopLevel.js';
+  parseAsmTopLevel,
+  type ParseAsmTopLevelInput,
+} from '../../src/frontend/parseAsmTopLevel.js';
 import type { ParseItemContext } from '../../src/frontend/parseSourceItemDispatch.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 
-function parseNativeLine(
+function parseAsmLine(
   rest: string,
   ctx: Extract<ParseItemContext, { scope: 'source' }>,
   diagnostics: Diagnostic[],
-): ReturnType<typeof parseAzmNativeTopLevel> {
-  const filePath = 'native.asm';
+): ReturnType<typeof parseAsmTopLevel> {
+  const filePath = 'source.asm';
   const file = makeSourceFile(filePath, rest);
-  const input: ParseAzmNativeTopLevelInput = {
+  const input: ParseAsmTopLevelInput = {
     index: 0,
     filePath,
     lineNo: 1,
@@ -25,31 +25,31 @@ function parseNativeLine(
     diagnostics,
     ctx,
   };
-  return parseAzmNativeTopLevel(input);
+  return parseAsmTopLevel(input);
 }
 
-describe('parseAzmNativeTopLevel', () => {
-  it('owns native flat label/directive, instruction, and unsupported parsing order', () => {
+describe('parseAsmTopLevel', () => {
+  it('owns ASM flat label/directive, instruction, and unsupported parsing order', () => {
     const ctx: Extract<ParseItemContext, { scope: 'source' }> = {
       scope: 'source',
     };
     const diagnostics: Diagnostic[] = [];
 
-    expect(parseNativeLine('Table:', ctx, diagnostics)).toMatchObject({
+    expect(parseAsmLine('Table:', ctx, diagnostics)).toMatchObject({
       nextIndex: 1,
       nodes: [{ kind: 'AsmLabel', name: 'Table' }],
     });
-    expect(parseNativeLine('  db 1,2', ctx, diagnostics)?.nodes).toMatchObject([
+    expect(parseAsmLine('  db 1,2', ctx, diagnostics)?.nodes).toMatchObject([
       { kind: 'AsmRawData', directive: 'db' },
     ]);
-    expect(parseNativeLine('main:', ctx, diagnostics)?.nodes).toMatchObject([
+    expect(parseAsmLine('main:', ctx, diagnostics)?.nodes).toMatchObject([
       { kind: 'AsmLabel', name: 'main' },
     ]);
-    expect(parseNativeLine('  xor a', ctx, diagnostics)?.nodes).toMatchObject([
+    expect(parseAsmLine('  xor a', ctx, diagnostics)?.nodes).toMatchObject([
       { kind: 'AsmInstruction', head: 'xor' },
     ]);
 
-    const unsupported = parseNativeLine('  hl ??? count', ctx, diagnostics);
+    const unsupported = parseAsmLine('  hl ??? count', ctx, diagnostics);
     expect(unsupported).toMatchObject({ nextIndex: 1 });
     expect((unsupported?.nodes as SourceItemNode[] | undefined) ?? []).toMatchObject([
       { kind: 'AsmInstruction', head: 'hl' },
@@ -63,16 +63,16 @@ describe('parseAzmNativeTopLevel', () => {
     );
   });
 
-  it('treats unknown native top-level text as an ordinary assembler line', () => {
+  it('treats unknown ASM top-level text as an ordinary assembler line', () => {
     const ctx: Extract<ParseItemContext, { scope: 'source' }> = {
       scope: 'source',
     };
     const diagnostics: Diagnostic[] = [];
-    const filePath = 'native.asm';
+    const filePath = 'source.asm';
     const source = 'unknown_head clear_a()';
     const file = makeSourceFile(filePath, source);
 
-    const parsed = parseAzmNativeTopLevel({
+    const parsed = parseAsmTopLevel({
       index: 0,
       filePath,
       lineNo: 1,

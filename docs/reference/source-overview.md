@@ -18,7 +18,7 @@ explicitly keeps it.
 AZM keeps:
 
 - `.asm` / `.z80` AZM source parsing and Z80 emission
-- native flat source with labels, directives, and instructions
+- ASM flat source with labels, directives, and instructions
 - textual `.include`
 - register-care analysis and AZMDoc contracts
 - directive aliases before parsing
@@ -26,7 +26,7 @@ AZM keeps:
 - `type`, `union`, `enum`, `sizeof(...)`, `offset(...)`, and layout casts when
   they fold to constants
 
-AZM removes from native `.asm`:
+AZM removes from `.asm` and `.z80` source:
 
 - `func` and `export func`
 - formal arguments and local variables
@@ -56,7 +56,7 @@ src/
     ast.ts                  AST type definitions
     asm80/                  ASM80-baseline line parsing helpers
     directiveAliases.ts     Configurable directive head aliases
-    parseAzmNativeTopLevel.ts Native `.asm` top-level parser
+    parseAsmTopLevel.ts ASM source top-level parser
     parseAzmAsmStream.ts    Flat assembler stream parser
     parseImm.ts             Immediate expression parser
     parseOperands.ts        Instruction operand parser
@@ -73,7 +73,7 @@ src/
   lowering/
     asmDirectiveLowering.ts ASM80/AZM directive lowering
     asmDirectiveTraversal.ts Directive classification helpers
-    nativeAsmLowering.ts    Visible assembler instruction lowering
+    asmSourceInstructionLowering.ts    Visible assembler instruction lowering
     opExpansionOrchestration.ts Op overload selection
     opExpansionExecution.ts Op substitution and recursive lowering
     programLowering.ts      Program lowering coordinator
@@ -213,7 +213,7 @@ Use these documents when deciding what survives:
 Use focused tests that match the touched boundary:
 
 - ASM80 parser/directive work: `test/asm80/**` and `test/frontend/asm80_*`
-- native `.asm` surface rules: `test/frontend/azm_*`
+- ASM source surface rules: `test/frontend/asm_*`
 - register-care work: `test/registerCare/**` and CLI register-care tests
 - op expansion: `test/lowering/*op*` and register-care op integration tests
 - layout constants: `test/semantics/layout_constants_asm.test.ts`

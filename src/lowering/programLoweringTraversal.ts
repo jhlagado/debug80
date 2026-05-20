@@ -1,12 +1,9 @@
-import type {
-  AlignDirectiveNode,
-  EnumDeclNode,
-} from '../frontend/ast.js';
+import type { AlignDirectiveNode, EnumDeclNode } from '../frontend/ast.js';
 import type { LoweringContext, LoweringResult } from './programLowering.js';
 import type { SectionKind } from './loweringTypes.js';
 import { createProgramLoweringDeclarationHelpers } from './programLoweringDeclarations.js';
 import { tryLowerAsmDirective } from './asmDirectiveLowering.js';
-import { lowerNativeAsmInstruction } from './nativeAsmLowering.js';
+import { lowerAsmSourceInstruction } from './asmSourceInstructionLowering.js';
 import {
   isAsmBinFromDirective,
   isAsmBinToDirective,
@@ -35,7 +32,7 @@ function lowerItem(
 ): void {
   if (tryLowerAsmDirective(ctx, item)) return;
   if (item.kind === 'AsmInstruction') {
-    lowerNativeAsmInstruction(ctx, item);
+    lowerAsmSourceInstruction(ctx, item);
     return;
   }
   if (isAsmRawDataDirective(item)) {
@@ -77,7 +74,8 @@ function lowerItem(
       ctx.diag(ctx.diagnostics, align.span.file, `align value must be > 0.`);
       return;
     }
-    const current = ctx.activeSectionRef.current === 'code'
+    const current =
+      ctx.activeSectionRef.current === 'code'
         ? ctx.codeOffsetRef.current
         : ctx.dataOffsetRef.current;
     const aligned = ctx.alignTo(current, value);
@@ -100,7 +98,6 @@ function lowerItem(
     }
     return;
   }
-
 }
 
 export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {

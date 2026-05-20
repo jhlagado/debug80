@@ -5,12 +5,7 @@
 import type { AsmOperandNode } from '../frontend/ast.js';
 import { evalImmExpr } from '../semantics/env.js';
 import { sizeOfTypeExpr } from '../semantics/layout.js';
-import {
-  cloneEaExpr,
-  cloneImmExpr,
-  cloneOperand,
-  flattenEaDottedName,
-} from './asmUtils.js';
+import { cloneEaExpr, cloneImmExpr, cloneOperand, flattenEaDottedName } from './asmUtils.js';
 import { loadBinInput } from './inputAssets.js';
 import {
   diag,
@@ -55,9 +50,6 @@ export function buildEmitProgramLoweringContext(
     resolveEa,
     resolveAggregateType,
     enforceEaRuntimeAtomBudget,
-    pushImm16,
-    pushZeroExtendedReg8,
-    loadImm16ToHL,
     lowerLdWithEa,
     selectOpOverload,
     formatAsmOperandForOpDiag,
@@ -140,9 +132,6 @@ export function buildEmitProgramLoweringContext(
     addressing: {
       resolveEa,
       enforceEaRuntimeAtomBudget,
-      pushImm16,
-      pushZeroExtendedReg8,
-      loadImm16ToHL,
       lowerLdWithEa,
     },
     opResolution: {

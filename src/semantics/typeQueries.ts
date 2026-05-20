@@ -5,16 +5,10 @@
  * using the compile environment and explicit layout casts, but they know
  * nothing about placed/lowered program state or code-generation concerns.
  *
- * The lowering layer re-exports from this module via
- * `src/lowering/typeResolution.ts` so that existing lowering imports continue
- * to work without change.
+ * The lowering layer imports these helpers directly.
  */
 
-import type {
-  EaExprNode,
-  RecordFieldNode,
-  TypeExprNode,
-} from '../frontend/ast.js';
+import type { EaExprNode, RecordFieldNode, TypeExprNode } from '../frontend/ast.js';
 import type { CompileEnv } from './env.js';
 
 export type ScalarKind = 'byte' | 'word' | 'addr';
@@ -141,9 +135,7 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
     }
   };
 
-  const resolveEaTypeExprInternal = (
-    ea: EaExprNode,
-  ): TypeExprNode | undefined => {
+  const resolveEaTypeExprInternal = (ea: EaExprNode): TypeExprNode | undefined => {
     switch (ea.kind) {
       case 'EaName':
         return undefined;
