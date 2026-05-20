@@ -113,6 +113,6 @@ export function evalAsmImmAtCurrent(
 }
 
 export function publishAsmAddressConst(ctx: LoweringContext, name: string, address: number): void {
-  ctx.env.consts.set(name, address);
-  ctx.env.consts.set(name.toLowerCase(), address);
+  ctx.env.equates.set(name, address);
+  ctx.env.equates.set(name.toLowerCase(), address);
 }

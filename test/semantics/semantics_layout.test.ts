@@ -41,7 +41,7 @@ const unionDecl = (name: string, fields: RecordFieldNode[]): UnionDeclNode => ({
 });
 
 const emptyEnv = (): CompileEnv => ({
-  consts: new Map(),
+  equates: new Map(),
   enums: new Map(),
   types: new Map(),
 });

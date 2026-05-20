@@ -56,8 +56,8 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
     expectNoDiagnostics(diagnostics);
-    expect(env.consts.has('a')).toBe(false);
-    expect(env.consts.has('b')).toBe(false);
+    expect(env.equates.has('a')).toBe(false);
+    expect(env.equates.has('b')).toBe(false);
   });
 
   it('leaves self-referential equates unresolved for later fixup handling', () => {
@@ -65,7 +65,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
     expectNoDiagnostics(diagnostics);
-    expect(env.consts.has('a')).toBe(false);
+    expect(env.equates.has('a')).toBe(false);
   });
 
   it('resolves forward references between assembler equates', () => {
@@ -76,8 +76,8 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
     expectNoDiagnostics(diagnostics);
-    expect(env.consts.get('second')).toBe(1);
-    expect(env.consts.get('first')).toBe(1);
+    expect(env.equates.get('second')).toBe(1);
+    expect(env.equates.get('first')).toBe(1);
   });
 
   it('rejects unqualified enum member when only one qualified name is possible (AZM400)', () => {
@@ -131,7 +131,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
     expectNoDiagnostics(diagnostics);
-    expect(env.consts.get('k')).toBe(0);
+    expect(env.equates.get('k')).toBe(0);
     expect(env.enums.get('Mode.On')).toBe(1);
   });
 
@@ -162,7 +162,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
       messageIncludes: 'collides with a type name',
     });
     expect(env.types.has('T')).toBe(true);
-    expect(env.consts.has('T')).toBe(false);
+    expect(env.equates.has('T')).toBe(false);
   });
 
   it('propagates offset unknown field as a type error', () => {
@@ -187,7 +187,7 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expectNoDiagnostics(diagnostics);
     const env = buildEnv(program, diagnostics);
     expectNoDiagnostics(diagnostics);
-    expect(env.consts.get('C')).toBe(1);
+    expect(env.equates.get('C')).toBe(1);
     expect(
       evalImmExpr(
         { kind: 'ImmBinary', span: program.files[0]!.span, op: '<<', left: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 1 }, right: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 4 } },

@@ -230,7 +230,7 @@ Compiling an AZM source file happens in a clearly phased pipeline. Before lookin
 ┌─────────────────┐
 │   Semantics     │  Build CompileEnv, validate accepted instructions/steps
 └────────┬────────┘
-         │  CompileEnv (consts, enums, types, visibility)
+         │  CompileEnv (equates, enums, types, visibility)
          ▼
 ┌──────────────────────────────────────────────────────────┐
 │  Lowering (lowering/)                                    │
@@ -531,7 +531,7 @@ surface.
 
 ```typescript
 interface CompileEnv {
-  consts: Map<string, number>; // All constant values, keyed by name
+  equates: Map<string, number>; // All assembler equate values, keyed by name
   enums: Map<string, number>; // All enum member values, keyed by "Enum.member"
   types: Map<string, TypeDeclNode | UnionDeclNode>; // Named types
   // Retained only where old visibility scaffolding has not been deleted:
@@ -544,7 +544,7 @@ interface CompileEnv {
 `evalImmExpr(expr, env, diagnostics?)` evaluates an `ImmExprNode` to a JavaScript `number` at compile time. It recursively handles all `ImmExprNode` variants:
 
 - `ImmLiteral` → the literal value.
-- `ImmName` → lookup in `env.consts` or `env.enums`.
+- `ImmName` → lookup in `env.equates` or `env.enums`.
 - `ImmSizeof` → calls `sizeOfTypeExpr()`.
 - `ImmOffsetof` → calls `offsetOfPathInTypeExpr()`.
 - `ImmUnary` → applies the unary operator.

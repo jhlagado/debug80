@@ -26,10 +26,10 @@ function evalLoweredImmExpr(expr: LoweredImmExpr, env: CompileEnv): number | und
     case 'literal':
       return expr.value;
     case 'symbol': {
-      const direct = env.consts.get(expr.name) ?? env.enums.get(expr.name);
+      const direct = env.equates.get(expr.name) ?? env.enums.get(expr.name);
       if (direct !== undefined) return direct + expr.addend;
       const lower = expr.name.toLowerCase();
-      const alt = env.consts.get(lower) ?? env.enums.get(lower);
+      const alt = env.equates.get(lower) ?? env.enums.get(lower);
       if (alt !== undefined) return alt + expr.addend;
       const asmAlias = resolveAsmEquSymbol(expr.name, { env });
       if (asmAlias !== undefined) return asmAlias + expr.addend;

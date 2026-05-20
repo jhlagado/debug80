@@ -5,7 +5,7 @@ import type { LoweredAsmProgram } from '../../src/lowering/loweredAsmTypes.js';
 import type { CompileEnv } from '../../src/semantics/env.js';
 
 const minimalEnv = (): CompileEnv => ({
-  consts: new Map(),
+  equates: new Map(),
   enums: new Map(),
   types: new Map(),
 });

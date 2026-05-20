@@ -57,7 +57,7 @@ export function createLdFormSelectionHelpers(ctx: LdFormSelectionContext) {
     }
     if (op.kind === 'Reg') {
       const lower = op.name.toLowerCase();
-      if (storageTypes.has(lower) || env.consts.has(lower)) {
+      if (storageTypes.has(lower) || env.equates.has(lower)) {
         return {
           kind: 'Mem',
           span: op.span,
@@ -99,7 +99,7 @@ export function createLdFormSelectionHelpers(ctx: LdFormSelectionContext) {
 
   const isBoundEaName = (name: string): boolean => {
     const lower = name.toLowerCase();
-    return storageTypes.has(lower) || env.consts.has(lower);
+    return storageTypes.has(lower) || env.equates.has(lower);
   };
 
   const hasRegisterLikeEaBase = (ea: EaExprNode): boolean => {

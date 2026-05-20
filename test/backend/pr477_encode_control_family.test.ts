@@ -29,7 +29,7 @@ function memName(name: string): AsmOperandNode {
 }
 
 const env = {
-  consts: new Map(),
+  equates: new Map(),
   enums: new Map(),
   types: new Map(),
 };

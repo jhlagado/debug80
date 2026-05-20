@@ -26,7 +26,7 @@ export function createFixupBaseResolver(args: {
         lookupSymbol: (name) => addrByNameLower.get(name),
         cacheResolved: (name, value) => {
           addrByNameLower.set(name, value);
-          env.consts.set(name, value);
+          env.equates.set(name, value);
         },
       },
       visiting,

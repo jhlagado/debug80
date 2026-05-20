@@ -202,7 +202,7 @@ describe('AZM layout constant subset', () => {
     );
   });
 
-  it('rejects legacy offsetof spelling in AZM-native source', async () => {
+  it('rejects unknown offsetof spelling in AZM-native source', async () => {
     const result = await compileSource('asm', [
       'type Sprite',
       '  x: byte',

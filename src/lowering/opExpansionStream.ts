@@ -30,7 +30,7 @@ const REG8_NAMES = new Set(['A', 'B', 'C', 'D', 'E', 'H', 'L']);
 const CONDITION_CODES = new Set(['NZ', 'Z', 'NC', 'C', 'PO', 'PE', 'P', 'M']);
 const MAX_OP_EXPANSION_DEPTH = 64;
 const EMPTY_OP_SUBSTITUTION_ENV: CompileEnv = {
-  consts: new Map(),
+  equates: new Map(),
   enums: new Map(),
   types: new Map(),
 };

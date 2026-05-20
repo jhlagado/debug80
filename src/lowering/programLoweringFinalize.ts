@@ -72,7 +72,7 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
     if (!ok) continue;
     addrByNameLower.set(ps.name.toLowerCase(), base + ps.offset);
   }
-  for (const [name, value] of ctx.env.consts) {
+  for (const [name, value] of ctx.env.equates) {
     addrByNameLower.set(name.toLowerCase(), value);
   }
   for (const sym of ctx.symbols) {
