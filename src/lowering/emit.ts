@@ -23,11 +23,9 @@ import { buildEmitFinalizationPhaseEnv } from './emitFinalizationSetup.js';
  * and `runEmitPlacementAndArtifactPhase`.
  *
  * Implementation notes:
- * - Uses 3 independent section counters: `code`, `data`, `var`.
- * - `section` / `align` directives affect only the selected section counter.
- * - By default, `data` starts after `code` (aligned to 2), and `var` starts after `data` (aligned to 2),
- *   matching the earlier PR2 behavior.
- * - Detects overlapping byte emissions across all sections.
+ * - Uses code and data byte maps while lowering, then merges them during placement.
+ * - `.org` and `.align` move the current assembler placement.
+ * - Detects overlapping byte emissions across the final address map.
  */
 export function emitProgram(
   program: ProgramNode,
@@ -37,7 +35,7 @@ export function emitProgram(
 ): EmitProgramResult {
   const firstModule = program.files[0];
   if (!firstModule) {
-    diag(diagnostics, program.entryFile, 'No module files to compile.');
+    diag(diagnostics, program.entryFile, 'No source files to compile.');
     return emitProgramEmptyResult();
   }
   const workspace = createEmitPhase1Workspace(program, env, options);

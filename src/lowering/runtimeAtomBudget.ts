@@ -5,7 +5,6 @@ type RuntimeAtomBudgetContext = {
   diagnostics: Diagnostic[];
   diagAt: (diagnostics: Diagnostic[], span: SourceSpan, message: string) => void;
   resolveScalarBinding: (name: string) => 'byte' | 'word' | 'addr' | undefined;
-  storageTypes: Map<string, unknown>;
 };
 
 const runtimeAtomRegisterNames = new Set([
@@ -99,61 +98,9 @@ export function createRuntimeAtomBudgetHelpers(ctx: RuntimeAtomBudgetContext) {
     return false;
   };
 
-  const countRuntimeAtomsForDirectCallSiteEa = (ea: EaExprNode): number => {
-    switch (ea.kind) {
-      case 'EaName': {
-        const lower = ea.name.toLowerCase();
-        const isBoundStorageName = ctx.storageTypes.has(lower);
-        if (isBoundStorageName) return 0;
-        return runtimeAtomRegisterNames.has(ea.name.toUpperCase()) ? 1 : 0;
-      }
-      case 'EaImm':
-        return countRuntimeAtomsInImmExpr(ea.expr);
-      case 'EaReinterpret':
-        return countRuntimeAtomsForDirectCallSiteEa(ea.base);
-      case 'EaField':
-        return countRuntimeAtomsForDirectCallSiteEa(ea.base);
-      case 'EaAdd':
-      case 'EaSub':
-        return (
-          countRuntimeAtomsForDirectCallSiteEa(ea.base) + countRuntimeAtomsInImmExpr(ea.offset)
-        );
-      case 'EaIndex': {
-        const baseAtoms = countRuntimeAtomsForDirectCallSiteEa(ea.base);
-        switch (ea.index.kind) {
-          case 'IndexImm':
-            return baseAtoms + countRuntimeAtomsInImmExpr(ea.index.value);
-          case 'IndexReg8':
-          case 'IndexReg16':
-          case 'IndexMemHL':
-            return baseAtoms + 1;
-          case 'IndexMemIxIy':
-            return baseAtoms + 1 + (ea.index.disp ? countRuntimeAtomsInImmExpr(ea.index.disp) : 0);
-          case 'IndexEa':
-            return baseAtoms + Math.max(1, countRuntimeAtomsForDirectCallSiteEa(ea.index.expr));
-        }
-      }
-    }
-  };
-
-  const enforceDirectCallSiteEaBudget = (operand: AsmOperandNode, calleeName: string): boolean => {
-    if (operand.kind !== 'Ea' && operand.kind !== 'Mem') return true;
-    const atoms = countRuntimeAtomsForDirectCallSiteEa(operand.expr);
-    if (atoms === 0) return true;
-    const form = operand.kind === 'Mem' ? '(ea)' : 'ea';
-    ctx.diagAt(
-      ctx.diagnostics,
-      operand.span,
-      `Direct call-site ${form} argument for "${calleeName}" must be runtime-atom-free in v0.2 (found ${atoms}). Stage dynamic addressing in prior instructions and pass a register or precomputed slot value.`,
-    );
-    return false;
-  };
-
   return {
-    countRuntimeAtomsForDirectCallSiteEa,
     countRuntimeAtomsInEaExpr,
     countRuntimeAtomsInImmExpr,
-    enforceDirectCallSiteEaBudget,
     enforceEaRuntimeAtomBudget,
   };
 }

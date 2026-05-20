@@ -15,9 +15,9 @@ export interface AnalyzeProgramResult {
   env?: CompileEnv;
 }
 
-function hasMainFunction(program: ProgramNode): boolean {
-  return program.files.some((moduleFile) =>
-    moduleFile.items.some((item) => item.kind === 'AsmLabel' && item.name.toLowerCase() === 'main'),
+function hasMainEntryLabel(program: ProgramNode): boolean {
+  return program.files.some((sourceFile) =>
+    sourceFile.items.some((item) => item.kind === 'AsmLabel' && item.name.toLowerCase() === 'main'),
   );
 }
 
@@ -27,7 +27,7 @@ export function analyzeLoadedProgram(
 ): AnalyzeProgramResult {
   const diagnostics: Diagnostic[] = [];
   const { program, sourceTexts } = loadedProgram;
-  const hasProgramItems = program.files.some((moduleFile) => moduleFile.items.length > 0);
+  const hasProgramItems = program.files.some((sourceFile) => sourceFile.items.length > 0);
   if (!hasProgramItems) {
     diagnostics.push({
       id: DiagnosticIds.SemanticsError,
@@ -41,11 +41,11 @@ export function analyzeLoadedProgram(
     return { diagnostics };
   }
 
-  if ((options.requireMain ?? false) && !hasMainFunction(program)) {
+  if ((options.requireMain ?? false) && !hasMainEntryLabel(program)) {
     diagnostics.push({
       id: DiagnosticIds.SemanticsError,
       severity: 'error',
-      message: 'Program must define a callable "main" entry point.',
+      message: 'Program must define a "main" entry label.',
       file: program.entryFile,
       ...(program.span?.start
         ? { line: program.span.start.line, column: program.span.start.column }

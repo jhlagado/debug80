@@ -1,4 +1,4 @@
-import type { AsmInstructionNode, EaExprNode } from '../frontend/ast.js';
+import type { AsmInstructionNode } from '../frontend/ast.js';
 import type { BranchCallLoweringContext } from './asmLoweringBranchCall.js';
 import type { LdHelperContext } from './asmInstructionLdHelpers.js';
 import type { LdLoweringContext } from './asmLoweringLd.js';
@@ -16,7 +16,6 @@ export type AsmLoweringLdSlice = Pick<LdLoweringContext, 'resolveEa'>;
  */
 export type AsmLoweringDispatcherSlice = {
   lowerLdWithEa: (asmItem: AsmInstructionNode) => boolean;
-  pushEaAddress: (ea: EaExprNode, span: AsmInstructionNode['span']) => boolean;
 };
 
 /**
