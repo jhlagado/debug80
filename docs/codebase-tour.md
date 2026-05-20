@@ -113,7 +113,6 @@ src/
 │   ├── parseOperands.ts       # ASM operand parser
 │   ├── parseAsmStatements.ts  # ASM statement dispatcher (labels, instructions)
 │   ├── parseAsmInstruction.ts # Individual instruction line parser
-│   ├── parseStepInstruction.ts # step addressing instruction
 │   ├── parseRawDataDirectives.ts # db/dw/ds directives
 │   └── parseRawDataDirectiveStart.ts # db/dw/ds start detection
 │
@@ -146,7 +145,6 @@ src/
 │   ├── asmInstructionLowering.ts # Instruction dispatch
 │   ├── asmInstructionLdHelpers.ts # ld-instruction helpers
 │   ├── asmLoweringLd.ts       # ld lowering
-│   ├── asmLoweringStep.ts     # step lowering
 │   ├── asmLoweringBranchCall.ts # Branch/call lowering
 │   ├── asmLoweringHost.ts     # Host-instruction helpers
 │   ├── asmUtils.ts            # ASM utility functions
@@ -308,7 +306,7 @@ This is the heart of the pipeline coordinator. `compile()` is an `async` functio
 3. Validates that the program contains accepted top-level/source items.
 4. Runs `lintCaseStyle()` to warn about inconsistent register/keyword casing.
 5. Builds the `CompileEnv` with `buildEnv()`.
-6. Runs retained semantic validation, including instruction and `step` checks.
+6. Runs retained semantic validation, including instruction checks.
 7. Calls `emitProgram()` which returns `{ map, symbols, placedLoweredAsmProgram }`.
 8. Passes those products to the format writers to produce `Artifact[]`.
 9. Returns `{ diagnostics, artifacts }`.
@@ -443,7 +441,7 @@ to ZAX `func`.
 2. Rejects or routes retired structured-control keywords through the removal boundary.
 3. Falls through to `parseAsmInstruction.ts` for everything else.
 
-`parseAsmInstruction.ts` tokenises the line into a mnemonic (the "head") and zero-or-more operands. It recognises the `step` head via `parseStepInstruction.ts`; everything else is parsed as a plain Z80 mnemonic and delegates operand parsing to `parseOperands.ts`.
+`parseAsmInstruction.ts` tokenises the line into a mnemonic (the "head") and zero-or-more operands. It handles the `in` and `out` port syntaxes specially; everything else is parsed as a plain Z80 mnemonic and delegates operand parsing to `parseOperands.ts`.
 
 `parseOperands.ts` parses the comma-separated operand list. Each operand is one of:
 
@@ -654,7 +652,6 @@ assembler items: labels, directives, instructions, layout constants, and visible
 | Head                                                 | Handler                                            |
 | ---------------------------------------------------- | -------------------------------------------------- |
 | `ld`                                                 | `asmLoweringLd.ts` (then into the ld sub-pipeline) |
-| `step`                                               | `asmLoweringStep.ts`                               |
 | Branch mnemonics (`jp`, `jr`, `call`, `ret`, `djnz`) | `asmLoweringBranchCall.ts`                         |
 | Op invocations                                       | `opExpansionOrchestration.ts`                      |
 | Everything else                                      | `z80/encode.ts` directly                           |

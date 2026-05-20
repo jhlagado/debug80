@@ -42,7 +42,7 @@ You typically need:
 
 The ASM instruction head is parsed generically; the parser is only special for a few heads:
 
-- `parseAsmInstruction.ts` handles `step`, `in`, and `out` as special cases.
+- `parseAsmInstruction.ts` handles `in` and `out` as special cases.
 - `parseOperands.ts` defines operand parsing and EA syntax; new operand forms land here.
 - `grammarData.ts` owns register lists, matcher kinds, and operand classes used by parsing and
   validation.
