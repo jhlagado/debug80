@@ -163,7 +163,6 @@ src/
 │   ├── opMatching.ts          # Op overload matching
 │   ├── opExpansionOrchestration.ts # Expansion orchestration
 │   ├── opExpansionExecution.ts # Expansion execution
-│   ├── opStackAnalysis.ts     # Stack effect analysis
 │   ├── opSubstitution.ts      # Parameter substitution
 │   │
 │   │  ── Supporting infrastructure ──
@@ -618,7 +617,7 @@ const finalized = runEmitPlacementAndArtifactPhase(
 - **`emission`:** merged and per-section byte maps, listing `codeSourceSegments`, and the lowered-asm stream buffers.
 - **`symbols`:** symbol tables, `PendingSymbol` queues, `taken` names, and `fixups` / `rel8Fixups` pending relocation entries.
 - **`ops`:** retained op maps, declared `op`/`bin` name sets, and visibility resolver closures.
-- **`config`:** `opStackPolicyMode`, `primaryFile`, and `includeDirs`.
+- **`config`:** `primaryFile` and `includeDirs`.
 - **`storage`:** alias maps, raw-address symbols, and section `baseExprs` used by retained assembler paths.
 
 Phase 1 helpers still create per-phase offset refs (`codeOffsetRef`, and similar) inside `createEmitStateHelpers`; those live alongside the workspace, not inside it.
@@ -691,8 +690,6 @@ plain immediate/fixup operand before `ld` encoding.
 2. Matches the call-site operands against each overload's parameter matchers to find the best match.
 3. Executes the expansion (`opExpansionExecution.ts`): runs the op body as if it were inlined, substituting parameters for their call-site arguments (`opSubstitution.ts`).
 4. Emits the resulting instructions into the output stream as if they had been written directly.
-
-`opStackAnalysis.ts` optionally checks that the op body does not leave the stack in an inconsistent state (controlled by the `opStackPolicy` option).
 
 ### 10.9 Removed Typed EA Materialization Boundary
 

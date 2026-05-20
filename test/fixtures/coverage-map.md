@@ -11,10 +11,10 @@
 
 **Include/import graph cycles detected** (see section below).
 
-Total fixture files (excludes sentinels): 499
+Total fixture files (excludes sentinels): 488
 Sentinel files: 1
-Reachable from tests (direct refs ∪ fixture closure): 144
-Potentially unreferenced fixtures: 355
+Reachable from tests (direct refs ∪ fixture closure): 140
+Potentially unreferenced fixtures: 348
 
 ## Direct test reference counts
 
@@ -114,7 +114,6 @@ Potentially unreferenced fixtures: 355
 | pr135_isa_jr_djnz_invalid.zax | 0 |
 | pr135_isa_jr_djnz.zax | 1 |
 | pr136_bit_indexed_dest_invalid.zax | 1 |
-| pr1367_op_port_imm_substitution.zax | 1 |
 | pr137_cb_rotate_two_operand_invalid.zax | 1 |
 | pr138_rel8_out_of_range_matrix.zax | 0 |
 | pr138_rel8_valid_matrix.zax | 0 |
@@ -171,7 +170,6 @@ Potentially unreferenced fixtures: 355
 | pr159_extern_base_block_unsupported.zax | 0 |
 | pr16_op_ambiguous.zax | 0 |
 | pr16_op_basic.zax | 0 |
-| pr16_op_cycle.zax | 0 |
 | pr16_op_mem_width.zax | 0 |
 | pr16_op_nested_call.zax | 0 |
 | pr16_op_no_match.zax | 0 |
@@ -313,20 +311,11 @@ Potentially unreferenced fixtures: 355
 | pr266_negative_immediate_lowering.zax | 0 |
 | pr266_negative_immediate_range_errors.zax | 0 |
 | pr266_negative_immediate_truncation.zax | 0 |
-| pr267_op_ambiguous_incomparable.zax | 0 |
 | pr267_op_specific_imm_width.zax | 0 |
 | pr267_op_specific_mem_vs_ea.zax | 0 |
-| pr268_op_arity_mismatch_diagnostics.zax | 0 |
-| pr268_op_no_match_diagnostics.zax | 0 |
 | pr269_d8m_op_macro_callsite.zax | 0 |
 | pr27_cb_rotate_invalid.zax | 0 |
 | pr27_cb_rotates_shifts.zax | 0 |
-| pr270_nonop_invalid_instruction_baseline.zax | 1 |
-| pr270_op_invalid_expansion_diagnostics.zax | 0 |
-| pr270_op_invalid_expansion_multi_failure.zax | 0 |
-| pr270_op_invalid_expansion_nested_chain.zax | 0 |
-| pr271_op_stack_policy_delta_warn.zax | 2 |
-| pr271_op_stack_policy_untracked_warn.zax | 1 |
 | pr272_runtime_affine_invalid.zax | 2 |
 | pr272_runtime_affine_valid.zax | 1 |
 | pr273_call_address_runtime_index_reject.zax | 1 |
@@ -656,7 +645,6 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr168_declaration_duplicate_matrix.zax
 - pr16_op_ambiguous.zax
 - pr16_op_basic.zax
-- pr16_op_cycle.zax
 - pr16_op_mem_width.zax
 - pr16_op_nested_call.zax
 - pr16_op_no_match.zax
@@ -742,18 +730,12 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr266_negative_immediate_lowering.zax
 - pr266_negative_immediate_range_errors.zax
 - pr266_negative_immediate_truncation.zax
-- pr267_op_ambiguous_incomparable.zax
 - pr267_op_specific_imm_width.zax
 - pr267_op_specific_mem_vs_ea.zax
-- pr268_op_arity_mismatch_diagnostics.zax
-- pr268_op_no_match_diagnostics.zax
 - pr269_d8m_op_macro_callsite.zax
 - pr26_retcc_conditions.zax
 - pr26_retcc_invalid.zax
 - pr26_rotate_retcc.zax
-- pr270_op_invalid_expansion_diagnostics.zax
-- pr270_op_invalid_expansion_multi_failure.zax
-- pr270_op_invalid_expansion_nested_chain.zax
 - pr273_call_scalar_runtime_index_value_ok.zax
 - pr275_typed_vs_raw_call_boundary_diag.zax
 - pr276_typed_call_preservation_matrix.zax
@@ -990,7 +972,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr135_isa_jr_djnz_invalid.zax |  |
 | pr135_isa_jr_djnz.zax | test/backend/pr135_isa_jr_djnz.test.ts |
 | pr136_bit_indexed_dest_invalid.zax | test/pr136_bit_indexed_dest_invalid.test.ts |
-| pr1367_op_port_imm_substitution.zax | test/lowering/pr1367_op_port_imm_substitution.test.ts |
 | pr137_cb_rotate_two_operand_invalid.zax | test/pr137_cb_rotate_two_operand_invalid.test.ts |
 | pr138_rel8_out_of_range_matrix.zax |  |
 | pr138_rel8_valid_matrix.zax |  |
@@ -1047,7 +1028,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr159_extern_base_block_unsupported.zax |  |
 | pr16_op_ambiguous.zax |  |
 | pr16_op_basic.zax |  |
-| pr16_op_cycle.zax |  |
 | pr16_op_mem_width.zax |  |
 | pr16_op_nested_call.zax |  |
 | pr16_op_no_match.zax |  |
@@ -1189,20 +1169,11 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr266_negative_immediate_lowering.zax |  |
 | pr266_negative_immediate_range_errors.zax |  |
 | pr266_negative_immediate_truncation.zax |  |
-| pr267_op_ambiguous_incomparable.zax |  |
 | pr267_op_specific_imm_width.zax |  |
 | pr267_op_specific_mem_vs_ea.zax |  |
-| pr268_op_arity_mismatch_diagnostics.zax |  |
-| pr268_op_no_match_diagnostics.zax |  |
 | pr269_d8m_op_macro_callsite.zax |  |
 | pr27_cb_rotate_invalid.zax |  |
 | pr27_cb_rotates_shifts.zax |  |
-| pr270_nonop_invalid_instruction_baseline.zax | test/pr268_op_diagnostics_matrix.test.ts |
-| pr270_op_invalid_expansion_diagnostics.zax |  |
-| pr270_op_invalid_expansion_multi_failure.zax |  |
-| pr270_op_invalid_expansion_nested_chain.zax |  |
-| pr271_op_stack_policy_delta_warn.zax | test/cli/cli_contract_matrix.test.ts, test/pr271_op_stack_policy_alignment.test.ts |
-| pr271_op_stack_policy_untracked_warn.zax | test/pr271_op_stack_policy_alignment.test.ts |
 | pr272_runtime_affine_invalid.zax | test/lowering/pr507_ea_resolution_helpers.test.ts, test/pr272_runtime_affine_index_offset.test.ts |
 | pr272_runtime_affine_valid.zax | test/pr272_runtime_affine_index_offset.test.ts |
 | pr273_call_address_runtime_index_reject.zax | test/lowering/pr506_runtime_atom_budget_helpers.test.ts |

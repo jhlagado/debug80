@@ -186,8 +186,9 @@ Before deleting code, check whether it is:
 - part of the ZAX retirement quarantine
 - only reachable from obsolete tests or examples
 
-If the only remaining consumer is a retirement test, prefer moving the code
-toward quarantine and documenting the deletion condition.
+If the only remaining consumer is a retirement test, delete the obsolete path or
+rewrite the useful assertion as ASM80/AZM coverage. Keep quarantine only for the
+shortest deletion slice.
 
 ## Algorithms and Data Structures
 

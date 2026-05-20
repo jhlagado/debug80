@@ -6,6 +6,5 @@ op second()
   first
 end
 
-export func main()
+main:
     first
-end

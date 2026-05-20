@@ -50,7 +50,7 @@ describe('cli contract matrix', () => {
     await rm(work, { recursive: true, force: true });
   });
 
-  it('rejects missing values for --output/--type/--include/--case-style/--op-stack-policy/--aliases', async () => {
+  it('rejects missing values for --output/--type/--include/--case-style/--aliases', async () => {
     const outMissing = await runCli(['--output']);
     expect(outMissing.code).toBe(2);
     expect(outMissing.stderr).toContain('--output expects a value');
@@ -66,10 +66,6 @@ describe('cli contract matrix', () => {
     const caseStyleMissing = await runCli(['--case-style']);
     expect(caseStyleMissing.code).toBe(2);
     expect(caseStyleMissing.stderr).toContain('--case-style expects a value');
-
-    const opStackPolicyMissing = await runCli(['--op-stack-policy']);
-    expect(opStackPolicyMissing.code).toBe(2);
-    expect(opStackPolicyMissing.stderr).toContain('--op-stack-policy expects a value');
 
     const aliasesMissing = await runCli(['--aliases']);
     expect(aliasesMissing.code).toBe(2);
@@ -99,14 +95,6 @@ describe('cli contract matrix', () => {
     },
     15_000,
   );
-
-  it('rejects unsupported --op-stack-policy mode tokens', async () => {
-    const fixture = join(__dirname, '..', 'fixtures', 'pr271_op_stack_policy_delta_warn.zax');
-    const res = await runCli(['--op-stack-policy=strict', fixture]);
-
-    expect(res.code).toBe(2);
-    expect(res.stderr).toContain('Unsupported --op-stack-policy "strict"');
-  });
 
   it('rejects suppression of the selected primary output type', async () => {
     const work = await mkdtemp(join(tmpdir(), 'azm-cli-primary-suppress-'));

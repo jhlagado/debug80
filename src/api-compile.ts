@@ -4,7 +4,6 @@ export type {
   CompileFn,
   CompileResult,
   CompilerOptions,
-  OpStackPolicyMode,
   PipelineDeps,
 } from './pipeline.js';
 export { defaultFormatWriters } from './formats/index.js';

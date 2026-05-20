@@ -36,7 +36,6 @@ describe('#510 op expansion orchestration helpers', () => {
       diagnostics,
       env: {} as never,
       hasStackSlots: false,
-      opStackPolicyMode: 'off',
       opExpansionStack: [],
       diagAt: () => {},
       diagAtWithId: (list, sourceSpan, id, message) => {
@@ -50,11 +49,6 @@ describe('#510 op expansion orchestration helpers', () => {
         kind: 'arity_mismatch',
         overloads: [opDecl],
         signatures: [`${opDecl.name}(arg)`],
-      }),
-      summarizeOpStackEffect: () => ({
-        kind: 'known',
-        delta: 0,
-        hasUntrackedSpMutation: false,
       }),
       cloneImmExpr: (value) => value,
       cloneEaExpr: (value) => value,

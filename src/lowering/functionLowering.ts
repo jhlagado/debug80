@@ -10,10 +10,8 @@ import type {
   TypeExprNode,
 } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { OpStackPolicyMode } from '../pipeline.js';
 import type { PendingSymbol, ResolvedArrayType, SourceSegmentTag } from './loweringTypes.js';
 import type { OpOverloadSelection } from './opMatching.js';
-import type { OpStackSummary } from './opStackAnalysis.js';
 import type { EaResolution } from './eaResolution.js';
 import type { AggregateType, ScalarKind } from './typeResolution.js';
 // This module owns the per-function lowering coordinator. It assembles the
@@ -217,8 +215,6 @@ export type FunctionLoweringStorageContext = {
 export type FunctionLoweringOpResolutionContext = {
   /** Set by: emit/context construction. Used by: call lowering. */
   readonly resolveOpCandidates: (name: string, file: string) => OpDeclNode[] | undefined;
-  /** Set by: emit/context construction. Used by: call lowering. */
-  readonly opStackPolicyMode: OpStackPolicyMode;
 };
 
 export type FunctionLoweringOpOverloadContext = {
@@ -229,8 +225,6 @@ export type FunctionLoweringOpOverloadContext = {
     overloads: OpDeclNode[],
     operands: AsmOperandNode[],
   ) => OpOverloadSelection;
-  /** Set by: emit/context construction. Used by: call lowering. */
-  readonly summarizeOpStackEffect: (op: OpDeclNode) => OpStackSummary;
 };
 
 export type FunctionLoweringAstUtilityContext = {

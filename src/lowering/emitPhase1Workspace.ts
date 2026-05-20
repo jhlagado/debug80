@@ -6,7 +6,6 @@ import type { EmitProgramOptions } from './emitPipeline.js';
 import type { PendingSymbol } from './loweringTypes.js';
 import type { LoweredAsmStream, LoweredAsmStreamBlock } from './loweredAsmTypes.js';
 import { createEmitVisibilityHelpers } from './emitVisibility.js';
-import { createOpStackAnalysisHelpers } from './opStackAnalysis.js';
 
 /** Byte maps, listing segments, and lowered-asm recording for phase 1. */
 export type EmitPhase1EmissionState = {
@@ -68,7 +67,7 @@ export type EmitPhase1SymbolState = {
   deferredExterns: EmitPhase1DeferredExtern[];
 };
 
-/** Op visibility plus op-stack summaries. */
+/** Op visibility. */
 export type EmitPhase1OpRegistry = {
   /** Per-file op overload lists. */
   localOpsByFile: Map<string, Map<string, OpDeclNode[]>>;
@@ -80,14 +79,10 @@ export type EmitPhase1OpRegistry = {
   declaredBinNames: Set<string>;
   /** Resolves op candidates visible from a file. */
   resolveVisibleOpCandidates: ReturnType<typeof createEmitVisibilityHelpers>['resolveVisibleOpCandidates'];
-  /** Cached op stack effect summary for overload policy. */
-  summarizeOpStackEffect: ReturnType<typeof createOpStackAnalysisHelpers>['summarizeOpStackEffect'];
 };
 
 /** Options and paths fixed for the emit run. */
 export type EmitPhase1EmitConfig = {
-  /** User-selected op stack policy (`off` when unset in options). */
-  opStackPolicyMode: NonNullable<EmitProgramOptions['opStackPolicy']>;
   /** Entry / primary source file path. */
   primaryFile: string;
   /** Resolved include directories for asset loads. */
@@ -145,7 +140,6 @@ export function createEmitPhase1Workspace(
 
   const localOpsByFile = new Map<string, Map<string, OpDeclNode[]>>();
   const visibleOpsByName = new Map<string, OpDeclNode[]>();
-  const opStackPolicyMode = options?.opStackPolicy ?? 'off';
   const declaredOpNames = new Set<string>();
   const declaredBinNames = new Set<string>();
   const { resolveVisibleOpCandidates } = createEmitVisibilityHelpers({
@@ -153,10 +147,6 @@ export function createEmitPhase1Workspace(
     localOpsByFile,
     visibleOpsByName,
   });
-  const { summarizeOpStackEffect } = createOpStackAnalysisHelpers({
-    resolveOpCandidates: resolveVisibleOpCandidates,
-  });
-
   const storageTypes = new Map<string, TypeExprNode>();
   const moduleAliasTargets = new Map<string, EaExprNode>();
   const moduleAliasDecls = new Map<string, VarDeclNode>();
@@ -196,10 +186,8 @@ export function createEmitPhase1Workspace(
       declaredOpNames,
       declaredBinNames,
       resolveVisibleOpCandidates,
-      summarizeOpStackEffect,
     },
     config: {
-      opStackPolicyMode,
       primaryFile,
       includeDirs,
     },

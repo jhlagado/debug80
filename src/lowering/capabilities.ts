@@ -9,7 +9,6 @@ import type {
 } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { OpOverloadSelection } from './opMatching.js';
-import type { OpStackSummary } from './opStackAnalysis.js';
 
 export interface LoweringDiagnosticsCapability {
   /** Mutable diagnostic list. */
@@ -96,9 +95,4 @@ export interface OpOperandFormattingCapability {
 export interface OpOverloadSelectionCapability {
   /** Picks overload from operands; returns selection metadata. */
   selectOpOverload: (overloads: OpDeclNode[], operands: AsmOperandNode[]) => OpOverloadSelection;
-}
-
-export interface OpStackSummaryCapability {
-  /** Summarizes stack delta for an op body. */
-  summarizeOpStackEffect: (opDecl: OpDeclNode) => OpStackSummary;
 }
