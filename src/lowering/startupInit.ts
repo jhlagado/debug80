@@ -34,7 +34,7 @@ export type StartupInitRegion = {
   encoded: number[];
 };
 
-export const STARTUP_ENTRY_LABEL = '__zax_startup';
+export const STARTUP_ENTRY_LABEL = '__azm_startup';
 
 type StartupRoutineLabel =
   | 'copy_count_test'

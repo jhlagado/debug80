@@ -1,5 +1,5 @@
 /**
- * Frontend AST contracts for ZAX.
+ * Frontend AST contracts for AZM.
  *
  * This module intentionally defines types/interfaces only (no parsing/semantics).
  * Later PRs extend these contracts via coordinated changes.
