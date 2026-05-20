@@ -2,9 +2,9 @@
 
 This is the single contributor reference for local verification flow, fixture refresh commands, and CI expectations.
 
-Normative legacy ZAX behavior remains defined by `docs/spec/zax-spec.md`. Native
-AZM behavior is tracked by the AZM design and baseline docs under `docs/design`
-and `docs/spec`.
+Native AZM behavior is tracked by the AZM design and baseline docs under
+`docs/design` and `docs/spec`. Legacy ZAX docs describe code being removed; they
+are not a compatibility contract for AZM.
 
 ## Local verification flow
 
@@ -56,17 +56,16 @@ inherited high-level `.zax` lowering tests such as typed assignment, generated
 typed storage, aggregate locals, typed address-of behavior, generated function
 frames, ZAX imports, or named sections.
 
-Run the preserved `.zax` compatibility lane when touching inherited high-level
-ZAX lowering or before retiring old ZAX behavior:
+Run the temporary `.zax` removal lane when touching inherited high-level ZAX
+lowering:
 
 ```sh
 npm run test:zax:compat
 ```
 
-The current compatibility lane is the first quarantine batch. It covers typed
-high-level ZAX behavior first. Import/module, function/frame, named-section, and
-structured-control tests are compatibility candidates, but not all of them are
-in this runner yet.
+The current `.zax` lane is a removal batch. It covers old high-level ZAX
+behavior while that code is being deleted or rewritten. Passing this lane does
+not mean the behavior should remain.
 
 Optional corpus gates remain separate because they require local source trees:
 

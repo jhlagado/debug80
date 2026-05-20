@@ -221,8 +221,7 @@ sizeof(Sprite[16])
 `offset` should be a compile-time expression that returns a byte offset from
 the start of a layout.
 
-`offsetof` remains accepted as a legacy compatibility spelling, but new AZM
-documentation should use `offset`.
+`offset` is the only AZM spelling. AZM has no legacy spelling for this feature.
 
 Required forms:
 

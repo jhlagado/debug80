@@ -194,10 +194,10 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expect(env.consts.has('T')).toBe(false);
   });
 
-  it('propagates offsetof unknown field as TypeError and failed const (ZAX403 + ZAX400)', () => {
+  it('propagates offset unknown field as TypeError and failed const (ZAX403 + ZAX400)', () => {
     const { program, diagnostics } = parseProgram(
-      'edge_offsetof.zax',
-      ['type R', '  x: byte', '  y: byte', 'end', 'const o = offsetof(R, z)'].join('\n'),
+      'edge_offset.zax',
+      ['type R', '  x: byte', '  y: byte', 'end', 'const o = offset(R, z)'].join('\n'),
     );
     expectNoDiagnostics(diagnostics);
     buildEnv(program, diagnostics);

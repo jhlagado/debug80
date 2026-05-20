@@ -50,18 +50,17 @@ Native AZM accepts flat assembler items at module scope: labels, local labels,
 Z80 instructions, `.org`, `.equ`, `.db`, `.dw`, `.ds`, includes, directive
 aliases, `op` declarations, and layout metadata.
 
-Layout metadata means `type`, `union`, `sizeof`, `offset`, legacy `offsetof`,
-and layout-cast address expressions that fold to constants. Native AZM feeds
-those constants into ordinary operands and fixups.
+Layout metadata means `type`, `union`, `sizeof`, `offset`, and layout-cast
+address expressions that fold to constants. Native AZM feeds those constants
+into ordinary operands and fixups.
 
 Native AZM rejects inherited ZAX high-level constructs: `func`, named `section`
 blocks, `:=`, structured control, typed storage, typed externs, generated
 function frames, typed argument marshalling, and runtime typed effective-address
 lowering.
 
-The default AZM verification lane is `npm run test:azm:alpha`. Preserved `.zax`
-compatibility behavior belongs in `npm run test:zax:compat` before ZAX-only
-implementation is deleted.
+The default AZM verification lane is `npm run test:azm:alpha`. `.zax` tests are
+a temporary removal lane, not a compatibility promise.
 
 ## Canonical native style
 
@@ -102,7 +101,7 @@ access):
 
 - `type` / `union` — packed layout descriptions
 - `sizeof(Type)` / `sizeof(Type[N])` — exact byte size
-- `offset(Type, path)` — field path offset (`offsetof` accepted as legacy spelling)
+- `offset(Type, path)` — field path offset
 - `<Type[N]>label[i].field` — layout-cast syntax; must fold to the same constant
   as the `sizeof`/`offset` form; compile-time indexes only
 

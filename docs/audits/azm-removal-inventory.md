@@ -3,9 +3,10 @@
 Status: active roadmap
 Date: 2026-05-19
 
-AZM is an **ASM80-class assembler** with a small set of extensions. Everything
-else inherited from ZAX is compatibility baggage to remove from `.azm` source
-and, later, from the implementation.
+AZM is an **ASM80-class assembler** with a small set of extensions. It does not
+promise backward compatibility with ZAX or with earlier AZM experiments. The
+only compatibility target is the ASM80 baseline plus the AZM features explicitly
+kept below. Everything else inherited from ZAX is removal baggage.
 
 ## Keep (product)
 
@@ -27,7 +28,8 @@ and, later, from the implementation.
 | Structured control (`if`/`while`/`select` as language) | AZM700 warning         | Gone                                                      |
 | Typed `data` / `var` / `globals`                       | AZM700 warning         | Gone                                                      |
 | Typed `extern func`                                    | AZM700 warning         | Gone                                                      |
-| ZAX `import` modules                                   | Compatibility-only     | Gone from native AZM — use ASM80-style textual `.include` |
+| ZAX `import` modules                                   | Rejected by `.azm`     | Gone — use ASM80-style textual `.include`                 |
+| `offsetof(...)` spelling                               | Removed                | Gone — use `offset(...)`                                  |
 | Runtime typed EA / indexed layout paths                | Error at fold/lowering | Gone                                                      |
 | Text macros                                            | Not supported          | Stay out                                                  |
 
@@ -37,21 +39,21 @@ and, later, from the implementation.
 | ------- | ---------------------------------------------------------- |
 | `enum`  | Useful constant names; keep if low-noise, else `.equ` only |
 
-## Compatibility lane (temporary)
+## Removal lane (temporary)
 
 | Input           | Purpose                                           |
 | --------------- | ------------------------------------------------- |
-| `.zax`          | Old corpus + tests until quarantined or rewritten |
+| `.zax`          | Old tests while they are rewritten or deleted     |
 | `.asm` / `.z80` | ASM80 corpora (Tetro, Pacmo, MON3)                |
 
-The first compatibility lane is `npm run test:zax:compat`. No ZAX-only
-implementation should be deleted until this lane is green and default AZM
-guardrails no longer depend on those tests.
+`npm run test:zax:compat` is not a compatibility promise. It is a temporary
+holding pen for old ZAX behavior while the implementation is being cut down.
+Tests in that lane should either be rewritten as AZM-native/ASM80 tests or
+deleted with the subsystem they protect.
 
-Current coverage is partial. The first compatibility batch covers typed
-high-level ZAX behavior. ZAX imports, generated function frames, named sections,
-and structured-control lowering still need explicit compatibility-lane coverage
-before those parser or lowering paths are deleted.
+Current coverage is partial. Passing this lane should never block a deliberate
+ZAX removal. The lane exists only to keep the deletion work visible and
+reviewable while it is happening.
 
 ## Native `.azm` shape
 
@@ -63,20 +65,20 @@ ZAX `import` module graph. Multi-file assembly uses textual `.include` /
 ## Test buckets
 
 See `docs/audits/azm-alpha-test-buckets.md` and
-`docs/audits/zax-test-retirement-map.md`. Do not delete ZAX tests until ASM80,
-register-care, ops, and layout buckets stay green.
+`docs/audits/zax-test-retirement-map.md`. Delete or rewrite ZAX tests whenever
+the behavior is not part of the kept AZM/ASM80 surface.
 
 Lane rule:
 
 - `npm run test:azm:alpha` owns native `.azm`, `.asm` / `.z80` compatibility,
   textual includes, directive aliases, register-care, visible ops, and layout
   constants.
-- `npm run test:zax:compat` owns inherited `.zax` syntax and behavior until
-  each test is rewritten, archived, or removed.
+- `npm run test:zax:compat` temporarily contains inherited `.zax` syntax and
+  behavior until each test is rewritten, archived, or removed.
 
 ## Implementation phases
 
 1. **Surface** — parse errors for `func` and `section` in `.azm`; flat asm stream; AZM700 for remaining ZAX syntax (**done**, PR #7).
 2. **Tests** — rewrite AZM-native tests to flat labels; quarantine `.zax`-only tests (**in progress: typed high-level batch landed, import/function/section coverage still expanding**).
-3. **Lowering** — one instruction path for native code; drop frame/section/typed-storage lowering when compatibility lane allows.
+3. **Lowering** — one instruction path for native code; drop frame/section/typed-storage lowering as soon as AZM/ASM80 guardrails no longer need it.
 4. **Deletion** — remove dead subsystems and retired tests after guardrails pass.
