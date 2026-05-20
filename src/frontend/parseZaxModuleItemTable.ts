@@ -2,7 +2,6 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import { consumeTopKeyword } from './parseModuleCommon.js';
 import { parseTopLevelExternDecl } from './parseExternBlock.js';
 import { parseEnumDecl } from './parseEnum.js';
-import { parseTopLevelFuncDecl } from './parseFunc.js';
 import { parseTopLevelOpDecl } from './parseOp.js';
 import { parseTypeDecl, parseUnionDecl } from './parseTypes.js';
 import {
@@ -132,36 +131,6 @@ export function createZaxModuleItemTable(ctx: CreateZaxModuleItemTableContext) {
     );
     if (!parsedUnion) return { nextIndex: index + 1 };
     return { nextIndex: parsedUnion.nextIndex, node: parsedUnion.node };
-  }
-
-  function parseFuncItem({
-    index,
-    lineNo,
-    filePath,
-    text,
-    rest,
-    stmtSpan,
-    hasExportPrefix,
-  }: ParseModuleItemDispatchArgs): ParseItemResult {
-    const funcTail = consumeTopKeyword(rest, 'func') ?? '';
-    const parsedFunc = parseTopLevelFuncDecl(
-      funcTail,
-      text,
-      stmtSpan,
-      lineNo,
-      index,
-      hasExportPrefix,
-      {
-        file,
-        lineCount,
-        diagnostics,
-        modulePath: filePath,
-        getRawLine,
-        isReservedTopLevelName,
-        parseParamsFromText,
-      },
-    );
-    return { nextIndex: parsedFunc.nextIndex, ...(parsedFunc.node ? { node: parsedFunc.node } : {}) };
   }
 
   function parseOpItem({
@@ -333,7 +302,6 @@ export function createZaxModuleItemTable(ctx: CreateZaxModuleItemTableContext) {
     import: parseImportItem,
     type: parseTypeItem,
     union: parseUnionItem,
-    func: parseFuncItem,
     op: parseOpItem,
     extern: parseExternItem,
     enum: parseEnumItem,

@@ -10,7 +10,7 @@ export type ParsedCallableHeader<TParam> = {
 };
 
 type ParseCallableHeaderOptions<TParam> = {
-  kind: 'func' | 'op';
+  kind: 'op';
   header: string;
   stmtText: string;
   stmtSpan: SourceSpan;

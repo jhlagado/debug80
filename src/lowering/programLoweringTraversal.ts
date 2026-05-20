@@ -318,11 +318,6 @@ function lowerItem(
     return;
   }
 
-  if (item.kind === 'FuncDecl') {
-    ctx.lowerFunctionDecl({ ...ctx, item });
-    return;
-  }
-
   if (item.kind === 'RawDataDecl') {
     lowerRawDataDecl(item as RawDataDeclNode);
     return;

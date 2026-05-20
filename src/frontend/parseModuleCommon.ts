@@ -19,7 +19,6 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
   { keyword: 'import', kind: 'import statement', expected: '"<path>.zax" or <moduleId>' },
   { keyword: 'type', kind: 'type declaration', expected: '<name> [<typeExpr>]' },
   { keyword: 'union', kind: 'union declaration', expected: '<name>' },
-  { keyword: 'func', kind: 'func header', expected: '<name>(...)[ : <retRegs> ]' },
   { keyword: 'op', kind: 'op header', expected: '<name>(...)' },
   {
     keyword: 'extern',
@@ -80,7 +79,6 @@ export function looksLikeKeywordBodyDeclLine(lineText: string): boolean {
   }
   if (colon <= 0) return false;
   const beforeColon = t.slice(0, colon).trim();
-  if (/^func\s+[A-Za-z_][A-Za-z0-9_]*\s*\([^)]*\)\s*$/i.test(beforeColon)) return false;
   return /^[A-Za-z_][A-Za-z0-9_]*\s+[A-Za-z_][A-Za-z0-9_]*(\s*\([^)]*\))?\s*$/.test(beforeColon);
 }
 

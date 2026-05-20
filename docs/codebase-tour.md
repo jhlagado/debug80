@@ -107,9 +107,8 @@ src/
 │   ├── parseModuleItemDispatch.ts # Shared line coordinator
 │   ├── parseZaxModuleItemTable.ts # Temporary ZAX/module keyword table
 │   ├── parseTopLevelSimple.ts # const, align, bin, hex declarations
-│   ├── parseFunc.ts           # func declaration
 │   ├── parseOp.ts             # op declaration
-│   ├── parseCallableHeader.ts # Shared header (name + params) for func/op
+│   ├── parseCallableHeader.ts # Shared op header parsing
 │   ├── parseEnum.ts           # enum declaration
 │   ├── parseExtern.ts         # extern declaration
 │   ├── parseExternBlock.ts    # extern block body
@@ -462,31 +461,25 @@ Parsing is **best-effort**: errors are reported and parsing continues so the use
 
 `parseModuleItemDispatch.ts` coordinates one logical line: export parsing, native `.azm` handoff, dispatch-table lookup, and recovery. `parseZaxModuleItemTable.ts` builds the temporary ZAX/module keyword table. Each entry is a function that takes a `ParseItemArgs` context (the line text, span, `export` flag, current line index, etc.) and returns a `ParseItemResult` — a `{ nextIndex, node? }` result.
 
-The `nextIndex` field is important: handlers may consume multiple lines (e.g. a `func` declaration consumes lines until its matching `end`), so the parser needs to know where to resume.
+The `nextIndex` field is important: handlers may consume multiple lines (for example `op`, `type`, and `union` declarations consume lines until their matching `end`), so the parser needs to know where to resume.
 
 Simple top-level keywords (`const`, `align`, `bin`, `hex`) are handled in `parseTopLevelSimple.ts`. More complex ones have dedicated files:
 
 | Keyword          | File                                     |
 | ---------------- | ---------------------------------------- |
-| `func`           | `parseFunc.ts`                           |
 | `op`             | `parseOp.ts`                             |
 | `type`, `union`  | `parseTypes.ts`                          |
 | `enum`           | `parseEnum.ts`                           |
 | `extern`         | `parseExtern.ts` / `parseExternBlock.ts` |
 
-### 7.5 Parsing Ops and Legacy Functions
+### 7.5 Parsing Ops
 
 `parseOp.ts` remains part of AZM because visible `op` expansion is a retained
 feature. The parser uses `parseCallableHeader.ts` for op headers and
 `parseOpParamsFromText()` for matcher declarations such as `dst: reg8, src:
 reg16`.
 
-`parseFunc.ts` is legacy ZAX machinery. It calls `parseCallableHeader.ts` to
-parse the old `name(params): returnRegs` header, then collects logical lines
-until it finds a bare `end` keyword. Native `.azm` rejects `func`; this path is
-kept only for temporary `.zax` quarantine and deletion work.
-
-The shared header parser can handle:
+The shared header parser handles:
 
 - The function name.
 - A parenthesised parameter list (`parseParams.ts`).
@@ -558,23 +551,9 @@ ProgramNode
 
 ```
 ImportNode | ConstDeclNode | EnumDeclNode
-| VarBlockNode | FuncDeclNode | UnionDeclNode
+| VarBlockNode | UnionDeclNode
 | TypeDeclNode | ExternDeclNode | BinDeclNode | HexDeclNode
 | OpDeclNode | AlignDirectiveNode | UnimplementedNode
-```
-
-A `FuncDeclNode` is:
-
-```typescript
-{
-  kind: 'FuncDecl',
-  name: string,
-  exported: boolean,
-  params: ParamNode[],
-  returnRegs: string[],   // e.g. ['HL']
-  locals: VarBlockNode,   // the var...end block
-  asm: AsmBlockNode,      // the body
-}
 ```
 
 An `AsmBlockNode` holds a flat list of `AsmItemNode[]` — labels, control nodes, and instruction nodes. The structured control flow (`if/while/…`) is represented as flat control tokens; the _nesting_ is not made explicit in the AST. That nesting is reconstructed during lowering.
@@ -705,9 +684,9 @@ Phase 1 helpers still create per-phase offset refs (`codeOffsetRef`, and similar
 
 `preScanProgramDeclarations()` in `programLowering.ts` does a _first_ pass over the program to collect metadata needed by the lowering pass:
 
-- **Callables map:** for every `FuncDeclNode` and `ExternFuncNode`, records name, file, parameter types, and return registers into a `Map<string, Callable>`, keyed by canonical function name.
+- **Callables map:** temporary inherited support for extern declarations while that surface is retired or replaced by AZMI/register-care interfaces.
 - **Ops map:** for every `OpDeclNode`, records the overloads under the op name.
-- **Storage type map:** collects the type annotation of every `VarDecl` and `DataDecl`.
+- **Storage type map:** temporary inherited support for local `var` declarations while generated-frame removal continues.
 - **Module alias map:** temporary inherited support for old alias declarations while `func`/local storage removal continues.
 - **Raw-address symbols:** identifies `extern` declarations that have a fixed address.
 
@@ -717,7 +696,6 @@ Returns a `PrescanResult` that phase 3 unpacks.
 
 `lowerProgramDeclarations()` in `programLowering.ts` is the main emission loop. It iterates through every `ModuleItemNode` across all files (in module-traversal order) and dispatches each to an appropriate handler in `programLoweringDeclarations.ts`:
 
-- **`FuncDeclNode`** → `lowerFunction()` (the big one — see §10.5).
 - **`VarBlockNode`** → temporary inherited ZAX storage path while generated-frame removal continues.
 - **`BinDeclNode`** / **`HexDeclNode`** → reads the binary asset from disk and splices it into the appropriate section.
 - **`AlignDirectiveNode`** → advances the active section offset to the next alignment boundary.
@@ -725,16 +703,15 @@ Returns a `PrescanResult` that phase 3 unpacks.
 
 Returns a `LoweringResult` which is the fully populated byte maps plus all pending fixups and symbols.
 
-### 10.5 Legacy Function Lowering in Detail
+### 10.5 Legacy Function Lowering Bridge
 
-`lowerFunction()` in `functionLowering.ts` is legacy ZAX lowering. Native `.azm`
-does not have functions, arguments, locals, generated frames, or synthetic call
-boundaries. Read this section when you are maintaining the temporary `.zax`
-quarantine lane or deleting old subsystems, not when defining AZM-native
-language behavior.
+`functionLowering.ts` is legacy ZAX lowering. Source-level `func` declarations
+have been removed from AZM, but native assembler emission still uses a temporary
+synthetic bridge that reuses parts of the old function-lowering context. Read
+this section when deleting that bridge, not when defining AZM-native language
+behavior.
 
-For the legacy path, `lowerFunction()` turns a single `FuncDeclNode` into
-machine-code bytes. It creates several helper bundles:
+The remaining bridge creates several helper bundles:
 
 **Frame setup** (`functionFrameSetup.ts`):
 

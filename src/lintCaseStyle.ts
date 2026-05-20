@@ -2,7 +2,6 @@ import { DiagnosticIds, type Diagnostic } from './diagnosticTypes.js';
 import type {
   AsmControlNode,
   AsmItemNode,
-  FuncDeclNode,
   OpDeclNode,
   ProgramNode,
   SourceSpan,
@@ -203,9 +202,7 @@ export function lintCaseStyle(
     const source = sourceTexts.get(moduleFile.path);
     if (!source) continue;
     for (const item of moduleFile.items) {
-      if (item.kind === 'FuncDecl') {
-        lintAsmItems((item as FuncDeclNode).asm.items, source, mode, state, diagnostics);
-      } else if (item.kind === 'OpDecl') {
+      if (item.kind === 'OpDecl') {
         lintAsmItems((item as OpDeclNode).body.items, source, mode, state, diagnostics);
       }
     }

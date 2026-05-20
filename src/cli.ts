@@ -617,7 +617,7 @@ export async function runCli(argv: string[]): Promise<number> {
         includeDirs: parsed.includeDirs,
         directiveAliasFiles: parsed.directiveAliasFiles,
         sourceMode: parsed.sourceMode,
-        requireMain: parsed.sourceMode === 'zax',
+        requireMain: false,
         defaultCodeBase: parsed.sourceMode === 'zax' ? 0x0100 : 0,
         registerCare: parsed.registerCare,
         emitRegisterReport: parsed.emitRegisterReport,

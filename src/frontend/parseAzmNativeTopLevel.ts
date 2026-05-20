@@ -27,8 +27,6 @@ export interface ParseAzmNativeTopLevelInput {
 
 function nativeUnsupportedMessage(keyword: string): string | undefined {
   switch (keyword) {
-    case 'func':
-      return 'Function declarations are not supported in AZM-native source; use assembly labels with CALL and RET.';
     case 'extern':
       return 'Typed extern declarations are not supported in AZM-native source; use AZMI/register-care interface contracts for external routines.';
     case 'import':
@@ -40,7 +38,6 @@ function nativeUnsupportedMessage(keyword: string): string | undefined {
 
 function consumeNativeUnsupportedBlock(args: ParseAzmNativeTopLevelInput, keyword: string): number {
   if (
-    keyword !== 'func' &&
     keyword !== 'extern'
   ) {
     return args.index + 1;
@@ -62,7 +59,6 @@ function consumeNativeUnsupportedBlock(args: ParseAzmNativeTopLevelInput, keywor
 
 function consumeNativeExport(args: ParseAzmNativeTopLevelInput, keyword: string | undefined): number {
   switch (keyword) {
-    case 'func':
     case 'extern':
     case 'op':
     case 'type':

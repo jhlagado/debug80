@@ -1,6 +1,5 @@
 import type {
   ExternFuncNode,
-  FuncDeclNode,
   TypeExprNode,
 } from '../frontend/ast.js';
 import type { EmittedSourceSegment } from '../formats/types.js';
@@ -28,9 +27,7 @@ export type PendingSymbol = {
 
 export type SourceSegmentTag = Omit<EmittedSourceSegment, 'start' | 'end'>;
 
-export type Callable =
-  | { kind: 'func'; node: FuncDeclNode }
-  | { kind: 'extern'; node: ExternFuncNode; targetLower: string };
+export type Callable = { kind: 'extern'; node: ExternFuncNode; targetLower: string };
 
 /** Array shape extracted for lowering; `length` omitted when unknown. */
 export type ResolvedArrayType = {

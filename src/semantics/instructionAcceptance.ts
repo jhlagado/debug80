@@ -12,13 +12,12 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type {
   AsmInstructionNode,
-  FuncDeclNode,
   OpDeclNode,
   ProgramNode,
 } from '../frontend/ast.js';
 import { visitDeclTree } from './declVisitor.js';
 import type { CompileEnv } from './env.js';
-import { collectFunctionLocals, collectModuleStorage } from './storageView.js';
+import { collectModuleStorage } from './storageView.js';
 import type { ModuleStorageView, FunctionLocalView } from './storageView.js';
 import { createTypeResolutionHelpers } from './typeQueries.js';
 
@@ -57,44 +56,6 @@ export type InstructionValidator = {
 // Traversal
 // ---------------------------------------------------------------------------
 
-function runForFunction(
-  func: FuncDeclNode,
-  env: CompileEnv,
-  moduleStorage: ModuleStorageView,
-  diagnostics: Diagnostic[],
-  validators: InstructionValidator[],
-): void {
-  const locals = collectFunctionLocals(func.locals.decls);
-  const { stackSlotTypes, localAliasTargets } = locals;
-
-  // Inject parameters into the stack-slot map.
-  for (const param of func.params) {
-    stackSlotTypes.set(param.name.toLowerCase(), param.typeExpr);
-  }
-
-  const storage: StorageContext = {
-    ...moduleStorage,
-    stackSlotTypes,
-    localAliasTargets,
-  };
-
-  const helpers = createTypeResolutionHelpers({
-    env,
-    storageTypes: moduleStorage.storageTypes,
-    stackSlotTypes,
-    rawAddressSymbols: moduleStorage.rawAddressSymbols,
-    moduleAliasTargets: moduleStorage.moduleAliasTargets,
-    getLocalAliasTargets: () => localAliasTargets,
-  });
-
-  for (const asmItem of func.asm.items) {
-    if (asmItem.kind !== 'AsmInstruction') continue;
-    for (const v of validators) {
-      v.validateInstruction?.(asmItem, storage, helpers, diagnostics);
-    }
-  }
-}
-
 function runForOp(
   op: OpDeclNode,
   diagnostics: Diagnostic[],
@@ -109,7 +70,7 @@ function runForOp(
 }
 
 /**
- * Run all provided validators over every function and op in the program.
+ * Run all provided validators over every op in the program.
  *
  * Module storage is collected once; per-function locals are collected once per
  * function.  Each validator sees every instruction with the same helpers
@@ -123,14 +84,10 @@ export function runInstructionAcceptance(
 ): void {
   if (validators.length === 0) return;
 
-  const moduleStorage = collectModuleStorage(program, env);
+  collectModuleStorage(program, env);
 
   for (const file of program.files) {
     visitDeclTree(file.items, (item) => {
-      if (item.kind === 'FuncDecl') {
-        runForFunction(item, env, moduleStorage, diagnostics, validators);
-        return;
-      }
       if (item.kind === 'OpDecl') {
         runForOp(item, diagnostics, validators);
       }

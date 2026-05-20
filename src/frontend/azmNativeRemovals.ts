@@ -8,7 +8,6 @@ import type {
   AsmOperandNode,
   EaExprNode,
   ExternDeclNode,
-  FuncDeclNode,
   ModuleItemNode,
   OpDeclNode,
   ProgramNode,
@@ -26,13 +25,6 @@ function removed(span: SourceSpan, message: string): Diagnostic {
     line: span.start.line,
     column: span.start.column,
   };
-}
-
-function removedFunction(node: FuncDeclNode): Diagnostic {
-  return removed(
-    node.span,
-    'Function declarations are not supported in AZM-native source; use labels, CALL/RET, and AZMDoc register contracts.',
-  );
 }
 
 function removedVarBlock(node: VarBlockNode): Diagnostic {
@@ -156,8 +148,6 @@ function isAzmAsmStreamItem(
 function itemDiagnostics(item: ModuleItemNode): Diagnostic[] {
   if (isAzmAsmStreamItem(item)) return asmStreamDiagnostics(item);
   switch (item.kind) {
-    case 'FuncDecl':
-      return [removedFunction(item), ...asmBlockDiagnostics(item.asm)];
     case 'VarBlock':
       return [removedVarBlock(item)];
     case 'ExternDecl':

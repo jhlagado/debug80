@@ -23,9 +23,6 @@ describe('PR468 parser dispatcher integration coverage', () => {
         'extern',
         '  func ext(v: word): HL at $1234',
         'end',
-        'func main()',
-        '  nop',
-        'end',
         'op nopwrap()',
         '  nop',
         'end',
@@ -43,7 +40,6 @@ describe('PR468 parser dispatcher integration coverage', () => {
       'TypeDecl',
       'UnionDecl',
       'ExternDecl',
-      'FuncDecl',
       'OpDecl',
     ]);
   });
