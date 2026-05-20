@@ -134,7 +134,7 @@ export function parseRecordFieldDecl(
     diag(
       diagnostics,
       filePath,
-      `Self-referential field type "${typeExpr.name}" requires a typed pointer; use @${typeExpr.name}.`,
+      `Self-referential field type "${typeExpr.name}" requires a pointer type; use @${typeExpr.name}.`,
       { line: lineNo, column: 1 },
     );
     return undefined;

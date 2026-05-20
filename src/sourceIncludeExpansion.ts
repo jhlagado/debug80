@@ -72,7 +72,7 @@ async function resolveIncludeSource(
   }
 
   diagnostics.push({
-    id: DiagnosticIds.ImportNotFound,
+    id: DiagnosticIds.IncludeNotFound,
     severity: 'error',
     message: `Failed to resolve include "${spec}" from "${sourcePath}". Tried:\n${candidates
       .map((c) => `- ${c}`)

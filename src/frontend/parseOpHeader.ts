@@ -3,14 +3,13 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import { diagInvalidHeaderLine, formatIdentifierToken } from './parseModuleCommon.js';
 
-export type ParsedCallableHeader<TParam> = {
+export type ParsedOpHeader<TParam> = {
   name: string;
   params: TParam[];
   trailing: string;
 };
 
-type ParseCallableHeaderOptions<TParam> = {
-  kind: 'op';
+type ParseOpHeaderOptions<TParam> = {
   header: string;
   stmtText: string;
   stmtSpan: SourceSpan;
@@ -22,11 +21,10 @@ type ParseCallableHeaderOptions<TParam> = {
   parseParams: (paramsText: string) => TParam[] | undefined;
 };
 
-export function parseCallableHeader<TParam>(
-  options: ParseCallableHeaderOptions<TParam>,
-): ParsedCallableHeader<TParam> | undefined {
+export function parseOpHeader<TParam>(
+  options: ParseOpHeaderOptions<TParam>,
+): ParsedOpHeader<TParam> | undefined {
   const {
-    kind,
     header,
     stmtText,
     stmtSpan: _stmtSpan,
@@ -41,7 +39,7 @@ export function parseCallableHeader<TParam>(
   const openParen = header.indexOf('(');
   const closeParen = header.lastIndexOf(')');
   if (openParen < 0 || closeParen < openParen) {
-    diagInvalidHeaderLine(diagnostics, modulePath, `${kind} header`, stmtText, expectedHeader, lineNo);
+    diagInvalidHeaderLine(diagnostics, modulePath, 'op header', stmtText, expectedHeader, lineNo);
     return undefined;
   }
 
@@ -50,7 +48,7 @@ export function parseCallableHeader<TParam>(
     diag(
       diagnostics,
       modulePath,
-      `Invalid ${kind} name ${formatIdentifierToken(name)}: expected <identifier>.`,
+      `Invalid op name ${formatIdentifierToken(name)}: expected <identifier>.`,
       { line: lineNo, column: 1 },
     );
     return undefined;
@@ -59,7 +57,7 @@ export function parseCallableHeader<TParam>(
     diag(
       diagnostics,
       modulePath,
-      `Invalid ${kind} name "${name}": collides with a top-level keyword.`,
+      `Invalid op name "${name}": collides with a top-level keyword.`,
       {
         line: lineNo,
         column: 1,
