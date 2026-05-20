@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 describe('PR37 fixup negatives', () => {
   it('diagnoses unresolved abs16 fixup symbols', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr37_unresolved_symbol_abs16.zax');
+    const entry = join(__dirname, 'fixtures', 'pr37_unresolved_symbol_abs16.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
@@ -23,7 +23,7 @@ describe('PR37 fixup negatives', () => {
   });
 
   it('diagnoses unresolved rel8 fixup symbols', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr37_unresolved_symbol_rel8.zax');
+    const entry = join(__dirname, 'fixtures', 'pr37_unresolved_symbol_rel8.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
@@ -39,7 +39,7 @@ describe('PR37 fixup negatives', () => {
   });
 
   it('diagnoses rel8 out-of-range fixups', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range.zax');
+    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
@@ -50,7 +50,7 @@ describe('PR37 fixup negatives', () => {
   });
 
   it('diagnoses conditional jr rel8 out-of-range fixups', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range_jr_cond.zax');
+    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range_jr_cond.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
@@ -61,7 +61,7 @@ describe('PR37 fixup negatives', () => {
   });
 
   it('diagnoses djnz rel8 out-of-range fixups', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range_djnz.zax');
+    const entry = join(__dirname, 'fixtures', 'pr37_rel8_out_of_range_djnz.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {

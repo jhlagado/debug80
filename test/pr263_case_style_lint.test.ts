@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 describe('PR263: case-style linting', () => {
   it('stays silent by default (caseStyle=off)', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr263_case_style_lint.zax');
+    const entry = join(__dirname, 'fixtures', 'pr263_case_style_lint.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectNoDiagnostics(res.diagnostics);
@@ -21,13 +21,13 @@ describe('PR263: case-style linting', () => {
   });
 
   it('emits warnings for non-uppercase tokens with --case-style=upper', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr263_case_style_lint.zax');
+    const entry = join(__dirname, 'fixtures', 'pr263_case_style_lint.asm');
     const res = await compile(entry, { caseStyle: 'upper' }, { formats: defaultFormatWriters });
 
     const warnings = res.diagnostics.filter((d) => d.severity === 'warning');
 
     expectNoErrors(res.diagnostics);
-    expect(warnings).toHaveLength(5);
+    expect(warnings).toHaveLength(4);
     expectDiagnostic(res.diagnostics, {
       severity: 'warning',
       messageIncludes: 'mnemonic "ld" should be uppercase',
@@ -38,20 +38,16 @@ describe('PR263: case-style linting', () => {
     });
     expectDiagnostic(res.diagnostics, {
       severity: 'warning',
-      messageIncludes: 'keyword "If" should be uppercase',
-    });
-    expectDiagnostic(res.diagnostics, {
-      severity: 'warning',
       messageIncludes: 'mnemonic "nop" should be uppercase',
     });
     expectDiagnostic(res.diagnostics, {
       severity: 'warning',
-      messageIncludes: 'keyword "End" should be uppercase',
+      messageIncludes: 'mnemonic "ret" should be uppercase',
     });
   });
 
   it('ignores label prefixes and hex immediates when linting registers/mnemonics', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr264_case_style_label_hex_literal.zax');
+    const entry = join(__dirname, 'fixtures', 'pr264_case_style_label_hex_literal.asm');
     const res = await compile(entry, { caseStyle: 'upper' }, { formats: defaultFormatWriters });
 
     const warnings = res.diagnostics.filter((d) => d.severity === 'warning');

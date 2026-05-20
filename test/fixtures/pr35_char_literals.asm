@@ -1,0 +1,3 @@
+main:
+    ld a, 'A'
+    ld b, '\n'

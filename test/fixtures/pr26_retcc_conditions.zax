@@ -1,5 +1,0 @@
-export func main()
-    ret z
-    ret c
-    ret m
-end

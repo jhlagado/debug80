@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 describe('PR35 char literals (invalid)', () => {
   it('diagnoses invalid char literal escape', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr35_char_literals_invalid.zax');
+    const entry = join(__dirname, 'fixtures', 'pr35_char_literals_invalid.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
     expect(res.diagnostics).toHaveLength(1);

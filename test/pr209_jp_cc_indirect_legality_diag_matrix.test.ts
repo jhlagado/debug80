@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const PR209_FIXTURE = join(
   __dirname,
   'fixtures',
-  'pr209_jp_cc_indirect_legality_diag_matrix_invalid.zax',
+  'pr209_jp_cc_indirect_legality_diag_matrix_invalid.asm',
 );
 
 type Row = {
