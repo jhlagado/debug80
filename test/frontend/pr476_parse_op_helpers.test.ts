@@ -21,7 +21,7 @@ function parseSingleFileProgram(path: string, sourceText: string, diagnostics: D
 describe('PR476 op parser extraction', () => {
   it('keeps top-level op parsing intact', () => {
     const sourceText = [
-      'op add(lhs: word, rhs: word)',
+      'op add(lhs word, rhs word)',
       'ld hl, lhs',
       'add hl, rhs',
       'end',
@@ -53,8 +53,8 @@ describe('PR476 op parser extraction', () => {
     }
 
     const parsed = parseTopLevelOpDecl(
-      'add(lhs: word, rhs: word)',
-      'op add(lhs: word, rhs: word)',
+      'add(lhs word, rhs word)',
+      'op add(lhs word, rhs word)',
       span(file, 0, 27),
       1,
       0,
@@ -83,7 +83,7 @@ describe('PR476 op parser extraction', () => {
     const diagnostics: Diagnostic[] = [];
     const program = parseSingleFileProgram(
       'pr476_parse_op_helpers.asm',
-      ['op add(lhs: word, rhs: word)', 'ld hl, lhs', 'add hl, rhs', 'end', ''].join('\n'),
+      ['op add(lhs word, rhs word)', 'ld hl, lhs', 'add hl, rhs', 'end', ''].join('\n'),
       diagnostics,
     );
 

@@ -1,4 +1,4 @@
-op clobber_a_with(src: reg16)
+op clobber_a_with(src reg16)
   ld A, src
 end
 

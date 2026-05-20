@@ -1,4 +1,4 @@
-op load_idx(dst: reg8, src: idx16)
+op load_idx(dst reg8, src idx16)
   ld dst, src
 end
 

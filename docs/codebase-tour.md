@@ -365,7 +365,7 @@ Comments are **not** stripped here; `stripLineComment()` is called on each line 
 
 This file is a single flat module of exported constants — think of it as the grammar's vocabulary:
 
-- `TOP_LEVEL_KEYWORDS` — the `Set` of keywords that can start a retained top-level declaration: `enum`, `type`, `union`, `op`, `align`.
+- `TOP_LEVEL_KEYWORDS` — the `Set` of keywords that can start a retained top-level declaration: `enum`, `.type`, `.union`, and `op`.
 - `REGISTERS_8`, `REGISTERS_16`, `REGISTERS_16_SHADOW` — the Z80 register names (always in upper-case canonical form, e.g. `"HL"`, `"AF'"`).
 - `CONDITION_CODES` — `z`, `nz`, `c`, `nc`, `pe`, `po`, `m`, `p`.
 - `IMM_OPERATOR_PRECEDENCE` — an array of `{ level, ops }` objects that defines the full operator precedence table for immediate expressions, from multiply/divide (level 7) down to bitwise OR (level 2). This drives the Pratt parser in `parseImm.ts`.
@@ -411,7 +411,7 @@ The `nextIndex` field is important: handlers may consume multiple lines (for exa
 
 `parseOp.ts` remains part of AZM because visible `op` expansion is a retained
 feature. The parser uses `parseOpHeader.ts` for op headers and
-`parseOpParamsFromText()` for matcher declarations such as `dst: reg8, src:
+`parseOpParamsFromText()` for matcher declarations such as `dst reg8, src
 reg16`.
 
 The shared header parser handles op metadata:

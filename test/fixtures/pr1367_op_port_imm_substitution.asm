@@ -3,13 +3,13 @@
 PORT_RED .equ $06
 PORT_GREEN .equ $F8
 
-op out_from_hl(p: imm8)
+op out_from_hl(p imm8)
   ld a, (hl)
   out (p), a
   inc hl
 end
 
-op in_to_a(p: imm8)
+op in_to_a(p imm8)
   in a, (p)
 end
 

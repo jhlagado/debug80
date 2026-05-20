@@ -1,8 +1,8 @@
-op add16(dst: HL, src: reg16)
+op add16(dst HL, src reg16)
   nop
 end
 
-op add16(dst: DE, src: reg16)
+op add16(dst DE, src reg16)
   nop
 end
 

@@ -47,7 +47,7 @@ describe('#504 op matching helpers', () => {
       kind: 'selected',
       overload: fixed,
     });
-    expect(helpers.formatOpSignature(fixed)).toBe('my_op(arg: A)');
+    expect(helpers.formatOpSignature(fixed)).toBe('my_op(arg A)');
     expect(helpers.firstOpOverloadMismatchReason(fixed, [reg('B')])).toBe('arg: expects A, got B');
   });
 
@@ -75,7 +75,7 @@ describe('#504 op matching helpers', () => {
     expect(helpers.selectOpOverload([fixed], [reg('B')])).toEqual({
       kind: 'no_match',
       overloads: [fixed],
-      mismatchDetails: ['my_op(arg: A) (test.asm:1) ; arg: expects A, got B'],
+      mismatchDetails: ['my_op(arg A) (test.asm:1) ; arg: expects A, got B'],
     });
   });
 });

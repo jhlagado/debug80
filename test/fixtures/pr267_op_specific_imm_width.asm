@@ -1,8 +1,8 @@
-op loadv(v: imm16)
+op loadv(v imm16)
   ld b, 1
 end
 
-op loadv(v: imm8)
+op loadv(v imm8)
   ld b, 2
 end
 

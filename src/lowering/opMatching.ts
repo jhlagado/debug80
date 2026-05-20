@@ -336,7 +336,7 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
   };
 
   const formatOpSignature = (opDecl: OpDeclNode): string => {
-    const params = opDecl.params.map((p) => `${p.name}: ${formatOpMatcher(p.matcher)}`).join(', ');
+    const params = opDecl.params.map((p) => `${p.name} ${formatOpMatcher(p.matcher)}`).join(', ');
     return `${opDecl.name}(${params})`;
   };
 
