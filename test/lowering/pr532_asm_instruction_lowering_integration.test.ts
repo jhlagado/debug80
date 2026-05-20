@@ -56,7 +56,6 @@ describe('PR532 asm instruction lowering integration', () => {
       diagIfRetStackImbalanced: () => {},
       diagIfCallStackUnverifiable: () => {},
       lowerLdWithEa: () => false,
-      pushEaAddress: () => false,
       emitVirtualReg16Transfer: () => false,
       reg16: new Set(['BC', 'DE', 'HL']),
       syncToFlow: () => {

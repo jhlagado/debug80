@@ -15,7 +15,7 @@ function writeTempAzm(source: string): { entry: string; cleanup: () => void } {
   return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-describe('AZM flat module assembly', () => {
+describe('AZM flat source assembly', () => {
   it('parses labels and instructions at module scope', async () => {
     const { entry, cleanup } = writeTempAzm(
       ['main:', '  xor a', '  ret', ''].join('\n'),
@@ -87,7 +87,7 @@ describe('AZM flat module assembly', () => {
     }
   });
 
-  it('assembles module-scope org and data directives', async () => {
+  it('assembles top-level org and data directives', async () => {
     const { entry, cleanup } = writeTempAzm(
       [
         'type Sprite',

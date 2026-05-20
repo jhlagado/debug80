@@ -93,13 +93,10 @@ export type EmitPhase1WireResult = {
   resolveEa: ReturnType<typeof createEaResolutionHelpers>['resolveEa'];
   selectOpOverload: ReturnType<typeof createOpMatchingHelpers>['selectOpOverload'];
   formatAsmOperandForOpDiag: ReturnType<typeof createOpMatchingHelpers>['formatAsmOperandForOpDiag'];
-  enforceDirectCallSiteEaBudget: ReturnType<typeof createRuntimeAtomBudgetHelpers>['enforceDirectCallSiteEaBudget'];
   enforceEaRuntimeAtomBudget: ReturnType<typeof createRuntimeAtomBudgetHelpers>['enforceEaRuntimeAtomBudget'];
   emitLoadWordFromHlAddress: ReturnType<typeof createValueMaterializationHelpers>['emitLoadWordFromHlAddress'];
   emitStoreSavedHlToEa: ReturnType<typeof createValueMaterializationHelpers>['emitStoreSavedHlToEa'];
   emitStoreWordToHlAddress: ReturnType<typeof createValueMaterializationHelpers>['emitStoreWordToHlAddress'];
-  pushEaAddress: ReturnType<typeof createValueMaterializationHelpers>['pushEaAddress'];
-  pushMemValue: ReturnType<typeof createValueMaterializationHelpers>['pushMemValue'];
   materializeEaAddressToHL: ReturnType<typeof createEaMaterializationHelpers>['materializeEaAddressToHL'];
   lowerLdWithEa: ReturnType<typeof createLdLoweringHelpers>['lowerLdWithEa'];
   resolveAggregateType: ReturnType<typeof createTypeResolutionHelpers>['resolveAggregateType'];
@@ -303,13 +300,11 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     inferMemWidth,
   });
 
-  const { enforceDirectCallSiteEaBudget, enforceEaRuntimeAtomBudget } =
-    createRuntimeAtomBudgetHelpers({
-      diagnostics: ctx.diagnostics,
-      diagAt,
-      resolveScalarBinding,
-      storageTypes: ctx.workspace.storage.storageTypes,
-    });
+  const { enforceEaRuntimeAtomBudget } = createRuntimeAtomBudgetHelpers({
+    diagnostics: ctx.diagnostics,
+    diagAt,
+    resolveScalarBinding,
+  });
 
   const scalarKindOfResolution = (resolved: ReturnType<typeof resolveEa> | undefined) =>
     resolved?.typeExpr ? resolveScalarKind(resolved.typeExpr) : undefined;
@@ -318,36 +313,20 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     emitLoadWordFromHlAddress,
     emitStoreSavedHlToEa,
     emitStoreWordToHlAddress,
-    pushEaAddress,
-    pushMemValue,
   } = createValueMaterializationHelpers({
     diagnostics: ctx.diagnostics,
     diagAt,
-    reg8: REG8_NAMES,
     resolveEa,
-    resolveEaTypeExpr,
-    resolveAggregateType,
-    resolveScalarBinding,
-    resolveScalarKind,
-    sizeOfTypeExpr: (typeExpr) => sizeOfTypeExpr(typeExpr, ctx.env, ctx.diagnostics),
-    evalImmExpr: (expr) => evalImmExpr(expr, ctx.env, ctx.diagnostics),
-    evalImmNoDiag,
     emitInstr,
-    emitRawCodeBytes,
     emitAbs16Fixup,
-    loadImm16ToDE,
-    loadImm16ToHL,
-    negateHL,
-    pushZeroExtendedReg8,
     emitStepPipeline,
   });
 
   const { materializeEaAddressToHL } = createEaMaterializationHelpers({
     resolveEa,
-    pushEaAddress,
-    emitInstr,
     emitAbs16Fixup,
-    loadImm16ToDE,
+    diagnostics: ctx.diagnostics,
+    diagAt,
   });
 
   const { lowerLdWithEa } = createLdLoweringHelpers({
@@ -426,13 +405,10 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     resolveEa,
     selectOpOverload,
     formatAsmOperandForOpDiag,
-    enforceDirectCallSiteEaBudget,
     enforceEaRuntimeAtomBudget,
     emitLoadWordFromHlAddress,
     emitStoreSavedHlToEa,
     emitStoreWordToHlAddress,
-    pushEaAddress,
-    pushMemValue,
     materializeEaAddressToHL,
     lowerLdWithEa,
     resolveAggregateType,

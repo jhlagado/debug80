@@ -432,7 +432,7 @@ export function buildEnv(
   const types = new Map<string, TypeDeclNode | UnionDeclNode>();
 
   if (program.files.length === 0) {
-    diag(diagnostics, program.entryFile, 'No module files to compile.');
+    diag(diagnostics, program.entryFile, 'No source files to compile.');
     return {
       consts,
       enums,

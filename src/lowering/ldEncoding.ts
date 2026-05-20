@@ -72,31 +72,6 @@ export function createLdEncodingHelpers(ctx: LdEncodingContext) {
   const emitLdForm = (form: LdForm): boolean => {
     const { inst, dst, src, dstResolved, srcResolved, dstScalarExact, srcScalarExact, scalarMemToMem } = form;
     const regOperand = (name: string): AsmOperandNode => ({ kind: 'Reg', span: inst.span, name });
-    const pushReg = (name: string): boolean => emitInstr('push', [regOperand(name)], inst.span);
-    const popReg = (name: string): boolean => emitInstr('pop', [regOperand(name)], inst.span);
-    const makeSubForm = (
-      nextDst: AsmOperandNode,
-      nextSrc: AsmOperandNode,
-      overrides?: Partial<LdForm>,
-    ): LdForm => ({
-      ...form,
-      dst: nextDst,
-      src: nextSrc,
-      dstResolved: nextDst.kind === 'Mem' ? dstResolved : undefined,
-      srcResolved: nextSrc.kind === 'Mem' ? srcResolved : undefined,
-      dstScalarExact: nextDst.kind === 'Mem' ? dstScalarExact : undefined,
-      srcScalarExact: nextSrc.kind === 'Mem' ? srcScalarExact : undefined,
-      scalarMemToMem: undefined,
-      srcHasRegisterLikeEaBase: nextSrc.kind === 'Mem' ? form.srcHasRegisterLikeEaBase : false,
-      dstHasRegisterLikeEaBase: nextDst.kind === 'Mem' ? form.dstHasRegisterLikeEaBase : false,
-      srcIsIxIyDispMem: nextSrc.kind === 'Mem' ? form.srcIsIxIyDispMem : false,
-      dstIsIxIyDispMem: nextDst.kind === 'Mem' ? form.dstIsIxIyDispMem : false,
-      srcIsEaNameHL: nextSrc.kind === 'Mem' ? form.srcIsEaNameHL : false,
-      dstIsEaNameHL: nextDst.kind === 'Mem' ? form.dstIsEaNameHL : false,
-      srcIsEaNameBCorDE: nextSrc.kind === 'Mem' ? form.srcIsEaNameBCorDE : false,
-      dstIsEaNameBCorDE: nextDst.kind === 'Mem' ? form.dstIsEaNameBCorDE : false,
-      ...overrides,
-    });
     const regMemHandled = emitLdRegMemForm(form);
     if (regMemHandled !== null) {
       return regMemHandled;

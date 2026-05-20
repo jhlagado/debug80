@@ -34,7 +34,7 @@ export interface CompilerOptions {
   emitAsm80?: boolean;
   /** Optional case-style lint mode for asm keywords/register tokens. */
   caseStyle?: CaseStyleMode;
-  /** Require a callable `main` entry symbol for runnable builds. */
+  /** Require a `main` entry label for runnable builds. */
   requireMain?: boolean;
   /** Default code base address. */
   defaultCodeBase?: number;

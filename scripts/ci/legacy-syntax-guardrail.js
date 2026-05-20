@@ -5,17 +5,17 @@ export const FORBIDDEN_RULES = [
   {
     id: 'bare-data-marker',
     pattern: /^\s*data\s*$/i,
-    message: 'Bare `data` marker lines are forbidden; use direct declarations.',
+    message: 'Bare `data` marker lines are forbidden; use labels plus .db/.dw/.ds.',
   },
   {
     id: 'legacy-globals-block',
     pattern: /^\s*globals\b/i,
-    message: '`globals ... end` is forbidden; use named data sections.',
+    message: '`globals ... end` is forbidden; use labels plus .db/.dw/.ds.',
   },
   {
     id: 'legacy-active-counter-section',
     pattern: /^\s*section\s+(?:code|data|var)(?:\s+at\b|\s*$)/i,
-    message: 'Active-counter section directives are forbidden; use named sections.',
+    message: 'Active-counter section directives are forbidden; use .org, labels, and .db/.dw/.ds.',
   },
   {
     id: 'top-level-const-decl',

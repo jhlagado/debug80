@@ -19,7 +19,7 @@ async function compileSnapshot(
 }
 
 describe('determinism', () => {
-  it('produces identical artifacts across repeated compiles (single module)', async () => {
+  it('produces identical artifacts across repeated compiles (single source file)', async () => {
     const entry = join(__dirname, 'fixtures', 'pr1_minimal.asm');
     const snap0 = await compileSnapshot(entry);
     for (let i = 0; i < 5; i++) {

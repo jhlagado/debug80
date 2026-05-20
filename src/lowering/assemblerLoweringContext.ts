@@ -162,17 +162,8 @@ export type AssemblerLoweringMaterializationContext = {
   readonly resolveEa: (ea: EaExprNode, span: SourceSpan) => EaResolution | undefined;
   /** Set by: emit/context construction. Used by: op call expansion. */
   readonly enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
-  /** Set by: emit/context construction. Used by: op call expansion. */
-  readonly enforceDirectCallSiteEaBudget: (
-    operand: AsmOperandNode,
-    calleeName: string,
-  ) => boolean;
-  /** Set by: emit/context construction. Used by: flow setup, op call expansion, asm instruction lowering. */
-  readonly pushEaAddress: (ea: EaExprNode, span: SourceSpan) => boolean;
   /** Set by: emit/context construction. Used by: asm instruction lowering. */
   readonly materializeEaAddressToHL: (ea: EaExprNode, span: SourceSpan) => boolean;
-  /** Set by: emit/context construction. Used by: flow setup and op expansion. */
-  readonly pushMemValue: (ea: EaExprNode, want: 'byte' | 'word', span: SourceSpan) => boolean;
   /** Set by: emit/context construction. Used by: op call expansion. */
   readonly pushImm16: (value: number, span: SourceSpan) => boolean;
   /** Set by: emit/context construction. Used by: op call expansion. */

@@ -222,7 +222,7 @@ export function preScanProgramDeclarations(ctx: PrescanContext): PrescanResult {
   return runProgramPrescan(ctx);
 }
 
-// --- Phase 2: lower declarations and functions into section bytes ---
+// --- Phase 2: lower source items into byte maps and fixup queues ---
 export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
   return runProgramLoweringTraversal(ctx);
 }

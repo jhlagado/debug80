@@ -17,7 +17,6 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     emitStepPipeline,
     emitStoreSavedHlToEa,
     emitStoreWordToHlAddress,
-    loadImm16ToHL: _loadImm16ToHL,
     materializeEaAddressToHL,
     reg8Code,
     setSpTrackingInvalid,

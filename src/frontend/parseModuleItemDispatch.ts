@@ -105,7 +105,7 @@ export function dispatchModuleItem(
     diag(
       diagnostics,
       filePath,
-      `Raw data directives are only permitted inside data sections.`,
+      `Raw data directives are only supported in .asm source; use labels plus .db/.dw/.ds.`,
       { line: lineNo, column: 1 },
     );
     return { nextIndex: index + 1 };
