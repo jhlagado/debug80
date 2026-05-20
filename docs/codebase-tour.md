@@ -121,9 +121,7 @@ src/
 │   ├── env.ts                 # CompileEnv, buildEnv(), evalImmExpr()
 │   ├── layout.ts              # sizeOfTypeExpr(), offsetOfPathInTypeExpr()
 │   ├── typeQueries.ts         # Type resolution helpers, typeDisplay()
-│   ├── declVisitor.ts         # Declaration tree visitor
-│   ├── instructionAcceptance.ts # Instruction semantic validation
-│   └── stepAcceptance.ts        # step instruction validation
+│   └── declVisitor.ts         # Declaration tree visitor
 │
 ├── lowering/                  # Code generation: AST + env → bytes
 │   │
@@ -573,15 +571,12 @@ Division by zero is caught and reported as a diagnostic.
 
 `offsetOfPathInTypeExpr(typeExpr, path, env)` computes the byte offset of a field path within a record type. This is what `offset(T, field)` and retained layout-cast constants evaluate to at compile time.
 
-### 9.3 Semantic Validation Passes
+### 9.3 Semantic Validation
 
-After building the environment, `compile.ts` runs retained validation passes before lowering:
-
-**Instruction validation** checks accepted Z80/AZM instruction forms before emission.
-
-**`validateStepAcceptance()`** (`semantics/stepAcceptance.ts`) validates every `step` instruction, checking that the target is a valid memory-incrementable variable.
-
-Both passes append errors to `diagnostics` but do not modify the AST. Lowering is only attempted if both pass cleanly.
+After parsing, AZM builds the compile-time environment from labels, constants,
+types, enums, layout declarations, and visible ops. Instruction-form validation
+now lives with parsing and lowering rather than in a separate ZAX-style semantic
+acceptance pass.
 
 ---
 
