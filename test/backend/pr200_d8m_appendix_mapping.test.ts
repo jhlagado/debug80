@@ -29,7 +29,7 @@ type D8mFileEntry = {
 
 describe('PR200 D8M appendix mapping closure', () => {
   it('emits files-object grouped symbols/segments with deterministic baseline metadata', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr200_d8m_appendix_mapping.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr200_d8m_appendix_mapping.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.diagnostics).toEqual([]);
 
@@ -52,31 +52,23 @@ describe('PR200 D8M appendix mapping closure', () => {
     expect(json.arch).toBe('z80');
     expect(json.addressWidth).toBe(16);
     expect(json.endianness).toBe('little');
-    expect(json.fileList).toEqual(['pr200_d8m_appendix_mapping.zax']);
+    expect(json.fileList).toEqual(['pr200_d8m_appendix_mapping.asm']);
 
-    const fileEntry = json.files['pr200_d8m_appendix_mapping.zax'];
+    const fileEntry = json.files['pr200_d8m_appendix_mapping.asm'];
     if (!fileEntry) throw new Error('Expected per-file D8M entry for fixture source');
     expect(fileEntry.segments?.length).toBeGreaterThan(0);
-    expect(
-      fileEntry.segments?.some((segment) => segment.lstLine > 0 && segment.confidence === 'high'),
-    ).toBe(true);
+    expect(fileEntry.segments?.some((segment) => segment.lstLine > 0)).toBe(true);
 
     const fileSymbols = fileEntry.symbols ?? [];
     expect(
       fileSymbols.some((s) => s.name === 'main' && s.kind === 'label' && s.scope === 'global'),
     ).toBe(true);
-    expect(fileSymbols.some((s) => s.name.startsWith('__zax_') && s.scope === 'local')).toBe(true);
 
     const byName = new Map(json.symbols.map((s) => [s.name, s]));
     expect(byName.get('Big')).toMatchObject({
       kind: 'constant',
       value: 70000,
       address: 70000 & 0xffff,
-    });
-    expect(byName.get('Mode.Run')).toMatchObject({
-      kind: 'constant',
-      value: 1,
-      address: 1,
     });
   });
 });

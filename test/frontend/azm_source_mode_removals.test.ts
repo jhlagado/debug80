@@ -15,14 +15,14 @@ function writeTempSource(ext: string, source: string): { entry: string; cleanup:
   return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-describe('AZM source mode ZAX removals', () => {
+describe('AZM source mode removals', () => {
   it('infers .azm as AZM-native source mode', () => {
     expect(inferSourceMode('/tmp/program.azm')).toBe('azm');
     expect(inferSourceMode('/tmp/program.z80')).toBe('asm80');
     expect(inferSourceMode('/tmp/program.zax')).toBeUndefined();
   });
 
-  it('treats ZAX function syntax as unsupported native assembly', async () => {
+  it('treats old function syntax as unsupported native assembly', async () => {
     const { entry, cleanup } = writeTempSource(
       'azm',
       ['func main()', '    ret', 'end', ''].join('\n'),

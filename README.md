@@ -64,7 +64,7 @@ See [docs/tooling-api.md](docs/tooling-api.md) for the current API notes.
 
 ## Verification
 
-Useful lanes while the inherited ZAX code is being retired:
+Useful local verification lanes:
 
 ```sh
 npm run build

@@ -30,7 +30,7 @@ describe('AZM native source boundary', () => {
       message: 'Unsupported instruction: if',
     },
     {
-      name: 'ZAX export modifier',
+      name: 'old export modifier',
       source: ['export VALUE .equ 1', 'main:', '  ret', ''].join('\n'),
       message: 'export is only permitted on type/union/enum/op declarations',
     },

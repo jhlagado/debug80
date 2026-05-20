@@ -21,13 +21,13 @@ type HexMap = Map<number, number>;
  * verification when the probe assemble fails so macOS CI does not flake on the wrong tool.
  */
 function verifyAsm80Cli(executable: string): boolean {
-  const probeDir = mkdtempSync(join(tmpdir(), 'zax-asm80-probe-'));
+  const probeDir = mkdtempSync(join(tmpdir(), 'azm-asm80-probe-'));
   try {
     const probeAsm = join(probeDir, 'probe.z80');
     const probeHex = join(probeDir, 'probe.hex');
     writeFileSync(
       probeAsm,
-      ['org 0', '; two-operand form used in ZAX lowered output', 'sub a, b', ''].join('\n'),
+      ['org 0', '; two-operand form used in AZM lowered output', 'sub a, b', ''].join('\n'),
       'utf8',
     );
     const r = spawnSync(executable, ['-m', 'Z80', '-t', 'hex', '-o', probeHex, probeAsm], {
@@ -119,7 +119,7 @@ describe('ASM80 emitter', () => {
       join(__dirname, '..', 'fixtures', 'pr9_section_code_at.zax'),
       join(__dirname, '..', 'fixtures', 'pr585_named_section_order_root.zax'),
       // Startup init
-      join(__dirname, '..', 'fixtures', 'pr577_startup_init_main.zax'),
+      join(__dirname, '..', 'fixtures', 'pr577_startup_init_main.asm'),
       // Comments present (byte output unchanged)
       join(__dirname, '..', 'fixtures', 'pr991_comment_preservation.zax'),
       // Raw data directives
@@ -145,7 +145,7 @@ describe('ASM80 emitter', () => {
       expect(hex).toBeDefined();
       expect(asm80Artifact).toBeDefined();
 
-      const tempDir = await mkdtemp(join(tmpdir(), 'zax-asm80-'));
+      const tempDir = await mkdtemp(join(tmpdir(), 'azm-asm80-'));
       const asmPath = join(tempDir, 'program.z80');
       const outHex = join(tempDir, 'program.hex');
       await writeFile(asmPath, asm80Artifact!.text, 'utf8');

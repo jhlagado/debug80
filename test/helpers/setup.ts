@@ -5,7 +5,7 @@ import type { DiagnosticExpectation } from './diagnostics/index.js';
 import { makeDiagnosticMatcher } from './diagnostics/index.js';
 
 function isDiagnosticIdString(value: unknown): value is DiagnosticId {
-  return typeof value === 'string' && /^ZAX\d{3}$/.test(value);
+  return typeof value === 'string' && /^AZM\d{3}$/.test(value);
 }
 
 function toHaveDiagnosticArgsToExpectation(args: unknown[]): DiagnosticExpectation {

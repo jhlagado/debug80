@@ -45,9 +45,8 @@ AZM accepts the following source families:
 Native AZM examples should prefer the AZM style in this document. Compatibility
 inputs may retain historical forms where they are part of the accepted baseline.
 
-Some internal package, diagnostic, and fixture names still use ZAX spelling
-during the transition. Treat those names as cleanup debt, not compatibility
-promises.
+Internal package, diagnostic, script, and fixture names should use AZM or
+ASM80 terminology. Remaining ZAX spelling is cleanup debt, not compatibility.
 
 ## Native `.azm` source
 
@@ -64,8 +63,9 @@ named `section` blocks, `:=`, structured control, typed storage, typed externs,
 generated function frames, locals, formal arguments, typed argument
 marshalling, module imports, and runtime typed effective-address lowering.
 
-The default AZM verification lane is `npm run test:azm:alpha`. `.zax` tests are
-a temporary removal lane, not a compatibility promise.
+The default AZM verification lane is `npm run test:azm:alpha`. New retained
+coverage should use `.asm`, `.z80`, or `.azm` source. `.zax` fixtures are
+retired-regression cleanup debt, not a compatibility promise.
 
 ## Canonical native style
 
