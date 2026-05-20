@@ -96,7 +96,7 @@ be promoted yet. It exposes broader gaps and non-standalone source files.
 
 The Software audit adds pressure in these areas beyond MON3 and TEC-1G:
 
-- `.asm` files as classic source inputs, not only `.z80`
+- `.asm` files as ASM source inputs, not only `.z80`
 - sibling relative includes during ASM80 reference comparison
 - source-normalization pressure for byte/word/reserve dialect aliases such as
   `DEFB -> DB`, `DEFW -> DW`, and `RMB -> DS`

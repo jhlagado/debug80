@@ -2,8 +2,8 @@ import type { Diagnostic } from '../../diagnosticTypes.js';
 
 import type {
   AsmLabelNode,
-  ClassicItemNode,
-  ClassicSourceFileNode,
+  AsmSourceItemNode,
+  AsmSourceFileNode,
   SourceFileNode,
 } from '../ast.js';
 import { parseAsmInstruction } from '../parseAsmInstruction.js';
@@ -11,7 +11,7 @@ import { parseDiag } from '../parseDiagnostics.js';
 import { parseImmExprFromText } from '../parseImm.js';
 import { makeSourceFile, type SourceFile, span } from '../source.js';
 import type { DirectiveAliasPolicy } from '../directiveAliases.js';
-import { parseClassicLine } from './classicLine.js';
+import { parseAsmLine } from './asmLine.js';
 
 function rawLineEndOffset(sourceText: string, startOffset: number): number {
   const newline = sourceText.indexOf('\n', startOffset);
@@ -23,7 +23,7 @@ function asmLabelName(rawName: string): string {
   return rawName.startsWith('@') ? rawName.slice(1) : rawName;
 }
 
-export function parseClassicRawValues(
+export function parseAsmRawValues(
   path: string,
   valuesText: string,
   lineSpan: ReturnType<typeof span>,
@@ -44,14 +44,14 @@ export function parseClassicRawValues(
           continue;
         }
       }
-      out.push({ kind: 'ClassicString', value: rawString });
+      out.push({ kind: 'AsmString', value: rawString });
       continue;
     }
     const stringEquate = /^[A-Za-z_][A-Za-z0-9_]*$/.exec(part)
       ? stringEquates.get(part.toLowerCase())
       : undefined;
     if (stringEquate !== undefined) {
-      out.push({ kind: 'ClassicString', value: stringEquate });
+      out.push({ kind: 'AsmString', value: stringEquate });
       continue;
     }
     const expr = parseImmExprFromText(
@@ -161,22 +161,22 @@ function headColumn(raw: string, head: string, label?: string): number {
   return index < 0 ? 1 : index + 1;
 }
 
-export function parseClassicSource(
+export function parseAsmSource(
   path: string,
   sourceText: string,
   _diagnostics: Diagnostic[],
   sourceFile?: SourceFile,
   aliasPolicy?: DirectiveAliasPolicy,
-): ClassicSourceFileNode {
+): AsmSourceFileNode {
   const file = sourceFile ?? makeSourceFile(path, sourceText);
-  const items: ClassicItemNode[] = [];
+  const items: AsmSourceItemNode[] = [];
   let pendingRawLabel: AsmLabelNode | undefined;
   let ended = false;
 
   const lines = sourceText.split(/\r?\n/);
   const stringEquates = new Map<string, string>();
   for (let index = 0; index < lines.length; index++) {
-    const parsed = parseClassicLine(
+    const parsed = parseAsmLine(
       path,
       lines[index]!,
       index + 1,
@@ -196,7 +196,7 @@ export function parseClassicSource(
     const lineStart = file.lineStarts[index] ?? sourceText.length;
     const lineSpan = span(file, lineStart, rawLineEndOffset(sourceText, lineStart));
     const linePath = lineSpan.file;
-    const parsed = parseClassicLine(path, raw, index + 1, lineStart, aliasPolicy);
+    const parsed = parseAsmLine(path, raw, index + 1, lineStart, aliasPolicy);
     if (!parsed) continue;
     if (ended && parsed.kind !== 'binfrom' && parsed.kind !== 'binto') continue;
 
@@ -255,7 +255,7 @@ export function parseClassicSource(
         break;
       case 'equ':
         items.push({
-          kind: 'ClassicEqu',
+          kind: 'AsmEqu',
           span: lineSpan,
           name: asmLabelName(parsed.name),
           exprText: parsed.exprText,
@@ -266,52 +266,52 @@ export function parseClassicSource(
             _diagnostics,
             !stringEquates.has(asmLabelName(parsed.name).toLowerCase()),
           ),
-        } as unknown as ClassicItemNode);
+        } as AsmSourceItemNode);
         pendingRawLabel = undefined;
         break;
       case 'org':
         items.push({
-          kind: 'ClassicOrg',
+          kind: 'AsmOrg',
           span: lineSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(linePath, parsed.exprText, lineSpan, _diagnostics),
-        } as ClassicItemNode);
+        } as AsmSourceItemNode);
         pendingRawLabel = undefined;
         break;
       case 'binfrom':
         items.push({
-          kind: 'ClassicBinFrom',
+          kind: 'AsmBinFrom',
           span: lineSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(linePath, parsed.exprText, lineSpan, _diagnostics),
-        } as ClassicItemNode);
+        } as AsmSourceItemNode);
         pendingRawLabel = undefined;
         break;
       case 'binto':
         items.push({
-          kind: 'ClassicBinTo',
+          kind: 'AsmBinTo',
           span: lineSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(linePath, parsed.exprText, lineSpan, _diagnostics),
-        } as ClassicItemNode);
+        } as AsmSourceItemNode);
         pendingRawLabel = undefined;
         break;
       case 'align': {
         const value = parseImmExprFromText(linePath, parsed.exprText, lineSpan, _diagnostics);
         if (value) {
-          items.push({ kind: 'ClassicAlign', span: lineSpan, value } as unknown as ClassicItemNode);
+          items.push({ kind: 'AsmAlign', span: lineSpan, value } as AsmSourceItemNode);
         }
         pendingRawLabel = undefined;
         break;
       }
       case 'rawData': {
         const name = parsed.label ? asmLabelName(parsed.label) : (pendingRawLabel?.name ?? '');
-        const rawData: ClassicItemNode = {
-          kind: 'ClassicRawData',
+        const rawData: AsmSourceItemNode = {
+          kind: 'AsmRawData',
           span: lineSpan,
           name,
           directive: parsed.directive,
-          values: parseClassicRawValues(
+          values: parseAsmRawValues(
             linePath,
             parsed.valuesText,
             lineSpan,
@@ -319,7 +319,7 @@ export function parseClassicSource(
             stringEquates,
           ),
           valuesText: parsed.valuesText,
-        } as unknown as ClassicItemNode;
+        } as AsmSourceItemNode;
         if (parsed.directive === 'ds') {
           const values = (rawData as unknown as { values?: unknown[] }).values;
           const rawDataWithSize = rawData as unknown as { size?: unknown; fill?: unknown };
@@ -334,24 +334,24 @@ export function parseClassicSource(
         break;
       }
       case 'end':
-        items.push({ kind: 'ClassicEnd', span: lineSpan });
+        items.push({ kind: 'AsmEnd', span: lineSpan });
         ended = true;
         pendingRawLabel = undefined;
         break;
     }
   }
 
-  return { kind: 'ClassicSourceFile', span: span(file, 0, sourceText.length), path, items };
+  return { kind: 'AsmSourceFile', span: span(file, 0, sourceText.length), path, items };
 }
 
-export function parseClassicSourceFile(
+export function parseAsmSourceFile(
   path: string,
   sourceText: string,
   diagnostics: Diagnostic[],
   sourceFile?: SourceFile,
   aliasPolicy?: DirectiveAliasPolicy,
 ): SourceFileNode {
-  const parsed = parseClassicSource(path, sourceText, diagnostics, sourceFile, aliasPolicy);
+  const parsed = parseAsmSource(path, sourceText, diagnostics, sourceFile, aliasPolicy);
   return {
     kind: 'SourceFile',
     span: parsed.span,

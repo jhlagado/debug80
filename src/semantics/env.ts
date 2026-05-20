@@ -206,7 +206,7 @@ function isAsmEquDecl(item: {
   expr?: unknown;
 }): item is AsmEquDecl {
   return (
-    (item.kind === 'ClassicEqu' || item.kind === 'ClassicEquDecl' || item.kind === 'EquDecl') &&
+    (item.kind === 'AsmEqu' || item.kind === 'AsmEquDecl' || item.kind === 'EquDecl') &&
     typeof item.name === 'string' &&
     ((item.value as { kind?: unknown } | undefined)?.kind !== undefined ||
       (item.expr as { kind?: unknown } | undefined)?.kind !== undefined)
@@ -234,9 +234,9 @@ function containsCurrentLocation(expr: ImmExprNode): boolean {
 
 function isAsmDirectiveItem(item: { kind: string }): boolean {
   return (
-    item.kind === 'ClassicOrg' ||
-    item.kind === 'ClassicEqu' ||
-    item.kind === 'ClassicRawData' ||
+    item.kind === 'AsmOrg' ||
+    item.kind === 'AsmEqu' ||
+    item.kind === 'AsmRawData' ||
     item.kind === 'AsmLabel' ||
     item.kind === 'AsmInstruction'
   );
@@ -346,7 +346,7 @@ function asmStringLength(value: unknown, fallback = 0): number {
     value &&
     typeof value === 'object' &&
     'kind' in value &&
-    (value.kind === 'ClassicString' || value.kind === 'StringLiteral' || value.kind === 'RawString')
+    (value.kind === 'AsmString' || value.kind === 'StringLiteral' || value.kind === 'RawString')
   ) {
     const text =
       'value' in value && typeof value.value === 'string'
@@ -367,7 +367,7 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
     for (const item of mf.items) {
       const kind = (item as { kind: string }).kind;
       switch (kind) {
-        case 'ClassicOrg': {
+        case 'AsmOrg': {
           const expr = (item as { value?: ImmExprNode; expr?: ImmExprNode }).value ?? (item as { expr?: ImmExprNode }).expr;
           const value = expr ? evalImmExpr(expr, scratchEnv) : undefined;
           if (value !== undefined) current = value;
@@ -379,7 +379,7 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
           scratchEnv.equates.set(label.name.toLowerCase(), current);
           break;
         }
-        case 'ClassicEqu': {
+        case 'AsmEqu': {
           const equ = item as AsmEquDecl;
           if (env.types.has(equ.name)) break;
           const expr = equ.value ?? equ.expr;
@@ -398,7 +398,7 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
           }
           break;
         }
-        case 'ClassicRawData':
+        case 'AsmRawData':
           {
             const raw = item as { name?: string; directive?: string; values?: unknown[]; size?: ImmExprNode };
             if (raw.name) {

@@ -6,17 +6,17 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { compile } from '../../src/compile.js';
-import { parseClassicLine } from '../../src/frontend/asm80/classicLine.js';
+import { parseAsmLine } from '../../src/frontend/asm80/asmLine.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { Asm80Artifact, BinArtifact, D8mArtifact } from '../../src/formats/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = join(__dirname, '..', '..');
-const classicParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseClassicSource.ts');
-const classicAsm80Available = existsSync(classicParserPath);
-const classicModuleLoweringAvailable = true;
-const describeClassicCompile = classicModuleLoweringAvailable ? describe : describe.skip;
+const asmParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseAsmSource.ts');
+const asm80ParserAvailable = existsSync(asmParserPath);
+const asmSourceLoweringAvailable = true;
+const describeAsmCompile = asmSourceLoweringAvailable ? describe : describe.skip;
 
 function getBinBase(d8m: D8mArtifact): number {
   const segments = d8m.json.segments as Array<{ start: number; end: number }>;
@@ -25,14 +25,14 @@ function getBinBase(d8m: D8mArtifact): number {
 
 describe('ASM80 .align directive recognition', () => {
   it('recognizes .align as an alignment directive line', () => {
-    expect(parseClassicLine('/classic.z80', '.align 4', 1, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', '.align 4', 1, 0)).toEqual({
       kind: 'align',
       exprText: '4',
     });
   });
 });
 
-describeClassicCompile('ASM80 .align directive', () => {
+describeAsmCompile('ASM80 .align directive', () => {
   it('advances the current output address to the next alignment boundary', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-align-'));
     const entry = join(dir, 'align-directive.z80');
@@ -63,8 +63,8 @@ describeClassicCompile('ASM80 .align directive', () => {
   });
 });
 
-if (!classicAsm80Available || !classicModuleLoweringAvailable) {
+if (!asm80ParserAvailable || !asmSourceLoweringAvailable) {
   describe('ASM80 .align directive', () => {
-    it.todo('BLOCKED: enable compile assertion when classic module parsing/lowering emits aligned data');
+    it.todo('BLOCKED: enable compile assertion when ASM source parsing/lowering emits aligned data');
   });
 }

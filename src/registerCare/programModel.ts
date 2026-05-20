@@ -2,7 +2,7 @@ import type {
   AsmBlockNode,
   AsmInstructionNode,
   AsmLabelNode,
-  ClassicItemNode,
+  AsmSourceItemNode,
   SourceItemNode,
   ProgramNode,
   SourceSpan,
@@ -19,7 +19,7 @@ type FlatItem =
   | { kind: 'label'; label: AsmLabelNode }
   | { kind: 'instruction'; instruction: AsmInstructionNode };
 
-type FlattenableItem = SourceItemNode | ClassicItemNode;
+type FlattenableItem = SourceItemNode | AsmSourceItemNode;
 
 function flattenAsmBlock(
   block: AsmBlockNode,

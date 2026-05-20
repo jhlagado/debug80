@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { compile } from '../../src/compile.js';
 import { writeBin } from '../../src/formats/writeBin.js';
-import { parseClassicSourceFile } from '../../src/frontend/asm80/parseClassicSource.js';
+import { parseAsmSourceFile } from '../../src/frontend/asm80/parseAsmSource.js';
 import type { ImmExprNode, ProgramNode, SourceSpan } from '../../src/frontend/ast.js';
 import { emitProgram } from '../../src/lowering/emit.js';
 import { buildEnv } from '../../src/semantics/env.js';
@@ -79,8 +79,8 @@ describe('asm80 directive lowering integration', () => {
 
   it('lowers equ, org, db strings, dw labels, and binfrom into a flat binary', () => {
     const { bytes, diagnostics } = emitBytes([
-      { kind: 'ClassicEqu', span: span(1), name: 'BASE', value: lit(0x0100, 1) },
-      { kind: 'ClassicOrg', span: span(2), value: name('base', 2) },
+      { kind: 'AsmEqu', span: span(1), name: 'BASE', value: lit(0x0100, 1) },
+      { kind: 'AsmOrg', span: span(2), value: name('base', 2) },
       { kind: 'AsmLabel', span: span(3), name: 'start' },
       {
         kind: 'AsmInstruction',
@@ -90,20 +90,20 @@ describe('asm80 directive lowering integration', () => {
       },
       { kind: 'AsmLabel', span: span(5), name: 'msg' },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(6),
         directive: 'db',
-        values: [{ kind: 'ClassicString', value: 'A' }, lit(0, 6)],
+        values: [{ kind: 'AsmString', value: 'A' }, lit(0, 6)],
       },
       { kind: 'AsmLabel', span: span(7), name: 'ptr' },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(8),
         directive: 'dw',
         values: [name('start', 8)],
       },
-      { kind: 'ClassicBinFrom', span: span(9), value: name('BASE', 9) },
-      { kind: 'ClassicEnd', span: span(10) },
+      { kind: 'AsmBinFrom', span: span(9), value: name('BASE', 9) },
+      { kind: 'AsmEnd', span: span(10) },
     ]);
 
     expect(diagnostics).toEqual([]);
@@ -112,21 +112,21 @@ describe('asm80 directive lowering integration', () => {
 
   it('honors post-end binfrom while ignoring ordinary post-end data', () => {
     const { bytes, diagnostics } = emitBytes([
-      { kind: 'ClassicOrg', span: span(1), value: lit(0x0082, 1) },
+      { kind: 'AsmOrg', span: span(1), value: lit(0x0082, 1) },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(2),
         directive: 'db',
         values: [lit(0x7e, 2)],
       },
-      { kind: 'ClassicEnd', span: span(3) },
+      { kind: 'AsmEnd', span: span(3) },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(4),
         directive: 'db',
         values: [lit(0xff, 4)],
       },
-      { kind: 'ClassicBinFrom', span: span(5), value: lit(0x0080, 5) },
+      { kind: 'AsmBinFrom', span: span(5), value: lit(0x0080, 5) },
     ]);
 
     expect(diagnostics).toEqual([]);
@@ -135,16 +135,16 @@ describe('asm80 directive lowering integration', () => {
 
   it('honors post-end binto as an inclusive binary upper bound', () => {
     const { bytes, diagnostics } = emitBytes([
-      { kind: 'ClassicOrg', span: span(1), value: lit(0x4000, 1) },
+      { kind: 'AsmOrg', span: span(1), value: lit(0x4000, 1) },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(2),
         directive: 'db',
         values: [lit(1, 2), lit(2, 2), lit(3, 2), lit(4, 2)],
       },
-      { kind: 'ClassicEnd', span: span(3) },
-      { kind: 'ClassicBinFrom', span: span(4), value: lit(0x4001, 4) },
-      { kind: 'ClassicBinTo', span: span(5), value: lit(0x4002, 5) },
+      { kind: 'AsmEnd', span: span(3) },
+      { kind: 'AsmBinFrom', span: span(4), value: lit(0x4001, 4) },
+      { kind: 'AsmBinTo', span: span(5), value: lit(0x4002, 5) },
     ]);
 
     expect(diagnostics).toEqual([]);
@@ -153,15 +153,15 @@ describe('asm80 directive lowering integration', () => {
 
   it('pads through binto when the upper bound extends past written bytes', () => {
     const { bytes, diagnostics } = emitBytes([
-      { kind: 'ClassicOrg', span: span(1), value: lit(0x4000, 1) },
+      { kind: 'AsmOrg', span: span(1), value: lit(0x4000, 1) },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         span: span(2),
         directive: 'db',
         values: [lit(1, 2)],
       },
-      { kind: 'ClassicBinFrom', span: span(3), value: lit(0x4000, 3) },
-      { kind: 'ClassicBinTo', span: span(4), value: lit(0x4003, 4) },
+      { kind: 'AsmBinFrom', span: span(3), value: lit(0x4000, 3) },
+      { kind: 'AsmBinTo', span: span(4), value: lit(0x4003, 4) },
     ]);
 
     expect(diagnostics).toEqual([]);
@@ -250,7 +250,7 @@ describe('asm80 directive lowering integration', () => {
     expect([...bin.bytes]).toEqual([0xaf, 0x18, 0x00, 0xc9]);
   });
 
-  it('compiles classic dollar-prefixed hex and RST trailing-H operands', async () => {
+  it('compiles ASM dollar-prefixed hex and RST trailing-H operands', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-hex-rst-'));
     const entry = join(dir, 'hex-rst.z80');
     writeFileSync(
@@ -282,7 +282,7 @@ describe('asm80 directive lowering integration', () => {
     expect([...bin.bytes]).toEqual([0x41, 0x00]);
   });
 
-  it('compiles classic IX/IY indexed memory operands', async () => {
+  it('compiles ASM IX/IY indexed memory operands', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ixiy-indexed-'));
     const entry = join(dir, 'ixiy-indexed.z80');
     writeFileSync(
@@ -300,7 +300,7 @@ describe('asm80 directive lowering integration', () => {
     expect([...bin.bytes]).toEqual([0xdd, 0x7e, 0x00, 0xfd, 0x7e, 0x0c]);
   });
 
-  it('compiles classic absolute 16-bit register stores', async () => {
+  it('compiles ASM absolute 16-bit register stores', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ld-mem-reg16-'));
     const entry = join(dir, 'ld-mem-reg16.z80');
     writeFileSync(
@@ -332,7 +332,7 @@ describe('asm80 directive lowering integration', () => {
     ]);
   });
 
-  it('does not include trailing reserve-only classic DS in the loadable binary', async () => {
+  it('does not include trailing reserve-only ASM DS in the loadable binary', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-trailing-ds-'));
     const entry = join(dir, 'trailing-ds.asm');
     writeFileSync(
@@ -350,7 +350,7 @@ describe('asm80 directive lowering integration', () => {
     expect([...bin.bytes]).toEqual([0xaa]);
   });
 
-  it('preserves reserve-only classic DS in emitted asm80', async () => {
+  it('preserves reserve-only ASM DS in emitted asm80', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-reserve-ds-asm80-'));
     const entry = join(dir, 'reserve-ds-asm80.asm');
     writeFileSync(
@@ -371,7 +371,7 @@ describe('asm80 directive lowering integration', () => {
     expect(asm80.text).toContain('DS $02');
   });
 
-  it('compiles classic SRA A', async () => {
+  it('compiles ASM SRA A', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-sra-a-'));
     const entry = join(dir, 'sra-a.z80');
     writeFileSync(entry, ['org 0100H', 'SRA A', 'binfrom 0100H', 'end'].join('\n'), 'utf8');
@@ -385,7 +385,7 @@ describe('asm80 directive lowering integration', () => {
     expect([...bin.bytes]).toEqual([0xcb, 0x2f]);
   });
 
-  it('reports diagnostics from classic ASM80 includes at the included file', async () => {
+  it('reports diagnostics from ASM80 includes at the included file', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-include-diag-'));
     const entry = join(dir, 'entry.z80');
     const child = join(dir, 'child.z80');
@@ -410,7 +410,7 @@ describe('asm80 directive lowering integration', () => {
 
   it('emits parsed db string fragments and string-character expressions', () => {
     const diagnostics: Diagnostic[] = [];
-    const module = parseClassicSourceFile(
+    const module = parseAsmSourceFile(
       file,
       [
         '.org 0100H',

@@ -66,8 +66,8 @@ coverage for these forms:
 - `DS count` and `DS count,fill`
 - `.binto` as an inclusive binary upper-bound directive
 - `0xNN` hexadecimal literals in equates
-- classic files without `.end`
-- classic files without `.org`, which start at address zero under ASM80
+- ASM files without `.end`
+- ASM files without `.org`, which start at address zero under ASM80
 - `SRA A`
 - absolute 16-bit register stores such as `LD (ASCII_STR),HL`
 

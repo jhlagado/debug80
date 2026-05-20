@@ -40,7 +40,7 @@ describe('parseAzmNativeTopLevel', () => {
       nodes: [{ kind: 'AsmLabel', name: 'Table' }],
     });
     expect(parseNativeLine('  db 1,2', ctx, diagnostics)?.nodes).toMatchObject([
-      { kind: 'ClassicRawData', directive: 'db' },
+      { kind: 'AsmRawData', directive: 'db' },
     ]);
     expect(parseNativeLine('main:', ctx, diagnostics)?.nodes).toMatchObject([
       { kind: 'AsmLabel', name: 'main' },

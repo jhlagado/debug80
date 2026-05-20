@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceItemNode, RawDataDeclNode, SourceSpan } from './ast.js';
-import { parseClassicLine } from './asm80/classicLine.js';
-import { parseClassicRawValues } from './asm80/parseClassicSource.js';
+import { parseAsmLine } from './asm80/asmLine.js';
+import { parseAsmRawValues } from './asm80/parseAsmSource.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
 import { parseImmExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
@@ -27,35 +27,35 @@ function normalizeRawDataDirectiveText(text: string): string | undefined {
   return `${match[1]!.toLowerCase()}${match[2]!}`;
 }
 
-function rawDataDeclToClassic(decl: RawDataDeclNode): SourceItemNode {
+function rawDataDeclToAsm(decl: RawDataDeclNode): SourceItemNode {
   if (decl.directive === 'ds') {
     return {
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       span: decl.span,
       name: decl.name,
       directive: 'ds',
       size: decl.size,
       valuesText: '',
-    } as unknown as SourceItemNode;
+    } as SourceItemNode;
   }
   return {
-    kind: 'ClassicRawData',
+    kind: 'AsmRawData',
     span: decl.span,
     name: decl.name,
     directive: decl.directive,
     values: decl.values,
     valuesText: '',
-  } as unknown as SourceItemNode;
+  } as SourceItemNode;
 }
 
-function classicRawDataToNode(
-  parsed: Extract<ReturnType<typeof parseClassicLine>, { kind: 'rawData' }>,
+function asmRawDataToNode(
+  parsed: Extract<ReturnType<typeof parseAsmLine>, { kind: 'rawData' }>,
   stmtSpan: SourceSpan,
   filePath: string,
   diagnostics: Diagnostic[],
   label?: PendingRawLabel,
 ): SourceItemNode {
-  const values = parseClassicRawValues(
+  const values = parseAsmRawValues(
     filePath,
     parsed.valuesText,
     stmtSpan,
@@ -64,7 +64,7 @@ function classicRawDataToNode(
   );
   if (parsed.directive === 'ds') {
     return {
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       span: stmtSpan,
       name: parsed.label ?? label?.name,
       directive: 'ds',
@@ -72,16 +72,16 @@ function classicRawDataToNode(
       size: values[0],
       fill: values[1],
       valuesText: '',
-    } as unknown as SourceItemNode;
+    } as SourceItemNode;
   }
   return {
-    kind: 'ClassicRawData',
+    kind: 'AsmRawData',
     span: stmtSpan,
     name: parsed.label ?? label?.name,
     directive: parsed.directive,
     values,
     valuesText: parsed.valuesText,
-  } as unknown as SourceItemNode;
+  } as SourceItemNode;
 }
 
 /** Parses one source-file line of native AZM flat directives. */
@@ -96,7 +96,7 @@ export function parseAzmFlatDirectiveLine(args: {
 }): SourceItemNode[] | undefined {
   const { rest, stmtSpan, filePath, lineNo, diagnostics, ctx, aliasPolicy } = args;
   const trimmed = rest.trim();
-  const parsedClassic = parseClassicLine(
+  const parsedAsm = parseAsmLine(
     filePath,
     trimmed,
     lineNo,
@@ -105,30 +105,30 @@ export function parseAzmFlatDirectiveLine(args: {
   );
   if (
     !isAzmFlatDirectiveLine(trimmed, ctx.azmPendingRawLabel) &&
-    parsedClassic?.kind !== 'rawData' &&
-    parsedClassic?.kind !== 'equ' &&
-    parsedClassic?.kind !== 'org' &&
-    parsedClassic?.kind !== 'align' &&
-    parsedClassic?.kind !== 'binfrom' &&
-    parsedClassic?.kind !== 'binto' &&
-    parsedClassic?.kind !== 'end' &&
-    parsedClassic?.kind !== 'unsupportedDirective'
+    parsedAsm?.kind !== 'rawData' &&
+    parsedAsm?.kind !== 'equ' &&
+    parsedAsm?.kind !== 'org' &&
+    parsedAsm?.kind !== 'align' &&
+    parsedAsm?.kind !== 'binfrom' &&
+    parsedAsm?.kind !== 'binto' &&
+    parsedAsm?.kind !== 'end' &&
+    parsedAsm?.kind !== 'unsupportedDirective'
   ) {
     return undefined;
   }
 
   if (ctx.azmPendingRawLabel) {
     const pending = ctx.azmPendingRawLabel;
-    if (parsedClassic?.kind === 'rawData') {
+    if (parsedAsm?.kind === 'rawData') {
       delete ctx.azmPendingRawLabel;
-      return [classicRawDataToNode(parsedClassic, stmtSpan, filePath, diagnostics, pending)];
+      return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, pending)];
     }
     const normalizedRaw = normalizeRawDataDirectiveText(trimmed);
     const parsedRaw = normalizedRaw
       ? parseRawDataDirective(pending, normalizedRaw, lineNo, stmtSpan, filePath, diagnostics)
       : undefined;
     delete ctx.azmPendingRawLabel;
-    if (parsedRaw) return [rawDataDeclToClassic(parsedRaw)];
+    if (parsedRaw) return [rawDataDeclToAsm(parsedRaw)];
     diag(diagnostics, filePath, `Raw data label "${pending.name}" is missing a directive`, {
       line: pending.lineNo,
       column: 1,
@@ -152,7 +152,7 @@ export function parseAzmFlatDirectiveLine(args: {
       filePath,
       diagnostics,
     );
-    return parsedRaw ? [rawDataDeclToClassic(parsedRaw)] : [];
+    return parsedRaw ? [rawDataDeclToAsm(parsedRaw)] : [];
   }
 
   const inlineLabelEqu = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\.?equ\b\s*(.+)$/i.exec(trimmed);
@@ -160,7 +160,7 @@ export function parseAzmFlatDirectiveLine(args: {
     const exprText = inlineLabelEqu[2]!.trim();
     return [
       {
-        kind: 'ClassicEqu',
+        kind: 'AsmEqu',
         span: stmtSpan,
         name: inlineLabelEqu[1]!,
         exprText,
@@ -174,7 +174,7 @@ export function parseAzmFlatDirectiveLine(args: {
     const exprText = bareEqu[2]!.trim();
     return [
       {
-        kind: 'ClassicEqu',
+        kind: 'AsmEqu',
         span: stmtSpan,
         name: bareEqu[1]!,
         exprText,
@@ -193,14 +193,14 @@ export function parseAzmFlatDirectiveLine(args: {
   const bareRaw = bareRawText
     ? parseBareRawDataDirective(bareRawText, lineNo, stmtSpan, filePath, diagnostics)
     : undefined;
-  if (bareRaw) return [rawDataDeclToClassic(bareRaw)];
+  if (bareRaw) return [rawDataDeclToAsm(bareRaw)];
 
   const orgMatch = /^\.?org\b\s*(.*)$/i.exec(trimmed);
   if (orgMatch) {
     const exprText = orgMatch[1]!.trim();
     return [
       {
-        kind: 'ClassicOrg',
+        kind: 'AsmOrg',
         span: stmtSpan,
         exprText,
         value: parseImmExprFromText(filePath, exprText, stmtSpan, diagnostics),
@@ -208,17 +208,17 @@ export function parseAzmFlatDirectiveLine(args: {
     ];
   }
 
-  const parsed = parsedClassic;
+  const parsed = parsedAsm;
   if (!parsed) return undefined;
   if (parsed.kind === 'instruction' || parsed.kind === 'label') return undefined;
 
   switch (parsed.kind) {
     case 'rawData':
-      return [classicRawDataToNode(parsed, stmtSpan, filePath, diagnostics)];
+      return [asmRawDataToNode(parsed, stmtSpan, filePath, diagnostics)];
     case 'equ':
       return [
         {
-          kind: 'ClassicEqu',
+          kind: 'AsmEqu',
           span: stmtSpan,
           name: parsed.name,
           exprText: parsed.exprText,
@@ -228,7 +228,7 @@ export function parseAzmFlatDirectiveLine(args: {
     case 'org':
       return [
         {
-          kind: 'ClassicOrg',
+          kind: 'AsmOrg',
           span: stmtSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(filePath, parsed.exprText, stmtSpan, diagnostics),
@@ -237,7 +237,7 @@ export function parseAzmFlatDirectiveLine(args: {
     case 'binfrom':
       return [
         {
-          kind: 'ClassicBinFrom',
+          kind: 'AsmBinFrom',
           span: stmtSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(filePath, parsed.exprText, stmtSpan, diagnostics),
@@ -246,7 +246,7 @@ export function parseAzmFlatDirectiveLine(args: {
     case 'binto':
       return [
         {
-          kind: 'ClassicBinTo',
+          kind: 'AsmBinTo',
           span: stmtSpan,
           exprText: parsed.exprText,
           value: parseImmExprFromText(filePath, parsed.exprText, stmtSpan, diagnostics),
@@ -255,11 +255,11 @@ export function parseAzmFlatDirectiveLine(args: {
     case 'align': {
       const value = parseImmExprFromText(filePath, parsed.exprText, stmtSpan, diagnostics);
       return value
-        ? [{ kind: 'ClassicAlign', span: stmtSpan, value } as unknown as SourceItemNode]
+        ? [{ kind: 'AsmAlign', span: stmtSpan, value } as SourceItemNode]
         : [];
     }
     case 'end':
-      return [{ kind: 'ClassicEnd', span: stmtSpan } as SourceItemNode];
+      return [{ kind: 'AsmEnd', span: stmtSpan } as SourceItemNode];
     case 'unsupportedDirective':
       diag(diagnostics, filePath, `Unsupported ASM80 directive ".${parsed.directive}".`, {
         line: lineNo,

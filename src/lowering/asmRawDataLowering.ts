@@ -33,7 +33,7 @@ function rawStringValue(value: RawValueLike): string | undefined {
   if (typeof value === 'string') return value;
   if (!('kind' in value)) return undefined;
   if (
-    value.kind === 'ClassicString' ||
+    value.kind === 'AsmString' ||
     value.kind === 'StringLiteral' ||
     value.kind === 'RawString'
   ) {

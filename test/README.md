@@ -49,7 +49,7 @@ Representative files:
 - `frontend/azm_native_top_level_parser.test.ts` and
   `frontend/azm_flat_source_asm.test.ts` for native AZM parser boundaries
 - `asm80/asm80_directives_integration.test.ts` and
-  `frontend/asm80_classic_module.test.ts` for ASM80-compatible assembly
+  `frontend/asm80_asm_source.test.ts` for ASM80-compatible assembly
 - `registerCare/opExpansion.integration.test.ts` for op expansion in the
   retained assembler model
 - `examples_compile.test.ts` for checked-in example programs

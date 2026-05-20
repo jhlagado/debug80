@@ -1,7 +1,7 @@
 import type { DirectiveAliasPolicy } from '../directiveAliases.js';
 import { resolveDirectiveAlias } from '../directiveAliases.js';
 
-export type ClassicLine =
+export type AsmLine =
   | { kind: 'label'; name: string }
   | { kind: 'equ'; name: string; exprText: string }
   | { kind: 'org'; exprText: string }
@@ -18,13 +18,13 @@ export type ClassicLine =
     }
   | { kind: 'instruction'; label?: string; head: string; operandText: string };
 
-export function parseClassicLine(
+export function parseAsmLine(
   _filePath: string,
   text: string,
   _lineNo: number,
   _lineStartOffset: number,
   aliasPolicy?: DirectiveAliasPolicy,
-): ClassicLine | undefined {
+): AsmLine | undefined {
   const stripped = stripAsm80Comment(text).trim();
   if (stripped.length === 0) return undefined;
 
@@ -77,7 +77,7 @@ function parseStatement(
   text: string,
   aliasPolicy: DirectiveAliasPolicy | undefined,
   label?: string,
-): ClassicLine | undefined {
+): AsmLine | undefined {
   const maybeDirective = /^([.]?[A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/.exec(text);
   if (maybeDirective) {
     const canonical = resolveDirectiveAlias(maybeDirective[1]!, aliasPolicy);

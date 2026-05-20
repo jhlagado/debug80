@@ -6,32 +6,32 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { compile } from '../../src/compile.js';
-import { parseClassicLine } from '../../src/frontend/asm80/classicLine.js';
+import { parseAsmLine } from '../../src/frontend/asm80/asmLine.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { Asm80Artifact, BinArtifact, D8mArtifact } from '../../src/formats/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = join(__dirname, '..', '..');
-const classicParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseClassicSource.ts');
-const classicAsm80Available = existsSync(classicParserPath);
-const classicModuleLoweringAvailable = true;
-const describeClassicCompile = classicModuleLoweringAvailable ? describe : describe.skip;
+const asmParserPath = join(repoRoot, 'src', 'frontend', 'asm80', 'parseAsmSource.ts');
+const asm80ParserAvailable = existsSync(asmParserPath);
+const asmSourceLoweringAvailable = true;
+const describeAsmCompile = asmSourceLoweringAvailable ? describe : describe.skip;
 
 describe('ASM80 string directive recognition (.cstr/.pstr/.istr)', () => {
-  it('recognizes classic string directives as raw data lines', () => {
-    expect(parseClassicLine('/classic.z80', '.cstr "OK"', 1, 0)).toEqual({
+  it('recognizes ASM string directives as raw data lines', () => {
+    expect(parseAsmLine('/asm.z80', '.cstr "OK"', 1, 0)).toEqual({
       kind: 'rawData',
       directive: 'cstr',
       valuesText: '"OK"',
     });
-    expect(parseClassicLine('/classic.z80', 'pstr_label: .pstr "OK"', 2, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', 'pstr_label: .pstr "OK"', 2, 0)).toEqual({
       kind: 'rawData',
       label: 'pstr_label',
       directive: 'pstr',
       valuesText: '"OK"',
     });
-    expect(parseClassicLine('/classic.z80', 'istr_label: .istr "OK"', 3, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', 'istr_label: .istr "OK"', 3, 0)).toEqual({
       kind: 'rawData',
       label: 'istr_label',
       directive: 'istr',
@@ -40,7 +40,7 @@ describe('ASM80 string directive recognition (.cstr/.pstr/.istr)', () => {
   });
 });
 
-describeClassicCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
+describeAsmCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
   it('emits null-terminated, length-prefixed, and high-bit-terminated strings', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-string-'));
     const entry = join(dir, 'string-directives.z80');
@@ -70,8 +70,8 @@ describeClassicCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
   });
 });
 
-if (!classicAsm80Available || !classicModuleLoweringAvailable) {
+if (!asm80ParserAvailable || !asmSourceLoweringAvailable) {
   describe('ASM80 string directives (.cstr/.pstr/.istr)', () => {
-    it.todo('BLOCKED: enable compile assertion when classic module parsing/lowering emits raw data');
+    it.todo('BLOCKED: enable compile assertion when ASM source parsing/lowering emits raw data');
   });
 }

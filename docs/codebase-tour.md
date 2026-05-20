@@ -488,7 +488,7 @@ ProgramNode
 `SourceItemNode` is a union of all possible top-level declarations:
 
 ```
-ClassicEquNode | EnumDeclNode
+AsmEquNode | EnumDeclNode
 | UnionDeclNode | TypeDeclNode
 | OpDeclNode | AlignDirectiveNode | UnimplementedNode
 ```
@@ -629,7 +629,7 @@ Returns a `PrescanResult` that phase 3 unpacks.
 `lowerProgramDeclarations()` in `programLowering.ts` is the main emission loop. It iterates through every retained source item in flattened include order and dispatches each to an appropriate handler in `programLoweringDeclarations.ts`:
 
 - **`AlignDirectiveNode`** → advances the active section offset to the next alignment boundary.
-- **`ClassicEquNode`** / **`EnumDeclNode`** / **`TypeDeclNode`** → already processed by `buildEnv()`; no code is emitted.
+- **`AsmEquNode`** / **`EnumDeclNode`** / **`TypeDeclNode`** → already processed by `buildEnv()`; no code is emitted.
 
 Returns a `LoweringResult` which is the fully populated byte maps plus all pending fixups and symbols.
 

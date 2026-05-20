@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDirectiveAliasPolicy } from '../../src/frontend/directiveAliases.js';
-import { parseClassicLine } from '../../src/frontend/asm80/classicLine.js';
+import { parseAsmLine } from '../../src/frontend/asm80/asmLine.js';
 
 const azmAliases = buildDirectiveAliasPolicy('azm');
 
-describe('classic ASM80 logical line parser', () => {
+describe('ASM80 logical line parser', () => {
   it('parses labels, directives, raw data, and instructions', () => {
     const lines = [
       'boot:',
@@ -20,7 +20,7 @@ describe('classic ASM80 logical line parser', () => {
       '        .binto 0C010H',
       '        END',
       '        set 4,(hl)',
-    ].map((text, index) => parseClassicLine('/classic.z80', text, index + 1, 0, azmAliases));
+    ].map((text, index) => parseAsmLine('/asm.z80', text, index + 1, 0, azmAliases));
 
     expect(lines).toEqual([
       { kind: 'label', name: 'boot' },
@@ -40,7 +40,7 @@ describe('classic ASM80 logical line parser', () => {
 
   it('parses undotted ASM80 data and placement directives', () => {
     const lines = ['ORG 4000H', 'DB "OK"', 'DW START', 'DS 3', 'BINFROM 4000H', 'BINTO 4004H'].map(
-      (text, index) => parseClassicLine('/classic.z80', text, index + 1, 0, azmAliases),
+      (text, index) => parseAsmLine('/asm.z80', text, index + 1, 0, azmAliases),
     );
 
     expect(lines).toEqual([
@@ -54,7 +54,7 @@ describe('classic ASM80 logical line parser', () => {
   });
 
   it('ignores semicolon comments outside quoted strings', () => {
-    expect(parseClassicLine('/classic.z80', 'msg: .db "A;B",0 ; comment', 1, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', 'msg: .db "A;B",0 ; comment', 1, 0)).toEqual({
       kind: 'rawData',
       label: 'msg',
       directive: 'db',
@@ -63,7 +63,7 @@ describe('classic ASM80 logical line parser', () => {
   });
 
   it('preserves AF prime suffix while stripping trailing comments', () => {
-    expect(parseClassicLine('/classic.z80', "ex af,af'           ;start saving registers", 1, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', "ex af,af'           ;start saving registers", 1, 0)).toEqual({
       kind: 'instruction',
       head: 'ex',
       operandText: "af,af'",
@@ -71,14 +71,14 @@ describe('classic ASM80 logical line parser', () => {
   });
 
   it('parses leading-dot local labels', () => {
-    expect(parseClassicLine('/classic.z80', '.loop:', 1, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', '.loop:', 1, 0)).toEqual({
       kind: 'label',
       name: '.loop',
     });
   });
 
   it('does not accept undotted directives without an alias policy', () => {
-    expect(parseClassicLine('/classic.z80', 'DB 1', 1, 0)).toEqual({
+    expect(parseAsmLine('/asm.z80', 'DB 1', 1, 0)).toEqual({
       kind: 'instruction',
       head: 'db',
       operandText: '1',
@@ -88,7 +88,7 @@ describe('classic ASM80 logical line parser', () => {
   it('normalizes only the directive head and preserves payload text', () => {
     const aliases = buildDirectiveAliasPolicy('azm', [{ directiveAliases: { BYTE: '.db' } }]);
 
-    expect(parseClassicLine('/classic.z80', 'msg: BYTE xor a', 1, 0, aliases)).toEqual({
+    expect(parseAsmLine('/asm.z80', 'msg: BYTE xor a', 1, 0, aliases)).toEqual({
       kind: 'rawData',
       label: 'msg',
       directive: 'db',
