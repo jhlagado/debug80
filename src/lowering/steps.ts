@@ -4,8 +4,7 @@
  * These helpers are pure: they return typed step pipelines.
  * Rendering to pseudo-assembly text is only for tests/document checks.
  *
- * **Navigation:** Section comments below group exports. Family-level map:
- * [`docs/reference/addressing-steps-overview.md`](../../docs/reference/addressing-steps-overview.md).
+ * **Navigation:** Section comments below group exports.
  *
  * | Area | Exports (representative) |
  * |------|-------------------------|
@@ -14,7 +13,7 @@
  * | Base & index | `LOAD_BASE_*`, `LOAD_IDX_*` |
  * | EA combine | `CALC_EA`, `CALC_EA_2`, `CALC_EA_WIDE` |
  * | Byte accessors | `LOAD_REG_EA`, `STORE_REG_EA`, `LOAD_REG_GLOB`, … |
- * | Word accessors | `LOAD_RP_EA`, `STORE_RP_EA`, `LOAD_RP_GLOB`, `LOAD_RP_FVAR`, … |
+ * | Word accessors | `LOAD_RP_EA`, `STORE_RP_EA`, `LOAD_RP_GLOB`, … |
  * | EA builders (byte / word) | `EA_*`, `EAW_*` |
  * | Templates | `TEMPLATE_L_*`, `TEMPLATE_S_*`, `TEMPLATE_LW_*`, `TEMPLATE_SW_*` |
  */
@@ -140,11 +139,6 @@ export const LOAD_BASE_GLOB = (glob: string): StepPipeline => [
   step({ kind: 'ldRpGlob', rp: 'DE', glob }),
 ];
 
-export const LOAD_BASE_FVAR = (disp: number): StepPipeline => [
-  step({ kind: 'ldRegIxDisp', reg: 'e', disp }),
-  step({ kind: 'ldRegIxDisp', reg: 'd', disp: disp + 1 }),
-];
-
 // --- Section: Index loaders (HL = index) ---
 export const LOAD_IDX_CONST = (value: number): StepPipeline => [
   step({ kind: 'ldRpImm', rp: 'HL', value }),
@@ -158,12 +152,6 @@ export const LOAD_IDX_REG = (reg8: StepReg8): StepPipeline => [
 export const LOAD_IDX_RP = (rp: StepReg16): StepPipeline => [step({ kind: 'ldHlRp', rp })];
 
 export const LOAD_IDX_GLOB = (glob: string): StepPipeline => [step({ kind: 'ldHlPtrGlob', glob })];
-
-export const LOAD_IDX_FVAR = (disp: number): StepPipeline => [
-  ...SWAP_HL_DE(),
-  ...LOAD_BASE_FVAR(disp),
-  ...SWAP_HL_DE(),
-];
 
 // --- Section: Combine (HL + DE → EA) ---
 export const CALC_EA = (): StepPipeline => [step({ kind: 'addHlDe' })];
@@ -288,67 +276,18 @@ export const STORE_RP_GLOB = (rp: StepReg16, glob: string): StepPipeline => [
   step({ kind: 'ldPtrGlobRp', glob, rp }),
 ];
 
-export const LOAD_RP_FVAR = (rp: StepReg16, disp: number): StepPipeline => [
-  ...(rp === 'HL'
-    ? [
-        step({ kind: 'exDeHl' }),
-        step({ kind: 'ldRegIxDisp', reg: 'e', disp }),
-        step({ kind: 'ldRegIxDisp', reg: 'd', disp: disp + 1 }),
-        step({ kind: 'exDeHl' }),
-      ]
-    : [
-        step({
-          kind: 'ldRpByteFromIx',
-          part: 'lo',
-          rp,
-          disp,
-        }),
-        step({
-          kind: 'ldRpByteFromIx',
-          part: 'hi',
-          rp,
-          disp: disp + 1,
-        }),
-      ]),
-];
+/** Base side of an EA: global symbol. */
+type EaAddrBase = { kind: 'glob'; glob: string };
 
-export const STORE_RP_FVAR = (rp: StepReg16, disp: number): StepPipeline => [
-  ...(rp === 'HL'
-    ? [
-        step({ kind: 'exDeHl' }),
-        step({ kind: 'ldIxDispReg', disp, reg: 'e' }),
-        step({ kind: 'ldIxDispReg', disp: disp + 1, reg: 'd' }),
-        step({ kind: 'exDeHl' }),
-      ]
-    : [
-        step({
-          kind: 'ldIxDispFromRpByte',
-          disp,
-          part: 'lo',
-          rp,
-        }),
-        step({
-          kind: 'ldIxDispFromRpByte',
-          disp: disp + 1,
-          part: 'hi',
-          rp,
-        }),
-      ]),
-];
-
-/** Base side of an EA: global symbol or IX/IY frame displacement base. */
-type EaAddrBase = { kind: 'glob'; glob: string } | { kind: 'fvar'; fvar: number };
-
-/** Index side of an EA: const, reg8, reg16 pair, frame slot, or global symbol. */
+/** Index side of an EA: const, reg8, reg16 pair, or global symbol. */
 type EaAddrIdx =
   | { kind: 'const'; value: number }
   | { kind: 'reg'; reg8: StepReg8 }
   | { kind: 'rp'; rp: StepReg16 }
-  | { kind: 'fvar'; disp: number }
   | { kind: 'glob'; glob: string };
 
 function loadEaBase(b: EaAddrBase): StepPipeline {
-  return b.kind === 'glob' ? LOAD_BASE_GLOB(b.glob) : LOAD_BASE_FVAR(b.fvar);
+  return LOAD_BASE_GLOB(b.glob);
 }
 
 function loadEaIdx(i: EaAddrIdx): StepPipeline {
@@ -359,8 +298,6 @@ function loadEaIdx(i: EaAddrIdx): StepPipeline {
       return LOAD_IDX_REG(i.reg8);
     case 'rp':
       return LOAD_IDX_RP(i.rp);
-    case 'fvar':
-      return LOAD_IDX_FVAR(i.disp);
     case 'glob':
       return LOAD_IDX_GLOB(i.glob);
   }
@@ -386,26 +323,6 @@ export const EA_GLOB_REG = (glob: string, reg8: StepReg8): StepPipeline =>
 export const EA_GLOB_RP = (glob: string, rp: StepReg16): StepPipeline =>
   eaByteFromParts({ kind: 'glob', glob }, { kind: 'rp', rp });
 
-export const EA_FVAR_CONST = (fvar: number, idxConst: number): StepPipeline => {
-  const folded = foldFvar(fvar, idxConst);
-  return eaByteFromParts({ kind: 'fvar', fvar: folded.base }, { kind: 'const', value: folded.idx });
-};
-
-export const EA_FVAR_REG = (fvar: number, reg8: StepReg8): StepPipeline =>
-  eaByteFromParts({ kind: 'fvar', fvar }, { kind: 'reg', reg8 });
-
-export const EA_FVAR_RP = (fvar: number, rp: StepReg16): StepPipeline =>
-  eaByteFromParts({ kind: 'fvar', fvar }, { kind: 'rp', rp });
-
-export const EA_GLOB_FVAR = (glob: string, fvar: number): StepPipeline =>
-  eaByteFromParts({ kind: 'glob', glob }, { kind: 'fvar', disp: fvar });
-
-export const EA_FVAR_FVAR = (fvarBase: number, fvarIdx: number): StepPipeline =>
-  eaByteFromParts({ kind: 'fvar', fvar: fvarBase }, { kind: 'fvar', disp: fvarIdx });
-
-export const EA_FVAR_GLOB = (fvar: number, glob: string): StepPipeline =>
-  eaByteFromParts({ kind: 'fvar', fvar }, { kind: 'glob', glob });
-
 export const EA_GLOB_GLOB = (globBase: string, globIdx: string): StepPipeline =>
   eaByteFromParts({ kind: 'glob', glob: globBase }, { kind: 'glob', glob: globIdx });
 
@@ -418,26 +335,6 @@ export const EAW_GLOB_REG = (glob: string, reg8: StepReg8, elemSize = 2): StepPi
 
 export const EAW_GLOB_RP = (glob: string, rp: StepReg16, elemSize = 2): StepPipeline =>
   eaWideFromParts({ kind: 'glob', glob }, { kind: 'rp', rp }, elemSize);
-
-export const EAW_FVAR_CONST = (fvar: number, idxConst: number, elemSize = 2): StepPipeline => {
-  const folded = foldFvar(fvar, idxConst * elemSize);
-  return eaWideFromParts({ kind: 'fvar', fvar: folded.base }, { kind: 'const', value: folded.idx }, elemSize);
-};
-
-export const EAW_FVAR_REG = (fvar: number, reg8: StepReg8, elemSize = 2): StepPipeline =>
-  eaWideFromParts({ kind: 'fvar', fvar }, { kind: 'reg', reg8 }, elemSize);
-
-export const EAW_FVAR_RP = (fvar: number, rp: StepReg16, elemSize = 2): StepPipeline =>
-  eaWideFromParts({ kind: 'fvar', fvar }, { kind: 'rp', rp }, elemSize);
-
-export const EAW_GLOB_FVAR = (glob: string, fvar: number, elemSize = 2): StepPipeline =>
-  eaWideFromParts({ kind: 'glob', glob }, { kind: 'fvar', disp: fvar }, elemSize);
-
-export const EAW_FVAR_FVAR = (fvarBase: number, fvarIdx: number, elemSize = 2): StepPipeline =>
-  eaWideFromParts({ kind: 'fvar', fvar: fvarBase }, { kind: 'fvar', disp: fvarIdx }, elemSize);
-
-export const EAW_FVAR_GLOB = (fvar: number, glob: string, elemSize = 2): StepPipeline =>
-  eaWideFromParts({ kind: 'fvar', fvar }, { kind: 'glob', glob }, elemSize);
 
 export const EAW_GLOB_GLOB = (globBase: string, globIdx: string, elemSize = 2): StepPipeline =>
   eaWideFromParts({ kind: 'glob', glob: globBase }, { kind: 'glob', glob: globIdx }, elemSize);
@@ -542,12 +439,4 @@ function formatDisp(disp: number): string {
 function formatImm16(n: number): string {
   const value = ((n & 0xffff) >>> 0).toString(16).toUpperCase().padStart(4, '0');
   return `$${value}`;
-}
-
-function foldFvar(fvar: number, idxConst: number): { base: number; idx: number } {
-  const disp = fvar + idxConst;
-  if (disp >= -128 && disp <= 127) {
-    return { base: disp, idx: 0 };
-  }
-  return { base: fvar, idx: idxConst };
 }

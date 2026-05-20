@@ -2,8 +2,6 @@
 
 This directory holds the small active working set for AZM.
 
-Learning content (course chapters and examples) lives under [`learning/`](../learning/README.md).
-
 ---
 
 ## Active working set
@@ -24,7 +22,6 @@ Current user- and contributor-facing references.
 - [`docs/reference/testing-verification-guide.md`](reference/testing-verification-guide.md) — testing and verification flow
 - [`docs/reference/source-overview.md`](reference/source-overview.md) — compiler source structure
 - [`docs/reference/code-quality-standard.md`](reference/code-quality-standard.md) — code organization, cleanup, and tooling standard
-- [`docs/reference/addressing-steps-overview.md`](reference/addressing-steps-overview.md) — map of `lowering/steps.ts` template and EA-builder families
 
 These do not override the spec.
 

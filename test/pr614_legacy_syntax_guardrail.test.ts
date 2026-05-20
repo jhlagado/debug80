@@ -40,7 +40,7 @@ describe('PR614 legacy syntax guardrail', () => {
     const md = join(dir, 'legacy-example.md');
     await writeFile(
       md,
-      ['# Notes', '', '```azm', 'section code at $0100', 'func main()', '  ret', 'end', '```', ''].join('\n'),
+      ['# Notes', '', '```asm', 'section code at $0100', 'func main()', '  ret', 'end', '```', ''].join('\n'),
       'utf8',
     );
 
@@ -56,7 +56,7 @@ describe('PR614 legacy syntax guardrail', () => {
     const md = join(dir, 'const-example.md');
     await writeFile(
       md,
-      ['# Notes', '', '```azm', 'const VALUE = 1', 'main:', '  ret', '```', ''].join('\n'),
+      ['# Notes', '', '```asm', 'const VALUE = 1', 'main:', '  ret', '```', ''].join('\n'),
       'utf8',
     );
 

@@ -103,7 +103,7 @@ describe('PR472: source file size guard', () => {
   });
 
   it('enforce mode fails when an allowlisted hard-cap file grows past its ceiling', async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), 'zax-size-guard-'));
+    const tempRoot = await mkdtemp(join(tmpdir(), 'azm-size-guard-'));
     const fixtureRoot = join(tempRoot, 'workspace');
     const fixtureSrc = join(fixtureRoot, 'src');
     const oversizedFile = join(fixtureSrc, 'oversized.ts');

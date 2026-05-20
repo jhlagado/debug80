@@ -16,7 +16,7 @@ describe('cli path parity contract', () => {
   }, 180_000);
 
   it('emits byte-identical artifacts for relative and absolute entry/output path forms', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-path-parity-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-path-parity-'));
     const sub = join(work, 'sub');
     await mkdir(sub, { recursive: true });
 

@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { AsmOperandNode, EaExprNode, ImmExprNode, SourceSpan, TypeExprNode } from '../frontend/ast.js';
 import type { EaResolution } from './eaResolution.js';
-import type { StepPipeline, StepReg16, StepReg8 } from './steps.js';
+import type { StepPipeline } from './steps.js';
 
 export type DiagAt = (diagnostics: Diagnostic[], span: SourceSpan, message: string) => void;
 
@@ -56,20 +56,4 @@ export type ValueMaterializationContext = {
   pushZeroExtendedReg8: (reg: string, span: SourceSpan) => boolean;
   /** Emits a step pipeline. */
   emitStepPipeline: (pipeline: StepPipeline, span: SourceSpan) => boolean;
-  /** Builds byte-oriented EA pipeline; `null` if unsupported. */
-  buildEaBytePipeline: (ea: EaExprNode, span: SourceSpan) => StepPipeline | null;
-  /** Builds word-oriented EA pipeline; `null` if unsupported. */
-  buildEaWordPipeline: (ea: EaExprNode, span: SourceSpan) => StepPipeline | null;
-  /** Scalar word load helper. */
-  emitScalarWordLoad: (target: 'HL' | 'DE' | 'BC', resolved: EaResolution | undefined, span: SourceSpan) => boolean;
-  /** Formats IX/IY displacement for asm text. */
-  formatIxDisp: (disp: number) => string;
-  /** Template: load byte ABC form. */
-  TEMPLATE_L_ABC: (dest: StepReg8, ea: StepPipeline) => StepPipeline;
-  /** Template: load word via DE. */
-  TEMPLATE_LW_DE: (ea: StepPipeline) => StepPipeline;
-  /** Template: load register pair from EA pipeline. */
-  LOAD_RP_EA: (rp: StepReg16) => StepPipeline;
-  /** Template: store register pair to EA pipeline. */
-  STORE_RP_EA: (rp: StepReg16) => StepPipeline;
 };

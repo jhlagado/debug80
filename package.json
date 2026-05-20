@@ -77,7 +77,6 @@
     "format:check": "prettier -c .",
     "check:source-file-sizes": "node scripts/check-source-file-sizes.mjs",
     "check:source-file-sizes:enforce": "node scripts/check-source-file-sizes.mjs --enforce-hard-cap",
-    "book": "bash scripts/build-book.sh",
     "prepublishOnly": "npm run build",
     "azm": "npm run build && node dist/src/cli.js"
   },

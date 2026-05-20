@@ -161,8 +161,6 @@ export type AssemblerLoweringMaterializationContext = {
   /** Set by: emit/context construction. Used by: asm instruction lowering. */
   readonly resolveEa: (ea: EaExprNode, span: SourceSpan) => EaResolution | undefined;
   /** Set by: emit/context construction. Used by: op call expansion. */
-  readonly buildEaWordPipeline: (ea: EaExprNode, span: SourceSpan) => StepPipeline | null;
-  /** Set by: emit/context construction. Used by: op call expansion. */
   readonly enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
   /** Set by: emit/context construction. Used by: op call expansion. */
   readonly enforceDirectCallSiteEaBudget: (
@@ -183,18 +181,6 @@ export type AssemblerLoweringMaterializationContext = {
   readonly loadImm16ToHL: (value: number, span: SourceSpan) => boolean;
   /** Set by: emit/context construction. Used by: op call expansion. */
   readonly emitStepPipeline: (pipe: StepPipeline, span: SourceSpan) => boolean;
-  /** Set by: emit/context construction. Used by: asm instruction lowering. */
-  readonly emitScalarWordLoad: (
-    target: 'HL' | 'DE' | 'BC',
-    resolved: EaResolution | undefined,
-    span: SourceSpan,
-  ) => boolean;
-  /** Set by: emit/context construction. Used by: asm instruction lowering. */
-  readonly emitScalarWordStore: (
-    source: 'HL' | 'DE' | 'BC',
-    resolved: EaResolution | undefined,
-    span: SourceSpan,
-  ) => boolean;
   /** Set by: emit/context construction. Used by: asm instruction lowering. */
   readonly lowerLdWithEa: (asmItem: AsmInstructionNode) => boolean;
 };

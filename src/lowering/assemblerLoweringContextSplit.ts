@@ -62,7 +62,6 @@ export function splitAssemblerLoweringSharedContext(
     },
     materialization: {
       resolveEa: shared.resolveEa,
-      buildEaWordPipeline: shared.buildEaWordPipeline,
       enforceEaRuntimeAtomBudget: shared.enforceEaRuntimeAtomBudget,
       enforceDirectCallSiteEaBudget: shared.enforceDirectCallSiteEaBudget,
       pushEaAddress: shared.pushEaAddress,
@@ -72,8 +71,6 @@ export function splitAssemblerLoweringSharedContext(
       pushZeroExtendedReg8: shared.pushZeroExtendedReg8,
       loadImm16ToHL: shared.loadImm16ToHL,
       emitStepPipeline: shared.emitStepPipeline,
-      emitScalarWordLoad: shared.emitScalarWordLoad,
-      emitScalarWordStore: shared.emitScalarWordStore,
       lowerLdWithEa: shared.lowerLdWithEa,
     },
     storage: {

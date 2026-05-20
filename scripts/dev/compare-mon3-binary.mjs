@@ -108,7 +108,7 @@ function copyAsm80SourceTree(source, outDir) {
 }
 
 function buildAsm80Reference(source, asm80) {
-  const outDir = mkdtempSync(join(tmpdir(), 'zax-mon3-asm80-reference-'));
+  const outDir = mkdtempSync(join(tmpdir(), 'azm-mon3-asm80-reference-'));
   const outName = 'mon3-reference.bin';
   const outBin = join(outDir, outName);
   try {

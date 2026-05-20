@@ -10,7 +10,7 @@ describe('PR249 CLI build infrastructure checks', () => {
   const { latestInputMtimeMsForRoots } = __cliBuildInternals;
 
   it('scans roots and returns the latest mtime for inputs', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'zax-cli-build-'));
+    const root = await mkdtemp(join(tmpdir(), 'azm-cli-build-'));
     const older = join(root, 'older.txt');
     const newer = join(root, 'newer.txt');
 

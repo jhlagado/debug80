@@ -8,34 +8,16 @@ import {
 } from '../semantics/layoutCastFold.js';
 
 export type EaResolution =
-  | {
-      /** Resolved global/absolute label or numeric base. */
-      kind: 'abs';
-      /** Lowercased symbol name or stringified numeric base for fixups. */
-      baseLower: string;
-      /** Byte offset added to the base symbol. */
-      addend: number;
-      /** Optional inferred type at this address; omit when unknown. */
-      typeExpr?: TypeExprNode;
-    }
-  | {
-      /** IX/IY-relative stack or direct stack slot. */
-      kind: 'stack';
-      /** Displacement in bytes from the frame base register. */
-      ixDisp: number;
-      /** Optional slot/aggregate type when known. */
-      typeExpr?: TypeExprNode;
-    }
-  | {
-      /** Stack slot holds an address; access is indirect with offset. */
-      kind: 'indirect';
-      /** Frame displacement of the pointer slot. */
-      ixDisp: number;
-      /** Byte offset applied after loading the pointer. */
-      addend: number;
-      /** Optional pointee type when known. */
-      typeExpr?: TypeExprNode;
-    };
+  {
+    /** Resolved global/absolute label or numeric base. */
+    kind: 'abs';
+    /** Lowercased symbol name or stringified numeric base for fixups. */
+    baseLower: string;
+    /** Byte offset added to the base symbol. */
+    addend: number;
+    /** Optional inferred type at this address; omit when unknown. */
+    typeExpr?: TypeExprNode;
+  };
 
 /** Maps, env, and type hooks used by {@link createEaResolutionHelpers} — not the full assembler-lowering context. */
 export type EAResolutionContext = {
@@ -208,7 +190,6 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
           if (v === undefined) return undefined;
           const delta = expr.kind === 'EaAdd' ? v : -v;
           if (base.kind === 'abs') return { ...base, addend: base.addend + delta };
-          if (base.kind === 'indirect') return { ...base, addend: base.addend + delta };
           return undefined;
         }
         case 'EaField': {
@@ -236,14 +217,6 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
                 return {
                   kind: 'abs',
                   baseLower: base.baseLower,
-                  addend: base.addend + off,
-                  typeExpr: f.typeExpr,
-                };
-              }
-              if (base.kind === 'indirect') {
-                return {
-                  kind: 'indirect',
-                  ixDisp: base.ixDisp,
                   addend: base.addend + off,
                   typeExpr: f.typeExpr,
                 };
@@ -282,14 +255,6 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
               return {
                 kind: 'abs',
                 baseLower: base.baseLower,
-                addend: base.addend + delta,
-                typeExpr: base.typeExpr.element,
-              };
-            }
-            if (base.kind === 'indirect') {
-              return {
-                kind: 'indirect',
-                ixDisp: base.ixDisp,
                 addend: base.addend + delta,
                 typeExpr: base.typeExpr.element,
               };

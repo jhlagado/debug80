@@ -57,7 +57,6 @@ export function buildEmitProgramLoweringContext(
     sameTypeShape,
     resolveEa,
     resolveAggregateType,
-    buildEaWordPipeline,
     enforceEaRuntimeAtomBudget,
     enforceDirectCallSiteEaBudget,
     pushEaAddress,
@@ -67,8 +66,6 @@ export function buildEmitProgramLoweringContext(
     pushZeroExtendedReg8,
     loadImm16ToHL,
     emitStepPipeline,
-    emitScalarWordLoad,
-    emitScalarWordStore,
     lowerLdWithEa,
     selectOpOverload,
     formatAsmOperandForOpDiag,
@@ -153,7 +150,6 @@ export function buildEmitProgramLoweringContext(
     },
     materialization: {
       resolveEa,
-      buildEaWordPipeline,
       enforceEaRuntimeAtomBudget,
       enforceDirectCallSiteEaBudget,
       pushEaAddress,
@@ -163,8 +159,6 @@ export function buildEmitProgramLoweringContext(
       pushZeroExtendedReg8,
       loadImm16ToHL,
       emitStepPipeline,
-      emitScalarWordLoad,
-      emitScalarWordStore,
       lowerLdWithEa,
     },
     storage: {

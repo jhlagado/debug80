@@ -177,7 +177,6 @@ src/
 │   ├── capabilities.ts        # Capability checking
 │   ├── inputAssets.ts         # bin/hex asset loading
 │   ├── sectionLayout.ts       # Section layout management
-│   ├── scalarWordAccessors.ts # Scalar word accessor helpers
 │   └── traceFormat.ts         # Debug trace formatting
 │
 ├── z80/                       # Z80 instruction encoding
