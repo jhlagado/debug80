@@ -1,9 +1,8 @@
-import { computeWrittenRange, rebaseCodeSourceSegments, writeSection } from './sectionLayout.js';
+import { alignTo, computeWrittenRange, rebaseCodeSourceSegments, writeBytePlacement } from './bytePlacement.js';
 import type { EmitProgramOptions, EmitFinalizationPhaseEnv } from './emitPipeline.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { CompileEnv } from '../semantics/env.js';
 import { evalImmExpr } from '../semantics/env.js';
-import { alignTo } from './sectionLayout.js';
 import { diag, diagAt } from './loweringDiagnostics.js';
 import type { EmitPhase1Workspace } from './emitPhase1Workspace.js';
 import type { EmitPhase1Helpers } from './emitPhase1Helpers.js';
@@ -36,7 +35,7 @@ export function buildEmitFinalizationPhaseEnv(ctx: EmitFinalizationSetupContext)
     bytes: ctx.workspace.emission.bytes,
     codeSourceSegments: ctx.workspace.emission.codeSourceSegments,
     alignTo,
-    writeSection,
+    writeBytePlacement,
     computeWrittenRange,
     rebaseCodeSourceSegments,
     ...(ctx.options?.defaultCodeBase !== undefined

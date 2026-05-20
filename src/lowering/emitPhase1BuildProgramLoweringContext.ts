@@ -15,7 +15,7 @@ import {
   warnAt,
 } from './loweringDiagnostics.js';
 import { createEmitProgramContext } from './emitProgramContext.js';
-import { alignTo } from './sectionLayout.js';
+import { alignTo } from './bytePlacement.js';
 import type { EmitPhase1HelpersContext } from './emitPhase1Types.js';
 import type { EmitPhase1WireResult } from './emitPhase1WirePipeline.js';
 

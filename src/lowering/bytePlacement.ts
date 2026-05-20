@@ -6,13 +6,13 @@ export function alignTo(n: number, alignment: number): number {
   return alignment <= 0 ? n : Math.ceil(n / alignment) * alignment;
 }
 
-export function writeSection(
+export function writeBytePlacement(
   base: number,
-  section: Map<number, number>,
+  byteOffsets: Map<number, number>,
   bytes: Map<number, number>,
   report: LayoutDiag,
 ): void {
-  for (const [offset, value] of section) {
+  for (const [offset, value] of byteOffsets) {
     const addr = base + offset;
     if (addr < 0 || addr > 0xffff) {
       report(`Emitted byte address out of range: ${addr}.`);
@@ -54,4 +54,3 @@ export function rebaseCodeSourceSegments(
       (segment) => segment.start >= 0 && segment.end <= 0x10000 && segment.end > segment.start,
     );
 }
-

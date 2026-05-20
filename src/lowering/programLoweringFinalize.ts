@@ -129,12 +129,12 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   }
 
   if (codeOk) {
-    ctx.writeSection(codeBase, ctx.codeBytes, ctx.bytes, (message) =>
+    ctx.writeBytePlacement(codeBase, ctx.codeBytes, ctx.bytes, (message) =>
       ctx.diag(ctx.diagnostics, ctx.primaryFile, message),
     );
   }
   if (dataOk) {
-    ctx.writeSection(dataBase, ctx.dataBytes, ctx.bytes, (message) =>
+    ctx.writeBytePlacement(dataBase, ctx.dataBytes, ctx.bytes, (message) =>
       ctx.diag(ctx.diagnostics, ctx.primaryFile, message),
     );
   }

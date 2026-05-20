@@ -55,7 +55,7 @@ Lowering turns parsed source and semantic state into:
 
 - `emitFinalization.ts`
 - `programLoweringFinalize.ts`
-- `sectionLayout.ts`
+- `bytePlacement.ts`
 - `loweredAsmPlacement.ts`, `loweredAsmByteEmission.ts`
 
 ## Read order by task

@@ -21,7 +21,7 @@ import { createAsmUtilityHelpers, flattenEaDottedName } from './asmUtils.js';
 import { formatImmExprForAsm } from './traceFormat.js';
 import { createTypeResolutionHelpers } from '../semantics/typeQueries.js';
 import { createEmitStateHelpers } from './emitState.js';
-import { alignTo } from './sectionLayout.js';
+import { alignTo } from './bytePlacement.js';
 import { diagAt } from './loweringDiagnostics.js';
 import type { EmitPhase1HelpersContext } from './emitPhase1Types.js';
 

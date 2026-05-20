@@ -5,10 +5,10 @@ import {
   alignTo,
   computeWrittenRange,
   rebaseCodeSourceSegments,
-  writeSection,
-} from '../src/lowering/sectionLayout.js';
+  writeBytePlacement,
+} from '../src/lowering/bytePlacement.js';
 
-describe('PR474: section layout helpers', () => {
+describe('PR474: byte placement helpers', () => {
   it('aligns offsets and computes written ranges deterministically', () => {
     expect(alignTo(3, 2)).toBe(4);
     expect(alignTo(4, 2)).toBe(4);
@@ -22,11 +22,11 @@ describe('PR474: section layout helpers', () => {
     expect(computeWrittenRange(new Map())).toEqual({ start: 0, end: 0 });
   });
 
-  it('writes sections with overlap and range diagnostics', () => {
+  it('writes byte ranges with overlap and range diagnostics', () => {
     const bytes = new Map<number, number>([[0x20, 0xff]]);
     const diagnostics: string[] = [];
 
-    writeSection(
+    writeBytePlacement(
       0x20,
       new Map<number, number>([
         [0, 0xaa],
