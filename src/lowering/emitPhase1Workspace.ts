@@ -47,7 +47,7 @@ type EmitPhase1SymbolState = {
   symbols: SymbolEntry[];
   /** Pending forward references not yet bound. */
   pending: PendingSymbol[];
-  /** Lowercased names already claimed (labels, locals). */
+  /** Lowercased names already claimed by labels or generated/internal symbols. */
   taken: Set<string>;
   /** Absolute 16-bit fixups pending placement (offset in output, symbol, addend). */
   fixups: EmitPhase1AbsFixup[];

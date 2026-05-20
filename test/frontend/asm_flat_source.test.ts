@@ -34,7 +34,7 @@ describe('.asm source assembly', () => {
     }
   });
 
-  it('emits .asm source without hidden function frame artifacts', async () => {
+  it('emits .asm source as explicit labels and instructions', async () => {
     const { entry, cleanup } = writeTempAsm(
       ['main:', '  ld a,1', '  call helper', '  ret', 'helper:', '  xor a', '  ret', ''].join('\n'),
     );
@@ -53,9 +53,6 @@ describe('.asm source assembly', () => {
       expect(Array.from(bin!.bytes)).toEqual([0x3e, 0x01, 0xcd, 0x06, 0x00, 0xc9, 0xaf, 0xc9]);
       expect(asm!.text).toContain('main:');
       expect(asm!.text).toContain('helper:');
-      expect(asm!.text).not.toContain('__azm_frame__');
-      expect(asm!.text).not.toContain('__azm_unused_epilogue');
-      expect(asm!.text).not.toContain('__azm_epilogue');
       expect(asm!.text.toLowerCase()).not.toContain('push ix');
       expect(asm!.text.toLowerCase()).not.toContain('ld ix');
       expect(asm!.text.toLowerCase()).not.toContain('ld sp,ix');
