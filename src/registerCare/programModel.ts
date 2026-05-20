@@ -2,7 +2,6 @@ import type {
   AsmBlockNode,
   AsmInstructionNode,
   AsmLabelNode,
-  AsmSourceItemNode,
   SourceItemNode,
   ProgramNode,
   SourceSpan,
@@ -18,8 +17,6 @@ import type {
 type FlatItem =
   | { kind: 'label'; label: AsmLabelNode }
   | { kind: 'instruction'; instruction: AsmInstructionNode };
-
-type FlattenableItem = SourceItemNode | AsmSourceItemNode;
 
 function flattenAsmBlock(
   block: AsmBlockNode,
@@ -38,7 +35,7 @@ function flattenAsmBlock(
 }
 
 function flattenItems(
-  items: FlattenableItem[],
+  items: SourceItemNode[],
   out: FlatItem[],
   expandInstruction: (inst: AsmInstructionNode) => FlatItem[],
 ): void {
@@ -117,7 +114,7 @@ export function buildRegisterCareProgramModel(program: ProgramNode): RegisterCar
   const flat: FlatItem[] = [];
   const { expandInstruction } = createVisibleOpInstructionStreamExpander(program);
   for (const file of program.files) {
-    flattenItems(file.items as FlattenableItem[], flat, expandInstruction);
+    flattenItems(file.items, flat, expandInstruction);
   }
   const labelItems = flat.filter(
     (item): item is Extract<FlatItem, { kind: 'label' }> => item.kind === 'label',
