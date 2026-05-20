@@ -9,19 +9,13 @@ import { expectDiagnostic, expectNoDiagnostic } from '../helpers/diagnostics.js'
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-describe('PR186 parser: parameter list delimiter diagnostics matrix', () => {
-  it('emits explicit diagnostics for trailing/empty func/op/extern parameter entries', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr186_param_list_delimiter_matrix.zax');
+describe('PR186 parser: op parameter list delimiter diagnostics matrix', () => {
+  it('emits explicit diagnostics for trailing/empty op parameter entries', async () => {
+    const entry = join(__dirname, '..', 'fixtures', 'pr186_op_param_list_delimiter_matrix.azm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, {
-      message: 'Invalid parameter list: trailing or empty entries are not permitted.',
-    });
-    expectDiagnostic(res.diagnostics, {
       message: 'Invalid op parameter list: trailing or empty entries are not permitted.',
-    });
-    expectNoDiagnostic(res.diagnostics, {
-      messageIncludes: 'Invalid parameter declaration: expected <name>: <type>',
     });
     expectNoDiagnostic(res.diagnostics, {
       messageIncludes: 'Invalid op parameter declaration: expected <name>: <matcher>',

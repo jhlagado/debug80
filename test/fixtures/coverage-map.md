@@ -11,10 +11,10 @@
 
 **Include/import graph cycles detected** (see section below).
 
-Total fixture files (excludes sentinels): 520
+Total fixture files (excludes sentinels): 499
 Sentinel files: 1
-Reachable from tests (direct refs ∪ fixture closure): 178
-Potentially unreferenced fixtures: 342
+Reachable from tests (direct refs ∪ fixture closure): 144
+Potentially unreferenced fixtures: 355
 
 ## Direct test reference counts
 
@@ -33,19 +33,10 @@ Potentially unreferenced fixtures: 342
 | isa_indexed_rotates.zax | 0 |
 | issue1356_named_section_ld_bc_de_indirect.zax | 1 |
 | issue1356_named_section_ld_hl_indirect.zax | 1 |
-| parser_case_invalid_value_comma.zax | 1 |
-| parser_case_invalid_value_list.zax | 1 |
-| parser_case_missing_value.zax | 1 |
 | parser_if_duplicate_else.zax | 0 |
-| parser_if_invalid_cc.zax | 1 |
 | parser_if_missing_cc.zax | 0 |
 | parser_select_invalid_selector.zax | 0 |
-| parser_select_missing_selector.zax | 1 |
-| parser_select_no_arms.zax | 1 |
 | parser_unterminated_if_eof.zax | 0 |
-| parser_until_invalid_cc.zax | 1 |
-| parser_until_missing_cc.zax | 1 |
-| parser_while_invalid_cc.zax | 1 |
 | parser_while_missing_cc.zax | 0 |
 | pr1_minimal.zax | 1 |
 | pr10_cycle_a.zax | 0 |
@@ -154,7 +145,7 @@ Potentially unreferenced fixtures: 342
 | pr148_known_heads_no_fallback_matrix.zax | 1 |
 | pr149_condition_diag_matrix_invalid.zax | 1 |
 | pr149_select_mem_selector_eval_once.zax | 0 |
-| pr15_if_else.zax | 2 |
+| pr15_if_else.zax | 1 |
 | pr15_if_stack_mismatch.zax | 0 |
 | pr15_nested_select_if_while.zax | 0 |
 | pr15_nested_while_if.zax | 0 |
@@ -165,14 +156,13 @@ Potentially unreferenced fixtures: 342
 | pr15_select_single_case.zax | 0 |
 | pr15_until_without_repeat.zax | 0 |
 | pr15_while_stack_mismatch.zax | 0 |
-| pr15_while.zax | 1 |
+| pr15_while.zax | 0 |
 | pr150_ed_cb_diag_hardening_matrix.zax | 1 |
 | pr150_select_reg8_all_unreachable_else_fastpath.zax | 0 |
 | pr150_select_reg8_compare_optimized.zax | 0 |
 | pr150_select_reg8_unreachable_cases_skipped.zax | 0 |
 | pr151_zero_operand_head_diag_matrix.zax | 1 |
 | pr152_indexed_paren_syntax_matrix.zax | 0 |
-| pr153_parser_control_keyword_malformed_matrix.zax | 1 |
 | pr154_parser_top_level_malformed_keyword_matrix.zax | 0 |
 | pr155_top_level_keyword_whitespace_forms.zax | 0 |
 | pr156_export_whitespace_forms.zax | 0 |
@@ -196,14 +186,13 @@ Potentially unreferenced fixtures: 342
 | pr166_top_level_keyword_name_collisions.zax | 0 |
 | pr167_header_param_name_validation_matrix.zax | 0 |
 | pr168_declaration_duplicate_matrix.zax | 0 |
-| pr169_malformed_decl_header_matrix.zax | 1 |
 | pr17_bad_checksum.hex | 0 |
 | pr17_basic.hex | 0 |
-| pr17_bin_basic.zax | 1 |
-| pr17_bin_code.zax | 1 |
+| pr17_bin_basic.zax | 0 |
+| pr17_bin_code.zax | 0 |
 | pr17_blob.bin | 0 |
 | pr17_hex_bad_checksum.zax | 0 |
-| pr17_hex_basic.zax | 1 |
+| pr17_hex_basic.zax | 0 |
 | pr17_hex_overlap.zax | 0 |
 | pr17_hex_unsupported_type.zax | 0 |
 | pr17_overlap.hex | 0 |
@@ -211,7 +200,6 @@ Potentially unreferenced fixtures: 342
 | pr170_block_termination_recovery_matrix.zax | 1 |
 | pr171_func_missing_asm_recovery.zax | 0 |
 | pr172_block_body_malformed_line_matrix.zax | 0 |
-| pr173_func_op_body_interruption_recovery.zax | 1 |
 | pr174_mixed_malformed_keyword_ordering.zax | 0 |
 | pr175_func_op_extern_malformed_header_matrix.zax | 0 |
 | pr176_mixed_keyword_shaped_line_recovery.zax | 0 |
@@ -220,12 +208,9 @@ Potentially unreferenced fixtures: 342
 | pr179_type_union_var_data_malformed_header_matrix.zax | 0 |
 | pr180_bin_hex_malformed_header_matrix.zax | 1 |
 | pr181_top_level_malformed_header_canonical_matrix.zax | 0 |
-| pr182_var_block_inferred_array_recovery.zax | 1 |
 | pr183_block_invalid_type_shape_matrix.zax | 0 |
 | pr184_func_extern_param_return_diag_matrix.zax | 0 |
 | pr185_block_invalid_identifier_matrix.zax | 0 |
-| pr186_param_list_delimiter_matrix.zax | 1 |
-| pr187_extern_base_name_validation_matrix.zax | 1 |
 | pr188_op_condition_param_control.zax | 0 |
 | pr188_op_ea_nested_substitution.zax | 0 |
 | pr188_op_local_labels_repeated.zax | 0 |
@@ -257,14 +242,11 @@ Potentially unreferenced fixtures: 342
 | pr211_jr_djnz_diag_matrix_invalid.zax | 1 |
 | pr212_condition_missing_operand_diag_matrix_invalid.zax | 1 |
 | pr213_condition_symbolic_base_collision_invalid.zax | 1 |
-| pr214_explicit_asm_marker_func_op_invalid.zax | 1 |
 | pr214_implicit_func_op_bodies.zax | 0 |
 | pr215_const_data_followups_invalid.zax | 0 |
 | pr215_const_data_followups_valid.zax | 0 |
-| pr216_parser_remaining_decl_control_recovery_matrix.zax | 2 |
-| pr217_parser_decl_minimum_shape_matrix.zax | 2 |
-| pr217_parser_func_missing_body_eof.zax | 2 |
-| pr217_parser_op_missing_end_eof.zax | 2 |
+| pr217_parser_decl_minimum_shape_matrix.zax | 0 |
+| pr217_parser_op_missing_end_eof.zax | 0 |
 | pr218_lowering_unknown_retcc_stack_state.zax | 0 |
 | pr218_lowering_untracked_retcc_stack_state.zax | 0 |
 | pr219_lowering_unknown_retcc_select_join.zax | 1 |
@@ -284,7 +266,6 @@ Potentially unreferenced fixtures: 342
 | pr222_neutral_op_structured_retcc.zax | 0 |
 | pr222_two_slot_locals_retcc.zax | 0 |
 | pr222_two_slot_neutral_op_if_retcc.zax | 0 |
-| pr223_parser_var_and_body_recovery_matrix.zax | 1 |
 | pr224_lowering_call_boundary_stack_matrix.zax | 0 |
 | pr225_indexed_rotate_destination_diag_matrix_invalid.zax | 1 |
 | pr228_lowering_call_boundary_unknown_untracked_matrix.zax | 0 |
@@ -318,8 +299,8 @@ Potentially unreferenced fixtures: 342
 | pr259_enum_unqualified_member.zax | 1 |
 | pr259_op_ea_dotted_field.zax | 0 |
 | pr26_retcc_conditions.zax | 0 |
-| pr26_retcc_invalid.zax | 1 |
-| pr26_rotate_retcc.zax | 1 |
+| pr26_retcc_invalid.zax | 0 |
+| pr26_rotate_retcc.zax | 0 |
 | pr260_value_semantics_scalar_index.zax | 2 |
 | pr261_call_ea_index_reg16hl.zax | 0 |
 | pr262_ld_nested_runtime_index.zax | 1 |
@@ -362,10 +343,10 @@ Potentially unreferenced fixtures: 342
 | pr28_select_stacked_case_split_body.zax | 0 |
 | pr283_local_arg_global_access_matrix.zax | 0 |
 | pr284_require_main_missing.zax | 0 |
-| pr285_alias_init_globals_locals_positive.zax | 1 |
-| pr285_incompatible_inferred_alias_matrix.zax | 1 |
-| pr285_local_nonscalar_without_alias_negative.zax | 1 |
-| pr285_typed_alias_invalid_matrix.zax | 1 |
+| pr285_alias_init_globals_locals_positive.zax | 0 |
+| pr285_incompatible_inferred_alias_matrix.zax | 0 |
+| pr285_local_nonscalar_without_alias_negative.zax | 0 |
+| pr285_typed_alias_invalid_matrix.zax | 0 |
 | pr286_nonscalar_param_compat_negative.zax | 0 |
 | pr286_nonscalar_param_compat_positive.zax | 0 |
 | pr286_record_named_init_mixed_negative.zax | 0 |
@@ -380,8 +361,6 @@ Potentially unreferenced fixtures: 342
 | pr292_local_scalar_init_and_alias_positive.zax | 0 |
 | pr3_var_duplicates.zax | 0 |
 | pr3_var_layout.zax | 0 |
-| pr30_case_without_select.zax | 1 |
-| pr30_else_without_if_or_select.zax | 1 |
 | pr32_repeat_closed_by_end.zax | 0 |
 | pr320_extern_and_internal_calls.zax | 0 |
 | pr320_preserve_matrix.zax | 1 |
@@ -441,7 +420,7 @@ Potentially unreferenced fixtures: 342
 | pr412_runtime_index_word.zax | 0 |
 | pr43_ld_mem_imm8_invalid_word.zax | 0 |
 | pr43_ld_mem_imm8.zax | 0 |
-| pr433_frameless_retcc.zax | 1 |
+| pr433_frameless_retcc.zax | 0 |
 | pr44_ld_abs16_specialcases.zax | 0 |
 | pr446_virtual_reg16_transfers.zax | 0 |
 | pr45_ld_abs16_ed_forms.zax | 0 |
@@ -664,6 +643,7 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr15_select_duplicate_case.zax
 - pr15_select_single_case.zax
 - pr15_until_without_repeat.zax
+- pr15_while.zax
 - pr15_while_stack_mismatch.zax
 - pr161_var_data_keyword_name_matrix.zax
 - pr162_extern_base_block_relative_call.zax
@@ -691,8 +671,11 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr179_type_union_var_data_malformed_header_matrix.zax
 - pr17_bad_checksum.hex
 - pr17_basic.hex
+- pr17_bin_basic.zax
+- pr17_bin_code.zax
 - pr17_blob.bin
 - pr17_hex_bad_checksum.zax
+- pr17_hex_basic.zax
 - pr17_hex_overlap.zax
 - pr17_hex_unsupported_type.zax
 - pr17_overlap.hex
@@ -718,6 +701,8 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr214_implicit_func_op_bodies.zax
 - pr215_const_data_followups_invalid.zax
 - pr215_const_data_followups_valid.zax
+- pr217_parser_decl_minimum_shape_matrix.zax
+- pr217_parser_op_missing_end_eof.zax
 - pr218_lowering_unknown_retcc_stack_state.zax
 - pr218_lowering_untracked_retcc_stack_state.zax
 - pr222_locals_multiple_retcc.zax
@@ -764,6 +749,8 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr268_op_no_match_diagnostics.zax
 - pr269_d8m_op_macro_callsite.zax
 - pr26_retcc_conditions.zax
+- pr26_retcc_invalid.zax
+- pr26_rotate_retcc.zax
 - pr270_op_invalid_expansion_diagnostics.zax
 - pr270_op_invalid_expansion_multi_failure.zax
 - pr270_op_invalid_expansion_nested_chain.zax
@@ -775,6 +762,10 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr27_cb_rotates_shifts.zax
 - pr283_local_arg_global_access_matrix.zax
 - pr284_require_main_missing.zax
+- pr285_alias_init_globals_locals_positive.zax
+- pr285_incompatible_inferred_alias_matrix.zax
+- pr285_local_nonscalar_without_alias_negative.zax
+- pr285_typed_alias_invalid_matrix.zax
 - pr286_nonscalar_param_compat_negative.zax
 - pr286_nonscalar_param_compat_positive.zax
 - pr286_record_named_init_mixed_negative.zax
@@ -830,6 +821,7 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr412_runtime_index_byte_matrix.zax
 - pr412_runtime_index_word.zax
 - pr41_inc_dec_ld_mem_imm.zax
+- pr433_frameless_retcc.zax
 - pr43_ld_mem_imm8.zax
 - pr43_ld_mem_imm8_invalid_word.zax
 - pr446_virtual_reg16_transfers.zax
@@ -917,19 +909,10 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | isa_indexed_rotates.zax |  |
 | issue1356_named_section_ld_bc_de_indirect.zax | test/backend/issue1356_named_section_ld_hl.test.ts |
 | issue1356_named_section_ld_hl_indirect.zax | test/backend/issue1356_named_section_ld_hl.test.ts |
-| parser_case_invalid_value_comma.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| parser_case_invalid_value_list.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| parser_case_missing_value.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
 | parser_if_duplicate_else.zax |  |
-| parser_if_invalid_cc.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
 | parser_if_missing_cc.zax |  |
 | parser_select_invalid_selector.zax |  |
-| parser_select_missing_selector.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| parser_select_no_arms.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
 | parser_unterminated_if_eof.zax |  |
-| parser_until_invalid_cc.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| parser_until_missing_cc.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| parser_while_invalid_cc.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
 | parser_while_missing_cc.zax |  |
 | pr1_minimal.zax | test/pr39_listing.test.ts |
 | pr10_cycle_a.zax |  |
@@ -1038,7 +1021,7 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr148_known_heads_no_fallback_matrix.zax | test/pr148_known_heads_no_fallback_matrix.test.ts |
 | pr149_condition_diag_matrix_invalid.zax | test/pr149_condition_diag_matrix.test.ts |
 | pr149_select_mem_selector_eval_once.zax |  |
-| pr15_if_else.zax | test/lowering/pr511_asm_range_lowering_integration.test.ts, test/pr468_refactor_gap_integration.test.ts |
+| pr15_if_else.zax | test/lowering/pr511_asm_range_lowering_integration.test.ts |
 | pr15_if_stack_mismatch.zax |  |
 | pr15_nested_select_if_while.zax |  |
 | pr15_nested_while_if.zax |  |
@@ -1049,14 +1032,13 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr15_select_single_case.zax |  |
 | pr15_until_without_repeat.zax |  |
 | pr15_while_stack_mismatch.zax |  |
-| pr15_while.zax | test/pr468_refactor_gap_integration.test.ts |
+| pr15_while.zax |  |
 | pr150_ed_cb_diag_hardening_matrix.zax | test/pr150_ed_cb_diag_hardening_matrix.test.ts |
 | pr150_select_reg8_all_unreachable_else_fastpath.zax |  |
 | pr150_select_reg8_compare_optimized.zax |  |
 | pr150_select_reg8_unreachable_cases_skipped.zax |  |
 | pr151_zero_operand_head_diag_matrix.zax | test/pr151_zero_operand_head_diag_matrix.test.ts |
 | pr152_indexed_paren_syntax_matrix.zax |  |
-| pr153_parser_control_keyword_malformed_matrix.zax | test/frontend/pr153_parser_control_keyword_malformed_matrix.test.ts |
 | pr154_parser_top_level_malformed_keyword_matrix.zax |  |
 | pr155_top_level_keyword_whitespace_forms.zax |  |
 | pr156_export_whitespace_forms.zax |  |
@@ -1080,14 +1062,13 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr166_top_level_keyword_name_collisions.zax |  |
 | pr167_header_param_name_validation_matrix.zax |  |
 | pr168_declaration_duplicate_matrix.zax |  |
-| pr169_malformed_decl_header_matrix.zax | test/frontend/pr169_malformed_decl_header_matrix.test.ts |
 | pr17_bad_checksum.hex |  |
 | pr17_basic.hex |  |
-| pr17_bin_basic.zax | test/pr468_refactor_gap_integration.test.ts |
-| pr17_bin_code.zax | test/pr468_refactor_gap_integration.test.ts |
+| pr17_bin_basic.zax |  |
+| pr17_bin_code.zax |  |
 | pr17_blob.bin |  |
 | pr17_hex_bad_checksum.zax |  |
-| pr17_hex_basic.zax | test/pr468_refactor_gap_integration.test.ts |
+| pr17_hex_basic.zax |  |
 | pr17_hex_overlap.zax |  |
 | pr17_hex_unsupported_type.zax |  |
 | pr17_overlap.hex |  |
@@ -1095,7 +1076,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr170_block_termination_recovery_matrix.zax | test/pr614_legacy_syntax_guardrail.test.ts |
 | pr171_func_missing_asm_recovery.zax |  |
 | pr172_block_body_malformed_line_matrix.zax |  |
-| pr173_func_op_body_interruption_recovery.zax | test/frontend/pr173_func_op_body_interruption_recovery.test.ts |
 | pr174_mixed_malformed_keyword_ordering.zax |  |
 | pr175_func_op_extern_malformed_header_matrix.zax |  |
 | pr176_mixed_keyword_shaped_line_recovery.zax |  |
@@ -1104,12 +1084,9 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr179_type_union_var_data_malformed_header_matrix.zax |  |
 | pr180_bin_hex_malformed_header_matrix.zax | test/frontend/pr180_bin_hex_malformed_header_matrix.test.ts |
 | pr181_top_level_malformed_header_canonical_matrix.zax |  |
-| pr182_var_block_inferred_array_recovery.zax | test/frontend/pr182_var_block_inferred_array_recovery.test.ts |
 | pr183_block_invalid_type_shape_matrix.zax |  |
 | pr184_func_extern_param_return_diag_matrix.zax |  |
 | pr185_block_invalid_identifier_matrix.zax |  |
-| pr186_param_list_delimiter_matrix.zax | test/frontend/pr186_param_list_delimiter_matrix.test.ts |
-| pr187_extern_base_name_validation_matrix.zax | test/frontend/pr187_extern_base_name_validation_matrix.test.ts |
 | pr188_op_condition_param_control.zax |  |
 | pr188_op_ea_nested_substitution.zax |  |
 | pr188_op_local_labels_repeated.zax |  |
@@ -1141,14 +1118,11 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr211_jr_djnz_diag_matrix_invalid.zax | test/pr211_jr_djnz_diag_matrix.test.ts |
 | pr212_condition_missing_operand_diag_matrix_invalid.zax | test/pr212_condition_missing_operand_diag_matrix.test.ts |
 | pr213_condition_symbolic_base_collision_invalid.zax | test/pr213_condition_symbolic_base_collision_diag_matrix.test.ts |
-| pr214_explicit_asm_marker_func_op_invalid.zax | test/frontend/pr226_parser_decl_control_spans.test.ts |
 | pr214_implicit_func_op_bodies.zax |  |
 | pr215_const_data_followups_invalid.zax |  |
 | pr215_const_data_followups_valid.zax |  |
-| pr216_parser_remaining_decl_control_recovery_matrix.zax | test/frontend/pr216_parser_remaining_decl_control_recovery_matrix.test.ts, test/frontend/pr226_parser_decl_control_spans.test.ts |
-| pr217_parser_decl_minimum_shape_matrix.zax | test/frontend/pr217_parser_decl_minimum_shape_and_eof_recovery.test.ts, test/frontend/pr226_parser_decl_control_spans.test.ts |
-| pr217_parser_func_missing_body_eof.zax | test/frontend/pr217_parser_decl_minimum_shape_and_eof_recovery.test.ts, test/frontend/pr226_parser_decl_control_spans.test.ts |
-| pr217_parser_op_missing_end_eof.zax | test/frontend/pr217_parser_decl_minimum_shape_and_eof_recovery.test.ts, test/frontend/pr226_parser_decl_control_spans.test.ts |
+| pr217_parser_decl_minimum_shape_matrix.zax |  |
+| pr217_parser_op_missing_end_eof.zax |  |
 | pr218_lowering_unknown_retcc_stack_state.zax |  |
 | pr218_lowering_untracked_retcc_stack_state.zax |  |
 | pr219_lowering_unknown_retcc_select_join.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
@@ -1168,7 +1142,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr222_neutral_op_structured_retcc.zax |  |
 | pr222_two_slot_locals_retcc.zax |  |
 | pr222_two_slot_neutral_op_if_retcc.zax |  |
-| pr223_parser_var_and_body_recovery_matrix.zax | test/frontend/pr223_parser_var_and_body_recovery_matrix.test.ts |
 | pr224_lowering_call_boundary_stack_matrix.zax |  |
 | pr225_indexed_rotate_destination_diag_matrix_invalid.zax | test/pr225_indexed_rotate_destination_diag_matrix.test.ts |
 | pr228_lowering_call_boundary_unknown_untracked_matrix.zax |  |
@@ -1202,8 +1175,8 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr259_enum_unqualified_member.zax | test/pr4_enum.test.ts |
 | pr259_op_ea_dotted_field.zax |  |
 | pr26_retcc_conditions.zax |  |
-| pr26_retcc_invalid.zax | test/pr26_rotate_retcc.test.ts |
-| pr26_rotate_retcc.zax | test/pr26_rotate_retcc.test.ts |
+| pr26_retcc_invalid.zax |  |
+| pr26_rotate_retcc.zax |  |
 | pr260_value_semantics_scalar_index.zax | test/lowering/pr507_ea_resolution_helpers.test.ts, test/semantics/pr260_value_semantics_scalar_index.test.ts |
 | pr261_call_ea_index_reg16hl.zax |  |
 | pr262_ld_nested_runtime_index.zax | test/pr262_ld_nested_runtime_index.test.ts |
@@ -1246,10 +1219,10 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr28_select_stacked_case_split_body.zax |  |
 | pr283_local_arg_global_access_matrix.zax |  |
 | pr284_require_main_missing.zax |  |
-| pr285_alias_init_globals_locals_positive.zax | test/frontend/pr285_alias_init_parser_semantics_matrix.test.ts |
-| pr285_incompatible_inferred_alias_matrix.zax | test/frontend/pr285_alias_init_parser_semantics_matrix.test.ts |
-| pr285_local_nonscalar_without_alias_negative.zax | test/frontend/pr285_alias_init_parser_semantics_matrix.test.ts |
-| pr285_typed_alias_invalid_matrix.zax | test/frontend/pr285_alias_init_parser_semantics_matrix.test.ts |
+| pr285_alias_init_globals_locals_positive.zax |  |
+| pr285_incompatible_inferred_alias_matrix.zax |  |
+| pr285_local_nonscalar_without_alias_negative.zax |  |
+| pr285_typed_alias_invalid_matrix.zax |  |
 | pr286_nonscalar_param_compat_negative.zax |  |
 | pr286_nonscalar_param_compat_positive.zax |  |
 | pr286_record_named_init_mixed_negative.zax |  |
@@ -1264,8 +1237,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr292_local_scalar_init_and_alias_positive.zax |  |
 | pr3_var_duplicates.zax |  |
 | pr3_var_layout.zax |  |
-| pr30_case_without_select.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
-| pr30_else_without_if_or_select.zax | test/frontend/pr97_parser_span_structured_control.test.ts |
 | pr32_repeat_closed_by_end.zax |  |
 | pr320_extern_and_internal_calls.zax |  |
 | pr320_preserve_matrix.zax | test/pr320_preserve_matrix.test.ts |
@@ -1325,7 +1296,7 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr412_runtime_index_word.zax |  |
 | pr43_ld_mem_imm8_invalid_word.zax |  |
 | pr43_ld_mem_imm8.zax |  |
-| pr433_frameless_retcc.zax | test/pr26_rotate_retcc.test.ts |
+| pr433_frameless_retcc.zax |  |
 | pr44_ld_abs16_specialcases.zax |  |
 | pr446_virtual_reg16_transfers.zax |  |
 | pr45_ld_abs16_ed_forms.zax |  |
