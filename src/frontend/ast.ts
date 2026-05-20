@@ -49,26 +49,6 @@ export interface SourceFileNode extends BaseNode {
   items: SourceItemNode[];
 }
 
-/**
- * An ASM80 source file parsed into source-ordered top-level assembler items.
- */
-export interface AsmSourceFileNode extends BaseNode {
-  kind: 'AsmSourceFile';
-  path: string;
-  items: AsmSourceItemNode[];
-}
-
-export type AsmSourceItemNode =
-  | AsmEquNode
-  | AsmOrgNode
-  | AsmBinFromNode
-  | AsmBinToNode
-  | AsmEndNode
-  | AsmAlignNode
-  | AsmRawDataNode
-  | AsmLabelNode
-  | (AsmInstructionNode & { operandText?: string });
-
 export interface AsmEquNode extends BaseNode {
   kind: 'AsmEqu';
   name: string;
@@ -121,25 +101,24 @@ export type AsmRawDataNode =
       valuesText?: string;
     };
 
-/** Neutral assembler directive aliases for API boundaries. */
-export type AsmEquDirectiveNode = AsmEquNode;
-export type AsmOrgDirectiveNode = AsmOrgNode;
-export type AsmBinFromDirectiveNode = AsmBinFromNode;
-export type AsmBinToDirectiveNode = AsmBinToNode;
-export type AsmEndDirectiveNode = AsmEndNode;
-
 /**
  * Top-level items permitted in a source file.
  */
 export type SourceItemNode =
-  | AsmSourceItemNode
+  | AsmEquNode
+  | AsmOrgNode
+  | AsmBinFromNode
+  | AsmBinToNode
+  | AsmEndNode
+  | AsmAlignNode
+  | AsmRawDataNode
+  | AsmLabelNode
+  | AsmInstructionNode
   | EnumDeclNode
   | UnionDeclNode
   | TypeDeclNode
   | OpDeclNode
-  | AlignDirectiveNode
-  | AsmLabelNode
-  | AsmInstructionNode;
+  | AlignDirectiveNode;
 
 /**
  * Alignment directive.
@@ -341,13 +320,10 @@ export type OffsetPathStepNode =
 export type Node =
   | ProgramNode
   | SourceFileNode
-  | AsmSourceFileNode
-  | AsmSourceItemNode
   | SourceItemNode
   | OpParamNode
   | RecordFieldNode
   | AsmBlockNode
-  | AsmSourceItemNode
   | AsmItemNode
   | AsmOperandNode
   | TypeExprNode
