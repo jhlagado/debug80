@@ -3,12 +3,16 @@
  * directive-alias bootstrap, atom budgets, addressing, and LD lowering.
  */
 
-import type { AsmInstructionNode, AsmOperandNode, ImmExprNode, SourceSpan } from '../frontend/ast.js';
+import type {
+  AsmInstructionNode,
+  AsmOperandNode,
+  ImmExprNode,
+  SourceSpan,
+} from '../frontend/ast.js';
 import { evalImmExpr } from '../semantics/env.js';
 import { sizeOfTypeExpr } from '../semantics/layout.js';
 import { encodeInstruction } from '../z80/encode.js';
 import { buildEaResolutionContext, createEaResolutionHelpers } from './eaResolution.js';
-import { createRuntimeImmediateHelpers } from './runtimeImmediates.js';
 import { createRuntimeAtomBudgetHelpers } from './runtimeAtomBudget.js';
 import { createLdLoweringHelpers } from './ldLowering.js';
 import { createOpMatchingHelpers } from './opMatching.js';
@@ -16,7 +20,7 @@ import { createEmissionCoreHelpers } from './emissionCore.js';
 import { createFixupEmissionHelpers } from './fixupEmission.js';
 import { createAsmUtilityHelpers, flattenEaDottedName } from './asmUtils.js';
 import { formatImmExprForAsm } from './traceFormat.js';
-import { createTypeResolutionHelpers } from './typeResolution.js';
+import { createTypeResolutionHelpers } from '../semantics/typeQueries.js';
 import { createEmitStateHelpers } from './emitState.js';
 import { alignTo } from './sectionLayout.js';
 import { diagAt } from './loweringDiagnostics.js';
@@ -65,12 +69,9 @@ export type EmitPhase1WireResult = {
   lowerOperandForLoweredAsm: ReturnType<typeof createEmitStateHelpers>['lowerOperandForLoweredAsm'];
   emitInstr: (head: string, operands: AsmOperandNode[], span: SourceSpan) => boolean;
   emitRawCodeBytes: (bs: Uint8Array, file: string, traceText: string) => void;
-  loadImm16ToDE: ReturnType<typeof createRuntimeImmediateHelpers>['loadImm16ToDE'];
-  loadImm16ToHL: ReturnType<typeof createRuntimeImmediateHelpers>['loadImm16ToHL'];
-  negateHL: ReturnType<typeof createRuntimeImmediateHelpers>['negateHL'];
-  pushImm16: ReturnType<typeof createRuntimeImmediateHelpers>['pushImm16'];
-  pushZeroExtendedReg8: ReturnType<typeof createRuntimeImmediateHelpers>['pushZeroExtendedReg8'];
-  callConditionOpcodeFromName: ReturnType<typeof createFixupEmissionHelpers>['callConditionOpcodeFromName'];
+  callConditionOpcodeFromName: ReturnType<
+    typeof createFixupEmissionHelpers
+  >['callConditionOpcodeFromName'];
   conditionNameFromOpcode: ReturnType<typeof createFixupEmissionHelpers>['conditionNameFromOpcode'];
   conditionOpcode: ReturnType<typeof createFixupEmissionHelpers>['conditionOpcode'];
   conditionOpcodeFromName: ReturnType<typeof createFixupEmissionHelpers>['conditionOpcodeFromName'];
@@ -79,13 +80,19 @@ export type EmitPhase1WireResult = {
   emitAbs16FixupPrefixed: ReturnType<typeof createFixupEmissionHelpers>['emitAbs16FixupPrefixed'];
   emitRel8Fixup: ReturnType<typeof createFixupEmissionHelpers>['emitRel8Fixup'];
   inverseConditionName: ReturnType<typeof createFixupEmissionHelpers>['inverseConditionName'];
-  jrConditionOpcodeFromName: ReturnType<typeof createFixupEmissionHelpers>['jrConditionOpcodeFromName'];
+  jrConditionOpcodeFromName: ReturnType<
+    typeof createFixupEmissionHelpers
+  >['jrConditionOpcodeFromName'];
   symbolicTargetFromExpr: ReturnType<typeof createFixupEmissionHelpers>['symbolicTargetFromExpr'];
   normalizeFixedToken: ReturnType<typeof createAsmUtilityHelpers>['normalizeFixedToken'];
   resolveEa: ReturnType<typeof createEaResolutionHelpers>['resolveEa'];
   selectOpOverload: ReturnType<typeof createOpMatchingHelpers>['selectOpOverload'];
-  formatAsmOperandForOpDiag: ReturnType<typeof createOpMatchingHelpers>['formatAsmOperandForOpDiag'];
-  enforceEaRuntimeAtomBudget: ReturnType<typeof createRuntimeAtomBudgetHelpers>['enforceEaRuntimeAtomBudget'];
+  formatAsmOperandForOpDiag: ReturnType<
+    typeof createOpMatchingHelpers
+  >['formatAsmOperandForOpDiag'];
+  enforceEaRuntimeAtomBudget: ReturnType<
+    typeof createRuntimeAtomBudgetHelpers
+  >['enforceEaRuntimeAtomBudget'];
   lowerLdWithEa: ReturnType<typeof createLdLoweringHelpers>['lowerLdWithEa'];
   resolveAggregateType: ReturnType<typeof createTypeResolutionHelpers>['resolveAggregateType'];
   resolvePointedToType: ReturnType<typeof createTypeResolutionHelpers>['resolvePointedToType'];
@@ -140,7 +147,9 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     recordLoweredAsmItem,
   } = createEmitStateHelpers({
     ...(ctx.options?.sourceTexts ? { sourceTexts: ctx.options.sourceTexts } : {}),
-    ...(ctx.options?.sourceLineComments ? { sourceLineComments: ctx.options.sourceLineComments } : {}),
+    ...(ctx.options?.sourceLineComments
+      ? { sourceLineComments: ctx.options.sourceLineComments }
+      : {}),
     codeBytes: ctx.workspace.emission.codeBytes,
     codeSourceSegments: ctx.workspace.emission.codeSourceSegments,
     fixups: ctx.workspace.symbols.fixups,
@@ -176,11 +185,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     spTrackingSlot.apply?.(head, operands);
     return true;
   };
-
-  const { loadImm16ToDE, loadImm16ToHL, negateHL, pushImm16, pushZeroExtendedReg8 } =
-    createRuntimeImmediateHelpers({
-      emitInstr,
-    });
 
   const {
     callConditionOpcodeFromName,
@@ -314,11 +318,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     lowerOperandForLoweredAsm,
     emitInstr,
     emitRawCodeBytes,
-    loadImm16ToDE,
-    loadImm16ToHL,
-    negateHL,
-    pushImm16,
-    pushZeroExtendedReg8,
     callConditionOpcodeFromName,
     conditionNameFromOpcode,
     conditionOpcode,

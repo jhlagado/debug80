@@ -211,7 +211,7 @@ export type OpMatcherNode =
   | { kind: 'MatcherFixed'; span: SourceSpan; token: string };
 
 /**
- * Instruction stream inside native source or an `op` body.
+ * Instruction stream inside ASM source or an `op` body.
  */
 export interface AsmBlockNode extends BaseNode {
   kind: 'AsmBlock';

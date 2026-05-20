@@ -41,23 +41,23 @@ AZM accepts the following source families:
   baseline plus retained AZM features.
 - `.asm`: preferred filename suffix for new source owned by this project.
 
-Native AZM examples should prefer the AZM style in this document. Compatibility
+Canonical AZM examples should prefer the AZM style in this document. Compatibility
 inputs may retain historical forms where they are part of the accepted baseline.
 
 Internal package, diagnostic, script, and fixture names should use AZM or
 ASM80 terminology. Remaining ZAX spelling is cleanup debt, not compatibility.
 
-## Native `.asm` AZM source
+## Canonical AZM source
 
-Native AZM accepts flat assembler items at source-file top level: labels, local labels,
-Z80 instructions, `.org`, `.equ`, `.db`, `.dw`, `.ds`, includes, directive
-aliases, `op` declarations, and layout metadata.
+AZM accepts flat assembler items at source-file top level: labels, local labels,
+Z80 instructions, `.org`, `.equ`, `.db`, `.dw`, `.ds`, includes, directive aliases,
+`op` declarations, and layout metadata.
 
 Layout metadata means `type`, `union`, `sizeof`, `offset`, and layout-cast
-address expressions that fold to constants. Native AZM feeds those constants
-into ordinary operands and fixups.
+address expressions that fold to constants. AZM feeds those constants into
+ordinary operands and fixups.
 
-Native AZM rejects or quarantines inherited ZAX high-level constructs: `func`,
+AZM rejects or quarantines inherited ZAX high-level constructs: `func`,
 named `section` blocks, `:=`, structured control, typed storage, typed externs,
 generated function frames, locals, formal arguments, typed argument
 marshalling, module imports, and runtime typed effective-address lowering.
@@ -66,7 +66,7 @@ The default AZM verification lane is `npm run test:azm:alpha`. New retained
 coverage should use `.asm` or `.z80` source. Historical non-ASM fixtures are
 retired-regression cleanup debt, not a compatibility promise.
 
-## Canonical native style
+## Canonical style
 
 AZM source should use:
 
@@ -80,7 +80,7 @@ AZM source should use:
 AZM is a stricter ASM80-family dialect, not a permissive clone of every
 historical assembler spelling. It accepts the idiomatic ASM80 subset used by the
 standing corpora, while project-local variants should enter through the
-directive-alias mechanism rather than becoming parser-native language.
+directive-alias mechanism rather than becoming core parser syntax.
 
 ## Directive aliases
 
@@ -127,7 +127,7 @@ any compile-time immediate expression, including instruction operands, `.equ`,
 `.db`, `.dw`, and `.ds`. Unqualified member references are rejected. Enums do not
 currently create runtime types, register types, or memory types.
 
-Ranges are not part of the native assembler baseline yet. They remain a design
+Ranges are not part of the AZM assembler baseline yet. They remain a design
 candidate for compile-time validation of constants and tables, not for hidden
 runtime checks or typed code generation.
 
@@ -237,7 +237,7 @@ Tools may use AZMDoc for:
 - syntax highlighting
 - hover help and outline views
 - register-care analysis
-- generated AZMDoc contract comments or external contract artifacts
+- generated AZMDoc contract comments or external register-care contract data
 - documentation extraction
 - linting and formatting
 

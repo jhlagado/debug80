@@ -57,7 +57,7 @@ Normative detail lives in
 - **Expression features** (`sizeof`, `offset`, layout casts, `.equ`) fold at
   assemble time and feed ordinary operands.
 - **Hidden lowering** (synthesized indexing, typed assignment, typed memory
-  pipelines) is ZAX-era behavior and is retired from native `.asm` mode.
+  pipelines) is ZAX-era behavior and is retired from AZM `.asm` and `.z80` source.
 - **Output visibility**: instructions in source should match instructions in
   output, except for explicit visible expansions such as `op` bodies.
 
@@ -81,18 +81,18 @@ Inherited ZAX `func` / `export func` and `section code/data` syntax are **reject
 in `.asm` source. Unsupported filename suffixes are not an AZM compatibility
 guarantee.
 
-Native `.asm` source files are flat. They accept layout declarations, constants,
+AZM `.asm` and `.z80` source files are flat. They accept layout declarations, constants,
 `op` declarations, labels, Z80 instructions, `.org`, `.equ`, raw data
 directives, includes, and directive aliases. They do not use the inherited ZAX
 function/section shim.
 
-Native AZM does not use the inherited ZAX `import` module system. It uses
+AZM does not use the inherited ZAX `import` module system. It uses
 ASM80-style textual inclusion: included source is part of the including
 translation unit for parsing, symbol resolution, register-care analysis, and
 emission. Future symbol-visibility experiments may happen later, but they are
 not part of the near-term AZM language surface.
 
-Native AZM also rejects ZAX `export` visibility markers. Included source is
+AZM also rejects ZAX `export` visibility markers. Included source is
 ordinary source text; symbols are visible by assembler rules, not by a module
 import/export graph.
 
@@ -112,7 +112,7 @@ AZM should be strict, modern, and assembly-first:
 - The machine must remain visible.
 - Compatibility should be corpus-driven.
 - Errors should be precise rather than forgiving.
-- Native AZM style should prefer a clean dotted directive family such as
+- Canonical AZM style should prefer a clean dotted directive family such as
   `.org`, `.equ`, `.db`, `.dw`, `.ds`, and `.include`.
 - Legacy forms such as `ORG`, `EQU`, `DB`, `DW`, and `DS` can be accepted as
   compatibility aliases, but should not be the style taught in canonical AZM
@@ -128,7 +128,7 @@ The long-term posture is:
 
 ## Compatibility input and canonical AZM style
 
-AZM should distinguish compatibility input from native style.
+AZM should distinguish compatibility input from canonical style.
 
 Compatibility input:
 
@@ -243,9 +243,9 @@ register tracking in the near-term AZM surface. They belong in the same family
 as enum and layout metadata: facts the assembler can use to name and validate
 constants while leaving the machine code visible.
 
-## Rejected native syntax
+## Rejected high-level syntax
 
-Native `.asm` rejects the high-level ZAX surface. The rejection list is the
+AZM `.asm` and `.z80` source rejects the high-level ZAX surface. The rejection list is the
 deletion boundary for parser and lowering work:
 
 - `func` and `export func`;
@@ -258,9 +258,8 @@ deletion boundary for parser and lowering work:
 - runtime typed effective-address lowering, including register-indexed layout
   paths that require generated address code.
 
-Any unsupported-extension test path must stay explicit until deleted. Default
-AZM guardrails exercise flat assembly, register-care, directive aliases, ops,
-and layout constants.
+Default AZM guardrails exercise flat assembly, register-care, directive aliases,
+ops, layout constants, and explicit rejection of retired ZAX constructs.
 
 ## AZMDoc comments
 
@@ -281,7 +280,7 @@ AZMDoc is part of the assembler baseline because it affects tooling, not object
 code. ASM80 and other legacy assemblers still see normal semicolon comments.
 AZM can use the metadata for register-care analysis, syntax highlighting,
 documentation extraction, linting, and generated contract comments or external
-contract artifacts.
+contract data.
 
 The normative draft is `docs/spec/azmdoc.md`.
 
@@ -402,7 +401,7 @@ not by adding a procedure language. A programmer still writes labels, `call`,
 what that code expects, returns, clobbers, or preserves.
 
 The assembler may infer and check those contracts, and tools may generate
-contract comments or external contract artifacts. This is metadata and linting
+contract comments or external register-care contract data. This is metadata and linting
 over visible assembly, not generated frames, formal arguments, or callee-managed
 calling conventions.
 

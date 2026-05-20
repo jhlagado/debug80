@@ -7,20 +7,13 @@ import type {
   TypeExprNode,
 } from '../frontend/ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type {
-  AddressRange,
-  EmittedSourceSegment,
-  SymbolEntry,
-} from '../formats/types.js';
+import type { AddressRange, EmittedSourceSegment, SymbolEntry } from '../formats/types.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { AssemblerLoweringSharedContext } from './assemblerLoweringContext.js';
-import type {
-  PendingSymbol,
-  SectionKind,
-} from './loweringTypes.js';
+import type { PendingSymbol, SectionKind } from './loweringTypes.js';
 import type { LoweredAsmItem, LoweredImmExpr } from './loweredAsmTypes.js';
 import type { PrescanResult } from './prescanTypes.js';
-import type { AggregateType } from './typeResolution.js';
+import type { AggregateType } from '../semantics/typeQueries.js';
 import { preScanProgramDeclarations as runProgramPrescan } from './programPrescan.js';
 import { lowerProgramDeclarations as runProgramLoweringTraversal } from './programLoweringTraversal.js';
 
@@ -80,12 +73,7 @@ export type Context = AssemblerLoweringSharedContext & {
 /** Phase 1 — inputs mutated while discovering ops and source-order metadata. */
 export type PrescanContext = Pick<
   Context,
-  | 'program'
-  | 'env'
-  | 'diagnostics'
-  | 'localOpsByFile'
-  | 'declaredOpNames'
-  | 'resolveScalarKind'
+  'program' | 'env' | 'diagnostics' | 'localOpsByFile' | 'declaredOpNames' | 'resolveScalarKind'
 >;
 
 /**

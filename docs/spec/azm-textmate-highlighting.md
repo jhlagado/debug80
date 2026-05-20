@@ -94,7 +94,7 @@ A VS Code extension can consume the grammar like this:
 ```
 
 When Debug80 already has distinct handling for `.asm` or `.z80`, use `.asm` as
-the native language id and decide separately whether existing ASM80 files should
+the canonical language id and decide separately whether existing ASM80 files should
 opt into the same grammar by default.
 
 ## Expected future refinement

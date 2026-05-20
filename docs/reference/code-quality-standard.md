@@ -50,7 +50,7 @@ Names are part of the design.
 
 Use names that reflect the current AZM architecture, not the historical path by
 which the code arrived here. If AZM assembler code is no longer a ZAX function, do
-not make new native assembler code depend on function-shaped names unless there
+not make new ASM source assembler code depend on function-shaped names unless there
 is a deliberate temporary bridge.
 
 Prefer:
@@ -138,7 +138,7 @@ The primary boundaries are:
 - ASM80 compatibility
 - ZAX retirement quarantine
 
-Shared helpers should sit at the lowest honest layer. If both native emission
+Shared helpers should sit at the lowest honest layer. If both ASM source emission
 and register-care need op expansion, the shared service should describe op
 expansion itself. It should not live inside one consumer and force the other
 consumer to imitate it.

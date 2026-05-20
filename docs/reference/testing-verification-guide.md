@@ -2,7 +2,7 @@
 
 This is the single contributor reference for local verification flow, fixture refresh commands, and CI expectations.
 
-Native AZM behavior is tracked by the AZM design and baseline docs under
+AZM assembler behavior is tracked by the AZM design and baseline docs under
 `docs/design` and `docs/spec`. Inherited high-level ZAX behavior is deleted or
 rewritten as ASM80/.asm coverage; it no longer has a separate test lane.
 
@@ -42,7 +42,7 @@ npm run test:azm:alpha
 ```
 
 This command builds AZM and runs the alpha checks for register-care,
-native flat `.asm` parsing, directive aliases, ASM80 includes, core ASM80
+ASM flat `.asm` parsing, directive aliases, ASM80 includes, core ASM80
 directives, equate aliases, strings, alignment, visible op expansion, and
 layout constants. It uses only files in this repository, so contributors can
 run it without local MON3, TEC-1G, Tetro, or Pacmo checkouts.

@@ -1,8 +1,4 @@
-import type {
-  SourceFileNode,
-  SourceItemNode,
-  ProgramNode,
-} from './ast.js';
+import type { SourceFileNode, SourceItemNode, ProgramNode } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { buildLogicalLines, getLogicalLine, type LogicalLine } from './parseLogicalLines.js';
 import {
@@ -28,7 +24,7 @@ export function parseSourceFile(
   diagnostics: Diagnostic[],
   sourceFileOverride?: SourceFile,
   aliasPolicy?: DirectiveAliasPolicy,
-  nativeMode = false,
+  asmSourceMode = false,
 ): SourceFileNode {
   const file = sourceFileOverride ?? makeSourceFile(sourcePath, sourceText);
   const logicalLines: LogicalLine[] = buildLogicalLines(file, sourcePath, diagnostics);
@@ -76,7 +72,7 @@ export function parseSourceFile(
       logicalLines,
       sourceItemDispatchTable,
       sourcePath,
-      nativeMode,
+      asmSourceMode,
       ...(aliasPolicy ? { aliasPolicy } : {}),
       span,
     });

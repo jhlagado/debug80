@@ -1,7 +1,4 @@
-import {
-  appendParsedAsmStatement,
-  parseAsmStatement,
-} from './parseAsmStatements.js';
+import { appendParsedAsmStatement, parseAsmStatement } from './parseAsmStatements.js';
 import type { AsmInstructionNode, AsmItemNode, AsmLabelNode, SourceSpan } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
@@ -14,10 +11,10 @@ export function parseAzmAsmStreamLine(args: {
   filePath: string;
   stmtSpan: SourceSpan;
   diagnostics: Diagnostic[];
-  nativeMode?: boolean;
+  asmSourceMode?: boolean;
 }): AzmAsmStreamItem[] | undefined {
-  const { rest, filePath, stmtSpan, diagnostics, nativeMode = false } = args;
-  if (!nativeMode && !isSupportedSourcePath(filePath)) return undefined;
+  const { rest, filePath, stmtSpan, diagnostics, asmSourceMode = false } = args;
+  if (!asmSourceMode && !isSupportedSourcePath(filePath)) return undefined;
   if (topLevelStartKeyword(rest) !== undefined) return undefined;
 
   const content = rest.trim();
@@ -25,7 +22,9 @@ export function parseAzmAsmStreamLine(args: {
 
   const nodes: AzmAsmStreamItem[] = [];
   const asmItems: AsmItemNode[] = [];
-  const labelMatch = /^(@?[A-Za-z_][A-Za-z0-9_]*|\.[A-Za-z_][A-Za-z0-9_]*)\s*:(?!\=)\s*(.*)$/.exec(content);
+  const labelMatch = /^(@?[A-Za-z_][A-Za-z0-9_]*|\.[A-Za-z_][A-Za-z0-9_]*)\s*:(?!\=)\s*(.*)$/.exec(
+    content,
+  );
   if (labelMatch) {
     const rawName = labelMatch[1]!;
     const isEntry = rawName.startsWith('@');
@@ -43,10 +42,7 @@ export function parseAzmAsmStreamLine(args: {
       );
     }
   } else {
-    appendParsedAsmStatement(
-      asmItems,
-      parseAsmStatement(filePath, content, stmtSpan, diagnostics),
-    );
+    appendParsedAsmStatement(asmItems, parseAsmStatement(filePath, content, stmtSpan, diagnostics));
   }
 
   for (const item of asmItems) nodes.push(item);

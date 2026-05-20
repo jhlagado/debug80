@@ -130,13 +130,6 @@ Ops do not create call boundaries or callee contracts.
 | Op invocation is not modeled as a `CALL` boundary in register-care | same                                                | verified |
 | Register-care liveness/summary sees expanded instructions          | same (`clear_a` is analyzed as `xor a`)             | verified |
 
-## Relationship To Branch Helpers
-
-Ops are the likely library surface for explicit branch and patch helpers. Any
-helper must expand to ordinary labels, fixups, and Z80 branch instructions that
-remain inspectable in the lowered source and listing. This is not a commitment
-to built-in structured-control syntax.
-
 ## Open Questions
 
 - Whether ops can declare documentation-only register-care effects.

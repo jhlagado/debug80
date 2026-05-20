@@ -12,7 +12,7 @@ import type { CompileEnv } from '../semantics/env.js';
 import type { PendingSymbol, ResolvedArrayType, SourceSegmentTag } from './loweringTypes.js';
 import type { OpOverloadSelection } from './opMatching.js';
 import type { EaResolution } from './eaResolution.js';
-import type { AggregateType, ScalarKind } from './typeResolution.js';
+import type { AggregateType, ScalarKind } from '../semantics/typeQueries.js';
 // This module owns the shared context for assembler-stream lowering. It wires
 // diagnostics, symbol state, type lookup, op expansion, and byte emission into
 // the smaller lowering helpers.
@@ -53,7 +53,7 @@ export type AssemblerLoweringSymbolContext = {
   readonly traceComment: (offset: number, text: string) => void;
   /** Set by: emit/context construction. Used by: flow setup, instruction-stream lowering. */
   readonly traceLabel: (offset: number, name: string, span?: SourceSpan) => void;
-  /** Set by: emit/context construction. Mutated while lowering native assembler instructions and op expansions. */
+  /** Set by: emit/context construction. Mutated while lowering ASM source instructions and op expansions. */
   readonly currentCodeSegmentTagRef: { current: SourceSegmentTag | undefined };
   /** Set by: emit/context construction. Mutated by: flow setup. Used by: flow setup. */
   readonly generatedLabelCounterRef: { current: number };
@@ -156,12 +156,6 @@ export type AssemblerLoweringAddressingContext = {
   readonly resolveEa: (ea: EaExprNode, span: SourceSpan) => EaResolution | undefined;
   /** Set by: emit/context construction. Used by: op call expansion. */
   readonly enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
-  /** Set by: emit/context construction. Used by: op call expansion. */
-  readonly pushImm16: (value: number, span: SourceSpan) => boolean;
-  /** Set by: emit/context construction. Used by: op call expansion. */
-  readonly pushZeroExtendedReg8: (regName: string, span: SourceSpan) => boolean;
-  /** Set by: emit/context construction. Used by: flow setup. */
-  readonly loadImm16ToHL: (value: number, span: SourceSpan) => boolean;
   /** Set by: emit/context construction. Used by: asm instruction lowering. */
   readonly lowerLdWithEa: (asmItem: AsmInstructionNode) => boolean;
 };

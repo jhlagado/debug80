@@ -2,19 +2,19 @@ import type { AssemblerLoweringSharedContext } from './assemblerLoweringContext.
 import type { LoweringContext } from './programLowering.js';
 import {
   createAssemblerInstructionEmitters,
-  createNativeAssemblerFlowPhase,
+  createAsmSourceFlowPhase,
   type AssemblerInstructionSetup,
   prepareAssemblerInstructionSetupPhase,
 } from './assemblerLoweringPhases.js';
 
-export type NativeAssemblerEmitter = ReturnType<typeof createAssemblerInstructionEmitters>;
+export type AsmSourceEmitter = ReturnType<typeof createAssemblerInstructionEmitters>;
 
-function createNativeAssemblerSetup(ctx: AssemblerLoweringSharedContext): AssemblerInstructionSetup {
+function createAsmSourceSetup(ctx: AssemblerLoweringSharedContext): AssemblerInstructionSetup {
   return prepareAssemblerInstructionSetupPhase(ctx);
 }
 
-export function createNativeAssemblerEmitter(ctx: LoweringContext): NativeAssemblerEmitter {
-  const setup = createNativeAssemblerSetup(ctx);
-  const flow = createNativeAssemblerFlowPhase(setup);
+export function createAsmSourceEmitter(ctx: LoweringContext): AsmSourceEmitter {
+  const setup = createAsmSourceSetup(ctx);
+  const flow = createAsmSourceFlowPhase(setup);
   return createAssemblerInstructionEmitters(setup, flow);
 }

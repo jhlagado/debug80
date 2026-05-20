@@ -168,11 +168,9 @@ src/
 │   ├── loweredAsmStreamRecording.ts # Stream recording
 │   ├── loweringTypes.ts       # Shared lowering types (PendingSymbol, ranges, …)
 │   ├── loweringDiagnostics.ts # Lowering diag helpers
-│   ├── typeResolution.ts      # Type-resolution shim
 │   ├── fixupEmission.ts       # Fixup queue management
 │   ├── emissionCore.ts        # Core emission helpers
 │   ├── runtimeAtomBudget.ts   # Runtime atom budget enforcement
-│   ├── runtimeImmediates.ts   # Runtime immediate handling
 │   ├── capabilities.ts        # Capability checking
 │   ├── inputAssets.ts         # bin/hex asset loading
 │   ├── sectionLayout.ts       # Section layout management
@@ -316,7 +314,7 @@ Notice the `withDefaults()` helper at the top of `compile.ts`. If the caller spe
 
 ### What it does
 
-`loadProgram()` in `sourceLoader.ts` is responsible for turning an entry-file path into a `LoadedProgram`. Native `.asm` AZM source is loaded as a source file with textual includes expanded before parsing. The result also carries auxiliary maps:
+`loadProgram()` in `sourceLoader.ts` is responsible for turning an entry-file path into a `LoadedProgram`. AZM `.asm` and `.z80` source is loaded with textual includes expanded before parsing. The result also carries auxiliary maps:
 
 - `sourceTexts` — the raw text of each file (for the listing writer and debug map).
 - `sourceLineComments` — a per-file, per-line index of inline comments (used in listings).
@@ -327,7 +325,7 @@ AZM and ASM80-compatible source use textual includes. `expandTextIncludesForFile
 
 ### `sourceIncludePaths.ts`
 
-Contains `resolveIncludeCandidates()` for textual includes. Native AZM source organization should stay on this include path.
+Contains `resolveIncludeCandidates()` for textual includes. AZM source organization should stay on this include path.
 
 ### `sourceIncludeExpansion.ts`
 
@@ -637,7 +635,7 @@ Returns a `LoweringResult` which is the fully populated byte maps plus all pendi
 
 ZAX function/module/section lowering is not part of AZM assembler. The old
 function-frame, function-call, typed-storage, and structured-control paths are
-deletion targets, not compatibility layers. Native AZM lowering starts from flat
+deletion targets, not compatibility layers. AZM lowering starts from flat
 assembler items: labels, directives, instructions, layout constants, and visible
 `op` expansions.
 
@@ -652,12 +650,12 @@ assembler items: labels, directives, instructions, layout constants, and visible
 | Op invocations                                       | `opExpansionOrchestration.ts`                      |
 | Everything else                                      | `z80/encode.ts` directly                           |
 
-Native `.asm` uses explicit branch instructions and labels. ZAX structured
-control tokens are removed from the native surface.
+AZM source uses explicit branch instructions and labels. ZAX structured control
+tokens are removed from the assembler surface.
 
 ### 10.7 The `ld` Sub-Pipeline
 
-Native AZM keeps ordinary Z80 `ld` encoding and compile-time layout constants.
+AZM keeps ordinary Z80 `ld` encoding and compile-time layout constants.
 It does not route layout casts through typed memory transfer planning. The
 retained `ld` path is:
 
@@ -681,7 +679,7 @@ plain immediate/fixup operand before `ld` encoding.
 
 ### 10.9 Removed Typed EA Materialization Boundary
 
-Runtime typed effective-address materialization belonged to old ZAX. Native AZM
+Runtime typed effective-address materialization belonged to old ZAX. AZM
 does not synthesize pointer arithmetic, stack walks, or typed load/store
 pipelines from operand types. Layout casts and `offset(...)` forms must fold to
 constants before instruction emission; anything that needs runtime address code

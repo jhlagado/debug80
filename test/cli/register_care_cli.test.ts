@@ -63,7 +63,7 @@ describe('register-care cli', () => {
     await rm(work, { recursive: true, force: true });
   }, 20_000);
 
-  it('loads bare register-care interface files with --interface', async () => {
+  it('loads bare register-care contract files with --interface', async () => {
     const work = await mkdtemp(join(tmpdir(), 'azm-regcare-cli-interface-'));
     const entry = join(work, 'main.z80');
     const iface = join(work, 'lib.interface.asm');
@@ -293,11 +293,7 @@ describe('register-care cli', () => {
 
     const annotated = await readFile(entry, 'utf8');
     expect(annotated).toContain(
-      [
-        '; Helper prose stays untouched.',
-        ';!      out       HL',
-        'HELPER:',
-      ].join('\n'),
+      ['; Helper prose stays untouched.', ';!      out       HL', 'HELPER:'].join('\n'),
     );
     expect(annotated).not.toContain('; ========================== AZM\nSTART:');
     expect(annotated).not.toContain('; ========================== AZM\nSKIP:');
@@ -360,12 +356,7 @@ describe('register-care cli', () => {
 
     const annotated = await readFile(entry, 'utf8');
     expect(annotated).toContain(
-      [
-        '; Mask prose.',
-        ';!      out       A',
-        ';!      clobbers  C',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
     expect(annotated).not.toContain('; maybe-out A');
 
@@ -409,15 +400,12 @@ describe('register-care cli', () => {
     expect(res.stdout.trim()).toBe(entry);
 
     const fixed = await readFile(entry, 'utf8');
-    expect(fixed).toContain(['START:', '    ld a,3', '    call MASK', '    nop', '    ld d,a'].join('\n'));
+    expect(fixed).toContain(
+      ['START:', '    ld a,3', '    call MASK', '    nop', '    ld d,a'].join('\n'),
+    );
     expect(fixed).not.toContain('; expects out A');
     expect(fixed).toContain(
-      [
-        '; Mask prose.',
-        ';!      out       A',
-        ';!      clobbers  C',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
     expect(fixed).not.toContain('; maybe-out A');
 
@@ -466,12 +454,7 @@ describe('register-care cli', () => {
     expect(fixed).toContain(['START:', '    ld a,3', '    call MASK', '    ld d,a'].join('\n'));
     expect(fixed).not.toContain('; expects out A');
     expect(fixed).toContain(
-      [
-        '; Mask prose.',
-        ';!      out       A',
-        ';!      clobbers  C',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
 
     await rm(work, { recursive: true, force: true });
@@ -515,17 +498,10 @@ describe('register-care cli', () => {
     expect(res.code).toBe(0);
 
     const fixed = await readFile(entry, 'utf8');
-    expect(fixed).toContain(
-      ['START:', '    ld a,3', '    call MASK', '    jr z,.done'].join('\n'),
-    );
+    expect(fixed).toContain(['START:', '    ld a,3', '    call MASK', '    jr z,.done'].join('\n'));
     expect(fixed).not.toContain('; expects out A');
     expect(fixed).toContain(
-      [
-        '; Mask prose.',
-        ';!      out       A',
-        ';!      clobbers  C',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
 
     await rm(work, { recursive: true, force: true });

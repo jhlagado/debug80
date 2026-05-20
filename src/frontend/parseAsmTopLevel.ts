@@ -6,7 +6,7 @@ import { parseAzmFlatDirectiveLine } from './parseAzmFlatDirectiveLine.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
 import type { ParseItemContext, ParseItemResult } from './parseSourceItemDispatch.js';
 
-export interface ParseAzmNativeTopLevelInput {
+export interface ParseAsmTopLevelInput {
   index: number;
   filePath: string;
   lineNo: number;
@@ -17,7 +17,7 @@ export interface ParseAzmNativeTopLevelInput {
   aliasPolicy?: DirectiveAliasPolicy;
 }
 
-export function parseAzmNativeTopLevel(args: ParseAzmNativeTopLevelInput): ParseItemResult | undefined {
+export function parseAsmTopLevel(args: ParseAsmTopLevelInput): ParseItemResult | undefined {
   const keyword = topLevelStartKeyword(args.rest);
   if (keyword !== undefined) {
     return undefined;
@@ -41,7 +41,7 @@ export function parseAzmNativeTopLevel(args: ParseAzmNativeTopLevelInput): Parse
     filePath: args.filePath,
     stmtSpan: args.stmtSpan,
     diagnostics: args.diagnostics,
-    nativeMode: true,
+    asmSourceMode: true,
   });
   if (azmAsmItems === undefined) return undefined;
 

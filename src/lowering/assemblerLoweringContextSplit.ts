@@ -60,9 +60,6 @@ export function splitAssemblerLoweringSharedContext(
     addressing: {
       resolveEa: shared.resolveEa,
       enforceEaRuntimeAtomBudget: shared.enforceEaRuntimeAtomBudget,
-      pushImm16: shared.pushImm16,
-      pushZeroExtendedReg8: shared.pushZeroExtendedReg8,
-      loadImm16ToHL: shared.loadImm16ToHL,
       lowerLdWithEa: shared.lowerLdWithEa,
     },
     opResolution: {

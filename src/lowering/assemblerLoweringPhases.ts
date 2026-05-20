@@ -5,7 +5,7 @@ import {
   type FlowState,
   type OpExpansionFrame,
 } from './assemblerFlowSetup.js';
-import { createCallLoweringHelpers } from './callLowering.js';
+import { createAsmInstructionStreamHelpers } from './asmInstructionStream.js';
 import type { AssemblerLoweringSharedContext } from './assemblerLoweringContext.js';
 import { splitAssemblerLoweringSharedContext } from './assemblerLoweringContextSplit.js';
 
@@ -186,27 +186,21 @@ function buildAssemblerFlowPhase(
   };
 }
 
-/** Flow helpers for native `.asm` assembler source: no generated prologue, epilogue, or locals. */
-export function createNativeAssemblerFlowPhase(
-  setup: AssemblerInstructionSetup,
-): AssemblerFlowPhase {
+/** Flow helpers for ASM source: no generated prologue, epilogue, or locals. */
+export function createAsmSourceFlowPhase(setup: AssemblerInstructionSetup): AssemblerFlowPhase {
   setup.bindSpTracking(undefined);
   return buildAssemblerFlowPhase(setup, {
     trackedSp: { delta: 0, valid: true, invalid: false },
   });
 }
 
-/** Instruction emitter bundle shared by op bodies and native assembler source. */
+/** Instruction emitter bundle shared by op bodies and ASM source. */
 export function createAssemblerInstructionEmitters(
   setup: AssemblerInstructionSetup,
   flow: AssemblerFlowPhase,
-): ReturnType<typeof createCallLoweringHelpers> {
+): ReturnType<typeof createAsmInstructionStreamHelpers> {
   const fp = splitAssemblerLoweringSharedContext(setup.ctx);
-  const {
-    emitInstr,
-    getCurrentCodeSegmentTag,
-    setCurrentCodeSegmentTag,
-  } = setup;
+  const { emitInstr, getCurrentCodeSegmentTag, setCurrentCodeSegmentTag } = setup;
   const diagnostics = fp.diagnostics.diagnostics;
 
   const { lowerAsmInstructionDispatcher } = createAsmInstructionLoweringHelpers({
@@ -248,7 +242,7 @@ export function createAssemblerInstructionEmitters(
     flattenEaDottedName: fp.astUtilities.flattenEaDottedName,
   } as const;
 
-  return createCallLoweringHelpers({
+  return createAsmInstructionStreamHelpers({
     diagnostics,
     asmItemSpanSourceTag: (span) => flow.sourceTagForSpan(span, flow.opExpansionStack),
     getCurrentCodeSegmentTag,
