@@ -11,9 +11,9 @@
 
 **Include/import graph cycles detected** (see section below).
 
-Total fixture files (excludes sentinels): 476
+Total fixture files (excludes sentinels): 470
 Sentinel files: 1
-Reachable from tests (direct refs ∪ fixture closure): 128
+Reachable from tests (direct refs ∪ fixture closure): 122
 Potentially unreferenced fixtures: 348
 
 ## Direct test reference counts
@@ -144,13 +144,11 @@ Potentially unreferenced fixtures: 348
 | pr148_known_heads_no_fallback_matrix.zax | 1 |
 | pr149_condition_diag_matrix_invalid.zax | 1 |
 | pr149_select_mem_selector_eval_once.zax | 0 |
-| pr15_if_else.zax | 1 |
 | pr15_if_stack_mismatch.zax | 0 |
 | pr15_nested_select_if_while.zax | 0 |
 | pr15_nested_while_if.zax | 0 |
 | pr15_repeat_stack_mismatch.zax | 0 |
 | pr15_repeat_until.zax | 0 |
-| pr15_select_cases.zax | 1 |
 | pr15_select_duplicate_case.zax | 0 |
 | pr15_select_single_case.zax | 0 |
 | pr15_until_without_repeat.zax | 0 |
@@ -246,9 +244,6 @@ Potentially unreferenced fixtures: 348
 | pr217_parser_op_missing_end_eof.zax | 0 |
 | pr218_lowering_unknown_retcc_stack_state.zax | 0 |
 | pr218_lowering_untracked_retcc_stack_state.zax | 0 |
-| pr219_lowering_unknown_retcc_select_join.zax | 1 |
-| pr219_lowering_unknown_retcc_while_backedge.zax | 1 |
-| pr219_lowering_untracked_retcc_select_join.zax | 1 |
 | pr22_call_ea_index_nested.zax | 0 |
 | pr222_locals_multiple_retcc.zax | 0 |
 | pr222_locals_retcc_and_ret.zax | 0 |
@@ -411,7 +406,6 @@ Potentially unreferenced fixtures: 348
 | pr49_ld_mem_imm16_abs_fastpath.zax | 1 |
 | pr50_union_field_access.zax | 0 |
 | pr51_data_inferred_array_len.zax | 0 |
-| pr52_ptr_scalar_slots.zax | 1 |
 | pr54_inferred_array_len_invalid_var.zax | 0 |
 | pr543_function_ret_epilogue.zax | 0 |
 | pr544_program_lowering.zax | 0 |
@@ -990,13 +984,11 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr148_known_heads_no_fallback_matrix.zax | test/pr148_known_heads_no_fallback_matrix.test.ts |
 | pr149_condition_diag_matrix_invalid.zax | test/pr149_condition_diag_matrix.test.ts |
 | pr149_select_mem_selector_eval_once.zax |  |
-| pr15_if_else.zax | test/lowering/pr511_asm_range_lowering_integration.test.ts |
 | pr15_if_stack_mismatch.zax |  |
 | pr15_nested_select_if_while.zax |  |
 | pr15_nested_while_if.zax |  |
 | pr15_repeat_stack_mismatch.zax |  |
 | pr15_repeat_until.zax |  |
-| pr15_select_cases.zax | test/lowering/pr511_asm_range_lowering_integration.test.ts |
 | pr15_select_duplicate_case.zax |  |
 | pr15_select_single_case.zax |  |
 | pr15_until_without_repeat.zax |  |
@@ -1092,9 +1084,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr217_parser_op_missing_end_eof.zax |  |
 | pr218_lowering_unknown_retcc_stack_state.zax |  |
 | pr218_lowering_untracked_retcc_stack_state.zax |  |
-| pr219_lowering_unknown_retcc_select_join.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
-| pr219_lowering_unknown_retcc_while_backedge.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
-| pr219_lowering_untracked_retcc_select_join.zax | test/pr219_lowering_retcc_structured_control_matrix.test.ts |
 | pr22_call_ea_index_nested.zax |  |
 | pr222_locals_multiple_retcc.zax |  |
 | pr222_locals_retcc_and_ret.zax |  |
@@ -1257,7 +1246,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr49_ld_mem_imm16_abs_fastpath.zax | test/pr49_ld_mem_imm16_abs_fastpath.test.ts |
 | pr50_union_field_access.zax |  |
 | pr51_data_inferred_array_len.zax |  |
-| pr52_ptr_scalar_slots.zax | test/pr52_ptr_scalar_slots.test.ts |
 | pr54_inferred_array_len_invalid_var.zax |  |
 | pr543_function_ret_epilogue.zax |  |
 | pr544_program_lowering.zax |  |
