@@ -16,10 +16,6 @@ function writeTempSource(ext: string, source: string): { entry: string; cleanup:
   return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-function azm700Diagnostics(diagnostics: Awaited<ReturnType<typeof compile>>['diagnostics']) {
-  return diagnostics.filter((d) => d.id === DiagnosticIds.AzmRemovedZaxConstruct);
-}
-
 function parsedLabelNames(path: string, source: string): string[] {
   const diagnostics: Diagnostic[] = [];
   const file = parseModuleFile(path, source, diagnostics);
@@ -158,7 +154,7 @@ describe('AZM native source boundary', () => {
     }
   });
 
-  it('allows AZM layout metadata without removed-ZAX diagnostics', async () => {
+  it('allows AZM layout metadata without diagnostics', async () => {
     const { entry, cleanup } = writeTempSource(
       'azm',
       [
@@ -180,13 +176,13 @@ describe('AZM native source boundary', () => {
         { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
         { formats: defaultFormatWriters },
       );
-      expect(azm700Diagnostics(res.diagnostics)).toEqual([]);
+      expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     } finally {
       cleanup();
     }
   });
 
-  it('allows label-based layout-cast address expressions without removed-ZAX diagnostics', async () => {
+  it('allows label-based layout-cast address expressions without diagnostics', async () => {
     const { entry, cleanup } = writeTempSource(
       'azm',
       [
@@ -202,7 +198,7 @@ describe('AZM native source boundary', () => {
         '',
         '.org $0000',
         'main:',
-        '  ld a, (<Sprite>SPRITES[0].flags)',
+        '  ld a, (<Sprite[16]>SPRITES[0].flags)',
         '  ret',
         '',
       ].join('\n'),
@@ -214,7 +210,7 @@ describe('AZM native source boundary', () => {
         { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
         { formats: defaultFormatWriters },
       );
-      expect(azm700Diagnostics(res.diagnostics)).toEqual([]);
+      expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     } finally {
       cleanup();
     }
