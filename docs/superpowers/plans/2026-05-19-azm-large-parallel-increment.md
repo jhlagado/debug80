@@ -26,7 +26,7 @@
 
 Current state:
 
-- `offset(...)` is the preferred AZM spelling; legacy `offsetof(...)` remains accepted.
+- `offset(...)` is the preferred AZM spelling; legacy `offset(...)` remains accepted.
 - `offset(Sprite[16], [2].flags)` is implemented.
 - Runtime register indexes inside typed layout paths produce an explicit diagnostic.
 - The next meaningful feature is constant-folding explicit layout casts like `<Sprite[16]>SPRITES[3].flags`.
@@ -204,11 +204,11 @@ Update `azmDeprecations.ts` so:
 
 - `type`, `union`, `sizeof`, `offset`, and constant-only layout casts are not warned as deprecated.
 - `func`, typed assignment, typed storage blocks, typed externs, and structured compiler control remain warned in `.azm`.
-- Warnings use `sizeof/offset` wording, not `sizeof/offsetof`.
+- Warnings use `sizeof/offset` wording, not `sizeof/offset`.
 
 - [ ] **Step 4: Update retirement audit**
 
-In `docs/audits/zax-feature-retirement-audit.md`, change the layout keep list to `offset(...)` with a note that `offsetof(...)` is a legacy compatibility alias.
+In `docs/audits/zax-feature-retirement-audit.md`, change the layout keep list to `offset(...)` with a note that `offset(...)` is a legacy compatibility alias.
 
 - [ ] **Step 5: Verify**
 
@@ -387,7 +387,7 @@ git commit -m "Add optional AZM corpus guardrails"
 Run:
 
 ```bash
-rg -n "func |:=|section data|globals|extern func|sizeof|offset|offsetof|op " test src docs/audits
+rg -n "func |:=|section data|globals|extern func|sizeof|offset|offset|op " test src docs/audits
 ```
 
 - [ ] **Step 2: Create alpha test bucket doc**
@@ -481,7 +481,7 @@ In `docs/spec/azm-assembly-baseline.md`, add a compact layout constants section:
 - `offset(Type, path)`
 - explicit `<TypeExpr>label[index].field`
 - indexes are compile-time only
-- `offsetof` is legacy compatibility spelling
+- `offset` is legacy compatibility spelling
 
 - [ ] **Step 4: Verify docs/examples**
 

@@ -23,7 +23,7 @@ visible `op` expansion — not ZAX typed lowering.
 
 | Area | Status |
 |------|--------|
-| `sizeof` / `offset` / `offsetof` alias | Done (`fc85509`) |
+| `sizeof` / `offset` / `offset` alias | Done (`fc85509`) |
 | Layout-cast tests + fold via `eaResolution` + LD hooks | **WIP uncommitted** — works but uses typed-LD paths; needs refactor |
 | Philosophy + directive-alias docs | **WIP uncommitted** |
 | Large parallel plan Tasks 2–6 | Mostly not started |
@@ -205,7 +205,7 @@ npm run build && npm run test:azm:corpus
 **Files:**
 
 - `examples/azm/layout-casts.azm` (if examples tree fits)
-- `docs/design/exact-size-layout-and-indexing.md` — examples using `offset` not `offsetof`
+- `docs/design/exact-size-layout-and-indexing.md` — examples using `offset` not `offset`
 - `docs/spec/azm-assembly-baseline.md` — cross-links only if not done in Phase 0
 
 Depends on **Phase 1** for compile-able layout-cast example.

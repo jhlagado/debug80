@@ -163,10 +163,11 @@ mixed should be moved to a cross-cutting destination only after confirmation.
 - `pr92_lowering_interactions.test.ts`
 - `pr952_raw_ix_slot_offsets.test.ts`
 
-## First ZAX compatibility quarantine candidates
+## First ZAX removal candidates
 
-These root-level files are part of the first safe quarantine batch in
-`docs/audits/zax-test-retirement-map.md`.
+These root-level files are part of the first deletion/rewrite batch in
+`docs/audits/zax-test-retirement-map.md`. They are not an AZM compatibility
+surface.
 
 Already covered by `npm run test:zax:compat`:
 

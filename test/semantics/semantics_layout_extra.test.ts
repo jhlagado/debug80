@@ -95,7 +95,7 @@ describe('semantics/layout', () => {
     });
   });
 
-  it('computes offsetof paths through records', () => {
+  it('computes offset paths through records', () => {
     const point: TypeDeclNode = {
       kind: 'TypeDecl',
       span,
@@ -118,7 +118,7 @@ describe('semantics/layout', () => {
     expect(offset).toBe(1); // byte field x (1) before y
   });
 
-  it('uses exact record fields and exact array stride in offsetof', () => {
+  it('uses exact record fields and exact array stride in offset', () => {
     const inner: TypeDeclNode = {
       kind: 'TypeDecl',
       span,
