@@ -42,7 +42,7 @@ const commands = [
     label: 'MON3 ASM80 acceptance',
     command: 'npx',
     args: ['vitest', 'run', 'test/asm80/mon3_acceptance.test.ts'],
-    env: { ZAX_RUN_MON3_ACCEPTANCE: '1' },
+    env: { AZM_RUN_MON3_ACCEPTANCE: '1' },
   },
   {
     label: 'TEC-1G ASM80 corpus comparison',

@@ -20,7 +20,7 @@ describe('ASM80 baseline acceptance workflow', () => {
     };
 
     expect(pkg.scripts?.['test:asm80:tetro']).toBe(
-      'ZAX_RUN_TETRO_ACCEPTANCE=1 vitest run test/asm80/tetro_acceptance.test.ts',
+      'AZM_RUN_TETRO_ACCEPTANCE=1 vitest run test/asm80/tetro_acceptance.test.ts',
     );
     expect(pkg.scripts?.['test:asm80:baseline']).not.toContain('tetro');
   });
