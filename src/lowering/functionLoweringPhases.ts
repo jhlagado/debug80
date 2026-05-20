@@ -11,51 +11,57 @@ import { createFunctionAsmRewritingHelpers } from './functionAsmRewriting.js';
 import { createFunctionCallLoweringHelpers } from './functionCallLowering.js';
 import type { FunctionFrameSetupContext } from './functionFrameSetup.js';
 import { initializeFunctionFrame } from './functionFrameSetup.js';
-import type { FunctionLoweringContext } from './functionLowering.js';
-import { splitFunctionLoweringContext } from './functionLoweringSplit.js';
+import type { FunctionLoweringContext, FunctionLoweringSharedContext } from './functionLowering.js';
+import {
+  splitFunctionLoweringContext,
+  splitFunctionLoweringSharedContext,
+} from './functionLoweringSplit.js';
 
 /** #1123 — inputs to {@link initializeFunctionFrame} (alias of {@link FunctionFrameSetupContext}). */
 export type FrameContext = FunctionFrameSetupContext;
 
-export interface FunctionLoweringSetupPhase {
-  /** Full function-lowering context. */
-  readonly ctx: FunctionLoweringContext;
-  /** Function being lowered. */
-  readonly item: FunctionLoweringContext['item'];
+export interface AssemblerInstructionSetup {
+  /** Shared assembler-lowering context. */
+  readonly ctx: FunctionLoweringSharedContext;
   /** Shared diagnostic list. */
-  readonly diagnostics: FunctionLoweringContext['diagnostics'];
+  readonly diagnostics: FunctionLoweringSharedContext['diagnostics'];
   /** Pending forward symbols. */
-  readonly pending: FunctionLoweringContext['pending'];
+  readonly pending: FunctionLoweringSharedContext['pending'];
   /** Trace hook for comments. */
-  readonly traceComment: FunctionLoweringContext['traceComment'];
+  readonly traceComment: FunctionLoweringSharedContext['traceComment'];
   /** Trace hook for labels. */
-  readonly traceLabel: FunctionLoweringContext['traceLabel'];
+  readonly traceLabel: FunctionLoweringSharedContext['traceLabel'];
   /** Registers SP tracking callbacks for asm emission. */
-  readonly bindSpTracking: FunctionLoweringContext['bindSpTracking'];
+  readonly bindSpTracking: FunctionLoweringSharedContext['bindSpTracking'];
   /** Current emitted code offset. */
-  readonly getCodeOffset: FunctionLoweringContext['getCodeOffset'];
+  readonly getCodeOffset: FunctionLoweringSharedContext['getCodeOffset'];
   /** General instruction emitter. */
-  readonly emitInstr: FunctionLoweringContext['emitInstr'];
+  readonly emitInstr: FunctionLoweringSharedContext['emitInstr'];
   /** Active source segment tag for listing, if any. */
   readonly getCurrentCodeSegmentTag: () => SourceSegmentTag | undefined;
   /** Sets active source segment tag; `undefined` clears. */
   readonly setCurrentCodeSegmentTag: (tag: SourceSegmentTag | undefined) => void;
-  /** Narrow context passed into frame setup. */
-  readonly frameSetupContext: ReturnType<typeof buildFrameSetupContext>;
   /** Resolves a local alias name to its canonical target; `undefined` if not aliased. */
   readonly resolveLocalAliasTargetName: (name: string) => string | undefined;
   /** Evaluates imms in asm with diagnostics; `undefined` if not const. */
   readonly evalImmExprForAsm: (
-    expr: FunctionLoweringContext['item']['asm']['items'][number]['span'] extends never
-      ? never
-      : import('../frontend/ast.js').ImmExprNode,
+    expr: import('../frontend/ast.js').ImmExprNode,
   ) => number | undefined;
   /** Symbolic branch target from imm; `undefined` if not a simple symbol+addend. */
   readonly symbolicTargetFromExprForAsm: (
     expr: import('../frontend/ast.js').ImmExprNode,
   ) => { baseLower: string; addend: number } | undefined;
   /** Instruction emitter bound for asm lowering (same as `emitInstr`). */
-  readonly emitInstrForAsm: FunctionLoweringContext['emitInstr'];
+  readonly emitInstrForAsm: FunctionLoweringSharedContext['emitInstr'];
+}
+
+export interface FunctionLoweringSetupPhase extends AssemblerInstructionSetup {
+  /** Full function-lowering context. */
+  readonly ctx: FunctionLoweringContext;
+  /** Function being lowered. */
+  readonly item: FunctionLoweringContext['item'];
+  /** Narrow context passed into frame setup. */
+  readonly frameSetupContext: ReturnType<typeof buildFrameSetupContext>;
 }
 
 export interface FunctionFramePhase {
@@ -193,12 +199,11 @@ function buildFrameSetupContext(
   } as const;
 }
 
-export function prepareFunctionLoweringSetupPhase(
-  ctx: FunctionLoweringContext,
-): FunctionLoweringSetupPhase {
-  const fp = splitFunctionLoweringContext(ctx);
+export function prepareAssemblerInstructionSetupPhase(
+  ctx: FunctionLoweringSharedContext,
+): AssemblerInstructionSetup {
+  const fp = splitFunctionLoweringSharedContext(ctx);
   const {
-    item,
     diagnostics,
     pending,
     traceComment,
@@ -226,22 +231,9 @@ export function prepareFunctionLoweringSetupPhase(
     symbolicTargetFromExpr: fp.conditions.symbolicTargetFromExpr,
     emitInstr,
   });
-  const frameSetupContext = buildFrameSetupContext(
-    { ...ctx, emitInstr },
-    {
-      get current() {
-        return currentCodeSegmentTag;
-      },
-      set current(value: SourceSegmentTag | undefined) {
-        currentCodeSegmentTag = value;
-        currentCodeSegmentTagRef.current = value;
-      },
-    },
-  );
 
   return {
     ctx,
-    item,
     diagnostics,
     pending,
     traceComment,
@@ -251,13 +243,36 @@ export function prepareFunctionLoweringSetupPhase(
     emitInstr,
     getCurrentCodeSegmentTag: () => currentCodeSegmentTag,
     setCurrentCodeSegmentTag,
-    frameSetupContext,
     ...asmRewriting,
   };
 }
 
+export function prepareFunctionLoweringSetupPhase(
+  ctx: FunctionLoweringContext,
+): FunctionLoweringSetupPhase {
+  const setup = prepareAssemblerInstructionSetupPhase(ctx);
+  const frameSetupContext = buildFrameSetupContext(
+    { ...ctx, emitInstr: setup.emitInstr },
+    {
+      get current() {
+        return setup.getCurrentCodeSegmentTag();
+      },
+      set current(value: SourceSegmentTag | undefined) {
+        setup.setCurrentCodeSegmentTag(value);
+      },
+    },
+  );
+
+  return {
+    ...setup,
+    ctx,
+    item: ctx.item,
+    frameSetupContext,
+  };
+}
+
 function buildFunctionFramePhase(
-  setup: FunctionLoweringSetupPhase,
+  setup: AssemblerInstructionSetup,
   frameInit: {
     hasStackSlots: boolean;
     emitSyntheticEpilogue: boolean;
@@ -365,9 +380,9 @@ export function runFunctionFrameSetupPhase(setup: FunctionLoweringSetupPhase): F
 
 /** Frame helpers for native `.azm` assembler source — no function prologue, epilogue, or locals. */
 export function createNativeAssemblerFramePhase(
-  setup: FunctionLoweringSetupPhase,
+  setup: AssemblerInstructionSetup,
 ): FunctionFramePhase {
-  const { stackSlotOffsets, stackSlotTypes, localAliasTargets } = setup.frameSetupContext.storage;
+  const { stackSlotOffsets, stackSlotTypes, localAliasTargets } = setup.ctx;
   stackSlotOffsets.clear();
   stackSlotTypes.clear();
   localAliasTargets.clear();
@@ -383,10 +398,10 @@ export function createNativeAssemblerFramePhase(
 
 /** Instruction emitter bundle shared by function bodies and native assembler source. */
 export function createAssemblerInstructionEmitters(
-  setup: FunctionLoweringSetupPhase,
+  setup: AssemblerInstructionSetup,
   frame: FunctionFramePhase,
 ): ReturnType<typeof createFunctionCallLoweringHelpers> {
-  const fp = splitFunctionLoweringContext(setup.ctx);
+  const fp = splitFunctionLoweringSharedContext(setup.ctx);
   const {
     emitInstr,
     getCurrentCodeSegmentTag,
@@ -570,14 +585,6 @@ export function createAssemblerInstructionEmitters(
     flowRef: frame.flowRef,
     syncFromFlow: frame.syncFromFlow,
   });
-}
-
-/** Back-compat name for function lowering callers while the assembler facade rolls out. */
-export function createFunctionAsmEmitters(
-  setup: FunctionLoweringSetupPhase,
-  frame: FunctionFramePhase,
-): ReturnType<typeof createFunctionCallLoweringHelpers> {
-  return createAssemblerInstructionEmitters(setup, frame);
 }
 
 export function prepareFunctionBodyLoweringPhase(ctx: BodyContext): FunctionBodyPhase {
