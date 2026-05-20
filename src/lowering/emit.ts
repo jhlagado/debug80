@@ -47,7 +47,7 @@ export function emitProgram(
     ...(options !== undefined ? { options } : {}),
   });
 
-  // --- Phase 2: prescan (visibility / alias metadata) ---
+  // --- Phase 2: prescan (op registry / alias metadata) ---
   const prescan = runEmitPrescanPhase(phase1.programLoweringContext);
   // --- Phase 3: lowering (bytes + fixup queues) ---
   const lowered = runEmitLoweringPhase(phase1.programLoweringContext, prescan);

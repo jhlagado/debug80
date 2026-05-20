@@ -3,7 +3,7 @@
  *
  * Pipeline (conceptual):
  *
- * 1. **Workspace setup** — lives in `emit.ts`: placement byte maps, fixup queues, visibility,
+ * 1. **Workspace setup** — lives in `emit.ts`: placement byte maps, fixup queues, op registries,
  *    resolution helpers, and the program-lowering context (`createEmitProgramContext`). This
  *    phase wires mutable state and callbacks; it does not traverse the whole program yet.
  *
@@ -142,7 +142,7 @@ export function emitProgramEmptyResult(): EmitProgramResult {
 }
 
 // --- Phase 2: prescan (ops) ---
-/** Phase 2 — prescan: build visibility maps and alias metadata before emission. */
+/** Phase 2 — prescan: build op candidate maps and alias metadata before emission. */
 export function runEmitPrescanPhase(ctx: EmitPrescanPhaseContext): EmitPrescanPhaseResult {
   return preScanProgramDeclarations(ctx);
 }

@@ -133,7 +133,7 @@ export function buildEmitProgramLoweringContext(
       lowerLdWithEa,
     },
     opResolution: {
-      resolveOpCandidates: ctx.workspace.ops.resolveVisibleOpCandidates,
+      resolveOpCandidates: ctx.workspace.ops.resolveOpCandidatesForFile,
     },
     opOverload: {
       formatAsmOperandForOpDiag,

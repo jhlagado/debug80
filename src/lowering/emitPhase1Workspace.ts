@@ -5,7 +5,7 @@ import type { EmittedSourceSegment, SymbolEntry } from '../formats/types.js';
 import type { EmitProgramOptions } from './emitPipeline.js';
 import type { PendingSymbol } from './loweringTypes.js';
 import type { LoweredAsmStream, LoweredAsmStreamBlock } from './loweredAsmTypes.js';
-import { createEmitVisibilityHelpers } from './emitVisibility.js';
+import { createOpCandidateRegistryHelpers } from './opCandidateRegistry.js';
 
 /** Byte maps, listing segments, and lowered-asm recording for phase 1. */
 export type EmitPhase1EmissionState = {
@@ -55,14 +55,14 @@ export type EmitPhase1SymbolState = {
   rel8Fixups: EmitPhase1Rel8Fixup[];
 };
 
-/** Op visibility. */
+/** Op candidate lookup. */
 export type EmitPhase1OpRegistry = {
   /** Per-file op overload lists. */
   localOpsByFile: Map<string, Map<string, OpDeclNode[]>>;
   /** All declared `op` names (lowercased) for diagnostics. */
   declaredOpNames: Set<string>;
-  /** Resolves op candidates visible from a file. */
-  resolveVisibleOpCandidates: ReturnType<typeof createEmitVisibilityHelpers>['resolveVisibleOpCandidates'];
+  /** Resolves op candidates declared for a file. */
+  resolveOpCandidatesForFile: ReturnType<typeof createOpCandidateRegistryHelpers>['resolveOpCandidatesForFile'];
 };
 
 /** Options and paths fixed for the emit run. */
@@ -108,7 +108,7 @@ export function createEmitPhase1Workspace(
 
   const localOpsByFile = new Map<string, Map<string, OpDeclNode[]>>();
   const declaredOpNames = new Set<string>();
-  const { resolveVisibleOpCandidates } = createEmitVisibilityHelpers({
+  const { resolveOpCandidatesForFile } = createOpCandidateRegistryHelpers({
     localOpsByFile,
   });
   const baseExprs: Partial<Record<'code' | 'data', ImmExprNode>> = {};
@@ -138,7 +138,7 @@ export function createEmitPhase1Workspace(
     ops: {
       localOpsByFile,
       declaredOpNames,
-      resolveVisibleOpCandidates,
+      resolveOpCandidatesForFile,
     },
     config: {
       primaryFile,

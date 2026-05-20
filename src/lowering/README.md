@@ -43,7 +43,7 @@ Lowering turns parsed source and semantic state into:
 - `asmEquResolution.ts` (ASM `EQU` alias resolution)
 - `asmRawDataLowering.ts` (ASM raw data directive lowering)
 - `asmDirectiveTraversal.ts` (assembler directive traversal/address helpers)
-- `emitVisibility.ts` (op visibility)
+- `opCandidateRegistry.ts` (op candidate lookup)
 
 ### LD lowering
 
