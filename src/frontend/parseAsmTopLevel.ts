@@ -1,8 +1,8 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceSpan } from './ast.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
-import { parseAzmAsmStreamLine } from './parseAzmAsmStream.js';
-import { parseAzmFlatDirectiveLine } from './parseAzmFlatDirectiveLine.js';
+import { parseAsmStreamLine } from './parseAsmStream.js';
+import { parseAsmFlatDirectiveLine } from './parseAsmFlatDirectiveLine.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
 import type { ParseItemContext, ParseItemResult } from './parseSourceItemDispatch.js';
 
@@ -23,7 +23,7 @@ export function parseAsmTopLevel(args: ParseAsmTopLevelInput): ParseItemResult |
     return undefined;
   }
 
-  const directiveItems = parseAzmFlatDirectiveLine({
+  const directiveItems = parseAsmFlatDirectiveLine({
     rest: args.rest,
     stmtSpan: args.stmtSpan,
     filePath: args.filePath,
@@ -36,17 +36,17 @@ export function parseAsmTopLevel(args: ParseAsmTopLevelInput): ParseItemResult |
     return { nextIndex: args.index + 1, nodes: directiveItems };
   }
 
-  const azmAsmItems = parseAzmAsmStreamLine({
+  const asmItems = parseAsmStreamLine({
     rest: args.rest,
     filePath: args.filePath,
     stmtSpan: args.stmtSpan,
     diagnostics: args.diagnostics,
     asmSourceMode: true,
   });
-  if (azmAsmItems === undefined) return undefined;
+  if (asmItems === undefined) return undefined;
 
   return {
     nextIndex: args.index + 1,
-    nodes: azmAsmItems,
+    nodes: asmItems,
   };
 }

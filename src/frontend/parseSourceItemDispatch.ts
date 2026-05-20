@@ -13,7 +13,7 @@ import type { SourceFile } from './source.js';
 
 export type ParseItemContext = {
   scope: 'source';
-  azmPendingRawLabel?: PendingRawLabel;
+  asmPendingRawLabel?: PendingRawLabel;
 };
 
 export type ParseItemResult = {
