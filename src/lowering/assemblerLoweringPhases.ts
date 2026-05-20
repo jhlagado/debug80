@@ -186,7 +186,7 @@ function buildAssemblerFlowPhase(
   };
 }
 
-/** Flow helpers for ASM source: no generated prologue, epilogue, or locals. */
+/** Flow helpers for explicit ASM source. */
 export function createAsmSourceFlowPhase(setup: AssemblerInstructionSetup): AssemblerFlowPhase {
   setup.bindSpTracking(undefined);
   return buildAssemblerFlowPhase(setup, {
