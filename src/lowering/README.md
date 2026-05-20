@@ -78,5 +78,4 @@ normal lowering architecture.
 
 ## Related references
 
-- `docs/reference/addressing-steps-overview.md`
 - `docs/reference/source-overview.md`

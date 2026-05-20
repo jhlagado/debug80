@@ -1,7 +1,7 @@
-# Publish @jhlagado/zax to npm when a GitHub Release is published.
+# Publish @jhlagado/azm to npm when a GitHub Release is published.
 #
 # Repository secret (Settings → Secrets and variables → Actions):
-#   NPM_TOKEN — npm granular access token with publish for @jhlagado/zax
+#   NPM_TOKEN — npm granular access token with publish for @jhlagado/azm
 #   (use "bypass 2FA" if your package requires 2FA for publish)
 #
 # Package → Publishing access: must allow token-based publish (e.g. option that

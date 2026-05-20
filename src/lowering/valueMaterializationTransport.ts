@@ -1,5 +1,6 @@
 import type { SourceSpan } from '../frontend/ast.js';
 import type { ValueMaterializationContext } from './valueMaterializationContext.js';
+import { LOAD_RP_EA, STORE_RP_EA } from './steps.js';
 
 /**
  * HL-indirect word load/store primitives (through LOAD_RP_EA / STORE_RP_EA pipelines).
@@ -8,15 +9,15 @@ import type { ValueMaterializationContext } from './valueMaterializationContext.
 export function createHlWordTransport(ctx: ValueMaterializationContext) {
   const emitLoadWordFromHlAddress = (target: 'HL' | 'DE' | 'BC', span: SourceSpan): boolean => {
     if (target === 'DE') {
-      return ctx.emitStepPipeline(ctx.LOAD_RP_EA('DE'), span);
+      return ctx.emitStepPipeline(LOAD_RP_EA('DE'), span);
     }
     if (!ctx.emitInstr('push', [{ kind: 'Reg', span, name: 'DE' }], span)) return false;
-    if (!ctx.emitStepPipeline(ctx.LOAD_RP_EA(target), span)) return false;
+    if (!ctx.emitStepPipeline(LOAD_RP_EA(target), span)) return false;
     return ctx.emitInstr('pop', [{ kind: 'Reg', span, name: 'DE' }], span);
   };
 
   const emitStoreWordToHlAddress = (source: 'DE' | 'BC', span: SourceSpan): boolean =>
-    ctx.emitStepPipeline(ctx.STORE_RP_EA(source), span);
+    ctx.emitStepPipeline(STORE_RP_EA(source), span);
 
   return { emitLoadWordFromHlAddress, emitStoreWordToHlAddress };
 }

@@ -19,7 +19,7 @@ describe('cli failure contract matrix', () => {
   }, 180_000);
 
   it('returns code 1 for missing entry file and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-missing-entry-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-missing-entry-'));
     const missingEntry = join(work, 'missing.asm');
     const outHex = join(work, 'out.hex');
     const base = join(work, 'out');
@@ -37,7 +37,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 1 for parser diagnostics and does not print CLI usage text', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-parser-error-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-parser-error-'));
     const entry = join(work, 'broken.asm');
     const outHex = join(work, 'out.hex');
     const base = join(work, 'out');
@@ -56,7 +56,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 1 for ASM80 include parser diagnostics at the included file', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-asm80-include-error-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-asm80-include-error-'));
     const entry = join(work, 'entry.z80');
     const child = join(work, 'child.z80');
     const outBin = join(work, 'out.bin');
@@ -82,7 +82,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 1 for ASM80 include encoder diagnostics at the included file', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-asm80-include-encode-error-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-asm80-include-encode-error-'));
     const entry = join(work, 'entry.z80');
     const child = join(work, 'child.z80');
     const outBin = join(work, 'out.bin');
@@ -108,7 +108,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 1 for encoder diagnostics and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-encode-error-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-encode-error-'));
     const entry = join(work, 'encode-error.asm');
     const outHex = join(work, 'out.hex');
     const base = join(work, 'out');
@@ -127,7 +127,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 1 for empty entry modules and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-empty-entry-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-empty-entry-'));
     const entry = join(work, 'empty.asm');
     const outHex = join(work, 'out.hex');
     const base = join(work, 'out');
@@ -146,7 +146,7 @@ describe('cli failure contract matrix', () => {
   });
 
   it('returns code 2 for CLI parse errors and always includes usage text', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-usage-errors-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-usage-errors-'));
     const entry = join(work, 'main.asm');
     await writeFile(entry, 'main:\n  nop\n  ret\n', 'utf8');
 
@@ -173,7 +173,7 @@ describe('cli failure contract matrix', () => {
   }, 20_000);
 
   it('accepts uppercase output extensions and prints canonical primary artifact path', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-upper-ext-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-upper-ext-'));
     const entry = join(work, 'main.asm');
     await writeFile(entry, 'main:\n  nop\n  ret\n', 'utf8');
 

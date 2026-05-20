@@ -34,7 +34,7 @@ body:
       label: Normative References
       description: Spec sections and doc paths that define this behavior.
       placeholder: |
-        - docs/spec/zax-spec.md §...
+        - docs/spec/azm-assembly-baseline.md §...
         - docs/v02-transition-decisions.md §... (transition context only)
     validations:
       required: true
@@ -43,7 +43,7 @@ body:
     id: normative_priority
     attributes:
       label: Normative Priority Tag
-      description: Classify this task using the execution-priority model in docs/reference/zax-dev-playbook.md.
+      description: Classify this task using the execution-priority model in docs/reference/code-quality-standard.md.
       options:
         - NORMATIVE-MUST
         - NORMATIVE-SHOULD
@@ -100,7 +100,7 @@ body:
     attributes:
       label: Merge Risk Notes
       description: Note likely conflict files or sequencing risks with main.
-      placeholder: 'Likely conflicts in docs/spec/zax-spec.md section ... / src/lowering/emit.ts ...'
+      placeholder: 'Likely conflicts in docs/spec/azm-assembly-baseline.md section ... / src/lowering/emit.ts ...'
 
   - type: textarea
     id: out_of_scope

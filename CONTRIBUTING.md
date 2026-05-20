@@ -1,4 +1,4 @@
-# Contributing to ZAX
+# Contributing to AZM
 
 Short workflow. Prefer this over ad-hoc branch names and long cherry-pick recipes.
 

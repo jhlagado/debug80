@@ -4,22 +4,8 @@
  */
 
 import {
-  LOAD_RP_EA,
-  LOAD_RP_FVAR,
   LOAD_RP_GLOB,
-  STORE_RP_EA,
-  STORE_RP_FVAR,
   STORE_RP_GLOB,
-  TEMPLATE_L_ABC,
-  TEMPLATE_LW_HL,
-  TEMPLATE_L_HL,
-  TEMPLATE_L_DE,
-  TEMPLATE_LW_BC,
-  TEMPLATE_LW_DE,
-  TEMPLATE_SW_DEBC,
-  TEMPLATE_SW_HL,
-  TEMPLATE_S_ANY,
-  TEMPLATE_S_HL,
   type StepPipeline,
 } from './emitStepImports.js';
 import type { AsmInstructionNode, AsmOperandNode, ImmExprNode, SourceSpan } from '../frontend/ast.js';
@@ -28,17 +14,15 @@ import { sizeOfTypeExpr } from '../semantics/layout.js';
 import { encodeInstruction } from '../z80/encode.js';
 import { buildEaResolutionContext, createEaResolutionHelpers } from './eaResolution.js';
 import { createEaMaterializationHelpers } from './eaMaterialization.js';
-import { createAddressingPipelineBuilders } from './addressingPipelines.js';
 import { createRuntimeImmediateHelpers } from './runtimeImmediates.js';
 import { createRuntimeAtomBudgetHelpers } from './runtimeAtomBudget.js';
-import { createScalarWordAccessorHelpers } from './scalarWordAccessors.js';
 import { createLdLoweringHelpers } from './ldLowering.js';
 import { createOpMatchingHelpers } from './opMatching.js';
 import { createEmissionCoreHelpers } from './emissionCore.js';
 import { createValueMaterializationHelpers } from './valueMaterialization.js';
 import { createFixupEmissionHelpers } from './fixupEmission.js';
 import { createAsmUtilityHelpers, flattenEaDottedName } from './asmUtils.js';
-import { formatImmExprForAsm, formatIxDisp } from './traceFormat.js';
+import { formatImmExprForAsm } from './traceFormat.js';
 import { createTypeResolutionHelpers } from './typeResolution.js';
 import { createEmitStateHelpers } from './emitState.js';
 import { alignTo } from './sectionLayout.js';
@@ -111,13 +95,6 @@ export type EmitPhase1WireResult = {
   formatAsmOperandForOpDiag: ReturnType<typeof createOpMatchingHelpers>['formatAsmOperandForOpDiag'];
   enforceDirectCallSiteEaBudget: ReturnType<typeof createRuntimeAtomBudgetHelpers>['enforceDirectCallSiteEaBudget'];
   enforceEaRuntimeAtomBudget: ReturnType<typeof createRuntimeAtomBudgetHelpers>['enforceEaRuntimeAtomBudget'];
-  buildEaBytePipeline: ReturnType<typeof createAddressingPipelineBuilders>['buildEaBytePipeline'];
-  buildEaWordPipeline: ReturnType<typeof createAddressingPipelineBuilders>['buildEaWordPipeline'];
-  emitScalarWordLoad: ReturnType<typeof createScalarWordAccessorHelpers>['emitScalarWordLoad'];
-  emitScalarWordStore: ReturnType<typeof createScalarWordAccessorHelpers>['emitScalarWordStore'];
-  scalarKindOfResolution: ReturnType<typeof createScalarWordAccessorHelpers>['scalarKindOfResolution'];
-  isWordCompatibleScalarKind: ReturnType<typeof createScalarWordAccessorHelpers>['isWordCompatibleScalarKind'];
-  canUseScalarWordAccessor: ReturnType<typeof createScalarWordAccessorHelpers>['canUseScalarWordAccessor'];
   emitLoadWordFromHlAddress: ReturnType<typeof createValueMaterializationHelpers>['emitLoadWordFromHlAddress'];
   emitStoreSavedHlToEa: ReturnType<typeof createValueMaterializationHelpers>['emitStoreSavedHlToEa'];
   emitStoreWordToHlAddress: ReturnType<typeof createValueMaterializationHelpers>['emitStoreWordToHlAddress'];
@@ -334,29 +311,8 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
       storageTypes: ctx.workspace.storage.storageTypes,
     });
 
-  const { buildEaBytePipeline, buildEaWordPipeline } = createAddressingPipelineBuilders({
-    diagnostics: ctx.diagnostics,
-    diagAt,
-    reg8: REG8_NAMES,
-    resolveEa,
-    resolveEaTypeExpr,
-    resolveScalarBinding,
-    resolveScalarKind,
-    sizeOfTypeExpr: (typeExpr) => sizeOfTypeExpr(typeExpr, ctx.env, ctx.diagnostics),
-    evalImmExpr: (expr) => evalImmExpr(expr, ctx.env, ctx.diagnostics),
-  });
-
-  const {
-    emitScalarWordLoad,
-    emitScalarWordStore,
-    scalarKindOfResolution,
-    isWordCompatibleScalarKind,
-    canUseScalarWordAccessor,
-  } = createScalarWordAccessorHelpers({
-    emitStepPipeline,
-    resolveScalarKind,
-    resolveAggregateType,
-  });
+  const scalarKindOfResolution = (resolved: ReturnType<typeof resolveEa> | undefined) =>
+    resolved?.typeExpr ? resolveScalarKind(resolved.typeExpr) : undefined;
 
   const {
     emitLoadWordFromHlAddress,
@@ -384,14 +340,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     negateHL,
     pushZeroExtendedReg8,
     emitStepPipeline,
-    buildEaBytePipeline,
-    buildEaWordPipeline,
-    emitScalarWordLoad,
-    formatIxDisp,
-    TEMPLATE_L_ABC,
-    TEMPLATE_LW_DE,
-    LOAD_RP_EA,
-    STORE_RP_EA,
   });
 
   const { materializeEaAddressToHL } = createEaMaterializationHelpers({
@@ -403,23 +351,8 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
   });
 
   const { lowerLdWithEa } = createLdLoweringHelpers({
-    LOAD_RP_FVAR,
     LOAD_RP_GLOB,
-    STORE_RP_FVAR,
     STORE_RP_GLOB,
-    TEMPLATE_L_ABC,
-    TEMPLATE_L_DE,
-    TEMPLATE_L_HL,
-    TEMPLATE_LW_BC,
-    TEMPLATE_LW_DE,
-    TEMPLATE_LW_HL,
-    TEMPLATE_S_ANY,
-    TEMPLATE_S_HL,
-    TEMPLATE_SW_DEBC,
-    TEMPLATE_SW_HL,
-    buildEaBytePipeline,
-    buildEaWordPipeline,
-    canUseScalarWordAccessor,
     diagAt,
     diagnostics: ctx.diagnostics,
     emitAbs16Fixup,
@@ -428,15 +361,11 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     emitInstr,
     emitLoadWordFromHlAddress,
     emitRawCodeBytes,
-    emitScalarWordLoad,
-    emitScalarWordStore,
     emitStepPipeline,
     emitStoreSavedHlToEa,
     emitStoreWordToHlAddress,
     env: ctx.env,
     evalImmExpr: (expr: ImmExprNode) => evalImmExpr(expr, ctx.env, ctx.diagnostics),
-    formatIxDisp,
-    isWordCompatibleScalarKind,
     loadImm16ToHL,
     materializeEaAddressToHL,
     reg8Code: REG8_CODES,
@@ -499,13 +428,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     formatAsmOperandForOpDiag,
     enforceDirectCallSiteEaBudget,
     enforceEaRuntimeAtomBudget,
-    buildEaBytePipeline,
-    buildEaWordPipeline,
-    emitScalarWordLoad,
-    emitScalarWordStore,
-    scalarKindOfResolution,
-    isWordCompatibleScalarKind,
-    canUseScalarWordAccessor,
     emitLoadWordFromHlAddress,
     emitStoreSavedHlToEa,
     emitStoreWordToHlAddress,

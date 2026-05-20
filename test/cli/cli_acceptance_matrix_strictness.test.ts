@@ -141,7 +141,7 @@ describe('cli acceptance matrix strictness', () => {
   }, 40_000);
 
   it('keeps artifacts deterministic across include path spellings (relative, absolute, equals-form)', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-include-parity-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-include-parity-'));
     const entry = join(work, 'entry.asm');
     const incDir = join(work, 'incs');
     const relativeInc = './incs';

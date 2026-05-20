@@ -16,7 +16,7 @@ describe('cli determinism contract', () => {
   }, 180_000);
 
   it('produces identical sibling artifacts across repeated CLI runs', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-det-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-det-'));
     const entry = join(__dirname, '..', 'fixtures', 'pr11_include_main.asm');
     const includes = join(__dirname, '..', 'fixtures', 'includes');
     const outHex = join(work, 'out', 'bundle.hex');
@@ -42,7 +42,7 @@ describe('cli determinism contract', () => {
   }, 30_000);
 
   it('keeps artifact bytes identical across include flag forms and include order', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'zax-cli-det-flags-'));
+    const work = await mkdtemp(join(tmpdir(), 'azm-cli-det-flags-'));
     const entry = join(__dirname, '..', 'fixtures', 'pr11_include_main.asm');
     const includes = join(__dirname, '..', 'fixtures', 'includes');
     const fixturesDir = join(__dirname, '..', 'fixtures');
