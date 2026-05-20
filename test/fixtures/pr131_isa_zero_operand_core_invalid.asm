@@ -1,4 +1,4 @@
-export func main()
+main:
     nop a
     halt b
     di c
@@ -12,4 +12,3 @@ export func main()
     rla d
     rra e
     exx h
-end

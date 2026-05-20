@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR131: core zero-operand diagnostics', () => {
   it('reports explicit no-operand diagnostics for malformed core forms', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr131_isa_zero_operand_core_invalid.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr131_isa_zero_operand_core_invalid.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'nop expects no operands' });

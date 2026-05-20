@@ -1,4 +1,4 @@
-export func main()
+main:
     rst
     rst 8, 16
     im
@@ -7,4 +7,3 @@ export func main()
     in a, (c), b
     out
     out (c)
-end

@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR129: ED zero-operand diagnostics', () => {
   it('reports explicit diagnostics when ED zero-operand mnemonics are given operands', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr129_isa_ed_zero_operand_invalid.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr129_isa_ed_zero_operand_invalid.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'reti expects no operands' });
