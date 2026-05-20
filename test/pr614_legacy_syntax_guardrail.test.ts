@@ -11,6 +11,18 @@ describe('PR614 legacy syntax guardrail', () => {
     expect(violations).toEqual([]);
   });
 
+  it('rejects .azm source filenames', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-ext-'));
+    const fixture = join(dir, 'main.azm');
+    await writeFile(fixture, 'main:\n  ret\n', 'utf8');
+
+    const { violations } = scanForbiddenLegacySyntax({ filePaths: [fixture] });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.ruleId).toBe('azm-source-extension');
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it('rejects a bare data marker in ASM source', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-'));
     const fixture = join(dir, 'new-legacy-form.asm');
