@@ -139,18 +139,7 @@ export type SourceItemNode =
   | OpDeclNode
   | AlignDirectiveNode
   | AsmLabelNode
-  | AsmInstructionNode
-  | UnimplementedNode;
-
-/**
- * Placeholder node used by contracts to reserve future space in unions.
- *
- * Parsers should not emit this node for constructs that are already implemented.
- */
-export interface UnimplementedNode extends BaseNode {
-  kind: 'Unimplemented';
-  note: string;
-}
+  | AsmInstructionNode;
 
 /**
  * Alignment directive.
@@ -232,7 +221,7 @@ export interface AsmBlockNode extends BaseNode {
 /**
  * Items that can appear inside an `asm` block.
  */
-export type AsmItemNode = AsmInstructionNode | AsmLabelNode | UnimplementedNode;
+export type AsmItemNode = AsmInstructionNode | AsmLabelNode;
 
 /**
  * Label definition inside an `asm` stream.
