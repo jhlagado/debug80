@@ -1,9 +1,13 @@
-import type { RecordFieldNode } from './ast.js';
+import type { RecordFieldNode, SourceSpan, TypeExprNode } from './ast.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceFile } from './source.js';
 import { span } from './source.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
-import { diagIfInferredArrayLengthNotAllowed, parseTypeExprFromText } from './parseImm.js';
+import {
+  diagIfInferredArrayLengthNotAllowed,
+  parseNumberLiteral,
+  parseTypeExprFromText,
+} from './parseImm.js';
 import {
   diagInvalidBlockLine,
   formatIdentifierToken,
@@ -59,14 +63,16 @@ function parseRecordFieldDecl(
 ): RecordFieldNode | undefined {
   const { file, diagnostics, sourcePath, isReservedTopLevelName } = ctx;
   const { startOffset, endOffset, lineNo, filePath } = line;
-  const match = /^([^:]+)\s*:\s*(.+)$/.exec(fieldText);
+  const match =
+    /^([^:]+)\s*:\s*(.+)$/.exec(fieldText) ??
+    /^([A-Za-z_][A-Za-z0-9_]*)\s+(\.(?:field|byte|word|addr))(?:\s+(.+))?$/i.exec(fieldText);
   if (!match) {
     diagInvalidBlockLine(
       diagnostics,
       filePath,
       `${kindName} field declaration`,
       fieldText,
-      '<name>: <type>',
+      '<name> .field <size> or <name> .byte/.word/.addr',
       lineNo,
     );
     return undefined;
@@ -101,12 +107,14 @@ function parseRecordFieldDecl(
     return undefined;
   }
 
-  const typeText = match[2]!.trim();
   const fieldSpan = span(file, startOffset, endOffset);
-  const typeExpr = parseTypeExprFromText(typeText, fieldSpan, {
-    allowInferredArrayLength: false,
-  });
+  const typeExpr = match[2]!.startsWith('.')
+    ? parseAsmFieldTypeExpr(match[2]!, match[3]?.trim(), fieldSpan)
+    : parseTypeExprFromText(match[2]!.trim(), fieldSpan, {
+        allowInferredArrayLength: false,
+      });
   if (!typeExpr) {
+    const typeText = (match[3] ?? match[2] ?? '').trim();
     if (
       diagIfInferredArrayLengthNotAllowed(diagnostics, filePath, typeText, {
         line: lineNo,
@@ -120,7 +128,7 @@ function parseRecordFieldDecl(
       filePath,
       `${kindName} field declaration`,
       fieldText,
-      '<name>: <type>',
+      '<name> .field <size> or <name> .byte/.word/.addr',
       lineNo,
     );
     return undefined;
@@ -149,6 +157,46 @@ function parseRecordFieldDecl(
   };
 }
 
+function scalarType(span: SourceSpan, name: 'byte' | 'word' | 'addr'): TypeExprNode {
+  return { kind: 'TypeName' as const, span, name };
+}
+
+function parseAsmFieldTypeExpr(
+  directive: string,
+  operandText: string | undefined,
+  fieldSpan: SourceSpan,
+): TypeExprNode | undefined {
+  switch (directive.toLowerCase()) {
+    case '.byte':
+      return operandText === undefined || operandText.length === 0
+        ? scalarType(fieldSpan, 'byte')
+        : undefined;
+    case '.word':
+      return operandText === undefined || operandText.length === 0
+        ? scalarType(fieldSpan, 'word')
+        : undefined;
+    case '.addr':
+      return operandText === undefined || operandText.length === 0
+        ? scalarType(fieldSpan, 'addr')
+        : undefined;
+    case '.field': {
+      if (operandText === undefined || operandText.length === 0) return undefined;
+      const size = parseNumberLiteral(operandText);
+      if (size === undefined || size < 1) return undefined;
+      if (size === 1) return scalarType(fieldSpan, 'byte');
+      if (size === 2) return scalarType(fieldSpan, 'word');
+      return {
+        kind: 'ArrayType',
+        span: fieldSpan,
+        element: scalarType(fieldSpan, 'byte'),
+        length: size,
+      };
+    }
+    default:
+      return undefined;
+  }
+}
+
 function parseRecordFields(
   fieldKind: string,
   startIndex: number,
@@ -174,7 +222,11 @@ function parseRecordFields(
       index++;
       continue;
     }
-    if (fieldTextLower === 'end') {
+    if (
+      fieldTextLower === 'end' ||
+      fieldTextLower === '.endtype' ||
+      fieldTextLower === '.endunion'
+    ) {
       terminated = true;
       endOffset = lineEndOffset;
       index++;

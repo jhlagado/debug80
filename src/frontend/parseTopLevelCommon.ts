@@ -15,13 +15,14 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
 ];
 
 function consumeKeywordPrefix(input: string, keyword: string): string | undefined {
-  const match = new RegExp(`^${keyword}(?:\\s+(.*))?$`, 'i').exec(input);
+  const match = new RegExp(`^\\.?${keyword}(?:\\s+(.*))?$`, 'i').exec(input);
   if (!match) return undefined;
   return (match[1] ?? '').trimStart();
 }
 
 export function topLevelStartKeyword(t: string): string | undefined {
-  const keyword = (t.split(/\s/, 1)[0] ?? '').toLowerCase();
+  const rawKeyword = (t.split(/\s/, 1)[0] ?? '').toLowerCase();
+  const keyword = rawKeyword.startsWith('.') ? rawKeyword.slice(1) : rawKeyword;
   return TOP_LEVEL_KEYWORDS.has(keyword) ? keyword : undefined;
 }
 

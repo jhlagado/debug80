@@ -72,6 +72,65 @@ describe('.asm layout constant subset', () => {
     );
   });
 
+  it('evaluates assembler-style .type field layouts', async () => {
+    const result = await compileSource('asm', [
+      '.type Sprite',
+      'x       .field 1',
+      'y       .field 1',
+      'timer   .word',
+      'ptr     .addr',
+      'blob    .field 3',
+      '.endtype',
+      '',
+      'SIZE .equ sizeof(Sprite)',
+      'PTR .equ offset(Sprite, ptr)',
+      'BLOB .equ offset(Sprite, blob)',
+      '',
+      'main:',
+      '  ld hl,SIZE',
+      '  ld hl,PTR',
+      '  ld hl,BLOB',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectLdHlImmediates(
+      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
+      [9, 4, 6],
+    );
+  });
+
+  it('evaluates assembler-style .union layouts', async () => {
+    const result = await compileSource('asm', [
+      '.type Pair',
+      'left    .byte',
+      'right   .byte',
+      '.endtype',
+      '',
+      '.union Cell',
+      'raw     .word',
+      'pair    .field 2',
+      'tag     .byte',
+      '.endunion',
+      '',
+      'CELL_SIZE .equ sizeof(Cell)',
+      'TAG_OFFSET .equ offset(Cell, tag)',
+      '',
+      'main:',
+      '  ld hl,CELL_SIZE',
+      '  ld hl,TAG_OFFSET',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectLdHlImmediates(
+      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
+      [2, 0],
+    );
+  });
+
   it('evaluates exact sizeof for arrays of records', async () => {
     const result = await compileSource('asm', [
       'type Sprite',
