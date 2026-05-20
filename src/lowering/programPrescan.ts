@@ -44,8 +44,8 @@ function preScanItem(
 }
 
 export function preScanProgramDeclarations(ctx: PrescanContext): PrescanResult {
-  for (const module of ctx.program.files) {
-    for (const item of module.items) preScanItem(ctx, item, module.path);
+  for (const sourceFile of ctx.program.files) {
+    for (const item of sourceFile.items) preScanItem(ctx, item, sourceFile.path);
   }
 
   return {

@@ -115,18 +115,18 @@ export function lowerProgramDeclarations(ctx: LoweringContext): LoweringResult {
   const { lowerRawDataDecl, lowerAsmRawDataDirective } =
     createProgramLoweringDeclarationHelpers(ctx);
 
-  for (const module of ctx.program.files) {
+  for (const sourceFile of ctx.program.files) {
     ctx.activeSectionRef.current = 'code';
     let asmEndReached = false;
-    for (let index = 0; index < module.items.length; index++) {
-      const item = module.items[index]!;
+    for (let index = 0; index < sourceFile.items.length; index++) {
+      const item = sourceFile.items[index]!;
       if (isAsmEndDirective(item)) {
         asmEndReached = true;
         continue;
       }
       if (asmEndReached && !isAsmBinFromDirective(item) && !isAsmBinToDirective(item)) continue;
       if (isAsmOrgDirective(item)) {
-        ctx.activeSectionRef.current = sectionForAsmOrg(module.items, index);
+        ctx.activeSectionRef.current = sectionForAsmOrg(sourceFile.items, index);
       }
       lowerItem(ctx, lowerRawDataDecl, lowerAsmRawDataDirective, item);
     }

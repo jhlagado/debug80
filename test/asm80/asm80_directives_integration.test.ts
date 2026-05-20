@@ -410,7 +410,7 @@ describe('asm80 directive lowering integration', () => {
 
   it('emits parsed db string fragments and string-character expressions', () => {
     const diagnostics: Diagnostic[] = [];
-    const module = parseAsmSourceFile(
+    const sourceFile = parseAsmSourceFile(
       file,
       [
         '.org 0100H',
@@ -428,7 +428,7 @@ describe('asm80 directive lowering integration', () => {
       kind: 'Program',
       span: span(1),
       entryFile: file,
-      files: [module],
+      files: [sourceFile],
     };
     const env = buildEnv(ast, diagnostics);
     const emitted = emitProgram(ast, env, diagnostics);

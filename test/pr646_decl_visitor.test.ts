@@ -10,7 +10,7 @@ const span: SourceSpan = {
 };
 
 describe('PR646 declaration-tree visitor', () => {
-  it('walks module declarations with context', () => {
+  it('walks source declarations with context', () => {
     const items: SourceItemNode[] = [
       {
         kind: 'AsmEqu',

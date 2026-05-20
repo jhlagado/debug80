@@ -139,21 +139,21 @@ export async function loadProgram(
   if (expanded === undefined) return undefined;
   if (hasErrors(diagnostics)) return undefined;
 
-  const entryModule = parseExpandedSourceFile(
+  const entrySource = parseExpandedSourceFile(
     entryPath,
     expanded,
     diagnostics,
     aliasPolicy,
   );
-  if (!entryModule) return undefined;
+  if (!entrySource) return undefined;
   recordSourceLineComments(sourceLineComments, expanded);
 
   return {
     program: {
       kind: 'Program',
-      span: entryModule.span,
+      span: entrySource.span,
       entryFile: entryPath,
-      files: [entryModule],
+      files: [entrySource],
     },
     sourceTexts,
     sourceLineComments,

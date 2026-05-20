@@ -20,7 +20,7 @@ export type AsmLoweringDispatcherSlice = {
 
 /**
  * Narrow surface for {@link createAsmInstructionLoweringHelpers}: branch/call, LD helpers,
- * assignment, and raw-instruction fallback. Composed from family-module contracts plus LD-helper
+ * assignment, and raw-instruction fallback. Composed from helper-family contracts plus LD-helper
  * and dispatcher-only fields (no unused legacy fields).
  */
 export type AsmLoweringHost = BranchCallLoweringContext &

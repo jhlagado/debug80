@@ -1,6 +1,6 @@
 /**
  * Emit phase 1 wiring: type resolution, emit state, fixups, emission core, EA/op matching,
- * module-alias bootstrap, atom budgets, addressing, value materialization, LD lowering.
+ * directive-alias bootstrap, atom budgets, addressing, value materialization, LD lowering.
  */
 
 import {
