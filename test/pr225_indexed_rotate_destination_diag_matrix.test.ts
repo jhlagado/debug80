@@ -27,7 +27,7 @@ type Row = {
 function rowsForHead(head: (typeof HEADS)[number]): Row[] {
   return [
     {
-      label: `${head} legacy reg`,
+      label: `${head} plain reg`,
       id: DiagnosticIds.EncodeError,
       message: `${head} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
     },

@@ -62,7 +62,7 @@ is still `Name`; the `@` prefix marks the label as a contract-bearing routine
 entry for AZM tools.
 
 Source annotation tools should append generated contract blocks to explicit
-`@Name:` entries even when there is no prose block yet. For legacy plain-label
+`@Name:` entries even when there is no prose block yet. For plain-label
 source, tools should append generated blocks only to labels that already have a
 routine doc block, or replace an existing generated AZM block. This keeps
 internal branch labels and unstructured code bodies free from machine-generated

@@ -140,7 +140,7 @@
           "match": "(?i)(?<![A-Za-z0-9_.$?])\\.(?:org|include|equ|db|dw|ds|align|cstr|pstr|istr|binfrom|binto|end)\\b"
         },
         {
-          "name": "keyword.control.directive.legacy.asm",
+          "name": "keyword.control.directive.alias.asm",
           "match": "(?i)^\\s*(?:ORG|EQU|DB|DW|DS|INCLUDE|ALIGN|END)\\b"
         }
       ]

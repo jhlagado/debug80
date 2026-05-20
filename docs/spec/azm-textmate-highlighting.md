@@ -27,7 +27,7 @@ The grammar currently highlights:
 - AZMDoc register and flag carriers
 - global and local labels
 - canonical AZM dotted directives
-- accepted legacy directive aliases
+- accepted directive aliases
 - Z80 instruction mnemonics
 - Z80 registers and register pairs
 - condition codes after branch/call/return mnemonics

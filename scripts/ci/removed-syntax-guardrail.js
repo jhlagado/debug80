@@ -40,7 +40,8 @@ export const FORBIDDEN_RULES = [
 ];
 
 export const DEFAULT_SCAN_ROOTS = ['README.md', 'docs', 'examples', 'test/fixtures'];
-export const FORBIDDEN_SOURCE_EXTENSIONS = ['.azm', '.azmi', '.zac', '.zax'];
+export const FORBIDDEN_SOURCE_EXTENSION_NAMES = ['azm', 'azmi', 'zac', 'zax'];
+export const FORBIDDEN_SOURCE_EXTENSIONS = FORBIDDEN_SOURCE_EXTENSION_NAMES.map((ext) => `.${ext}`);
 
 function normalizePath(path) {
   return path.replaceAll('\\', '/');
