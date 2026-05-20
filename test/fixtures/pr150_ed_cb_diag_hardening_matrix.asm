@@ -1,4 +1,4 @@
-export func main()
+main:
     ; ED-family malformed forms
     in
     in a
@@ -36,4 +36,3 @@ export func main()
     sll
     sll a, b
     sra (iy + 128), a
-  end

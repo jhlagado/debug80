@@ -1,4 +1,4 @@
-export func main()
+main:
     sub b, c
     cp b, c
     and b, c
@@ -6,4 +6,3 @@ export func main()
     xor b, c
     adc b, c
     sbc b, c
-  end

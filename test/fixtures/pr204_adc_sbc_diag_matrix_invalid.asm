@@ -1,4 +1,4 @@
-export func main()
+main:
     adc sp, bc
     adc ix, de
     adc (hl), a
@@ -7,4 +7,3 @@ export func main()
     sbc iy, bc
     sbc (hl), a
     sbc hl, af
-  end

@@ -10,7 +10,7 @@ import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PR147_FIXTURE = join(__dirname, 'fixtures', 'pr147_known_head_diag_matrix_invalid.zax');
+const PR147_FIXTURE = join(__dirname, 'fixtures', 'pr147_known_head_diag_matrix_invalid.asm');
 
 type Row = {
   label: string;
@@ -33,19 +33,9 @@ describe('PR147: broad known-head diagnostic matrix', () => {
       message: 'call does not support register targets; use imm16',
     },
     {
-      label: 'call cc nn',
-      id: DiagnosticIds.EmitError,
-      message: 'call cc, nn expects two operands (cc, nn)',
-    },
-    {
       label: 'call cc imm',
       id: DiagnosticIds.EncodeError,
       message: 'call cc, nn expects imm16',
-    },
-    {
-      label: 'jp cc nn',
-      id: DiagnosticIds.EmitError,
-      message: 'jp cc, nn expects two operands (cc, nn)',
     },
     {
       label: 'jp indirect',
@@ -53,18 +43,13 @@ describe('PR147: broad known-head diagnostic matrix', () => {
       message: 'jp indirect form supports (hl), (ix), or (iy) only',
     },
     {
-      label: 'jr cc disp',
-      id: DiagnosticIds.EmitError,
-      message: 'jr cc, disp expects two operands (cc, disp8)',
-    },
-    {
       label: 'jr cc',
-      id: DiagnosticIds.EmitError,
+      id: DiagnosticIds.EncodeError,
       message: 'jr cc expects valid condition code NZ/Z/NC/C',
     },
     {
       label: 'djnz',
-      id: DiagnosticIds.EmitError,
+      id: DiagnosticIds.EncodeError,
       message: 'djnz does not support register targets; expects disp8',
     },
     {

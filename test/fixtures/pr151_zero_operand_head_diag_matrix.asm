@@ -1,4 +1,4 @@
-export func main()
+main:
     nop a
     halt a
     di a
@@ -33,4 +33,3 @@ export func main()
     otir a
     outd a
     otdr a
-  end

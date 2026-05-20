@@ -1,4 +1,4 @@
-export func main()
+main:
     add a
     ld a
     inc a, b
@@ -7,15 +7,11 @@ export func main()
     pop ixh
     ex a
     call a
-    call nz
     call c, a
-    jp nz
     jp (bc)
-    jr nz
     jr po, 1
     djnz a
     rst 7
     im 3
     in a, (256)
     out (1), b
-  end

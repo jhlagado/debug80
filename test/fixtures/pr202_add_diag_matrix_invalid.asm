@@ -1,7 +1,6 @@
-export func main()
+main:
   add sp, bc
   add hl, 1
   add ix, 1
   add iy, a
   add (hl), a
-end

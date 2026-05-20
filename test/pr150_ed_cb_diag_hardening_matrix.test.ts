@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR150: ED/CB diagnostics hardening matrix', () => {
   it('reports explicit diagnostics for malformed ED/CB forms without fallback errors', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr150_ed_cb_diag_hardening_matrix.zax');
+    const entry = join(__dirname, 'fixtures', 'pr150_ed_cb_diag_hardening_matrix.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'in expects one or two operands' });

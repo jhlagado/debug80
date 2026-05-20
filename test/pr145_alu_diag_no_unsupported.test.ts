@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('PR145: ALU diagnostics suppress generic fallback', () => {
   it('reports specific ALU diagnostics without unsupported-instruction cascades', async () => {
-    const entry = join(__dirname, 'fixtures', 'pr145_alu_diag_no_unsupported.zax');
+    const entry = join(__dirname, 'fixtures', 'pr145_alu_diag_no_unsupported.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
 
     expectDiagnostic(res.diagnostics, { message: 'sub two-operand form requires destination A' });
