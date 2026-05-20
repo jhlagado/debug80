@@ -18,7 +18,7 @@ describe('PR186 parser: op parameter list delimiter diagnostics matrix', () => {
       message: 'Invalid op parameter list: trailing or empty entries are not permitted.',
     });
     expectNoDiagnostic(res.diagnostics, {
-      messageIncludes: 'Invalid op parameter declaration: expected <name>: <matcher>',
+      messageIncludes: 'Invalid op parameter declaration: expected <name> <matcher>',
     });
   });
 });

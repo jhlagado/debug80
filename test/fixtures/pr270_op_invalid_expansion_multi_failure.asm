@@ -1,4 +1,4 @@
-op bad_pair(src: reg16)
+op bad_pair(src reg16)
   ld A, src
   ld C, src
 end

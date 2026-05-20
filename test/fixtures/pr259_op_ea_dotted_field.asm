@@ -6,7 +6,7 @@ hi .byte
 p:
   ds sizeof(Pair)
 
-op touch(addr: ea)
+op touch(addr ea)
   ld a, (addr)
 end
 

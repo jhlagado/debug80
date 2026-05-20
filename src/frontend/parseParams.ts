@@ -40,9 +40,9 @@ export function parseOpParamsFromText(
   const out: OpParamNode[] = [];
   const seen = new Set<string>();
   for (const part of parts) {
-    const m = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$/.exec(part);
+    const m = /^([A-Za-z_][A-Za-z0-9_]*)\s+(.+)$/.exec(part);
     if (!m) {
-      diag(diagnostics, filePath, `Invalid op parameter declaration: expected <name>: <matcher>`, {
+      diag(diagnostics, filePath, `Invalid op parameter declaration: expected <name> <matcher>`, {
         line: paramsSpan.start.line,
         column: paramsSpan.start.column,
       });

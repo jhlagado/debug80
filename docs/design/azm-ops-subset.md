@@ -97,7 +97,7 @@ The inherited implementation already follows the shape AZM wants to keep:
 The AZM alpha op declaration surface is:
 
 ```asm
-op load8(dst: reg8, value: imm8)
+op load8(dst reg8, value imm8)
   ld dst, value
 end
 ```
