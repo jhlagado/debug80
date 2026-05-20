@@ -184,11 +184,11 @@ describe('PR476 immediate-expression parsing extraction', () => {
           },
         },
         right: {
-          kind: 'ImmOffsetof',
+          kind: 'ImmOffset',
           typeExpr: { kind: 'TypeName', name: 'Foo' },
           path: {
             base: 'bar',
-            steps: [{ kind: 'OffsetofIndex', expr: { kind: 'ImmLiteral', value: 1 } }],
+            steps: [{ kind: 'OffsetIndex', expr: { kind: 'ImmLiteral', value: 1 } }],
           },
         },
       },

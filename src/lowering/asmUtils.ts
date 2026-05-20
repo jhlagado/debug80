@@ -1,15 +1,15 @@
-import type { AsmOperandNode, EaExprNode, ImmExprNode, OffsetofPathNode } from '../frontend/ast.js';
+import type { AsmOperandNode, EaExprNode, ImmExprNode, OffsetPathNode } from '../frontend/ast.js';
 
 type AsmUtilsContext = {
   /** Returns true when `name` matches a declared enum (used to normalize asm tokens); callback must stay pure. */
   isEnumName: (name: string) => boolean;
 };
 
-function cloneOffsetofPath(path: OffsetofPathNode): OffsetofPathNode {
+function cloneOffsetPath(path: OffsetPathNode): OffsetPathNode {
   return {
     ...path,
     steps: path.steps.map((step) =>
-      step.kind === 'OffsetofIndex' ? { ...step, expr: cloneImmExpr(step.expr) } : { ...step },
+      step.kind === 'OffsetIndex' ? { ...step, expr: cloneImmExpr(step.expr) } : { ...step },
     ),
   };
 }
@@ -19,7 +19,7 @@ export function cloneImmExpr(expr: ImmExprNode): ImmExprNode {
   if (expr.kind === 'ImmCurrentLocation') return { ...expr };
   if (expr.kind === 'ImmName') return { ...expr };
   if (expr.kind === 'ImmSizeof') return { ...expr };
-  if (expr.kind === 'ImmOffsetof') return { ...expr, path: cloneOffsetofPath(expr.path) };
+  if (expr.kind === 'ImmOffset') return { ...expr, path: cloneOffsetPath(expr.path) };
   if (expr.kind === 'ImmUnary') return { ...expr, expr: cloneImmExpr(expr.expr) };
   return { ...expr, left: cloneImmExpr(expr.left), right: cloneImmExpr(expr.right) };
 }

@@ -3,14 +3,14 @@ import { DiagnosticIds } from '../diagnosticTypes.js';
 import type {
   EaExprNode,
   ImmExprNode,
-  OffsetofPathNode,
-  OffsetofPathStepNode,
+  OffsetPathNode,
+  OffsetPathStepNode,
   SourceSpan,
   TypeExprNode,
 } from '../frontend/ast.js';
 import { LAYOUT_CAST_BASE_REGISTERS } from '../frontend/grammarData.js';
 import type { CompileEnv } from './env.js';
-import { offsetOfPathInTypeExpr } from './layout.js';
+import { offsetPathInTypeExpr } from './layout.js';
 
 export type LayoutCastAbsFold = {
   baseLower: string;
@@ -87,29 +87,29 @@ export function isLayoutCastLabelBase(ea: EaExprNode): boolean {
 
 type DecomposedLayoutCast = {
   cast: Extract<EaExprNode, { kind: 'EaLayoutCast' }>;
-  path: OffsetofPathNode;
+  path: OffsetPathNode;
 };
 
 function decomposeLayoutCastEa(ea: EaExprNode): DecomposedLayoutCast | undefined {
-  const steps: OffsetofPathStepNode[] = [];
+  const steps: OffsetPathStepNode[] = [];
   let cur: EaExprNode = ea;
 
   while (cur.kind === 'EaField' || cur.kind === 'EaIndex') {
     if (cur.kind === 'EaField') {
-      steps.unshift({ kind: 'OffsetofField', span: cur.span, name: cur.field });
+      steps.unshift({ kind: 'OffsetField', span: cur.span, name: cur.field });
       cur = cur.base;
       continue;
     }
 
     if (cur.index.kind !== 'IndexImm') return undefined;
-    steps.unshift({ kind: 'OffsetofIndex', span: cur.span, expr: cur.index.value });
+    steps.unshift({ kind: 'OffsetIndex', span: cur.span, expr: cur.index.value });
     cur = cur.base;
   }
 
   if (cur.kind !== 'EaLayoutCast') return undefined;
   return {
     cast: cur,
-    path: { kind: 'OffsetofPath', span: cur.span, steps },
+    path: { kind: 'OffsetPath', span: cur.span, steps },
   };
 }
 
@@ -132,7 +132,7 @@ export function foldLayoutCastAbsEa(
   if (!decomposed) return undefined;
   if (!isLayoutCastLabelBase(decomposed.cast.base)) return undefined;
 
-  const pathOffset = offsetOfPathInTypeExpr(
+  const pathOffset = offsetPathInTypeExpr(
     decomposed.cast.typeExpr,
     decomposed.path,
     params.env,
@@ -174,10 +174,10 @@ export function diagLayoutCastRuntimeIndex(
 /** Equivalence helper: path offset inside a cast type expression. */
 export function layoutCastPathOffset(
   typeExpr: TypeExprNode,
-  path: OffsetofPathNode,
+  path: OffsetPathNode,
   env: CompileEnv,
   evalImm: (expr: ImmExprNode) => number | undefined,
   diagnostics?: Diagnostic[],
 ): number | undefined {
-  return offsetOfPathInTypeExpr(typeExpr, path, env, evalImm, diagnostics);
+  return offsetPathInTypeExpr(typeExpr, path, env, evalImm, diagnostics);
 }

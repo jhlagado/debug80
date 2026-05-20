@@ -118,7 +118,7 @@ src/
 │
 ├── semantics/                 # Semantic analysis
 │   ├── env.ts                 # CompileEnv, buildEnv(), evalImmExpr()
-│   ├── layout.ts              # sizeOfTypeExpr(), offsetOfPathInTypeExpr()
+│   ├── layout.ts              # sizeOfTypeExpr(), offsetPathInTypeExpr()
 │   ├── typeQueries.ts         # Type resolution helpers, typeDisplay()
 │   └── declVisitor.ts         # Declaration tree visitor
 │
@@ -501,7 +501,7 @@ An `AsmBlockNode` holds a flat list of `AsmItemNode[]` for labels and instructio
 `ImmExprNode` — immediate (compile-time) expression:
 
 ```
-ImmLiteral | ImmName | ImmSizeof | ImmOffsetof
+ImmLiteral | ImmName | ImmSizeof | ImmOffset
 | ImmUnary | ImmBinary
 ```
 
@@ -547,7 +547,7 @@ interface CompileEnv {
 - `ImmLiteral` → the literal value.
 - `ImmName` → lookup in `env.equates` or `env.enums`.
 - `ImmSizeof` → calls `sizeOfTypeExpr()`.
-- `ImmOffsetof` → calls `offsetOfPathInTypeExpr()`.
+- `ImmOffset` → calls `offsetPathInTypeExpr()`.
 - `ImmUnary` → applies the unary operator.
 - `ImmBinary` → recursively evaluates both sides, then applies the operator.
 
@@ -565,7 +565,7 @@ Division by zero is caught and reported as a diagnostic.
 - `ArrayType` → `element_size * length`.
 - `RecordType` → sum of all field sizes.
 
-`offsetOfPathInTypeExpr(typeExpr, path, env)` computes the byte offset of a field path within a record type. This is what `offset(T, field)` and retained layout-cast constants evaluate to at compile time.
+`offsetPathInTypeExpr(typeExpr, path, env)` computes the byte offset of a field path within a record type. This is what `offset(T, field)` and retained layout-cast constants evaluate to at compile time.
 
 ### 9.3 Semantic Validation
 
@@ -904,7 +904,7 @@ The format writers are injected via `PipelineDeps` rather than imported directly
 | `frontend/parseImm.ts`                | Immediate expression Pratt parser                                               |
 | `frontend/parseOperands.ts`           | ASM operand parser (Reg, Imm, Ea, Mem, Port)                                    |
 | `semantics/env.ts`                    | `CompileEnv`, `buildEnv()`, `evalImmExpr()`                                     |
-| `semantics/layout.ts`                 | `sizeOfTypeExpr()`, `offsetOfPathInTypeExpr()`                                  |
+| `semantics/layout.ts`                 | `sizeOfTypeExpr()`, `offsetPathInTypeExpr()`                                  |
 | `semantics/typeQueries.ts`            | Type resolution helpers, `typeDisplay()`                                        |
 | `lowering/emit.ts`                    | `emitProgram()` — top-level lowering entry point                                |
 | `lowering/emitPipeline.ts`            | Phase names, phase runners, result types                                        |

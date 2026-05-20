@@ -37,10 +37,10 @@ export function createRuntimeAtomBudgetHelpers(ctx: RuntimeAtomBudgetContext) {
       case 'ImmCurrentLocation':
       case 'ImmSizeof':
         return 0;
-      case 'ImmOffsetof':
+      case 'ImmOffset':
         return expr.path.steps.reduce(
           (acc, step) =>
-            acc + (step.kind === 'OffsetofIndex' ? countRuntimeAtomsInImmExpr(step.expr) : 0),
+            acc + (step.kind === 'OffsetIndex' ? countRuntimeAtomsInImmExpr(step.expr) : 0),
           0,
         );
       case 'ImmName':

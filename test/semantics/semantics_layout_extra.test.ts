@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import type { CompileEnv } from '../../src/semantics/env.js';
 import {
-  offsetOfPathInTypeExpr,
+  offsetPathInTypeExpr,
   sizeOfTypeExpr,
   storageInfoForTypeExpr,
 } from '../../src/semantics/layout.js';
 import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
 import type {
   ImmExprNode,
-  OffsetofPathNode,
+  OffsetPathNode,
   RecordFieldNode,
   TypeDeclNode,
   TypeExprNode,
@@ -105,8 +105,8 @@ describe('semantics/layout', () => {
       },
     };
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Point', point]]) };
-    const pathFieldY: OffsetofPathNode = { kind: 'OffsetofPath', span, base: 'y', steps: [] };
-    const offset = offsetOfPathInTypeExpr(
+    const pathFieldY: OffsetPathNode = { kind: 'OffsetPath', span, base: 'y', steps: [] };
+    const offset = offsetPathInTypeExpr(
       { kind: 'TypeName', span, name: 'Point' },
       pathFieldY,
       env,
@@ -168,8 +168,8 @@ describe('semantics/layout', () => {
     const evalImm = (expr: ImmExprNode) => (expr.kind === 'ImmLiteral' ? expr.value : undefined);
     const diagnostics: any[] = [];
 
-    const tailPath: OffsetofPathNode = { kind: 'OffsetofPath', span, base: 'tail', steps: [] };
-    const tailOffset = offsetOfPathInTypeExpr(
+    const tailPath: OffsetPathNode = { kind: 'OffsetPath', span, base: 'tail', steps: [] };
+    const tailOffset = offsetPathInTypeExpr(
       { kind: 'TypeName', span, name: 'Outer' },
       tailPath,
       env,
@@ -178,16 +178,16 @@ describe('semantics/layout', () => {
     );
     expect(tailOffset).toBe(4); // lead (1) + inner packed (3)
 
-    const rowsPath: OffsetofPathNode = {
-      kind: 'OffsetofPath',
+    const rowsPath: OffsetPathNode = {
+      kind: 'OffsetPath',
       span,
       base: 'rows',
       steps: [
-        { kind: 'OffsetofIndex', span, expr: { kind: 'ImmLiteral', span, value: 1 } },
-        { kind: 'OffsetofField', span, name: 'b' },
+        { kind: 'OffsetIndex', span, expr: { kind: 'ImmLiteral', span, value: 1 } },
+        { kind: 'OffsetField', span, name: 'b' },
       ],
     };
-    const rowsOffset = offsetOfPathInTypeExpr(
+    const rowsOffset = offsetPathInTypeExpr(
       { kind: 'TypeName', span, name: 'Table' },
       rowsPath,
       env,

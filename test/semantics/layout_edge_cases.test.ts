@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import type { CompileEnv } from '../../src/semantics/env.js';
-import { offsetOfPathInTypeExpr, sizeOfTypeExpr, storageInfoForTypeExpr } from '../../src/semantics/layout.js';
+import { offsetPathInTypeExpr, sizeOfTypeExpr, storageInfoForTypeExpr } from '../../src/semantics/layout.js';
 import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
 import type {
-  OffsetofPathNode,
+  OffsetPathNode,
   RecordFieldNode,
   TypeDeclNode,
   TypeExprNode,
@@ -127,17 +127,17 @@ describe('layout edge cases (#1138)', () => {
         ['Top', top],
       ]),
     };
-    const path: OffsetofPathNode = {
-      kind: 'OffsetofPath',
+    const path: OffsetPathNode = {
+      kind: 'OffsetPath',
       span,
       base: 'mid',
       steps: [
-        { kind: 'OffsetofField', span, name: 'leaf' },
-        { kind: 'OffsetofField', span, name: 'z' },
+        { kind: 'OffsetField', span, name: 'leaf' },
+        { kind: 'OffsetField', span, name: 'z' },
       ],
     };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetOfPathInTypeExpr({ kind: 'TypeName', span, name: 'Top' }, path, env, () => 0, diagnostics);
+    const off = offsetPathInTypeExpr({ kind: 'TypeName', span, name: 'Top' }, path, env, () => 0, diagnostics);
     expect(off).toBe(1);
     expectNoDiagnostics(diagnostics);
   });
@@ -161,17 +161,17 @@ describe('layout edge cases (#1138)', () => {
       ],
     });
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Cell', cell], ['Row', row]]) };
-    const path: OffsetofPathNode = {
-      kind: 'OffsetofPath',
+    const path: OffsetPathNode = {
+      kind: 'OffsetPath',
       span,
       base: 'cells',
       steps: [
-        { kind: 'OffsetofIndex', span, expr: { kind: 'ImmLiteral', span, value: 2 } },
-        { kind: 'OffsetofField', span, name: 'hi' },
+        { kind: 'OffsetIndex', span, expr: { kind: 'ImmLiteral', span, value: 2 } },
+        { kind: 'OffsetField', span, name: 'hi' },
       ],
     };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetOfPathInTypeExpr(
+    const off = offsetPathInTypeExpr(
       { kind: 'TypeName', span, name: 'Row' },
       path,
       env,
@@ -185,9 +185,9 @@ describe('layout edge cases (#1138)', () => {
   it('union offset keeps total at 0 for any member (no cumulative offset between union variants)', () => {
     const u = unionDecl('Tag', [mkField('a', byteType), mkField('w', wordType)]);
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Tag', u]]) };
-    const path: OffsetofPathNode = { kind: 'OffsetofPath', span, base: 'w', steps: [] };
+    const path: OffsetPathNode = { kind: 'OffsetPath', span, base: 'w', steps: [] };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetOfPathInTypeExpr({ kind: 'TypeName', span, name: 'Tag' }, path, env, () => 0, diagnostics);
+    const off = offsetPathInTypeExpr({ kind: 'TypeName', span, name: 'Tag' }, path, env, () => 0, diagnostics);
     expect(off).toBe(0);
     expectNoDiagnostics(diagnostics);
   });

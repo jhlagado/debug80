@@ -2,7 +2,7 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import { DiagnosticIds } from '../diagnosticTypes.js';
 import type {
   ImmExprNode,
-  OffsetofPathNode,
+  OffsetPathNode,
   RecordFieldNode,
   TypeDeclNode,
   TypeExprNode,
@@ -161,9 +161,9 @@ export function sizeOfTypeExpr(
  * - Union field offsets are always 0.
  * - Array indices must be compile-time constants and contribute index * element exact size.
  */
-export function offsetOfPathInTypeExpr(
+export function offsetPathInTypeExpr(
   typeExpr: TypeExprNode,
-  path: OffsetofPathNode,
+  path: OffsetPathNode,
   env: CompileEnv,
   evalImm: (expr: ImmExprNode) => number | undefined,
   diagnostics?: Diagnostic[],
@@ -253,7 +253,7 @@ export function offsetOfPathInTypeExpr(
   if (path.base !== undefined && !selectField(path.base)) return undefined;
 
   for (const step of path.steps) {
-    if (step.kind === 'OffsetofField') {
+    if (step.kind === 'OffsetField') {
       if (!selectField(step.name)) return undefined;
       continue;
     }

@@ -264,7 +264,7 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
         return expr.name;
       case 'ImmSizeof':
         return 'sizeof(...)';
-      case 'ImmOffsetof':
+      case 'ImmOffset':
         return 'offset(...)';
       case 'ImmUnary':
         return `${expr.op}${formatImmExprForOpDiag(expr.expr)}`;
