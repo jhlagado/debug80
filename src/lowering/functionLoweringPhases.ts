@@ -227,7 +227,6 @@ export function createAssemblerInstructionEmitters(
     resolveRawAliasTargetName: () => undefined,
     isModuleStorageName: (name) => fp.storage.storageTypes.has(name.toLowerCase()),
     isFrameSlotName: () => false,
-    resolveScalarTypeForLd: fp.types.resolveScalarTypeForLd,
     resolveEa: fp.materialization.resolveEa,
     diagIfRetStackImbalanced: (span, mnemonic) => {
       if (frame.trackedSp.valid && frame.trackedSp.delta !== 0) {

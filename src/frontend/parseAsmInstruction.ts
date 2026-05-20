@@ -3,7 +3,6 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseImmExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import { parseAsmOperand } from './parseOperands.js';
-import { parseStepInstruction } from './parseStepInstruction.js';
 
 function splitTopLevelCommaSeparated(text: string): string[] {
   const parts: string[] = [];
@@ -57,10 +56,6 @@ export function parseAsmInstruction(
   const head = firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
   const headLower = head.toLowerCase();
   const rest = firstSpace === -1 ? '' : trimmed.slice(firstSpace).trim();
-
-  if (headLower === 'step') {
-    return parseStepInstruction(filePath, headLower, rest, instrSpan, diagnostics);
-  }
 
   const operands: AsmOperandNode[] = [];
   if (rest.length > 0) {

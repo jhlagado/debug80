@@ -11,10 +11,10 @@
 
 **Include/import graph cycles detected** (see section below).
 
-Total fixture files (excludes sentinels): 470
+Total fixture files (excludes sentinels): 467
 Sentinel files: 1
 Reachable from tests (direct refs ∪ fixture closure): 122
-Potentially unreferenced fixtures: 348
+Potentially unreferenced fixtures: 345
 
 ## Direct test reference counts
 
@@ -51,7 +51,6 @@ Potentially unreferenced fixtures: 348
 | pr103_mixed_returns_ret_imbalance.zax | 0 |
 | pr103_mixed_returns_retcc_imbalance.zax | 0 |
 | pr105_isa_ex_sp_indexed.zax | 0 |
-| pr1050_step_amounts.zax | 0 |
 | pr106_isa_misc_exchange_adjust.zax | 0 |
 | pr107_isa_inout_special_forms.zax | 0 |
 | pr108_isa_ixiy_16bit_family.zax | 0 |
@@ -462,8 +461,6 @@ Potentially unreferenced fixtures: 348
 | pr9_invalid_code_base_no_overlap.zax | 1 |
 | pr9_overlap_code_data.zax | 1 |
 | pr9_section_code_at.zax | 2 |
-| pr900_step_direct_word.zax | 0 |
-| pr900_step.zax | 0 |
 | pr91_isa_hl16_adc_sbc_invalid.zax | 1 |
 | pr91_isa_hl16_adc_sbc.zax | 1 |
 | pr922_backslash_separator.zax | 0 |
@@ -522,7 +519,6 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr102_while_stack_mismatch_with_locals.zax
 - pr103_mixed_returns_ret_imbalance.zax
 - pr103_mixed_returns_retcc_imbalance.zax
-- pr1050_step_amounts.zax
 - pr105_isa_ex_sp_indexed.zax
 - pr106_isa_misc_exchange_adjust.zax
 - pr107_isa_inout_special_forms.zax
@@ -836,8 +832,6 @@ Not reachable from any test’s literal `fixtures/...` reference via the include
 - pr896_assignment_ea_ea_direct_fastpath.zax
 - pr8_sizeof.zax
 - pr8_sizeof_unknown.zax
-- pr900_step.zax
-- pr900_step_direct_word.zax
 - pr922_backslash_separator.zax
 - pr922_paren_imm_indirection.zax
 - pr980_local_alias_bad_alias.zax
@@ -891,7 +885,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr103_mixed_returns_ret_imbalance.zax |  |
 | pr103_mixed_returns_retcc_imbalance.zax |  |
 | pr105_isa_ex_sp_indexed.zax |  |
-| pr1050_step_amounts.zax |  |
 | pr106_isa_misc_exchange_adjust.zax |  |
 | pr107_isa_inout_special_forms.zax |  |
 | pr108_isa_ixiy_16bit_family.zax |  |
@@ -1302,8 +1295,6 @@ Excluded from the main fixture inventory (`.keep`, `.gitkeep`).
 | pr9_invalid_code_base_no_overlap.zax | test/pr9_sections_align.test.ts |
 | pr9_overlap_code_data.zax | test/pr9_sections_align.test.ts |
 | pr9_section_code_at.zax | test/cli/pr990_asm80_emitter_validation.test.ts, test/pr9_sections_align.test.ts |
-| pr900_step_direct_word.zax |  |
-| pr900_step.zax |  |
 | pr91_isa_hl16_adc_sbc_invalid.zax | test/backend/pr91_isa_hl16_adc_sbc.test.ts |
 | pr91_isa_hl16_adc_sbc.zax | test/backend/pr91_isa_hl16_adc_sbc.test.ts |
 | pr922_backslash_separator.zax |  |
