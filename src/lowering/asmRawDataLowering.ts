@@ -62,8 +62,8 @@ function publishAsmAddressConst(
   const base = baseExpr ? ctx.evalImmExpr(baseExpr, ctx.env, ctx.diagnostics) : 0;
   if (base === undefined) return;
   const address = base + offset;
-  ctx.env.consts.set(name, address);
-  ctx.env.consts.set(name.toLowerCase(), address);
+  ctx.env.equates.set(name, address);
+  ctx.env.equates.set(name.toLowerCase(), address);
 }
 
 export function createAsmRawDataLowerer(

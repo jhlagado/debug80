@@ -39,7 +39,7 @@ export interface LoweringDiagnosticsWithSeverityCapability extends LoweringDiagn
 }
 
 export interface CompileEnvCapability {
-  /** Compile environment (module ids, consts, types). */
+  /** Compile environment (equates, enums, types). */
   env: CompileEnv;
 }
 

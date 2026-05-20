@@ -9,13 +9,13 @@ export type AsmEquResolutionContext = {
 
 function scopedEnv(ctx: AsmEquResolutionContext): CompileEnv {
   if (!ctx.lookupSymbol) return ctx.env;
-  const consts = new Map(ctx.env.consts);
+  const equates = new Map(ctx.env.equates);
   for (const name of ctx.env.asmEquExprs?.keys() ?? []) {
     const lower = name.toLowerCase();
     const value = ctx.lookupSymbol(lower);
-    if (value !== undefined) consts.set(lower, value);
+    if (value !== undefined) equates.set(lower, value);
   }
-  return { ...ctx.env, consts };
+  return { ...ctx.env, equates };
 }
 
 export function resolveAsmEquSymbol(
@@ -26,9 +26,9 @@ export function resolveAsmEquSymbol(
   const lower = name.toLowerCase();
   const symbol = ctx.lookupSymbol?.(lower);
   if (symbol !== undefined) return symbol;
-  const direct = ctx.env.consts.get(name) ?? ctx.env.enums.get(name);
+  const direct = ctx.env.equates.get(name) ?? ctx.env.enums.get(name);
   if (direct !== undefined) return direct;
-  const alt = ctx.env.consts.get(lower) ?? ctx.env.enums.get(lower);
+  const alt = ctx.env.equates.get(lower) ?? ctx.env.enums.get(lower);
   if (alt !== undefined) return alt;
 
   const equ = ctx.env.asmEquExprs?.get(name) ?? ctx.env.asmEquExprs?.get(lower);

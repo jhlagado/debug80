@@ -33,7 +33,7 @@ function portImm(value: number): AsmOperandNode {
 }
 
 const env = {
-  consts: new Map<string, number>(),
+  equates: new Map<string, number>(),
   enums: new Map<string, number>(),
   types: new Map(),
 };

@@ -35,7 +35,7 @@ function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
   const value =
     expr && currentLocation !== undefined
       ? evalImmExprWithEnv(expr, ctx.env, ctx.diagnostics, { currentLocation })
-      : ctx.env.consts.get(item.name) ?? ctx.env.consts.get(item.name.toLowerCase());
+      : ctx.env.equates.get(item.name) ?? ctx.env.equates.get(item.name.toLowerCase());
   if (value === undefined) {
     if (expr) {
       ctx.recordLoweredAsmItem(

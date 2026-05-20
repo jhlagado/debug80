@@ -35,11 +35,11 @@ function reportImmArithmeticError(
  */
 export interface CompileEnv {
   /**
-   * Map of constant name -> evaluated numeric value.
+   * Map of equate name -> evaluated numeric value.
    *
    * Values are plain JavaScript numbers; interpretation (imm8/imm16 wrapping, etc.) happens at use sites.
    */
-  consts: Map<string, number>;
+  equates: Map<string, number>;
 
   /**
    * Map of enum member name -> evaluated numeric value.
@@ -89,7 +89,7 @@ export function evalImmExpr(
     case 'ImmCurrentLocation':
       return options?.currentLocation;
     case 'ImmName': {
-      const fromConst = env.consts.get(expr.name) ?? env.consts.get(expr.name.toLowerCase());
+      const fromConst = env.equates.get(expr.name) ?? env.equates.get(expr.name.toLowerCase());
       if (fromConst !== undefined) return fromConst;
       const fromEnum = env.enums.get(expr.name);
       if (fromEnum !== undefined) return fromEnum;
@@ -188,7 +188,7 @@ export function evalImmExpr(
 type CollectedDecls = {
   types: Array<TypeDeclNode | UnionDeclNode>;
   enums: EnumDeclNode[];
-  consts: AsmEquDecl[];
+  equates: AsmEquDecl[];
 };
 
 type AsmEquDecl = {
@@ -362,7 +362,7 @@ function asmStringLength(value: unknown, fallback = 0): number {
 function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): void {
   for (const mf of program.files) {
     if (!mf.items.some((item) => isAsmDirectiveItem(item))) continue;
-    const scratchEnv: CompileEnv = { ...env, consts: new Map(env.consts) };
+    const scratchEnv: CompileEnv = { ...env, equates: new Map(env.equates) };
     let current = 0;
     for (const item of mf.items) {
       const kind = (item as { kind: string }).kind;
@@ -375,8 +375,8 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
         }
         case 'AsmLabel': {
           const label = item as { name: string };
-          scratchEnv.consts.set(label.name, current);
-          scratchEnv.consts.set(label.name.toLowerCase(), current);
+          scratchEnv.equates.set(label.name, current);
+          scratchEnv.equates.set(label.name.toLowerCase(), current);
           break;
         }
         case 'ClassicEqu': {
@@ -390,10 +390,10 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
               ? evalImmExpr(expr, scratchEnv, undefined, { currentLocation: current })
               : evalImmExpr(expr, scratchEnv);
             if (value !== undefined) {
-              env.consts.set(equ.name, value);
-              env.consts.set(equ.name.toLowerCase(), value);
-              scratchEnv.consts.set(equ.name, value);
-              scratchEnv.consts.set(equ.name.toLowerCase(), value);
+              env.equates.set(equ.name, value);
+              env.equates.set(equ.name.toLowerCase(), value);
+              scratchEnv.equates.set(equ.name, value);
+              scratchEnv.equates.set(equ.name.toLowerCase(), value);
             }
           }
           break;
@@ -402,8 +402,8 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
           {
             const raw = item as { name?: string; directive?: string; values?: unknown[]; size?: ImmExprNode };
             if (raw.name) {
-              scratchEnv.consts.set(raw.name, current);
-              scratchEnv.consts.set(raw.name.toLowerCase(), current);
+              scratchEnv.equates.set(raw.name, current);
+              scratchEnv.equates.set(raw.name.toLowerCase(), current);
             }
             current += asmRawDataSize(raw, scratchEnv);
           }
@@ -427,7 +427,7 @@ export function buildEnv(
   program: ProgramNode,
   diagnostics: Diagnostic[],
 ): CompileEnv {
-  const consts = new Map<string, number>();
+  const equates = new Map<string, number>();
   const asmEquExprs = new Map<string, { expr: ImmExprNode; currentLocation?: number }>();
   const enums = new Map<string, number>();
   const types = new Map<string, TypeDeclNode | UnionDeclNode>();
@@ -435,7 +435,7 @@ export function buildEnv(
   if (program.files.length === 0) {
     diag(diagnostics, program.entryFile, 'No source files to compile.');
     return {
-      consts,
+      equates,
       enums,
       types,
     };
@@ -446,7 +446,7 @@ export function buildEnv(
     const collected: CollectedDecls = {
       types: [],
       enums: [],
-      consts: [],
+      equates: [],
     };
     visitDeclTree(mf.items, (item) => {
       if (item.kind === 'TypeDecl' || item.kind === 'UnionDecl') {
@@ -458,7 +458,7 @@ export function buildEnv(
         return;
       }
       if (isAsmEquDecl(item)) {
-        collected.consts.push(item);
+        collected.equates.push(item);
       }
     });
     collectedByFile.set(mf.path, collected);
@@ -504,7 +504,7 @@ export function buildEnv(
   }
 
   const env: CompileEnv = {
-    consts,
+    equates,
     enums,
     types,
     asmEquExprs,
@@ -515,13 +515,13 @@ export function buildEnv(
   for (const mf of program.files) {
     const collected = collectedByFile.get(mf.path);
     if (!collected) continue;
-    for (const item of collected.consts) {
+    for (const item of collected.equates) {
       if (types.has(item.name)) {
         diag(diagnostics, item.span.file, `Equate name "${item.name}" collides with a type name.`);
         continue;
       }
       if (!claim('equate', item.name, item.span.file)) continue;
-      if (consts.has(item.name.toLowerCase())) continue;
+      if (equates.has(item.name.toLowerCase())) continue;
 
       const expr = constValueExpr(item);
       if (!asmEquExprs.has(item.name)) asmEquExprs.set(item.name, { expr });
@@ -532,8 +532,8 @@ export function buildEnv(
       if (v === undefined) {
         continue;
       }
-      consts.set(item.name, v);
-      consts.set(item.name.toLowerCase(), v);
+      equates.set(item.name, v);
+      equates.set(item.name.toLowerCase(), v);
     }
   }
 

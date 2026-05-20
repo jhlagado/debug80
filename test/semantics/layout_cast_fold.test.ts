@@ -45,7 +45,7 @@ function envWithSprite(): CompileEnv {
       ],
     ]),
     unions: new Map(),
-    consts: new Map([['BASE', 2]]),
+    equates: new Map([['BASE', 2]]),
     enums: new Map(),
   } as CompileEnv;
 }

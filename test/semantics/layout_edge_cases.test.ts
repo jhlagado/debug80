@@ -34,7 +34,7 @@ function unionDecl(name: string, fields: RecordFieldNode[]): UnionDeclNode {
   return { kind: 'UnionDecl', span, name, fields };
 }
 
-const emptyEnv: CompileEnv = { consts: new Map(), enums: new Map(), types: new Map() };
+const emptyEnv: CompileEnv = { equates: new Map(), enums: new Map(), types: new Map() };
 
 describe('layout edge cases (#1138)', () => {
   it('treats an empty record as zero bytes', () => {

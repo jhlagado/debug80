@@ -31,7 +31,7 @@ function recordField(name: string, typeExpr: TypeExprNode): RecordFieldNode {
 }
 
 describe('semantics/layout', () => {
-  const emptyEnv: CompileEnv = { consts: new Map(), enums: new Map(), types: new Map() };
+  const emptyEnv: CompileEnv = { equates: new Map(), enums: new Map(), types: new Map() };
 
   it('computes exact storage for records and unions', () => {
     const rec: TypeExprNode = {

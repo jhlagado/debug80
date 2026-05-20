@@ -21,7 +21,7 @@ function eaName(name: string): EaExprNode {
 
 function makeEnv(): CompileEnv {
   return {
-    consts: new Map(),
+    equates: new Map(),
     enums: new Map(),
     types: new Map(),
   };

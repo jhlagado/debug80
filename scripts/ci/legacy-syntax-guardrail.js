@@ -62,7 +62,6 @@ function collectFilesFromRoots(repoRoot, roots) {
       stat.isFile() &&
       (current.toLowerCase().endsWith('.asm') ||
         current.toLowerCase().endsWith('.z80') ||
-        current.toLowerCase().endsWith('.azm') ||
         current.toLowerCase().endsWith('.md'))
     ) {
       files.push(current);
@@ -118,17 +117,6 @@ export function scanForbiddenLegacySyntax(options = {}) {
   for (const file of files) {
     const rel = normalizePath(relative(repoRoot, file));
     const reportedFile = rel.startsWith('..') ? normalizePath(file) : rel;
-    if (file.toLowerCase().endsWith('.azm')) {
-      violations.push({
-        file: reportedFile,
-        line: 1,
-        column: 1,
-        ruleId: 'azm-source-extension',
-        message: 'The .azm source extension is forbidden; use .asm for AZM source files.',
-      });
-      continue;
-    }
-
     const text = readFileSync(file, 'utf8');
     const isMarkdown = file.toLowerCase().endsWith('.md');
     const lines = isMarkdown
