@@ -1,5 +1,5 @@
 import { getZ80InstructionEffect } from '../z80/effects.js';
-import { azmDocList } from './report.js';
+import { contractCarrierList } from './report.js';
 import type {
   RegisterCareInstruction,
   RegisterCareOutputCandidate,
@@ -161,7 +161,7 @@ function joinLines(lines: string[], trailingNewline: boolean, eol: '\n' | '\r\n'
 }
 
 function isExpectOutLine(line: string): boolean {
-  return /^\s*;\s*(?:!\s*@expect-out|expects\s+out)\b/i.test(line);
+  return /^\s*;\s*expects\s+out\b/i.test(line);
 }
 
 function expectedCallLine(
@@ -213,7 +213,7 @@ export function applyExpectOutFixesToSource(
     if (index === undefined) continue;
     if (index > 0 && isExpectOutLine(lines[index - 1] ?? '')) continue;
     const prefix = indentation(lines[index] ?? '');
-    lines.splice(index, 0, `${prefix}; expects out ${azmDocList(fix.carriers)}`);
+    lines.splice(index, 0, `${prefix}; expects out ${contractCarrierList(fix.carriers)}`);
   }
 
   return joinLines(lines, trailingNewline, eol);

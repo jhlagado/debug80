@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { LoadedProgram } from '../sourceLoader.js';
 import { analyzeRegisterCare, type AnalyzeRegisterCareOptions } from './analyze.js';
-import { azmDocList } from './report.js';
+import { contractCarrierList } from './report.js';
 import type { RegisterCareOutputCandidate, RegisterCareUnit } from './types.js';
 
 export interface RegisterCareTextEdit {
@@ -46,14 +46,14 @@ export interface AnalyzeRegisterCareForToolsResult {
 }
 
 function expectOutText(carriers: RegisterCareUnit[]): string {
-  return `; expects out ${azmDocList(carriers)}\n`;
+  return `; expects out ${contractCarrierList(carriers)}\n`;
 }
 
 export function codeActionForOutputCandidate(
   candidate: RegisterCareOutputCandidate,
 ): RegisterCareCodeAction {
   return {
-    title: `Confirm ${candidate.routine} output ${azmDocList(candidate.carriers)}`,
+    title: `Confirm ${candidate.routine} output ${contractCarrierList(candidate.carriers)}`,
     kind: 'quickfix',
     edit: {
       file: candidate.file,

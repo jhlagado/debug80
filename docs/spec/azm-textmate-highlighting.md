@@ -23,7 +23,7 @@ the AZM language standard while AZM is being stabilized.
 The grammar currently highlights:
 
 - semicolon comments
-- AZMDoc tags inside comments
+- compact AZMDoc contract lines
 - AZMDoc register and flag carriers
 - global and local labels
 - canonical AZM dotted directives
@@ -37,30 +37,20 @@ The grammar currently highlights:
 
 ## AZMDoc highlighting rule
 
-AZMDoc metadata is highlighted inside ordinary comments. The `@` tag is the
-metadata marker; `;!` is not required.
+AZMDoc metadata is highlighted on compact `;!` contract lines. Ordinary prose
+comments remain plain comments.
 
 Examples:
 
 ```asm
 ; Loads the pending candidate coordinate.
-; Returns @out D as pending x and @out E as pending y.
-; Uses @clobbers A as scratch.
+; D and E contain the pending candidate coordinate.
+;!      out       DE
+;!      clobbers  A
 LOAD_DE_FROM_PENDING:
 ```
 
-Detached interface blocks are also supported:
-
-```asm
-; @routine CHECK_COLLISION_AT_DE
-; @in D candidate_x
-; @in E candidate_y
-; @out carry collision
-; @clobbers A
-; @end
-```
-
-Generated source blocks use compact `;!` lines and bare metadata keys:
+Source contract blocks use bare metadata keys:
 
 ```asm
 ;!      in        DE

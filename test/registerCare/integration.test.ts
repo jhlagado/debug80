@@ -656,51 +656,6 @@ describe('register-care integration', () => {
     expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
-  it('does not apply local-label contracts to the enclosing global routine summary', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-local-contract-'));
-    const entry = join(dir, 'main.z80');
-    writeFileSync(
-      entry,
-      [
-        ';! @proc .entry',
-        ';! @preserves {A}',
-        ';! @end',
-        'START:',
-        '    ld a,1',
-        '    ld ($2000),a',
-        '.entry:',
-        '    ret',
-        'CALLER:',
-        '    ld a,2',
-        '    call START',
-        '    inc a',
-        '    ret',
-        '.end',
-      ].join('\n'),
-      'utf8',
-    );
-
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
-
-    expect(res.diagnostics).toContainEqual(
-      expect.objectContaining({
-        id: DiagnosticIds.RegisterCareConflict,
-        severity: 'error',
-        message: expect.stringContaining('CALL START may modify A'),
-      }),
-    );
-  });
-
   it('includes direct-call conflicts in requested reports', async () => {
     const entry = writeConflictFixture('azm-regcare-report-conflict-');
 
@@ -1072,7 +1027,7 @@ describe('register-care integration', () => {
         '    call LCD_STRING',
         '    ld a,d',
         '    ret',
-        '; Keeps @preserves A,carry,zero,sign,parity,halfCarry,BC,DE,HL,IX,IY stable for the caller.',
+        '; Keeps A,carry,zero,sign,parity,halfCarry,BC,DE,HL,IX,IY stable for the caller.',
         'LCD_BUSY:',
         '    push af',
         'LCD_BUSY_LOOP:',
@@ -1155,7 +1110,7 @@ describe('register-care integration', () => {
     );
   });
 
-  it('treats matching @in and @out on the same carrier as transformed output intent', async () => {
+  it('treats matching compact in and out on the same carrier as transformed output intent', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-contract-'));
     const entry = join(dir, 'main.z80');
     writeFileSync(
@@ -1169,11 +1124,9 @@ describe('register-care integration', () => {
         '    call NORMALISE',
         '    inc de',
         '    ret',
-        ';! @proc NORMALISE',
-        ';! @in {DE} raw',
-        ';! @out {DE} normalized',
-        ';! @clobbers {A}',
-        ';! @end',
+        ';!      in        DE',
+        ';!      out       DE',
+        ';!      clobbers  A',
         'NORMALISE:',
         '    ld de,$2000',
         '    ret',
@@ -1197,48 +1150,7 @@ describe('register-care integration', () => {
     expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
-  it('uses AZMDoc comments before a routine label as the routine contract', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-azmdoc-'));
-    const entry = join(dir, 'main.z80');
-    writeFileSync(
-      entry,
-      [
-        'BOOT:',
-        '    call START',
-        '    ret',
-        'START:',
-        '    ld de,$1000',
-        '    call NORMALISE',
-        '    inc de',
-        '    ret',
-        '; Normalises the candidate coordinate in place.',
-        '; Raw coordinate enters as @in DE raw_coord.',
-        '; Normalized coordinate returns in @out DE normalized_coord.',
-        '; Scratch use is @clobbers A.',
-        'NORMALISE:',
-        '    ld de,$2000',
-        '    ret',
-        '.end',
-      ].join('\n'),
-      'utf8',
-    );
-
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-  });
-
-  it('suppresses one ambiguous call with @expect-out in error mode', async () => {
+  it('suppresses one ambiguous call with expects-out in error mode', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-hint-'));
     const entry = join(dir, 'main.z80');
     writeFileSync(
@@ -1249,7 +1161,7 @@ describe('register-care integration', () => {
         '    ret',
         'START:',
         '    ld de,$1000',
-        '    ;! @expect-out {DE} normalized',
+        '    ; expects out DE',
         '    call HELPER',
         '    inc de',
         '    ret',
@@ -1329,13 +1241,12 @@ describe('register-care integration', () => {
   it('uses extern contracts for calls without routine bodies', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-extern-'));
     const entry = join(dir, 'main.z80');
+    const iface = join(dir, 'mon.asmi');
+    writeFileSync(iface, ['extern MON_PRINT', 'clobbers DE', 'end'].join('\n'), 'utf8');
     writeFileSync(
       entry,
       [
         'MON_PRINT: equ 0x10',
-        ';! @extern MON_PRINT',
-        ';! @clobbers {DE}',
-        ';! @end',
         'BOOT:',
         '    call START',
         '    ret',
@@ -1357,6 +1268,7 @@ describe('register-care integration', () => {
         emitD8m: false,
         emitListing: false,
         registerCare: 'error',
+        registerCareInterfaces: [iface],
       },
       { formats: defaultFormatWriters },
     );
@@ -1370,7 +1282,7 @@ describe('register-care integration', () => {
     );
   });
 
-  it('treats pure @out carriers as intentional returned values', async () => {
+  it('treats pure compact out carriers as intentional returned values', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-pure-out-'));
     const entry = join(dir, 'main.z80');
     writeFileSync(
@@ -1383,9 +1295,7 @@ describe('register-care integration', () => {
         '    call MAKE_PTR',
         '    inc hl',
         '    ret',
-        ';! @proc MAKE_PTR',
-        ';! @out {HL} pointer',
-        ';! @end',
+        ';!      out       HL',
         'MAKE_PTR:',
         '    ld hl,$2000',
         '    ret',
@@ -1412,13 +1322,12 @@ describe('register-care integration', () => {
   it('uses bodyless extern pure outputs to kill earlier live values', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcare-extern-out-'));
     const entry = join(dir, 'main.z80');
+    const iface = join(dir, 'ptr.asmi');
+    writeFileSync(iface, ['extern MAKE_PTR', 'out HL', 'end'].join('\n'), 'utf8');
     writeFileSync(
       entry,
       [
         'MAKE_PTR: equ 0x20',
-        ';! @extern MAKE_PTR',
-        ';! @out {HL} pointer',
-        ';! @end',
         'BOOT:',
         '    call START',
         '    ret',
@@ -1443,6 +1352,7 @@ describe('register-care integration', () => {
         emitD8m: false,
         emitListing: false,
         registerCare: 'error',
+        registerCareInterfaces: [iface],
       },
       { formats: defaultFormatWriters },
     );
@@ -1464,10 +1374,8 @@ describe('register-care integration', () => {
         '    call MAKE_PTR',
         '    inc hl',
         '    ret',
-        ';! @proc MAKE_PTR',
-        ';! @in {DE} raw',
-        ';! @out {HL} pointer',
-        ';! @end',
+        ';!      in        DE',
+        ';!      out       HL',
         'MAKE_PTR:',
         '    ld h,d',
         '    ld l,e',
@@ -1520,9 +1428,7 @@ describe('register-care integration', () => {
         '    call MAKE_CARRY',
         '    call c,TARGET',
         '    ret',
-        ';! @proc MAKE_CARRY',
-        ';! @out {carry} carry_out',
-        ';! @end',
+        ';!      out       carry',
         'MAKE_CARRY:',
         '    or a',
         '    ret',
@@ -1559,7 +1465,7 @@ describe('register-care integration', () => {
         '    call MAKER',
         '    inc de',
         '    ret',
-        '; Returns @out A as a produced byte.',
+        ';!      out       A',
         'GET_A:',
         '    ld a,1',
         '    ret',

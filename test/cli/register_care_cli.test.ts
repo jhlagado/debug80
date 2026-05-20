@@ -251,7 +251,7 @@ describe('register-care cli', () => {
     await rm(work, { recursive: true, force: true });
   }, 20_000);
 
-  it('annotates source contracts in place and replaces stale generated blocks', async () => {
+  it('annotates source contracts in place and replaces stale compact blocks', async () => {
     const work = await mkdtemp(join(tmpdir(), 'azm-regcare-cli-annotate-'));
     const entry = join(work, 'main.z80');
     const source = [
@@ -262,17 +262,13 @@ describe('register-care cli', () => {
       '    ret',
       '',
       '; Helper prose stays untouched.',
-      '; ========================== AZM',
-      '; clobbers  A',
-      '; ========================== AZM',
+      ';!      clobbers  A',
       'HELPER:',
       '    ld hl,$1000',
       '    ret',
       '',
       '; Empty prose stays untouched.',
-      '; ========================== AZM',
-      '; clobbers  BC',
-      '; ========================== AZM',
+      ';!      clobbers  BC',
       'EMPTY:',
       '.end',
     ].join('\n');
@@ -295,12 +291,11 @@ describe('register-care cli', () => {
     expect(annotated).toContain(
       ['; Helper prose stays untouched.', ';!      out       HL', 'HELPER:'].join('\n'),
     );
-    expect(annotated).not.toContain('; ========================== AZM\nSTART:');
-    expect(annotated).not.toContain('; ========================== AZM\nSKIP:');
-    expect(annotated).not.toContain('; clobbers  A\n; ========================== AZM\nHELPER:');
+    expect(annotated).not.toContain(';!      out       HL\nSTART:');
+    expect(annotated).not.toContain(';!      out       HL\nSKIP:');
+    expect(annotated).not.toContain(';!      clobbers  A\nHELPER:');
     expect(annotated).toContain('; Empty prose stays untouched.\nEMPTY:');
-    expect(annotated).not.toContain('; clobbers  BC\n; ========================== AZM\nEMPTY:');
-    expect(annotated).not.toContain('; ========================== AZM');
+    expect(annotated).not.toContain(';!      clobbers  BC\nEMPTY:');
 
     const second = await runCli([
       '--nobin',
@@ -425,10 +420,8 @@ describe('register-care cli', () => {
         '    ret',
         '',
         '; Mask prose.',
-        '; ========================== AZM',
-        '; out       A',
-        '; clobbers  C',
-        '; ========================== AZM',
+        ';!      out       A',
+        ';!      clobbers  C',
         'MASK:',
         '    ld c,a',
         '    ld a,$80',

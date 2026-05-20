@@ -60,7 +60,7 @@ function emptyRoutineSummary(name: string): RoutineSummary {
 function unknownBoundaryForCall(call: RegisterCareDirectCall): RegisterCareUnknownBoundary {
   return {
     ...call,
-    message: `Register-care cannot prove ${call.subject}; add a routine body or @extern contract.`,
+    message: `Register-care cannot prove ${call.subject}; add a routine body or .asmi extern contract.`,
   };
 }
 
