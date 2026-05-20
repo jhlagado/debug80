@@ -88,7 +88,7 @@ export interface EmitFinalizationPhaseEnv {
   readonly diagAt: EmitFinalizationContext['diagAt'];
   /** Primary source path for diagnostics. */
   readonly primaryFile: EmitFinalizationContext['primaryFile'];
-  /** Section base imm expressions. */
+  /** Code/data placement base imm expressions. */
   readonly baseExprs: EmitFinalizationContext['baseExprs'];
   /** Imm evaluator used during placement. */
   readonly evalImmExpr: EmitFinalizationContext['evalImmExpr'];
