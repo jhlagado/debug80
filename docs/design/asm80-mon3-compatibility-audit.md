@@ -6,7 +6,7 @@ Date: 2026-05-10
 ## Purpose
 
 This audit defines the smallest useful ASM80-compatible surface for the first
-classic-assembler milestone. The target is not full ASM80 compatibility. The
+assembler-compatibility milestone. The target is not full ASM80 compatibility. The
 target is to assemble the TEC-1G MON3 source tree without hand translation,
 while evolving the current codebase toward AZM.
 
@@ -39,7 +39,7 @@ Observed size:
 
 ## Required assembler source model
 
-The first milestone needs a source path where classic assembler lines are valid
+The first milestone needs a source path where ASM assembler lines are valid
 at top level. MON3 is not written as AZM-specific declarations, old functions, sections, or typed
 storage. It is a flat assembler program that controls placement with `.org` and
 uses labels, equates, raw data, and normal Z80 instructions.
@@ -52,7 +52,7 @@ Recommended activation:
 - `.z80` and `.asm` source files use the AZM assembler source path by default.
 - Unsupported source extensions are rejected rather than treated as alternate
   source paths.
-- Internal compatibility tests may still exercise the older classic parser
+- Internal compatibility tests may still exercise the older ASM parser
   explicitly, but file extension inference belongs to the AZM assembler surface.
 
 ## Syntax convergence policy
@@ -135,7 +135,7 @@ SPACE:      .equ    " "
 COLON:      .equ    ":"
 ```
 
-Classic expression evaluation must therefore preserve ASM80's useful behavior
+ASM80 expression evaluation must therefore preserve ASM80's useful behavior
 where a one-character string can participate in byte expressions.
 
 ### Numeric literals
@@ -449,7 +449,7 @@ VS Code or LSP work is scheduled.
 
 The first milestone is complete when:
 
-1. AZM can load the recursive MON3 source tree in classic ASM80 mode.
+1. AZM can load the recursive MON3 source tree in ASM80 mode.
 2. AZM can parse all MON3-required directives, labels, literals, expressions,
    raw data, includes, and instructions.
 3. AZM emits bytes for the MON3 image without hand translation.

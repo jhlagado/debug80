@@ -138,8 +138,8 @@ raw source line
   → parse canonical directive or instruction
 ```
 
-Aliases run in the ASM80/classic line path (`resolveDirectiveAlias` in
-`classicLine.ts`). They are policy-driven so tests and corpora can load extra
+Aliases run in the ASM80/ASM line path (`resolveDirectiveAlias` in
+`asmLine.ts`). They are policy-driven so tests and corpora can load extra
 JSON without changing the parser grammar.
 
 ## CLI and tooling

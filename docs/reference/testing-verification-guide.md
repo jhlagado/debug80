@@ -69,7 +69,7 @@ temporary directory, and compares HEX payloads after ignoring only final newline
 differences. Missing `asm80`, missing Tetro, and the currently unconfigured MON3
 entry are reported as `SKIP` rather than guessed.
 
-Run the opt-in external ASM80 replacement baseline when touching classic ASM80
+Run the opt-in external ASM80 replacement baseline when touching ASM80
 parsing, lowering, CLI binary output, or ASM80 compatibility docs:
 
 ```sh
@@ -104,7 +104,7 @@ existing ASM80 compatibility checks are unchanged unless a register-care flag is
 supplied.
 
 Run the opt-in Tetro application check when touching loadable binary range
-semantics, `DS` behavior, or classic `EQU` resolution:
+semantics, `DS` behavior, or ASM `EQU` resolution:
 
 ```sh
 npm run test:asm80:tetro

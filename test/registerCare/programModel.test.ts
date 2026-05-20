@@ -9,23 +9,23 @@ import type {
   SourceSpan,
 } from '../../src/frontend/ast.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
-import { parseClassicSourceFile } from '../../src/frontend/asm80/parseClassicSource.js';
+import { parseAsmSourceFile } from '../../src/frontend/asm80/parseAsmSource.js';
 import { parseProgram as parseAzmProgram } from '../../src/frontend/parser.js';
 import { buildRegisterCareProgramModel } from '../../src/registerCare/programModel.js';
 import { inferRoutineSummary } from '../../src/registerCare/summary.js';
 
-function parseClassicProgram(path: string, text: string): ProgramNode {
+function parseAsmProgram(path: string, text: string): ProgramNode {
   const diagnostics: Diagnostic[] = [];
   const sf = makeSourceFile(path, text);
-  const file = parseClassicSourceFile(path, text, diagnostics, sf) as SourceFileNode;
+  const file = parseAsmSourceFile(path, text, diagnostics, sf) as SourceFileNode;
   if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return { kind: 'Program', entryFile: path, files: [file], span: span(sf, 0, text.length) };
 }
 
-function parseClassicFile(path: string, text: string): SourceFileNode {
+function parseAsmFile(path: string, text: string): SourceFileNode {
   const diagnostics: Diagnostic[] = [];
   const sf = makeSourceFile(path, text);
-  const file = parseClassicSourceFile(path, text, diagnostics, sf) as SourceFileNode;
+  const file = parseAsmSourceFile(path, text, diagnostics, sf) as SourceFileNode;
   if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return file;
 }
@@ -63,7 +63,7 @@ function immName(name: string, s = testSpan()): AsmInstructionNode['operands'][n
 
 describe('register-care program model', () => {
   it('collects labels, instructions, and direct call targets', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       ['START:', '    call HELPER', '    ret', 'HELPER:', '    ld a,1', '    ret', '.end'].join(
         '\n',
@@ -80,7 +80,7 @@ describe('register-care program model', () => {
   });
 
   it('keeps internal labels inside a routine body', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'START:',
@@ -102,7 +102,7 @@ describe('register-care program model', () => {
   });
 
   it('coalesces consecutive global labels before the first instruction as aliases', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'ALIAS:',
@@ -126,7 +126,7 @@ describe('register-care program model', () => {
   });
 
   it('uses at-prefixed labels as routine entries when present', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         '@CheckCollAtDe:',
@@ -159,7 +159,7 @@ describe('register-care program model', () => {
   });
 
   it('treats jumps to at-prefixed labels as tail-call boundaries in entry mode', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         '@START:',
@@ -191,8 +191,8 @@ describe('register-care program model', () => {
       '    ret',
       '.end',
     ].join('\n');
-    const shared = parseClassicFile('/tmp/shared.asm', sharedText);
-    const pacmo = parseClassicFile('/tmp/pacmo.asm', pacmoText);
+    const shared = parseAsmFile('/tmp/shared.asm', sharedText);
+    const pacmo = parseAsmFile('/tmp/pacmo.asm', pacmoText);
     const program: ProgramNode = {
       kind: 'Program',
       entryFile: '/tmp/pacmo.asm',
@@ -211,7 +211,7 @@ describe('register-care program model', () => {
   });
 
   it('includes conditional direct call targets', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       ['START:', '    call nz,HELPER', '    ret', 'HELPER:', '    ret', '.end'].join('\n'),
     );
@@ -223,7 +223,7 @@ describe('register-care program model', () => {
   });
 
   it('sorts multiple direct call targets and collects each routine', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'START:',
@@ -245,7 +245,7 @@ describe('register-care program model', () => {
   });
 
   it('parses direct local labels and local djnz targets', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'START:',
@@ -268,7 +268,7 @@ describe('register-care program model', () => {
   });
 
   it('models the first global label as an entry routine without a synthetic caller', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'START:',
@@ -291,7 +291,7 @@ describe('register-care program model', () => {
   });
 
   it('keeps conditional returns in the routine so later clobbers are summarized', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.z80',
       [
         'START:',
@@ -333,7 +333,7 @@ describe('register-care program model', () => {
   });
 
   it('collects routines and call targets from labels', () => {
-    const program = parseClassicProgram(
+    const program = parseAsmProgram(
       '/tmp/main.asm',
       ['typed_call:', '  call HELPER', ''].join('\n'),
     );

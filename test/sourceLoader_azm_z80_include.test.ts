@@ -63,8 +63,8 @@ describe('AZM source extensions and z80 includes', () => {
 
       expect(res.diagnostics).toEqual([]);
       const itemKinds = res.loadedProgram?.program.files[0]?.items.map((item) => item.kind);
-      expect(itemKinds).toContain('ClassicOrg');
-      expect(itemKinds).toContain('ClassicRawData');
+      expect(itemKinds).toContain('AsmOrg');
+      expect(itemKinds).toContain('AsmRawData');
     });
   });
 });

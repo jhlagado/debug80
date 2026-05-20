@@ -21,7 +21,7 @@ function sectionForAsmOrg(items: readonly unknown[], index: number): SectionKind
     const next = items[lookahead] as { kind?: string } | undefined;
     if (!next?.kind) continue;
     if (isAsmRawDataDirective(next as { kind: string })) return 'data';
-    if (next.kind === 'AsmLabel' || next.kind === 'ClassicEqu') continue;
+    if (next.kind === 'AsmLabel' || next.kind === 'AsmEqu') continue;
     return 'code';
   }
   return 'code';

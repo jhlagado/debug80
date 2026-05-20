@@ -2,7 +2,7 @@ import type {
   AsmInstructionNode,
   AsmLabelNode,
   AsmOperandNode,
-  ClassicItemNode,
+  AsmItemNode,
   ImmExprNode,
   SourceItemNode,
   OpDeclNode,
@@ -19,7 +19,7 @@ import { createOpMatchingHelpers } from './opMatching.js';
 import { createOpSubstitutionHelpers } from './opSubstitution.js';
 import type { CompileEnv } from '../semantics/env.js';
 
-type FlattenableItem = SourceItemNode | ClassicItemNode;
+type FlattenableItem = SourceItemNode | AsmItemNode;
 
 type OpExpansionContext = {
   localOpsByFile: Map<string, Map<string, OpDeclNode[]>>;

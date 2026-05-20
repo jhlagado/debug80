@@ -50,73 +50,95 @@ export interface SourceFileNode extends BaseNode {
 }
 
 /**
- * A classic ASM80 source file parsed into source-ordered top-level assembler items.
+ * An ASM80 source file parsed into source-ordered top-level assembler items.
  */
-export interface ClassicSourceFileNode extends BaseNode {
-  kind: 'ClassicSourceFile';
+export interface AsmSourceFileNode extends BaseNode {
+  kind: 'AsmSourceFile';
   path: string;
-  items: ClassicItemNode[];
+  items: AsmSourceItemNode[];
 }
 
-export type ClassicItemNode =
-  | ClassicEquNode
-  | ClassicOrgNode
-  | ClassicBinFromNode
-  | ClassicBinToNode
-  | ClassicEndNode
+export type AsmSourceItemNode =
+  | AsmEquNode
+  | AsmOrgNode
+  | AsmBinFromNode
+  | AsmBinToNode
+  | AsmEndNode
+  | AsmAlignNode
+  | AsmRawDataNode
   | AsmLabelNode
-  | (AsmInstructionNode & { operandText?: string })
-  | (RawDataDeclNode & { valuesText?: string });
+  | (AsmInstructionNode & { operandText?: string });
 
-export interface ClassicEquNode extends BaseNode {
-  kind: 'ClassicEqu';
+export interface AsmEquNode extends BaseNode {
+  kind: 'AsmEqu';
   name: string;
   exprText: string;
 }
 
-export interface ClassicOrgNode extends BaseNode {
-  kind: 'ClassicOrg';
+export interface AsmOrgNode extends BaseNode {
+  kind: 'AsmOrg';
   exprText: string;
 }
 
-export interface ClassicBinFromNode extends BaseNode {
-  kind: 'ClassicBinFrom';
+export interface AsmBinFromNode extends BaseNode {
+  kind: 'AsmBinFrom';
   exprText: string;
 }
 
-export interface ClassicBinToNode extends BaseNode {
-  kind: 'ClassicBinTo';
+export interface AsmBinToNode extends BaseNode {
+  kind: 'AsmBinTo';
   exprText: string;
 }
 
-export interface ClassicEndNode extends BaseNode {
-  kind: 'ClassicEnd';
+export interface AsmEndNode extends BaseNode {
+  kind: 'AsmEnd';
 }
 
-/**
- * Neutral assembler directive aliases.
- *
- * The current AST still uses the established `Classic*` node kinds for parser
- * and lowering compatibility. Native AZM should prefer these aliases at type
- * boundaries so new assembler-facing code does not describe core AZM
- * directives as merely "classic" compatibility artifacts.
- */
-export type AsmEquDirectiveNode = ClassicEquNode;
-export type AsmOrgDirectiveNode = ClassicOrgNode;
-export type AsmBinFromDirectiveNode = ClassicBinFromNode;
-export type AsmBinToDirectiveNode = ClassicBinToNode;
-export type AsmEndDirectiveNode = ClassicEndNode;
+export interface AsmAlignNode extends BaseNode {
+  kind: 'AsmAlign';
+  value: ImmExprNode;
+}
+
+export type AsmRawDataValueNode = ImmExprNode | { kind: 'AsmString'; value: string };
+
+export type AsmRawDataNode =
+  | {
+      kind: 'AsmRawData';
+      span: SourceSpan;
+      name?: string;
+      directive: 'db' | 'dw' | 'cstr' | 'pstr' | 'istr';
+      values: AsmRawDataValueNode[];
+      valuesText?: string;
+    }
+  | {
+      kind: 'AsmRawData';
+      span: SourceSpan;
+      name?: string;
+      directive: 'ds';
+      values?: AsmRawDataValueNode[];
+      size?: ImmExprNode;
+      fill?: ImmExprNode;
+      valuesText?: string;
+    };
+
+/** Neutral assembler directive aliases for API boundaries. */
+export type AsmEquDirectiveNode = AsmEquNode;
+export type AsmOrgDirectiveNode = AsmOrgNode;
+export type AsmBinFromDirectiveNode = AsmBinFromNode;
+export type AsmBinToDirectiveNode = AsmBinToNode;
+export type AsmEndDirectiveNode = AsmEndNode;
 
 /**
  * Top-level items permitted in a source file.
  */
 export type SourceItemNode =
-  | ClassicItemNode
+  | AsmSourceItemNode
   | EnumDeclNode
   | UnionDeclNode
   | TypeDeclNode
   | OpDeclNode
   | AlignDirectiveNode
+  | RawDataDeclNode
   | AsmLabelNode
   | AsmInstructionNode
   | UnimplementedNode;
@@ -252,7 +274,7 @@ export interface AsmInstructionNode extends BaseNode {
   /** Canonical lower-case instruction mnemonic. */
   head: string;
   operands: AsmOperandNode[];
-  /** Original unparsed operand tail for classic ASM80 source preservation. */
+  /** Original unparsed operand tail for ASM80 source preservation. */
   operandText?: string;
 }
 
@@ -352,13 +374,14 @@ export type OffsetofPathStepNode =
 export type Node =
   | ProgramNode
   | SourceFileNode
-  | ClassicSourceFileNode
-  | ClassicItemNode
+  | AsmSourceFileNode
+  | AsmSourceItemNode
   | SourceItemNode
   | RawDataDeclNode
   | OpParamNode
   | RecordFieldNode
   | AsmBlockNode
+  | AsmSourceItemNode
   | AsmItemNode
   | AsmOperandNode
   | TypeExprNode

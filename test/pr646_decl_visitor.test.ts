@@ -13,7 +13,7 @@ describe('PR646 declaration-tree visitor', () => {
   it('walks module declarations with context', () => {
     const items: SourceItemNode[] = [
       {
-        kind: 'ClassicEqu',
+        kind: 'AsmEqu',
         span,
         name: 'Top',
         exprText: '2',
@@ -28,7 +28,7 @@ describe('PR646 declaration-tree visitor', () => {
     });
 
     expect(visited).toEqual([
-      { kind: 'ClassicEqu' },
+      { kind: 'AsmEqu' },
     ]);
   });
 });

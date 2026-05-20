@@ -196,9 +196,9 @@ baseline:
 - forward `EQU` aliases
 - compound `EQU` aliases that reference other forward aliases
 - `EQU` aliases in `DB` and `DW` operands
-- declaration-time `$` handling inside classic `EQU` expressions
+- declaration-time `$` handling inside ASM `EQU` expressions
 - reserve-only trailing `DS` binary trimming
-- lowered ASM80 artifact emission for recorded classic items
+- lowered ASM80 artifact emission for recorded ASM items
 - lowered ASM80 artifact preservation for resolved aliases and generated
   padding/data directives
 - focused MON3 opcode-gap audit showing no unsupported encoder forms in the
@@ -294,7 +294,7 @@ The compatibility baseline is reached. The threshold was:
 3. All MON3-required expressions and fixups resolve correctly.
 4. AZM emits a binary matching the ASM80-built MON3 reference, or documents each
    intentional difference.
-5. The classic path can emit useful diagnostics and an ASM80 artifact.
+5. The ASM path can emit useful diagnostics and an ASM80 artifact.
 6. Unsupported source extensions remain outside the compatibility lane.
 
 At that point, AZM can be treated as a credible replacement candidate for
@@ -306,7 +306,7 @@ Debug80 integration and downstream workflows are updated.
 Do not spend the next phase adding speculative ASM80 syntax. The remaining
 engineering candidates are code-quality work:
 
-- split `src/frontend/asm80/parseClassicSource.ts` once more real corpus-driven
+- split `src/frontend/asm80/parseAsmSource.ts` once more real corpus-driven
   parser cases appear
 - keep reducing incidental coupling in assembler instruction lowering
 - preserve the current range behavior in `src/lowering/asmRangeLowering.ts`

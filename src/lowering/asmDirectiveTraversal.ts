@@ -35,31 +35,31 @@ function isKind(item: { kind: string }, ...kinds: string[]): boolean {
 }
 
 export function isAsmEquDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicEqu', 'ClassicEquDecl', 'EquDecl');
+  return isKind(item, 'AsmEqu', 'AsmEquDecl', 'EquDecl');
 }
 
 export function isAsmOrgDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicOrg', 'ClassicOrgDirective', 'OrgDirective');
+  return isKind(item, 'AsmOrg', 'AsmOrgDirective', 'OrgDirective');
 }
 
 export function isAsmAlignDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicAlign', 'ClassicAlignDirective');
+  return isKind(item, 'AsmAlign', 'AsmAlignDirective');
 }
 
 export function isAsmRawDataDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicRawData', 'ClassicRawDataDecl') || 'valuesText' in item;
+  return isKind(item, 'AsmRawData', 'AsmRawDataDecl') || 'valuesText' in item;
 }
 
 export function isAsmBinFromDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicBinFrom', 'ClassicBinFromDirective', 'BinFromDirective');
+  return isKind(item, 'AsmBinFrom', 'AsmBinFromDirective', 'BinFromDirective');
 }
 
 export function isAsmBinToDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicBinTo', 'ClassicBinToDirective', 'BinToDirective');
+  return isKind(item, 'AsmBinTo', 'AsmBinToDirective', 'BinToDirective');
 }
 
 export function isAsmEndDirective(item: { kind: string }): boolean {
-  return isKind(item, 'ClassicEnd', 'ClassicEndDirective');
+  return isKind(item, 'AsmEnd', 'AsmEndDirective');
 }
 
 export function asmDirectiveExpr(item: AsmDirectiveLikeNode): ImmExprNode | undefined {

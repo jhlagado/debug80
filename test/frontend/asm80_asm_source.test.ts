@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseClassicSource } from '../../src/frontend/asm80/parseClassicSource.js';
-import type { ClassicItemNode } from '../../src/frontend/ast.js';
+import { parseAsmSource } from '../../src/frontend/asm80/parseAsmSource.js';
+import type { AsmSourceItemNode } from '../../src/frontend/ast.js';
 import { buildDirectiveAliasPolicy } from '../../src/frontend/directiveAliases.js';
 
 const azmAliases = buildDirectiveAliasPolicy('azm');
 
-describe('classic ASM80 source parser', () => {
-  it('maps classic lines into source-ordered AST items and stops at .end', () => {
+describe('ASM80 source parser', () => {
+  it('maps ASM lines into source-ordered AST items and stops at .end', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       [
         'BASE: .equ 0C000H',
         '.org BASE',
@@ -29,17 +29,17 @@ describe('classic ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.map((item: ClassicItemNode) => item.kind)).toEqual([
-      'ClassicEqu',
-      'ClassicOrg',
+    expect(sourceFile.items.map((item: AsmSourceItemNode) => item.kind)).toEqual([
+      'AsmEqu',
+      'AsmOrg',
       'AsmLabel',
       'AsmInstruction',
       'AsmInstruction',
-      'ClassicRawData',
-      'ClassicRawData',
-      'ClassicEnd',
+      'AsmRawData',
+      'AsmRawData',
+      'AsmEnd',
     ]);
-    expect(sourceFile.items.map((item: ClassicItemNode) => ('name' in item ? item.name : undefined))).toEqual([
+    expect(sourceFile.items.map((item: AsmSourceItemNode) => ('name' in item ? item.name : undefined))).toEqual([
       'BASE',
       undefined,
       'start',
@@ -51,13 +51,13 @@ describe('classic ASM80 source parser', () => {
     ]);
     expect(sourceFile.items[3]).toMatchObject({ kind: 'AsmInstruction', head: 'ld', operandText: 'a, 0FFH' });
     expect(sourceFile.items[5]).toMatchObject({
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       name: 'table',
       directive: 'db',
       valuesText: '"OK",0',
     });
     expect(sourceFile.items[6]).toMatchObject({
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       name: '',
       directive: 'dw',
       valuesText: 'start',
@@ -66,8 +66,8 @@ describe('classic ASM80 source parser', () => {
 
   it('keeps commas inside quoted db strings', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       '.db "A,B",0\n',
       diagnostics as never[],
       undefined,
@@ -76,17 +76,17 @@ describe('classic ASM80 source parser', () => {
 
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items[0]).toMatchObject({
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       directive: 'db',
       valuesText: '"A,B",0',
-      values: [{ kind: 'ClassicString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
+      values: [{ kind: 'AsmString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
     });
   });
 
   it('parses single-quoted raw data characters as immediates', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ".dw 'A'\n",
       diagnostics as never[],
       undefined,
@@ -95,7 +95,7 @@ describe('classic ASM80 source parser', () => {
 
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items[0]).toMatchObject({
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       directive: 'dw',
       valuesText: "'A'",
       values: [{ kind: 'ImmLiteral', value: 0x41 }],
@@ -104,8 +104,8 @@ describe('classic ASM80 source parser', () => {
 
   it('keeps post-end binary range directives while ignoring ordinary post-end source', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['.org 0100H', '.db 1', '.end', 'after: nop', '.binfrom 0100H', '.binto 0101H'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -113,19 +113,19 @@ describe('classic ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.map((item: ClassicItemNode) => item.kind)).toEqual([
-      'ClassicOrg',
-      'ClassicRawData',
-      'ClassicEnd',
-      'ClassicBinFrom',
-      'ClassicBinTo',
+    expect(sourceFile.items.map((item: AsmSourceItemNode) => item.kind)).toEqual([
+      'AsmOrg',
+      'AsmRawData',
+      'AsmEnd',
+      'AsmBinFrom',
+      'AsmBinTo',
     ]);
   });
 
-  it('parses classic ds size and optional fill values', () => {
+  it('parses ASM ds size and optional fill values', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['buf: ds 2,0FFH', 'tail: .ds 1'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -133,16 +133,16 @@ describe('classic ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.filter((item) => (item as { kind: string }).kind === 'ClassicRawData')).toMatchObject([
+    expect(sourceFile.items.filter((item) => (item as { kind: string }).kind === 'AsmRawData')).toMatchObject([
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         name: 'buf',
         directive: 'ds',
         size: { kind: 'ImmLiteral', value: 2 },
         fill: { kind: 'ImmLiteral', value: 0xff },
       },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         name: 'tail',
         directive: 'ds',
         size: { kind: 'ImmLiteral', value: 1 },
@@ -152,8 +152,8 @@ describe('classic ASM80 source parser', () => {
 
   it('rejects non-baseline dialect aliases with canonical directive guidance', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['DEFB_LABEL: DEFB 1,2', 'DEFW_LABEL: defw 1234H', 'RMB_LABEL: RMB 8'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -179,8 +179,8 @@ describe('classic ASM80 source parser', () => {
 
   it('rejects unsupported ASM80 directives before they reach instruction encoding', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['.macro FOO', 'incbin_label: .incbin "data.bin"', 'pragma_label: .pragma anything'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -205,8 +205,8 @@ describe('classic ASM80 source parser', () => {
 
   it('does not let post-end string equates affect pre-end raw data', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['.db MSG', '.end', 'MSG: .equ "XY"'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -215,7 +215,7 @@ describe('classic ASM80 source parser', () => {
 
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items[0]).toMatchObject({
-      kind: 'ClassicRawData',
+      kind: 'AsmRawData',
       directive: 'db',
       values: [{ kind: 'ImmName', name: 'MSG' }],
     });
@@ -223,8 +223,8 @@ describe('classic ASM80 source parser', () => {
 
   it('parses MON3 db string fragments without splitting quoted contents', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       [
         '.db "Enter ",0',
         ".db '<_>?)!@#$%^&*( : +|'",
@@ -240,31 +240,31 @@ describe('classic ASM80 source parser', () => {
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items).toMatchObject([
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"Enter ",0',
-        values: [{ kind: 'ClassicString', value: 'Enter ' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [{ kind: 'AsmString', value: 'Enter ' }, { kind: 'ImmLiteral', value: 0 }],
       },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
         valuesText: "'<_>?)!@#$%^&*( : +|'",
-        values: [{ kind: 'ClassicString', value: '<_>?)!@#$%^&*( : +|' }],
+        values: [{ kind: 'AsmString', value: '<_>?)!@#$%^&*( : +|' }],
       },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"2025.16"',
-        values: [{ kind: 'ClassicString', value: '2025.16' }],
+        values: [{ kind: 'AsmString', value: '2025.16' }],
       },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"A,B",0',
-        values: [{ kind: 'ClassicString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [{ kind: 'AsmString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
       },
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"a"-"A"',
         values: [
@@ -281,8 +281,8 @@ describe('classic ASM80 source parser', () => {
 
   it('expands multi-character string equates in db values', () => {
     const diagnostics: unknown[] = [];
-    const sourceFile = parseClassicSource(
-      '/classic.z80',
+    const sourceFile = parseAsmSource(
+      '/asm.z80',
       ['.db REL_TXT,0', 'REL_TXT: .equ "2025.16"'].join('\n'),
       diagnostics as never[],
       undefined,
@@ -292,12 +292,12 @@ describe('classic ASM80 source parser', () => {
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items).toMatchObject([
       {
-        kind: 'ClassicRawData',
+        kind: 'AsmRawData',
         directive: 'db',
-        values: [{ kind: 'ClassicString', value: '2025.16' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [{ kind: 'AsmString', value: '2025.16' }, { kind: 'ImmLiteral', value: 0 }],
       },
       {
-        kind: 'ClassicEqu',
+        kind: 'AsmEqu',
         name: 'REL_TXT',
         exprText: '"2025.16"',
       },
