@@ -1,4 +1,4 @@
-export func main()
+main:
     in a, (c)
     in b, (c)
     out (c), a
@@ -6,4 +6,3 @@ export func main()
     in a, (16)
     out (32), a
     ; fallthrough: implicit ret
-end

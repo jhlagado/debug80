@@ -1,4 +1,4 @@
-export func main()
+main:
     ini
     inir
     ind
@@ -8,4 +8,3 @@ export func main()
     outd
     otdr
     ; fallthrough: implicit ret
-end

@@ -1,4 +1,4 @@
-export func main()
+main:
     add hl, bc
     add hl, de
     add hl, hl
@@ -20,4 +20,3 @@ export func main()
     pop de
     pop bc
     exx
-  end
