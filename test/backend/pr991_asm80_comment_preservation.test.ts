@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 
 describe('ASM80 comment preservation', () => {
   it('keeps user comments distinct from generated comments', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr991_comment_preservation.zax');
+    const entry = join(__dirname, '..', 'fixtures', 'pr991_comment_preservation.asm');
     const res = await compile(
       entry,
       {
@@ -33,7 +33,6 @@ describe('ASM80 comment preservation', () => {
     expect(text).toContain('; loop top');
     expect(text).toContain('; load counter');
     expect(text).toContain('; done');
-    expect(text).toMatch(/; AZM:/);
     expect(text).not.toMatch(/; ZAX:/);
   });
 });

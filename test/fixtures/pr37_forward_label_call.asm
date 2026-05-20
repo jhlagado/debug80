@@ -1,6 +1,5 @@
-export func main()
+main:
     call target
     nop
 target:
     nop
-end

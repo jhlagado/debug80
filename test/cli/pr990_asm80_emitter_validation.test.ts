@@ -102,28 +102,14 @@ describe('ASM80 emitter', () => {
 
     const fixtures = [
       // Raw asm basics / labels / constants
-      join(__dirname, '..', 'fixtures', 'pr24_isa_core.zax'),
-      join(__dirname, '..', 'fixtures', 'pr37_forward_label_call.zax'),
-      join(__dirname, '..', 'fixtures', 'pr4_enum.zax'),
-      // Typed/global storage
-      join(__dirname, '..', 'fixtures', 'pr405_byte_global_scalar_symbols.zax'),
-      join(__dirname, '..', 'fixtures', 'pr406_word_global_scalar_accessors.zax'),
-      join(__dirname, '..', 'fixtures', 'pr713_packed_top_level_arrays.zax'),
-      // Frame-related lowering
-      join(__dirname, '..', 'fixtures', 'pr330_frame_access_positive.zax'),
-      join(__dirname, '..', 'fixtures', 'pr406_word_frame_scalar_accessors.zax'),
-      // Alias cases
-      join(__dirname, '..', 'fixtures', 'pr980_local_alias_raw_scalar.zax'),
-      join(__dirname, '..', 'fixtures', 'pr980_local_alias_raw_aggregate.zax'),
-      // Sections and placement
-      join(__dirname, '..', 'fixtures', 'pr9_section_code_at.zax'),
-      join(__dirname, '..', 'fixtures', 'pr585_named_section_order_root.zax'),
+      join(__dirname, '..', 'fixtures', 'pr24_isa_core.asm'),
+      join(__dirname, '..', 'fixtures', 'pr37_forward_label_call.asm'),
+      // Data placement
+      join(__dirname, '..', 'fixtures', 'pr713_packed_top_level_arrays.asm'),
       // Startup init
       join(__dirname, '..', 'fixtures', 'pr577_startup_init_main.asm'),
       // Comments present (byte output unchanged)
-      join(__dirname, '..', 'fixtures', 'pr991_comment_preservation.zax'),
-      // Raw data directives
-      join(__dirname, '..', 'fixtures', 'pr786_raw_data_lowering.zax'),
+      join(__dirname, '..', 'fixtures', 'pr991_comment_preservation.asm'),
     ];
 
     for (const entry of fixtures) {

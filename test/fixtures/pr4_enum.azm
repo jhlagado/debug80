@@ -1,7 +1,6 @@
 enum Mode Read, Write, Append
 
-const mode_write = Mode.Write
+mode_write .equ Mode.Write
 
-export func main()
+main:
     ld a, mode_write
-end
