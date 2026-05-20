@@ -45,14 +45,6 @@ type FunctionBodySetupContext = {
     size?: number;
   }>;
   getCodeOffset: () => number;
-  emitAbs16Fixup: (
-    opcode: number,
-    baseLower: string,
-    addend: number,
-    span: SourceSpan,
-    asmText?: string,
-  ) => void;
-  conditionNameFromOpcode: (opcode: number) => string | undefined;
   emitInstr: (head: string, operands: AsmOperandNode[], span: SourceSpan) => boolean;
   generatedLabelCounterRef: { current: number };
   formatAsmOperandForOpDiag: (op: AsmOperandNode) => string;
@@ -68,8 +60,6 @@ export function createFunctionBodySetupHelpers({
   traceLabel,
   pending,
   getCodeOffset,
-  emitAbs16Fixup,
-  conditionNameFromOpcode,
   emitInstr,
   generatedLabelCounterRef,
   formatAsmOperandForOpDiag,
@@ -191,15 +181,6 @@ export function createFunctionBodySetupHelpers({
     });
   };
 
-  const emitJumpTo = (label: string, span: SourceSpan): void => {
-    emitAbs16Fixup(0xc3, label.toLowerCase(), 0, span, `jp ${label}`);
-  };
-
-  const emitJumpCondTo = (op: number, label: string, span: SourceSpan): void => {
-    const ccName = conditionNameFromOpcode(op) ?? 'cc';
-    emitAbs16Fixup(op, label.toLowerCase(), 0, span, `jp ${ccName.toLowerCase()}, ${label}`);
-  };
-
   const emitVirtualReg16Transfer = (asmItem: AsmInstructionNode): boolean => {
     if (asmItem.head.toLowerCase() !== 'ld' || asmItem.operands.length !== 2) return false;
     const dstOp = asmItem.operands[0]!;
@@ -228,8 +209,6 @@ export function createFunctionBodySetupHelpers({
     syncToFlow,
     newHiddenLabel,
     defineCodeLabel,
-    emitJumpTo,
-    emitJumpCondTo,
     emitVirtualReg16Transfer,
   };
 }

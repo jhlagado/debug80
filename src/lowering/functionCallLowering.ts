@@ -31,14 +31,6 @@ type FunctionCallLoweringHelpersContext = {
     stack: OpExpansionFrame[],
   ) => void;
   enforceEaRuntimeAtomBudget: (operand: AsmOperandNode, context: string) => boolean;
-  hasStackSlots: boolean;
-  emitSyntheticEpilogue: boolean;
-  getTrackedSpDelta: () => number;
-  setTrackedSpDelta: (value: number) => void;
-  getTrackedSpValid: () => boolean;
-  setTrackedSpValid: (value: boolean) => void;
-  getTrackedSpInvalid: () => boolean;
-  setTrackedSpInvalid: (value: boolean) => void;
   materialization: Readonly<FunctionCallMaterializationContext>;
   diagAt: (diagnostics: Diagnostic[], span: SourceSpan, message: string) => void;
   diagAtWithSeverityAndId: (
@@ -90,40 +82,10 @@ export function createFunctionCallLoweringHelpers(ctx: FunctionCallLoweringHelpe
         if (!ctx.materialization.enforceEaRuntimeAtomBudget(operand, 'Source ea expression')) return;
       }
 
-      const diagIfCallStackUnverifiable = (options?: {
-        mnemonic?: string;
-      }): void => {
-        const mnemonic = options?.mnemonic ?? 'call';
-        if (ctx.hasStackSlots && ctx.getTrackedSpValid() && ctx.getTrackedSpDelta() > 0) {
-          ctx.diagAt(
-            ctx.diagnostics,
-            asmItem.span,
-            `${mnemonic} reached with positive tracked stack delta (${ctx.getTrackedSpDelta()}); cannot verify callee stack contract.`,
-          );
-          return;
-        }
-        if (ctx.hasStackSlots && !ctx.getTrackedSpValid() && ctx.getTrackedSpInvalid()) {
-          ctx.diagAt(
-            ctx.diagnostics,
-            asmItem.span,
-            `${mnemonic} reached after untracked SP mutation; cannot verify callee stack contract.`,
-          );
-          return;
-        }
-        if (ctx.hasStackSlots && !ctx.getTrackedSpValid()) {
-          ctx.diagAt(
-            ctx.diagnostics,
-            asmItem.span,
-            `${mnemonic} reached with unknown stack depth; cannot verify callee stack contract.`,
-          );
-        }
-      };
-
       const { tryHandleOpExpansion } = createOpExpansionOrchestrationHelpers({
         resolveOpCandidates: ctx.resolveOpCandidates,
         diagnostics: ctx.diagnostics,
         env: ctx.env,
-        hasStackSlots: ctx.hasStackSlots,
         opExpansionStack: ctx.opExpansionStack,
         diagAt: ctx.diagAt,
         diagAtWithId: ctx.diagAtWithId,

@@ -63,14 +63,6 @@ describe('PR532 asm instruction lowering integration', () => {
       emitScalarWordStore: () => false,
       emitVirtualReg16Transfer: () => false,
       reg16: new Set(['BC', 'DE', 'HL']),
-      emitSyntheticEpilogue: true,
-      epilogueLabel: '__zax_epilogue_0',
-      emitJumpTo: (label) => {
-        events.push(`jmp:${label}`);
-      },
-      emitJumpCondTo: (opcode, label) => {
-        events.push(`jmpcc:${opcode.toString(16)}:${label}`);
-      },
       syncToFlow: () => {
         events.push(`sync:${flow.reachable ? 'reach' : 'dead'}`);
       },
@@ -105,7 +97,7 @@ describe('PR532 asm instruction lowering integration', () => {
     helper.lowerAsmInstructionDispatcher(ldItem);
 
     expect(events).toContain('rel:18:loop:0:jr');
-    expect(events).toContain('jmpcc:c2:__zax_epilogue_0');
+    expect(events).toContain('instr:ret:1');
     expect(events).toContain('abs:21:target:0');
   });
 });

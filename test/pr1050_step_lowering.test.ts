@@ -71,10 +71,6 @@ describe('PR1050 step lowering', () => {
       emitScalarWordStore: () => false,
       emitVirtualReg16Transfer: () => false,
       reg16: new Set(['BC', 'DE', 'HL', 'IX', 'IY']),
-      emitSyntheticEpilogue: false,
-      epilogueLabel: '__zax_epilogue_0',
-      emitJumpTo: () => {},
-      emitJumpCondTo: () => {},
       syncToFlow: () => {},
       flowRef: { current: { reachable: true } },
     });
@@ -145,10 +141,6 @@ describe('PR1050 step lowering', () => {
       emitScalarWordStore: () => false,
       emitVirtualReg16Transfer: () => false,
       reg16: new Set(['BC', 'DE', 'HL', 'IX', 'IY']),
-      emitSyntheticEpilogue: false,
-      epilogueLabel: '__zax_epilogue_0',
-      emitJumpTo: () => {},
-      emitJumpCondTo: () => {},
       syncToFlow: () => {},
       flowRef: { current: { reachable: true } },
     });
