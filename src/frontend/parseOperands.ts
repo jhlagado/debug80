@@ -346,6 +346,15 @@ export function parseAsmOperand(
         expr: { kind: 'EaName', span: operandSpan, name },
       };
     }
+    if (/^(ix|iy)\s*\[/i.test(inner)) {
+      if (emitDiagnostics) {
+        diag(diagnostics, filePath, `Indexed memory operands use (ix+disp)/(iy+disp), not ${inner}.`, {
+          line: operandSpan.start.line,
+          column: operandSpan.start.column,
+        });
+      }
+      return undefined;
+    }
     const indexedMemIndirect = /^[A-Za-z_][A-Za-z0-9_']*\s*[+-]/.test(inner);
     if (preferDottedImmediate && inner.includes('.') && !indexedMemIndirect) {
       const imm = parseImmExprFromText(filePath, inner, operandSpan, diagnostics, false);
