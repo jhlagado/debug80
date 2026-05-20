@@ -17,7 +17,6 @@ import type {
   OpCandidateResolverCapability,
   OpOperandFormattingCapability,
   OpOverloadSelectionCapability,
-  OpStackSummaryCapability,
 } from './capabilities.js';
 import { createOpExpansionExecutionHelpers } from './opExpansionExecution.js';
 import { createOpSubstitutionHelpers } from './opSubstitution.js';
@@ -34,7 +33,6 @@ type OpExpansionOrchestrationContext = LoweringDiagnosticsWithSeverityCapability
   OpCandidateResolverCapability &
   OpOperandFormattingCapability &
   OpOverloadSelectionCapability &
-  OpStackSummaryCapability &
   AstCloneCapability &
   DottedEaNameCapability &
   FixedTokenNormalizationCapability &
@@ -43,7 +41,6 @@ type OpExpansionOrchestrationContext = LoweringDiagnosticsWithSeverityCapability
   AsmRangeLoweringCapability &
   FlowSyncCapability & {
   hasStackSlots: boolean;
-  opStackPolicyMode: 'off' | 'warn' | 'error';
   opExpansionStack: OpExpansionStackEntry[];
 };
 
@@ -94,31 +91,6 @@ export function createOpExpansionOrchestrationHelpers(ctx: OpExpansionOrchestrat
     }
 
     const opDecl = selection.overload;
-    if (ctx.opStackPolicyMode !== 'off' && ctx.hasStackSlots) {
-      const summary = ctx.summarizeOpStackEffect(opDecl);
-      const severity = ctx.opStackPolicyMode === 'error' ? 'error' : 'warning';
-      if (summary.kind === 'known') {
-        if (summary.hasUntrackedSpMutation) {
-          ctx.diagAtWithSeverityAndId(
-            ctx.diagnostics,
-            asmItem.span,
-            DiagnosticIds.OpStackPolicyRisk,
-            severity,
-            `op "${opDecl.name}" may mutate SP in an untracked way (static body analysis); invocation inside stack-slot function may invalidate stack verification.`,
-          );
-        }
-        if (summary.delta !== 0) {
-          ctx.diagAtWithSeverityAndId(
-            ctx.diagnostics,
-            asmItem.span,
-            DiagnosticIds.OpStackPolicyRisk,
-            severity,
-            `op "${opDecl.name}" has non-zero static stack delta (${summary.delta}) and is invoked inside stack-slot function.`,
-          );
-        }
-      }
-    }
-
     const opKey = opDecl.name.toLowerCase();
     const cycleStart = ctx.opExpansionStack.findIndex((entry) => entry.key === opKey);
     if (cycleStart !== -1) {

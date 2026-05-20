@@ -14,7 +14,7 @@ import {
 } from './frontend/sourceMode.js';
 import { defaultFormatWriters } from './formats/index.js';
 import type { Artifact } from './formats/types.js';
-import type { CaseStyleMode, OpStackPolicyMode } from './pipeline.js';
+import type { CaseStyleMode } from './pipeline.js';
 import type { RegisterCareMode } from './registerCare/types.js';
 
 type CliExit = { code: number };
@@ -29,7 +29,6 @@ type CliOptions = {
   emitListing: boolean;
   emitAsm80: boolean;
   caseStyle: CaseStyleMode;
-  opStackPolicy: OpStackPolicyMode;
   includeDirs: string[];
   directiveAliasFiles: string[];
   sourceMode: SourceMode;
@@ -61,7 +60,6 @@ function usage(): string {
     '      --nod8m           Suppress .d8.json',
     '      --asm80           Emit assembler-valid lowered source (.z80)',
     '      --case-style <m>  Case-style lint mode: off|upper|lower|consistent',
-    '      --op-stack-policy <m> Op stack-policy mode: off|warn|error',
     '      --rc <m>            Register-care mode: off|audit|warn|error|strict',
     '      --reg-report       Emit .regcare.txt report',
     '      --reg-interface    Emit inferred .azmi interface',
@@ -96,7 +94,6 @@ function createDefaultCliState(): CliState {
     emitListing: true,
     emitAsm80: false,
     caseStyle: 'off',
-    opStackPolicy: 'off',
     includeDirs: [],
     directiveAliasFiles: [],
     entryFile: undefined,
@@ -179,24 +176,6 @@ function parseCaseStyleArg(
     fail(`Unsupported --case-style "${value}" (expected off|upper|lower|consistent)`);
   }
   state.caseStyle = value;
-  return true;
-}
-
-function parseOpStackPolicyArg(
-  arg: string,
-  argv: string[],
-  indexRef: { current: number },
-  state: CliState,
-): boolean {
-  if (arg !== '--op-stack-policy' && !arg.startsWith('--op-stack-policy=')) return false;
-  const value = arg.startsWith('--op-stack-policy=')
-    ? arg.slice('--op-stack-policy='.length)
-    : readFlagValue(argv, indexRef, '--op-stack-policy');
-  if (!value) fail(`--op-stack-policy expects a value`);
-  if (value !== 'off' && value !== 'warn' && value !== 'error') {
-    fail(`Unsupported --op-stack-policy "${value}" (expected off|warn|error)`);
-  }
-  state.opStackPolicy = value;
   return true;
 }
 
@@ -374,7 +353,6 @@ function finalizeCliOptions(state: CliState): CliOptions {
     emitListing: state.emitListing,
     emitAsm80: state.emitAsm80,
     caseStyle: state.caseStyle,
-    opStackPolicy: state.opStackPolicy,
     includeDirs: state.includeDirs,
     directiveAliasFiles: state.directiveAliasFiles,
     sourceMode,
@@ -422,7 +400,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliExit {
       continue;
     }
     if (parseCaseStyleArg(arg, argv, indexRef, state)) continue;
-    if (parseOpStackPolicyArg(arg, argv, indexRef, state)) continue;
     if (parseDirectiveAliasFileArg(arg, argv, indexRef, state)) continue;
     if (parseRegisterCareArg(arg, argv, indexRef, state)) continue;
     if (arg === '--emit-register-report' || arg === '--reg-report') {
@@ -600,7 +577,6 @@ export async function runCli(argv: string[]): Promise<number> {
         emitListing: parsed.emitListing,
         emitAsm80: parsed.emitAsm80,
         caseStyle: parsed.caseStyle,
-        opStackPolicy: parsed.opStackPolicy,
         includeDirs: parsed.includeDirs,
         directiveAliasFiles: parsed.directiveAliasFiles,
         sourceMode: parsed.sourceMode,

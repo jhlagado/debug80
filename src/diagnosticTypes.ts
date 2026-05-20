@@ -68,9 +68,6 @@ export const DiagnosticIds = {
   /** Op expansion produced an invalid concrete instruction after substitution. */
   OpInvalidExpansion: 'ZAX314',
 
-  /** Static op stack-policy risk detected at invocation site. */
-  OpStackPolicyRisk: 'ZAX315',
-
   /** Generic semantic evaluation error (env building, imm evaluation, etc.). */
   SemanticsError: 'ZAX400',
 

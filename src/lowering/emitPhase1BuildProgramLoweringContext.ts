@@ -177,12 +177,10 @@ export function buildEmitProgramLoweringContext(
     },
     opResolution: {
       resolveOpCandidates: ctx.workspace.ops.resolveVisibleOpCandidates,
-      opStackPolicyMode: ctx.workspace.config.opStackPolicyMode,
     },
     opOverload: {
       formatAsmOperandForOpDiag,
       selectOpOverload,
-      summarizeOpStackEffect: ctx.workspace.ops.summarizeOpStackEffect,
     },
     astUtilities: {
       cloneImmExpr,

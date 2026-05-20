@@ -9,10 +9,8 @@ import type {
   SourceSpan,
 } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { OpStackPolicyMode } from '../pipeline.js';
 import type { SourceSegmentTag } from './loweringTypes.js';
 import type { OpOverloadSelection } from './opMatching.js';
-import type { OpStackSummary } from './opStackAnalysis.js';
 import type { FlowState, OpExpansionFrame } from './functionBodySetup.js';
 import { createAsmRangeLoweringHelpers } from './asmRangeLowering.js';
 import { createOpExpansionOrchestrationHelpers } from './opExpansionOrchestration.js';
@@ -61,7 +59,6 @@ type FunctionCallLoweringHelpersContext = {
   ) => void;
   syncToFlow: () => void;
   resolveOpCandidates: (name: string, file: string) => OpDeclNode[] | undefined;
-  opStackPolicyMode: OpStackPolicyMode;
   opExpansionStack: OpExpansionFrame[];
   diagAtWithId: (
     diagnostics: Diagnostic[],
@@ -71,7 +68,6 @@ type FunctionCallLoweringHelpersContext = {
   ) => void;
   formatAsmOperandForOpDiag: (operand: AsmOperandNode) => string;
   selectOpOverload: (overloads: OpDeclNode[], operands: AsmOperandNode[]) => OpOverloadSelection;
-  summarizeOpStackEffect: (op: OpDeclNode) => OpStackSummary;
   cloneImmExpr: (expr: ImmExprNode) => ImmExprNode;
   cloneEaExpr: (expr: EaExprNode) => EaExprNode;
   cloneOperand: (operand: AsmOperandNode) => AsmOperandNode;
@@ -128,14 +124,12 @@ export function createFunctionCallLoweringHelpers(ctx: FunctionCallLoweringHelpe
         diagnostics: ctx.diagnostics,
         env: ctx.env,
         hasStackSlots: ctx.hasStackSlots,
-        opStackPolicyMode: ctx.opStackPolicyMode,
         opExpansionStack: ctx.opExpansionStack,
         diagAt: ctx.diagAt,
         diagAtWithId: ctx.diagAtWithId,
         diagAtWithSeverityAndId: ctx.diagAtWithSeverityAndId,
         formatAsmOperandForOpDiag: ctx.formatAsmOperandForOpDiag,
         selectOpOverload: ctx.selectOpOverload,
-        summarizeOpStackEffect: ctx.summarizeOpStackEffect,
         cloneImmExpr: ctx.cloneImmExpr,
         cloneEaExpr: ctx.cloneEaExpr,
         cloneOperand: ctx.cloneOperand,

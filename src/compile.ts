@@ -146,7 +146,6 @@ export const compile: CompileFn = async (
 
   const { map, symbols, placedLoweredAsmProgram } = emitProgram(program, env, diagnostics, {
     ...(options.includeDirs ? { includeDirs: options.includeDirs } : {}),
-    ...(options.opStackPolicy ? { opStackPolicy: options.opStackPolicy } : {}),
     ...(options.defaultCodeBase !== undefined ? { defaultCodeBase: options.defaultCodeBase } : {}),
     sourceTexts,
     sourceLineComments,

@@ -22,7 +22,6 @@
  */
 
 import type { EmittedByteMap, SymbolEntry } from '../formats/types.js';
-import type { OpStackPolicyMode } from '../pipeline.js';
 import { finalizeEmitProgram, type EmitFinalizationContext } from './emitFinalization.js';
 import type { LoweredAsmProgram, LoweredAsmStream } from './loweredAsmTypes.js';
 import type { PrescanResult } from './prescanTypes.js';
@@ -65,8 +64,6 @@ export interface EmitLoweringPhaseResult {
 export type EmitProgramOptions = {
   /** Extra include directories for `include` / assets; omit for none. */
   includeDirs?: string[];
-  /** Stack policy for op bodies; omit defaults to `off`. */
-  opStackPolicy?: OpStackPolicyMode;
   /** Default code load address for placement; omit uses pipeline default. */
   defaultCodeBase?: number;
   /** Optional full source text per file for listings. */

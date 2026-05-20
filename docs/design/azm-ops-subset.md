@@ -73,9 +73,8 @@ op clear_a()
   xor a
 end
 
-export func main()
+main:
   clear_a
-end
 ```
 
 The resulting code contains the same `xor a` instruction the programmer could
@@ -92,7 +91,6 @@ The inherited implementation already follows the shape AZM wants to keep:
 | Operand matching     | `src/lowering/opMatching.ts`           | keep as the core advantage over text macros          |
 | Operand substitution | `src/lowering/opSubstitution.ts`       | keep AST substitution only                           |
 | Expansion execution  | `src/lowering/opExpansionExecution.ts` | keep inline lowering into ordinary assembly          |
-| Stack analysis       | `src/lowering/opStackAnalysis.ts`      | keep as a guardrail, not a hidden preservation model |
 
 ## Syntax Position
 
@@ -129,7 +127,7 @@ Ops do not create call boundaries or callee contracts.
 
 | Check                                                              | Test / script                                                                               | Status   |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | -------- |
-| Op call sites expand to ordinary Z80 bytes in the object file      | `test/registerCare/opExpansion.integration.test.ts` (`.zax` shim until section op lowering) | verified |
+| Op call sites expand to ordinary Z80 bytes in the object file      | `test/registerCare/opExpansion.integration.test.ts`                                      | verified |
 | Op invocation is not modeled as a `CALL` boundary in register-care | same                                                                                        | verified |
 | Register-care liveness/summary sees expanded instructions          | same (`clear_a` is analyzed as `xor a`)                                                     | verified |
 

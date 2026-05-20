@@ -85,12 +85,10 @@ export function splitFunctionLoweringSharedContext(
     },
     opResolution: {
       resolveOpCandidates: shared.resolveOpCandidates,
-      opStackPolicyMode: shared.opStackPolicyMode,
     },
     opOverload: {
       formatAsmOperandForOpDiag: shared.formatAsmOperandForOpDiag,
       selectOpOverload: shared.selectOpOverload,
-      summarizeOpStackEffect: shared.summarizeOpStackEffect,
     },
     astUtilities: {
       cloneImmExpr: shared.cloneImmExpr,

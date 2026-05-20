@@ -4,7 +4,6 @@ import type { Artifact, FormatWriters } from './formats/types.js';
 import type { RegisterCareMode } from './registerCare/types.js';
 
 export type CaseStyleMode = 'off' | 'upper' | 'lower' | 'consistent';
-export type OpStackPolicyMode = 'off' | 'warn' | 'error';
 
 /**
  * Options that influence compilation behavior and which artifacts are produced.
@@ -35,8 +34,6 @@ export interface CompilerOptions {
   emitAsm80?: boolean;
   /** Optional case-style lint mode for asm keywords/register tokens. */
   caseStyle?: CaseStyleMode;
-  /** Optional op stack-policy static risk mode (`off` by default). */
-  opStackPolicy?: OpStackPolicyMode;
   /** Require a callable `main` entry symbol for runnable builds. */
   requireMain?: boolean;
   /** Default code base address. */
