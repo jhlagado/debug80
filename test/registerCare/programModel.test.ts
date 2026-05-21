@@ -8,10 +8,8 @@ import { buildRegisterCareProgramModel } from '../../src/registerCare/programMod
 import { inferRoutineSummary } from '../../src/registerCare/summary.js';
 
 function parseAsmProgram(path: string, text: string): ProgramNode {
-  const diagnostics: Diagnostic[] = [];
+  const file = parseAsmFile(path, text);
   const sf = makeSourceFile(path, text);
-  const file = parseSourceFile(path, text, diagnostics, sf) as SourceFileNode;
-  if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics));
   return { kind: 'Program', entryFile: path, files: [file], span: span(sf, 0, text.length) };
 }
 
