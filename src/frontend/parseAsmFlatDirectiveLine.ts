@@ -7,16 +7,10 @@ import { parseImmExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 import { looksLikeRawDataDirectiveStart } from './parseRawDataDirectiveStart.js';
 import type { ParseItemContext } from './parseSourceItemDispatch.js';
-import {
-  parseBareRawDataDirective,
-  parseRawDataDirective,
-  parseRawDataSizeOperands,
-  type PendingRawLabel,
-} from './parseRawDataDirectives.js';
+import { parseBareRawDataDirective, parseRawDataSizeOperands } from './parseRawDataDirectives.js';
 
-function isAsmFlatDirectiveLine(rest: string, pending?: PendingRawLabel): boolean {
+function isAsmFlatDirectiveLine(rest: string): boolean {
   const trimmed = rest.trim();
-  if (pending) return true;
   if (looksLikeRawDataDirectiveStart(trimmed)) return true;
   if (/^(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?\.?(db|dw|ds)\b/i.test(trimmed)) return true;
   return /^(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?\.?(org|align|equ|binfrom|binto|end)\b/i.test(trimmed);
@@ -44,7 +38,6 @@ function asmRawDataToNode(
   filePath: string,
   diagnostics: Diagnostic[],
   stringEquates: Map<string, string>,
-  label?: PendingRawLabel,
 ): SourceItemNode {
   if (parsed.directive === 'ds') {
     const ds = parseRawDataSizeOperands(
@@ -57,7 +50,7 @@ function asmRawDataToNode(
     return {
       kind: 'AsmRawData',
       span: stmtSpan,
-      name: parsed.label ?? label?.name,
+      name: parsed.label,
       directive: 'ds',
       size: ds?.size,
       fill: ds?.fill,
@@ -74,7 +67,7 @@ function asmRawDataToNode(
   return {
     kind: 'AsmRawData',
     span: stmtSpan,
-    name: parsed.label ?? label?.name,
+    name: parsed.label,
     directive: parsed.directive,
     values,
     valuesText: parsed.valuesText,
@@ -98,8 +91,9 @@ export function parseAsmFlatDirectiveLine(args: {
   if (ctx.asmEnded && parsedAsm?.kind !== 'binfrom' && parsedAsm?.kind !== 'binto') {
     return [];
   }
+
   if (
-    !isAsmFlatDirectiveLine(trimmed, ctx.asmPendingRawLabel) &&
+    !isAsmFlatDirectiveLine(trimmed) &&
     parsedAsm?.kind !== 'rawData' &&
     parsedAsm?.kind !== 'equ' &&
     parsedAsm?.kind !== 'org' &&
@@ -110,25 +104,6 @@ export function parseAsmFlatDirectiveLine(args: {
     parsedAsm?.kind !== 'unsupportedDirective'
   ) {
     return undefined;
-  }
-
-  if (ctx.asmPendingRawLabel) {
-    const pending = ctx.asmPendingRawLabel;
-    if (parsedAsm?.kind === 'rawData') {
-      delete ctx.asmPendingRawLabel;
-      return [asmRawDataToNode(parsedAsm, stmtSpan, filePath, diagnostics, stringEquates, pending)];
-    }
-    const normalizedRaw = normalizeRawDataDirectiveText(trimmed);
-    const parsedRaw = normalizedRaw
-      ? parseRawDataDirective(pending, normalizedRaw, lineNo, stmtSpan, filePath, diagnostics)
-      : undefined;
-    delete ctx.asmPendingRawLabel;
-    if (parsedRaw) return [parsedRaw];
-    diag(diagnostics, filePath, `Raw data label "${pending.name}" is missing a directive`, {
-      line: pending.lineNo,
-      column: 1,
-    });
-    return [];
   }
 
   const inlineLabelRaw = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\.?(db|dw|ds)\b(.*)$/i.exec(trimmed);

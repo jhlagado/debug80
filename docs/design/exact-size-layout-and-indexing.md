@@ -100,9 +100,10 @@ AZM should also make this kind of source reliable:
 ```asm
 .type Sprite
 x     .byte
-y     .byte
+y     .word
 tile  .byte
 flags .byte
+arr   .field byte[10]
 .endtype
 
 SPRITE_SIZE  .equ sizeof(Sprite)
@@ -282,6 +283,25 @@ So `.word` is `.field word` in layout terms, and `word` contributes 2 bytes
 to the enclosing layout. These layout shorthands do not emit bytes; storage
 still comes from `.db`, `.dw`, and `.ds`.
 
+The idiomatic field rule is:
+
+- `name .field T` contributes `sizeof(T)` bytes to the enclosing layout
+- `name .field T[n]` contributes `n * sizeof(T)` bytes
+- `name .byte`, `name .word`, and `name .addr` are shorthand for
+  `name .field byte`, `name .field word`, and `name .field addr`
+
+For example:
+
+```asm
+.type Sprite
+x   .byte
+y   .word
+arr .field byte[10]
+.endtype
+```
+
+Here `x` occupies 1 byte, `y` occupies 2 bytes, and `arr` occupies 10 bytes.
+
 `sizeof` should reject:
 
 - unknown types
@@ -423,6 +443,8 @@ The practical rule is:
 
 - use `.field TypeExpr` inside `.type` / `.union` to describe layout;
 - use `.ds TypeExpr` to reserve uninitialized storage of that layout size;
+- use scalar shorthand such as `.ds byte[32]`, `.field word`, `.byte`, `.word`,
+  and `.addr` only as byte-size/layout spelling;
 - use `.db`, `.dw`, `.cstr`, `.pstr`, or `.istr` when the source supplies the
   actual bytes or words to emit.
 
@@ -499,11 +521,17 @@ For AZM, this means maintaining:
 6. those values anywhere ordinary address constants are legal
 7. no hidden address-lowering behavior as part of this feature
 
+This design sits inside the current AZM language boundary: `.asm` and `.z80`
+are source files, `.asmi` is the external register-care interface format, and
+layout support is limited to assembler-visible constants.
+
 ## Non-goals
 
 - introducing explicit alignment as a language feature
 - preserving the old rounded `storageSize` behavior for compatibility
+- adding modules/imports, `func`, locals, formal args, or named sections
 - adding typed assignment or typed memory access
+- adding typed storage lowering
 - adding implicit typed label access without an explicit layout cast
 - accepting runtime registers inside layout path indexes
 - generating multiply-by-constant address code automatically

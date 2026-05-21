@@ -2,6 +2,14 @@
 
 This file records deferred and backburner items that are intentionally not part of the current implementation stream.
 
+Current AZM docs treat `.asm` and `.z80` as source files and `.asmi` as the
+external register-care interface format. Retained language work is limited to
+the ASM80 baseline, compact AZMDoc `;!` comments, directive aliases, ops, enums,
+`.type` / `.union`, `sizeof`, `offset`, layout casts, and scalar type shorthand
+in `.ds` / `.field`. Modules/imports, funcs, locals, args, typed
+assignment/storage lowering, and sections are removed or non-goals, not deferred
+compatibility work.
+
 ## Format
 
 For each item record:
