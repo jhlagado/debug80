@@ -16,6 +16,11 @@ type IncDecSpec = {
   reg16Opcodes: Readonly<Record<string, number | readonly [number, number]>>;
 };
 
+type StackRegPairSpec = {
+  mnemonic: 'push' | 'pop';
+  reg16Opcodes: Readonly<Record<string, number | readonly [number, number]>>;
+};
+
 const INC_SPEC: IncDecSpec = {
   mnemonic: 'inc',
   reg8Base: 0x04,
@@ -41,6 +46,30 @@ const DEC_SPEC: IncDecSpec = {
     SP: 0x3b,
     IX: [0xdd, 0x2b],
     IY: [0xfd, 0x2b],
+  },
+};
+
+const PUSH_SPEC: StackRegPairSpec = {
+  mnemonic: 'push',
+  reg16Opcodes: {
+    BC: 0xc5,
+    DE: 0xd5,
+    HL: 0xe5,
+    AF: 0xf5,
+    IX: [0xdd, 0xe5],
+    IY: [0xfd, 0xe5],
+  },
+};
+
+const POP_SPEC: StackRegPairSpec = {
+  mnemonic: 'pop',
+  reg16Opcodes: {
+    BC: 0xc1,
+    DE: 0xd1,
+    HL: 0xe1,
+    AF: 0xf1,
+    IX: [0xdd, 0xe1],
+    IY: [0xfd, 0xe1],
   },
 };
 
@@ -78,6 +107,25 @@ function encodeIncDec(
   return undefined;
 }
 
+function encodeStackRegPair(
+  node: AsmInstructionNode,
+  operand: AsmOperandNode,
+  diagnostics: Diagnostic[],
+  ctx: CoreOpsEncodeContext,
+  spec: StackRegPairSpec,
+): Uint8Array | undefined {
+  const r16 = ctx.regName(operand);
+  if (!r16) {
+    ctx.diag(diagnostics, node, `${spec.mnemonic} expects reg16`);
+    return undefined;
+  }
+  const opcode = spec.reg16Opcodes[r16];
+  if (typeof opcode === 'number') return Uint8Array.of(opcode);
+  if (opcode) return Uint8Array.of(...opcode);
+  ctx.diag(diagnostics, node, `${spec.mnemonic} supports BC/DE/HL/AF/IX/IY only`);
+  return undefined;
+}
+
 export function encodeCoreOpsInstruction(
   node: AsmInstructionNode,
   env: CompileEnv,
@@ -96,53 +144,11 @@ export function encodeCoreOpsInstruction(
   }
 
   if (head === 'push' && ops.length === 1) {
-    const r16 = ctx.regName(ops[0]!);
-    if (!r16) {
-      ctx.diag(diagnostics, node, `push expects reg16`);
-      return undefined;
-    }
-    switch (r16) {
-      case 'BC':
-        return Uint8Array.of(0xc5);
-      case 'DE':
-        return Uint8Array.of(0xd5);
-      case 'HL':
-        return Uint8Array.of(0xe5);
-      case 'AF':
-        return Uint8Array.of(0xf5);
-      case 'IX':
-        return Uint8Array.of(0xdd, 0xe5);
-      case 'IY':
-        return Uint8Array.of(0xfd, 0xe5);
-      default:
-        ctx.diag(diagnostics, node, `push supports BC/DE/HL/AF/IX/IY only`);
-        return undefined;
-    }
+    return encodeStackRegPair(node, ops[0]!, diagnostics, ctx, PUSH_SPEC);
   }
 
   if (head === 'pop' && ops.length === 1) {
-    const r16 = ctx.regName(ops[0]!);
-    if (!r16) {
-      ctx.diag(diagnostics, node, `pop expects reg16`);
-      return undefined;
-    }
-    switch (r16) {
-      case 'BC':
-        return Uint8Array.of(0xc1);
-      case 'DE':
-        return Uint8Array.of(0xd1);
-      case 'HL':
-        return Uint8Array.of(0xe1);
-      case 'AF':
-        return Uint8Array.of(0xf1);
-      case 'IX':
-        return Uint8Array.of(0xdd, 0xe1);
-      case 'IY':
-        return Uint8Array.of(0xfd, 0xe1);
-      default:
-        ctx.diag(diagnostics, node, `pop supports BC/DE/HL/AF/IX/IY only`);
-        return undefined;
-    }
+    return encodeStackRegPair(node, ops[0]!, diagnostics, ctx, POP_SPEC);
   }
 
   if (head === 'ex' && ops.length === 2) {
