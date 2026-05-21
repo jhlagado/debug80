@@ -124,6 +124,10 @@ flags   .field 1
 .endtype
 ```
 
+`.type` is a block declaration. AZM does not accept one-line type aliases such
+as `.type Pair byte[2]`; use a field block and use array type expressions at the
+point of `sizeof`, `offset`, or layout-cast use.
+
 Within layout declarations, `.byte`, `.word`, and `.addr` are planned aliases
 for field sizes, not emitted storage:
 

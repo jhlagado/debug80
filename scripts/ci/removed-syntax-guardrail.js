@@ -37,6 +37,11 @@ const FORBIDDEN_RULES = [
     pattern: /^\s*(?:export\s+)?const\s+[A-Za-z_][A-Za-z0-9_]*\s*=/i,
     message: 'Top-level const declarations are forbidden; use NAME .equ expr.',
   },
+  {
+    id: 'single-line-type-alias',
+    pattern: /^\s*\.type\s+[A-Za-z_][A-Za-z0-9_]*\s+\S/i,
+    message: 'Single-line type aliases are forbidden; use .type/.endtype field blocks.',
+  },
 ];
 
 const SOURCE_COMMENT_RULES = [

@@ -3,7 +3,6 @@ import type { SourceFile } from './source.js';
 import { span } from './source.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
-import { diagIfInferredArrayLengthNotAllowed, parseTypeExprFromText } from './parseImm.js';
 import {
   diagInvalidHeaderLine,
   formatIdentifierToken,
@@ -58,7 +57,7 @@ export function parseTypeDecl(
         sourcePath,
         'type declaration',
         stmtText,
-        '<name> [<typeExpr>]',
+        '<name>',
         lineNo,
       );
     }
@@ -75,30 +74,15 @@ export function parseTypeDecl(
   }
 
   if (tail.length > 0) {
-    const typeExpr = parseTypeExprFromText(tail, stmtSpan, { allowInferredArrayLength: false });
-    if (!typeExpr) {
-      if (
-        diagIfInferredArrayLengthNotAllowed(diagnostics, sourcePath, tail, {
-          line: lineNo,
-          column: 1,
-        })
-      ) {
-        return undefined;
-      }
-      diagInvalidHeaderLine(
-        diagnostics,
-        sourcePath,
-        'type declaration',
-        stmtText,
-        '<name> [<typeExpr>]',
-        lineNo,
-      );
-      return undefined;
-    }
-    return {
-      node: { kind: 'TypeDecl', span: stmtSpan, name, typeExpr },
-      nextIndex: startIndex + 1,
-    };
+    diagInvalidHeaderLine(
+      diagnostics,
+      sourcePath,
+      'type declaration',
+      stmtText,
+      '<name>',
+      lineNo,
+    );
+    return undefined;
   }
 
   const record = parseRecordFieldBlock({
