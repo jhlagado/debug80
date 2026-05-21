@@ -59,6 +59,7 @@ Current AZM surface:
 Deferred research:
 
 - strict AZM mode beyond the current compatibility input policy
+- routine-private labels and optional `.block` / `.endblock` scoping
 - range validation facts
 - branch/fixup helpers that expand to visible assembly
 - richer editor/LSP integration
