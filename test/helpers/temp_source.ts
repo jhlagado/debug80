@@ -17,16 +17,27 @@ function writeTempSource(
   return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
+export async function withTempSource<T>(
+  prefix: string,
+  ext: string,
+  source: string,
+  callback: (entry: string) => Promise<T>,
+): Promise<T> {
+  const { entry, cleanup } = writeTempSource(prefix, ext, source);
+  try {
+    return await callback(entry);
+  } finally {
+    cleanup();
+  }
+}
+
 export async function compileTempSource(
   prefix: string,
   ext: string,
   source: string,
   options: CompilerOptions,
 ): Promise<CompileResult> {
-  const { entry, cleanup } = writeTempSource(prefix, ext, source);
-  try {
-    return await compile(entry, options, { formats: defaultFormatWriters });
-  } finally {
-    cleanup();
-  }
+  return withTempSource(prefix, ext, source, (entry) =>
+    compile(entry, options, { formats: defaultFormatWriters }),
+  );
 }
