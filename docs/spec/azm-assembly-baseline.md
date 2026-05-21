@@ -105,7 +105,8 @@ AZM extends the expression language with layout metadata (not typed memory
 access):
 
 - `type` / `union` — packed layout descriptions
-- `sizeof(Type)` / `sizeof(Type[N])` — exact byte size
+- `sizeof(Type)` / `sizeof(Type[N])` — exact byte size when an explicit size
+  query reads better than a bare type expression
 - `offset(Type, path)` — field path offset
 - `<Type[N]>label[i].field` — layout-cast syntax; must fold to the same constant
   as the `sizeof`/`offset` form; compile-time indexes only
@@ -113,6 +114,41 @@ access):
 These fold at assemble time and feed ordinary operands. They must not emit hidden
 indexing code. See `docs/design/exact-size-layout-and-indexing.md` and
 `docs/design/azm-expression-and-visibility.md`.
+
+### Type expressions as byte-size expressions
+
+A type expression names a byte size when it appears in a layout-size position:
+
+```asm
+byte        ; 1
+word        ; 2
+addr        ; 2
+Sprite      ; sizeof(Sprite)
+byte[10]    ; 10
+word[10]    ; 20
+Sprite[10]  ; sizeof(Sprite) * 10
+```
+
+This is intentionally small. Type expressions are compile-time size values, not
+typed variables and not hidden memory operations. They are accepted where AZM is
+asking for layout size: `.field`, `.ds`, `sizeof(...)`, `offset(...)`, and
+layout casts.
+
+Use `sizeof(...)` when it makes a constant definition clearer:
+
+```asm
+SPRITE_SIZE  .equ sizeof(Sprite)
+SPRITE_X     .equ offset(Sprite, x)
+SPRITE_FLAGS .equ offset(Sprite, flags)
+```
+
+Use the bare type expression when the surrounding directive already means
+"reserve this many bytes":
+
+```asm
+SPRITES:
+    .ds Sprite[16]
+```
 
 The intended layout declaration spelling is assembler-like:
 
@@ -155,12 +191,24 @@ That means `.word` is literally `.field word` in layout terms, and `word`
 has size 2. These directives describe fields inside the enclosing layout;
 they do not emit bytes by themselves.
 
+Array fields use the same type-expression rule:
+
+```asm
+.type Buffer
+data    .field byte[256]
+cursor  .word
+.endtype
+```
+
+`data .field byte[256]` reserves 256 bytes inside the record layout.
+`data .field word[256]` would reserve 512 bytes. No initialization is implied.
+
 ## Storage and initialized data
 
 AZM keeps storage allocation and data initialization separate.
 
-`.ds` reserves storage. Its operand is a byte count, and in layout contexts a
-type expression evaluates to its exact byte size:
+`.ds` reserves storage. Its operand is a byte count. A type expression in this
+position evaluates to its exact byte size:
 
 ```asm
 OneByte:
@@ -202,6 +250,11 @@ Message:
 Table:
     .dw 1000H,2000H,3000H
 ```
+
+These are not aliases for `.ds byte` or `.ds word`, because they emit values.
+Use `.db` / `.dw` when the source contains initialized bytes or words. Use
+`.ds byte`, `.ds word`, `.ds Sprite`, or array type expressions when the source
+only reserves space.
 
 String directives are initialized data shorthands with specific encodings:
 
