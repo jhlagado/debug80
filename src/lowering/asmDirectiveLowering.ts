@@ -16,46 +16,52 @@ import {
 const BINFROM_SYMBOL_NAME = '__azm_binfrom';
 const BINTO_SYMBOL_NAME = '__azm_binto';
 
-function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
-  if (!item.name) return;
+function reserveAsmSymbol(ctx: LoweringContext, item: AsmDirectiveLikeNode): string | undefined {
+  if (!item.name) return undefined;
   const lower = item.name.toLowerCase();
   if (ctx.taken.has(lower)) {
     ctx.diag(ctx.diagnostics, item.span.file, `Duplicate symbol name "${item.name}".`);
-    return;
+    return undefined;
   }
   ctx.taken.add(lower);
+  return item.name;
+}
+
+function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
+  const name = reserveAsmSymbol(ctx, item);
+  if (!name) return;
   const expr = asmDirectiveExpr(item);
   const currentLocation = activePlacementAddress(ctx);
   if (expr) {
     const record =
       currentLocation === undefined ? { expr } : { expr, currentLocation };
-    ctx.env.asmEquExprs?.set(item.name, record);
-    ctx.env.asmEquExprs?.set(item.name.toLowerCase(), record);
+    ctx.env.asmEquExprs?.set(name, record);
+    ctx.env.asmEquExprs?.set(name.toLowerCase(), record);
   }
   const value =
     expr && currentLocation !== undefined
       ? evalImmExprWithEnv(expr, ctx.env, ctx.diagnostics, { currentLocation })
-      : ctx.env.equates.get(item.name) ?? ctx.env.equates.get(item.name.toLowerCase());
+      : ctx.env.equates.get(name) ?? ctx.env.equates.get(name.toLowerCase());
   if (value === undefined) {
     if (expr) {
       ctx.recordLoweredAsmItem(
-        { kind: 'const', name: item.name, value: ctx.lowerImmExprForLoweredAsm(expr) },
+        { kind: 'const', name, value: ctx.lowerImmExprForLoweredAsm(expr) },
         item.span,
       );
     }
     return;
   }
-  publishAsmAddressConst(ctx, item.name, value);
+  publishAsmAddressConst(ctx, name, value);
   ctx.symbols.push({
     kind: 'constant',
-    name: item.name,
+    name,
     value,
     file: item.span.file,
     line: item.span.start.line,
     scope: 'global',
   });
   ctx.recordLoweredAsmItem(
-    { kind: 'const', name: item.name, value: { kind: 'literal', value } },
+    { kind: 'const', name, value: { kind: 'literal', value } },
     item.span,
   );
 }
@@ -181,26 +187,21 @@ function lowerAsmAlignDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode
 }
 
 function lowerAsmLabel(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
-  if (!item.name) return;
   const offset = activePlacementOffset(ctx);
   const address = activePlacementAddress(ctx);
-  const lower = item.name.toLowerCase();
-  if (ctx.taken.has(lower)) {
-    ctx.diag(ctx.diagnostics, item.span.file, `Duplicate symbol name "${item.name}".`);
-    return;
-  }
-  ctx.taken.add(lower);
-  if (address !== undefined) publishAsmAddressConst(ctx, item.name, address);
+  const name = reserveAsmSymbol(ctx, item);
+  if (!name) return;
+  if (address !== undefined) publishAsmAddressConst(ctx, name, address);
   ctx.pending.push({
     kind: 'label',
-    name: item.name,
+    name,
     placement: ctx.activePlacementRef.current,
     offset,
     file: item.span.file,
     line: item.span.start.line,
     scope: 'global',
   });
-  ctx.recordLoweredAsmItem({ kind: 'label', name: item.name }, item.span);
+  ctx.recordLoweredAsmItem({ kind: 'label', name }, item.span);
 }
 
 function lowerAsmBinRangeSymbol(
