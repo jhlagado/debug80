@@ -16,11 +16,18 @@ function parseAsmFile(
   return parseSourceFile(path, source, diagnostics, undefined, azmAliases);
 }
 
+function parseAsmSource(source: string): {
+  diagnostics: unknown[];
+  sourceFile: ReturnType<typeof parseSourceFile>;
+} {
+  const diagnostics: unknown[] = [];
+  const sourceFile = parseAsmFile('/asm.z80', source, diagnostics as never[]);
+  return { diagnostics, sourceFile };
+}
+
 describe('ASM80 source parser', () => {
   it('maps ASM lines into source-ordered AST items and stops at .end', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       [
         'BASE: .equ 0C000H',
         '.org BASE',
@@ -33,9 +40,6 @@ describe('ASM80 source parser', () => {
         '.end',
         'after: nop',
       ].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -79,14 +83,7 @@ describe('ASM80 source parser', () => {
   });
 
   it('keeps commas inside quoted db strings', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
-      '.db "A,B",0\n',
-      diagnostics as never[],
-      undefined,
-      azmAliases,
-    );
+    const { diagnostics, sourceFile } = parseAsmSource('.db "A,B",0\n');
 
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items[0]).toMatchObject({
@@ -101,14 +98,7 @@ describe('ASM80 source parser', () => {
   });
 
   it('parses single-quoted raw data characters as immediates', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
-      ".dw 'A'\n",
-      diagnostics as never[],
-      undefined,
-      azmAliases,
-    );
+    const { diagnostics, sourceFile } = parseAsmSource(".dw 'A'\n");
 
     expect(diagnostics).toEqual([]);
     expect(sourceFile.items[0]).toMatchObject({
@@ -120,13 +110,8 @@ describe('ASM80 source parser', () => {
   });
 
   it('keeps post-end binary range directives while ignoring ordinary post-end source', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       ['.org 0100H', '.db 1', '.end', 'after: nop', '.binfrom 0100H', '.binto 0101H'].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -140,13 +125,8 @@ describe('ASM80 source parser', () => {
   });
 
   it('parses ASM ds size and optional fill values', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       ['buf: ds 2,0FFH', 'tail: .ds 1'].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -170,13 +150,8 @@ describe('ASM80 source parser', () => {
   });
 
   it('parses non-baseline dialect aliases as ordinary instruction-shaped text', () => {
-    const diagnostics: { message: string; line?: number; column?: number }[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       ['DEFB_LABEL: DEFB 1,2', 'DEFW_LABEL: defw 1234H', 'RMB_LABEL: RMB 8'].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -216,13 +191,8 @@ describe('ASM80 source parser', () => {
   });
 
   it('does not let post-end string equates affect pre-end raw data', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       ['.db MSG', '.end', 'MSG: .equ "XY"'].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -234,9 +204,7 @@ describe('ASM80 source parser', () => {
   });
 
   it('parses MON3 db string fragments without splitting quoted contents', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       [
         '.db "Enter ",0',
         ".db '<_>?)!@#$%^&*( : +|'",
@@ -244,9 +212,6 @@ describe('ASM80 source parser', () => {
         '.db "A,B",0',
         '.db "a"-"A"',
       ].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
@@ -298,13 +263,8 @@ describe('ASM80 source parser', () => {
   });
 
   it('expands multi-character string equates in db values', () => {
-    const diagnostics: unknown[] = [];
-    const sourceFile = parseAsmFile(
-      '/asm.z80',
+    const { diagnostics, sourceFile } = parseAsmSource(
       ['.db REL_TXT,0', 'REL_TXT: .equ "2025.16"'].join('\n'),
-      diagnostics as never[],
-      undefined,
-      azmAliases,
     );
 
     expect(diagnostics).toEqual([]);
