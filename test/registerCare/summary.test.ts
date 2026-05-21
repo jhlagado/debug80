@@ -4,6 +4,7 @@ import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { parseAsmInstruction } from '../../src/frontend/parseAsmInstruction.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 import type {
+  RoutineContract,
   RegisterCareInstruction,
   RegisterCareRoutine,
   RegisterCareUnit,
@@ -67,6 +68,17 @@ function routineSummary(overrides: Partial<RoutineSummary>): RoutineSummary {
     valueRelations: [],
     stackBalanced: true,
     hasUnknownStackEffect: false,
+    ...overrides,
+  };
+}
+
+function contract(overrides: Partial<RoutineContract>): RoutineContract {
+  return {
+    name: 'ROUTINE',
+    in: [],
+    out: [],
+    clobbers: [],
+    preserves: [],
     ...overrides,
   };
 }
@@ -339,13 +351,11 @@ describe('routine summary inference', () => {
   it('treats contract outputs as intentional outputs instead of clobbers', () => {
     const summary = applyRoutineContract(
       routineSummary({ name: 'MAKE_PTR', mayWrite: ['H', 'L'] }),
-      {
+      contract({
         name: 'MAKE_PTR',
-        in: [],
         out: ['H', 'L'],
         clobbers: ['H', 'L', 'A'],
-        preserves: [],
-      },
+      }),
     );
 
     expect(summary.mayWrite).toEqual(['A']);
@@ -353,13 +363,10 @@ describe('routine summary inference', () => {
   });
 
   it('records different-register contract transforms as outputs from inputs', () => {
-    const summary = applyRoutineContract(routineSummary({ name: 'MAKE_PTR' }), {
-      name: 'MAKE_PTR',
-      in: ['D', 'E'],
-      out: ['H', 'L'],
-      clobbers: [],
-      preserves: [],
-    });
+    const summary = applyRoutineContract(
+      routineSummary({ name: 'MAKE_PTR' }),
+      contract({ name: 'MAKE_PTR', in: ['D', 'E'], out: ['H', 'L'] }),
+    );
 
     expect(summary.mayRead).toEqual(['D', 'E']);
     expect(summary.mayWrite).toEqual([]);
@@ -369,13 +376,11 @@ describe('routine summary inference', () => {
   it('treats declared contract inputs as the semantic register input surface', () => {
     const summary = applyRoutineContract(
       routineSummary({ name: 'LOAD_PENDING', mayRead: ['A', 'carry'], mayWrite: ['A', 'D', 'E'] }),
-      {
+      contract({
         name: 'LOAD_PENDING',
-        in: [],
         out: ['D', 'E'],
         clobbers: ['A'],
-        preserves: [],
-      },
+      }),
     );
 
     expect(summary.mayRead).toEqual([]);
@@ -390,14 +395,11 @@ describe('routine summary inference', () => {
         mayRead: ['A', 'carry'],
         mayWrite: ['A', 'carry', 'zero', 'sign', 'parity', 'halfCarry'],
       }),
-      {
+      contract({
         name: 'DRAW',
-        in: [],
-        out: [],
         clobbers: ['A'],
-        preserves: [],
         complete: true,
-      },
+      }),
     );
 
     expect(summary.mayRead).toEqual([]);
@@ -412,14 +414,12 @@ describe('routine summary inference', () => {
         mayWrite: ['A', 'carry', 'zero', 'sign', 'parity', 'halfCarry'],
         valueRelations: [{ out: ['A'], from: ['A'] }],
       }),
-      {
+      contract({
         name: 'INC_A',
         in: ['A'],
         out: ['A'],
-        clobbers: [],
-        preserves: [],
         complete: true,
-      },
+      }),
     );
 
     expect(summary.mayWrite).toEqual(['carry', 'zero', 'sign', 'parity', 'halfCarry']);
@@ -429,13 +429,13 @@ describe('routine summary inference', () => {
   it('does not report declared clobbers as preserved', () => {
     const summary = applyRoutineContract(
       routineSummary({ name: 'SHIFT_WINDOW', mayWrite: [], preserved: ['B', 'C', 'D'] }),
-      {
+      contract({
         name: 'SHIFT_WINDOW',
         in: ['B', 'C'],
         out: ['A'],
         clobbers: ['B', 'C', ...FLAG_UNITS],
         preserves: ['D'],
-      },
+      }),
     );
 
     expect(summary.mayWrite).toEqual(expect.arrayContaining(['B', 'C', 'carry', 'zero']));
