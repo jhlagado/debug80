@@ -128,8 +128,8 @@ flags   .field 1
 as `.type Pair byte[2]`; use a field block and use array type expressions at the
 point of `sizeof`, `offset`, or layout-cast use.
 
-Within layout declarations, `.byte`, `.word`, and `.addr` are planned aliases
-for field sizes, not emitted storage:
+Within layout declarations, `.byte`, `.word`, and `.addr` are type shorthands
+for `.field byte`, `.field word`, and `.field addr`. They do not emit storage:
 
 ```asm
 .type Bullet
@@ -139,6 +139,20 @@ timer   .word
 ptr     .addr
 .endtype
 ```
+
+The equivalent spelling is:
+
+```asm
+.type Bullet
+x       .field byte
+y       .field byte
+timer   .field word
+ptr     .field addr
+.endtype
+```
+
+That means `.word` is literally `.field sizeof(word)` in layout terms, and
+`sizeof(word)` is 2. Use `.db`, `.dw`, and `.ds` for emitted storage.
 
 The older colon form (`x: byte`) is not AZM syntax.
 
