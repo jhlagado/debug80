@@ -42,7 +42,7 @@ function withDefaults(
 /**
  * Compile an AZM/ASM80-family program starting from an entry file.
  *
- * - Resolves imports transitively (deterministic topological order with cycle checks).
+ * - Expands textual includes transitively with deterministic cycle checks.
  * - Runs parse → semantics → lowering → format writers.
  * - Produces artifacts in-memory via `deps.formats`.
  * - Defaults to emitting BIN + HEX + D8M unless an emit flag is explicitly provided.

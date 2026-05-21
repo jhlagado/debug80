@@ -58,7 +58,6 @@ function parseRecordFieldDecl(
   line: RecordFieldLine,
   fieldNamesLower: Set<string>,
   ctx: RecordFieldValidationContext,
-  /** When set, a bare field type equal to this name (recursive record/union) is rejected in favor of `@Name`. */
   declaringTypeName?: string,
 ): RecordFieldNode | undefined {
   const { file, diagnostics, sourcePath, isReservedTopLevelName } = ctx;
@@ -142,7 +141,7 @@ function parseRecordFieldDecl(
     diag(
       diagnostics,
       filePath,
-      `Self-referential field type "${typeExpr.name}" requires a pointer type; use @${typeExpr.name}.`,
+      `Self-referential field type "${typeExpr.name}" has no finite size; use .addr for a pointer field.`,
       { line: lineNo, column: 1 },
     );
     return undefined;

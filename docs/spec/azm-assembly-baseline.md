@@ -191,6 +191,10 @@ That means `.word` is literally `.field word` in layout terms, and `word`
 has size 2. These directives describe fields inside the enclosing layout;
 they do not emit bytes by themselves.
 
+Pointer-sized fields use `.addr` or `.field addr`. AZM does not keep a typed
+pointer field syntax such as `.field @Sprite`; layout declarations describe
+byte sizes and offsets, not typed memory references.
+
 Array fields use the same type-expression rule:
 
 ```asm
