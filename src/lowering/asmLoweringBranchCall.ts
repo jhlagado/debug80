@@ -71,6 +71,26 @@ const emitRel8FromOperand = (
   return true;
 };
 
+function conditionNameFromOperand(op: AsmOperandNode): string | undefined {
+  if (op.kind === 'Imm' && op.expr.kind === 'ImmName') return op.expr.name;
+  if (op.kind === 'Reg') return op.name;
+  return undefined;
+}
+
+function emitAbs16FixupFromOperand(
+  ctx: BranchCallLoweringContext,
+  asmItem: AsmInstructionNode,
+  operand: AsmOperandNode,
+  opcode: number,
+): boolean {
+  if (operand.kind !== 'Imm') return false;
+  const symbolicTarget = ctx.symbolicTargetFromExpr(operand.expr);
+  if (!symbolicTarget) return false;
+  ctx.emitAbs16Fixup(opcode, symbolicTarget.baseLower, symbolicTarget.addend, asmItem.span);
+  ctx.syncToFlow();
+  return true;
+}
+
 export function tryLowerBranchCallInstruction(
   asmItem: AsmInstructionNode,
   ctx: BranchCallLoweringContext,
@@ -88,12 +108,7 @@ export function tryLowerBranchCallInstruction(
         return true;
       }
       const single = asmItem.operands[0]!;
-      const ccSingle =
-        single.kind === 'Imm' && single.expr.kind === 'ImmName'
-          ? single.expr.name
-          : single.kind === 'Reg'
-            ? single.name
-            : undefined;
+      const ccSingle = conditionNameFromOperand(single);
       if (ccSingle && ctx.jrConditionOpcodeFromName(ccSingle) !== undefined) {
         ctx.diagAt(ctx.diagnostics, asmItem.span, `jr cc, disp expects two operands (cc, disp8)`);
         return true;
@@ -116,12 +131,7 @@ export function tryLowerBranchCallInstruction(
     }
     if (asmItem.operands.length === 2) {
       const ccOp = asmItem.operands[0]!;
-      const ccName =
-        ccOp.kind === 'Imm' && ccOp.expr.kind === 'ImmName'
-          ? ccOp.expr.name
-          : ccOp.kind === 'Reg'
-            ? ccOp.name
-            : undefined;
+      const ccName = conditionNameFromOperand(ccOp);
       const opcode = ccName ? ctx.jrConditionOpcodeFromName(ccName) : undefined;
       if (opcode === undefined) {
         ctx.diagAt(ctx.diagnostics, asmItem.span, `jr cc expects valid condition code NZ/Z/NC/C`);
@@ -221,21 +231,11 @@ export function tryLowerBranchCallInstruction(
 
   if (head === 'jp' && asmItem.operands.length === 2) {
     const ccOp = asmItem.operands[0]!;
-    const ccName =
-      ccOp.kind === 'Imm' && ccOp.expr.kind === 'ImmName'
-        ? ccOp.expr.name
-        : ccOp.kind === 'Reg'
-          ? ccOp.name
-          : undefined;
+    const ccName = conditionNameFromOperand(ccOp);
     const opcode = ccName ? ctx.conditionOpcodeFromName(ccName) : undefined;
     const target = asmItem.operands[1]!;
-    if (opcode !== undefined && target.kind === 'Imm') {
-      const symbolicTarget = ctx.symbolicTargetFromExpr(target.expr);
-      if (symbolicTarget) {
-        ctx.emitAbs16Fixup(opcode, symbolicTarget.baseLower, symbolicTarget.addend, asmItem.span);
-        ctx.syncToFlow();
-        return true;
-      }
+    if (opcode !== undefined && emitAbs16FixupFromOperand(ctx, asmItem, target, opcode)) {
+      return true;
     }
   }
 
@@ -257,21 +257,11 @@ export function tryLowerBranchCallInstruction(
 
   if (head === 'call' && asmItem.operands.length === 2) {
     const ccOp = asmItem.operands[0]!;
-    const ccName =
-      ccOp.kind === 'Imm' && ccOp.expr.kind === 'ImmName'
-        ? ccOp.expr.name
-        : ccOp.kind === 'Reg'
-          ? ccOp.name
-          : undefined;
+    const ccName = conditionNameFromOperand(ccOp);
     const opcode = ccName ? ctx.callConditionOpcodeFromName(ccName) : undefined;
     const target = asmItem.operands[1]!;
-    if (opcode !== undefined && target.kind === 'Imm') {
-      const symbolicTarget = ctx.symbolicTargetFromExpr(target.expr);
-      if (symbolicTarget) {
-        ctx.emitAbs16Fixup(opcode, symbolicTarget.baseLower, symbolicTarget.addend, asmItem.span);
-        ctx.syncToFlow();
-        return true;
-      }
+    if (opcode !== undefined && emitAbs16FixupFromOperand(ctx, asmItem, target, opcode)) {
+      return true;
     }
   }
 
