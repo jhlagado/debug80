@@ -1,28 +1,21 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import type { CompileResult } from '../../src/pipeline.js';
+import { compileTempSource, withTempSource } from '../helpers/temp_source.js';
 import { compilePlacedProgram } from '../helpers/lowered_program_compile.js';
 import { findRawAbs16Target } from '../helpers/lowered_program_symbols.js';
 import type { CompiledLoweredProgram } from '../helpers/lowered_program_types.js';
 
-function writeTempSource(ext: string, source: string): { entry: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'asm-layout-cast-'));
-  const entry = join(dir, `entry.${ext}`);
-  writeFileSync(entry, source, 'utf8');
-  return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+function sourceFromLines(lines: string[]): string {
+  return `${lines.join('\n')}\n`;
 }
 
 async function compilePlacedFromLines(lines: string[]): Promise<CompiledLoweredProgram> {
-  const { entry, cleanup } = writeTempSource('asm', `${lines.join('\n')}\n`);
-  try {
-    return await compilePlacedProgram(entry);
-  } finally {
-    cleanup();
-  }
+  return withTempSource('asm-layout-cast-', 'asm', sourceFromLines(lines), compilePlacedProgram);
+}
+
+async function compileAsmFromLines(lines: string[]): Promise<CompileResult> {
+  return compileTempSource('asm-layout-cast-', 'asm', sourceFromLines(lines), {});
 }
 
 function expectNoErrorDiagnostics(result: Pick<CompileResult, 'diagnostics'>): void {
@@ -137,129 +130,97 @@ describe('.asm layout-cast constant folding', () => {
   });
 
   it('rejects runtime register indexes in layout-cast address expressions', async () => {
-    const { entry, cleanup } = writeTempSource(
-      'asm',
-      [
-        ...spriteType,
-        ...spriteBase,
-        'main:',
-        '  ld hl,<Sprite[16]>SPRITES[HL].flags',
-        '  ret',
-        '',
-      ].join('\n'),
+    const result = await compileAsmFromLines([
+      ...spriteType,
+      ...spriteBase,
+      'main:',
+      '  ld hl,<Sprite[16]>SPRITES[HL].flags',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(
+          /runtime|compile-time constant|not supported in .asm source/i,
+        ),
+      }),
     );
-    try {
-      const { compile } = await import('../../src/compile.js');
-      const { defaultFormatWriters } = await import('../../src/formats/index.js');
-      const result = await compile(entry, {}, { formats: defaultFormatWriters });
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringMatching(
-            /runtime|compile-time constant|not supported in .asm source/i,
-          ),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
   });
 
   it('rejects register-base layout casts in .asm source', async () => {
-    const { entry, cleanup } = writeTempSource(
-      'asm',
-      [...spriteType, 'main:', '  ld hl,<Sprite[16]>HL[2].flags', '  ret', ''].join('\n'),
+    const result = await compileAsmFromLines([
+      ...spriteType,
+      'main:',
+      '  ld hl,<Sprite[16]>HL[2].flags',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(
+          /unsupported|ld expects a supported register\/memory\/immediate transfer form/i,
+        ),
+      }),
     );
-    try {
-      const { compile } = await import('../../src/compile.js');
-      const { defaultFormatWriters } = await import('../../src/formats/index.js');
-      const result = await compile(entry, {}, { formats: defaultFormatWriters });
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringMatching(
-            /unsupported|ld expects a supported register\/memory\/immediate transfer form/i,
-          ),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
   });
 
   it('rejects unresolved layout-path syntax in .asm source', async () => {
-    const { entry, cleanup } = writeTempSource(
-      'asm',
-      [...spriteType, ...spriteBase, 'main:', '  ld hl,SPRITES[2].flags', '  ret', ''].join('\n'),
+    const result = await compileAsmFromLines([
+      ...spriteType,
+      ...spriteBase,
+      'main:',
+      '  ld hl,SPRITES[2].flags',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(/does not accept unresolved layout operands/i),
+      }),
     );
-    try {
-      const { compile } = await import('../../src/compile.js');
-      const { defaultFormatWriters } = await import('../../src/formats/index.js');
-      const result = await compile(entry, {}, { formats: defaultFormatWriters });
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringMatching(/does not accept unresolved layout operands/i),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
   });
 
   it('does not synthesize stores through layout-cast destinations', async () => {
-    const { entry, cleanup } = writeTempSource(
-      'asm',
-      [
-        ...spriteType,
-        ...spriteBase,
-        'main:',
-        '  ld (<Sprite[16]>SPRITES[3].flags),1',
-        '  ret',
-        '',
-      ].join('\n'),
+    const result = await compileAsmFromLines([
+      ...spriteType,
+      ...spriteBase,
+      'main:',
+      '  ld (<Sprite[16]>SPRITES[3].flags),1',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(/unsupported|memory-to-memory|ld expects a supported/i),
+      }),
     );
-    try {
-      const { compile } = await import('../../src/compile.js');
-      const { defaultFormatWriters } = await import('../../src/formats/index.js');
-      const result = await compile(entry, {}, { formats: defaultFormatWriters });
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringMatching(/unsupported|memory-to-memory|ld expects a supported/i),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
   });
 
   it('does not synthesize memory-to-memory copies from layout constants', async () => {
-    const { entry, cleanup } = writeTempSource(
-      'asm',
-      [
-        ...spriteType,
-        ...spriteBase,
-        'OTHER .equ $2100',
-        '',
-        'main:',
-        '  ld (<Sprite[16]>SPRITES[3].flags),(<Sprite[16]>OTHER[0].flags)',
-        '  ret',
-        '',
-      ].join('\n'),
+    const result = await compileAsmFromLines([
+      ...spriteType,
+      ...spriteBase,
+      'OTHER .equ $2100',
+      '',
+      'main:',
+      '  ld (<Sprite[16]>SPRITES[3].flags),(<Sprite[16]>OTHER[0].flags)',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(/unsupported|memory-to-memory|ld expects a supported/i),
+      }),
     );
-    try {
-      const { compile } = await import('../../src/compile.js');
-      const { defaultFormatWriters } = await import('../../src/formats/index.js');
-      const result = await compile(entry, {}, { formats: defaultFormatWriters });
-      expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringMatching(/unsupported|memory-to-memory|ld expects a supported/i),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
   });
 });
