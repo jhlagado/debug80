@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Type:** Additive editor tooling
-**Scope:** `.asm`, `.z80`, `.a80`, `.s`, and later `.zax` where the dialect overlap is safe
+**Scope:** `.asm`, `.z80`, `.a80`, and `.s`
 
 ---
 
@@ -101,7 +101,6 @@ Debug80 would register an LSP client from the extension host for the assembly la
 owns:
 
 - `z80-asm`
-- possibly `zax` later, if the server has explicit ZAX dialect support
 
 The client should pass workspace/project context to the server:
 
@@ -109,7 +108,7 @@ The client should pass workspace/project context to the server:
 - active Debug80 project folder, if selected
 - active target name and source file
 - `debug80.json` path
-- assembler backend (`asm80`, `zax`, future backends)
+- assembler backend (`azm`, with legacy `asm80` configs treated as AZM-compatible)
 - source roots and include roots
 - latest known map/debug-map path, if available
 
@@ -156,15 +155,13 @@ invocations can be indexed as symbols, but semantic expansion should wait.
 
 Debug80 currently supports multiple assembler realities:
 
-- asm80-style sources
-- ZAX sources
+- AZM/ASM80-compatible sources
 - inherited TEC monitor sources and older Z80 style
 
 The LSP should model dialects explicitly instead of assuming one universal grammar:
 
 - **Core Z80 dialect:** mnemonics, registers, conditions, common number formats, labels.
-- **asm80 profile:** asm80 directives and include rules.
-- **ZAX profile:** ZAX directives and any stricter syntax rules.
+- **AZM profile:** AZM directives, ASM80-compatible include rules, and AZM-specific extensions.
 - **Legacy/common profile:** permissive handling for old source files.
 
 The selected Debug80 target should choose the active profile. Standalone files without a
@@ -243,7 +240,7 @@ Deliver:
 
 Deliver:
 
-- backend profiles for asm80 and ZAX
+- backend profiles for AZM and legacy/common source styles
 - better directive validation
 - simple expression evaluator
 - range checks for `JR` / `DJNZ`

@@ -220,7 +220,7 @@ Notes:
 - `simple.regions[].readOnly` forces read-only for non-ROM regions (optional).
 - `simple.appStart` is the expected entry address for user code (ORG).
 - `simple.entry` is the CPU start address (default first ROM region start).
-- `simple.binFrom`/`simple.binTo` optionally trigger an extra asm80 pass that emits `.bin`.
+- `simple.binFrom`/`simple.binTo` optionally trigger an AZM binary output pass that emits `.bin`.
 
 The repository no longer ships `cpm` or `microbee` platform directories or
 example configs. Those machine profiles moved out of tree and are not covered by
@@ -269,7 +269,7 @@ Extra ROM listings:
   resolved relative to the `debug80.json` base directory; absolute paths also
   work. For scaffolded bundled profiles, a missing workspace-relative listing
   is smart-resolved to the copy shipped inside the extension.
-- If a listing sits next to a matching `.asm`, `.zax`, or `.z80` source file,
+- If a listing sits next to a matching `.asm` or `.z80` source file,
   Debug80 will offer that source in the ROM source picker and use it for
   line-based breakpoints. Bundled profiles provide source snapshots for this
   where available; local files with the same configured paths take precedence.
@@ -335,7 +335,7 @@ loop:   LD  A, 0x01       ; select rightmost digit (bit 0)
         JP  loop
 ```
 
-Build it with asm80 (or let Debug80 assemble it), then run the ROM monitor and
+Build it with AZM (or let Debug80 assemble it), then run the ROM monitor and
 press ADDRESS to 0800 followed by GO. The ROM keeps scanning once your program
 takes over, so your code should refresh the display as needed.
 
@@ -367,7 +367,7 @@ reference in `debug80.json` and resolves the shipped bundle on launch when no
 workspace copy is present:
 
 - `roms/tec1g/mon3/mon3.bin` — monitor ROM image (`tec1g.romHex`; `.bin` or `.hex` per program loader rules).
-- `roms/tec1g/mon3/mon3.lst` — ASM80 listing for ROM source mapping (`tec1g.extraListings`).
+- `roms/tec1g/mon3/mon3.lst` — assembler listing for ROM source mapping (`tec1g.extraListings`).
 - root or target `sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
 
 These `roms/` paths are stable project override paths. If the files are absent,

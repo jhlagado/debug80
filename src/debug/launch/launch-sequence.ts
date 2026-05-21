@@ -210,6 +210,7 @@ export async function buildLaunchSession(
     asmPath,
     hexPath,
     listingPath,
+    sourceRoot: baseDir,
     platform,
     ...(simpleConfig !== undefined ? { simpleConfig } : {}),
     sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),

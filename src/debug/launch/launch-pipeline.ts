@@ -36,12 +36,22 @@ export async function assembleIfRequested(options: {
   asmPath: string | undefined;
   hexPath: string;
   listingPath: string;
+  sourceRoot?: string;
   platform: string;
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent: EventSender;
 }): Promise<void> {
-  const { backend, args, asmPath, hexPath, listingPath, platform, simpleConfig, sendEvent } =
-    options;
+  const {
+    backend,
+    args,
+    asmPath,
+    hexPath,
+    listingPath,
+    sourceRoot,
+    platform,
+    simpleConfig,
+    sendEvent,
+  } = options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }
@@ -50,6 +60,7 @@ export async function assembleIfRequested(options: {
     asmPath,
     hexPath,
     listingPath,
+    ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     onOutput: (message) => {
       emitConsoleOutput(sendEvent, message, { newline: false });
     },
@@ -71,6 +82,7 @@ export async function assembleIfRequested(options: {
       hexPath,
       binFrom: simpleConfig.binFrom,
       binTo: simpleConfig.binTo,
+      ...(sourceRoot !== undefined ? { sourceRoot } : {}),
       onOutput: (message) => {
         emitConsoleOutput(sendEvent, message, { newline: false });
       },

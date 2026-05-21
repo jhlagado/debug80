@@ -291,10 +291,9 @@ export class Z80DebugSession extends DebugSession {
       const detail = `Failed to load program: ${String(err)}`;
       this.logger.error(detail);
       emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
-      const short =
-        detail.toLowerCase().includes('asm80') || detail.toLowerCase().includes('failed')
-          ? 'Failed to load program (see Debug Console for asm80 output).'
-          : detail;
+      const short = detail.toLowerCase().includes('failed')
+        ? 'Failed to load program (see Debug Console for assembler output).'
+        : detail;
       this.sendErrorResponse(response, 1, short);
     }
   }

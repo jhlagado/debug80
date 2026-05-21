@@ -9,41 +9,39 @@ vi.mock('vscode', () => ({
 }));
 
 import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
-import { Asm80Backend } from '../../src/debug/launch/asm80-backend';
-import { ZaxBackend } from '../../src/debug/launch/zax-backend';
+import { AzmBackend } from '../../src/debug/launch/azm-backend';
 
 describe('assembler-backend', () => {
-  it('returns asm80 by default', () => {
-    expect(resolveAssemblerBackend(undefined, undefined)).toBeInstanceOf(Asm80Backend);
+  it('returns azm by default', () => {
+    expect(resolveAssemblerBackend(undefined, undefined)).toBeInstanceOf(AzmBackend);
   });
 
-  it('returns asm80 when explicitly requested', () => {
-    expect(resolveAssemblerBackend('asm80', undefined)).toBeInstanceOf(Asm80Backend);
+  it('returns azm when explicitly requested', () => {
+    expect(resolveAssemblerBackend('azm', undefined)).toBeInstanceOf(AzmBackend);
   });
 
-  it('returns asm80 for asm-family source paths', () => {
-    expect(resolveAssemblerBackend(undefined, '/tmp/program.asm')).toBeInstanceOf(Asm80Backend);
+  it('keeps asm80 as a backwards-compatible alias for azm', () => {
+    expect(resolveAssemblerBackend('asm80', undefined)).toBeInstanceOf(AzmBackend);
   });
 
-  it('matches asm80 case-insensitively', () => {
-    expect(resolveAssemblerBackend('ASM80', undefined)).toBeInstanceOf(Asm80Backend);
+  it('returns azm for asm-family source paths', () => {
+    expect(resolveAssemblerBackend(undefined, '/tmp/program.asm')).toBeInstanceOf(AzmBackend);
+    expect(resolveAssemblerBackend(undefined, '/tmp/program.z80')).toBeInstanceOf(AzmBackend);
   });
 
-  it('returns zax for zax source paths', () => {
-    expect(resolveAssemblerBackend(undefined, '/tmp/program.zax')).toBeInstanceOf(ZaxBackend);
-  });
-
-  it('returns zax when explicitly requested', () => {
-    expect(resolveAssemblerBackend('zax', undefined)).toBeInstanceOf(ZaxBackend);
-  });
-
-  it('matches zax case-insensitively', () => {
-    expect(resolveAssemblerBackend('ZAX', undefined)).toBeInstanceOf(ZaxBackend);
+  it('matches azm and asm80 alias case-insensitively', () => {
+    expect(resolveAssemblerBackend('AZM', undefined)).toBeInstanceOf(AzmBackend);
+    expect(resolveAssemblerBackend('ASM80', undefined)).toBeInstanceOf(AzmBackend);
   });
 
   it('throws for unknown backends', () => {
     expect(() => resolveAssemblerBackend('unknown', undefined)).toThrow(
       'Unknown assembler backend'
     );
+  });
+
+  it('does not expose the removed zax backend', () => {
+    expect(() => resolveAssemblerBackend('zax', undefined)).toThrow('Unknown assembler backend');
+    expect(resolveAssemblerBackend(undefined, '/tmp/program.zax')).toBeInstanceOf(AzmBackend);
   });
 });

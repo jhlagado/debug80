@@ -1,7 +1,7 @@
 {
   "name": "Z80 Assembly",
   "scopeName": "source.z80.asm",
-  "fileTypes": ["asm", "z80", "a80", "s"],
+  "fileTypes": ["asm", "z80", "a80", "s", "asmi"],
   "patterns": [
     {
       "include": "#comments"
@@ -14,6 +14,24 @@
     },
     {
       "include": "#labels"
+    },
+    {
+      "include": "#azm-layout-expressions"
+    },
+    {
+      "include": "#azm-layout-types"
+    },
+    {
+      "include": "#azm-enums"
+    },
+    {
+      "include": "#azm-type-fields"
+    },
+    {
+      "include": "#azm-ops"
+    },
+    {
+      "include": "#azm-interface-contracts"
     },
     {
       "include": "#directives"
@@ -99,6 +117,17 @@
             }
           },
           "match": "(@(?:in|out|clobbers|preserves|expect-out)\\b)\\s+(\\{?\\b(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P)(?:\\s*,\\s*(?:AF|BC|DE|HL|IX|IY|SP|PC|A|B|C|D|E|F|H|L|IXH|IXL|IYH|IYL|I|R|carry|zero|sign|parity|halfCarry|negative|Z|NZ|NC|PE|PO|M|P))*\\b\\}?)"
+        },
+        {
+          "captures": {
+            "1": {
+              "name": "storage.type.annotation.z80-asm"
+            },
+            "2": {
+              "name": "meta.annotation.parameters.z80-asm"
+            }
+          },
+          "match": "(?i)\\b(in|out|maybe-out|clobbers|preserves)\\b\\s+([^;]+)$"
         },
         {
           "name": "storage.type.annotation.z80-asm",
@@ -195,11 +224,298 @@
         }
       ]
     },
+    "azm-layout-expressions": {
+      "patterns": [
+        {
+          "name": "meta.layout.offset-expression.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(offset)\\s*\\(\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?:\\s*\\[[^\\]]+\\])?\\s*,\\s*((?:[A-Za-z_.$?@][A-Za-z0-9_.$?@]*|\\[[^\\]]+\\])(?:\\[[^\\]]+\\])?(?:\\.[A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?:\\[[^\\]]+\\])?)*)",
+          "captures": {
+            "1": {
+              "name": "support.function.builtin.z80-asm"
+            },
+            "2": {
+              "name": "support.type.z80-asm"
+            },
+            "3": {
+              "name": "variable.other.field.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.layout.sizeof-expression.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(sizeof)\\s*\\(\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?:\\s*\\[[^\\]]+\\])?",
+          "captures": {
+            "1": {
+              "name": "support.function.builtin.z80-asm"
+            },
+            "2": {
+              "name": "support.type.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "support.function.builtin.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:sizeof|offset)(?=\\s*\\()"
+        },
+        {
+          "name": "meta.ds.type-expression.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(\\.?(?:ds))\\s+(byte|word|addr)(?=\\b|\\[)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.directive.z80-asm"
+            },
+            "2": {
+              "name": "support.type.primitive.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.ds.type-expression.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(\\.?(?:ds))\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\b|\\[)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.directive.z80-asm"
+            },
+            "2": {
+              "name": "support.type.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.layout-cast.z80-asm",
+          "begin": "<",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.typecast.begin.z80-asm"
+            }
+          },
+          "end": ">",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.typecast.end.z80-asm"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#azm-layout-type-names"
+            },
+            {
+              "name": "punctuation.section.brackets.z80-asm",
+              "match": "[\\[\\]]"
+            },
+            {
+              "name": "keyword.operator.z80-asm",
+              "match": "\\+|-|\\*|/"
+            }
+          ]
+        },
+        {
+          "name": "variable.other.field.z80-asm",
+          "match": "(?<=\\.)[A-Za-z_.$?@][A-Za-z0-9_.$?@]*"
+        },
+        {
+          "include": "#azm-layout-primitive-types"
+        }
+      ]
+    },
+    "azm-layout-primitive-types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])(?:byte|word|addr)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "azm-layout-type-names": {
+      "patterns": [
+        {
+          "include": "#azm-layout-primitive-types"
+        },
+        {
+          "name": "support.type.z80-asm",
+          "match": "(?<![A-Za-z0-9_.$?@])[A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "azm-layout-types": {
+      "patterns": [
+        {
+          "name": "meta.type.declaration.z80-asm",
+          "match": "(?i)^\\s*(\\.(?:type|union))\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.type.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.type.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "keyword.control.directive.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.(?:endtype|endunion)(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "keyword.declaration.type.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.(?:type|union)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "azm-enums": {
+      "patterns": [
+        {
+          "name": "constant.language.enum.member.z80-asm",
+          "match": "(?<![A-Za-z0-9_.$?@])[A-Za-z_.$?@][A-Za-z0-9_.$?@]*\\.[A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])"
+        },
+        {
+          "name": "meta.enum.declaration.z80-asm",
+          "match": "(?i)^\\s*(enum)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.enum.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.type.enum.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.enum.member.z80-asm",
+          "match": "(?i)(?:^\\s*enum\\s+[A-Za-z_.$?@][A-Za-z0-9_.$?@]*\\s+|,\\s*)([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)",
+          "captures": {
+            "1": {
+              "name": "constant.language.enum.member.z80-asm"
+            }
+          }
+        }
+      ]
+    },
+    "azm-type-fields": {
+      "patterns": [
+        {
+          "name": "meta.field.declaration.z80-asm",
+          "match": "(?i)^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)\\s+(\\.(?:field))\\s+(\\d+)",
+          "captures": {
+            "1": {
+              "name": "variable.other.field.z80-asm"
+            },
+            "2": {
+              "name": "storage.type.field.z80-asm"
+            },
+            "3": {
+              "name": "constant.numeric.decimal.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.field.declaration.z80-asm",
+          "match": "(?i)^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)\\s+(\\.(?:field))\\s+(byte|word|addr)(?=\\b|\\[)",
+          "captures": {
+            "1": {
+              "name": "variable.other.field.z80-asm"
+            },
+            "2": {
+              "name": "storage.type.field.z80-asm"
+            },
+            "3": {
+              "name": "support.type.primitive.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.field.declaration.z80-asm",
+          "match": "(?i)^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)\\s+(\\.(?:field))\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)",
+          "captures": {
+            "1": {
+              "name": "variable.other.field.z80-asm"
+            },
+            "2": {
+              "name": "storage.type.field.z80-asm"
+            },
+            "3": {
+              "name": "support.type.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.field.declaration.z80-asm",
+          "match": "(?i)^\\s*([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)\\s+(\\.(?:byte|word|addr))\\b",
+          "captures": {
+            "1": {
+              "name": "variable.other.field.z80-asm"
+            },
+            "2": {
+              "name": "storage.type.field.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "storage.type.field.z80-asm",
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.(?:field|byte|word|addr)(?![A-Za-z0-9_.$?@])"
+        }
+      ]
+    },
+    "azm-ops": {
+      "patterns": [
+        {
+          "name": "meta.op.declaration.z80-asm",
+          "match": "(?i)^\\s*(op)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)(?=\\s*\\()",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.op.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.function.z80-asm"
+            }
+          }
+        }
+      ]
+    },
+    "azm-interface-contracts": {
+      "patterns": [
+        {
+          "name": "meta.interface.extern.z80-asm",
+          "match": "(?i)^\\s*(extern)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.contract.z80-asm"
+            },
+            "2": {
+              "name": "entity.name.function.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.interface.contract.z80-asm",
+          "match": "(?i)^\\s*(in|out|clobbers|preserves)\\s+([A-Za-z_.$?@][A-Za-z0-9_.$?@]*(?:\\s*,\\s*[A-Za-z_.$?@][A-Za-z0-9_.$?@]*)*)\\s*$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.contract.z80-asm"
+            },
+            "2": {
+              "name": "meta.annotation.parameters.z80-asm"
+            }
+          }
+        },
+        {
+          "name": "meta.interface.end.z80-asm",
+          "match": "(?i)^\\s*(end)\\s*$",
+          "captures": {
+            "1": {
+              "name": "keyword.control.contract.z80-asm"
+            }
+          }
+        }
+      ]
+    },
     "directives": {
       "patterns": [
         {
           "name": "keyword.control.directive.z80-asm",
-          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.?(?:ALIGN|AREA|ASSERT|BINCLUDE|BLOCK|BYTE|CODE|CPU|DATA|DB|DC|DEFB|DEFS|DEFW|DM|DS|DW|ELSE|END|ENDIF|ENDM|ENDR|EQU|EXPORT|EXTERN|GLOBAL|IF|IFDEF|IFNDEF|INCBIN|INCLUDE|LIST|MACRO|MODULE|ORG|PHASE|PUBLIC|REPT|SECTION|TEXT|WORD|XDEF|XREF)(?![A-Za-z0-9_.$?@])"
+          "match": "(?i)(?<![A-Za-z0-9_.$?@])\\.?(?:ADDR|ALIGN|AREA|ASSERT|BINFROM|BINCLUDE|BINTO|BLOCK|BYTE|CODE|CPU|CSTR|DATA|DB|DC|DEFB|DEFS|DEFW|DM|DS|DW|ELSE|END|ENDIF|ENDM|ENDR|ENDTYPE|ENDUNION|EQU|EXPORT|EXTERN|FIELD|GLOBAL|IF|IFDEF|IFNDEF|INCBIN|INCLUDE|ISTR|LIST|MACRO|MODULE|ORG|PHASE|PSTR|PUBLIC|REPT|SECTION|TEXT|TYPE|UNION|WORD|XDEF|XREF)(?![A-Za-z0-9_.$?@])"
         }
       ]
     },
@@ -275,6 +591,10 @@
         {
           "name": "punctuation.section.parens.z80-asm",
           "match": "[()]"
+        },
+        {
+          "name": "punctuation.section.brackets.z80-asm",
+          "match": "[\\[\\]]"
         },
         {
           "name": "punctuation.separator.comma.z80-asm",

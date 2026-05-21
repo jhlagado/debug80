@@ -123,6 +123,7 @@ export async function handleWarmRebuildRequest(
       asmPath,
       hexPath,
       listingPath,
+      sourceRoot: baseDir,
       platform: deps.platformState.active,
       sendEvent: (event) => deps.sendEvent(event as DebugProtocol.Event),
     });

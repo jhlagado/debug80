@@ -65,8 +65,8 @@ describe('errors', () => {
     expect(err.stdout).toBe('stdout');
     expect(isAssemblyError(err)).toBe(true);
 
-    const fromExit = AssemblyError.fromExitCode(2, 'bad', 'ok', 'asm80');
-    expect(fromExit.message).toContain('asm80 exited with code 2');
+    const fromExit = AssemblyError.fromExitCode(2, 'bad', 'ok', 'azm');
+    expect(fromExit.message).toContain('azm exited with code 2');
     expect(fromExit.message).toContain('bad');
   });
 

@@ -5,7 +5,7 @@
   "addressWidth": 16,
   "endianness": "little",
   "files": {
-    "matrix.zax": {
+    "matrix.asm": {
       "segments": [
         {
           "start": 16384,
@@ -324,6 +324,6 @@
     }
   },
   "generator": {
-    "tool": "zax"
+    "tool": "azm"
   }
 }

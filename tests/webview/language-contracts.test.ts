@@ -21,6 +21,7 @@ const Z80_ASM_GRAMMAR_PATH = path.resolve(__dirname, '../../syntaxes/z80-asm.tmL
 const Z80_LST_GRAMMAR_PATH = path.resolve(__dirname, '../../syntaxes/z80-lst.tmLanguage.json');
 
 interface PackageJson {
+  dependencies?: Record<string, string>;
   contributes: {
     configurationDefaults: {
       'files.associations': Record<string, string>;
@@ -59,6 +60,20 @@ function loadZ80AsmGrammar(): unknown {
 
 function loadZ80LstGrammar(): unknown {
   return JSON.parse(fs.readFileSync(Z80_LST_GRAMMAR_PATH, 'utf8'));
+}
+
+function getAsmGrammarFileTypes(): string[] {
+  const grammar = loadZ80AsmGrammar() as { fileTypes?: string[] };
+  return grammar.fileTypes ?? [];
+}
+
+function getAsmGrammarTopLevelIncludes(): string[] {
+  const grammar = loadZ80AsmGrammar() as { patterns?: Array<{ include?: string }> };
+  return (
+    grammar.patterns
+      ?.map((pattern) => pattern.include)
+      .filter((include) => include !== undefined) ?? []
+  );
 }
 
 function getGrammarPattern(repositoryName: string, scopeName: string): { match: string } {
@@ -140,6 +155,42 @@ function getFirstGrammarCaptureScope(
     }
   }
   throw new Error(`No grammar capture matched ${expectedText} in ${source}`);
+}
+
+function getGrammarBeginEndPattern(
+  repositoryName: string,
+  scopeName: string
+): {
+  begin?: string;
+  beginCaptures?: Record<string, { name?: string }>;
+  end?: string;
+  endCaptures?: Record<string, { name?: string }>;
+  name?: string;
+  patterns?: Array<{ include?: string; match?: string; name?: string }>;
+} {
+  const grammar = loadZ80AsmGrammar() as {
+    repository?: Record<
+      string,
+      {
+        patterns?: Array<{
+          begin?: string;
+          beginCaptures?: Record<string, { name?: string }>;
+          end?: string;
+          endCaptures?: Record<string, { name?: string }>;
+          match?: string;
+          name?: string;
+          patterns?: Array<{ include?: string; match?: string; name?: string }>;
+        }>;
+      }
+    >;
+  };
+  const pattern = grammar.repository?.[repositoryName]?.patterns?.find((candidate) => {
+    return candidate.name === scopeName && candidate.begin !== undefined;
+  });
+  if (pattern === undefined) {
+    throw new Error(`Could not find begin/end grammar pattern ${repositoryName}/${scopeName}`);
+  }
+  return pattern;
 }
 
 function getFirstMatchingListingScope(source: string): string {
@@ -346,20 +397,10 @@ function extractAsmLanguageId(): string {
   return match[1];
 }
 
-function extractZaxLanguageId(): string {
-  const src = fs.readFileSync(LANGUAGE_ASSOCIATION_PATH, 'utf8');
-  const match = src.match(/const ZAX_LANGUAGE_ID\s*=\s*'([^']+)'/);
-  if (match === null || match[1] === undefined) {
-    throw new Error('Could not find ZAX_LANGUAGE_ID in language-association.ts');
-  }
-  return match[1];
-}
-
 describe('package.json language contracts', () => {
   const pkg = loadPackageJson();
   const contributes = pkg.contributes;
   const asmLanguageId = extractAsmLanguageId();
-  const zaxLanguageId = extractZaxLanguageId();
 
   it('ASM_LANGUAGE_ID is a contributed language', () => {
     const ids = contributes.languages.map((l) => l.id);
@@ -373,7 +414,7 @@ describe('package.json language contracts', () => {
 
   it('ASM-family files are associated with ASM_LANGUAGE_ID', () => {
     const assoc = contributes.configurationDefaults['files.associations'];
-    for (const extension of ['asm', 'z80', 'a80', 's']) {
+    for (const extension of ['asm', 'z80', 'a80', 's', 'asmi']) {
       expect(assoc[`*.${extension}`]).toBe(asmLanguageId);
     }
   });
@@ -381,7 +422,7 @@ describe('package.json language contracts', () => {
   it('contributed language claims ASM-family extensions', () => {
     const lang = contributes.languages.find((l) => l.id === asmLanguageId);
     expect(lang).toBeDefined();
-    for (const extension of ['.asm', '.z80', '.a80', '.s']) {
+    for (const extension of ['.asm', '.z80', '.a80', '.s', '.asmi']) {
       expect(lang!.extensions).toContain(extension);
     }
   });
@@ -524,6 +565,22 @@ describe('package.json language contracts', () => {
     expect(constantRule.settings?.foreground).toBe('#FFD166');
   });
 
+  it('contributes token colors for AZM layout and interface scopes', () => {
+    expect(findTokenColor('keyword.declaration.type.z80-asm')).toBe('#FF66C4');
+    expect(findTokenColor('keyword.declaration.enum.z80-asm')).toBe('#FF66C4');
+    expect(findTokenColor('keyword.control.contract.z80-asm')).toBe('#00D1A7');
+    expect(findTokenColor('storage.type.field.z80-asm')).toBe('#FF66C4');
+    expect(findTokenColor('entity.name.type.z80-asm')).toBe('#4DA3FF');
+    expect(findTokenColor('entity.name.type.enum.z80-asm')).toBe('#4DA3FF');
+    expect(findTokenColor('support.type.z80-asm')).toBe('#4DA3FF');
+    expect(findTokenColor('support.type.primitive.z80-asm')).toBe('#4DA3FF');
+    expect(findTokenColor('variable.other.field.z80-asm')).toBe('#FF4D6D');
+    expect(findTokenColor('constant.language.enum.member.z80-asm')).toBe('#FF4D6D');
+    expect(findTokenColor('support.function.builtin.z80-asm')).toBe('#FDE047');
+    expect(findTokenColor('punctuation.definition.typecast.begin.z80-asm')).toBe('#A0AEC0');
+    expect(findTokenColor('punctuation.section.brackets.z80-asm')).toBe('#A0AEC0');
+  });
+
   it('keeps primary token families on unique foreground colors', () => {
     const primaryScopes = [
       'comment.line.semicolon.z80-asm',
@@ -643,6 +700,180 @@ describe('package.json language contracts', () => {
     expect(serializedListingGrammar).toContain('SLI');
   });
 
+  it('Z80 assembly grammar claims AZM interface files', () => {
+    expect(getAsmGrammarFileTypes()).toContain('asmi');
+  });
+
+  it('Z80 assembly grammar checks AZM-specific syntax before generic symbols', () => {
+    const includes = getAsmGrammarTopLevelIncludes();
+
+    expect(includes.indexOf('#azm-layout-expressions')).toBeLessThan(
+      includes.indexOf('#directives')
+    );
+    expect(includes.indexOf('#azm-layout-types')).toBeLessThan(includes.indexOf('#directives'));
+    expect(includes.indexOf('#azm-enums')).toBeLessThan(includes.indexOf('#symbols'));
+    expect(includes.indexOf('#azm-type-fields')).toBeLessThan(includes.indexOf('#symbols'));
+    expect(includes.indexOf('#azm-ops')).toBeLessThan(includes.indexOf('#symbols'));
+    expect(includes.indexOf('#azm-interface-contracts')).toBeLessThan(includes.indexOf('#symbols'));
+  });
+
+  it('Z80 assembly grammar captures AZM directive aliases', () => {
+    for (const directive of ['.cstr', '.pstr', '.istr', '.binfrom', '.binto']) {
+      expect(getFirstMatchingGrammarScope('directives', directive)).toBe(
+        'keyword.control.directive.z80-asm'
+      );
+    }
+    for (const directive of ['CSTR', 'PSTR', 'ISTR']) {
+      expect(getFirstMatchingGrammarScope('directives', directive)).toBe(
+        'keyword.control.directive.z80-asm'
+      );
+    }
+  });
+
+  it('Z80 assembly grammar captures AZM type, union, and field declarations', () => {
+    expect(getFirstGrammarCaptureScope('azm-layout-types', '.type Sprite', '.type')).toBe(
+      'keyword.declaration.type.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-layout-types', '.type Sprite', 'Sprite')).toBe(
+      'entity.name.type.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-layout-types', '.union WordView', 'WordView')).toBe(
+      'entity.name.type.z80-asm'
+    );
+    expect(getFirstMatchingGrammarScope('azm-layout-types', '.endunion')).toBe(
+      'keyword.control.directive.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'x       .byte', 'x')).toBe(
+      'variable.other.field.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'ptr     .addr', '.addr')).toBe(
+      'storage.type.field.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'data    .field byte[16]', 'byte')).toBe(
+      'support.type.primitive.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'pos     .field Pos', 'Pos')).toBe(
+      'support.type.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'blob    .field 3', 'blob')).toBe(
+      'variable.other.field.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'blob    .field 3', '3')).toBe(
+      'constant.numeric.decimal.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-type-fields', 'cells   .field Tri[4]', 'Tri')).toBe(
+      'support.type.z80-asm'
+    );
+  });
+
+  it('Z80 assembly grammar captures AZM enum declarations and qualified members', () => {
+    expect(getFirstGrammarCaptureScope('azm-enums', 'enum GameMode Title, Playing', 'enum')).toBe(
+      'keyword.declaration.enum.z80-asm'
+    );
+    expect(
+      getFirstGrammarCaptureScope('azm-enums', 'enum GameMode Title, Playing', 'GameMode')
+    ).toBe('entity.name.type.enum.z80-asm');
+    expect(getFirstGrammarCaptureScope('azm-enums', ', Playing', 'Playing')).toBe(
+      'constant.language.enum.member.z80-asm'
+    );
+    expect(getFirstMatchingGrammarScope('azm-enums', 'GameMode.Playing')).toBe(
+      'constant.language.enum.member.z80-asm'
+    );
+  });
+
+  it('Z80 assembly grammar captures AZM layout builtins and casts', () => {
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-layout-expressions',
+        'SPRITE_SIZE .equ sizeof(Sprite)',
+        'sizeof'
+      )
+    ).toBe('support.function.builtin.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-layout-expressions',
+        'SPRITE_SIZE .equ sizeof(Sprite)',
+        'Sprite'
+      )
+    ).toBe('support.type.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-layout-expressions',
+        'SPRITES_SIZE .equ sizeof(Sprite[16])',
+        'Sprite'
+      )
+    ).toBe('support.type.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope('azm-layout-expressions', 'SPRITE_X .equ offset(Sprite, x)', 'x')
+    ).toBe('variable.other.field.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-layout-expressions',
+        'THIRD_C .equ offset(Tri[4], [2].c)',
+        '[2].c'
+      )
+    ).toBe('variable.other.field.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope('azm-layout-expressions', '  .ds Sprite[2],$33', 'Sprite')
+    ).toBe('support.type.z80-asm');
+    expect(getFirstMatchingGrammarScope('operators', '[')).toBe(
+      'punctuation.section.brackets.z80-asm'
+    );
+    expect(getFirstMatchingGrammarScope('azm-layout-expressions', '.color')).toBe(
+      'variable.other.field.z80-asm'
+    );
+
+    const castPattern = getGrammarBeginEndPattern(
+      'azm-layout-expressions',
+      'meta.layout-cast.z80-asm'
+    );
+    expect(castPattern.begin).toBe('<');
+    expect(castPattern.end).toBe('>');
+    expect(castPattern.beginCaptures?.['0']?.name).toBe(
+      'punctuation.definition.typecast.begin.z80-asm'
+    );
+    expect(castPattern.endCaptures?.['0']?.name).toBe(
+      'punctuation.definition.typecast.end.z80-asm'
+    );
+    expect(castPattern.patterns).toContainEqual({ include: '#azm-layout-type-names' });
+  });
+
+  it('Z80 assembly grammar captures AZMDoc plain contract keys', () => {
+    expect(getFirstGrammarCaptureScope('routine-comments', 'in        A, IX', 'in')).toBe(
+      'storage.type.annotation.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('routine-comments', 'out       A, carry', 'A, carry')).toBe(
+      'meta.annotation.parameters.z80-asm'
+    );
+    expect(
+      getFirstGrammarCaptureScope('routine-comments', 'clobbers  BC, DE, HL', 'clobbers')
+    ).toBe('storage.type.annotation.z80-asm');
+    expect(getFirstGrammarCaptureScope('routine-comments', 'maybe-out A', 'maybe-out')).toBe(
+      'storage.type.annotation.z80-asm'
+    );
+  });
+
+  it('Z80 assembly grammar captures AZM op declarations', () => {
+    expect(getFirstGrammarCaptureScope('azm-ops', 'op load8(dst reg8, value imm8)', 'op')).toBe(
+      'keyword.declaration.op.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-ops', 'op load8(dst reg8, value imm8)', 'load8')).toBe(
+      'entity.name.function.z80-asm'
+    );
+  });
+
+  it('Z80 assembly grammar captures AZM interface contracts outside comments', () => {
+    expect(
+      getFirstGrammarCaptureScope('azm-interface-contracts', 'extern MON_PRINT_CHAR', 'extern')
+    ).toBe('keyword.control.contract.z80-asm');
+    expect(getFirstGrammarCaptureScope('azm-interface-contracts', 'out zero', 'out')).toBe(
+      'keyword.control.contract.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-interface-contracts', 'end', 'end')).toBe(
+      'keyword.control.contract.z80-asm'
+    );
+  });
+
   it('Z80 assembly grammar condition instruction regex captures mnemonic and condition', () => {
     const conditionPattern = getGrammarPatternContaining(
       'condition-instructions',
@@ -734,20 +965,23 @@ describe('package.json language contracts', () => {
     ).toBe(null);
   });
 
-  it('ZAX_LANGUAGE_ID is a contributed language', () => {
+  it('does not expose ZAX as a language, extension, breakpoint language, or dependency', () => {
     const ids = contributes.languages.map((l) => l.id);
-    expect(ids).toContain(zaxLanguageId);
-  });
-
-  it('.zax files are associated with ZAX_LANGUAGE_ID', () => {
     const assoc = contributes.configurationDefaults['files.associations'];
-    expect(assoc['*.zax']).toBe(zaxLanguageId);
+    const breakpointLanguages = contributes.breakpoints.map((b) => b.language);
+    const debuggerLanguages = contributes.debuggers.flatMap((d) => d.languages);
+
+    expect(ids).not.toContain('zax');
+    expect(assoc['*.zax']).toBeUndefined();
+    expect(contributes.languages.flatMap((l) => l.extensions ?? [])).not.toContain('.zax');
+    expect(breakpointLanguages).not.toContain('zax');
+    expect(debuggerLanguages).not.toContain('zax');
+    expect(pkg.dependencies?.['@jhlagado/zax']).toBeUndefined();
   });
 
-  it('contributed language claims .zax extension', () => {
-    const lang = contributes.languages.find((l) => l.id === zaxLanguageId);
-    expect(lang).toBeDefined();
-    expect(lang!.extensions).toContain('.zax');
+  it('depends on AZM instead of asm80 for bundled assembly', () => {
+    expect(pkg.dependencies?.['@jhlagado/azm']).toBeDefined();
+    expect(pkg.dependencies?.asm80).toBeUndefined();
   });
 
   it('every contributed language has a breakpoint entry', () => {

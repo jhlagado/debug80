@@ -9,7 +9,7 @@ import { isWarmRebuildResult } from '../debug/session/message-types';
 import { SessionStateManager } from './session-state-manager';
 
 const REBUILD_DEBOUNCE_MS = 250;
-const ASSEMBLY_EXTENSIONS = new Set(['.asm', '.z80', '.a80', '.s', '.zax']);
+const ASSEMBLY_EXTENSIONS = new Set(['.asm', '.z80', '.a80', '.s']);
 
 function isAssemblyDocument(document: vscode.TextDocument): boolean {
   if (document.isUntitled || document.uri.scheme !== 'file') {

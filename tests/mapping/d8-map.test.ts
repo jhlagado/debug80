@@ -78,6 +78,39 @@ describe('d8-map', () => {
     expect(roundTrip).toEqual(mapping);
   });
 
+  it('accepts value-only constant symbols without treating them as address anchors', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0x1000, end: 0x1001, line: 3, lstLine: 3 }],
+          symbols: [
+            { name: 'SCREEN_WIDTH', kind: 'constant', value: 32, line: 1, scope: 'global' },
+            { name: 'START', kind: 'label', address: 0x1000, line: 3, scope: 'global' },
+          ],
+        },
+      },
+    };
+
+    const { map: parsed, error } = parseD8DebugMap(JSON.stringify(map));
+    expect(error).toBeUndefined();
+    expect(parsed).toBeDefined();
+
+    const mapping = buildMappingFromD8DebugMap(parsed!);
+    expect(mapping.anchors).toEqual([
+      {
+        address: 0x1000,
+        symbol: 'START',
+        file: 'src/main.asm',
+        line: 3,
+      },
+    ]);
+  });
+
   it('keeps D8 file keys portable when mapping contains Windows source paths', () => {
     const mapping: MappingParseResult = {
       segments: [

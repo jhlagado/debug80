@@ -64,7 +64,7 @@ projects inside the current workspace window.
 - `Folder`: one root folder in that workspace.
 - `Debug80 project`: the Debug80 configuration owned by one folder.
 - `Target`: a named debug target inside a Debug80 project.
-- `Entry source`: the `asm` or `zax` file used by the active target.
+- `Entry source`: the assembly file used by the active target.
 
 The product language should prefer `project` and `folder` over `workspace` where possible.
 Users usually care which project they are working on, not which VS Code abstraction is active.
@@ -171,12 +171,12 @@ Avoid user-facing wording like `selected workspace folder` unless it is unavoida
 Debug80 should be able to bootstrap from zero files:
 
 1. choose platform
-2. choose starter language (`asm` or `zax`)
+2. choose starter language (assembly)
 3. create starter file
 4. create project config
 5. create launch config if needed
 
-### 6. Folder with asm or zax files but no config
+### 6. Folder with assembly files but no config
 
 Debug80 should offer to create a project around those files rather than requiring the user
 to know about `.vscode/debug80.json` first.
@@ -205,11 +205,11 @@ Inference should only run while creating a new project or repairing an incomplet
 Bootstrap inference order:
 
 1. `src/main.asm`
-2. `src/main.zax`
+2. `src/main.z80`
 3. `main.asm`
-4. `main.zax`
+4. `main.z80`
 5. the only `*.asm` file in the folder tree
-6. the only `*.zax` file in the folder tree
+6. the only `*.z80` file in the folder tree
 7. if several candidates exist, ask the user
 8. if no candidates exist, offer to create one
 
@@ -220,7 +220,7 @@ Debug80 should provide:
 - `Debug80: Set Program File`
 - `Debug80: Set Active Target`
 - `Debug80: New ASM Source`
-- `Debug80: New ZAX Source`
+- `Debug80: New Z80 Source`
 
 These actions should update project config rather than relying on ad hoc launch behavior.
 
@@ -233,7 +233,7 @@ Each root folder should be scanned for these indicators, in order:
 1. `.vscode/debug80.json`
 2. `debug80.json`
 3. `.debug80.json`
-4. presence of `*.asm` or `*.zax`
+4. presence of `*.asm` or `*.z80`
 
 Each folder then gets a derived state:
 
@@ -264,7 +264,7 @@ This state drives the UI:
 
 - `Debug80: Set Program File`
 - `Debug80: New ASM Source`
-- `Debug80: New ZAX Source`
+- `Debug80: New Z80 Source`
 - `Debug80: Reveal Project Config`
 
 ### Launch convenience
@@ -295,7 +295,7 @@ Primary actions:
 - Select Target
 - Set Program File
 - New ASM Source
-- New ZAX Source
+- New Z80 Source
 
 ### Welcome and empty states
 
@@ -312,7 +312,7 @@ Show:
 
 - Create Project
 - Create Starter ASM
-- Create Starter ZAX
+- Create Starter Z80
 
 #### Multi-root workspace with no current project selected
 
@@ -392,9 +392,9 @@ For empty projects, Debug80 should be able to create starter files.
 The starter should be intentionally small and runnable. It should establish a label and at
 least one obvious instruction flow so that stepping works immediately.
 
-### Minimal ZAX starter
+### Minimal Z80 starter
 
-The starter should match the supported ZAX backend expectations and be equally small.
+The starter should match the AZM backend expectations and be equally small.
 
 These templates should be created through Debug80 commands so the user can bootstrap without
 manually creating files first.
@@ -426,14 +426,14 @@ convenience layer only.
 2. Debug80 offers `Create New Project`.
 3. User chooses folder and project name.
 4. Debug80 asks for platform.
-5. Debug80 asks whether to create ASM or ZAX starter.
+5. Debug80 asks whether to create assembly starter.
 6. Debug80 creates folder, source file, project config, and launch config.
 7. Debug80 opens the starter file and marks it as the program file.
 8. User presses `F5`.
 
 ### Flow B: Add Debug80 to an existing source folder
 
-1. User opens a folder containing `asm` or `zax` files.
+1. User opens a folder containing assembly files.
 2. Debug80 detects source-only state.
 3. Debug80 offers `Create Project`.
 4. Debug80 proposes an inferred program file or asks the user to choose one.

@@ -7,9 +7,9 @@ one-off process.
 ## Release Principles
 
 - Releases are built from a clean git commit on `main`.
-- Runtime dependencies must be packaged inside the VSIX. Users must not need global `asm80`, global
-  `zax`, `npm link`, or sibling checkouts.
-- `asm80` and `@jhlagado/zax` stay in `dependencies`, not `devDependencies`.
+- Runtime dependencies must be packaged inside the VSIX. Users must not need a global assembler,
+  `npm link`, or sibling checkouts.
+- `@jhlagado/azm` stays in `dependencies`, not `devDependencies`.
 - `npm run package` must rebuild `out/` before packaging so the VSIX cannot contain stale extension
   host code.
 - Manual VSIX testing comes before marketplace publishing.
@@ -77,7 +77,7 @@ This path verifies things that F5 development-host testing can miss:
 - The extension manifest activates correctly after packaging.
 - `out/` extension-host code and webview bundles are present.
 - Webview CSS, JavaScript, images, ROM bundles, syntax files, schemas, and resources are packaged.
-- Runtime dependencies such as `asm80` and `@jhlagado/zax` are available from inside the installed
+- Runtime dependencies such as `@jhlagado/azm` are available from inside the installed
   extension, without relying on global tools, `npm link`, sibling repos, or the development checkout.
 - The Debug80 view appears in the normal VS Code Run and Debug sidebar.
 - Existing `debug80.json` projects can auto-start and restart.
@@ -92,8 +92,7 @@ After installing the VSIX, test at least:
 - Confirm the Debug80 panel appears under Run and Debug.
 - Launch a TEC-1G MON3 target.
 - Confirm the target still launches after deleting any project-local `roms/` folder, proving bundled ROM profile resolution works from the installed extension.
-- Confirm asm80 target assembly works.
-- Confirm ZAX target assembly works.
+- Confirm AZM target assembly works.
 - Confirm restart works.
 - Confirm breakpoints work in a project with include files.
 - Confirm register editing works while paused.
@@ -119,8 +118,7 @@ npm run package:verify
 
 The verification gate requires:
 
-- `node_modules/asm80/...` is present.
-- `node_modules/@jhlagado/zax/...` is present.
+- `node_modules/@jhlagado/azm/...` is present.
 - `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt` or `LICENSE`,
   and `THIRD_PARTY_NOTICES.md` are present.
 - Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.claude/`, `.cursor/`, `.github/`,

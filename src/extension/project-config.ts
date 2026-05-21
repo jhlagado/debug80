@@ -27,6 +27,14 @@ function isBundledAssetReference(value: unknown): boolean {
   );
 }
 
+function isSupportedAssemblerId(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'azm' || normalized === 'asm80';
+}
+
 function isProjectProfileConfig(value: unknown): boolean {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return false;
@@ -235,19 +243,20 @@ export function isInitializedDebug80Project(folder: vscode.WorkspaceFolder): boo
 /**
  * Merged launch args resolve the assemble input as `asm` before `sourceFile`
  * (see `populateFromConfig` in launch-args). Keep both in sync when the user
- * picks a new program file so ZAX (and asm80) targets assemble the selected file.
+ * picks a new program file so assembler targets assemble the selected file.
  */
 function nextTargetEntrySource(
   target: Record<string, unknown>,
   sourceFile: string
 ): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...target };
-  const isZax = sourceFile.toLowerCase().endsWith('.zax');
+  if (rest.assembler !== undefined && !isSupportedAssemblerId(rest.assembler)) {
+    delete rest.assembler;
+  }
   return {
     ...rest,
     sourceFile,
     asm: sourceFile,
-    ...(isZax ? { assembler: 'zax' } : {}),
   };
 }
 
@@ -275,16 +284,17 @@ function buildNewTargetEntry(
   delete template.asm;
   delete template.source;
   delete template.artifactBase;
+  if (template.assembler !== undefined && !isSupportedAssemblerId(template.assembler)) {
+    delete template.assembler;
+  }
   const ext = path.extname(sourceFile);
   const baseName = path.basename(sourceFile, ext) || targetName;
-  const isZax = sourceFile.toLowerCase().endsWith('.zax');
 
   return {
     ...template,
     sourceFile,
     asm: sourceFile,
     artifactBase: baseName,
-    ...(isZax ? { assembler: 'zax' } : {}),
   };
 }
 
@@ -377,7 +387,7 @@ function collectProjectSourceFiles(rootPath: string, currentPath: string, result
     }
 
     const lower = entry.name.toLowerCase();
-    if (!lower.endsWith('.asm') && !lower.endsWith('.zax')) {
+    if (!lower.endsWith('.asm') && !lower.endsWith('.z80')) {
       continue;
     }
 

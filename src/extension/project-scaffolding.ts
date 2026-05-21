@@ -360,7 +360,7 @@ async function buildScaffoldPlan(
     };
   }
 
-  const sourceFile = choice.language === 'zax' ? 'src/main.zax' : 'src/main.asm';
+  const sourceFile = 'src/main.asm';
   const artifactBase = path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
   return {
     kit,
@@ -399,11 +399,6 @@ async function chooseEntrySource(
       label: 'Create ASM starter',
       description: 'Create src/main.asm with minimal starter code',
       choice: { kind: 'starter' as const, language: 'asm' as const },
-    },
-    {
-      label: 'Create ZAX starter',
-      description: 'Create src/main.zax with minimal starter code',
-      choice: { kind: 'starter' as const, language: 'zax' as const },
     },
   ];
 

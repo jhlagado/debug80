@@ -54,7 +54,7 @@ describe('mapping-service', () => {
     };
 
     expect(isNativeDebugMap(baseMap)).toBe(true);
-    expect(isNativeDebugMap({ ...baseMap, generator: { tool: 'zax' } })).toBe(true);
+    expect(isNativeDebugMap({ ...baseMap, generator: { tool: 'azm' } })).toBe(true);
     expect(isNativeDebugMap({ ...baseMap, generator: { name: 'debug80' } })).toBe(false);
   });
 
@@ -252,7 +252,7 @@ describe('mapping-service', () => {
         arch: 'z80',
         addressWidth: 16,
         endianness: 'little',
-        generator: { tool: 'zax' },
+        generator: { tool: 'azm' },
       }
     );
     const originalContent = JSON.stringify(nativeMap, null, 2);
@@ -287,7 +287,7 @@ describe('mapping-service', () => {
 
     expect(result.mapping.segments).toHaveLength(1);
     expect(result.mapping.segments[0]?.loc.line).toBe(42);
-    expect(logs.some((line) => line.includes('Using native D8 map from "zax"'))).toBe(true);
+    expect(logs.some((line) => line.includes('Using native D8 map from "azm"'))).toBe(true);
     expect(logs.some((line) => line.includes('Regenerating'))).toBe(false);
     expect(fs.readFileSync(mapPath, 'utf-8')).toBe(originalContent);
   });
@@ -307,7 +307,7 @@ describe('mapping-service', () => {
       arch: 'z80',
       addressWidth: 16,
       endianness: 'little',
-      generator: { tool: 'zax' },
+      generator: { tool: 'azm' },
       files: {
         [asmPath]: {
           segments: [{ start: 0x2000, end: 0x2001, lstLine: 42, lstText: 'NOP' }],
@@ -539,7 +539,7 @@ describe('mapping-service', () => {
         arch: 'z80',
         addressWidth: 16,
         endianness: 'little',
-        generator: { tool: 'zax' },
+        generator: { tool: 'azm' },
       }
     );
     const originalExtraMap = JSON.stringify(extraNativeMap, null, 2);
@@ -585,7 +585,7 @@ describe('mapping-service', () => {
           segment.loc.line === 7
       )
     ).toBe(true);
-    expect(logs.some((line) => line.includes('Using native D8 map from "zax"'))).toBe(true);
+    expect(logs.some((line) => line.includes('Using native D8 map from "azm"'))).toBe(true);
     expect(resolveAssemblerBackend).not.toHaveBeenCalled();
     expect(fs.readFileSync(extraMapPath, 'utf-8')).toBe(originalExtraMap);
 

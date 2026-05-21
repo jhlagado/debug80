@@ -45,11 +45,12 @@ export function buildLaunchSourceState(
   sessionState.listingPath = listingPath;
   const preSourceRoots: string[] = [];
   for (const root of args.sourceRoots ?? []) {
-    preSourceRoots.push(resolveRelative(root, baseDir));
+    pushUniquePath(preSourceRoots, resolveRelative(root, baseDir));
   }
   if (asmPath !== undefined && asmPath.length > 0) {
-    preSourceRoots.push(path.dirname(resolveRelative(asmPath, baseDir)));
+    pushUniquePath(preSourceRoots, path.dirname(resolveRelative(asmPath, baseDir)));
   }
+  pushUniquePath(preSourceRoots, resolveRelative(baseDir, baseDir));
   sessionState.sourceRoots = preSourceRoots;
   const resolvedSourceRoots = preSourceRoots.length > 0 ? preSourceRoots : (args.sourceRoots ?? []);
 
@@ -103,4 +104,11 @@ export function buildLaunchSourceState(
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
   };
+}
+
+function pushUniquePath(paths: string[], candidate: string): void {
+  const normalized = path.resolve(candidate);
+  if (!paths.some((entry) => path.resolve(entry) === normalized)) {
+    paths.push(candidate);
+  }
 }

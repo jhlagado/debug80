@@ -182,7 +182,7 @@ export function resolveLocation(index: SourceMapIndex, filePath: string, line: n
  * Resolves a source location to executable memory addresses only.
  *
  * Zero-width segments represent labels, constants, and assembler directives in
- * asm80 listings. They are useful for stack display context but must not become
+ * assembler listings. They are useful for stack display context but must not become
  * active breakpoints.
  */
 export function resolveExecutableLocation(

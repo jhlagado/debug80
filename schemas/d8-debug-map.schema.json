@@ -139,7 +139,16 @@
     },
     "symbol": {
       "type": "object",
-      "required": ["name", "address"],
+      "required": ["name"],
+      "anyOf": [
+        { "required": ["address"] },
+        {
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "constant" }
+          }
+        }
+      ],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "address": { "type": "integer", "minimum": 0 },
@@ -147,7 +156,10 @@
         "kind": { "$ref": "#/definitions/symbolKind" },
         "scope": { "$ref": "#/definitions/symbolScope" },
         "size": { "type": "integer", "minimum": 0 },
-        "value": { "type": "integer" }
+        "value": {
+          "type": "integer",
+          "description": "Compile-time value for non-address constant symbols."
+        }
       },
       "additionalProperties": false
     },

@@ -59,7 +59,7 @@ export interface MappingBuildResult {
 }
 
 /**
- * ZAX (and similar) write `<artifact>.d8.json` next to the listing; Debug80 also
+ * Native assemblers write `<artifact>.d8.json` next to the listing; Debug80 also
  * stores a map under `.debug80/cache/...`. Prefer the sidecar so native tool maps win.
  */
 function collectDebugMapCandidates(mapPath: string, listingPath: string): string[] {
@@ -119,9 +119,9 @@ export function buildMappingFromListing(options: {
     }
   }
 
-  // Only apply listing-vs-map mtime for Debug80-generated maps. Native assembler maps (e.g. ZAX
-  // `.d8.json`) must not be invalidated when the `.lst` is newer — ZAX emits both; mtimes are
-  // not a reliable ordering signal, and the listing parser is asm80-oriented, not a substitute.
+  // Only apply listing-vs-map mtime for Debug80-generated maps. Native assembler maps
+  // must not be invalidated when the `.lst` is newer; mtimes are
+  // not a reliable ordering signal, and the listing parser is not a substitute.
   const mapStale = !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
 
   let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
@@ -197,7 +197,7 @@ export function buildMappingFromListing(options: {
     applyTec1gBootstrapAlias(mapping);
   }
 
-  // Native `.d8.json` maps skip the listing→Layer2 path; asm80 still attributes many
+  // Native `.d8.json` maps skip the listing→Layer2 path; some assemblers still attribute many
   // labels to an include parent (e.g. packages.z80 vs glcd_library.z80). Remap, propagate
   // segment files across the whole included routine, then sync anchor lines onto segment starts.
   const includeAnchorRemaps = remapAsm80MisassignedIncludeAnchors(mapping.anchors, (file) =>

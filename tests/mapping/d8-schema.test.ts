@@ -3,7 +3,7 @@
  *
  * Validates that both committed fixtures and programmatically-built D8 maps
  * conform to the canonical schema, catching format drift between producers
- * (e.g. ZAX) and the debug80 consumer.
+ * (e.g. AZM) and the debug80 consumer.
  */
 
 import * as fs from 'fs';
@@ -24,8 +24,8 @@ function createValidator() {
 describe('D8 JSON Schema contract', () => {
   const validate = createValidator();
 
-  it('golden ZAX fixture conforms to the schema', () => {
-    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'zax', 'matrix.d8.json');
+  it('golden AZM fixture conforms to the schema', () => {
+    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'azm', 'matrix.d8.json');
     const content = JSON.parse(fs.readFileSync(d8Path, 'utf-8'));
     const valid = validate(content);
     if (!valid) {
@@ -79,8 +79,8 @@ describe('D8 JSON Schema contract', () => {
     }
   });
 
-  it('round-tripped ZAX fixture still conforms to the schema', () => {
-    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'zax', 'matrix.d8.json');
+  it('round-tripped AZM fixture still conforms to the schema', () => {
+    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'azm', 'matrix.d8.json');
     const raw = fs.readFileSync(d8Path, 'utf-8');
     const { map } = parseD8DebugMap(raw);
     expect(map).toBeDefined();

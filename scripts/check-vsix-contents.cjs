@@ -5,13 +5,9 @@ const { spawnSync } = require('node:child_process');
 
 const REQUIRED_ENTRIES = [
   {
-    label: 'node_modules/asm80/',
-    matches: (entry) => entry === 'node_modules/asm80' || entry.startsWith('node_modules/asm80/'),
-  },
-  {
-    label: 'node_modules/@jhlagado/zax/',
+    label: 'node_modules/@jhlagado/azm/',
     matches: (entry) =>
-      entry === 'node_modules/@jhlagado/zax' || entry.startsWith('node_modules/@jhlagado/zax/'),
+      entry === 'node_modules/@jhlagado/azm' || entry.startsWith('node_modules/@jhlagado/azm/'),
   },
   { label: 'out/', matches: hasTopLevelDirectory('out') },
   { label: 'resources/', matches: hasTopLevelDirectory('resources') },
@@ -73,13 +69,13 @@ function normalizeEntries(output) {
 
 function verifyEntries(entries) {
   const missingRequired = REQUIRED_ENTRIES.filter(
-    (required) => !entries.some((entry) => required.matches(entry)),
+    (required) => !entries.some((entry) => required.matches(entry))
   ).map((required) => required.label);
 
   const forbiddenEntries = entries.filter((entry) =>
     FORBIDDEN_TOP_LEVEL_ENTRIES.some(
-      (forbidden) => entry === forbidden || entry.startsWith(`${forbidden}/`),
-    ),
+      (forbidden) => entry === forbidden || entry.startsWith(`${forbidden}/`)
+    )
   );
 
   return { missingRequired, forbiddenEntries };

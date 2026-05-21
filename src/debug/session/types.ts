@@ -46,7 +46,7 @@ export interface ProjectProfileConfig {
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   /** Path to the main assembly source file */
   asm?: string;
-  /** Assembler backend to use (default: asm80) */
+  /** Assembler backend to use (default: azm) */
   assembler?: string;
   /** Alternative path to the source file (alias for asm) */
   sourceFile?: string;

@@ -121,7 +121,7 @@ describe('registerExtensionCommands', () => {
       if (n === projectConfigPath) {
         return true;
       }
-      if (/\.(asm|zax)$/i.test(n)) {
+      if (/\.(asm|z80)$/i.test(n)) {
         return true;
       }
       return false;
@@ -236,7 +236,7 @@ describe('registerExtensionCommands', () => {
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
     existsSync.mockImplementation((candidate: string) => {
       const normalized = path.normalize(candidate);
-      return normalized === projectConfigPath || /\.(asm|zax)$/i.test(normalized);
+      return normalized === projectConfigPath || /\.(asm|z80)$/i.test(normalized);
     });
 
     await registerCommands({
@@ -647,7 +647,7 @@ describe('registerExtensionCommands', () => {
     readFileSync.mockReturnValueOnce(
       JSON.stringify({
         targets: {
-          matrix: { sourceFile: 'src/matrix.zax' },
+          matrix: { sourceFile: 'src/matrix.asm' },
         },
       })
     );
@@ -1168,7 +1168,7 @@ describe('registerExtensionCommands', () => {
       return (
         normalized === tetroConfigPath ||
         normalized === path.normalize(`${otherRoot}/debug80.json`) ||
-        /\.(asm|zax)$/i.test(normalized)
+        /\.(asm|z80)$/i.test(normalized)
       );
     });
     const resolveWorkspaceFolder = vi.fn();
@@ -1225,7 +1225,7 @@ describe('registerExtensionCommands', () => {
       return (
         normalized === tetroConfigPath ||
         normalized === path.normalize(`${staleRoot}/debug80.json`) ||
-        /\.(asm|zax)$/i.test(normalized)
+        /\.(asm|z80)$/i.test(normalized)
       );
     });
     const resolveWorkspaceFolder = vi.fn();

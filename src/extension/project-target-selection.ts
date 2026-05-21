@@ -189,7 +189,7 @@ function appendEntrySourceSection(
   items: Array<vscode.QuickPickItem | TargetQuickPickItem>,
   paths: string[],
   separatorLabel: string,
-  detail: 'ZAX' | 'ASM',
+  detail: 'AZM',
   projectRoot: string,
   targetsPerPath: Map<string, string[]>,
   bindTarget: string | undefined
@@ -293,10 +293,8 @@ export class ProjectTargetSelectionController {
     });
 
     const bindTarget = defaultTarget ?? stored ?? choices[0]?.name;
-    let zaxPaths: string[] = [];
-    let asmPaths: string[] = [];
-    const targetsPerZaxPath = new Map<string, string[]>();
-    const targetsPerAsmPath = new Map<string, string[]>();
+    let azmPaths: string[] = [];
+    const targetsPerSourcePath = new Map<string, string[]>();
     const config = readProjectConfig(projectConfigPath);
     const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
     for (const [name, t] of Object.entries(config?.targets ?? {})) {
@@ -306,42 +304,27 @@ export class ProjectTargetSelectionController {
       }
       const lower = src.toLowerCase();
       const key = entrySourceKey(projectRoot, src);
-      if (lower.endsWith('.zax')) {
-        const list = targetsPerZaxPath.get(key) ?? [];
+      if (lower.endsWith('.asm') || lower.endsWith('.z80')) {
+        const list = targetsPerSourcePath.get(key) ?? [];
         list.push(name);
-        targetsPerZaxPath.set(key, list);
-      } else if (lower.endsWith('.asm')) {
-        const list = targetsPerAsmPath.get(key) ?? [];
-        list.push(name);
-        targetsPerAsmPath.set(key, list);
+        targetsPerSourcePath.set(key, list);
       }
     }
 
     try {
       const all = getCachedSourceFiles(projectRoot);
-      zaxPaths = all.filter((p) => p.toLowerCase().endsWith('.zax'));
-      asmPaths = all.filter((p) => p.toLowerCase().endsWith('.asm'));
+      azmPaths = all.filter((p) => /\.(asm|z80)$/i.test(p));
     } catch {
-      zaxPaths = [];
-      asmPaths = [];
+      azmPaths = [];
     }
 
     appendEntrySourceSection(
       items,
-      zaxPaths,
-      'ZAX sources',
-      'ZAX',
+      azmPaths,
+      'AZM sources',
+      'AZM',
       projectRoot,
-      targetsPerZaxPath,
-      bindTarget
-    );
-    appendEntrySourceSection(
-      items,
-      asmPaths,
-      'ASM sources',
-      'ASM',
-      projectRoot,
-      targetsPerAsmPath,
+      targetsPerSourcePath,
       bindTarget
     );
 
@@ -403,19 +386,7 @@ function loadTargetChoices(projectConfigPath: string): LoadedTargetChoices {
   });
   const choices = entries.map(([name, target]) => {
     const sourcePath = target.sourceFile ?? target.asm ?? target.source;
-    const isZax =
-      target.assembler === 'zax' ||
-      (typeof sourcePath === 'string' && sourcePath.toLowerCase().endsWith('.zax'));
     const tags: string[] = [];
-    if (isZax) {
-      tags.push('ZAX');
-    } else if (
-      target.assembler !== undefined &&
-      target.assembler !== '' &&
-      target.assembler !== 'asm80'
-    ) {
-      tags.push(target.assembler);
-    }
     if (target.platform !== undefined && target.platform !== '') {
       tags.push(String(target.platform));
     }

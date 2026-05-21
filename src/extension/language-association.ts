@@ -5,7 +5,6 @@
 import * as vscode from 'vscode';
 
 const ASM_LANGUAGE_ID = 'z80-asm';
-const ZAX_LANGUAGE_ID = 'zax';
 
 export function registerLanguageAssociations(
   context: vscode.ExtensionContext,
@@ -43,21 +42,12 @@ export function registerLanguageAssociations(
     }
   };
 
-  const ensureZaxLanguage = async (doc: vscode.TextDocument): Promise<void> =>
-    ensureLanguage(doc, '.zax', ZAX_LANGUAGE_ID);
-
   void vscode.languages.getLanguages().then((languages) => {
     const hasAsmLang = languages.includes(ASM_LANGUAGE_ID);
-    const hasZaxLang = languages.includes(ZAX_LANGUAGE_ID);
-    if (hasAsmLang || hasZaxLang) {
+    if (hasAsmLang) {
       for (const doc of vscode.workspace.textDocuments) {
-        if (hasAsmLang) {
-          void ensureAsmLanguage(doc);
-          void ensureZ80AsmExtensionLanguages(doc);
-        }
-        if (hasZaxLang) {
-          void ensureZaxLanguage(doc);
-        }
+        void ensureAsmLanguage(doc);
+        void ensureZ80AsmExtensionLanguages(doc);
       }
     }
   });
@@ -66,7 +56,6 @@ export function registerLanguageAssociations(
     vscode.workspace.onDidOpenTextDocument((doc) => {
       void ensureAsmLanguage(doc);
       void ensureZ80AsmExtensionLanguages(doc);
-      void ensureZaxLanguage(doc);
     })
   );
 }

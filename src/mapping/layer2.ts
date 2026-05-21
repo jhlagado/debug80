@@ -42,13 +42,13 @@ interface SourceFileData {
 const SOURCE_EXTENSIONS = /\.(z80|asm)$/i;
 
 /**
- * asm80 symbol tables often report "DEFINED AT LINE N IN parent.z80" for code that
+ * Some symbol tables report "DEFINED AT LINE N IN parent.z80" for code that
  * was assembled from an included file (e.g. glcd_library.z80) while reusing the
  * included file's line number but the parent's path. If the parent file has no such
  * line or the line does not define the symbol, search sibling sources in the same folder.
  *
- * Also run when loading a native `.d8.json` (ZAX etc.): those maps embed the same
- * asm80 paths and never went through {@link applyLayer2} from a listing rebuild.
+ * Also run when loading a native `.d8.json`: those maps may embed the same
+ * paths and never went through {@link applyLayer2} from a listing rebuild.
  */
 export type IncludeAnchorRemap = {
   address: number;
@@ -197,7 +197,7 @@ function findIncludeRegionEnd(
 }
 
 /**
- * asm80/D8 often tag every byte in an included routine with the parent file. After anchors are
+ * D8 maps can tag every byte in an included routine with the parent file. After anchors are
  * remapped to the real include (e.g. glcd_library.z80), copy that file onto all segments in the
  * address range until the next genuine parent-file symbol so step-in/stack mapping follows GLCD
  * source, not only the entry label.

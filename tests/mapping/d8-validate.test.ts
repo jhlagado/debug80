@@ -89,7 +89,7 @@ describe('validateD8Segments', () => {
   it('warns about wide segments shadowing narrower segments with valid lines', () => {
     const map = makeMinimalMap({
       files: {
-        'matrix.zax': {
+        'matrix.asm': {
           segments: [
             { start: 0x4000, end: 0x4033, lstLine: 0 },
             { start: 0x4000, end: 0x4002, line: 28, lstLine: 28 },
@@ -117,8 +117,8 @@ describe('validateD8Segments', () => {
     expect(warnings.filter((w) => w.message.includes('shadows'))).toEqual([]);
   });
 
-  it('detects problems in the golden ZAX fixture', () => {
-    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'zax', 'matrix.d8.json');
+  it('detects problems in the golden AZM fixture', () => {
+    const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'azm', 'matrix.d8.json');
     const content = fs.readFileSync(d8Path, 'utf-8');
     const { map } = parseD8DebugMap(content);
     expect(map).toBeDefined();

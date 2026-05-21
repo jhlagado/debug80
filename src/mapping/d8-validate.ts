@@ -1,6 +1,6 @@
 /**
  * @fileoverview D8 debug map contract validation.
- * Reports quality warnings that indicate problems in the D8 producer (e.g. ZAX)
+ * Reports quality warnings that indicate problems in the D8 producer
  * without rejecting the map outright.
  */
 
