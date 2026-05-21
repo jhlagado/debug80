@@ -6,8 +6,6 @@ export type CaseStyleMode = 'off' | 'upper' | 'lower' | 'consistent';
 
 /**
  * Options that influence compilation behavior and which artifacts are produced.
- *
- * PR1 implementation note: most options are accepted but only a subset is currently honored.
  */
 export interface CompilerOptions {
   /**
@@ -17,9 +15,9 @@ export interface CompilerOptions {
    * importing source file.
    */
   includeDirs?: string[];
-  /** Primary output path used to derive sibling artifacts (future). */
+  /** Primary output path supplied by wrappers that derive sibling artifacts. */
   outputPath?: string;
-  /** Primary output type (future). */
+  /** Primary output type selected by wrappers such as the CLI. */
   outputType?: 'hex' | 'bin';
   /**
    * Root used for source paths in debug maps.
@@ -44,7 +42,7 @@ export interface CompilerOptions {
   emitD8m?: boolean;
   /** Emit listing (`.lst`). */
   emitListing?: boolean;
-  /** Emit ASM80-compatible lowered source (`.asm`). */
+  /** Emit ASM80-compatible lowered source (`.z80`). */
   emitAsm80?: boolean;
   /** Optional case-style lint mode for asm keywords/register tokens. */
   caseStyle?: CaseStyleMode;
