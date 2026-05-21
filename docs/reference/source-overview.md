@@ -167,6 +167,11 @@ compile-time byte-size expressions in layout-size positions. They are useful for
 `.field`, `.ds`, `sizeof`, `offset`, and layout casts. They do not create typed
 labels or hidden memory access.
 
+Record layouts are instantiated with ordinary assembler storage directives:
+`.ds Sprite` reserves one record, `.ds Sprite[10]` reserves ten records, and
+initialized records are written explicitly with `.db`, `.dw`, `.cstr`, `.pstr`,
+or `.istr` in layout order. AZM does not have record constructors.
+
 Semantics must not grow runtime typed memory behavior. If a layout expression
 cannot fold to a constant, it is outside the retained AZM layout feature.
 

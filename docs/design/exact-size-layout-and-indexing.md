@@ -386,6 +386,66 @@ The practical rule is:
 - use `.db`, `.dw`, `.cstr`, `.pstr`, or `.istr` when the source supplies the
   actual bytes or words to emit.
 
+## Record allocation and initialization
+
+A record declaration is a layout description, not a storage declaration:
+
+```asm
+.type Sprite
+x       .byte
+y       .byte
+flags   .byte
+ptr     .word
+.endtype
+```
+
+To allocate one record, reserve its byte size:
+
+```asm
+PlayerSprite:
+    .ds Sprite
+```
+
+To allocate an array of records, reserve the array type expression:
+
+```asm
+SpriteTable:
+    .ds Sprite[16]
+```
+
+Those lines mean exactly:
+
+```asm
+PlayerSprite:
+    .ds sizeof(Sprite)
+
+SpriteTable:
+    .ds sizeof(Sprite[16])
+```
+
+The labels are still ordinary labels. They are not permanently typed. If a later
+instruction wants a field offset, it supplies the layout explicitly:
+
+```asm
+    ld hl,<Sprite>PlayerSprite.flags
+    ld hl,<Sprite[16]>SpriteTable[3].ptr
+```
+
+Initialized records should stay assembler-shaped. The source writes the fields
+in layout order using the initialized-data directives:
+
+```asm
+PlayerSprite:
+    .db 10             ; x
+    .db 20             ; y
+    .db 00000001B      ; flags
+    .dw SpriteImage    ; ptr
+```
+
+AZM should not add record constructors unless there is a strong assembler-level
+reason later. The useful feature here is reliable byte-size and field-offset
+calculation, not a new data initialization language.
+
 ## Scope of the change
 
 For AZM, this means:
