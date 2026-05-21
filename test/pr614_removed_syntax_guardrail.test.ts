@@ -93,6 +93,56 @@ describe('PR614 removed syntax guardrail', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it('rejects removed register-care comment forms in ASM source', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-regcare-'));
+    const fixture = join(dir, 'removed-regcare.asm');
+    await writeFile(
+      fixture,
+      ['; ========================== AZM', ';! @in {DE}', 'HELPER:', '  ret', ''].join('\n'),
+      'utf8',
+    );
+
+    const { violations } = scanForbiddenRemovedSyntax({ filePaths: [fixture] });
+    expect(violations.map((v) => v.ruleId)).toEqual([
+      'removed-register-care-divider-block',
+      'removed-register-care-at-comment',
+    ]);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('rejects removed register-care comment forms in markdown assembly fences', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-regcare-md-'));
+    const md = join(dir, 'removed-regcare.md');
+    await writeFile(
+      md,
+      ['# Notes', '', '```asm', ';! @out {HL}', 'HELPER:', '  ret', '```', ''].join('\n'),
+      'utf8',
+    );
+
+    const { violations } = scanForbiddenRemovedSyntax({ filePaths: [md] });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.ruleId).toBe('removed-register-care-at-comment');
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('rejects comments in .asmi interface files', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-asmi-'));
+    const iface = join(dir, 'lib.asmi');
+    await writeFile(
+      iface,
+      ['; MON3 interface', 'extern MON_PRINT_CHAR', 'in A', 'clobbers A', 'end', ''].join('\n'),
+      'utf8',
+    );
+
+    const { violations } = scanForbiddenRemovedSyntax({ filePaths: [iface] });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.ruleId).toBe('asmi-comment-line');
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it('ignores prose-only mentions in markdown files', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-md-prose-'));
     const md = join(dir, 'prose-only.md');
