@@ -6,7 +6,7 @@ import { writeListing } from './writeListing.js';
 import { writeAsm80 } from './writeAsm80.js';
 
 /**
- * Default in-memory artifact writers for PR1.
+ * Default in-memory artifact writers.
  *
  * These writers implement the `FormatWriters` contract and return artifacts without writing to disk.
  */

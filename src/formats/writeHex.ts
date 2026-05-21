@@ -13,7 +13,6 @@ function checksum(bytes: number[]): number {
 /**
  * Create an Intel HEX artifact from an emitted address->byte map.
  *
- * PR1 implementation note:
  * - Emits only type-00 data records and a type-01 EOF record.
  * - Does not emit extended address records (assumes 16-bit address space).
  */

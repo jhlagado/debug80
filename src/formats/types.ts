@@ -75,14 +75,10 @@ export interface WriteHexOptions {
   lineEnding?: '\n' | '\r\n';
 }
 
-/**
- * Options for BIN writing (reserved for future options).
- */
+/** Options for BIN writing. */
 export interface WriteBinOptions {}
 
-/**
- * Options for D8M writing (reserved for future options).
- */
+/** Options for D8M writing. */
 export interface WriteD8mOptions {
   /**
    * Base directory used to normalize file paths in D8M symbol entries.
