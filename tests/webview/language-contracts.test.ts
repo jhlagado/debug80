@@ -37,6 +37,15 @@ interface PackageJson {
     grammars: Array<{ language: string; scopeName: string; path: string }>;
     breakpoints: Array<{ language: string }>;
     debuggers: Array<{ type: string; languages: string[] }>;
+    views: Record<
+      string,
+      Array<{
+        id: string;
+        name?: string;
+        type?: string;
+        visibility?: string;
+      }>
+    >;
   };
 }
 
@@ -383,6 +392,19 @@ describe('package.json language contracts', () => {
     expect(grammar!.scopeName).toBe('source.z80.asm');
     expect(grammar!.path).toBe('./syntaxes/z80-asm.tmLanguage.json');
     expect(fs.existsSync(path.resolve(__dirname, '../..', grammar!.path))).toBe(true);
+  });
+
+  it('contributes the Debug80 platform view visibly in the Debug container', () => {
+    const debugViews = contributes.views.debug ?? [];
+    const platformView = debugViews.find((view) => view.id === 'debug80.platformView');
+
+    expect(platformView).toEqual(
+      expect.objectContaining({
+        type: 'webview',
+        name: 'Debug80',
+        visibility: 'visible',
+      })
+    );
   });
 
   it('Z80 assembly grammar highlights routine comment headers', () => {

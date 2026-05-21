@@ -79,6 +79,7 @@ export function registerDebugSessionHandlers({
         sessionState.activeZ80Sessions.add(session.id);
         terminalPanel.clear();
         platformViewProvider.clear();
+        platformViewProvider.reveal(false);
         sessionState.sessionPlatforms.delete(session.id);
         sourceColumns.onSessionStarted(session);
       }

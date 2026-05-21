@@ -97,6 +97,7 @@ describe('debug session status bridge', () => {
     const platformViewProvider = {
       setSessionStatus: vi.fn(),
       clear: vi.fn(),
+      reveal: vi.fn(),
       handleSessionTerminated: vi.fn(),
       setPlatform: vi.fn(),
       setTec1gAdapterVisibility: vi.fn(),
@@ -159,6 +160,7 @@ describe('debug session status bridge', () => {
     terminateHandlers[0]?.(session);
 
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(1, 'starting');
+    expect(platformViewProvider.reveal).toHaveBeenCalledWith(false);
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(2, 'running');
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(3, 'paused');
     expect(platformViewProvider.handleSessionTerminated).toHaveBeenCalledWith('session-1');
@@ -168,6 +170,7 @@ describe('debug session status bridge', () => {
     const platformViewProvider = {
       setSessionStatus: vi.fn(),
       clear: vi.fn(),
+      reveal: vi.fn(),
       handleSessionTerminated: vi.fn(),
       setPlatform: vi.fn(),
       setTec1gAdapterVisibility: vi.fn(),
