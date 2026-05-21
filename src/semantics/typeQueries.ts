@@ -23,7 +23,6 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
     typeExpr: TypeExprNode,
     seen: Set<string> = new Set(),
   ): ScalarKind | undefined => {
-    if (typeExpr.kind === 'AddrOfType') return 'addr';
     if (typeExpr.kind !== 'TypeName') return undefined;
     const lower = typeExpr.name.toLowerCase();
     if (lower === 'byte' || lower === 'word' || lower === 'addr') return lower;
@@ -32,14 +31,6 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
     const decl = ctx.env.types.get(typeExpr.name);
     if (!decl || decl.kind !== 'TypeDecl') return undefined;
     return resolveScalarKind(decl.typeExpr, seen);
-  };
-
-  /**
-   * If `typeExpr` is `@T`, returns the aggregate shape of `T` when `T` is a record or union; otherwise `undefined`.
-   */
-  const resolvePointedToType = (te: TypeExprNode): AggregateType | undefined => {
-    if (te.kind !== 'AddrOfType') return undefined;
-    return resolveAggregateType(te.target);
   };
 
   const resolveAggregateType = (te: TypeExprNode): AggregateType | undefined => {
@@ -96,7 +87,6 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
   const typeDisplay = (te: TypeExprNode): string => {
     const render = (x: TypeExprNode): string => {
       if (x.kind === 'TypeName') return x.name;
-      if (x.kind === 'AddrOfType') return `@${render(x.target)}`;
       if (x.kind === 'ArrayType') {
         const inner = render(x.element);
         return `${inner}[${x.length === undefined ? '' : x.length}]`;
@@ -117,8 +107,6 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
     switch (l.kind) {
       case 'TypeName':
         return r.kind === 'TypeName' && l.name.toLowerCase() === r.name.toLowerCase();
-      case 'AddrOfType':
-        return r.kind === 'AddrOfType' && sameTypeShape(l.target, r.target);
       case 'ArrayType':
         if (r.kind !== 'ArrayType') return false;
         if (l.length !== r.length) return false;
@@ -149,7 +137,7 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
       case 'EaField': {
         const baseType = resolveEaTypeExprInternal(ea.base);
         if (!baseType) return undefined;
-        const agg = resolveAggregateType(baseType) ?? resolvePointedToType(baseType);
+        const agg = resolveAggregateType(baseType);
         if (!agg) return undefined;
         for (const f of agg.fields) {
           if (f.name === ea.field) return f.typeExpr;
@@ -172,7 +160,6 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
   return {
     resolveScalarKind,
     resolveAggregateType,
-    resolvePointedToType,
     resolveArrayType,
     resolveEaTypeExpr,
     sameTypeShape,

@@ -91,7 +91,6 @@ export type EmitPhase1WireResult = {
   >['formatAsmOperandForOpDiag'];
   lowerLdWithEa: ReturnType<typeof createLdLoweringHelpers>['lowerLdWithEa'];
   resolveAggregateType: ReturnType<typeof createTypeResolutionHelpers>['resolveAggregateType'];
-  resolvePointedToType: ReturnType<typeof createTypeResolutionHelpers>['resolvePointedToType'];
   resolveScalarKind: ReturnType<typeof createTypeResolutionHelpers>['resolveScalarKind'];
   resolveEaTypeExpr: ReturnType<typeof createTypeResolutionHelpers>['resolveEaTypeExpr'];
   resolveArrayType: ReturnType<typeof createTypeResolutionHelpers>['resolveArrayType'];
@@ -107,7 +106,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
 
   const {
     resolveAggregateType,
-    resolvePointedToType,
     resolveArrayType,
     resolveEaTypeExpr,
     resolveScalarKind,
@@ -241,7 +239,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
       diagAt,
       resolveScalarKind,
       resolveAggregateType,
-      resolvePointedToType,
       resolveEaTypeExpr,
       evalImmNoDiag,
     }),
@@ -326,7 +323,6 @@ export function wireEmitPhase1Helpers(ctx: EmitPhase1HelpersContext): EmitPhase1
     formatAsmOperandForOpDiag,
     lowerLdWithEa,
     resolveAggregateType,
-    resolvePointedToType,
     resolveScalarKind,
     resolveEaTypeExpr,
     resolveArrayType,

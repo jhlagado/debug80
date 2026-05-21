@@ -356,6 +356,49 @@ describe('.asm layout constant subset', () => {
     });
   });
 
+  it('rejects typed pointer syntax in layout fields', async () => {
+    const result = await compileSource('asm', [
+      '.type Node',
+      'next    .field @Node',
+      'value   .byte',
+      '.endtype',
+      '',
+      'main:',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.artifacts).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringMatching(/record field declaration/i),
+      }),
+    );
+  });
+
+  it('points self-referential fields toward .addr', async () => {
+    const result = await compileSource('asm', [
+      '.type Node',
+      'next    .field Node',
+      'value   .byte',
+      '.endtype',
+      '',
+      'main:',
+      '  ret',
+      '',
+    ]);
+
+    expect(result.artifacts).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message:
+          'Self-referential field type "Node" has no finite size; use .addr for a pointer field.',
+      }),
+    );
+  });
+
   it('rejects runtime registers in layout constant paths', async () => {
     const result = await compileSource('asm', [
       '.type Sprite',

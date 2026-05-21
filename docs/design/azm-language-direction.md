@@ -189,6 +189,7 @@ The intended AZM layout feature set is:
 - field type shorthands such as `.byte`, `.word`, and `.addr` inside layout
   declarations, each equivalent to `.field byte`, `.field word`, or
   `.field addr` rather than emitted storage
+- pointer-sized fields as `.addr`, not typed pointer syntax such as `@Sprite`
 - array type expressions for byte counts and strides
 - `sizeof(...)`
 - `.ds TypeExpr` as shorthand for `.ds sizeof(TypeExpr)` when reserving

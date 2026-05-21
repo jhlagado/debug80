@@ -133,8 +133,6 @@ export function layoutInfoForTypeExpr(
         }
         return { size: sum };
       }
-      case 'AddrOfType':
-        return { size: 2 };
     }
   };
 
@@ -189,8 +187,6 @@ export function offsetPathInTypeExpr(
           if (resolved.decl.kind === 'UnionDecl') return { kind: 'Union', fields: resolved.decl.fields };
           return resolveType(resolved.decl.typeExpr, visiting);
         });
-      case 'AddrOfType':
-        return resolveType(te.target, visiting);
       case 'ArrayType': {
         if (te.length === undefined) {
           diag(

@@ -27,11 +27,6 @@ export function parseTypeExprFromText(
   opts: { allowInferredArrayLength: boolean },
 ): TypeExprNode | undefined {
   let rest = typeText.trim();
-  if (rest.startsWith('@')) {
-    const inner = parseTypeExprFromText(rest.slice(1).trim(), typeSpan, opts);
-    if (!inner) return undefined;
-    return { kind: 'AddrOfType', span: typeSpan, target: inner };
-  }
   const nameMatch = /^([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)/.exec(rest);
   if (!nameMatch) return undefined;
   const name = nameMatch[1]!;

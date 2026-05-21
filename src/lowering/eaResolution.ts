@@ -35,12 +35,6 @@ type EAResolutionContext = {
   ) =>
     | { kind: 'record' | 'union'; fields: import('../frontend/ast.js').RecordFieldNode[] }
     | undefined;
-  /** For `@T`, aggregate shape of `T` when `T` is record/union; else `undefined`. */
-  resolvePointedToType: (
-    te: TypeExprNode,
-  ) =>
-    | { kind: 'record' | 'union'; fields: import('../frontend/ast.js').RecordFieldNode[] }
-    | undefined;
   /** Infers a type for an EA subexpression when possible; `undefined` if unknown. */
   resolveEaTypeExpr: (ea: EaExprNode) => TypeExprNode | undefined;
   /** Layout size in bytes; `undefined` if layout cannot be computed. */
@@ -59,8 +53,6 @@ export function buildEaResolutionContext(params: {
   resolveScalarKind: EAResolutionContext['resolveScalarKind'];
   /** See {@link EAResolutionContext.resolveAggregateType}. */
   resolveAggregateType: EAResolutionContext['resolveAggregateType'];
-  /** See {@link EAResolutionContext.resolvePointedToType}. */
-  resolvePointedToType: EAResolutionContext['resolvePointedToType'];
   /** See {@link EAResolutionContext.resolveEaTypeExpr}. */
   resolveEaTypeExpr: EAResolutionContext['resolveEaTypeExpr'];
   /** See {@link EAResolutionContext.evalImmNoDiag}. */
@@ -75,7 +67,6 @@ export function buildEaResolutionContext(params: {
     evalImmNoDiag: params.evalImmNoDiag,
     resolveScalarKind: params.resolveScalarKind,
     resolveAggregateType: params.resolveAggregateType,
-    resolvePointedToType: params.resolvePointedToType,
     resolveEaTypeExpr: params.resolveEaTypeExpr,
     sizeOfTypeExpr: (te) => sizeOfTypeExpr(te, env, diagnostics),
   };
@@ -153,8 +144,7 @@ export function createEaResolutionHelpers(ctx: EAResolutionContext) {
             );
             return undefined;
           }
-          const agg =
-            ctx.resolveAggregateType(base.typeExpr) ?? ctx.resolvePointedToType(base.typeExpr);
+          const agg = ctx.resolveAggregateType(base.typeExpr);
           if (!agg) {
             ctx.diagAt(
               ctx.diagnostics,
