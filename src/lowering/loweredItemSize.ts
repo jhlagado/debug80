@@ -1,6 +1,6 @@
 import type { LoweredAsmItem, LoweredImmExpr } from './loweredAsmTypes.js';
 
-export type LoweredSizeEvaluator = (expr: LoweredImmExpr) => number | undefined;
+type LoweredSizeEvaluator = (expr: LoweredImmExpr) => number | undefined;
 
 const literalSize = (expr: LoweredImmExpr): number | undefined =>
   expr.kind === 'literal' ? expr.value : undefined;
