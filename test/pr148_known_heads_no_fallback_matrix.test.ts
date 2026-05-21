@@ -4,7 +4,11 @@ import { dirname, join } from 'node:path';
 
 import { compile } from '../src/compile.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
+import {
+  expectDiagnostic,
+  expectIndexedRotateShiftSourceDiagnostics,
+  expectNoDiagnostic,
+} from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,30 +56,7 @@ describe('PR148: known-head no-fallback diagnostics matrix', () => {
     expectDiagnostic(res.diagnostics, {
       message: 'set b,(ix/iy+disp),r requires an indexed memory source',
     });
-    expectDiagnostic(res.diagnostics, {
-      message: 'rl two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'rr two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'sla two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'sra two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'srl two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'sll two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'rlc two-operand form requires (ix/iy+disp) source',
-    });
-    expectDiagnostic(res.diagnostics, {
-      message: 'rrc two-operand form requires (ix/iy+disp) source',
-    });
+    expectIndexedRotateShiftSourceDiagnostics(res.diagnostics);
 
     expectNoDiagnostic(res.diagnostics, { messageIncludes: 'Unsupported instruction:' });
   });
