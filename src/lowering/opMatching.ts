@@ -1,4 +1,5 @@
 import type { AsmOperandNode, EaExprNode, ImmExprNode, OpDeclNode, OpMatcherNode } from '../frontend/ast.js';
+import { formatEaExpr } from './traceFormat.js';
 
 type OpMatchingContext = {
   /** 8-bit register names for matching. */
@@ -275,47 +276,6 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
     }
   };
 
-  const formatEaExprForOpDiag = (ea: EaExprNode): string => {
-    switch (ea.kind) {
-      case 'EaName':
-        return ea.name;
-      case 'EaImm':
-        return `(${formatImmExprForOpDiag(ea.expr)})`;
-      case 'EaField':
-        return `${formatEaExprForOpDiag(ea.base)}.${ea.field}`;
-      case 'EaAdd':
-        return `${formatEaExprForOpDiag(ea.base)} + ${formatImmExprForOpDiag(ea.offset)}`;
-      case 'EaSub':
-        return `${formatEaExprForOpDiag(ea.base)} - ${formatImmExprForOpDiag(ea.offset)}`;
-      case 'EaIndex': {
-        let idx = '';
-        switch (ea.index.kind) {
-          case 'IndexImm':
-            idx = formatImmExprForOpDiag(ea.index.value);
-            break;
-          case 'IndexReg8':
-          case 'IndexReg16':
-            idx = ea.index.reg;
-            break;
-          case 'IndexMemHL':
-            idx = '(HL)';
-            break;
-          case 'IndexMemIxIy':
-            idx = ea.index.disp
-              ? `${ea.index.base}${ea.index.disp.kind === 'ImmUnary' ? '' : '+'}${formatImmExprForOpDiag(ea.index.disp)}`
-              : ea.index.base;
-            break;
-          case 'IndexEa':
-            idx = formatEaExprForOpDiag(ea.index.expr);
-            break;
-        }
-        return `${formatEaExprForOpDiag(ea.base)}[${idx}]`;
-      }
-      default:
-        return 'ea';
-    }
-  };
-
   const formatAsmOperandForOpDiag = (operand: AsmOperandNode): string => {
     switch (operand.kind) {
       case 'Reg':
@@ -323,9 +283,9 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
       case 'Imm':
         return formatImmExprForOpDiag(operand.expr);
       case 'Ea':
-        return formatEaExprForOpDiag(operand.expr);
+        return formatEaExpr(operand.expr, { formatImmExpr: formatImmExprForOpDiag, wrapImmEa: true });
       case 'Mem':
-        return `(${formatEaExprForOpDiag(operand.expr)})`;
+        return `(${formatEaExpr(operand.expr, { formatImmExpr: formatImmExprForOpDiag, wrapImmEa: true })})`;
       case 'PortC':
         return '(C)';
       case 'PortImm8':

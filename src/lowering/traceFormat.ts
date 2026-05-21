@@ -25,23 +25,31 @@ export const formatImmExprForAsm = (expr: ImmExprNode): string => {
   }
 };
 
-const formatEaExprForAsm = (ea: EaExprNode): string => {
+type EaExprFormatOptions = {
+  formatImmExpr: (expr: ImmExprNode) => string;
+  wrapImmEa?: boolean;
+};
+
+export const formatEaExpr = (
+  ea: EaExprNode,
+  { formatImmExpr, wrapImmEa = false }: EaExprFormatOptions,
+): string => {
   switch (ea.kind) {
     case 'EaName':
       return ea.name;
     case 'EaImm':
-      return formatImmExprForAsm(ea.expr);
+      return wrapImmEa ? `(${formatImmExpr(ea.expr)})` : formatImmExpr(ea.expr);
     case 'EaField':
-      return `${formatEaExprForAsm(ea.base)}.${ea.field}`;
+      return `${formatEaExpr(ea.base, { formatImmExpr, wrapImmEa })}.${ea.field}`;
     case 'EaAdd':
-      return `${formatEaExprForAsm(ea.base)} + ${formatImmExprForAsm(ea.offset)}`;
+      return `${formatEaExpr(ea.base, { formatImmExpr, wrapImmEa })} + ${formatImmExpr(ea.offset)}`;
     case 'EaSub':
-      return `${formatEaExprForAsm(ea.base)} - ${formatImmExprForAsm(ea.offset)}`;
+      return `${formatEaExpr(ea.base, { formatImmExpr, wrapImmEa })} - ${formatImmExpr(ea.offset)}`;
     case 'EaIndex': {
       let idx = '';
       switch (ea.index.kind) {
         case 'IndexImm':
-          idx = formatImmExprForAsm(ea.index.value);
+          idx = formatImmExpr(ea.index.value);
           break;
         case 'IndexReg8':
         case 'IndexReg16':
@@ -52,19 +60,22 @@ const formatEaExprForAsm = (ea: EaExprNode): string => {
           break;
         case 'IndexMemIxIy':
           idx = ea.index.disp
-            ? `${ea.index.base}${ea.index.disp.kind === 'ImmUnary' ? '' : '+'}${formatImmExprForAsm(ea.index.disp)}`
+            ? `${ea.index.base}${ea.index.disp.kind === 'ImmUnary' ? '' : '+'}${formatImmExpr(ea.index.disp)}`
             : ea.index.base;
           break;
         case 'IndexEa':
-          idx = formatEaExprForAsm(ea.index.expr);
+          idx = formatEaExpr(ea.index.expr, { formatImmExpr, wrapImmEa });
           break;
       }
-      return `${formatEaExprForAsm(ea.base)}[${idx}]`;
+      return `${formatEaExpr(ea.base, { formatImmExpr, wrapImmEa })}[${idx}]`;
     }
     default:
       return 'ea';
   }
 };
+
+const formatEaExprForAsm = (ea: EaExprNode): string =>
+  formatEaExpr(ea, { formatImmExpr: formatImmExprForAsm });
 
 const formatAsmOperandForTrace = (operand: AsmOperandNode): string => {
   switch (operand.kind) {
