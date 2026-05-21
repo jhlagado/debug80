@@ -1,10 +1,7 @@
 import type { EmittedByteMap } from '../../src/formats/types.js';
 import { evalBinaryImmOp, evalUnaryImmOp } from '../../src/lowering/immMath.js';
-import type {
-  LoweredAsmItem,
-  LoweredAsmProgram,
-  LoweredImmExpr,
-} from '../../src/lowering/loweredAsmTypes.js';
+import { loweredItemSize } from '../../src/lowering/loweredItemSize.js';
+import type { LoweredAsmProgram, LoweredImmExpr } from '../../src/lowering/loweredAsmTypes.js';
 import {
   getMap,
   getProgram,
@@ -45,23 +42,6 @@ function evalStaticLoweredImmExpr(expr: LoweredImmExpr): number | undefined {
   }
 }
 
-function loweredItemSize(item: LoweredAsmItem): number {
-  switch (item.kind) {
-    case 'label':
-    case 'const':
-    case 'comment':
-      return 0;
-    case 'db':
-      return item.values.length;
-    case 'dw':
-      return item.values.length * 2;
-    case 'ds':
-      return Math.max(0, evalStaticLoweredImmExpr(item.size) ?? 0);
-    case 'instr':
-      return item.bytes?.length ?? 0;
-  }
-}
-
 export function flattenLoweredInstructions(
   program: LoweredAsmProgram,
   map?: EmittedByteMap,
@@ -73,7 +53,7 @@ export function flattenLoweredInstructions(
       const item = block.items[itemIndex]!;
       const address = block.origin + offset;
       if (item.kind === 'instr') {
-        const size = loweredItemSize(item);
+        const size = loweredItemSize(item, evalStaticLoweredImmExpr);
         const view: LoweredInstrView = {
           head: item.head,
           operands: item.operands,
@@ -87,7 +67,7 @@ export function flattenLoweredInstructions(
         if (resolvedBytes) view.resolvedBytes = resolvedBytes;
         out.push(view);
       }
-      offset += loweredItemSize(item);
+      offset += loweredItemSize(item, evalStaticLoweredImmExpr);
     }
   }
   return out;
@@ -103,7 +83,7 @@ function flattenLoweredLabels(program: LoweredAsmProgram): LoweredLabelView[] {
       if (item.kind === 'label') {
         out.push({ name: item.name, address, block, itemIndex });
       }
-      offset += loweredItemSize(item);
+      offset += loweredItemSize(item, evalStaticLoweredImmExpr);
     }
   }
   return out;
