@@ -122,7 +122,9 @@ const result = await compile(
 console.log(result.diagnostics);
 ```
 
-See [docs/tooling-api.md](docs/tooling-api.md) for the current API notes.
+See [docs/reference/cli.md](docs/reference/cli.md) for the full CLI reference
+and [docs/reference/tooling-api.md](docs/reference/tooling-api.md) for the
+current API notes.
 
 ## Verification
 

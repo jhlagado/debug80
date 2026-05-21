@@ -18,6 +18,75 @@ npm install @jhlagado/azm
 - `@jhlagado/azm/compile`
   Layer C compile API and default format writers.
 
+## Debug80 Integration Path
+
+Debug80 should link through the public package entry points, not internal
+`dist/src/...` paths.
+
+Use this path when Debug80 needs editor-style diagnostics, symbols, or
+register-care information without writing files:
+
+```ts
+import { analyzeProgram, analyzeRegisterCareForTools, loadProgram } from '@jhlagado/azm/tooling';
+
+const loaded = await loadProgram({
+  entryFile: '/abs/path/to/main.asm',
+  includeDirs: ['/abs/path/to/includes'],
+});
+
+if (!loaded.loadedProgram) {
+  return loaded.diagnostics;
+}
+
+const analysis = analyzeProgram(loaded.loadedProgram, {
+  caseStyle: 'consistent',
+  requireMain: false,
+});
+
+const registerCare = analyzeRegisterCareForTools(loaded.loadedProgram, {
+  mode: 'audit',
+  profile: 'mon3',
+});
+```
+
+Use this path when Debug80 needs assembled bytes and debugger metadata:
+
+```ts
+import { compile, defaultFormatWriters } from '@jhlagado/azm/compile';
+
+const result = await compile(
+  '/abs/path/to/main.asm',
+  {
+    includeDirs: ['/abs/path/to/includes'],
+    outputType: 'hex',
+    emitBin: true,
+    emitHex: true,
+    emitD8m: true,
+    emitListing: true,
+    registerCare: 'audit',
+    registerCareInterfaces: ['/abs/path/to/mon3.asmi'],
+  },
+  { formats: defaultFormatWriters },
+);
+
+const diagnostics = result.diagnostics;
+const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
+const binary = result.artifacts.find((artifact) => artifact.kind === 'bin');
+```
+
+The integration contract is:
+
+- source entries are `.asm` or `.z80`
+- external register-care contracts are `.asmi`
+- include search paths are supplied explicitly with `includeDirs`
+- directive alias JSON files are supplied explicitly with `directiveAliasFiles`
+- `compile()` returns artifacts in memory; the CLI is only responsible for
+  writing those artifacts to disk
+- Debug80 should consume the `d8m` artifact for source/address metadata and the
+  `bin` or `hex` artifact for loadable bytes
+- diagnostics are data objects and should be displayed directly rather than
+  parsed from CLI text
+
 ## Layer A: Load and Parse
 
 Use `loadProgram()` when you need the same AST, spans, and diagnostics that the compiler uses, but without lowering or writing artifacts.

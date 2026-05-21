@@ -230,6 +230,7 @@ Use these documents when deciding what survives:
 
 - [AZM expression and visibility](../design/azm-expression-and-visibility.md)
 - [AZM code quality standard](code-quality-standard.md)
+- [AZM CLI reference](cli.md)
 
 ## Testing Map
 

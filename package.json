@@ -33,7 +33,7 @@
   },
   "files": [
     "dist/src",
-    "docs/tooling-api.md"
+    "docs/reference/tooling-api.md"
   ],
   "publishConfig": {
     "access": "public"
