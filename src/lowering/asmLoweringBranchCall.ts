@@ -88,6 +88,31 @@ function conditionNameFromOperand(op: AsmOperandNode): string | undefined {
   return undefined;
 }
 
+function rejectInvalidRel8Target(
+  ctx: BranchCallLoweringContext,
+  asmItem: AsmInstructionNode,
+  target: AsmOperandNode,
+  messages: {
+    indirect: string;
+    register: string;
+    other: string;
+  },
+): boolean {
+  if (target.kind === 'Mem') {
+    diagEncode(ctx, asmItem, messages.indirect);
+    return true;
+  }
+  if (target.kind === 'Reg') {
+    diagEncode(ctx, asmItem, messages.register);
+    return true;
+  }
+  if (target.kind !== 'Imm') {
+    diagEncode(ctx, asmItem, messages.other);
+    return true;
+  }
+  return false;
+}
+
 function emitAbs16FixupFromOperand(
   ctx: BranchCallLoweringContext,
   asmItem: AsmInstructionNode,
@@ -149,16 +174,13 @@ export function tryLowerBranchCallInstruction(
         return true;
       }
       const target = asmItem.operands[1]!;
-      if (target.kind === 'Mem') {
-        diagEncode(ctx, asmItem, `jr cc, disp does not support indirect targets`);
-        return true;
-      }
-      if (target.kind === 'Reg') {
-        diagEncode(ctx, asmItem, `jr cc, disp does not support register targets; expects disp8`);
-        return true;
-      }
-      if (target.kind !== 'Imm') {
-        diagEncode(ctx, asmItem, `jr cc, disp expects disp8`);
+      if (
+        rejectInvalidRel8Target(ctx, asmItem, target, {
+          indirect: 'jr cc, disp does not support indirect targets',
+          register: 'jr cc, disp does not support register targets; expects disp8',
+          other: 'jr cc, disp expects disp8',
+        })
+      ) {
         return true;
       }
       if (!emitRel8FromOperand(ctx, asmItem, target, opcode, `jr ${ccName!.toLowerCase()}`)) return false;
@@ -173,16 +195,13 @@ export function tryLowerBranchCallInstruction(
       return true;
     }
     const target = asmItem.operands[0]!;
-    if (target.kind === 'Mem') {
-      diagEncode(ctx, asmItem, `djnz does not support indirect targets; expects disp8`);
-      return true;
-    }
-    if (target.kind === 'Reg') {
-      diagEncode(ctx, asmItem, `djnz does not support register targets; expects disp8`);
-      return true;
-    }
-    if (target.kind !== 'Imm') {
-      diagEncode(ctx, asmItem, `djnz expects disp8`);
+    if (
+      rejectInvalidRel8Target(ctx, asmItem, target, {
+        indirect: 'djnz does not support indirect targets; expects disp8',
+        register: 'djnz does not support register targets; expects disp8',
+        other: 'djnz expects disp8',
+      })
+    ) {
       return true;
     }
     if (!emitRel8FromOperand(ctx, asmItem, target, 0x10, 'djnz')) return false;
