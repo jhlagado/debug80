@@ -159,20 +159,22 @@ export function parseBareRawDataDirective(
   filePath: string,
   diagnostics: Diagnostic[],
 ): AsmRawDataNode | undefined {
-  const match = /^(db|dw|ds)\b(.*)$/i.exec(directiveText.trim());
-  if (!match) return undefined;
-  const directive = match[1]!.toLowerCase() as 'db' | 'dw' | 'ds';
-  const payload = match[2]!.trim();
-  const parsed =
-    directive === 'ds'
-      ? parseRawDataSizeOperands(payload, lineNo, lineSpan, filePath, diagnostics)
-      : parseRawDataValues(directive, payload, lineNo, lineSpan, filePath, diagnostics);
-  if (!parsed) return undefined;
-  return { ...parsed, name: '', span: lineSpan };
+  return parseNamedRawDataDirective('', directiveText, lineNo, lineSpan, filePath, diagnostics);
 }
 
 export function parseRawDataDirective(
   label: PendingRawLabel,
+  directiveText: string,
+  lineNo: number,
+  lineSpan: SourceSpan,
+  filePath: string,
+  diagnostics: Diagnostic[],
+): AsmRawDataNode | undefined {
+  return parseNamedRawDataDirective(label.name, directiveText, lineNo, lineSpan, filePath, diagnostics);
+}
+
+function parseNamedRawDataDirective(
+  name: string,
   directiveText: string,
   lineNo: number,
   lineSpan: SourceSpan,
@@ -188,5 +190,5 @@ export function parseRawDataDirective(
       ? parseRawDataSizeOperands(payload, lineNo, lineSpan, filePath, diagnostics)
       : parseRawDataValues(directive, payload, lineNo, lineSpan, filePath, diagnostics);
   if (!parsed) return undefined;
-  return { ...parsed, name: label.name, span: lineSpan };
+  return { ...parsed, name, span: lineSpan };
 }
