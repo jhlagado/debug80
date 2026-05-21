@@ -84,7 +84,7 @@ export function summarizeDiagnostics(diagnostics: Diagnostic[], limit = 3): stri
   ].join('\n');
 }
 
-export function findFirstMismatch(actual: Buffer, reference: Buffer): number {
+function findFirstMismatch(actual: Buffer, reference: Buffer): number {
   const maxLength = Math.max(actual.length, reference.length);
   for (let i = 0; i < maxLength; i++) {
     if (actual[i] !== reference[i]) return i;
