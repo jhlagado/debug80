@@ -51,3 +51,13 @@ export function expectNoErrors(diagnostics: readonly Diagnostic[]): void {
 export function expectNoDiagnostics(diagnostics: readonly Diagnostic[]): void {
   expect(diagnostics).toEqual([]);
 }
+
+export function expectIndexedRotateShiftSourceDiagnostics(
+  diagnostics: readonly Diagnostic[],
+): void {
+  for (const head of ['rl', 'rr', 'sla', 'sra', 'srl', 'sll', 'rlc', 'rrc']) {
+    expectDiagnostic(diagnostics, {
+      message: `${head} two-operand form requires (ix/iy+disp) source`,
+    });
+  }
+}
