@@ -39,6 +39,18 @@ describe('PR614 removed syntax guardrail', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it('rejects single-line type aliases in ASM sources', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-type-alias-'));
+    const fixture = join(dir, 'single-line-type.asm');
+    await writeFile(fixture, '.type Pair byte[2]\n', 'utf8');
+
+    const { violations } = scanForbiddenRemovedSyntax({ filePaths: [fixture] });
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.ruleId).toBe('single-line-type-alias');
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it('rejects removed source file extensions in scanned roots', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-ext-'));
     const examples = join(dir, 'examples');

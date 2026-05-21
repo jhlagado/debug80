@@ -7,7 +7,7 @@ export const malformedTopLevelHeaderExpectations: ReadonlyArray<{
   kind: string;
   expected: string;
 }> = [
-  { keyword: 'type', kind: 'type declaration', expected: '<name> [<typeExpr>]' },
+  { keyword: 'type', kind: 'type declaration', expected: '<name>' },
   { keyword: 'union', kind: 'union declaration', expected: '<name>' },
   { keyword: 'op', kind: 'op header', expected: '<name>(...)' },
   { keyword: 'enum', kind: 'enum declaration', expected: '<name> <member>[, ...]' },

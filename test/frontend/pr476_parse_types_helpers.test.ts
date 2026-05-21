@@ -115,12 +115,15 @@ describe('PR476 type and union parser extraction', () => {
     });
   });
 
-  it('preserves type and union parsing through parser.ts', () => {
+  it('preserves type and union block parsing through parser.ts', () => {
     const diagnostics: Diagnostic[] = [];
     const program = parseSingleFileProgram(
       'pr476_parse_types_helpers.asm',
       [
-        '.type Pair byte[2]',
+        '.type Pair',
+        'left .byte',
+        'right .byte',
+        '.endtype',
         '.union Either',
         'left .byte',
         'right .word',
@@ -134,12 +137,32 @@ describe('PR476 type and union parser extraction', () => {
     expect(program.files[0]?.items[0]).toMatchObject({
       kind: 'TypeDecl',
       name: 'Pair',
-      typeExpr: { kind: 'ArrayType', length: 2 },
+      typeExpr: {
+        kind: 'RecordType',
+        fields: [{ name: 'left' }, { name: 'right' }],
+      },
     });
     expect(program.files[0]?.items[1]).toMatchObject({
       kind: 'UnionDecl',
       name: 'Either',
       fields: [{ name: 'left' }, { name: 'right' }],
     });
+  });
+
+  it('rejects single-line type aliases in source syntax', () => {
+    const diagnostics: Diagnostic[] = [];
+    const program = parseSingleFileProgram(
+      'pr476_parse_types_helpers.asm',
+      ['.type Pair byte[2]', 'main:', '  ret', ''].join('\n'),
+      diagnostics,
+    );
+
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Invalid type declaration line ".type Pair byte[2]": expected <name>'),
+      }),
+    );
+    expect(program.files[0]?.items.map((item) => item.kind)).toEqual(['AsmLabel', 'AsmInstruction']);
   });
 });
