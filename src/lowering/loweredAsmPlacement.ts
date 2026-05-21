@@ -1,9 +1,9 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { PlacementKind } from './loweringTypes.js';
 import { evalBinaryImmOp, evalUnaryImmOp } from './immMath.js';
+import { loweredItemSize } from './loweredItemSize.js';
 import type {
   LoweredAsmBlock,
-  LoweredAsmItem,
   LoweredAsmProgram,
   LoweredImmExpr,
   LoweredAsmStream,
@@ -51,23 +51,6 @@ export function placeLoweredAsmStream(
   }
   resolvePlacedLoweredDataSymbols(blocks);
   return { blocks };
-}
-
-function loweredItemSize(item: LoweredAsmItem): number {
-  switch (item.kind) {
-    case 'label':
-    case 'const':
-    case 'comment':
-      return 0;
-    case 'db':
-      return item.values.length;
-    case 'dw':
-      return item.values.length * 2;
-    case 'ds':
-      return item.size.kind === 'literal' && item.size.value > 0 ? item.size.value : 0;
-    case 'instr':
-      return item.bytes?.length ?? 0;
-  }
 }
 
 function evalPlacedConst(expr: LoweredImmExpr, values: Map<string, number>): number | undefined {
