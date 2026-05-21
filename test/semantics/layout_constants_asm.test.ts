@@ -1,29 +1,21 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
-import { compile } from '../../src/compile.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { BinArtifact } from '../../src/formats/types.js';
+import type { CompileResult } from '../../src/pipeline.js';
 import { expectDiagnostic } from '../helpers/diagnostics/index.js';
+import { compileTempSource } from '../helpers/temp_source.js';
 
-function writeTempSource(ext: string, source: string): { entry: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'asm-layout-constants-'));
-  const entry = join(dir, `entry.${ext}`);
-  writeFileSync(entry, source, 'utf8');
-  return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+async function compileSource(ext: string, lines: string[]): Promise<CompileResult> {
+  return compileTempSource('asm-layout-constants-', ext, `${lines.join('\n')}\n`, {});
 }
 
-async function compileSource(ext: string, lines: string[]) {
-  const { entry, cleanup } = writeTempSource(ext, `${lines.join('\n')}\n`);
-  try {
-    return await compile(entry, {}, { formats: defaultFormatWriters });
-  } finally {
-    cleanup();
-  }
+function binArtifact(result: CompileResult): BinArtifact | undefined {
+  return result.artifacts.find((artifact): artifact is BinArtifact => artifact.kind === 'bin');
+}
+
+function expectNoErrorDiagnostics(result: CompileResult): void {
+  expect(result.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toEqual([]);
 }
 
 function expectLdHlImmediate(bin: BinArtifact | undefined, value: number): void {
@@ -71,11 +63,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediate(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      4,
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediate(binArtifact(result), 4);
   });
 
   it('emits abs16 fixups for symbolic LD immediates with constant offsets', async () => {
@@ -91,9 +80,9 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(result);
     expectBinBytes(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
+      binArtifact(result),
       [
         0x01, 0x10, 0x00, 0x11, 0x0d, 0x00, 0xdd, 0x21, 0x12, 0x00, 0xfd, 0x21, 0x13, 0x00, 0xc9,
         0x00,
@@ -111,11 +100,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectBinBytes(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      [0x20, 0x03, 0x00, 0x00, 0x00],
-    );
+    expectNoErrorDiagnostics(result);
+    expectBinBytes(binArtifact(result), [0x20, 0x03, 0x00, 0x00, 0x00]);
   });
 
   it('evaluates assembler-style .type field layouts', async () => {
@@ -140,11 +126,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediates(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      [9, 4, 6],
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediates(binArtifact(result), [9, 4, 6]);
   });
 
   it('evaluates assembler-style .union layouts', async () => {
@@ -170,11 +153,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediates(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      [2, 0],
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediates(binArtifact(result), [2, 0]);
   });
 
   it('evaluates exact sizeof for arrays of records', async () => {
@@ -194,11 +174,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediate(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      64,
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediate(binArtifact(result), 64);
   });
 
   it('uses type shorthand as .ds allocation size', async () => {
@@ -224,10 +201,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expect(
-      Array.from(result.artifacts.find((a): a is BinArtifact => a.kind === 'bin')?.bytes ?? []),
-    ).toEqual([
+    expectNoErrorDiagnostics(result);
+    expect(Array.from(binArtifact(result)?.bytes ?? [])).toEqual([
       0x10, 0x11, 0x11, 0x11, 0x11, 0x20, 0x20, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x30, 0x30,
       0x30, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
     ]);
@@ -250,11 +225,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediate(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      11,
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediate(binArtifact(result), 11);
   });
 
   it('evaluates union size and zero-offset union fields in .asm constants', async () => {
@@ -282,11 +254,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediates(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      [2, 0, 1],
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediates(binArtifact(result), [2, 0, 1]);
   });
 
   it('keeps non-power-of-two array element sizes exact in .asm constants', async () => {
@@ -314,11 +283,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediates(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      [3, 8, 12],
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediates(binArtifact(result), [3, 8, 12]);
   });
 
   it('evaluates .asm constants from named constants and const expressions', async () => {
@@ -334,11 +300,8 @@ describe('.asm layout constant subset', () => {
       '',
     ]);
 
-    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expectLdHlImmediate(
-      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
-      0x2012,
-    );
+    expectNoErrorDiagnostics(result);
+    expectLdHlImmediate(binArtifact(result), 0x2012);
   });
 
   it('rejects unknown offsetof spelling in .asm source', async () => {
