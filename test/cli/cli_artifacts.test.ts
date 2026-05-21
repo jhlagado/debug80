@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 import { ensureCliBuilt } from '../helpers/cliBuild.js';
 import {
   exists,
+  expectCliArtifacts,
   makeCliWorkDir,
   removeCliWorkDir,
   runCli,
@@ -29,10 +30,7 @@ describe('cli artifacts', () => {
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outHex);
 
-    expect(await exists(join(work, 'out.hex'))).toBe(true);
-    expect(await exists(join(work, 'out.bin'))).toBe(true);
-    expect(await exists(join(work, 'out.d8.json'))).toBe(true);
-    expect(await exists(join(work, 'out.lst'))).toBe(true);
+    await expectCliArtifacts(work, 'out', { hex: true, bin: true, 'd8.json': true, lst: true });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -45,10 +43,7 @@ describe('cli artifacts', () => {
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(join(work, 'main.hex'));
 
-    expect(await exists(join(work, 'main.hex'))).toBe(true);
-    expect(await exists(join(work, 'main.bin'))).toBe(true);
-    expect(await exists(join(work, 'main.d8.json'))).toBe(true);
-    expect(await exists(join(work, 'main.lst'))).toBe(true);
+    await expectCliArtifacts(work, 'main', { hex: true, bin: true, 'd8.json': true, lst: true });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -83,10 +78,7 @@ describe('cli artifacts', () => {
     const res = await runCli(['--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
     expect(res.code).toBe(0);
 
-    expect(await exists(join(work, 'out.hex'))).toBe(true);
-    expect(await exists(join(work, 'out.bin'))).toBe(false);
-    expect(await exists(join(work, 'out.d8.json'))).toBe(false);
-    expect(await exists(join(work, 'out.lst'))).toBe(false);
+    await expectCliArtifacts(work, 'out', { hex: true, bin: false, 'd8.json': false, lst: false });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -99,9 +91,7 @@ describe('cli artifacts', () => {
     const res = await runCli(['--asm80', '--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
     expect(res.code).toBe(0);
 
-    expect(await exists(join(work, 'out.hex'))).toBe(true);
-    expect(await exists(join(work, 'out.z80'))).toBe(true);
-    expect(await exists(join(work, 'out.asm80'))).toBe(false);
+    await expectCliArtifacts(work, 'out', { hex: true, z80: true, asm80: false });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -124,10 +114,7 @@ describe('cli artifacts', () => {
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outBin);
 
-    expect(await exists(join(work, 'out.bin'))).toBe(true);
-    expect(await exists(join(work, 'out.hex'))).toBe(false);
-    expect(await exists(join(work, 'out.d8.json'))).toBe(false);
-    expect(await exists(join(work, 'out.lst'))).toBe(false);
+    await expectCliArtifacts(work, 'out', { bin: true, hex: false, 'd8.json': false, lst: false });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -153,8 +140,7 @@ describe('cli artifacts', () => {
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outBin);
 
-    expect(await exists(join(work, 'out.bin'))).toBe(true);
-    expect(await exists(join(work, 'out.hex'))).toBe(true);
+    await expectCliArtifacts(work, 'out', { bin: true, hex: true });
 
     await removeCliWorkDir(work);
   }, 20_000);

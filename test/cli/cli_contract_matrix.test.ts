@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { ensureCliBuilt } from '../helpers/cliBuild.js';
 import {
-  exists,
+  expectCliArtifacts,
   makeCliWorkDir,
   removeCliWorkDir,
   runCli,
@@ -116,10 +116,7 @@ describe('cli contract matrix', () => {
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(join(work, 'main.bin'));
 
-    expect(await exists(join(work, 'main.bin'))).toBe(true);
-    expect(await exists(join(work, 'main.hex'))).toBe(true);
-    expect(await exists(join(work, 'main.d8.json'))).toBe(true);
-    expect(await exists(join(work, 'main.lst'))).toBe(true);
+    await expectCliArtifacts(work, 'main', { bin: true, hex: true, 'd8.json': true, lst: true });
 
     await removeCliWorkDir(work);
   }, 20_000);
@@ -134,10 +131,7 @@ describe('cli contract matrix', () => {
     expect(res.code).toBe(1);
     expect(res.stderr).toContain('error:');
 
-    expect(await exists(join(work, 'out.hex'))).toBe(false);
-    expect(await exists(join(work, 'out.bin'))).toBe(false);
-    expect(await exists(join(work, 'out.d8.json'))).toBe(false);
-    expect(await exists(join(work, 'out.lst'))).toBe(false);
+    await expectCliArtifacts(work, 'out', { hex: false, bin: false, 'd8.json': false, lst: false });
 
     await removeCliWorkDir(work);
   }, 20_000);

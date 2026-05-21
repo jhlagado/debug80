@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { expect } from 'vitest';
 
 export { normalizePathForCompare } from '../../../src/pathCompare.js';
 
@@ -53,6 +54,16 @@ export async function writeCliMainSource(workDir: string, source = MAIN_SOURCE):
   const entry = join(workDir, 'main.asm');
   await writeFile(entry, source, 'utf8');
   return entry;
+}
+
+export async function expectCliArtifacts(
+  workDir: string,
+  stem: string,
+  expected: Partial<Record<'hex' | 'bin' | 'd8.json' | 'lst' | 'z80' | 'asm80', boolean>>,
+): Promise<void> {
+  for (const [extension, shouldExist] of Object.entries(expected)) {
+    expect(await exists(join(workDir, `${stem}.${extension}`))).toBe(shouldExist);
+  }
 }
 
 export async function readArtifactSet(base: string): Promise<{
