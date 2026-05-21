@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 
-import { compile } from '../../src/compile.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
-import type { D8mArtifact } from '../../src/formats/types.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { compileBackendFixtureToD8m } from './d8mTestHelpers.js';
 
 type D8mFileEntry = {
   segments?: Array<{
@@ -29,14 +22,8 @@ type D8mFileEntry = {
 
 describe('PR200 D8M appendix mapping closure', () => {
   it('emits files-object grouped symbols/segments with deterministic baseline metadata', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr200_d8m_appendix_mapping.asm');
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expect(res.diagnostics).toEqual([]);
-
-    const d8m = res.artifacts.find((a): a is D8mArtifact => a.kind === 'd8m');
-    expect(d8m).toBeDefined();
-
-    const json = d8m!.json as unknown as {
+    const d8m = await compileBackendFixtureToD8m('pr200_d8m_appendix_mapping.asm');
+    const json = d8m.json as unknown as {
       format: string;
       version: number;
       arch: string;
