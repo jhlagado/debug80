@@ -62,15 +62,19 @@ export function createLoweredAsmStreamRecordingHelpers(ctx: LoweredAsmStreamReco
   const emittedUserCommentLines = new Set<string>();
   const lastBlockByFile = new Map<string, LoweredAsmStreamBlock>();
 
+  const registerUserCommentLines = (file: string, lineMap: Map<number, string>): void => {
+    if (lineMap.size === 0) return;
+    commentByFileLine.set(file, lineMap);
+    pendingUserComments.set(file, {
+      lines: [...lineMap.keys()].sort((a, b) => a - b),
+      texts: lineMap,
+      index: 0,
+    });
+  };
+
   if (sourceLineComments) {
     for (const [file, lineMap] of sourceLineComments) {
-      if (lineMap.size === 0) continue;
-      commentByFileLine.set(file, lineMap);
-      pendingUserComments.set(file, {
-        lines: [...lineMap.keys()].sort((a, b) => a - b),
-        texts: lineMap,
-        index: 0,
-      });
+      registerUserCommentLines(file, lineMap);
     }
   } else if (sourceTexts) {
     for (const [file, text] of sourceTexts) {
@@ -84,14 +88,7 @@ export function createLoweredAsmStreamRecordingHelpers(ctx: LoweredAsmStreamReco
         if (!commentText) continue;
         lineMap.set(i + 1, commentText);
       }
-      if (lineMap.size > 0) {
-        commentByFileLine.set(file, lineMap);
-        pendingUserComments.set(file, {
-          lines: [...lineMap.keys()].sort((a, b) => a - b),
-          texts: lineMap,
-          index: 0,
-        });
-      }
+      registerUserCommentLines(file, lineMap);
     }
   }
 
