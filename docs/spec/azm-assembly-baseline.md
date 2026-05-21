@@ -311,6 +311,52 @@ In short:
 
 The older colon form (`x: byte`) is not AZM syntax.
 
+## Record storage
+
+AZM does not have record constructors. A layout type tells the assembler how
+many bytes a record occupies and where its fields sit. Storage is still created
+with ordinary assembler directives.
+
+For uninitialized records, use `.ds` with the type expression:
+
+```asm
+.type Sprite
+x       .byte
+y       .byte
+flags   .byte
+ptr     .word
+.endtype
+
+PlayerSprite:
+    .ds Sprite
+
+SpriteTable:
+    .ds Sprite[16]
+```
+
+`PlayerSprite` reserves `sizeof(Sprite)` bytes. `SpriteTable` reserves
+`sizeof(Sprite) * 16` bytes. Neither label becomes permanently typed; later
+layout-cast expressions provide the type at the use site:
+
+```asm
+    ld hl,<Sprite>PlayerSprite.flags
+    ld hl,<Sprite[16]>SpriteTable[3].ptr
+```
+
+For initialized records, write the bytes and words in layout order:
+
+```asm
+PlayerSprite:
+    .db 10             ; x
+    .db 20             ; y
+    .db 00000001B      ; flags
+    .dw SpriteImage    ; ptr
+```
+
+This is deliberately plain assembly. The type declaration can still provide
+field offsets and total sizes, but it does not grow a separate initialization
+language.
+
 ## Enum constants (canonical AZM)
 
 `enum` declarations create qualified integer constants:
