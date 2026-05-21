@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../../diagnosticTypes.js';
 import type { SourceSpan } from '../ast.js';
 import { parseImmExprFromText } from '../parseImm.js';
+import { advanceAsmQuoteScan, createAsmQuoteScanState } from './quoteScan.js';
 
 export function parseAsmRawValues(
   path: string,
@@ -71,31 +72,14 @@ function normalizeDoubleQuotedCharExpr(text: string): string {
 function splitTopLevelComma(text: string): string[] {
   const parts: string[] = [];
   let start = 0;
-  let inString = false;
-  let inChar = false;
-  let escaped = false;
+  const quoteState = createAsmQuoteScanState();
   let parenDepth = 0;
   let bracketDepth = 0;
 
   for (let i = 0; i < text.length; i++) {
+    if (advanceAsmQuoteScan(text, i, quoteState)) continue;
+    if (quoteState.inString || quoteState.inChar) continue;
     const ch = text[i]!;
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if ((inString || inChar) && ch === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (!inChar && ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString && ch === "'") {
-      inChar = !inChar;
-      continue;
-    }
-    if (inString || inChar) continue;
     if (ch === '(') {
       parenDepth++;
       continue;

@@ -1,5 +1,6 @@
 import type { DirectiveAliasPolicy } from '../directiveAliases.js';
 import { resolveDirectiveAlias } from '../directiveAliases.js';
+import { advanceAsmQuoteScan, createAsmQuoteScanState } from './quoteScan.js';
 
 type AsmLine =
   | { kind: 'label'; name: string }
@@ -47,28 +48,17 @@ export function parseAsmLine(
 }
 
 function stripAsm80Comment(text: string): string {
-  let inString = false;
-  let inChar = false;
-  let escaped = false;
+  const quoteState = createAsmQuoteScanState();
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (escaped) {
-      escaped = false;
+    if (
+      advanceAsmQuoteScan(text, i, quoteState, {
+        singleQuoteStartsCharAt: (source, index) =>
+          index === 0 || !/[A-Za-z0-9_]/.test(source[index - 1]!),
+      })
+    ) {
       continue;
     }
-    if ((inString || inChar) && ch === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (!inChar && ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString && ch === "'" && (inChar || i === 0 || !/[A-Za-z0-9_]/.test(text[i - 1]!))) {
-      inChar = !inChar;
-      continue;
-    }
-    if (!inString && !inChar && ch === ';') return text.slice(0, i);
+    if (!quoteState.inString && !quoteState.inChar && text[i] === ';') return text.slice(0, i);
   }
   return text;
 }
