@@ -107,7 +107,7 @@ function reg8Code(name: string): number | undefined {
   }
 }
 
-function isLegacyHLReg8(name: string | undefined): boolean {
+function isPlainHLReg8(name: string | undefined): boolean {
   return name === 'H' || name === 'L';
 }
 
@@ -390,7 +390,7 @@ function encodeFamilyInstruction(
         isMemHL,
         isMemRegName,
         isReg16TransferName,
-        isLegacyHLReg8,
+        isPlainHLReg8,
       });
     case 'core':
       return encodeCoreOpsInstruction(node, env, diagnostics, {

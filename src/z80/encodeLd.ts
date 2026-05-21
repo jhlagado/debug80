@@ -8,7 +8,7 @@ type LdEncodeContext = EncoderRegisterContext & EncoderImmContext & EncoderMemCo
   memAbs16: (op: AsmOperandNode, env: CompileEnv) => number | undefined;
   isMemRegName: (op: AsmOperandNode, reg: string) => boolean;
   isReg16TransferName: (name: string | undefined) => boolean;
-  isLegacyHLReg8: (name: string | undefined) => boolean;
+  isPlainHLReg8: (name: string | undefined) => boolean;
 };
 
 export function encodeLdInstruction(
@@ -81,8 +81,8 @@ export function encodeLdInstruction(
       return undefined;
     }
     if (
-      (indexedDst && !indexedSrc && ctx.isLegacyHLReg8(src)) ||
-      (indexedSrc && !indexedDst && ctx.isLegacyHLReg8(dst))
+      (indexedDst && !indexedSrc && ctx.isPlainHLReg8(src)) ||
+      (indexedSrc && !indexedDst && ctx.isPlainHLReg8(dst))
     ) {
       diag(diagnostics, node, `ld with IX*/IY* does not support plain H/L counterpart operands`);
       return undefined;
