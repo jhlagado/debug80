@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,6 +64,32 @@ try {
     'utf8',
   );
 
+  const projectDir = join(installDir, 'project');
+  const srcDir = join(projectDir, 'src', 'pacmo');
+  const sharedDir = join(projectDir, 'src', 'shared');
+  const buildDir = join(projectDir, 'build');
+  await mkdir(srcDir, { recursive: true });
+  await mkdir(sharedDir, { recursive: true });
+  await mkdir(buildDir, { recursive: true });
+  await writeFile(
+    join(srcDir, 'pacmo.z80'),
+    [
+      '.include "movement.asm"',
+      '.include "../shared/constants.asm"',
+      'main:',
+      '    call MoveRight',
+      '    ret',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+  await writeFile(
+    join(srcDir, 'movement.asm'),
+    ['MoveRight:', '    nop', '    ret', ''].join('\n'),
+    'utf8',
+  );
+  await writeFile(join(sharedDir, 'constants.asm'), ['ColorRed .equ 1', ''].join('\n'), 'utf8');
+
   const version = await run('npx', ['azm', '--version'], { cwd: installDir });
   const pkg = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
   if (version.stdout.trim() !== pkg.version) {
@@ -87,6 +113,17 @@ try {
         "const result = await compile('./smoke.asm', { outputType: 'bin', emitBin: true, emitHex: false, emitD8m: false, emitListing: false }, { formats: defaultFormatWriters });",
         "if (result.diagnostics.length) throw new Error(result.diagnostics.map((d) => d.message).join('\\n'));",
         "if (!result.artifacts.some((artifact) => artifact.kind === 'bin')) throw new Error('missing bin artifact');",
+        "const d8Result = await compile('./project/src/pacmo/pacmo.z80', { sourceRoot: './project', d8mInputs: { listing: './project/build/pacmo.lst', hex: './project/build/pacmo.hex', bin: './project/build/pacmo.bin' }, emitListing: true }, { formats: defaultFormatWriters });",
+        "if (d8Result.diagnostics.length) throw new Error(d8Result.diagnostics.map((d) => d.message).join('\\n'));",
+        "const d8m = d8Result.artifacts.find((artifact) => artifact.kind === 'd8m');",
+        "if (!d8m) throw new Error('missing d8m artifact');",
+        "if (d8m.json.generator?.name !== 'azm' || d8m.json.generator?.tool !== 'azm') throw new Error('missing AZM generator metadata');",
+        "if (d8m.json.generator?.inputs?.entry !== 'src/pacmo/pacmo.z80') throw new Error('unstable D8 entry path');",
+        "if (d8m.json.generator?.inputs?.hex !== 'build/pacmo.hex') throw new Error('unstable D8 hex path');",
+        "if (!d8m.json.files['src/pacmo/pacmo.z80']) throw new Error('missing original source D8 file key');",
+        "if (Object.keys(d8m.json.files).some((key) => key.startsWith('build/'))) throw new Error('D8 file key points at generated output');",
+        "const colorRed = d8m.json.symbols.find((symbol) => symbol.name === 'ColorRed');",
+        "if (!colorRed || colorRed.kind !== 'constant' || colorRed.value !== 1 || 'address' in colorRed) throw new Error('constant should be value-only D8 metadata');",
       ].join('\n'),
     ],
     { cwd: installDir },
