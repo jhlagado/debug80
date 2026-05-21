@@ -18,6 +18,23 @@ type BitOpsEncodeContext = {
   memIndexed: (op: AsmOperandNode, env: CompileEnv) => { prefix: number; disp: number } | undefined;
 };
 
+const BIT_LIKE_OPS = {
+  bit: { base: 0x40, allowIndexedDestination: false },
+  res: { base: 0x80, allowIndexedDestination: true },
+  set: { base: 0xc0, allowIndexedDestination: true },
+} as const;
+
+const ROTATE_SHIFT_OPS = {
+  rlc: 0x00,
+  rrc: 0x08,
+  rl: 0x10,
+  rr: 0x18,
+  sla: 0x20,
+  sra: 0x28,
+  sll: 0x30,
+  srl: 0x38,
+} as const;
+
 function encodeBitLike(
   node: AsmInstructionNode,
   env: CompileEnv,
@@ -157,59 +174,24 @@ export function encodeBitOpsInstruction(
   const head = node.head.toLowerCase();
   const ops = node.operands;
 
-  if (head === 'bit') {
-    const encoded = encodeBitLike(node, env, diagnostics, ctx, 0x40, 'bit');
+  const bitLike = BIT_LIKE_OPS[head as keyof typeof BIT_LIKE_OPS];
+  if (bitLike) {
+    const encoded = encodeBitLike(
+      node,
+      env,
+      diagnostics,
+      ctx,
+      bitLike.base,
+      head,
+      bitLike.allowIndexedDestination,
+    );
     if (encoded) return encoded;
-    if (ops.length === 2) return undefined;
-  }
-  if (head === 'res') {
-    const encoded = encodeBitLike(node, env, diagnostics, ctx, 0x80, 'res', true);
-    if (encoded) return encoded;
-    if (ops.length === 2 || ops.length === 3) return undefined;
-  }
-  if (head === 'set') {
-    const encoded = encodeBitLike(node, env, diagnostics, ctx, 0xc0, 'set', true);
-    if (encoded) return encoded;
-    if (ops.length === 2 || ops.length === 3) return undefined;
+    if (ops.length === 2 || (bitLike.allowIndexedDestination && ops.length === 3)) return undefined;
   }
 
-  if (head === 'rl') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x10, 'rl');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'rr') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x18, 'rr');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'sla') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x20, 'sla');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'sra') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x28, 'sra');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'srl') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x38, 'srl');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'sll') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x30, 'sll');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'rlc') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x00, 'rlc');
-    if (encoded) return encoded;
-    if (ops.length === 1 || ops.length === 2) return undefined;
-  }
-  if (head === 'rrc') {
-    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, 0x08, 'rrc');
+  const rotateShiftBase = ROTATE_SHIFT_OPS[head as keyof typeof ROTATE_SHIFT_OPS];
+  if (rotateShiftBase !== undefined) {
+    const encoded = encodeCbRotateShift(node, env, diagnostics, ctx, rotateShiftBase, head);
     if (encoded) return encoded;
     if (ops.length === 1 || ops.length === 2) return undefined;
   }
