@@ -3,8 +3,9 @@
 This is the single contributor reference for local verification flow, fixture refresh commands, and CI expectations.
 
 AZM assembler behavior is tracked by the AZM design and baseline docs under
-`docs/design` and `docs/spec`. Inherited high-level ZAX behavior is deleted or
-rewritten as ASM80/.asm coverage; it no longer has a separate test lane.
+`docs/design` and `docs/spec`. Retained behavior is covered as ASM80-baseline
+or `.asm`/`.z80` AZM coverage; retired high-level constructs do not have a
+separate test lane.
 
 ## Local verification flow
 
@@ -42,7 +43,7 @@ npm run test:azm:alpha
 ```
 
 This command builds AZM and runs the alpha checks for register-care,
-ASM flat `.asm` parsing, directive aliases, ASM80 includes, core ASM80
+flat `.asm` parsing, directive aliases, ASM80 includes, core ASM80
 directives, equate aliases, strings, alignment, inline op expansion, and
 layout constants. It uses only files in this repository, so contributors can
 run it without local MON3, TEC-1G, Tetro, or Pacmo checkouts.
@@ -69,8 +70,8 @@ temporary directory, and compares HEX payloads after ignoring only final newline
 differences. Missing `asm80`, missing Tetro, and the currently unconfigured MON3
 entry are reported as `SKIP` rather than guessed.
 
-Run the opt-in external ASM80 replacement baseline when touching ASM80
-parsing, lowering, CLI binary output, or ASM80 compatibility docs:
+Run the opt-in external ASM80 baseline when touching ASM80 parsing, lowering,
+CLI binary output, or ASM80 baseline docs:
 
 ```sh
 npm run test:asm80:baseline
@@ -93,14 +94,14 @@ npm run test:asm80:baseline
 
 ### Register-Care Audit
 
-Run register-care analysis without changing ASM80-compatible output:
+Run register-care analysis without changing ASM80-baseline output:
 
 ```sh
 npm run azm -- --rc audit --reg-report path/to/source.z80
 ```
 
 This writes `path/to/source.regcare.txt`. The default mode remains `off`, so
-existing ASM80 compatibility checks are unchanged unless a register-care flag is
+existing ASM80 baseline checks are unchanged unless a register-care flag is
 supplied.
 
 Run the opt-in Tetro application check when touching loadable binary range

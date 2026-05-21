@@ -15,8 +15,8 @@ normative language and metadata documents remain:
 - `docs/spec/azmdoc.md`
 - `docs/design/asm80-compatibility-baseline.md`
 
-The TextMate grammar exists so editor tooling can follow the same direction as
-the AZM language standard while AZM is being stabilized.
+The TextMate grammar exists so editor tooling can follow the AZM language
+standard.
 
 ## Covered scopes
 
@@ -84,8 +84,8 @@ A VS Code extension can consume the grammar like this:
 ```
 
 When Debug80 already has distinct handling for `.asm` or `.z80`, use `.asm` as
-the canonical language id and decide separately whether existing ASM80 files should
-opt into the same grammar by default.
+the canonical AZM language id and decide separately whether ASM80 corpus files
+should opt into the same grammar by default.
 
 ## Expected future refinement
 

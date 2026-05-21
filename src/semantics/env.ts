@@ -183,33 +183,30 @@ export function evalImmExpr(
 type CollectedDecls = {
   types: Array<TypeDeclNode | UnionDeclNode>;
   enums: EnumDeclNode[];
-  equates: AsmEquDecl[];
+  equates: AsmEquNodeLike[];
 };
 
-type AsmEquDecl = {
-  kind: string;
+type AsmEquNodeLike = {
+  kind: 'AsmEqu';
   span: SourceSpan;
   name: string;
   value?: ImmExprNode;
-  expr?: ImmExprNode;
 };
 
-function isAsmEquDecl(item: {
+function isAsmEquNode(item: {
   kind: string;
   name?: unknown;
   value?: unknown;
-  expr?: unknown;
-}): item is AsmEquDecl {
+}): item is AsmEquNodeLike {
   return (
-    (item.kind === 'AsmEqu' || item.kind === 'AsmEquDecl' || item.kind === 'EquDecl') &&
+    item.kind === 'AsmEqu' &&
     typeof item.name === 'string' &&
-    ((item.value as { kind?: unknown } | undefined)?.kind !== undefined ||
-      (item.expr as { kind?: unknown } | undefined)?.kind !== undefined)
+    (item.value as { kind?: unknown } | undefined)?.kind !== undefined
   );
 }
 
-function constValueExpr(item: AsmEquDecl): ImmExprNode {
-  const expr = item.value ?? item.expr;
+function constValueExpr(item: AsmEquNodeLike): ImmExprNode {
+  const expr = item.value;
   if (!expr) throw new Error('ASM equ directive is missing an expression.');
   return expr;
 }
@@ -341,15 +338,9 @@ function asmStringLength(value: unknown, fallback = 0): number {
     value &&
     typeof value === 'object' &&
     'kind' in value &&
-    (value.kind === 'AsmString' || value.kind === 'StringLiteral' || value.kind === 'RawString')
+    value.kind === 'AsmString'
   ) {
-    const text =
-      'value' in value && typeof value.value === 'string'
-        ? value.value
-        : 'text' in value && typeof value.text === 'string'
-          ? value.text
-          : undefined;
-    return text?.length ?? fallback;
+    return 'value' in value && typeof value.value === 'string' ? value.value.length : fallback;
   }
   return fallback;
 }
@@ -363,7 +354,7 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
       const kind = (item as { kind: string }).kind;
       switch (kind) {
         case 'AsmOrg': {
-          const expr = (item as { value?: ImmExprNode; expr?: ImmExprNode }).value ?? (item as { expr?: ImmExprNode }).expr;
+          const expr = (item as { value?: ImmExprNode }).value;
           const value = expr ? evalImmExpr(expr, scratchEnv) : undefined;
           if (value !== undefined) current = value;
           break;
@@ -375,9 +366,9 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
           break;
         }
         case 'AsmEqu': {
-          const equ = item as AsmEquDecl;
+          const equ = item as AsmEquNodeLike;
           if (env.types.has(equ.name)) break;
-          const expr = equ.value ?? equ.expr;
+          const expr = equ.value;
           if (expr) {
             env.asmEquExprs?.set(equ.name, { expr, currentLocation: current });
             env.asmEquExprs?.set(equ.name.toLowerCase(), { expr, currentLocation: current });
@@ -452,7 +443,7 @@ export function buildEnv(
         collected.enums.push(item);
         return;
       }
-      if (isAsmEquDecl(item)) {
+      if (isAsmEquNode(item)) {
         collected.equates.push(item);
       }
     });

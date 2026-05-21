@@ -80,7 +80,11 @@ describe('semantics/layout', () => {
       kind: 'TypeDecl',
       span,
       name: 'Self',
-      typeExpr: { kind: 'TypeName', span, name: 'Self' },
+      typeExpr: {
+        kind: 'RecordType',
+        span,
+        fields: [recordField('next', { kind: 'TypeName', span, name: 'Self' })],
+      },
     };
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Self', selfDecl]]) };
     const diagnostics: any[] = [];

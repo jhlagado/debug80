@@ -97,7 +97,7 @@ At minimum add:
 - a positive encoder test for the new mnemonic or operand form
 - a negative test to preserve diagnostics for unsupported operand shapes
 
-If the change affects ASM80 compatibility or emitted assembly, update or add coverage in:
+If the change affects the ASM80 baseline or emitted assembly, update or add coverage in:
 
 - `test/cli/pr990_asm80_emitter_validation.test.ts`
 

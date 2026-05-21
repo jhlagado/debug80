@@ -125,7 +125,7 @@ export type SourceItemNode =
 export interface TypeDeclNode extends BaseNode {
   kind: 'TypeDecl';
   name: string;
-  typeExpr: TypeExprNode;
+  typeExpr: Extract<TypeExprNode, { kind: 'RecordType' }>;
 }
 
 /**

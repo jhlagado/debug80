@@ -21,16 +21,11 @@ type TypeResolutionContext = {
 export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
   const resolveScalarKind = (
     typeExpr: TypeExprNode,
-    seen: Set<string> = new Set(),
   ): ScalarKind | undefined => {
     if (typeExpr.kind !== 'TypeName') return undefined;
     const lower = typeExpr.name.toLowerCase();
     if (lower === 'byte' || lower === 'word' || lower === 'addr') return lower;
-    if (seen.has(lower)) return undefined;
-    seen.add(lower);
-    const decl = ctx.env.types.get(typeExpr.name);
-    if (!decl || decl.kind !== 'TypeDecl') return undefined;
-    return resolveScalarKind(decl.typeExpr, seen);
+    return undefined;
   };
 
   const resolveAggregateType = (te: TypeExprNode): AggregateType | undefined => {
@@ -48,40 +43,16 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
 
   const resolveArrayElementType = (te: TypeExprNode): TypeExprNode | undefined => {
     if (te.kind === 'ArrayType') return te.element;
-    if (te.kind === 'TypeName') {
-      const decl = ctx.env.types.get(te.name);
-      if (decl?.kind === 'TypeDecl' && decl.typeExpr.kind === 'ArrayType') {
-        return decl.typeExpr.element;
-      }
-    }
     return undefined;
-  };
-
-  const unwrapTypeAlias = (
-    te: TypeExprNode,
-    seen: Set<string> = new Set(),
-  ): TypeExprNode | undefined => {
-    if (te.kind !== 'TypeName') return te;
-    const scalar = resolveScalarKind(te);
-    if (scalar) {
-      return { kind: 'TypeName', span: te.span, name: scalar === 'addr' ? 'addr' : scalar };
-    }
-    const lower = te.name.toLowerCase();
-    if (seen.has(lower)) return undefined;
-    seen.add(lower);
-    const decl = ctx.env.types.get(te.name);
-    if (!decl || decl.kind !== 'TypeDecl') return te;
-    return unwrapTypeAlias(decl.typeExpr, seen);
   };
 
   const resolveArrayType = (
     te: TypeExprNode,
   ): { element: TypeExprNode; length?: number } | undefined => {
-    const resolved = unwrapTypeAlias(te);
-    if (!resolved || resolved.kind !== 'ArrayType') return undefined;
-    return resolved.length === undefined
-      ? { element: resolved.element }
-      : { element: resolved.element, length: resolved.length };
+    if (te.kind !== 'ArrayType') return undefined;
+    return te.length === undefined
+      ? { element: te.element }
+      : { element: te.element, length: te.length };
   };
 
   const typeDisplay = (te: TypeExprNode): string => {
@@ -100,23 +71,20 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
   };
 
   const sameTypeShape = (left: TypeExprNode, right: TypeExprNode): boolean => {
-    const l = unwrapTypeAlias(left);
-    const r = unwrapTypeAlias(right);
-    if (!l || !r) return false;
-    if (l.kind !== r.kind) return false;
-    switch (l.kind) {
+    if (left.kind !== right.kind) return false;
+    switch (left.kind) {
       case 'TypeName':
-        return r.kind === 'TypeName' && l.name.toLowerCase() === r.name.toLowerCase();
+        return right.kind === 'TypeName' && left.name.toLowerCase() === right.name.toLowerCase();
       case 'ArrayType':
-        if (r.kind !== 'ArrayType') return false;
-        if (l.length !== r.length) return false;
-        return sameTypeShape(l.element, r.element);
+        if (right.kind !== 'ArrayType') return false;
+        if (left.length !== right.length) return false;
+        return sameTypeShape(left.element, right.element);
       case 'RecordType':
-        if (r.kind !== 'RecordType') return false;
-        if (l.fields.length !== r.fields.length) return false;
-        for (let i = 0; i < l.fields.length; i++) {
-          const lf = l.fields[i]!;
-          const rf = r.fields[i]!;
+        if (right.kind !== 'RecordType') return false;
+        if (left.fields.length !== right.fields.length) return false;
+        for (let i = 0; i < left.fields.length; i++) {
+          const lf = left.fields[i]!;
+          const rf = right.fields[i]!;
           if (lf.name !== rf.name || !sameTypeShape(lf.typeExpr, rf.typeExpr)) return false;
         }
         return true;
@@ -131,8 +99,7 @@ export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
       case 'EaSub':
         return resolveEaTypeExprInternal(ea.base);
       case 'EaLayoutCast': {
-        const resolved = unwrapTypeAlias(ea.typeExpr);
-        return resolved ?? ea.typeExpr;
+        return ea.typeExpr;
       }
       case 'EaField': {
         const baseType = resolveEaTypeExprInternal(ea.base);
