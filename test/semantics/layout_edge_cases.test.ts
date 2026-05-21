@@ -26,6 +26,10 @@ const span = {
 const byteType: TypeExprNode = { kind: 'TypeName', span, name: 'byte' };
 const wordType: TypeExprNode = { kind: 'TypeName', span, name: 'word' };
 
+function typeName(name: string): TypeExprNode {
+  return { kind: 'TypeName', span, name };
+}
+
 function mkField(name: string, typeExpr: TypeExprNode): RecordFieldNode {
   return { kind: 'RecordField', span, name, typeExpr };
 }
@@ -43,6 +47,13 @@ function unionDecl(name: string, fields: RecordFieldNode[]): UnionDeclNode {
 
 const emptyEnv: CompileEnv = { equates: new Map(), enums: new Map(), types: new Map() };
 
+function envWithTypes(types: Array<TypeDeclNode | UnionDeclNode>): CompileEnv {
+  return {
+    ...emptyEnv,
+    types: new Map(types.map((type) => [type.name, type])),
+  };
+}
+
 describe('layout edge cases (#1138)', () => {
   it('treats an empty record as zero bytes', () => {
     const emptyRec: TypeExprNode = { kind: 'RecordType', span, fields: [] };
@@ -53,9 +64,9 @@ describe('layout edge cases (#1138)', () => {
 
   it('treats an empty union as zero bytes', () => {
     const u = unionDecl('EmptyU', []);
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['EmptyU', u]]) };
+    const env = envWithTypes([u]);
     const diagnostics: Diagnostic[] = [];
-    expect(sizeOfTypeExpr({ kind: 'TypeName', span, name: 'EmptyU' }, env, diagnostics)).toBe(0);
+    expect(sizeOfTypeExpr(typeName('EmptyU'), env, diagnostics)).toBe(0);
     expectNoDiagnostics(diagnostics);
   });
 
@@ -64,22 +75,15 @@ describe('layout edge cases (#1138)', () => {
     const mid = typeDecl('Mid', {
       kind: 'RecordType',
       span,
-      fields: [mkField('inner', { kind: 'TypeName', span, name: 'Leaf' })],
+      fields: [mkField('inner', typeName('Leaf'))],
     });
     const top = typeDecl('Top', {
       kind: 'RecordType',
       span,
-      fields: [mkField('mid', { kind: 'TypeName', span, name: 'Mid' })],
+      fields: [mkField('mid', typeName('Mid'))],
     });
-    const env: CompileEnv = {
-      ...emptyEnv,
-      types: new Map([
-        ['Leaf', leaf],
-        ['Mid', mid],
-        ['Top', top],
-      ]),
-    };
-    const topExpr: TypeExprNode = { kind: 'TypeName', span, name: 'Top' };
+    const env = envWithTypes([leaf, mid, top]);
+    const topExpr = typeName('Top');
     const diagnostics: Diagnostic[] = [];
     expect(layoutInfoForTypeExpr(topExpr, env, diagnostics)).toEqual({ size: 1 });
     expect(sizeOfTypeExpr(topExpr, env, diagnostics)).toBe(1);
@@ -91,19 +95,19 @@ describe('layout edge cases (#1138)', () => {
       mkField('bytes', { kind: 'ArrayType', span, element: byteType, length: 4 }),
       mkField('w', wordType),
     ]);
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['U', u]]) };
+    const env = envWithTypes([u]);
     const diagnostics: Diagnostic[] = [];
-    expect(sizeOfTypeExpr({ kind: 'TypeName', span, name: 'U' }, env, diagnostics)).toBe(4);
+    expect(sizeOfTypeExpr(typeName('U'), env, diagnostics)).toBe(4);
     expectNoDiagnostics(diagnostics);
   });
 
   it('sizes an array of a union type as element size × length', () => {
     const u = unionDecl('Cell', [mkField('a', byteType), mkField('w', wordType)]);
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['Cell', u]]) };
+    const env = envWithTypes([u]);
     const arr: TypeExprNode = {
       kind: 'ArrayType',
       span,
-      element: { kind: 'TypeName', span, name: 'Cell' },
+      element: typeName('Cell'),
       length: 5,
     };
     const diagnostics: Diagnostic[] = [];
@@ -116,21 +120,14 @@ describe('layout edge cases (#1138)', () => {
     const mid = typeDecl('Mid', {
       kind: 'RecordType',
       span,
-      fields: [mkField('pad', byteType), mkField('leaf', { kind: 'TypeName', span, name: 'Leaf' })],
+      fields: [mkField('pad', byteType), mkField('leaf', typeName('Leaf'))],
     });
     const top = typeDecl('Top', {
       kind: 'RecordType',
       span,
-      fields: [mkField('mid', { kind: 'TypeName', span, name: 'Mid' })],
+      fields: [mkField('mid', typeName('Mid'))],
     });
-    const env: CompileEnv = {
-      ...emptyEnv,
-      types: new Map([
-        ['Leaf', leaf],
-        ['Mid', mid],
-        ['Top', top],
-      ]),
-    };
+    const env = envWithTypes([leaf, mid, top]);
     const path: OffsetPathNode = {
       kind: 'OffsetPath',
       span,
@@ -141,13 +138,7 @@ describe('layout edge cases (#1138)', () => {
       ],
     };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetPathInTypeExpr(
-      { kind: 'TypeName', span, name: 'Top' },
-      path,
-      env,
-      () => 0,
-      diagnostics,
-    );
+    const off = offsetPathInTypeExpr(typeName('Top'), path, env, () => 0, diagnostics);
     expect(off).toBe(1);
     expectNoDiagnostics(diagnostics);
   });
@@ -165,18 +156,12 @@ describe('layout edge cases (#1138)', () => {
         mkField('cells', {
           kind: 'ArrayType',
           span,
-          element: { kind: 'TypeName', span, name: 'Cell' },
+          element: typeName('Cell'),
           length: 3,
         }),
       ],
     });
-    const env: CompileEnv = {
-      ...emptyEnv,
-      types: new Map([
-        ['Cell', cell],
-        ['Row', row],
-      ]),
-    };
+    const env = envWithTypes([cell, row]);
     const path: OffsetPathNode = {
       kind: 'OffsetPath',
       span,
@@ -188,7 +173,7 @@ describe('layout edge cases (#1138)', () => {
     };
     const diagnostics: Diagnostic[] = [];
     const off = offsetPathInTypeExpr(
-      { kind: 'TypeName', span, name: 'Row' },
+      typeName('Row'),
       path,
       env,
       (e) => (e.kind === 'ImmLiteral' ? e.value : undefined),
@@ -200,16 +185,10 @@ describe('layout edge cases (#1138)', () => {
 
   it('union offset keeps total at 0 for any member (no cumulative offset between union variants)', () => {
     const u = unionDecl('Tag', [mkField('a', byteType), mkField('w', wordType)]);
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['Tag', u]]) };
+    const env = envWithTypes([u]);
     const path: OffsetPathNode = { kind: 'OffsetPath', span, base: 'w', steps: [] };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetPathInTypeExpr(
-      { kind: 'TypeName', span, name: 'Tag' },
-      path,
-      env,
-      () => 0,
-      diagnostics,
-    );
+    const off = offsetPathInTypeExpr(typeName('Tag'), path, env, () => 0, diagnostics);
     expect(off).toBe(0);
     expectNoDiagnostics(diagnostics);
   });
@@ -218,24 +197,16 @@ describe('layout edge cases (#1138)', () => {
     const mid = typeDecl('Mid', {
       kind: 'RecordType',
       span,
-      fields: [mkField('x', { kind: 'TypeName', span, name: 'Missing' })],
+      fields: [mkField('x', typeName('Missing'))],
     });
     const top = typeDecl('Top', {
       kind: 'RecordType',
       span,
-      fields: [mkField('mid', { kind: 'TypeName', span, name: 'Mid' })],
+      fields: [mkField('mid', typeName('Mid'))],
     });
-    const env: CompileEnv = {
-      ...emptyEnv,
-      types: new Map([
-        ['Mid', mid],
-        ['Top', top],
-      ]),
-    };
+    const env = envWithTypes([mid, top]);
     const diagnostics: Diagnostic[] = [];
-    expect(
-      sizeOfTypeExpr({ kind: 'TypeName', span, name: 'Top' }, env, diagnostics),
-    ).toBeUndefined();
+    expect(sizeOfTypeExpr(typeName('Top'), env, diagnostics)).toBeUndefined();
     expectDiagnostic(diagnostics, {
       id: DiagnosticIds.TypeError,
       severity: 'error',
