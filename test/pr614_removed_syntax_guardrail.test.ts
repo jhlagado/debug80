@@ -193,7 +193,14 @@ describe('PR614 removed syntax guardrail', () => {
     ['export func main()', 'removed-function-decl'],
     ['module gfx', 'removed-module-import'],
     ['import video', 'removed-module-import'],
+    ['data Screen byte[768]', 'removed-data-decl'],
     ['var Screen byte', 'removed-var-decl'],
+    ['let temp byte', 'removed-let-decl'],
+    ['local counter byte', 'removed-local-arg-decl'],
+    ['arg value byte', 'removed-local-arg-decl'],
+    ['argument value byte', 'removed-local-arg-decl'],
+    ['extern func MON_PRINT_CHAR(A)', 'removed-extern-func'],
+    ['A := B', 'removed-typed-assignment'],
     ['globals', 'removed-globals-block'],
   ])('rejects %s in ASM source', async (source, ruleId) => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-'));

@@ -8,6 +8,11 @@ const FORBIDDEN_RULES = [
     message: 'Bare `data` marker lines are forbidden; use labels plus .db/.dw/.ds.',
   },
   {
+    id: 'removed-data-decl',
+    pattern: /^\s*(?:export\s+)?data\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
+    message: '`data` declarations are forbidden; use labels plus .db/.dw/.ds.',
+  },
+  {
     id: 'removed-globals-block',
     pattern: /^\s*globals\b/i,
     message: '`globals ... end` is forbidden; use labels plus .db/.dw/.ds.',
@@ -31,6 +36,26 @@ const FORBIDDEN_RULES = [
     id: 'removed-var-decl',
     pattern: /^\s*(?:export\s+)?var\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
     message: '`var` declarations are forbidden; use labels plus .db/.dw/.ds.',
+  },
+  {
+    id: 'removed-let-decl',
+    pattern: /^\s*(?:export\s+)?let\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
+    message: '`let` declarations are forbidden; use labels plus .equ/.db/.dw/.ds.',
+  },
+  {
+    id: 'removed-local-arg-decl',
+    pattern: /^\s*(?:local|arg|argument)\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
+    message: 'Local/argument declarations are forbidden; use explicit registers, stack, and labels.',
+  },
+  {
+    id: 'removed-extern-func',
+    pattern: /^\s*extern\s+func\b/i,
+    message: '`extern func` declarations are forbidden; use .asmi register-care interfaces.',
+  },
+  {
+    id: 'removed-typed-assignment',
+    pattern: /:=/,
+    message: '`:=` typed assignment is forbidden; write explicit Z80 instructions.',
   },
   {
     id: 'top-level-const-decl',
