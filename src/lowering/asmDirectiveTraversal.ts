@@ -1,4 +1,5 @@
 import type { AsmOperandNode, ImmExprNode, SourceSpan } from '../frontend/ast.js';
+import { containsCurrentLocation } from '../frontend/immExprUtils.js';
 import { evalImmExpr as evalImmExprWithEnv } from '../semantics/env.js';
 import type { PlacementKind } from './loweringTypes.js';
 import type { LoweringContext } from './programLowering.js';
@@ -85,18 +86,7 @@ export function placementAddressAtOffset(
   return base === undefined ? undefined : base + offset;
 }
 
-export function containsCurrentLocation(expr: ImmExprNode): boolean {
-  switch (expr.kind) {
-    case 'ImmCurrentLocation':
-      return true;
-    case 'ImmUnary':
-      return containsCurrentLocation(expr.expr);
-    case 'ImmBinary':
-      return containsCurrentLocation(expr.left) || containsCurrentLocation(expr.right);
-    default:
-      return false;
-  }
-}
+export { containsCurrentLocation };
 
 export function evalAsmImmAtCurrent(
   ctx: AsmEvalContext,

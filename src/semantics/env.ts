@@ -10,6 +10,7 @@ import type {
   UnionDeclNode,
   SourceSpan,
 } from '../frontend/ast.js';
+import { containsCurrentLocation } from '../frontend/immExprUtils.js';
 import { offsetPathInTypeExpr, sizeOfTypeExpr } from './layout.js';
 import { visitDeclTree } from './declVisitor.js';
 import { diagSemanticsError } from './semanticsDiagnostics.js';
@@ -211,19 +212,6 @@ function constValueExpr(item: AsmEquDecl): ImmExprNode {
   const expr = item.value ?? item.expr;
   if (!expr) throw new Error('ASM equ directive is missing an expression.');
   return expr;
-}
-
-function containsCurrentLocation(expr: ImmExprNode): boolean {
-  switch (expr.kind) {
-    case 'ImmCurrentLocation':
-      return true;
-    case 'ImmUnary':
-      return containsCurrentLocation(expr.expr);
-    case 'ImmBinary':
-      return containsCurrentLocation(expr.left) || containsCurrentLocation(expr.right);
-    default:
-      return false;
-  }
 }
 
 function isAsmDirectiveItem(item: { kind: string }): boolean {
