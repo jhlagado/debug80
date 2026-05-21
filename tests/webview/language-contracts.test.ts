@@ -427,6 +427,30 @@ describe('package.json language contracts', () => {
     }
   });
 
+  it('launch schema keeps asm80 as a legacy AZM-compatible assembler alias', () => {
+    const debuggerContribution = contributes.debuggers.find((debuggerEntry) => {
+      return debuggerEntry.type === 'z80';
+    });
+    const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
+
+    expect(assembler?.default).toBe('azm');
+    expect(assembler?.enum).toContain('azm');
+    expect(assembler?.enum).toContain('asm80');
+  });
+
+  it('set-entry-source context menus cover AZM entry source extensions', () => {
+    for (const menuId of ['explorer/context', 'editor/context', 'editor/title/context']) {
+      const row = contributes.menus[menuId].find((entry) => {
+        return entry.command === 'debug80.setEntrySource';
+      });
+      expect(row).toBeDefined();
+      for (const extension of ['.asm', '.z80', '.a80', '.s']) {
+        expect(row!.when).toContain(`resourceExtname == ${extension}`);
+      }
+      expect(row!.when).not.toContain('resourceExtname == .asmi');
+    }
+  });
+
   it('ASM_LANGUAGE_ID has a TextMate grammar contribution', () => {
     const grammar = contributes.grammars.find((g) => g.language === asmLanguageId);
     expect(grammar).toBeDefined();

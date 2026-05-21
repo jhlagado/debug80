@@ -143,10 +143,18 @@
       "anyOf": [
         { "required": ["address"] },
         {
-          "required": ["kind", "value"],
-          "properties": {
-            "kind": { "const": "constant" }
-          }
+          "required": ["value"],
+          "anyOf": [
+            {
+              "required": ["kind"],
+              "properties": {
+                "kind": { "const": "constant" }
+              }
+            },
+            {
+              "not": { "required": ["kind"] }
+            }
+          ]
         }
       ],
       "properties": {

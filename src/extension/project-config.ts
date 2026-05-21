@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ProjectConfig } from '../debug/session/types';
+import { isAzmEntrySourcePath } from './azm-source-extensions';
 
 export const DEBUG80_PROJECT_VERSION = 2 as const;
 
@@ -386,8 +387,7 @@ function collectProjectSourceFiles(rootPath: string, currentPath: string, result
       continue;
     }
 
-    const lower = entry.name.toLowerCase();
-    if (!lower.endsWith('.asm') && !lower.endsWith('.z80')) {
+    if (!isAzmEntrySourcePath(entry.name)) {
       continue;
     }
 

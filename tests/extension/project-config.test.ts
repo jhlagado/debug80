@@ -18,7 +18,7 @@ describe('project-config helpers', () => {
     // temp directories are left for the OS to clean up
   });
 
-  it('lists asm and z80 source files relative to the project root', () => {
+  it('lists AZM entry source files relative to the project root', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-sources-'));
     fs.mkdirSync(path.join(root, 'src'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src', 'shared'), { recursive: true });
@@ -26,13 +26,16 @@ describe('project-config helpers', () => {
     fs.mkdirSync(path.join(root, 'build'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'main.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'src', 'helpers.z80'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'src', 'loader.a80'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'src', 'startup.s'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'src', 'contracts.asmi'), 'extern MON_PRINT_CHAR\n');
     fs.writeFileSync(path.join(root, 'src', 'shared', 'include.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'tools', 'ignore.txt'), 'x\n');
     fs.writeFileSync(path.join(root, 'build', 'generated.asm'), 'nop\n');
 
     const files = listProjectSourceFiles(root);
 
-    expect(files).toEqual(['src/helpers.z80', 'src/main.asm']);
+    expect(files).toEqual(['src/helpers.z80', 'src/loader.a80', 'src/main.asm', 'src/startup.s']);
   });
 
   it('falls back to top-level project source files when no src folder exists', () => {
@@ -40,11 +43,14 @@ describe('project-config helpers', () => {
     fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
     fs.writeFileSync(path.join(root, 'main.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'alt.z80'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'loader.a80'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'startup.s'), 'nop\n');
+    fs.writeFileSync(path.join(root, 'contracts.asmi'), 'extern MON_PRINT_CHAR\n');
     fs.writeFileSync(path.join(root, 'lib', 'include.asm'), 'nop\n');
 
     const files = listProjectSourceFiles(root);
 
-    expect(files).toEqual(['alt.z80', 'main.asm']);
+    expect(files).toEqual(['alt.z80', 'loader.a80', 'main.asm', 'startup.s']);
   });
 
   it('updates the selected target source in debug80.json', () => {

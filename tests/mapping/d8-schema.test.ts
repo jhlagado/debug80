@@ -79,6 +79,28 @@ describe('D8 JSON Schema contract', () => {
     }
   });
 
+  it('accepts value-only constants when symbolDefaults marks symbols as constants', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      symbolDefaults: { kind: 'constant' },
+      files: {
+        'src/main.asm': {
+          symbols: [{ name: 'SCREEN_WIDTH', value: 32, line: 1 }],
+        },
+      },
+    };
+
+    const valid = validate(map);
+    if (!valid) {
+      const errors = validate.errors?.map((e) => `${e.instancePath} ${e.message}`).join('\n');
+      expect.fail(`Schema validation failed:\n${errors}`);
+    }
+  });
+
   it('round-tripped AZM fixture still conforms to the schema', () => {
     const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'azm', 'matrix.d8.json');
     const raw = fs.readFileSync(d8Path, 'utf-8');

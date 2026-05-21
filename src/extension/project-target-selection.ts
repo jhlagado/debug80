@@ -10,6 +10,7 @@ import {
   readProjectConfig,
   updateProjectTargetSource,
 } from './project-config';
+import { isAzmEntrySourcePath } from './azm-source-extensions';
 
 const TARGET_KEY_PREFIX = 'debug80.selectedTarget:';
 
@@ -302,9 +303,8 @@ export class ProjectTargetSelectionController {
       if (typeof src !== 'string') {
         continue;
       }
-      const lower = src.toLowerCase();
       const key = entrySourceKey(projectRoot, src);
-      if (lower.endsWith('.asm') || lower.endsWith('.z80')) {
+      if (isAzmEntrySourcePath(src)) {
         const list = targetsPerSourcePath.get(key) ?? [];
         list.push(name);
         targetsPerSourcePath.set(key, list);
@@ -313,7 +313,7 @@ export class ProjectTargetSelectionController {
 
     try {
       const all = getCachedSourceFiles(projectRoot);
-      azmPaths = all.filter((p) => /\.(asm|z80)$/i.test(p));
+      azmPaths = all.filter((p) => isAzmEntrySourcePath(p));
     } catch {
       azmPaths = [];
     }

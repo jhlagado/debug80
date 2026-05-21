@@ -2,20 +2,19 @@
  * @fileoverview Auto rebuild-on-save support for active Debug80 sessions.
  */
 
-import * as path from 'path';
 import * as vscode from 'vscode';
 import type { WarmRebuildResult } from '../debug/session/message-types';
 import { isWarmRebuildResult } from '../debug/session/message-types';
 import { SessionStateManager } from './session-state-manager';
+import { isAzmRebuildSourcePath } from './azm-source-extensions';
 
 const REBUILD_DEBOUNCE_MS = 250;
-const ASSEMBLY_EXTENSIONS = new Set(['.asm', '.z80', '.a80', '.s']);
 
 function isAssemblyDocument(document: vscode.TextDocument): boolean {
   if (document.isUntitled || document.uri.scheme !== 'file') {
     return false;
   }
-  return ASSEMBLY_EXTENSIONS.has(path.extname(document.uri.fsPath).toLowerCase());
+  return isAzmRebuildSourcePath(document.uri.fsPath);
 }
 
 function clearRebuildDiagnostics(

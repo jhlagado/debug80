@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+import { AZM_LANGUAGE_EXTENSIONS } from './azm-source-extensions';
 
 const ASM_LANGUAGE_ID = 'z80-asm';
 
@@ -32,12 +33,9 @@ export function registerLanguageAssociations(
     }
   };
 
-  const ensureAsmLanguage = async (doc: vscode.TextDocument): Promise<void> =>
-    ensureLanguage(doc, '.asm', ASM_LANGUAGE_ID);
-
   /** Same extensions as package.json `languages` / `files.associations` for z80-asm. */
   const ensureZ80AsmExtensionLanguages = async (doc: vscode.TextDocument): Promise<void> => {
-    for (const ext of ['.z80', '.a80', '.s'] as const) {
+    for (const ext of AZM_LANGUAGE_EXTENSIONS) {
       await ensureLanguage(doc, ext, ASM_LANGUAGE_ID);
     }
   };
@@ -46,7 +44,6 @@ export function registerLanguageAssociations(
     const hasAsmLang = languages.includes(ASM_LANGUAGE_ID);
     if (hasAsmLang) {
       for (const doc of vscode.workspace.textDocuments) {
-        void ensureAsmLanguage(doc);
         void ensureZ80AsmExtensionLanguages(doc);
       }
     }
@@ -54,7 +51,6 @@ export function registerLanguageAssociations(
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((doc) => {
-      void ensureAsmLanguage(doc);
       void ensureZ80AsmExtensionLanguages(doc);
     })
   );
