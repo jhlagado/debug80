@@ -89,7 +89,7 @@ function stripLineComment(line) {
   return line.slice(0, Math.min(semicolonIdx, slashIdx));
 }
 
-function collectFilesFromRoots(repoRoot, roots) {
+function collectFilesFromRoots(repoRoot, roots, acceptsFile) {
   const files = [];
   const queue = roots.map((root) => resolve(repoRoot, root));
 
@@ -106,19 +106,16 @@ function collectFilesFromRoots(repoRoot, roots) {
       for (const entry of readdirSync(current)) queue.push(resolve(current, entry));
       continue;
     }
-    if (
-      stat.isFile() &&
-      (current.toLowerCase().endsWith('.asm') ||
-        current.toLowerCase().endsWith('.z80') ||
-        current.toLowerCase().endsWith('.asmi') ||
-        current.toLowerCase().endsWith('.md'))
-    ) {
-      files.push(current);
-    }
+    if (stat.isFile() && acceptsFile(current)) files.push(current);
   }
 
   files.sort();
   return files;
+}
+
+function isScannedSourceFile(path) {
+  const lower = path.toLowerCase();
+  return lower.endsWith('.asm') || lower.endsWith('.z80') || lower.endsWith('.asmi') || lower.endsWith('.md');
 }
 
 function isIgnoredPath(path) {
@@ -141,29 +138,10 @@ function isIgnoredPath(path) {
 }
 
 function collectForbiddenExtensionFiles(repoRoot, roots) {
-  const files = [];
-  const queue = roots.map((root) => resolve(repoRoot, root));
-
-  while (queue.length > 0) {
-    const current = queue.pop();
-    if (!current || isIgnoredPath(current)) continue;
-    let stat;
-    try {
-      stat = statSync(current);
-    } catch {
-      continue;
-    }
-    if (stat.isDirectory()) {
-      for (const entry of readdirSync(current)) queue.push(resolve(current, entry));
-      continue;
-    }
-    if (!stat.isFile()) continue;
+  return collectFilesFromRoots(repoRoot, roots, (current) => {
     const lower = current.toLowerCase();
-    if (FORBIDDEN_SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext))) files.push(current);
-  }
-
-  files.sort();
-  return files;
+    return FORBIDDEN_SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  });
 }
 
 function isAssemblyFence(line) {
@@ -204,7 +182,7 @@ export function scanForbiddenRemovedSyntax(options = {}) {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   const files = options.filePaths
     ? options.filePaths.map((p) => resolve(repoRoot, p)).sort()
-    : collectFilesFromRoots(repoRoot, options.roots ?? DEFAULT_SCAN_ROOTS);
+    : collectFilesFromRoots(repoRoot, options.roots ?? DEFAULT_SCAN_ROOTS, isScannedSourceFile);
 
   /** @type {Array<{file: string; line: number; column: number; ruleId: string; message: string}>} */
   const violations = [];
