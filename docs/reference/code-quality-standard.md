@@ -4,9 +4,8 @@ Status: active contributor reference
 
 ## Purpose
 
-AZM should become smaller, clearer, and easier to maintain as the inherited ZAX
-surface is retired. This document defines the code-quality standard for that
-work.
+This document defines the code-quality standard for keeping AZM small, clear,
+and easy to maintain.
 
 The standard is not about style polish for its own sake. It is about keeping an
 assembler codebase honest: each subsystem should have a narrow job, source files
@@ -18,8 +17,8 @@ reason.
 Prefer the simplest structure that preserves the real compiler boundary.
 
 AZM is an assembler. It needs parsing, semantic checks, lowering, section
-layout, fixups, output formats, diagnostics, and tooling APIs. It should not
-retain ZAX-era abstractions unless they still serve one of those jobs directly.
+layout, fixups, output formats, diagnostics, and tooling APIs. Abstractions
+should serve one of those jobs directly.
 
 When a change makes the codebase larger, more indirect, or harder to explain,
 the burden is on the change to justify why that complexity belongs in AZM.
@@ -49,17 +48,16 @@ explain their internal map.
 Names are part of the design.
 
 Use names that reflect the current AZM architecture, not the historical path by
-which the code arrived here. If AZM assembler code is no longer a ZAX function, do
-not make new ASM source assembler code depend on function-shaped names unless there
-is a deliberate temporary bridge.
+which the code arrived here. New ASM source support should use assembler terms:
+labels, routines, directives, symbols, storage, fixups, and emitted bytes.
 
 Prefer:
 
 - domain names over generic names
 - `parse`, `resolve`, `lower`, `emit`, `place`, and `write` for phase-specific
   work
-- names that distinguish AZM assembler syntax, ASM80 compatibility, and ZAX retirement
-  code
+- names that distinguish AZM assembler syntax, the ASM80 input baseline, and
+  retired-source quarantine code
 - explicit helper names over comments that explain vague helpers
 
 Avoid:
@@ -68,8 +66,8 @@ Avoid:
   name is available
 - names that hide whether a value is AST, lowered IR, emitted bytes, source
   text, or formatted output
-- compatibility names for core AZM behavior after the compatibility layer has
-  been crossed
+- baseline-adapter names for core AZM behavior after the input adapter has been
+  crossed
 
 ## Comments and Documentation
 
@@ -98,14 +96,14 @@ That limit is a review trigger, not a blind mechanical rule. A file may exceed
 - a dense AST or type definition file
 - a generated or table-like file
 - a stable encoder table where splitting would make lookup harder
-- a short-term migration bridge with an explicit cleanup path
+- a short-term bridge with an explicit cleanup path
 
 When a normal library or compiler phase file crosses the limit, prefer
 splitting by responsibility:
 
 - parser coordinator versus mode-specific parsers
 - phase orchestration versus phase helpers
-- shared domain logic versus compatibility adapters
+- shared domain logic versus baseline adapters
 - pure transformation helpers versus mutation-heavy emitters
 - public API surface versus internal implementation
 
@@ -135,17 +133,17 @@ The primary boundaries are:
 - output format writing
 - register-care analysis
 - CLI and tooling API wiring
-- ASM80 compatibility
-- ZAX retirement quarantine
+- ASM80 input baseline
+- retired-source quarantine
 
 Shared helpers should sit at the lowest honest layer. If both ASM source emission
 and register-care need op expansion, the shared service should describe op
 expansion itself. It should not live inside one consumer and force the other
 consumer to imitate it.
 
-Compatibility adapters should be thin. They may translate an old surface into a
-neutral AZM representation, but they should not make the neutral representation
-look like the old surface forever.
+Input-baseline adapters should be thin. They may translate accepted source
+spelling into a neutral AZM representation, but they should not make the neutral
+representation inherit adapter terminology.
 
 ## Duplication
 
@@ -180,10 +178,10 @@ Git history or explicit retirement tests, not in live compiler paths.
 Before deleting code, check whether it is:
 
 - part of AZM assembler syntax
-- part of ASM80 compatibility
+- part of the ASM80 input baseline
 - part of register-care, AZMDoc, visible `op` expansion, directive aliases, or
   layout constants
-- part of the ZAX retirement quarantine
+- part of retired-source quarantine
 - only reachable from obsolete tests or examples
 
 If the only remaining consumer is a retirement test, delete the obsolete path or
@@ -243,13 +241,13 @@ For ordinary cleanup:
 4. Delete the obsolete path only after the new path is covered.
 5. Run the relevant test lane and quality tools.
 
-For ZAX retirement cleanup:
+For retired-source cleanup:
 
-1. Identify whether the code is retained AZM, ASM80 compatibility, or retirement
+1. Identify whether the code is retained AZM, ASM80 baseline, or retirement
    quarantine.
 2. Move retained behavior behind AZM-facing names.
-3. Move compatibility behavior behind compatibility-facing adapters.
-4. Remove or quarantine ZAX-only behavior.
+3. Move ASM80 baseline behavior behind baseline-facing adapters.
+4. Remove or quarantine non-AZM source behavior.
 5. Update `docs/code-quality-findings.md` or the relevant audit when a major
    bridge is removed.
 
@@ -260,7 +258,8 @@ Before merging substantial compiler changes, ask:
 - Does each changed function have one clear responsibility?
 - Did any file cross 500 lines without a documented reason?
 - Did this add another mode branch to an already overloaded file?
-- Is the naming AZM assembler terminology, or does it preserve obsolete ZAX concepts?
+- Is the naming AZM assembler terminology, or does it preserve obsolete source
+  concepts?
 - Is duplicated logic now shared where drift would be dangerous?
 - Did dead code become unreachable, and was it removed?
 - Are comments explaining invariants rather than narrating obvious code?
@@ -276,7 +275,7 @@ The eventual skill should be stricter than this document in workflow:
 
 - inspect file sizes before editing
 - run Fallow before broad cleanup
-- classify code as retained AZM, ASM80 compatibility, or ZAX retirement
+- classify code as retained AZM, ASM80 baseline, or retired-source quarantine
 - require an explicit deletion reason for dead code
 - require shared tests where semantic duplication is removed
 - refuse large refactors that do not improve boundaries or reduce live

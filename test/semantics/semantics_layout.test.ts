@@ -26,7 +26,10 @@ const recordField = (name: string, typeExpr: TypeExprNode): RecordFieldNode => (
   typeExpr,
 });
 
-const typeDecl = (name: string, typeExpr: TypeExprNode): TypeDeclNode => ({
+const typeDecl = (
+  name: string,
+  typeExpr: Extract<TypeExprNode, { kind: 'RecordType' }>,
+): TypeDeclNode => ({
   kind: 'TypeDecl',
   span: s(),
   name,

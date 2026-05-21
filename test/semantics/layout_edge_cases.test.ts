@@ -26,7 +26,7 @@ function mkField(name: string, typeExpr: TypeExprNode): RecordFieldNode {
   return { kind: 'RecordField', span, name, typeExpr };
 }
 
-function typeDecl(name: string, typeExpr: TypeExprNode): TypeDeclNode {
+function typeDecl(name: string, typeExpr: Extract<TypeExprNode, { kind: 'RecordType' }>): TypeDeclNode {
   return { kind: 'TypeDecl', span, name, typeExpr };
 }
 

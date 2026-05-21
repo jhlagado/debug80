@@ -14,7 +14,6 @@ type RawValueLike =
   | {
       kind: string;
       value?: unknown;
-      text?: unknown;
     };
 
 export type RawDataLike = {
@@ -29,16 +28,8 @@ export type RawDataLike = {
 function rawStringValue(value: RawValueLike): string | undefined {
   if (typeof value === 'string') return value;
   if (!('kind' in value)) return undefined;
-  if (
-    value.kind === 'AsmString' ||
-    value.kind === 'StringLiteral' ||
-    value.kind === 'RawString'
-  ) {
-    return typeof value.value === 'string'
-      ? value.value
-      : typeof value.text === 'string'
-        ? value.text
-        : undefined;
+  if (value.kind === 'AsmString') {
+    return typeof value.value === 'string' ? value.value : undefined;
   }
   return undefined;
 }

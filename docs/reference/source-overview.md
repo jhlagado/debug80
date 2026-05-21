@@ -2,16 +2,11 @@
 
 Status: active developer reference
 
-This document is a map of the live AZM codebase. It describes the assembler AZM
-is becoming, not the high-level ZAX system it inherited.
+This document is a map of the live AZM codebase.
 
 AZM is an ASM80-class Z80 assembler with a small set of deliberate extensions:
 register-care contracts, AZMDoc, directive aliases, visible `op` expansion,
-and compile-time layout constants. Anything related to ZAX `func`, generated
-frames, typed arguments or locals, named sections, module imports, typed
-storage, typed assignment, runtime typed effective-address lowering, or
-structured control is retirement code unless another current design document
-explicitly keeps it.
+enums, and compile-time layout constants.
 
 ## Product Boundary
 
@@ -26,13 +21,14 @@ AZM keeps:
 - `type`, `union`, `enum`, `sizeof(...)`, `offset(...)`, and layout casts when
   they fold to constants
 
-AZM removes from `.asm` and `.z80` source:
+AZM does not include a high-level source layer. The following constructs are
+outside `.asm` and `.z80` source:
 
 - `func` and `export func`
 - formal arguments and local variables
 - generated stack frames and synthetic call cleanup
 - named `section code` / `section data` blocks
-- ZAX `import` modules and `export` visibility
+- module imports and export visibility declarations
 - typed `data`, `var`, `globals`, and typed `extern func`
 - `:=` assignment and hidden typed load/store lowering
 - structured control keywords such as `if`, `while`, `repeat`, and `select`
@@ -102,9 +98,10 @@ src/
     encode*.ts              Instruction-family encoders
 ```
 
-Old ZAX lowering paths should be treated as deletion targets, not as normal AZM
-architecture. This includes function/module/section lowering, typed assignment,
-typed storage, structured control, and runtime typed-address materialization.
+Lowering paths for non-AZM constructs should be treated as deletion targets, not
+as normal AZM architecture. This includes function/module/section lowering,
+typed assignment, typed storage, structured control, and runtime typed-address
+materialization.
 
 ## Compile Flow
 
@@ -147,8 +144,8 @@ The frontend is line-oriented. It builds AST nodes and source spans, emits
 recoverable parse diagnostics where practical, and avoids byte-emission
 decisions.
 
-ASM80 compatibility lives in `frontend/asm80/` plus the flat assembler stream
-parser. AZM `.asm` should stay flat and assembler-shaped: top-level
+The ASM80 input baseline lives in `frontend/asm80/` plus the flat assembler
+stream parser. AZM `.asm` should stay flat and assembler-shaped: top-level
 declarations followed by labels, directives, and instructions.
 
 ### Semantics
@@ -201,14 +198,14 @@ lowered source traces. Current AZM lowering should be explicit:
 - ops expand inline to ordinary assembler items
 - fixups handle symbolic references
 
-Hidden high-level code generation belongs to the ZAX retirement path.
+Hidden high-level code generation is outside the AZM lowering model.
 
 ### Register Care
 
 Register-care analysis is a retained AZM feature. It builds routine summaries
 from assembler source, tracks Z80 register and flag effects, reads AZMDoc
 contracts, and can rewrite generated contract comments. The routine model is
-based on visible labels and calls, not on ZAX `func` declarations.
+based on visible labels and calls.
 
 ### Output Formats
 
@@ -220,9 +217,10 @@ Output format modules serialize byte maps and metadata:
 - `writeD8m` writes debugger metadata
 - `writeAsm80` writes lowered assembler text
 
-## ZAX Retirement Boundary
+## Retired Source Boundary
 
-Do not rename old ZAX behavior into AZM to make it look current. Either:
+Do not rename retired high-level behavior into AZM to make it look current.
+Either:
 
 1. delete it,
 2. rewrite the useful assertion as an ASM80/AZM test, or
@@ -230,7 +228,6 @@ Do not rename old ZAX behavior into AZM to make it look current. Either:
 
 Use these documents when deciding what survives:
 
-- [AZM language direction](../design/azm-language-direction.md)
 - [AZM expression and visibility](../design/azm-expression-and-visibility.md)
 - [AZM code quality standard](code-quality-standard.md)
 

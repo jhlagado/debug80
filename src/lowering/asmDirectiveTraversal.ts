@@ -9,7 +9,6 @@ export type AsmDirectiveLikeNode = {
   span: SourceSpan;
   name?: string;
   value?: ImmExprNode;
-  expr?: ImmExprNode;
   directive?: 'db' | 'dw' | 'ds' | 'cstr' | 'pstr' | 'istr';
   values?: unknown[];
   size?: ImmExprNode;
@@ -36,35 +35,35 @@ function isKind(item: { kind: string }, ...kinds: string[]): boolean {
 }
 
 export function isAsmEquDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmEqu', 'AsmEquDecl', 'EquDecl');
+  return isKind(item, 'AsmEqu');
 }
 
 export function isAsmOrgDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmOrg', 'AsmOrgDirective', 'OrgDirective');
+  return isKind(item, 'AsmOrg');
 }
 
 export function isAsmAlignDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmAlign', 'AsmAlignDirective');
+  return isKind(item, 'AsmAlign');
 }
 
 export function isAsmRawDataDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmRawData') || 'valuesText' in item;
+  return isKind(item, 'AsmRawData');
 }
 
 export function isAsmBinFromDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmBinFrom', 'AsmBinFromDirective', 'BinFromDirective');
+  return isKind(item, 'AsmBinFrom');
 }
 
 export function isAsmBinToDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmBinTo', 'AsmBinToDirective', 'BinToDirective');
+  return isKind(item, 'AsmBinTo');
 }
 
 export function isAsmEndDirective(item: { kind: string }): boolean {
-  return isKind(item, 'AsmEnd', 'AsmEndDirective');
+  return isKind(item, 'AsmEnd');
 }
 
 export function asmDirectiveExpr(item: AsmDirectiveLikeNode): ImmExprNode | undefined {
-  return item.value ?? item.expr;
+  return item.value;
 }
 
 export function activePlacementOffset(ctx: AsmAddressContext): number {
