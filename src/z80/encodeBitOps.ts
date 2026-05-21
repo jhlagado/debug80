@@ -1,5 +1,5 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type { AsmInstructionNode } from '../frontend/ast.js';
+import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { EncoderImmContext, EncoderMemContext, EncoderRegisterContext } from './encodeContext.js';
 
@@ -21,6 +21,36 @@ const ROTATE_SHIFT_OPS = {
   sll: 0x30,
   srl: 0x38,
 } as const;
+
+function indexedCbDestinationCode(
+  node: AsmInstructionNode,
+  diagnostics: Diagnostic[],
+  ctx: BitOpsEncodeContext,
+  idxPrefix: number,
+  operand: AsmOperandNode,
+  mnemonic: string,
+  invalidDestinationMessage: string,
+): number | undefined {
+  const dstIndexed = ctx.indexedReg8(operand);
+  if (dstIndexed) {
+    ctx.diag(
+      diagnostics,
+      node,
+      dstIndexed.prefix !== idxPrefix
+        ? `${mnemonic} indexed destination family must match source index base`
+        : `${mnemonic} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
+    );
+    return undefined;
+  }
+
+  const dstReg = ctx.regName(operand);
+  const dstCode = dstReg ? ctx.reg8Code(dstReg) : undefined;
+  if (dstCode === undefined) {
+    ctx.diag(diagnostics, node, invalidDestinationMessage);
+    return undefined;
+  }
+  return dstCode;
+}
 
 function encodeBitLike(
   node: AsmInstructionNode,
@@ -48,29 +78,16 @@ function encodeBitLike(
       return undefined;
     }
     if (ops.length === 3) {
-      const dstIndexed = ctx.indexedReg8(ops[2]!);
-      if (dstIndexed) {
-        if (dstIndexed.prefix !== idx.prefix) {
-          ctx.diag(
-            diagnostics,
-            node,
-            `${mnemonic} indexed destination family must match source index base`,
-          );
-        } else {
-          ctx.diag(
-            diagnostics,
-            node,
-            `${mnemonic} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
-          );
-        }
-        return undefined;
-      }
-      const dstReg = ctx.regName(ops[2]!);
-      const dstCode = dstReg ? ctx.reg8Code(dstReg) : undefined;
-      if (dstCode === undefined) {
-        ctx.diag(diagnostics, node, `${mnemonic} b,(ix/iy+disp),r expects reg8 destination`);
-        return undefined;
-      }
+      const dstCode = indexedCbDestinationCode(
+        node,
+        diagnostics,
+        ctx,
+        idx.prefix,
+        ops[2]!,
+        mnemonic,
+        `${mnemonic} b,(ix/iy+disp),r expects reg8 destination`,
+      );
+      if (dstCode === undefined) return undefined;
       return Uint8Array.of(idx.prefix, 0xcb, disp & 0xff, base + (bit << 3) + dstCode);
     }
     return Uint8Array.of(idx.prefix, 0xcb, disp & 0xff, base + (bit << 3) + 0x06);
@@ -113,29 +130,16 @@ function encodeCbRotateShift(
     if (ops.length === 1) {
       return Uint8Array.of(idx.prefix, 0xcb, disp & 0xff, base + 0x06);
     }
-    const dstIndexed = ctx.indexedReg8(ops[1]!);
-    if (dstIndexed) {
-      if (dstIndexed.prefix !== idx.prefix) {
-        ctx.diag(
-          diagnostics,
-          node,
-          `${mnemonic} indexed destination family must match source index base`,
-        );
-      } else {
-        ctx.diag(
-          diagnostics,
-          node,
-          `${mnemonic} indexed destination must use plain reg8 B/C/D/E/H/L/A`,
-        );
-      }
-      return undefined;
-    }
-    const dstReg = ctx.regName(ops[1]!);
-    const dstCode = dstReg ? ctx.reg8Code(dstReg) : undefined;
-    if (dstCode === undefined) {
-      ctx.diag(diagnostics, node, `${mnemonic} (ix/iy+disp),r expects reg8 destination`);
-      return undefined;
-    }
+    const dstCode = indexedCbDestinationCode(
+      node,
+      diagnostics,
+      ctx,
+      idx.prefix,
+      ops[1]!,
+      mnemonic,
+      `${mnemonic} (ix/iy+disp),r expects reg8 destination`,
+    );
+    if (dstCode === undefined) return undefined;
     return Uint8Array.of(idx.prefix, 0xcb, disp & 0xff, base + dstCode);
   }
   if (ops.length === 2) {
