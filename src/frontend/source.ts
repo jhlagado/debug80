@@ -42,7 +42,7 @@ export function makeSourceFile(path: string, text: string): SourceFile {
 /**
  * Convert a 0-based byte offset in `file.text` into a 1-based line/column position.
  */
-function posAtOffset(file: SourceFile, offset: number): SourcePosition {
+function lineIndexAtOffset(file: SourceFile, offset: number): number {
   const clamped = Math.max(0, Math.min(offset, file.text.length));
   let lo = 0;
   let hi = file.lineStarts.length - 1;
@@ -55,6 +55,15 @@ function posAtOffset(file: SourceFile, offset: number): SourcePosition {
       hi = mid - 1;
     }
   }
+  return lo;
+}
+
+/**
+ * Convert a 0-based byte offset in `file.text` into a 1-based line/column position.
+ */
+function posAtOffset(file: SourceFile, offset: number): SourcePosition {
+  const clamped = Math.max(0, Math.min(offset, file.text.length));
+  const lo = lineIndexAtOffset(file, offset);
   const lineStart = file.lineStarts[lo] ?? 0;
   const mappedLine = file.lineBaseLines?.[lo] ?? lo + 1;
   return { line: mappedLine, column: clamped - lineStart + 1, offset: clamped };
@@ -64,23 +73,7 @@ function posAtOffset(file: SourceFile, offset: number): SourcePosition {
  * Construct a {@link SourceSpan} for a half-open offset range `[startOffset, endOffset]`.
  */
 export function span(file: SourceFile, startOffset: number, endOffset: number): SourceSpan {
-  const resolveLineIndex = (off: number): number => {
-    const clamped = Math.max(0, Math.min(off, file.text.length));
-    let lo = 0;
-    let hi = file.lineStarts.length - 1;
-    while (lo < hi) {
-      const mid = Math.floor((lo + hi + 1) / 2);
-      const midStart = file.lineStarts[mid] ?? 0;
-      if (midStart <= clamped) {
-        lo = mid;
-      } else {
-        hi = mid - 1;
-      }
-    }
-    return lo;
-  };
-
-  const startIndex = resolveLineIndex(startOffset);
+  const startIndex = lineIndexAtOffset(file, startOffset);
   return {
     file: file.lineFiles?.[startIndex] ?? file.path,
     start: posAtOffset(file, startOffset),
