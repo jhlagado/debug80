@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { findAsm80 } from './asm80Tools.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
@@ -65,10 +66,6 @@ function summarizeBinaryMismatch(actual, reference) {
   return lines.join('\n');
 }
 
-function normalizeExecutableCandidate(candidate) {
-  return candidate.includes('/') || candidate.includes('\\') ? resolve(candidate) : candidate;
-}
-
 async function loadCompiler() {
   const compilePath = resolve(repoRoot, 'dist', 'src', 'compile.js');
   const formatsPath = resolve(repoRoot, 'dist', 'src', 'formats', 'index.js');
@@ -81,22 +78,6 @@ async function loadCompiler() {
     import(pathToFileURL(formatsPath).href),
   ]);
   return { compile, defaultFormatWriters };
-}
-
-function findAsm80() {
-  const candidates = [
-    process.env.ASM80,
-    process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
-    'asm80',
-  ]
-    .filter((candidate) => candidate && candidate.trim().length > 0)
-    .map(normalizeExecutableCandidate);
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ['-h'], { encoding: 'utf8' });
-    if (!probe.error) return candidate;
-  }
-  return undefined;
 }
 
 function copyAsm80SourceTree(source, outDir) {

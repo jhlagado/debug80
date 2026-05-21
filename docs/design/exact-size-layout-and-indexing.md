@@ -271,6 +271,8 @@ That keeps `offset` a pure layout query.
 Arrays are layout expressions, not runtime containers.
 
 ```asm
+sizeof(byte)          ; 1
+sizeof(word)          ; 2
 sizeof(byte[32])      ; 32
 sizeof(Sprite[16])    ; 16 * sizeof(Sprite)
 ```
@@ -279,6 +281,22 @@ Array stride is always `sizeof(element)`. AZM may expose that value through
 `sizeof(Element)`, `offset(...)`, explicit layout-cast address expressions,
 and ordinary constant arithmetic. It does not need a separate runtime indexing
 feature.
+
+In a layout-size position, the type expression itself is the byte count:
+
+```asm
+byte        ; 1
+word        ; 2
+addr        ; 2
+Sprite      ; sizeof(Sprite)
+byte[10]    ; 10
+word[10]    ; 20
+Sprite[10]  ; sizeof(Sprite) * 10
+```
+
+The important boundary is that this is a constant-expression rule. `byte[10]`
+does not declare ten byte variables, create a typed label, or initialize memory.
+It evaluates to the number of bytes needed by that layout.
 
 For storage reservation, `.ds` may take a type expression directly:
 
@@ -338,7 +356,17 @@ The initialized data directives remain separate:
 ```
 
 Those forms write bytes or words now; `.ds` reserves space, optionally filled
-with a byte value.
+with a byte value. `.db` and `.dw` are therefore not aliases for `.ds byte` and
+`.ds word`: they are the initialized-data forms. `.cstr`, `.pstr`, and `.istr`
+are initialized string-data shorthands. AZM does not use `.cstring` or
+`.pstring` as the canonical names.
+
+The practical rule is:
+
+- use `.field TypeExpr` inside `.type` / `.union` to describe layout;
+- use `.ds TypeExpr` to reserve uninitialized storage of that layout size;
+- use `.db`, `.dw`, `.cstr`, `.pstr`, or `.istr` when the source supplies the
+  actual bytes or words to emit.
 
 ## Scope of the change
 

@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { findAsm80 } from './asm80Tools.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
@@ -17,26 +18,6 @@ function usage() {
     'Files containing .macro or .endm are excluded from the baseline corpus.',
     'Set ASM80 or ASM80_PATH to choose the asm80 executable.',
   ].join('\n');
-}
-
-function normalizeExecutableCandidate(candidate) {
-  return candidate.includes('/') || candidate.includes('\\') ? resolve(candidate) : candidate;
-}
-
-function findAsm80() {
-  const candidates = [
-    process.env.ASM80,
-    process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
-    'asm80',
-  ]
-    .filter((candidate) => candidate && candidate.trim().length > 0)
-    .map(normalizeExecutableCandidate);
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ['-h'], { encoding: 'utf8' });
-    if (!probe.error) return candidate;
-  }
-  return undefined;
 }
 
 function walkAsm80Files(root) {
