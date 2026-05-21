@@ -3,6 +3,7 @@ import type { CompileEnv } from '../semantics/env.js';
 import type { LoweredAsmProgram, LoweredAsmItem, LoweredImmExpr } from './loweredAsmTypes.js';
 import type { PlacementKind } from './loweringTypes.js';
 import { resolveAsmEquSymbol } from './asmEquResolution.js';
+import { evalBinaryImmOp, evalUnaryImmOp } from './immMath.js';
 
 type LoweredAsmByteEmissionContext = {
   diagnostics: Diagnostic[];
@@ -38,43 +39,13 @@ function evalLoweredImmExpr(expr: LoweredImmExpr, env: CompileEnv): number | und
     case 'unary': {
       const value = evalLoweredImmExpr(expr.expr, env);
       if (value === undefined) return undefined;
-      switch (expr.op) {
-        case '+':
-          return +value;
-        case '-':
-          return -value;
-        case '~':
-          return ~value;
-      }
-      return undefined;
+      return evalUnaryImmOp(expr.op, value);
     }
     case 'binary': {
       const left = evalLoweredImmExpr(expr.left, env);
       const right = evalLoweredImmExpr(expr.right, env);
       if (left === undefined || right === undefined) return undefined;
-      switch (expr.op) {
-        case '*':
-          return left * right;
-        case '/':
-          return right === 0 ? undefined : Math.trunc(left / right);
-        case '%':
-          return right === 0 ? undefined : left % right;
-        case '+':
-          return left + right;
-        case '-':
-          return left - right;
-        case '&':
-          return left & right;
-        case '^':
-          return left ^ right;
-        case '|':
-          return left | right;
-        case '<<':
-          return left << right;
-        case '>>':
-          return left >> right;
-      }
-      return undefined;
+      return evalBinaryImmOp(expr.op, left, right);
     }
     case 'opaque':
       return undefined;

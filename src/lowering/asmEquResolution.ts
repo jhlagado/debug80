@@ -1,5 +1,6 @@
 import type { ImmExprNode } from '../frontend/ast.js';
 import { evalImmExpr, type CompileEnv } from '../semantics/env.js';
+import { evalBinaryImmOp, evalUnaryImmOp } from './immMath.js';
 
 type AsmEquResolutionContext = {
   env: CompileEnv;
@@ -66,43 +67,13 @@ function evalAsmEquExpr(
     case 'ImmUnary': {
       const v = evalAsmEquExpr(expr.expr, ctx, visiting, currentLocation);
       if (v === undefined) return undefined;
-      switch (expr.op) {
-        case '+':
-          return +v;
-        case '-':
-          return -v;
-        case '~':
-          return ~v;
-      }
-      return undefined;
+      return evalUnaryImmOp(expr.op, v);
     }
     case 'ImmBinary': {
       const left = evalAsmEquExpr(expr.left, ctx, visiting, currentLocation);
       const right = evalAsmEquExpr(expr.right, ctx, visiting, currentLocation);
       if (left === undefined || right === undefined) return undefined;
-      switch (expr.op) {
-        case '*':
-          return left * right;
-        case '/':
-          return right === 0 ? undefined : Math.trunc(left / right);
-        case '%':
-          return right === 0 ? undefined : left % right;
-        case '+':
-          return left + right;
-        case '-':
-          return left - right;
-        case '&':
-          return left & right;
-        case '^':
-          return left ^ right;
-        case '|':
-          return left | right;
-        case '<<':
-          return left << right;
-        case '>>':
-          return left >> right;
-      }
-      return undefined;
+      return evalBinaryImmOp(expr.op, left, right);
     }
     default:
       return undefined;
