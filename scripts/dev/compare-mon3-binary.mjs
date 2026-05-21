@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findAsm80 } from './asm80Tools.mjs';
+import {
+  copyAsm80SourceSiblings,
+  findFirstMismatch,
+  summarizeBinaryMismatch,
+} from './binaryCompareTools.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
@@ -18,14 +23,6 @@ function usage() {
     'Default reference: fresh asm80 build from the same source tree',
     'Set ASM80 or ASM80_PATH to choose the asm80 executable.',
   ].join('\n');
-}
-
-function byteHex(value) {
-  return value === undefined ? 'EOF' : `0x${value.toString(16).padStart(2, '0')}`;
-}
-
-function offsetHex(offset) {
-  return `0x${offset.toString(16).padStart(4, '0')}`;
 }
 
 function diagnosticLocation(diagnostic) {
@@ -43,29 +40,6 @@ function summarizeDiagnostics(diagnostics, limit = 10) {
   );
 }
 
-function findFirstMismatch(actual, reference) {
-  const maxLength = Math.max(actual.length, reference.length);
-  for (let i = 0; i < maxLength; i++) {
-    if (actual[i] !== reference[i]) return i;
-  }
-  return -1;
-}
-
-function summarizeBinaryMismatch(actual, reference) {
-  const firstMismatch = findFirstMismatch(actual, reference);
-  const lines = [`Binary length: actual=${actual.length} reference=${reference.length}`];
-  if (firstMismatch >= 0) {
-    lines.push(
-      `First mismatch @${offsetHex(firstMismatch)}: actual=${byteHex(
-        actual[firstMismatch],
-      )} reference=${byteHex(reference[firstMismatch])}`,
-    );
-  } else {
-    lines.push('First mismatch: none');
-  }
-  return lines.join('\n');
-}
-
 async function loadCompiler() {
   const compilePath = resolve(repoRoot, 'dist', 'src', 'compile.js');
   const formatsPath = resolve(repoRoot, 'dist', 'src', 'formats', 'index.js');
@@ -80,20 +54,12 @@ async function loadCompiler() {
   return { compile, defaultFormatWriters };
 }
 
-function copyAsm80SourceTree(source, outDir) {
-  for (const entry of readdirSync(dirname(source))) {
-    if (entry.toLowerCase().endsWith('.z80')) {
-      copyFileSync(join(dirname(source), entry), join(outDir, entry));
-    }
-  }
-}
-
 function buildAsm80Reference(source, asm80) {
   const outDir = mkdtempSync(join(tmpdir(), 'azm-mon3-asm80-reference-'));
   const outName = 'mon3-reference.bin';
   const outBin = join(outDir, outName);
   try {
-    copyAsm80SourceTree(source, outDir);
+    copyAsm80SourceSiblings(source, outDir, /\.z80$/i);
     const result = spawnSync(
       asm80,
       ['-m', 'Z80', '-t', 'bin', '-o', outName, basename(source)],

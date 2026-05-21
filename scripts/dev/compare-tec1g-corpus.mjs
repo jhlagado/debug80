@@ -1,10 +1,18 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { findAsm80 } from './asm80Tools.mjs';
+import {
+  byteHex,
+  byteWindow,
+  copyAsm80SourceSiblings,
+  findFirstMismatch,
+  hex,
+  sourceStem,
+} from './binaryCompareTools.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
@@ -74,25 +82,13 @@ function binaryFromListingRange(bytes, range) {
   return bytes.subarray(range.start, end);
 }
 
-function sourceStem(source) {
-  return basename(source).replace(/\.(z80|asm)$/i, '');
-}
-
-function copySiblingAsm80Sources(source, workDir) {
-  for (const entry of readdirSync(dirname(source), { withFileTypes: true })) {
-    if (entry.isFile() && /\.(z80|asm)$/i.test(entry.name)) {
-      copyFileSync(join(dirname(source), entry.name), join(workDir, entry.name));
-    }
-  }
-}
-
 function runAsm80(source, asm80) {
   const workDir = mkdtempSync(join(tmpdir(), 'azm-asm80-reference-one-'));
   const outName = `${sourceStem(source)}.bin`;
   const sourceName = basename(source);
   const listingPath = join(workDir, `${sourceStem(source)}.lst`);
   try {
-    copySiblingAsm80Sources(source, workDir);
+    copyAsm80SourceSiblings(source, workDir);
     const result = run(asm80, ['-m', 'Z80', '-t', 'bin', '-o', outName, sourceName], {
       cwd: workDir,
     });
@@ -138,25 +134,6 @@ function compactError(result) {
     .join(' | ');
 }
 
-function findFirstMismatch(actual, reference) {
-  const maxLength = Math.max(actual.length, reference.length);
-  for (let i = 0; i < maxLength; i++) {
-    if (actual[i] !== reference[i]) return i;
-  }
-  return -1;
-}
-
-function hex(value, width = 4) {
-  return `0x${value.toString(16).padStart(width, '0')}`;
-}
-
-function byteWindow(bytes, center, radius = 4) {
-  if (center === undefined || center < 0) return '[]';
-  const start = Math.max(0, center - radius);
-  const end = Math.min(bytes.length, center + radius + 1);
-  return `[${Array.from(bytes.subarray(start, end), (byte) => hex(byte, 2)).join(' ')}]`;
-}
-
 function comparableAsm80Bytes(asm) {
   return asm.bytes;
 }
@@ -175,8 +152,8 @@ function compareBytes(actual, asm) {
     `lengthDelta=${actual.length - comparableReference.length}`,
     range.trim(),
     `first=${hex(mismatch)}`,
-    `azm=${actualByte === undefined ? 'EOF' : hex(actualByte, 2)}`,
-    `asm80=${referenceByte === undefined ? 'EOF' : hex(referenceByte, 2)}`,
+    `azm=${byteHex(actualByte)}`,
+    `asm80=${byteHex(referenceByte)}`,
     `azmWindow=${byteWindow(actual, mismatch)}`,
     `asm80Window=${byteWindow(comparableReference, mismatch)}`,
   ]
