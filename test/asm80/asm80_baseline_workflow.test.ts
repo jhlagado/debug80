@@ -59,10 +59,11 @@ describe('ASM80 baseline acceptance workflow', () => {
 
   it('wires the baseline wrapper to the documented override variables', () => {
     const script = readFileSync(join(repoRoot, 'scripts', 'dev', 'run-asm80-baseline.mjs'), 'utf8');
+    const asm80Tools = readFileSync(join(repoRoot, 'scripts', 'dev', 'asm80Tools.mjs'), 'utf8');
 
     expect(script).toContain('process.env.MON3_SOURCE');
     expect(script).toContain('process.env.TEC1G_SOFTWARE_ROOT');
-    expect(script).toContain('process.env.ASM80');
+    expect(asm80Tools).toContain('process.env.ASM80');
   });
 
   it('wires the MON3 acceptance test to the documented source override', () => {

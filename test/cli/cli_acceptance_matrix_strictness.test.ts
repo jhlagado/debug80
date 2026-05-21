@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
-import { exists, normalizePathForCompare, runCli } from '../helpers/cli.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+import { exists, normalizePathForCompare, runCli } from '../helpers/cli/index.js';
 
 type ArtifactKind = 'bin' | 'hex' | 'd8m' | 'lst';
 type ArtifactExpectation = Record<ArtifactKind, boolean>;
@@ -43,16 +43,7 @@ describe('cli acceptance matrix strictness', () => {
     const entry = join(work, 'main.asm');
     await writeFile(
       entry,
-      [
-        'X .equ 7',
-        'Y .equ 11',
-        '',
-        'main:',
-        '  ld a, X',
-        '  add a, Y',
-        '  ret',
-        '',
-      ].join('\n'),
+      ['X .equ 7', 'Y .equ 11', '', 'main:', '  ld a, X', '  add a, Y', '  ret', ''].join('\n'),
       'utf8',
     );
 
@@ -147,11 +138,7 @@ describe('cli acceptance matrix strictness', () => {
     const relativeInc = './incs';
 
     await mkdir(incDir, { recursive: true });
-    await writeFile(
-      entry,
-      '.include "shared.inc"\n\nmain:\n  ld a, Shared\n  ret\n',
-      'utf8',
-    );
+    await writeFile(entry, '.include "shared.inc"\n\nmain:\n  ld a, Shared\n  ret\n', 'utf8');
     await writeFile(join(incDir, 'shared.inc'), 'Shared .equ 9\n', 'utf8');
 
     const absOut = join(work, 'abs', 'bundle.hex');

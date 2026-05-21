@@ -54,7 +54,11 @@ describe('PR614 removed syntax guardrail', () => {
   it('rejects operand-level address-of syntax in ASM sources', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'azm-pr614-address-of-'));
     const fixture = join(dir, 'address-of.asm');
-    await writeFile(fixture, ['main:', '  ld hl,@target', 'target:', '  ret', ''].join('\n'), 'utf8');
+    await writeFile(
+      fixture,
+      ['main:', '  ld hl,@target', 'target:', '  ret', ''].join('\n'),
+      'utf8',
+    );
 
     const { violations } = scanForbiddenRemovedSyntax({ filePaths: [fixture] });
     expect(violations).toHaveLength(1);
@@ -88,7 +92,17 @@ describe('PR614 removed syntax guardrail', () => {
     const md = join(dir, 'removed-example.md');
     await writeFile(
       md,
-      ['# Notes', '', '```asm', 'section code at $0100', 'func main()', '  ret', 'end', '```', ''].join('\n'),
+      [
+        '# Notes',
+        '',
+        '```asm',
+        'section code at $0100',
+        'func main()',
+        '  ret',
+        'end',
+        '```',
+        '',
+      ].join('\n'),
       'utf8',
     );
 

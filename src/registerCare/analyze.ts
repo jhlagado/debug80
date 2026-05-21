@@ -154,6 +154,12 @@ function sortedUnique(values: string[]): string[] {
   return Array.from(new Set(values)).sort();
 }
 
+function appendUniqueUnits(target: RegisterCareUnit[], units: RegisterCareUnit[]): void {
+  for (const unit of units) {
+    if (!target.includes(unit)) target.push(unit);
+  }
+}
+
 function summaryFingerprint(summary: RoutineSummary): string {
   const relations = summary.valueRelations
     .map((relation) => `${relation.out.join(',')}<-${relation.from.join(',')}`)
@@ -253,9 +259,7 @@ function autoAcceptedOutputCandidates(
   const out = new Map<string, RegisterCareUnit[]>();
   for (const fix of fixes) {
     const existing = out.get(fix.routine) ?? [];
-    for (const unit of fix.carriers) {
-      if (!existing.includes(unit)) existing.push(unit);
-    }
+    appendUniqueUnits(existing, fix.carriers);
     out.set(fix.routine, existing);
   }
   return out;
@@ -280,9 +284,7 @@ function parseAcceptedOutputCandidates(items: string[] = []): Map<string, Regist
       throw new Error(`Invalid --accept-out value "${item}" (unknown carrier)`);
     }
     const existing = out.get(name) ?? [];
-    for (const unit of carriers) {
-      if (!existing.includes(unit)) existing.push(unit);
-    }
+    appendUniqueUnits(existing, carriers);
     out.set(name, existing);
   }
   return out;
@@ -295,9 +297,7 @@ function mergeAcceptedOutputCandidates(
   for (const map of maps) {
     for (const [name, units] of map) {
       const existing = out.get(name) ?? [];
-      for (const unit of units) {
-        if (!existing.includes(unit)) existing.push(unit);
-      }
+      appendUniqueUnits(existing, units);
       out.set(name, existing);
     }
   }

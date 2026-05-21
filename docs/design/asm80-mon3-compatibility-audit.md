@@ -18,20 +18,20 @@ This file is retained as audit evidence. For current AZM scope, use
 
 Primary entry:
 
-- `/Users/johnhardy/Documents/projects/MON3/src/mon3.z80`
+- `/Users/johnhardy/projects/MON3/src/mon3.z80`
 
 Recursive include tree:
 
-- `/Users/johnhardy/Documents/projects/MON3/src/packages.z80`
-- `/Users/johnhardy/Documents/projects/MON3/src/glcd_library.z80`
-- `/Users/johnhardy/Documents/projects/MON3/src/disassembler.z80`
-- `/Users/johnhardy/Documents/projects/MON3/src/sound.z80`
-- `/Users/johnhardy/Documents/projects/MON3/src/pata_fat32.z80`
-- `/Users/johnhardy/Documents/projects/MON3/src/rtc.z80`
+- `/Users/johnhardy/projects/MON3/src/packages.z80`
+- `/Users/johnhardy/projects/MON3/src/glcd_library.z80`
+- `/Users/johnhardy/projects/MON3/src/disassembler.z80`
+- `/Users/johnhardy/projects/MON3/src/sound.z80`
+- `/Users/johnhardy/projects/MON3/src/pata_fat32.z80`
+- `/Users/johnhardy/projects/MON3/src/rtc.z80`
 
 Adjacent secondary sample:
 
-- `/Users/johnhardy/Documents/projects/MON3/src/api_includes.z80`
+- `/Users/johnhardy/projects/MON3/src/api_includes.z80`
 
 `api_includes.z80` is useful for future comparison, but it is not currently
 part of the recursive `mon3.z80` include path.

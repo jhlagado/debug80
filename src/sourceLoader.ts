@@ -114,7 +114,13 @@ export async function loadProgram(
   const signal = options.signal;
 
   throwIfAborted(signal);
-  const sourceText = await readSourceFileText(entryPath, diagnostics, undefined, options.preloadedText, signal);
+  const sourceText = await readSourceFileText(
+    entryPath,
+    diagnostics,
+    undefined,
+    options.preloadedText,
+    signal,
+  );
   if (sourceText === undefined) return undefined;
   sourceTexts.set(entryPath, sourceText);
   if (!isSupportedSourcePath(entryPath)) {
@@ -139,12 +145,7 @@ export async function loadProgram(
   if (expanded === undefined) return undefined;
   if (hasErrors(diagnostics)) return undefined;
 
-  const entrySource = parseExpandedSourceFile(
-    entryPath,
-    expanded,
-    diagnostics,
-    aliasPolicy,
-  );
+  const entrySource = parseExpandedSourceFile(entryPath, expanded, diagnostics, aliasPolicy);
   if (!entrySource) return undefined;
   recordSourceLineComments(sourceLineComments, expanded);
 

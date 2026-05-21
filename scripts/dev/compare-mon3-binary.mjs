@@ -11,7 +11,7 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
-const defaultSource = '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80';
+const defaultSource = '/Users/johnhardy/projects/MON3/src/mon3.z80';
 
 function usage() {
   return [
@@ -29,13 +29,16 @@ function diagnosticLocation(diagnostic) {
 }
 
 function summarizeDiagnostics(diagnostics, limit = 10) {
-  const preview = diagnostics.slice(0, limit).map(
-    (diagnostic) =>
-      `${diagnosticLocation(diagnostic)}: ${diagnostic.severity} [${diagnostic.id}] ${diagnostic.message}`,
-  );
-  return [`Diagnostics preview (showing ${preview.length} of ${diagnostics.length}):`, ...preview].join(
-    '\n',
-  );
+  const preview = diagnostics
+    .slice(0, limit)
+    .map(
+      (diagnostic) =>
+        `${diagnosticLocation(diagnostic)}: ${diagnostic.severity} [${diagnostic.id}] ${diagnostic.message}`,
+    );
+  return [
+    `Diagnostics preview (showing ${preview.length} of ${diagnostics.length}):`,
+    ...preview,
+  ].join('\n');
 }
 
 async function loadCompiler() {

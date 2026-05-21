@@ -1,4 +1,11 @@
-import { cpSync, copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -45,7 +52,7 @@ export function findAsm80Executable(): string | undefined {
   const candidates = [
     process.env.ASM80,
     process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
+    '/Users/johnhardy/projects/debug80/node_modules/.bin/asm80',
     'asm80',
   ]
     .filter(
@@ -87,13 +94,11 @@ export function copyZ80Siblings(source: string, outDir: string): void {
   }
 }
 
-export function copySourceRoot(source: string, outDir: string): void {
-  cpSync(dirname(source), outDir, { recursive: true });
-}
-
 export function runAsm80Reference(options: Asm80ReferenceOptions): Buffer {
   if (!options.asm80) throw new Error('asm80 executable not found');
-  const outDir = mkdtempSync(join(tmpdir(), options.tempPrefix));
+  const tempRoot = mkdtempSync(join(tmpdir(), options.tempPrefix));
+  const outDir = join(tempRoot, 'work');
+  mkdirSync(outDir);
   const outBin = join(outDir, options.outputName);
   try {
     options.prepareSourceTree(options.source, outDir);
@@ -116,7 +121,7 @@ export function runAsm80Reference(options: Asm80ReferenceOptions): Buffer {
     const bytes = readFileSync(outBin);
     return options.transformOutput ? options.transformOutput(bytes, outDir) : bytes;
   } finally {
-    rmSync(outDir, { recursive: true, force: true });
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 

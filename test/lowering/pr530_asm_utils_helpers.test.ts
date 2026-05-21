@@ -7,7 +7,12 @@ import {
   createAsmUtilityHelpers,
   flattenEaDottedName,
 } from '../../src/lowering/asmUtils.js';
-import type { AsmOperandNode, EaExprNode, ImmExprNode, SourceSpan } from '../../src/frontend/ast.js';
+import type {
+  AsmOperandNode,
+  EaExprNode,
+  ImmExprNode,
+  SourceSpan,
+} from '../../src/frontend/ast.js';
 
 const span: SourceSpan = {
   file: 'fixture.asm',

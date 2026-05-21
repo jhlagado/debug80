@@ -18,7 +18,8 @@ describe('#504 op matching helpers', () => {
       isIxIyIndexedMem: () => false,
       flattenEaDottedName: () => undefined,
       isEnumName: () => false,
-      normalizeFixedToken: (operand) => (operand.kind === 'Reg' ? operand.name.toUpperCase() : undefined),
+      normalizeFixedToken: (operand) =>
+        operand.kind === 'Reg' ? operand.name.toUpperCase() : undefined,
       conditionOpcodeFromName: (name) => (name === 'NZ' ? 0xc2 : undefined),
       evalImmNoDiag: () => undefined,
       inferMemWidth: () => undefined,
@@ -57,7 +58,8 @@ describe('#504 op matching helpers', () => {
       isIxIyIndexedMem: () => false,
       flattenEaDottedName: () => undefined,
       isEnumName: () => false,
-      normalizeFixedToken: (operand) => (operand.kind === 'Reg' ? operand.name.toUpperCase() : undefined),
+      normalizeFixedToken: (operand) =>
+        operand.kind === 'Reg' ? operand.name.toUpperCase() : undefined,
       conditionOpcodeFromName: () => undefined,
       evalImmNoDiag: () => undefined,
       inferMemWidth: () => undefined,

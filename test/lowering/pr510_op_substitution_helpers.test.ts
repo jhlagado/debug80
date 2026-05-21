@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { DiagnosticIds, type Diagnostic } from '../../src/diagnosticTypes.js';
-import type { AsmOperandNode, EaExprNode, ImmExprNode, SourceSpan } from '../../src/frontend/ast.js';
+import type {
+  AsmOperandNode,
+  EaExprNode,
+  ImmExprNode,
+  SourceSpan,
+} from '../../src/frontend/ast.js';
 import { createOpSubstitutionHelpers } from '../../src/lowering/opSubstitution.js';
 
 const span: SourceSpan = {
@@ -12,7 +17,8 @@ const span: SourceSpan = {
 
 const cloneImmExpr = (expr: ImmExprNode): ImmExprNode => JSON.parse(JSON.stringify(expr));
 const cloneEaExpr = (ea: EaExprNode): EaExprNode => JSON.parse(JSON.stringify(ea));
-const cloneOperand = (operand: AsmOperandNode): AsmOperandNode => JSON.parse(JSON.stringify(operand));
+const cloneOperand = (operand: AsmOperandNode): AsmOperandNode =>
+  JSON.parse(JSON.stringify(operand));
 const immName = (name: string): ImmExprNode => ({ kind: 'ImmName', span, name });
 const immOperand = (name: string): AsmOperandNode => ({ kind: 'Imm', span, expr: immName(name) });
 const regOperand = (name: string): AsmOperandNode => ({ kind: 'Reg', span, name });

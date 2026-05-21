@@ -7,8 +7,7 @@ import type {
 } from '../lowering/loweredAsmTypes.js';
 import { formatLoweredImmExpr, formatLoweredNumber } from '../lowering/loweredFormat.js';
 
-const toHexByte = (value: number): string =>
-  value.toString(16).toUpperCase().padStart(2, '0');
+const toHexByte = (value: number): string => value.toString(16).toUpperCase().padStart(2, '0');
 
 function formatEaExpr(expr: LoweredEaExpr): string {
   switch (expr.kind) {
@@ -81,10 +80,7 @@ function formatItem(item: LoweredAsmItem): string[] {
 /**
  * Emit ASM80-compatible source from a placed lowered assembly program.
  */
-export function writeAsm80(
-  program: LoweredAsmProgram,
-  opts?: WriteAsm80Options,
-): Asm80Artifact {
+export function writeAsm80(program: LoweredAsmProgram, opts?: WriteAsm80Options): Asm80Artifact {
   const lineEnding = opts?.lineEnding ?? '\n';
   const lines: string[] = [];
   lines.push('; AZM lowered ASM80 output');

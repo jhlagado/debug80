@@ -33,7 +33,9 @@ describe('PR472: source file size guard', () => {
     const { stdout } = await execFileAsync('node', ['scripts/check-source-file-sizes.mjs'], {
       cwd: process.cwd(),
     });
-    const asmInstructionLoweringLines = await currentLineCount('src/lowering/asmInstructionLowering.ts');
+    const asmInstructionLoweringLines = await currentLineCount(
+      'src/lowering/asmInstructionLowering.ts',
+    );
     const emitLines = await currentLineCount('src/lowering/emit.ts');
     const emitCeiling = await currentHardCapCeiling('src/lowering/emit.ts');
     const parserLines = await currentLineCount('src/frontend/parser.ts');
@@ -41,7 +43,10 @@ describe('PR472: source file size guard', () => {
     const encodeLines = await currentLineCount('src/z80/encode.ts');
     const normalizedStdout = normalizeGuardOutput(stdout);
     const hasOversizedFiles =
-      asmInstructionLoweringLines > 750 || emitLines > 750 || parserLines > 750 || encodeLines > 750;
+      asmInstructionLoweringLines > 750 ||
+      emitLines > 750 ||
+      parserLines > 750 ||
+      encodeLines > 750;
 
     if (hasOversizedFiles) {
       expect(normalizedStdout).toContain('source-file-size-guard: soft>750, hard>1000');
@@ -63,7 +68,9 @@ describe('PR472: source file size guard', () => {
           `src/lowering/emit.ts: ${emitLines} (ceiling ${emitCeiling})`,
         );
       } else {
-        expect(normalizedStdout).toContain(`src/lowering/emit.ts: ${emitLines} (ceiling ${emitLines})`);
+        expect(normalizedStdout).toContain(
+          `src/lowering/emit.ts: ${emitLines} (ceiling ${emitLines})`,
+        );
       }
     } else if (emitLines > 750) {
       expect(normalizedStdout).toContain(`src/lowering/emit.ts: ${emitLines}`);

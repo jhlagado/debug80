@@ -33,7 +33,9 @@ describe('PR1140 encodeInstruction error paths', () => {
   describe('encode.ts dispatch', () => {
     it('rejects unknown mnemonics', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('not_a_real_z80_op', [imm(0)]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('not_a_real_z80_op', [imm(0)]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'Unsupported instruction');
     });
 
@@ -61,13 +63,17 @@ describe('PR1140 encodeInstruction error paths', () => {
 
     it('ret: too many operands', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('ret', [reg('Z'), reg('Z')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('ret', [reg('Z'), reg('Z')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'ret expects no operands or one condition code');
     });
 
     it('call: indirect target', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('call', [memName('HL')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('call', [memName('HL')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'call does not support indirect targets');
     });
 
@@ -93,13 +99,17 @@ describe('PR1140 encodeInstruction error paths', () => {
 
     it('djnz: indirect', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('djnz', [memName('HL')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('djnz', [memName('HL')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'djnz does not support indirect targets');
     });
 
     it('jp: bad indirect', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('jp', [memName('BC')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('jp', [memName('BC')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'jp indirect form supports (hl), (ix), or (iy) only');
     });
 
@@ -119,7 +129,9 @@ describe('PR1140 encodeInstruction error paths', () => {
 
     it('jr: indirect', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('jr', [memName('HL')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('jr', [memName('HL')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'jr does not support indirect targets');
     });
 
@@ -167,7 +179,9 @@ describe('PR1140 encodeInstruction error paths', () => {
 
     it('sub: imm out of range', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('sub', [imm(0x1234)]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('sub', [imm(0x1234)]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'sub expects imm8');
     });
 
@@ -311,7 +325,9 @@ describe('PR1140 encodeInstruction error paths', () => {
 
     it('push: disallowed pair', () => {
       const diagnostics: Diagnostic[] = [];
-      expect(encodeInstruction(instruction('push', [reg('IXH')]), env, diagnostics)).toBeUndefined();
+      expect(
+        encodeInstruction(instruction('push', [reg('IXH')]), env, diagnostics),
+      ).toBeUndefined();
       expectEncodeError(diagnostics, 'push supports BC/DE/HL/AF/IX/IY only');
     });
 

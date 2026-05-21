@@ -104,12 +104,7 @@ describe('.asm source boundary', () => {
   it('rejects retired colon-style layout declarations', async () => {
     const { entry, cleanup } = writeTempSource(
       'asm',
-      [
-        '.type Sprite',
-        'x: byte',
-        '.endtype',
-        '',
-      ].join('\n'),
+      ['.type Sprite', 'x: byte', '.endtype', ''].join('\n'),
     );
 
     try {

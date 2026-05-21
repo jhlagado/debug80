@@ -1,9 +1,8 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import {
   binaryFromListingRange,
-  copySourceRoot,
   defineAsm80CorpusAcceptance,
   findAsm80Executable,
   parseListingWrittenRange,
@@ -11,12 +10,19 @@ import {
 } from '../helpers/index.js';
 
 const manifest = {
-  source: process.env.TETRO_SOURCE ?? '/Users/johnhardy/Documents/projects/tetro/src/tetro.asm',
+  source: process.env.TETRO_SOURCE ?? '/Users/johnhardy/projects/tetro/src/tetro/tetro.z80',
 };
 
 const asm80 = findAsm80Executable();
 const tetroFilesAvailable = existsSync(manifest.source);
 const runTetroAcceptance = process.env.AZM_RUN_TETRO_ACCEPTANCE === '1';
+
+function copyTetroSourceTree(source: string, outDir: string): void {
+  const sourceDir = dirname(source);
+  const sourceRoot = dirname(sourceDir);
+  cpSync(sourceDir, outDir, { recursive: true });
+  cpSync(join(sourceRoot, 'shared'), join(dirname(outDir), 'shared'), { recursive: true });
+}
 
 function buildAsm80Reference(source: string): Buffer {
   return runAsm80Reference({
@@ -24,7 +30,7 @@ function buildAsm80Reference(source: string): Buffer {
     source,
     tempPrefix: 'azm-tetro-asm80-reference-',
     outputName: 'tetro-reference.bin',
-    prepareSourceTree: copySourceRoot,
+    prepareSourceTree: copyTetroSourceTree,
     transformOutput: (bytes, outDir) =>
       binaryFromListingRange(bytes, parseListingWrittenRange(join(outDir, 'tetro-reference.lst'))),
   });

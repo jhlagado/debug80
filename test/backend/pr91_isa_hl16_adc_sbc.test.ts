@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { expectDiagnostic, expectNoErrors } from '../helpers/diagnostics.js';
+import { expectDiagnostic, expectNoErrors } from '../helpers/diagnostics/index.js';
 import { compileBackendFixture } from './isaDiagnosticTestHelpers.js';
 
 describe('PR91: ISA adc/sbc HL,rr', () => {

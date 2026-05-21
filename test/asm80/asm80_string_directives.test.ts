@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseAsmLine } from '../../src/frontend/asm80/asmLine.js';
-import { asmSourceLoweringAvailable, compileAsm80Fixture, requireAsm80Artifacts } from './helpers.js';
+import {
+  asmSourceLoweringAvailable,
+  compileAsm80Fixture,
+  requireAsm80Artifacts,
+} from './helpers.js';
 
 const describeAsmCompile = asmSourceLoweringAvailable ? describe : describe.skip;
 
@@ -29,11 +33,15 @@ describe('ASM80 string directive recognition (.cstr/.pstr/.istr)', () => {
 
 describeAsmCompile('ASM80 string directives (.cstr/.pstr/.istr)', () => {
   it('emits null-terminated, length-prefixed, and high-bit-terminated strings', async () => {
-    const artifacts = await compileAsm80Fixture(
-      'azm-asm80-string-',
-      'string-directives.z80',
-      ['.org 0100H', 'cstr_label:', '  .cstr "OK"', 'pstr_label:', '  .pstr "OK"', 'istr_label:', '  .istr "OK"'],
-    );
+    const artifacts = await compileAsm80Fixture('azm-asm80-string-', 'string-directives.z80', [
+      '.org 0100H',
+      'cstr_label:',
+      '  .cstr "OK"',
+      'pstr_label:',
+      '  .pstr "OK"',
+      'istr_label:',
+      '  .istr "OK"',
+    ]);
     const { asm80, bin } = requireAsm80Artifacts(artifacts);
 
     const bytes = [...bin.bytes.slice(0, 8)];

@@ -43,21 +43,14 @@ export function createSourceItemTable(ctx: CreateSourceItemTableContext) {
     stmtSpan,
   }: ParseSourceItemDispatchArgs): ParseItemResult {
     const typeTail = consumeTopKeyword(rest, 'type') ?? '';
-    const parsedType = parseTypeDecl(
-      typeTail,
-      text,
-      stmtSpan,
-      lineNo,
-      index,
-      {
-        file,
-        lineCount,
-        diagnostics,
-        sourcePath: filePath,
-        getRawLine,
-        isReservedTopLevelName,
-      },
-    );
+    const parsedType = parseTypeDecl(typeTail, text, stmtSpan, lineNo, index, {
+      file,
+      lineCount,
+      diagnostics,
+      sourcePath: filePath,
+      getRawLine,
+      isReservedTopLevelName,
+    });
     if (!parsedType) return { nextIndex: index + 1 };
     return { nextIndex: parsedType.nextIndex, node: parsedType.node };
   }
@@ -71,21 +64,14 @@ export function createSourceItemTable(ctx: CreateSourceItemTableContext) {
     stmtSpan,
   }: ParseSourceItemDispatchArgs): ParseItemResult {
     const unionTail = consumeTopKeyword(rest, 'union') ?? '';
-    const parsedUnion = parseUnionDecl(
-      unionTail,
-      text,
-      stmtSpan,
-      lineNo,
-      index,
-      {
-        file,
-        lineCount,
-        diagnostics,
-        sourcePath: filePath,
-        getRawLine,
-        isReservedTopLevelName,
-      },
-    );
+    const parsedUnion = parseUnionDecl(unionTail, text, stmtSpan, lineNo, index, {
+      file,
+      lineCount,
+      diagnostics,
+      sourcePath: filePath,
+      getRawLine,
+      isReservedTopLevelName,
+    });
     if (!parsedUnion) return { nextIndex: index + 1 };
     return { nextIndex: parsedUnion.nextIndex, node: parsedUnion.node };
   }
@@ -99,22 +85,15 @@ export function createSourceItemTable(ctx: CreateSourceItemTableContext) {
     stmtSpan,
   }: ParseSourceItemDispatchArgs): ParseItemResult {
     const opTail = consumeTopKeyword(rest, 'op') ?? '';
-    const parsedOp = parseTopLevelOpDecl(
-      opTail,
-      text,
-      stmtSpan,
-      lineNo,
-      index,
-      {
-        file,
-        lineCount,
-        diagnostics,
-        sourcePath: filePath,
-        getRawLine,
-        isReservedTopLevelName,
-        parseOpParamsFromText,
-      },
-    );
+    const parsedOp = parseTopLevelOpDecl(opTail, text, stmtSpan, lineNo, index, {
+      file,
+      lineCount,
+      diagnostics,
+      sourcePath: filePath,
+      getRawLine,
+      isReservedTopLevelName,
+      parseOpParamsFromText,
+    });
     if (!parsedOp) return { nextIndex: index + 1 };
     return { nextIndex: parsedOp.nextIndex, node: parsedOp.node };
   }
@@ -128,17 +107,14 @@ export function createSourceItemTable(ctx: CreateSourceItemTableContext) {
     stmtSpan,
   }: ParseSourceItemDispatchArgs): ParseItemResult {
     const enumTail = consumeTopKeyword(rest, 'enum') ?? '';
-    const enumNode = parseEnumDecl(
-      enumTail,
-      {
-        diagnostics,
-        sourcePath: filePath,
-        lineNo,
-        text,
-        span: stmtSpan,
-        isReservedTopLevelName,
-      },
-    );
+    const enumNode = parseEnumDecl(enumTail, {
+      diagnostics,
+      sourcePath: filePath,
+      lineNo,
+      text,
+      span: stmtSpan,
+      isReservedTopLevelName,
+    });
     return { nextIndex: index + 1, ...(enumNode ? { node: enumNode } : {}) };
   }
 

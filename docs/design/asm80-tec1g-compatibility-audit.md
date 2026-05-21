@@ -14,7 +14,7 @@ by MON3 and common TEC-1G examples.
 
 Root:
 
-- `/Users/johnhardy/Documents/projects/TEC-1G/Software`
+- `/Users/johnhardy/projects/TEC-1G/Software`
 
 Included files:
 

@@ -67,8 +67,8 @@ This command is local-workspace only and read-only for external source trees. It
 looks for `/Users/johnhardy/projects/tetro`, builds the configured Tetro and
 Pacmo entries with both ASM80 and the built AZM CLI, writes outputs under a
 temporary directory, and compares HEX payloads after ignoring only final newline
-differences. Missing `asm80`, missing Tetro, and the currently unconfigured MON3
-entry are reported as `SKIP` rather than guessed.
+differences. Missing `asm80`, missing Tetro/Pacmo entries, and the currently
+unconfigured MON3 corpus entry are reported as `SKIP` rather than guessed.
 
 Run the opt-in external ASM80 baseline when touching ASM80 parsing, lowering,
 CLI binary output, or ASM80 baseline docs:
@@ -116,7 +116,7 @@ the ASM80 64K output to the populated listing range before comparing it with
 AZM output. Override the default source path and ASM80 executable when needed:
 
 ```sh
-TETRO_SOURCE=/path/to/tetro.asm \
+TETRO_SOURCE=/path/to/tetro/tetro.z80 \
 ASM80=/path/to/asm80 \
 npm run test:asm80:tetro
 ```

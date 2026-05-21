@@ -5,9 +5,13 @@ import type { ProgramNode } from '../../src/frontend/ast.js';
 import { parseEnumDecl } from '../../src/frontend/parseEnum.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 import { parseSourceFile } from '../../src/frontend/parser.js';
-import { expectNoDiagnostics } from '../helpers/diagnostics.js';
+import { expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 
-function parseSingleFileProgram(path: string, sourceText: string, diagnostics: Diagnostic[]): ProgramNode {
+function parseSingleFileProgram(
+  path: string,
+  sourceText: string,
+  diagnostics: Diagnostic[],
+): ProgramNode {
   const sourceFile = parseSourceFile(path, sourceText, diagnostics);
   return {
     kind: 'Program',
@@ -42,7 +46,11 @@ describe('PR476 enum parser extraction', () => {
 
   it('preserves top-level enum parsing through parser.ts', () => {
     const diagnostics: Diagnostic[] = [];
-    const program = parseSingleFileProgram(file.path, 'enum Colors Red, Green, Blue\n', diagnostics);
+    const program = parseSingleFileProgram(
+      file.path,
+      'enum Colors Red, Green, Blue\n',
+      diagnostics,
+    );
 
     expectNoDiagnostics(diagnostics);
     expect(program.files[0]?.items[0]).toMatchObject({

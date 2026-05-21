@@ -47,14 +47,17 @@ describe('PR240: ISA register-target diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'djnz does not support register targets; expects disp8',
     },
-  ] satisfies Row[])('$label — explicit diagnostics for register-target misuse in call/jp/jr/djnz', async (row) => {
-    const diagnostics = await compileBackendFixtureDiagnostics(PR240_FIXTURE);
-    expectDiagnostic(diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit diagnostics for register-target misuse in call/jp/jr/djnz',
+    async (row) => {
+      const diagnostics = await compileBackendFixtureDiagnostics(PR240_FIXTURE);
+      expectDiagnostic(diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit looser imm/disp placeholder diagnostics for the register-target matrix fixture', async () => {
     const diagnostics = await compileBackendFixtureDiagnostics(PR240_FIXTURE);

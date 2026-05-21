@@ -5,7 +5,12 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
 import type { BinArtifact } from '../src/formats/types.js';
-import { expectDiagnostic, expectNoDiagnostic, expectNoErrors, expectNoDiagnostics } from './helpers/diagnostics.js';
+import {
+  expectDiagnostic,
+  expectNoDiagnostic,
+  expectNoErrors,
+  expectNoDiagnostics,
+} from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -1,10 +1,6 @@
 import { expect } from 'vitest';
 
-import type {
-  Diagnostic,
-  DiagnosticId,
-  DiagnosticSeverity,
-} from '../../../src/diagnosticTypes.js';
+import type { Diagnostic, DiagnosticId, DiagnosticSeverity } from '../../../src/diagnosticTypes.js';
 
 export type DiagnosticExpectation = {
   id?: DiagnosticId;

@@ -1,9 +1,15 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { EncoderImmContext, EncoderMemContext, EncoderRegisterContext } from './encodeContext.js';
+import type {
+  EncoderImmContext,
+  EncoderMemContext,
+  EncoderRegisterContext,
+} from './encodeContext.js';
 
-type BitOpsEncodeContext = EncoderRegisterContext & Pick<EncoderImmContext, 'immValue'> & EncoderMemContext;
+type BitOpsEncodeContext = EncoderRegisterContext &
+  Pick<EncoderImmContext, 'immValue'> &
+  EncoderMemContext;
 
 const BIT_LIKE_OPS = {
   bit: { base: 0x40, allowIndexedDestination: false },

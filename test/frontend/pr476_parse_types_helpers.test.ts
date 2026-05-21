@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { parseTypeDecl, parseUnionDecl } from '../../src/frontend/parseTypes.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
-import { createRawLineGetter, expectNoDiagnostics, parseSingleFileProgram } from '../helpers/index.js';
+import {
+  createRawLineGetter,
+  expectNoDiagnostics,
+  parseSingleFileProgram,
+} from '../helpers/index.js';
 
 describe('PR476 type and union parser extraction', () => {
   it('keeps type helper parsing intact', () => {
@@ -106,9 +110,14 @@ describe('PR476 type and union parser extraction', () => {
     expect(diagnostics).toContainEqual(
       expect.objectContaining({
         severity: 'error',
-        message: expect.stringContaining('Invalid type declaration line ".type Pair byte[2]": expected <name>'),
+        message: expect.stringContaining(
+          'Invalid type declaration line ".type Pair byte[2]": expected <name>',
+        ),
       }),
     );
-    expect(program.files[0]?.items.map((item) => item.kind)).toEqual(['AsmLabel', 'AsmInstruction']);
+    expect(program.files[0]?.items.map((item) => item.kind)).toEqual([
+      'AsmLabel',
+      'AsmInstruction',
+    ]);
   });
 });

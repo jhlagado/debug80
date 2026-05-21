@@ -3,8 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
-import { exists, runCli } from '../helpers/cli.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+import { exists, runCli } from '../helpers/cli/index.js';
 
 describe('cli case-style linting', () => {
   beforeAll(async () => {
@@ -16,11 +16,7 @@ describe('cli case-style linting', () => {
     const entry = join(work, 'main.asm');
     const outBin = join(work, 'bundle.bin');
 
-    await writeFile(
-      entry,
-      ['main:', '  ld a, 1', '  ret', ''].join('\n'),
-      'utf8',
-    );
+    await writeFile(entry, ['main:', '  ld a, 1', '  ret', ''].join('\n'), 'utf8');
 
     const res = await runCli(['--type', 'bin', '--case-style=upper', '--output', outBin, entry]);
     expect(res.code).toBe(0);
@@ -37,11 +33,7 @@ describe('cli case-style linting', () => {
     const entry = join(work, 'main.asm');
     const outBin = join(work, 'bundle.bin');
 
-    await writeFile(
-      entry,
-      ['main:', '  loop: ld a, $af', '  ret', ''].join('\n'),
-      'utf8',
-    );
+    await writeFile(entry, ['main:', '  loop: ld a, $af', '  ret', ''].join('\n'), 'utf8');
 
     const res = await runCli(['--type', 'bin', '--case-style=upper', '--output', outBin, entry]);
     expect(res.code).toBe(0);

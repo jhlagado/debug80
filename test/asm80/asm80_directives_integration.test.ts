@@ -81,7 +81,9 @@ function expectBinBytes(artifact: BinArtifact | undefined, bytes: number[]): voi
   expect([...artifact.bytes]).toEqual(bytes);
 }
 
-function binArtifact(artifacts: Awaited<ReturnType<typeof compile>>['artifacts']): BinArtifact | undefined {
+function binArtifact(
+  artifacts: Awaited<ReturnType<typeof compile>>['artifacts'],
+): BinArtifact | undefined {
   return artifacts.find((a): a is BinArtifact => a.kind === 'bin');
 }
 
@@ -312,10 +314,13 @@ describe('asm80 directive lowering integration', () => {
     );
 
     expectNoCompileErrors(res.diagnostics);
-    expectBinBytes(binArtifact(res.artifacts), [
-      0x22, 0x00, 0x09, 0xed, 0x43, 0x00, 0x09, 0xed, 0x53, 0x00, 0x09, 0xed, 0x73, 0x00, 0x09,
-      0xdd, 0x22, 0x00, 0x09, 0xfd, 0x22, 0x00, 0x09,
-    ]);
+    expectBinBytes(
+      binArtifact(res.artifacts),
+      [
+        0x22, 0x00, 0x09, 0xed, 0x43, 0x00, 0x09, 0xed, 0x53, 0x00, 0x09, 0xed, 0x73, 0x00, 0x09,
+        0xdd, 0x22, 0x00, 0x09, 0xfd, 0x22, 0x00, 0x09,
+      ],
+    );
   });
 
   it('does not include trailing reserve-only ASM DS in the loadable binary', async () => {

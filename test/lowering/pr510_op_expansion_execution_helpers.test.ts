@@ -21,15 +21,7 @@ describe('#510 op expansion execution helpers', () => {
     const entry = join(dir, 'azm_safe_op.asm');
     await writeFile(
       entry,
-      [
-        'op clear_a()',
-        '  xor a',
-        'end',
-        '',
-        'main:',
-        '  clear_a',
-        '',
-      ].join('\n'),
+      ['op clear_a()', '  xor a', 'end', '', 'main:', '  clear_a', ''].join('\n'),
       'utf8',
     );
 

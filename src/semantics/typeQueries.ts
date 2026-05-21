@@ -19,9 +19,7 @@ type TypeResolutionContext = {
 };
 
 export function createTypeResolutionHelpers(ctx: TypeResolutionContext) {
-  const resolveScalarKind = (
-    typeExpr: TypeExprNode,
-  ): ScalarKind | undefined => {
+  const resolveScalarKind = (typeExpr: TypeExprNode): ScalarKind | undefined => {
     if (typeExpr.kind !== 'TypeName') return undefined;
     const lower = typeExpr.name.toLowerCase();
     if (lower === 'byte' || lower === 'word' || lower === 'addr') return lower;

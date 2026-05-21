@@ -39,5 +39,4 @@ describe('PR226 parser declaration/control span matrix', () => {
       column: 1,
     });
   });
-
 });

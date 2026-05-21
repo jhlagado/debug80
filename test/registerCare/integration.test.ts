@@ -230,11 +230,7 @@ describe('register-care integration', () => {
     expect(annotations?.files).toHaveLength(1);
     expect(annotations?.files[0]?.path).toBe(entry);
     expect(annotations?.files[0]?.text).toContain(
-      [
-        '; Helper prose.',
-        ';!      out       HL',
-        'HELPER:',
-      ].join('\n'),
+      ['; Helper prose.', ';!      out       HL', 'HELPER:'].join('\n'),
     );
   });
 
@@ -273,12 +269,7 @@ describe('register-care integration', () => {
     const annotations = res.artifacts.find(
       (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
     );
-    expect(annotations?.files[0]?.text).toContain(
-      [
-        ';!      out       HL',
-        '@HELPER:',
-      ].join('\n'),
-    );
+    expect(annotations?.files[0]?.text).toContain([';!      out       HL', '@HELPER:'].join('\n'));
   });
 
   it('applies conditional jumps to at-prefixed entries as boundary summaries', async () => {
@@ -465,12 +456,7 @@ describe('register-care integration', () => {
       (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
     );
     expect(annotations?.files[0]?.text).toContain(
-      [
-        '; Mask prose.',
-        ';!      in        HL',
-        ';!      out       A',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      in        HL', ';!      out       A', 'MASK:'].join('\n'),
     );
     expect(annotations?.files[0]?.text).not.toContain(';!      maybe-out A');
   });
@@ -1229,12 +1215,7 @@ describe('register-care integration', () => {
       (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
     );
     expect(annotations?.files[0]?.text).toContain(
-      [
-        '; Mask prose.',
-        ';!      out       A',
-        ';!      clobbers  C',
-        'MASK:',
-      ].join('\n'),
+      ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
   });
 

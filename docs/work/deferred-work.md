@@ -5,6 +5,7 @@ This file records deferred and backburner items that are intentionally not part 
 ## Format
 
 For each item record:
+
 - Status
 - Why deferred
 - Preconditions
@@ -14,6 +15,7 @@ For each item record:
 ## Deferred Items
 
 ### User-authored op contracts
+
 - Status: deferred
 - Why deferred: no register-effect analysis mechanism exists for arbitrary op bodies
 - Preconditions:
@@ -26,6 +28,7 @@ For each item record:
   - this is separate from current parser/spec cleanup work
 
 ### Typed cast surface `<Type>base.tail`
+
 - Status: landed; monitor follow-up cleanup only
 - Why deferred: the feature itself is no longer deferred, but any further
   expansion beyond the accepted v1 shape should wait until post-landing review
@@ -39,6 +42,7 @@ For each item record:
   - landed as additive language work, not as part of an `addr` revival
 
 ### Redundant converted fixture cleanup
+
 - Status: low priority
 - Why deferred: fixture pruning should not interrupt higher-signal AZM language
   boundary and ZAX-retirement work

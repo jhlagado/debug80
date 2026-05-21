@@ -11,7 +11,7 @@ import type {
   TypeExprNode,
   UnionDeclNode,
 } from '../../src/frontend/ast.js';
-import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 
 const s = (file = 'test.asm'): SourceSpan => ({
   file,

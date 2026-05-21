@@ -53,10 +53,7 @@ describe('PR786 raw data lowering', () => {
 
     expect([byteAt(table), byteAt(table + 1), byteAt(table + 2)]).toEqual([1, 2, 3]);
     expect([byteAt(words), byteAt(words + 1), byteAt(words + 2), byteAt(words + 3)]).toEqual([
-      0x34,
-      0x12,
-      0x78,
-      0x56,
+      0x34, 0x12, 0x78, 0x56,
     ]);
     expect([byteAt(gap), byteAt(gap + 1)]).toEqual([0, 0]);
     expect(wordAt(ptrs)).toBe(handlerA & 0xffff);

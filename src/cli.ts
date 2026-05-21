@@ -6,10 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { compile } from './compile.js';
 import type { Diagnostic } from './diagnosticTypes.js';
-import {
-  isSupportedSourcePath,
-  sourceExtensions,
-} from './frontend/sourceExtensions.js';
+import { isSupportedSourcePath, sourceExtensions } from './frontend/sourceExtensions.js';
 import { defaultFormatWriters } from './formats/index.js';
 import type { Artifact } from './formats/types.js';
 import { normalizePathForCompare } from './pathCompare.js';
@@ -133,8 +130,7 @@ function readMatchedFlagValue(
   flags: readonly string[],
 ): { flag: string; value: string } | undefined {
   const flag =
-    flags.find((candidate) => arg === candidate || arg.startsWith(`${candidate}=`)) ??
-    undefined;
+    flags.find((candidate) => arg === candidate || arg.startsWith(`${candidate}=`)) ?? undefined;
   if (!flag) return undefined;
   const value = arg.startsWith(`${flag}=`)
     ? arg.slice(flag.length + 1)
@@ -555,27 +551,27 @@ export async function runCli(argv: string[]): Promise<number> {
     const base = artifactBase(parsed.entryFile, parsed.outputType, parsed.outputPath);
 
     const compileOptions = {
-        emitBin: parsed.emitBin,
-        emitHex: parsed.emitHex,
-        emitD8m: parsed.emitD8m,
-        emitListing: parsed.emitListing,
-        emitAsm80: parsed.emitAsm80,
-        caseStyle: parsed.caseStyle,
-        includeDirs: parsed.includeDirs,
-        directiveAliasFiles: parsed.directiveAliasFiles,
-        requireMain: false,
-        defaultCodeBase: 0,
-        registerCare: parsed.registerCare,
-        emitRegisterReport: parsed.emitRegisterReport,
-        emitRegisterInterface: parsed.emitRegisterInterface,
-        emitRegisterAnnotations: parsed.annotateRegisterContracts,
-        fixRegisterContracts: parsed.fixRegisterContracts,
-        acceptRegisterOutputCandidates: parsed.acceptRegisterOutputCandidates,
-        registerCareInterfaces: parsed.registerCareInterfaces,
-        ...(parsed.registerCareProfile !== undefined
-          ? { registerCareProfile: parsed.registerCareProfile }
-          : {}),
-      };
+      emitBin: parsed.emitBin,
+      emitHex: parsed.emitHex,
+      emitD8m: parsed.emitD8m,
+      emitListing: parsed.emitListing,
+      emitAsm80: parsed.emitAsm80,
+      caseStyle: parsed.caseStyle,
+      includeDirs: parsed.includeDirs,
+      directiveAliasFiles: parsed.directiveAliasFiles,
+      requireMain: false,
+      defaultCodeBase: 0,
+      registerCare: parsed.registerCare,
+      emitRegisterReport: parsed.emitRegisterReport,
+      emitRegisterInterface: parsed.emitRegisterInterface,
+      emitRegisterAnnotations: parsed.annotateRegisterContracts,
+      fixRegisterContracts: parsed.fixRegisterContracts,
+      acceptRegisterOutputCandidates: parsed.acceptRegisterOutputCandidates,
+      registerCareInterfaces: parsed.registerCareInterfaces,
+      ...(parsed.registerCareProfile !== undefined
+        ? { registerCareProfile: parsed.registerCareProfile }
+        : {}),
+    };
 
     const res = await compile(parsed.entryFile, compileOptions, { formats: defaultFormatWriters });
 
@@ -605,7 +601,10 @@ export async function runCli(argv: string[]): Promise<number> {
 }
 
 function samePath(a: string, b: string): boolean {
-  return normalizePathForCompare(a, { realpath: true }) === normalizePathForCompare(b, { realpath: true });
+  return (
+    normalizePathForCompare(a, { realpath: true }) ===
+    normalizePathForCompare(b, { realpath: true })
+  );
 }
 
 function isDirectCliInvocation(invokedAs: string | undefined): boolean {

@@ -19,7 +19,10 @@ import type {
   AssemblerLoweringSymbolContext,
   AssemblerLoweringTypeContext,
 } from './assemblerLoweringContext.js';
-import type { EmitProgramLoweringContextInputs, EmitLoweringContextBuilderInput } from './emitContextBuilder.js';
+import type {
+  EmitProgramLoweringContextInputs,
+  EmitLoweringContextBuilderInput,
+} from './emitContextBuilder.js';
 import { createEmitLoweringContexts } from './emitContextBuilder.js';
 
 type EmitDiagnosticsBundle = AssemblerLoweringDiagnosticsContext;

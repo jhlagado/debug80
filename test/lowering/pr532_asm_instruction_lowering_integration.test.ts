@@ -51,6 +51,7 @@ describe('PR532 asm instruction lowering integration', () => {
         return undefined;
       },
       evalImmExpr: (expr) => (expr.kind === 'ImmLiteral' ? expr.value : undefined),
+      currentAddress: () => 0,
       resolveRawAliasTargetName: () => undefined,
       resolveEa: () => undefined,
       diagIfRetStackImbalanced: () => {},

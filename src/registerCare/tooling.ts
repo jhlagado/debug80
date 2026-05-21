@@ -30,8 +30,10 @@ export interface RegisterCareCandidateDiagnostic {
   codeAction: RegisterCareCodeAction;
 }
 
-export interface AnalyzeRegisterCareForToolsOptions
-  extends Omit<AnalyzeRegisterCareOptions, 'emitReport' | 'emitInterface' | 'emitAnnotations'> {
+export interface AnalyzeRegisterCareForToolsOptions extends Omit<
+  AnalyzeRegisterCareOptions,
+  'emitReport' | 'emitInterface' | 'emitAnnotations'
+> {
   emitReport?: boolean;
   emitInterface?: boolean;
 }

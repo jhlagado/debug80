@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
 import {
   exists,
   expectCliArtifacts,
@@ -10,7 +10,7 @@ import {
   removeCliWorkDir,
   runCli,
   writeCliMainSource,
-} from '../helpers/cli.js';
+} from '../helpers/cli/index.js';
 
 async function writeCliIncludeFixture(workName: string, outputName: string) {
   const work = await makeCliWorkDir(`${workName}-`);
@@ -19,8 +19,16 @@ async function writeCliIncludeFixture(workName: string, outputName: string) {
   const output = join(work, outputName);
 
   await mkdir(includes, { recursive: true });
-  await writeFile(entry, ['.include "lib.inc"', 'main:', '    call helper', '    ret', ''].join('\n'), 'utf8');
-  await writeFile(join(includes, 'lib.inc'), ['helper:', '    nop', '    ret', ''].join('\n'), 'utf8');
+  await writeFile(
+    entry,
+    ['.include "lib.inc"', 'main:', '    call helper', '    ret', ''].join('\n'),
+    'utf8',
+  );
+  await writeFile(
+    join(includes, 'lib.inc'),
+    ['helper:', '    nop', '    ret', ''].join('\n'),
+    'utf8',
+  );
 
   return { work, includes, entry, output };
 }
@@ -155,15 +163,14 @@ describe('cli artifacts', () => {
   }, 20_000);
 
   it('resolves imports from repeated -I include paths', async () => {
-    const { work, includes, entry, output: outHex } = await writeCliIncludeFixture('azm-cli-include', 'out.hex');
-
-    const res = await runCli([
-      '-I',
+    const {
+      work,
       includes,
-      '-o',
-      outHex,
       entry,
-    ]);
+      output: outHex,
+    } = await writeCliIncludeFixture('azm-cli-include', 'out.hex');
+
+    const res = await runCli(['-I', includes, '-o', outHex, entry]);
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outHex);
     expect(await exists(outHex)).toBe(true);
@@ -172,14 +179,14 @@ describe('cli artifacts', () => {
   }, 20_000);
 
   it('accepts equals-form long options for output/type/include', async () => {
-    const { work, includes, entry, output: outBin } = await writeCliIncludeFixture('azm-cli-equals', 'out.bin');
-
-    const res = await runCli([
-      `--include=${includes}`,
-      '--type=bin',
-      `--output=${outBin}`,
+    const {
+      work,
+      includes,
       entry,
-    ]);
+      output: outBin,
+    } = await writeCliIncludeFixture('azm-cli-equals', 'out.bin');
+
+    const res = await runCli([`--include=${includes}`, '--type=bin', `--output=${outBin}`, entry]);
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outBin);
     expect(await exists(outBin)).toBe(true);

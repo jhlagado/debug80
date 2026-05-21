@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,14 +34,17 @@ describe('PR208: call indirect-form legality diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'call cc, nn does not support indirect targets',
     },
-  ] satisfies Row[])('$label — explicit diagnostics for unsupported indirect call targets', async (row) => {
-    const res = await compile(PR208_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit diagnostics for unsupported indirect call targets',
+    async (row) => {
+      const res = await compile(PR208_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit looser imm16 placeholder diagnostics for the call indirect matrix fixture', async () => {
     const res = await compile(PR208_FIXTURE, {}, { formats: defaultFormatWriters });

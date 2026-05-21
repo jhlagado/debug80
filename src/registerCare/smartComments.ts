@@ -7,8 +7,7 @@ import type {
 } from './types.js';
 
 const COMPACT_SOURCE_TAG_RE = /^;?\s*!\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
-const COMPACT_SOURCE_LINE_RE =
-  /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
+const COMPACT_SOURCE_LINE_RE = /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
 const INTERFACE_TAG_RE = /^\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
 const CARRIER_RE = /^\{([^}]+)\}(?:\s+(.+))?$/;
 
@@ -159,10 +158,7 @@ function collectPrecedingCommentBlock(
   rawBlock.reverse();
 
   let compactStart = rawBlock.length;
-  while (
-    compactStart > 0 &&
-    isCompactSourceContractLine(rawBlock[compactStart - 1]?.text ?? '')
-  ) {
+  while (compactStart > 0 && isCompactSourceContractLine(rawBlock[compactStart - 1]?.text ?? '')) {
     compactStart -= 1;
   }
   if (compactStart < rawBlock.length) {
@@ -193,9 +189,7 @@ function buildImplicitRoutineContracts(
     const docBlock = collectPrecedingCommentBlock(routine, sourceTexts);
     if (
       docBlock.comments.some(
-        (item) =>
-          item.comment.kind === 'extern' ||
-          item.comment.kind === 'end',
+        (item) => item.comment.kind === 'extern' || item.comment.kind === 'end',
       )
     ) {
       continue;

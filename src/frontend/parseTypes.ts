@@ -3,10 +3,7 @@ import type { SourceFile } from './source.js';
 import { span } from './source.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
-import {
-  diagInvalidHeaderLine,
-  formatIdentifierToken,
-} from './parseTopLevelCommon.js';
+import { diagInvalidHeaderLine, formatIdentifierToken } from './parseTopLevelCommon.js';
 import { parseRecordFieldBlock, type RecordFieldLine } from './parseRecordFieldDecl.js';
 
 type RawLine = RecordFieldLine;
@@ -86,14 +83,7 @@ export function parseTypeDecl(
   const tail = afterType.slice(name.length).trimStart();
 
   if (tail.length > 0) {
-    diagInvalidHeaderLine(
-      diagnostics,
-      sourcePath,
-      'type declaration',
-      stmtText,
-      '<name>',
-      lineNo,
-    );
+    diagInvalidHeaderLine(diagnostics, sourcePath, 'type declaration', stmtText, '<name>', lineNo);
     return undefined;
   }
 

@@ -3,9 +3,10 @@ import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
 import type { EncoderImmContext, EncoderRegisterContext } from './encodeContext.js';
 
-type IoEncodeContext = EncoderRegisterContext & EncoderImmContext & {
-  portImmValue: (op: AsmOperandNode, env: CompileEnv) => number | undefined;
-};
+type IoEncodeContext = EncoderRegisterContext &
+  EncoderImmContext & {
+    portImmValue: (op: AsmOperandNode, env: CompileEnv) => number | undefined;
+  };
 
 function outSourceReg8(
   node: AsmInstructionNode,
@@ -106,7 +107,14 @@ export function encodeIoInstruction(
         ctx.diag(diagnostics, node, `in a,(n) immediate port form requires destination A`);
         return undefined;
       }
-      const n = immediatePortByte(node, env, diagnostics, ctx, port, `in a,(n) expects an imm8 port number`);
+      const n = immediatePortByte(
+        node,
+        env,
+        diagnostics,
+        ctx,
+        port,
+        `in a,(n) expects an imm8 port number`,
+      );
       if (n === undefined) return undefined;
       return Uint8Array.of(0xdb, n);
     }
@@ -143,7 +151,14 @@ export function encodeIoInstruction(
         ctx.diag(diagnostics, node, `out (n),a immediate port form requires source A`);
         return undefined;
       }
-      const n = immediatePortByte(node, env, diagnostics, ctx, port, `out (n),a expects an imm8 port number`);
+      const n = immediatePortByte(
+        node,
+        env,
+        diagnostics,
+        ctx,
+        port,
+        `out (n),a expects an imm8 port number`,
+      );
       if (n === undefined) return undefined;
       return Uint8Array.of(0xd3, n);
     }

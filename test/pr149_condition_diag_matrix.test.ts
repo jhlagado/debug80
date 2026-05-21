@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,14 +55,17 @@ describe('PR149: condition diagnostics parity matrix', () => {
       id: DiagnosticIds.EncodeError,
       message: 'jr cc expects valid condition code NZ/Z/NC/C',
     },
-  ] satisfies Row[])('$label — explicit diagnostics for malformed condition operands/forms', async (row) => {
-    const res = await compile(PR149_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit diagnostics for malformed condition operands/forms',
+    async (row) => {
+      const res = await compile(PR149_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not report generic unresolved/unsupported fallbacks for the condition matrix fixture', async () => {
     const res = await compile(PR149_FIXTURE, {}, { formats: defaultFormatWriters });

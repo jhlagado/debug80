@@ -10,7 +10,11 @@ import {
   type LoweredLabelView,
 } from './lowered_program_types.js';
 
-function readResolvedBytes(map: EmittedByteMap | undefined, address: number, size: number): number[] | undefined {
+function readResolvedBytes(
+  map: EmittedByteMap | undefined,
+  address: number,
+  size: number,
+): number[] | undefined {
   if (!map || size <= 0) return undefined;
   const bytes: number[] = [];
   for (let index = 0; index < size; index++) {
@@ -90,7 +94,9 @@ function flattenLoweredLabels(program: LoweredAsmProgram): LoweredLabelView[] {
 }
 
 function findLoweredLabel(program: LoweredAsmProgram, name: string): LoweredLabelView | undefined {
-  return flattenLoweredLabels(program).find((label) => label.name.toUpperCase() === name.toUpperCase());
+  return flattenLoweredLabels(program).find(
+    (label) => label.name.toUpperCase() === name.toUpperCase(),
+  );
 }
 
 export function instructionsInLabelRange(

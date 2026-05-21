@@ -41,10 +41,7 @@ function reportTypeError(diagnostics: Diagnostic[] | undefined): LayoutDiagnosti
 }
 
 function reportMissingArrayLength(te: TypeExprNode, diag: LayoutDiagnosticSink): void {
-  diag(
-    te.span.file,
-    `Array length is required here; write T[N].`,
-  );
+  diag(te.span.file, `Array length is required here; write T[N].`);
 }
 
 function resolveNamedType<T>(
@@ -199,7 +196,8 @@ export function offsetPathInTypeExpr(
       case 'TypeName':
         return resolveNamedType(te, env, visiting, diag, (resolved) => {
           if (resolved.kind === 'Scalar') return { kind: 'Scalar', name: resolved.name };
-          if (resolved.decl.kind === 'UnionDecl') return { kind: 'Union', fields: resolved.decl.fields };
+          if (resolved.decl.kind === 'UnionDecl')
+            return { kind: 'Union', fields: resolved.decl.fields };
           return resolveType(resolved.decl.typeExpr, visiting);
         });
       case 'ArrayType': {

@@ -1,14 +1,18 @@
 # AZM
 
-AZM is a Z80 assembler in the ASM80 tradition, with a stricter assembler surface and modern safety tooling.
+AZM is a Z80 assembler in the ASM80 tradition: plain assembly input, predictable
+object output, and modern safety tooling for projects that still want to see the
+machine.
 
-The goal is not to turn assembly into a high-level language. AZM keeps the machine visible: labels, directives, instructions, explicit branches, explicit data, and visible generated metadata.
+The project goal is a good assembler, not a high-level language. AZM keeps
+labels, directives, instructions, branches, data bytes, register effects, and
+generated metadata visible in source and artifacts.
 
-## Direction
+## Product boundary
 
 AZM keeps:
 
-- ASM80-style `.asm` / `.z80` assembly as the baseline
+- ASM80-style `.asm` / `.z80` source as the baseline
 - textual `.include`
 - directive aliases for importing common assembler spellings
 - register-care analysis, compact AZMDoc comments, and `.asmi` external
@@ -21,7 +25,10 @@ AZM keeps:
 - assembler data directives including `.db`, `.dw`, `.ds`, `.cstr`, `.pstr`,
   and `.istr`
 
-AZM `.asm` and `.z80` source rejects old ZAX high-level features such as `func`, modules/imports, formal arguments, locals, typed assignment, structured control, generated frames, typed storage blocks, and named section blocks. Those inherited paths are temporary removal work, not product compatibility.
+AZM `.asm` and `.z80` source rejects old ZAX high-level features such as
+`func`, modules/imports, formal arguments, locals, typed assignment, structured
+control, generated frames, typed storage blocks, and named section blocks. Those
+inherited paths are removal work, not product compatibility.
 
 ## Install
 
@@ -30,6 +37,14 @@ Requires Node.js 20+.
 ```sh
 npm install -g @jhlagado/azm
 azm path/to/program.z80
+```
+
+From a checkout, use the local CLI after building:
+
+```sh
+npm ci
+npm run build
+npm run azm -- examples/hello.asm
 ```
 
 Output files for each compiled source:
@@ -41,6 +56,21 @@ Output files for each compiled source:
 | `.lst`     | Byte dump plus symbols    |
 | `.z80`     | Plain Z80 source emission |
 | `.d8.json` | Debug80 map               |
+
+Small input example:
+
+```asm
+        ORG 0100H
+START:
+        LD A,42
+        RET
+```
+
+Compile a binary and listing:
+
+```sh
+azm --type bin --output build/start.bin start.asm
+```
 
 ```text
 azm [options] <entry.asm|entry.z80>
@@ -75,6 +105,20 @@ Options:
 - `@jhlagado/azm`
 - `@jhlagado/azm/tooling`
 - `@jhlagado/azm/compile`
+
+Minimal compile example:
+
+```ts
+import { compile, defaultFormatWriters } from '@jhlagado/azm/compile';
+
+const result = await compile(
+  '/abs/path/to/main.asm',
+  { outputType: 'hex' },
+  { formats: defaultFormatWriters },
+);
+
+console.log(result.diagnostics);
+```
 
 See [docs/tooling-api.md](docs/tooling-api.md) for the current API notes.
 

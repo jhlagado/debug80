@@ -3,11 +3,7 @@ import type { Diagnostic } from '../diagnosticTypes.js';
 import type { SourceFile } from './source.js';
 import { span } from './source.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
-import {
-  diagIfArrayLengthMissing,
-  parseNumberLiteral,
-  parseTypeExprFromText,
-} from './parseImm.js';
+import { diagIfArrayLengthMissing, parseNumberLiteral, parseTypeExprFromText } from './parseImm.js';
 import {
   diagInvalidBlockLine,
   formatIdentifierToken,
@@ -272,14 +268,8 @@ export function parseRecordFieldBlock(params: {
   startIndex: number;
   ctx: RecordFieldBlockContext;
 }): ParsedFieldBlock {
-  const {
-    declarationKind,
-    declarationName,
-    fieldKind,
-    declarationLineNo,
-    startIndex,
-    ctx,
-  } = params;
+  const { declarationKind, declarationName, fieldKind, declarationLineNo, startIndex, ctx } =
+    params;
   const { file, diagnostics, sourcePath } = ctx;
   const endKeyword = declarationKind === 'type' ? '.endtype' : '.endunion';
   const parsed = parseRecordFields(fieldKind, startIndex, ctx, declarationName, endKeyword);

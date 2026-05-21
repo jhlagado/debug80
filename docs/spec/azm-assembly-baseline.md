@@ -12,7 +12,7 @@ compile-time layout constants.
 
 AZM source is flat assembly. It does not include a structured high-level
 language layer; routines, storage, control flow, and data emission are written
-with visible labels, directives, instructions, and comments.
+with visible labels, directives, instructions, comments, and data directives.
 
 The baseline is intentionally smaller than "every ASM80 feature". It is the
 canonical surface AZM should teach, syntax-highlight, lint, and extend.
@@ -63,6 +63,15 @@ typed load/store lowering, and runtime typed effective-address lowering.
 
 The default AZM verification lane is `npm run test:azm:alpha`. New retained
 coverage should use `.asm` or `.z80` source.
+
+Minimal canonical source remains ordinary assembly:
+
+```asm
+        ORG 0100H
+START:
+        LD A,42
+        RET
+```
 
 ## Canonical style
 

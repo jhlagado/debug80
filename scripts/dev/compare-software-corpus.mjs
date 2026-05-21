@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const defaultRoot = '/Users/johnhardy/Documents/projects/Software/magazine_code';
+const defaultRoot = '/Users/johnhardy/projects/Software/magazine_code';
 const root = process.argv[2] ?? defaultRoot;
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {

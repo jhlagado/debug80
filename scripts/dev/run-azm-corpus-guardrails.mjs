@@ -8,7 +8,10 @@ import { findAsm80 } from './asm80Tools.mjs';
 
 const CORPUS_ROOTS = [
   { name: 'tetro', paths: [join(homedir(), 'projects', 'tetro')] },
-  { name: 'MON3', paths: [join(homedir(), 'projects', 'MON3'), join(homedir(), 'projects', 'mon3')] },
+  {
+    name: 'MON3',
+    paths: [join(homedir(), 'projects', 'MON3'), join(homedir(), 'projects', 'mon3')],
+  },
 ];
 
 const CORPUS_CHECKS = [
@@ -81,11 +84,9 @@ function runAzm(check, repoRoot, outDir) {
   const entry = join(repoRoot, check.entry);
   const outPath = join(outDir, `${check.name}.asm.hex`);
   const cli = join(process.cwd(), 'dist', 'src', 'cli.js');
-  const result = run(
-    process.execPath,
-    [cli, '--type', 'hex', '--output', outPath, entry],
-    { cwd: process.cwd() },
-  );
+  const result = run(process.execPath, [cli, '--type', 'hex', '--output', outPath, entry], {
+    cwd: process.cwd(),
+  });
   if (result.error) return { ok: false, message: result.error.message };
   if (result.status !== 0) return { ok: false, message: compactError(result) };
   return { ok: true, outPath, payload: normalizeFinalNewline(readFileSync(outPath, 'utf8')) };

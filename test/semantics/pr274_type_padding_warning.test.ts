@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 
 import { compile } from '../../src/compile.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
-import { expectNoDiagnostics, expectNoErrors } from '../helpers/diagnostics.js';
+import { expectNoDiagnostics, expectNoErrors } from '../helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

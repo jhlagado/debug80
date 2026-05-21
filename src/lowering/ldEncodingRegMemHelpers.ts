@@ -56,7 +56,13 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'IX' || r16 === 'IY') {
       if (srcResolved?.kind === 'abs') {
-        emitAbs16FixupPrefixed(r16 === 'IX' ? 0xdd : 0xfd, 0x2a, srcResolved.baseLower, srcResolved.addend, inst.span);
+        emitAbs16FixupPrefixed(
+          r16 === 'IX' ? 0xdd : 0xfd,
+          0x2a,
+          srcResolved.baseLower,
+          srcResolved.addend,
+          inst.span,
+        );
         return true;
       }
       return false;
@@ -110,7 +116,13 @@ export function createLdEncodingRegMemHelpers(ctx: LdEncodingContext) {
     }
     if (r16 === 'IX' || r16 === 'IY') {
       if (dstResolved?.kind === 'abs') {
-        emitAbs16FixupPrefixed(r16 === 'IX' ? 0xdd : 0xfd, 0x22, dstResolved.baseLower, dstResolved.addend, inst.span);
+        emitAbs16FixupPrefixed(
+          r16 === 'IX' ? 0xdd : 0xfd,
+          0x22,
+          dstResolved.baseLower,
+          dstResolved.addend,
+          inst.span,
+        );
         return true;
       }
       return false;

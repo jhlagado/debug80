@@ -8,10 +8,7 @@ export function visitDeclTree(
   items: SourceItemNode[],
   visit: (item: DeclNode, ctx: DeclVisitContext) => void,
 ): void {
-  const walkEntry = (
-    entry: SourceItemNode,
-    ctx: DeclVisitContext,
-  ): void => {
+  const walkEntry = (entry: SourceItemNode, ctx: DeclVisitContext): void => {
     if (entry.kind === 'AsmLabel' || entry.kind === 'AsmInstruction') {
       return;
     }

@@ -6,7 +6,7 @@ import {
   expectNoDiagnostic,
   expectNoDiagnostics,
   expectNoErrors,
-} from './diagnostics.js';
+} from './diagnostics/index.js';
 
 const sampleDiagnostics: Diagnostic[] = [
   {

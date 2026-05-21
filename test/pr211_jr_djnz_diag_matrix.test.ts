@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,14 +45,17 @@ describe('PR211: jr/djnz malformed-form diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'djnz does not support indirect targets; expects disp8',
     },
-  ] satisfies Row[])('$label — explicit diagnostics for invalid condition, disp, and indirect forms', async (row) => {
-    const res = await compile(PR211_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit diagnostics for invalid condition, disp, and indirect forms',
+    async (row) => {
+      const res = await compile(PR211_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit looser jr placeholder diagnostics for the jr/djnz matrix fixture', async () => {
     const res = await compile(PR211_FIXTURE, {}, { formats: defaultFormatWriters });

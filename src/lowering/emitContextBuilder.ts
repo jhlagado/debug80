@@ -96,13 +96,13 @@ function createProgramLoweringContext(
   };
 }
 
-export function createEmitLoweringContexts(
-  input: EmitLoweringContextBuilderInput,
-): {
+export function createEmitLoweringContexts(input: EmitLoweringContextBuilderInput): {
   assemblerLoweringSharedContext: AssemblerLoweringSharedContext;
   programLoweringContext: ProgramLoweringContext;
 } {
-  const assemblerLoweringSharedContext = createAssemblerLoweringSharedContext(input.assemblerLowering);
+  const assemblerLoweringSharedContext = createAssemblerLoweringSharedContext(
+    input.assemblerLowering,
+  );
   const programLoweringContext = createProgramLoweringContext(
     assemblerLoweringSharedContext,
     input.programLowering,

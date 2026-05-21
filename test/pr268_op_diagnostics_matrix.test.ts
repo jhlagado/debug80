@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -43,15 +43,18 @@ describe('PR268: op diagnostics matrix', () => {
       id: DiagnosticIds.OpNoMatchingOverload,
       messageIncludes: 'dst: expects HL, got IX',
     },
-  ] satisfies MatrixRow[])('$label — no-match diagnostics with operand summary and overload list', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+  ] satisfies MatrixRow[])(
+    '$label — no-match diagnostics with operand summary and overload list',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it.each([
     {
@@ -66,15 +69,18 @@ describe('PR268: op diagnostics matrix', () => {
       id: DiagnosticIds.OpArityMismatch,
       messageIncludes: 'available overloads:',
     },
-  ] satisfies MatrixRow[])('$label — arity mismatch diagnostics with available signatures', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+  ] satisfies MatrixRow[])(
+    '$label — arity mismatch diagnostics with available signatures',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it.each([
     {
@@ -89,15 +95,18 @@ describe('PR268: op diagnostics matrix', () => {
       id: DiagnosticIds.OpAmbiguousOverload,
       messageIncludes: 'equally specific candidates:',
     },
-  ] satisfies MatrixRow[])('$label — ambiguous candidate signatures for incomparable matches', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+  ] satisfies MatrixRow[])(
+    '$label — ambiguous candidate signatures for incomparable matches',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it.each([
     {
@@ -153,15 +162,18 @@ describe('PR268: op diagnostics matrix', () => {
       id: DiagnosticIds.OpInvalidExpansion,
       messageIncludes: 'expansion chain: clobber_a_with',
     },
-  ] satisfies MatrixRow[])('$label — invalid op expansion diagnostics with expanded instruction context', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+  ] satisfies MatrixRow[])(
+    '$label — invalid op expansion diagnostics with expanded instruction context',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it.each([
     {
@@ -182,15 +194,18 @@ describe('PR268: op diagnostics matrix', () => {
       id: DiagnosticIds.OpInvalidExpansion,
       messageIncludes: '-> bad_inner',
     },
-  ] satisfies MatrixRow[])('$label — nested invalid expansion diagnostics with full expansion chain', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+  ] satisfies MatrixRow[])(
+    '$label — nested invalid expansion diagnostics with full expansion chain',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it.each([
     {
@@ -203,18 +218,21 @@ describe('PR268: op diagnostics matrix', () => {
       fixture: 'pr270_op_invalid_expansion_multi_failure.asm',
       messageIncludes: 'expanded instruction: ld C, SP',
     },
-  ] as const)('$label — one invalid-expansion diagnostic per failing expanded instruction', async (row) => {
-    const entry = join(__dirname, 'fixtures', row.fixture);
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-    const invalids = res.diagnostics.filter((d) => d.id === DiagnosticIds.OpInvalidExpansion);
+  ] as const)(
+    '$label — one invalid-expansion diagnostic per failing expanded instruction',
+    async (row) => {
+      const entry = join(__dirname, 'fixtures', row.fixture);
+      const res = await compile(entry, {}, { formats: defaultFormatWriters });
+      const invalids = res.diagnostics.filter((d) => d.id === DiagnosticIds.OpInvalidExpansion);
 
-    expect(invalids).toHaveLength(2);
-    expectDiagnostic(invalids, {
-      id: DiagnosticIds.OpInvalidExpansion,
-      severity: 'error',
-      messageIncludes: row.messageIncludes,
-    });
-  });
+      expect(invalids).toHaveLength(2);
+      expectDiagnostic(invalids, {
+        id: DiagnosticIds.OpInvalidExpansion,
+        severity: 'error',
+        messageIncludes: row.messageIncludes,
+      });
+    },
+  );
 
   it('does not emit invalid-expansion diagnostics for non-op instruction failures', async () => {
     const entry = join(__dirname, 'fixtures', 'pr270_nonop_invalid_instruction_baseline.asm');

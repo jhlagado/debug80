@@ -9,7 +9,7 @@ export function findAsm80() {
   const candidates = [
     process.env.ASM80,
     process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
+    '/Users/johnhardy/projects/debug80/node_modules/.bin/asm80',
     'asm80',
   ]
     .filter((candidate) => candidate && candidate.trim().length > 0)

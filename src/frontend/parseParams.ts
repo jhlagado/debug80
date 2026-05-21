@@ -11,7 +11,10 @@ function parseOpMatcherFromText(matcherText: string, matcherSpan: SourceSpan): O
   const t = matcherText.trim();
   const lower = t.toLowerCase();
   if (!MATCHER_TYPES.has(lower)) return { kind: 'MatcherFixed', span: matcherSpan, token: t };
-  return { kind: MATCHER_KIND_BY_TYPE[lower as keyof typeof MATCHER_KIND_BY_TYPE], span: matcherSpan };
+  return {
+    kind: MATCHER_KIND_BY_TYPE[lower as keyof typeof MATCHER_KIND_BY_TYPE],
+    span: matcherSpan,
+  };
 }
 
 export function parseOpParamsFromText(

@@ -54,5 +54,7 @@ export function binBytes(artifacts: Artifact[]): number[] {
 }
 
 export function containsSubsequence(haystack: number[], needle: number[]): boolean {
-  return haystack.some((_, index) => needle.every((byte, offset) => haystack[index + offset] === byte));
+  return haystack.some((_, index) =>
+    needle.every((byte, offset) => haystack[index + offset] === byte),
+  );
 }

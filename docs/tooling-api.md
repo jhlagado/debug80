@@ -1,6 +1,13 @@
 # AZM Tooling API
 
-`@jhlagado/azm` exposes a stable programmatic surface for Node tooling. Use these imports instead of deep paths under `dist/src`.
+`@jhlagado/azm` exposes a stable programmatic surface for Node tooling. Use
+these imports instead of deep paths under `dist/src`.
+
+Install the package once, then import from the public entry points:
+
+```sh
+npm install @jhlagado/azm
+```
 
 ## Stable entry points
 
@@ -107,10 +114,15 @@ import { compile, defaultFormatWriters } from '@jhlagado/azm/compile';
 
 const result = await compile(
   '/abs/path/to/main.asm',
-  { emitAsm80: true },
+  { outputType: 'hex', emitAsm80: true },
   { formats: defaultFormatWriters },
 );
 ```
+
+The compiler accepts flat `.asm` / `.z80` source, retained AZM assembler
+features, and the same output writers used by the CLI. High-level ZAX constructs
+such as `func`, module imports, typed assignment, locals, structured control,
+and generated frames are outside this API contract for AZM source.
 
 ## Public Types
 

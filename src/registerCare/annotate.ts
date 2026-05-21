@@ -12,8 +12,7 @@ interface RegisterCareAnnotationInput {
   summary: RoutineSummary;
 }
 
-const GENERATED_COMPACT_LINE_RE =
-  /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
+const GENERATED_COMPACT_LINE_RE = /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
 
 function isCommentLine(line: string): boolean {
   return /^\s*;/.test(line);

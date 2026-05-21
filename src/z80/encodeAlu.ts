@@ -1,7 +1,11 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { EncoderImmContext, EncoderMemContext, EncoderRegisterContext } from './encodeContext.js';
+import type {
+  EncoderImmContext,
+  EncoderMemContext,
+  EncoderRegisterContext,
+} from './encodeContext.js';
 
 type AluEncodeContext = EncoderRegisterContext & EncoderImmContext & EncoderMemContext;
 

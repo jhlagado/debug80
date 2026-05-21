@@ -1,15 +1,8 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type {
-  EmittedByteMap,
-  EmittedSourceSegment,
-  SymbolEntry,
-} from '../formats/types.js';
+import type { EmittedByteMap, EmittedSourceSegment, SymbolEntry } from '../formats/types.js';
 import type { SourceSpan } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import {
-  finalizeProgramEmission,
-  type ProgramEmissionFinalizeContext,
-} from './programLowering.js';
+import { finalizeProgramEmission, type ProgramEmissionFinalizeContext } from './programLowering.js';
 import { computePlacementBases } from './programLoweringFinalize.js';
 import { placeLoweredAsmStream } from './loweredAsmPlacement.js';
 import {
@@ -126,9 +119,7 @@ export function finalizeEmitProgram(context: EmitFinalizationContext): {
     writeBytePlacement: context.writeBytePlacement,
     computeWrittenRange: context.computeWrittenRange,
     rebaseCodeSourceSegments: context.rebaseCodeSourceSegments,
-    ...(context.defaultCodeBase !== undefined
-      ? { defaultCodeBase: context.defaultCodeBase }
-      : {}),
+    ...(context.defaultCodeBase !== undefined ? { defaultCodeBase: context.defaultCodeBase } : {}),
   });
 
   syncLoweredAsmInstructionBytesFromFinalBytes(placedProgram, context.bytes, context.env);

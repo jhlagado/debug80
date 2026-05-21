@@ -331,7 +331,7 @@ async function unsupportedForms(forms, knownHeads) {
   const encoder = await loadEncoder();
   if (!encoder?.encodeInstruction) return [];
   const unsupported = [];
-  const env = { consts: new Map(), enums: new Map(), types: new Map() };
+  const env = { equates: new Map(), enums: new Map(), types: new Map() };
   for (const form of forms.values()) {
     if (!knownHeads.has(form.head)) continue;
     const span = makeSpan(form.example.file, form.example.line);

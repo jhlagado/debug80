@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
-import { runCli } from '../helpers/cli.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+import { runCli } from '../helpers/cli/index.js';
 
 describe('npm azm smoke', () => {
   beforeAll(async () => {

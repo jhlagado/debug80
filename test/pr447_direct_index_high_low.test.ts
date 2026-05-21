@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { compile } from '../src/compile.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
 import type { BinArtifact } from '../src/formats/types.js';
-import { expectDiagnostic, expectNoDiagnostics } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostics } from './helpers/diagnostics/index.js';
 import {
   compilePlacedProgram,
   flattenLoweredInstructions,

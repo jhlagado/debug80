@@ -1,4 +1,11 @@
-import type { SourceSpan, ImmExprNode, EaExprNode, EaIndexNode, AsmOperandNode, TypeExprNode } from '../frontend/ast.js';
+import type {
+  SourceSpan,
+  ImmExprNode,
+  EaExprNode,
+  EaIndexNode,
+  AsmOperandNode,
+  TypeExprNode,
+} from '../frontend/ast.js';
 import type { PlacementKind } from './loweringTypes.js';
 import type {
   LoweredAsmItem,

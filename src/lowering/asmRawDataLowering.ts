@@ -42,7 +42,8 @@ function rawImmValue(value: RawValueLike): ImmExprNode | undefined {
 
 function evalRawDataSize(ctx: Context, size: ImmExprNode): number | undefined {
   if (size.kind === 'ImmName') {
-    const constValue = ctx.env.equates.get(size.name) ?? ctx.env.equates.get(size.name.toLowerCase());
+    const constValue =
+      ctx.env.equates.get(size.name) ?? ctx.env.equates.get(size.name.toLowerCase());
     const enumValue = ctx.env.enums.get(size.name);
     if (constValue === undefined && enumValue === undefined) {
       const typeExpr = { kind: 'TypeName' as const, span: size.span, name: size.name };
@@ -61,10 +62,12 @@ export function createAsmRawDataLowerer(ctx: Context): (decl: RawDataLike) => vo
       const lower = name.toLowerCase();
       if (ctx.taken.has(lower)) {
         const alreadyPending = ctx.pending.some((symbol) => symbol.name.toLowerCase() === lower);
-        if (!alreadyPending) ctx.diag(ctx.diagnostics, decl.span.file, `Duplicate symbol name "${name}".`);
+        if (!alreadyPending)
+          ctx.diag(ctx.diagnostics, decl.span.file, `Duplicate symbol name "${name}".`);
       } else {
         ctx.taken.add(lower);
-        const offset = activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
+        const offset =
+          activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
         const address = placementAddressAtOffset(ctx, activePlacement, offset);
         if (address !== undefined) publishAsmAddressConst(ctx, name, address);
         const pending = {
@@ -99,7 +102,8 @@ export function createAsmRawDataLowerer(ctx: Context): (decl: RawDataLike) => vo
     };
 
     const currentAddress = (): number | undefined => {
-      const offset = activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
+      const offset =
+        activePlacement === 'code' ? ctx.codeOffsetRef.current : ctx.dataOffsetRef.current;
       return placementAddressAtOffset(ctx, activePlacement, offset);
     };
 
@@ -119,7 +123,11 @@ export function createAsmRawDataLowerer(ctx: Context): (decl: RawDataLike) => vo
       }
       const fill = decl.fill ? ctx.evalImmExpr(decl.fill, ctx.env, ctx.diagnostics) : undefined;
       if (decl.fill && fill === undefined) {
-        ctx.diag(ctx.diagnostics, decl.span.file, `Failed to evaluate raw data fill for "${name}".`);
+        ctx.diag(
+          ctx.diagnostics,
+          decl.span.file,
+          `Failed to evaluate raw data fill for "${name}".`,
+        );
         return;
       }
       ctx.recordLoweredAsmItem(
@@ -224,7 +232,9 @@ export function createAsmRawDataLowerer(ctx: Context): (decl: RawDataLike) => vo
           ? ctx.evalImmExpr(imm, ctx.env, ctx.diagnostics)
           : evalAsmImmAtCurrent(ctx, imm, current);
       loweredValues.push(
-        evaluated === undefined ? ctx.lowerImmExprForLoweredAsm(imm) : { kind: 'literal', value: evaluated },
+        evaluated === undefined
+          ? ctx.lowerImmExprForLoweredAsm(imm)
+          : { kind: 'literal', value: evaluated },
       );
       if (evaluated !== undefined) {
         if (decl.directive === 'db') writeByte(evaluated);

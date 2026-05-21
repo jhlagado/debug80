@@ -68,7 +68,9 @@ export function asmDirectiveExpr(item: AsmDirectiveLikeNode): ImmExprNode | unde
 }
 
 export function activePlacementOffset(ctx: AsmAddressContext): number {
-  return ctx.activePlacementRef.current === 'data' ? ctx.dataOffsetRef.current : ctx.codeOffsetRef.current;
+  return ctx.activePlacementRef.current === 'data'
+    ? ctx.dataOffsetRef.current
+    : ctx.codeOffsetRef.current;
 }
 
 export function activePlacementAddress(ctx: AsmAddressContext): number | undefined {
@@ -96,7 +98,11 @@ export function evalAsmImmAtCurrent(
   return evalImmExprWithEnv(expr, ctx.env, ctx.diagnostics, { currentLocation });
 }
 
-export function publishAsmAddressConst(ctx: AsmPublishContext, name: string, address: number): void {
+export function publishAsmAddressConst(
+  ctx: AsmPublishContext,
+  name: string,
+  address: number,
+): void {
   ctx.env.equates.set(name, address);
   ctx.env.equates.set(name.toLowerCase(), address);
 }

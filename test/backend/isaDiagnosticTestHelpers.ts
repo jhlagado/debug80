@@ -5,7 +5,7 @@ import { compile } from '../../src/compile.js';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { Artifact } from '../../src/formats/types.js';
-import { expectDiagnostic, expectNoDiagnostic } from '../helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from '../helpers/diagnostics/index.js';
 
 const backendDir = dirname(fileURLToPath(import.meta.url));
 

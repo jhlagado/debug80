@@ -121,7 +121,8 @@ export const compile: CompileFn = async (
       mode: registerCareMode,
       emitReport: options.emitRegisterReport === true,
       emitInterface: options.emitRegisterInterface === true,
-      emitAnnotations: options.emitRegisterAnnotations === true || options.fixRegisterContracts === true,
+      emitAnnotations:
+        options.emitRegisterAnnotations === true || options.fixRegisterContracts === true,
       fixRegisterContracts: options.fixRegisterContracts === true,
       ...(options.acceptRegisterOutputCandidates !== undefined
         ? { acceptOutputCandidates: options.acceptRegisterOutputCandidates }
@@ -165,10 +166,9 @@ export const compile: CompileFn = async (
     artifacts.push(deps.formats.writeHex(map, symbols));
   }
   if (emit.emitD8m) {
-    const mainEntry =
-      (symbols.find((s) => s.kind === 'label' && s.name.toLowerCase() === 'main') as
-        | { kind: 'label'; name: string; address: number }
-        | undefined);
+    const mainEntry = symbols.find((s) => s.kind === 'label' && s.name.toLowerCase() === 'main') as
+      | { kind: 'label'; name: string; address: number }
+      | undefined;
     artifacts.push(
       deps.formats.writeD8m(map, symbols, {
         rootDir: dirname(entryPath),

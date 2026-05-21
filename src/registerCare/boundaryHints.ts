@@ -1,6 +1,8 @@
 import type { RegisterCareInstruction } from './types.js';
 
-export function precedingCServiceName(item: RegisterCareInstruction | undefined): string | undefined {
+export function precedingCServiceName(
+  item: RegisterCareInstruction | undefined,
+): string | undefined {
   const inst = item?.instruction;
   if (!inst || inst.head.toLowerCase() !== 'ld' || inst.operands.length !== 2) return undefined;
   const dst = inst.operands[0];

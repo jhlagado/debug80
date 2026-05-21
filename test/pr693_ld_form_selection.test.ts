@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AsmInstructionNode, EaExprNode, ImmExprNode, SourceSpan, TypeExprNode } from '../src/frontend/ast.js';
+import type {
+  AsmInstructionNode,
+  EaExprNode,
+  ImmExprNode,
+  SourceSpan,
+  TypeExprNode,
+} from '../src/frontend/ast.js';
 import { createLdFormSelectionHelpers } from '../src/lowering/ldFormSelection.js';
 import type { EaResolution } from '../src/lowering/eaResolution.js';
 import type { CompileEnv } from '../src/semantics/env.js';
