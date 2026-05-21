@@ -39,6 +39,27 @@ const FORBIDDEN_RULES = [
   },
 ];
 
+const SOURCE_COMMENT_RULES = [
+  {
+    id: 'removed-register-care-at-comment',
+    pattern: /^\s*;\s*!\s*@/,
+    message: 'Removed register-care @ comments are forbidden; use compact `;!      in/out/clobbers` lines.',
+  },
+  {
+    id: 'removed-register-care-divider-block',
+    pattern: /^\s*;\s*=+\s+AZM\s*$/i,
+    message: 'Removed AZM divider contract blocks are forbidden; use compact `;!      in/out/clobbers` lines.',
+  },
+];
+
+const ASMI_RULES = [
+  {
+    id: 'asmi-comment-line',
+    pattern: /^\s*;/,
+    message: '.asmi interface files are comment-free; remove comment lines.',
+  },
+];
+
 const DEFAULT_SCAN_ROOTS = ['.'];
 const FORBIDDEN_SOURCE_EXTENSION_NAMES = ['azm', 'azmi', 'zac', 'zax'];
 const FORBIDDEN_SOURCE_EXTENSIONS = FORBIDDEN_SOURCE_EXTENSION_NAMES.map((ext) => `.${ext}`);
@@ -79,6 +100,7 @@ function collectFilesFromRoots(repoRoot, roots) {
       stat.isFile() &&
       (current.toLowerCase().endsWith('.asm') ||
         current.toLowerCase().endsWith('.z80') ||
+        current.toLowerCase().endsWith('.asmi') ||
         current.toLowerCase().endsWith('.md'))
     ) {
       files.push(current);
@@ -197,11 +219,25 @@ export function scanForbiddenRemovedSyntax(options = {}) {
     const reportedFile = rel.startsWith('..') ? normalizePath(file) : rel;
     const text = readFileSync(file, 'utf8');
     const isMarkdown = file.toLowerCase().endsWith('.md');
+    const isAsmi = file.toLowerCase().endsWith('.asmi');
     const lines = isMarkdown
       ? Array.from(iterMarkdownFenceLines(text))
       : text.split(/\r?\n/).map((line, idx) => ({ line: idx + 1, text: line ?? '' }));
 
     for (const lineEntry of lines) {
+      const rawRules = isAsmi ? ASMI_RULES : SOURCE_COMMENT_RULES;
+      for (const rule of rawRules) {
+        const match = lineEntry.text.match(rule.pattern);
+        if (!match) continue;
+        violations.push({
+          file: reportedFile,
+          line: lineEntry.line,
+          column: (match.index ?? 0) + 1,
+          ruleId: rule.id,
+          message: rule.message,
+        });
+      }
+
       const scanned = stripLineComment(lineEntry.text);
       for (const rule of FORBIDDEN_RULES) {
         const match = scanned.match(rule.pattern);
