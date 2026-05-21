@@ -11,6 +11,7 @@ ignorePatterns = [
   "dist/**",
   "coverage/**",
   ".tmp/**",
+  "next/**",
 ]
 
 [rules]
