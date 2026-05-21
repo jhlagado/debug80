@@ -236,7 +236,10 @@ function ldEffect(inst: AsmInstructionNode): InstructionEffect {
   return unknownEffect();
 }
 
-function incDecEffect(inst: AsmInstructionNode): InstructionEffect {
+function unaryOperandEffect(
+  inst: AsmInstructionNode,
+  flagWrites: RegisterCareUnit[],
+): InstructionEffect {
   if (inst.operands.length !== 1) return unknownEffect();
   const op = inst.operands[0];
   if (!op) return unknownEffect();
@@ -250,8 +253,12 @@ function incDecEffect(inst: AsmInstructionNode): InstructionEffect {
   return {
     ...baseEffect(),
     reads,
-    writes: concatUnique(writes, INC_DEC_FLAG_WRITES),
+    writes: concatUnique(writes, flagWrites),
   };
+}
+
+function incDecEffect(inst: AsmInstructionNode): InstructionEffect {
+  return unaryOperandEffect(inst, INC_DEC_FLAG_WRITES);
 }
 
 function aluEffect(inst: AsmInstructionNode): InstructionEffect {
@@ -371,20 +378,7 @@ function djnzEffect(inst: AsmInstructionNode): InstructionEffect {
 }
 
 function rotateShiftEffect(inst: AsmInstructionNode): InstructionEffect {
-  if (inst.operands.length !== 1) return unknownEffect();
-  const op = inst.operands[0];
-  if (!op) return unknownEffect();
-
-  const reads = operandReads(op);
-  if (!reads) return unknownEffect();
-  const writes = op.kind === 'Reg' ? registerUnits(op) : [];
-  if (!writes) return unknownEffect();
-
-  return {
-    ...baseEffect(),
-    reads,
-    writes: concatUnique(writes, ROTATE_SHIFT_FLAG_WRITES),
-  };
+  return unaryOperandEffect(inst, ROTATE_SHIFT_FLAG_WRITES);
 }
 
 function accumulatorRotateEffect(head: string): InstructionEffect {
