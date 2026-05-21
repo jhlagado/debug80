@@ -1,4 +1,5 @@
 import type { EmittedByteMap } from '../../src/formats/types.js';
+import { evalBinaryImmOp, evalUnaryImmOp } from '../../src/lowering/immMath.js';
 import type {
   LoweredAsmItem,
   LoweredAsmProgram,
@@ -33,41 +34,13 @@ function evalStaticLoweredImmExpr(expr: LoweredImmExpr): number | undefined {
     case 'unary': {
       const value = evalStaticLoweredImmExpr(expr.expr);
       if (value === undefined) return undefined;
-      switch (expr.op) {
-        case '+':
-          return +value;
-        case '-':
-          return -value;
-        case '~':
-          return ~value;
-      }
+      return evalUnaryImmOp(expr.op, value);
     }
     case 'binary': {
       const left = evalStaticLoweredImmExpr(expr.left);
       const right = evalStaticLoweredImmExpr(expr.right);
       if (left === undefined || right === undefined) return undefined;
-      switch (expr.op) {
-        case '*':
-          return left * right;
-        case '/':
-          return right === 0 ? undefined : Math.trunc(left / right);
-        case '%':
-          return right === 0 ? undefined : left % right;
-        case '+':
-          return left + right;
-        case '-':
-          return left - right;
-        case '&':
-          return left & right;
-        case '^':
-          return left ^ right;
-        case '|':
-          return left | right;
-        case '<<':
-          return left << right;
-        case '>>':
-          return left >> right;
-      }
+      return evalBinaryImmOp(expr.op, left, right);
     }
   }
 }
