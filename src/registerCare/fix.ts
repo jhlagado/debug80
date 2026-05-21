@@ -1,6 +1,7 @@
 import { getZ80InstructionEffect } from '../z80/effects.js';
 import { instructionSuccessors, labelIndex } from './controlFlow.js';
 import { contractCarrierList } from './report.js';
+import { joinSourceLines, splitSourceLines } from './sourceText.js';
 import type {
   RegisterCareInstruction,
   RegisterCareOutputCandidate,
@@ -96,27 +97,6 @@ export function findExpectOutFixes(
   return out;
 }
 
-function lineEnding(text: string): '\n' | '\r\n' {
-  return text.includes('\r\n') ? '\r\n' : '\n';
-}
-
-function splitLines(text: string): {
-  lines: string[];
-  trailingNewline: boolean;
-  eol: '\n' | '\r\n';
-} {
-  const eol = lineEnding(text);
-  const trailingNewline = text.endsWith('\n');
-  const lines = text.split(/\r?\n/);
-  if (trailingNewline) lines.pop();
-  return { lines, trailingNewline, eol };
-}
-
-function joinLines(lines: string[], trailingNewline: boolean, eol: '\n' | '\r\n'): string {
-  const text = lines.join(eol);
-  return trailingNewline ? `${text}${eol}` : text;
-}
-
 function isExpectOutLine(line: string): boolean {
   return /^\s*;\s*expects\s+out\b/i.test(line);
 }
@@ -162,7 +142,8 @@ export function applyExpectOutFixesToSource(
 ): string {
   if (fixes.length === 0) return source;
   const originalLines = referenceSource.split(/\r?\n/);
-  const { lines, trailingNewline, eol } = splitLines(source);
+  const sourceLines = splitSourceLines(source);
+  const { lines } = sourceLines;
   const sorted = [...fixes].sort((a, b) => b.line - a.line || b.column - a.column);
 
   for (const fix of sorted) {
@@ -173,5 +154,5 @@ export function applyExpectOutFixesToSource(
     lines.splice(index, 0, `${prefix}; expects out ${contractCarrierList(fix.carriers)}`);
   }
 
-  return joinLines(lines, trailingNewline, eol);
+  return joinSourceLines(sourceLines);
 }

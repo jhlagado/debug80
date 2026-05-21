@@ -1,4 +1,5 @@
 import { renderRegisterCareSourceBlock } from './report.js';
+import { joinSourceLines, splitSourceLines } from './sourceText.js';
 import type { RegisterCareRoutine, RoutineSummary } from './types.js';
 
 export interface RegisterCareAnnotatedFile {
@@ -13,27 +14,6 @@ interface RegisterCareAnnotationInput {
 
 const GENERATED_COMPACT_LINE_RE =
   /^\s*;\s*!\s*(?:in|out|maybe-out|clobbers|preserves)(?:\s|$)/i;
-
-function lineEnding(text: string): '\n' | '\r\n' {
-  return text.includes('\r\n') ? '\r\n' : '\n';
-}
-
-function splitLines(text: string): {
-  lines: string[];
-  trailingNewline: boolean;
-  eol: '\n' | '\r\n';
-} {
-  const eol = lineEnding(text);
-  const trailingNewline = text.endsWith('\n');
-  const lines = text.split(/\r?\n/);
-  if (trailingNewline) lines.pop();
-  return { lines, trailingNewline, eol };
-}
-
-function joinLines(lines: string[], trailingNewline: boolean, eol: '\n' | '\r\n'): string {
-  const text = lines.join(eol);
-  return trailingNewline ? `${text}${eol}` : text;
-}
 
 function isCommentLine(line: string): boolean {
   return /^\s*;/.test(line);
@@ -71,7 +51,8 @@ function isExplicitEntryRoutine(routine: RegisterCareRoutine): boolean {
 }
 
 function annotateFile(source: string, routines: RegisterCareAnnotationInput[]): string {
-  const { lines, trailingNewline, eol } = splitLines(source);
+  const sourceLines = splitSourceLines(source);
+  const { lines } = sourceLines;
   const sorted = [...routines].sort(
     (a, b) => b.routine.span.start.line - a.routine.span.start.line,
   );
@@ -97,7 +78,7 @@ function annotateFile(source: string, routines: RegisterCareAnnotationInput[]): 
     lines.splice(labelIndex, 0, ...block);
   }
 
-  return joinLines(lines, trailingNewline, eol);
+  return joinSourceLines(sourceLines);
 }
 
 export function annotateRegisterCareContracts(
