@@ -186,8 +186,9 @@ The intended AZM layout feature set is:
 - record and union layout descriptions
 - assembler-like layout declarations using `.type`, `.union`, `.field`, and
   `.endtype` / `.endunion`
-- field-size aliases such as `.byte`, `.word`, and `.addr` inside layout
-  declarations, each meaning a field size rather than emitted storage
+- field type shorthands such as `.byte`, `.word`, and `.addr` inside layout
+  declarations, each equivalent to `.field byte`, `.field word`, or
+  `.field addr` rather than emitted storage
 - array type expressions for byte counts and strides
 - `sizeof(...)`
 - `offset(...)`, including nested field paths

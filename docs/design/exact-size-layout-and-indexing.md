@@ -210,6 +210,25 @@ sizeof(Sprite)
 sizeof(Sprite[16])
 ```
 
+The scalar layout names are types. In a layout block:
+
+```asm
+field .byte
+field .word
+field .addr
+```
+
+means:
+
+```asm
+field .field byte
+field .field word
+field .field addr
+```
+
+So `.word` is `.field sizeof(word)` in layout terms. These layout shorthands
+do not emit bytes; storage still comes from `.db`, `.dw`, and `.ds`.
+
 `sizeof` should reject:
 
 - unknown types
