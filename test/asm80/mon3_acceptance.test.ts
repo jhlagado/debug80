@@ -2,13 +2,10 @@ import { existsSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { compile } from '../../src/compile.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
-import type { BinArtifact } from '../../src/formats/types.js';
 import {
   copyZ80Siblings,
+  defineAsm80CorpusAcceptance,
   findAsm80Executable,
-  findFirstMismatch,
   runAsm80Reference,
   summarizeBinaryMismatch,
   summarizeDiagnostics,
@@ -22,10 +19,6 @@ const manifest = {
 const asm80 = findAsm80Executable();
 const mon3FilesAvailable = existsSync(manifest.source);
 const runMon3Acceptance = process.env.AZM_RUN_MON3_ACCEPTANCE === '1';
-const describeMon3 =
-  asmSourceLoweringAvailable && mon3FilesAvailable && asm80 && runMon3Acceptance
-    ? describe
-    : describe.skip;
 
 function buildAsm80Reference(source: string): Buffer {
   return runAsm80Reference({
@@ -89,56 +82,15 @@ describe('MON3 acceptance failure summaries', () => {
   });
 });
 
-describeMon3('ASM80 MON3 acceptance', () => {
-  it('compiles MON3 and matches a fresh ASM80-built reference binary', async () => {
-    const res = await compile(
-      manifest.source,
-      { emitBin: true, emitHex: false, emitD8m: false, emitListing: false },
-      { formats: defaultFormatWriters },
-    );
-    const errors = res.diagnostics.filter((d) => d.severity === 'error');
-    if (errors.length > 0) throw new Error(summarizeDiagnostics(res.diagnostics));
-
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-
-    const actual = Buffer.from(bin.bytes);
-    const expected = buildAsm80Reference(manifest.source);
-    const binarySummary = summarizeBinaryMismatch(actual, expected);
-
-    if (actual.length !== expected.length || findFirstMismatch(actual, expected) !== -1) {
-      throw new Error(binarySummary);
-    }
-  });
+defineAsm80CorpusAcceptance({
+  name: 'MON3',
+  source: manifest.source,
+  sourceAvailable: mon3FilesAvailable,
+  asm80,
+  runAcceptance: runMon3Acceptance,
+  buildReference: buildAsm80Reference,
+  blockedReason: asmSourceLoweringAvailable
+    ? undefined
+    : 'BLOCKED: enable when ASM80 source parsing/lowering is wired into compile()',
+  optInHint: 'set AZM_RUN_MON3_ACCEPTANCE=1 to run the local MON3 byte-for-byte acceptance check',
 });
-
-if (runMon3Acceptance && !mon3FilesAvailable) {
-  describe('ASM80 MON3 acceptance', () => {
-    it('requires the local MON3 source when opt-in acceptance is enabled', () => {
-      throw new Error(`MON3 source is unavailable: ${manifest.source}`);
-    });
-  });
-} else if (runMon3Acceptance && !asm80) {
-  describe('ASM80 MON3 acceptance', () => {
-    it('requires asm80 when opt-in acceptance is enabled', () => {
-      throw new Error('asm80 executable is unavailable. Set ASM80 or ASM80_PATH.');
-    });
-  });
-} else if (!asmSourceLoweringAvailable) {
-  describe('ASM80 MON3 acceptance', () => {
-    it.todo('BLOCKED: enable when ASM80 source parsing/lowering is wired into compile()');
-  });
-} else if (!mon3FilesAvailable) {
-  describe('ASM80 MON3 acceptance', () => {
-    it.todo('skipped: local MON3 source is unavailable');
-  });
-} else if (!asm80) {
-  describe('ASM80 MON3 acceptance', () => {
-    it.todo('skipped: asm80 executable is unavailable');
-  });
-} else if (!runMon3Acceptance) {
-  describe('ASM80 MON3 acceptance', () => {
-    it.todo('set AZM_RUN_MON3_ACCEPTANCE=1 to run the local MON3 byte-for-byte acceptance check');
-  });
-}
