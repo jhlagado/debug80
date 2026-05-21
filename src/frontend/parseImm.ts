@@ -126,6 +126,38 @@ function isImmOpToken(text: string): text is ImmOpToken {
   return IMM_UNARY_OPERATOR_SET.has(text) || IMM_BINARY_OPERATORS.has(text);
 }
 
+function scanQuotedByteValue(s: string, start: number, quote: "'" | '"'): { value: number; end: number } | undefined {
+  let i = start + 1;
+  if (i >= s.length) return undefined;
+
+  let value: number | undefined;
+  if (s[i] === '\\') {
+    i++;
+    if (i >= s.length) return undefined;
+    const esc = s[i]!;
+    i++;
+    if (esc === 'x') {
+      const hex = s.slice(i, i + 2);
+      if (!/^[0-9A-Fa-f]{2}$/.test(hex)) return undefined;
+      value = Number.parseInt(hex, 16);
+      i += 2;
+    } else {
+      const escaped = CHAR_ESCAPE_VALUES.get(esc);
+      if (escaped === undefined) return undefined;
+      value = escaped;
+    }
+  } else {
+    if (s[i] === quote || s[i] === '\n' || s[i] === '\r') return undefined;
+    const cp = s.codePointAt(i);
+    if (cp === undefined) return undefined;
+    value = cp;
+    i += cp > 0xffff ? 2 : 1;
+  }
+
+  if (i >= s.length || s[i] !== quote) return undefined;
+  return { value, end: i + 1 };
+}
+
 function tokenizeImm(text: string): ImmToken[] | undefined {
   const out: ImmToken[] = [];
   let i = 0;
@@ -185,70 +217,11 @@ function tokenizeImm(text: string): ImmToken[] | undefined {
       i++;
       continue;
     }
-    if (ch === "'") {
-      i++;
-      if (i >= s.length) return undefined;
-
-      let value: number | undefined;
-      if (s[i] === '\\') {
-        i++;
-        if (i >= s.length) return undefined;
-        const esc = s[i]!;
-        i++;
-        if (esc === 'x') {
-          const hex = s.slice(i, i + 2);
-          if (!/^[0-9A-Fa-f]{2}$/.test(hex)) return undefined;
-          value = Number.parseInt(hex, 16);
-          i += 2;
-        } else {
-          const escaped = CHAR_ESCAPE_VALUES.get(esc);
-          if (escaped === undefined) return undefined;
-          value = escaped;
-        }
-      } else {
-        if (s[i] === "'" || s[i] === '\n' || s[i] === '\r') return undefined;
-        const cp = s.codePointAt(i);
-        if (cp === undefined) return undefined;
-        value = cp;
-        i += cp > 0xffff ? 2 : 1;
-      }
-
-      if (i >= s.length || s[i] !== "'") return undefined;
-      i++;
-      out.push({ kind: 'num', text: String(value) });
-      continue;
-    }
-    if (ch === '"') {
-      i++;
-      if (i >= s.length) return undefined;
-
-      let value: number | undefined;
-      if (s[i] === '\\') {
-        i++;
-        if (i >= s.length) return undefined;
-        const esc = s[i]!;
-        i++;
-        if (esc === 'x') {
-          const hex = s.slice(i, i + 2);
-          if (!/^[0-9A-Fa-f]{2}$/.test(hex)) return undefined;
-          value = Number.parseInt(hex, 16);
-          i += 2;
-        } else {
-          const escaped = CHAR_ESCAPE_VALUES.get(esc);
-          if (escaped === undefined) return undefined;
-          value = escaped;
-        }
-      } else {
-        if (s[i] === '"' || s[i] === '\n' || s[i] === '\r') return undefined;
-        const cp = s.codePointAt(i);
-        if (cp === undefined) return undefined;
-        value = cp;
-        i += cp > 0xffff ? 2 : 1;
-      }
-
-      if (i >= s.length || s[i] !== '"') return undefined;
-      i++;
-      out.push({ kind: 'num', text: String(value) });
+    if (ch === "'" || ch === '"') {
+      const quoted = scanQuotedByteValue(s, i, ch);
+      if (!quoted) return undefined;
+      i = quoted.end;
+      out.push({ kind: 'num', text: String(quoted.value) });
       continue;
     }
     const num =
