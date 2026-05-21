@@ -71,6 +71,23 @@ function rejectUnsupportedDirectTarget(
   return false;
 }
 
+function encodeRelativeDisp8(
+  node: AsmInstructionNode,
+  target: AsmOperandNode,
+  env: CompileEnv,
+  diagnostics: Diagnostic[],
+  ctx: ControlEncodeContext,
+  opcode: number,
+  badTarget: string,
+): Uint8Array | undefined {
+  const n = ctx.immValue(target, env);
+  if (n === undefined || n < -128 || n > 127) {
+    ctx.diag(diagnostics, node, badTarget);
+    return undefined;
+  }
+  return Uint8Array.of(opcode, n & 0xff);
+}
+
 export function encodeControlInstruction(
   node: AsmInstructionNode,
   env: CompileEnv,
@@ -146,12 +163,7 @@ export function encodeControlInstruction(
     ) {
       return undefined;
     }
-    const n = ctx.immValue(ops[0]!, env);
-    if (n === undefined || n < -128 || n > 127) {
-      ctx.diag(diagnostics, node, `djnz expects disp8`);
-      return undefined;
-    }
-    return Uint8Array.of(0x10, n & 0xff);
+    return encodeRelativeDisp8(node, ops[0]!, env, diagnostics, ctx, 0x10, 'djnz expects disp8');
   }
   if (head === 'djnz') {
     ctx.diag(diagnostics, node, `djnz expects one operand (disp8)`);
@@ -232,12 +244,7 @@ export function encodeControlInstruction(
       ctx.diag(diagnostics, node, `jr cc, disp expects two operands (cc, disp8)`);
       return undefined;
     }
-    const n = ctx.immValue(ops[0]!, env);
-    if (n === undefined || n < -128 || n > 127) {
-      ctx.diag(diagnostics, node, `jr expects disp8`);
-      return undefined;
-    }
-    return Uint8Array.of(0x18, n & 0xff);
+    return encodeRelativeDisp8(node, ops[0]!, env, diagnostics, ctx, 0x18, 'jr expects disp8');
   }
   if (head === 'jr' && ops.length === 2) {
     const cc = ctx.conditionName(ops[0]!);
