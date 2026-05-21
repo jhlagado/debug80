@@ -3,7 +3,8 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from
 import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import { findAsm80 } from './asm80Tools.mjs';
 
 const CORPUS_ROOTS = [
   { name: 'tetro', paths: [join(homedir(), 'projects', 'tetro')] },
@@ -26,29 +27,6 @@ const CORPUS_CHECKS = [
     asm80Args: ['-m', 'Z80', '-t', 'hex', '-o'],
   },
 ];
-
-function normalizeExecutableCandidate(candidate) {
-  return candidate.includes('/') || candidate.includes('\\') ? resolve(candidate) : candidate;
-}
-
-function findAsm80() {
-  const candidates = [
-    process.env.ASM80,
-    process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
-    'asm80',
-  ]
-    .filter((candidate) => candidate && candidate.trim().length > 0)
-    .map(normalizeExecutableCandidate);
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ['-h'], {
-      encoding: 'utf8',
-      shell: process.platform === 'win32',
-    });
-    if (!probe.error) return candidate;
-  }
-  return undefined;
-}
 
 function resolveRepoRoot(spec) {
   for (const root of spec.paths) {

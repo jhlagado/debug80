@@ -134,6 +134,11 @@ typed variables and not hidden memory operations. They are accepted where AZM is
 asking for layout size: `.field`, `.ds`, `sizeof(...)`, `offset(...)`, and
 layout casts.
 
+That means `byte[10]` literally evaluates to the byte count `10`, and
+`word[10]` evaluates to `20`, when the grammar is asking for a layout size.
+The same rule applies to user layouts: `Sprite[10]` evaluates to ten times the
+exact packed size of `Sprite`.
+
 Use `sizeof(...)` when it makes a constant definition clearer:
 
 ```asm
@@ -189,7 +194,9 @@ ptr     .field addr
 
 That means `.word` is literally `.field word` in layout terms, and `word`
 has size 2. These directives describe fields inside the enclosing layout;
-they do not emit bytes by themselves.
+they do not emit bytes by themselves. Outside a layout declaration, `.byte`,
+`.word`, and `.addr` are not data-emission directives; storage and data use
+`.ds`, `.db`, `.dw`, and the string directives.
 
 Pointer-sized fields use `.addr` or `.field addr`. AZM does not keep a typed
 pointer field syntax such as `.field @Sprite`; layout declarations describe
@@ -276,6 +283,10 @@ IMessage:
 The canonical spellings are `.db`, `.dw`, `.ds`, `.cstr`, `.pstr`, and
 `.istr`. Undotted spellings such as `DB`, `DW`, `DS`, `CSTR`, `PSTR`, and
 `ISTR` are accepted through the directive alias layer.
+
+AZM uses the short string directive names as canonical. Longer names such as
+`.cstring` and `.pstring` are not the documented AZM spelling; projects that
+need those imported forms should map them through directive aliases.
 
 The older colon form (`x: byte`) is not AZM syntax.
 

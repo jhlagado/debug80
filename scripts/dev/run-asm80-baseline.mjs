@@ -1,35 +1,12 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { findAsm80 } from './asm80Tools.mjs';
 
 const mon3Source =
   process.env.MON3_SOURCE ?? '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80';
 const tec1gSoftwareRoot =
   process.env.TEC1G_SOFTWARE_ROOT ?? '/Users/johnhardy/Documents/projects/TEC-1G/Software';
-
-function normalizeExecutableCandidate(candidate) {
-  return candidate.includes('/') || candidate.includes('\\') ? resolve(candidate) : candidate;
-}
-
-function findAsm80() {
-  const candidates = [
-    process.env.ASM80,
-    process.env.ASM80_PATH,
-    '/Users/johnhardy/Documents/projects/debug80/node_modules/.bin/asm80',
-    'asm80',
-  ]
-    .filter((candidate) => candidate && candidate.trim().length > 0)
-    .map(normalizeExecutableCandidate);
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ['-h'], {
-      encoding: 'utf8',
-      shell: process.platform === 'win32',
-    });
-    if (!probe.error) return candidate;
-  }
-  return undefined;
-}
 
 const commands = [
   {
