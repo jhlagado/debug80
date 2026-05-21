@@ -45,10 +45,10 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.platform).toBe('tec1g');
   });
 
-  it('sets zax assembler for zax source files and clears stale zax for asm files', () => {
+  it('clears stale unsupported assembler ids when changing program files', () => {
     const config: ProjectConfig = {
       targets: {
-        app: { sourceFile: 'src/old.zax', asm: 'src/old.zax', assembler: 'zax' },
+        app: { sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' },
       },
     };
 
@@ -60,11 +60,14 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.asm).toBe('src/main.asm');
     expect(config.targets?.app?.assembler).toBeUndefined();
 
+    config.targets!.app!.assembler = 'legacy';
     applyConfigureProjectTargetEdit(config, 'app', {
       kind: 'program',
-      sourceFile: 'src/main.zax',
+      sourceFile: 'src/main.z80',
     });
-    expect(config.targets?.app?.assembler).toBe('zax');
+    expect(config.targets?.app?.sourceFile).toBe('src/main.z80');
+    expect(config.targets?.app?.asm).toBe('src/main.z80');
+    expect(config.targets?.app?.assembler).toBeUndefined();
   });
 
   it('renames targets and updates target aliases', () => {
@@ -98,7 +101,7 @@ describe('configure-project target edit', () => {
     expect(
       applyConfigureProjectTargetEdit(config, 'missing', {
         kind: 'assembler',
-        assembler: 'zax',
+        assembler: 'azm',
       })
     ).toEqual({ kind: 'missingTarget' });
     expect(

@@ -5,6 +5,14 @@
   "description": "Portable debug information format for Z80 (and similar) assemblers. Version 1.",
   "type": "object",
   "required": ["format", "version", "arch", "addressWidth", "endianness", "files"],
+  "allOf": [
+    {
+      "if": {
+        "not": { "$ref": "#/definitions/hasConstantSymbolDefault" }
+      },
+      "then": { "$ref": "#/definitions/noDefaultedValueOnlySymbols" }
+    }
+  ],
   "properties": {
     "format": {
       "const": "d8-debug-map"
@@ -59,6 +67,44 @@
     "symbolScope": {
       "type": "string",
       "enum": ["global", "local"]
+    },
+    "hasConstantSymbolDefault": {
+      "type": "object",
+      "required": ["symbolDefaults"],
+      "properties": {
+        "symbolDefaults": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "constant" }
+          }
+        }
+      }
+    },
+    "noDefaultedValueOnlySymbols": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "symbols": {
+                "type": "array",
+                "items": {
+                  "not": {
+                    "allOf": [
+                      { "type": "object", "required": ["value"] },
+                      { "not": { "type": "object", "required": ["address"] } },
+                      { "not": { "type": "object", "required": ["kind"] } }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "fileEntry": {
       "type": "object",
@@ -139,7 +185,24 @@
     },
     "symbol": {
       "type": "object",
-      "required": ["name", "address"],
+      "required": ["name"],
+      "anyOf": [
+        { "required": ["address"] },
+        {
+          "required": ["value"],
+          "anyOf": [
+            {
+              "required": ["kind"],
+              "properties": {
+                "kind": { "const": "constant" }
+              }
+            },
+            {
+              "not": { "required": ["kind"] }
+            }
+          ]
+        }
+      ],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "address": { "type": "integer", "minimum": 0 },
@@ -147,7 +210,10 @@
         "kind": { "$ref": "#/definitions/symbolKind" },
         "scope": { "$ref": "#/definitions/symbolScope" },
         "size": { "type": "integer", "minimum": 0 },
-        "value": { "type": "integer" }
+        "value": {
+          "type": "integer",
+          "description": "Compile-time value for non-address constant symbols."
+        }
       },
       "additionalProperties": false
     },

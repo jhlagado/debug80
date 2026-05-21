@@ -83,13 +83,13 @@ describe('launch-args', () => {
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
-      JSON.stringify({ asm: 'a.asm', assembler: 'asm80', entry: 4660, target: 'default' })
+      JSON.stringify({ asm: 'a.asm', assembler: 'azm', entry: 4660, target: 'default' })
     );
     const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
       resolveBaseDir: () => dir,
     });
     expect(merged.asm).toBe('a.asm');
-    expect(merged.assembler).toBe('asm80');
+    expect(merged.assembler).toBe('azm');
     expect(merged.entry).toBe(4660);
   });
 
@@ -368,7 +368,7 @@ describe('launch-args', () => {
         },
         targets: {
           matrix: {
-            asm: 'src/matrix.zax',
+            asm: 'src/matrix.asm',
             tec1g: {
               appStart: 16384,
             },
@@ -412,8 +412,8 @@ describe('launch-args', () => {
             },
           },
           matrix: {
-            asm: 'src/matrix.zax',
-            assembler: 'zax',
+            asm: 'src/matrix.asm',
+            assembler: 'azm',
             tec1g: {
               appStart: 16384,
             },
@@ -452,7 +452,7 @@ describe('launch-args', () => {
       JSON.stringify({
         targets: {
           matrix: {
-            asm: 'src/matrix.zax',
+            asm: 'src/matrix.asm',
             stopOnEntry: false,
           },
         },

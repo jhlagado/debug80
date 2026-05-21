@@ -89,19 +89,19 @@ describe('stack-service', () => {
   });
 });
 
-describe('stack-service ZAX D8 integration', () => {
+describe('stack-service AZM D8 integration', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-'));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('resolves stack frame from native ZAX D8 with relative file key', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.zax');
+  it('resolves stack frame from native AZM D8 with relative file key', () => {
+    const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
     const listingPath = path.join(buildDir, 'matrix.lst');
     fs.mkdirSync(buildDir, { recursive: true });
@@ -115,7 +115,7 @@ describe('stack-service ZAX D8 integration', () => {
       addressWidth: 16,
       endianness: 'little',
       files: {
-        'matrix.zax': {
+        'matrix.asm': {
           segments: [
             { start: 0xc000, end: 0xc001, line: 2, lstLine: 1, lstText: 'NOP' },
             { start: 0xc001, end: 0xc002, line: 3, lstLine: 2, lstText: 'HALT' },
@@ -131,7 +131,7 @@ describe('stack-service ZAX D8 integration', () => {
     expect(map).toBeDefined();
     const mapping = buildMappingFromD8DebugMap(map!);
     expect(mapping.segments.length).toBe(2);
-    expect(mapping.segments[0].loc.file).toBe('matrix.zax');
+    expect(mapping.segments[0].loc.file).toBe('matrix.asm');
 
     const sourceRoots = [tmpDir];
     const resolve = (file: string) => resolveMappedPath(file, listingPath, sourceRoots);
@@ -147,12 +147,12 @@ describe('stack-service ZAX D8 integration', () => {
     });
 
     expect(result.line).toBe(2);
-    expect(path.basename(result.path)).toBe('matrix.zax');
+    expect(path.basename(result.path)).toBe('matrix.asm');
     expect(fs.existsSync(result.path)).toBe(true);
   });
 
   it('resolves stack frame after stepping to second instruction', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.zax');
+    const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
     const listingPath = path.join(buildDir, 'matrix.lst');
     fs.mkdirSync(buildDir, { recursive: true });
@@ -166,7 +166,7 @@ describe('stack-service ZAX D8 integration', () => {
       addressWidth: 16,
       endianness: 'little',
       files: {
-        'matrix.zax': {
+        'matrix.asm': {
           segments: [
             { start: 0xc000, end: 0xc002, line: 2, lstLine: 1, lstText: 'LD A, 0' },
             { start: 0xc002, end: 0xc003, line: 3, lstLine: 2, lstText: 'HALT' },
@@ -200,7 +200,7 @@ describe('stack-service ZAX D8 integration', () => {
   });
 
   it('falls back to sourceFile at line 1 when D8 has no segment for PC', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.zax');
+    const sourceFile = path.join(tmpDir, 'matrix.asm');
     const listingPath = path.join(tmpDir, 'build', 'matrix.lst');
     fs.mkdirSync(path.dirname(listingPath), { recursive: true });
     fs.writeFileSync(sourceFile, 'NOP');
@@ -213,7 +213,7 @@ describe('stack-service ZAX D8 integration', () => {
       addressWidth: 16,
       endianness: 'little',
       files: {
-        'matrix.zax': {
+        'matrix.asm': {
           segments: [{ start: 0xc000, end: 0xc001, line: 5, lstLine: 1, lstText: 'NOP' }],
         },
       },
@@ -233,6 +233,6 @@ describe('stack-service ZAX D8 integration', () => {
     });
 
     expect(result.line).toBe(1);
-    expect(path.basename(result.path)).toBe('matrix.zax');
+    expect(path.basename(result.path)).toBe('matrix.asm');
   });
 });

@@ -1,12 +1,12 @@
 /**
- * @file ZAX backend tests.
+ * @file AZM backend tests.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ZaxBackend } from '../../src/debug/launch/zax-backend';
+import { AzmBackend } from '../../src/debug/launch/azm-backend';
 
 const compile = vi.hoisted(() => vi.fn());
 const childProcess = vi.hoisted(() => ({
@@ -16,13 +16,11 @@ const childProcess = vi.hoisted(() => ({
   spawnSync: vi.fn(),
 }));
 
-vi.mock('@jhlagado/zax/dist/src/compile.js', () => ({
+vi.mock('@jhlagado/azm/compile', () => ({
   compile,
-}));
-
-vi.mock('@jhlagado/zax/dist/src/formats/index.js', () => ({
   defaultFormatWriters: {
     writeHex: vi.fn(),
+    writeBin: vi.fn(),
     writeD8m: vi.fn(),
     writeListing: vi.fn(),
     writeAsm80: vi.fn(),
@@ -33,105 +31,113 @@ vi.mock('child_process', () => ({
   ...childProcess,
 }));
 
-describe('zax-backend', () => {
+describe('azm-backend', () => {
   let tmpDir: string;
 
   beforeEach(() => {
     compile.mockReset();
     Object.values(childProcess).forEach((mock) => mock.mockReset());
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-zax-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-'));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('assembles through the ZAX library and writes Debug80-controlled artifacts', async () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
+  it('assembles through the AZM library and writes Debug80-controlled artifacts', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
     const outDir = path.join(tmpDir, 'build');
     const hexPath = path.join(outDir, 'prog.hex');
     const listingPath = path.join(outDir, 'listings', 'prog.lst');
+    const binPath = path.join(outDir, 'prog.bin');
 
-    fs.writeFileSync(asmPath, 'main { nop; }\n');
+    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [
         { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'bin', bytes: new Uint8Array([0x00]) },
         { kind: 'lst', text: 'LISTING\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
         { kind: 'asm80', text: 'ORG 0100h\nNOP\n' },
       ],
     });
 
-    const result = await backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assemble({ asmPath, hexPath, listingPath, sourceRoot: tmpDir });
 
     expect(result.success).toBe(true);
     expectNoExternalProcess();
     expect(compile).toHaveBeenCalledWith(
       asmPath,
       {
-        emitBin: false,
+        outputType: 'hex',
+        emitBin: true,
         emitHex: true,
         emitD8m: true,
         emitListing: true,
         emitAsm80: true,
-        requireMain: true,
+        requireMain: false,
         defaultCodeBase: 0x0100,
+        sourceRoot: tmpDir,
+        d8mInputs: {
+          listing: listingPath,
+          hex: hexPath,
+          bin: binPath,
+        },
       },
       expect.objectContaining({ formats: expect.any(Object) })
     );
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
+    expect([...fs.readFileSync(binPath)]).toEqual([0x00]);
     expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
     expect(fs.readFileSync(path.join(outDir, 'prog.z80'), 'utf-8')).toBe('ORG 0100h\nNOP\n');
   });
 
-  it('passes paths with spaces and backslash-shaped segments directly to the ZAX library', async () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'source dir', 'win\\project folder', 'program file.zax');
-    const outDir = path.join(tmpDir, 'build dir', 'win\\output folder');
-    const hexPath = path.join(outDir, 'program file.hex');
-    const listingPath = path.join(outDir, 'listing dir', 'program file.lst');
+  it('uses binFrom and binTo as compact output bounds for binary rebuilds', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
+    const hexPath = path.join(tmpDir, 'build', 'prog.hex');
 
-    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
-    fs.writeFileSync(asmPath, 'main { nop; }\n');
+    fs.writeFileSync(asmPath, 'ORG 4000h\nDB 1,2,3\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [
-        { kind: 'hex', text: ':00000001FF\n' },
-        { kind: 'lst', text: 'LISTING\n' },
-      ],
+      artifacts: [{ kind: 'bin', bytes: new Uint8Array([1, 2, 3]) }],
     });
 
-    const result = await backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assembleBin({ asmPath, hexPath, binFrom: 0x4000, binTo: 0x4002 });
 
     expect(result.success).toBe(true);
-    expectNoExternalProcess();
     expect(compile).toHaveBeenCalledWith(
       asmPath,
-      expect.any(Object),
+      expect.objectContaining({
+        outputType: 'bin',
+        emitBin: true,
+        emitHex: false,
+        emitD8m: false,
+        emitListing: false,
+      }),
       expect.objectContaining({ formats: expect.any(Object) })
     );
-    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
-    expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
+    expect([...fs.readFileSync(path.join(tmpDir, 'build', 'prog.bin'))]).toEqual([1, 2, 3]);
   });
 
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
     const listingPath = path.join(tmpDir, 'prog.lst');
     const output: string[] = [];
 
-    fs.writeFileSync(asmPath, 'bad\n');
+    fs.writeFileSync(asmPath, 'BADOP\n');
     compile.mockResolvedValue({
       diagnostics: [
         {
-          id: 'SemanticsError',
+          id: 'AZM200',
           severity: 'error',
-          message: 'Program must define main.',
+          message: 'Unsupported instruction BADOP.',
           file: asmPath,
           line: 1,
           column: 1,
@@ -148,23 +154,23 @@ describe('zax-backend', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('Program must define main.');
+    expect(result.error).toContain('Unsupported instruction BADOP.');
     expect(result.diagnostic).toMatchObject({
       path: asmPath,
       line: 1,
       column: 1,
-      message: 'Program must define main.',
+      message: 'Unsupported instruction BADOP.',
     });
-    expect(output.join('')).toContain('SemanticsError');
+    expect(output.join('')).toContain('AZM200');
   });
 
-  it('fails when ZAX succeeds but required artifacts are missing', async () => {
-    const backend = new ZaxBackend();
-    const asmPath = path.join(tmpDir, 'prog.zax');
+  it('fails when AZM succeeds but required artifacts are missing', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
     const listingPath = path.join(tmpDir, 'prog.lst');
 
-    fs.writeFileSync(asmPath, 'main { nop; }\n');
+    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [{ kind: 'lst', text: 'LISTING\n' }],
@@ -174,13 +180,6 @@ describe('zax-backend', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('did not produce HEX output');
-  });
-
-  it('does not implement binary or in-process mapping hooks', () => {
-    const backend = new ZaxBackend() as Record<string, unknown>;
-
-    expect('assembleBin' in backend).toBe(false);
-    expect('compileMappingInProcess' in backend).toBe(false);
   });
 });
 

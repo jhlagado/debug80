@@ -117,8 +117,18 @@ export function validateD8DebugMap(value: unknown): string | undefined {
     if (typeof symbol.name !== 'string' || symbol.name.length === 0) {
       return 'Symbol name must be a string.';
     }
-    if (!Number.isFinite(symbol.address)) {
+    if (symbol.address !== undefined && !Number.isFinite(symbol.address)) {
       return 'Symbol address must be a number.';
+    }
+    if (symbol.value !== undefined && !Number.isFinite(symbol.value)) {
+      return 'Symbol value must be a number when present.';
+    }
+    const effectiveKind =
+      symbol.kind ?? (isRecord(value.symbolDefaults) ? value.symbolDefaults.kind : undefined);
+    const hasAddress = Number.isFinite(symbol.address);
+    const hasConstantValue = effectiveKind === 'constant' && Number.isFinite(symbol.value);
+    if (!hasAddress && !hasConstantValue) {
+      return 'Symbol must have an address, or constant symbols must have a value.';
     }
     if (symbol.line !== undefined && symbol.line !== null && !Number.isFinite(symbol.line)) {
       return 'Symbol line must be a number or null.';

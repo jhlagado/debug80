@@ -1,8 +1,8 @@
-# Debug80 (Z80 debugger with HEX/LST + asm80)
+# Debug80 (Z80 debugger with HEX/LST + AZM)
 
 [![CI](https://github.com/jhlagado/debug80/actions/workflows/ci.yml/badge.svg)](https://github.com/jhlagado/debug80/actions/workflows/ci.yml)
 
-Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs asm80 by default before each debug session (when an asm root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in this document.
+Minimal VS Code debug adapter for Z80 programs. It loads Intel HEX + .lst listings, runs AZM by default before each debug session (when an assembly root is provided), supports source-level stepping/breakpoints, and exposes registers. “Debug80” is the debugger name used in this document.
 
 TEC-1-specific workspace setups live in the separate `debug80-tec1` repo:
 https://github.com/jhlagado/debug80-tec1
@@ -22,53 +22,9 @@ This repository keeps the shared debugger and a small `test/fixtures` stub for t
 
 ## Prerequisites
 
-- Node 18+ (Node 20+ recommended)
+- Node 20+
 - npm (ships with Node)
-- asm80 installed locally: `npm install -D asm80`
-
-## Local ZAX checkout (develop ZAX + Debug80 without npm publish)
-
-Debug80 depends on [`@jhlagado/zax`](https://www.npmjs.com/package/@jhlagado/zax) (e.g. `"@jhlagado/zax": "^0.2.2"` in `package.json`) for the `.zax` assembler backend. **Keep that semver range in git** so CI, VSIX packaging, and collaborators all resolve the same dependency story. Do not commit `file:../zax` (or similar) in this repo if you want a single, consistent install.
-
-### `npm link` (recommended for local ZAX development)
-
-`npm link` does **not** change `package.json`. It only changes what ends up under `node_modules/@jhlagado/zax` on your machine:
-
-```bash
-# 1) In the ZAX repo: build, then register globally
-cd /path/to/ZAX
-npm run build
-npm link
-
-# 2) In the Debug80 repo: use that link
-cd /path/to/debug80
-npm link @jhlagado/zax
-```
-
-After **every change to ZAX TypeScript**, rebuild the compiler (`npm run build` in ZAX). Debug80 reads `dist/src/cli.js` from the linked tree; you usually **do not** need to reinstall or rebuild Debug80 for ZAX-only changes.
-
-To match what users get from npm (or before you cut a release), put the tree back:
-
-```bash
-cd /path/to/debug80
-npm unlink @jhlagado/zax
-npm install
-```
-
-(From the ZAX repo, `npm unlink` removes the global registration when you no longer need it.)
-
-Packaging the extension (`vsce package` / clean `npm ci`) uses the registry with a normal `package.json` — no link — unless you explicitly link in that environment.
-
-### Optional environment overrides
-
-For one-off cases (e.g. point at a specific `cli.js` without using `npm link`), you can set these **before** extension host resolution; they are **not** required for normal development:
-
-- **`DEBUG80_ZAX_CLI`**: absolute path to `dist/src/cli.js` (or another runnable entry).
-- **`DEBUG80_ZAX_ROOT`**: path to the ZAX repo root (uses `dist/src/cli.js` under it).
-
-Restart VS Code (or the Extension Development Host) after changing them, or set them via **`terminal.integrated.env.*`** / launch **`env`**.
-
-If unset, Debug80 resolves `@jhlagado/zax` from `node_modules` (registry install or `npm link` as above).
+- No external assembler install is required. Debug80 packages `@jhlagado/azm` and links it directly.
 
 ## Install & Build
 
@@ -131,8 +87,8 @@ Fields per target:
 - `artifactBase`: basename for artifacts
 - `platform`: supported built-in ids are `simple`, `tec1`, and `tec1g`
 - `simple`: platform config (memory `regions` with `kind` + `readOnly`; CPU starts at 0x0000 / 0, app at 0x0900 / 2304)
-- `simple.binFrom`/`simple.binTo`: optional, emits a `.bin` via an extra asm80 pass
-- `assemble`: defaults to `true`. Set to `false` to skip running asm80 (use existing HEX/LST).
+- `simple.binFrom`/`simple.binTo`: optional, emits a compact `.bin` using AZM output
+- `assemble`: defaults to `true`. Set to `false` to skip running the assembler (use existing HEX/LST).
 - `hex`, `listing`: optional explicit paths (override defaults)
 - `entry`: optional entry point override (non-simple platforms)
 - `sourceRoots`: optional list of directories to resolve `.asm` files referenced by the LST
@@ -180,14 +136,14 @@ when you want local files to inspect or replace.
 ## Z80 workflow
 
 1. Run “Debug80: Create Project (config + launch)” to scaffold `debug80.json` (defaults to `targets.app` with `src/main.asm`) and, if requested, `.vscode/launch.json`. The profile picker lets you choose the built-in kit before scaffolding.
-2. Start debugging with the generated debug80 launch; the adapter reads `debug80.json` (or `.vscode/debug80.json` if you use that layout), runs `asm80` automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir` (install `asm80` locally first). Set `assemble: false` to use pre-built artifacts instead.
+2. Start debugging with the generated debug80 launch; the adapter reads `debug80.json` (or `.vscode/debug80.json` if you use that layout), runs AZM automatically using the target’s `sourceFile`/`asm`, and writes HEX/LST into `outputDir`. Set `assemble: false` to use pre-built artifacts instead.
 3. Set breakpoints in `.asm` files (preferred). Listing breakpoints in `.lst` still work as a fallback.
 4. Start debugging (F5). `stopOnEntry` halts on entry; Step/Continue as usual. Registers show in the Variables view.
 
 Notes:
 
 - HALT stops execution; Continue again to terminate.
-- Listing/HEX are required; ensure asm80 completes successfully or provide existing artifacts.
+- Listing/HEX are required; ensure AZM completes successfully or provide existing artifacts.
 - ROM source/listing files can be opened with **Debug80: Open ROM Listing/Source** during a debug session.
 - Step Over/Step Out can run for a long time in tight loops; use Pause to interrupt if needed.
 

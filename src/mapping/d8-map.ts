@@ -128,8 +128,10 @@ export interface D8SymbolDefaults {
 export interface D8Symbol {
   /** Symbol name */
   name: string;
-  /** Symbol address */
-  address: number;
+  /** Symbol address, for labels and addressable data */
+  address?: number;
+  /** Symbol value, for constants that do not have a source address */
+  value?: number;
   /** Definition line number */
   line?: number;
   /** Symbol type */
@@ -340,6 +342,9 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
 
     if (file !== null) {
       for (const symbol of entry.symbols ?? []) {
+        if (symbol.address === undefined || !Number.isFinite(symbol.address)) {
+          continue;
+        }
         if (symbol.line === undefined || symbol.line === null) {
           continue;
         }

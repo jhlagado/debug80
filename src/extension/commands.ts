@@ -576,7 +576,7 @@ export function registerExtensionCommands({
         const sources = listProjectSourceFiles(folder.uri.fsPath);
         if (sources.length === 0) {
           void vscode.window.showInformationMessage(
-            'Debug80: No .asm or .zax source files were found in this project folder.'
+            'Debug80: No .asm or .z80 source files were found in this project folder.'
           );
           return undefined;
         }
@@ -592,8 +592,7 @@ export function registerExtensionCommands({
         const assemblerPick = await vscode.window.showQuickPick(
           [
             { label: 'default', detail: 'Use extension default by source file extension' },
-            { label: 'asm80', detail: 'Force asm80 backend' },
-            { label: 'zax', detail: 'Force zax backend' },
+            { label: 'azm', detail: 'Force AZM backend' },
           ],
           { placeHolder: 'Select assembler for this target' }
         );
@@ -719,7 +718,7 @@ export function registerExtensionCommands({
       const candidates = listProjectSourceFiles(folder.uri.fsPath);
       if (candidates.length === 0) {
         void vscode.window.showInformationMessage(
-          'Debug80: No .asm or .zax source files were found in this project folder.'
+          'Debug80: No .asm or .z80 source files were found in this project folder.'
         );
         return undefined;
       }

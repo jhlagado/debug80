@@ -201,7 +201,7 @@ export class AssemblyError extends Debug80Error {
     exitCode: number,
     stderr?: string,
     stdout?: string,
-    command = 'asm80'
+    command = 'azm'
   ): AssemblyError {
     const suffix = stderr !== undefined && stderr !== '' ? `\n${stderr}` : '';
     return new AssemblyError(

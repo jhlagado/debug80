@@ -378,7 +378,7 @@ export function resolveExtraListingPaths(
 export function resolveListingSourcePath(listingPath: string): string | undefined {
   const dir = path.dirname(listingPath);
   const base = path.basename(listingPath, path.extname(listingPath));
-  const candidates = [`${base}.asm`, `${base}.zax`, `${base}.z80`];
+  const candidates = [`${base}.asm`, `${base}.z80`];
 
   for (const candidate of candidates) {
     const candidatePath = path.join(dir, candidate);
@@ -424,11 +424,10 @@ export function resolveMappedPath(
     return normalized;
   }
 
-  const roots: string[] = [];
+  const roots: string[] = [...sourceRoots];
   if (listingPath !== undefined) {
     roots.push(path.dirname(listingPath));
   }
-  roots.push(...sourceRoots);
 
   for (const root of roots) {
     const candidate = path.resolve(root, raw);

@@ -146,6 +146,22 @@ describe('path-resolver', () => {
     );
   });
 
+  it('prefers source roots over generated files next to the listing', () => {
+    const listingPath = path.join(tmpDir, 'build', 'pacmo.lst');
+    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
+    fs.writeFileSync(listingPath, 'LIST');
+    fs.writeFileSync(path.join(tmpDir, 'build', 'pacmo.z80'), '; lowered AZM output\n');
+
+    const sourceRoot = path.join(tmpDir, 'src', 'pacmo');
+    fs.mkdirSync(sourceRoot, { recursive: true });
+    const sourcePath = path.join(sourceRoot, 'pacmo.z80');
+    fs.writeFileSync(sourcePath, 'nop\n');
+
+    expect(resolveMappedPath('pacmo.z80', listingPath, [sourceRoot])).toBe(
+      canonicalizeDebuggerSourcePath(sourcePath)
+    );
+  });
+
   it('resolves fallback source file relative to source roots', () => {
     const root = path.join(tmpDir, 'src');
     const filePath = path.join(root, 'demo.asm');

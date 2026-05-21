@@ -82,13 +82,18 @@ describe('launch-pipeline', () => {
         asmPath: 'a.asm',
         hexPath: 'a.hex',
         listingPath: 'a.lst',
+        sourceRoot: '/project',
         platform: 'simple',
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
       })
     ).resolves.toBeUndefined();
-    expect(backend.assemble).toHaveBeenCalled();
-    expect(backend.assembleBin).toHaveBeenCalled();
+    expect(backend.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceRoot: '/project' })
+    );
+    expect(backend.assembleBin).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceRoot: '/project' })
+    );
   });
 
   it('throws when binary assembly fails', async () => {

@@ -132,11 +132,11 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
-  it('builds a simple/default profile kit config for zax sources', () => {
+  it('builds a simple/default profile kit config for z80 sources', () => {
     const config = createDefaultProjectConfig({
       kit: kit('simple/default'),
       targetName: 'app',
-      sourceFile: 'src/main.zax',
+      sourceFile: 'src/main.z80',
       outputDir: 'build',
       artifactBase: 'main',
     });
@@ -146,7 +146,7 @@ describe('project-scaffolding helpers', () => {
         defaultProfile: 'default',
         targets: {
           app: expect.objectContaining({
-            sourceFile: 'src/main.zax',
+            sourceFile: 'src/main.z80',
             profile: 'default',
           }),
         },
@@ -157,9 +157,6 @@ describe('project-scaffolding helpers', () => {
   it('creates starter source text for all built-in kits', () => {
     const extensionUri = { fsPath: process.cwd() } as never;
     expect(createStarterSourceContent(extensionUri, kit('simple/default'), 'asm')).toContain(
-      'ORG 0x0900'
-    );
-    expect(createStarterSourceContent(extensionUri, kit('simple/default'), 'zax')).toContain(
       'ORG 0x0900'
     );
     expect(createStarterSourceContent(extensionUri, kit('tec1/mon1b'), 'asm')).toContain(

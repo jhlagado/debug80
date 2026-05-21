@@ -149,28 +149,28 @@ describe('source-map', () => {
         {
           start: 0x4000,
           end: 0x4033,
-          loc: { file: 'matrix.zax', line: 0 },
+          loc: { file: 'matrix.asm', line: 0 },
           lst: { line: 0, text: '' },
           confidence: 'HIGH',
         },
         {
           start: 0x4000,
           end: 0x4002,
-          loc: { file: 'matrix.zax', line: 10 },
+          loc: { file: 'matrix.asm', line: 10 },
           lst: { line: 1, text: 'LD C, 1' },
           confidence: 'HIGH',
         },
         {
           start: 0x4002,
           end: 0x4004,
-          loc: { file: 'matrix.zax', line: 11 },
+          loc: { file: 'matrix.asm', line: 11 },
           lst: { line: 2, text: 'LD E, 8' },
           confidence: 'HIGH',
         },
       ],
       anchors: [],
     };
-    const resolveAll = () => '/test/matrix.zax';
+    const resolveAll = () => '/test/matrix.asm';
     const idx = buildSourceMapIndex(mapping, resolveAll);
 
     const seg1 = findSegmentForAddress(idx, 0x4000);

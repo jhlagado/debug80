@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { BUNDLED_MON1B_V1_REL, BUNDLED_MON3_V1_REL } from './bundle-materialize';
 
 export type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
-export type StarterLanguage = 'asm' | 'zax';
+export type StarterLanguage = 'asm';
 export type ProjectKitId = 'simple/default' | 'tec1/mon1b' | 'tec1/classic-2k' | 'tec1g/mon3';
 
 export type ProjectKit = {
@@ -41,7 +41,6 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     entry: 0,
     starterTemplates: {
       asm: 'simple/default/starter.asm',
-      zax: 'simple/default/starter.zax',
     },
   },
   'tec1/mon1b': {
@@ -54,7 +53,6 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     entry: 0,
     starterTemplates: {
       asm: 'tec1/mon1b/starter.asm',
-      zax: 'tec1/mon1b/starter.zax',
     },
     bundledProfile: {
       bundleRelPath: BUNDLED_MON1B_V1_REL,
@@ -74,7 +72,6 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     entry: 0,
     starterTemplates: {
       asm: 'tec1/classic-2k/starter.asm',
-      zax: 'tec1/classic-2k/starter.zax',
     },
   },
   'tec1g/mon3': {
@@ -87,7 +84,6 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     entry: 0,
     starterTemplates: {
       asm: 'tec1g/mon3/starter.asm',
-      zax: 'tec1g/mon3/starter.zax',
     },
     bundledProfile: {
       bundleRelPath: BUNDLED_MON3_V1_REL,

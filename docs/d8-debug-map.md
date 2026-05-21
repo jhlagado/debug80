@@ -28,6 +28,7 @@ formats.
 Top-level JSON object:
 
 Required:
+
 - `format`: string, must be `d8-debug-map`
 - `version`: number, must be `1`
 - `arch`: string (e.g. `z80`, `6502`, `6809`)
@@ -36,6 +37,7 @@ Required:
 - `files`: object keyed by source file paths
 
 Optional:
+
 - `lstText`: string table for listing text
 - `segmentDefaults`: defaults applied to segments when fields are omitted
 - `symbolDefaults`: defaults applied to symbols when fields are omitted
@@ -50,15 +52,18 @@ Each entry groups segments and symbols for that file, which removes repeated
 `file` fields.
 
 File entry fields:
+
 - `segments`: array of mapping segments (optional)
 - `symbols`: array of symbol entries (optional)
 - `meta`: optional file metadata
 
 Meta fields:
+
 - `sha256`: string (hex), hash of file contents
 - `lineCount`: number, total lines in the file
 
 Example:
+
 ```json
 {
   "files": {
@@ -67,18 +72,15 @@ Example:
         "sha256": "b6d81b360a5672d80c27430f39153e2c",
         "lineCount": 120
       },
-      "segments": [
-        { "start": 2304, "end": 2307, "line": 12, "lstLine": 87, "lstTextId": 0 }
-      ],
-      "symbols": [
-        { "name": "START", "address": 2304, "line": 12 }
-      ]
+      "segments": [{ "start": 2304, "end": 2307, "line": 12, "lstLine": 87, "lstTextId": 0 }],
+      "symbols": [{ "name": "START", "address": 2304, "line": 12 }]
     }
   }
 }
 ```
 
 Notes:
+
 - The empty string key `""` is reserved for segments/symbols with no known
   source file.
 
@@ -87,11 +89,13 @@ Notes:
 Each segment maps a byte range to a source location.
 
 Required fields:
+
 - `start`: number, start address (0..65535)
 - `end`: number, end address (exclusive)
 - `lstLine`: number, listing line number
 
 Optional fields:
+
 - `line`: number (or null when unknown), 1-based line number
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
@@ -104,10 +108,12 @@ Optional fields:
   - `callsite`: `{ file, line, column }`
 
 Notes:
+
 - `end` is exclusive. Length is `end - start`.
 - `confidence` should be used when mapping is inferred from listings.
 
 Example:
+
 ```json
 {
   "start": 2304,
@@ -126,6 +132,7 @@ Example:
 reference `lstTextId` instead of repeating `lstText` inline.
 
 Example:
+
 ```json
 {
   "lstText": ["JP      APPSTART"]
@@ -137,6 +144,7 @@ Example:
 Defaults applied when a segment omits the field.
 
 Fields:
+
 - `kind`: string enum (default segment kind)
 - `confidence`: string enum (default confidence)
 
@@ -145,18 +153,25 @@ Fields:
 Symbols describe labels, constants, and data locations.
 
 Fields:
+
 - `name`: string
-- `address`: number (0..65535)
+- `address`: number (0..65535), required for addressable symbols such as labels
+  and data
+- `value`: number, for non-address constant symbols
 - `line`: number (optional)
 - `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
 - `scope`: string enum: `global`, `local`
 - `size`: number (optional, bytes)
+
+Constant symbols may use `value` without `address`. Debuggers should not treat
+value-only constants as source anchors or breakpoint locations.
 
 ### 3a) `symbolDefaults` (optional)
 
 Defaults applied when a symbol omits the field.
 
 Fields:
+
 - `kind`: string enum: `label`, `constant`, `data`, `macro`, `unknown`
 - `scope`: string enum: `global`, `local`
 
@@ -165,6 +180,7 @@ Fields:
 Optional layout data for ROM/RAM segments or banked memory.
 
 Fields:
+
 - `segments`: array of:
   - `name`: string
   - `start`: number
@@ -177,7 +193,8 @@ Fields:
 Metadata describing the toolchain that produced the map.
 
 Fields:
-- `name`: string (e.g., `asm80`)
+
+- `name`: string (e.g., `azm`)
 - `version`: string (optional)
 - `args`: array of strings (optional)
 - `createdAt`: string (ISO-8601, optional)
@@ -188,23 +205,23 @@ Fields:
 Optional warnings/errors encountered during map creation.
 
 Fields:
+
 - `warnings`: array of strings
 - `errors`: array of strings
-
 
 ## Integration with Debug80
 
 - Debug80 loads `build/main.d8.json` if present.
 - If the map is missing or invalid, Debug80 regenerates a map from the `.lst`
   and writes that cache alongside the build artifacts.
-- For native producer-generated maps such as ZAX output, Debug80 preserves the
+- For native producer-generated maps such as AZM output, Debug80 preserves the
   existing `.d8.json` even when it is older than the `.lst`.
 
 ## Workflow
 
-1) Assemble with asm80 to produce `build/main.hex` and `build/main.lst`.
-2) The assembler or Debug80 may provide `build/main.d8.json`.
-3) Debug80 loads the map for debugging, with `.lst` as the fallback source.
+1. Assemble with AZM to produce `build/main.hex` and `build/main.lst`.
+2. The assembler or Debug80 may provide `build/main.d8.json`.
+3. Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not
 expected to be committed by default.

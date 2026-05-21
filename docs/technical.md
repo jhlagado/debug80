@@ -9,8 +9,8 @@ interested in the assembler pipeline, source mapping, and stepping behavior.
 Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
 
 - Loads Intel HEX for runtime memory.
-- Reads an asm80 .lst listing for address-to-source mapping.
-- Optionally runs asm80 before each launch.
+- Reads a .lst listing or native D8 map for address-to-source mapping.
+- Optionally runs AZM before each launch.
 - Implements stepping, breakpoints, registers, and a simple terminal I/O bridge.
 
 ## 2. High-level architecture
@@ -58,7 +58,7 @@ Key concepts:
   - Launch/config merge, assembler invocation, breakpoint resolution, stepping.
 - src/debug/launch/
   - Launch pipeline: assembler invocation, program loading, config validation, source-state setup.
-  - Key files: assembler.ts, assembler-backend.ts, asm80-backend.ts, zax-backend.ts,
+  - Key files: assembler.ts, assembler-backend.ts, azm-backend.ts,
     launch-pipeline.ts, launch-sequence.ts, launch-source-state.ts,
     program-loader.ts, config-utils.ts, config-validation.ts.
 - src/debug/requests/
@@ -128,7 +128,7 @@ DAP lifecycle (simplified):
    - Announces adapter capabilities.
 2. launchRequest
    - Merges launch args with debug80.json.
-   - Resolves artifacts (HEX, LST) and runs asm80 if enabled.
+   - Resolves artifacts (HEX, LST) and runs AZM if enabled.
    - Parses HEX and LST.
    - Builds source mapping and indexes.
    - Creates the runtime and applies breakpoints.
@@ -192,16 +192,14 @@ Command: debug80.createProject
 ## 7. Assembler integration
 
 Debug80 routes assembly through a backend abstraction in `src/debug/launch/assembler-backend.ts`.
-The current default backend is `asm80`, implemented in `src/debug/launch/asm80-backend.ts`.
-`zax` is also available, implemented in `src/debug/launch/zax-backend.ts`.
+The current default backend is `azm`, implemented in `src/debug/launch/azm-backend.ts`.
+Legacy configs that still say `assembler: "asm80"` are treated as AZM-compatible inputs.
 
 If `assemble !== false` and `sourceFile`/`asm` is provided:
 
 - The selected backend assembles the program to HEX and LST artifacts.
-- For `asm80`, Debug80 links the `asm80` package directly in-process and writes HEX, compact BIN,
-  and LST artifacts from the compiled output.
-- For `zax`, Debug80 links the `@jhlagado/zax` compiler directly through its library API and writes
-  HEX, LST, D8M, and lowered `.z80` artifacts itself.
+- Debug80 links the `@jhlagado/azm` compiler directly through its public library API and writes
+  HEX, compact BIN, LST, D8M, and lowered `.z80` artifacts itself.
 - The backend interface is async even when a backend is currently synchronous. This keeps launch and
   warm-rebuild semantics consistent and avoids shelling out for ESM-only libraries.
 - Errors are printed to the Debug Console and returned as structured assembly diagnostics when possible.
@@ -213,10 +211,9 @@ The backend also optionally supports:
 
 Expected tools:
 
-- `asm80` and `@jhlagado/zax` are normal extension dependencies and must be included in the VSIX.
+- `@jhlagado/azm` is a normal extension dependency and must be included in the VSIX.
 - Debug80 should not depend on globally installed assembler CLIs for published-extension behavior.
-- Module-system compatibility is contained inside backend adapters: asm80 is CommonJS-compatible,
-  while ZAX is ESM and is loaded with dynamic `import()`.
+- AZM is ESM and is loaded with dynamic `import()` from the CommonJS extension host output.
 
 ## 8. Runtime and execution model
 
@@ -292,7 +289,7 @@ the regenerated map for the session. The on-disk standard is documented in
 `docs/d8-debug-map.md` and is designed to be assembler-agnostic while
 preserving the existing LST-derived confidence data.
 
-For native producer-generated maps such as ZAX `.d8.json` output, Debug80 now
+For native producer-generated maps such as AZM `.d8.json` output, Debug80 now
 prefers the existing D8 map directly and does not treat it as stale relative to
 the listing file or overwrite it with an LST-regenerated cache.
 

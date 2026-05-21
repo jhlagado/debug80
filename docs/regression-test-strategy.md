@@ -13,21 +13,20 @@ platform-specific emulation. No single test style can cover all of that reliably
 
 ## Test Layers
 
-| Layer | Tool | Purpose | Gate |
-|---|---|---|---|
-| Unit and contract tests | Vitest | CPU, mapping, assembler backends, config, webview helpers | Every PR |
-| Adapter E2E | Vitest DAP harness | Launch, breakpoints, stepping, restart, memory/register writes | Every PR |
-| Webview contract tests | Vitest + DOM environment | Project controls, message contracts, UI state invariants | Every PR |
-| VS Code host integration | `@vscode/test-electron` / `@vscode/test-cli` | Activation, commands, views, workspace behavior in real VS Code | PR or release gate |
-| VSIX content check | `vsce ls` verification script | Published package includes runtime dependencies and excludes dev debris | Every release candidate |
-| Packaged VSIX smoke | Installed VSIX in clean VS Code profile | Proves installed extension works, not just source tree | Release gate |
+| Layer                    | Tool                                         | Purpose                                                                 | Gate                    |
+| ------------------------ | -------------------------------------------- | ----------------------------------------------------------------------- | ----------------------- |
+| Unit and contract tests  | Vitest                                       | CPU, mapping, assembler backends, config, webview helpers               | Every PR                |
+| Adapter E2E              | Vitest DAP harness                           | Launch, breakpoints, stepping, restart, memory/register writes          | Every PR                |
+| Webview contract tests   | Vitest + DOM environment                     | Project controls, message contracts, UI state invariants                | Every PR                |
+| VS Code host integration | `@vscode/test-electron` / `@vscode/test-cli` | Activation, commands, views, workspace behavior in real VS Code         | PR or release gate      |
+| VSIX content check       | `vsce ls` verification script                | Published package includes runtime dependencies and excludes dev debris | Every release candidate |
+| Packaged VSIX smoke      | Installed VSIX in clean VS Code profile      | Proves installed extension works, not just source tree                  | Release gate            |
 
 ## Required Regression Scenarios
 
 ### Launch and Assembly
 
-- asm80 target assembles in-process and writes HEX, LST, compact BIN.
-- ZAX target assembles through direct library linking and writes HEX, LST, D8M, lowered `.z80`.
+- AZM target assembles in-process and writes HEX, LST, D8M, compact BIN, and lowered `.z80`.
 - Sparse `ORG` programs preserve address-bearing HEX and compact raw BIN semantics.
 - Failed assembly reports structured diagnostics.
 
@@ -89,8 +88,7 @@ fail CI because one runner is slightly slower.
 
 ### Packaging
 
-- VSIX includes `node_modules/asm80`.
-- VSIX includes `node_modules/@jhlagado/zax`.
+- VSIX includes `node_modules/@jhlagado/azm`.
 - VSIX includes `out`, `resources`, `roms`, `schemas`, `syntaxes`, `README.md`, `LICENSE.txt`,
   and `THIRD_PARTY_NOTICES.md`.
 - VSIX excludes `src`, `tests`, `docs`, `coverage`, `.fallow`, `.claude`, `.cursor`, `.github`,
@@ -120,14 +118,14 @@ fail CI because one runner is slightly slower.
 
 ## Parallel Implementation Lanes
 
-| Lane | Ownership | Output |
-|---|---|---|
-| A | Packaging gate | VSIX content verification script and package-check wiring |
-| B | VS Code host harness | Real Extension Development Host smoke tests |
-| C | Adapter E2E | Include-file breakpoint and artifact launch scenarios |
-| D | Webview regressions | Project selector/platform/target state invariants |
-| E | Windows/path hardening | Path normalization and D8/source-map portability tests |
-| F | Performance contracts | Runtime/cache/webview throughput checks and starvation instrumentation |
+| Lane | Ownership              | Output                                                                 |
+| ---- | ---------------------- | ---------------------------------------------------------------------- |
+| A    | Packaging gate         | VSIX content verification script and package-check wiring              |
+| B    | VS Code host harness   | Real Extension Development Host smoke tests                            |
+| C    | Adapter E2E            | Include-file breakpoint and artifact launch scenarios                  |
+| D    | Webview regressions    | Project selector/platform/target state invariants                      |
+| E    | Windows/path hardening | Path normalization and D8/source-map portability tests                 |
+| F    | Performance contracts  | Runtime/cache/webview throughput checks and starvation instrumentation |
 
 Each lane should stay isolated until review. Integration happens only after the lane-specific
 verification command passes.

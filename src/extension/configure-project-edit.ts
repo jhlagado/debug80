@@ -25,6 +25,14 @@ export type ConfigureProjectTargetEditResult =
 
 type ProjectTargetConfig = NonNullable<ProjectConfig['targets']>[string];
 
+function isSupportedAssemblerId(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'azm' || normalized === 'asm80';
+}
+
 export function applyConfigureProjectTargetEdit(
   config: ProjectConfig,
   targetName: string,
@@ -94,9 +102,7 @@ function applyPlatformOverride(
 function applyProgramSource(target: ProjectTargetConfig, sourceFile: string): void {
   target.sourceFile = sourceFile;
   target.asm = sourceFile;
-  if (sourceFile.toLowerCase().endsWith('.zax')) {
-    target.assembler = 'zax';
-  } else if (target.assembler === 'zax') {
+  if (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler)) {
     delete target.assembler;
   }
 }

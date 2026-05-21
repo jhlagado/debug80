@@ -76,12 +76,12 @@ describe('source-manager', () => {
     expect(logs.some((line) => line.includes('extra listing not found'))).toBe(true);
   });
 
-  it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. ZAX entry only)', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-zax-'));
+  it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. AZM entry only)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-azm-'));
     const listingPath = path.join(dir, 'out.lst');
-    const asmPath = 'src/matrix.zax';
+    const asmPath = 'src/matrix.asm';
     writeFile(listingPath, listingContent);
-    const zaxPath = path.join(dir, 'src', 'matrix.zax');
+    const zaxPath = path.join(dir, 'src', 'matrix.asm');
     writeFile(zaxPath, 'nop\n');
 
     const buildMappingSpy = vi.spyOn(mappingService, 'buildMappingFromListing');
@@ -114,7 +114,7 @@ describe('source-manager', () => {
 
     expect(buildMappingSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceFile: path.join(dir, 'src', 'matrix.zax'),
+        sourceFile: path.join(dir, 'src', 'matrix.asm'),
       })
     );
     buildMappingSpy.mockRestore();

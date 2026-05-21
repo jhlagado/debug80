@@ -1,7 +1,7 @@
 {
   "name": "debug80",
   "displayName": "Z80 Debugger",
-  "description": "Debug Adapter for Z80 programs (asm80 + HEX/LST)",
+  "description": "Debug Adapter for Z80 programs (AZM + HEX/LST)",
   "version": "0.0.1",
   "publisher": "jhlagado",
   "license": "GPL-3.0-or-later",
@@ -10,7 +10,7 @@
     "url": "https://github.com/jhlagado/debug80.git"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.92.0"
   },
   "categories": [
     "Debuggers"
@@ -22,7 +22,6 @@
     "workspaceContains:**/.vscode/debug80.json",
     "onLanguage:asm",
     "onLanguage:asm-collection",
-    "onLanguage:zax",
     "onLanguage:z80-asm",
     "onLanguage:z80-macroasm"
   ],
@@ -51,7 +50,7 @@
         "*.z80": "z80-asm",
         "*.a80": "z80-asm",
         "*.s": "z80-asm",
-        "*.zax": "zax"
+        "*.asmi": "z80-asm"
       },
       "editor.tokenColorCustomizations": {
         "textMateRules": [
@@ -95,6 +94,8 @@
           {
             "scope": [
               "variable.other.symbol.z80-asm",
+              "variable.other.field.z80-asm",
+              "constant.language.enum.member.z80-asm",
               "variable.other.symbol.z80-lst"
             ],
             "settings": {
@@ -104,6 +105,10 @@
           {
             "scope": [
               "entity.name.constant.equ.z80-asm",
+              "entity.name.type.z80-asm",
+              "entity.name.type.enum.z80-asm",
+              "support.type.z80-asm",
+              "support.type.primitive.z80-asm",
               "entity.name.constant.equ.z80-lst"
             ],
             "settings": {
@@ -113,6 +118,10 @@
           {
             "scope": [
               "keyword.control.directive.z80-asm",
+              "keyword.declaration.type.z80-asm",
+              "keyword.declaration.enum.z80-asm",
+              "keyword.declaration.op.z80-asm",
+              "storage.type.field.z80-asm",
               "keyword.control.directive.z80-lst"
             ],
             "settings": {
@@ -122,7 +131,8 @@
           {
             "scope": [
               "storage.type.annotation.z80-asm",
-              "storage.type.comment-header.z80-asm"
+              "storage.type.comment-header.z80-asm",
+              "keyword.control.contract.z80-asm"
             ],
             "settings": {
               "foreground": "#00D1A7"
@@ -168,7 +178,8 @@
           },
           {
             "scope": [
-              "entity.name.function.z80-asm"
+              "entity.name.function.z80-asm",
+              "support.function.builtin.z80-asm"
             ],
             "settings": {
               "foreground": "#FDE047"
@@ -178,6 +189,9 @@
             "scope": [
               "keyword.operator.z80-asm",
               "punctuation.section.parens.z80-asm",
+              "punctuation.section.brackets.z80-asm",
+              "punctuation.definition.typecast.begin.z80-asm",
+              "punctuation.definition.typecast.end.z80-asm",
               "punctuation.separator.comma.z80-asm",
               "punctuation.separator.key-value.z80-asm",
               "keyword.operator.z80-lst",
@@ -237,7 +251,8 @@
           ".asm",
           ".z80",
           ".a80",
-          ".s"
+          ".s",
+          ".asmi"
         ],
         "configuration": "./language-configuration/z80-asm.json"
       },
@@ -248,16 +263,6 @@
         ],
         "extensions": [
           ".lst"
-        ],
-        "configuration": "./out/null-language.json"
-      },
-      {
-        "id": "zax",
-        "aliases": [
-          "ZAX"
-        ],
-        "extensions": [
-          ".zax"
         ],
         "configuration": "./out/null-language.json"
       }
@@ -297,13 +302,7 @@
         "language": "asm"
       },
       {
-        "language": "asm80"
-      },
-      {
         "language": "z80"
-      },
-      {
-        "language": "zax"
       }
     ],
     "commands": [
@@ -372,21 +371,21 @@
       "explorer/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
           "group": "navigation@9"
         }
       ],
       "editor/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
           "group": "navigation@9"
         }
       ],
       "editor/title/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .zax",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
           "group": "navigation@9"
         }
       ]
@@ -402,10 +401,8 @@
           "z80-macroasm",
           "wla-dx-asm",
           "asm",
-          "asm80",
           "z80",
-          "z80-lst",
-          "zax"
+          "z80-lst"
         ],
         "configurationAttributes": {
           "launch": {
@@ -425,12 +422,12 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use (default: asm80)",
+                "description": "Assembler backend to use (default: azm; asm80 is accepted as a legacy AZM-compatible alias)",
                 "enum": [
-                  "asm80",
-                  "zax"
+                  "azm",
+                  "asm80"
                 ],
-                "default": "asm80"
+                "default": "azm"
               },
               "outputDir": {
                 "type": "string",
@@ -614,9 +611,8 @@
     "vitest": "0.33.0"
   },
   "dependencies": {
-    "@jhlagado/zax": "^0.2.2",
+    "@jhlagado/azm": "^0.1.1",
     "@vscode/debugadapter": "^1.64.0",
-    "@vscode/debugprotocol": "^1.64.0",
-    "asm80": "^1.11.14"
+    "@vscode/debugprotocol": "^1.64.0"
   }
 }

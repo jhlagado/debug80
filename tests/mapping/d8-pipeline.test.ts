@@ -6,7 +6,7 @@
  *   → buildSourceMapIndex → findSegmentForAddress → resolveSourceForAddress
  *   → buildStackFrames
  *
- * Uses the committed golden ZAX fixture (tests/fixtures/zax/matrix.d8.json)
+ * Uses the committed golden AZM fixture (tests/fixtures/azm/matrix.d8.json)
  * so any change to the D8 consumer pipeline that alters line resolution
  * will be caught immediately.
  */
@@ -21,11 +21,11 @@ import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/mappi
 vi.mock('vscode', () => ({ workspace: { workspaceFolders: undefined } }));
 import { vi } from 'vitest';
 
-const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures', 'zax');
+const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures', 'azm');
 const d8Path = path.join(fixtureDir, 'matrix.d8.json');
 const d8Content = fs.readFileSync(d8Path, 'utf-8');
 
-const FAKE_SOURCE_PATH = path.resolve('/project/src', 'matrix.zax');
+const FAKE_SOURCE_PATH = path.resolve('/project/src', 'matrix.asm');
 
 function buildPipeline() {
   const { map, error } = parseD8DebugMap(d8Content);
@@ -33,13 +33,13 @@ function buildPipeline() {
   expect(map).toBeDefined();
 
   const mapping = buildMappingFromD8DebugMap(map!);
-  const resolve = (file: string) => (file === 'matrix.zax' ? FAKE_SOURCE_PATH : undefined);
+  const resolve = (file: string) => (file === 'matrix.asm' ? FAKE_SOURCE_PATH : undefined);
   const index = buildSourceMapIndex(mapping, resolve);
 
   return { map: map!, mapping, index, resolve };
 }
 
-describe('D8 golden fixture pipeline (matrix.zax)', () => {
+describe('D8 golden fixture pipeline (matrix.asm)', () => {
   it('parses the golden D8 file without errors', () => {
     const { map } = parseD8DebugMap(d8Content);
     expect(map).toBeDefined();
@@ -54,7 +54,7 @@ describe('D8 golden fixture pipeline (matrix.zax)', () => {
     expect(mapping.anchors.length).toBeGreaterThan(0);
 
     const fileKeys = new Set(mapping.segments.map((s) => s.loc.file));
-    expect(fileKeys.has('matrix.zax')).toBe(true);
+    expect(fileKeys.has('matrix.asm')).toBe(true);
   });
 
   it('every code instruction address resolves to a valid line >= 1', () => {
@@ -139,7 +139,7 @@ describe('D8 golden fixture pipeline (matrix.zax)', () => {
     expect(frame).toBeDefined();
     expect(frame.line).toBe(28);
     expect(frame.source?.path).toBe(FAKE_SOURCE_PATH);
-    expect(frame.source?.name).toBe('matrix.zax');
+    expect(frame.source?.name).toBe('matrix.asm');
   });
 
   it('stepping through instructions produces sequential valid lines (no line=0)', () => {

@@ -5,16 +5,15 @@
 import * as path from 'path';
 import type { MappingParseResult } from '../../mapping/parser';
 import type { AssembleResult } from './assembler';
-import { Asm80Backend } from './asm80-backend';
-import { ZaxBackend } from './zax-backend';
+import { AzmBackend } from './azm-backend';
 
-const asm80SourceExtensions = new Set(['.a80', '.asm', '.inc', '.s', '.z80']);
-const zaxSourceExtensions = new Set(['.zax']);
+const azmSourceExtensions = new Set(['.a80', '.asm', '.inc', '.s', '.z80']);
 
 export interface AssembleOptions {
   asmPath: string;
   hexPath: string;
   listingPath: string;
+  sourceRoot?: string;
   onOutput?: (message: string) => void;
 }
 
@@ -23,6 +22,7 @@ export interface AssembleBinOptions {
   hexPath: string;
   binFrom: number;
   binTo: number;
+  sourceRoot?: string;
   onOutput?: (message: string) => void;
 }
 
@@ -39,11 +39,8 @@ function inferAssemblerBackend(asmPath: string | undefined): string | undefined 
   }
 
   const extension = path.extname(asmPath).toLowerCase();
-  if (asm80SourceExtensions.has(extension)) {
-    return 'asm80';
-  }
-  if (zaxSourceExtensions.has(extension)) {
-    return 'zax';
+  if (azmSourceExtensions.has(extension)) {
+    return 'azm';
   }
 
   return undefined;
@@ -57,11 +54,8 @@ export function resolveAssemblerBackend(
   const id =
     explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
 
-  if (id === undefined || id === '' || id === 'asm80') {
-    return new Asm80Backend();
-  }
-  if (id === 'zax') {
-    return new ZaxBackend();
+  if (id === undefined || id === '' || id === 'azm' || id === 'asm80') {
+    return new AzmBackend();
   }
 
   throw new Error(`Unknown assembler backend: "${assembler}"`);

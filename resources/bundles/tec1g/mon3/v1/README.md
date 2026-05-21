@@ -4,7 +4,7 @@ This directory is packaged inside the Debug80 VSIX. `bundle.json` describes the
 payload:
 
 - **`mon3.bin`** — 16 KiB MON3 ROM (upstream release **BC25 / v1.6**, file `MON3-1G_BC25-16.bin`).
-- **`mon3.lst`** — ASM80 listing built from **`MON3-1G_BC25-16_src.zip`** with the same
+- **`mon3.lst`** — assembler listing built from **`MON3-1G_BC25-16_src.zip`** with the same
   release tag. It drives `tec1g.extraListings` after scaffold / materialize so the
   debugger can map addresses into monitor source.
 
@@ -19,7 +19,7 @@ From a local [MON3](https://github.com/tec1group/MON3) checkout that contains bo
 npm run bundle:sync-mon3
 ```
 
-Requires **`unzip`** and **`asm80`** on your PATH (see [asm80-node](https://github.com/asm80/asm80-node)).
+Requires **`unzip`**. AZM is resolved from the Debug80 npm dependencies.
 After running, if checksums changed, update the `sha256` fields in `bundle.json`:
 
 ```bash

@@ -14,7 +14,7 @@ let onDidOpenHandler: ((doc: unknown) => void) | undefined;
 const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
   Promise.resolve({ doc, languageId })
 );
-const getLanguages = vi.fn(() => Promise.resolve(['z80-asm', 'zax']));
+const getLanguages = vi.fn(() => Promise.resolve(['z80-asm']));
 const createDiagnosticCollection = vi.fn(() => ({
   set: vi.fn(),
   delete: vi.fn(),
@@ -181,7 +181,7 @@ describe('extension activation', () => {
     expect(languageId).toBe('z80-asm');
   }, 20000);
 
-  it('forces zax documents to zax when opened', async () => {
+  it('forces z80 documents to z80-asm when opened', async () => {
     const extension = (await import('../../src/extension/extension')) as {
       activate: (context: { subscriptions: Array<{ dispose: () => void }> }) => void;
     };
@@ -193,10 +193,10 @@ describe('extension activation', () => {
     extension.activate(context);
 
     expect(onDidOpenHandler).toBeDefined();
-    const zaxDoc = { uri: { path: '/tmp/test.zax', scheme: 'file' }, languageId: 'plaintext' };
-    onDidOpenHandler?.(zaxDoc);
+    const z80Doc = { uri: { path: '/tmp/test.z80', scheme: 'file' }, languageId: 'plaintext' };
+    onDidOpenHandler?.(z80Doc);
     await Promise.resolve();
 
-    expect(setTextDocumentLanguage).toHaveBeenCalledWith(zaxDoc, 'zax');
+    expect(setTextDocumentLanguage).toHaveBeenCalledWith(z80Doc, 'z80-asm');
   }, 20000);
 });
