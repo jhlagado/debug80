@@ -14,6 +14,7 @@ import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { BinArtifact } from '../../src/formats/types.js';
 import type { Asm80Artifact } from '../../src/formats/types.js';
+import type { CompilerOptions } from '../../src/pipeline.js';
 
 const file = '/fixtures/asm80/directives.z80';
 
@@ -58,23 +59,42 @@ function emitBytes(items: unknown[]): { bytes: number[]; diagnostics: Diagnostic
   return { bytes: [...bin.bytes], diagnostics };
 }
 
+async function compileAsmLines(
+  tempPrefix: string,
+  fileName: string,
+  lines: string[] | string,
+  options: CompilerOptions = {},
+) {
+  const dir = mkdtempSync(join(tmpdir(), tempPrefix));
+  const entry = join(dir, fileName);
+  writeFileSync(entry, Array.isArray(lines) ? lines.join('\n') : lines, 'utf8');
+  return compile(entry, options, { formats: defaultFormatWriters });
+}
+
+function expectNoCompileErrors(diagnostics: Diagnostic[]): void {
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+}
+
+function expectBinBytes(artifact: BinArtifact | undefined, bytes: number[]): void {
+  expect(artifact).toBeDefined();
+  if (!artifact) throw new Error('missing bin artifact');
+  expect([...artifact.bytes]).toEqual(bytes);
+}
+
+function binArtifact(artifacts: Awaited<ReturnType<typeof compile>>['artifacts']): BinArtifact | undefined {
+  return artifacts.find((a): a is BinArtifact => a.kind === 'bin');
+}
+
 describe('asm80 directive lowering integration', () => {
   it('compiles EX AF,AF prime with a trailing comment', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-af-prime-'));
-    const entry = join(dir, 'af-prime.z80');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-af-prime-',
+      'af-prime.z80',
       ['.org 0100H', "ex af,af'           ;start saving registers"].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0x08]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0x08]);
   });
 
   it('lowers equ, org, db strings, dw labels, and binfrom into a flat binary', () => {
@@ -169,10 +189,9 @@ describe('asm80 directive lowering integration', () => {
   });
 
   it('compiles undotted directives, 0x literals, and binto from AZM source', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-tec1g-directives-'));
-    const entry = join(dir, 'tec1g-directives.z80');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-tec1g-directives-',
+      'tec1g-directives.z80',
       [
         'ORG 4000H',
         'API: EQU 0x10',
@@ -183,16 +202,10 @@ describe('asm80 directive lowering integration', () => {
         '.binfrom 4000H',
         '.binto 4002H',
       ].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0x10, 0x00, 0x00]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0x10, 0x00, 0x00]);
   });
 
   it('loads project directive aliases without adding them to the canonical parser', async () => {
@@ -229,82 +242,61 @@ describe('asm80 directive lowering integration', () => {
       { formats: defaultFormatWriters },
     );
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([1, 0, 2]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [1, 0, 2]);
   });
 
   it('compiles source without org from address zero', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-no-org-'));
-    const entry = join(dir, 'no-org.z80');
-    writeFileSync(entry, ['xor a', 'jr done', 'done:', 'ret', '.binto 0003H'].join('\n'), 'utf8');
+    const res = await compileAsmLines('azm-asm80-no-org-', 'no-org.z80', [
+      'xor a',
+      'jr done',
+      'done:',
+      'ret',
+      '.binto 0003H',
+    ]);
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0xaf, 0x18, 0x00, 0xc9]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0xaf, 0x18, 0x00, 0xc9]);
   });
 
   it('compiles ASM dollar-prefixed hex and RST trailing-H operands', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-hex-rst-'));
-    const entry = join(dir, 'hex-rst.z80');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-hex-rst-',
+      'hex-rst.z80',
       ['.org 0100H', 'cp $FE', 'rst 20H', '.binfrom 0100H', '.end'].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0xfe, 0xfe, 0xe7]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0xfe, 0xfe, 0xe7]);
   });
 
   it('compiles single-quoted character literals in raw words', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-word-char-'));
-    const entry = join(dir, 'word-char.z80');
-    writeFileSync(entry, ['.org 0100H', ".dw 'A'", '.binfrom 0100H', '.end'].join('\n'), 'utf8');
+    const res = await compileAsmLines('azm-asm80-word-char-', 'word-char.z80', [
+      '.org 0100H',
+      ".dw 'A'",
+      '.binfrom 0100H',
+      '.end',
+    ]);
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0x41, 0x00]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0x41, 0x00]);
   });
 
   it('compiles ASM IX/IY indexed memory operands', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ixiy-indexed-'));
-    const entry = join(dir, 'ixiy-indexed.z80');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-ixiy-indexed-',
+      'ixiy-indexed.z80',
       ['.org 0100H', 'ld a,(ix+0)', 'ld a,(iy+12)', '.binfrom 0100H', '.end'].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0xdd, 0x7e, 0x00, 0xfd, 0x7e, 0x0c]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0xdd, 0x7e, 0x00, 0xfd, 0x7e, 0x0c]);
   });
 
   it('compiles ASM absolute 16-bit register stores', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-ld-mem-reg16-'));
-    const entry = join(dir, 'ld-mem-reg16.z80');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-ld-mem-reg16-',
+      'ld-mem-reg16.z80',
       [
         'org 0100H',
         'PTR: equ 0900H',
@@ -317,72 +309,53 @@ describe('asm80 directive lowering integration', () => {
         'binfrom 0100H',
         'end',
       ].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [
       0x22, 0x00, 0x09, 0xed, 0x43, 0x00, 0x09, 0xed, 0x53, 0x00, 0x09, 0xed, 0x73, 0x00, 0x09,
       0xdd, 0x22, 0x00, 0x09, 0xfd, 0x22, 0x00, 0x09,
     ]);
   });
 
   it('does not include trailing reserve-only ASM DS in the loadable binary', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-trailing-ds-'));
-    const entry = join(dir, 'trailing-ds.asm');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-trailing-ds-',
+      'trailing-ds.asm',
       ['org 4000H', 'db 0AAH', 'RAM_START:', 'ds 4', 'RAM_END:', 'end'].join('\n'),
-      'utf8',
     );
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0xaa]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0xaa]);
   });
 
   it('preserves reserve-only ASM DS in emitted asm80', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-reserve-ds-asm80-'));
-    const entry = join(dir, 'reserve-ds-asm80.asm');
-    writeFileSync(
-      entry,
+    const res = await compileAsmLines(
+      'azm-asm80-reserve-ds-asm80-',
+      'reserve-ds-asm80.asm',
       ['org 4000H', 'db 0AAH', 'RESERVE:', 'ds 2', 'db 055H', 'binfrom 4000H', 'end'].join('\n'),
-      'utf8',
+      { emitAsm80: true },
     );
 
-    const res = await compile(entry, { emitAsm80: true }, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
+    expectNoCompileErrors(res.diagnostics);
+    const bin = binArtifact(res.artifacts);
     const asm80 = res.artifacts.find((a): a is Asm80Artifact => a.kind === 'asm80');
-    expect(bin).toBeDefined();
     expect(asm80).toBeDefined();
-    if (!bin || !asm80) throw new Error('missing artifacts');
-    expect([...bin.bytes]).toEqual([0xaa, 0x00, 0x00, 0x55]);
+    if (!asm80) throw new Error('missing asm80 artifact');
+    expectBinBytes(bin, [0xaa, 0x00, 0x00, 0x55]);
     expect(asm80.text).toContain('DS $02');
   });
 
   it('compiles ASM SRA A', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-asm80-sra-a-'));
-    const entry = join(dir, 'sra-a.z80');
-    writeFileSync(entry, ['org 0100H', 'SRA A', 'binfrom 0100H', 'end'].join('\n'), 'utf8');
+    const res = await compileAsmLines('azm-asm80-sra-a-', 'sra-a.z80', [
+      'org 0100H',
+      'SRA A',
+      'binfrom 0100H',
+      'end',
+    ]);
 
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
-
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const bin = res.artifacts.find((a): a is BinArtifact => a.kind === 'bin');
-    expect(bin).toBeDefined();
-    if (!bin) throw new Error('missing bin artifact');
-    expect([...bin.bytes]).toEqual([0xcb, 0x2f]);
+    expectNoCompileErrors(res.diagnostics);
+    expectBinBytes(binArtifact(res.artifacts), [0xcb, 0x2f]);
   });
 
   it('reports diagnostics from ASM80 includes at the included file', async () => {
