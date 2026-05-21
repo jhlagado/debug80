@@ -39,6 +39,8 @@ AZM accepts the following source families:
 - `.asm` and `.z80`: AZM source inputs using the supported ASM80-style
   baseline plus retained AZM features.
 - `.asm`: preferred filename suffix for new source owned by this project.
+- `.asmi`: external register-care interface files. These are metadata inputs,
+  not assembler source and not valid entry files.
 
 Canonical AZM examples should prefer the AZM style in this document. Corpus
 inputs may use any spelling accepted by the ASM80 baseline or directive-alias
@@ -49,17 +51,19 @@ ASM80 terminology.
 
 ## Canonical AZM source
 
-AZM accepts assembler items at source-file top level: labels, local labels,
-Z80 instructions, `.org`, `.equ`, `.db`, `.dw`, `.ds`, `.cstr`, `.pstr`,
-`.istr`, includes, directive aliases, `op` declarations, and layout metadata.
+AZM accepts assembler items at source-file top level: labels, local labels, Z80
+instructions, `.org`, `.equ`, `.db`, `.dw`, `.ds`, `.cstr`, `.pstr`, `.istr`,
+includes, directive aliases, `op` declarations, enum declarations, compact
+AZMDoc `;!` metadata comments, and layout metadata.
 
 Layout metadata means `.type`, `.union`, `sizeof`, `offset`, and layout-cast
 address expressions that fold to constants. AZM feeds those constants into
 ordinary operands and fixups.
 
-AZM excludes high-level constructs such as `func`, modules, named sections,
-typed storage declarations, locals, formal arguments, typed assignment, hidden
-typed load/store lowering, and runtime typed effective-address lowering.
+AZM excludes high-level constructs such as modules/imports, `func`, named
+sections, typed storage declarations, locals, formal arguments, typed
+assignment/storage lowering, hidden typed load/store lowering, and runtime typed
+effective-address lowering.
 
 The default AZM verification lane is `npm run test:azm:alpha`. New retained
 coverage should use `.asm` or `.z80` source.
@@ -182,9 +186,9 @@ The intended layout declaration spelling is assembler-like:
 
 ```asm
 .type Sprite
-x       .field 1
-y       .field 1
-flags   .field 1
+x     .byte
+y     .word
+arr   .field byte[10]
 .endtype
 ```
 
@@ -204,6 +208,8 @@ sprite  .field Sprite     ; sizeof(Sprite)
 
 The expression after `.field` is still just a byte size. It does not initialize
 the field, attach runtime type information, or create generated access code.
+In idiomatic AZM, `.field T` means `sizeof(T)`, and `.field T[n]` means
+`n * sizeof(T)`.
 
 Within layout declarations, `.byte`, `.word`, and `.addr` are type shorthands
 for `.field byte`, `.field word`, and `.field addr`. They do not emit storage:
@@ -414,11 +420,12 @@ enum Mode Read, Write, Append
 Members are addressed as `Mode.Read`, `Mode.Write`, and so on. They are valid in
 any compile-time immediate expression, including instruction operands, `.equ`,
 `.db`, `.dw`, and `.ds`. Unqualified member references are rejected. Enums do not
-currently create runtime types, register types, or memory types.
+create runtime types, register types, or memory types.
 
-Ranges are not part of the AZM assembler baseline yet. They remain a design
-candidate for compile-time validation of constants and tables, not for hidden
-runtime checks or typed code generation.
+Ranges are not part of the AZM assembler baseline unless a specific
+implementation documents them. Treat them as future design for compile-time
+validation of constants and tables, not as hidden runtime checks or typed code
+generation.
 
 ## Ops (canonical AZM)
 

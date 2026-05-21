@@ -107,7 +107,7 @@ aligned around one inference source.
 
 ## Layer C: Full Compile
 
-Use `compile()` when you want lowering plus output artifacts.
+Use `compile()` when you want assembly plus output artifacts.
 
 ```ts
 import { compile, defaultFormatWriters } from '@jhlagado/azm/compile';
@@ -120,9 +120,17 @@ const result = await compile(
 ```
 
 The compiler accepts flat `.asm` / `.z80` source, retained AZM assembler
-features, and the same output writers used by the CLI. High-level ZAX constructs
-such as `func`, module imports, typed assignment, locals, structured control,
-and generated frames are outside this API contract for AZM source.
+features, and the same output writers used by the CLI. External register-care
+interfaces are `.asmi` metadata files, not compile entry files.
+
+Retained AZM features include the ASM80 baseline, compact AZMDoc `;!` comments,
+directive aliases, AST `op` declarations, enums, `.type` / `.union`, `sizeof`,
+`offset`, constant-only layout casts, and scalar type shorthand in `.ds` and
+`.field`.
+
+High-level ZAX constructs such as modules/imports, `func`, locals, formal args,
+typed assignment/storage lowering, named sections, structured control, and
+generated frames are outside this API contract for AZM source.
 
 ## Public Types
 

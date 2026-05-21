@@ -12,7 +12,8 @@ generated metadata visible in source and artifacts.
 
 AZM keeps:
 
-- ASM80-style `.asm` / `.z80` source as the baseline
+- ASM80-style `.asm` / `.z80` source as the input baseline
+- `.asmi` external interface files for register-care contracts
 - textual `.include`
 - directive aliases for importing common assembler spellings
 - register-care analysis, compact AZMDoc comments, and `.asmi` external
@@ -26,9 +27,10 @@ AZM keeps:
   and `.istr`
 
 AZM `.asm` and `.z80` source rejects old ZAX high-level features such as
-`func`, modules/imports, formal arguments, locals, typed assignment, structured
-control, generated frames, typed storage blocks, and named section blocks. Those
-inherited paths are removal work, not product compatibility.
+modules/imports, `func`, formal arguments, locals, typed assignment/storage
+lowering, structured control, generated frames, typed storage blocks, and named
+section blocks. Those inherited paths are removal work, not product
+compatibility.
 
 ## Install
 

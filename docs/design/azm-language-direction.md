@@ -195,14 +195,13 @@ declarations and constant expressions so those values stay correct:
 
 ```asm
 .type Sprite
-x       .field 1
-y       .field 1
-tile    .field 1
-flags   .field 1
+x     .byte
+y     .word
+arr   .field byte[10]
 .endtype
 
 SPRITE_SIZE  .equ sizeof(Sprite)
-SPRITE_FLAGS .equ offset(Sprite, flags)
+SPRITE_ARR   .equ offset(Sprite, arr)
 
 SPRITES:
     .ds Sprite[16]
@@ -222,6 +221,7 @@ The intended AZM layout feature set is:
 - field type shorthands such as `.byte`, `.word`, and `.addr` inside layout
   declarations, each equivalent to `.field byte`, `.field word`, or
   `.field addr` rather than emitted storage
+- `.field T` as `sizeof(T)`, and `.field T[n]` as `n * sizeof(T)`
 - pointer-sized fields as `.addr`, not typed pointer syntax such as `@Sprite`
 - scalar and array type expressions for byte counts and strides, for example
   `byte`, `word[8]`, `Sprite`, and `Sprite[16]`

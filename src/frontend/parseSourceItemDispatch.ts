@@ -3,7 +3,6 @@ import type { SourceItemNode, SourceSpan } from './ast.js';
 import type { DirectiveAliasPolicy } from './directiveAliases.js';
 import type { LogicalLine } from './parseLogicalLines.js';
 import { parseAsmTopLevel } from './parseAsmTopLevel.js';
-import type { PendingRawLabel } from './parseRawDataDirectives.js';
 import { topLevelStartKeyword } from './parseTopLevelCommon.js';
 import { recoverUnsupportedParserLine } from './parseParserRecovery.js';
 import { stripLineComment as stripComment } from './parseParserShared.js';
@@ -12,7 +11,6 @@ import type { SourceFile } from './source.js';
 export type ParseItemContext = {
   scope: 'source';
   asmEnded?: boolean;
-  asmPendingRawLabel?: PendingRawLabel;
 };
 
 export type ParseItemResult = {

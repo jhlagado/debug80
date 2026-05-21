@@ -4,13 +4,6 @@ import type { AsmRawDataNode, ImmExprNode, SourceSpan } from './ast.js';
 import { parseImmExprFromText, parseTypeExprFromText } from './parseImm.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
 
-export type PendingRawLabel = {
-  name: string;
-  span: SourceSpan;
-  lineNo: number;
-  filePath: string;
-};
-
 function splitTopLevelComma(text: string): string[] {
   const parts: string[] = [];
   let start = 0;
@@ -158,24 +151,6 @@ export function parseBareRawDataDirective(
   diagnostics: Diagnostic[],
 ): AsmRawDataNode | undefined {
   return parseNamedRawDataDirective('', directiveText, lineNo, lineSpan, filePath, diagnostics);
-}
-
-export function parseRawDataDirective(
-  label: PendingRawLabel,
-  directiveText: string,
-  lineNo: number,
-  lineSpan: SourceSpan,
-  filePath: string,
-  diagnostics: Diagnostic[],
-): AsmRawDataNode | undefined {
-  return parseNamedRawDataDirective(
-    label.name,
-    directiveText,
-    lineNo,
-    lineSpan,
-    filePath,
-    diagnostics,
-  );
 }
 
 function parseNamedRawDataDirective(

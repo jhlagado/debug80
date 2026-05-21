@@ -169,7 +169,7 @@ describe('ASM80 source parser', () => {
     ]);
   });
 
-  it('rejects non-baseline dialect aliases with canonical directive guidance', () => {
+  it('parses non-baseline dialect aliases as ordinary instruction-shaped text', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
     const sourceFile = parseAsmFile(
       '/asm.z80',
@@ -179,16 +179,14 @@ describe('ASM80 source parser', () => {
       azmAliases,
     );
 
-    expect(sourceFile.items).toEqual([]);
-    expect(diagnostics.map((diagnostic) => diagnostic.message)).toEqual([
-      'DEFB is not part of the supported ASM80 baseline; use DB.',
-      'DEFW is not part of the supported ASM80 baseline; use DW.',
-      'RMB is not part of the supported ASM80 baseline; use DS.',
-    ]);
-    expect(diagnostics.map((diagnostic) => [diagnostic.line, diagnostic.column])).toEqual([
-      [1, 13],
-      [2, 13],
-      [3, 12],
+    expect(diagnostics).toEqual([]);
+    expect(sourceFile.items).toMatchObject([
+      { kind: 'AsmLabel', name: 'DEFB_LABEL' },
+      { kind: 'AsmInstruction', head: 'defb' },
+      { kind: 'AsmLabel', name: 'DEFW_LABEL' },
+      { kind: 'AsmInstruction', head: 'defw' },
+      { kind: 'AsmLabel', name: 'RMB_LABEL' },
+      { kind: 'AsmInstruction', head: 'rmb' },
     ]);
   });
 
