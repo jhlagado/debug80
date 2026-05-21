@@ -7,57 +7,82 @@ import { describe, expect, it } from 'vitest';
 import { compile } from '../../src/compile.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
+import type { CompilerOptions, CompileResult } from '../../src/pipeline.js';
 import type {
   RegisterCareAnnotationsArtifact,
   RegisterCareInterfaceArtifact,
   RegisterCareReportArtifact,
 } from '../../src/formats/types.js';
 
-function writeConflictFixture(prefix: string): string {
+const noEmitOptions = {
+  emitBin: false,
+  emitHex: false,
+  emitD8m: false,
+  emitListing: false,
+} satisfies CompilerOptions;
+
+function writeSourceFixture(prefix: string, lines: string[]): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   const entry = join(dir, 'main.z80');
-  writeFileSync(
-    entry,
-    [
-      'BOOT:',
-      '    call START',
-      '    ret',
-      'START:',
-      '    ld de,$1000',
-      '    call HELPER',
-      '    inc de',
-      '    ret',
-      'HELPER:',
-      '    ld de,$2000',
-      '    ld (de),a',
-      '    ret',
-      '.end',
-    ].join('\n'),
-    'utf8',
-  );
+  writeFileSync(entry, lines.join('\n'), 'utf8');
   return entry;
 }
 
-function writeEntryConflictFixture(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
-  const entry = join(dir, 'main.z80');
-  writeFileSync(
-    entry,
-    [
-      'START:',
-      '    ld de,$1000',
-      '    call HELPER',
-      '    inc de',
-      '    ret',
-      'HELPER:',
-      '    ld de,$2000',
-      '    ld (de),a',
-      '    ret',
-      '.end',
-    ].join('\n'),
-    'utf8',
+async function compileRegisterCare(
+  entry: string,
+  options: CompilerOptions,
+): Promise<CompileResult> {
+  return compile(entry, { ...noEmitOptions, ...options }, { formats: defaultFormatWriters });
+}
+
+function expectNoErrorDiagnostics(result: CompileResult): void {
+  expect(result.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toEqual([]);
+}
+
+function reportArtifact(result: CompileResult): RegisterCareReportArtifact | undefined {
+  return result.artifacts.find(
+    (artifact): artifact is RegisterCareReportArtifact => artifact.kind === 'register-care-report',
   );
-  return entry;
+}
+
+function annotationsArtifact(result: CompileResult): RegisterCareAnnotationsArtifact | undefined {
+  return result.artifacts.find(
+    (artifact): artifact is RegisterCareAnnotationsArtifact =>
+      artifact.kind === 'register-care-annotations',
+  );
+}
+
+function writeConflictFixture(prefix: string): string {
+  return writeSourceFixture(prefix, [
+    'BOOT:',
+    '    call START',
+    '    ret',
+    'START:',
+    '    ld de,$1000',
+    '    call HELPER',
+    '    inc de',
+    '    ret',
+    'HELPER:',
+    '    ld de,$2000',
+    '    ld (de),a',
+    '    ret',
+    '.end',
+  ]);
+}
+
+function writeEntryConflictFixture(prefix: string): string {
+  return writeSourceFixture(prefix, [
+    'START:',
+    '    ld de,$1000',
+    '    call HELPER',
+    '    inc de',
+    '    ret',
+    'HELPER:',
+    '    ld de,$2000',
+    '    ld (de),a',
+    '    ret',
+    '.end',
+  ]);
 }
 
 describe('register-care integration', () => {
@@ -66,23 +91,13 @@ describe('register-care integration', () => {
     const entry = join(dir, 'main.z80');
     writeFileSync(entry, ['START:', '    nop', '    ret', '.end'].join('\n'), 'utf8');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    expectNoErrorDiagnostics(res);
+    const report = reportArtifact(res);
     expect(report?.text).toContain('AZM Register-Care Report');
     expect(report?.text).toContain('Mode: audit');
   });
@@ -107,18 +122,10 @@ describe('register-care integration', () => {
     );
     writeFileSync(iface, ['extern MON_CLOBBER_DE', 'clobbers  DE', 'end'].join('\n'), 'utf8');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareInterfaces: [iface],
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareInterfaces: [iface],
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -134,23 +141,13 @@ describe('register-care integration', () => {
     const entry = join(dir, 'main.z80');
     writeFileSync(entry, ['START:', '    rst $10', '    ret', '.end'].join('\n'), 'utf8');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-        registerCareProfile: 'mon3',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+      registerCareProfile: 'mon3',
+    });
 
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    const report = reportArtifact(res);
     expect(report?.text).toContain('Profile: mon3');
   });
 
@@ -165,20 +162,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterInterface: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterInterface: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
     const iface = res.artifacts.find(
       (a): a is RegisterCareInterfaceArtifact => a.kind === 'register-care-interface',
     );
@@ -210,23 +199,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterAnnotations: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterAnnotations: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const annotations = res.artifacts.find(
-      (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
-    );
+    expectNoErrorDiagnostics(res);
+    const annotations = annotationsArtifact(res);
     expect(annotations?.files).toHaveLength(1);
     expect(annotations?.files[0]?.path).toBe(entry);
     expect(annotations?.files[0]?.text).toContain(
@@ -252,23 +231,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterAnnotations: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterAnnotations: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const annotations = res.artifacts.find(
-      (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
-    );
+    expectNoErrorDiagnostics(res);
+    const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain([';!      out       HL', '@HELPER:'].join('\n'));
   });
 
@@ -290,23 +259,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    expectNoErrorDiagnostics(res);
+    const report = reportArtifact(res);
     expect(report?.text).toContain(
       [
         'Routine: START',
@@ -342,23 +301,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterAnnotations: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterAnnotations: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const annotations = res.artifacts.find(
-      (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
-    );
+    expectNoErrorDiagnostics(res);
+    const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
       [
         '; Mask prose.',
@@ -391,23 +340,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    expectNoErrorDiagnostics(res);
+    const report = reportArtifact(res);
     expect(report?.text).toContain('Output candidates:');
     expect(report?.text).toContain(
       `${entry}:4:1: MASK: A: CALL MASK writes A and caller reads it later; generated contracts promote this to \`out A\` automatically.`,
@@ -437,24 +376,14 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterAnnotations: true,
-        acceptRegisterOutputCandidates: ['MASK:A'],
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterAnnotations: true,
+      acceptRegisterOutputCandidates: ['MASK:A'],
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const annotations = res.artifacts.find(
-      (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
-    );
+    expectNoErrorDiagnostics(res);
+    const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
       ['; Mask prose.', ';!      in        HL', ';!      out       A', 'MASK:'].join('\n'),
     );
@@ -472,22 +401,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+    });
 
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    const report = reportArtifact(res);
     expect(report?.text).toContain('Routine: HELPER');
     expect(report?.text).toContain('relation: A <= -');
   });
@@ -495,11 +414,9 @@ describe('register-care integration', () => {
   it('warns on direct-call conflicts in warn mode', async () => {
     const entry = writeConflictFixture('azm-regcare-warn-');
 
-    const res = await compile(
-      entry,
-      { emitBin: false, emitHex: false, emitD8m: false, emitListing: false, registerCare: 'warn' },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'warn',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -513,17 +430,9 @@ describe('register-care integration', () => {
   it('fails on direct-call conflicts in error mode', async () => {
     const entry = writeConflictFixture('azm-regcare-error-');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -536,17 +445,9 @@ describe('register-care integration', () => {
   it('fails on entry routine conflicts without a synthetic BOOT caller in error mode', async () => {
     const entry = writeEntryConflictFixture('azm-regcare-entry-error-');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -578,17 +479,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -620,17 +513,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).not.toContainEqual(
       expect.objectContaining({
@@ -639,28 +524,18 @@ describe('register-care integration', () => {
         message: expect.stringContaining('CALL .entry may modify A'),
       }),
     );
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('includes direct-call conflicts in requested reports', async () => {
     const entry = writeConflictFixture('azm-regcare-report-conflict-');
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'warn',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'warn',
+      emitRegisterReport: true,
+    });
 
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    const report = reportArtifact(res);
     expect(report?.text).toContain('Conflicts:');
     expect(report?.text).toContain('HELPER: D,E: CALL HELPER may modify D,E');
   });
@@ -676,22 +551,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'audit',
-        emitRegisterReport: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'audit',
+      emitRegisterReport: true,
+    });
 
-    const report = res.artifacts.find(
-      (a): a is RegisterCareReportArtifact => a.kind === 'register-care-report',
-    );
+    const report = reportArtifact(res);
     expect(report?.text).toContain('Unknown calls:');
     expect(report?.text).toContain('MISSING_HELPER');
     expect(report?.text).not.toContain('Unknown calls:\n  none');
@@ -708,17 +573,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'strict',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'strict',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -740,18 +597,10 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareProfile: 'mon3',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareProfile: 'mon3',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -783,20 +632,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareProfile: 'mon3',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareProfile: 'mon3',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('matches MON-3 API_SCANKEYS service names without requiring underscore spelling', async () => {
@@ -820,20 +661,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareProfile: 'mon3',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareProfile: 'mon3',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('keeps generic MON-3 RST behavior when the service load is not immediate', async () => {
@@ -856,18 +689,10 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareProfile: 'mon3',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareProfile: 'mon3',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -903,17 +728,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -950,17 +767,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -980,17 +789,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'strict',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'strict',
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -1036,17 +837,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).not.toContainEqual(
       expect.objectContaining({
@@ -1076,17 +869,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     expect(res.diagnostics).not.toContainEqual(
       expect.objectContaining({
@@ -1121,19 +906,11 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('suppresses one ambiguous call with expects-out in error mode', async () => {
@@ -1159,19 +936,11 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('promotes source-level expects-out comments into generated callee contracts', async () => {
@@ -1197,23 +966,13 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        emitRegisterAnnotations: true,
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      emitRegisterAnnotations: true,
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const annotations = res.artifacts.find(
-      (a): a is RegisterCareAnnotationsArtifact => a.kind === 'register-care-annotations',
-    );
+    expectNoErrorDiagnostics(res);
+    const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
       ['; Mask prose.', ';!      out       A', ';!      clobbers  C', 'MASK:'].join('\n'),
     );
@@ -1241,18 +1000,10 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareInterfaces: [iface],
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareInterfaces: [iface],
+    });
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
@@ -1285,19 +1036,11 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('uses bodyless extern pure outputs to kill earlier live values', async () => {
@@ -1325,20 +1068,12 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-        registerCareInterfaces: [iface],
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+      registerCareInterfaces: [iface],
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('treats different-register contract transforms as outputs and inputs', async () => {
@@ -1370,17 +1105,9 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
     const errors = res.diagnostics.filter((d) => d.severity === 'error');
     expect(errors).toContainEqual(
@@ -1420,19 +1147,11 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 
   it('uses known direct-call summaries when inferring caller clobbers', async () => {
@@ -1459,18 +1178,10 @@ describe('register-care integration', () => {
       'utf8',
     );
 
-    const res = await compile(
-      entry,
-      {
-        emitBin: false,
-        emitHex: false,
-        emitD8m: false,
-        emitListing: false,
-        registerCare: 'error',
-      },
-      { formats: defaultFormatWriters },
-    );
+    const res = await compileRegisterCare(entry, {
+      registerCare: 'error',
+    });
 
-    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectNoErrorDiagnostics(res);
   });
 });
