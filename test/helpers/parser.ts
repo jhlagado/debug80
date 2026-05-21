@@ -3,7 +3,7 @@ import { parseSourceFile } from '../../src/frontend/parser.js';
 import type { SourceFile } from '../../src/frontend/source.js';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
 
-export type ParserRawLine = {
+type ParserRawLine = {
   raw: string;
   startOffset: number;
   endOffset: number;
