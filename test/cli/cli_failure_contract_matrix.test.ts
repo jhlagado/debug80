@@ -13,134 +13,152 @@ async function expectNoArtifacts(base: string): Promise<void> {
   expect(await exists(`${base}.lst`)).toBe(false);
 }
 
+async function makeFailureWorkDir(prefix: string, entryName: string, outputName = 'out.hex') {
+  const work = await mkdtemp(join(tmpdir(), prefix));
+  const entry = join(work, entryName);
+  const output = join(work, outputName);
+  return { work, entry, output, base: join(work, 'out') };
+}
+
+async function makeAsm80IncludeFailureFixture(prefix: string, childSource: string) {
+  const { work, entry, output, base } = await makeFailureWorkDir(prefix, 'entry.z80', 'out.bin');
+  const child = join(work, 'child.z80');
+  await writeFile(
+    entry,
+    ['.org 0100H', '.include "child.z80"', '.binfrom 0100H'].join('\n'),
+    'utf8',
+  );
+  await writeFile(child, childSource, 'utf8');
+  return { work, entry, child, output, base };
+}
+
+async function expectCompileFailureWithoutUsage(
+  res: Awaited<ReturnType<typeof runCli>>,
+  base: string,
+  checks: string[],
+): Promise<void> {
+  expect(res.code).toBe(1);
+  expect(res.stdout).toBe('');
+  for (const check of checks) expect(res.stderr).toContain(check);
+  expect(res.stderr).not.toContain('azm [options] <entry.asm|entry.z80>');
+  await expectNoArtifacts(base);
+}
+
+async function expectIncludedFileFailure(params: {
+  res: Awaited<ReturnType<typeof runCli>>;
+  entry: string;
+  child: string;
+  base: string;
+  childLocation: string;
+  entryLocation: string;
+  checks: string[];
+}): Promise<void> {
+  const { res, entry, child, base, childLocation, entryLocation, checks } = params;
+  expect(res.code).toBe(1);
+  expect(res.stdout).toBe('');
+  expect(res.stderr).toContain(`${child}:${childLocation}`);
+  for (const check of checks) expect(res.stderr).toContain(check);
+  expect(res.stderr).not.toContain(`${entry}:${entryLocation}`);
+  await expectNoArtifacts(base);
+}
+
 describe('cli failure contract matrix', () => {
   beforeAll(async () => {
     await ensureCliBuilt();
   }, 180_000);
 
   it('returns code 1 for missing entry file and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-missing-entry-'));
-    const missingEntry = join(work, 'missing.asm');
-    const outHex = join(work, 'out.hex');
-    const base = join(work, 'out');
+    const { work, entry, output, base } = await makeFailureWorkDir(
+      'azm-cli-missing-entry-',
+      'missing.asm',
+    );
 
-    const res = await runCli(['-o', outHex, missingEntry]);
-
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain('[AZM001]');
-    expect(res.stderr).toContain('Failed to read entry file');
-    expect(res.stderr).not.toContain('azm [options] <entry.asm|entry.z80>');
-    await expectNoArtifacts(base);
+    const res = await runCli(['-o', output, entry]);
+    await expectCompileFailureWithoutUsage(res, base, ['[AZM001]', 'Failed to read entry file']);
 
     await rm(work, { recursive: true, force: true });
   });
 
   it('returns code 1 for source diagnostics and does not print CLI usage text', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-parser-error-'));
-    const entry = join(work, 'broken.asm');
-    const outHex = join(work, 'out.hex');
-    const base = join(work, 'out');
+    const { work, entry, output, base } = await makeFailureWorkDir(
+      'azm-cli-parser-error-',
+      'broken.asm',
+    );
     await writeFile(entry, '???\n', 'utf8');
 
-    const res = await runCli(['-o', outHex, entry]);
-
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain('[AZM200]');
-    expect(res.stderr).toContain('error:');
-    expect(res.stderr).not.toContain('azm [options] <entry.asm|entry.z80>');
-    await expectNoArtifacts(base);
+    const res = await runCli(['-o', output, entry]);
+    await expectCompileFailureWithoutUsage(res, base, ['[AZM200]', 'error:']);
 
     await rm(work, { recursive: true, force: true });
   });
 
   it('returns code 1 for ASM80 include parser diagnostics at the included file', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-asm80-include-error-'));
-    const entry = join(work, 'entry.z80');
-    const child = join(work, 'child.z80');
-    const outBin = join(work, 'out.bin');
-    const base = join(work, 'out');
-    await writeFile(
-      entry,
-      ['.org 0100H', '.include "child.z80"', '.binfrom 0100H'].join('\n'),
-      'utf8',
+    const { work, entry, child, output, base } = await makeAsm80IncludeFailureFixture(
+      'azm-cli-asm80-include-error-',
+      ['.db 1', '.db BAD+'].join('\n'),
     );
-    await writeFile(child, ['.db 1', '.db BAD+'].join('\n'), 'utf8');
 
-    const res = await runCli(['--nolist', '--nohex', '--nod8m', '-t', 'bin', '-o', outBin, entry]);
+    const res = await runCli(['--nolist', '--nohex', '--nod8m', '-t', 'bin', '-o', output, entry]);
 
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain(`${child}:2:1`);
-    expect(res.stderr).toContain('[AZM100]');
-    expect(res.stderr).toContain('Invalid imm expression: BAD+');
-    expect(res.stderr).not.toContain(`${entry}:3:1`);
-    await expectNoArtifacts(base);
+    await expectIncludedFileFailure({
+      res,
+      entry,
+      child,
+      base,
+      childLocation: '2:1',
+      entryLocation: '3:1',
+      checks: ['[AZM100]', 'Invalid imm expression: BAD+'],
+    });
 
     await rm(work, { recursive: true, force: true });
   });
 
   it('returns code 1 for ASM80 include encoder diagnostics at the included file', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-asm80-include-encode-error-'));
-    const entry = join(work, 'entry.z80');
-    const child = join(work, 'child.z80');
-    const outBin = join(work, 'out.bin');
-    const base = join(work, 'out');
-    await writeFile(
-      entry,
-      ['.org 0100H', '.include "child.z80"', '.binfrom 0100H'].join('\n'),
-      'utf8',
+    const { work, entry, child, output, base } = await makeAsm80IncludeFailureFixture(
+      'azm-cli-asm80-include-encode-error-',
+      'ld a,300\n',
     );
-    await writeFile(child, 'ld a,300\n', 'utf8');
 
-    const res = await runCli(['--nolist', '--nohex', '--nod8m', '-t', 'bin', '-o', outBin, entry]);
+    const res = await runCli(['--nolist', '--nohex', '--nod8m', '-t', 'bin', '-o', output, entry]);
 
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain(`${child}:1:1`);
-    expect(res.stderr).toContain('[AZM200]');
-    expect(res.stderr).toContain('ld A, n expects imm8');
-    expect(res.stderr).not.toContain(`${entry}:2:1`);
-    await expectNoArtifacts(base);
+    await expectIncludedFileFailure({
+      res,
+      entry,
+      child,
+      base,
+      childLocation: '1:1',
+      entryLocation: '2:1',
+      checks: ['[AZM200]', 'ld A, n expects imm8'],
+    });
 
     await rm(work, { recursive: true, force: true });
   });
 
   it('returns code 1 for encoder diagnostics and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-encode-error-'));
-    const entry = join(work, 'encode-error.asm');
-    const outHex = join(work, 'out.hex');
-    const base = join(work, 'out');
+    const { work, entry, output, base } = await makeFailureWorkDir(
+      'azm-cli-encode-error-',
+      'encode-error.asm',
+    );
     await writeFile(entry, 'main:\n  ld a, 300\n  ret\n', 'utf8');
 
-    const res = await runCli(['-o', outHex, entry]);
-
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain('[AZM200]');
-    expect(res.stderr).toContain('ld A, n expects imm8');
-    expect(res.stderr).not.toContain('azm [options] <entry.asm|entry.z80>');
-    await expectNoArtifacts(base);
+    const res = await runCli(['-o', output, entry]);
+    await expectCompileFailureWithoutUsage(res, base, ['[AZM200]', 'ld A, n expects imm8']);
 
     await rm(work, { recursive: true, force: true });
   });
 
   it('returns code 1 for empty entry source and writes no artifacts', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-empty-entry-'));
-    const entry = join(work, 'empty.asm');
-    const outHex = join(work, 'out.hex');
-    const base = join(work, 'out');
+    const { work, entry, output, base } = await makeFailureWorkDir(
+      'azm-cli-empty-entry-',
+      'empty.asm',
+    );
     await writeFile(entry, '', 'utf8');
 
-    const res = await runCli(['-o', outHex, entry]);
-
-    expect(res.code).toBe(1);
-    expect(res.stdout).toBe('');
-    expect(res.stderr).toContain('[AZM400]');
-    expect(res.stderr).toContain('Program contains no declarations or instruction streams.');
-    expect(res.stderr).not.toContain('azm [options] <entry.asm|entry.z80>');
-    await expectNoArtifacts(base);
+    const res = await runCli(['-o', output, entry]);
+    await expectCompileFailureWithoutUsage(res, base, [
+      '[AZM400]',
+      'Program contains no declarations or instruction streams.',
+    ]);
 
     await rm(work, { recursive: true, force: true });
   });
