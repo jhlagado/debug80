@@ -1,20 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 
-import { compile } from '../../src/compile.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
 import { expectDiagnostic } from '../helpers/diagnostics.js';
 import { binBytes, containsSubsequence } from '../test-helpers.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { compileBackendFixture } from './isaDiagnosticTestHelpers.js';
 
 describe('PR24 ISA core tranche', () => {
   it('encodes sub/cp/and/or/xor and rel8 branches', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_isa_core.asm');
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
+    const res = await compileBackendFixture('pr24_isa_core.asm');
     expect(res.diagnostics).toEqual([]);
     expect(
       containsSubsequence(binBytes(res.artifacts), [
@@ -34,8 +27,7 @@ describe('PR24 ISA core tranche', () => {
   });
 
   it('diagnoses rel8 out-of-range label branches', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_jr_label_out_of_range.asm');
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
+    const res = await compileBackendFixture('pr24_jr_label_out_of_range.asm');
     expect(res.artifacts).toEqual([]);
     expectDiagnostic(res.diagnostics, {
       id: DiagnosticIds.EmitError,
@@ -45,8 +37,7 @@ describe('PR24 ISA core tranche', () => {
   });
 
   it('encodes backwards rel8 branch displacements', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr24_rel8_backward.asm');
-    const res = await compile(entry, {}, { formats: defaultFormatWriters });
+    const res = await compileBackendFixture('pr24_rel8_backward.asm');
     expect(res.diagnostics).toEqual([]);
     expect(containsSubsequence(binBytes(res.artifacts), [0x10, 0xfe])).toBe(true);
   });
