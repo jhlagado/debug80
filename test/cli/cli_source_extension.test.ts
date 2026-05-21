@@ -10,70 +10,60 @@ import { compile } from '../../src/compile.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import { loadProgram } from '../../src/api-tooling.js';
 
+async function withTempEntry<T>(
+  prefix: string,
+  entryName: string,
+  source: string,
+  fn: (entry: string) => Promise<T>,
+): Promise<T> {
+  const work = await mkdtemp(join(tmpdir(), prefix));
+  const entry = join(work, entryName);
+  await writeFile(entry, source, 'utf8');
+  try {
+    return await fn(entry);
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
 describe('cli source extension surface', () => {
   beforeAll(async () => {
     await ensureCliBuilt();
   }, 180_000);
 
-  it('rejects unsupported entry extensions', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-entry-ext-unsupported-'));
-    const entry = join(work, 'main.foo');
-    await writeFile(entry, 'main:\n  nop\n', 'utf8');
-
-    try {
+  it.each([
+    { ext: 'foo', expectsHelpProbe: true },
+    { ext: 'txt', expectsHelpProbe: false },
+  ])('rejects unsupported .$ext entry extensions', async ({ ext, expectsHelpProbe }) => {
+    await withTempEntry(`azm-cli-source-ext-${ext}-`, `main.${ext}`, 'main:\n  nop\n', async (entry) => {
       const res = await runCli(['--nobin', '--nod8m', '--nolist', entry]);
-
       expect(res.code).toBe(2);
-      expect(res.stderr).toContain('Unsupported entry extension ".foo"');
-
-      const help = await runCli(['--help']);
-      expect(help.code).toBe(0);
-      expect(help.stdout).toContain('<entry.asm|entry.z80>');
-    } finally {
-      await rm(work, { recursive: true, force: true });
-    }
-  });
-
-  it('rejects unsupported entry extensions', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-cli-source-ext-'));
-    const entry = join(work, 'main.txt');
-    await writeFile(entry, 'main:\n  nop\n', 'utf8');
-
-    try {
-      const res = await runCli(['--nobin', '--nod8m', '--nolist', entry]);
-
-      expect(res.code).toBe(2);
-      expect(res.stdout).toBe('');
-      expect(res.stderr).toContain('Unsupported entry extension ".txt"');
+      expect(res.stderr).toContain(`Unsupported entry extension ".${ext}"`);
       expect(res.stderr).toContain('expected .asm, .z80');
-    } finally {
-      await rm(work, { recursive: true, force: true });
-    }
+
+      if (expectsHelpProbe) {
+        const help = await runCli(['--help']);
+        expect(help.code).toBe(0);
+        expect(help.stdout).toContain('<entry.asm|entry.z80>');
+      } else {
+        expect(res.stdout).toBe('');
+      }
+    });
   });
 
   it.each(['azm', 'asmi'])('rejects .%s as a source extension', async (ext) => {
-    const work = await mkdtemp(join(tmpdir(), `azm-cli-source-ext-${ext}-`));
-    const entry = join(work, `main.${ext}`);
-    await writeFile(entry, 'main:\n  nop\n', 'utf8');
-
-    try {
+    await withTempEntry(`azm-cli-source-ext-${ext}-`, `main.${ext}`, 'main:\n  nop\n', async (entry) => {
       const res = await runCli(['--nobin', '--nod8m', '--nolist', entry]);
 
       expect(res.code).toBe(2);
       expect(res.stdout).toBe('');
       expect(res.stderr).toContain(`Unsupported entry extension ".${ext}"`);
       expect(res.stderr).toContain('expected .asm, .z80');
-    } finally {
-      await rm(work, { recursive: true, force: true });
-    }
+    });
   });
 
   it('uses current wording for unsupported programmatic source extensions', async () => {
-    const work = await mkdtemp(join(tmpdir(), 'azm-api-source-ext-'));
-    const entry = join(work, 'main.txt');
-    await writeFile(entry, 'main:\n  ret\n', 'utf8');
-
-    try {
+    await withTempEntry('azm-api-source-ext-', 'main.txt', 'main:\n  ret\n', async (entry) => {
       const compiled = await compile(entry, {}, { formats: defaultFormatWriters });
       expect(compiled.diagnostics).toContainEqual(
         expect.objectContaining({
@@ -89,8 +79,6 @@ describe('cli source extension surface', () => {
           message: 'Unsupported source file extension (expected .asm or .z80)',
         }),
       );
-    } finally {
-      await rm(work, { recursive: true, force: true });
-    }
+    });
   });
 });
