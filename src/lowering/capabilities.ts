@@ -74,7 +74,11 @@ export interface HiddenLabelCapability {
 
 export interface AsmRangeLoweringCapability {
   /** Lowers a contiguous asm range until `stopKinds`; returns next index. */
-  lowerAsmRange: (items: readonly AsmItemNode[], startIndex: number, stopKinds: Set<string>) => number;
+  lowerAsmRange: (
+    items: readonly AsmItemNode[],
+    startIndex: number,
+    stopKinds: Set<string>,
+  ) => number;
 }
 
 export interface FlowSyncCapability {

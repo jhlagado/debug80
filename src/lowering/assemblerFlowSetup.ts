@@ -1,10 +1,6 @@
 import { DiagnosticIds } from '../diagnosticTypes.js';
 import type { Diagnostic, DiagnosticId } from '../diagnosticTypes.js';
-import type {
-  AsmInstructionNode,
-  AsmOperandNode,
-  SourceSpan,
-} from '../frontend/ast.js';
+import type { AsmInstructionNode, AsmOperandNode, SourceSpan } from '../frontend/ast.js';
 import type { PendingSymbol, SourceSegmentTag } from './loweringTypes.js';
 
 export type FlowState = {
@@ -60,7 +56,9 @@ export function createAssemblerFlowSetupHelpers({
   ): OpExpansionFrame | undefined =>
     opExpansionStack.length > 0 ? opExpansionStack[opExpansionStack.length - 1] : undefined;
 
-  const rootOpExpansionFrame = (opExpansionStack: OpExpansionFrame[]): OpExpansionFrame | undefined =>
+  const rootOpExpansionFrame = (
+    opExpansionStack: OpExpansionFrame[],
+  ): OpExpansionFrame | undefined =>
     opExpansionStack.length > 0 ? opExpansionStack[0] : undefined;
 
   const currentMacroCallSiteSpan = (opExpansionStack: OpExpansionFrame[]): SourceSpan | undefined =>
@@ -112,7 +110,10 @@ export function createAssemblerFlowSetupHelpers({
     );
   };
 
-  const sourceTagForSpan = (span: SourceSpan, opExpansionStack: OpExpansionFrame[]): SourceSegmentTag => {
+  const sourceTagForSpan = (
+    span: SourceSpan,
+    opExpansionStack: OpExpansionFrame[],
+  ): SourceSegmentTag => {
     const macroCallSite = currentMacroCallSiteSpan(opExpansionStack);
     const taggedSpan = macroCallSite ?? span;
     return {
@@ -134,13 +135,19 @@ export function createAssemblerFlowSetupHelpers({
     }
   };
 
-  const syncFromFlow = (flow: FlowState, tracked: { delta: number; valid: boolean; invalid: boolean }): void => {
+  const syncFromFlow = (
+    flow: FlowState,
+    tracked: { delta: number; valid: boolean; invalid: boolean },
+  ): void => {
     tracked.delta = flow.spDelta;
     tracked.valid = flow.spValid;
     tracked.invalid = flow.spInvalidDueToMutation;
   };
 
-  const syncToFlow = (flow: FlowState, tracked: { delta: number; valid: boolean; invalid: boolean }): void => {
+  const syncToFlow = (
+    flow: FlowState,
+    tracked: { delta: number; valid: boolean; invalid: boolean },
+  ): void => {
     flow.spDelta = tracked.delta;
     flow.spValid = tracked.valid;
     flow.spInvalidDueToMutation = tracked.invalid;
@@ -181,10 +188,26 @@ export function createAssemblerFlowSetupHelpers({
     const src = srcOp.name.toUpperCase();
     const supported = new Set(['BC', 'DE', 'HL']);
     if (!supported.has(dst) || !supported.has(src) || dst === src) return false;
-    const hi = (reg16: string): 'B' | 'D' | 'H' => (reg16 === 'BC' ? 'B' : reg16 === 'DE' ? 'D' : 'H');
-    const lo = (reg16: string): 'C' | 'E' | 'L' => (reg16 === 'BC' ? 'C' : reg16 === 'DE' ? 'E' : 'L');
-    emitInstr('ld', [{ kind: 'Reg', span: asmItem.span, name: hi(dst) }, { kind: 'Reg', span: asmItem.span, name: hi(src) }], asmItem.span);
-    emitInstr('ld', [{ kind: 'Reg', span: asmItem.span, name: lo(dst) }, { kind: 'Reg', span: asmItem.span, name: lo(src) }], asmItem.span);
+    const hi = (reg16: string): 'B' | 'D' | 'H' =>
+      reg16 === 'BC' ? 'B' : reg16 === 'DE' ? 'D' : 'H';
+    const lo = (reg16: string): 'C' | 'E' | 'L' =>
+      reg16 === 'BC' ? 'C' : reg16 === 'DE' ? 'E' : 'L';
+    emitInstr(
+      'ld',
+      [
+        { kind: 'Reg', span: asmItem.span, name: hi(dst) },
+        { kind: 'Reg', span: asmItem.span, name: hi(src) },
+      ],
+      asmItem.span,
+    );
+    emitInstr(
+      'ld',
+      [
+        { kind: 'Reg', span: asmItem.span, name: lo(dst) },
+        { kind: 'Reg', span: asmItem.span, name: lo(src) },
+      ],
+      asmItem.span,
+    );
     return true;
   };
 

@@ -13,7 +13,7 @@ import {
 
 const asmSourceLoweringAvailable = true;
 const manifest = {
-  source: process.env.MON3_SOURCE ?? '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80',
+  source: process.env.MON3_SOURCE ?? '/Users/johnhardy/projects/MON3/src/mon3.z80',
 };
 
 const asm80 = findAsm80Executable();

@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,14 +29,17 @@ describe('PR209: jp cc indirect-form legality diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'jp cc, nn does not support indirect targets',
     },
-  ] satisfies Row[])('$label — explicit diagnostics for unsupported conditional indirect jp targets', async (row) => {
-    const res = await compile(PR209_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit diagnostics for unsupported conditional indirect jp targets',
+    async (row) => {
+      const res = await compile(PR209_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit looser condition+imm16 placeholder diagnostics for the jp cc indirect matrix fixture', async () => {
     const res = await compile(PR209_FIXTURE, {}, { formats: defaultFormatWriters });

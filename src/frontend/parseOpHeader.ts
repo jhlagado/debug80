@@ -54,15 +54,10 @@ export function parseOpHeader<TParam>(
     return undefined;
   }
   if (isReservedTopLevelName(name)) {
-    diag(
-      diagnostics,
-      sourcePath,
-      `Invalid op name "${name}": collides with a top-level keyword.`,
-      {
-        line: lineNo,
-        column: 1,
-      },
-    );
+    diag(diagnostics, sourcePath, `Invalid op name "${name}": collides with a top-level keyword.`, {
+      line: lineNo,
+      column: 1,
+    });
     return undefined;
   }
 

@@ -17,7 +17,11 @@ function findSymbol(symbols: SymbolEntry[], name: string): SymbolEntry | undefin
 function readResolvedAbs16Target(view: LoweredInstrView): number | undefined {
   if (view.head !== '@raw' || !view.resolvedBytes) return undefined;
   if (view.resolvedBytes.length < 3) return undefined;
-  if (view.resolvedBytes[0] === 0xed || view.resolvedBytes[0] === 0xdd || view.resolvedBytes[0] === 0xfd) {
+  if (
+    view.resolvedBytes[0] === 0xed ||
+    view.resolvedBytes[0] === 0xdd ||
+    view.resolvedBytes[0] === 0xfd
+  ) {
     if (view.resolvedBytes.length < 4) return undefined;
     return view.resolvedBytes[2]! | (view.resolvedBytes[3]! << 8);
   }

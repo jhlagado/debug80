@@ -1,12 +1,18 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
-import type { AsmInstructionNode, AsmOperandNode, EaExprNode, SourceSpan } from '../frontend/ast.js';
+import type {
+  AsmInstructionNode,
+  AsmOperandNode,
+  EaExprNode,
+  SourceSpan,
+} from '../frontend/ast.js';
 import type { EaResolution } from './eaResolution.js';
-import {
-  diagLayoutCastRuntimeIndex,
-  isConstantLayoutCastEa,
-} from '../semantics/layoutCastFold.js';
+import { diagLayoutCastRuntimeIndex, isConstantLayoutCastEa } from '../semantics/layoutCastFold.js';
 
-type DiagAt = (diagnostics: Diagnostic[], span: AsmInstructionNode['span'], message: string) => void;
+type DiagAt = (
+  diagnostics: Diagnostic[],
+  span: AsmInstructionNode['span'],
+  message: string,
+) => void;
 
 export type LdLoweringContext = {
   diagnostics: Diagnostic[];
@@ -25,6 +31,9 @@ export type LdLoweringContext = {
     span: AsmInstructionNode['span'],
   ) => void;
   evalImmExpr: (expr: Extract<AsmOperandNode, { kind: 'Imm' }>['expr']) => number | undefined;
+  symbolicTargetFromExpr: (
+    expr: Extract<AsmOperandNode, { kind: 'Imm' }>['expr'],
+  ) => { baseLower: string; addend: number } | undefined;
   resolveEa: (ea: EaExprNode, span: SourceSpan) => EaResolution | undefined;
   lowerLdWithEa: (asmItem: AsmInstructionNode) => boolean;
   emitAbs16LdFixup: (
@@ -59,33 +68,39 @@ function ldImmediateOpcode(dst: string | undefined): number | undefined {
   }
 }
 
-function tryEmitUnresolvedImmNameLd(
+function tryEmitUnresolvedSymbolicImmLd(
   asmItem: AsmInstructionNode,
   ctx: LdLoweringContext,
   dst: string | undefined,
   srcOp: AsmOperandNode,
 ): boolean {
-  if (srcOp.kind !== 'Imm' || srcOp.expr.kind !== 'ImmName') return false;
+  if (srcOp.kind !== 'Imm') return false;
   if (ctx.evalImmExpr(srcOp.expr) !== undefined) return false;
 
-  const baseLower = ctx.resolveRawLabelName(srcOp.expr.name).toLowerCase();
+  const symbolic = ctx.symbolicTargetFromExpr(srcOp.expr);
+  if (!symbolic) return false;
+
+  const baseLower = ctx.resolveRawLabelName(symbolic.baseLower).toLowerCase();
   const opcode = ldImmediateOpcode(dst);
   if (opcode !== undefined) {
-    ctx.emitAbs16Fixup(opcode, baseLower, 0, asmItem.span);
+    ctx.emitAbs16Fixup(opcode, baseLower, symbolic.addend, asmItem.span);
     return true;
   }
   if (dst === 'IX' || dst === 'IY') {
-    ctx.emitAbs16FixupPrefixed(dst === 'IX' ? 0xdd : 0xfd, 0x21, baseLower, 0, asmItem.span);
+    ctx.emitAbs16FixupPrefixed(
+      dst === 'IX' ? 0xdd : 0xfd,
+      0x21,
+      baseLower,
+      symbolic.addend,
+      asmItem.span,
+    );
     return true;
   }
   return false;
 }
 
 /** Emit ordinary abs16 fixups for folded layout-cast address expressions. */
-function tryLdFoldedLayoutCast(
-  asmItem: AsmInstructionNode,
-  ctx: LdLoweringContext,
-): boolean {
+function tryLdFoldedLayoutCast(asmItem: AsmInstructionNode, ctx: LdLoweringContext): boolean {
   if (asmItem.operands.length !== 2) return false;
   const dstOp = asmItem.operands[0]!;
   const srcOp = asmItem.operands[1]!;
@@ -159,7 +174,10 @@ function tryLdFoldedLayoutCast(
   return false;
 }
 
-export function tryLowerLdInstruction(asmItem: AsmInstructionNode, ctx: LdLoweringContext): boolean | undefined {
+export function tryLowerLdInstruction(
+  asmItem: AsmInstructionNode,
+  ctx: LdLoweringContext,
+): boolean | undefined {
   const head = asmItem.head.toLowerCase();
   if (head !== 'ld') return undefined;
 
@@ -175,7 +193,7 @@ export function tryLowerLdInstruction(asmItem: AsmInstructionNode, ctx: LdLoweri
     const dstOp = asmItem.operands[0]!;
     const srcOp = asmItem.operands[1]!;
     const dst = dstOp.kind === 'Reg' ? dstOp.name.toUpperCase() : undefined;
-    if (tryEmitUnresolvedImmNameLd(asmItem, ctx, dst, srcOp)) {
+    if (tryEmitUnresolvedSymbolicImmLd(asmItem, ctx, dst, srcOp)) {
       ctx.syncToFlow();
       return true;
     }

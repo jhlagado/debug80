@@ -9,7 +9,7 @@ import type { LdLoweringContext } from './asmLoweringLd.js';
  */
 type AsmLoweringLdHelperSlice = Omit<LdHelperContext, 'emitInstr' | 'emitAbs16Fixup'>;
 
-type AsmLoweringLdSlice = Pick<LdLoweringContext, 'resolveEa'>;
+type AsmLoweringLdSlice = Pick<LdLoweringContext, 'resolveEa' | 'symbolicTargetFromExpr'>;
 
 /**
  * Dispatcher path shared by the non-`ld` `lowerLdWithEa` fallback.

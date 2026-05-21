@@ -2,14 +2,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
 import {
   expectCliArtifacts,
   makeCliWorkDir,
   removeCliWorkDir,
   runCli,
   writeCliMainSource,
-} from '../helpers/cli.js';
+} from '../helpers/cli/index.js';
 
 describe('cli contract matrix', () => {
   beforeAll(async () => {
@@ -70,28 +70,24 @@ describe('cli contract matrix', () => {
     expect(aliasesMissing.stderr).toContain('--aliases expects a value');
   }, 20_000);
 
-  it(
-    'rejects unsupported type tokens and output/type extension mismatches',
-    async () => {
-      const work = await makeCliWorkDir('azm-cli-type-');
-      const entry = await writeCliMainSource(work);
+  it('rejects unsupported type tokens and output/type extension mismatches', async () => {
+    const work = await makeCliWorkDir('azm-cli-type-');
+    const entry = await writeCliMainSource(work);
 
-      const unsupported = await runCli(['--type=rom', entry]);
-      expect(unsupported.code).toBe(2);
-      expect(unsupported.stderr).toContain('Unsupported --type "rom"');
+    const unsupported = await runCli(['--type=rom', entry]);
+    expect(unsupported.code).toBe(2);
+    expect(unsupported.stderr).toContain('Unsupported --type "rom"');
 
-      const badHexExt = await runCli(['--type', 'hex', '-o', join(work, 'out.bin'), entry]);
-      expect(badHexExt.code).toBe(2);
-      expect(badHexExt.stderr).toContain('--output must end with ".hex"');
+    const badHexExt = await runCli(['--type', 'hex', '-o', join(work, 'out.bin'), entry]);
+    expect(badHexExt.code).toBe(2);
+    expect(badHexExt.stderr).toContain('--output must end with ".hex"');
 
-      const badBinExt = await runCli(['--type', 'bin', '-o', join(work, 'out.hex'), entry]);
-      expect(badBinExt.code).toBe(2);
-      expect(badBinExt.stderr).toContain('--output must end with ".bin"');
+    const badBinExt = await runCli(['--type', 'bin', '-o', join(work, 'out.hex'), entry]);
+    expect(badBinExt.code).toBe(2);
+    expect(badBinExt.stderr).toContain('--output must end with ".bin"');
 
-      await removeCliWorkDir(work);
-    },
-    15_000,
-  );
+    await removeCliWorkDir(work);
+  }, 15_000);
 
   it('rejects suppression of the selected primary output type', async () => {
     const work = await makeCliWorkDir('azm-cli-primary-suppress-');

@@ -1,6 +1,11 @@
 import { compile } from '../../src/compile.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
-import type { Asm80Artifact, BinArtifact, EmittedByteMap, SymbolEntry } from '../../src/formats/types.js';
+import type {
+  Asm80Artifact,
+  BinArtifact,
+  EmittedByteMap,
+  SymbolEntry,
+} from '../../src/formats/types.js';
 import type { LoweredAsmProgram } from '../../src/lowering/loweredAsmTypes.js';
 import type { CompiledLoweredProgram } from './lowered_program_types.js';
 
@@ -31,5 +36,10 @@ export async function compilePlacedProgram(entry: string): Promise<CompiledLower
   if (!capturedMap || !capturedSymbols) {
     throw new Error('Resolved byte map and symbols were not captured from BIN emission.');
   }
-  return { program: capturedProgram, diagnostics: res.diagnostics, map: capturedMap, symbols: capturedSymbols };
+  return {
+    program: capturedProgram,
+    diagnostics: res.diagnostics,
+    map: capturedMap,
+    symbols: capturedSymbols,
+  };
 }

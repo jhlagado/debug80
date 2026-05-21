@@ -4,7 +4,11 @@ import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { parseTopLevelOpDecl } from '../../src/frontend/parseOp.js';
 import { parseOpParamsFromText } from '../../src/frontend/parseParams.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
-import { createRawLineGetter, expectNoDiagnostics, parseSingleFileProgram } from '../helpers/index.js';
+import {
+  createRawLineGetter,
+  expectNoDiagnostics,
+  parseSingleFileProgram,
+} from '../helpers/index.js';
 
 describe('PR476 op parser extraction', () => {
   it('keeps top-level op parsing intact', () => {

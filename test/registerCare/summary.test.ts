@@ -401,14 +401,7 @@ describe('routine summary inference', () => {
     );
 
     expect(summary.mayRead).toEqual([]);
-    expect(summary.mayWrite).toEqual([
-      'carry',
-      'zero',
-      'sign',
-      'parity',
-      'halfCarry',
-      'A',
-    ]);
+    expect(summary.mayWrite).toEqual(['carry', 'zero', 'sign', 'parity', 'halfCarry', 'A']);
   });
 
   it('keeps inferred flag writes when a complete generated contract has maybe-out flags', () => {

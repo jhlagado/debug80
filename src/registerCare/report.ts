@@ -4,13 +4,7 @@ function list(units: RegisterCareUnit[]): string {
   return units.length === 0 ? '-' : units.join(',');
 }
 
-const FLAG_UNITS = new Set<RegisterCareUnit>([
-  'carry',
-  'zero',
-  'sign',
-  'parity',
-  'halfCarry',
-]);
+const FLAG_UNITS = new Set<RegisterCareUnit>(['carry', 'zero', 'sign', 'parity', 'halfCarry']);
 
 const CONTRACT_CARRIER_PAIRS: Array<{
   label: string;
@@ -66,10 +60,12 @@ function contractEntries(summary: RoutineSummary): ContractEntry[] {
   if (summary.mayRead.length > 0)
     out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
   const outputUnits = relationOutputUnits(summary.valueRelations);
-  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
+  if (outputUnits.length > 0)
+    out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
   const relationOut = relationOutUnits(summary);
   const clobbers = summary.mayWrite.filter((unit) => !relationOut.has(unit));
-  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
+  if (clobbers.length > 0)
+    out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
   return out;
 }
 
@@ -79,13 +75,16 @@ function sourceContractEntries(summary: RoutineSummary): ContractEntry[] {
     out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
   const relationOut = relationOutUnits(summary);
   const candidates = (summary.outputCandidates ?? []).filter((unit) => !relationOut.has(unit));
-  if (candidates.length > 0) out.push({ keyword: 'maybe-out', carriers: contractCarrierList(candidates) });
+  if (candidates.length > 0)
+    out.push({ keyword: 'maybe-out', carriers: contractCarrierList(candidates) });
   const outputUnits = relationOutputUnits(summary.valueRelations);
-  if (outputUnits.length > 0) out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
+  if (outputUnits.length > 0)
+    out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
   const clobbers = summary.mayWrite.filter(
     (unit) => !relationOut.has(unit) && !FLAG_UNITS.has(unit),
   );
-  if (clobbers.length > 0) out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
+  if (clobbers.length > 0)
+    out.push({ keyword: 'clobbers', carriers: contractCarrierList(clobbers) });
   return out;
 }
 

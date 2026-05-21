@@ -5,8 +5,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = resolve(import.meta.dirname, '../..');
-const mon3Entry = '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80';
+const mon3Entry = process.env.MON3_SOURCE ?? '/Users/johnhardy/projects/MON3/src/mon3.z80';
 const auditScript = resolve(repoRoot, 'scripts/dev/asm80-mon3-audit.mjs');
+const mon3SourceRoot = mon3Entry.replace(/\/[^/]+$/, '/');
 
 type AuditJson = {
   files: string[];
@@ -38,11 +39,7 @@ describe('MON3 opcode gap audit', () => {
     () => {
       const audit = runAudit();
 
-      expect(
-        audit.files.map((file) =>
-          file.replace('/Users/johnhardy/Documents/projects/MON3/src/', ''),
-        ),
-      ).toEqual([
+      expect(audit.files.map((file) => file.replace(mon3SourceRoot, ''))).toEqual([
         'mon3.z80',
         'packages.z80',
         'glcd_library.z80',

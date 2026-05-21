@@ -91,7 +91,6 @@ export const DiagnosticIds = {
 
   /** Register-care analysis cannot prove an external or indirect call contract. */
   RegisterCareUnknownBoundary: 'AZM601',
-
 } as const;
 
 /**

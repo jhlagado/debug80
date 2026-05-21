@@ -62,7 +62,9 @@ type EmitPhase1OpRegistry = {
   /** All declared `op` names (lowercased) for diagnostics. */
   declaredOpNames: Set<string>;
   /** Resolves op candidates declared for a file. */
-  resolveOpCandidatesForFile: ReturnType<typeof createOpCandidateRegistryHelpers>['resolveOpCandidatesForFile'];
+  resolveOpCandidatesForFile: ReturnType<
+    typeof createOpCandidateRegistryHelpers
+  >['resolveOpCandidatesForFile'];
 };
 
 /** Options and paths fixed for the emit run. */

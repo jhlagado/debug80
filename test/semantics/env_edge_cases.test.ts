@@ -5,9 +5,12 @@ import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import type { ProgramNode } from '../../src/frontend/ast.js';
 import { parseSourceFile } from '../../src/frontend/parser.js';
 import { buildEnv, evalImmExpr } from '../../src/semantics/env.js';
-import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 
-function parseSingleFileProgram(sourcePath: string, source: string): { program: ProgramNode; diagnostics: Diagnostic[] } {
+function parseSingleFileProgram(
+  sourcePath: string,
+  source: string,
+): { program: ProgramNode; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
   const sourceFileNode = parseSourceFile(sourcePath, source, diagnostics);
   const program: ProgramNode = {
@@ -175,7 +178,13 @@ describe('env edge cases (buildEnv + evalImmExpr)', () => {
     expect(env.equates.get('C')).toBe(1);
     expect(
       evalImmExpr(
-        { kind: 'ImmBinary', span: program.files[0]!.span, op: '<<', left: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 1 }, right: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 4 } },
+        {
+          kind: 'ImmBinary',
+          span: program.files[0]!.span,
+          op: '<<',
+          left: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 1 },
+          right: { kind: 'ImmLiteral', span: program.files[0]!.span, value: 4 },
+        },
         env,
         diagnostics,
       ),

@@ -1,13 +1,21 @@
-import type {
-  AddressRange,
-  EmittedSourceSegment,
-} from '../formats/types.js';
+import type { AddressRange, EmittedSourceSegment } from '../formats/types.js';
 import type { PlacementKind } from './loweringTypes.js';
 import type { ProgramEmissionFinalizeContext } from './programLowering.js';
 import { createFixupBaseResolver } from './fixupBaseResolution.js';
 
 export function computePlacementBases(
-  ctx: Pick<ProgramEmissionFinalizeContext, 'baseExprs' | 'evalImmExpr' | 'env' | 'diagnostics' | 'diag' | 'primaryFile' | 'alignTo' | 'codeOffset' | 'dataOffset'>,
+  ctx: Pick<
+    ProgramEmissionFinalizeContext,
+    | 'baseExprs'
+    | 'evalImmExpr'
+    | 'env'
+    | 'diagnostics'
+    | 'diag'
+    | 'primaryFile'
+    | 'alignTo'
+    | 'codeOffset'
+    | 'dataOffset'
+  >,
   defaultCodeBase?: number,
   options?: { quiet?: boolean },
 ): {
@@ -27,7 +35,11 @@ export function computePlacementBases(
       return undefined;
     }
     if (value < 0 || value > 0xffff) {
-      diagFn(diagnostics, at.span.file, `Placement "${kind}" base address out of range (0..65535).`);
+      diagFn(
+        diagnostics,
+        at.span.file,
+        `Placement "${kind}" base address out of range (0..65535).`,
+      );
       return undefined;
     }
     return value;
@@ -36,7 +48,7 @@ export function computePlacementBases(
   const explicitCodeBase = evalBase('code');
   const explicitDataBase = evalBase('data');
   const codeOk = explicitCodeBase !== undefined || !ctx.baseExprs.code;
-  const codeBase = explicitCodeBase ?? (defaultCodeBase ?? 0);
+  const codeBase = explicitCodeBase ?? defaultCodeBase ?? 0;
   const dataBase =
     explicitDataBase ??
     (codeOk
@@ -60,10 +72,7 @@ export function finalizeProgramEmission(ctx: ProgramEmissionFinalizeContext): {
   writtenRange: AddressRange;
   sourceSegments: EmittedSourceSegment[];
 } {
-  const { codeBase, dataBase, codeOk, dataOk } = computePlacementBases(
-    ctx,
-    ctx.defaultCodeBase,
-  );
+  const { codeBase, dataBase, codeOk, dataOk } = computePlacementBases(ctx, ctx.defaultCodeBase);
 
   const addrByNameLower = new Map<string, number>();
   for (const ps of ctx.pending) {

@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,14 +40,17 @@ describe('PR204: adc/sbc malformed-form diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'sbc HL, rr expects BC/DE/HL/SP',
     },
-  ] satisfies Row[])('$label — explicit destination diagnostics for malformed two-operand forms', async (row) => {
-    const res = await compile(PR204_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit destination diagnostics for malformed two-operand forms',
+    async (row) => {
+      const res = await compile(PR204_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not report generic unsupported-operand fallbacks for the adc/sbc matrix fixture', async () => {
     const res = await compile(PR204_FIXTURE, {}, { formats: defaultFormatWriters });

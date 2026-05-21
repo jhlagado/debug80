@@ -7,7 +7,7 @@ import {
   sizeOfTypeExpr,
   layoutInfoForTypeExpr,
 } from '../../src/semantics/layout.js';
-import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 import type {
   ImmExprNode,
   OffsetPathNode,

@@ -27,8 +27,6 @@ describe('PR646 declaration-tree visitor', () => {
       });
     });
 
-    expect(visited).toEqual([
-      { kind: 'AsmEqu' },
-    ]);
+    expect(visited).toEqual([{ kind: 'AsmEqu' }]);
   });
 });

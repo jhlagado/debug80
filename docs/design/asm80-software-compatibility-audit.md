@@ -31,7 +31,7 @@ scripts, and `run-asm80-baseline.mjs`.
 
 Root:
 
-- `/Users/johnhardy/Documents/projects/Software`
+- `/Users/johnhardy/projects/Software`
 
 Initial audit partitions:
 
@@ -59,7 +59,7 @@ The exploratory command shape is:
 
 ```sh
 npm run build
-node scripts/dev/compare-software-corpus.mjs /Users/johnhardy/Documents/projects/Software/<slice>
+node scripts/dev/compare-software-corpus.mjs /Users/johnhardy/projects/Software/<slice>
 ```
 
 The Software wrapper delegates to the shared ASM80 corpus comparator. It is
@@ -82,7 +82,7 @@ The strongest first promotion candidate is `Software/magazine_code`, because
 all 41 files currently match ASM80:
 
 ```sh
-node scripts/dev/compare-software-corpus.mjs /Users/johnhardy/Documents/projects/Software/magazine_code
+node scripts/dev/compare-software-corpus.mjs /Users/johnhardy/projects/Software/magazine_code
 ```
 
 The next best candidate is `Software/games` after normalizing the `DEFB`

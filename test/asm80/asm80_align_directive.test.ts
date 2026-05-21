@@ -21,11 +21,13 @@ describe('ASM80 .align directive recognition', () => {
 
 describeAsmCompile('ASM80 .align directive', () => {
   it('advances the current output address to the next alignment boundary', async () => {
-    const artifacts = await compileAsm80Fixture(
-      'azm-asm80-align-',
-      'align-directive.z80',
-      ['.org 0101H', '.db 0AAH', '.align 4', '.db 055H', '.binfrom 0101H'],
-    );
+    const artifacts = await compileAsm80Fixture('azm-asm80-align-', 'align-directive.z80', [
+      '.org 0101H',
+      '.db 0AAH',
+      '.align 4',
+      '.db 055H',
+      '.binfrom 0101H',
+    ]);
     const { asm80, bin, d8m } = requireAsm80Artifacts(artifacts);
 
     const base = getBinBase(d8m);
@@ -37,6 +39,8 @@ describeAsmCompile('ASM80 .align directive', () => {
 
 if (!asmSourceLoweringAvailable) {
   describe('ASM80 .align directive', () => {
-    it.todo('BLOCKED: enable compile assertion when ASM source parsing/lowering emits aligned data');
+    it.todo(
+      'BLOCKED: enable compile assertion when ASM source parsing/lowering emits aligned data',
+    );
   });
 }

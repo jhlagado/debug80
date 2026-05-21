@@ -24,6 +24,7 @@ export function createAsmInstructionLoweringHelpers(host: AsmLoweringHost) {
       emitAbs16Fixup: host.emitAbs16Fixup,
       emitAbs16FixupPrefixed: host.emitAbs16FixupPrefixed,
       evalImmExpr: host.evalImmExpr,
+      symbolicTargetFromExpr: host.symbolicTargetFromExpr,
       resolveEa: host.resolveEa,
       lowerLdWithEa: host.lowerLdWithEa,
       emitAbs16LdFixup,

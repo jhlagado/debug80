@@ -33,15 +33,14 @@ function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
   const expr = asmDirectiveExpr(item);
   const currentLocation = activePlacementAddress(ctx);
   if (expr) {
-    const record =
-      currentLocation === undefined ? { expr } : { expr, currentLocation };
+    const record = currentLocation === undefined ? { expr } : { expr, currentLocation };
     ctx.env.asmEquExprs?.set(name, record);
     ctx.env.asmEquExprs?.set(name.toLowerCase(), record);
   }
   const value =
     expr && currentLocation !== undefined
       ? evalImmExprWithEnv(expr, ctx.env, ctx.diagnostics, { currentLocation })
-      : ctx.env.equates.get(name) ?? ctx.env.equates.get(name.toLowerCase());
+      : (ctx.env.equates.get(name) ?? ctx.env.equates.get(name.toLowerCase()));
   if (value === undefined) {
     if (expr) {
       ctx.recordLoweredAsmItem(
@@ -60,10 +59,7 @@ function lowerAsmEquDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     line: item.span.start.line,
     scope: 'global',
   });
-  ctx.recordLoweredAsmItem(
-    { kind: 'const', name, value: { kind: 'literal', value } },
-    item.span,
-  );
+  ctx.recordLoweredAsmItem({ kind: 'const', name, value: { kind: 'literal', value } }, item.span);
 }
 
 function lowerAsmOrgDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode): void {
@@ -91,7 +87,11 @@ function lowerAsmOrgDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     ? ctx.evalImmExpr(ctx.baseExprs[activePlacement], ctx.env, ctx.diagnostics)
     : 0;
   if (base === undefined) {
-    ctx.diag(ctx.diagnostics, item.span.file, `Failed to evaluate current ${activePlacement} base address.`);
+    ctx.diag(
+      ctx.diagnostics,
+      item.span.file,
+      `Failed to evaluate current ${activePlacement} base address.`,
+    );
     return;
   }
   const offset = target - base;
@@ -104,7 +104,11 @@ function lowerAsmOrgDirective(ctx: LoweringContext, item: AsmDirectiveLikeNode):
     return;
   }
   if (offset < offsetRef.current) {
-    ctx.diag(ctx.diagnostics, item.span.file, `org address overlaps earlier emitted ${activePlacement}.`);
+    ctx.diag(
+      ctx.diagnostics,
+      item.span.file,
+      `org address overlaps earlier emitted ${activePlacement}.`,
+    );
     return;
   }
   const gap = offset - offsetRef.current;

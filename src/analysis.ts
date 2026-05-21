@@ -7,8 +7,7 @@ import { lintCaseStyle } from './lintCaseStyle.js';
 import type { ProgramNode } from './frontend/ast.js';
 import { buildEnv, type CompileEnv } from './semantics/env.js';
 
-export interface AnalyzeProgramOptions
-  extends Pick<CompilerOptions, 'caseStyle' | 'requireMain'> {}
+export interface AnalyzeProgramOptions extends Pick<CompilerOptions, 'caseStyle' | 'requireMain'> {}
 
 export interface AnalyzeProgramResult {
   diagnostics: Diagnostic[];

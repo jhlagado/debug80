@@ -7,7 +7,7 @@ import {
 } from '../../src/frontend/parseImm.js';
 import { makeSourceFile, span } from '../../src/frontend/source.js';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
-import { expectNoDiagnostics } from '../helpers/diagnostics.js';
+import { expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 
 describe('PR476 immediate-expression parsing extraction', () => {
   const file = makeSourceFile('pr476_parse_imm_helpers.asm', '');

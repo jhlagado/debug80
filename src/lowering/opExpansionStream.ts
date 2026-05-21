@@ -8,12 +8,7 @@ import type {
   OpDeclNode,
   ProgramNode,
 } from '../frontend/ast.js';
-import {
-  cloneEaExpr,
-  cloneImmExpr,
-  cloneOperand,
-  flattenEaDottedName,
-} from './asmUtils.js';
+import { cloneEaExpr, cloneImmExpr, cloneOperand, flattenEaDottedName } from './asmUtils.js';
 import { expandInlineOpBodyItems } from './opExpansionExecution.js';
 import { createOpMatchingHelpers } from './opMatching.js';
 import { createOpSubstitutionHelpers } from './opSubstitution.js';
@@ -174,9 +169,7 @@ export function createInlineOpInstructionStreamExpander(program: ProgramNode): {
     for (let index = 0; index < opDecl.params.length; index += 1) {
       bindings.set(opDecl.params[index]!.name.toLowerCase(), inst.operands[index]!);
     }
-    const {
-      substituteOperandWithOpLabels,
-    } = createOpSubstitutionHelpers({
+    const { substituteOperandWithOpLabels } = createOpSubstitutionHelpers({
       bindings,
       env: EMPTY_OP_SUBSTITUTION_ENV,
       diagnostics: [],

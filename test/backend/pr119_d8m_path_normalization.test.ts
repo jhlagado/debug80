@@ -19,10 +19,7 @@ describe('PR119 D8M path normalization', () => {
     expect(helper?.file).toBe('includes/lib.inc');
     expect(main?.file?.includes('\\')).toBe(false);
     expect(helper?.file?.includes('\\')).toBe(false);
-    expect(Object.keys(d8mJson.files ?? {})).toEqual([
-      'includes/lib.inc',
-      'pr11_include_main.asm',
-    ]);
+    expect(Object.keys(d8mJson.files ?? {})).toEqual(['includes/lib.inc', 'pr11_include_main.asm']);
     expect(d8mJson.fileList).toEqual(['includes/lib.inc', 'pr11_include_main.asm']);
   });
 });

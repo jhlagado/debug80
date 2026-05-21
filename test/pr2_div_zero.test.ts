@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
-import { expectDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,7 +15,9 @@ describe('PR2 divide by zero', () => {
     const entry = join(__dirname, 'fixtures', 'pr2_div_zero.asm');
     const res = await compile(entry, {}, { formats: defaultFormatWriters });
     expect(res.artifacts).toEqual([]);
-    expect(res.diagnostics.map((d) => d.id)).toEqual(expect.arrayContaining([DiagnosticIds.ImmDivideByZero]));
+    expect(res.diagnostics.map((d) => d.id)).toEqual(
+      expect.arrayContaining([DiagnosticIds.ImmDivideByZero]),
+    );
     expectDiagnostic(res.diagnostics, {
       id: DiagnosticIds.ImmDivideByZero,
       severity: 'error',

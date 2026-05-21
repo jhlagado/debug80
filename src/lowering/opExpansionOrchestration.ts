@@ -1,9 +1,5 @@
 import { DiagnosticIds } from '../diagnosticTypes.js';
-import type {
-  AsmInstructionNode,
-  AsmOperandNode,
-  SourceSpan,
-} from '../frontend/ast.js';
+import type { AsmInstructionNode, AsmOperandNode, SourceSpan } from '../frontend/ast.js';
 import type {
   AsmRangeLoweringCapability,
   AstCloneCapability,
@@ -40,8 +36,8 @@ type OpExpansionOrchestrationContext = LoweringDiagnosticsWithSeverityCapability
   HiddenLabelCapability &
   AsmRangeLoweringCapability &
   FlowSyncCapability & {
-  opExpansionStack: OpExpansionStackEntry[];
-};
+    opExpansionStack: OpExpansionStackEntry[];
+  };
 
 export function createOpExpansionOrchestrationHelpers(ctx: OpExpansionOrchestrationContext) {
   const tryHandleOpExpansion = (asmItem: AsmInstructionNode): boolean => {
@@ -77,7 +73,9 @@ export function createOpExpansionOrchestrationHelpers(ctx: OpExpansionOrchestrat
 
     if (selection.kind === 'ambiguous') {
       const operandSummary = asmItem.operands.map(ctx.formatAsmOperandForOpDiag).join(', ');
-      const equallySpecific = selection.definitions.map((definition) => `  - ${definition}`).join('\n');
+      const equallySpecific = selection.definitions
+        .map((definition) => `  - ${definition}`)
+        .join('\n');
       ctx.diagAtWithId(
         ctx.diagnostics,
         asmItem.span,

@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -78,12 +78,15 @@ describe('PR133: broad arity diagnostics matrix', () => {
       id: DiagnosticIds.EncodeError,
       message: 'rrc expects one operand, or two with indexed source + reg8 destination',
     },
-  ] satisfies Row[])('$label — explicit arity diagnostics for unsupported instruction counts', async (row) => {
-    const res = await compile(PR133_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit arity diagnostics for unsupported instruction counts',
+    async (row) => {
+      const res = await compile(PR133_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 });

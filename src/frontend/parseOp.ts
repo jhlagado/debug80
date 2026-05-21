@@ -3,13 +3,8 @@ import type { SourceFile } from './source.js';
 import { span } from './source.js';
 import type { Diagnostic } from '../diagnosticTypes.js';
 import { parseDiag as diag } from './parseDiagnostics.js';
-import {
-  appendParsedAsmStatement,
-  parseAsmStatement,
-} from './parseAsmStatements.js';
-import {
-  topLevelStartKeyword,
-} from './parseTopLevelCommon.js';
+import { appendParsedAsmStatement, parseAsmStatement } from './parseAsmStatements.js';
+import { topLevelStartKeyword } from './parseTopLevelCommon.js';
 import type { ParseParamsContext } from './parseParams.js';
 import { stripLineComment as stripComment } from './parseParserShared.js';
 import { parseOpHeader } from './parseOpHeader.js';

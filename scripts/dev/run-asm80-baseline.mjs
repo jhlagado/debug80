@@ -3,10 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { findAsm80 } from './asm80Tools.mjs';
 
-const mon3Source =
-  process.env.MON3_SOURCE ?? '/Users/johnhardy/Documents/projects/MON3/src/mon3.z80';
+const mon3Source = process.env.MON3_SOURCE ?? '/Users/johnhardy/projects/MON3/src/mon3.z80';
 const tec1gSoftwareRoot =
-  process.env.TEC1G_SOFTWARE_ROOT ?? '/Users/johnhardy/Documents/projects/TEC-1G/Software';
+  process.env.TEC1G_SOFTWARE_ROOT ?? '/Users/johnhardy/projects/TEC-1G/Software';
 
 const commands = [
   {

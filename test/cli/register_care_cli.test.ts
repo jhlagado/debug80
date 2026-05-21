@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
-import { exists, runCli } from '../helpers/cli.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+import { exists, runCli } from '../helpers/cli/index.js';
 
 describe('register-care cli', () => {
   beforeAll(async () => {

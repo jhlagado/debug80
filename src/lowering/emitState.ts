@@ -2,10 +2,7 @@ import type { EmittedSourceSegment } from '../formats/types.js';
 import { createLoweredAsmStreamRecordingHelpers } from './loweredAsmStreamRecording.js';
 import type { SourceSpan, ImmExprNode } from '../frontend/ast.js';
 import type { PlacementKind, SourceSegmentTag } from './loweringTypes.js';
-import type {
-  LoweredAsmStream,
-  LoweredAsmStreamBlock,
-} from './loweredAsmTypes.js';
+import type { LoweredAsmStream, LoweredAsmStreamBlock } from './loweredAsmTypes.js';
 
 type EmitStateContext = {
   /** Full source text per file for listings. */
@@ -36,9 +33,7 @@ type EmitStateContext = {
   /** Best-effort imm evaluation. */
   evalImmNoDiag: (expr: ImmExprNode) => number | undefined;
   /** Parses simple symbolic targets; `undefined` if not symbolic. */
-  symbolicTargetFromExpr: (
-    expr: ImmExprNode,
-  ) => { baseLower: string; addend: number } | undefined;
+  symbolicTargetFromExpr: (expr: ImmExprNode) => { baseLower: string; addend: number } | undefined;
   /** Formats an imm for lowered asm text. */
   formatImmExprForAsm: (expr: ImmExprNode) => string;
   /** Pretty-prints a type for traces. */

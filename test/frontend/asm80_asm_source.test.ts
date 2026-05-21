@@ -50,7 +50,9 @@ describe('ASM80 source parser', () => {
       'AsmRawData',
       'AsmEnd',
     ]);
-    expect(sourceFile.items.map((item: SourceItemNode) => ('name' in item ? item.name : undefined))).toEqual([
+    expect(
+      sourceFile.items.map((item: SourceItemNode) => ('name' in item ? item.name : undefined)),
+    ).toEqual([
       'BASE',
       undefined,
       'start',
@@ -91,7 +93,10 @@ describe('ASM80 source parser', () => {
       kind: 'AsmRawData',
       directive: 'db',
       valuesText: '"A,B",0',
-      values: [{ kind: 'AsmString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
+      values: [
+        { kind: 'AsmString', value: 'A,B' },
+        { kind: 'ImmLiteral', value: 0 },
+      ],
     });
   });
 
@@ -145,7 +150,9 @@ describe('ASM80 source parser', () => {
     );
 
     expect(diagnostics).toEqual([]);
-    expect(sourceFile.items.filter((item) => (item as { kind: string }).kind === 'AsmRawData')).toMatchObject([
+    expect(
+      sourceFile.items.filter((item) => (item as { kind: string }).kind === 'AsmRawData'),
+    ).toMatchObject([
       {
         kind: 'AsmRawData',
         name: 'buf',
@@ -189,7 +196,9 @@ describe('ASM80 source parser', () => {
     const diagnostics: { message: string; line?: number; column?: number }[] = [];
     const sourceFile = parseAsmFile(
       '/asm.z80',
-      ['.macro FOO', 'incbin_label: .incbin "data.bin"', 'pragma_label: .pragma anything'].join('\n'),
+      ['.macro FOO', 'incbin_label: .incbin "data.bin"', 'pragma_label: .pragma anything'].join(
+        '\n',
+      ),
       diagnostics as never[],
       undefined,
       azmAliases,
@@ -248,7 +257,10 @@ describe('ASM80 source parser', () => {
         kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"Enter ",0',
-        values: [{ kind: 'AsmString', value: 'Enter ' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [
+          { kind: 'AsmString', value: 'Enter ' },
+          { kind: 'ImmLiteral', value: 0 },
+        ],
       },
       {
         kind: 'AsmRawData',
@@ -266,7 +278,10 @@ describe('ASM80 source parser', () => {
         kind: 'AsmRawData',
         directive: 'db',
         valuesText: '"A,B",0',
-        values: [{ kind: 'AsmString', value: 'A,B' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [
+          { kind: 'AsmString', value: 'A,B' },
+          { kind: 'ImmLiteral', value: 0 },
+        ],
       },
       {
         kind: 'AsmRawData',
@@ -299,7 +314,10 @@ describe('ASM80 source parser', () => {
       {
         kind: 'AsmRawData',
         directive: 'db',
-        values: [{ kind: 'AsmString', value: '2025.16' }, { kind: 'ImmLiteral', value: 0 }],
+        values: [
+          { kind: 'AsmString', value: '2025.16' },
+          { kind: 'ImmLiteral', value: 0 },
+        ],
       },
       {
         kind: 'AsmEqu',

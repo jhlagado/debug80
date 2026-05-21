@@ -168,7 +168,14 @@ export function parseRawDataDirective(
   filePath: string,
   diagnostics: Diagnostic[],
 ): AsmRawDataNode | undefined {
-  return parseNamedRawDataDirective(label.name, directiveText, lineNo, lineSpan, filePath, diagnostics);
+  return parseNamedRawDataDirective(
+    label.name,
+    directiveText,
+    lineNo,
+    lineSpan,
+    filePath,
+    diagnostics,
+  );
 }
 
 function parseNamedRawDataDirective(

@@ -1,4 +1,5 @@
 import type { SourceSegmentTag } from './loweringTypes.js';
+import { evalImmExpr as evalImmExprWithEnv } from '../semantics/env.js';
 import { createAsmInstructionLoweringHelpers } from './asmInstructionLowering.js';
 import {
   createAssemblerFlowSetupHelpers,
@@ -8,6 +9,8 @@ import {
 import { createAsmInstructionStreamHelpers } from './asmInstructionStream.js';
 import type { AssemblerLoweringSharedContext } from './assemblerLoweringContext.js';
 import { splitAssemblerLoweringSharedContext } from './assemblerLoweringContextSplit.js';
+import { placementAddressAtOffset } from './asmDirectiveTraversal.js';
+import type { LoweringContext } from './programLowering.js';
 
 export interface AssemblerInstructionSetup {
   /** Shared assembler-lowering context. */
@@ -202,6 +205,20 @@ export function createAssemblerInstructionEmitters(
   const fp = splitAssemblerLoweringSharedContext(setup.ctx);
   const { emitInstr, getCurrentCodeSegmentTag, setCurrentCodeSegmentTag } = setup;
   const diagnostics = fp.diagnostics.diagnostics;
+  const currentInstructionAddress = (): number => {
+    const maybeLoweringContext = setup.ctx as Partial<LoweringContext>;
+    if (maybeLoweringContext.baseExprs) {
+      return placementAddressAtOffset(
+        maybeLoweringContext as Pick<
+          LoweringContext,
+          'baseExprs' | 'evalImmExpr' | 'env' | 'diagnostics'
+        >,
+        'code',
+        setup.getCodeOffset(),
+      ) ?? setup.getCodeOffset();
+    }
+    return setup.getCodeOffset();
+  };
 
   const { lowerAsmInstructionDispatcher } = createAsmInstructionLoweringHelpers({
     ...fp.diagnostics,
@@ -216,6 +233,12 @@ export function createAssemblerInstructionEmitters(
     emitInstr,
     symbolicTargetFromExpr: fp.conditions.symbolicTargetFromExpr,
     evalImmExpr: (expr) => fp.types.evalImmExpr(expr, fp.types.env, diagnostics),
+    currentAddress: currentInstructionAddress,
+    evalCurrentTarget: (expr) => {
+      const currentLocation = currentInstructionAddress();
+      const target = evalImmExprWithEnv(expr, fp.types.env, diagnostics, { currentLocation });
+      return target;
+    },
     resolveRawAliasTargetName: () => undefined,
     resolveEa: fp.addressing.resolveEa,
     diagIfRetStackImbalanced: (span, mnemonic) => {

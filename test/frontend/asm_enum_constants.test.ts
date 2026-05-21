@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { compile } from '../../src/compile.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
-import { expectDiagnostic } from '../helpers/diagnostics.js';
+import { expectDiagnostic } from '../helpers/diagnostics/index.js';
 import { binBytes, containsSubsequence } from '../test-helpers.js';
 
 function writeTempAsm(source: string): { entry: string; cleanup: () => void } {

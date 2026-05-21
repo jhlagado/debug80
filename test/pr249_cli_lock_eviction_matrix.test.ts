@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { __cliBuildInternals } from './helpers/cliBuild.js';
+import { __cliBuildInternals } from './helpers/cli/build.js';
 
 describe('PR249 CLI build infrastructure checks', () => {
   const { latestInputMtimeMsForRoots } = __cliBuildInternals;

@@ -1,15 +1,21 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 import type { CompileEnv } from '../semantics/env.js';
-import type { EncoderImmContext, EncoderMemContext, EncoderRegisterContext } from './encodeContext.js';
+import type {
+  EncoderImmContext,
+  EncoderMemContext,
+  EncoderRegisterContext,
+} from './encodeContext.js';
 
-type LdEncodeContext = EncoderRegisterContext & EncoderImmContext & EncoderMemContext & {
-  fitsImm16: (value: number) => boolean;
-  memAbs16: (op: AsmOperandNode, env: CompileEnv) => number | undefined;
-  isMemRegName: (op: AsmOperandNode, reg: string) => boolean;
-  isReg16TransferName: (name: string | undefined) => boolean;
-  isPlainHLReg8: (name: string | undefined) => boolean;
-};
+type LdEncodeContext = EncoderRegisterContext &
+  EncoderImmContext &
+  EncoderMemContext & {
+    fitsImm16: (value: number) => boolean;
+    memAbs16: (op: AsmOperandNode, env: CompileEnv) => number | undefined;
+    isMemRegName: (op: AsmOperandNode, reg: string) => boolean;
+    isReg16TransferName: (name: string | undefined) => boolean;
+    isPlainHLReg8: (name: string | undefined) => boolean;
+  };
 
 export function encodeLdInstruction(
   node: AsmInstructionNode,

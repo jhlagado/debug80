@@ -1,22 +1,32 @@
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { ensureCliBuilt } from './helpers/cliBuild.js';
+import { ensureCliBuilt } from './helpers/cli/build.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = resolve(__dirname, '..');
+const packageJson = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as {
+  name: string;
+  bin: Record<string, string>;
+  exports: Record<string, unknown> & { './cli': Record<string, unknown> };
+};
 
 async function runPackageScript(source: string, args: string[] = []): Promise<unknown> {
-  const { stdout } = await execFileAsync('node', ['--input-type=module', '--eval', source, ...args], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  });
+  const { stdout } = await execFileAsync(
+    'node',
+    ['--input-type=module', '--eval', source, ...args],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
   return JSON.parse(stdout.trim()) as unknown;
 }
 
@@ -115,5 +125,22 @@ describe('public package API surface', () => {
     expect(output.hasProgram).toBe(true);
     expect(output.diagnostics).toEqual([]);
     expect(output.semanticErrorId).toBe('AZM400');
+  });
+
+  it('publishes only AZM-branded stable package subpaths', () => {
+    expect(packageJson.name).toBe('@jhlagado/azm');
+    expect(packageJson.bin).toEqual({ azm: 'dist/src/cli.js' });
+    expect(Object.keys(packageJson.exports).sort()).toEqual([
+      '.',
+      './cli',
+      './compile',
+      './package.json',
+      './tooling',
+    ]);
+
+    const serializedExports = JSON.stringify(packageJson.exports);
+    expect(serializedExports).not.toContain('@jhlagado/zax');
+    expect(serializedExports).not.toContain('zax');
+    expect(packageJson.exports['./cli']).not.toHaveProperty('require');
   });
 });

@@ -16,7 +16,7 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(__filename), '..', '..');
-const defaultRoot = '/Users/johnhardy/Documents/projects/TEC-1G/Software';
+const defaultRoot = '/Users/johnhardy/projects/TEC-1G/Software';
 
 function usage() {
   return [

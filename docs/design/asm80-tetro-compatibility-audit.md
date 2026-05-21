@@ -18,7 +18,7 @@ not pressure to clone unusual assembler variants.
 
 Default source:
 
-- `/Users/johnhardy/Documents/projects/tetro/src/tetro.asm`
+- `/Users/johnhardy/projects/tetro/src/tetro/tetro.z80`
 
 The source includes nested files under the Tetro source root, so any reference
 comparison must copy or run against the whole source tree rather than only

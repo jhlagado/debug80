@@ -2,10 +2,7 @@ import type { SourceItemNode, OpDeclNode } from '../frontend/ast.js';
 import type { PrescanResult } from './prescanTypes.js';
 import type { PrescanContext } from './programLowering.js';
 
-function getOrCreateFileOps(
-  ctx: PrescanContext,
-  file: string,
-): Map<string, OpDeclNode[]> {
+function getOrCreateFileOps(ctx: PrescanContext, file: string): Map<string, OpDeclNode[]> {
   const existing = ctx.localOpsByFile.get(file);
   if (existing) return existing;
   const created = new Map<string, OpDeclNode[]>();
@@ -20,11 +17,7 @@ function addFileOp(ctx: PrescanContext, file: string, key: string, op: OpDeclNod
   else fileOps.set(key, [op]);
 }
 
-function preScanItem(
-  ctx: PrescanContext,
-  item: SourceItemNode,
-  sourceUnitFile?: string,
-): void {
+function preScanItem(ctx: PrescanContext, item: SourceItemNode, sourceUnitFile?: string): void {
   const localSourceUnitFile = sourceUnitFile ?? item.span?.file ?? ctx.program.entryFile;
 
   if (item.kind === 'OpDecl') {

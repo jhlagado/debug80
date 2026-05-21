@@ -195,10 +195,7 @@ export async function readDirectiveAliasProfile(path: string): Promise<Directive
     throw new Error(`Directive alias file "${path}" must contain a JSON object`);
   }
   const profile = parsed as DirectiveAliasProfile;
-  if (
-    profile.extends !== undefined &&
-    profile.extends !== 'azm'
-  ) {
+  if (profile.extends !== undefined && profile.extends !== 'azm') {
     throw new Error(`Unsupported directive alias base "${String(profile.extends)}" in "${path}"`);
   }
   if (

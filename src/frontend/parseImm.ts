@@ -58,12 +58,7 @@ export function diagIfArrayLengthMissing(
   where: { line: number; column: number },
 ): boolean {
   if (!/\[\s*\]/.test(typeText)) return false;
-  diag(
-    diagnostics,
-    filePath,
-    `Array length is required here; write T[N].`,
-    where,
-  );
+  diag(diagnostics, filePath, `Array length is required here; write T[N].`, where);
   return true;
 }
 
@@ -117,7 +112,11 @@ function isImmOpToken(text: string): text is ImmOpToken {
   return IMM_UNARY_OPERATOR_SET.has(text) || IMM_BINARY_OPERATORS.has(text);
 }
 
-function scanQuotedByteValue(s: string, start: number, quote: "'" | '"'): { value: number; end: number } | undefined {
+function scanQuotedByteValue(
+  s: string,
+  start: number,
+  quote: "'" | '"',
+): { value: number; end: number } | undefined {
   let i = start + 1;
   if (i >= s.length) return undefined;
 
@@ -215,10 +214,9 @@ function tokenizeImm(text: string): ImmToken[] | undefined {
       out.push({ kind: 'num', text: String(quoted.value) });
       continue;
     }
-    const num =
-      /^([0-9][0-9A-Fa-f]*[Hh]|%[01]+|0b[01]+|0x[0-9A-Fa-f]+|[01]+[Bb]|[0-9]+)/i.exec(
-        s.slice(i),
-      );
+    const num = /^([0-9][0-9A-Fa-f]*[Hh]|%[01]+|0b[01]+|0x[0-9A-Fa-f]+|[01]+[Bb]|[0-9]+)/i.exec(
+      s.slice(i),
+    );
     if (num) {
       out.push({ kind: 'num', text: num[0] });
       i += num[0].length;

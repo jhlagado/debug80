@@ -193,7 +193,12 @@ export function emitLoweredAsmProgramBytes(
     if (block.kind !== 'placed') continue;
     const placement = block.placement ?? 'code';
     const key = blockPlacementKey(placement);
-    const target = placement === 'code' ? codeBytes : placement === 'data' ? dataBytes : new Map<number, number>();
+    const target =
+      placement === 'code'
+        ? codeBytes
+        : placement === 'data'
+          ? dataBytes
+          : new Map<number, number>();
 
     const offsetRef = { current: 0 };
     for (const item of block.items) {

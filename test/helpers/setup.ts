@@ -25,7 +25,9 @@ function toHaveDiagnosticArgsToExpectation(args: unknown[]): DiagnosticExpectati
       severity: args[1] as DiagnosticSeverity,
     };
   }
-  throw new Error('toHaveDiagnostic: use (expectation: object) or (id: DiagnosticId, severity?: ...)');
+  throw new Error(
+    'toHaveDiagnostic: use (expectation: object) or (id: DiagnosticId, severity?: ...)',
+  );
 }
 
 expect.extend({

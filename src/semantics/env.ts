@@ -31,9 +31,6 @@ function reportImmArithmeticError(
   });
 }
 
-/**
- * Immutable compilation environment for PR2: resolved constant and enum member values.
- */
 export interface CompileEnv {
   /**
    * Map of equate name -> evaluated numeric value.
@@ -44,8 +41,6 @@ export interface CompileEnv {
 
   /**
    * Map of enum member name -> evaluated numeric value.
-   *
-   * PR2 supports only implicit 0..N-1 member values.
    */
   enums: Map<string, number>;
 
@@ -61,13 +56,6 @@ export interface CompileEnv {
 
 const diag = diagSemanticsError;
 
-/**
- * Evaluate an `imm` expression using values from the provided environment.
- *
- * PR2 implementation note:
- * - Supports literals, names, unary `+ - ~`, and binary `* / % + - & ^ | << >>`.
- * - Division/modulo use JavaScript semantics and truncate toward zero.
- */
 export function evalImmExpr(
   expr: ImmExprNode,
   env: CompileEnv,
@@ -128,7 +116,6 @@ export function evalImmExpr(
         case '~':
           return ~v;
       }
-      // Exhaustive (future-proof)
       return undefined;
     }
     case 'ImmBinary': {
@@ -241,22 +228,17 @@ function asmInstructionSize(item: AsmInstructionNode): number {
   const r1 = reg(ops[1]);
   const indexed = isIndexedOperand(ops[0]) || isIndexedOperand(ops[1]);
   const ixiyReg = (name: string | undefined): boolean =>
-    name === 'IX' || name === 'IY' || name === 'IXH' || name === 'IXL' || name === 'IYH' || name === 'IYL';
+    name === 'IX' ||
+    name === 'IY' ||
+    name === 'IXH' ||
+    name === 'IXL' ||
+    name === 'IYH' ||
+    name === 'IYL';
 
   if (
-    [
-      'cpi',
-      'cpir',
-      'ldi',
-      'ldir',
-      'lddr',
-      'ini',
-      'outi',
-      'neg',
-      'reti',
-      'retn',
-      'rld',
-    ].includes(head)
+    ['cpi', 'cpir', 'ldi', 'ldir', 'lddr', 'ini', 'outi', 'neg', 'reti', 'retn', 'rld'].includes(
+      head,
+    )
   ) {
     return 2;
   }
@@ -265,13 +247,19 @@ function asmInstructionSize(item: AsmInstructionNode): number {
   }
   if (head === 'jr' || head === 'djnz') return 2;
   if (head === 'call') return 3;
-  if (head === 'jp') return ops[0]?.kind === 'Mem' && ixiyReg(regFromMem(ops[0])) ? 2 : ops[0]?.kind === 'Mem' ? 1 : 3;
+  if (head === 'jp')
+    return ops[0]?.kind === 'Mem' && ixiyReg(regFromMem(ops[0]))
+      ? 2
+      : ops[0]?.kind === 'Mem'
+        ? 1
+        : 3;
   if (head === 'ret') return 1;
   if (head === 'rst') return 1;
   if (head === 'push' || head === 'pop') return ixiyReg(r0) ? 2 : 1;
   if (head === 'ex') return ixiyReg(r1) || indexed ? 2 : 1;
   if (head === 'in' || head === 'out') return 2;
-  if (['bit', 'res', 'set', 'rl', 'rr', 'rlc', 'rrc', 'sla', 'srl'].includes(head)) return indexed ? 4 : 2;
+  if (['bit', 'res', 'set', 'rl', 'rr', 'rlc', 'rrc', 'sla', 'srl'].includes(head))
+    return indexed ? 4 : 2;
   if (head === 'inc' || head === 'dec') return indexed ? 3 : ixiyReg(r0) ? 2 : 1;
   if (['add', 'adc', 'sbc'].includes(head)) {
     if (r0 === 'HL' && r1) return 1;
@@ -280,7 +268,8 @@ function asmInstructionSize(item: AsmInstructionNode): number {
     if (indexed) return 3;
     return ops[1]?.kind === 'Imm' || (ops.length === 1 && ops[0]?.kind === 'Imm') ? 2 : 1;
   }
-  if (['sub', 'and', 'or', 'xor', 'cp'].includes(head)) return indexed ? 3 : ops[0]?.kind === 'Imm' ? 2 : 1;
+  if (['sub', 'and', 'or', 'xor', 'cp'].includes(head))
+    return indexed ? 3 : ops[0]?.kind === 'Imm' ? 2 : 1;
   if (head === 'ld') {
     if (indexed) return ops[0]?.kind === 'Imm' || ops[1]?.kind === 'Imm' ? 4 : 3;
     if (ops[0]?.kind === 'Mem' || ops[1]?.kind === 'Mem') {
@@ -303,16 +292,21 @@ function asmInstructionSize(item: AsmInstructionNode): number {
 function regFromMem(op: AsmOperandNode | undefined): string | undefined {
   if (!op || op.kind !== 'Mem') return undefined;
   if (op.expr.kind === 'EaName') return op.expr.name.toUpperCase();
-  if (op.expr.kind === 'EaIndex' && op.expr.index.kind === 'IndexMemIxIy') return op.expr.index.base;
+  if (op.expr.kind === 'EaIndex' && op.expr.index.kind === 'IndexMemIxIy')
+    return op.expr.index.base;
   return undefined;
 }
 
-function asmRawDataSize(item: { directive?: string; values?: unknown[]; size?: ImmExprNode }, env: CompileEnv): number {
+function asmRawDataSize(
+  item: { directive?: string; values?: unknown[]; size?: ImmExprNode },
+  env: CompileEnv,
+): number {
   const values = item.values ?? [];
   if (item.directive === 'ds') {
     if (!item.size) return 0;
     if (item.size.kind === 'ImmName') {
-      const constValue = env.equates.get(item.size.name) ?? env.equates.get(item.size.name.toLowerCase());
+      const constValue =
+        env.equates.get(item.size.name) ?? env.equates.get(item.size.name.toLowerCase());
       const enumValue = env.enums.get(item.size.name);
       if (constValue === undefined && enumValue === undefined) {
         const typeSize = sizeOfTypeExpr(
@@ -334,12 +328,7 @@ function asmRawDataSize(item: { directive?: string; values?: unknown[]; size?: I
 
 function asmStringLength(value: unknown, fallback = 0): number {
   if (typeof value === 'string') return value.length;
-  if (
-    value &&
-    typeof value === 'object' &&
-    'kind' in value &&
-    value.kind === 'AsmString'
-  ) {
+  if (value && typeof value === 'object' && 'kind' in value && value.kind === 'AsmString') {
     return 'value' in value && typeof value.value === 'string' ? value.value.length : fallback;
   }
   return fallback;
@@ -386,7 +375,12 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
         }
         case 'AsmRawData':
           {
-            const raw = item as { name?: string; directive?: string; values?: unknown[]; size?: ImmExprNode };
+            const raw = item as {
+              name?: string;
+              directive?: string;
+              values?: unknown[];
+              size?: ImmExprNode;
+            };
             if (raw.name) {
               scratchEnv.equates.set(raw.name, current);
               scratchEnv.equates.set(raw.name.toLowerCase(), current);
@@ -402,17 +396,7 @@ function seedAsmCurrentLocationEquates(program: ProgramNode, env: CompileEnv): v
   }
 }
 
-/**
- * Build the compile environment by resolving source-order enums and assembler equates.
- *
- * Implementation note:
- * - Resolves names across parsed source units in program order.
- * - Equates may reference previously defined constants and enum members (forward refs not yet supported).
- */
-export function buildEnv(
-  program: ProgramNode,
-  diagnostics: Diagnostic[],
-): CompileEnv {
+export function buildEnv(program: ProgramNode, diagnostics: Diagnostic[]): CompileEnv {
   const equates = new Map<string, number>();
   const asmEquExprs = new Map<string, { expr: ImmExprNode; currentLocation?: number }>();
   const enums = new Map<string, number>();
@@ -477,7 +461,6 @@ export function buildEnv(
     const collected = collectedByFile.get(mf.path);
     if (!collected) continue;
     for (const e of collected.enums) {
-      // Note: enum names are tracked for collision purposes even though PR4 does not use them.
       claim('enum', e.name, e.span.file);
 
       for (let idx = 0; idx < e.members.length; idx++) {

@@ -401,11 +401,11 @@ Parsing is **best-effort**: errors are reported and parsing continues so the use
 
 The `nextIndex` field is important: handlers may consume multiple lines (for example `op`, `.type`, and `.union` declarations consume lines until their matching terminator), so the parser needs to know where to resume.
 
-| Keyword         | File            |
-| --------------- | --------------- |
-| `op`            | `parseOp.ts`    |
+| Keyword           | File            |
+| ----------------- | --------------- |
+| `op`              | `parseOp.ts`    |
 | `.type`, `.union` | `parseTypes.ts` |
-| `enum`          | `parseEnum.ts`  |
+| `enum`            | `parseEnum.ts`  |
 
 ### 7.5 Parsing Ops
 

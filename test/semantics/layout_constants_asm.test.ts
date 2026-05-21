@@ -8,7 +8,7 @@ import { compile } from '../../src/compile.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
 import type { BinArtifact } from '../../src/formats/types.js';
-import { expectDiagnostic } from '../helpers/diagnostics.js';
+import { expectDiagnostic } from '../helpers/diagnostics/index.js';
 
 function writeTempSource(ext: string, source: string): { entry: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), 'asm-layout-constants-'));
@@ -49,6 +49,12 @@ function expectLdHlImmediates(bin: BinArtifact | undefined, values: number[]): v
   expect(actual.slice(0, values.length)).toEqual(values);
 }
 
+function expectBinBytes(bin: BinArtifact | undefined, expected: number[]): void {
+  expect(bin).toBeDefined();
+  if (!bin) throw new Error('missing bin artifact');
+  expect(Array.from(bin.bytes)).toEqual(expected);
+}
+
 describe('.asm layout constant subset', () => {
   it('evaluates sizeof for named record layouts in .asm constants', async () => {
     const result = await compileSource('asm', [
@@ -69,6 +75,46 @@ describe('.asm layout constant subset', () => {
     expectLdHlImmediate(
       result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
       4,
+    );
+  });
+
+  it('emits abs16 fixups for symbolic LD immediates with constant offsets', async () => {
+    const result = await compileSource('asm', [
+      'main:',
+      '  ld bc,Target + 1',
+      '  ld de,Target - 2',
+      '  ld ix,Target + 3',
+      '  ld iy,Target + 4',
+      '  ret',
+      'Target:',
+      '  .db 0',
+      '',
+    ]);
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectBinBytes(
+      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
+      [
+        0x01, 0x10, 0x00, 0x11, 0x0d, 0x00, 0xdd, 0x21, 0x12, 0x00, 0xfd, 0x21, 0x13, 0x00, 0xc9,
+        0x00,
+      ],
+    );
+  });
+
+  it('evaluates current-location relative branch targets', async () => {
+    const result = await compileSource('asm', [
+      'main:',
+      '  jr nz,$+5',
+      '  nop',
+      '  nop',
+      '  nop',
+      '',
+    ]);
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expectBinBytes(
+      result.artifacts.find((a): a is BinArtifact => a.kind === 'bin'),
+      [0x20, 0x03, 0x00, 0x00, 0x00],
     );
   });
 
@@ -182,28 +228,8 @@ describe('.asm layout constant subset', () => {
     expect(
       Array.from(result.artifacts.find((a): a is BinArtifact => a.kind === 'bin')?.bytes ?? []),
     ).toEqual([
-      0x10,
-      0x11,
-      0x11,
-      0x11,
-      0x11,
-      0x20,
-      0x20,
-      0x22,
-      0x22,
-      0x22,
-      0x22,
-      0x22,
-      0x22,
-      0x30,
-      0x30,
-      0x30,
-      0x33,
-      0x33,
-      0x33,
-      0x33,
-      0x33,
-      0x33,
+      0x10, 0x11, 0x11, 0x11, 0x11, 0x20, 0x20, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x30, 0x30,
+      0x30, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
     ]);
   });
 

@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,14 +64,17 @@ describe('PR205: indexed CB destination diagnostics parity', () => {
       id: DiagnosticIds.EncodeError,
       message: 'rrc indexed destination family must match source index base',
     },
-  ] satisfies Row[])('$label — explicit indexed destination legality for CB/DD/FD forms', async (row) => {
-    const res = await compile(PR205_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit indexed destination legality for CB/DD/FD forms',
+    async (row) => {
+      const res = await compile(PR205_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit looser placeholder reg8-destination diagnostics for the indexed CB matrix fixture', async () => {
     const res = await compile(PR205_FIXTURE, {}, { formats: defaultFormatWriters });

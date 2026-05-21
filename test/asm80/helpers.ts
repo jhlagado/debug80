@@ -23,7 +23,11 @@ export async function compileAsm80Fixture(
   const entry = join(dir, fileName);
   writeFileSync(entry, lines.join('\n'), 'utf8');
 
-  const res = await compile(entry, { emitAsm80: options.emitAsm80 ?? true }, { formats: defaultFormatWriters });
+  const res = await compile(
+    entry,
+    { emitAsm80: options.emitAsm80 ?? true },
+    { formats: defaultFormatWriters },
+  );
   if (res.diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
     throw new Error(`unexpected diagnostics: ${JSON.stringify(res.diagnostics)}`);
   }

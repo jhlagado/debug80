@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,14 +44,17 @@ describe('PR210: conditional jp/call condition-vs-imm diagnostics parity', () =>
       id: DiagnosticIds.EncodeError,
       message: 'call cc, nn expects imm16',
     },
-  ] satisfies Row[])('$label — distinct diagnostics for invalid condition code vs invalid imm16', async (row) => {
-    const res = await compile(PR210_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — distinct diagnostics for invalid condition code vs invalid imm16',
+    async (row) => {
+      const res = await compile(PR210_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not collapse condition vs imm failures into a single placeholder diagnostic', async () => {
     const res = await compile(PR210_FIXTURE, {}, { formats: defaultFormatWriters });

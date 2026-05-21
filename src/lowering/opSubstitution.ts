@@ -16,8 +16,7 @@ import type {
 type OpSubstitutionContext = LoweringDiagnosticsCapability &
   CompileEnvCapability &
   AstCloneCapability &
-  DottedEaNameCapability &
-  {
+  DottedEaNameCapability & {
     bindings: Map<string, AsmOperandNode>;
   };
 
@@ -27,10 +26,9 @@ export function createOpSubstitutionHelpers(ctx: OpSubstitutionContext) {
     substituteImmExpr: (expr: ImmExprNode) => ImmExprNode,
   ): OffsetPathNode => ({
     ...path,
-    steps: path.steps.map((step): OffsetPathStepNode =>
-      step.kind === 'OffsetIndex'
-        ? { ...step, expr: substituteImmExpr(step.expr) }
-        : { ...step },
+    steps: path.steps.map(
+      (step): OffsetPathStepNode =>
+        step.kind === 'OffsetIndex' ? { ...step, expr: substituteImmExpr(step.expr) } : { ...step },
     ),
   });
 

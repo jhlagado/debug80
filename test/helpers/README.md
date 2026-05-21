@@ -12,22 +12,12 @@ import { expectDiagnostic, runCli, compilePlacedProgram } from '../helpers/index
 
 Adjust the relative prefix to your file depth:
 
-| Test location            | Barrel import                          |
-| ------------------------ | -------------------------------------- |
-| `test/*.test.ts`         | `from './helpers/index.js'`            |
-| `test/<subdir>/*.test.ts` | `from '../helpers/index.js'`          |
+| Test location             | Barrel import                |
+| ------------------------- | ---------------------------- |
+| `test/*.test.ts`          | `from './helpers/index.js'`  |
+| `test/<subdir>/*.test.ts` | `from '../helpers/index.js'` |
 
 Use **named exports** only (the barrel re-exports the public surfaces of each module).
-
-## Legacy compatibility shims (still supported)
-
-These top-level files are **thin re-exports** onto submodule implementations. Existing tests may import them; do not remove them without a dedicated migration.
-
-| File                 | Re-exports from                         | Typical import                          |
-| -------------------- | --------------------------------------- | --------------------------------------- |
-| `cli.ts`             | `cli/index.ts`                          | `from '../helpers/cli.js'`            |
-| `cliBuild.ts`        | `cli/build.ts`                          | `from '../helpers/cliBuild.js'`         |
-| `diagnostics.ts`     | `diagnostics/index.ts`                  | `from '../helpers/diagnostics.js'`      |
 
 Prefer the **barrel** (`helpers/index.js`) for **new** tests so imports stay consistent when internals move.
 
@@ -48,8 +38,8 @@ Avoid duplicating the same helper import across **three** styles (barrel + shim 
 
 `index.ts` re-exports:
 
-- `./diagnostics.js` (shim → `diagnostics/`)
-- `./cli.js` (shim → `cli/`)
-- `./cliBuild.js`
+- `./diagnostics/index.js`
+- `./cli/index.js`
+- `./cli/build.js`
 - `./lowered_program.js` (aggregates lowered-program helpers; not a folder shim)
 - `./setup.js` (normally only loaded via Vitest config, not imported from tests)

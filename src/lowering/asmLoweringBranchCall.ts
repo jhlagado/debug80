@@ -1,7 +1,11 @@
 import { DiagnosticIds, type Diagnostic } from '../diagnosticTypes.js';
 import type { AsmInstructionNode, AsmOperandNode } from '../frontend/ast.js';
 
-type DiagAt = (diagnostics: Diagnostic[], span: AsmInstructionNode['span'], message: string) => void;
+type DiagAt = (
+  diagnostics: Diagnostic[],
+  span: AsmInstructionNode['span'],
+  message: string,
+) => void;
 type DiagAtWithId = (
   diagnostics: Diagnostic[],
   span: AsmInstructionNode['span'],
@@ -13,9 +17,18 @@ export type BranchCallLoweringContext = {
   diagnostics: Diagnostic[];
   diagAt: DiagAt;
   diagAtWithId: DiagAtWithId;
-  emitInstr: (head: string, operands: AsmOperandNode[], span: AsmInstructionNode['span']) => boolean;
+  emitInstr: (
+    head: string,
+    operands: AsmOperandNode[],
+    span: AsmInstructionNode['span'],
+  ) => boolean;
   emitRawCodeBytes: (bytes: Uint8Array, file: string, asmText: string) => void;
-  emitAbs16Fixup: (opcode: number, baseLower: string, addend: number, span: AsmInstructionNode['span']) => void;
+  emitAbs16Fixup: (
+    opcode: number,
+    baseLower: string,
+    addend: number,
+    span: AsmInstructionNode['span'],
+  ) => void;
   emitRel8Fixup: (
     opcode: number,
     baseLower: string,
@@ -32,6 +45,8 @@ export type BranchCallLoweringContext = {
     expr: Extract<AsmOperandNode, { kind: 'Imm' }>['expr'],
   ) => { baseLower: string; addend: number } | undefined;
   evalImmExpr: (expr: Extract<AsmOperandNode, { kind: 'Imm' }>['expr']) => number | undefined;
+  currentAddress: () => number;
+  evalCurrentTarget?: (expr: Extract<AsmOperandNode, { kind: 'Imm' }>['expr']) => number | undefined;
   diagIfRetStackImbalanced: (span: AsmInstructionNode['span'], mnemonic?: string) => void;
   diagIfCallStackUnverifiable: (options: {
     span: AsmInstructionNode['span'];
@@ -41,7 +56,11 @@ export type BranchCallLoweringContext = {
   flowRef: { current: { reachable: boolean } };
 };
 
-function diagEncode(ctx: BranchCallLoweringContext, asmItem: AsmInstructionNode, message: string): void {
+function diagEncode(
+  ctx: BranchCallLoweringContext,
+  asmItem: AsmInstructionNode,
+  message: string,
+): void {
   ctx.diagAtWithId(ctx.diagnostics, asmItem.span, DiagnosticIds.EncodeError, message);
 }
 
@@ -62,7 +81,31 @@ const emitRel8FromOperand = (
   }
   const symbolicTarget = ctx.symbolicTargetFromExpr(operand.expr);
   if (symbolicTarget) {
-    ctx.emitRel8Fixup(opcode, symbolicTarget.baseLower, symbolicTarget.addend, asmItem.span, mnemonic);
+    ctx.emitRel8Fixup(
+      opcode,
+      symbolicTarget.baseLower,
+      symbolicTarget.addend,
+      asmItem.span,
+      mnemonic,
+    );
+    return true;
+  }
+  const currentTarget = ctx.evalCurrentTarget?.(operand.expr);
+  if (currentTarget !== undefined) {
+    const currentRelativeValue = currentTarget - (ctx.currentAddress() + 2);
+    if (currentRelativeValue < -128 || currentRelativeValue > 127) {
+      diagEncode(
+        ctx,
+        asmItem,
+        `${mnemonic} relative branch displacement out of range (-128..127): ${currentRelativeValue}.`,
+      );
+      return false;
+    }
+    ctx.emitRawCodeBytes(
+      Uint8Array.of(opcode, currentRelativeValue & 0xff),
+      asmItem.span.file,
+      `${mnemonic} ${currentRelativeValue}`,
+    );
     return true;
   }
   const value = ctx.evalImmExpr(operand.expr);
@@ -78,7 +121,11 @@ const emitRel8FromOperand = (
     );
     return false;
   }
-  ctx.emitRawCodeBytes(Uint8Array.of(opcode, value & 0xff), asmItem.span.file, `${mnemonic} ${value}`);
+  ctx.emitRawCodeBytes(
+    Uint8Array.of(opcode, value & 0xff),
+    asmItem.span.file,
+    `${mnemonic} ${value}`,
+  );
   return true;
 };
 
@@ -111,6 +158,28 @@ function rejectInvalidRel8Target(
     return true;
   }
   return false;
+}
+
+function emitAbs16CurrentTargetFromOperand(
+  ctx: BranchCallLoweringContext,
+  asmItem: AsmInstructionNode,
+  target: AsmOperandNode,
+  opcode: number,
+): boolean {
+  if (target.kind !== 'Imm') return false;
+  const value = ctx.evalCurrentTarget?.(target.expr);
+  if (value === undefined) return false;
+  if (value < 0 || value > 0xffff) {
+    diagEncode(ctx, asmItem, `16-bit branch target out of range: ${value}.`);
+    return true;
+  }
+  ctx.emitRawCodeBytes(
+    Uint8Array.of(opcode, value & 0xff, (value >> 8) & 0xff),
+    asmItem.span.file,
+    `${asmItem.head.toLowerCase()} ${value}`,
+  );
+  ctx.syncToFlow();
+  return true;
 }
 
 function emitAbs16FixupFromOperand(
@@ -151,7 +220,10 @@ export function tryLowerBranchCallInstruction(
       }
       if (single.kind === 'Imm') {
         const symbolicTarget = ctx.symbolicTargetFromExpr(single.expr);
-        if (symbolicTarget && ctx.jrConditionOpcodeFromName(symbolicTarget.baseLower) !== undefined) {
+        if (
+          symbolicTarget &&
+          ctx.jrConditionOpcodeFromName(symbolicTarget.baseLower) !== undefined
+        ) {
           diagEncode(ctx, asmItem, `jr cc, disp expects two operands (cc, disp8)`);
           return true;
         }
@@ -183,7 +255,8 @@ export function tryLowerBranchCallInstruction(
       ) {
         return true;
       }
-      if (!emitRel8FromOperand(ctx, asmItem, target, opcode, `jr ${ccName!.toLowerCase()}`)) return false;
+      if (!emitRel8FromOperand(ctx, asmItem, target, opcode, `jr ${ccName!.toLowerCase()}`))
+        return false;
       ctx.syncToFlow();
       return true;
     }
@@ -256,6 +329,10 @@ export function tryLowerBranchCallInstruction(
         ctx.syncToFlow();
         return true;
       }
+      if (emitAbs16CurrentTargetFromOperand(ctx, asmItem, target, 0xc3)) {
+        ctx.flowRef.current.reachable = false;
+        return true;
+      }
     }
   }
 
@@ -264,7 +341,11 @@ export function tryLowerBranchCallInstruction(
     const ccName = conditionNameFromOperand(ccOp);
     const opcode = ccName ? ctx.conditionOpcodeFromName(ccName) : undefined;
     const target = asmItem.operands[1]!;
-    if (opcode !== undefined && emitAbs16FixupFromOperand(ctx, asmItem, target, opcode)) {
+    if (
+      opcode !== undefined &&
+      (emitAbs16CurrentTargetFromOperand(ctx, asmItem, target, opcode) ||
+        emitAbs16FixupFromOperand(ctx, asmItem, target, opcode))
+    ) {
       return true;
     }
   }
@@ -273,7 +354,10 @@ export function tryLowerBranchCallInstruction(
     const target = asmItem.operands[0]!;
     if (target.kind === 'Imm') {
       const symbolicTarget = ctx.symbolicTargetFromExpr(target.expr);
-      if (symbolicTarget && ctx.callConditionOpcodeFromName(symbolicTarget.baseLower) !== undefined) {
+      if (
+        symbolicTarget &&
+        ctx.callConditionOpcodeFromName(symbolicTarget.baseLower) !== undefined
+      ) {
         diagEncode(ctx, asmItem, `call cc, nn expects two operands (cc, nn)`);
         return true;
       }
@@ -282,6 +366,7 @@ export function tryLowerBranchCallInstruction(
         ctx.syncToFlow();
         return true;
       }
+      if (emitAbs16CurrentTargetFromOperand(ctx, asmItem, target, 0xcd)) return true;
     }
   }
 
@@ -290,7 +375,11 @@ export function tryLowerBranchCallInstruction(
     const ccName = conditionNameFromOperand(ccOp);
     const opcode = ccName ? ctx.callConditionOpcodeFromName(ccName) : undefined;
     const target = asmItem.operands[1]!;
-    if (opcode !== undefined && emitAbs16FixupFromOperand(ctx, asmItem, target, opcode)) {
+    if (
+      opcode !== undefined &&
+      (emitAbs16CurrentTargetFromOperand(ctx, asmItem, target, opcode) ||
+        emitAbs16FixupFromOperand(ctx, asmItem, target, opcode))
+    ) {
       return true;
     }
   }

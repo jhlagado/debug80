@@ -1,8 +1,4 @@
-import type {
-  AsmItemNode,
-  AsmOperandNode,
-  OpDeclNode,
-} from '../frontend/ast.js';
+import type { AsmItemNode, AsmOperandNode, OpDeclNode } from '../frontend/ast.js';
 import type {
   AsmRangeLoweringCapability,
   HiddenLabelCapability,
@@ -59,7 +55,7 @@ export function expandInlineOpBodyItems({
     }
     return bodyItem;
   });
-};
+}
 
 export function createOpExpansionExecutionHelpers(ctx: OpExpansionExecutionContext) {
   const expandAndLowerOpBody = ({

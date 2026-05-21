@@ -5,7 +5,7 @@ import { describe, it } from 'vitest';
 
 import { compile } from '../../src/compile.js';
 import { defaultFormatWriters } from '../../src/formats/index.js';
-import { expectDiagnostic } from '../helpers/diagnostics.js';
+import { expectDiagnostic } from '../helpers/diagnostics/index.js';
 
 function writeTempAsm(source: string): { entry: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), 'azm-address-of-'));
@@ -16,7 +16,9 @@ function writeTempAsm(source: string): { entry: string; cleanup: () => void } {
 
 describe('PR287 explicit address-of operator (@place)', () => {
   it('rejects @place in assembly instructions as ordinary unsupported operand syntax', async () => {
-    const { entry, cleanup } = writeTempAsm(['org $1000', 'b:', '  db 0', 'main:', '  ld hl,@b', '  ret', ''].join('\n'));
+    const { entry, cleanup } = writeTempAsm(
+      ['org $1000', 'b:', '  db 0', 'main:', '  ld hl,@b', '  ret', ''].join('\n'),
+    );
     try {
       const res = await compile(
         entry,
@@ -34,7 +36,9 @@ describe('PR287 explicit address-of operator (@place)', () => {
   });
 
   it('rejects invalid @ targets as ordinary unsupported operand syntax', async () => {
-    const { entry, cleanup } = writeTempAsm(['main:', '  ld hl,@', '  ld hl,@(3 + 2)', '  ld hl,@3', ''].join('\n'));
+    const { entry, cleanup } = writeTempAsm(
+      ['main:', '  ld hl,@', '  ld hl,@(3 + 2)', '  ld hl,@3', ''].join('\n'),
+    );
     try {
       const res = await compile(entry, {}, { formats: defaultFormatWriters });
       expectDiagnostic(res.diagnostics, {

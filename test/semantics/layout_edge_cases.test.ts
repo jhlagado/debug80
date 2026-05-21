@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
 import { DiagnosticIds } from '../../src/diagnosticTypes.js';
 import type { CompileEnv } from '../../src/semantics/env.js';
-import { offsetPathInTypeExpr, sizeOfTypeExpr, layoutInfoForTypeExpr } from '../../src/semantics/layout.js';
-import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics.js';
+import {
+  offsetPathInTypeExpr,
+  sizeOfTypeExpr,
+  layoutInfoForTypeExpr,
+} from '../../src/semantics/layout.js';
+import { expectDiagnostic, expectNoDiagnostics } from '../helpers/diagnostics/index.js';
 import type {
   OffsetPathNode,
   RecordFieldNode,
@@ -26,7 +30,10 @@ function mkField(name: string, typeExpr: TypeExprNode): RecordFieldNode {
   return { kind: 'RecordField', span, name, typeExpr };
 }
 
-function typeDecl(name: string, typeExpr: Extract<TypeExprNode, { kind: 'RecordType' }>): TypeDeclNode {
+function typeDecl(
+  name: string,
+  typeExpr: Extract<TypeExprNode, { kind: 'RecordType' }>,
+): TypeDeclNode {
   return { kind: 'TypeDecl', span, name, typeExpr };
 }
 
@@ -109,10 +116,7 @@ describe('layout edge cases (#1138)', () => {
     const mid = typeDecl('Mid', {
       kind: 'RecordType',
       span,
-      fields: [
-        mkField('pad', byteType),
-        mkField('leaf', { kind: 'TypeName', span, name: 'Leaf' }),
-      ],
+      fields: [mkField('pad', byteType), mkField('leaf', { kind: 'TypeName', span, name: 'Leaf' })],
     });
     const top = typeDecl('Top', {
       kind: 'RecordType',
@@ -137,7 +141,13 @@ describe('layout edge cases (#1138)', () => {
       ],
     };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetPathInTypeExpr({ kind: 'TypeName', span, name: 'Top' }, path, env, () => 0, diagnostics);
+    const off = offsetPathInTypeExpr(
+      { kind: 'TypeName', span, name: 'Top' },
+      path,
+      env,
+      () => 0,
+      diagnostics,
+    );
     expect(off).toBe(1);
     expectNoDiagnostics(diagnostics);
   });
@@ -160,7 +170,13 @@ describe('layout edge cases (#1138)', () => {
         }),
       ],
     });
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['Cell', cell], ['Row', row]]) };
+    const env: CompileEnv = {
+      ...emptyEnv,
+      types: new Map([
+        ['Cell', cell],
+        ['Row', row],
+      ]),
+    };
     const path: OffsetPathNode = {
       kind: 'OffsetPath',
       span,
@@ -187,7 +203,13 @@ describe('layout edge cases (#1138)', () => {
     const env: CompileEnv = { ...emptyEnv, types: new Map([['Tag', u]]) };
     const path: OffsetPathNode = { kind: 'OffsetPath', span, base: 'w', steps: [] };
     const diagnostics: Diagnostic[] = [];
-    const off = offsetPathInTypeExpr({ kind: 'TypeName', span, name: 'Tag' }, path, env, () => 0, diagnostics);
+    const off = offsetPathInTypeExpr(
+      { kind: 'TypeName', span, name: 'Tag' },
+      path,
+      env,
+      () => 0,
+      diagnostics,
+    );
     expect(off).toBe(0);
     expectNoDiagnostics(diagnostics);
   });
@@ -203,9 +225,17 @@ describe('layout edge cases (#1138)', () => {
       span,
       fields: [mkField('mid', { kind: 'TypeName', span, name: 'Mid' })],
     });
-    const env: CompileEnv = { ...emptyEnv, types: new Map([['Mid', mid], ['Top', top]]) };
+    const env: CompileEnv = {
+      ...emptyEnv,
+      types: new Map([
+        ['Mid', mid],
+        ['Top', top],
+      ]),
+    };
     const diagnostics: Diagnostic[] = [];
-    expect(sizeOfTypeExpr({ kind: 'TypeName', span, name: 'Top' }, env, diagnostics)).toBeUndefined();
+    expect(
+      sizeOfTypeExpr({ kind: 'TypeName', span, name: 'Top' }, env, diagnostics),
+    ).toBeUndefined();
     expectDiagnostic(diagnostics, {
       id: DiagnosticIds.TypeError,
       severity: 'error',

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
 import type { Asm80Artifact } from '../src/formats/types.js';
-import { expectDiagnostic, expectNoErrors } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoErrors } from './helpers/diagnostics/index.js';
 
 describe('PR950: text-only include directive', () => {
   it('inlines included text before parsing', async () => {
@@ -35,7 +35,14 @@ describe('PR950: text-only include directive', () => {
     const includeDir = join(__dirname, 'fixtures', 'includes');
     const res = await compile(
       entry,
-      { includeDirs: [includeDir], emitAsm80: true, emitBin: false, emitHex: false, emitListing: false, emitD8m: false },
+      {
+        includeDirs: [includeDir],
+        emitAsm80: true,
+        emitBin: false,
+        emitHex: false,
+        emitListing: false,
+        emitD8m: false,
+      },
       { formats: defaultFormatWriters },
     );
     expectNoErrors(res.diagnostics);

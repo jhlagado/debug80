@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { compile } from '../src/compile.js';
 import { DiagnosticIds } from '../src/diagnosticTypes.js';
 import { defaultFormatWriters } from '../src/formats/index.js';
-import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics.js';
+import { expectDiagnostic, expectNoDiagnostic } from './helpers/diagnostics/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,14 +45,17 @@ describe('PR203: ld diagnostics parity matrix', () => {
       id: DiagnosticIds.EncodeError,
       message: 'ld rr, rr supports SP <- HL/IX/IY only',
     },
-  ] satisfies Row[])('$label — explicit ld diagnostics (no fallback/unresolved-fixup noise)', async (row) => {
-    const res = await compile(PR203_FIXTURE, {}, { formats: defaultFormatWriters });
-    expectDiagnostic(res.diagnostics, {
-      id: row.id,
-      severity: 'error',
-      message: row.message,
-    });
-  });
+  ] satisfies Row[])(
+    '$label — explicit ld diagnostics (no fallback/unresolved-fixup noise)',
+    async (row) => {
+      const res = await compile(PR203_FIXTURE, {}, { formats: defaultFormatWriters });
+      expectDiagnostic(res.diagnostics, {
+        id: row.id,
+        severity: 'error',
+        message: row.message,
+      });
+    },
+  );
 
   it('does not emit generic ld fallback or spurious bc/de fixup diagnostics', async () => {
     const res = await compile(PR203_FIXTURE, {}, { formats: defaultFormatWriters });

@@ -1,4 +1,10 @@
-import type { AsmOperandNode, EaExprNode, ImmExprNode, OpDeclNode, OpMatcherNode } from '../frontend/ast.js';
+import type {
+  AsmOperandNode,
+  EaExprNode,
+  ImmExprNode,
+  OpDeclNode,
+  OpMatcherNode,
+} from '../frontend/ast.js';
 import { formatEaExpr } from './traceFormat.js';
 
 type OpMatchingContext = {
@@ -130,7 +136,11 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
     const fixedToken = fixed.token.toUpperCase();
     switch (other.kind) {
       case 'MatcherReg8':
-        return operand.kind === 'Reg' && operand.name.toUpperCase() === fixedToken && ctx.reg8.has(fixedToken);
+        return (
+          operand.kind === 'Reg' &&
+          operand.name.toUpperCase() === fixedToken &&
+          ctx.reg8.has(fixedToken)
+        );
       case 'MatcherReg16':
         return (
           operand.kind === 'Reg' &&
@@ -151,10 +161,16 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
   ): MatcherSpecificity => {
     if (matcherX.kind === matcherY.kind) return 'equal';
 
-    if (matcherX.kind === 'MatcherFixed' && fixedTokenBeatsClassMatcher(matcherX, matcherY, operand)) {
+    if (
+      matcherX.kind === 'MatcherFixed' &&
+      fixedTokenBeatsClassMatcher(matcherX, matcherY, operand)
+    ) {
       return 'x_more_specific';
     }
-    if (matcherY.kind === 'MatcherFixed' && fixedTokenBeatsClassMatcher(matcherY, matcherX, operand)) {
+    if (
+      matcherY.kind === 'MatcherFixed' &&
+      fixedTokenBeatsClassMatcher(matcherY, matcherX, operand)
+    ) {
       return 'y_more_specific';
     }
 
@@ -283,7 +299,10 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
       case 'Imm':
         return formatImmExprForOpDiag(operand.expr);
       case 'Ea':
-        return formatEaExpr(operand.expr, { formatImmExpr: formatImmExprForOpDiag, wrapImmEa: true });
+        return formatEaExpr(operand.expr, {
+          formatImmExpr: formatImmExprForOpDiag,
+          wrapImmEa: true,
+        });
       case 'Mem':
         return `(${formatEaExpr(operand.expr, { formatImmExpr: formatImmExprForOpDiag, wrapImmEa: true })})`;
       case 'PortC':
@@ -335,13 +354,15 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
       case 'MatcherMem8': {
         if (operand.kind !== 'Mem') return `expects mem8 dereference, got ${got}`;
         const width = ctx.inferMemWidth(operand);
-        if (width !== undefined && width !== 1) return `expects mem8 dereference, got mem${width * 8}`;
+        if (width !== undefined && width !== 1)
+          return `expects mem8 dereference, got mem${width * 8}`;
         return `expects mem8 dereference, got ${got}`;
       }
       case 'MatcherMem16': {
         if (operand.kind !== 'Mem') return `expects mem16 dereference, got ${got}`;
         const width = ctx.inferMemWidth(operand);
-        if (width !== undefined && width !== 2) return `expects mem16 dereference, got mem${width * 8}`;
+        if (width !== undefined && width !== 2)
+          return `expects mem16 dereference, got mem${width * 8}`;
         return `expects mem16 dereference, got ${got}`;
       }
       case 'MatcherFixed':
@@ -368,7 +389,9 @@ export function createOpMatchingHelpers(ctx: OpMatchingContext) {
     overloads: OpDeclNode[],
     operands: AsmOperandNode[],
   ): OpOverloadSelection => {
-    const arityMatches = overloads.filter((candidate) => candidate.params.length === operands.length);
+    const arityMatches = overloads.filter(
+      (candidate) => candidate.params.length === operands.length,
+    );
     if (arityMatches.length === 0) {
       return {
         kind: 'arity_mismatch',

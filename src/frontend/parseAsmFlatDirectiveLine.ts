@@ -64,7 +64,13 @@ function asmRawDataToNode(
       valuesText: parsed.valuesText,
     } as SourceItemNode;
   }
-  const values = parseAsmRawValues(filePath, parsed.valuesText, stmtSpan, diagnostics, stringEquates);
+  const values = parseAsmRawValues(
+    filePath,
+    parsed.valuesText,
+    stmtSpan,
+    diagnostics,
+    stringEquates,
+  );
   return {
     kind: 'AsmRawData',
     span: stmtSpan,
@@ -174,8 +180,7 @@ export function parseAsmFlatDirectiveLine(args: {
 
   const labelOnly = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*$/.exec(trimmed);
   if (labelOnly) {
-    ctx.asmPendingRawLabel = { name: labelOnly[1]!, span: stmtSpan, lineNo, filePath };
-    return [];
+    return [{ kind: 'AsmLabel', span: stmtSpan, name: labelOnly[1]! } as SourceItemNode];
   }
 
   if (parsedAsm?.kind === 'rawData') {

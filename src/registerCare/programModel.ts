@@ -1,4 +1,10 @@
-import type { AsmInstructionNode, AsmLabelNode, SourceItemNode, ProgramNode, SourceSpan } from '../frontend/ast.js';
+import type {
+  AsmInstructionNode,
+  AsmLabelNode,
+  SourceItemNode,
+  ProgramNode,
+  SourceSpan,
+} from '../frontend/ast.js';
 import { createInlineOpInstructionStreamExpander } from '../lowering/opExpansionStream.js';
 import type {
   RegisterCareDirectCall,

@@ -102,11 +102,10 @@ export function runAsm80BinaryReference(source, asm80, options = {}) {
   const listingPath = join(workDir, `${sourceStem(source)}.lst`);
   try {
     copyAsm80SourceSiblings(source, workDir, options.extensions);
-    const result = spawnSync(
-      asm80,
-      ['-m', 'Z80', '-t', 'bin', '-o', outName, sourceName],
-      { cwd: workDir, encoding: 'utf8' },
-    );
+    const result = spawnSync(asm80, ['-m', 'Z80', '-t', 'bin', '-o', outName, sourceName], {
+      cwd: workDir,
+      encoding: 'utf8',
+    });
     if (result.error) return { ok: false, message: result.error.message };
     if (result.status !== 0) return { ok: false, message: compactSpawnError(result) };
 

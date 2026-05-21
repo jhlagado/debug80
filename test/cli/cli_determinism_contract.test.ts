@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { ensureCliBuilt } from '../helpers/cliBuild.js';
-import { readArtifactSet, runCli } from '../helpers/cli.js';
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+import { readArtifactSet, runCli } from '../helpers/cli/index.js';
 
 describe('cli determinism contract', () => {
   beforeAll(async () => {
