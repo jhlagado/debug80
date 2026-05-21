@@ -1,6 +1,6 @@
 {
   "name": "@jhlagado/azm",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "description": "AZM assembler for the Z80 family (Node.js CLI)",
   "license": "GPL-3.0-only",
   "engines": {
@@ -33,6 +33,7 @@
   },
   "files": [
     "dist/src",
+    "docs/reference/cli.md",
     "docs/reference/tooling-api.md"
   ],
   "publishConfig": {
@@ -71,6 +72,7 @@
     "test:ci:slow-reliability": "vitest run --no-file-parallelism --maxWorkers=1 --minWorkers=1 --testTimeout=20000 --hookTimeout=300000 --passWithNoTests 'test/cli_*.test.ts' 'test/cli/**/*.test.ts'",
     "test:azm:alpha": "node scripts/dev/run-azm-alpha-guardrails.mjs",
     "test:azm:corpus": "node scripts/dev/run-azm-corpus-guardrails.mjs",
+    "test:package": "node scripts/dev/smoke-npm-package.mjs",
     "test:asm80:baseline": "node scripts/dev/run-asm80-baseline.mjs",
     "test:asm80:tetro": "AZM_RUN_TETRO_ACCEPTANCE=1 vitest run test/asm80/tetro_acceptance.test.ts",
     "test:watch": "vitest",
