@@ -1,18 +1,15 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
-import { compile } from '../../src/compile.js';
 import { isSupportedSourcePath } from '../../src/frontend/sourceExtensions.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
+import { compileTempSource } from '../helpers/temp_source.js';
 
-function writeTempSource(ext: string, source: string): { entry: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'azm-removals-'));
-  const entry = join(dir, `entry.${ext}`);
-  writeFileSync(entry, source, 'utf8');
-  return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+async function compileSourceExtensionFixture(ext: string, source: string) {
+  return compileTempSource('azm-removals-', ext, source, {
+    emitBin: false,
+    emitHex: false,
+    emitD8m: false,
+    emitListing: false,
+  });
 }
 
 describe('assembler source extension surface', () => {
@@ -25,7 +22,7 @@ describe('assembler source extension surface', () => {
   });
 
   it('does not reject layout constants in .asm source', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileSourceExtensionFixture(
       'asm',
       [
         '.type Sprite',
@@ -39,37 +36,17 @@ describe('assembler source extension surface', () => {
       ].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-
-      expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('rejects unsupported source extensions', async () => {
-    const { entry, cleanup } = writeTempSource('foo', ['main:', '    ret', ''].join('\n'));
+    const res = await compileSourceExtensionFixture('foo', ['main:', '    ret', ''].join('\n'));
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Unsupported source file extension'),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Unsupported source file extension'),
+      }),
+    );
   });
 });

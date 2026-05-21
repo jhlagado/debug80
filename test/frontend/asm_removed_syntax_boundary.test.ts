@@ -1,19 +1,16 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
-import { compile } from '../../src/compile.js';
 import type { Diagnostic } from '../../src/diagnosticTypes.js';
-import { defaultFormatWriters } from '../../src/formats/index.js';
 import { parseSourceFile } from '../../src/frontend/parser.js';
+import { compileTempSource } from '../helpers/temp_source.js';
 
-function writeTempSource(ext: string, source: string): { entry: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'asm-boundary-'));
-  const entry = join(dir, `entry.${ext}`);
-  writeFileSync(entry, source, 'utf8');
-  return { entry, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+async function compileBoundarySource(ext: string, source: string) {
+  return compileTempSource('asm-boundary-', ext, source, {
+    emitBin: false,
+    emitHex: false,
+    emitD8m: false,
+    emitListing: false,
+  });
 }
 
 function parsedLabelNames(path: string, source: string): string[] {
@@ -25,23 +22,14 @@ function parsedLabelNames(path: string, source: string): string[] {
 describe('.asm source boundary', () => {
   it('treats unknown assembler statements as ordinary unsupported syntax', async () => {
     const source = ['main:', '  frobnicate A,B', '  ret', ''].join('\n');
-    const { entry, cleanup } = writeTempSource('asm', source);
+    const res = await compileBoundarySource('asm', source);
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Unsupported instruction: frobnicate'),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Unsupported instruction: frobnicate'),
+      }),
+    );
   });
 
   it('recovers labels after an unsupported assembler statement', async () => {
@@ -53,28 +41,19 @@ describe('.asm source boundary', () => {
       '  db $42',
       '',
     ].join('\n');
-    const { entry, cleanup } = writeTempSource('asm', source);
+    const res = await compileBoundarySource('asm', source);
 
-    try {
-      const res = await compile(
-        entry,
-        { emitListing: false, emitD8m: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Unsupported instruction: unknown_directive'),
-        }),
-      );
-      expect(parsedLabelNames(entry, source)).toEqual(['BAD_LABEL', 'GOOD_LABEL']);
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Unsupported instruction: unknown_directive'),
+      }),
+    );
+    expect(parsedLabelNames('/entry.asm', source)).toEqual(['BAD_LABEL', 'GOOD_LABEL']);
   });
 
   it('allows AZM layout metadata without diagnostics', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileBoundarySource(
       'asm',
       [
         '.type Sprite',
@@ -89,66 +68,39 @@ describe('.asm source boundary', () => {
       ].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('rejects retired colon-style layout declarations', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileBoundarySource(
       'asm',
       ['.type Sprite', 'x: byte', '.endtype', ''].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Invalid record field declaration line "x: byte"'),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Invalid record field declaration line "x: byte"'),
+      }),
+    );
   });
 
   it('treats bare type declarations as unsupported assembler text', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileBoundarySource(
       'asm',
       ['type Sprite', 'main:', '  ret', ''].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitListing: false, emitD8m: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Unsupported instruction: type'),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Unsupported instruction: type'),
+      }),
+    );
   });
 
   it('allows label-based layout-cast address expressions without diagnostics', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileBoundarySource(
       'asm',
       [
         '.type Sprite',
@@ -169,38 +121,20 @@ describe('.asm source boundary', () => {
       ].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('treats unsupported control-like text as ordinary unsupported assembler syntax', async () => {
-    const { entry, cleanup } = writeTempSource(
+    const res = await compileBoundarySource(
       'asm',
       ['WARN_CONTROL:', '  branch_when_ready z', '  ret', ''].join('\n'),
     );
 
-    try {
-      const res = await compile(
-        entry,
-        { emitBin: false, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: defaultFormatWriters },
-      );
-      expect(res.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: 'error',
-          message: expect.stringContaining('Unsupported instruction: branch_when_ready'),
-        }),
-      );
-    } finally {
-      cleanup();
-    }
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('Unsupported instruction: branch_when_ready'),
+      }),
+    );
   });
 });
