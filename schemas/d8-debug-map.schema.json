@@ -5,6 +5,14 @@
   "description": "Portable debug information format for Z80 (and similar) assemblers. Version 1.",
   "type": "object",
   "required": ["format", "version", "arch", "addressWidth", "endianness", "files"],
+  "allOf": [
+    {
+      "if": {
+        "not": { "$ref": "#/definitions/hasConstantSymbolDefault" }
+      },
+      "then": { "$ref": "#/definitions/noDefaultedValueOnlySymbols" }
+    }
+  ],
   "properties": {
     "format": {
       "const": "d8-debug-map"
@@ -59,6 +67,44 @@
     "symbolScope": {
       "type": "string",
       "enum": ["global", "local"]
+    },
+    "hasConstantSymbolDefault": {
+      "type": "object",
+      "required": ["symbolDefaults"],
+      "properties": {
+        "symbolDefaults": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "constant" }
+          }
+        }
+      }
+    },
+    "noDefaultedValueOnlySymbols": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "symbols": {
+                "type": "array",
+                "items": {
+                  "not": {
+                    "allOf": [
+                      { "type": "object", "required": ["value"] },
+                      { "not": { "type": "object", "required": ["address"] } },
+                      { "not": { "type": "object", "required": ["kind"] } }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "fileEntry": {
       "type": "object",

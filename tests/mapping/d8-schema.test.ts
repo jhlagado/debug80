@@ -101,6 +101,59 @@ describe('D8 JSON Schema contract', () => {
     }
   });
 
+  it('rejects defaulted value-only symbols without constant symbolDefaults', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          symbols: [{ name: 'SCREEN_WIDTH', value: 32, line: 1 }],
+        },
+      },
+    };
+
+    expect(validate(map)).toBe(false);
+  });
+
+  it('rejects defaulted value-only symbols with non-constant symbolDefaults', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      symbolDefaults: { kind: 'label' },
+      files: {
+        'src/main.asm': {
+          symbols: [{ name: 'SCREEN_WIDTH', value: 32, line: 1 }],
+        },
+      },
+    };
+
+    expect(validate(map)).toBe(false);
+  });
+
+  it('rejects explicitly non-constant value-only symbols', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      symbolDefaults: { kind: 'constant' },
+      files: {
+        'src/main.asm': {
+          symbols: [{ name: 'SCREEN_WIDTH', kind: 'data', value: 32, line: 1 }],
+        },
+      },
+    };
+
+    expect(validate(map)).toBe(false);
+  });
+
   it('round-tripped AZM fixture still conforms to the schema', () => {
     const d8Path = path.join(process.cwd(), 'tests', 'fixtures', 'azm', 'matrix.d8.json');
     const raw = fs.readFileSync(d8Path, 'utf-8');
