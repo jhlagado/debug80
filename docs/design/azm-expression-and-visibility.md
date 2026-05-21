@@ -15,6 +15,12 @@ features**. They exist to make constants easier to write than long
 `offset(...)` / `sizeof(...)` forms. They must not reintroduce ZAX-style typed
 memory access or runtime address generation.
 
+Type expressions also act as byte-size expressions in the few places where AZM
+is explicitly asking for storage size. `byte` means `1`, `word` and `addr` mean
+`2`, `Sprite` means `sizeof(Sprite)`, and `Sprite[16]` means sixteen packed
+`Sprite` records. This applies to layout/storage positions such as `.field` and
+`.ds`; it is not a typed storage system.
+
 For ASM `.asm`, the accepted source shape is flat source-file assembly:
 labels, Z80 instructions, `.org`, `.equ`, raw data directives, textual includes,
 directive aliases, layout metadata, and `op` declarations. The rejected shape is
@@ -50,6 +56,7 @@ sequences, it belongs to the ZAX retirement bucket, not AZM.
 | Field/index on values      | Often compiler-lowering                        | **Constants only** via `offset` or layout cast |
 | Registers in layout paths  | Sometimes allowed with codegen                 | **Rejected** — use explicit Z80                |
 | Layout cast `<T>base[i].f` | Mixed constant + runtime paths                 | **Constant fold only** or error                |
+| Type expression `T[N]`     | Could imply typed storage or runtime behavior  | **Byte-size constant** in layout/storage slots |
 | Equivalence                | —                                              | Must match expanded `sizeof`/`offset` forms    |
 | Output vs source           | Could diverge via hidden codegen               | **Must match** programmer-visible instructions |
 
@@ -82,6 +89,31 @@ ld a,(<Sprite[16]>SPRITES[3].flags)
 ```
 
 After folding, this is `ld a,(SPRITES + 15)`, not a typed byte load pipeline.
+
+## Storage-size syntax is not initialization syntax
+
+AZM has two separate ideas that should remain separate in implementation and
+documentation:
+
+```asm
+Scratch:
+    .ds byte[256]      ; reserve 256 bytes
+
+Sprites:
+    .ds Sprite[16]     ; reserve sizeof(Sprite) * 16 bytes
+
+Message:
+    .db "hello",0      ; emit initialized bytes
+
+Words:
+    .dw 1000H,2000H    ; emit initialized words
+```
+
+`.ds byte`, `.ds word`, `.ds Sprite`, and their array forms are just compact
+byte-count expressions. `.db`, `.dw`, `.cstr`, `.pstr`, and `.istr` are still
+the initialized-data directives. AZM should not grow record constructors or
+typed initializers unless they can be explained as ordinary assembler data
+directives.
 
 ## Implementation guidance (adapting inherited code)
 
