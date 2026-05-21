@@ -126,6 +126,23 @@ function readFlagValue(argv: string[], indexRef: { current: number }, flag: stri
   return value;
 }
 
+function readMatchedFlagValue(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  flags: readonly string[],
+): { flag: string; value: string } | undefined {
+  const flag =
+    flags.find((candidate) => arg === candidate || arg.startsWith(`${candidate}=`)) ??
+    undefined;
+  if (!flag) return undefined;
+  const value = arg.startsWith(`${flag}=`)
+    ? arg.slice(flag.length + 1)
+    : readFlagValue(argv, indexRef, flag);
+  if (!value) fail(`${flag} expects a value`);
+  return { flag, value };
+}
+
 function parseOutputPathArg(
   arg: string,
   argv: string[],
@@ -183,19 +200,9 @@ function parseRegisterCareArg(
   indexRef: { current: number },
   state: CliState,
 ): boolean {
-  const flag = arg.startsWith('--register-care') ? '--register-care' : '--rc';
-  if (
-    arg !== '--register-care' &&
-    arg !== '--rc' &&
-    !arg.startsWith('--register-care=') &&
-    !arg.startsWith('--rc=')
-  ) {
-    return false;
-  }
-  const value = arg.includes('=')
-    ? arg.slice(arg.indexOf('=') + 1)
-    : readFlagValue(argv, indexRef, flag);
-  if (!value) fail(`${flag} expects a value`);
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, ['--register-care', '--rc']);
+  if (!parsed) return false;
+  const { flag, value } = parsed;
   if (
     value !== 'off' &&
     value !== 'audit' &&
@@ -215,19 +222,9 @@ function parseRegisterProfileArg(
   indexRef: { current: number },
   state: CliState,
 ): boolean {
-  const flag = arg.startsWith('--register-profile') ? '--register-profile' : '--reg-profile';
-  if (
-    arg !== '--register-profile' &&
-    arg !== '--reg-profile' &&
-    !arg.startsWith('--register-profile=') &&
-    !arg.startsWith('--reg-profile=')
-  ) {
-    return false;
-  }
-  const value = arg.includes('=')
-    ? arg.slice(arg.indexOf('=') + 1)
-    : readFlagValue(argv, indexRef, flag);
-  if (!value) fail(`${flag} expects a value`);
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, ['--register-profile', '--reg-profile']);
+  if (!parsed) return false;
+  const { flag, value } = parsed;
   if (value !== 'mon3') {
     fail(`Unsupported ${flag} "${value}" (expected mon3)`);
   }
@@ -256,21 +253,12 @@ function parseAcceptRegisterOutputArg(
   indexRef: { current: number },
   state: CliState,
 ): boolean {
-  const flag = arg.startsWith('--accept-register-output')
-    ? '--accept-register-output'
-    : '--accept-out';
-  if (
-    arg !== '--accept-register-output' &&
-    arg !== '--accept-out' &&
-    !arg.startsWith('--accept-register-output=') &&
-    !arg.startsWith('--accept-out=')
-  ) {
-    return false;
-  }
-  const value = arg.includes('=')
-    ? arg.slice(arg.indexOf('=') + 1)
-    : readFlagValue(argv, indexRef, flag);
-  if (!value) fail(`${flag} expects a value`);
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, [
+    '--accept-register-output',
+    '--accept-out',
+  ]);
+  if (!parsed) return false;
+  const { value } = parsed;
   state.acceptRegisterOutputCandidates.push(value);
   return true;
 }
