@@ -19,9 +19,11 @@ Normative language documents.
 
 Current user- and contributor-facing references.
 
+- [`docs/reference/cli.md`](reference/cli.md) — command-line interface reference
 - [`docs/reference/testing-verification-guide.md`](reference/testing-verification-guide.md) — testing and verification flow
 - [`docs/reference/source-overview.md`](reference/source-overview.md) — compiler source structure
 - [`docs/reference/code-quality-standard.md`](reference/code-quality-standard.md) — code organization, cleanup, and tooling standard
+- [`docs/reference/tooling-api.md`](reference/tooling-api.md) — Node tooling and compile API
 
 These do not override the spec.
 
@@ -32,8 +34,12 @@ Only active design work stays here.
 - `docs/design/exact-size-layout-and-indexing.md`
 - `docs/design/asm80-compatibility-baseline.md`
 - `docs/design/asm80-mon3-compatibility-audit.md`
+- `docs/design/azm-directive-aliases.md`
+- `docs/design/azm-expression-and-visibility.md`
 - `docs/design/azm-language-direction.md`
+- `docs/design/azm-ops-subset.md`
 - `docs/design/azm-register-care-safety.md`
+- `docs/design/azm-routine-private-labels.md`
 - `docs/design/vscode-language-services-direction.md`
 
 Delete landed, superseded, or low-priority design notes rather than keeping a

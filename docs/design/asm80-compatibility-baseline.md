@@ -219,10 +219,9 @@ The baseline acceptance work is now closed for the current corpus set:
 - defer `.asm` and `.z80` introduction into the wider Debug80 toolchain until
   retained AZM features have a stable command-line workflow
 
-The secondary TEC-1G software corpus is tracked in
-`docs/design/asm80-tec1g-compatibility-audit.md`. It deliberately excludes
-sources containing `.macro`/`.endm`, and currently verifies 12 non-macro TEC-1G
-programs byte-for-byte against ASM80.
+The secondary TEC-1G software corpus deliberately excludes sources containing
+`.macro`/`.endm`, and currently verifies 12 non-macro TEC-1G programs
+byte-for-byte against ASM80.
 
 The Tetro source tree is a useful follow-up corpus for loadable application
 semantics, especially reserve-only `DS` behavior. It remains an explicit
@@ -277,9 +276,7 @@ application corpus, because it intentionally exercises features such as
 `.incbin`, `.ent`, and segment pragmas. Dialect aliases such as `DEFB`/`DEFW`
 belong in a source-normalization layer if those files are used.
 
-The Software-tree audit is tracked separately in
-`docs/design/asm80-software-compatibility-audit.md`. It is not part of the
-standing baseline gate.
+The wider Software-tree audit is not part of the standing baseline gate.
 
 Defer preprocessor-heavy corpora such as
 `/Users/johnhardy/projects/2024/z80float` until there is an explicit
