@@ -34,58 +34,61 @@ async function writeCliIncludeFixture(workName: string, outputName: string) {
   return { work, includes, entry, output };
 }
 
+async function withCliMainFixture<T>(
+  callback: (fixture: { work: string; entry: string }) => Promise<T>,
+): Promise<T> {
+  const work = await makeCliWorkDir('azm-cli-');
+  const entry = await writeCliMainSource(work);
+  try {
+    return await callback({ work, entry });
+  } finally {
+    await removeCliWorkDir(work);
+  }
+}
+
 describe('cli artifacts', () => {
   beforeAll(async () => {
     await ensureCliBuilt();
   }, 180_000);
 
   it('writes default sibling artifacts from -o output path', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
+    await withCliMainFixture(async ({ work, entry }) => {
+      const outHex = join(work, 'out.hex');
+      const res = await runCli(['-o', outHex, entry]);
+      expect(res.code).toBe(0);
+      expect(res.stdout.trim()).toBe(outHex);
 
-    const outHex = join(work, 'out.hex');
-    const res = await runCli(['-o', outHex, entry]);
-    expect(res.code).toBe(0);
-    expect(res.stdout.trim()).toBe(outHex);
-
-    await expectCliArtifacts(work, 'out', { hex: true, bin: true, 'd8.json': true, lst: true });
-
-    await removeCliWorkDir(work);
+      await expectCliArtifacts(work, 'out', { hex: true, bin: true, 'd8.json': true, lst: true });
+    });
   }, 20_000);
 
   it('uses entry stem as default primary output path when -o is omitted', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
+    await withCliMainFixture(async ({ work, entry }) => {
+      const res = await runCli([entry]);
+      expect(res.code).toBe(0);
+      expect(res.stdout.trim()).toBe(join(work, 'main.hex'));
 
-    const res = await runCli([entry]);
-    expect(res.code).toBe(0);
-    expect(res.stdout.trim()).toBe(join(work, 'main.hex'));
-
-    await expectCliArtifacts(work, 'main', { hex: true, bin: true, 'd8.json': true, lst: true });
-
-    await removeCliWorkDir(work);
+      await expectCliArtifacts(work, 'main', { hex: true, bin: true, 'd8.json': true, lst: true });
+    });
   }, 20_000);
 
   it('uses flat AZM origin 0 when no ORG is provided', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
+    await withCliMainFixture(async ({ work, entry }) => {
+      const outHex = join(work, 'out.hex');
+      const res = await runCli(['-o', outHex, entry]);
+      expect(res.code).toBe(0);
 
-    const outHex = join(work, 'out.hex');
-    const res = await runCli(['-o', outHex, entry]);
-    expect(res.code).toBe(0);
-
-    const d8Path = join(work, 'out.d8.json');
-    const d8Map = JSON.parse(await readFile(d8Path, 'utf8')) as {
-      generator?: { entryAddress?: number; entrySymbol?: string };
-      symbols?: Array<{ name: string; kind: string; address?: number }>;
-    };
-    expect(d8Map.generator?.entrySymbol).toBe('main');
-    expect(d8Map.generator?.entryAddress).toBe(0x0000);
-    expect(
-      d8Map.symbols?.some((s) => s.name === 'main' && s.kind === 'label' && s.address === 0x0000),
-    ).toBe(true);
-
-    await removeCliWorkDir(work);
+      const d8Path = join(work, 'out.d8.json');
+      const d8Map = JSON.parse(await readFile(d8Path, 'utf8')) as {
+        generator?: { entryAddress?: number; entrySymbol?: string };
+        symbols?: Array<{ name: string; kind: string; address?: number }>;
+      };
+      expect(d8Map.generator?.entrySymbol).toBe('main');
+      expect(d8Map.generator?.entryAddress).toBe(0x0000);
+      expect(
+        d8Map.symbols?.some((s) => s.name === 'main' && s.kind === 'label' && s.address === 0x0000),
+      ).toBe(true);
+    });
   }, 20_000);
 
   it('writes D8 generator inputs and project-relative source keys with --source-root', async () => {
@@ -146,29 +149,28 @@ describe('cli artifacts', () => {
   }, 20_000);
 
   it('honors suppression flags', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
+    await withCliMainFixture(async ({ work, entry }) => {
+      const outHex = join(work, 'out.hex');
+      const res = await runCli(['--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
+      expect(res.code).toBe(0);
 
-    const outHex = join(work, 'out.hex');
-    const res = await runCli(['--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
-    expect(res.code).toBe(0);
-
-    await expectCliArtifacts(work, 'out', { hex: true, bin: false, 'd8.json': false, lst: false });
-
-    await removeCliWorkDir(work);
+      await expectCliArtifacts(work, 'out', {
+        hex: true,
+        bin: false,
+        'd8.json': false,
+        lst: false,
+      });
+    });
   }, 20_000);
 
   it('writes ASM80-compatible lowered source as .z80 when --asm80 is set', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
+    await withCliMainFixture(async ({ work, entry }) => {
+      const outHex = join(work, 'out.hex');
+      const res = await runCli(['--asm80', '--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
+      expect(res.code).toBe(0);
 
-    const outHex = join(work, 'out.hex');
-    const res = await runCli(['--asm80', '--nobin', '--nod8m', '--nolist', '-o', outHex, entry]);
-    expect(res.code).toBe(0);
-
-    await expectCliArtifacts(work, 'out', { hex: true, z80: true, asm80: false });
-
-    await removeCliWorkDir(work);
+      await expectCliArtifacts(work, 'out', { hex: true, z80: true, asm80: false });
+    });
   }, 20_000);
 
   it('suppresses hex output for --type bin with --nohex', async () => {
@@ -254,24 +256,18 @@ describe('cli artifacts', () => {
   }, 20_000);
 
   it('rejects entry when it is not the last argument', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
-
-    const res = await runCli([entry, '--nolist']);
-    expect(res.code).toBe(2);
-    expect(res.stderr).toContain('must be last');
-
-    await removeCliWorkDir(work);
+    await withCliMainFixture(async ({ entry }) => {
+      const res = await runCli([entry, '--nolist']);
+      expect(res.code).toBe(2);
+      expect(res.stderr).toContain('must be last');
+    });
   }, 20_000);
 
   it('returns usage error for unknown options', async () => {
-    const work = await makeCliWorkDir('azm-cli-');
-    const entry = await writeCliMainSource(work);
-
-    const res = await runCli(['--badflag', entry]);
-    expect(res.code).toBe(2);
-    expect(res.stderr).toContain('Unknown option');
-
-    await removeCliWorkDir(work);
+    await withCliMainFixture(async ({ entry }) => {
+      const res = await runCli(['--badflag', entry]);
+      expect(res.code).toBe(2);
+      expect(res.stderr).toContain('Unknown option');
+    });
   }, 20_000);
 });
