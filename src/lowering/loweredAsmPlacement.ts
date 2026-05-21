@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../diagnosticTypes.js';
 import type { PlacementKind } from './loweringTypes.js';
+import { evalBinaryImmOp, evalUnaryImmOp } from './immMath.js';
 import type {
   LoweredAsmBlock,
   LoweredAsmItem,
@@ -80,41 +81,13 @@ function evalPlacedConst(expr: LoweredImmExpr, values: Map<string, number>): num
     case 'unary': {
       const value = evalPlacedConst(expr.expr, values);
       if (value === undefined) return undefined;
-      switch (expr.op) {
-        case '+':
-          return +value;
-        case '-':
-          return -value;
-        case '~':
-          return ~value;
-      }
+      return evalUnaryImmOp(expr.op, value);
     }
     case 'binary': {
       const left = evalPlacedConst(expr.left, values);
       const right = evalPlacedConst(expr.right, values);
       if (left === undefined || right === undefined) return undefined;
-      switch (expr.op) {
-        case '*':
-          return left * right;
-        case '/':
-          return right === 0 ? undefined : Math.trunc(left / right);
-        case '%':
-          return right === 0 ? undefined : left % right;
-        case '+':
-          return left + right;
-        case '-':
-          return left - right;
-        case '&':
-          return left & right;
-        case '^':
-          return left ^ right;
-        case '|':
-          return left | right;
-        case '<<':
-          return left << right;
-        case '>>':
-          return left >> right;
-      }
+      return evalBinaryImmOp(expr.op, left, right);
     }
     case 'opaque':
       return undefined;
