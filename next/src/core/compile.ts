@@ -2,6 +2,7 @@ import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
 import { assembleProgram } from '../assembly/assemble-program.js';
 import { writeIntelHex } from '../outputs/hex.js';
+import type { LogicalLine } from '../source/logical-lines.js';
 import { createSourceFile } from '../source/source-file.js';
 import { scanLogicalLines } from '../source/logical-lines.js';
 import { parseLogicalLine } from '../syntax/parse-line.js';
@@ -20,14 +21,15 @@ export interface CompileNextResult {
   readonly hexText: string;
 }
 
-export function compileNext(
-  sourceText: string,
-  options: CompileNextOptions = {},
-): CompileNextResult {
-  const source = createSourceFile(options.entryName ?? '<memory>', sourceText);
+export interface ParseNextSourceItemsResult {
+  readonly diagnostics: readonly Diagnostic[];
+  readonly items: readonly SourceItem[];
+}
+
+export function parseNextSourceItems(lines: readonly LogicalLine[]): ParseNextSourceItemsResult {
   const diagnostics: Diagnostic[] = [];
   const items: SourceItem[] = [];
-  const pendingLines = [...scanLogicalLines(source)];
+  const pendingLines = [...lines];
   const { ops, opLineIndexes } = collectOps(pendingLines, diagnostics);
   let afterTopLevelEnd = false;
 
@@ -104,6 +106,16 @@ export function compileNext(
       afterTopLevelEnd = true;
     }
   }
+
+  return { diagnostics, items };
+}
+
+export function compileNext(
+  sourceText: string,
+  options: CompileNextOptions = {},
+): CompileNextResult {
+  const source = createSourceFile(options.entryName ?? '<memory>', sourceText);
+  const { diagnostics, items } = parseNextSourceItems(scanLogicalLines(source));
 
   if (diagnostics.length > 0) {
     return {
