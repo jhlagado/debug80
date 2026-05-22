@@ -694,10 +694,10 @@ Implemented Stage 16 Slice B (guardrails + package smoke integration):
   - `npm run test:package`
   - `vitest run test/public_api_surface.test.ts`
 - [x] Quality lane includes lint and source-file-size checks against root and
-  `next/src` for stage-level file-size pressure.
-- [ ] Add a fallback Next-local package-surface smoke test under `next/test`
-  when full npm pack/install smoke is environment-blocked, then mark it as
-  temporary parity coverage.
+      `next/src` for stage-level file-size pressure.
+- [x] Add a fallback Next-local package-surface smoke test under `next/test`
+      when full npm pack/install smoke is environment-blocked, then mark it as
+      temporary parity coverage.
 
 Justification:
 
