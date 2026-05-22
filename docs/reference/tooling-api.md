@@ -45,7 +45,7 @@ const analysis = analyzeProgram(loaded.loadedProgram, {
 
 const registerCare = analyzeRegisterCareForTools(loaded.loadedProgram, {
   mode: 'audit',
-  profile: 'mon3',
+  registerCareProfile: 'mon3',
 });
 ```
 
@@ -218,7 +218,7 @@ if (!loaded.loadedProgram) {
 
 const registerCare = analyzeRegisterCareForTools(loaded.loadedProgram, {
   mode: 'audit',
-  profile: 'mon3',
+  registerCareProfile: 'mon3',
 });
 
 for (const diagnostic of registerCare.candidateDiagnostics) {
