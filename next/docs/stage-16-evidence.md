@@ -12,6 +12,8 @@ Status: in progress
 - `next/test/differential/next-azm-runner.ts`
 - `next/test/differential/compare-results.ts`
 - current `src/compile.ts` and related CLI/package behavior used as oracle for this baseline
+- `next/scripts/diff-against-current.mjs`
+- `next/scripts/diff-against-current.ts`
 
 ## Proven Behavior Used
 
@@ -37,11 +39,20 @@ Status: in progress
   - normalized `stdout`/`stderr` text comparison.
 - Added `next/test/differential/fixture-corpus.test.ts` with the first corpus slice
   (`minimal.asm`, `fixup_slice.asm`).
+- Added an executable differential corpus runner:
+  - `next/scripts/diff-against-current.ts`
+  - wrapper `next/scripts/diff-against-current.mjs`
+  - `npm run next:diff-current` script entrypoint.
+- `npm run next:diff-current` now compares fixture sets via canonical current-vs-next
+  result parity and supports explicit scope via `--include`, `--fixtures-dir`, and
+  `--skip-unsupported`.
 
 `enum_and_storage.asm` is currently excluded from this slice because it depends on
 layout/enum details currently outside the proven differential boundary.
 
 ## Deferred / Out of Scope in this Slice
 
-- Differential runner portability, corpus-wide fixture expansion, and full `BIN`/diagnostic parity comparison.
-- Result canonicalization and script/format normalization across all current fixture families.
+- Corpus-wide fixture expansion, full `BIN`/diagnostic parity normalization, and fixture
+  family reconciliation remain for later Stage 16 slices.
+- Result canonicalization and source-of-truth classification across all current fixture
+  families remain open.
