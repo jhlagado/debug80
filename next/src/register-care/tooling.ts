@@ -31,7 +31,7 @@ export interface RegisterCareCandidateDiagnostic {
   carriers: RegisterCareUnit[];
   autoFixable: boolean;
   message: string;
-  codeAction: RegisterCareCodeAction;
+  codeAction?: RegisterCareCodeAction;
 }
 
 export interface AnalyzeRegisterCareForToolsOptions extends Omit<
@@ -75,8 +75,9 @@ export function codeActionForOutputCandidate(
 export function diagnosticForOutputCandidate(
   candidate: RegisterCareOutputCandidate,
 ): RegisterCareCandidateDiagnostic {
-  const codeAction = codeActionForOutputCandidate(candidate);
-  return {
+  const codeAction =
+    candidate.autoFixable === true ? codeActionForOutputCandidate(candidate) : undefined;
+  const diagnostic: RegisterCareCandidateDiagnostic = {
     kind: 'register-care-output-candidate',
     severity: 'info',
     file: candidate.file,
@@ -86,8 +87,11 @@ export function diagnosticForOutputCandidate(
     carriers: candidate.carriers,
     autoFixable: candidate.autoFixable === true,
     message: candidate.message,
-    codeAction,
   };
+  if (codeAction !== undefined) {
+    diagnostic.codeAction = codeAction;
+  }
+  return diagnostic;
 }
 
 export function analyzeRegisterCareForTools(
@@ -110,14 +114,15 @@ export function analyzeRegisterCareForTools(
   );
   const outputCandidates = result.outputCandidates ?? [];
   const candidateDiagnostics = outputCandidates.map(diagnosticForOutputCandidate);
+  const codeActions = outputCandidates
+    .filter((candidate) => candidate.autoFixable === true)
+    .map(codeActionForOutputCandidate);
 
   return {
     diagnostics: result.diagnostics,
     outputCandidates,
     candidateDiagnostics,
-    codeActions: candidateDiagnostics.map(
-      (diagnostic: RegisterCareCandidateDiagnostic) => diagnostic.codeAction,
-    ),
+    codeActions,
     ...(result.reportText !== undefined ? { reportText: result.reportText } : {}),
     ...(result.interfaceText !== undefined ? { interfaceText: result.interfaceText } : {}),
   };

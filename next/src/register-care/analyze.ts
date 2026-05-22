@@ -914,7 +914,6 @@ export function analyzeRegisterCare(
   const diagnostics: Diagnostic[] = [];
   const shouldBuildOutputCandidates =
     options.mode !== 'off' ||
-    options.emitInterface === true ||
     options.emitAnnotations === true ||
     options.fixRegisterContracts === true;
 
