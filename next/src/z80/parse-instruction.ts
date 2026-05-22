@@ -2,6 +2,8 @@ import type {
   Z80CoreMnemonic,
   Z80AluMnemonic,
   Z80Instruction,
+  Z80IndexHalfRegister,
+  Z80IndexRegister16,
   Z80JumpIndirectRegister,
   Z80Operand,
   Z80RelativeCondition,
@@ -9,6 +11,7 @@ import type {
   Z80Register8,
   Z80RegisterIndirect,
   Z80RstVector,
+  Z80StackRegister16,
 } from './instruction.js';
 import type { Expression } from '../model/expression.js';
 import { parseExpression } from '../syntax/parse-expression.js';
@@ -91,6 +94,34 @@ export function parseZ80Instruction(text: string): ParseZ80InstructionResult | u
       return { instruction: { mnemonic: 'ex', form: 'sp-hl' } };
     }
     return { error: `unsupported EX operands: ${parts.join(',')}` };
+  }
+
+  const incDec = /^(INC|DEC)(?:\s+(.*))?$/i.exec(text);
+  if (incDec) {
+    const mnemonic = (incDec[1] ?? '').toLowerCase() as 'inc' | 'dec';
+    const operandText = incDec[2] ?? '';
+    const parts = splitInstructionOperands(operandText);
+    if (operandText.trim().length === 0 || parts.length !== 1) {
+      return { error: `${mnemonic} expects one operand` };
+    }
+    const operand = parseIncDecOperand(parts[0] ?? '');
+    return operand
+      ? { instruction: { mnemonic, operand } }
+      : { error: `${mnemonic} expects r8/rr/(hl) operand` };
+  }
+
+  const stack = /^(PUSH|POP)(?:\s+(.*))?$/i.exec(text);
+  if (stack) {
+    const mnemonic = (stack[1] ?? '').toLowerCase() as 'push' | 'pop';
+    const operandText = stack[2] ?? '';
+    const parts = splitInstructionOperands(operandText);
+    if (operandText.trim().length === 0 || parts.length !== 1) {
+      return { error: `${mnemonic} expects one operand` };
+    }
+    const register = parseStackRegister(parts[0] ?? '');
+    return register
+      ? { instruction: { mnemonic, register } }
+      : { error: `${mnemonic} supports BC/DE/HL/AF/IX/IY only` };
   }
 
   const ld = /^LD\s+(.+)$/i.exec(text);
@@ -334,6 +365,48 @@ function parseRegister16Operand(
     return { kind: 'reg16', register: trimmed.toLowerCase() as Z80Register16 };
   }
   return undefined;
+}
+
+function parseIncDecOperand(
+  text: string,
+): Extract<Z80Instruction, { readonly mnemonic: 'inc' | 'dec' }>['operand'] | undefined {
+  const trimmed = text.trim();
+  if (/^\(HL\)$/i.test(trimmed)) {
+    return { kind: 'reg-indirect', register: 'hl' };
+  }
+  const register8 = parseRegister8Operand(trimmed);
+  if (register8) {
+    return register8;
+  }
+  const register16 = parseRegister16Operand(trimmed);
+  if (register16) {
+    return register16;
+  }
+  const index16 = parseIndexRegister16(trimmed);
+  if (index16) {
+    return { kind: 'reg16', register: index16 };
+  }
+  const half = parseIndexHalfRegister(trimmed);
+  return half ? { kind: 'reg-half-index', register: half } : undefined;
+}
+
+function parseIndexRegister16(text: string): Z80IndexRegister16 | undefined {
+  const trimmed = text.trim();
+  return /^(IX|IY)$/i.test(trimmed) ? (trimmed.toLowerCase() as Z80IndexRegister16) : undefined;
+}
+
+function parseIndexHalfRegister(text: string): Z80IndexHalfRegister | undefined {
+  const trimmed = text.trim();
+  return /^(IXH|IXL|IYH|IYL)$/i.test(trimmed)
+    ? (trimmed.toLowerCase() as Z80IndexHalfRegister)
+    : undefined;
+}
+
+function parseStackRegister(text: string): Z80StackRegister16 | undefined {
+  const trimmed = text.trim();
+  return /^(BC|DE|HL|AF|IX|IY)$/i.test(trimmed)
+    ? (trimmed.toLowerCase() as Z80StackRegister16)
+    : undefined;
 }
 
 function parseAbsoluteBranchTarget(text: string): Expression | undefined {
