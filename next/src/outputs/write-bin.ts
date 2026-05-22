@@ -1,13 +1,23 @@
 import type { EmittedByteMap, BinArtifact, SymbolEntry, WriteBinOptions } from './types.js';
 
+const BIN_FROM_SYMBOL_NAME = '__azm_binfrom';
+const BIN_TO_SYMBOL_NAME = '__azm_binto';
+
 export function writeBin(
   map: EmittedByteMap,
-  _symbols: readonly SymbolEntry[],
+  symbols: readonly SymbolEntry[],
   opts?: WriteBinOptions,
 ): BinArtifact {
   const { start: writtenStart, end: writtenEnd } = getWrittenRange(map);
-  const start = opts?.startAddress ?? opts?.binFrom ?? writtenStart;
-  const end = writtenEnd;
+  const optionStart = opts?.binFrom ?? opts?.startAddress;
+  const symbolStart = symbols.find(
+    (symbol) => symbol.kind === 'constant' && symbol.name === BIN_FROM_SYMBOL_NAME,
+  );
+  const symbolEnd = symbols.find(
+    (symbol) => symbol.kind === 'constant' && symbol.name === BIN_TO_SYMBOL_NAME,
+  );
+  const start = optionStart ?? (symbolStart?.kind === 'constant' ? symbolStart.value : writtenStart);
+  const end = symbolEnd?.kind === 'constant' ? symbolEnd.value + 1 : writtenEnd;
   const out = new Uint8Array(Math.max(0, end - start));
 
   for (let index = 0; index < out.length; index += 1) {
