@@ -6,6 +6,7 @@ import { createSourceFile } from '../source/source-file.js';
 import { scanLogicalLines } from '../source/logical-lines.js';
 import { parseLogicalLine } from '../syntax/parse-line.js';
 import { parseTypeExpr } from '../syntax/parse-expression.js';
+import { collectOps, expandOpInvocation, parseOpInvocation } from './op-expansion.js';
 import type { LayoutField } from '../model/source-item.js';
 
 export interface CompileNextOptions {
@@ -27,7 +28,7 @@ export function compileNext(
   const diagnostics: Diagnostic[] = [];
   const items: SourceItem[] = [];
   const pendingLines = [...scanLogicalLines(source)];
-  const { ops, opLineIndexes } = collectZeroOperandOps(pendingLines, diagnostics);
+  const { ops, opLineIndexes } = collectOps(pendingLines, diagnostics);
   let afterTopLevelEnd = false;
 
   for (let index = 0; index < pendingLines.length; index += 1) {
@@ -84,11 +85,14 @@ export function compileNext(
       continue;
     }
 
-    const opCall = /^([A-Za-z_][A-Za-z0-9_]*)\s*$/.exec(stripComment(line.text).trim());
+    const opCall = parseOpInvocation(line);
     if (opCall && !isTopLevelEnd(line.text)) {
-      const body = ops.get(opCall[1] ?? '');
-      if (body) {
-        items.push(...body);
+      const overloads = ops.get(opCall.name);
+      if (overloads) {
+        const expanded = expandOpInvocation(overloads, opCall.operands, line, diagnostics);
+        if (expanded) {
+          items.push(...expanded);
+        }
         continue;
       }
     }
@@ -118,60 +122,6 @@ export function compileNext(
     bytes: assembly.bytes,
     hexText: writeIntelHex(assembly.origin, assembly.bytes),
   };
-}
-
-function collectZeroOperandOps(
-  lines: readonly { readonly sourceName: string; readonly line: number; readonly text: string }[],
-  diagnostics: Diagnostic[],
-): {
-  readonly ops: ReadonlyMap<string, readonly SourceItem[]>;
-  readonly opLineIndexes: ReadonlySet<number>;
-} {
-  const ops = new Map<string, readonly SourceItem[]>();
-  const opLineIndexes = new Set<number>();
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]!;
-    if (isTopLevelEnd(line.text)) {
-      break;
-    }
-    const opHeader = /^op\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*$/i.exec(
-      stripComment(line.text).trim(),
-    );
-    if (!opHeader) {
-      continue;
-    }
-
-    const name = opHeader[1] ?? '';
-    const body: SourceItem[] = [];
-    let terminated = false;
-    opLineIndexes.add(index);
-    if (ops.has(name)) {
-      diagnostics.push(parseDiagnostic(line, `duplicate op name: ${name}`));
-    }
-
-    for (index += 1; index < lines.length; index += 1) {
-      opLineIndexes.add(index);
-      const bodyLine = lines[index]!;
-      const bodyText = stripComment(bodyLine.text).trim();
-      if (/^end\s*$/i.test(bodyText)) {
-        terminated = true;
-        break;
-      }
-      const result = parseLogicalLine(bodyLine);
-      diagnostics.push(...result.diagnostics);
-      body.push(...result.items);
-    }
-
-    if (!terminated) {
-      diagnostics.push(parseDiagnostic(line, `op ${name} missing end`));
-    }
-    if (!ops.has(name)) {
-      ops.set(name, body);
-    }
-  }
-
-  return { ops, opLineIndexes };
 }
 
 function isTopLevelEnd(text: string): boolean {

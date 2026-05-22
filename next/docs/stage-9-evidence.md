@@ -1,6 +1,7 @@
 # Stage 9 Evidence: Visible Op Expansion
 
-Status: active evidence pack; first visible-op expansion slice in progress.
+Status: active evidence pack; zero-operand and first parameterized visible-op
+expansion slices implemented.
 
 Stage 9 starts the retained AZM `op` surface in AZM Next. Current AZM remains
 the source of truth. Ops are structured AST-level assembly idioms, not text
@@ -82,9 +83,9 @@ Diagnostics:
 - Invalid op expansions include call-site context, expanded instruction text,
   op definition context, and expansion-chain context.
 
-## First AZM Next Slice Boundary
+## Implemented AZM Next Boundary
 
-This first slice implements only the evidence-backed smoke surface:
+The first zero-operand slice implements the evidence-backed smoke surface:
 
 - Parse zero-operand declarations: `op Name()` ... `end`.
 - Op names are case-sensitive programmer-defined names.
@@ -92,13 +93,29 @@ This first slice implements only the evidence-backed smoke surface:
 - Keep declarations non-emitting.
 - Feed expanded body items into the existing canonical assembly path.
 
+The first parameterized slice implements the evidence-backed matching surface
+needed to prove structured op calls without importing the full inherited
+lowering stack:
+
+- Parse parameter declarations using `name matcher` pairs.
+- Match `reg8`, `imm8`, and fixed-token matchers.
+- Preserve case-sensitive op names and parameter names.
+- Select the best overload when a fixed-token matcher is strictly more specific
+  than a register-class matcher for the same operand.
+- Report arity mismatch, no matching overload, and ambiguous overload
+  diagnostics at the call site.
+- Substitute bound operands into instruction operands as structured operands for
+  the implemented `LD` and ALU instruction forms.
+
 Deferred Stage 9 behavior:
 
-- Parameter parsing and matcher validation.
-- Overload selection.
-- Operand substitution.
+- Additional matchers beyond `reg8`, `imm8`, and fixed tokens, including
+  `reg16`, `idx16`, `cc`, effective-address, memory, and port forms.
+- Full current-AZM overload ranking beyond the implemented fixed-token versus
+  register-class case.
+- Operand substitution for every retained Z80 instruction form.
 - Op-local label renaming.
 - Nested op expansion and cycle detection.
 - Full current-AZM op diagnostics for arity, no match, ambiguity, invalid
-  expansion, and expansion chains.
+  expansion, and expansion chains beyond the first call-site diagnostics.
 - Register-care integration over the expanded stream.
