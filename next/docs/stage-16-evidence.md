@@ -51,7 +51,7 @@ Status: in progress
   result parity and supports explicit scope via `--include`, `--fixtures-dir`, and
   `--skip-unsupported`.
 
-`enum_and_storage.asm` is currently excluded from this slice because it depends on
+`alias_and_storage.asm` is currently excluded from this slice because it depends on
 layout/enum details currently outside the proven differential boundary.
 
 ## Deferred / Out of Scope in this Slice
