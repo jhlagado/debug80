@@ -69,8 +69,30 @@ Status: in progress
   result parity and supports explicit scope via `--include`, `--fixtures-dir`, and
   `--skip-unsupported`.
 
+- Added Stage 16 guardrail slice B:
+  - Split `next:guardrails` into explicit constituent lanes:
+    - `next:guardrails:core` (existing next:check + differential sweep),
+    - `next:guardrails:package` (package smoke + public API surface test),
+    - `next:guardrails:quality` (lint + source-file-size checks).
+  - Updated `next:guardrails` to run the three lanes in sequence for a full
+    stage-level verification sweep.
+
 `alias_and_storage.asm` is currently excluded from this slice because it depends on
 layout/enum details currently outside the proven differential boundary.
+
+## Proposed Slice B: Guardrails + Package Smoke Integration
+
+Status: implemented.
+
+## Stage B completion notes
+
+- `next:guardrails:package` now runs `npm run test:package` after a fresh compile
+  (`npm run build` via `test:package`), so package smoke never reuses stale `dist`
+  artifacts.
+- This closes the review-identified risk that stale artifacts could mask package
+  export/API regressions.
+- Fallback Next-local package-surface smoke remains a future hardening item when
+  environment constraints block `npm pack/install`.
 
 ## Deferred / Out of Scope in this Slice
 
