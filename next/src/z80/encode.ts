@@ -2,6 +2,8 @@ import type {
   EncodedZ80Instruction,
   Z80AluMnemonic,
   Z80Condition,
+  Z80IndexHalfRegister,
+  Z80IndexRegister16,
   Z80Instruction,
   Z80JumpIndirectRegister,
   Z80Operand,
@@ -10,6 +12,7 @@ import type {
   Z80Register8,
   Z80RegisterIndirect,
   Z80RstVector,
+  Z80StackRegister16,
 } from './instruction.js';
 
 export function encodeZ80Instruction(instruction: Z80Instruction): EncodedZ80Instruction {
@@ -48,6 +51,12 @@ export function encodeZ80Instruction(instruction: Z80Instruction): EncodedZ80Ins
         size: 1,
         fragments: [{ kind: 'bytes', bytes: [rstOpcode(instruction.vector)] }],
       };
+    case 'inc':
+    case 'dec':
+      return encodeIncDec(instruction.mnemonic, instruction.operand);
+    case 'push':
+    case 'pop':
+      return encodeStack(instruction.mnemonic, instruction.register);
     case 'ld-a-imm':
       return {
         size: 2,
@@ -164,6 +173,107 @@ function rstOpcode(vector: Z80RstVector): number {
       return 0xff;
     default:
       throw new Error(`invalid RST vector: ${vector}`);
+  }
+}
+
+function encodeIncDec(
+  mnemonic: 'inc' | 'dec',
+  operand: Extract<Z80Instruction, { readonly mnemonic: 'inc' | 'dec' }>['operand'],
+): EncodedZ80Instruction {
+  if (operand.kind === 'reg8') {
+    return {
+      size: 1,
+      fragments: [
+        {
+          kind: 'bytes',
+          bytes: [incDecBase(mnemonic).reg8 + register8Code(operand.register) * 8],
+        },
+      ],
+    };
+  }
+
+  if (operand.kind === 'reg16') {
+    const bytes = incDecRegister16Opcode(mnemonic, operand.register);
+    return { size: bytes.length, fragments: [{ kind: 'bytes', bytes }] };
+  }
+
+  if (operand.kind === 'reg-half-index') {
+    const bytes = incDecHalfIndexOpcode(mnemonic, operand.register);
+    return { size: bytes.length, fragments: [{ kind: 'bytes', bytes }] };
+  }
+
+  return {
+    size: 1,
+    fragments: [{ kind: 'bytes', bytes: [incDecBase(mnemonic).memHl] }],
+  };
+}
+
+function incDecBase(mnemonic: 'inc' | 'dec'): { readonly reg8: number; readonly memHl: number } {
+  return mnemonic === 'inc' ? { reg8: 0x04, memHl: 0x34 } : { reg8: 0x05, memHl: 0x35 };
+}
+
+function incDecRegister16Opcode(
+  mnemonic: 'inc' | 'dec',
+  register: Z80Register16 | Z80IndexRegister16,
+): readonly number[] {
+  const base = mnemonic === 'inc' ? 0x03 : 0x0b;
+  switch (register) {
+    case 'bc':
+      return [base];
+    case 'de':
+      return [base + 0x10];
+    case 'hl':
+      return [base + 0x20];
+    case 'sp':
+      return [base + 0x30];
+    case 'ix':
+      return [0xdd, base + 0x20];
+    case 'iy':
+      return [0xfd, base + 0x20];
+  }
+}
+
+function incDecHalfIndexOpcode(
+  mnemonic: 'inc' | 'dec',
+  register: Z80IndexHalfRegister,
+): readonly number[] {
+  const lowOpcode = mnemonic === 'inc' ? 0x2c : 0x2d;
+  const highOpcode = mnemonic === 'inc' ? 0x24 : 0x25;
+  switch (register) {
+    case 'ixh':
+      return [0xdd, highOpcode];
+    case 'ixl':
+      return [0xdd, lowOpcode];
+    case 'iyh':
+      return [0xfd, highOpcode];
+    case 'iyl':
+      return [0xfd, lowOpcode];
+  }
+}
+
+function encodeStack(
+  mnemonic: 'push' | 'pop',
+  register: Z80StackRegister16,
+): EncodedZ80Instruction {
+  const bytes = stackOpcode(mnemonic, register);
+  return { size: bytes.length, fragments: [{ kind: 'bytes', bytes }] };
+}
+
+function stackOpcode(mnemonic: 'push' | 'pop', register: Z80StackRegister16): readonly number[] {
+  const base = mnemonic === 'push' ? 0xc5 : 0xc1;
+  switch (register) {
+    case 'bc':
+      return [base];
+    case 'de':
+      return [base + 0x10];
+    case 'hl':
+      return [base + 0x20];
+    case 'af':
+      return [base + 0x30];
+    case 'ix':
+      return [0xdd, base + 0x20];
+    case 'iy':
+      return [0xfd, base + 0x20];
   }
 }
 

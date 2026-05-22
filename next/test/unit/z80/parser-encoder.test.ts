@@ -464,4 +464,79 @@ describe('Stage 5 z80 parser and encoder foundation', () => {
       error: 'call does not support indirect targets; use imm16',
     });
   });
+
+  it('parses and emits the INC/DEC/PUSH/POP core-ops evidence slice', () => {
+    const cases = [
+      ['inc b', [0x04]],
+      ['inc c', [0x0c]],
+      ['inc d', [0x14]],
+      ['inc e', [0x1c]],
+      ['inc h', [0x24]],
+      ['inc l', [0x2c]],
+      ['inc a', [0x3c]],
+      ['inc bc', [0x03]],
+      ['inc de', [0x13]],
+      ['inc hl', [0x23]],
+      ['inc sp', [0x33]],
+      ['inc ix', [0xdd, 0x23]],
+      ['inc iy', [0xfd, 0x23]],
+      ['inc (hl)', [0x34]],
+      ['inc ixh', [0xdd, 0x24]],
+      ['inc ixl', [0xdd, 0x2c]],
+      ['inc iyh', [0xfd, 0x24]],
+      ['inc iyl', [0xfd, 0x2c]],
+      ['dec b', [0x05]],
+      ['dec c', [0x0d]],
+      ['dec d', [0x15]],
+      ['dec e', [0x1d]],
+      ['dec h', [0x25]],
+      ['dec l', [0x2d]],
+      ['dec a', [0x3d]],
+      ['dec bc', [0x0b]],
+      ['dec de', [0x1b]],
+      ['dec hl', [0x2b]],
+      ['dec sp', [0x3b]],
+      ['dec ix', [0xdd, 0x2b]],
+      ['dec iy', [0xfd, 0x2b]],
+      ['dec (hl)', [0x35]],
+      ['dec ixh', [0xdd, 0x25]],
+      ['dec ixl', [0xdd, 0x2d]],
+      ['dec iyh', [0xfd, 0x25]],
+      ['dec iyl', [0xfd, 0x2d]],
+      ['push bc', [0xc5]],
+      ['push de', [0xd5]],
+      ['push hl', [0xe5]],
+      ['push af', [0xf5]],
+      ['push ix', [0xdd, 0xe5]],
+      ['push iy', [0xfd, 0xe5]],
+      ['pop bc', [0xc1]],
+      ['pop de', [0xd1]],
+      ['pop hl', [0xe1]],
+      ['pop af', [0xf1]],
+      ['pop ix', [0xdd, 0xe1]],
+      ['pop iy', [0xfd, 0xe1]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('inc a,b')).toEqual({ error: 'inc expects one operand' });
+    expect(parseZ80Instruction('dec')).toEqual({ error: 'dec expects one operand' });
+    expect(parseZ80Instruction('inc 1')).toEqual({ error: 'inc expects r8/rr/(hl) operand' });
+    expect(parseZ80Instruction('dec (bc)')).toEqual({ error: 'dec expects r8/rr/(hl) operand' });
+    expect(parseZ80Instruction('push')).toEqual({ error: 'push expects one operand' });
+    expect(parseZ80Instruction('pop a,b')).toEqual({ error: 'pop expects one operand' });
+    expect(parseZ80Instruction('push a')).toEqual({
+      error: 'push supports BC/DE/HL/AF/IX/IY only',
+    });
+    expect(parseZ80Instruction('pop ixh')).toEqual({
+      error: 'pop supports BC/DE/HL/AF/IX/IY only',
+    });
+  });
 });

@@ -16,6 +16,9 @@ export type Z80CoreMnemonic =
 export type Z80HlAluMnemonic = 'add' | 'adc' | 'sbc';
 export type Z80Register8 = 'a' | 'b' | 'c' | 'd' | 'e' | 'h' | 'l';
 export type Z80Register16 = 'bc' | 'de' | 'hl' | 'sp';
+export type Z80IndexRegister16 = 'ix' | 'iy';
+export type Z80IndexHalfRegister = 'ixh' | 'ixl' | 'iyh' | 'iyl';
+export type Z80StackRegister16 = 'bc' | 'de' | 'hl' | 'af' | 'ix' | 'iy';
 export type Z80RegisterIndirect = 'bc' | 'de' | 'hl';
 export type Z80JumpIndirectRegister = 'hl' | 'ix' | 'iy';
 export type Z80RstVector = 0 | 8 | 16 | 24 | 32 | 40 | 48 | 56;
@@ -34,6 +37,15 @@ export type Z80Instruction =
   | { readonly mnemonic: 'ex'; readonly form: 'de-hl' | 'sp-hl' }
   | { readonly mnemonic: 'im'; readonly mode: 0 | 1 | 2 }
   | { readonly mnemonic: 'rst'; readonly vector: Z80RstVector }
+  | {
+      readonly mnemonic: 'inc' | 'dec';
+      readonly operand:
+        | { readonly kind: 'reg8'; readonly register: Z80Register8 }
+        | { readonly kind: 'reg16'; readonly register: Z80Register16 | Z80IndexRegister16 }
+        | { readonly kind: 'reg-half-index'; readonly register: Z80IndexHalfRegister }
+        | { readonly kind: 'reg-indirect'; readonly register: 'hl' };
+    }
+  | { readonly mnemonic: 'push' | 'pop'; readonly register: Z80StackRegister16 }
   | { readonly mnemonic: 'ld-a-imm'; readonly expression: Expression }
   | { readonly mnemonic: 'ld'; readonly target: Z80Operand; readonly source: Z80Operand }
   | { readonly mnemonic: Z80AluMnemonic; readonly source: Z80Operand }
