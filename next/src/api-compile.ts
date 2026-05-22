@@ -180,6 +180,7 @@ export async function compile(
           options.emitRegisterAnnotations === true || options.fixRegisterContracts === true,
         fixRegisterContracts: options.fixRegisterContracts === true,
         acceptedOutputCandidates,
+        ...(options.registerCareProfile !== undefined ? { registerCareProfile: options.registerCareProfile } : {}),
         ...(interfaceContracts.length > 0 ? { interfaceContracts } : {}),
       } satisfies AnalyzeRegisterCareOptions,
     );

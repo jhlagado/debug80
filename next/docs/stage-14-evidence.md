@@ -83,11 +83,27 @@ Status: in progress
   - warn-mode conflict exit code and warning text,
   - error-mode conflict exit code and error text,
   - strict unknown-boundary warning text.
+- Added mon3 RST profile plumbing in `next/src/register-care/profiles.ts`,
+  `next/src/register-care/boundaryHints.ts`, and `next/src/register-care/analyze.ts`:
+  - `rst $10` generic and service-aware boundaries are resolved via profile summaries.
+  - immediate `ld c, <symbol>` before `rst $10` is treated as a service hint and can
+    resolve to `RST_$10:API_SCANKEYS`.
+  - profile boundaries participate in liveness, conflicts, and output-candidate detection.
+- Updated register-care reporting in `next/src/register-care/report.ts`:
+  - report now includes `Profile: <name>`.
+  - report now includes `Output candidates:` with call-site/line detail.
+- Updated API plumbing in `next/src/api-compile.ts` to pass `registerCareProfile`.
+- Added register-care report-summary evidence in next integration coverage:
+  - introduced `next/test/integration/stage-14-register-care-summary.test.ts`
+  - verified report artifacts enumerate called routines with inferred `reads`, `writes`,
+    and `preserves` fields in successful compile flows
+  - verified external `.asmi` interface contracts are merged into routine summaries in
+    the emitted report text.
 
 ## Deferred / Out of Scope in this Slice
 
-- full output-candidate auto-fix generation and suggestion-edit behavior remains deferred.
+- full output-candidate auto-fix generation and source rewrite remains deferred.
 - control-flow-sensitive and full-register-effect precision remains intentionally bounded for this slice:
-  - conflict checking is currently limited to direct `call` and `call-cc` boundaries where callee target resolves to a symbol.
+  - liveness remains linear/bounded and does not model multi-path control-flow or value relations.
   - instruction effects are conservative but incomplete for a large portion of the Z80 catalog; unsupported mnemonics may still miss conflicts until later stages.
-  - `registerCareProfile` is accepted/preserved but intentionally not interpreted in this stage.
+  - `registerCareProfile` is interpreted for RST boundary names only at this stage.
