@@ -29,10 +29,12 @@ export function compileNext(
 
   for (let index = 0; index < pendingLines.length; index += 1) {
     const line = pendingLines[index]!;
-    const typeHeader = /^\.type\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i.exec(
+    const layoutHeader = /^\.(type|union)\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i.exec(
       stripComment(line.text).trim(),
     );
-    if (typeHeader) {
+    if (layoutHeader) {
+      const layoutKind = (layoutHeader[1] ?? '').toLowerCase() === 'union' ? 'union' : 'record';
+      const endDirective = layoutKind === 'union' ? '.endunion' : '.endtype';
       const fields: LayoutField[] = [];
       let terminated = false;
       for (index += 1; index < pendingLines.length; index += 1) {
@@ -41,7 +43,7 @@ export function compileNext(
         if (fieldText.length === 0) {
           continue;
         }
-        if (/^\.endtype\s*$/i.test(fieldText)) {
+        if (fieldText.toLowerCase() === endDirective) {
           terminated = true;
           break;
         }
@@ -53,11 +55,17 @@ export function compileNext(
         fields.push(field);
       }
       if (!terminated) {
-        diagnostics.push(parseDiagnostic(line, `.type ${typeHeader[1] ?? ''} missing .endtype`));
+        diagnostics.push(
+          parseDiagnostic(
+            line,
+            `.${layoutHeader[1] ?? ''} ${layoutHeader[2] ?? ''} missing ${endDirective}`,
+          ),
+        );
       }
       items.push({
         kind: 'type',
-        name: typeHeader[1] ?? '',
+        name: layoutHeader[2] ?? '',
+        layoutKind,
         fields,
         span: { sourceName: line.sourceName, line: line.line, column: firstColumn(line.text) },
       });
@@ -108,8 +116,29 @@ function parseLayoutField(text: string): LayoutField | undefined {
         return undefined;
       }
       const size = /^[0-9]+$/.test(operand) ? Number.parseInt(operand, 10) : undefined;
-      return size !== undefined && size > 0 ? { name, size } : undefined;
+      if (size !== undefined) {
+        return size > 0 ? { name, size } : undefined;
+      }
+      const scalar = scalarFieldSize(operand);
+      if (scalar !== undefined) {
+        return { name, size: scalar };
+      }
+      return /^[A-Za-z_][A-Za-z0-9_]*$/.test(operand)
+        ? { name, size: 0, layoutName: operand }
+        : undefined;
     }
+  }
+}
+
+function scalarFieldSize(typeName: string): number | undefined {
+  switch (typeName.toLowerCase()) {
+    case 'byte':
+      return 1;
+    case 'word':
+    case 'addr':
+      return 2;
+    default:
+      return undefined;
   }
 }
 
