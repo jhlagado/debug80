@@ -9,6 +9,7 @@ Status: in progress
 - `next/src/api-compile.ts` (source expansion + asm80 emission integration)
 - `next/src/cli.ts` (artifact output pathing for `.z80`)
 - current `AZM` lowered-source fixture behavior used as baseline
+- `next/test/integration/minimal-assembler.test.ts` (layout casts + op-local-label fixtures)
 
 ## Proven Current AZM Behavior Used
 
@@ -37,3 +38,17 @@ Status: in progress
 - Canonical instruction-level lowering transformations and normalization passes.
 - `--asm80` output parity assertions against current assembler golden fixtures.
 - Any lowered-text rewriting beyond expanded source passthrough.
+
+## Additional parity items closed in this slice
+
+- Layout casts are proven compatible for constant folding and runtime-rejected paths:
+  - `next/test/integration/minimal-assembler.test.ts`
+    - `folds Stage 7 layout casts to constant instruction addresses`
+    - `folds Stage 7 layout casts through array fields`
+    - `uses Stage 7 layout terms inside larger constant expressions`
+    - `rejects Stage 7 layout casts without an explicit path`
+    - `parses quoted byte constants inside Stage 7 layout-cast indexes`
+    - `reports Stage 8 runtime register indexes in layout casts clearly`
+    - `reports Stage 8 layout declaration diagnostics at declaration time`
+- Op expansion local labels are proven compatible:
+  - `next/test/integration/minimal-assembler.test.ts` (`renames Stage 9 op-local labels per invocation`)
