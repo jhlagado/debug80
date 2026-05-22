@@ -1,14 +1,14 @@
 # Stage 7 Evidence: Enums and Layout Constants
 
-Status: active evidence pack; enum constants implemented, first layout-size
-slice in progress.
+Status: active evidence pack; enum constants and the first layout-size slice
+implemented; union and named-field layout slice in progress.
 
 Stage 7 adds retained AZM compile-time metadata without adding runtime typed
 behavior. Current AZM remains the source of truth. The first slice implemented
-qualified enum members as constants. The next slice implements a narrow layout
-constant boundary: record `.type` declarations with scalar/raw fields,
-`sizeof(byte/word/addr)`, `sizeof(NamedRecord)`, and
-`offset(NamedRecord, field)`.
+qualified enum members as constants. The first layout slice implemented record
+`.type` declarations with scalar/raw fields, `sizeof(byte/word/addr)`,
+`sizeof(NamedRecord)`, and `offset(NamedRecord, field)`. The next slice extends
+that boundary to evidence-backed unions and named fields.
 
 ## Evidence Read
 
@@ -77,7 +77,7 @@ Layout declarations are compile-time byte-size and offset metadata:
 
 ## Layout-Size Slice Boundary
 
-The first layout slice implements only this evidence-backed subset:
+The first layout slice implements this evidence-backed subset:
 
 - `.type Name` / `.endtype` record declarations.
 - `.byte`, `.word`, and `.addr` field shorthands inside `.type` blocks.
@@ -90,13 +90,32 @@ The first layout slice implements only this evidence-backed subset:
 - Layout constants can be used in `.equ`, instruction immediates, `.db`,
   `.dw`, and existing expression contexts.
 
+## Union and Named-Field Slice Boundary
+
+This slice implements the next evidence-backed subset:
+
+- `.union Name` / `.endunion` layout declarations.
+- `.union` blocks do not emit bytes and do not change the current assembly
+  address.
+- Union fields all start at offset zero.
+- `sizeof(NamedUnion)` is the largest member size; an empty union is zero
+  bytes in current AZM semantics.
+- `.field byte`, `.field word`, and `.field addr` are accepted scalar field
+  spellings inside `.type` and `.union` blocks.
+- `.field NamedType` is accepted inside `.type` and `.union` blocks.
+- `sizeof(NamedRecord)` includes named-field sizes.
+- `sizeof(NamedUnion)` includes named-field sizes when selecting the largest
+  member.
+- `offset(Type, field.subfield)` follows named fields through record and union
+  layouts. Union member offsets remain zero, while nested offsets inside the
+  selected member are still counted.
+
 Deferred Stage 7 layout behavior:
 
-- `.union` and `.endunion`.
-- `.field NamedType`, scalar field spellings such as `.field word`, and array
-  type expressions such as `Sprite[16]`.
+- Array type expressions such as `Sprite[16]`.
 - Nested offset paths, array index paths, and direct array-type offsets such as
-  `offset(Sprite[16], [2].flags)`.
+  `offset(Sprite[16], [2].flags)`. Direct dot paths through named layout fields
+  are implemented by the union and named-field slice.
 - `.ds TypeExpr`.
 - Layout casts.
 - Full current-AZM diagnostic parity for malformed layout declarations.

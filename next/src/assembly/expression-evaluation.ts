@@ -11,6 +11,7 @@ export interface EquateRecord {
 }
 
 export interface LayoutRecord {
+  readonly kind: 'record' | 'union';
   readonly fields: readonly LayoutField[];
 }
 
@@ -114,12 +115,17 @@ function evaluateSizeof(
     return scalar;
   }
 
-  const layout = layouts?.get(typeName);
+  if (!layouts) {
+    diagnostics.push(diagnostic(span, `unknown type: ${typeName}`));
+    return undefined;
+  }
+
+  const layout = layouts.get(typeName);
   if (!layout) {
     diagnostics.push(diagnostic(span, `unknown type: ${typeName}`));
     return undefined;
   }
-  return layout.fields.reduce((sum, field) => sum + field.size, 0);
+  return layoutSize(typeName, layout, layouts, span, diagnostics, new Set([typeName]));
 }
 
 function evaluateOffset(
@@ -129,20 +135,136 @@ function evaluateOffset(
   span: SourceSpan,
   diagnostics: Diagnostic[],
 ): number | undefined {
-  const layout = layouts?.get(typeName);
+  if (!layouts) {
+    diagnostics.push(diagnostic(span, `unknown type: ${typeName}`));
+    return undefined;
+  }
+
+  const layout = layouts.get(typeName);
   if (!layout) {
     diagnostics.push(diagnostic(span, `unknown type: ${typeName}`));
     return undefined;
   }
 
-  let offset = 0;
-  for (const field of layout.fields) {
-    if (field.name === fieldName) {
-      return offset;
-    }
-    offset += field.size;
+  const diagnosticCount = diagnostics.length;
+  const offset = offsetPath(typeName, layout, fieldName.split('.'), layouts, span, diagnostics);
+  if (offset !== undefined) {
+    return offset;
   }
-  diagnostics.push(diagnostic(span, `unknown field "${fieldName}" in type ${typeName}`));
+  if (diagnostics.length === diagnosticCount) {
+    diagnostics.push(diagnostic(span, `unknown field "${fieldName}" in type ${typeName}`));
+  }
+  return undefined;
+}
+
+function layoutSize(
+  typeName: string,
+  layout: LayoutRecord,
+  layouts: ReadonlyMap<string, LayoutRecord>,
+  span: SourceSpan,
+  diagnostics: Diagnostic[],
+  visiting: Set<string>,
+): number | undefined {
+  const fieldSizes: number[] = [];
+  for (const field of layout.fields) {
+    const size = fieldSize(field, layouts, span, diagnostics, visiting);
+    if (size === undefined) {
+      return undefined;
+    }
+    fieldSizes.push(size);
+  }
+
+  return layout.kind === 'union'
+    ? fieldSizes.reduce((largest, size) => Math.max(largest, size), 0)
+    : fieldSizes.reduce((sum, size) => sum + size, 0);
+}
+
+function fieldSize(
+  field: LayoutField,
+  layouts: ReadonlyMap<string, LayoutRecord>,
+  span: SourceSpan,
+  diagnostics: Diagnostic[],
+  visiting: Set<string>,
+): number | undefined {
+  if (field.layoutName === undefined) {
+    return field.size;
+  }
+
+  if (visiting.has(field.layoutName)) {
+    diagnostics.push(diagnostic(span, `recursive type: ${field.layoutName}`));
+    return undefined;
+  }
+
+  const layout = layouts.get(field.layoutName);
+  if (!layout) {
+    diagnostics.push(diagnostic(span, `unknown type: ${field.layoutName}`));
+    return undefined;
+  }
+
+  return layoutSize(
+    field.layoutName,
+    layout,
+    layouts,
+    span,
+    diagnostics,
+    new Set([...visiting, field.layoutName]),
+  );
+}
+
+function offsetPath(
+  typeName: string,
+  layout: LayoutRecord,
+  parts: readonly string[],
+  layouts: ReadonlyMap<string, LayoutRecord>,
+  span: SourceSpan,
+  diagnostics: Diagnostic[],
+): number | undefined {
+  const [head, ...tail] = parts;
+  if (head === undefined || head.length === 0) {
+    return undefined;
+  }
+
+  let currentOffset = 0;
+  for (const field of layout.fields) {
+    const fieldOffset = layout.kind === 'union' ? 0 : currentOffset;
+    if (field.name === head) {
+      if (field.layoutName !== undefined) {
+        const size = fieldSize(field, layouts, span, diagnostics, new Set([typeName]));
+        if (size === undefined) {
+          return undefined;
+        }
+      }
+
+      if (tail.length === 0) {
+        return fieldOffset;
+      }
+
+      if (field.layoutName === undefined) {
+        return undefined;
+      }
+      const nestedLayout = layouts.get(field.layoutName);
+      if (!nestedLayout) {
+        diagnostics.push(diagnostic(span, `unknown type: ${field.layoutName}`));
+        return undefined;
+      }
+      const nestedOffset = offsetPath(
+        field.layoutName,
+        nestedLayout,
+        tail,
+        layouts,
+        span,
+        diagnostics,
+      );
+      return nestedOffset === undefined ? undefined : fieldOffset + nestedOffset;
+    }
+
+    const size = fieldSize(field, layouts, span, diagnostics, new Set([typeName]));
+    if (size === undefined) {
+      return undefined;
+    }
+    currentOffset += size;
+  }
+
   return undefined;
 }
 
