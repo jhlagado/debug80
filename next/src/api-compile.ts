@@ -15,6 +15,9 @@ import type {
 } from './outputs/types.js';
 import type { Diagnostic } from './model/diagnostic.js';
 import type { SourceItem } from './model/source-item.js';
+import { parseAcceptedOutputCandidates } from './register-care/accept-output.js';
+import { parseInterfaceContracts } from './register-care/smartComments.js';
+import type { RegisterCareMode } from './register-care/types.js';
 
 export { writeHex, defaultFormatWriters };
 export type { AddressRange, Artifact, EmittedByteMap, FormatWriters };
@@ -38,6 +41,14 @@ export interface CompileNextFunctionOptions {
   readonly emitD8m?: boolean;
   readonly emitListing?: boolean;
   readonly emitAsm80?: boolean;
+  readonly registerCare?: RegisterCareMode;
+  readonly emitRegisterReport?: boolean;
+  readonly emitRegisterInterface?: boolean;
+  readonly emitRegisterAnnotations?: boolean;
+  readonly fixRegisterContracts?: boolean;
+  readonly acceptRegisterOutputCandidates?: string[];
+  readonly registerCareProfile?: 'mon3';
+  readonly registerCareInterfaces?: string[];
 }
 
 export interface CompileNextResult {
@@ -72,6 +83,40 @@ export async function compile(
   diagnostics.push(...analysis.diagnostics);
   if (hasErrors(diagnostics)) {
     return { diagnostics, artifacts: [] };
+  }
+
+  const registerCareMode = options.registerCare ?? 'off';
+  const shouldAnalyzeRegisterCare =
+    registerCareMode !== 'off' ||
+    options.emitRegisterReport === true ||
+    options.emitRegisterInterface === true ||
+    options.emitRegisterAnnotations === true ||
+    options.fixRegisterContracts === true ||
+    (options.acceptRegisterOutputCandidates?.length ?? 0) > 0 ||
+    (options.registerCareInterfaces?.length ?? 0) > 0;
+
+  if (shouldAnalyzeRegisterCare) {
+    // Validate interface references and accepted output markers now; full analysis is deferred.
+    parseAcceptedOutputCandidates(options.acceptRegisterOutputCandidates ?? []);
+
+    for (const rawInterface of options.registerCareInterfaces ?? []) {
+      const contractPath = normalize(rawInterface);
+      if (contractPath.slice(-5).toLowerCase() !== '.asmi') {
+        diagnostics.push({
+          severity: 'error',
+          code: 'AZMN_REGISTER_CARE',
+          message: 'Register-care interface files must use the .asmi extension',
+          sourceName: contractPath,
+        });
+        continue;
+      }
+      const interfaceText = await readFile(contractPath, 'utf8');
+      parseInterfaceContracts(interfaceText, contractPath);
+    }
+
+    if (hasErrors(diagnostics)) {
+      return { diagnostics, artifacts: [] };
+    }
   }
 
   const program = loaded.loadedProgram.program.files[0]?.items ?? [];

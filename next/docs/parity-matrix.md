@@ -42,8 +42,8 @@ Legend:
 | Visible `op` declarations | partial     | Op expansion tests and Stage 9 evidence                              |
 | Op overload matching      | partial     | Op matcher tests and Stage 9 evidence                                |
 | Op expansion local labels | not started | Expansion and register-care tests                                    |
-| Register-care contracts   | not started | Register-care audit tests                                            |
-| Register-care summaries   | not started | Register-care report tests                                           |
+| Register-care contracts   | partial      | CLI/API parse and `.asmi` interface validation |
+| Register-care summaries   | not started | Register-care report tests (deferred to Stage 14 follow-up) |
 | Lowered `.z80` output     | not started | Current lowered output fixtures                                      |
 | BIN output                | compatible  | Output writer tests, Stage 10 evidence, and Stage 12 API tests         |
 | HEX output                | compatible  | Corpus comparisons, Stage 10 evidence, and Stage 12 API tests         |
