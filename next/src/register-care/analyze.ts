@@ -567,12 +567,78 @@ function unknownCallList(
   ).sort();
 }
 
-function formatCarrierLine(tag: 'in' | 'out' | 'clobbers' | 'preserves', units: readonly string[]): string {
+function formatCarrierLine(
+  tag: 'in' | 'out' | 'clobbers' | 'preserves' | 'maybe-out',
+  units: readonly string[],
+): string {
   return `;!      ${tag.padEnd(10)}${units.join(',')}`;
 }
 
+function formatCandidateUnits(units: readonly RegisterCareUnit[]): string {
+  return units.length === 1 ? units[0]! : `{${units.join(',')}}`;
+}
+
+function formatCarrierLineWithExpectOut(indentation: string, units: readonly RegisterCareUnit[]): string {
+  return `${indentation}; expects out ${formatCandidateUnits(units)}`;
+}
+
+function formatCarrierLineWithMaybeOut(indentation: string, units: readonly RegisterCareUnit[]): string {
+  return `${indentation};!      ${'maybe-out'.padEnd(10)}${formatCandidateUnits(units)}`;
+}
+
 function isGeneratedRegisterContractLine(line: string): boolean {
-  return /^\s*;!\s*(in|out|clobbers|preserves)\b/i.test(line);
+  return /^\s*;!\s*(in|out|clobbers|preserves|maybe-out)\b/i.test(line);
+}
+
+function outputCandidateKey(file: string, line: number, column: number): string {
+  return `${file}:${line}:${column}`;
+}
+
+function isOutputCandidateHintLine(line: string): boolean {
+  return /^\s*;\s*expects\s+out\b/i.test(line) || /^\s*;\s*!\s*maybe-out\b/i.test(line);
+}
+
+function collectOutputCandidateFixability(
+  routines: readonly RegisterCareRoutine[],
+  outputCandidates: readonly RegisterCareOutputCandidate[],
+): ReadonlyMap<string, boolean> {
+  const byLocation = new Map<string, { routine: RegisterCareRoutine; index: number }>();
+  for (const routine of routines) {
+    for (const [index, item] of routine.instructions.entries()) {
+      byLocation.set(outputCandidateKey(item.file, item.line, item.column), {
+        routine,
+        index,
+      });
+    }
+  }
+
+  const out = new Map<string, boolean>();
+  for (const candidate of outputCandidates) {
+    const location = byLocation.get(outputCandidateKey(candidate.file, candidate.line, candidate.column));
+    if (location === undefined) {
+      continue;
+    }
+
+    const item = location.routine.instructions[location.index];
+    if (item === undefined || item.instruction.mnemonic !== 'call') {
+      out.set(outputCandidateKey(candidate.file, candidate.line, candidate.column), false);
+      continue;
+    }
+
+    const next = location.routine.instructions[location.index + 1];
+    if (next === undefined) {
+      out.set(outputCandidateKey(candidate.file, candidate.line, candidate.column), false);
+      continue;
+    }
+
+    const reads = new Set(inferInstructionEffect(next.instruction).reads);
+    out.set(
+      outputCandidateKey(candidate.file, candidate.line, candidate.column),
+      candidate.carriers.every((carrier) => reads.has(carrier)),
+    );
+  }
+
+  return out;
 }
 
 function normalizeLineEnding(text: string): string {
@@ -583,11 +649,79 @@ function splitSourceLines(text: string): string[] {
   return normalizeLineEnding(text).split('\n');
 }
 
+function lineDeltaForCandidate(
+  line: number,
+  deltas: readonly { anchorLine: number; delta: number }[],
+): number {
+  let shift = 0;
+  for (const delta of deltas) {
+    if (delta.anchorLine < line) {
+      shift += delta.delta;
+    }
+  }
+  return shift;
+}
+
+function applyOutputCandidateHints(
+  sourceText: string,
+  outputCandidates: readonly RegisterCareOutputCandidate[],
+  candidateFixability: ReadonlyMap<string, boolean>,
+  deltas: readonly { anchorLine: number; delta: number }[],
+): string {
+  const lines = splitSourceLines(sourceText);
+  const grouped = new Map<
+    number,
+    {
+      carriers: RegisterCareUnit[];
+      autoFixable: boolean;
+    }
+  >();
+
+  for (const candidate of outputCandidates) {
+    const adjustedLine = candidate.line + lineDeltaForCandidate(candidate.line, deltas);
+    const existing = grouped.get(adjustedLine);
+    const autoFixable = candidateFixability.get(outputCandidateKey(candidate.file, candidate.line, candidate.column)) ?? false;
+    if (existing === undefined) {
+      grouped.set(adjustedLine, { carriers: [...candidate.carriers], autoFixable });
+      continue;
+    }
+    const carriers = existing.carriers;
+    for (const carrier of candidate.carriers) {
+      if (!carriers.includes(carrier)) {
+        carriers.push(carrier);
+      }
+    }
+    existing.autoFixable = existing.autoFixable && autoFixable;
+  }
+
+  const candidates = [...grouped.entries()]
+    .map(([line, entry]) => ({ line, ...entry }))
+    .sort((left, right) => right.line - left.line);
+
+  for (const candidate of candidates) {
+    const index = candidate.line - 1;
+    if (index < 0 || index > lines.length) continue;
+    if (index > 0 && isOutputCandidateHintLine(lines[index - 1] ?? '')) continue;
+    const indentation = lines[index]?.match(/^\s*/)?.[0] ?? '';
+    const hint = candidate.autoFixable
+      ? formatCarrierLineWithExpectOut(indentation, candidate.carriers)
+      : formatCarrierLineWithMaybeOut(indentation, candidate.carriers);
+    lines.splice(index, 0, hint);
+  }
+
+  return lines.join('\n');
+}
+
+interface RoutineAnnotationResult {
+  text: string;
+  deltas: { anchorLine: number; delta: number }[];
+}
+
 function annotateSourceFile(
   sourceText: string,
   routines: readonly RegisterCareRoutine[],
   summariesByName: ReadonlyMap<string, RoutineSummary>,
-): RegisterCareAnnotationFile | undefined {
+): RoutineAnnotationResult | undefined {
   const routineLines = Array.from(routines)
     .filter((routine) => summariesByName.has(routine.name))
     .sort((left, right) => right.span.start.line - left.span.start.line);
@@ -596,6 +730,7 @@ function annotateSourceFile(
 
   const lines = splitSourceLines(sourceText);
   let changed = false;
+  const deltas: { anchorLine: number; delta: number }[] = [];
 
   for (const routine of routineLines) {
     const summary = summariesByName.get(routine.name);
@@ -625,12 +760,16 @@ function annotateSourceFile(
       existing.some((line, index) => line !== generatedLines[index])
     ) {
       changed = true;
+      deltas.push({ anchorLine: routine.span.start.line, delta: generatedLines.length - (insertLine - start) });
       lines.splice(start, insertLine - start, ...generatedLines);
     }
   }
 
   if (!changed) return undefined;
-  return { path: routineLines[0]!.span.file, text: lines.join('\n') };
+  return {
+    text: lines.join('\n'),
+    deltas,
+  };
 }
 
 function buildAnnotations(
@@ -639,6 +778,11 @@ function buildAnnotations(
   },
   programRoutines: readonly RegisterCareRoutine[],
   summariesByName: ReadonlyMap<string, RoutineSummary>,
+  outputCandidates: readonly RegisterCareOutputCandidate[],
+  options: {
+    fixOutputCandidates: boolean;
+    outputCandidateFixability: ReadonlyMap<string, boolean>;
+  },
 ): readonly RegisterCareAnnotationFile[] {
   const byFile = new Map<string, RegisterCareRoutine[]>();
   for (const routine of programRoutines) {
@@ -655,8 +799,22 @@ function buildAnnotations(
   for (const [path, routines] of byFile) {
     const sourceText = loaded.sourceTexts.get(path);
     if (sourceText === undefined) continue;
+    let text = sourceText;
+    let deltas: { anchorLine: number; delta: number }[] = [];
     const annotation = annotateSourceFile(sourceText, routines, summariesByName);
-    if (annotation !== undefined) out.push({ ...annotation, path });
+    if (annotation !== undefined) {
+      text = annotation.text;
+      deltas = annotation.deltas;
+    }
+
+    if (options.fixOutputCandidates) {
+      const candidatesForFile = outputCandidates.filter((candidate) => candidate.file === path);
+      if (candidatesForFile.length > 0) {
+        text = applyOutputCandidateHints(text, candidatesForFile, options.outputCandidateFixability, deltas);
+      }
+    }
+
+    if (text !== sourceText) out.push({ path, text });
   }
   return out;
 }
@@ -698,28 +856,38 @@ export function analyzeRegisterCare(
   }
 
   const diagnostics: Diagnostic[] = [];
-  const analyzed =
-    options.mode === 'warn' || options.mode === 'error' || options.mode === 'strict'
-      ? program.routines.flatMap((routine) =>
-          buildConflictsAndCandidatesForRoutine(
-            routine,
-            summariesByName,
-            options.acceptedOutputCandidates ?? new Map(),
-            smartComments,
-          ),
-        )
-      : [];
+  const shouldBuildOutputCandidates =
+    options.mode === 'warn' ||
+    options.mode === 'error' ||
+    options.mode === 'strict' ||
+    options.mode === 'audit' &&
+      (options.emitInterface === true ||
+        options.emitAnnotations === true ||
+        options.fixRegisterContracts === true);
+
+  const analyzed = shouldBuildOutputCandidates
+    ? program.routines.flatMap((routine) =>
+        buildConflictsAndCandidatesForRoutine(
+          routine,
+          summariesByName,
+          options.acceptedOutputCandidates ?? new Map(),
+          smartComments,
+        ),
+      )
+    : [];
   const conflicts = analyzed.flatMap((record) => record.conflicts);
   const outputCandidates = analyzed.flatMap((record) => record.outputCandidates);
-  for (const conflict of conflicts) {
-    diagnostics.push({
-      severity: options.mode === 'error' ? 'error' : 'warning',
-      code: 'AZMN_REGISTER_CARE',
-      sourceName: conflict.file,
-      line: conflict.line,
-      column: conflict.column,
-      message: conflict.message,
-    });
+  if (options.mode !== 'audit') {
+    for (const conflict of conflicts) {
+      diagnostics.push({
+        severity: options.mode === 'error' ? 'error' : 'warning',
+        code: 'AZMN_REGISTER_CARE',
+        sourceName: conflict.file,
+        line: conflict.line,
+        column: conflict.column,
+        message: conflict.message,
+      });
+    }
   }
 
   if (options.mode === 'strict') {
@@ -736,8 +904,21 @@ export function analyzeRegisterCare(
     unknownCalls: options.mode === 'off' ? [] : unknownCallList(program.directCalls, knownRoutines),
   };
 
+  const outputCandidateFixability = options.fixRegisterContracts
+    ? collectOutputCandidateFixability(program.routines, outputCandidates)
+    : new Map();
+
   const annotations = options.emitAnnotations
-    ? buildAnnotations(loaded, program.routines, summariesByName)
+    ? buildAnnotations(
+        loaded,
+        program.routines,
+        summariesByName,
+        outputCandidates,
+        {
+          fixOutputCandidates: options.fixRegisterContracts === true,
+          outputCandidateFixability,
+        },
+      )
     : [];
 
   return {

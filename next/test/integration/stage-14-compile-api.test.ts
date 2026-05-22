@@ -144,6 +144,98 @@ describe('stage 14 register-care compile API slice', () => {
     });
   });
 
+  it('inserts expects-out hints under --fix for direct continuation reads', async () => {
+    await withTempDir('azm-next-regcare-compile-fix-direct-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'START:',
+          '    ld a,3',
+          '    call MASK',
+          '    ld d,a',
+          '',
+          '; Helper prose.',
+          'MASK:',
+          '    ld c,a',
+          '    ld a,$80',
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'audit',
+          emitRegisterAnnotations: true,
+          fixRegisterContracts: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toHaveLength(0);
+      const annotations = result.artifacts.find(
+        (artifact): artifact is RegisterCareAnnotationsArtifact =>
+          artifact.kind === 'register-care-annotations',
+      );
+      expect(annotations).toBeDefined();
+      const text = annotations!.files[0]!.text;
+      expect(text).toContain('; expects out A');
+      expect(text).toContain('    call MASK');
+      expect(text).toContain('; Helper prose.');
+      expect(text).toContain(';!      out       A');
+    });
+  });
+
+  it('inserts maybe-out hints under --fix when continuation is indirect', async () => {
+    await withTempDir('azm-next-regcare-compile-fix-indirect-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'START:',
+          '    call MASK',
+          '    inc b',
+          '    ld d,a',
+          '',
+          '; Helper prose.',
+          'MASK:',
+          '    ld a,$80',
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'audit',
+          emitRegisterAnnotations: true,
+          fixRegisterContracts: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toHaveLength(0);
+      const annotations = result.artifacts.find(
+        (artifact): artifact is RegisterCareAnnotationsArtifact =>
+          artifact.kind === 'register-care-annotations',
+      );
+      expect(annotations).toBeDefined();
+      const text = annotations!.files[0]!.text;
+      expect(text).toContain(';!      maybe-out A');
+      expect(text).toContain('    call MASK');
+      expect(text).toContain('; Helper prose.');
+    });
+  });
+
   it('promotes accepted output candidates to annotations', async () => {
     await withTempDir('azm-next-regcare-compile-accept-annotations-', async (dir) => {
       const entry = join(dir, 'main.asm');
