@@ -325,52 +325,337 @@ Planned work:
 - Implement layout casts as constant folding only.
 - Reject runtime typed memory behavior.
 
-## Stage 8: Visible `op` Expansion
+## Stage 8: Source Compatibility and Diagnostic Hardening
 
-Status: not started.
+Status: complete for the evidence-backed Stage 8 boundary.
+
+Purpose: harden the retained Stage 7 surface without changing AZM semantics.
+
+Evidence:
+
+- `next/docs/stage-8-evidence.md`
+
+Completed:
+
+- [x] Preserved strict case sensitivity for programmer-defined labels,
+      constants, enums, layouts, and fields.
+- [x] Preserved case-insensitive mnemonics, registers, conditions, and
+      canonical directive aliases where evidence supports them.
+- [x] Added diagnostics for malformed retained syntax rather than accepting
+      generic assembler guesses.
+- [x] Verified with `npm run next:check`.
+
+## Stage 9: Visible `op` Expansion
+
+Status: complete for the current AZM Next visible-op boundary.
 
 Purpose: expand retained `op` declarations into canonical visible assembly.
 
+Evidence:
+
+- `next/docs/stage-9-evidence.md`
+
+Completed:
+
+- [x] Parsed visible `op` declarations and matcher parameters.
+- [x] Selected overloads deterministically.
+- [x] Substituted operands into op bodies.
+- [x] Fed expanded items into the same canonical stream used by assembly.
+- [x] Documented deferred register-care-specific behavior in the Stage 9
+      evidence file.
+- [x] Verified with `npm run next:check`.
+
+## Stage 10: First Output/API Parity Slice
+
+Status: complete.
+
+Purpose: establish the first evidence-backed in-memory output surface before
+adding filesystem or package entry points.
+
+Evidence:
+
+- `next/docs/stage-10-evidence.md`
+
+Completed:
+
+- [x] Inspected current AZM CLI, compile API, output writer, and public API
+      tests.
+- [x] Added `compileNextArtifacts()` for in-memory BIN and HEX artifacts.
+- [x] Added independent BIN/HEX suppression.
+- [x] Added no-artifacts-on-error behavior.
+- [x] Added current CLI-style diagnostic formatting for AZM Next diagnostics.
+- [x] Added integration tests and updated the parity matrix.
+- [x] Verified with `npm run next:check`.
+
+## Remaining Stage Control
+
+Status: locked planning rule.
+
+The remaining replacement work is limited to Stages 11-16 below. New evidence
+may change the contents of a stage, but it must not create a new stage without
+explicit approval. If a missing requirement is discovered, classify it as one of:
+
+- belongs in an existing Stage 11-16 scope
+- out of replacement scope
+- blocker requiring user approval before the plan changes
+
+Each remaining stage must finish by committing, opening a PR, review with an
+agent when the thread/tool limit allows it, merging if clear, and suggesting the
+next goal.
+
+## Stage 11: Source Host and Programming Load API Parity
+
+Status: first evidence-backed tooling API slice implemented.
+
+Purpose: make AZM Next usable as a programming library for source loading and
+analysis setup, not only as a CLI.
+
+Evidence to inspect:
+
+- `docs/reference/tooling-api.md`
+- `test/public_api_surface.test.ts`
+- `test/sourceLoader_asm_include.test.ts`
+- current `src/api-tooling.ts`
+- current `src/sourceLoader.ts`
+- current package export tests for `@jhlagado/azm/tooling` and root re-exports
+- include-related CLI failure tests
+- `next/docs/stage-11-evidence.md`
+
 Planned work:
 
-- Parse op declarations and matcher parameters.
-- Select overloads deterministically.
-- Substitute operands into op bodies.
-- Rename local labels to prevent collisions.
-- Feed expanded items into the same canonical stream used by assembly and
-  register-care.
+- [x] Implement a Node filesystem source host under `next/src`.
+- [x] Implement entry-file loading with explicit include directories.
+- [x] Support preloaded entry text for editor/Debug80-style unsaved buffers.
+- [x] Preserve source names, line numbers, and included-file provenance in
+      diagnostics.
+- [x] Add the AZM Next equivalent of `loadProgram()` for the retained source model.
+- [x] Add the first AZM Next equivalent of `analyzeProgram()` only for behavior
+      already backed by current tests.
+- [x] Match current public `loadProgram()` option/type commitments where retained:
+      `entryFile`, `includeDirs`, `preloadedText`, `signal?: AbortSignal`, loaded
+      program shape, diagnostics, and exported tooling types.
+- [x] Assign package export parity for `@jhlagado/azm/tooling` and root re-exports
+      of `loadProgram()` and `analyzeProgram()` to this stage.
+- [x] Update or add public tooling API docs/tests for the implemented Stage 11
+      library slice.
+- [x] Keep this API independent from CLI argument parsing.
+- [x] Update the parity matrix for source loading, include provenance, and tooling
+      API status.
 
-## Stage 9: Outputs, CLI, and Public API Parity
+Justification:
+
+The CLI is only one entry point. Debug80, editors, tests, and other tools need a
+library interface that can load and analyze source without writing files.
+
+## Stage 12: Compile API and Complete Public Artifact Parity
 
 Status: not started.
 
-Purpose: make AZM Next usable through the same user-facing surfaces as current
-AZM.
+Purpose: make AZM Next usable as a programming library for full assembly and
+artifact generation.
+
+Evidence to inspect:
+
+- `docs/reference/tooling-api.md`
+- `test/public_api_surface.test.ts`
+- `test/determinism_artifacts.test.ts`
+- `test/pr39_listing.test.ts`
+- `test/backend/d8m*`
+- `test/backend/pr1048_write_asm80_unit.test.ts`
+- `test/backend/pr991_asm80_comment_preservation.test.ts`
+- `test/cli/pr990_asm80_emitter_validation.test.ts`
+- current `src/api-compile.ts`
+- current `src/compile.ts`
+- current `src/formats/*`
+- current package export tests for `@jhlagado/azm/compile` and root re-exports
 
 Planned work:
 
-- Implement lowered `.z80`, listing, and D8 output.
-- Implement Node filesystem host and CLI argument parsing.
-- Mirror package API smoke tests for AZM Next.
-- Compare public output contracts against current AZM.
+- Define the AZM Next compile API shape that maps to current `compile()`:
+  diagnostics plus in-memory artifacts.
+- Export `compile`, `defaultFormatWriters`, `FormatWriters`, artifact types, and
+  D8 types from the future `@jhlagado/azm/compile` public surface.
+- Assign package export parity for `@jhlagado/azm/compile` and root compile
+  re-exports to this stage.
+- Complete artifact kinds needed for replacement: BIN, HEX, listing, D8, and
+  lowered `.z80`.
+- Preserve artifact determinism across repeated compiles.
+- Support artifact suppression options through the programming API.
+- Preserve D8 constants versus addressable labels shape.
+- Preserve lowered `.z80` comment behavior where current tests prove it.
+- Update or add public compile API docs/tests for the implemented Stage 12
+  library slice.
+- Update the parity matrix for BIN, HEX, listing, D8, lowered `.z80`, and
+  public compile API status.
 
-## Stage 10: Register-Care, Burn-In, and Promotion
+Justification:
+
+The programming compile API is a public contract. It must be planned and tested
+as a first-class path rather than treated as a side effect of CLI work.
+
+## Stage 13: CLI Parity Thin Wrapper
 
 Status: not started.
 
-Purpose: finish retained AZM analysis behavior and prove replacement readiness.
+Purpose: implement the command-line entry point as a thin wrapper around the
+Stage 11 source host and Stage 12 compile API.
+
+Evidence to inspect:
+
+- `docs/reference/cli.md`
+- `test/cli/cli_contract_matrix.test.ts`
+- `test/cli/cli_artifacts.test.ts`
+- `test/cli/cli_failure_contract_matrix.test.ts`
+- `test/cli/cli_determinism_contract.test.ts`
+- `test/cli/cli_source_extension.test.ts`
+- `test/cli/cli_path_parity_contract.test.ts`
+- `test/cli/cli_acceptance_matrix_strictness.test.ts`
+- current package export tests for `@jhlagado/azm/cli` and `bin.azm`
+- current `src/cli.ts`
 
 Planned work:
 
-- Parse AZMDoc register-care contracts.
+- Implement documented CLI option parsing for retained flags.
+- Enforce entry argument count and entry-last ordering.
+- Validate source extensions exactly where current CLI tests prove rejection,
+  including non-entry `.asmi` handling.
+- Resolve default output paths and `--type hex|bin` extension behavior.
+- Normalize uppercase `.HEX` and `.BIN` output extensions to canonical lowercase
+  output paths where current tests prove that behavior.
+- Preserve relative versus absolute path artifact payload parity.
+- Create nested output directories before writing artifacts.
+- Pin the default CLI artifact set to current evidence: `.hex`, `.bin`, `.lst`,
+  and `.d8.json`; lowered `.z80`, `.regcare.txt`, and `.asmi` remain flag-gated.
+- Preserve strict artifact payload parity across `--type`, `--nobin`, `--nohex`,
+  `--nod8m`, and `--nolist` combinations.
+- Write artifacts to disk using the compile API's in-memory artifacts.
+- Print the primary output path to stdout on success.
+- Return current-compatible exit codes for success, source diagnostics, and CLI
+  usage errors.
+- Preserve current-style diagnostic stderr formatting.
+- Assign package export parity for `@jhlagado/azm/cli` and `bin.azm` to this
+  stage.
+- Update the parity matrix for CLI flags and output paths.
+
+Justification:
+
+The CLI should not own assembler semantics. It should prove that the library
+API can be driven through the same user-facing command contract as current AZM.
+
+## Stage 14: AZMDoc and Register-Care Parity
+
+Status: not started.
+
+Purpose: finish retained AZM-specific register-care behavior as a high-priority
+public feature.
+
+Evidence to inspect:
+
+- `docs/spec/azmdoc.md`
+- `docs/reference/tooling-api.md`
+- `test/registerCare/*`
+- current register-care implementation and CLI tests
+- current `.asmi` interface tests and register-care artifact tests
+- Stage 9 visible-op evidence
+
+Planned work:
+
+- Parse retained AZMDoc register-care contracts.
+- Parse and load external `.asmi` register-care interfaces.
+- Merge explicit `.asmi` contracts with source-local AZMDoc contracts.
 - Detect routine boundaries from canonical visible assembly.
-- Share Z80 effects with encoder metadata.
-- Analyze expanded op bodies through the canonical stream.
-- Match retained register-care audit behavior.
-- Run corpus comparisons where local corpora are available.
-- Update `next/docs/parity-matrix.md` after each compatibility class is
-  verified.
-- Check `next/docs/promotion-criteria.md` before proposing promotion.
+- Share Z80 effect metadata with the encoder rather than duplicating opcode
+  knowledge.
+- Analyze expanded `op` bodies through the canonical visible stream.
+- Match retained register-care tooling and CLI audit behavior.
+- Add programmatic register-care tooling output for editor/Debug80 use.
+- Match retained source mutation behavior for generated contracts,
+  conservative `--fix` edits, and caller `expects out` hints.
+- Keep Stage 13 responsible only for register-care CLI flag plumbing; this stage
+  owns register-care semantics and generated artifact content.
+- Update the parity matrix for register-care contracts and summaries.
+
+Justification:
+
+Register-care is one of AZM's most important and unique features. No shortcuts
+are allowed here: every behavior must be pinned to current AZM tests, docs,
+fixtures, or observable current implementation behavior before it is ported.
+This stage must preserve subtle current behavior rather than replacing it with a
+generic register linter.
+
+## Stage 15: Retained Language Parity Closeout
+
+Status: not started.
+
+Purpose: close the remaining partial or not-started retained language behavior
+before corpus burn-in.
+
+Evidence to inspect:
+
+- `docs/design/asm80-compatibility-baseline.md`
+- `docs/spec/azm-assembly-baseline.md`
+- current ASM80, directive, enum, layout, op, expression, and diagnostic tests
+- AZM book examples in the sibling `debug80-docs` checkout when available
+
+Planned work:
+
+- Audit every `partial` and `not started` language row in
+  `next/docs/parity-matrix.md`.
+- Finish or explicitly classify directive aliases, string directives,
+  alignment, binary ranges, layout casts, local-label behavior, expressions,
+  fixup diagnostics, and visible `op` edge cases.
+- Preserve the strict case policy: symbols and user names are case-sensitive;
+  mnemonics, registers, conditions, and proven directive aliases are
+  case-insensitive.
+- Reject generic assembler features unless current AZM evidence brings them
+  into scope.
+- Update each parity row to `compatible`, `intentionally different`, or a
+  named blocker.
+
+Justification:
+
+This is the anti-hallucination stage. It forces every retained language feature
+to be traced to current AZM evidence before the replacement is treated as real.
+
+## Stage 16: Differential Burn-In and Promotion
+
+Status: not started.
+
+Purpose: prove replacement readiness and perform the mechanical cutover only
+after observable parity is documented.
+
+Evidence to inspect:
+
+- `next/docs/source-of-truth.md`
+- `next/docs/promotion-criteria.md`
+- current AZM alpha guardrails
+- current fixture and corpus comparison scripts
+- local ASM80 corpora when available
+
+Planned work:
+
+- Implement the current-AZM runner for differential tests.
+- Unskip the first differential fixture.
+- Add AZM Next equivalents for the current guardrail suites.
+- Run fixture and corpus comparisons for retained behavior.
+- Run or port the public API/package smoke tests, including package export map,
+  root re-exports, `./tooling`, `./compile`, `./cli`, `./package.json`, and
+  `bin.azm`.
+- Run lowered `.z80` external validation where the current test suite proves it.
+- Run quality gates from `docs/reference/code-quality-standard.md`, including
+  lint, Fallow where applicable, and source-file-size checks.
+- Classify every mismatch as AZM Next bug, current AZM bug, intentional spec
+  tightening, historical out-of-scope behavior, or unresolved blocker.
+- Confirm every promotion criterion is either satisfied or explicitly
+  classified.
+- Prepare the mechanical promotion plan for moving `next/src`, `next/test`,
+  `next/scripts`, and relevant docs to the root.
+- Do not promote until the user approves the cutover.
+
+Justification:
+
+This is the proof stage. It prevents replacing the old implementation on trust,
+intent, or isolated unit tests.
 
 ## Verification Baseline
 

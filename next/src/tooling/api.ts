@@ -1,0 +1,79 @@
+import type { Diagnostic } from '../model/diagnostic.js';
+import type { SourceItem } from '../model/source-item.js';
+import { assembleProgram } from '../assembly/assemble-program.js';
+import { expandSourceForTooling, type LoadProgramNextOptions } from './source-host.js';
+import { parseNextSourceItems } from '../core/compile.js';
+
+export type { LoadProgramNextOptions };
+
+export interface LoadedProgramNext {
+  readonly program: {
+    readonly kind: 'Program';
+    readonly entryFile: string;
+    readonly files: readonly [
+      {
+        readonly kind: 'SourceFile';
+        readonly name: string;
+        readonly items: readonly SourceItem[];
+      },
+    ];
+  };
+  readonly sourceTexts: ReadonlyMap<string, string>;
+  readonly sourceLineComments: ReadonlyMap<string, ReadonlyMap<number, string>>;
+}
+
+export interface LoadProgramNextResult {
+  readonly diagnostics: readonly Diagnostic[];
+  readonly loadedProgram?: LoadedProgramNext;
+}
+
+export interface AnalyzeProgramNextResult {
+  readonly diagnostics: readonly Diagnostic[];
+  readonly env: {
+    readonly symbols: Readonly<Record<string, number>>;
+  };
+}
+
+export type LoadedProgram = LoadedProgramNext;
+export type LoadProgramOptions = LoadProgramNextOptions;
+export type LoadProgramResult = LoadProgramNextResult;
+export type AnalyzeProgramResult = AnalyzeProgramNextResult;
+
+export async function loadProgramNext(
+  options: LoadProgramNextOptions,
+): Promise<LoadProgramNextResult> {
+  const { diagnostics: loadDiagnostics, expanded } = await expandSourceForTooling(options);
+  if (expanded === undefined) {
+    return { diagnostics: loadDiagnostics };
+  }
+
+  const parsed = parseNextSourceItems(expanded.lines);
+  const diagnostics = [...loadDiagnostics, ...parsed.diagnostics];
+  if (diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
+    return { diagnostics };
+  }
+
+  return {
+    diagnostics,
+    loadedProgram: {
+      program: {
+        kind: 'Program',
+        entryFile: expanded.entryFile,
+        files: [{ kind: 'SourceFile', name: expanded.entryFile, items: parsed.items }],
+      },
+      sourceTexts: expanded.sourceTexts,
+      sourceLineComments: expanded.sourceLineComments,
+    },
+  };
+}
+
+export function analyzeProgramNext(loadedProgram: LoadedProgramNext): AnalyzeProgramNextResult {
+  const assembly = assembleProgram(loadedProgram.program.files[0].items);
+  return {
+    diagnostics: assembly.diagnostics,
+    env: { symbols: assembly.symbols },
+  };
+}
+
+export const loadProgram = loadProgramNext;
+export const analyzeProgram = analyzeProgramNext;
