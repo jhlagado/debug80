@@ -1894,6 +1894,55 @@ main:
     expect(Array.from(result.bytes)).toEqual([0x18, 0xfe, 0x18, 0xfe]);
   });
 
+  it('renames Stage 9 op-local labels across nested op expansion', () => {
+    const result = compileNext(`
+op inner_loop()
+i_loop:
+        jr i_loop
+end
+
+op invoke_twice()
+        inner_loop
+        nop
+end
+
+main:
+        invoke_twice
+        invoke_twice
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).not.toHaveProperty('loop');
+    expect(result.symbols).not.toHaveProperty('i_loop');
+    expect(Array.from(result.bytes)).toEqual([0x18, 0xfe, 0x00, 0x18, 0xfe, 0x00]);
+  });
+
+  it('handles dot-prefixed local labels inside Stage 9 ops without symbol leakage', () => {
+    const result = compileNext(`
+op local_alias()
+.loop:
+        ld a,1
+        ld a,2
+        .loop2:
+        ld a,3
+        nop
+end
+
+main:
+        local_alias
+        local_alias
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).not.toHaveProperty('.loop');
+    expect(
+      Object.keys(result.symbols).filter((name) => name.includes('__azm_op_local_alias')),
+    ).toHaveLength(4);
+    expect(Array.from(result.bytes)).toEqual([
+      0x3e, 0x01, 0x3e, 0x02, 0x3e, 0x03, 0x00, 0x3e, 0x01, 0x3e, 0x02, 0x3e, 0x03, 0x00,
+    ]);
+  });
+
   it('reports Stage 9 op expansion cycles', () => {
     const result = compileNext(`
 op first()
