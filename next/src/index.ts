@@ -1,5 +1,5 @@
 export { compileNext } from './core/compile.js';
-export type { CompileNextOptions, CompileNextResult as CompileNextProgramResult } from './core/compile.js';
+export type { CompileNextOptions, CompileNextResult } from './core/compile.js';
 export { compileNextArtifacts } from './core/compile-artifacts.js';
 export type {
   CompileNextArtifactOptions,
@@ -18,9 +18,9 @@ export type {
   Artifact,
   CompileNextDependencies,
   CompileNextFunctionOptions,
-  CompileNextResult,
   EmittedByteMap,
   FormatWriters,
+  CompileNextResult as CompileNextProgramResult,
 } from './api-compile.js';
 export type {
   AnalyzeProgramNextResult,

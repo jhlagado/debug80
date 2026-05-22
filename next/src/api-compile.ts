@@ -233,8 +233,24 @@ async function readPackageVersion(): Promise<string> {
     return cachedPackageVersion;
   }
 
-  const raw = await readFile(new URL('../../package.json', import.meta.url), 'utf8');
-  const json = JSON.parse(raw) as { version?: string };
-  cachedPackageVersion = json.version ?? '0.0.0';
+  const packageJsonCandidates = [
+    new URL('../../package.json', import.meta.url),
+    new URL('../../../package.json', import.meta.url),
+  ];
+
+  for (const candidate of packageJsonCandidates) {
+    try {
+      const raw = await readFile(candidate, 'utf8');
+      const json = JSON.parse(raw) as { version?: string };
+      if (json.version !== undefined) {
+        cachedPackageVersion = json.version;
+        return cachedPackageVersion;
+      }
+    } catch {
+      // Continue searching candidates.
+    }
+  }
+
+  cachedPackageVersion = '0.0.0';
   return cachedPackageVersion;
 }
