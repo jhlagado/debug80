@@ -50,7 +50,9 @@ export function compileNext(
         }
         const field = parseLayoutField(fieldText);
         if (!field) {
-          diagnostics.push(parseDiagnostic(fieldLine, 'invalid .type field declaration'));
+          diagnostics.push(
+            parseDiagnostic(fieldLine, `invalid .${layoutHeader[1]} field declaration`),
+          );
           continue;
         }
         fields.push(field);

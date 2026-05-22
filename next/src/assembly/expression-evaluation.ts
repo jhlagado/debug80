@@ -18,6 +18,7 @@ export interface EquateRecord {
 export interface LayoutRecord {
   readonly kind: 'record' | 'union';
   readonly fields: readonly LayoutField[];
+  readonly span: SourceSpan;
 }
 
 export function evaluateExpression(
@@ -142,6 +143,15 @@ export function diagnostic(span: SourceSpan, message: string): Diagnostic {
     line: span.line,
     column: span.column,
   };
+}
+
+export function validateLayouts(
+  layouts: ReadonlyMap<string, LayoutRecord>,
+  diagnostics: Diagnostic[],
+): void {
+  for (const [name, layout] of layouts) {
+    layoutSize(name, layout, layouts, layout.span, diagnostics, new Set([name]));
+  }
 }
 
 function evaluateSymbol(
@@ -286,7 +296,14 @@ function fieldSize(
   }
 
   if (visiting.has(field.typeExpr.name)) {
-    diagnostics.push(diagnostic(span, `recursive type: ${field.typeExpr.name}`));
+    diagnostics.push(
+      diagnostic(
+        span,
+        visiting.size === 1
+          ? `Self-referential field type "${field.typeExpr.name}" has no finite size; use .addr for a pointer field.`
+          : `recursive type: ${field.typeExpr.name}`,
+      ),
+    );
     return undefined;
   }
 
@@ -404,6 +421,16 @@ function layoutCastOffset(
     if (typeExpr.length === undefined) {
       return undefined;
     }
+    const registerName = registerIndexName(head.expression);
+    if (registerName) {
+      diagnostics.push(
+        diagnostic(
+          span,
+          `runtime register index "${registerName}" is not supported in layout casts`,
+        ),
+      );
+      return undefined;
+    }
     const index = evaluateExpression(head.expression, labels, equates, span, diagnostics, {
       ...options,
       layouts,
@@ -489,6 +516,21 @@ function layoutCastOffset(
   }
 
   return undefined;
+}
+
+function registerIndexName(expression: Expression): string | undefined {
+  switch (expression.kind) {
+    case 'symbol':
+      return /^(a|b|c|d|e|h|l|af|bc|de|hl|ix|iy|sp|i|r|ixh|ixl|iyh|iyl)$/i.test(expression.name)
+        ? expression.name.toUpperCase()
+        : undefined;
+    case 'unary':
+      return registerIndexName(expression.expression);
+    case 'binary':
+      return registerIndexName(expression.left) ?? registerIndexName(expression.right);
+    default:
+      return undefined;
+  }
 }
 
 function formatTypeExpr(typeExpr: TypeExpr): string {
