@@ -315,3 +315,34 @@ leaving expression evaluation and fixup patching in the assembly layer. It
 intentionally does not yet implement register-care effects, conditional
 diagnostic parity for every invalid form, or indexed addressing beyond the
 documented indirect `JP` forms.
+
+## INC/DEC/PUSH/POP Core-Ops Slice
+
+Additional evidence read for this slice:
+
+- `test/backend/pr477_encode_core_ops_family.test.ts`
+- `test/backend/pr1140_encode_error_paths.test.ts`
+- `test/pr133_arity_diag_matrix.test.ts`
+- `test/pr147_known_head_diag_matrix.test.ts`
+- `test/pr148_known_heads_no_fallback_matrix.test.ts`
+- `test/fixtures/pr133_arity_diag_matrix_invalid.asm`
+- `test/fixtures/pr147_known_head_diag_matrix_invalid.asm`
+- `test/fixtures/pr148_known_heads_no_fallback_matrix.asm`
+- sibling checkout
+  `debug80-docs/azm-book/appendices/03-addressing-prefixes-and-instruction-forms.md`
+- sibling checkout
+  `debug80-docs/azm-book/appendices/04-classic-z80-instruction-support.md`
+
+This slice implements the non-displacement core operation forms proved by the
+current encoder tests and book tables:
+
+- `inc r`, `inc rr`, `inc (hl)`, `inc ixh`, `inc ixl`, `inc iyh`, `inc iyl`
+- `dec r`, `dec rr`, `dec (hl)`, `dec ixh`, `dec ixl`, `dec iyh`, `dec iyl`
+- `push bc`, `push de`, `push hl`, `push af`, `push ix`, `push iy`
+- `pop bc`, `pop de`, `pop hl`, `pop af`, `pop ix`, `pop iy`
+
+The implemented `rr` set for `INC` and `DEC` is `BC`, `DE`, `HL`, `SP`, `IX`,
+and `IY`. Indexed displacement forms such as `inc (ix+d)` and `dec (iy+d)` are
+documented as retained AZM surface but intentionally left for a later
+indexed-addressing slice, because they need a displacement operand model and
+range diagnostics shared with indexed `LD`, ALU, bit, rotate, and shift forms.

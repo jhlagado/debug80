@@ -284,6 +284,69 @@ target:
     ]);
   });
 
+  it('assembles the INC/DEC/PUSH/POP core-ops evidence slice through the z80 encoder', () => {
+    const result = compileNext(`
+        .org 0100H
+        INC B
+        INC C
+        INC D
+        INC E
+        INC H
+        INC L
+        INC A
+        INC BC
+        INC DE
+        INC HL
+        INC SP
+        INC IX
+        INC IY
+        INC (HL)
+        INC IXH
+        INC IXL
+        INC IYH
+        INC IYL
+        DEC B
+        DEC C
+        DEC D
+        DEC E
+        DEC H
+        DEC L
+        DEC A
+        DEC BC
+        DEC DE
+        DEC HL
+        DEC SP
+        DEC IX
+        DEC IY
+        DEC (HL)
+        DEC IXH
+        DEC IXL
+        DEC IYH
+        DEC IYL
+        PUSH BC
+        PUSH DE
+        PUSH HL
+        PUSH AF
+        PUSH IX
+        PUSH IY
+        POP BC
+        POP DE
+        POP HL
+        POP AF
+        POP IX
+        POP IY
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([
+      0x04, 0x0c, 0x14, 0x1c, 0x24, 0x2c, 0x3c, 0x03, 0x13, 0x23, 0x33, 0xdd, 0x23, 0xfd, 0x23,
+      0x34, 0xdd, 0x24, 0xdd, 0x2c, 0xfd, 0x24, 0xfd, 0x2c, 0x05, 0x0d, 0x15, 0x1d, 0x25, 0x2d,
+      0x3d, 0x0b, 0x1b, 0x2b, 0x3b, 0xdd, 0x2b, 0xfd, 0x2b, 0x35, 0xdd, 0x25, 0xdd, 0x2d, 0xfd,
+      0x25, 0xfd, 0x2d, 0xc5, 0xd5, 0xe5, 0xf5, 0xdd, 0xe5, 0xfd, 0xe5, 0xc1, 0xd1, 0xe1, 0xf1,
+      0xdd, 0xe1, 0xfd, 0xe1,
+    ]);
+  });
+
   it('reports unsupported source lines as diagnostics', () => {
     const result = compileNext('UNKNOWN');
 

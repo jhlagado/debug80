@@ -237,6 +237,9 @@ Completed first slice:
       numeric constant `RST` vectors, `RETI`, and `RETN`.
 - [x] Added the conditional control-flow and indirect `JP` parser/encoder slice
       for `RET cc`, `JP cc,nn`, `CALL cc,nn`, and `JP (HL/IX/IY)`.
+- [x] Added the non-displacement `INC`/`DEC`/`PUSH`/`POP` core-ops
+      parser/encoder slice, including half-index registers and `IX`/`IY`
+      stack pairs.
 
 ## Stage 6: Directives, Storage, Strings, Ranges, and Image
 
