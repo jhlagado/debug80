@@ -224,7 +224,9 @@ const registerCare = analyzeRegisterCareForTools(loaded.loadedProgram, {
 for (const diagnostic of registerCare.candidateDiagnostics) {
   console.log(diagnostic.file, diagnostic.line, diagnostic.message);
   console.log(diagnostic.autoFixable); // true when CLI --fix can safely add the hint
-  console.log(diagnostic.codeAction.edit.text); // "; expects out A\n"
+  if (diagnostic.autoFixable && diagnostic.codeAction) {
+    console.log(diagnostic.codeAction.edit.text); // "; expects out A\n"
+  }
 }
 ```
 

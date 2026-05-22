@@ -134,4 +134,63 @@ describe('stage 14 register-care tooling API slice', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('does not emit quick-fix actions for non-auto-fixable candidates', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-next-regcare-tools-nonfix-'));
+    const entry = join(dir, 'main.z80');
+    writeFileSync(
+      entry,
+      [
+        'START:',
+        '    ld a,3',
+        '    call nz,MASK',
+        '    and a',
+        '    ret',
+        'MASK:',
+        '    ld a,$80',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    try {
+      const loaded = await loadProgram({ entryFile: entry });
+      expect(loaded.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toEqual(
+        [],
+      );
+      if (!loaded.loadedProgram) throw new Error('expected loaded program');
+
+      const result = analyzeRegisterCareForTools(loaded.loadedProgram, {
+        mode: 'audit',
+      });
+
+      expect(result.outputCandidates).toEqual([
+        expect.objectContaining({
+          file: entry,
+          line: 3,
+          column: 5,
+          routine: 'MASK',
+          carriers: ['A'],
+          autoFixable: false,
+        }),
+      ]);
+      expect(result.candidateDiagnostics).toEqual([
+        expect.objectContaining({
+          kind: 'register-care-output-candidate',
+          severity: 'info',
+          file: entry,
+          line: 3,
+          column: 5,
+          routine: 'MASK',
+          carriers: ['A'],
+          autoFixable: false,
+        }),
+      ]);
+      expect(result.candidateDiagnostics[0]).not.toHaveProperty('codeAction');
+      expect(result.codeActions).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
