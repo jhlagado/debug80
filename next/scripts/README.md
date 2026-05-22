@@ -2,5 +2,22 @@
 
 This directory is reserved for AZM Next helper scripts.
 
-The first expected script is a differential runner that assembles the same
-fixture with current AZM and AZM Next, then compares observable outputs.
+Current script:
+
+- `diff-against-current.mjs`: executes a fixture sweep by assembling the same source
+  through both current AZM and AZM Next and comparing exit code, diagnostics,
+  bytes, and HEX output through a shared result comparator.
+
+Run:
+
+```sh
+node next/scripts/diff-against-current.mjs --skip-unsupported
+```
+
+You can scope the sweep by directory or file:
+
+```sh
+node next/scripts/diff-against-current.mjs --fixtures-dir next/test/differential/fixtures
+node next/scripts/diff-against-current.mjs --include minimal.asm --include fixup_slice.asm
+node next/scripts/diff-against-current.mjs fixup_slice.asm
+```
