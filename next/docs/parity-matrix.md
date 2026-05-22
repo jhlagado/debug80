@@ -38,10 +38,10 @@ Legend:
 | Layout declarations       | partial     | Layout constant tests                                                |
 | `sizeof`                  | partial     | Layout expression tests                                              |
 | `offset`                  | partial     | Layout expression tests                                              |
-| Layout casts              | not started | Exact-size layout tests                                              |
+| Layout casts              | compatible  | Stage 15 evidence-backed layout-cast folding and rejection tests      |
 | Visible `op` declarations | partial     | Op expansion tests and Stage 9 evidence                              |
 | Op overload matching      | partial     | Op matcher tests and Stage 9 evidence                                |
-| Op expansion local labels | not started | Expansion and register-care tests                                    |
+| Op expansion local labels | compatible  | Stage 15 evidence-backed op-local-label expansion test             |
 | Register-care contracts   | partial      | CLI/API parse and `.asmi` interface validation |
 | Register-care summaries   | partial      | Added register-care report tests under evidence-backed routine summaries slice |
 | Lowered `.z80` output     | partial      | Stage 15 evidence-backed lowering scaffolding and source-expansion emit path    |
