@@ -44,7 +44,6 @@ Status: in progress
     - `npm run test:ci:coverage-core`
     - `npm run check:fixture-coverage`
 
-
 - Implemented `next/test/differential/current-azm-runner.ts`:
   - writes the provided source text to a temporary `.asm` file,
   - runs current AZM compile entry point with explicit artifact controls (`emitHex: true`, `emitBin: true`, `emitD8m: false`, `emitListing: false`),
@@ -91,8 +90,11 @@ Status: implemented.
   artifacts.
 - This closes the review-identified risk that stale artifacts could mask package
   export/API regressions.
-- Fallback Next-local package-surface smoke remains a future hardening item when
-  environment constraints block `npm pack/install`.
+- Added a fallback Next-local package-surface smoke test at
+  `next/test/integration/stage-16-package-smoke-local.test.ts` for environments
+  where full `npm pack`/install smoke cannot run.
+- Added `next:guardrails:package:local` and updated `next:guardrails:package` to
+  run the local fallback when `test:package` fails in the current environment.
 
 ## Deferred / Out of Scope in this Slice
 
