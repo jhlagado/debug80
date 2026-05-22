@@ -88,7 +88,17 @@ export interface RoutineSummary {
   name: string;
   mayRead: RegisterCareUnit[];
   mayWrite: RegisterCareUnit[];
+  mayOutput?: RegisterCareUnit[];
   preserved: RegisterCareUnit[];
+}
+
+export interface RegisterCareOutputCandidate {
+  file: string;
+  line: number;
+  column: number;
+  routine: string;
+  carriers: RegisterCareUnit[];
+  message: string;
 }
 
 export interface RegisterCareConflict {
@@ -103,8 +113,10 @@ export interface RegisterCareConflict {
 export interface RegisterCareReportModel {
   entryFile: string;
   mode: RegisterCareMode;
+  profile?: string;
   summaries: RoutineSummary[];
   conflicts: RegisterCareConflict[];
+  outputCandidates?: RegisterCareOutputCandidate[];
   unknownCalls: string[];
 }
 
@@ -114,6 +126,7 @@ export interface AnalyzeRegisterCareOptions {
   emitInterface: boolean;
   emitAnnotations?: boolean;
   fixRegisterContracts?: boolean;
+  registerCareProfile?: 'mon3';
   interfaceContracts?: RoutineContract[];
   acceptedOutputCandidates?: ReadonlyMap<string, RegisterCareUnit[]>;
 }
