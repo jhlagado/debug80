@@ -9,6 +9,7 @@ import {
   evaluateExpression,
   type EquateRecord,
   type LayoutRecord,
+  validateLayouts,
 } from './expression-evaluation.js';
 import {
   emitAbs16Expression,
@@ -28,6 +29,9 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
   const diagnostics: Diagnostic[] = [];
   const addressState = buildAddressState(items, diagnostics);
   const { labels, equates, layouts, origin } = addressState;
+  if (diagnostics.length > 0) {
+    return { diagnostics, symbols: {}, origin, bytes: new Uint8Array() };
+  }
 
   const symbols = resolveSymbols(labels, equates, layouts, diagnostics);
   if (diagnostics.length > 0) {
@@ -420,6 +424,10 @@ function buildAddressStateOnce(
     }
   }
 
+  if (reportUnknown) {
+    validateLayouts(layouts, diagnostics);
+  }
+
   return { labels, equates, layouts, origin };
 }
 
@@ -547,7 +555,7 @@ function defineLayout(
     fieldNames.add(fieldLower);
   }
 
-  layouts.set(name, { kind: layoutKind, fields });
+  layouts.set(name, { kind: layoutKind, fields, span });
 }
 
 function defineLabel(
