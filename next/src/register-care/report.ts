@@ -9,6 +9,7 @@ export function renderRegisterCareReport(model: RegisterCareReportModel): string
     'AZM Register-Care Report',
     `Entry: ${model.entryFile}`,
     `Mode: ${model.mode}`,
+    ...(model.profile !== undefined ? [`Profile: ${model.profile}`] : []),
     '',
   ];
 
@@ -30,6 +31,20 @@ export function renderRegisterCareReport(model: RegisterCareReportModel): string
   } else {
     for (const conflict of model.conflicts) {
       lines.push(`  ${conflict.file}:${conflict.line}:${conflict.column}: ${conflict.callTarget}: ${conflict.message}`);
+    }
+  }
+  lines.push('');
+
+  lines.push('Output candidates:');
+  if (model.outputCandidates === undefined || model.outputCandidates.length === 0) {
+    lines.push('  none');
+  } else {
+    for (const candidate of model.outputCandidates) {
+      lines.push(
+        `  ${candidate.file}:${candidate.line}:${candidate.column}: ${candidate.routine}: ${candidate.carriers.join(
+          ',',
+        )}: ${candidate.message}`,
+      );
     }
   }
   lines.push('');

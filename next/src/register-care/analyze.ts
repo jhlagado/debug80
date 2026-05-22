@@ -11,11 +11,18 @@ import type {
   RegisterCareReportModel,
   RegisterCareConflict,
   LocatedSmartComment,
+  RegisterCareOutputCandidate,
 } from './types.js';
 import type { Z80Instruction } from '../z80/instruction.js';
 import { buildRegisterCareProgramModel } from './programModel.js';
 import { buildRoutineContracts, parseSmartComments } from './smartComments.js';
 import { renderRegisterCareInterface, renderRegisterCareReport } from './report.js';
+import {
+  getRegisterCareProfile,
+  rstServiceTargetName,
+  rstTargetName,
+} from './profiles.js';
+import { precedingCServiceName } from './boundaryHints.js';
 
 const FLAG_UNITS: RegisterCareUnit[] = ['carry', 'zero', 'sign', 'parity', 'halfCarry'];
 
@@ -237,6 +244,29 @@ function inferRoutineSummary(routine: RegisterCareRoutine): RoutineSummary {
   };
 }
 
+function buildProfileSummaries(profileName: AnalyzeRegisterCareOptions['registerCareProfile']): RoutineSummary[] {
+  const profile = getRegisterCareProfile(profileName);
+  if (profile === undefined) {
+    return [];
+  }
+  return [...profile.rst.values(), ...profile.rstServices.values()];
+}
+
+function buildProfileSummaryLookup(
+  profileName: AnalyzeRegisterCareOptions['registerCareProfile'],
+): Map<string, RoutineSummary> {
+  const profile = getRegisterCareProfile(profileName);
+  const out = new Map<string, RoutineSummary>();
+  if (profile === undefined) return out;
+  for (const summary of profile.rst.values()) {
+    out.set(summary.name, summary);
+  }
+  for (const summary of profile.rstServices.values()) {
+    out.set(summary.name, summary);
+  }
+  return out;
+}
+
 function routineNames(routines: readonly RegisterCareRoutine[]): string[] {
   return routines.flatMap((routine) =>
     routine.entryLabels.length > 0 ? routine.entryLabels : [routine.name],
@@ -290,11 +320,15 @@ function buildSummaries(
 function buildSummaryByName(
   routines: readonly RegisterCareRoutine[],
   summaries: readonly RoutineSummary[],
+  profileSummaries: readonly RoutineSummary[] = [],
 ): Map<string, RoutineSummary> {
   const out = new Map<string, RoutineSummary>();
   const byRoutine = new Map<string, RoutineSummary>();
   for (const summary of summaries) {
     byRoutine.set(summary.name, summary);
+    out.set(summary.name, summary);
+  }
+  for (const summary of profileSummaries) {
     out.set(summary.name, summary);
   }
   for (const routine of routines) {
@@ -307,17 +341,74 @@ function buildSummaryByName(
   return out;
 }
 
-function instructionCallTarget(instruction: RegisterCareRoutine['instructions'][number]): string | undefined {
-  if (instruction.instruction.mnemonic !== 'call' && instruction.instruction.mnemonic !== 'call-cc') {
-    return undefined;
+type BoundaryTarget = {
+  subject: string;
+  conditional: boolean;
+  targets: string[];
+};
+
+function instructionBoundary(
+  routine: RegisterCareRoutine,
+  index: number,
+  summaryByName: ReadonlyMap<string, RoutineSummary>,
+): BoundaryTarget | undefined {
+  const item = routine.instructions[index];
+  if (item === undefined) return undefined;
+  const instruction = item.instruction;
+
+  if (instruction.mnemonic === 'call' || instruction.mnemonic === 'call-cc') {
+    if (instruction.expression.kind !== 'symbol') return undefined;
+    const target = instruction.expression.name;
+    if (!summaryByName.has(target)) return undefined;
+    return {
+      subject: `CALL ${target}`,
+      conditional: instruction.mnemonic === 'call-cc',
+      targets: [target],
+    };
   }
-  return instruction.instruction.expression.kind === 'symbol'
-    ? instruction.instruction.expression.name
-    : undefined;
+
+  if (instruction.mnemonic === 'rst' && instruction.vector % 8 === 0) {
+    const vectorName = rstTargetName(instruction.vector);
+    const serviceName = precedingCServiceName(routine.instructions[index - 1]);
+    const targets = serviceName ? [rstServiceTargetName(instruction.vector, serviceName), vectorName] : [vectorName];
+    const target = targets.find((candidate) => summaryByName.has(candidate));
+    if (target === undefined) return undefined;
+    return {
+      subject: vectorName,
+      conditional: false,
+      targets,
+    };
+  }
+
+  return undefined;
 }
 
-function isCallConditional(instruction: RegisterCareRoutine['instructions'][number]): boolean {
-  return instruction.instruction.mnemonic === 'call-cc';
+function resolvedBoundary(
+  routine: RegisterCareRoutine,
+  index: number,
+  summaryByName: ReadonlyMap<string, RoutineSummary>,
+): {
+  target: string;
+  subject: string;
+  conditional: boolean;
+  summary: RoutineSummary;
+} | undefined {
+  const boundary = instructionBoundary(routine, index, summaryByName);
+  if (boundary === undefined) {
+    return undefined;
+  }
+  for (const target of boundary.targets) {
+    const summary = summaryByName.get(target);
+    if (summary !== undefined) {
+      return {
+        target,
+        subject: boundary.subject,
+        conditional: boundary.conditional,
+        summary,
+      };
+    }
+  }
+  return undefined;
 }
 
 function commentExpectedOutputs(
@@ -334,54 +425,85 @@ function commentExpectedOutputs(
   return prior.comment.carriers;
 }
 
-function conflictMessage(target: string, carriers: RegisterCareUnit[]): string {
-  return `CALL ${target} may modify ${carriers.join(',')}, but the pre-call value is used later.`;
+function outputUnits(summary: RoutineSummary): RegisterCareUnit[] {
+  return summary.mayOutput ?? [];
 }
 
-function buildConflictsForRoutine(
+function expectedOutputUnits(
+  boundary: {
+    target: string;
+    summary: RoutineSummary;
+  },
+  hints: readonly LocatedSmartComment[],
+  item: RegisterCareRoutine['instructions'][number],
+  acceptedOutputCandidates: ReadonlyMap<string, readonly RegisterCareUnit[]>,
+): RegisterCareUnit[] {
+  const prior = commentExpectedOutputs(hints, item);
+  const fromComment = new Set(prior);
+  const fromAcceptArg = new Set(acceptedOutputCandidates.get(boundary.target) ?? []);
+  const fromSummary = new Set(outputUnits(boundary.summary));
+  return unique([...fromComment, ...fromAcceptArg, ...fromSummary]);
+}
+
+function boundaryMessage(subject: string, carriers: readonly RegisterCareUnit[]): string {
+  const list = carriers.join(',');
+  const expectation = carriers.length === 1 ? list : `{${list}}`;
+  return `${subject} writes ${list} and caller reads it later; review the call site and add \`; expects out ${expectation}\``;
+}
+
+function buildConflictsAndCandidatesForRoutine(
   routine: RegisterCareRoutine,
   summaryByName: ReadonlyMap<string, RoutineSummary>,
   acceptedOutputCandidates: ReadonlyMap<string, readonly RegisterCareUnit[]>,
   smartComments: readonly LocatedSmartComment[],
-): RegisterCareConflict[] {
+): {
+  conflicts: RegisterCareConflict[];
+  outputCandidates: RegisterCareOutputCandidate[];
+} {
   const conflicts: RegisterCareConflict[] = [];
+  const outputCandidates: RegisterCareOutputCandidate[] = [];
   const live = new Set<RegisterCareUnit>();
 
   for (let index = routine.instructions.length - 1; index >= 0; index -= 1) {
     const instruction = routine.instructions[index];
     if (instruction === undefined) continue;
 
-    const target = instructionCallTarget(instruction);
-    if (target !== undefined) {
-      const targetSummary = summaryByName.get(target);
-      if (targetSummary !== undefined) {
-        const accepted = new Set<RegisterCareUnit>([
-          ...(acceptedOutputCandidates.get(target) ?? []),
-          ...commentExpectedOutputs(smartComments, instruction),
-        ]);
-
-        const carriedConflict: RegisterCareUnit[] = targetSummary.mayWrite.filter(
-          (unit) => live.has(unit) && !accepted.has(unit),
-        );
-        if (carriedConflict.length > 0) {
+    const resolved = resolvedBoundary(routine, index, summaryByName);
+    if (resolved !== undefined) {
+      const accepted = new Set<RegisterCareUnit>(expectedOutputUnits(resolved, smartComments, instruction, acceptedOutputCandidates));
+      const carriers = resolved.summary.mayWrite.filter(
+        (unit) => live.has(unit) && !accepted.has(unit),
+      );
+      if (carriers.length > 0) {
+        if (!resolved.conditional) {
           conflicts.push({
             file: instruction.file,
             line: instruction.line,
             column: instruction.column,
-            callTarget: target,
-            carriers: carriedConflict,
-            message: conflictMessage(target, carriedConflict),
+            callTarget: resolved.target,
+            carriers,
+            message: `${resolved.subject} may modify ${carriers.join(',')}, but the pre-call value is used later.`,
           });
         }
+        outputCandidates.push({
+          file: instruction.file,
+          line: instruction.line,
+          column: instruction.column,
+          routine: resolved.target,
+          carriers,
+          message: boundaryMessage(resolved.subject, carriers),
+        });
+      }
 
-        if (!isCallConditional(instruction)) {
-          for (const unit of targetSummary.mayWrite) {
+      if (!resolved.conditional) {
+        for (const unit of resolved.summary.mayWrite) {
+          if (!accepted.has(unit)) {
             live.delete(unit);
           }
         }
-        for (const unit of targetSummary.mayRead) {
-          live.add(unit);
-        }
+      }
+      for (const unit of resolved.summary.mayRead) {
+        live.add(unit);
       }
     }
 
@@ -394,7 +516,7 @@ function buildConflictsForRoutine(
     }
   }
 
-  return conflicts;
+  return { conflicts, outputCandidates };
 }
 
 function withAcceptedOutputs(
@@ -413,6 +535,7 @@ function withAcceptedOutputs(
     return {
       ...summary,
       mayWrite: merged,
+      mayOutput: unique([...accepted]),
     };
   });
 }
@@ -561,18 +684,24 @@ export function analyzeRegisterCare(
   }
 
   let summaries = buildSummaries(program.routines, contractMap);
+  const profileSummaries = buildProfileSummaries(options.registerCareProfile);
   summaries = withAcceptedOutputs(summaries, options.acceptedOutputCandidates);
 
-  const summariesByName = buildSummaryByName(program.routines, summaries);
+  const allSummaries = [...summaries, ...profileSummaries];
+  const summariesByName = buildSummaryByName(program.routines, summaries, profileSummaries);
   const knownRoutines = new Set(routineNames(program.routines));
   for (const [name] of contractMap) {
     knownRoutines.add(name);
   }
+  for (const name of buildProfileSummaryLookup(options.registerCareProfile).keys()) {
+    knownRoutines.add(name);
+  }
+
   const diagnostics: Diagnostic[] = [];
-  const conflicts =
+  const analyzed =
     options.mode === 'warn' || options.mode === 'error' || options.mode === 'strict'
       ? program.routines.flatMap((routine) =>
-          buildConflictsForRoutine(
+          buildConflictsAndCandidatesForRoutine(
             routine,
             summariesByName,
             options.acceptedOutputCandidates ?? new Map(),
@@ -580,6 +709,8 @@ export function analyzeRegisterCare(
           ),
         )
       : [];
+  const conflicts = analyzed.flatMap((record) => record.conflicts);
+  const outputCandidates = analyzed.flatMap((record) => record.outputCandidates);
   for (const conflict of conflicts) {
     diagnostics.push({
       severity: options.mode === 'error' ? 'error' : 'warning',
@@ -598,8 +729,10 @@ export function analyzeRegisterCare(
   const reportModel: RegisterCareReportModel = {
     entryFile: loaded.program.entryFile,
     mode: options.mode,
-    summaries,
+    summaries: allSummaries,
     conflicts,
+    outputCandidates,
+    ...(options.registerCareProfile !== undefined ? { profile: options.registerCareProfile } : {}),
     unknownCalls: options.mode === 'off' ? [] : unknownCallList(program.directCalls, knownRoutines),
   };
 
