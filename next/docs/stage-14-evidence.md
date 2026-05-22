@@ -34,6 +34,8 @@ Status: in progress
   - inference results can be emitted as rewritten source text.
   - `--contracts`/`--fix` and `emitRegisterAnnotations` generate source-comment blocks.
   - CLI writes updated files when this artifact is present.
+- `--fix` and `fixRegisterContracts` are accepted in both CLI and API compile paths and force
+  annotation artifacts to be generated.
 
 ## Implemented Slice Boundary
 
@@ -93,6 +95,12 @@ Status: in progress
   - report now includes `Profile: <name>`.
   - report now includes `Output candidates:` with call-site/line detail.
 - Updated API plumbing in `next/src/api-compile.ts` to pass `registerCareProfile`.
+- Added conservative output-hint rewriting in `next/src/register-care/analyze.ts`:
+  - computes per-call output-candidate fixability from immediate continuation reads.
+  - emits `; expects out ...` when all candidate carriers are read by the next instruction.
+  - emits `;!      maybe-out ...` when candidate carriers are not fully confirmed by immediate
+    continuation.
+  - adjusts insertion positions for annotation insertion shifts caused by routine comment rewrites.
 - Added register-care report-summary evidence in next integration coverage:
   - introduced `next/test/integration/stage-14-register-care-summary.test.ts`
   - verified report artifacts enumerate called routines with inferred `reads`, `writes`,
@@ -102,8 +110,19 @@ Status: in progress
 
 ## Deferred / Out of Scope in this Slice
 
-- full output-candidate auto-fix generation and source rewrite remains deferred.
+- full control-flow-aware auto-fix classification remains deferred:
+  - this implementation only checks immediate continuation instructions for safe `expects out`.
+  - `call-cc` and non-direct flows are not auto-promoted.
 - control-flow-sensitive and full-register-effect precision remains intentionally bounded for this slice:
   - liveness remains linear/bounded and does not model multi-path control-flow or value relations.
   - instruction effects are conservative but incomplete for a large portion of the Z80 catalog; unsupported mnemonics may still miss conflicts until later stages.
   - `registerCareProfile` is interpreted for RST boundary names only at this stage.
+
+## New Tests for This Slice Boundary
+
+- `next/test/integration/stage-14-compile-api.test.ts`:
+  - asserts `--fix` emits `register-care-annotations` containing `; expects out ...` for direct reads.
+  - asserts `--fix` emits `;!      maybe-out ...` when candidate is not a direct continuation.
+- `next/test/integration/stage-14-cli.test.ts`:
+  - asserts source rewrite under `--fix` inserts direct `; expects out ...` hint.
+  - asserts source rewrite under `--fix` inserts `;!      maybe-out ...` when needed.
