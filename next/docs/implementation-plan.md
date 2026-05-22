@@ -495,7 +495,7 @@ as a first-class path rather than treated as a side effect of CLI work.
 
 ## Stage 13: CLI Parity Thin Wrapper
 
-Status: not started.
+Status: in progress.
 
 Purpose: implement the command-line entry point as a thin wrapper around the
 Stage 11 source host and Stage 12 compile API.
@@ -536,6 +536,21 @@ Planned work:
 - Assign package export parity for `@jhlagado/azm/cli` and `bin.azm` to this
   stage.
 - Update the parity matrix for CLI flags and output paths.
+
+Current slice completed:
+
+- Parse register-care CLI options and aliases in `next/src/cli.ts`.
+- Parse/validate `--accept-out` and `.asmi` interface inputs in `next/src/api-compile.ts`.
+- Added unit/integration evidence-backed tests for malformed mappings, malformed interfaces,
+  non-`.asmi` interface extension handling, and accept-output validation.
+- Added `next/docs/stage-14-evidence.md`.
+
+Remaining Stage 14 scope:
+
+- Register-care summary/report emission in-memory artifacts.
+- Contract merge/inference and routine effect/liveness analysis.
+- Source annotation and fixup pipelines.
+- Register-care artifact output handling in CLI artifact writer.
 
 Justification:
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { compile, type CompileNextFunctionOptions, type CompileNextResult } from './api-compile.js';
 import { formatNextDiagnostic } from './diagnostics/format.js';
 import type { Artifact } from './outputs/types.js';
+import type { RegisterCareMode } from './register-care/types.js';
 
 type CliExit = { code: number };
 
@@ -19,6 +20,14 @@ type CliOptions = {
   emitD8m: boolean;
   emitListing: boolean;
   emitAsm80: boolean;
+  registerCare: RegisterCareMode;
+  emitRegisterReport: boolean;
+  emitRegisterInterface: boolean;
+  emitRegisterAnnotations: boolean;
+  fixRegisterContracts: boolean;
+  acceptRegisterOutputCandidates: string[];
+  registerCareProfile?: 'mon3';
+  registerCareInterfaces: string[];
   includeDirs: string[];
 };
 
@@ -40,6 +49,15 @@ function usage(): string {
     '      --nohex           Suppress .hex',
     '      --nod8m           Suppress .d8.json',
     '      --asm80           Emit lowered source (.z80)',
+    '      --register-care    Register-care mode: off|audit|warn|error|strict',
+    '      --rc <m>           Register-care mode alias for --register-care',
+    '      --reg-report       Emit register-care report artifact',
+    '      --reg-interface     Emit inferred register-care interface (.asmi)',
+    '      --contracts        Rewrite source with inferred register-care contracts',
+    '      --fix              Enable contract rewrite and conservative fixes',
+    '      --accept-out <x>   Accept register-care output candidates',
+    '      --interface <file>  Load .asmi contract file',
+    '      --reg-profile <p>  Register-care profile (currently mon3)',
     '      --source-root <d> Normalize D8 source paths relative to this directory',
     '  -I, --include <dir>   Add include search path (repeatable)',
     '  -V, --version         Print version',
@@ -65,6 +83,13 @@ function createDefaultCliState(): CliState {
     emitD8m: true,
     emitListing: true,
     emitAsm80: false,
+    registerCare: 'off',
+    emitRegisterReport: false,
+    emitRegisterInterface: false,
+    emitRegisterAnnotations: false,
+    fixRegisterContracts: false,
+    acceptRegisterOutputCandidates: [],
+    registerCareInterfaces: [],
     sourceRoot: undefined,
     includeDirs: [],
     entryFile: undefined,
@@ -144,6 +169,91 @@ function parseIncludeArg(
   return true;
 }
 
+function readMatchedFlagValue(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  flags: readonly string[],
+): { flag: string; value: string } | undefined {
+  const flag = flags.find((candidate) => arg === candidate || arg.startsWith(`${candidate}=`));
+  if (!flag) return undefined;
+  const value = arg.startsWith(`${flag}=`)
+    ? arg.slice(flag.length + 1)
+    : readValue(argv, indexRef, flag);
+  if (!value) {
+    fail(`${flag} expects a value`);
+  }
+  return { flag, value };
+}
+
+function parseRegisterCareArg(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  state: CliState,
+): boolean {
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, ['--register-care', '--rc']);
+  if (!parsed) return false;
+
+  const { value, flag } = parsed;
+  if (
+    value !== 'off' &&
+    value !== 'audit' &&
+    value !== 'warn' &&
+    value !== 'error' &&
+    value !== 'strict'
+  ) {
+    fail(`Unsupported ${flag} "${value}" (expected off|audit|warn|error|strict)`);
+  }
+  state.registerCare = value;
+  return true;
+}
+
+function parseRegisterProfileArg(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  state: CliState,
+): boolean {
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, ['--register-profile', '--reg-profile']);
+  if (!parsed) return false;
+  if (parsed.value !== 'mon3') {
+    fail(`Unsupported ${parsed.flag} "${parsed.value}" (expected mon3)`);
+  }
+  state.registerCareProfile = parsed.value;
+  return true;
+}
+
+function parseRegisterInterfaceArg(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  state: CliState,
+): boolean {
+  if (arg !== '--interface' && !arg.startsWith('--interface=')) return false;
+  const value = arg.startsWith('--interface=')
+    ? arg.slice('--interface='.length)
+    : readValue(argv, indexRef, '--interface');
+  if (!value) fail('--interface expects a value');
+  state.registerCareInterfaces.push(value);
+  return true;
+}
+
+function parseAcceptOutputArg(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  state: CliState,
+): boolean {
+  const parsed = readMatchedFlagValue(arg, argv, indexRef, [
+    '--accept-register-output',
+    '--accept-out',
+  ]);
+  if (!parsed) return false;
+  state.acceptRegisterOutputCandidates.push(parsed.value);
+  return true;
+}
+
 function parseSourceRootArg(
   arg: string,
   argv: string[],
@@ -177,19 +287,28 @@ function finalizeCliOptions(state: CliState): CliOptions {
     fail(`Unsupported entry extension "${ext || '<none>'}" (expected .asm, .z80)`);
   }
 
-  if (state.outputType === 'hex' && !state.emitHex) {
-    fail(`--type hex requires HEX output to be enabled`);
-  }
-  if (state.outputType === 'bin' && !state.emitBin) {
-    fail(`--type bin requires BIN output to be enabled`);
-  }
-
   if (state.outputPath !== undefined) {
     const wantExt = state.outputType === 'hex' ? '.hex' : '.bin';
     const providedExt = extname(state.outputPath).toLowerCase();
     if (providedExt !== wantExt) {
       fail(`--output must end with "${wantExt}" when --type is "${state.outputType}"`);
     }
+  }
+
+  const emitsRegisterCare =
+    state.registerCare !== 'off' ||
+    state.emitRegisterReport ||
+    state.emitRegisterInterface ||
+    state.emitRegisterAnnotations ||
+    state.fixRegisterContracts ||
+    state.acceptRegisterOutputCandidates.length > 0 ||
+    state.registerCareInterfaces.length > 0;
+
+  if (state.outputType === 'hex' && !state.emitHex && !emitsRegisterCare) {
+    fail(`--type hex requires HEX output to be enabled`);
+  }
+  if (state.outputType === 'bin' && !state.emitBin && !emitsRegisterCare) {
+    fail(`--type bin requires BIN output to be enabled`);
   }
 
   return {
@@ -202,6 +321,16 @@ function finalizeCliOptions(state: CliState): CliOptions {
     emitD8m: state.emitD8m,
     emitListing: state.emitListing,
     emitAsm80: state.emitAsm80,
+    registerCare: state.registerCare,
+    emitRegisterReport: state.emitRegisterReport,
+    emitRegisterInterface: state.emitRegisterInterface,
+    emitRegisterAnnotations: state.emitRegisterAnnotations,
+    fixRegisterContracts: state.fixRegisterContracts,
+    acceptRegisterOutputCandidates: state.acceptRegisterOutputCandidates,
+    ...(state.registerCareProfile !== undefined
+      ? { registerCareProfile: state.registerCareProfile }
+      : {}),
+    registerCareInterfaces: state.registerCareInterfaces,
     includeDirs: state.includeDirs,
   };
 }
@@ -237,7 +366,28 @@ export function parseCliArgs(argv: string[]): CliOptions | CliExit {
       state.emitAsm80 = true;
       continue;
     }
+    if (arg === '--emit-register-report' || arg === '--reg-report') {
+      state.emitRegisterReport = true;
+      continue;
+    }
+    if (arg === '--emit-register-interface' || arg === '--reg-interface') {
+      state.emitRegisterInterface = true;
+      continue;
+    }
+    if (arg === '--fix') {
+      state.fixRegisterContracts = true;
+      state.emitRegisterAnnotations = true;
+      continue;
+    }
+    if (arg === '--contracts' || arg === '--annotate-register-contracts') {
+      state.emitRegisterAnnotations = true;
+      continue;
+    }
     if (parseSourceRootArg(arg, argv, indexRef, state)) continue;
+    if (parseRegisterCareArg(arg, argv, indexRef, state)) continue;
+    if (parseRegisterProfileArg(arg, argv, indexRef, state)) continue;
+    if (parseAcceptOutputArg(arg, argv, indexRef, state)) continue;
+    if (parseRegisterInterfaceArg(arg, argv, indexRef, state)) continue;
     if (parseIncludeArg(arg, argv, indexRef, state)) continue;
 
     if (arg.startsWith('-')) {
@@ -400,6 +550,16 @@ function buildCompileOptions(parsed: CliOptions, base: string): CompileNextFunct
     emitD8m: parsed.emitD8m,
     emitListing: parsed.emitListing,
     emitAsm80: parsed.emitAsm80,
+    registerCare: parsed.registerCare,
+    emitRegisterReport: parsed.emitRegisterReport,
+    emitRegisterInterface: parsed.emitRegisterInterface,
+    emitRegisterAnnotations: parsed.emitRegisterAnnotations,
+    fixRegisterContracts: parsed.fixRegisterContracts,
+    acceptRegisterOutputCandidates: parsed.acceptRegisterOutputCandidates,
+    ...(parsed.registerCareProfile !== undefined
+      ? { registerCareProfile: parsed.registerCareProfile }
+      : {}),
+    registerCareInterfaces: parsed.registerCareInterfaces,
     ...(parsed.sourceRoot !== undefined ? { sourceRoot: parsed.sourceRoot } : {}),
     ...(parsed.sourceRoot !== undefined
       ? {
