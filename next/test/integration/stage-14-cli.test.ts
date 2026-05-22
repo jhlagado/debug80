@@ -277,4 +277,31 @@ describe('stage 14 register-care CLI facade', () => {
     });
   });
 
+  it('accepts mon3 register-care profile and applies RST service boundary inference', async () => {
+    await withTempDir('azm-next-regcare-cli-rst-service-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'API_SCANKEYS:',
+          'START:',
+          '  ld a, $12',
+          '  ld c, API_SCANKEYS',
+          '  rst $10',
+          '  ld b, a',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const res = await runNextCli(
+        [...artifactlessArgs, '--rc', 'warn', '--reg-profile', 'mon3', '--nolist', entry],
+        dir,
+      );
+
+      expect(res.code).toBe(0);
+      expect(res.stderr).not.toContain('RST_$10 may modify');
+    });
+  });
+
 });

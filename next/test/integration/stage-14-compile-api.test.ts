@@ -339,4 +339,70 @@ describe('stage 14 register-care compile API slice', () => {
       );
     });
   });
+
+  it('uses mon3 register-care profile for RST service boundaries', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-service-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'API_SCANKEYS:',
+          'START:',
+          '  ld a, $12',
+          '  ld c, API_SCANKEYS',
+          '  rst $10',
+          '  ld b, a',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(entry, {
+        registerCare: 'warn',
+        registerCareProfile: 'mon3',
+        emitRegisterReport: true,
+      }, {
+        formats: defaultFormatWriters,
+      });
+
+      expect(result.diagnostics).toEqual([]);
+      const report = result.artifacts.find((artifact) => artifact.kind === 'register-care-report');
+      expect(report?.text).toContain('Profile: mon3');
+      expect(report?.text).toContain('Output candidates:');
+      expect(report).toBeDefined();
+    });
+  });
+
+  it('falls back to generic RST boundary for mon3 when no service is declared', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-generic-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'START:',
+          '  ld a, $12',
+          '  rst $10',
+          '  inc a',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(entry, {
+        registerCare: 'warn',
+        registerCareProfile: 'mon3',
+      }, {
+        formats: defaultFormatWriters,
+      });
+
+      expect(result.diagnostics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            severity: 'warning',
+            message: expect.stringContaining('RST_$10 may modify A'),
+          }),
+        ]),
+      );
+    });
+  });
 });
