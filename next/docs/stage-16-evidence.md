@@ -8,6 +8,7 @@ Status: in progress
 - `next/test/differential/fixture-corpus.test.ts`
 - `next/test/differential/fixtures/minimal.asm`
 - `next/test/differential/fixtures/fixup_slice.asm`
+- `next/test/differential/fixtures/alias_and_storage.asm`
 - `next/test/differential/current-azm-runner.ts`
 - `next/test/differential/next-azm-runner.ts`
 - `next/test/differential/compare-results.ts`
@@ -38,7 +39,7 @@ Status: in progress
   - optional `binBytes` canonical byte parity;
   - normalized `stdout`/`stderr` text comparison.
 - Added `next/test/differential/fixture-corpus.test.ts` with the first corpus slice
-  (`minimal.asm`, `fixup_slice.asm`).
+  (`minimal.asm`, `fixup_slice.asm`, `alias_and_storage.asm`).
 - Added an executable differential corpus runner:
   - `next/scripts/diff-against-current.ts`
   - wrapper `next/scripts/diff-against-current.mjs`
