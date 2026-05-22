@@ -245,6 +245,67 @@ describe('stage 14 register-care CLI facade', () => {
     });
   });
 
+  it('rewrites source with expects-out hint when --fix confirms direct continuation', async () => {
+    await withTempDir('azm-next-regcare-fix-direct-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'START:',
+          '    ld a,3',
+          '    call MASK',
+          '    ld d,a',
+          '',
+          '; Helper prose.',
+          'MASK:',
+          '    ld c,a',
+          '    ld a,$80',
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const res = await runNextCli(
+        [...artifactlessArgs, '--rc', 'audit', '--fix', '--nolist', entry],
+        dir,
+      );
+      expect(res.code).toBe(0);
+      expect(res.stdout.trim()).toBe(entry);
+
+      const rewritten = await readFile(entry, 'utf8');
+      expect(rewritten).toContain('; expects out A');
+    });
+  });
+
+  it('rewrites source with maybe-out hint when continuation is not direct', async () => {
+    await withTempDir('azm-next-regcare-fix-indirect-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'START:',
+          '    call MASK',
+          '    inc b',
+          '    ld d,a',
+          '; Helper prose.',
+          'MASK:',
+          '    ld a,$80',
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const res = await runNextCli([...artifactlessArgs, '--rc', 'audit', '--fix', '--nolist', entry], dir);
+      expect(res.code).toBe(0);
+      expect(res.stdout.trim()).toBe(entry);
+
+      const rewritten = await readFile(entry, 'utf8');
+      expect(rewritten).toContain(';!      maybe-out A');
+    });
+  });
+
   it('uses external interface contracts for known call targets', async () => {
     await withTempDir('azm-next-regcare-cli-external-contract-', async (dir) => {
       const entry = join(dir, 'main.asm');
