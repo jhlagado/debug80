@@ -655,6 +655,12 @@ Current slice completed:
     included files.
   - Added evidence-backed integration test for lowered output artifact generation.
   - Added/updated stage-15 evidence documentation with boundary.
+- Layout casts / op-local-label slice:
+  - Verified layout-cast constant folding, explicit-path requirement, and runtime
+    rejection behavior in `next/test/integration/minimal-assembler.test.ts`.
+  - Verified op-local-label renaming per invocation in
+    `next/test/integration/minimal-assembler.test.ts`.
+  - Classified those two matrix rows as compatible based on the proven scope.
 
 Justification:
 
