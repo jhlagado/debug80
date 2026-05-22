@@ -32,6 +32,7 @@ export type SourceItem =
   | {
       readonly kind: 'type';
       readonly name: string;
+      readonly layoutKind: 'record' | 'union';
       readonly fields: readonly LayoutField[];
       readonly span: SourceSpan;
     }
@@ -50,4 +51,5 @@ export type DataValue = Expression | { readonly kind: 'string-fragment'; readonl
 export interface LayoutField {
   readonly name: string;
   readonly size: number;
+  readonly layoutName?: string;
 }
