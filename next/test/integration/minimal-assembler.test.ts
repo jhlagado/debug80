@@ -1670,6 +1670,147 @@ end
     ]);
   });
 
+  it('expands Stage 9 parameterized reg8 ops with AST operand substitution', () => {
+    const result = compileNext(`
+op clear(dst reg8)
+        xor dst
+end
+
+main:
+        clear b
+        clear a
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0xa8, 0xaf]);
+  });
+
+  it('selects fixed-token Stage 9 op overloads before reg8 overloads', () => {
+    const result = compileNext(`
+op clear(dst reg8)
+        ld dst,0
+end
+
+op clear(dst A)
+        xor a
+end
+
+main:
+        clear b
+        clear a
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0x06, 0x00, 0xaf]);
+  });
+
+  it('reports Stage 9 parameterized op arity mismatches', () => {
+    const result = compileNext(`
+op clear(dst reg8)
+        xor dst
+end
+
+main:
+        clear a,b
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        message:
+          'No op overload of "clear" accepts 2 operand(s). available overloads: clear(dst reg8)',
+      }),
+    ]);
+  });
+
+  it('reports Stage 9 parameterized op no-match diagnostics', () => {
+    const result = compileNext(`
+op clear(dst A)
+        xor a
+end
+
+main:
+        clear b
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        message:
+          'No matching op overload for "clear"; call-site operands: (B); available overloads: clear(dst A); dst: expects A, got B',
+      }),
+    ]);
+  });
+
+  it('reports ambiguous Stage 9 parameterized op overloads', () => {
+    const result = compileNext(`
+op choose(dst A, src reg8)
+        ld dst,src
+end
+
+op choose(dst reg8, src B)
+        ld dst,src
+end
+
+main:
+        choose a,b
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        message:
+          'Ambiguous op overload for "choose"; equally specific candidates: choose(dst A, src reg8), choose(dst reg8, src B)',
+      }),
+    ]);
+  });
+
+  it('matches Stage 9 imm8 op arguments backed by equate symbols', () => {
+    const result = compileNext(`
+VALUE .equ $44
+
+op load_a(value imm8)
+        ld a,value
+end
+
+main:
+        load_a VALUE
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0x3e, 0x44]);
+  });
+
+  it('preserves literal (HL) operands in Stage 9 LD substitution', () => {
+    const result = compileNext(`
+op store_hl(src reg8)
+        ld (hl),src
+end
+
+op load_hl(dst reg8)
+        ld dst,(hl)
+end
+
+main:
+        store_hl a
+        load_hl b
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0x77, 0x46]);
+  });
+
+  it('expands Stage 9 explicit-accumulator ALU templates', () => {
+    const result = compileNext(`
+op add_to_a(value imm8)
+        add a,value
+end
+
+main:
+        add_to_a 5
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0xc6, 0x05]);
+  });
+
   it('rejects Stage 7 type-name namespace collisions', () => {
     const typeEquateCollision = compileNext(`
 .type Point
