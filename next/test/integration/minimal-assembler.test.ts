@@ -1171,6 +1171,139 @@ after:
     expect(Array.from(result.bytes)).toEqual([0x03, 0x01]);
   });
 
+  it('uses Stage 7 scalar and named .field layouts as constants', () => {
+    const result = compileNext(`
+.type Pair
+left    .field byte
+right   .field addr
+.endtype
+
+.type Actor
+tile    .byte
+pair    .field Pair
+timer   .field word
+.endtype
+
+PAIR_SIZE    .equ sizeof(Pair)
+ACTOR_SIZE   .equ sizeof(Actor)
+PAIR_OFFSET  .equ offset(Actor, pair)
+RIGHT_OFFSET .equ offset(Actor, pair.right)
+
+main:
+        .db PAIR_SIZE,ACTOR_SIZE,PAIR_OFFSET,RIGHT_OFFSET
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toEqual(
+      expect.objectContaining({
+        ACTOR_SIZE: 6,
+        PAIR_OFFSET: 1,
+        PAIR_SIZE: 3,
+        RIGHT_OFFSET: 2,
+        main: 0,
+      }),
+    );
+    expect(Array.from(result.bytes)).toEqual([0x03, 0x06, 0x01, 0x02]);
+  });
+
+  it('uses Stage 7 union layout sizes and nested zero-offset field paths', () => {
+    const result = compileNext(`
+.type Pair
+left    .byte
+right   .byte
+.endtype
+
+.union Cell
+raw     .word
+pair    .field Pair
+tag     .byte
+.endunion
+
+CELL_SIZE    .equ sizeof(Cell)
+RAW_OFFSET   .equ offset(Cell, raw)
+TAG_OFFSET   .equ offset(Cell, tag)
+RIGHT_OFFSET .equ offset(Cell, pair.right)
+
+main:
+        .db CELL_SIZE,RAW_OFFSET,TAG_OFFSET,RIGHT_OFFSET
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toEqual(
+      expect.objectContaining({
+        CELL_SIZE: 2,
+        RAW_OFFSET: 0,
+        RIGHT_OFFSET: 1,
+        TAG_OFFSET: 0,
+        main: 0,
+      }),
+    );
+    expect(Array.from(result.bytes)).toEqual([0x02, 0x00, 0x00, 0x01]);
+  });
+
+  it('does not let Stage 7 union declarations emit bytes or move labels', () => {
+    const result = compileNext(`
+before:
+.union View
+b .byte
+w .word
+.endunion
+after:
+        .db sizeof(View),offset(View,w)
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toEqual(
+      expect.objectContaining({
+        after: 0,
+        before: 0,
+      }),
+    );
+    expect(Array.from(result.bytes)).toEqual([0x02, 0x00]);
+  });
+
+  it('diagnoses invalid named fields even when only direct offsets use them', () => {
+    const selfRecursive = compileNext(`
+.type Node
+next .field Node
+.endtype
+
+BAD .equ offset(Node,next)
+`);
+
+    expect(selfRecursive.diagnostics).toEqual([
+      expect.objectContaining({ message: 'recursive type: Node' }),
+    ]);
+
+    const mutualRecursive = compileNext(`
+.type A
+b .field B
+.endtype
+
+.type B
+a .field A
+.endtype
+
+BAD .equ offset(A,b)
+`);
+
+    expect(mutualRecursive.diagnostics).toEqual([
+      expect.objectContaining({ message: 'recursive type: A' }),
+    ]);
+
+    const unknownNamedType = compileNext(`
+.type Holder
+missing .field Missing
+.endtype
+
+BAD .equ offset(Holder,missing)
+`);
+
+    expect(unknownNamedType.diagnostics).toEqual([
+      expect.objectContaining({ message: 'unknown type: Missing' }),
+    ]);
+  });
+
   it('rejects Stage 7 type-name namespace collisions', () => {
     const typeEquateCollision = compileNext(`
 .type Point

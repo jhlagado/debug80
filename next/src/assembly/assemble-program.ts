@@ -310,6 +310,7 @@ function buildAddressStateOnce(
           equates,
           enumNamesLower,
           item.name,
+          item.layoutKind,
           item.fields,
           item.span,
           diagnostics,
@@ -509,7 +510,7 @@ function addressStateSignature(state: {
   return JSON.stringify({
     labels: state.labels,
     equates: [...state.equates].map(([name, record]) => [name, record.currentLocation]),
-    layouts: [...state.layouts].map(([name, record]) => [name, record.fields]),
+    layouts: [...state.layouts].map(([name, record]) => [name, record.kind, record.fields]),
     origin: state.origin,
   });
 }
@@ -520,6 +521,7 @@ function defineLayout(
   equates: ReadonlyMap<string, EquateRecord>,
   enumNamesLower: ReadonlySet<string>,
   name: string,
+  layoutKind: LayoutRecord['kind'],
   fields: LayoutRecord['fields'],
   span: SourceSpan,
   diagnostics: Diagnostic[],
@@ -545,7 +547,7 @@ function defineLayout(
     fieldNames.add(fieldLower);
   }
 
-  layouts.set(name, { fields });
+  layouts.set(name, { kind: layoutKind, fields });
 }
 
 function defineLabel(
