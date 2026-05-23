@@ -25,9 +25,9 @@ export function parseLogicalLine(
   }
 
   const span = { sourceName: line.sourceName, line: line.line, column: firstColumn(line.text) };
-  const labelWithStatement = /^([A-Za-z_.$?][A-Za-z0-9_.$?]*):\s+(.+)$/.exec(text);
+  const labelWithStatement = /^(@?[A-Za-z_.$?][A-Za-z0-9_.$?]*):\s*(.+)$/.exec(text);
   if (labelWithStatement) {
-    const labelName = labelWithStatement[1] ?? '';
+    const labelName = normalizeEntryLabelName(labelWithStatement[1] ?? '');
     const statementText = labelWithStatement[2] ?? '';
     const equStatement = parseColonLabelEqu(line, labelName, statementText, span);
     if (equStatement) {
@@ -41,12 +41,46 @@ export function parseLogicalLine(
     };
   }
 
-  const labelOnly = /^([A-Za-z_.$?][A-Za-z0-9_.$?]*):$/.exec(text);
+  const labelOnly = /^(@?[A-Za-z_.$?][A-Za-z0-9_.$?]*):$/.exec(text);
   if (labelOnly) {
-    return { items: [{ kind: 'label', name: labelOnly[1] ?? '', span }], diagnostics: [] };
+    return {
+      items: [{ kind: 'label', name: normalizeEntryLabelName(labelOnly[1] ?? ''), span }],
+      diagnostics: [],
+    };
   }
 
   return parseCanonicalStatement(line, text, span);
+}
+
+function parseEquItem(
+  line: LogicalLine,
+  name: string,
+  expressionText: string,
+  span: { readonly sourceName: string; readonly line: number; readonly column: number },
+): ParseLineResult {
+  const stringValue = parseWholeQuotedString(expressionText.trim());
+  const expression =
+    stringValue !== undefined && stringValue.length > 1
+      ? { kind: 'number' as const, value: 0 }
+      : parseExpression(expressionText);
+  if (!expression) {
+    return {
+      items: [],
+      diagnostics: [parseError(line, `invalid .equ expression: ${expressionText}`)],
+    };
+  }
+  return {
+    items: [
+      {
+        kind: 'equ',
+        name,
+        expression,
+        ...(stringValue !== undefined && stringValue.length > 1 ? { stringValue } : {}),
+        span,
+      },
+    ],
+    diagnostics: [],
+  };
 }
 
 function parseColonLabelEqu(
@@ -60,15 +94,7 @@ function parseColonLabelEqu(
     return undefined;
   }
 
-  const expressionText = equ[1] ?? '';
-  const expression = parseExpression(expressionText);
-  if (!expression) {
-    return {
-      items: [],
-      diagnostics: [parseError(line, `invalid .equ expression: ${expressionText}`)],
-    };
-  }
-  return { items: [{ kind: 'equ', name, expression, span }], diagnostics: [] };
+  return parseEquItem(line, name, equ[1] ?? '', span);
 }
 
 function parseCanonicalStatement(
@@ -78,16 +104,7 @@ function parseCanonicalStatement(
 ): ParseLineResult {
   const equ = /^([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s+\.equ\s+(.+)$/i.exec(text);
   if (equ) {
-    const name = equ[1] ?? '';
-    const expressionText = equ[2] ?? '';
-    const expression = parseExpression(expressionText);
-    if (!expression) {
-      return {
-        items: [],
-        diagnostics: [parseError(line, `invalid .equ expression: ${expressionText}`)],
-      };
-    }
-    return { items: [{ kind: 'equ', name, expression, span }], diagnostics: [] };
+    return parseEquItem(line, equ[1] ?? '', equ[2] ?? '', span);
   }
 
   const org = /^\.org\s+(.+)$/i.exec(text);
@@ -383,6 +400,10 @@ function parseWholeQuotedString(text: string): string | undefined {
     value += char;
   }
   return value;
+}
+
+function normalizeEntryLabelName(raw: string): string {
+  return raw.startsWith('@') ? raw.slice(1) : raw;
 }
 
 function firstColumn(text: string): number {

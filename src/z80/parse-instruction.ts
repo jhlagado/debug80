@@ -241,10 +241,20 @@ export function parseZ80Instruction(text: string): ParseZ80InstructionResult | u
       }
       return { error: 'ld expects a supported register/memory/immediate transfer form' };
     }
-    if (target.kind === 'reg8' && target.register !== 'a' && source.kind === 'reg-indirect') {
+    if (
+      target.kind === 'reg8' &&
+      target.register !== 'a' &&
+      source.kind === 'reg-indirect' &&
+      source.register !== 'hl'
+    ) {
       return { error: 'ld r8, (bc/de) supports destination A only' };
     }
-    if (target.kind === 'reg-indirect' && source.kind === 'reg8' && source.register !== 'a') {
+    if (
+      target.kind === 'reg-indirect' &&
+      source.kind === 'reg8' &&
+      source.register !== 'a' &&
+      target.register !== 'hl'
+    ) {
       return { error: 'ld (bc/de), r8 supports source A only' };
     }
     if (target.kind === 'reg-half-index' && source.kind === 'reg-indirect') {
@@ -1132,6 +1142,10 @@ function isSupportedLd(target: Z80Operand, source: Z80Operand): boolean {
   }
 
   if (target.kind === 'reg-indirect' && target.register === 'hl' && source.kind === 'reg8') {
+    return true;
+  }
+
+  if (target.kind === 'reg-indirect' && target.register === 'hl' && source.kind === 'imm') {
     return true;
   }
 
