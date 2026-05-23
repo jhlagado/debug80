@@ -71,16 +71,6 @@ export const KNOWN_UNSUPPORTED_FIXTURES: UnsupportedFixture[] = [
     bucket: 'diagnostic-wording',
   },
   {
-    file: 'pr208_call_indirect_legality_diag_matrix_invalid.asm',
-    reason: 'diagnostic wording differs for JP/CC indirect legality checks',
-    bucket: 'diagnostic-wording',
-  },
-  {
-    file: 'pr209_jp_cc_indirect_legality_diag_matrix_invalid.asm',
-    reason: 'diagnostic wording differs for JP/CC indirect legality checks',
-    bucket: 'diagnostic-wording',
-  },
-  {
     file: 'pr211_jr_djnz_diag_matrix_invalid.asm',
     reason: 'diagnostic wording differs for JR condition validation',
     bucket: 'diagnostic-wording',
