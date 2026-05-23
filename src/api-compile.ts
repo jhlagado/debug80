@@ -8,6 +8,13 @@ import { writeHex } from './outputs/write-hex.js';
 import type {
   AddressRange,
   Artifact,
+  D8mArtifact,
+  D8mFileEntry,
+  D8mFileSymbol,
+  D8mGenerator,
+  D8mJson,
+  D8mSegment,
+  D8mSymbol,
   EmittedByteMap,
   FormatWriters,
   SymbolEntry,
@@ -58,7 +65,21 @@ function isSuppressedUnknownSymbolInRegisterCareMode(
 }
 
 export { writeHex, defaultFormatWriters };
-export type { AddressRange, Artifact, EmittedByteMap, FormatWriters };
+export type {
+  AddressRange,
+  Artifact,
+  D8mArtifact,
+  D8mFileEntry,
+  D8mFileSymbol,
+  D8mGenerator,
+  D8mJson,
+  D8mSegment,
+  D8mSymbol,
+  EmittedByteMap,
+  FormatWriters,
+  SymbolEntry,
+  WriteD8mOptions,
+};
 
 export interface CompileNextDependencies {
   readonly formats: FormatWriters;

@@ -129,6 +129,71 @@ try {
     { cwd: installDir },
   );
 
+  const typescriptCheckDir = join(installDir, 'typescript-smoke');
+  await mkdir(typescriptCheckDir, { recursive: true });
+  await writeFile(
+    join(typescriptCheckDir, 'check.ts'),
+    [
+      "import { DiagnosticIds } from '@jhlagado/azm/tooling';",
+      "import type { D8mArtifact, D8mJson, D8mSymbol } from '@jhlagado/azm/compile';",
+      "import type {",
+      "  CompileEnv,",
+      "  Diagnostic,",
+      "  DiagnosticId,",
+      "  DiagnosticSeverity,",
+      "  ProgramNode,",
+      "  RegisterCareOutputCandidate,",
+      "  RegisterCareTextEdit,",
+      "  RegisterCareUnit,",
+      "  SourceFileNode,",
+      "  SourceItemNode,",
+      "  SourcePosition,",
+      "  SourceSpan,",
+      "} from '@jhlagado/azm/tooling';",
+      '',
+      'const diagnosticId = DiagnosticIds.SemanticsError;',
+      'const d8mJson: D8mJson | undefined = undefined;',
+      'const d8mArtifact: D8mArtifact | undefined = undefined;',
+      'const d8mSymbol: D8mSymbol | undefined = undefined;',
+      'const diagnostic: Diagnostic | undefined = undefined;',
+      'const diagnosticIdType: DiagnosticId | undefined = undefined;',
+      'const diagnosticSeverity: DiagnosticSeverity | undefined = undefined;',
+      'const sourcePosition: SourcePosition | undefined = undefined;',
+      'const sourceSpan: SourceSpan | undefined = undefined;',
+      'const programNode: ProgramNode | undefined = undefined;',
+      'const sourceFileNode: SourceFileNode | undefined = undefined;',
+      'const sourceItemNode: SourceItemNode | undefined = undefined;',
+      'const compileEnv: CompileEnv | undefined = undefined;',
+      'const outputCandidate: RegisterCareOutputCandidate | undefined = undefined;',
+      'const registerCareUnit: RegisterCareUnit | undefined = undefined;',
+      'const textEdit: RegisterCareTextEdit | undefined = undefined;',
+      'console.log(Boolean(diagnosticId) || Boolean(d8mJson) || Boolean(d8mArtifact) || Boolean(d8mSymbol) || Boolean(diagnostic) || Boolean(diagnosticIdType) || Boolean(diagnosticSeverity) || Boolean(sourcePosition) || Boolean(sourceSpan) || Boolean(programNode) || Boolean(sourceFileNode) || Boolean(sourceItemNode) || Boolean(compileEnv) || Boolean(outputCandidate) || Boolean(registerCareUnit) || Boolean(textEdit));',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+  await writeFile(
+    join(typescriptCheckDir, 'tsconfig.json'),
+    JSON.stringify(
+      {
+        compilerOptions: {
+          module: 'NodeNext',
+          moduleResolution: 'NodeNext',
+          target: 'ES2022',
+          strict: true,
+          noEmit: true,
+        },
+        files: ['./check.ts'],
+      },
+      null,
+      2,
+    ),
+    'utf8',
+  );
+  await run(process.execPath, [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', join(typescriptCheckDir, 'tsconfig.json')], {
+    cwd: installDir,
+  });
+
   console.log(`package smoke passed: ${tarball}`);
 } finally {
   await rm(workDir, { recursive: true, force: true });
