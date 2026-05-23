@@ -1,6 +1,6 @@
 # AZM Next Greenfield Implementation Plan
 
-Status: active implementation plan
+Status: completed implementation plan; the promoted AZM Next implementation now lives at the repository root.
 
 ## Goal
 
@@ -24,6 +24,9 @@ source text
 
 The current AZM implementation is the behavioral oracle. Its internal module
 structure is not copied.
+
+Historical stage notes in this document retain the original `next/...` paths
+used while the replacement lived under the scaffold directory.
 
 ## Replacement Scope
 
@@ -669,7 +672,7 @@ to be traced to current AZM evidence before the replacement is treated as real.
 
 ## Stage 16: Differential Burn-In and Promotion
 
-Status: complete for promotion-ready differential gates; mechanical root promotion awaits user approval.
+Status: complete, including mechanical root promotion on this branch.
 
 Purpose: prove replacement readiness and perform the mechanical cutover only
 after observable parity is documented.
@@ -733,9 +736,8 @@ Implemented Stage 16 Slice D (root fixture corpus hardening):
 - [x] Kept `next:guardrails:core` aligned to run `next:check` plus both differential sweeps via
       `next:diff-current:all`.
 
-Remaining Stage 16 scope (post-closeout):
+Post-promotion follow-up outside the staged plan:
 
-- Mechanical promotion of `next/` to repository root (requires explicit user approval per `promotion-criteria.md`).
 - Lowered `.z80` golden validation and exhaustive CLI contract mirroring (tracked as `partial` in the parity matrix).
 - Reclassify unsupported diagnostic-wording fixtures only when current AZM wording is intentionally adopted or tightened.
 
@@ -756,9 +758,9 @@ Run after each stage:
 
 ```sh
 npm run next:check
-npx prettier -c "next/**/*.{md,json,ts,mjs}"
-git diff --check -- next
+npx prettier -c "docs/**/*.md" "src/**/*.ts" "test/**/*.ts" "scripts/**/*.{ts,mjs}" next/README.md README.md package.json
+git diff --check -- docs src test scripts next/README.md README.md package.json
 ```
 
 When a stage touches compatibility behavior, also run the stage's differential
-tests and update `next/docs/parity-matrix.md`.
+tests and update `docs/next/parity-matrix.md`.
