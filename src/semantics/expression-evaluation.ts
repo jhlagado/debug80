@@ -13,12 +13,57 @@ export interface EquateRecord {
   readonly span: SourceSpan;
   readonly currentLocation: number;
   readonly enumMember?: boolean;
+  readonly stringValue?: string;
 }
 
 export interface LayoutRecord {
   readonly kind: 'record' | 'union';
   readonly fields: readonly LayoutField[];
   readonly span: SourceSpan;
+}
+
+function canonicalSymbolKey(name: string): string {
+  return name.toLowerCase();
+}
+
+export function lookupLabelValue(
+  labels: Readonly<Record<string, number>>,
+  name: string,
+): number | undefined {
+  if (labels[name] !== undefined) {
+    return labels[name];
+  }
+  const lower = canonicalSymbolKey(name);
+  for (const [key, value] of Object.entries(labels)) {
+    if (key.toLowerCase() === lower) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+export function lookupEquateRecord(
+  equates: ReadonlyMap<string, EquateRecord>,
+  name: string,
+): { readonly key: string; readonly record: EquateRecord } | undefined {
+  const direct = equates.get(name);
+  if (direct !== undefined) {
+    return { key: name, record: direct };
+  }
+  const lower = canonicalSymbolKey(name);
+  for (const [key, record] of equates) {
+    if (key.toLowerCase() === lower) {
+      return { key, record };
+    }
+  }
+  return undefined;
+}
+
+export function lookupSymbolValue(
+  symbols: Readonly<Record<string, number>>,
+  name: string,
+): number | undefined {
+  return lookupLabelValue(symbols, name);
 }
 
 export function evaluateExpression(
@@ -167,20 +212,20 @@ function evaluateSymbol(
     readonly reportUnknown?: boolean;
   },
 ): number | undefined {
-  const label = labels[name];
+  const label = lookupLabelValue(labels, name);
   if (label !== undefined) {
     return label;
   }
 
-  const equate = equates.get(name);
+  const equate = lookupEquateRecord(equates, name);
   if (equate) {
-    if (options.visiting?.has(name)) {
+    if (options.visiting?.has(equate.key)) {
       diagnostics.push(diagnostic(span, `recursive symbol: ${name}`));
       return undefined;
     }
-    return evaluateExpression(equate.expression, labels, equates, equate.span, diagnostics, {
-      currentLocation: equate.currentLocation,
-      visiting: new Set([...(options.visiting ?? []), name]),
+    return evaluateExpression(equate.record.expression, labels, equates, equate.record.span, diagnostics, {
+      currentLocation: equate.record.currentLocation,
+      visiting: new Set([...(options.visiting ?? []), equate.key]),
       layouts: options.layouts,
       ...(options.reportUnknown !== undefined ? { reportUnknown: options.reportUnknown } : {}),
     });

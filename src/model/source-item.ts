@@ -8,6 +8,7 @@ export type SourceItem =
       readonly kind: 'equ';
       readonly name: string;
       readonly expression: Expression;
+      readonly stringValue?: string;
       readonly span: SourceSpan;
     }
   | { readonly kind: 'label'; readonly name: string; readonly span: SourceSpan }

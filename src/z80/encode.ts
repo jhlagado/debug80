@@ -811,6 +811,20 @@ function encodeLd(target: Z80Operand, source: Z80Operand): EncodedZ80Instruction
     };
   }
 
+  if (target.kind === 'reg-indirect' && target.register === 'hl' && source.kind === 'imm') {
+    return {
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x36] },
+        {
+          kind: 'imm8',
+          expression: source.expression,
+          failureMessage: LD_UNSUPPORTED_FORM_MESSAGE,
+        },
+      ],
+    };
+  }
+
   if (target.kind === 'reg8' && source.kind === 'reg-indirect' && source.register === 'hl') {
     return {
       size: 1,
