@@ -1,6 +1,6 @@
 # AZM Next Stage 16 Evidence: Differential Burn-In and Promotion Slice A
 
-Status: complete for differential gates; mechanical promotion pending user approval
+Status: complete, including mechanical promotion to the repository root (2026-05-23)
 
 ## Evidence Inspected
 
@@ -41,7 +41,7 @@ Status: complete for differential gates; mechanical promotion pending user appro
     `test/registerCare`, `test/frontend`, `test/semantics`, source-loader tests, and core CLI matrix acceptance tests.
   - Added `scripts/dev/check-fixture-coverage.mjs` to build and enforce a fixture
     coverage manifest in `test/fixtures/coverage-map.md`.
-  - Created `test/fixtures/coverage-map.md` containing all 85 fixture paths currently present.
+  - Created `test/fixtures/coverage-map.md` containing all 85 fixture paths present in this slice.
   - Verified both script commands with a clean pass:
     - `npm run test:ci:coverage-core`
     - `npm run check:fixture-coverage`
@@ -94,7 +94,7 @@ emission behavior is reconciled for that case.
   - added explicit root coverage guards in that suite for supported set equality and
     full unsupported roster size (`25`).
 
-Current Stage 16 Slice D boundary:
+Stage 16 Slice D boundary at that point:
 
 - Added full fixture reconciliation for `enum_and_storage.asm` by aligning HEX emission so
   initialized output segments skip reserved-only `.ds` gaps while bin output remains unchanged.
@@ -131,7 +131,7 @@ Implemented Stage 16 Slice F (differential file-context wiring):
   - `next/scripts/diff-against-current.ts`: switched root-suite runs to file-based next runner execution to align include search behavior.
 - Extended parser support in `next/src/tooling/source-host.ts` to accept `.include` and bare `include`.
 
-Current exact boundary after Slice F:
+Exact boundary after Slice F at that point:
 
 - 60 root fixtures are fully compared by differential runners in Stage 16 parity suites.
 - 1 include-oriented fixture remains explicitly unsupported in `KNOWN_UNSUPPORTED_FIXTURES` (`include-directive` bucket), with diagnostics/message parity work still required.
@@ -191,7 +191,7 @@ Implemented Stage 16 Slice I (code/data placement parity):
 - Updated Stage 4 integration tests to assert address-keyed bytes under the wider BIN span
   model instead of compact origin-relative arrays.
 
-Current exact boundary after Slice I:
+Exact boundary after Slice I at that point:
 
 - **60** root fixtures compare cleanly against current AZM in `root-fixture-corpus.test.ts`.
 - **25** root fixtures remain in `KNOWN_UNSUPPORTED_FIXTURES` (diagnostic wording, visible-op
@@ -207,13 +207,24 @@ Implemented Stage 16 Slice J:
   `next/test/unit/z80/parser-encoder.test.ts`.
 - Removed `pr208_call_indirect_legality_diag_matrix_invalid.asm` and
   `pr209_jp_cc_indirect_legality_diag_matrix_invalid.asm` from `KNOWN_UNSUPPORTED_FIXTURES`.
-- Current exact boundary after Slice J:
+- Exact boundary after Slice J at that point:
   - **60** root fixtures compare cleanly against current AZM in `root-fixture-corpus.test.ts`.
   - **25** root fixtures remain in `KNOWN_UNSUPPORTED_FIXTURES` (diagnostic wording, visible-op
     diagnostics, include-directive gap).
 
+## Promotion Completion Notes
+
+- Promoted the replacement implementation from the scaffold into the repository root:
+  - `next/src` -> `src`
+  - `next/test` -> `test`
+  - `next/scripts` -> `scripts`
+  - `next/docs` -> `docs/next` history
+- Validated the promoted root with `npm run next:guardrails` on 2026-05-23.
+- Current enforced differential boundary after promotion:
+  - **62** supported root fixtures compare cleanly against current AZM.
+  - **25** root fixtures remain explicitly unsupported in `test/differential/unsupported-fixtures.ts`.
+
 ## Deferred / Out of Scope
 
-- Mechanical `next/` → root promotion (user approval required).
 - Golden lowered `.z80` comparison against current ASM80 validator corpora.
 - Closing the 18 diagnostic-wording unsupported fixtures without an explicit spec decision.

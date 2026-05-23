@@ -106,7 +106,8 @@ semantics -> model
 model -> no project implementation modules
 ```
 
-Production modules under `next/src/` must not import root `src/`.
+The promoted production modules live under `src/`; the remaining `next/`
+scaffold is archival only and must not become a second implementation surface.
 
 ## Core Data Products
 
