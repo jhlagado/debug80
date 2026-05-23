@@ -88,6 +88,5 @@ defineAsm80CorpusAcceptance({
   asm80,
   runAcceptance: runMon3Acceptance,
   buildReference: buildAsm80Reference,
-  blockedReason: 'byte mismatch @0x108e (actual=0x2b ref=0x31) vs ASM80 full-bin reference',
   optInHint: 'set AZM_RUN_MON3_ACCEPTANCE=1 to run the local MON3 byte-for-byte acceptance check',
 });

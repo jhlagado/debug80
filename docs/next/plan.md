@@ -1,6 +1,7 @@
 # AZM Next Completion Plan
 
-Status: active referent for cutover and finalization work
+Status: active referent for cutover and finalization work — completion audit
+criteria met (2026-05-23).
 
 This is the single `docs/next` plan document. It replaces the older staged
 implementation plans, parity matrix, promotion criteria, source-of-truth notes,
@@ -166,7 +167,7 @@ Remaining priority ladder:
 3. P2 - Register-Care Precision Closure. (complete)
 4. P3 - Architecture Map Alignment. (complete)
 5. P3 - Large-File Decomposition. (complete)
-6. P1 - Real-Program Validation.
+6. P1 - Real-Program Validation. (complete)
 
 Real-program validation is P1 because it proves emitted compatibility, but it
 must run after the compiler surface is complete enough for its failures to be
@@ -478,8 +479,7 @@ blockers are closed.
 
 Priority: P1, sequenced after Tasks 3-5.
 
-Status: partial — tetro and pacmo pass byte-for-byte acceptance; MON3 compiles
-cleanly but has one remaining byte mismatch vs ASM80 reference.
+Status: complete — tetro, pacmo, and MON3 pass byte-for-byte acceptance vs ASM80.
 
 Run in this order:
 
@@ -503,7 +503,7 @@ Validation results (2026-05-23, local):
 |---------|---------|--------|
 | Tetro | `npm run test:asm80:tetro` | PASS — binary matches ASM80 reference (listing-trimmed) |
 | Pacmo | `npm run test:asm80:pacmo` | PASS — binary matches ASM80 reference (listing-trimmed) |
-| MON3 | `npm run test:asm80:mon3` | PARTIAL — compiles with 0 errors; mismatch @0x108e actual=0x2b ref=0x31 |
+| MON3 | `npm run test:asm80:mon3` | PASS — full 16 KiB BIN matches ASM80 reference |
 | Corpus HEX | `npm run test:azm:corpus` | PASS tetro + pacmo HEX vs ASM80 |
 
 Parity fixes landed for real-program compile (clubbed with harness promotion):
@@ -513,12 +513,13 @@ Parity fixes landed for real-program compile (clubbed with harness promotion):
 - case-insensitive symbol lookup for equates/labels/fixups
 - `label:.equ` (no space after colon) and string `.equ` expansion in `.db`
 - signed 16-bit immediates (`ld de,-16`, `ld hl,0-60h`)
+- forward-referenced string equate byte sizing in address planning (MON3
+  `REL_TXT` in `.db " Version: ",REL_TXT,0`)
 
-Remaining MON3 gap:
+Exit condition:
 
-- Investigate byte mismatch at 0x108e (likely string/data emission or org/range
-  trimming vs ASM80 full-bin reference). MON3 acceptance uses full 16 KiB BIN
-  compare (no listing trim).
+- Met. All three real-program acceptance checks pass locally with promoted
+  `src/api-compile.js`.
 
 Compare generated binary output against the ASM80 reference assembler. If validation
 finds a missing retained feature, return that item to this plan before cutover.
@@ -581,12 +582,12 @@ Each finalization slice must:
 
 ## Definition of Ready for Cutover Attempt
 
-AZM is ready for the cutover attempt only when:
+AZM is ready for the cutover attempt:
 
 - no unapproved cutover blocker remains in this plan
 - user-visible parity rows are compatible
-- the unsupported differential roster is explicitly accepted or empty
+- the unsupported differential roster is explicitly accepted or empty (empty)
 - CLI, package, listing, D8, and lowered `.z80` contracts have evidence-backed
   validation
 - quality and architecture docs are trustworthy maps of the live codebase
-- real-program validation for tetro, paco, and MON3 is queued next
+- real-program validation for tetro, pacmo, and MON3 passes locally
