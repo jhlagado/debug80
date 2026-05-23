@@ -33,6 +33,44 @@ describe('stage 3 visible-op diagnostic parity slice', () => {
     expect(message).toContain(`choose(dst reg16, src BC) (${entry}:5)`);
   });
 
+  it('reports invalid op expansion diagnostics with expanded instruction context', async () => {
+    const entry = join(__dirname, '..', 'fixtures', 'pr270_op_invalid_expansion_diagnostics.asm');
+    const result = await compile(entry, {}, { formats: defaultFormatWriters });
+    const messages = result.diagnostics.map((diagnostic) => diagnostic.message ?? '');
+
+    expect(messages.some((message) => message.includes('Invalid op expansion in "clobber_a_with" at call site.'))).toBe(true);
+    expect(messages.some((message) => message.includes('expanded instruction: ld A, SP'))).toBe(true);
+    expect(messages.some((message) => message.includes('op definition:'))).toBe(true);
+    expect(messages.some((message) => message.includes('expansion chain: clobber_a_with'))).toBe(true);
+    expect(messages.some((message) =>
+      message.includes('ld expects a supported register/memory/immediate transfer form'),
+    )).toBe(true);
+  });
+
+  it('reports one invalid-expansion diagnostic per failing expanded instruction', async () => {
+    const entry = join(__dirname, '..', 'fixtures', 'pr270_op_invalid_expansion_multi_failure.asm');
+    const result = await compile(entry, {}, { formats: defaultFormatWriters });
+    const invalids = result.diagnostics.filter((diagnostic) =>
+      diagnostic.message?.includes('Invalid op expansion in "bad_pair" at call site.'),
+    );
+
+    expect(invalids).toHaveLength(2);
+    expect(invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld A, SP'))).toBe(true);
+    expect(invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld C, SP'))).toBe(true);
+  });
+
+  it('reports nested invalid expansion diagnostics with full expansion chain', async () => {
+    const entry = join(__dirname, '..', 'fixtures', 'pr270_op_invalid_expansion_nested_chain.asm');
+    const result = await compile(entry, {}, { formats: defaultFormatWriters });
+    const message = result.diagnostics.find((diagnostic) =>
+      diagnostic.message?.includes('Invalid op expansion in "bad_inner" at call site.'),
+    )?.message;
+
+    expect(message).toContain('expanded instruction: ld A, SP');
+    expect(message).toContain('expansion chain: mid');
+    expect(message).toContain('-> bad_inner');
+  });
+
   it('reports cyclic op expansion diagnostics with declaration locations in the chain', async () => {
     const entry = join(__dirname, '..', 'fixtures', 'pr16_op_cycle.asm');
     const result = await compile(entry, {}, { formats: defaultFormatWriters });

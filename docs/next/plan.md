@@ -135,10 +135,10 @@ Partial rows:
 
 Current differential status:
 
-- Supported root differential fixtures: 66.
-- Unsupported root fixtures: 21.
+- Supported root differential fixtures: 69.
+- Unsupported root fixtures: 18.
 - Unsupported roster: `test/differential/unsupported-fixtures.ts`.
-- Remaining buckets: `diagnostic-wording` and `visible-op-diagnostic`.
+- Remaining bucket: `diagnostic-wording`.
 
 ## Remaining Tasks
 
@@ -345,6 +345,8 @@ exceptions remain.
 
 Priority: P1.
 
+Status: in progress.
+
 Tasks:
 
 - Burn down `visible-op-diagnostic` fixtures where behavior can be matched or
@@ -352,6 +354,14 @@ Tasks:
 - Burn down `diagnostic-wording` fixtures where current AZM wording is retained.
 - For every fixture left unsupported, write the accepted reason in
   `test/differential/unsupported-fixtures.ts` and in this plan.
+
+Current proven sub-slice:
+
+- The `pr270_op_invalid_expansion_*` fixtures now match current AZM invalid
+  op-expansion diagnostics, including underlying instruction errors, multi-line
+  context (`expanded instruction`, `op definition`, `expansion chain`), and
+  nested-chain file/line attribution.
+- The `visible-op-diagnostic` bucket is empty (3 fixtures promoted to supported).
 
 Exit condition:
 
