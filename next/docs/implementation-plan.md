@@ -721,7 +721,7 @@ Implemented Stage 16 Slice B (guardrails + package smoke integration):
 Implemented Stage 16 Slice C (differential corpus hardening):
 
 - [x] Added a shared unsupported-fixture registry (`next/test/differential/unsupported-fixtures.ts`)
-      with explicit root corpus gaps (29 fixtures) and reasons.
+      with explicit root corpus gaps (25 fixtures) and reasons.
 - [x] Updated the differential runner to consume the unsupported fixture roster.
 - [x] Updated corpus comparison test to auto-discover all fixture files and
       compare all supported entries against current AZM.
@@ -729,7 +729,7 @@ Implemented Stage 16 Slice C (differential corpus hardening):
 Implemented Stage 16 Slice D (root fixture corpus hardening):
 
 - [x] Added `next/test/differential/root-fixture-corpus.test.ts` to run current-vs-next parity on root `test/fixtures`.
-- [x] Locked the unsupported set contract for root fixtures to require exact file membership and explicit count (29).
+- [x] Locked the unsupported set contract for root fixtures to require exact file membership and explicit count (25).
 - [x] Kept `next:guardrails:core` aligned to run `next:check` plus both differential sweeps via
       `next:diff-current:all`.
 
@@ -743,7 +743,7 @@ Implemented Stage 16 Slice I (code/data placement parity):
 
 - Added `next/src/assembly/placement.ts` with current-AZM-style org lookahead (`data` when followed by storage directives).
 - Instructions always emit in the code placement; when the active placement is `data`, instruction bytes are also mirrored at the data offset (matches current AZM dual-map behavior).
-- Enables `pr274_type_padding_*` in the supported differential set (**58** supported, **27** unsupported root fixtures).
+- Enables `pr274_type_padding_*` in the supported differential set (**60** supported, **25** unsupported root fixtures).
 
 Justification:
 
