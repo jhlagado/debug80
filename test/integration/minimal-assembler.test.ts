@@ -1795,10 +1795,12 @@ main:
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
-        message:
-          'No matching op overload for "clear"; call-site operands: (B); available overloads: clear(dst A); dst: expects A, got B',
+        message: expect.stringContaining('No matching op overload for "clear" with provided operands.'),
       }),
     ]);
+    expect(result.diagnostics[0]?.message).toContain('call-site operands: (B)');
+    expect(result.diagnostics[0]?.message).toContain('available overloads:');
+    expect(result.diagnostics[0]?.message).toContain('clear(dst A) (<memory>:2) ; dst: expects A, got B');
   });
 
   it('reports ambiguous Stage 9 parameterized op overloads', () => {
@@ -1817,10 +1819,13 @@ main:
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
-        message:
-          'Ambiguous op overload for "choose"; equally specific candidates: choose(dst A, src reg8), choose(dst reg8, src B)',
+        message: expect.stringContaining('Ambiguous op overload for "choose" (2 matches).'),
       }),
     ]);
+    expect(result.diagnostics[0]?.message).toContain('call-site operands: (A, B)');
+    expect(result.diagnostics[0]?.message).toContain('equally specific candidates:');
+    expect(result.diagnostics[0]?.message).toContain('choose(dst A, src reg8) (<memory>:2)');
+    expect(result.diagnostics[0]?.message).toContain('choose(dst reg8, src B) (<memory>:6)');
   });
 
   it('matches Stage 9 imm8 op arguments backed by equate symbols', () => {
@@ -1904,12 +1909,13 @@ main:
         choose HL,BC
 `);
 
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        message:
-          'Ambiguous op overload for "choose"; equally specific candidates: choose(dst HL, src reg16), choose(dst reg16, src BC)',
-      }),
-    ]);
+    const message = result.diagnostics[0]?.message ?? '';
+    expect(result.diagnostics).toHaveLength(1);
+    expect(message).toContain('Ambiguous op overload for "choose" (2 matches).');
+    expect(message).toContain('call-site operands: (HL, BC)');
+    expect(message).toContain('equally specific candidates:');
+    expect(message).toContain('choose(dst HL, src reg16) (<memory>:2)');
+    expect(message).toContain('choose(dst reg16, src BC) (<memory>:6)');
   });
 
   it('expands nested Stage 9 ops and substitutes through immediate ports', () => {
@@ -2020,10 +2026,12 @@ main:
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
-        message:
-          'Cyclic op expansion detected for "first". expansion chain: first -> second -> first',
+        message: expect.stringContaining('Cyclic op expansion detected for "first".'),
       }),
     ]);
+    expect(result.diagnostics[0]?.message).toContain(
+      'expansion chain: first (<memory>:2) -> second (<memory>:6) -> first (<memory>:2)',
+    );
   });
 
   it('reports Stage 9 invalid expanded instructions with call-site context', () => {
