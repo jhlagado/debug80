@@ -5,6 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+const REVIEW_TRIGGER = 500;
 const SOFT_LIMIT = 750;
 const HARD_LIMIT = 1000;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -12,9 +13,10 @@ const DEFAULT_ROOT = path.resolve(SCRIPT_DIR, '../src');
 const DEFAULT_ALLOWLIST_FILE = path.resolve(SCRIPT_DIR, 'source-file-size-allowlist.json');
 
 // Policy:
-// - files over the soft limit are always reported
+// - files over the review trigger are always reported for review attention
+// - files over the soft limit are elevated warnings
 // - files over the hard cap must either be absent or pinned in the allowlist
-// - allowlisted files may not grow past their recorded ceiling
+// - allowlisted files may not grow past their recorded ceiling and must carry a reason
 
 function normalizePathForOutput(filePath) {
   return filePath.split(path.sep).join('/');
@@ -96,10 +98,22 @@ async function loadAllowlist(allowlistFile) {
 
   const out = new Map();
   for (const [key, value] of Object.entries(hardCap)) {
-    if (typeof value !== 'number' || !Number.isInteger(value) || value < HARD_LIMIT) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(
+        `Invalid hard-cap entry for ${key} in ${allowlistFile}; expected an object with ceiling and reason`,
+      );
+    }
+
+    const ceiling = value.ceiling;
+    const reason = value.reason;
+
+    if (typeof ceiling !== 'number' || !Number.isInteger(ceiling) || ceiling < HARD_LIMIT) {
       throw new Error(`Invalid hard-cap ceiling for ${key} in ${allowlistFile}`);
     }
-    out.set(normalizePathForOutput(key), value);
+    if (typeof reason !== 'string' || reason.trim().length === 0) {
+      throw new Error(`Invalid hard-cap reason for ${key} in ${allowlistFile}`);
+    }
+    out.set(normalizePathForOutput(key), { ceiling, reason: reason.trim() });
   }
   return out;
 }
@@ -122,30 +136,48 @@ async function main() {
   const allowedHardBreaches = [];
   const hardViolations = [];
   for (const row of rows.filter((candidate) => candidate.lines > HARD_LIMIT)) {
-    const ceiling = hardCapAllowlist.get(row.path);
-    if (ceiling === undefined) {
+    const entry = hardCapAllowlist.get(row.path);
+    if (entry === undefined) {
       hardViolations.push({ ...row, kind: 'unallowlisted' });
       continue;
     }
-    if (row.lines > ceiling) {
-      hardViolations.push({ ...row, kind: 'grew', ceiling });
+    if (row.lines > entry.ceiling) {
+      hardViolations.push({ ...row, kind: 'grew', ceiling: entry.ceiling });
       continue;
     }
-    allowedHardBreaches.push({ ...row, ceiling });
+    allowedHardBreaches.push({ ...row, ceiling: entry.ceiling, reason: entry.reason });
   }
+  const reviewBreaches = rows.filter((row) => row.lines > REVIEW_TRIGGER && row.lines <= SOFT_LIMIT);
   const softBreaches = rows.filter((row) => row.lines > SOFT_LIMIT && row.lines <= HARD_LIMIT);
 
-  if (allowedHardBreaches.length === 0 && hardViolations.length === 0 && softBreaches.length === 0) {
-    console.log(`source-file-size-guard: ok (soft ${SOFT_LIMIT}, hard ${HARD_LIMIT})`);
+  if (
+    allowedHardBreaches.length === 0 &&
+    hardViolations.length === 0 &&
+    softBreaches.length === 0 &&
+    reviewBreaches.length === 0
+  ) {
+    console.log(
+      `source-file-size-guard: ok (review ${REVIEW_TRIGGER}, soft ${SOFT_LIMIT}, hard ${HARD_LIMIT})`,
+    );
     process.exit(0);
   }
 
-  console.log(`source-file-size-guard: soft>${SOFT_LIMIT}, hard>${HARD_LIMIT}`);
+  console.log(
+    `source-file-size-guard: review>${REVIEW_TRIGGER}, soft>${SOFT_LIMIT}, hard>${HARD_LIMIT}`,
+  );
+
+  if (reviewBreaches.length > 0) {
+    console.log('review-trigger warnings:');
+    for (const row of reviewBreaches) {
+      console.log(`- ${row.path}: ${row.lines}`);
+    }
+  }
 
   if (allowedHardBreaches.length > 0) {
     console.log('hard-cap breaches (allowlisted ceilings):');
     for (const row of allowedHardBreaches) {
-      console.log(`- ${row.path}: ${row.lines} (ceiling ${row.ceiling})`);
+      const reasonSuffix = row.reason ? `; reason: ${row.reason}` : '';
+      console.log(`- ${row.path}: ${row.lines} (ceiling ${row.ceiling}${reasonSuffix})`);
     }
   }
 

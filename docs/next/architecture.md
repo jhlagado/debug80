@@ -16,6 +16,9 @@ Observable behavior must be derived from the evidence hierarchy in
 `source-of-truth.md`. The current AZM implementation is the behavioral oracle;
 its internal architecture is not the design to copy.
 
+The live completion backlog and cutover blocker list live in
+`finalization-plan.md`.
+
 ## Architectural Principle
 
 Everything accepted by the compiler should be one of:
