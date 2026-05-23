@@ -63,9 +63,6 @@ export async function loadProgramNext(
   const directiveAliasPolicy = buildDirectiveAliasPolicy(directiveAliasProfiles);
   const parsed = parseNextSourceItems(expanded.lines, { directiveAliasPolicy });
   const diagnostics = [...loadDiagnostics, ...parsed.diagnostics];
-  if (diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
-    return { diagnostics };
-  }
 
   return {
     diagnostics,
@@ -81,6 +78,7 @@ export async function loadProgramNext(
   };
 }
 
+// Assembly runs here for symbol resolution only; encode diagnostics are collected in compile().
 export function analyzeProgramNext(
   loadedProgram: LoadedProgramNext,
   options: AnalyzeProgramNextOptions = {},
@@ -92,7 +90,7 @@ export function analyzeProgramNext(
     mode: options.caseStyle ?? 'off',
   });
   return {
-    diagnostics: [...caseStyleDiagnostics, ...assembly.diagnostics],
+    diagnostics: caseStyleDiagnostics,
     env: { symbols: assembly.symbols },
   };
 }
