@@ -478,13 +478,49 @@ blockers are closed.
 
 Priority: P1, sequenced after Tasks 3-5.
 
+Status: partial — tetro and pacmo pass byte-for-byte acceptance; MON3 compiles
+cleanly but has one remaining byte mismatch vs ASM80 reference.
+
 Run in this order:
 
 1. tetro
-2. paco
+2. paco (repo path: `tetro/src/pacmo/pacmo.z80`)
 3. MON3 monitor ROM software
 
-Compare generated binary output against the legacy AZM assembler. If validation
+Promoted harness (under `test/asm80/`) uses `src/api-compile.js` (not legacy
+`src/compile.ts`). Opt-in scripts:
+
+```sh
+npm run test:asm80:tetro   # AZM_RUN_TETRO_ACCEPTANCE=1
+npm run test:asm80:pacmo   # AZM_RUN_PACMO_ACCEPTANCE=1
+npm run test:asm80:mon3    # AZM_RUN_MON3_ACCEPTANCE=1
+npm run test:azm:corpus    # HEX guardrail for tetro + pacmo when repos/asm80 present
+```
+
+Validation results (2026-05-23, local):
+
+| Program | Command | Result |
+|---------|---------|--------|
+| Tetro | `npm run test:asm80:tetro` | PASS — binary matches ASM80 reference (listing-trimmed) |
+| Pacmo | `npm run test:asm80:pacmo` | PASS — binary matches ASM80 reference (listing-trimmed) |
+| MON3 | `npm run test:asm80:mon3` | PARTIAL — compiles with 0 errors; mismatch @0x108e actual=0x2b ref=0x31 |
+| Corpus HEX | `npm run test:azm:corpus` | PASS tetro + pacmo HEX vs ASM80 |
+
+Parity fixes landed for real-program compile (clubbed with harness promotion):
+
+- `@` entry labels in `.asm` sources
+- `ld (hl), imm` and `ld r8, (hl)` forms
+- case-insensitive symbol lookup for equates/labels/fixups
+- `label:.equ` (no space after colon) and string `.equ` expansion in `.db`
+- signed 16-bit immediates (`ld de,-16`, `ld hl,0-60h`)
+
+Remaining MON3 gap:
+
+- Investigate byte mismatch at 0x108e (likely string/data emission or org/range
+  trimming vs ASM80 full-bin reference). MON3 acceptance uses full 16 KiB BIN
+  compare (no listing trim).
+
+Compare generated binary output against the ASM80 reference assembler. If validation
 finds a missing retained feature, return that item to this plan before cutover.
 
 ## Cutover Blockers

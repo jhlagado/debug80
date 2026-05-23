@@ -17,10 +17,9 @@ import {
   parseListingWrittenRange,
   summarizeBinaryMismatch,
 } from '../../scripts/dev/binaryCompareTools.mjs';
-import { compile } from '../../src/compile.js';
-import type { Diagnostic } from '../../src/diagnosticTypes.js';
-import { defaultFormatWriters as legacyDefaultFormatWriters } from '../../legacy-root-azm/src/formats/index.js';
-import type { BinArtifact } from '../../src/formats/types.js';
+import { compile } from '../../src/api-compile.js';
+import type { Diagnostic } from '../../src/model/diagnostic.js';
+import type { BinArtifact } from '../../src/outputs/types.js';
 
 export { binaryFromListingRange, parseListingWrittenRange, summarizeBinaryMismatch };
 
@@ -67,16 +66,17 @@ export function findAsm80Executable(): string | undefined {
 }
 
 function diagnosticLocation(diagnostic: Diagnostic): string {
-  if (diagnostic.line === undefined || diagnostic.column === undefined) return diagnostic.file;
-  return `${diagnostic.file}:${diagnostic.line}:${diagnostic.column}`;
+  const sourceName = diagnostic.sourceName ?? '<unknown>';
+  if (diagnostic.line === undefined || diagnostic.column === undefined) return sourceName;
+  return `${sourceName}:${diagnostic.line}:${diagnostic.column}`;
 }
 
-export function summarizeDiagnostics(diagnostics: Diagnostic[], limit = 3): string {
+export function summarizeDiagnostics(diagnostics: readonly Diagnostic[], limit = 3): string {
   const preview = diagnostics
     .slice(0, limit)
     .map(
       (diagnostic) =>
-        `${diagnosticLocation(diagnostic)}: ${diagnostic.severity} [${diagnostic.id}] ${
+        `${diagnosticLocation(diagnostic)}: ${diagnostic.severity} [${diagnostic.code}] ${
           diagnostic.message
         }`,
     );
@@ -133,11 +133,12 @@ export function defineAsm80CorpusAcceptance(options: Asm80CorpusAcceptanceOption
 
   describeCorpus(`ASM80 ${options.name} acceptance`, () => {
     it(`compiles ${options.name} and matches a fresh ASM80-built reference binary`, async () => {
-      const res = await compile(
-        options.source,
-        { emitBin: true, emitHex: false, emitD8m: false, emitListing: false },
-        { formats: legacyDefaultFormatWriters },
-      );
+      const res = await compile(options.source, {
+        emitBin: true,
+        emitHex: false,
+        emitD8m: false,
+        emitListing: false,
+      });
       const errors = res.diagnostics.filter((d) => d.severity === 'error');
       if (errors.length > 0) throw new Error(summarizeDiagnostics(res.diagnostics));
 
