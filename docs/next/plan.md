@@ -307,7 +307,7 @@ Current proven sub-slice:
   `LD` text for `ld a, (symbol)` and `ld (symbol), a` instead of copying
   current AZM's legacy raw-byte `DB $3A` / `DB $32` lowered output.
 - The `pr57_isa_im_rst` fixture now gates normal lowered `IM` and `RST` output:
-  `im imm`, all valid `rst` vectors, alongside already-covered `reti`/`retn`.
+  `im imm`, representative `rst` vectors (0, 8, 56), alongside already-covered `reti`/`retn`.
 - The writer is intentionally narrow. Unsupported lowered `.z80` formatting now
   reports an `AZMN_ASM80` diagnostic instead of silently emitting incomplete
   text. Corpus-wide lowered text comparison and broader instruction/directive
