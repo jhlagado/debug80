@@ -33,6 +33,7 @@
   },
   "files": [
     "dist/src",
+    "dist/legacy-root-azm",
     "docs/reference/cli.md",
     "docs/reference/tooling-api.md"
   ],
