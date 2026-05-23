@@ -1,31 +1,27 @@
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ensureCliBuilt } from '../helpers/cli/build.js';
+
 const execFileAsync = promisify(execFile);
 const repoRootPath = process.cwd();
+const localCliPath = resolve(repoRootPath, 'dist', 'src', 'cli.js');
 
 async function runLocalCli(
   args: string[],
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const runner = `
-    import { runCli } from '@jhlagado/azm/cli';
-    const argv = JSON.parse(process.env.AZM_ARGS || '[]');
-    const code = await runCli(argv);
-    process.exit(code);
-  `;
   try {
     const child = await execFileAsync(
       process.execPath,
-      ['--input-type=module', '--eval', runner, '--', ...args],
+      [localCliPath, ...args],
       {
         cwd: repoRootPath,
         encoding: 'utf8',
-        env: { ...process.env, AZM_ARGS: JSON.stringify(args) },
       },
     );
     return { code: 0, stdout: child.stdout, stderr: child.stderr ?? '' };
@@ -48,6 +44,10 @@ describe('stage 16 package smoke local fallback', () => {
   let tempDir = '';
 
   beforeEach(async () => {
+    await ensureCliBuilt();
+  }, 180_000);
+
+  beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'azm-next-smoke-local-'));
   }, 30_000);
 
@@ -58,8 +58,8 @@ describe('stage 16 package smoke local fallback', () => {
   });
 
   it('asserts local package surface from source entry points', async () => {
-    const { compile, defaultFormatWriters } = await import('@jhlagado/azm/compile');
-    const { loadProgram } = await import('@jhlagado/azm/tooling');
+    const { compile, defaultFormatWriters } = await import('../../src/api-compile.js');
+    const { loadProgram } = await import('../../src/api-tooling.js');
     const entryPath = join(tempDir, 'main.asm');
     const sourceText = ['        .org 0100H', 'START:', '    ld a,42', '    ret', ''].join('\n');
     await writeFile(entryPath, sourceText, 'utf8');
@@ -97,9 +97,9 @@ describe('stage 16 package smoke local fallback', () => {
     );
 
     const run = await runLocalCli(['--type', 'bin', '--output', output, entry]);
-    const bytes = await readFile(output);
     expect(run.code).toBe(0);
     expect(run.stderr).toBe('');
+    const bytes = await readFile(output);
     expect(bytes).toEqual(Buffer.from([0x3e, 0x2a, 0xc9]));
   });
 });
