@@ -98,19 +98,19 @@ async function loadAllowlist(allowlistFile) {
 
   const out = new Map();
   for (const [key, value] of Object.entries(hardCap)) {
-    let ceiling;
-    let reason = '';
-    if (typeof value === 'number') {
-      ceiling = value;
-    } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      ceiling = value.ceiling;
-      reason = value.reason ?? '';
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(
+        `Invalid hard-cap entry for ${key} in ${allowlistFile}; expected an object with ceiling and reason`,
+      );
     }
+
+    const ceiling = value.ceiling;
+    const reason = value.reason;
 
     if (typeof ceiling !== 'number' || !Number.isInteger(ceiling) || ceiling < HARD_LIMIT) {
       throw new Error(`Invalid hard-cap ceiling for ${key} in ${allowlistFile}`);
     }
-    if (typeof reason !== 'string') {
+    if (typeof reason !== 'string' || reason.trim().length === 0) {
       throw new Error(`Invalid hard-cap reason for ${key} in ${allowlistFile}`);
     }
     out.set(normalizePathForOutput(key), { ceiling, reason: reason.trim() });
