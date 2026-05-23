@@ -2,6 +2,9 @@
 
 Status: post-promotion differential closeout (2026-05-23)
 
+For the live completion backlog and cutover blocker list, use
+`docs/next/finalization-plan.md`.
+
 This matrix tracks the observable behavior AZM Next must match before it can
 replace the current implementation.
 

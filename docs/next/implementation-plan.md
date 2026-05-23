@@ -2,6 +2,10 @@
 
 Status: completed implementation plan; the promoted AZM Next implementation now lives at the repository root.
 
+For the remaining feature-completeness and cutover work, use
+`docs/next/finalization-plan.md` as the live referent. This document is the
+historical staged delivery record.
+
 ## Goal
 
 Build `next/` into a complete AZM workalike that can replace the current
