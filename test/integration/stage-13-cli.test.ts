@@ -178,13 +178,13 @@ describe('stage 13 CLI façade', () => {
     await withTempDir('azm-next-cli-upper-ext-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const out = join(dir, 'bundle.HEX');
+      const canonicalOutput = join(dir, 'bundle.hex');
       await writeFile(entry, source, 'utf8');
 
       const res = await runNextCli(['--type', 'hex', '-o', out, entry], dir);
       expect(res.code).toBe(0);
-      expect(resolve(res.stdout.trim())).toBe(resolve(join(dir, 'bundle.hex')));
-      expect(await exists(join(dir, 'bundle.hex'))).toBe(true);
-      expect(await exists(out.toLowerCase())).toBe(true);
+      expect(resolve(res.stdout.trim())).toBe(resolve(canonicalOutput));
+      expect(await exists(canonicalOutput)).toBe(true);
     });
   });
 
