@@ -228,8 +228,9 @@ export function parseZ80Instruction(text: string): ParseZ80InstructionResult | u
         ...invalidLdOperandDiagnostics(parts[1] ?? ''),
       ];
       if (operandDiagnostics.length > 0) {
+        const error = operandDiagnostics[operandDiagnostics.length - 1]!;
         return {
-          error: operandDiagnostics[operandDiagnostics.length - 1],
+          error,
           diagnostics: operandDiagnostics,
         };
       }
