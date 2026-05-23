@@ -80,21 +80,6 @@ export const KNOWN_UNSUPPORTED_FIXTURES: UnsupportedFixture[] = [
     reason: 'diagnostic wording differs for unsupported LD forms',
     bucket: 'diagnostic-wording',
   },
-  {
-    file: 'pr270_op_invalid_expansion_diagnostics.asm',
-    reason: 'diagnostic wording differs for visible-op expansion failures',
-    bucket: 'visible-op-diagnostic',
-  },
-  {
-    file: 'pr270_op_invalid_expansion_multi_failure.asm',
-    reason: 'diagnostic wording differs for visible-op expansion failures',
-    bucket: 'visible-op-diagnostic',
-  },
-  {
-    file: 'pr270_op_invalid_expansion_nested_chain.asm',
-    reason: 'diagnostic wording differs for nested op expansion failures',
-    bucket: 'visible-op-diagnostic',
-  },
 
   {
     file: 'pr2_div_zero.asm',
