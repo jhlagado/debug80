@@ -33,14 +33,17 @@ describe('stage 3 visible-op diagnostic parity slice', () => {
     expect(message).toContain(`choose(dst reg16, src BC) (${entry}:5)`);
   });
 
-  it('reports cyclic op expansion diagnostics with declaration locations in the chain', async () => {
-    const entry = join(__dirname, '..', 'fixtures', 'pr16_op_cycle.asm');
+  it('reports invalid op expansion diagnostics with expanded instruction context', async () => {
+    const entry = join(__dirname, '..', 'fixtures', 'pr270_op_invalid_expansion_diagnostics.asm');
     const result = await compile(entry, {}, { formats: defaultFormatWriters });
-    const message = result.diagnostics[0]?.message ?? '';
+    const messages = result.diagnostics.map((diagnostic) => diagnostic.message ?? '');
 
-    expect(message).toContain('Cyclic op expansion detected for "first".');
-    expect(message).toContain(
-      `expansion chain: first (${entry}:1) -> second (${entry}:5) -> first (${entry}:1)`,
-    );
+    expect(messages.some((message) => message.includes('Invalid op expansion in "clobber_a_with" at call site.'))).toBe(true);
+    expect(messages.some((message) => message.includes('expanded instruction: ld A, SP'))).toBe(true);
+    expect(messages.some((message) => message.includes('op definition:'))).toBe(true);
+    expect(messages.some((message) => message.includes('expansion chain: clobber_a_with'))).toBe(true);
+    expect(messages.some((message) =>
+      message.includes('ld expects a supported register/memory/immediate transfer form'),
+    )).toBe(true);
   });
 });

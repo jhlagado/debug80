@@ -9,6 +9,7 @@ import type {
   Z80Register8,
 } from '../z80/instruction.js';
 import { encodeZ80Instruction } from '../z80/encode.js';
+import { parseZ80Instruction } from '../z80/parse-instruction.js';
 import { parseLogicalLine, type ParseLogicalLineOptions } from '../syntax/parse-line.js';
 import { parseExpression } from '../syntax/parse-expression.js';
 
@@ -220,21 +221,14 @@ function expandSelectedOp(
       continue;
     }
     const instruction = instantiateTemplateInstruction(item, concreteOperands);
-    if (!instruction) {
-      diagnostics.push(
-        parseDiagnostic(
-          line,
-          `Invalid op expansion in "${selection.overload.name}"; expanded instruction: ${formatExpandedInstruction(item.mnemonic, concreteOperands)}; expansion chain: ${expansionStack.map((entry) => entry.name).join(' -> ')}`,
-        ),
-      );
-      continue;
-    }
-    if (encodeZ80Instruction(instruction).size === 0) {
-      diagnostics.push(
-        parseDiagnostic(
-          line,
-          `Invalid op expansion in "${selection.overload.name}"; expanded instruction: ${formatExpandedInstruction(item.mnemonic, concreteOperands)}; expansion chain: ${expansionStack.map((entry) => entry.name).join(' -> ')}`,
-        ),
+    if (!instruction || encodeZ80Instruction(instruction).size === 0) {
+      reportInvalidOpExpansion(
+        line,
+        diagnostics,
+        selection.overload,
+        expansionStack,
+        item,
+        concreteOperands,
       );
       continue;
     }
@@ -629,6 +623,55 @@ function formatOpOperand(operand: OpOperand): string {
 
 function formatExpandedInstruction(mnemonic: string, operands: readonly OpOperand[]): string {
   return `${mnemonic} ${operands.map(formatOpOperand).join(', ')}`.trim();
+}
+
+function reportInvalidOpExpansion(
+  line: LogicalLineLike,
+  diagnostics: Diagnostic[],
+  overload: OpDecl,
+  expansionStack: readonly OpDecl[],
+  item: Extract<OpTemplateItem, { readonly kind: 'instruction' }>,
+  concreteOperands: readonly OpOperand[],
+): void {
+  const expandedInstruction = formatExpandedInstruction(item.mnemonic, concreteOperands);
+  const underlying = expandedInstructionUnderlyingError(item, concreteOperands);
+  if (underlying) {
+    diagnostics.push(parseDiagnostic(line, underlying));
+  }
+  diagnostics.push(
+    parseDiagnostic(
+      line,
+      formatInvalidOpExpansionDiagnostic(overload, expandedInstruction, expansionStack),
+    ),
+  );
+}
+
+function expandedInstructionUnderlyingError(
+  item: Extract<OpTemplateItem, { readonly kind: 'instruction' }>,
+  concreteOperands: readonly OpOperand[],
+): string | undefined {
+  const instruction = instantiateTemplateInstruction(item, concreteOperands);
+  if (instruction && encodeZ80Instruction(instruction).size > 0) {
+    return undefined;
+  }
+  if (instruction?.mnemonic === 'ld' || item.mnemonic === 'ld') {
+    return 'ld expects a supported register/memory/immediate transfer form';
+  }
+  const parsed = parseZ80Instruction(formatExpandedInstruction(item.mnemonic, concreteOperands));
+  return parsed?.error;
+}
+
+function formatInvalidOpExpansionDiagnostic(
+  overload: OpDecl,
+  expandedInstruction: string,
+  expansionStack: readonly OpDecl[],
+): string {
+  return [
+    `Invalid op expansion in "${overload.name}" at call site.`,
+    `expanded instruction: ${expandedInstruction}`,
+    `op definition: ${overload.sourceName}:${overload.line}`,
+    `expansion chain: ${expansionStack.map(formatOpChainEntry).join(' -> ')}`,
+  ].join('\n');
 }
 
 function instantiateTemplateInstruction(
