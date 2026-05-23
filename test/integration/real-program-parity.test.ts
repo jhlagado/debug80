@@ -38,6 +38,21 @@ describe('real-program parity regressions', () => {
     expect(result.hexText.replace(/\s/g, '')).toContain('414200C9');
   });
 
+  it('sizes forward-referenced string equates in .db for label placement', () => {
+    const result = compileNext(`
+        .org 0100H
+        .db REL_TXT,0
+target:
+        ret
+REL_TXT .equ "2025.16"
+`);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toMatchObject({ target: 0x0108 });
+    expect(Array.from(result.bytes.slice(0x0100, 0x0109))).toEqual([
+      0x32, 0x30, 0x32, 0x35, 0x2e, 0x31, 0x36, 0x00, 0xc9,
+    ]);
+  });
+
   it('accepts label:.equ without space after colon', () => {
     const result = compileNext(`
         .org 0100H

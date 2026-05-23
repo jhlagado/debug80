@@ -6,6 +6,7 @@ import type { SourceSpan } from '../source/source-span.js';
 import {
   diagnostic,
   evaluateExpression,
+  lookupEquateRecord,
   type EquateRecord,
   type LayoutRecord,
   validateLayouts,
@@ -168,7 +169,10 @@ function buildAddressStateOnce(
       case 'db':
         advancePlacement(
           placement,
-          item.values.reduce((size, value) => size + dataValueSize(value), 0),
+          item.values.reduce(
+            (size, value) => size + dataValueSize(value, lookupEquates),
+            0,
+          ),
         );
         break;
       case 'dw':
@@ -264,8 +268,20 @@ function toByte(value: number): number {
   return value & 0xff;
 }
 
-function dataValueSize(value: DataValue): number {
-  return value.kind === 'string-fragment' ? [...value.value].length : 1;
+function dataValueSize(
+  value: DataValue,
+  equates: ReadonlyMap<string, EquateRecord>,
+): number {
+  if (value.kind === 'string-fragment') {
+    return [...value.value].length;
+  }
+  if (value.kind === 'symbol') {
+    const equate = lookupEquateRecord(equates, value.name);
+    if (equate?.record.stringValue !== undefined) {
+      return [...equate.record.stringValue].length;
+    }
+  }
+  return 1;
 }
 
 export function alignmentPadding(address: number, alignment: number): number {
