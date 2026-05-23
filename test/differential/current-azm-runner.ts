@@ -36,8 +36,8 @@ export async function runCurrentAzmSource(sourceText: string): Promise<Assembler
   const entryFile = join(dir, 'main.asm');
   await writeFile(entryFile, sourceText, 'utf8');
   try {
-    const compileModulePromise = import('../../src/compile.js');
-    const formatModulePromise = import('../../src/formats/index.js');
+    const compileModulePromise = import('../../legacy-root-azm/src/compile.js');
+    const formatModulePromise = import('../../legacy-root-azm/src/formats/index.js');
     const [compileModule, formatModule] = await Promise.all([
       compileModulePromise,
       formatModulePromise,
@@ -71,8 +71,8 @@ export async function runCurrentAzmFixture(
   includeDirs: readonly string[] = [],
 ): Promise<AssemblerRunResult> {
   try {
-    const compileModule = await import('../../src/compile.js');
-    const formatModule = await import('../../src/formats/index.js');
+    const compileModule = await import('../../legacy-root-azm/src/compile.js');
+    const formatModule = await import('../../legacy-root-azm/src/formats/index.js');
     const result = (await compileModule.compile(
       entryFile,
       {
