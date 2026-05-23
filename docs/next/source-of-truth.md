@@ -6,6 +6,9 @@ AZM Next is a greenfield implementation, not a greenfield language design. The
 architecture should be clean, but the observable behavior must be derived from
 authoritative AZM evidence.
 
+For the live completion backlog and cutover blocker list, use
+`docs/next/finalization-plan.md`.
+
 ## Evidence Hierarchy
 
 Use this order when deciding what AZM Next should do:

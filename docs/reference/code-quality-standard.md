@@ -98,6 +98,15 @@ That limit is a review trigger, not a blind mechanical rule. A file may exceed
 - a stable encoder table where splitting would make lookup harder
 - a short-term bridge with an explicit cleanup path
 
+The current repository guard uses three tiers:
+
+- 500 lines: review trigger
+- 750 lines: elevated soft warning in `npm run check:source-file-sizes`
+- 1000 lines: hard cap, with explicit allowlist exceptions only
+
+Any file allowed above the hard cap must be recorded in
+`scripts/source-file-size-allowlist.json` with a ceiling and a brief reason.
+
 When a normal library or compiler phase file crosses the limit, prefer
 splitting by responsibility:
 
