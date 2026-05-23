@@ -6,6 +6,7 @@ import type { SourceSpan } from '../source/source-span.js';
 import {
   diagnostic,
   evaluateExpression,
+  lookupSymbolValue,
   type EquateRecord,
   type LayoutRecord,
 } from '../semantics/expression-evaluation.js';
@@ -82,7 +83,7 @@ export function patchFixups(
   diagnostics: Diagnostic[],
 ): void {
   for (const fixup of fixups) {
-    const base = symbols[fixup.target.symbol];
+    const base = lookupSymbolValue(symbols, fixup.target.symbol);
     if (base === undefined) {
       const context = fixup.kind === 'rel8' ? `rel8 ${fixup.mnemonic} fixup` : '16-bit fixup';
       diagnostics.push(
@@ -332,7 +333,7 @@ function patchAbs16(
 }
 
 function isAbs16Value(value: number): boolean {
-  return value >= 0 && value <= 0xffff;
+  return Number.isInteger(value) && value >= -0x8000 && value <= 0xffff;
 }
 
 function isImm8Value(value: number): boolean {

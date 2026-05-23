@@ -137,6 +137,7 @@ function buildAddressStateOnce(
           item.span,
           placementAddress(placement),
           diagnostics,
+          item.stringValue,
         );
         break;
       case 'enum':
@@ -354,6 +355,7 @@ function defineEquate(
   span: SourceSpan,
   currentLocation: number,
   diagnostics: Diagnostic[],
+  stringValue?: string,
 ): void {
   if (
     labels[name] !== undefined ||
@@ -365,7 +367,12 @@ function defineEquate(
     diagnostics.push(diagnostic(span, `duplicate symbol: ${name}`));
     return;
   }
-  equates.set(name, { expression, span, currentLocation });
+  equates.set(name, {
+    expression,
+    span,
+    currentLocation,
+    ...(stringValue !== undefined ? { stringValue } : {}),
+  });
 }
 
 function defineEnumMembers(

@@ -7,7 +7,11 @@ import type { EmittedSourceSegment } from '../outputs/types.js';
 import {
   diagnostic,
   evaluateExpression,
+  lookupEquateRecord,
+  type EquateRecord,
+  type LayoutRecord,
 } from '../semantics/expression-evaluation.js';
+import type { DataValue } from '../model/source-item.js';
 import {
   emitAbs16Expression,
   emitInstruction,
@@ -130,6 +134,50 @@ function activePlacementAddress(placement: PlacementState): number {
     : absoluteCodeAddress(placement, bases);
 }
 
+function emitDbValue(
+  value: DataValue,
+  emitAddress: number,
+  itemSpan: { readonly sourceName: string; readonly line: number; readonly column: number },
+  labels: Readonly<Record<string, number>>,
+  equates: ReadonlyMap<string, EquateRecord>,
+  layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  diagnostics: Diagnostic[],
+  image: Map<number, number>,
+  initializedAddresses: Set<number>,
+  placement: PlacementState,
+): void {
+  if (value.kind === 'string-fragment') {
+    for (const char of value.value) {
+      const nextAddress = activePlacementAddress(placement);
+      writeImageByte(image, initializedAddresses, nextAddress, char.codePointAt(0) ?? 0);
+      advancePlacement(placement, 1);
+    }
+    return;
+  }
+
+  if (value.kind === 'symbol') {
+    const equate = lookupEquateRecord(equates, value.name);
+    if (equate?.record.stringValue !== undefined) {
+      for (const char of equate.record.stringValue) {
+        const nextAddress = activePlacementAddress(placement);
+        writeImageByte(image, initializedAddresses, nextAddress, char.codePointAt(0) ?? 0);
+        advancePlacement(placement, 1);
+      }
+      return;
+    }
+  }
+
+  const nextAddress = activePlacementAddress(placement);
+  const evaluated = evaluateExpression(value, labels, equates, itemSpan, diagnostics, {
+    currentLocation: emitAddress,
+    layouts,
+  });
+  if (evaluated !== undefined) {
+    writeImageByte(image, initializedAddresses, nextAddress, evaluated);
+    advancePlacement(placement, 1);
+  }
+}
+
 export function emitProgramImage(
   items: readonly SourceItem[],
   addressState: AddressState,
@@ -173,23 +221,18 @@ export function emitProgramImage(
         {
           const segmentStart = activePlacementAddress(placement);
           for (const value of item.values) {
-            if (value.kind === 'string-fragment') {
-              for (const char of value.value) {
-                const emitAddress = activePlacementAddress(placement);
-                writeImageByte(image, initializedAddresses, emitAddress, char.codePointAt(0) ?? 0);
-                advancePlacement(placement, 1);
-              }
-            } else {
-              const emitAddress = activePlacementAddress(placement);
-              const evaluated = evaluateExpression(value, labels, equates, item.span, diagnostics, {
-                currentLocation: emitAddress,
-                layouts,
-              });
-              if (evaluated !== undefined) {
-                writeImageByte(image, initializedAddresses, emitAddress, evaluated);
-                advancePlacement(placement, 1);
-              }
-            }
+            emitDbValue(
+              value,
+              activePlacementAddress(placement),
+              item.span,
+              labels,
+              equates,
+              layouts,
+              diagnostics,
+              image,
+              initializedAddresses,
+              placement,
+            );
           }
           void segmentStart;
         }
