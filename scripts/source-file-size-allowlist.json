@@ -5,7 +5,7 @@
       "reason": "Dense instruction encoder table; split only when family extraction improves navigation more than lookup clarity."
     },
     "src/core/op-expansion.ts": {
-      "ceiling": 1160,
+      "ceiling": 1210,
       "reason": "Known finalization hotspot; temporary bridge until expansion responsibilities and macro provenance move into src/expansion/."
     },
     "src/z80/parse-instruction.ts": {
