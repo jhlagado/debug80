@@ -304,11 +304,12 @@ describe('register-care cli', () => {
 
     const annotated = await readFile(entry, 'utf8');
     expect(annotated).toContain(
-      ['; Helper prose stays untouched.', ';!      out       HL', 'HELPER:'].join('\n'),
+      ['; Helper prose stays untouched.', ';!      out       HL', ';!      clobbers  A', 'HELPER:'].join(
+        '\n',
+      ),
     );
     expect(annotated).not.toContain(';!      out       HL\nSTART:');
     expect(annotated).not.toContain(';!      out       HL\nSKIP:');
-    expect(annotated).not.toContain(';!      clobbers  A\nHELPER:');
     expect(annotated).toContain('; Empty prose stays untouched.\nEMPTY:');
     expect(annotated).not.toContain(';!      clobbers  BC\nEMPTY:');
 
