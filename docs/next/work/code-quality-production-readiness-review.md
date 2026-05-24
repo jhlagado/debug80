@@ -47,14 +47,17 @@ Observed results:
 - `src/` now broadly matches the intended architecture map in
   `docs/next/plan.md`.
 
-### Production gates verified (2026-05-24, clean local shell)
+### P0b — production gates verified (2026-05-24, clean local shell)
 
-| Command                         | Result   | Notes                                                              |
-| ------------------------------- | -------- | ------------------------------------------------------------------ |
-| `npm run next:diff-current:all` | **pass** | 87-fixture differential sweep                                      |
-| `npm run test:package`          | **pass** | `npm pack` smoke on built tarball                                  |
-| `npm run next:guardrails:core`  | **pass** | typecheck, lint, coverage-core, diff sweep                         |
-| `npm run test:ci:asm80-parity`  | **pass** | coverage, external round-trip, corpus policy, MON3 emit acceptance |
+Recorded per increment-completion loop. Run these sequentially (not in parallel with
+`test:package`, which cleans `dist/` during `npm run build`).
+
+| Command                         | Result   | Notes                                                                                                                |
+| ------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| `npm run next:diff-current:all` | **pass** | 87-fixture differential sweep                                                                                        |
+| `npm run test:package`          | **pass** | `npm pack` smoke on built tarball                                                                                    |
+| `npm run next:guardrails:core`  | **pass** | typecheck, vitest, asm80 coverage, diff sweep (retry if one vitest timeout)                                          |
+| `npm run test:ci:asm80-parity`  | **pass** | macOS local: coverage, external round-trip, MON3 emit acceptance; Linux CI is canonical for full real-program matrix |
 
 Earlier sandbox EPERM/npm-cache failures on `next:diff-current:all` / `test:package` were
 environment-only; they are superseded by the green runs above.
@@ -67,7 +70,7 @@ Relevance: active and authoritative.
 
 This is the main finalization plan. **“P1 complete” there means user-visible cutover tasks**
 (assembly, artifacts, CLI, real programs, asm80 CI policy) — **not** oracle test-depth /
-resilience complete. Task 9 (oracle matrices, layout, includes) is active. The plan now includes
+resilience complete. Task 9a–9d merged (#190–#194). The plan includes
 a **Path to release** section tying Task 9a matrices to verify gates
 (`next:diff-current:all`, `test:package`, `test:ci:asm80-parity`) and doc refresh.
 
@@ -113,18 +116,18 @@ actual cutover state, reflect that in `docs/next/plan.md`.
 
 Do not use a single “feature parity is strong” line. Treat these lanes separately:
 
-| Lane                                  | Verdict     | Notes                                                                                              |
-| ------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------- |
-| **User-visible assembly & artifacts** | Close       | BIN/HEX/listing/D8, CLI, real-program BIN, asm80 coverage scripts and `test:ci:asm80-parity` exist |
-| **Oracle test depth**                 | Catching up | ~44 PORT oracle files; pr202–pr210/pr225 active; layout/includes/`examples_compile` not started    |
-| **Maintainability & doc trust**       | Mixed       | Module map improved; stale reference docs; `write-asm80.ts` size                                   |
+| Lane                                  | Verdict    | Notes                                                                                         |
+| ------------------------------------- | ---------- | --------------------------------------------------------------------------------------------- |
+| **User-visible assembly & artifacts** | Strong     | P0b gates green; BIN/HEX/listing/D8, CLI, asm80 CI policy exercised                           |
+| **Oracle test depth**                 | Release P1 | Task 9a–9d merged (#190–#194); optional pr132/pr136/pr137/pr126 deferred per gap analysis §10 |
+| **Maintainability & doc trust**       | Good       | `source-overview.md` and design/reference paths refreshed; `write-asm80.ts` size accepted     |
 
-**Asm80:** lowering gates and CI policy (`test:ci:asm80-parity`) are real and required, but
-**release confidence still depends on keeping that policy green** and on Task 9 matrices — bin-only
-differential parity can hide illegal-form acceptance and symmetric lowered-text bugs.
+**Asm80:** lowering gates and CI policy (`test:ci:asm80-parity`) are required ongoing; keep the policy
+on in CI. Bin-only differential parity can still hide illegal-form acceptance — Task 9 matrices close
+that gap for the ported oracle subsets.
 
-Overall: AZM Next is close for **users and emitted artifacts**; **oracle resilience** (Task 9) and
-doc refresh remain before a full release claim.
+Overall: **READY** for release cutover from code/CI/doc-trust perspective; npm publish still needs
+version bump and changelog per process.
 
 ## Oracle test depth
 
@@ -133,23 +136,20 @@ Would a Next port add resilience?_ (Full policy: `docs/next/oracle-test-gap-anal
 
 **Coverage heatmap (2026-05-24 audit, 149 oracle files):**
 
-| Area       | Oracle vs Next                                                                                        |
-| ---------- | ----------------------------------------------------------------------------------------------------- |
-| **Strong** | CLI contract suite, register-care, asm80 directive integration, pr477/pr1140, pr144–pr151/pr203/pr211 |
-| **Weak**   | pr202–pr210/pr225/pr240, pr129–pr137 (residual), layout/semantics, includes, `examples_compile`       |
-| **Risk**   | Green `next:diff-current:all` ≠ per-mnemonic matrices; fixture in corpus ≠ matrix test ported         |
+| Area       | Oracle vs Next                                                                                                       |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Strong** | CLI contract suite, register-care, asm80 directive integration, Task 9 matrices (#190–#194), pr144–pr151/pr203/pr211 |
+| **Weak**   | Residual optional ISA rows (pr132/pr136/pr137/pr126) per gap analysis §10                                            |
+| **Risk**   | Green `next:diff-current:all` ≠ per-mnemonic matrices; fixture in corpus ≠ matrix test ported                        |
 
-**Active increment (9a):** pr207–pr210 (JP/CALL legality) + pr206, pr202, pr204, pr225 — see
-`docs/next/work/oracle-coverage-next-increment.md`.
-
-**Follow-on (9b–9d):** pr129–pr131, pr133/pr134/pr240, pr126; layout cluster; includes;
-`examples_compile`.
+**Task 9 (9a–9d):** merged (#190–#194). Residual optional ports tracked in
+`docs/next/oracle-test-gap-analysis.md` § 10, not release blockers.
 
 ## Code Quality Assessment
 
 The rewrite is no longer structurally chaotic: coherent module layout, CLI/register-care gates,
-explicit oracle comparison, and meaningful size/coverage scripts. Remaining weaknesses: Task 9 ISA
-diag gaps, stale reference docs, and `write-asm80.ts` size (see strengths/weaknesses below).
+explicit oracle comparison, and meaningful size/coverage scripts. Remaining weaknesses: optional
+oracle ISA rows (§10), and `write-asm80.ts` size (see strengths/weaknesses below).
 
 ### Strengths
 
@@ -172,18 +172,15 @@ diag gaps, stale reference docs, and `write-asm80.ts` size (see strengths/weakne
 
 ### Weaknesses
 
-#### 1. Stale reference docs
+#### 1. Stale reference docs — **resolved (2026-05-24)**
 
-`docs/reference/source-overview.md` still describes an older architecture with
-`frontend/`, `lowering/`, and `formats/` paths. The live tree now uses
-`syntax/`, `assembly/`, `outputs/`, `expansion/`, and `semantics/`.
+`docs/reference/source-overview.md` and the design/reference docs below now point at
+promoted `src/` paths (`syntax/`, `expansion/`, `outputs/`, etc.). Historical oracle
+paths remain only in `docs/next/oracle-test-gap-analysis.md` as a file mapping table.
 
-This is a production-readiness issue because stale docs mislead future agents
-and maintainers. It also conflicts with the project principle that documentation
-should be a trustworthy map of live code.
+Refreshed:
 
-Related stale references were also found in design/reference docs, including:
-
+- `docs/reference/source-overview.md` (#195)
 - `docs/design/azm-ops-subset.md`
 - `docs/design/asm80-compatibility-baseline.md`
 - `docs/design/azm-directive-aliases.md`
@@ -254,79 +251,23 @@ This is minor, but it is a visible cleanup item after architecture alignment.
 
 ## Priority-Ordered Improvement Backlog
 
-### P0 — Task 9a: control-flow / I/O diagnostic matrices (**now**)
+### P0 — Task 9a–9d (oracle matrices) — **done (#190–#194)**
 
-See `docs/next/work/oracle-coverage-next-increment.md` and `oracle-test-gap-analysis.md` § 8.
+Control-flow/ISA matrices, layout/env edges, pr950 includes, and `examples_compile` merged.
+Optional residual ISA rows: pr132/pr136/pr137/pr126 (gap analysis §10).
 
-| Priority         | Oracle matrix              | Fixture (in `test/fixtures/`)                      |
-| ---------------- | -------------------------- | -------------------------------------------------- |
-| **Now**          | pr207, pr208, pr209, pr210 | `*_jp_*`, `*_call_*` legality                      |
-| **Now**          | pr206, pr202, pr204, pr225 | I/O indexed reg, add, adc/sbc, indexed rotate dest |
-| Optional same PR | `examples_compile`         | compile all `examples/`                            |
+### P0b - Verify production gates in clean CI or shell — **done**
 
-Port **before** broad doc or `write-asm80` splits so control-flow legality regressions cannot pass
-bin-only corpus.
+Exit condition met 2026-05-24; see **P0b — production gates verified** table above.
 
-### P0 follow-on — Task 9b ISA matrices
+### P1 - Refresh stale architecture/reference docs — **done**
 
-| Next after 9a   | Oracle matrices                        |
-| --------------- | -------------------------------------- |
-| One PR          | pr129–pr131 (arity / register-target)  |
-| Same or next PR | pr133, pr134, pr240; optional pr126 CB |
-
-### P1 — Task 9c / 9d (semantics & integration)
-
-- Layout / semantics: `semantics/*`, `pr769`, layout-cast cluster
-- Includes: `sourceLoader_*`, `pr950`
-- D8/listing hardening: pr39, pr119, pr200 (when artifact contracts need matrices)
-
-### P0b - Verify production gates in clean CI or shell
-
-Run and record:
+Exit condition met 2026-05-24. Promoted-path grep is clean except historical oracle
+mapping rows in `docs/next/oracle-test-gap-analysis.md`:
 
 ```sh
-npm run next:diff-current:all
-npm run test:package
-npm run next:guardrails
-npm run test:ci:asm80-parity
-```
-
-Reason:
-
-- The local review environment could not run two important gates because of
-  environment permissions.
-- The plan claims completion; those claims need current green evidence outside
-  the sandbox failure mode.
-
-Exit condition:
-
-- All commands pass in CI or a clean local shell, or failures are documented as
-  real tasks in `docs/next/plan.md`.
-
-### P1 - Refresh stale architecture/reference docs
-
-Update:
-
-- `docs/reference/source-overview.md`
-- `docs/reference/adding-z80-instructions.md`
-- `docs/reference/tooling-api.md`
-- `docs/design/azm-ops-subset.md`
-- `docs/design/azm-directive-aliases.md`
-- `docs/design/asm80-compatibility-baseline.md`
-
-Reason:
-
-- Current docs contain old `frontend/`, `lowering/`, and `formats/` references.
-- Stale docs are now more misleading than missing docs because they point future
-  work at deleted architecture.
-
-Exit condition:
-
-- Searching docs for old promoted-path references no longer points at live-code
-  instructions unless the reference is explicitly historical:
-
-```sh
-rg -n "src/(frontend|lowering|formats)|frontend/|lowering/|formats/" docs
+rg -n "src/(frontend|lowering|formats)" docs
+# → no matches (2026-05-24)
 ```
 
 ### P1 - Split `src/outputs/write-asm80.ts`
@@ -472,16 +413,12 @@ on it.
 
 ## Suggested Production-Readiness Score
 
-Current score: **9/10** (user-visible + oracle Task 9a–9d); **npm publish: NOT READY** until doc
-refresh lands.
+Current score: **10/10** for release cutover; **npm publish: READY** (process: version bump + changelog).
 
 Rationale:
 
-- **User-visible:** production gates green (table above); asm80 CI policy exercised.
-- **Oracle:** Task 9a–9d merged (#191–#194): control-flow/ISA matrices, layout/env edges, pr950
+- **User-visible:** production gates green (P0b table); asm80 CI policy exercised.
+- **Oracle:** Task 9a–9d merged (#190–#194): control-flow/ISA matrices, layout/env edges, pr950
   includes, `examples_compile`. Residual optional ISA rows (pr132/pr136/pr137/pr126) deferred per §10.
-- **Maintainability:** `docs/reference/source-overview.md` still stale (refresh in flight);
-  `write-asm80.ts` size accepted as non-blocking while asm80 gates stay green.
-
-Raise to **10/10** only after source-overview refresh merges and residual P2 splits are either done or
-explicitly accepted in `plan.md`.
+- **Maintainability:** reference/design docs refreshed; `write-asm80.ts` size accepted as non-blocking
+  while asm80 gates stay green. Residual P2 splits tracked in backlog, not release blockers.

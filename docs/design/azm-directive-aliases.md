@@ -15,9 +15,9 @@ rewrite instructions, operands, expressions, or labels.
 
 Related:
 
-- `docs/spec/azm-assembly-baseline.md` — baseline surface
+- `docs/reference/source-overview.md` — live source map and product boundary
 - `docs/design/azm-expression-and-visibility.md` — how aliases differ from `op`
-- Implementation: `src/frontend/directiveAliases.ts`
+- Implementation: `src/syntax/directive-aliases.ts`
 
 ## Canonical directive set
 
@@ -145,14 +145,14 @@ raw source line
   → parse canonical directive or instruction
 ```
 
-Aliases run in the ASM80/ASM line path (`resolveDirectiveAlias` in
-`asmLine.ts`). They are policy-driven so tests and corpora can load extra
-JSON without changing the parser grammar.
+Aliases run before parse (`resolveDirectiveAlias` in
+`src/syntax/directive-aliases.ts`). They are policy-driven so tests and corpora
+can load extra JSON without changing the parser grammar.
 
 ## CLI and tooling
 
-- Compile accepts `directiveAliasFiles: string[]` (see `src/compile.ts`,
-  `src/pipeline.ts`).
+- Compile accepts `directiveAliasFiles: string[]` (see `src/api-compile.ts`,
+  `src/tooling/api.ts`).
 - Package / project config may supply alias files for Tetro, Pacmo, MON3, etc.
 - Linters and highlighters should highlight **canonical** directives in canonical AZM
   docs; alias spellings may be noted as compatibility in grammar comments.
