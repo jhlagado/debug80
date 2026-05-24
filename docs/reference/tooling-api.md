@@ -254,11 +254,11 @@ const result = await compile(
 );
 ```
 
-**`emitAsm80` caveat:** Lowered `.z80` emission is incomplete. Unsupported
-instructions or operand forms throw `UnsupportedAsm80LoweringError`, surfaced as
-`AZMN_ASM80`. When assembly already succeeded, `compile()` still returns
-bin/hex/d8/listing artifacts alongside the asm80 error. Treat asm80 as
-experimental until `npm run check:asm80-coverage` passes on your sources.
+**`emitAsm80` caveat:** Lowered `.z80` emission is gated but not universal.
+Unsupported instructions or operand forms throw `UnsupportedAsm80LoweringError`,
+surfaced as `AZMN_ASM80`. When assembly already succeeded, `compile()` still
+returns bin/hex/d8/listing artifacts alongside the asm80 error. Run
+`npm run check:asm80-coverage` on your sources before relying on lowered output.
 
 The compiler accepts flat `.asm` / `.z80` source, retained AZM assembler
 features, and the same output writers used by the CLI. External register-care
@@ -278,20 +278,19 @@ generated frames are outside this API contract for AZM source.
 The public tooling surface includes:
 
 - `Diagnostic`, `DiagnosticIds`, severity/id types
-- `SourcePosition`, `SourceSpan`
-- `ProgramNode`, `SourceFileNode`, `SourceItemNode`
 - `LoadedProgram`
-- `CompileEnv`
+- `AnalyzeProgramResult`, `LoadProgramResult`
 - `RegisterCareCandidateDiagnostic`, `RegisterCareCodeAction`, `RegisterCareOutputCandidate`
 
-In v1, the AST exported from `src/frontend/ast.ts` is part of the public contract. Additive fields are minor-version changes; breaking shape changes are major-version changes.
+The public tooling contract is the package export surface, not deep internal
+paths. Do not document retired internal modules as public API.
 
 ## Syntax Highlighting Example
 
 Syntax colouring is an example consumer of the tooling API:
 
 1. Call `loadProgram()` with the file path and optional unsaved buffer text.
-2. Walk `ProgramNode` and inspect `node.kind` plus `node.span`.
+2. Walk `loadedProgram.program.files[0].items` and inspect each item's `kind` and `span`.
 3. Map those spans to TextMate scopes or semantic token kinds in the editor.
 4. Fall back to regex/TextMate-only colouring if parsing fails or the editor needs a cheaper fast path.
 
