@@ -580,7 +580,7 @@ main:
   it('reports unsupported ASM80 lowering instead of emitting incomplete text', async () => {
     await withTempDir('azm-next-compile-asm80-unsupported-', async (dir) => {
       const entry = join(dir, 'program.asm');
-      await writeFile(entry, '.org $0100\nmain:\n  push bc\n  ret\n', 'utf8');
+      await writeFile(entry, '.org $0100\nmain:\n  sub (ix+1)\n  ret\n', 'utf8');
 
       const result = await compile(
         entry,
@@ -599,7 +599,40 @@ main:
         {
           severity: 'error',
           code: 'AZMN_ASM80',
-          message: 'lowered .z80 output does not yet support instruction "push"',
+          message: 'lowered .z80 output does not yet support instruction "sub"',
+          sourceName: normalize(entry),
+          line: 3,
+          column: 3,
+        },
+      ]);
+    });
+  });
+
+  it('keeps bin artifacts when ASM80 lowering fails after successful assembly', async () => {
+    await withTempDir('azm-next-compile-asm80-bin-preserved-', async (dir) => {
+      const entry = join(dir, 'program.asm');
+      await writeFile(entry, '.org $0100\nmain:\n  sub (ix+1)\n  ret\n', 'utf8');
+
+      const result = await compile(
+        entry,
+        {
+          emitBin: true,
+          emitHex: false,
+          emitD8m: false,
+          emitListing: false,
+          emitAsm80: true,
+        },
+        { formats: defaultFormatWriters },
+      );
+
+      const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
+      expect(bin).toBeDefined();
+      expect(result.artifacts.map((artifact) => artifact.kind)).toEqual(['bin']);
+      expect(result.diagnostics).toEqual([
+        {
+          severity: 'error',
+          code: 'AZMN_ASM80',
+          message: 'lowered .z80 output does not yet support instruction "sub"',
           sourceName: normalize(entry),
           line: 3,
           column: 3,
