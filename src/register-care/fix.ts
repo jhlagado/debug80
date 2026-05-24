@@ -1,5 +1,7 @@
 import { getZ80InstructionEffect } from '../z80/effects.js';
 import { instructionSuccessors, labelIndex } from './controlFlow.js';
+import { contractCarrierList } from './report.js';
+import { joinSourceLines, splitSourceLines } from './sourceText.js';
 import type {
   RegisterCareInstruction,
   RegisterCareOutputCandidate,
@@ -95,6 +97,13 @@ function findExpectOutFixes(
   return out;
 }
 
+export function findExpectOutFixesForCandidates(
+  routines: RegisterCareRoutine[],
+  candidates: RegisterCareOutputCandidate[],
+): RegisterCareExpectOutFix[] {
+  return findExpectOutFixes(routines, candidates);
+}
+
 export function autoFixableCandidateKeys(
   routines: RegisterCareRoutine[],
   candidates: RegisterCareOutputCandidate[],
@@ -105,4 +114,64 @@ export function autoFixableCandidateKeys(
     out.add(`${fix.file}:${fix.line}:${fix.column}`);
   }
   return out;
+}
+
+function isExpectOutLine(line: string): boolean {
+  return /^\s*;\s*expects\s+out\b/i.test(line);
+}
+
+function expectedCallLine(
+  originalLines: string[],
+  fix: RegisterCareExpectOutFix,
+): string | undefined {
+  return originalLines[fix.line - 1]?.trim();
+}
+
+function findCallLineIndex(
+  lines: string[],
+  originalLines: string[],
+  fix: RegisterCareExpectOutFix,
+): number | undefined {
+  const expected = expectedCallLine(originalLines, fix);
+  if (!expected) return undefined;
+  const preferred = fix.line - 1;
+  if (lines[preferred]?.trim() === expected) return preferred;
+
+  let best: number | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index]?.trim() !== expected) continue;
+    const distance = Math.abs(index - preferred);
+    if (distance < bestDistance) {
+      best = index;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function indentation(line: string): string {
+  return line.match(/^\s*/)?.[0] ?? '';
+}
+
+export function applyExpectOutFixesToSource(
+  source: string,
+  fixes: RegisterCareExpectOutFix[],
+  referenceSource = source,
+): string {
+  if (fixes.length === 0) return source;
+  const originalLines = referenceSource.split(/\r?\n/);
+  const sourceLines = splitSourceLines(source);
+  const { lines } = sourceLines;
+  const sorted = [...fixes].sort((a, b) => b.line - a.line || b.column - a.column);
+
+  for (const fix of sorted) {
+    const index = findCallLineIndex(lines, originalLines, fix);
+    if (index === undefined) continue;
+    if (index > 0 && isExpectOutLine(lines[index - 1] ?? '')) continue;
+    const prefix = indentation(lines[index] ?? '');
+    lines.splice(index, 0, `${prefix}; expects out ${contractCarrierList(fix.carriers)}`);
+  }
+
+  return joinSourceLines(sourceLines);
 }

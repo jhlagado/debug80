@@ -65,6 +65,12 @@ function pushDirectBoundary(
 export function buildRegisterCareProgramModel(items: readonly SourceItem[]): RegisterCareProgramModel {
   const routines: RegisterCareRoutine[] = [];
   const directCalls: RegisterCareDirectCall[] = [];
+  const filesWithEntryLabels = new Set(
+    items
+      .filter((item): item is Extract<SourceItem, { kind: 'label' }> => item.kind === 'label')
+      .filter((item) => item.isEntry === true)
+      .map((item) => item.span.sourceName),
+  );
 
   let routineName: string | undefined;
   let entryLabels: string[] = [];
@@ -77,7 +83,7 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
   const startRoutine = (item: Extract<SourceItem, { kind: 'label' }>): void => {
     sourceName = item.span.sourceName;
     routineName = item.name;
-    entryLabels = [item.name];
+    entryLabels = item.isEntry === true ? [item.name] : [];
     labels = [item.name];
     routineStartLine = item.span.line;
     routineStartColumn = item.span.column;
@@ -85,7 +91,22 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
   };
 
   const flushRoutine = (): void => {
-    if (routineName === undefined || instructions.length === 0 || routineStartLine === undefined) {
+    if (routineName === undefined || routineStartLine === undefined) {
+      return;
+    }
+
+    if (instructions.length === 0) {
+      routines.push({
+        name: routineName,
+        labels: [...labels],
+        entryLabels: [...entryLabels],
+        instructions: [],
+        span: {
+          file: sourceName ?? '',
+          start: { line: routineStartLine, column: routineStartColumn ?? 1 },
+          end: { line: routineStartLine, column: routineStartColumn ?? 1 },
+        },
+      });
       return;
     }
 
@@ -154,6 +175,9 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
     }
 
     if (routineName === undefined) {
+      if (filesWithEntryLabels.has(item.span.sourceName) && item.isEntry !== true) {
+        continue;
+      }
       startRoutine(item);
       continue;
     }
@@ -169,17 +193,13 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
 
     // Multiple global labels before body on same routine are coalesced as entry labels.
     labels.push(item.name);
-    entryLabels.push(item.name);
+    if (item.isEntry === true) {
+      entryLabels.push(item.name);
+    }
   }
 
   flushRoutine();
 
-  const filesWithEntryLabels = new Set(
-    items
-      .filter((item): item is Extract<SourceItem, { kind: 'label' }> => item.kind === 'label')
-      .filter((item) => item.isEntry === true)
-      .map((item) => item.span.sourceName),
-  );
   const entryNamesByFile = new Map<string, Set<string>>();
   for (const item of items) {
     if (item.kind !== 'label' || item.isEntry !== true) continue;
