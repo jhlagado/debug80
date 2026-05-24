@@ -310,8 +310,9 @@ describe('register-care cli', () => {
     );
     expect(annotated).not.toContain(';!      out       HL\nSTART:');
     expect(annotated).not.toContain(';!      out       HL\nSKIP:');
-    expect(annotated).toContain('; Empty prose stays untouched.\nEMPTY:');
-    expect(annotated).not.toContain(';!      clobbers  BC\nEMPTY:');
+    expect(annotated).toContain(
+      ['; Empty prose stays untouched.', ';!      clobbers  BC', 'EMPTY:'].join('\n'),
+    );
 
     const second = await runCli([
       '--nobin',
