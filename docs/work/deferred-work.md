@@ -69,20 +69,44 @@ For each item record:
   - prefer deleting redundant fixtures over preserving converted historical
     material for its own sake
 
-### Documentation cleanup and consolidation
+### Documentation cleanup follow-up
 
-- Status: next cleanup stream
-- Why deferred: this is repository organization work, not a language-feature
+- Status: mostly done; monitor for stale references
+- Why deferred: remaining work is repository hygiene, not a language-feature
   blocker
 - Preconditions:
-  - current AZM language boundary remains documented in `docs/spec/`
+  - source code and tests remain the authority for assembler behavior
   - retained implementation references remain reachable from `docs/README.md`
   - stale documents are deleted rather than archived
 - Source:
   - user request during the AZM good-assembler cleanup
 - Notes:
-  - remove docs that are not relevant to AZM as it now exists
-  - consolidate overlapping design notes into fewer, better structured docs
-  - delete historical ZAX-era planning material once any useful AZM decisions
-    have been moved into current spec/reference/design docs
+  - keep deleting or updating stale references when documents move or are
+    removed
   - keep `docs/` organized around `spec`, `reference`, `design`, and `work`
+
+### Routine-private labels
+
+- Status: deferred; no active design document
+- Why deferred: the live source and tests define current label behavior, and
+  speculative privacy/block-scoping policy should not be treated as a spec
+- Preconditions:
+  - corpus evidence for any behavior change
+  - explicit parser and symbol-table tests before implementation
+- Source:
+  - removed stale design note
+- Notes:
+  - do not infer private-label behavior from historical docs
+
+### VS Code / LSP integration
+
+- Status: deferred; no active design document
+- Why deferred: editor integration should build on the public tooling API after
+  the assembler surface is stable
+- Preconditions:
+  - stable `@jhlagado/azm/tooling` contract
+  - current syntax highlighting and diagnostic requirements
+- Source:
+  - removed stale design note
+- Notes:
+  - use `docs/reference/tooling-api.md` as the integration starting point
