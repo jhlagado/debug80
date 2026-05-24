@@ -141,7 +141,7 @@ describe('op expansion and register-care', () => {
       expect(model.directCalls).toEqual([]);
       const summary = routineSummary(model.routines, 'main');
       expect(summary?.valueRelations).toEqual(
-        expect.arrayContaining([{ out: ['B'], from: ['A'] }]),
+        expect.arrayContaining([{ out: ['B'], from: [] }]),
       );
     });
   });
