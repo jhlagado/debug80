@@ -201,6 +201,17 @@ const PROJECT_CONFIG_CANDIDATES = [
   path.join('.vscode', 'debug80.json'),
   '.debug80.json',
 ];
+const SOURCE_DISCOVERY_EXCLUDED_DIRS = new Set([
+  '.git',
+  '.hg',
+  '.svn',
+  '.vscode',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'out',
+]);
 
 export function findProjectConfigPath(folder: vscode.WorkspaceFolder): string | undefined {
   for (const candidate of PROJECT_CONFIG_CANDIDATES) {
@@ -367,10 +378,7 @@ export function updateProjectTargetSource(
 
 export function listProjectSourceFiles(rootPath: string): string[] {
   const results: string[] = [];
-  const sourceRoot = path.join(rootPath, 'src');
-  const scanRoot =
-    fs.existsSync(sourceRoot) && fs.statSync(sourceRoot).isDirectory() ? sourceRoot : rootPath;
-  collectProjectSourceFiles(rootPath, scanRoot, results);
+  collectProjectSourceFiles(rootPath, rootPath, results);
   results.sort((left, right) => left.localeCompare(right));
   return results;
 }
@@ -380,6 +388,10 @@ function collectProjectSourceFiles(rootPath: string, currentPath: string, result
   for (const entry of entries) {
     const fullPath = path.join(currentPath, entry.name);
     if (entry.isDirectory()) {
+      if (SOURCE_DISCOVERY_EXCLUDED_DIRS.has(entry.name.toLowerCase())) {
+        continue;
+      }
+      collectProjectSourceFiles(rootPath, fullPath, results);
       continue;
     }
 

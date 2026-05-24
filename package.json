@@ -1,19 +1,40 @@
 {
   "name": "debug80",
-  "displayName": "Z80 Debugger",
-  "description": "Debug Adapter for Z80 programs (AZM + HEX/LST)",
+  "displayName": "Debug80 IDE for Z80 Development",
+  "description": "Source-level Z80 debugging environment with built-in assembler and TEC-1/TEC-1G emulation.",
   "version": "0.0.1",
   "publisher": "jhlagado",
   "license": "GPL-3.0-or-later",
+  "icon": "assets/debug80-icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/jhlagado/debug80.git"
   },
+  "bugs": {
+    "url": "https://github.com/jhlagado/debug80/issues"
+  },
+  "homepage": "https://github.com/jhlagado/debug80",
+  "keywords": [
+    "z80",
+    "assembly",
+    "debugger",
+    "emulator",
+    "source-level debugging",
+    "tec-1",
+    "tec-1g",
+    "retrocomputing"
+  ],
+  "galleryBanner": {
+    "color": "#000000",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "engines": {
     "vscode": "^1.92.0"
   },
   "categories": [
-    "Debuggers"
+    "Debuggers",
+    "Programming Languages"
   ],
   "activationEvents": [
     "onView:debug80.platformView",
@@ -48,8 +69,6 @@
       "files.associations": {
         "*.asm": "z80-asm",
         "*.z80": "z80-asm",
-        "*.a80": "z80-asm",
-        "*.s": "z80-asm",
         "*.asmi": "z80-asm"
       },
       "editor.tokenColorCustomizations": {
@@ -250,8 +269,6 @@
         "extensions": [
           ".asm",
           ".z80",
-          ".a80",
-          ".s",
           ".asmi"
         ],
         "configuration": "./language-configuration/z80-asm.json"
@@ -352,7 +369,7 @@
       },
       {
         "command": "debug80.openRomSource",
-        "title": "Debug80: Open ROM Listing/Source"
+        "title": "Debug80: Open ROM Source"
       },
       {
         "command": "debug80.openProjectConfigPanel",
@@ -371,21 +388,21 @@
       "explorer/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
+          "when": "resourceExtname == .asm || resourceExtname == .z80",
           "group": "navigation@9"
         }
       ],
       "editor/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
+          "when": "resourceExtname == .asm || resourceExtname == .z80",
           "group": "navigation@9"
         }
       ],
       "editor/title/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .a80 || resourceExtname == .s",
+          "when": "resourceExtname == .asm || resourceExtname == .z80",
           "group": "navigation@9"
         }
       ]
@@ -431,11 +448,11 @@
               },
               "outputDir": {
                 "type": "string",
-                "description": "Directory for generated hex/lst artifacts (defaults to asm directory)"
+                "description": "Directory for generated build artifacts (defaults to asm directory)"
               },
               "artifactBase": {
                 "type": "string",
-                "description": "Base filename for generated hex/lst (defaults to asm basename)"
+                "description": "Base filename for generated build artifacts (defaults to asm basename)"
               },
               "hex": {
                 "type": "string",
@@ -443,7 +460,7 @@
               },
               "listing": {
                 "type": "string",
-                "description": "Path to a Z80 .lst listing file for source mapping (optional if asm is provided)"
+                "description": "Path to a legacy Z80 listing file for fallback source mapping (optional if asm is provided)"
               },
               "entry": {
                 "type": "number",
@@ -456,7 +473,7 @@
               },
               "openRomSourcesOnLaunch": {
                 "type": "boolean",
-                "description": "Open ROM listing/source files automatically on launch",
+                "description": "Open ROM source files automatically on launch",
                 "default": true
               },
               "openMainSourceOnLaunch": {
@@ -481,7 +498,7 @@
               },
               "sourceRoots": {
                 "type": "array",
-                "description": "Additional directories to resolve source file paths from LST anchors",
+                "description": "Additional directories to resolve source file paths from debug maps",
                 "items": {
                   "type": "string"
                 }
@@ -611,11 +628,14 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@jhlagado/azm": "0.1.1",
+    "@jhlagado/azm": "0.2.1",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },
   "overrides": {
-    "minimatch": ">=9.0.7"
+    "minimatch": ">=9.0.7",
+    "@vscode/vsce": {
+      "minimatch": "3.1.5"
+    }
   }
 }

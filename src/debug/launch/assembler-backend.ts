@@ -7,7 +7,7 @@ import type { MappingParseResult } from '../../mapping/parser';
 import type { AssembleResult } from './assembler';
 import { AzmBackend } from './azm-backend';
 
-const azmSourceExtensions = new Set(['.a80', '.asm', '.inc', '.s', '.z80']);
+const azmSourceExtensions = new Set(['.asm', '.inc', '.z80']);
 
 export interface AssembleOptions {
   asmPath: string;

@@ -1,7 +1,7 @@
 {
   "name": "Z80 Assembly",
   "scopeName": "source.z80.asm",
-  "fileTypes": ["asm", "z80", "a80", "s", "asmi"],
+  "fileTypes": ["asm", "z80", "asmi"],
   "patterns": [
     {
       "include": "#comments"

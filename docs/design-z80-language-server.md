@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Type:** Additive editor tooling
-**Scope:** `.asm`, `.z80`, `.a80`, and `.s`
+**Scope:** `.asm`, `.z80`, and `.asmi`
 
 ---
 

@@ -414,17 +414,21 @@ describe('package.json language contracts', () => {
 
   it('ASM-family files are associated with ASM_LANGUAGE_ID', () => {
     const assoc = contributes.configurationDefaults['files.associations'];
-    for (const extension of ['asm', 'z80', 'a80', 's', 'asmi']) {
+    for (const extension of ['asm', 'z80', 'asmi']) {
       expect(assoc[`*.${extension}`]).toBe(asmLanguageId);
     }
+    expect(assoc['*.a80']).toBeUndefined();
+    expect(assoc['*.s']).toBeUndefined();
   });
 
   it('contributed language claims ASM-family extensions', () => {
     const lang = contributes.languages.find((l) => l.id === asmLanguageId);
     expect(lang).toBeDefined();
-    for (const extension of ['.asm', '.z80', '.a80', '.s', '.asmi']) {
+    for (const extension of ['.asm', '.z80', '.asmi']) {
       expect(lang!.extensions).toContain(extension);
     }
+    expect(lang!.extensions).not.toContain('.a80');
+    expect(lang!.extensions).not.toContain('.s');
   });
 
   it('launch schema keeps asm80 as a legacy AZM-compatible assembler alias', () => {
@@ -444,9 +448,11 @@ describe('package.json language contracts', () => {
         return entry.command === 'debug80.setEntrySource';
       });
       expect(row).toBeDefined();
-      for (const extension of ['.asm', '.z80', '.a80', '.s']) {
+      for (const extension of ['.asm', '.z80']) {
         expect(row!.when).toContain(`resourceExtname == ${extension}`);
       }
+      expect(row!.when).not.toContain('resourceExtname == .a80');
+      expect(row!.when).not.toContain('resourceExtname == .s');
       expect(row!.when).not.toContain('resourceExtname == .asmi');
     }
   });
@@ -726,6 +732,8 @@ describe('package.json language contracts', () => {
 
   it('Z80 assembly grammar claims AZM interface files', () => {
     expect(getAsmGrammarFileTypes()).toContain('asmi');
+    expect(getAsmGrammarFileTypes()).not.toContain('a80');
+    expect(getAsmGrammarFileTypes()).not.toContain('s');
   });
 
   it('Z80 assembly grammar checks AZM-specific syntax before generic symbols', () => {
