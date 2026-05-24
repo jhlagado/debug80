@@ -29,6 +29,7 @@ async function withCliBuildLock<T>(run: () => Promise<T>): Promise<T> {
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== 'EEXIST') throw error;
+      if (await isCliBuildFresh()) return undefined as T;
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
     }
   }
@@ -90,6 +91,7 @@ async function isCliBuildFresh(): Promise<boolean> {
 }
 
 export async function ensureCliBuilt(): Promise<void> {
+  if (await isCliBuildFresh()) return;
   if (!buildPromise) {
     buildPromise = withCliBuildLock(async () => {
       if (await isCliBuildFresh()) return;
