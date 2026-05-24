@@ -102,7 +102,7 @@ Fixtures alone would not have caught push/pop/ret-cc/ld-matrix gaps; **emitAsm80
 
 Roughly **100+** tests remain oracle-only, including:
 
-- **Backend ISA / encoder matrices:** `pr24_isa_core`, `pr129`–`pr151`, `pr477_encode_*`, `pr1140_encode_error_paths`, etc.
+- **Backend ISA / encoder matrices:** `pr24_isa_core`, `pr129`–`pr151`, `pr477_encode_*`, **`pr1140_encode_error_paths`** (preferred next), etc.
 - **Frontend / parser:** remaining small matrices (`asm_flat_source`, `asm_top_level_parser`, directive aliases, removed-syntax boundary, **pr169/pr186** **ported**). **`pr636` parse-diagnostics helpers** **ported** (`src/syntax/parse-diagnostics.ts`, `test/unit/syntax/pr636-parse-diagnostics-helpers.test.ts`).
 - **CLI contract:** **pr249_cli_lock_eviction_matrix** **ported** (`test/cli/pr249-cli-lock-eviction-matrix.test.ts`); **cli_artifacts**, **cli_determinism_contract**, **cli_path_parity_contract**, **cli_source_extension**, **cli_azm_smoke**, **cli_acceptance_matrix_strictness**, **register_care_cli** **ported** (`test/cli/register_care_cli.test.ts`). Remaining oracle CLI: _(none in this bucket)_.
 - **Lowering helpers:** `pr510`/`pr528`/`pr530`/`pr532` integration.
@@ -137,7 +137,7 @@ These matter for **general parity** but are not the primary asm80 disaster detec
 | `pr991_comment_preservation.asm`           | Comments + `ld a,(sym)` | pr990 + pr991     | asm80 artifact partial   |
 | `pr37_forward_label_call.asm`              | Labels / calls          | pr990             | root corpus **bin only** |
 | `pr1349_ld_*.asm` (5 files)                | Register-indirect LD    | encoder + asm80   | asm80 artifact it.each   |
-| `pr203_ld_diag_matrix_invalid.asm`         | LD errors               | pr203 matrix test | **no test file**         |
+| `pr203_ld_diag_matrix_invalid.asm`         | LD errors               | pr203 matrix test | `test/integration/pr203-ld-diag-matrix.test.ts` + `test/unit/z80/pr203-ld-diag-matrix.test.ts` |
 | `pr56_isa_misc.asm`, `pr57_isa_im_rst.asm` | Misc / IM / RST         | isa tests         | asm80 artifact           |
 | `pr123_isa_alu_a_core.asm`                 | ALU A-core              | isa tests         | asm80 artifact           |
 
@@ -218,7 +218,7 @@ Oracle `writeAsm80` (legacy) and Next `write-asm80.ts` use large hand-written fo
 ### Tier 2 — high value, medium effort
 
 5. **`pr991_asm80_comment_preservation`** — assert comment lines in asm80 output (Next API).
-6. **`pr203_ld_diag_matrix`** — port matrix runner against `pr203_ld_diag_matrix_invalid.asm`.
+6. **`pr203_ld_diag_matrix`** — **Done** (integration fixture matrix + parse-level unit matrix; PR after register-care).
 7. **`asm80/mon3_opcode_gap`** — track mnemonics that still hit `AZMN_ASM80` on MON3 slice.
 8. **Oracle asm80 directive suite** (`asm80_align`, `equ_aliases`, `string_directives`, `directives_integration`) — port to `test/integration` or `test/asm80`.
 
@@ -242,7 +242,7 @@ Oracle `writeAsm80` (legacy) and Next `write-asm80.ts` use large hand-written fo
 | 2   | `check:asm80-coverage` in guardrails        | Gate        | Fails on any `AZMN_ASM80` per fixture                                       |
 | 3   | root-fixture-corpus asm80 mode              | **Partial** | 16 parity + 19 excluded + accounting guard; 54 diagnostic-only compile-fail |
 | 4   | `pr1048` lowered-IR unit tests              | Test        | Not portable; need SourceItem tests                                         |
-| 5   | `pr203_ld_diag_matrix` runner               | Test        | LD matrix regressions                                                       |
+| 5   | `pr203_ld_diag_matrix` runner               | Test        | **Done** — integration + unit parse matrix                                  |
 | 6   | `asm80/*` directive integration (5 files)   | Test        | Include/asm80 syntax                                                        |
 | 7   | `mon3_opcode_gap`                           | Test        | Real program opcode coverage                                                |
 | 8   | `pr991` comment preservation                | Test        | User comment fidelity                                                       |
@@ -271,7 +271,13 @@ npx vitest run test/differential/asm80-external-roundtrip.test.ts
 
 ---
 
-## 8. References
+## 8. Next preferred increment
+
+**`pr1140_encode_error_paths`** — port oracle `legacy-root-azm/test/backend/pr1140_encode_error_paths.test.ts` as a `parseZ80Instruction` / `encodeZ80Instruction` error-path matrix under `test/unit/z80/` (Next has no legacy `encodeInstruction` AST helper API; messages already overlap `parser-encoder.test.ts` but lack a dedicated parity file).
+
+---
+
+## 9. References
 
 - Oracle pr990: `legacy-root-azm/test/cli/pr990_asm80_emitter_validation.test.ts`
 - Next asm80 artifact tests: `test/differential/lowered-asm80-artifact.test.ts`
