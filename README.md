@@ -15,6 +15,9 @@ the classic TEC-1 and the TEC-1G MON-3 environment. Those profiles include
 bundled ROM assets and emulator panels for the front-panel hardware users
 actually interact with.
 
+Full user guides, AZM course material, and engineering reference documentation
+are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
+
 ## Features
 
 - **Source-level Z80 debugging**: set breakpoints in `.asm` and `.z80` files,
@@ -135,6 +138,13 @@ not need `npm link`, sibling checkouts, or globally installed assembler binaries
 
 ## Documentation
 
+- [debug80 Docs](https://jhlagado.github.io/debug80-docs/): published user
+  guides, AZM books/manual, and engineering reference.
+- [Using Debug80 in VS Code](https://jhlagado.github.io/debug80-docs/manual/):
+  project setup, debugging workflow, panels, ROMs, serial, source mapping, and
+  troubleshooting.
+- [AZM Books and Manual](https://jhlagado.github.io/debug80-docs/azm-book/):
+  Z80 learning material and AZM assembler reference.
 - [Technical guide](docs/technical.md): extension architecture, launch pipeline,
   adapter behaviour, mapping, and stepping.
 - [Platform architecture](docs/platforms.md): platform model and configuration.

@@ -48,7 +48,18 @@ interface D8mArtifact {
 
 type Artifact = HexArtifact | ListingArtifact | LoweredSourceArtifact | BinArtifact | D8mArtifact;
 
-type CompilerOptions = Record<string, unknown>;
+interface CompilerOptions {
+  outputType: 'bin' | 'hex';
+  sourceRoot?: string;
+  d8mInputs?: {
+    hex?: string;
+    bin?: string;
+  };
+  emitBin?: boolean;
+  emitHex?: boolean;
+  emitD8m?: boolean;
+  emitAsm80?: boolean;
+}
 
 interface EmittedByteMap {
   bytes: Map<number, number>;
@@ -162,6 +173,17 @@ function writeJsonArtifact(filePath: string, value: unknown): void {
   writeTextArtifact(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function writeD8PlaceholderListing(listingPath: string, d8Path: string): void {
+  writeTextArtifact(
+    listingPath,
+    [
+      '; AZM did not emit a legacy listing.',
+      `; Debug80 uses the native D8 debug map at ${path.basename(d8Path)} for source mapping.`,
+      '',
+    ].join('\n')
+  );
+}
+
 function azmFailure(message: string, diagnostic?: AssemblyDiagnostic): AssembleResult {
   return {
     success: false,
@@ -256,13 +278,9 @@ export class AzmBackend implements AssemblerBackend {
           emitBin: true,
           emitHex: true,
           emitD8m: true,
-          emitListing: true,
           emitAsm80: true,
-          requireMain: false,
-          defaultCodeBase: 0x0100,
           sourceRoot,
           d8mInputs: {
-            listing: options.listingPath,
             hex: options.hexPath,
             bin: binPath,
           },
@@ -283,18 +301,11 @@ export class AzmBackend implements AssemblerBackend {
 
     const artifacts = result.artifacts;
     const hex = findArtifact(artifacts, 'hex');
-    const listing = findArtifact(artifacts, 'lst');
     if (hex === undefined) {
       return azmFailure(`azm succeeded but did not produce HEX output for "${options.asmPath}".`);
     }
-    if (listing === undefined) {
-      return azmFailure(
-        `azm succeeded but did not produce listing output for "${options.asmPath}".`
-      );
-    }
 
     writeTextArtifact(options.hexPath, hex.text);
-    writeTextArtifact(options.listingPath, listing.text);
 
     const bin = findArtifact(artifacts, 'bin');
     if (bin !== undefined) {
@@ -303,8 +314,9 @@ export class AzmBackend implements AssemblerBackend {
 
     const base = artifactBase(options.hexPath);
     const d8 = findArtifact(artifacts, 'd8m');
+    let hexD8Path: string | undefined;
     if (d8 !== undefined) {
-      const hexD8Path = `${base}${D8_DEBUG_MAP_EXT}`;
+      hexD8Path = `${base}${D8_DEBUG_MAP_EXT}`;
       writeJsonArtifact(hexD8Path, d8.json);
       const listingD8Path = path.join(
         path.dirname(options.listingPath),
@@ -313,6 +325,17 @@ export class AzmBackend implements AssemblerBackend {
       if (listingD8Path !== hexD8Path) {
         writeJsonArtifact(listingD8Path, d8.json);
       }
+    }
+
+    const listing = findArtifact(artifacts, 'lst');
+    if (listing !== undefined) {
+      writeTextArtifact(options.listingPath, listing.text);
+    } else if (hexD8Path !== undefined) {
+      writeD8PlaceholderListing(options.listingPath, hexD8Path);
+    } else {
+      return azmFailure(
+        `azm succeeded but did not produce listing or D8 output for "${options.asmPath}".`
+      );
     }
 
     const lowered = findArtifact(artifacts, 'asm80');
@@ -350,9 +373,6 @@ export class AzmBackend implements AssemblerBackend {
           emitBin: true,
           emitHex: false,
           emitD8m: false,
-          emitListing: false,
-          requireMain: false,
-          defaultCodeBase: 0x0100,
           ...(options.sourceRoot !== undefined ? { sourceRoot: options.sourceRoot } : {}),
         },
         { formats }

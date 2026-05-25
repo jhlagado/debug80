@@ -75,13 +75,9 @@ describe('azm-backend', () => {
         emitBin: true,
         emitHex: true,
         emitD8m: true,
-        emitListing: true,
         emitAsm80: true,
-        requireMain: false,
-        defaultCodeBase: 0x0100,
         sourceRoot: tmpDir,
         d8mInputs: {
-          listing: listingPath,
           hex: hexPath,
           bin: binPath,
         },
@@ -94,6 +90,32 @@ describe('azm-backend', () => {
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
     expect(fs.readFileSync(path.join(outDir, 'prog.z80'), 'utf-8')).toBe('ORG 0100h\nNOP\n');
+  });
+
+  it('does not require legacy listing output when AZM emits a native D8 map', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.z80');
+    const outDir = path.join(tmpDir, 'build');
+    const hexPath = path.join(outDir, 'prog.hex');
+    const listingPath = path.join(outDir, 'prog.lst');
+
+    fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [
+        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'bin', bytes: new Uint8Array([0x00]) },
+        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
+        { kind: 'asm80', text: 'ORG 4000h\nNOP\n' },
+      ],
+    });
+
+    const result = await backend.assemble({ asmPath, hexPath, listingPath, sourceRoot: tmpDir });
+
+    expect(result.success).toBe(true);
+    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
+    expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
+    expect(fs.readFileSync(listingPath, 'utf-8')).toContain('native D8 debug map');
   });
 
   it('uses binFrom and binTo as compact output bounds for binary rebuilds', async () => {
@@ -117,7 +139,6 @@ describe('azm-backend', () => {
         emitBin: true,
         emitHex: false,
         emitD8m: false,
-        emitListing: false,
       }),
       expect.objectContaining({ formats: expect.any(Object) })
     );

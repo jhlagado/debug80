@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+Marketplace release candidate fix.
+
+- Updated the AZM backend integration to use AZM's native D8 debug-map output
+  without requiring a legacy listing artifact.
+- Removed stale AZM compile options from Debug80's assembler calls.
+- Added regression coverage for the current AZM compile artifact contract.
+
 ## 0.1.2
 
 Marketplace release candidate fix.
