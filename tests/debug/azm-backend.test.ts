@@ -164,6 +164,47 @@ describe('azm-backend', () => {
     expect(output.join('')).toContain('AZM200');
   });
 
+  it('handles AZM diagnostics that do not include a source file', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+    const listingPath = path.join(tmpDir, 'prog.lst');
+    const output: string[] = [];
+
+    fs.writeFileSync(asmPath, 'BADOP\n');
+    compile.mockResolvedValue({
+      diagnostics: [
+        {
+          code: 'AZMN_CASE_STYLE',
+          severity: 'warning',
+          message: 'Case style warning without a source location.',
+        },
+        {
+          code: 'AZMN_ASM80',
+          severity: 'error',
+          message: 'Assembly failed before a source location was available.',
+        },
+      ],
+      artifacts: [],
+    });
+
+    const result = await backend.assemble({
+      asmPath,
+      hexPath,
+      listingPath,
+      onOutput: (message) => output.push(message),
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Assembly failed before a source location was available.');
+    expect(result.error).not.toContain('localeCompare');
+    expect(result.diagnostic).toMatchObject({
+      message: 'Assembly failed before a source location was available.',
+    });
+    expect(result.diagnostic?.path).toBeUndefined();
+    expect(output.join('')).toContain('AZMN_ASM80');
+  });
+
   it('fails when AZM succeeds but required artifacts are missing', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');

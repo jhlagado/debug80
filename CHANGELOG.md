@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+Marketplace release candidate fix.
+
+- Fixed AZM diagnostic handling when the assembler returns diagnostics without
+  a source file. Debug80 now reports the real AZM diagnostic instead of failing
+  with `Cannot read properties of undefined (reading 'localeCompare')`.
+
 ## 0.1.1
 
 Marketplace release candidate refresh.

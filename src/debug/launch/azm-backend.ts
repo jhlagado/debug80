@@ -11,10 +11,12 @@ import type { AssembleBinOptions, AssembleOptions, AssemblerBackend } from './as
 type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
 interface Diagnostic {
-  id: string;
-  severity: DiagnosticSeverity;
-  message: string;
-  file: string;
+  id?: string;
+  code?: string;
+  severity?: DiagnosticSeverity;
+  message?: string;
+  file?: string;
+  sourceName?: string;
   line?: number;
   column?: number;
 }
@@ -92,7 +94,7 @@ function findArtifact<K extends Artifact['kind']>(
 }
 
 function compareDiagnostics(a: Diagnostic, b: Diagnostic): number {
-  const fileCmp = a.file.localeCompare(b.file);
+  const fileCmp = diagnosticFile(a).localeCompare(diagnosticFile(b));
   if (fileCmp !== 0) {
     return fileCmp;
   }
@@ -103,22 +105,46 @@ function compareDiagnostics(a: Diagnostic, b: Diagnostic): number {
   return (a.column ?? Number.POSITIVE_INFINITY) - (b.column ?? Number.POSITIVE_INFINITY);
 }
 
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function diagnosticFile(diagnostic: Diagnostic): string {
+  return nonEmptyString(diagnostic.file) ?? nonEmptyString(diagnostic.sourceName) ?? '';
+}
+
+function diagnosticId(diagnostic: Diagnostic): string {
+  return nonEmptyString(diagnostic.id) ?? nonEmptyString(diagnostic.code) ?? 'AZM000';
+}
+
+function diagnosticSeverity(diagnostic: Diagnostic): DiagnosticSeverity {
+  return diagnostic.severity === 'warning' || diagnostic.severity === 'info'
+    ? diagnostic.severity
+    : 'error';
+}
+
+function diagnosticMessage(diagnostic: Diagnostic): string {
+  return nonEmptyString(diagnostic.message) ?? 'AZM diagnostic';
+}
+
 function formatDiagnostic(diagnostic: Diagnostic): string {
+  const file = diagnosticFile(diagnostic);
   const location =
     diagnostic.line !== undefined && diagnostic.column !== undefined
-      ? `${diagnostic.file}:${diagnostic.line}:${diagnostic.column}`
+      ? `${file !== '' ? file : 'azm'}:${diagnostic.line}:${diagnostic.column}`
       : diagnostic.line !== undefined
-        ? `${diagnostic.file}:${diagnostic.line}`
-        : diagnostic.file;
-  return `${location}: ${diagnostic.severity}: [${diagnostic.id}] ${diagnostic.message}`;
+        ? `${file !== '' ? file : 'azm'}:${diagnostic.line}`
+        : (file !== '' ? file : 'azm');
+  return `${location}: ${diagnosticSeverity(diagnostic)}: [${diagnosticId(diagnostic)}] ${diagnosticMessage(diagnostic)}`;
 }
 
 function toAssemblyDiagnostic(diagnostic: Diagnostic): AssemblyDiagnostic {
+  const file = diagnosticFile(diagnostic);
   return {
-    path: diagnostic.file,
+    ...(file !== '' ? { path: file } : {}),
     ...(diagnostic.line !== undefined ? { line: diagnostic.line } : {}),
     ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
-    message: diagnostic.message,
+    message: diagnosticMessage(diagnostic),
   };
 }
 
@@ -358,7 +384,7 @@ function compileResultToAssembleResult(
   artifacts: Artifact[]
 ): CompileOutcome {
   const sorted = [...diagnostics].sort(compareDiagnostics);
-  const firstError = sorted.find((diagnostic) => diagnostic.severity === 'error');
+  const firstError = sorted.find((diagnostic) => diagnosticSeverity(diagnostic) === 'error');
   if (firstError !== undefined) {
     return azmFailure(formatDiagnostic(firstError), toAssemblyDiagnostic(firstError));
   }
