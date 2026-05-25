@@ -27,6 +27,7 @@ const FORBIDDEN_TOP_LEVEL_ENTRIES = [
   'src',
   'tests',
   'docs',
+  'build',
   'coverage',
   '.fallow',
   '.claude',

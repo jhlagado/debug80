@@ -5,6 +5,7 @@ coverage/**
 docs/**
 scripts/**
 webview/**
+build/**
 .git/**
 .github/**
 .vscode/**
