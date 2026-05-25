@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+Marketplace release candidate refresh.
+
+- Updated the bundled AZM assembler dependency to `0.2.3`.
+
 ## 0.1.3
 
 Marketplace release candidate fix.
