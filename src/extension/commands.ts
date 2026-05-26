@@ -500,7 +500,7 @@ export function registerExtensionCommands({
       const activeSession = vscode.debug.activeDebugSession;
       if (activeSession?.type === 'z80' && target !== previousTarget) {
         void vscode.window.showInformationMessage(
-          `Debug80: Selected target ${target}. Press Restart to apply it to the current session.`
+          `Debug80: Selected target ${target}. Press Build to apply it to the current session.`
         );
         return target;
       }

@@ -43,6 +43,7 @@ import {
 } from '../tec-common';
 import { decodeSysCtrl } from './sysctrl';
 import type { IoHandlers } from '../../z80/runtime';
+import { accumulateMatrixDuty } from './runtime-matrix';
 
 /**
  *
@@ -197,6 +198,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrix = (rowMask: number): void => {
+    accumulateMatrixDuty(display, timing.cycleClock.now());
     if (
       updateLedMatrixLatches(
         display,
@@ -211,6 +213,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrixRed = (dataMask: number): void => {
+    accumulateMatrixDuty(display, timing.cycleClock.now());
     if (
       updateLedMatrixLatches(
         display,
@@ -225,6 +228,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrixGreen = (dataMask: number): void => {
+    accumulateMatrixDuty(display, timing.cycleClock.now());
     if (
       updateLedMatrixLatches(
         display,
@@ -239,6 +243,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateLedMatrixBlue = (dataMask: number): void => {
+    accumulateMatrixDuty(display, timing.cycleClock.now());
     if (
       updateLedMatrixLatches(
         display,

@@ -60,11 +60,16 @@ export function resetTec1gRuntimeState(
   display.ledMatrixBrightnessR.fill(0);
   display.ledMatrixBrightnessG.fill(0);
   display.ledMatrixBrightnessB.fill(0);
+  display.matrixDutyR.fill(0);
+  display.matrixDutyG.fill(0);
+  display.matrixDutyB.fill(0);
   display.matrixStagingR.fill(0);
   display.matrixStagingG.fill(0);
   display.matrixStagingB.fill(0);
   display.matrixRowsVisitedMask = 0;
   display.matrixLastActivityCycle = -1;
+  display.matrixDutyLastCycle = timing.cycleClock.now();
+  display.matrixDutyWindowStartCycle = timing.cycleClock.now();
   display.ledMatrixRowLatch = 0;
   display.ledMatrixRedLatch = 0;
   display.ledMatrixGreenLatch = 0;

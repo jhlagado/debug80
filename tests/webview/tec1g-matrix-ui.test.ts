@@ -98,6 +98,16 @@ describe('tec1g matrix ui', () => {
     expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.000');
   });
 
+  it('boosts scanned duty brightness for visible LED intensity', () => {
+    const firstDot = document.querySelector('.matrix-dot') as HTMLElement;
+
+    controller.applyMatrixBrightness([32]);
+
+    expect(firstDot.classList.contains('on')).toBe(true);
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.651');
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('0.651');
+  });
+
   it('falls back to latch rows before brightness data arrives', () => {
     const dots = document.querySelectorAll('.matrix-dot');
     const firstDot = dots[0] as HTMLElement;

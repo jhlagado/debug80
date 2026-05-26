@@ -34,11 +34,16 @@ export interface Tec1gState {
     ledMatrixBrightnessR: number[];
     ledMatrixBrightnessG: number[];
     ledMatrixBrightnessB: number[];
+    matrixDutyR: number[];
+    matrixDutyG: number[];
+    matrixDutyB: number[];
     matrixStagingR: number[];
     matrixStagingG: number[];
     matrixStagingB: number[];
     matrixRowsVisitedMask: number;
     matrixLastActivityCycle: number;
+    matrixDutyLastCycle: number;
+    matrixDutyWindowStartCycle: number;
     digitLatch: number;
     segmentLatch: number;
     ledMatrixRowLatch: number;
@@ -112,11 +117,16 @@ export function createTec1gInitialState(params: {
       ledMatrixBrightnessR: Array.from({ length: 64 }, () => 0),
       ledMatrixBrightnessG: Array.from({ length: 64 }, () => 0),
       ledMatrixBrightnessB: Array.from({ length: 64 }, () => 0),
+      matrixDutyR: Array.from({ length: 64 }, () => 0),
+      matrixDutyG: Array.from({ length: 64 }, () => 0),
+      matrixDutyB: Array.from({ length: 64 }, () => 0),
       matrixStagingR: Array.from({ length: 64 }, () => 0),
       matrixStagingG: Array.from({ length: 64 }, () => 0),
       matrixStagingB: Array.from({ length: 64 }, () => 0),
       matrixRowsVisitedMask: 0,
       matrixLastActivityCycle: -1,
+      matrixDutyLastCycle: 0,
+      matrixDutyWindowStartCycle: 0,
       digitLatch: 0,
       segmentLatch: 0,
       ledMatrixRowLatch: 0,

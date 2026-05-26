@@ -757,7 +757,7 @@ describe('registerExtensionCommands', () => {
     expect(stopDebugging).not.toHaveBeenCalled();
     expect(startDebugging).not.toHaveBeenCalled();
     expect(showInformationMessage).toHaveBeenCalledWith(
-      'Debug80: Selected target glcd-maze. Press Restart to apply it to the current session.'
+      'Debug80: Selected target glcd-maze. Press Build to apply it to the current session.'
     );
   });
 

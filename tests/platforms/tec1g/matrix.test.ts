@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createTec1gRuntime, TEC1G_FAST_HZ } from '../../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
 import { millisecondsToClocks } from '../../../src/platforms/tec-common';
+import { serializeTec1gUpdateFromRuntimeState } from '../../../src/platforms/tec1g/update-controller';
 
 function makeRuntime(matrixMode = true) {
   const config: Tec1gPlatformConfigNormalized = {
@@ -111,19 +112,51 @@ describe('TEC-1G matrix keyboard', () => {
     ]);
   });
 
-  it('commits latched staging once each physical row has been selected (mask 0xFF)', () => {
+  it('renders a completed scan as one-eighth duty brightness per row', () => {
     const rt = makeRuntime(true);
 
     rt.ioHandlers.write(0x06, 0xff);
-    for (let i = 0; i < 7; i += 1) {
+    rt.ioHandlers.write(0x05, 0x01);
+    for (let i = 1; i < 8; i += 1) {
+      rt.recordCycles(100);
       rt.ioHandlers.write(0x05, 1 << i);
     }
     expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(0);
 
-    rt.ioHandlers.write(0x05, 1 << 7);
+    rt.recordCycles(100);
+    rt.ioHandlers.write(0x05, 0x01);
     for (let i = 0; i < 64; i += 1) {
-      expect(rt.state.display.ledMatrixBrightnessR[i]).toBe(255);
+      expect(rt.state.display.ledMatrixBrightnessR[i]).toBe(32);
     }
+  });
+
+  it('renders longer row dwell as brighter matrix pixels', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0xff);
+    rt.ioHandlers.write(0x05, 0x01);
+    rt.recordCycles(1000);
+    for (let i = 1; i < 8; i += 1) {
+      rt.ioHandlers.write(0x05, 1 << i);
+      rt.recordCycles(100);
+    }
+    rt.ioHandlers.write(0x05, 0x01);
+
+    expect(rt.state.display.ledMatrixBrightnessR[0]).toBe(150);
+    expect(rt.state.display.ledMatrixBrightnessR[8]).toBe(15);
+  });
+
+  it('does not publish partial matrix duty during unrelated UI serialization', () => {
+    const rt = makeRuntime(true);
+
+    rt.ioHandlers.write(0x06, 0xff);
+    rt.ioHandlers.write(0x05, 0x01);
+    rt.recordCycles(1000);
+    const payload = serializeTec1gUpdateFromRuntimeState(rt.state);
+
+    expect(payload.matrixBrightness?.[0]).toBe(0);
+    rt.ioHandlers.write(0x05, 0x02);
+    expect(rt.state.display.matrixDutyR[0]).toBe(1000);
   });
 
   it('does not commit on eight row writes if only one physical row was revisited', () => {
