@@ -51,6 +51,13 @@
       <div></div>
       <div class="debug80-status-slot">
         <button
+          class="project-action-button"
+          id="sendHexToBoard"
+          type="button"
+          hidden
+          title="Send the selected target HEX file to the board via CoolTerm"
+        >Send to Board</button>
+        <button
           class="session-status"
           id="restartDebug"
           type="button"
@@ -62,6 +69,7 @@
         >Restart</button>
       </div>
     </div>
+    <div class="hardware-status-line" id="hardwareStatusLine" hidden></div>
     <div class="debug80-accordion" id="debug80Accordion">
       <section class="debug80-accordion-section">
         <button class="debug80-accordion-header" type="button" data-accordion-toggle="machine" aria-expanded="true">Machine</button>

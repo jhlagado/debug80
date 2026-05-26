@@ -105,6 +105,15 @@ body {
       cursor: default;
       color: #7a7a7a;
     }
+    .hardware-status-line {
+      margin: -2px 0 10px 0;
+      color: #b8b8b8;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .hardware-status-line[hidden] {
+      display: none;
+    }
     .setup-card {
       margin: 0 0 10px 0;
       padding: 8px;

@@ -147,6 +147,8 @@ describe('platform-view-project-status', () => {
       stopOnEntry: true,
       azmRegisterCareMode: 'audit',
       azmContractUpdateMode: 'never',
+      coolTermAvailable: false,
+      hardwareStatusText: 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.',
       targetName: 'app',
       entrySource: 'src/main.asm',
     });

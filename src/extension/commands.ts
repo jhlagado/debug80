@@ -43,6 +43,7 @@ import {
   resolveSessionWorkspaceFolder,
 } from './debug-session-actions';
 import { openProjectConfigPanel } from './project-config-panel';
+import { sendHexViaCoolTerm } from './coolterm/coolterm-send';
 import {
   applyConfigureProjectTargetEdit,
   type ConfigureProjectTargetEdit,
@@ -506,6 +507,45 @@ export function registerExtensionCommands({
 
       void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
       return target;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.sendHexViaCoolTerm', async (args?: SelectTargetArgs) => {
+      const folderResolution = await resolveTargetProjectFolder(args, workspaceSelection);
+      if (folderResolution.kind === 'missing-explicit-root') {
+        void vscode.window.showInformationMessage(
+          `Debug80: The workspace root ${folderResolution.rootPath} is not open in this window.`
+        );
+        return false;
+      }
+      if (folderResolution.kind === 'none') {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return false;
+      }
+
+      const projectConfig = findProjectConfigPath(folderResolution.folder);
+      if (projectConfig === undefined) {
+        void vscode.window.showErrorMessage(
+          `Debug80: Could not find a project config in ${folderResolution.folder.uri.fsPath}.`
+        );
+        return false;
+      }
+
+      const config = readProjectConfig(projectConfig);
+      const targetName =
+        args?.targetName ??
+        resolvePreferredTargetName(context.workspaceState, projectConfig) ??
+        config?.target ??
+        config?.defaultTarget;
+
+      const sent = await sendHexViaCoolTerm({
+        rootPath: folderResolution.folder.uri.fsPath,
+        ...(targetName !== undefined ? { targetName } : {}),
+        status: (message) => platformViewProvider.setHardwareStatus?.(message),
+      });
+      platformViewProvider.refreshIdleView();
+      return sent;
     })
   );
 

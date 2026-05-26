@@ -15,6 +15,8 @@ export type ProjectStatusUiElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   platformInitButton: HTMLButtonElement | null;
+  sendHexToBoardButton?: HTMLButtonElement | null;
+  hardwareStatusLine?: HTMLElement | null;
   homeTargetSelect: HTMLSelectElement | null;
   getPlatform?: () => string | undefined;
 };
@@ -84,6 +86,8 @@ export function createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    sendHexToBoardButton,
+    hardwareStatusLine,
     homeTargetSelect,
     getPlatform,
   } = elements;
@@ -123,12 +127,24 @@ export function createProjectStatusUi(
     });
   });
 
+  sendHexToBoardButton?.addEventListener('click', () => {
+    vscode.postMessage({
+      type: 'sendHexViaCoolTerm',
+      rootPath: currentRootPath,
+      targetName: homeTargetSelect?.value || undefined,
+    });
+  });
+
   function applyProjectStatus(payload: {
     rootPath?: ProjectStatusPayload['rootPath'];
     roots?: ProjectStatusPayload['roots'];
     targets?: ProjectStatusPayload['targets'];
     targetName?: ProjectStatusPayload['targetName'];
     projectState?: ProjectStatusPayload['projectState'];
+    platform?: ProjectStatusPayload['platform'];
+    coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
+    coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
+    hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
   }): void {
     const projectState = resolveProjectViewState(payload);
     const initializedProject = projectState === 'initialized';
@@ -145,6 +161,27 @@ export function createProjectStatusUi(
         initializedProject ? (payload.targets ?? []) : [],
         payload.targetName
       );
+    }
+    if (sendHexToBoardButton) {
+      const canSend =
+        initializedProject &&
+        payload.coolTermAvailable === true &&
+        Boolean(payload.targetName) &&
+        Boolean(payload.coolTermHexPath);
+      sendHexToBoardButton.hidden = !initializedProject;
+      sendHexToBoardButton.disabled = !canSend;
+      sendHexToBoardButton.textContent = sendButtonLabel(payload.platform);
+      sendHexToBoardButton.title =
+        payload.coolTermAvailable === true
+          ? payload.coolTermHexPath !== undefined
+            ? `Send ${payload.coolTermHexPath} to the board via CoolTerm`
+            : 'Build the selected target before sending to the board'
+          : 'Start CoolTerm and enable the Remote Control Socket';
+    }
+    if (hardwareStatusLine) {
+      const text = payload.hardwareStatusText ?? '';
+      hardwareStatusLine.textContent = text;
+      hardwareStatusLine.hidden = !initializedProject || text.length === 0;
     }
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     const targetCount = payload.targets?.length ?? 0;
@@ -177,4 +214,14 @@ export function createProjectStatusUi(
       projectRootController.dispose();
     },
   };
+}
+
+function sendButtonLabel(platform: string | undefined): string {
+  if (platform === 'tec1g') {
+    return 'Send to TEC-1G';
+  }
+  if (platform === 'tec1') {
+    return 'Send to TEC-1';
+  }
+  return 'Send to Board';
 }

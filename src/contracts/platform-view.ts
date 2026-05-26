@@ -19,6 +19,12 @@ export type ProjectStatusPayload = {
   azmRegisterCareMode?: AzmPanelRegisterCareMode;
   /** Panel AZM contract-update mode for this window session. */
   azmContractUpdateMode?: AzmPanelContractUpdateMode;
+  /** True when CoolTerm's localhost remote control socket responds to Debug80. */
+  coolTermAvailable?: boolean;
+  /** Inferred HEX artifact for the selected project/target, when known. */
+  coolTermHexPath?: string;
+  /** Current hardware transfer/setup status for the project area. */
+  hardwareStatusText?: string;
   roots: Array<{
     name: string;
     path: string;
@@ -46,6 +52,7 @@ export type PlatformViewControlMessage =
       contractUpdateMode: AzmPanelContractUpdateMode;
     }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
+  | { type: 'sendHexViaCoolTerm'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }
   | { type: 'serialSave'; text: string }

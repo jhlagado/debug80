@@ -105,8 +105,18 @@ small Z80-focused transfer path for known build artifacts and monitor workflows.
 
 ## Transport Dependency
 
-Node does not provide serial ports in its standard library. The likely dependency is the `serialport`
-npm package:
+Node does not provide serial ports in its standard library. The first implementation should avoid
+native serial dependencies by using CoolTerm's documented Remote Control Socket:
+
+- The user installs and runs CoolTerm locally.
+- Debug80 connects to `127.0.0.1:51413`.
+- CoolTerm owns the serial port and sends the selected HEX file.
+- Debug80 polls CoolTerm until the board replies `PASSED`, `FAILED`, or the operation times out.
+
+This keeps the first hardware workflow dependency-light for Debug80 and avoids VSIX native module
+packaging risk. See `docs/coolterm-serial-setup.md`.
+
+A later direct serial provider may still use the `serialport` npm package:
 
 - `SerialPort.list()` discovers ports.
 - `new SerialPort({ path, baudRate, dataBits, parity, stopBits })` opens a port.

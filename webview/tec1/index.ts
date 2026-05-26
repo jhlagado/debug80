@@ -33,6 +33,10 @@ const platformInitButton = document.getElementById(
   'platformInitButton'
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
+const sendHexToBoardButton = document.getElementById(
+  'sendHexToBoard'
+) as HTMLButtonElement | null;
+const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
@@ -113,6 +117,8 @@ const projectStatusUi = createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    sendHexToBoardButton,
+    hardwareStatusLine,
     homeTargetSelect,
   },
   'tec1'
@@ -127,6 +133,9 @@ function applyProjectStatus(payload: {
   platform?: ProjectStatusPayload['platform'];
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
+  coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
+  coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
+  hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
 }): void {
   projectStatusUi.applyProjectStatus(payload);
   if (platformSelectEl && payload.platform !== undefined) {

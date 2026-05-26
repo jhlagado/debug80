@@ -6,6 +6,7 @@ import type {
   ProjectStatusPayload,
 } from '../contracts/platform-view';
 import { findProjectConfigPath, readProjectConfig, resolveProjectPlatform } from './project-config';
+import { resolveCoolTermHexArtifact } from './coolterm/coolterm-hex-artifact';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { resolveRememberedWorkspaceFolder } from './workspace-selection';
@@ -17,6 +18,8 @@ export interface PlatformViewProjectStatusContext {
   stopOnEntry: boolean;
   azmRegisterCareMode?: AzmPanelRegisterCareMode;
   azmContractUpdateMode?: AzmPanelContractUpdateMode;
+  coolTermAvailable?: boolean;
+  hardwareStatusText?: string;
 }
 
 export function resolvePlatformViewWorkspace(
@@ -82,6 +85,7 @@ export function buildPlatformViewProjectStatus(
   const config = readProjectConfig(projectConfigPath);
   const platform = resolveProjectPlatform(config) ?? 'simple';
 
+  const hexArtifact = resolveCoolTermHexArtifact(folder.uri.fsPath, projectStatus?.targetName);
   return {
     roots,
     targets: listProjectTargetChoices(projectConfigPath),
@@ -93,7 +97,30 @@ export function buildPlatformViewProjectStatus(
     stopOnEntry: ctx.stopOnEntry,
     azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
     azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
+    coolTermAvailable: ctx.coolTermAvailable === true,
+    hardwareStatusText:
+      ctx.hardwareStatusText ??
+      buildDefaultHardwareStatus(ctx.coolTermAvailable === true, hexArtifact),
+    ...(hexArtifact.kind === 'found' || hexArtifact.kind === 'missing'
+      ? { coolTermHexPath: hexArtifact.path }
+      : {}),
     ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
     ...(projectStatus?.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
   };
+}
+
+function buildDefaultHardwareStatus(
+  coolTermAvailable: boolean,
+  hexArtifact: ReturnType<typeof resolveCoolTermHexArtifact>
+): string {
+  if (!coolTermAvailable) {
+    return 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.';
+  }
+  if (hexArtifact.kind === 'found') {
+    return `Ready to send ${hexArtifact.path} via CoolTerm.`;
+  }
+  if (hexArtifact.kind === 'missing') {
+    return `HEX file not found at ${hexArtifact.path}. Build the selected target first.`;
+  }
+  return 'Select a target with a buildable HEX artifact before sending to hardware.';
 }

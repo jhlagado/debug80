@@ -43,6 +43,10 @@ const platformInitButton = document.getElementById(
   'platformInitButton'
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
+const sendHexToBoardButton = document.getElementById(
+  'sendHexToBoard'
+) as HTMLButtonElement | null;
+const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const azmRegisterCareModeSelect = document.getElementById(
   'azmRegisterCareMode'
@@ -134,6 +138,8 @@ const projectStatusUi = createTec1gProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    sendHexToBoardButton,
+    hardwareStatusLine,
     homeTargetSelect,
     getPlatform: () => platformSelectEl?.value ?? undefined,
   },

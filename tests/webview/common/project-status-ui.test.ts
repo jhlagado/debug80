@@ -12,6 +12,9 @@ type ProjectPayload = {
   projectState?: ProjectStatusPayload['projectState'];
   hasProject?: ProjectStatusPayload['hasProject'];
   platform?: ProjectStatusPayload['platform'];
+  coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
+  coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
+  hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
 };
 
 function createVscodeMock(): VscodeApi {
@@ -47,6 +50,8 @@ function getElements() {
       ?.closest('.project-control') as HTMLElement,
     platformSelect: document.getElementById('platformSelect') as HTMLSelectElement,
     platformInitButton: document.getElementById('platformInitButton') as HTMLButtonElement,
+    sendHexToBoardButton: document.getElementById('sendHexToBoard') as HTMLButtonElement,
+    hardwareStatusLine: document.getElementById('hardwareStatusLine') as HTMLElement,
     platformInfoControl: document.getElementById('platformInfoControl') as HTMLElement,
     platformValue: document.getElementById('platformValue') as HTMLElement,
     setupCard: document.getElementById('setupCard') as HTMLElement,
@@ -70,6 +75,8 @@ function applyProjectPayload(payload: ProjectPayload): void {
       setupCardText: elements.setupCardText,
       setupPrimaryAction: elements.setupPrimaryAction,
       platformInitButton: elements.platformInitButton,
+      sendHexToBoardButton: elements.sendHexToBoardButton,
+      hardwareStatusLine: elements.hardwareStatusLine,
       homeTargetSelect: elements.homeTargetSelect,
       getPlatform: () => elements.platformSelect.value,
     },
@@ -132,6 +139,8 @@ describe('project status UI invariants', () => {
             <span class="project-value" id="platformValue"></span>
           </div>
         </div>
+        <button class="project-action-button" id="sendHexToBoard" type="button">Send to Board</button>
+        <div id="hardwareStatusLine"></div>
         <div class="setup-card" id="setupCard">
           <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
           <div class="setup-card-actions">
@@ -174,6 +183,49 @@ describe('project status UI invariants', () => {
     ).toEqual(['Select target...', 'app', 'tests']);
     expect(elements.setupCard.hidden).toBe(true);
     expect(visiblePlatformControlCount()).toBe(0);
+  });
+
+  it('keeps send visible but disabled until CoolTerm is detected', () => {
+    applyProjectPayload({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [{ name: 'app' }],
+      targetName: 'app',
+      hasProject: true,
+      platform: 'tec1g',
+      coolTermAvailable: false,
+      coolTermHexPath: '/workspace/debug80/build/app.hex',
+      hardwareStatusText: 'CoolTerm not detected.',
+    });
+
+    const elements = getElements();
+    expect(elements.sendHexToBoardButton.hidden).toBe(false);
+    expect(elements.sendHexToBoardButton.disabled).toBe(true);
+    expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1G');
+    expect(elements.hardwareStatusLine.hidden).toBe(false);
+    expect(elements.hardwareStatusLine.textContent).toBe('CoolTerm not detected.');
+  });
+
+  it('enables send when CoolTerm and the selected target hex are available', () => {
+    applyProjectPayload({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [{ name: 'app' }],
+      targetName: 'app',
+      hasProject: true,
+      platform: 'tec1',
+      coolTermAvailable: true,
+      coolTermHexPath: '/workspace/debug80/build/app.hex',
+      hardwareStatusText: 'Ready to send build/app.hex via CoolTerm.',
+    });
+
+    const elements = getElements();
+    expect(elements.sendHexToBoardButton.hidden).toBe(false);
+    expect(elements.sendHexToBoardButton.disabled).toBe(false);
+    expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1');
+    expect(elements.hardwareStatusLine.textContent).toBe('Ready to send build/app.hex via CoolTerm.');
   });
 
   it('hides targets for uninitialized projects and shows one platform/init affordance', () => {

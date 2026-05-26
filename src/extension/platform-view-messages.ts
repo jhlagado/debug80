@@ -40,6 +40,10 @@ export interface PlatformViewMessageDependencies {
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
+  handleSendHexViaCoolTerm: (args?: {
+    rootPath?: string;
+    targetName?: string;
+  }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
@@ -111,6 +115,15 @@ export async function handlePlatformViewMessage(
     const rootPath = rootPathFrom(msg);
     const targetName = targetNameFrom(msg);
     await deps.handleSelectTarget({
+      ...(rootPath !== undefined ? { rootPath } : {}),
+      ...(targetName !== undefined ? { targetName } : {}),
+    });
+    return;
+  }
+  if (msg?.type === 'sendHexViaCoolTerm') {
+    const rootPath = rootPathFrom(msg);
+    const targetName = targetNameFrom(msg);
+    await deps.handleSendHexViaCoolTerm({
       ...(rootPath !== undefined ? { rootPath } : {}),
       ...(targetName !== undefined ? { targetName } : {}),
     });

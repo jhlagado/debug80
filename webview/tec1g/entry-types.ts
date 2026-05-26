@@ -48,6 +48,9 @@ export type IncomingMessage =
       stopOnEntry?: boolean;
       azmRegisterCareMode?: 'enforce' | 'audit' | 'off';
       azmContractUpdateMode?: 'ask' | 'auto' | 'never';
+      coolTermAvailable?: boolean;
+      coolTermHexPath?: string;
+      hardwareStatusText?: string;
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];
     }

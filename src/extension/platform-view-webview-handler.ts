@@ -31,6 +31,7 @@ export interface PlatformViewWebviewHandlerContext {
     registerCareMode: AzmPanelRegisterCareMode,
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => void;
+  handleSetHardwareStatus: (message: string | undefined) => void;
   isPanelVisible: () => boolean;
 }
 
@@ -65,6 +66,10 @@ export function createPlatformViewWebviewHandler(
       },
       handleSelectTarget: async (args) => {
         await vscode.commands.executeCommand('debug80.selectTarget', args);
+      },
+      handleSendHexViaCoolTerm: async (args) => {
+        context.handleSetHardwareStatus('Checking CoolTerm before sending...');
+        await vscode.commands.executeCommand('debug80.sendHexViaCoolTerm', args);
       },
       handleRestartDebug: async () => {
         await vscode.commands.executeCommand('debug80.restartDebug');

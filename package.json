@@ -356,6 +356,10 @@
         "title": "Debug80: Select Active Target"
       },
       {
+        "command": "debug80.sendHexViaCoolTerm",
+        "title": "Debug80: Send HEX to Board via CoolTerm"
+      },
+      {
         "command": "debug80.restartDebug",
         "title": "Debug80: Restart Debugging (Current Target)"
       },

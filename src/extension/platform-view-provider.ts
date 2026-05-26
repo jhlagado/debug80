@@ -55,6 +55,7 @@ import { revealPlatformView } from './platform-view-reveal';
 import { PlatformViewRegistry, type PlatformViewBundle } from './platform-view-registry';
 import { createPlatformViewWebviewHandler } from './platform-view-webview-handler';
 import { MEMORY_REFRESH_INTERVAL_MS } from './platform-view-constants';
+import { isCoolTermRemoteAvailable } from './coolterm/coolterm-send';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -72,6 +73,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private readonly extensionUri: vscode.Uri;
   private readonly performanceMonitor: UiPerformanceMonitor;
   private readonly registry: PlatformViewRegistry;
+  private coolTermAvailable = false;
+  private checkingCoolTerm = false;
+  private hardwareStatusText: string | undefined;
+  private coolTermPollTimer: ReturnType<typeof setInterval> | undefined;
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
@@ -124,12 +129,17 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.refreshProjectStatus();
   }
 
+  setHardwareStatus(message: string | undefined): void {
+    this.handleSetHardwareStatus(message);
+  }
+
   refreshProjectStatus(): void {
     if (!this.currentPlatform) {
       this.renderCurrentView(true);
       return;
     }
     this.postProjectStatus();
+    void this.refreshCoolTermAvailability();
   }
 
   setPlatform(
@@ -257,20 +267,24 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
         handleSetAzmOptions: (registerCareMode, contractUpdateMode) =>
           this.handleSetAzmOptions(registerCareMode, contractUpdateMode),
+        handleSetHardwareStatus: (message) => this.handleSetHardwareStatus(message),
         isPanelVisible: () => this.view?.visible === true,
       })
     );
 
     webviewView.onDidDispose(() => {
       this.view = undefined;
+      this.stopCoolTermPolling();
       this.stopAllPlatformRefresh();
     });
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this.renderCurrentView(true);
+        this.startCoolTermPolling();
         return;
       }
+      this.stopCoolTermPolling();
       this.stopAllPlatformRefresh();
     });
 
@@ -278,6 +292,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     // operations (updateTec1, clear, etc.) can access modules without async.
     return this.registry.preloadAll().then(() => {
       this.renderCurrentView(false);
+      this.startCoolTermPolling();
     });
   }
 
@@ -297,6 +312,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.extensionUri
       );
       this.postProjectStatus();
+      void this.refreshCoolTermAvailability();
       this.postSessionStatus();
       this.postMessage(
         buildPlatformRuntimeUpdateMessage(bundle.modules, bundle.state, this.nextUiRevision())
@@ -318,6 +334,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (rehydrate || this.view.webview.html.length === 0) {
       this.view.webview.html = getTec1gHtml('ui', this.view.webview, this.extensionUri);
       this.postProjectStatus();
+      void this.refreshCoolTermAvailability();
       this.postSessionStatus();
     }
   }
@@ -397,6 +414,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postProjectStatus();
   }
 
+  private handleSetHardwareStatus(message: string | undefined): void {
+    this.hardwareStatusText = message;
+    this.postProjectStatus();
+  }
+
   // -------------------------------------------------------------------------
   // Private — status and messaging
   // -------------------------------------------------------------------------
@@ -414,8 +436,47 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         stopOnEntry: this.stopOnEntry,
         azmRegisterCareMode: this.azmRegisterCareMode,
         azmContractUpdateMode: this.azmContractUpdateMode,
+        coolTermAvailable: this.coolTermAvailable,
+        ...(this.hardwareStatusText !== undefined
+          ? { hardwareStatusText: this.hardwareStatusText }
+          : {}),
       }),
     });
+  }
+
+  private async refreshCoolTermAvailability(): Promise<void> {
+    if (this.checkingCoolTerm) {
+      return;
+    }
+    this.checkingCoolTerm = true;
+    try {
+      const available = await isCoolTermRemoteAvailable();
+      if (available !== this.coolTermAvailable) {
+        this.coolTermAvailable = available;
+        this.hardwareStatusText = undefined;
+        this.postProjectStatus();
+      }
+    } finally {
+      this.checkingCoolTerm = false;
+    }
+  }
+
+  private startCoolTermPolling(): void {
+    if (this.coolTermPollTimer !== undefined) {
+      return;
+    }
+    void this.refreshCoolTermAvailability();
+    this.coolTermPollTimer = setInterval(() => {
+      void this.refreshCoolTermAvailability();
+    }, 3000);
+  }
+
+  private stopCoolTermPolling(): void {
+    if (this.coolTermPollTimer === undefined) {
+      return;
+    }
+    clearInterval(this.coolTermPollTimer);
+    this.coolTermPollTimer = undefined;
   }
 
   private postSessionStatus(): void {
