@@ -23,6 +23,9 @@ import {
   TEC1_ROM_LOAD_ADDR,
   KEY_RESET,
   KEY_NONE,
+  collectSevenSegmentIntensities,
+  createSevenSegmentDutyState,
+  recordSevenSegmentDutyTransition,
   updateDisplayDigits,
   updateMatrixRow,
   calculateSpeakerFrequency,
@@ -99,6 +102,24 @@ describe('updateDisplayDigits', () => {
     const result = updateDisplayDigits(digits, 0b111111, 0xff);
     expect(result).toBe(true);
     expect(digits).toEqual([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+  });
+});
+
+describe('seven-segment duty integration', () => {
+  it('tracks segment brightness by cycle duty', () => {
+    const duty = createSevenSegmentDutyState(6, 0);
+
+    recordSevenSegmentDutyTransition(duty, 0, 0b000001, 0x01);
+    recordSevenSegmentDutyTransition(duty, 10, 0b000010, 0x01);
+    recordSevenSegmentDutyTransition(duty, 20, 0b100000, 0x01);
+    recordSevenSegmentDutyTransition(duty, 120, 0, 0);
+
+    const intensities = collectSevenSegmentIntensities(duty, 120);
+
+    expect(intensities[0]).toBeCloseTo(10 / 120);
+    expect(intensities[8]).toBeCloseTo(10 / 120);
+    expect(intensities[40]).toBeCloseTo(100 / 120);
+    expect(intensities[16]).toBe(0);
   });
 });
 

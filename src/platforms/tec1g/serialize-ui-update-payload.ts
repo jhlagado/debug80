@@ -104,6 +104,10 @@ export function tec1gUpdatePayloadFromDebugEventBody(
     speedMode,
     lcd,
   };
+  const segmentIntensities = payload.segmentIntensities;
+  if (isNumberArray(segmentIntensities)) {
+    update.segmentIntensities = segmentIntensities;
+  }
   const matrixGreen = payload.matrixGreen;
   if (isNumberArray(matrixGreen)) {
     update.matrixGreen = matrixGreen;

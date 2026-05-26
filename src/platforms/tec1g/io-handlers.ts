@@ -35,7 +35,12 @@ import {
   TEC1G_MASK_LOW7,
   TEC1G_ADDR_MAX,
 } from './constants';
-import { TEC_SILENCE_CYCLES, calculateSpeakerFrequency, updateDisplayDigits } from '../tec-common';
+import {
+  TEC_SILENCE_CYCLES,
+  calculateSpeakerFrequency,
+  recordSevenSegmentDutyTransition,
+  updateDisplayDigits,
+} from '../tec-common';
 import { decodeSysCtrl } from './sysctrl';
 import type { IoHandlers } from '../../z80/runtime';
 
@@ -311,6 +316,12 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       const p = fullPort & TEC1G_MASK_BYTE;
       void fullPort;
       if (p === TEC1G_PORT_DIGIT) {
+        recordSevenSegmentDutyTransition(
+          display.segmentDuty,
+          timing.cycleClock.now(),
+          value & TEC1G_MASK_BYTE,
+          display.segmentLatch
+        );
         display.digitLatch = value & TEC1G_MASK_BYTE;
         const speaker = (value & TEC1G_DIGIT_SPEAKER) !== 0;
         const nextSerial: 0 | 1 = (value & TEC1G_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
@@ -332,6 +343,12 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         return;
       }
       if (p === TEC1G_PORT_SEGMENT) {
+        recordSevenSegmentDutyTransition(
+          display.segmentDuty,
+          timing.cycleClock.now(),
+          display.digitLatch,
+          value & TEC1G_MASK_BYTE
+        );
         display.segmentLatch = value & TEC1G_MASK_BYTE;
         updateDisplay();
         return;
