@@ -15,6 +15,7 @@ const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
   Promise.resolve({ doc, languageId })
 );
 const getLanguages = vi.fn(() => Promise.resolve(['z80-asm']));
+const registerDefinitionProvider = vi.fn(() => ({ dispose: vi.fn() }));
 const createDiagnosticCollection = vi.fn(() => ({
   set: vi.fn(),
   delete: vi.fn(),
@@ -54,7 +55,12 @@ vi.mock('vscode', () => ({
     })),
     onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
   },
-  languages: { getLanguages, setTextDocumentLanguage, createDiagnosticCollection },
+  languages: {
+    getLanguages,
+    setTextDocumentLanguage,
+    createDiagnosticCollection,
+    registerDefinitionProvider,
+  },
   window: {
     showErrorMessage: vi.fn(),
     showInformationMessage: vi.fn(),
@@ -128,6 +134,10 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.setEntrySource', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
+    expect(registerDefinitionProvider).toHaveBeenCalledWith(
+      [{ language: 'z80-asm' }],
+      expect.anything()
+    );
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1Memory', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openRomSource', expect.anything());

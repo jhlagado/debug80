@@ -8,6 +8,7 @@ import { registerExtensionCommands } from './commands';
 import { registerDebugSessionHandlers } from './debug-session-events';
 import { registerAutoRebuildOnSave } from './auto-rebuild';
 import { registerLanguageAssociations } from './language-association';
+import { registerD8DefinitionProvider } from './d8-definition-provider';
 import { SessionStateManager } from './session-state-manager';
 import { PlatformViewProvider } from './platform-view-provider';
 import { SourceColumnController } from './source-columns';
@@ -125,6 +126,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
   context.subscriptions.push(assemblyDiagnostics);
 
   registerLanguageAssociations(context, output);
+  registerD8DefinitionProvider(context, output);
   workspaceSelection.registerInfrastructure();
   sourceColumns.register(context);
   registerExtensionCommands({

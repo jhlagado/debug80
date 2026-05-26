@@ -295,6 +295,13 @@ the listing file or overwrite it with an LST-regenerated cache.
 
 Debug80 always writes a `*.d8.json` file alongside the build artifacts.
 
+Editor navigation also uses D8 data. Debug80 registers a VS Code Go to
+Definition provider for `z80-asm`; pressing `F12` on a symbol loads the active
+target's D8 map and jumps to the symbol line recorded under `files[*].symbols`.
+This deliberately follows the last successful build rather than scanning source
+text. If no D8 map exists, the user must build the target before symbol
+navigation is available.
+
 The orchestration for loading, validating, building, and caching these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is
 distinct from the data-format layer in `src/mapping/`. Extra ROM listings (from `extraListings`
