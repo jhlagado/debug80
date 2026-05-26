@@ -6,6 +6,7 @@ export type Tec1gSpeedMode = 'slow' | 'fast';
 
 export interface Tec1gUpdatePayload {
   digits: number[];
+  segmentIntensities?: number[];
   /** Red column plane row masks (port 0x06). */
   matrix: number[];
   /** Green column plane row masks (port 0xF8). */

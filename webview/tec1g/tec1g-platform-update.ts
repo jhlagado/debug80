@@ -31,7 +31,9 @@ export function applyTec1gPlatformUpdate(
     return;
   }
   const data = payload;
-  if (Array.isArray(data.digits)) {
+  if (Array.isArray(data.segmentIntensities)) {
+    deps.display.applySegmentIntensities(data.segmentIntensities);
+  } else if (Array.isArray(data.digits)) {
     deps.display.applyDigits(data.digits);
   }
 

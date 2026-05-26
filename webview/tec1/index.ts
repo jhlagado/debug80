@@ -185,13 +185,18 @@ muteEl.addEventListener('click', () => {
 
 function applyUpdate(payload: {
   digits?: number[];
+  segmentIntensities?: number[];
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;
   lcd?: number[];
   speakerHz?: number;
 }): void {
-  display.applyDigits(payload.digits || []);
+  if (Array.isArray(payload.segmentIntensities)) {
+    display.applySegmentIntensities(payload.segmentIntensities);
+  } else {
+    display.applyDigits(payload.digits || []);
+  }
   if (payload.speaker) {
     speakerEl.classList.add('on');
   } else {

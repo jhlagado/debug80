@@ -286,6 +286,75 @@ export function updateDisplayDigits(
   return true;
 }
 
+export interface SevenSegmentDutyState {
+  activeDigitLatch: number;
+  activeSegmentLatch: number;
+  lastCycle: number;
+  windowStartCycle: number;
+  segmentOnCycles: number[];
+}
+
+export function createSevenSegmentDutyState(
+  digitCount: number,
+  cycle: number = 0
+): SevenSegmentDutyState {
+  return {
+    activeDigitLatch: 0,
+    activeSegmentLatch: 0,
+    lastCycle: cycle,
+    windowStartCycle: cycle,
+    segmentOnCycles: Array.from({ length: digitCount * 8 }, () => 0),
+  };
+}
+
+export function recordSevenSegmentDutyTransition(
+  state: SevenSegmentDutyState,
+  cycle: number,
+  nextDigitLatch: number,
+  nextSegmentLatch: number
+): void {
+  accumulateSevenSegmentDuty(state, cycle);
+  state.activeDigitLatch = nextDigitLatch & BYTE_MASK;
+  state.activeSegmentLatch = nextSegmentLatch & BYTE_MASK;
+}
+
+export function collectSevenSegmentIntensities(
+  state: SevenSegmentDutyState,
+  cycle: number
+): number[] {
+  accumulateSevenSegmentDuty(state, cycle);
+  const elapsedCycles = Math.max(1, cycle - state.windowStartCycle);
+  const intensities = state.segmentOnCycles.map((onCycles) =>
+    Math.max(0, Math.min(1, onCycles / elapsedCycles))
+  );
+  state.segmentOnCycles.fill(0);
+  state.windowStartCycle = cycle;
+  state.lastCycle = cycle;
+  return intensities;
+}
+
+function accumulateSevenSegmentDuty(state: SevenSegmentDutyState, cycle: number): void {
+  const duration = Math.max(0, cycle - state.lastCycle);
+  if (duration === 0) {
+    return;
+  }
+  const digitMask = state.activeDigitLatch & 0x3f;
+  const segmentMask = state.activeSegmentLatch & BYTE_MASK;
+  if (digitMask !== 0 && segmentMask !== 0) {
+    for (let digit = 0; digit < state.segmentOnCycles.length / 8; digit += 1) {
+      if ((digitMask & (1 << digit)) === 0) {
+        continue;
+      }
+      for (let segment = 0; segment < 8; segment += 1) {
+        if ((segmentMask & (1 << segment)) !== 0) {
+          state.segmentOnCycles[digit * 8 + segment] += duration;
+        }
+      }
+    }
+  }
+  state.lastCycle = cycle;
+}
+
 /**
  * Updates an LED matrix row based on row mask and latch value.
  * @param matrix - Array of matrix column values to update

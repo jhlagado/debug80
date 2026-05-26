@@ -3,13 +3,15 @@
  * the applyDigits update loop. Both TEC-1 and TEC-1G use the same structure.
  */
 
-import { createDigit, updateDigit } from './digits';
+import { createDigit, updateDigit, updateDigitIntensity } from './digits';
 
 export interface SevenSegDisplay {
   /** Individual digit elements (may be needed for direct DOM manipulation). */
   digitEls: HTMLElement[];
   /** Apply a bitmask array to all digits; out-of-range entries default to 0. */
   applyDigits(values: number[]): void;
+  /** Apply per-segment intensities, grouped as eight values for each digit. */
+  applySegmentIntensities(values: number[]): void;
 }
 
 export interface SevenSegDisplayOptions {
@@ -37,6 +39,11 @@ export function createSevenSegDisplay(
     applyDigits(values: number[]): void {
       digitEls.forEach((el, idx) => {
         updateDigit(el, values[idx] ?? 0);
+      });
+    },
+    applySegmentIntensities(values: number[]): void {
+      digitEls.forEach((el, idx) => {
+        updateDigitIntensity(el, values.slice(idx * 8, idx * 8 + 8));
       });
     },
   };

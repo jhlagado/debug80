@@ -6,7 +6,23 @@ export function updateDigit(el: Element, value: number): void {
   const segments = el.querySelectorAll('[data-mask]');
   segments.forEach((seg) => {
     const mask = parseInt((seg as HTMLElement).dataset.mask || '0', 10);
+    const segmentEl = seg as HTMLElement;
+    segmentEl.style.opacity = '';
     seg.classList.toggle('on', (value & mask) !== 0);
+  });
+}
+
+export function updateDigitIntensity(el: Element, values: readonly number[]): void {
+  const segments = el.querySelectorAll('[data-mask]');
+  segments.forEach((seg) => {
+    const segmentEl = seg as HTMLElement;
+    const mask = parseInt(segmentEl.dataset.mask || '0', 10);
+    const bitIndex = mask > 0 ? Math.log2(mask) : -1;
+    const rawIntensity =
+      Number.isInteger(bitIndex) && bitIndex >= 0 ? (values[bitIndex] ?? 0) : 0;
+    const intensity = Math.max(0, Math.min(1, rawIntensity));
+    seg.classList.toggle('on', intensity > 0);
+    segmentEl.style.opacity = intensity > 0 ? intensity.toFixed(3) : '0';
   });
 }
 

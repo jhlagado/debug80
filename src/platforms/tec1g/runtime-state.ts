@@ -3,8 +3,12 @@
  */
 
 import { CycleClock } from '../cycle-clock';
+import {
+  TEC_FAST_HZ,
+  createSevenSegmentDutyState,
+  type SevenSegmentDutyState,
+} from '../tec-common';
 import type { Tec1gPlatformConfigNormalized } from '../types';
-import { TEC_FAST_HZ } from '../tec-common';
 import {
   TEC1G_LCD_ARROW_LEFT,
   TEC1G_LCD_ARROW_RIGHT,
@@ -23,6 +27,7 @@ import type { Tec1gSpeedMode } from './types';
 export interface Tec1gState {
   display: {
     digits: number[];
+    segmentDuty: SevenSegmentDutyState;
     ledMatrixRedRows: number[];
     ledMatrixGreenRows: number[];
     ledMatrixBlueRows: number[];
@@ -100,6 +105,7 @@ export function createTec1gInitialState(params: {
   const state: Tec1gState = {
     display: {
       digits: Array.from({ length: 6 }, () => 0),
+      segmentDuty: createSevenSegmentDutyState(6),
       ledMatrixRedRows: Array.from({ length: 8 }, () => 0),
       ledMatrixGreenRows: Array.from({ length: 8 }, () => 0),
       ledMatrixBlueRows: Array.from({ length: 8 }, () => 0),

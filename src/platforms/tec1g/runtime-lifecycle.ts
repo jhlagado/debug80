@@ -4,6 +4,7 @@
 
 import { decodeSysCtrl } from './sysctrl';
 import { TEC1G_MASK_BYTE } from './constants';
+import { createSevenSegmentDutyState } from '../tec-common';
 import type { Tec1gState } from './runtime-state';
 
 type ResetControllers = {
@@ -49,6 +50,10 @@ export function resetTec1gRuntimeState(
   audio.speakerHz = 0;
   audio.lastEdgeCycle = null;
   controllers.lcd.reset();
+  display.digits.fill(0);
+  display.digitLatch = 0;
+  display.segmentLatch = 0;
+  display.segmentDuty = createSevenSegmentDutyState(6, timing.cycleClock.now());
   display.ledMatrixRedRows.fill(0);
   display.ledMatrixGreenRows.fill(0);
   display.ledMatrixBlueRows.fill(0);

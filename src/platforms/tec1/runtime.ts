@@ -52,6 +52,9 @@ import {
   TEC_FAST_HZ,
   TEC_SILENCE_CYCLES,
   TEC_KEY_HOLD_MS,
+  collectSevenSegmentIntensities,
+  createSevenSegmentDutyState,
+  recordSevenSegmentDutyTransition,
   updateDisplayDigits,
   updateMatrixRow,
   calculateSpeakerFrequency,
@@ -64,6 +67,7 @@ import {
  */
 export interface Tec1State {
   digits: number[];
+  segmentDuty: ReturnType<typeof createSevenSegmentDutyState>;
   matrix: number[];
   digitLatch: number;
   segmentLatch: number;
@@ -189,6 +193,7 @@ export function createTec1Runtime(
 ): Tec1Runtime {
   const state: Tec1State = {
     digits: Array.from({ length: 6 }, () => 0),
+    segmentDuty: createSevenSegmentDutyState(6),
     matrix: Array.from({ length: 8 }, () => 0),
     digitLatch: 0,
     segmentLatch: 0,
@@ -212,7 +217,12 @@ export function createTec1Runtime(
   };
 
   const sendUpdate = (): void => {
-    onUpdate(serializeTec1UpdateFromRuntimeState(state));
+    const payload = serializeTec1UpdateFromRuntimeState(state);
+    payload.segmentIntensities = collectSevenSegmentIntensities(
+      state.segmentDuty,
+      state.cycleClock.now()
+    );
+    onUpdate(payload);
   };
 
   let serialLevel: 0 | 1 = 1;
@@ -341,6 +351,12 @@ export function createTec1Runtime(
     write: (port: number, value: number): void => {
       const p = port & TEC1_MASK_BYTE;
       if (p === TEC1_PORT_DIGIT) {
+        recordSevenSegmentDutyTransition(
+          state.segmentDuty,
+          state.cycleClock.now(),
+          value & TEC1_MASK_BYTE,
+          state.segmentLatch
+        );
         state.digitLatch = value & TEC1_MASK_BYTE;
         const speaker = (value & TEC1_DIGIT_SPEAKER) !== 0;
         const nextSerial: 0 | 1 = (value & TEC1_DIGIT_SERIAL_TX) !== 0 ? 1 : 0;
@@ -365,6 +381,12 @@ export function createTec1Runtime(
         return;
       }
       if (p === TEC1_PORT_SEGMENT) {
+        recordSevenSegmentDutyTransition(
+          state.segmentDuty,
+          state.cycleClock.now(),
+          state.digitLatch,
+          value & TEC1_MASK_BYTE
+        );
         state.segmentLatch = value & TEC1_MASK_BYTE;
         updateDisplay();
         return;
@@ -533,6 +555,10 @@ export function createTec1Runtime(
     state.speaker = false;
     state.speakerHz = 0;
     state.lastEdgeCycle = null;
+    state.digits.fill(0);
+    state.digitLatch = 0;
+    state.segmentLatch = 0;
+    state.segmentDuty = createSevenSegmentDutyState(6, state.cycleClock.now());
     state.lcd.fill(TEC1_LCD_SPACE);
     state.lcdAddr = TEC1_LCD_ROW0_START;
     state.matrix.fill(0);

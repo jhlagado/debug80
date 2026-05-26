@@ -87,6 +87,10 @@ export function tec1UpdatePayloadFromDebugEventBody(body: unknown): Tec1UpdatePa
     speedMode,
     lcd,
   };
+  const segmentIntensities = raw.segmentIntensities;
+  if (isNumberArray(segmentIntensities)) {
+    payload.segmentIntensities = segmentIntensities;
+  }
   const hz = raw.speakerHz;
   if (typeof hz === 'number') {
     payload.speakerHz = hz;
