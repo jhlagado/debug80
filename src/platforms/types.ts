@@ -69,15 +69,6 @@ export interface Tec1gPlatformConfig {
   sdImagePath?: string;
   sdHighCapacity?: boolean;
   cartridgeHex?: string;
-  uiVisibility?: {
-    lcd?: boolean;
-    display?: boolean;
-    keypad?: boolean;
-    matrix?: boolean;
-    matrixKeyboard?: boolean;
-    glcd?: boolean;
-    serial?: boolean;
-  };
 }
 
 export interface Tec1gPlatformConfigNormalized {
@@ -99,13 +90,4 @@ export interface Tec1gPlatformConfigNormalized {
   sdImagePath?: string;
   sdHighCapacity: boolean;
   cartridgeHex?: string;
-  uiVisibility?: {
-    lcd?: boolean;
-    display?: boolean;
-    keypad?: boolean;
-    matrix?: boolean;
-    matrixKeyboard?: boolean;
-    glcd?: boolean;
-    serial?: boolean;
-  };
 }

@@ -63,15 +63,9 @@ describe('platform-view webview handler', () => {
 
     await handler({ type: 'saveProjectConfig', platform: 'tec1' });
     await handler({ type: 'setStopOnEntry', stopOnEntry: true });
-    await handler({
-      type: 'saveTec1gPanelVisibility',
-      targetName: 'main',
-      visibility: { glcd: false },
-    });
 
     expect(context.handleSaveProjectConfig).toHaveBeenCalledWith('tec1');
     expect(context.handleSetStopOnEntry).toHaveBeenCalledWith(true);
-    expect(context.persistTec1gPanelVisibility).toHaveBeenCalledWith({ glcd: false }, 'main');
   });
 
   it('clears the active platform serial buffer', async () => {
@@ -118,7 +112,6 @@ function createContext(
     getActiveBundle: () => undefined,
     handleSaveProjectConfig: vi.fn(),
     handleSetStopOnEntry: vi.fn(),
-    persistTec1gPanelVisibility: vi.fn(),
     isPanelVisible: () => true,
     ...overrides,
   };

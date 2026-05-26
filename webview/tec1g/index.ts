@@ -13,7 +13,6 @@ import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
 import { wireSerialUi } from '../common/serial-ui';
-import { createVisibilityController } from './visibility-controller';
 import type { IncomingMessage, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
@@ -75,7 +74,9 @@ const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HT
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
 
-const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
+const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
+  digitClassName: (index) => (index < 2 ? 'digit--data' : 'digit--address'),
+});
 
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
@@ -99,7 +100,6 @@ const panelLayout = createAccordionLayoutController({
 panelLayout.wireButtons();
 
 const matrixUi = createMatrixUiController(vscode, () => panelLayout.isMachineOpen());
-const visibilityController = createVisibilityController(vscode);
 
 const projectStatusUi = createTec1gProjectStatusUi(
   vscode,
@@ -216,7 +216,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'projectStatus') {
-    visibilityController.setProjectTargetName(message.targetName);
     projectStatusUi.applyProjectStatus(message);
     if (platformSelectEl && message.platform !== undefined) {
       platformSelectEl.value = message.platform;
@@ -256,10 +255,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     panelLayout.setProviderTab(message.tab, false);
     return;
   }
-  if (message.type === 'uiVisibility') {
-    visibilityController.applyOverride(message.visibility, message.persist === true);
-    return;
-  }
   if (message.type === 'update') {
     if (typeof message.uiRevision === 'number') {
       if (message.uiRevision < uiRevision) {
@@ -284,7 +279,6 @@ audio.applyMuteState();
 document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
 document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
-visibilityController.wire();
 lcdRenderer.draw();
 glcdRenderer.draw();
 panelLayout.setProviderTab(DEFAULT_TAB, false);

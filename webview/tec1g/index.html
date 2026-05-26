@@ -67,63 +67,83 @@
         <button class="debug80-accordion-header" type="button" data-accordion-toggle="machine" aria-expanded="true">Machine</button>
         <div class="debug80-accordion-content" id="accordion-machine">
           <div class="panel panel-ui" id="panel-ui">
-            <div class="ui-controls" id="uiControls">
-        <label><input type="checkbox" data-section="display" checked /> 7-SEG</label>
-        <label><input type="checkbox" data-section="lcd" checked /> LCD</label>
-        <label><input type="checkbox" data-section="keypad" checked /> KEYPAD</label>
-        <label><input type="checkbox" data-section="glcd" checked /> GLCD</label>
-        <label><input type="checkbox" data-section="matrix" /> 8X8</label>
-        <label><input type="checkbox" data-section="serial" /> SERIAL</label>
-        <label><input type="checkbox" data-section="matrixKeyboard" /> KEYBD</label>
+            <div class="layout tec1g-layout">
+              <div class="peripheral-grid">
+          <div class="glcd-stack">
+            <div class="status">
+              <div class="status-actions">
+                <div class="key speed" id="speed">SLOW</div>
+                <div class="key mute" id="mute">MUTED</div>
+                <div class="speaker" id="speaker">
+                  <span id="speakerLabel">SPEAKER</span>
+                </div>
+              </div>
+              <div class="status-leds" id="statusLeds">
+                <div class="status-led">
+                  <span class="status-led-label">SHADOW</span>
+                  <span class="status-led-light" id="statusShadow"></span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-label">PROTECT</span>
+                  <span class="status-led-light" id="statusProtect"></span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-label">EXPAND</span>
+                  <span class="status-led-light" id="statusExpand"></span>
+                </div>
+                <div class="status-led">
+                  <span class="status-led-label">CAPS</span>
+                  <span class="status-led-light" id="statusCaps"></span>
+                </div>
+              </div>
+              <div class="status-bank-panel" aria-label="Memory Expansion Deck">
+                <div class="status-bank-title">Memory Expansion Deck</div>
+                <div class="status-bank-leds">
+                  <div class="status-led status-bank-led">
+                    <span class="status-led-label">3</span>
+                    <span class="status-led-light" id="statusBank3"></span>
+                  </div>
+                  <div class="status-led status-bank-led">
+                    <span class="status-led-label">2</span>
+                    <span class="status-led-light" id="statusBank2"></span>
+                  </div>
+                  <div class="status-led status-bank-led">
+                    <span class="status-led-label">1</span>
+                    <span class="status-led-light" id="statusBank1"></span>
+                  </div>
+                  <div class="status-led status-bank-led">
+                    <span class="status-led-label">0</span>
+                    <span class="status-led-light" id="statusBank0"></span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="layout">
-              <div class="left-col">
-          <div class="lcd ui-section" data-section="lcd">
-            <div class="lcd-title">LCD (HD44780 A00)</div>
-            <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
-          </div>
-          <div class="display-block ui-section" data-section="display">
-            <div class="display" id="display"></div>
-          </div>
-          <div class="keypad ui-section" id="keypad" data-section="keypad"></div>
-              </div>
-              <div class="right-col">
-          <div class="status">
-            <div class="key speed" id="speed">SLOW</div>
-            <div class="key mute" id="mute">MUTED</div>
-            <div class="speaker" id="speaker">
-              <span id="speakerLabel">SPEAKER</span>
-            </div>
-            <div class="status-leds" id="statusLeds">
-              <div class="status-led">
-                <span class="status-led-light" id="statusShadow"></span>
-                <span class="status-led-label">SHADOW</span>
-              </div>
-              <div class="status-led">
-                <span class="status-led-light" id="statusProtect"></span>
-                <span class="status-led-label">PROTECT</span>
-              </div>
-              <div class="status-led">
-                <span class="status-led-light" id="statusExpand"></span>
-                <span class="status-led-label">EXPAND</span>
-              </div>
-              <div class="status-led">
-                <span class="status-led-light" id="statusCaps"></span>
-                <span class="status-led-label">CAPS</span>
-              </div>
+            <div class="glcd">
+              <div class="glcd-title">GLCD (128x64)</div>
+              <canvas class="glcd-canvas" id="glcdCanvas" width="320" height="160"></canvas>
             </div>
           </div>
-          <div class="glcd ui-section" data-section="glcd">
-            <div class="glcd-title">GLCD (128x64)</div>
-            <canvas class="glcd-canvas" id="glcdCanvas" width="320" height="160"></canvas>
-          </div>
-          <div class="matrix ui-section" data-section="matrix">
+          <div class="matrix">
             <div class="matrix-title">8x8 RGB LED MATRIX</div>
             <div class="matrix-grid" id="matrixGrid"></div>
           </div>
               </div>
+              <div class="hardware-grid">
+              <div class="left-col hardware-display-col">
+          <div class="lcd">
+            <div class="lcd-title">LCD (HD44780 A00)</div>
+            <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+          </div>
+          <div class="display-block">
+            <div class="display" id="display"></div>
+          </div>
+              </div>
+              <div class="right-col hardware-keypad-col">
+          <div class="keypad" id="keypad"></div>
+              </div>
+              </div>
             </div>
-            <div class="serial ui-section" data-section="serial">
+            <div class="serial">
               <div class="serial-header">
                 <div class="serial-title">SERIAL (BIT 6)</div>
                 <div class="serial-buttons">
@@ -138,7 +158,7 @@
                 <div class="key" id="serialSend">SEND</div>
               </div>
             </div>
-            <div class="matrix-keyboard ui-section" data-section="matrixKeyboard">
+            <div class="matrix-keyboard">
               <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
               <div class="matrix-keyboard-controls">
                 <div class="key" id="matrixModeToggle">MATRIX MODE</div>

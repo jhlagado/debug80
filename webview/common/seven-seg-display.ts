@@ -12,10 +12,22 @@ export interface SevenSegDisplay {
   applyDigits(values: number[]): void;
 }
 
-export function createSevenSegDisplay(containerEl: HTMLElement, count: number): SevenSegDisplay {
+export interface SevenSegDisplayOptions {
+  digitClassName?: (index: number, count: number) => string | undefined;
+}
+
+export function createSevenSegDisplay(
+  containerEl: HTMLElement,
+  count: number,
+  options: SevenSegDisplayOptions = {}
+): SevenSegDisplay {
   const digitEls: HTMLElement[] = [];
   for (let i = 0; i < count; i += 1) {
     const digit = createDigit();
+    const className = options.digitClassName?.(i, count);
+    if (className !== undefined && className.trim().length > 0) {
+      digit.classList.add(...className.trim().split(/\s+/));
+    }
     digitEls.push(digit);
     containerEl.appendChild(digit);
   }

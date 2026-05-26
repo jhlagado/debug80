@@ -13,10 +13,6 @@ import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
-import {
-  buildTec1gVisibilityMessage,
-  saveTec1gPanelVisibility,
-} from './platform-view-tec1g-visibility';
 import type { PlatformId } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
 import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
@@ -73,9 +69,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private readonly performanceMonitor: UiPerformanceMonitor;
   private readonly registry: PlatformViewRegistry;
 
-  /** TEC-1G only: `tec1g.uiVisibility` from launch config (debug80.json) for this session. */
-  private tec1gAdapterVisibility: Record<string, boolean> | undefined;
-
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
 
@@ -129,7 +122,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postProjectStatus();
-    this.mergeAndPostTec1gPanelVisibility();
   }
 
   setPlatform(
@@ -159,18 +151,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postMessage(buildPlatformViewSessionStatusMessage(this.sessionState));
-  }
-
-  /**
-   * Applies `tec1g.uiVisibility` from the active launch (if any) and re-merges with
-   * workspace Memento. Does not run when `visibility` is empty (omitted from config).
-   */
-  setTec1gAdapterVisibility(visibility: Record<string, boolean> | undefined): void {
-    this.tec1gAdapterVisibility =
-      visibility !== undefined && Object.keys(visibility).length > 0
-        ? { ...visibility }
-        : undefined;
-    this.mergeAndPostTec1gPanelVisibility();
   }
 
   updateTec1(payload: Tec1UpdatePayload, sessionId?: string): void {
@@ -239,7 +219,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     clearPlatformViewSession(this.sessionState);
-    this.tec1gAdapterVisibility = undefined;
     this.setSessionStatus('not running');
     this.stopAllPlatformRefresh();
     this.clear();
@@ -268,9 +247,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         getActiveBundle: (platform) => this.getActiveBundle(platform),
         handleSaveProjectConfig: (platform) => this.handleSaveProjectConfig(platform),
         handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
-        persistTec1gPanelVisibility: (visibility, targetNameFromWebview) => {
-          this.persistTec1gPanelVisibility(visibility, targetNameFromWebview);
-        },
         isPanelVisible: () => this.view?.visible === true,
       })
     );
@@ -327,14 +303,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         intervalMs: MEMORY_REFRESH_INTERVAL_MS,
         rehydrate,
       });
-      this.mergeAndPostTec1gPanelVisibility();
       return;
     }
     if (rehydrate || this.view.webview.html.length === 0) {
       this.view.webview.html = getTec1gHtml('ui', this.view.webview, this.extensionUri);
       this.postProjectStatus();
       this.postSessionStatus();
-      this.mergeAndPostTec1gPanelVisibility();
     }
   }
 
@@ -397,7 +371,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postProjectStatus();
-    this.mergeAndPostTec1gPanelVisibility();
   }
 
   private handleSetStopOnEntry(value: boolean): void {
@@ -429,28 +402,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postMessage(buildPlatformViewSessionStatusMessage(this.sessionState));
-  }
-
-  private mergeAndPostTec1gPanelVisibility(): void {
-    if (!this.view || this.currentPlatform !== 'tec1g') {
-      return;
-    }
-    this.postMessage(
-      buildTec1gVisibilityMessage(this.tec1gAdapterVisibility, {
-        workspaceState: this.workspaceState,
-        resolveWorkspace: () => this.resolveSelectedWorkspace(),
-      })
-    );
-  }
-
-  private persistTec1gPanelVisibility(
-    visibility: Record<string, boolean>,
-    targetNameFromWebview?: string
-  ): void {
-    saveTec1gPanelVisibility(visibility, targetNameFromWebview, {
-      workspaceState: this.workspaceState,
-      resolveWorkspace: () => this.resolveSelectedWorkspace(),
-    });
   }
 
   private resolveSelectedWorkspace(

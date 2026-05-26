@@ -38,8 +38,7 @@ export type PlatformViewControlMessage =
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }
   | { type: 'serialSave'; text: string }
-  | { type: 'serialClear' }
-  | { type: 'saveTec1gPanelVisibility'; targetName?: string; visibility: Record<string, boolean> };
+  | { type: 'serialClear' };
 
 export type PlatformViewInboundMessage =
   | PlatformViewControlMessage

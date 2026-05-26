@@ -176,7 +176,6 @@ describe('platform providers', () => {
       tec1g: {
         entry: 0x2000,
         cartridgeHex: 'cart.hex',
-        uiVisibility: { matrix: false },
         extraListings: ['tec1g.rom.lst'],
       },
     });
@@ -268,10 +267,7 @@ describe('platform providers', () => {
       },
     };
 
-    expect(provider.payload).toEqual({
-      id: 'tec1g',
-      uiVisibility: { matrix: false },
-    });
+    expect(provider.payload).toEqual({ id: 'tec1g' });
     expect(provider.extraListings).toEqual(['tec1g.rom.lst']);
     expect(provider.resolveEntry(assets)).toBe(0x3456);
 

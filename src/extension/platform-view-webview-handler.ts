@@ -22,10 +22,6 @@ export interface PlatformViewWebviewHandlerContext {
   getActiveBundle: (platform: PlatformId) => PlatformViewBundle | undefined;
   handleSaveProjectConfig: (platform: string) => void;
   handleSetStopOnEntry: (value: boolean) => void;
-  persistTec1gPanelVisibility: (
-    visibility: Record<string, boolean>,
-    targetNameFromWebview?: string
-  ) => void;
   isPanelVisible: () => boolean;
 }
 
@@ -64,9 +60,6 @@ export function createPlatformViewWebviewHandler(
         await vscode.commands.executeCommand('debug80.setEntrySource');
       },
       currentPlatform: context.currentPlatform,
-      handleSaveTec1gPanelVisibility: (args) => {
-        context.persistTec1gPanelVisibility(args.visibility, args.targetName);
-      },
       handleStartDebug: async (args) => {
         await vscode.commands.executeCommand('debug80.startDebug', args);
       },

@@ -48,7 +48,7 @@ export interface PlatformRuntimeFinalizeContext {
 
 export interface ResolvedPlatformProvider {
   id: PlatformKind;
-  payload: { id: PlatformKind; uiVisibility?: Tec1gPlatformConfigNormalized['uiVisibility'] };
+  payload: { id: PlatformKind };
   simpleConfig?: SimplePlatformConfigNormalized;
   tec1Config?: Tec1PlatformConfigNormalized;
   tec1gConfig?: Tec1gPlatformConfigNormalized;

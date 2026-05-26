@@ -120,9 +120,7 @@ export function registerDebugSessionHandlers({
         return;
       }
       if (evt.event === 'debug80/platform') {
-        const body = evt.body as
-          | { id?: string; uiVisibility?: Record<string, boolean> }
-          | undefined;
+        const body = evt.body as { id?: string } | undefined;
         const id = body?.id;
         if (id !== undefined && id.length > 0) {
           sessionState.sessionPlatforms.set(evt.session.id, id);
@@ -134,9 +132,6 @@ export function registerDebugSessionHandlers({
             reveal: true,
             tab: 'ui',
           });
-          if (id === 'tec1g') {
-            platformViewProvider.setTec1gAdapterVisibility(body?.uiVisibility);
-          }
         } else {
           const columns = sourceColumns.getSessionColumns(evt.session);
           terminalPanel.open(evt.session, {

@@ -87,7 +87,6 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
     ...(extraListings && extraListings.length > 0 ? { extraListings } : {}),
-    ...(cfg?.uiVisibility ? { uiVisibility: cfg.uiVisibility } : {}),
   };
 }
 

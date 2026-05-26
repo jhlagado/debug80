@@ -49,7 +49,6 @@ export type IncomingMessage =
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];
     }
-  | { type: 'uiVisibility'; visibility: Record<string, boolean>; persist?: boolean }
   | ({ type: 'update'; uiRevision?: number } & Tec1gUpdatePayload)
   | ({ type: 'snapshot' } & MemorySnapshotPayload)
   | { type: 'snapshotError'; message?: string };

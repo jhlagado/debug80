@@ -155,10 +155,7 @@ export function createTec1gPlatformProvider(
   const tec1gConfig = normalizeTec1gConfig(args.tec1g);
   return {
     id: 'tec1g',
-    payload: {
-      id: 'tec1g',
-      ...(tec1gConfig.uiVisibility ? { uiVisibility: tec1gConfig.uiVisibility } : {}),
-    },
+    payload: { id: 'tec1g' },
     tec1gConfig,
     extraListings: tec1gConfig.extraListings ?? [],
     runtimeOptions: { romRanges: tec1gConfig.romRanges },
