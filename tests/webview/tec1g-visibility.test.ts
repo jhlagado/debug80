@@ -137,8 +137,16 @@ describe('tec1g UI visibility controls', () => {
 
   it('keeps AZM experiment controls on the project restart row', () => {
     expect(doc.querySelector('#accordion-project .azm-option-row')).not.toBeNull();
-    expect(doc.querySelector('#azmRegisterCareAudit')?.getAttribute('type')).toBe('checkbox');
-    expect(doc.querySelector('#azmRegisterCareEnforce')?.getAttribute('type')).toBe('checkbox');
+    expect(
+      Array.from(doc.querySelectorAll<HTMLOptionElement>('#azmRegisterCareMode option')).map(
+        (option) => option.value
+      )
+    ).toEqual(['enforce', 'audit', 'off']);
+    expect(
+      Array.from(doc.querySelectorAll<HTMLOptionElement>('#azmContractUpdateMode option')).map(
+        (option) => option.value
+      )
+    ).toEqual(['ask', 'auto', 'never']);
     expect(doc.querySelector('#accordion-project #restartDebug')).not.toBeNull();
   });
 

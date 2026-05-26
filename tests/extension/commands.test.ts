@@ -1439,8 +1439,8 @@ describe('registerExtensionCommands', () => {
       platformViewProvider: {
         refreshIdleView: vi.fn(),
         stopOnEntry: false,
-        azmRegisterCareAudit: true,
-        azmRegisterCareEnforce: true,
+        azmRegisterCareMode: 'enforce',
+        azmContractUpdateMode: 'ask',
       } as never,
       workspaceSelection: {
         resolveWorkspaceFolder,

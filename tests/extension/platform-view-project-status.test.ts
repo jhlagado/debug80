@@ -116,8 +116,8 @@ describe('platform-view-project-status', () => {
       hasProject: false,
       platform: 'simple',
       stopOnEntry: false,
-      azmRegisterCareAudit: false,
-      azmRegisterCareEnforce: false,
+      azmRegisterCareMode: 'enforce',
+      azmContractUpdateMode: 'ask',
     });
   });
 
@@ -131,8 +131,8 @@ describe('platform-view-project-status', () => {
           selectedWorkspace: project,
           currentPlatform: 'simple',
           stopOnEntry: true,
-          azmRegisterCareAudit: true,
-          azmRegisterCareEnforce: true,
+          azmRegisterCareMode: 'audit',
+          azmContractUpdateMode: 'never',
         },
         [project]
       )
@@ -145,8 +145,8 @@ describe('platform-view-project-status', () => {
       hasProject: true,
       platform: 'tec1g',
       stopOnEntry: true,
-      azmRegisterCareAudit: true,
-      azmRegisterCareEnforce: true,
+      azmRegisterCareMode: 'audit',
+      azmContractUpdateMode: 'never',
       targetName: 'app',
       entrySource: 'src/main.asm',
     });

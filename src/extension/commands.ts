@@ -47,6 +47,10 @@ import {
   applyConfigureProjectTargetEdit,
   type ConfigureProjectTargetEdit,
 } from './configure-project-edit';
+import type {
+  AzmPanelContractUpdateMode,
+  AzmPanelRegisterCareMode,
+} from '../contracts/platform-view';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -80,13 +84,13 @@ type ConfigureFieldId =
 
 function panelLaunchOptions(platformViewProvider: PlatformViewProvider): {
   stopOnEntry: boolean;
-  azmRegisterCareAudit: boolean;
-  azmRegisterCareEnforce: boolean;
+  azmRegisterCareMode: AzmPanelRegisterCareMode;
+  azmContractUpdateMode: AzmPanelContractUpdateMode;
 } {
   return {
     stopOnEntry: platformViewProvider.stopOnEntry,
-    azmRegisterCareAudit: platformViewProvider.azmRegisterCareAudit,
-    azmRegisterCareEnforce: platformViewProvider.azmRegisterCareEnforce,
+    azmRegisterCareMode: platformViewProvider.azmRegisterCareMode ?? 'enforce',
+    azmContractUpdateMode: platformViewProvider.azmContractUpdateMode ?? 'ask',
   };
 }
 

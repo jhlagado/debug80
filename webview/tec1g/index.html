@@ -53,13 +53,21 @@
           </div>
           <div class="debug80-toolbar">
             <div class="azm-option-row" aria-label="AZM options">
-              <label class="azm-option" title="Run AZM register-care analysis in audit mode without blocking launch.">
-                <input type="checkbox" id="azmRegisterCareAudit" />
-                RC Audit
+              <label class="azm-option" title="Controls how AZM register-care diagnostics affect restart.">
+                <span>Register Care</span>
+                <select class="azm-option-select" id="azmRegisterCareMode">
+                  <option value="enforce" selected>Enforce</option>
+                  <option value="audit">Audit</option>
+                  <option value="off">Off</option>
+                </select>
               </label>
-              <label class="azm-option" title="Fail assembly when AZM finds register-care conflicts.">
-                <input type="checkbox" id="azmRegisterCareEnforce" />
-                RC Enforce
+              <label class="azm-option" title="Controls whether Debug80 may apply AZMDoc contract updates. Restart remains read-only unless automatic updates are selected.">
+                <span>Contract Updates</span>
+                <select class="azm-option-select" id="azmContractUpdateMode">
+                  <option value="ask" selected>Ask</option>
+                  <option value="auto">Auto</option>
+                  <option value="never">Never</option>
+                </select>
               </label>
             </div>
             <div class="debug80-status-slot">

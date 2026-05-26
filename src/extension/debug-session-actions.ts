@@ -15,11 +15,15 @@ import {
   listProjectTargetChoices,
 } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
+import type {
+  AzmPanelContractUpdateMode,
+  AzmPanelRegisterCareMode,
+} from '../contracts/platform-view';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
-  azmRegisterCareAudit?: boolean;
-  azmRegisterCareEnforce?: boolean;
+  azmRegisterCareMode: AzmPanelRegisterCareMode;
+  azmContractUpdateMode: AzmPanelContractUpdateMode;
 };
 
 function resolveAzmLaunchOptions(options: PanelLaunchOptions): {
@@ -27,13 +31,14 @@ function resolveAzmLaunchOptions(options: PanelLaunchOptions): {
   emitRegisterReport?: boolean;
   registerCareProfile?: 'mon3';
 } | undefined {
-  if (options.azmRegisterCareEnforce === true) {
+  void options.azmContractUpdateMode;
+  if (options.azmRegisterCareMode === 'enforce') {
     return { registerCare: 'error', emitRegisterReport: true, registerCareProfile: 'mon3' };
   }
-  if (options.azmRegisterCareAudit === true) {
+  if (options.azmRegisterCareMode === 'audit') {
     return { registerCare: 'audit', emitRegisterReport: true, registerCareProfile: 'mon3' };
   }
-  return undefined;
+  return { registerCare: 'off' };
 }
 
 export async function startCurrentProjectDebugging(

@@ -13,7 +13,11 @@ import type { Tec1UpdatePayload } from '../platforms/tec1/types';
 import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
-import type { PlatformId } from '../contracts/platform-view';
+import type {
+  AzmPanelContractUpdateMode,
+  AzmPanelRegisterCareMode,
+  PlatformId,
+} from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
 import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
 import {
@@ -71,10 +75,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
-  /** Session-scoped AZM register-care audit toggle. */
-  public azmRegisterCareAudit = false;
-  /** Session-scoped AZM register-care enforcement toggle. */
-  public azmRegisterCareEnforce = false;
+  /** Session-scoped AZM register-care mode. */
+  public azmRegisterCareMode: AzmPanelRegisterCareMode = 'enforce';
+  /** Session-scoped AZM contract-update preference. */
+  public azmContractUpdateMode: AzmPanelContractUpdateMode = 'ask';
 
   constructor(
     extensionUri: vscode.Uri,
@@ -251,8 +255,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         getActiveBundle: (platform) => this.getActiveBundle(platform),
         handleSaveProjectConfig: (platform) => this.handleSaveProjectConfig(platform),
         handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
-        handleSetAzmRegisterCare: (audit, enforce) =>
-          this.handleSetAzmRegisterCare(audit, enforce),
+        handleSetAzmOptions: (registerCareMode, contractUpdateMode) =>
+          this.handleSetAzmOptions(registerCareMode, contractUpdateMode),
         isPanelVisible: () => this.view?.visible === true,
       })
     );
@@ -384,9 +388,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postProjectStatus();
   }
 
-  private handleSetAzmRegisterCare(audit: boolean, enforce: boolean): void {
-    this.azmRegisterCareAudit = audit;
-    this.azmRegisterCareEnforce = enforce;
+  private handleSetAzmOptions(
+    registerCareMode: AzmPanelRegisterCareMode,
+    contractUpdateMode: AzmPanelContractUpdateMode
+  ): void {
+    this.azmRegisterCareMode = registerCareMode;
+    this.azmContractUpdateMode = contractUpdateMode;
     this.postProjectStatus();
   }
 
@@ -405,8 +412,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         selectedWorkspace: this.selectedWorkspace,
         currentPlatform: this.currentPlatform,
         stopOnEntry: this.stopOnEntry,
-        azmRegisterCareAudit: this.azmRegisterCareAudit,
-        azmRegisterCareEnforce: this.azmRegisterCareEnforce,
+        azmRegisterCareMode: this.azmRegisterCareMode,
+        azmContractUpdateMode: this.azmContractUpdateMode,
       }),
     });
   }

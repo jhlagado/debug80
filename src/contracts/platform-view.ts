@@ -2,6 +2,8 @@ import type { Tec1Message } from '../platforms/tec1/ui-panel-messages';
 import type { Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
 
 export type PlatformId = 'simple' | 'tec1' | 'tec1g';
+export type AzmPanelRegisterCareMode = 'enforce' | 'audit' | 'off';
+export type AzmPanelContractUpdateMode = 'ask' | 'auto' | 'never';
 
 export type ProjectStatusPayload = {
   rootName?: string;
@@ -13,10 +15,10 @@ export type ProjectStatusPayload = {
   platform?: string;
   /** Panel stop-on-entry toggle for this window session (not read from or written to debug80.json). */
   stopOnEntry?: boolean;
-  /** Panel AZM register-care audit toggle for this window session. */
-  azmRegisterCareAudit?: boolean;
-  /** Panel AZM register-care enforcement toggle for this window session. */
-  azmRegisterCareEnforce?: boolean;
+  /** Panel AZM register-care mode for this window session. */
+  azmRegisterCareMode?: AzmPanelRegisterCareMode;
+  /** Panel AZM contract-update mode for this window session. */
+  azmContractUpdateMode?: AzmPanelContractUpdateMode;
   roots: Array<{
     name: string;
     path: string;
@@ -38,7 +40,11 @@ export type PlatformViewControlMessage =
   | { type: 'configureProject' }
   | { type: 'saveProjectConfig'; platform: string }
   | { type: 'setStopOnEntry'; stopOnEntry: boolean }
-  | { type: 'setAzmRegisterCare'; audit: boolean; enforce: boolean }
+  | {
+      type: 'setAzmOptions';
+      registerCareMode: AzmPanelRegisterCareMode;
+      contractUpdateMode: AzmPanelContractUpdateMode;
+    }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }

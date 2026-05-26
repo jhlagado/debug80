@@ -2,7 +2,7 @@
   "name": "debug80",
   "displayName": "Debug80 IDE for Z80 Development",
   "description": "Source-level Z80 debugging environment with built-in assembler and TEC-1/TEC-1G emulation.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "jhlagado",
   "license": "GPL-3.0-or-later",
   "icon": "assets/debug80-icon.png",
@@ -670,7 +670,7 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@jhlagado/azm": "0.2.3",
+    "@jhlagado/azm": "0.2.4",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },

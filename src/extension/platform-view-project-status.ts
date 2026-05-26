@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import type { PlatformId, ProjectStatusPayload } from '../contracts/platform-view';
+import type {
+  AzmPanelContractUpdateMode,
+  AzmPanelRegisterCareMode,
+  PlatformId,
+  ProjectStatusPayload,
+} from '../contracts/platform-view';
 import { findProjectConfigPath, readProjectConfig, resolveProjectPlatform } from './project-config';
 import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
@@ -10,8 +15,8 @@ export interface PlatformViewProjectStatusContext {
   selectedWorkspace: vscode.WorkspaceFolder | undefined;
   currentPlatform: PlatformId | undefined;
   stopOnEntry: boolean;
-  azmRegisterCareAudit?: boolean;
-  azmRegisterCareEnforce?: boolean;
+  azmRegisterCareMode?: AzmPanelRegisterCareMode;
+  azmContractUpdateMode?: AzmPanelContractUpdateMode;
 }
 
 export function resolvePlatformViewWorkspace(
@@ -48,8 +53,8 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
-      azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
-      azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
+      azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+      azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     };
   }
 
@@ -69,8 +74,8 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
-      azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
-      azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
+      azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+      azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     };
   }
 
@@ -86,8 +91,8 @@ export function buildPlatformViewProjectStatus(
     hasProject: true,
     platform,
     stopOnEntry: ctx.stopOnEntry,
-    azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
-    azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
+    azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+    azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
     ...(projectStatus?.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
   };

@@ -14,7 +14,7 @@
 
 body {
       margin: 0;
-      padding: 16px;
+      padding: 0;
       font-family: system-ui, sans-serif;
       background: #1c1c1c;
       color: #f0f0f0;
@@ -532,7 +532,10 @@ body {
     .debug80-accordion {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 0;
+      border: 1px solid #2f2f2f;
+      border-radius: 0;
+      overflow: hidden;
     }
     body:not([data-project-view-state='initialized'])
       .debug80-accordion.has-project-panel
@@ -561,18 +564,34 @@ body {
       white-space: nowrap;
       user-select: none;
     }
-    .azm-option input {
+    .azm-option input,
+    .azm-option-select {
       margin: 0;
     }
-    .azm-option:has(input:disabled) {
+    .azm-option-select {
+      border: 1px solid #3b3b3b;
+      border-radius: 4px;
+      background: #1b1b1b;
+      color: #e0e0e0;
+      padding: 2px 16px 2px 6px;
+      font-size: 10px;
+      line-height: 1.2;
+      min-height: 20px;
+    }
+    .azm-option:has(input:disabled),
+    .azm-option:has(select:disabled) {
       opacity: 0.5;
       cursor: default;
     }
     .debug80-accordion-section {
-      border: 1px solid #2f2f2f;
-      border-radius: 12px;
+      border: 0;
+      border-bottom: 1px solid #2f2f2f;
+      border-radius: 0;
       background: #151515;
       overflow: hidden;
+    }
+    .debug80-accordion-section:last-child {
+      border-bottom: 0;
     }
     .debug80-accordion-header {
       width: 100%;
@@ -584,9 +603,11 @@ body {
       border-bottom: 1px solid transparent;
       background: #202020;
       color: #d8d8d8;
-      padding: 8px 12px;
-      font-size: 11px;
-      letter-spacing: 0.13em;
+      min-height: 22px;
+      padding: 3px 8px;
+      font-size: 10px;
+      line-height: 1.2;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       cursor: pointer;
       text-align: left;
@@ -605,7 +626,7 @@ body {
       transform: rotate(90deg);
     }
     .debug80-accordion-content {
-      padding: 10px;
+      padding: 8px;
     }
     .debug80-accordion-content[hidden] {
       display: none;

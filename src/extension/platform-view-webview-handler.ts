@@ -3,7 +3,12 @@
  */
 
 import * as vscode from 'vscode';
-import type { PlatformId, PlatformViewInboundMessage } from '../contracts/platform-view';
+import type {
+  AzmPanelContractUpdateMode,
+  AzmPanelRegisterCareMode,
+  PlatformId,
+  PlatformViewInboundMessage,
+} from '../contracts/platform-view';
 import type { PanelTab } from '../platforms/panel-html';
 import { MEMORY_REFRESH_INTERVAL_MS } from './platform-view-constants';
 import { handlePlatformViewMessage } from './platform-view-messages';
@@ -22,7 +27,10 @@ export interface PlatformViewWebviewHandlerContext {
   getActiveBundle: (platform: PlatformId) => PlatformViewBundle | undefined;
   handleSaveProjectConfig: (platform: string) => void;
   handleSetStopOnEntry: (value: boolean) => void;
-  handleSetAzmRegisterCare: (audit: boolean, enforce: boolean) => void;
+  handleSetAzmOptions: (
+    registerCareMode: AzmPanelRegisterCareMode,
+    contractUpdateMode: AzmPanelContractUpdateMode
+  ) => void;
   isPanelVisible: () => boolean;
 }
 
@@ -51,8 +59,8 @@ export function createPlatformViewWebviewHandler(
         context.handleSetStopOnEntry(value);
         return Promise.resolve();
       },
-      handleSetAzmRegisterCare: (audit, enforce) => {
-        context.handleSetAzmRegisterCare(audit, enforce);
+      handleSetAzmOptions: (registerCareMode, contractUpdateMode) => {
+        context.handleSetAzmOptions(registerCareMode, contractUpdateMode);
         return Promise.resolve();
       },
       handleSelectTarget: async (args) => {

@@ -7,7 +7,7 @@ import { MemoryPanel } from '../common/memory-panel';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
-import { wireAzmRegisterCareControl } from '../common/azm-register-care-control';
+import { wireAzmOptionsControl } from '../common/azm-options-control';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import { createGlcdRenderer } from './glcd-renderer';
@@ -44,12 +44,12 @@ const platformInitButton = document.getElementById(
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
-const azmRegisterCareAuditInput = document.getElementById(
-  'azmRegisterCareAudit'
-) as HTMLInputElement | null;
-const azmRegisterCareEnforceInput = document.getElementById(
-  'azmRegisterCareEnforce'
-) as HTMLInputElement | null;
+const azmRegisterCareModeSelect = document.getElementById(
+  'azmRegisterCareMode'
+) as HTMLSelectElement | null;
+const azmContractUpdateModeSelect = document.getElementById(
+  'azmContractUpdateMode'
+) as HTMLSelectElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -93,10 +93,10 @@ const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
 
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
-const azmRegisterCareControl = wireAzmRegisterCareControl(
+const azmOptionsControl = wireAzmOptionsControl(
   vscode,
-  azmRegisterCareAuditInput,
-  azmRegisterCareEnforceInput
+  azmRegisterCareModeSelect,
+  azmContractUpdateModeSelect
 );
 
 const glcdRenderer = createGlcdRenderer();
@@ -164,7 +164,7 @@ projectIsInitialized = applyInitializedProjectControls(
   }
 );
 stopOnEntryControl.applyProjectStatus({ hasProject: projectIsInitialized });
-azmRegisterCareControl.applyProjectStatus({ hasProject: projectIsInitialized });
+azmOptionsControl.applyProjectStatus({ hasProject: projectIsInitialized });
 
 // Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
 panelUi.addEventListener('mousedown', (event) => {
@@ -269,10 +269,10 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       hasProject: initialized,
       stopOnEntry: message.stopOnEntry,
     });
-    azmRegisterCareControl.applyProjectStatus({
+    azmOptionsControl.applyProjectStatus({
       hasProject: initialized,
-      azmRegisterCareAudit: message.azmRegisterCareAudit,
-      azmRegisterCareEnforce: message.azmRegisterCareEnforce,
+      azmRegisterCareMode: message.azmRegisterCareMode,
+      azmContractUpdateMode: message.azmContractUpdateMode,
     });
     return;
   }
@@ -370,6 +370,6 @@ window.addEventListener('keyup', (event) => {
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
-  azmRegisterCareControl.dispose();
+  azmOptionsControl.dispose();
   projectStatusUi.dispose();
 });
