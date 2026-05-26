@@ -114,8 +114,10 @@
       box-sizing: border-box;
     }
     .hardware-display-col .lcd-canvas {
-      width: 100%;
+      display: block;
+      width: 90%;
       height: 70px;
+      margin: 0 auto;
     }
     .hardware-display-col .display {
       justify-content: space-between;

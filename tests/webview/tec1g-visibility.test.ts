@@ -120,7 +120,9 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('--tec1g-display-stack-width: 320px');
     expect(css).toContain('--tec1g-keypad-content-width');
     expect(css).toContain('.hardware-display-col .lcd-canvas');
+    expect(css).toContain('width: 90%');
     expect(css).toContain('height: 70px');
+    expect(css).toContain('margin: 0 auto');
     expect(css).toContain('.hardware-display-col .digit svg');
     expect(css).toContain('width: 40px');
     expect(css).toContain('height: 66px');
