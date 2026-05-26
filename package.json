@@ -446,6 +446,48 @@
                 ],
                 "default": "azm"
               },
+              "azm": {
+                "type": "object",
+                "description": "AZM-specific assembler options",
+                "properties": {
+                  "registerCare": {
+                    "type": "string",
+                    "description": "AZM register-care mode",
+                    "enum": [
+                      "off",
+                      "audit",
+                      "warn",
+                      "error",
+                      "strict"
+                    ],
+                    "default": "off"
+                  },
+                  "emitRegisterReport": {
+                    "type": "boolean",
+                    "description": "Emit an AZM register-care report artifact",
+                    "default": false
+                  },
+                  "emitRegisterInterface": {
+                    "type": "boolean",
+                    "description": "Emit an inferred AZM .asmi register-care interface artifact",
+                    "default": false
+                  },
+                  "registerCareProfile": {
+                    "type": "string",
+                    "description": "AZM built-in register-care profile",
+                    "enum": [
+                      "mon3"
+                    ]
+                  },
+                  "registerCareInterfaces": {
+                    "type": "array",
+                    "description": "AZM .asmi register-care interface files",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "outputDir": {
                 "type": "string",
                 "description": "Directory for generated build artifacts (defaults to asm directory)"

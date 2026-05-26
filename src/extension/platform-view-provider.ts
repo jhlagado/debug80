@@ -71,6 +71,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
+  /** Session-scoped AZM register-care audit toggle. */
+  public azmRegisterCareAudit = false;
+  /** Session-scoped AZM register-care enforcement toggle. */
+  public azmRegisterCareEnforce = false;
 
   constructor(
     extensionUri: vscode.Uri,
@@ -247,6 +251,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         getActiveBundle: (platform) => this.getActiveBundle(platform),
         handleSaveProjectConfig: (platform) => this.handleSaveProjectConfig(platform),
         handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
+        handleSetAzmRegisterCare: (audit, enforce) =>
+          this.handleSetAzmRegisterCare(audit, enforce),
         isPanelVisible: () => this.view?.visible === true,
       })
     );
@@ -378,6 +384,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postProjectStatus();
   }
 
+  private handleSetAzmRegisterCare(audit: boolean, enforce: boolean): void {
+    this.azmRegisterCareAudit = audit;
+    this.azmRegisterCareEnforce = enforce;
+    this.postProjectStatus();
+  }
+
   // -------------------------------------------------------------------------
   // Private — status and messaging
   // -------------------------------------------------------------------------
@@ -393,6 +405,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         selectedWorkspace: this.selectedWorkspace,
         currentPlatform: this.currentPlatform,
         stopOnEntry: this.stopOnEntry,
+        azmRegisterCareAudit: this.azmRegisterCareAudit,
+        azmRegisterCareEnforce: this.azmRegisterCareEnforce,
       }),
     });
   }

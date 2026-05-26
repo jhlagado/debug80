@@ -112,6 +112,7 @@ function createContext(
     getActiveBundle: () => undefined,
     handleSaveProjectConfig: vi.fn(),
     handleSetStopOnEntry: vi.fn(),
+    handleSetAzmRegisterCare: vi.fn(),
     isPanelVisible: () => true,
     ...overrides,
   };

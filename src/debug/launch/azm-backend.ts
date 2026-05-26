@@ -46,7 +46,24 @@ interface D8mArtifact {
   json: unknown;
 }
 
-type Artifact = HexArtifact | ListingArtifact | LoweredSourceArtifact | BinArtifact | D8mArtifact;
+interface RegisterCareReportArtifact {
+  kind: 'register-care-report';
+  text: string;
+}
+
+interface RegisterCareInterfaceArtifact {
+  kind: 'register-care-interface';
+  text: string;
+}
+
+type Artifact =
+  | HexArtifact
+  | ListingArtifact
+  | LoweredSourceArtifact
+  | BinArtifact
+  | D8mArtifact
+  | RegisterCareReportArtifact
+  | RegisterCareInterfaceArtifact;
 
 interface CompilerOptions {
   outputType: 'bin' | 'hex';
@@ -59,6 +76,11 @@ interface CompilerOptions {
   emitHex?: boolean;
   emitD8m?: boolean;
   emitAsm80?: boolean;
+  registerCare?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
+  emitRegisterReport?: boolean;
+  emitRegisterInterface?: boolean;
+  registerCareProfile?: 'mon3';
+  registerCareInterfaces?: string[];
 }
 
 interface EmittedByteMap {
@@ -196,6 +218,10 @@ function resolveBinPath(hexPath: string): string {
   return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
 }
 
+function resolveRegisterCareReportPath(hexPath: string): string {
+  return `${artifactBase(hexPath)}.regcare.txt`;
+}
+
 function compactBinaryFromEmittedMap(map: EmittedByteMap, from = 0x0000, to = 0xffff): Uint8Array {
   const bytes = new Map<number, number>();
   let min = Number.POSITIVE_INFINITY;
@@ -280,6 +306,7 @@ export class AzmBackend implements AssemblerBackend {
           emitD8m: true,
           emitAsm80: true,
           sourceRoot,
+          ...(options.azm ?? {}),
           d8mInputs: {
             hex: options.hexPath,
             bin: binPath,
@@ -343,6 +370,16 @@ export class AzmBackend implements AssemblerBackend {
       writeTextArtifact(`${base}.z80`, lowered.text);
     }
 
+    const registerCareReport = findArtifact(artifacts, 'register-care-report');
+    if (registerCareReport !== undefined) {
+      writeTextArtifact(resolveRegisterCareReportPath(options.hexPath), registerCareReport.text);
+    }
+
+    const registerCareInterface = findArtifact(artifacts, 'register-care-interface');
+    if (registerCareInterface !== undefined) {
+      writeTextArtifact(`${base}.asmi`, registerCareInterface.text);
+    }
+
     return {
       success: true,
       stdout: `${options.hexPath}\n`,
@@ -373,6 +410,7 @@ export class AzmBackend implements AssemblerBackend {
           emitBin: true,
           emitHex: false,
           emitD8m: false,
+          ...(options.azm ?? {}),
           ...(options.sourceRoot !== undefined ? { sourceRoot: options.sourceRoot } : {}),
         },
         { formats }

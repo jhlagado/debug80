@@ -4,6 +4,7 @@
 
 import * as path from 'path';
 import type { MappingParseResult } from '../../mapping/parser';
+import type { AzmLaunchOptions } from '../session/types';
 import type { AssembleResult } from './assembler';
 import { AzmBackend } from './azm-backend';
 
@@ -14,6 +15,7 @@ export interface AssembleOptions {
   hexPath: string;
   listingPath: string;
   sourceRoot?: string;
+  azm?: AzmLaunchOptions;
   onOutput?: (message: string) => void;
 }
 
@@ -23,6 +25,7 @@ export interface AssembleBinOptions {
   binFrom: number;
   binTo: number;
   sourceRoot?: string;
+  azm?: AzmLaunchOptions;
   onOutput?: (message: string) => void;
 }
 

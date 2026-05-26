@@ -25,6 +25,7 @@ export interface PlatformViewMessageDependencies {
   handleConfigureProject: () => PromiseLike<void>;
   handleSaveProjectConfig: (platform: string) => PromiseLike<void>;
   handleSetStopOnEntry: (value: boolean) => PromiseLike<void>;
+  handleSetAzmRegisterCare: (audit: boolean, enforce: boolean) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
@@ -78,6 +79,14 @@ export async function handlePlatformViewMessage(
     const stopOnEntry = (msg as { stopOnEntry?: unknown }).stopOnEntry;
     if (typeof stopOnEntry === 'boolean') {
       await deps.handleSetStopOnEntry(stopOnEntry);
+    }
+    return;
+  }
+  if (msg?.type === 'setAzmRegisterCare') {
+    const audit = (msg as { audit?: unknown }).audit;
+    const enforce = (msg as { enforce?: unknown }).enforce;
+    if (typeof audit === 'boolean' && typeof enforce === 'boolean') {
+      await deps.handleSetAzmRegisterCare(audit, enforce);
     }
     return;
   }

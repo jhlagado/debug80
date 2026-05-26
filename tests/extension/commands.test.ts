@@ -1425,4 +1425,55 @@ describe('registerExtensionCommands', () => {
       })
     );
   });
+
+  it('restarts with the current AZM register-care enforcement state', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      platformViewProvider: {
+        refreshIdleView: vi.fn(),
+        stopOnEntry: false,
+        azmRegisterCareAudit: true,
+        azmRegisterCareEnforce: true,
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommands.get('debug80.restartDebug');
+    expect(restartDebug).toBeTypeOf('function');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-azm-register-care',
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        azm: {
+          registerCare: 'error',
+          emitRegisterReport: true,
+          registerCareProfile: 'mon3',
+        },
+      })
+    );
+  });
 });

@@ -1,7 +1,14 @@
 import type { MemoryPanel } from './memory-panel';
 import type { VscodeApi } from './vscode';
 
-export type AccordionPanel = 'machine' | 'registers' | 'memory';
+export type AccordionPanel =
+  | 'project'
+  | 'machine'
+  | 'displays'
+  | 'serial'
+  | 'matrixKeyboard'
+  | 'registers'
+  | 'memory';
 export type ProviderPanelTab = 'ui' | 'memory';
 
 type StoredAccordionState = {
@@ -21,6 +28,7 @@ export type AccordionLayoutController = {
   getProviderTab: () => ProviderPanelTab;
   getMemoryRowSize: () => number;
   isMachineOpen: () => boolean;
+  isMatrixKeyboardOpen: () => boolean;
   isCpuOpen: () => boolean;
   isMemoryOpen: () => boolean;
   refreshOpenRegisters: () => void;
@@ -35,7 +43,11 @@ const MEMORY_NARROW_MAX = 480;
 const MEMORY_WIDE_MIN = 520;
 const REGISTER_REFRESH_INTERVAL_MS = 500;
 const DEFAULT_OPEN_STATE: Record<AccordionPanel, boolean> = {
+  project: true,
   machine: true,
+  displays: true,
+  serial: false,
+  matrixKeyboard: false,
   registers: true,
   memory: false,
 };
@@ -50,11 +62,15 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
     return {};
   }
   const stored = state.debug80Accordion;
-  return {
-    machine: typeof stored.machine === 'boolean' ? stored.machine : undefined,
-    registers: typeof stored.registers === 'boolean' ? stored.registers : undefined,
-    memory: typeof stored.memory === 'boolean' ? stored.memory : undefined,
-  };
+  const result: Partial<Record<AccordionPanel, boolean>> = {};
+  if (typeof stored.project === 'boolean') result.project = stored.project;
+  if (typeof stored.machine === 'boolean') result.machine = stored.machine;
+  if (typeof stored.displays === 'boolean') result.displays = stored.displays;
+  if (typeof stored.serial === 'boolean') result.serial = stored.serial;
+  if (typeof stored.matrixKeyboard === 'boolean') result.matrixKeyboard = stored.matrixKeyboard;
+  if (typeof stored.registers === 'boolean') result.registers = stored.registers;
+  if (typeof stored.memory === 'boolean') result.memory = stored.memory;
+  return result;
 }
 
 function writeStoredOpenState(vscode: VscodeApi, openState: Record<AccordionPanel, boolean>): void {
@@ -237,5 +253,6 @@ export function createAccordionLayoutController(
         });
       });
     },
+    isMatrixKeyboardOpen: () => openState.matrixKeyboard,
   };
 }

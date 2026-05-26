@@ -78,6 +78,18 @@ type ConfigureFieldId =
   | 'outputDir'
   | 'artifactBase';
 
+function panelLaunchOptions(platformViewProvider: PlatformViewProvider): {
+  stopOnEntry: boolean;
+  azmRegisterCareAudit: boolean;
+  azmRegisterCareEnforce: boolean;
+} {
+  return {
+    stopOnEntry: platformViewProvider.stopOnEntry,
+    azmRegisterCareAudit: platformViewProvider.azmRegisterCareAudit,
+    azmRegisterCareEnforce: platformViewProvider.azmRegisterCareEnforce,
+  };
+}
+
 const DEBUG_PROJECT_FOLDER_PROMPT = {
   prompt: true,
   requireProject: true,
@@ -312,7 +324,7 @@ export function registerExtensionCommands({
       return startCurrentProjectDebugging(
         folder,
         workspaceSelection,
-        platformViewProvider.stopOnEntry
+        panelLaunchOptions(platformViewProvider)
       );
     })
   );
@@ -333,7 +345,7 @@ export function registerExtensionCommands({
       return startCurrentProjectDebugging(
         folder,
         workspaceSelection,
-        platformViewProvider.stopOnEntry
+        panelLaunchOptions(platformViewProvider)
       );
     })
   );
@@ -374,7 +386,7 @@ export function registerExtensionCommands({
             const restarted = await startCurrentProjectDebugging(
               folder,
               workspaceSelection,
-              platformViewProvider.stopOnEntry
+              panelLaunchOptions(platformViewProvider)
             );
             restartedForRootChange = restarted;
             if (restarted) {
@@ -394,7 +406,7 @@ export function registerExtensionCommands({
               folder,
               workspaceSelection,
               targetSelection,
-              platformViewProvider.stopOnEntry
+              panelLaunchOptions(platformViewProvider)
             );
         if (singleTarget !== undefined) {
           void vscode.window.showInformationMessage(

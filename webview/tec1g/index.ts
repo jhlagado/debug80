@@ -7,6 +7,7 @@ import { MemoryPanel } from '../common/memory-panel';
 import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
+import { wireAzmRegisterCareControl } from '../common/azm-register-care-control';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import { createGlcdRenderer } from './glcd-renderer';
@@ -43,6 +44,12 @@ const platformInitButton = document.getElementById(
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
+const azmRegisterCareAuditInput = document.getElementById(
+  'azmRegisterCareAudit'
+) as HTMLInputElement | null;
+const azmRegisterCareEnforceInput = document.getElementById(
+  'azmRegisterCareEnforce'
+) as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
@@ -57,7 +64,13 @@ const statusCaps = document.getElementById('statusCaps') as HTMLElement;
 const accordionButtons = Array.from(
   document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
 );
+const accordionProject = document.getElementById('accordion-project') as HTMLElement;
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
+const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
+const accordionSerial = document.getElementById('accordion-serial') as HTMLElement;
+const accordionMatrixKeyboard = document.getElementById(
+  'accordion-matrix-keyboard'
+) as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
 const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
@@ -80,6 +93,11 @@ const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
 
 const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
+const azmRegisterCareControl = wireAzmRegisterCareControl(
+  vscode,
+  azmRegisterCareAuditInput,
+  azmRegisterCareEnforceInput
+);
 
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
@@ -91,7 +109,11 @@ const panelLayout = createAccordionLayoutController({
   memoryPanel: memoryPanelEl,
   defaultTab: DEFAULT_TAB,
   panels: {
+    project: accordionProject,
     machine: accordionMachine,
+    displays: accordionDisplays,
+    serial: accordionSerial,
+    matrixKeyboard: accordionMatrixKeyboard,
     registers: accordionRegisters,
     memory: accordionMemory,
   },
@@ -99,7 +121,10 @@ const panelLayout = createAccordionLayoutController({
 });
 panelLayout.wireButtons();
 
-const matrixUi = createMatrixUiController(vscode, () => panelLayout.isMachineOpen());
+const matrixUi = createMatrixUiController(
+  vscode,
+  () => panelLayout.isMachineOpen() || panelLayout.isMatrixKeyboardOpen()
+);
 
 const projectStatusUi = createTec1gProjectStatusUi(
   vscode,
@@ -138,6 +163,8 @@ projectIsInitialized = applyInitializedProjectControls(
     panelMemory,
   }
 );
+stopOnEntryControl.applyProjectStatus({ hasProject: projectIsInitialized });
+azmRegisterCareControl.applyProjectStatus({ hasProject: projectIsInitialized });
 
 // Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
 panelUi.addEventListener('mousedown', (event) => {
@@ -242,6 +269,11 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       hasProject: initialized,
       stopOnEntry: message.stopOnEntry,
     });
+    azmRegisterCareControl.applyProjectStatus({
+      hasProject: initialized,
+      azmRegisterCareAudit: message.azmRegisterCareAudit,
+      azmRegisterCareEnforce: message.azmRegisterCareEnforce,
+    });
     return;
   }
   if (message.type === 'sessionStatus') {
@@ -338,5 +370,6 @@ window.addEventListener('keyup', (event) => {
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
+  azmRegisterCareControl.dispose();
   projectStatusUi.dispose();
 });

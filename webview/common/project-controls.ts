@@ -74,7 +74,8 @@ export function applyInitializedProjectControls(
     elements.tabs.hidden = !initialized;
   }
   if (elements.accordion) {
-    elements.accordion.hidden = !initialized;
+    elements.accordion.hidden =
+      !initialized && !elements.accordion.classList.contains('has-project-panel');
   }
   if (elements.panelUi) {
     elements.panelUi.hidden = !initialized;

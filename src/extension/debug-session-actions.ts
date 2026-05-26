@@ -16,10 +16,30 @@ import {
 } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 
+export type PanelLaunchOptions = {
+  stopOnEntry: boolean;
+  azmRegisterCareAudit?: boolean;
+  azmRegisterCareEnforce?: boolean;
+};
+
+function resolveAzmLaunchOptions(options: PanelLaunchOptions): {
+  registerCare: 'off' | 'audit' | 'error';
+  emitRegisterReport?: boolean;
+  registerCareProfile?: 'mon3';
+} | undefined {
+  if (options.azmRegisterCareEnforce === true) {
+    return { registerCare: 'error', emitRegisterReport: true, registerCareProfile: 'mon3' };
+  }
+  if (options.azmRegisterCareAudit === true) {
+    return { registerCare: 'audit', emitRegisterReport: true, registerCareProfile: 'mon3' };
+  }
+  return undefined;
+}
+
 export async function startCurrentProjectDebugging(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
-  stopOnEntry: boolean
+  options: PanelLaunchOptions
 ): Promise<boolean> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -30,12 +50,14 @@ export async function startCurrentProjectDebugging(
   }
 
   workspaceSelection.rememberWorkspace(folder);
+  const azm = resolveAzmLaunchOptions(options);
   return vscode.debug.startDebugging(folder, {
     type: 'z80',
     request: 'launch',
     name: 'Debug80: Current Project',
     projectConfig,
-    stopOnEntry,
+    stopOnEntry: options.stopOnEntry,
+    ...(azm !== undefined ? { azm } : {}),
   });
 }
 
@@ -43,7 +65,7 @@ export async function maybeAutoStartSingleTargetForRootChange(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
   targetSelection: ProjectTargetSelectionController,
-  stopOnEntry: boolean
+  options: PanelLaunchOptions
 ): Promise<string | undefined> {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -67,7 +89,7 @@ export async function maybeAutoStartSingleTargetForRootChange(
     await vscode.debug.stopDebugging(activeSession);
   }
 
-  const started = await startCurrentProjectDebugging(folder, workspaceSelection, stopOnEntry);
+  const started = await startCurrentProjectDebugging(folder, workspaceSelection, options);
   if (!started) {
     return undefined;
   }

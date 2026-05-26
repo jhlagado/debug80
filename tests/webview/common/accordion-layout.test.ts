@@ -69,7 +69,11 @@ describe('accordion layout controller', () => {
     expect(messages.at(-1)).toEqual({ type: 'tab', tab: 'memory' });
     expect(vscode.getState()).toEqual({
       debug80Accordion: {
+        project: true,
         machine: true,
+        displays: true,
+        serial: false,
+        matrixKeyboard: false,
         registers: false,
         memory: true,
       },
@@ -106,6 +110,57 @@ describe('accordion layout controller', () => {
     expect(controller.isMemoryOpen()).toBe(true);
     expect(memoryContent.hidden).toBe(false);
     expect(controller.getProviderTab()).toBe('memory');
+  });
+
+  it('toggles serial and matrix keyboard panels without switching provider tabs', () => {
+    const messages: PostedMessage[] = [];
+    const serialButton = button('serial');
+    const matrixKeyboardButton = button('matrixKeyboard');
+    const serialContent = document.createElement('div');
+    const matrixKeyboardContent = document.createElement('div');
+    const vscode = createVscodeMock(messages);
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: [button('machine'), serialButton, matrixKeyboardButton, button('memory')],
+      panels: {
+        machine: document.createElement('div'),
+        serial: serialContent,
+        matrixKeyboard: matrixKeyboardContent,
+        memory: document.createElement('div'),
+      },
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+    });
+    controller.wireButtons();
+
+    expect(serialContent.hidden).toBe(true);
+    expect(matrixKeyboardContent.hidden).toBe(true);
+    expect(serialButton.getAttribute('aria-expanded')).toBe('false');
+    expect(matrixKeyboardButton.getAttribute('aria-expanded')).toBe('false');
+
+    serialButton.click();
+    matrixKeyboardButton.click();
+
+    expect(controller.getProviderTab()).toBe('ui');
+    expect(serialContent.hidden).toBe(false);
+    expect(matrixKeyboardContent.hidden).toBe(false);
+    expect(messages).toEqual([
+      { type: 'tab', tab: 'ui' },
+      { type: 'tab', tab: 'ui' },
+    ]);
+    expect(vscode.getState()).toEqual({
+      debug80Accordion: {
+        project: true,
+        machine: true,
+        displays: true,
+        serial: true,
+        matrixKeyboard: true,
+        registers: true,
+        memory: false,
+      },
+    });
   });
 
   it('requests a register snapshot when registers are opened without activating memory', () => {
@@ -199,7 +254,11 @@ describe('accordion layout controller', () => {
     expect(requestSnapshot).not.toHaveBeenCalled();
     expect(vscode.getState()).toEqual({
       debug80Accordion: {
+        project: true,
         machine: true,
+        displays: true,
+        serial: false,
+        matrixKeyboard: false,
         registers: true,
         memory: false,
       },

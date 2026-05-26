@@ -118,6 +118,49 @@ describe('azm-backend', () => {
     expect(fs.readFileSync(listingPath, 'utf-8')).toContain('native D8 debug map');
   });
 
+  it('passes AZM register-care launch options and writes register reports', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
+    const outDir = path.join(tmpDir, 'build');
+    const hexPath = path.join(outDir, 'prog.hex');
+    const listingPath = path.join(outDir, 'prog.lst');
+
+    fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [
+        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
+        { kind: 'register-care-report', text: 'Register care report\n' },
+      ],
+    });
+
+    const result = await backend.assemble({
+      asmPath,
+      hexPath,
+      listingPath,
+      azm: {
+        registerCare: 'audit',
+        emitRegisterReport: true,
+        registerCareProfile: 'mon3',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(compile).toHaveBeenCalledWith(
+      asmPath,
+      expect.objectContaining({
+        registerCare: 'audit',
+        emitRegisterReport: true,
+        registerCareProfile: 'mon3',
+      }),
+      expect.objectContaining({ formats: expect.any(Object) })
+    );
+    expect(fs.readFileSync(path.join(outDir, 'prog.regcare.txt'), 'utf-8')).toBe(
+      'Register care report\n'
+    );
+  });
+
   it('uses binFrom and binTo as compact output bounds for binary rebuilds', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');

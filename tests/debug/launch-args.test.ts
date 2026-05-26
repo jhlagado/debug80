@@ -468,6 +468,46 @@ describe('launch-args', () => {
     expect(merged.stopOnEntry).toBe(true);
   });
 
+  it('merges AZM options from project, target, and explicit launch arguments', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-options-'));
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        azm: {
+          registerCare: 'audit',
+          emitRegisterReport: false,
+          registerCareProfile: 'mon3',
+        },
+        targets: {
+          matrix: {
+            asm: 'src/matrix.asm',
+            azm: {
+              emitRegisterReport: true,
+            },
+          },
+        },
+        defaultTarget: 'matrix',
+      })
+    );
+
+    const merged = populateFromConfig(
+      {
+        projectConfig: configPath,
+        azm: {
+          registerCare: 'error',
+        },
+      } as LaunchRequestArguments,
+      { resolveBaseDir: () => dir }
+    );
+
+    expect(merged.azm).toEqual({
+      registerCare: 'error',
+      emitRegisterReport: true,
+      registerCareProfile: 'mon3',
+    });
+  });
+
   it('normalizes source paths and relative paths', () => {
     const root = path.parse(process.cwd()).root;
     const baseDir = path.join(root, 'root');

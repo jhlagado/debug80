@@ -46,6 +46,8 @@ export type IncomingMessage =
       entrySource?: string;
       platform?: string;
       stopOnEntry?: boolean;
+      azmRegisterCareAudit?: boolean;
+      azmRegisterCareEnforce?: boolean;
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];
     }

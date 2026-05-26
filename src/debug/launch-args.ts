@@ -383,6 +383,15 @@ export function populateFromConfig(
       merged.assembler = assemblerResolved;
     }
 
+    const azmResolved = {
+      ...(cfg.azm ?? {}),
+      ...(targetCfg?.azm ?? {}),
+      ...(args.azm ?? {}),
+    };
+    if (Object.keys(azmResolved).length > 0) {
+      merged.azm = azmResolved;
+    }
+
     const sourceResolved =
       args.sourceFile ??
       args.asm ??

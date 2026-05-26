@@ -22,6 +22,7 @@ export interface PlatformViewWebviewHandlerContext {
   getActiveBundle: (platform: PlatformId) => PlatformViewBundle | undefined;
   handleSaveProjectConfig: (platform: string) => void;
   handleSetStopOnEntry: (value: boolean) => void;
+  handleSetAzmRegisterCare: (audit: boolean, enforce: boolean) => void;
   isPanelVisible: () => boolean;
 }
 
@@ -48,6 +49,10 @@ export function createPlatformViewWebviewHandler(
       },
       handleSetStopOnEntry: (value) => {
         context.handleSetStopOnEntry(value);
+        return Promise.resolve();
+      },
+      handleSetAzmRegisterCare: (audit, enforce) => {
+        context.handleSetAzmRegisterCare(audit, enforce);
         return Promise.resolve();
       },
       handleSelectTarget: async (args) => {

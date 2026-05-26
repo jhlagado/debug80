@@ -116,6 +116,8 @@ describe('platform-view-project-status', () => {
       hasProject: false,
       platform: 'simple',
       stopOnEntry: false,
+      azmRegisterCareAudit: false,
+      azmRegisterCareEnforce: false,
     });
   });
 
@@ -129,6 +131,8 @@ describe('platform-view-project-status', () => {
           selectedWorkspace: project,
           currentPlatform: 'simple',
           stopOnEntry: true,
+          azmRegisterCareAudit: true,
+          azmRegisterCareEnforce: true,
         },
         [project]
       )
@@ -141,6 +145,8 @@ describe('platform-view-project-status', () => {
       hasProject: true,
       platform: 'tec1g',
       stopOnEntry: true,
+      azmRegisterCareAudit: true,
+      azmRegisterCareEnforce: true,
       targetName: 'app',
       entrySource: 'src/main.asm',
     });

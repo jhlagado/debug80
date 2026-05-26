@@ -61,6 +61,7 @@ export async function assembleIfRequested(options: {
     hexPath,
     listingPath,
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
+    ...(args.azm !== undefined ? { azm: args.azm } : {}),
     onOutput: (message) => {
       emitConsoleOutput(sendEvent, message, { newline: false });
     },
@@ -83,6 +84,7 @@ export async function assembleIfRequested(options: {
       binFrom: simpleConfig.binFrom,
       binTo: simpleConfig.binTo,
       ...(sourceRoot !== undefined ? { sourceRoot } : {}),
+      ...(args.azm !== undefined ? { azm: args.azm } : {}),
       onOutput: (message) => {
         emitConsoleOutput(sendEvent, message, { newline: false });
       },

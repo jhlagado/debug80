@@ -10,6 +10,8 @@ export interface PlatformViewProjectStatusContext {
   selectedWorkspace: vscode.WorkspaceFolder | undefined;
   currentPlatform: PlatformId | undefined;
   stopOnEntry: boolean;
+  azmRegisterCareAudit?: boolean;
+  azmRegisterCareEnforce?: boolean;
 }
 
 export function resolvePlatformViewWorkspace(
@@ -46,6 +48,8 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
+      azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
+      azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
     };
   }
 
@@ -65,6 +69,8 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
+      azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
+      azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
     };
   }
 
@@ -80,6 +86,8 @@ export function buildPlatformViewProjectStatus(
     hasProject: true,
     platform,
     stopOnEntry: ctx.stopOnEntry,
+    azmRegisterCareAudit: ctx.azmRegisterCareAudit === true,
+    azmRegisterCareEnforce: ctx.azmRegisterCareEnforce === true,
     ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
     ...(projectStatus?.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
   };

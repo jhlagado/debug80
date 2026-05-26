@@ -39,6 +39,21 @@ export interface ProjectProfileConfig {
   bundledAssets?: Record<string, BundledAssetReference>;
 }
 
+export type AzmRegisterCareMode = 'off' | 'audit' | 'warn' | 'error' | 'strict';
+
+export interface AzmLaunchOptions {
+  /** Register-care analysis mode passed to AZM. */
+  registerCare?: AzmRegisterCareMode;
+  /** Emit AZM register-care report artifacts. */
+  emitRegisterReport?: boolean;
+  /** Emit inferred AZM register-care interface artifacts. */
+  emitRegisterInterface?: boolean;
+  /** Use a built-in register-care profile such as MON-3. */
+  registerCareProfile?: 'mon3';
+  /** External .asmi register-care interface files. */
+  registerCareInterfaces?: string[];
+}
+
 /**
  * Launch request arguments for the Z80 debug adapter.
  * Extends the standard DAP launch request with Z80-specific options.
@@ -48,6 +63,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   asm?: string;
   /** Assembler backend to use (default: azm) */
   assembler?: string;
+  /** AZM-specific assembler options */
+  azm?: AzmLaunchOptions;
   /** Alternative path to the source file (alias for asm) */
   sourceFile?: string;
   /** Path to the Intel HEX file */
@@ -111,6 +128,7 @@ export interface ProjectConfig {
   /** Fields that can be specified at the root level */
   asm?: string;
   assembler?: string;
+  azm?: AzmLaunchOptions;
   sourceFile?: string;
   source?: string;
   hex?: string;

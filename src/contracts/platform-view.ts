@@ -13,6 +13,10 @@ export type ProjectStatusPayload = {
   platform?: string;
   /** Panel stop-on-entry toggle for this window session (not read from or written to debug80.json). */
   stopOnEntry?: boolean;
+  /** Panel AZM register-care audit toggle for this window session. */
+  azmRegisterCareAudit?: boolean;
+  /** Panel AZM register-care enforcement toggle for this window session. */
+  azmRegisterCareEnforce?: boolean;
   roots: Array<{
     name: string;
     path: string;
@@ -34,6 +38,7 @@ export type PlatformViewControlMessage =
   | { type: 'configureProject' }
   | { type: 'saveProjectConfig'; platform: string }
   | { type: 'setStopOnEntry'; stopOnEntry: boolean }
+  | { type: 'setAzmRegisterCare'; audit: boolean; enforce: boolean }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }

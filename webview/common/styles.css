@@ -534,6 +534,40 @@ body {
       flex-direction: column;
       gap: 10px;
     }
+    body:not([data-project-view-state='initialized'])
+      .debug80-accordion.has-project-panel
+      .debug80-accordion-section:not(.debug80-project-section) {
+      display: none;
+    }
+    .debug80-accordion-content .debug80-toolbar {
+      margin: 0;
+    }
+    .azm-option-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+    .azm-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #bdbdbd;
+      cursor: pointer;
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .azm-option input {
+      margin: 0;
+    }
+    .azm-option:has(input:disabled) {
+      opacity: 0.5;
+      cursor: default;
+    }
     .debug80-accordion-section {
       border: 1px solid #2f2f2f;
       border-radius: 12px;
