@@ -218,14 +218,14 @@ describe('project status UI invariants', () => {
       platform: 'tec1',
       coolTermAvailable: true,
       coolTermHexPath: '/workspace/debug80/build/app.hex',
-      hardwareStatusText: 'Ready to send build/app.hex via CoolTerm.',
+      hardwareStatusText: 'Ready to send app.hex via CoolTerm.',
     });
 
     const elements = getElements();
     expect(elements.sendHexToBoardButton.hidden).toBe(false);
     expect(elements.sendHexToBoardButton.disabled).toBe(false);
     expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1');
-    expect(elements.hardwareStatusLine.textContent).toBe('Ready to send build/app.hex via CoolTerm.');
+    expect(elements.hardwareStatusLine.textContent).toBe('Ready to send app.hex via CoolTerm.');
   });
 
   it('hides targets for uninitialized projects and shows one platform/init affordance', () => {

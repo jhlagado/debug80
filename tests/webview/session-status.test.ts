@@ -55,14 +55,14 @@ describe('shared restart control', () => {
     expect(stopOnEntryLabel?.title).toBe(
       'Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json.'
     );
-    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.textContent).toBe('Build');
     expect(restartButton?.dataset.status).toBe('not-running');
     expect(restartButton?.disabled).toBe(false);
     expect(restartButton?.title).toBe(
-      'Relaunch the current project and target using the current launch options'
+      'Build and relaunch the current project and target using the current launch options'
     );
     expect(restartButton?.getAttribute('aria-label')).toBe(
-      'Relaunch the current project and target using the current launch options'
+      'Build and relaunch the current project and target using the current launch options'
     );
   });
 
@@ -76,17 +76,17 @@ describe('shared restart control', () => {
     const restartButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
 
     controller.setStatus('starting');
-    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.textContent).toBe('Build');
     expect(restartButton?.dataset.status).toBe('starting');
     expect(restartButton?.disabled).toBe(true);
 
     controller.setStatus('running');
-    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.textContent).toBe('Build');
     expect(restartButton?.dataset.status).toBe('running');
     expect(restartButton?.disabled).toBe(false);
 
     controller.setStatus('paused');
-    expect(restartButton?.textContent).toBe('Restart');
+    expect(restartButton?.textContent).toBe('Build');
     expect(restartButton?.dataset.status).toBe('paused');
     expect(restartButton?.disabled).toBe(false);
 

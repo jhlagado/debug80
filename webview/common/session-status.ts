@@ -7,8 +7,8 @@ export interface SessionStatusController {
   dispose: () => void;
 }
 
-const RESTART_LABEL = 'Restart';
-const RESTART_TITLE = 'Relaunch the current project and target using the current launch options';
+const RESTART_LABEL = 'Build';
+const RESTART_TITLE = 'Build and relaunch the current project and target using the current launch options';
 
 function statusClass(status: SessionStatus): string {
   return `session-status status-${status.replace(/\s+/g, '-')}`;

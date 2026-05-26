@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import type {
   AzmPanelContractUpdateMode,
   AzmPanelRegisterCareMode,
@@ -117,7 +118,7 @@ function buildDefaultHardwareStatus(
     return 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.';
   }
   if (hexArtifact.kind === 'found') {
-    return `Ready to send ${hexArtifact.path} via CoolTerm.`;
+    return `Ready to send ${path.basename(hexArtifact.path)} via CoolTerm.`;
   }
   if (hexArtifact.kind === 'missing') {
     return `HEX file not found at ${hexArtifact.path}. Build the selected target first.`;
