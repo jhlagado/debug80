@@ -21,9 +21,18 @@ const executeCommand = vi.fn();
 const scaffoldProject = vi.fn();
 const materializeBundledAsset = vi.fn();
 const materializeBundledRom = vi.fn();
+let activeStackItem: unknown;
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 let panelMessageHandler: ((msg: unknown) => void) | undefined;
 let panelHtml = '';
+
+class DebugStackFrame {
+  public constructor(
+    public readonly session: { customRequest: (command: string, args: unknown) => Promise<unknown> },
+    public readonly threadId: number,
+    public readonly frameId: number
+  ) {}
+}
 
 vi.mock('fs', () => ({
   existsSync,
@@ -40,7 +49,11 @@ vi.mock('vscode', () => ({
     startDebugging,
     stopDebugging,
     activeDebugSession: undefined,
+    get activeStackItem() {
+      return activeStackItem;
+    },
   },
+  DebugStackFrame,
   window: {
     showInformationMessage,
     showErrorMessage,
@@ -136,6 +149,7 @@ describe('registerExtensionCommands', () => {
     );
     panelMessageHandler = undefined;
     panelHtml = '';
+    activeStackItem = undefined;
     const vscode = await import('vscode');
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
     createWebviewPanel.mockImplementation(() => {
@@ -318,6 +332,23 @@ describe('registerExtensionCommands', () => {
 
     expect(result).toBe(true);
     expect(reveal).toHaveBeenCalledWith(true);
+  });
+
+  it('runs to the call stack frame supplied by the context menu', async () => {
+    await registerCommands();
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    activeStackItem = new DebugStackFrame({ customRequest }, 1, 0);
+    const contextFrame = new DebugStackFrame({ customRequest }, 1, 3);
+
+    const runToStackReturn = registeredCommands.get('debug80.runToSelectedStackFrame');
+    expect(runToStackReturn).toBeTypeOf('function');
+
+    const result = await runToStackReturn?.(contextFrame);
+
+    expect(result).toBe(true);
+    expect(customRequest).toHaveBeenCalledWith('debug80/runToStackFrame', { frameId: 3 });
+    expect(showInformationMessage).not.toHaveBeenCalled();
+    expect(showErrorMessage).not.toHaveBeenCalled();
   });
 
   it('materializes manifest-backed bundled asset references from the project config', async () => {

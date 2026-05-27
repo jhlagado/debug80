@@ -365,7 +365,7 @@
       },
       {
         "command": "debug80.runToSelectedStackFrame",
-        "title": "Debug80: Run to Selected Stack Return"
+        "title": "Debug80: Run Until This Return Address"
       },
       {
         "command": "debug80.setEntrySource",

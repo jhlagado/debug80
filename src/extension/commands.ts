@@ -211,8 +211,8 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.runToSelectedStackFrame', async () => {
-      const stackItem = vscode.debug.activeStackItem;
+    vscode.commands.registerCommand('debug80.runToSelectedStackFrame', async (item?: unknown) => {
+      const stackItem = item instanceof vscode.DebugStackFrame ? item : vscode.debug.activeStackItem;
       if (!(stackItem instanceof vscode.DebugStackFrame)) {
         await vscode.window.showWarningMessage(
           'Debug80: Select a return frame in the Call Stack view first.'
