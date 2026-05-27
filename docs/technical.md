@@ -295,12 +295,27 @@ the listing file or overwrite it with an LST-regenerated cache.
 
 Debug80 always writes a `*.d8.json` file alongside the build artifacts.
 
-Editor navigation also uses D8 data. Debug80 registers a VS Code Go to
-Definition provider for `z80-asm`; pressing `F12` on a symbol loads the active
-target's D8 map and jumps to the symbol line recorded under `files[*].symbols`.
-This deliberately follows the last successful build rather than scanning source
-text. If no D8 map exists, the user must build the target before symbol
-navigation is available.
+Editor navigation also uses source-map data. Debug80 registers VS Code providers
+for Go to Definition, workspace symbols, and compact symbol hover on `z80-asm`
+documents. These providers load the active target's D8 map and use
+`files[*].symbols` from the last successful build instead of scanning source
+text. User-facing messages call this a "source map": if no map exists, the user
+must build the target before source-map-backed navigation is available; if the
+map appears older than mapped source files, Debug80 warns but still uses it.
+Symbol hovers also recognize nearby AZMDoc register-care contracts and render
+both current multi-line contract comments and future compact single-line
+contract comments as one concise hover line.
+
+Run to Cursor is implemented through VS Code's normal DAP `gotoTargets` /
+`goto` flow. Debug80 resolves the requested source line through the active
+mapping index, creates a temporary run target, continues execution, and stops
+when the target address is reached.
+
+The VS Code Variables panel now exposes source-map-backed Symbols and Constants
+scopes instead of duplicating registers; register display/editing lives in
+Debug80's own Registers panel. Without richer AZM metadata, Debug80 presents
+memory-backed symbols conservatively: address, first byte, a word when size
+suggests it, a short byte preview, and printable ASCII where available.
 
 The orchestration for loading, validating, building, and caching these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is

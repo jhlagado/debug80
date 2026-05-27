@@ -40,19 +40,18 @@ const buildCpu = (): Cpu => ({
 });
 
 describe('VariableService', () => {
-  it('creates a registers scope', () => {
+  it('creates source-map symbol scopes without exposing registers', () => {
     const handles = new Handles<string>();
     const service = new VariableService(handles);
     const scopes = service.createScopes();
-    expect(scopes).toHaveLength(1);
-    expect(scopes[0]?.name).toBe('Registers');
-    expect(handles.get(scopes[0]?.variablesReference ?? 0)).toBe('registers');
+    expect(scopes.map((scope) => scope.name)).toEqual(['Symbols', 'Constants']);
+    expect(scopes.find((scope) => scope.name === 'Registers')).toBeUndefined();
   });
 
   it('returns register variables for the registers scope', () => {
     const handles = new Handles<string>();
     const service = new VariableService(handles);
-    const scopeRef = service.createScopes()[0]?.variablesReference ?? 0;
+    const scopeRef = handles.create('registers');
     const cpu = buildCpu();
     const runtime = {
       getRegisters: () => cpu,
@@ -76,13 +75,58 @@ describe('VariableService', () => {
     expect(variables).toEqual([]);
   });
 
-  it('reuses the same Registers scope variablesReference across scope requests', () => {
+  it('does not expose a Registers scope in Variables', () => {
     const handles = new Handles<string>();
     const service = new VariableService(handles);
-    const ref1 = service.createScopes()[0]?.variablesReference ?? 0;
-    const ref2 = service.createScopes()[0]?.variablesReference ?? 0;
-    expect(ref2).toBe(ref1);
-    expect(service.isRegistersVariablesReference(ref1)).toBe(true);
-    expect(service.isRegistersVariablesReference(ref1 + 1)).toBe(false);
+    const scopes = service.createScopes();
+    expect(scopes.some((scope) => scope.name === 'Registers')).toBe(false);
+    expect(service.isRegistersVariablesReference(scopes[0]?.variablesReference ?? 0)).toBe(false);
+  });
+
+  it('shows source-map symbols and constants as debugger variables', () => {
+    const handles = new Handles<string>();
+    const service = new VariableService(handles);
+    const memory = new Uint8Array(0x10000);
+    memory[0x4200] = 0x41;
+    memory[0x4201] = 0x42;
+    const scopes = service.createScopes([
+      {
+        name: 'PLAYER_X',
+        kind: 'data',
+        file: 'src/main.z80',
+        line: 12,
+        address: 0x4200,
+        size: 2,
+      },
+      {
+        name: 'SCREEN_WIDTH',
+        kind: 'constant',
+        file: 'src/main.z80',
+        line: 4,
+        value: 32,
+      },
+    ]);
+    const runtime = {
+      getRegisters: buildCpu,
+      getPC: () => 0x1000,
+      hardware: { memory },
+    };
+
+    const symbolRef = scopes.find((scope) => scope.name === 'Symbols')?.variablesReference ?? 0;
+    const constantRef = scopes.find((scope) => scope.name === 'Constants')?.variablesReference ?? 0;
+    const symbols = service.resolveVariables(symbolRef, runtime);
+    const constants = service.resolveVariables(constantRef, runtime);
+
+    expect(symbols[0]).toMatchObject({
+      name: 'PLAYER_X',
+      value: '0x4200 = 0x41 / 0x4241',
+    });
+    expect(constants[0]).toMatchObject({
+      name: 'SCREEN_WIDTH',
+      value: '0x0020 / 32',
+    });
+
+    const expanded = service.resolveVariables(symbols[0]?.variablesReference ?? 0, runtime);
+    expect(expanded.map((entry) => entry.name)).toContain('ascii');
   });
 });

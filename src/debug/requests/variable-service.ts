@@ -5,25 +5,46 @@
 import { Scope, Handles } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { Cpu, Flags } from '../../z80/types';
+import type { SourceMapDebugSymbol } from '../session/session-state';
 
 type RegisterRuntime = {
   getRegisters: () => Cpu;
   getPC: () => number;
+  hardware?: {
+    memory?: Uint8Array;
+    memRead?: (address: number) => number;
+  };
 };
 
 /**
  * Builds variable scopes and register variables.
  */
 export class VariableService {
-  private registersScopeRef: number | undefined;
+  private symbolsScopeRef: number | undefined;
+  private constantsScopeRef: number | undefined;
+  private symbolRefs = new Map<number, SourceMapDebugSymbol>();
 
   constructor(private readonly variableHandles: Handles<string>) {}
 
-  createScopes(): DebugProtocol.Scope[] {
-    if (this.registersScopeRef === undefined) {
-      this.registersScopeRef = this.variableHandles.create('registers');
+  createScopes(symbols: SourceMapDebugSymbol[] = []): DebugProtocol.Scope[] {
+    this.latestSymbols = symbols;
+    this.symbolRefs.clear();
+    if (this.symbolsScopeRef === undefined) {
+      this.symbolsScopeRef = this.variableHandles.create('source-map-symbols');
     }
-    return [new Scope('Registers', this.registersScopeRef, false)];
+    if (this.constantsScopeRef === undefined) {
+      this.constantsScopeRef = this.variableHandles.create('source-map-constants');
+    }
+    const hasSourceMapSymbols = symbols.length > 0;
+    return [
+      new Scope('Symbols', this.symbolsScopeRef, false),
+      new Scope('Constants', this.constantsScopeRef, false),
+    ].map((scope) => {
+      if (!hasSourceMapSymbols) {
+        scope.expensive = true;
+      }
+      return scope;
+    });
   }
 
   isRegistersVariablesReference(variablesReference: number): boolean {
@@ -35,7 +56,20 @@ export class VariableService {
     runtime?: RegisterRuntime
   ): DebugProtocol.Variable[] {
     const scopeType = this.variableHandles.get(variablesReference);
-    if (scopeType !== 'registers' || runtime === undefined) {
+    if (runtime === undefined) {
+      return [];
+    }
+    if (scopeType === 'source-map-symbols') {
+      return this.buildSymbolVariables(runtime, variablesReference, false);
+    }
+    if (scopeType === 'source-map-constants') {
+      return this.buildSymbolVariables(runtime, variablesReference, true);
+    }
+    if (typeof scopeType === 'string' && scopeType.startsWith('source-map-symbol:')) {
+      const symbol = this.symbolRefs.get(variablesReference);
+      return symbol ? this.expandMemorySymbol(symbol, runtime) : [];
+    }
+    if (scopeType !== 'registers') {
       return [];
     }
 
@@ -100,6 +134,123 @@ export class VariableService {
         presentationHint: readOnly,
       },
     ];
+  }
+
+  setSourceMapSymbols(symbols: SourceMapDebugSymbol[]): void {
+    this.latestSymbols = symbols;
+  }
+
+  private latestSymbols: SourceMapDebugSymbol[] = [];
+
+  private buildSymbolVariables(
+    runtime: RegisterRuntime,
+    parentReference: number,
+    constantsOnly: boolean
+  ): DebugProtocol.Variable[] {
+    const symbols = this.latestSymbols.filter((symbol) =>
+      constantsOnly
+        ? symbol.value !== undefined && symbol.address === undefined
+        : symbol.address !== undefined
+    );
+    if (symbols.length === 0) {
+      return [];
+    }
+    return symbols.slice(0, 250).map((symbol, index) => {
+      const variableReference =
+        !constantsOnly && symbol.address !== undefined
+          ? this.createSymbolReference(parentReference, index, symbol)
+          : 0;
+      return {
+        name: symbol.name,
+        value: constantsOnly
+          ? this.formatConstant(symbol.value ?? 0)
+          : this.formatSymbolValue(symbol, runtime),
+        variablesReference: variableReference,
+        presentationHint: {
+          attributes: ['readOnly' as const],
+        },
+      };
+    });
+  }
+
+  private createSymbolReference(
+    _parentReference: number,
+    _index: number,
+    symbol: SourceMapDebugSymbol
+  ): number {
+    const ref = this.variableHandles.create(`source-map-symbol:${symbol.name}`);
+    this.symbolRefs.set(ref, symbol);
+    return ref;
+  }
+
+  private expandMemorySymbol(
+    symbol: SourceMapDebugSymbol,
+    runtime: RegisterRuntime
+  ): DebugProtocol.Variable[] {
+    const address = symbol.address;
+    if (address === undefined) {
+      return [];
+    }
+    const previewLength = Math.max(1, Math.min(symbol.size ?? 8, 32));
+    const bytes = Array.from({ length: previewLength }, (_unused, offset) =>
+      this.readByte(runtime, address + offset)
+    );
+    const word = bytes.length >= 2 ? bytes[0]! | (bytes[1]! << 8) : undefined;
+    const variables: DebugProtocol.Variable[] = [
+      { name: 'address', value: this.format16(address), variablesReference: 0 },
+      { name: 'byte', value: this.format8(bytes[0] ?? 0), variablesReference: 0 },
+    ];
+    if (word !== undefined && (symbol.size === undefined || symbol.size >= 2)) {
+      variables.push({ name: 'word', value: this.format16(word), variablesReference: 0 });
+    }
+    variables.push({
+      name: `bytes[${bytes.length}]`,
+      value: bytes.map((byte) => this.format8(byte)).join(' '),
+      variablesReference: 0,
+    });
+    const ascii = bytes
+      .map((byte) => (byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.'))
+      .join('');
+    if (ascii.replace(/\./g, '').length > 0) {
+      variables.push({ name: 'ascii', value: JSON.stringify(ascii), variablesReference: 0 });
+    }
+    if (symbol.file !== '') {
+      variables.push({
+        name: 'source',
+        value: `${symbol.file}${symbol.line !== undefined ? `:${symbol.line}` : ''}`,
+        variablesReference: 0,
+      });
+    }
+    return variables.map((variable) => ({
+      ...variable,
+      presentationHint: { attributes: ['readOnly' as const] },
+    }));
+  }
+
+  private formatSymbolValue(symbol: SourceMapDebugSymbol, runtime: RegisterRuntime): string {
+    const address = symbol.address ?? 0;
+    const byte = this.readByte(runtime, address);
+    const prefix = `${this.format16(address)} = ${this.format8(byte)}`;
+    if (symbol.size === 2) {
+      const word = byte | (this.readByte(runtime, address + 1) << 8);
+      return `${prefix} / ${this.format16(word)}`;
+    }
+    if ((symbol.size ?? 0) > 2) {
+      return `${this.format16(address)} (${symbol.size} bytes)`;
+    }
+    return prefix;
+  }
+
+  private formatConstant(value: number): string {
+    return `${this.format16(value & 0xffff)} / ${value}`;
+  }
+
+  private readByte(runtime: RegisterRuntime, address: number): number {
+    const masked = address & 0xffff;
+    if (runtime.hardware?.memRead) {
+      return runtime.hardware.memRead(masked) & 0xff;
+    }
+    return runtime.hardware?.memory?.[masked] ?? 0;
   }
 
   private format16(value: number): string {

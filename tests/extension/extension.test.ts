@@ -16,6 +16,8 @@ const setTextDocumentLanguage = vi.fn((doc: unknown, languageId: string) =>
 );
 const getLanguages = vi.fn(() => Promise.resolve(['z80-asm']));
 const registerDefinitionProvider = vi.fn(() => ({ dispose: vi.fn() }));
+const registerHoverProvider = vi.fn(() => ({ dispose: vi.fn() }));
+const registerWorkspaceSymbolProvider = vi.fn(() => ({ dispose: vi.fn() }));
 const createDiagnosticCollection = vi.fn(() => ({
   set: vi.fn(),
   delete: vi.fn(),
@@ -60,6 +62,8 @@ vi.mock('vscode', () => ({
     setTextDocumentLanguage,
     createDiagnosticCollection,
     registerDefinitionProvider,
+    registerHoverProvider,
+    registerWorkspaceSymbolProvider,
   },
   window: {
     showErrorMessage: vi.fn(),
@@ -135,6 +139,11 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
     expect(registerDefinitionProvider).toHaveBeenCalledWith(
+      [{ language: 'z80-asm' }],
+      expect.anything()
+    );
+    expect(registerWorkspaceSymbolProvider).toHaveBeenCalledWith(expect.anything());
+    expect(registerHoverProvider).toHaveBeenCalledWith(
       [{ language: 'z80-asm' }],
       expect.anything()
     );

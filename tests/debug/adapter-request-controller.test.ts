@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('vscode', () => ({}));
 
 import { Handles } from '@vscode/debugadapter';
+import type { DebugProtocol } from '@vscode/debugprotocol';
 import { AdapterRequestController } from '../../src/debug/requests/adapter-request-controller';
 import { createSessionState } from '../../src/debug/session/session-state';
 import * as runtimeControl from '../../src/debug/session/runtime-control';
@@ -194,6 +195,57 @@ describe('AdapterRequestController single-step flow', () => {
   });
 });
 
+describe('AdapterRequestController Run to Cursor flow', () => {
+  it('resolves goto targets from the source map and runs to a temporary address', () => {
+    const runUntilStopSpy = vi
+      .spyOn(runtimeControl, 'runUntilStopAsync')
+      .mockResolvedValue(undefined);
+    const { controller, deps, sessionState } = createController();
+    sessionState.baseDir = '/workspace';
+    sessionState.mappingIndex = {
+      segmentsByAddress: [],
+      segmentsByFileLine: new Map([
+        [
+          'src/main.z80',
+          new Map([
+            [
+              8,
+              [
+                {
+                  start: 0x4100,
+                  end: 0x4103,
+                  loc: { file: 'src/main.z80', line: 8 },
+                  lst: { line: 20, text: 'CALL TEST' },
+                  confidence: 'HIGH',
+                },
+              ],
+            ],
+          ]),
+        ],
+      ]),
+      anchorsByFile: new Map(),
+    };
+    sessionState.runtime = { getPC: () => 0x4000 } as never;
+
+    const targetsResponse = {} as DebugProtocol.GotoTargetsResponse;
+    controller.gotoTargetsRequest(targetsResponse, {
+      source: { path: '/workspace/src/main.z80' },
+      line: 8,
+      column: 1,
+    });
+
+    expect(targetsResponse.body?.targets).toEqual([{ id: 1, label: '$4100', line: 8 }]);
+
+    controller.gotoRequest({} as never, { threadId: 1, targetId: 1 });
+
+    expect(deps.sendResponse).toHaveBeenCalledTimes(2);
+    expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
+      extraBreakpoints: new Set([0x4100]),
+      limitLabel: 'run to cursor',
+    });
+  });
+});
+
 describe('AdapterRequestController setVariableRequest', () => {
   it('updates a writable register and returns the formatted value', () => {
     const sessionState = createSessionState();
@@ -205,7 +257,7 @@ describe('AdapterRequestController setVariableRequest', () => {
 
     const handles = new Handles<string>();
     const variableService = new VariableService(handles);
-    const registersRef = variableService.createScopes()[0]?.variablesReference ?? 0;
+    const registersRef = handles.create('registers');
 
     const deps = {
       threadId: 1,
@@ -253,7 +305,7 @@ describe('AdapterRequestController setVariableRequest', () => {
 
     const handles = new Handles<string>();
     const variableService = new VariableService(handles);
-    const registersRef = variableService.createScopes()[0]?.variablesReference ?? 0;
+    const registersRef = handles.create('registers');
 
     const deps = {
       threadId: 1,

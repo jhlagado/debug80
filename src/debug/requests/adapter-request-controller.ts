@@ -18,6 +18,7 @@ import {
   type RuntimeControlContext,
 } from '../session/runtime-control';
 import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
+import { resolveExecutableLocation } from '../../mapping/source-map';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
 import { emitDebugSessionStatus } from '../session/session-status';
 import type { VariableService } from './variable-service';
@@ -45,6 +46,9 @@ export interface AdapterRequestControllerDeps {
  * Handles the adapter's request/control flow so the session class can stay small.
  */
 export class AdapterRequestController {
+  private readonly gotoTargets = new Map<number, number>();
+  private nextGotoTargetId = 1;
+
   public constructor(private readonly deps: AdapterRequestControllerDeps) {}
 
   public markLaunchComplete(): void {
@@ -174,6 +178,58 @@ export class AdapterRequestController {
     this.deps.sendResponse(response);
   }
 
+  public gotoTargetsRequest(
+    response: DebugProtocol.GotoTargetsResponse,
+    args: DebugProtocol.GotoTargetsArguments
+  ): void {
+    const sourcePath = args.source?.path;
+    const line = args.line ?? 0;
+    const mappingIndex = this.deps.sessionState.mappingIndex;
+    if (sourcePath === undefined || sourcePath.length === 0 || mappingIndex === undefined) {
+      response.body = { targets: [] };
+      this.deps.sendEvent(
+        new OutputEvent('Debug80: Source map missing. Build the target first.\n', 'console')
+      );
+      this.deps.sendResponse(response);
+      return;
+    }
+
+    const normalized = normalizeSourcePath(sourcePath, this.deps.sessionState.baseDir);
+    const direct = resolveExecutableLocation(mappingIndex, normalized, line);
+    const addresses = direct.length > 0 ? direct : this.resolveGotoByBasename(normalized, line);
+    const targets = addresses.map((address) => {
+      const id = this.nextGotoTargetId++;
+      this.gotoTargets.set(id, address & ADDR_MASK);
+      return {
+        id,
+        label: `$${(address & ADDR_MASK).toString(16).toUpperCase().padStart(4, '0')}`,
+        line,
+      };
+    });
+    response.body = { targets };
+    this.deps.sendResponse(response);
+  }
+
+  public gotoRequest(
+    response: DebugProtocol.GotoResponse,
+    args: DebugProtocol.GotoArguments
+  ): void {
+    const address = this.gotoTargets.get(args.targetId);
+    if (address === undefined) {
+      this.deps.sendErrorResponse(response, 1, 'Debug80: Run to Cursor target is unavailable.');
+      return;
+    }
+    if (this.deps.sessionState.runtime === undefined) {
+      this.deps.sendErrorResponse(response, 1, 'No program loaded');
+      return;
+    }
+    this.gotoTargets.delete(args.targetId);
+    this.deps.sendResponse(response);
+    this.deps.sessionState.runState.pauseRequested = false;
+    this.updateBreakpointSkip();
+    this.runUntilStop(new Set([address]), undefined, 'run to cursor');
+  }
+
   public stackTraceRequest(
     response: DebugProtocol.StackTraceResponse,
     _args: DebugProtocol.StackTraceArguments
@@ -241,7 +297,7 @@ export class AdapterRequestController {
     _args: DebugProtocol.ScopesArguments
   ): void {
     response.body = {
-      scopes: this.deps.variableService.createScopes(),
+      scopes: this.deps.variableService.createScopes(this.deps.sessionState.sourceMapSymbols),
     };
     this.deps.sendResponse(response);
   }
@@ -477,6 +533,32 @@ export class AdapterRequestController {
       runtime.hardware.memRead ??
       ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
     return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
+  }
+
+  private resolveGotoByBasename(sourcePath: string, line: number): number[] {
+    const mappingIndex = this.deps.sessionState.mappingIndex;
+    if (mappingIndex === undefined) {
+      return [];
+    }
+    const want = sourcePath.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+    const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
+    for (const [fileKey, fileMap] of mappingIndex.segmentsByFileLine.entries()) {
+      if ((fileKey.split(/[\\/]/).pop()?.toLowerCase() ?? '') !== want) {
+        continue;
+      }
+      for (const delta of lineSlop) {
+        const tryLine = line + delta;
+        if (tryLine < 1) {
+          continue;
+        }
+        const segments = fileMap.get(tryLine);
+        const executable = segments?.filter((segment) => segment.end > segment.start) ?? [];
+        if (executable.length > 0) {
+          return executable.map((segment) => segment.start);
+        }
+      }
+    }
+    return [];
   }
 
   private getShadowAlias(address: number): number | null {

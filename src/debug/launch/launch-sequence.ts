@@ -24,7 +24,11 @@ import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
 import type { ListingInfo, HexProgram } from '../../z80/loaders';
 import type { LaunchRequestArguments } from '../session/types';
 import type { TerminalState } from '../session/terminal-types';
-import type { ActivePlatformRuntime, SessionStateShape } from '../session/session-state';
+import type {
+  ActivePlatformRuntime,
+  SessionStateShape,
+  SourceMapDebugSymbol,
+} from '../session/session-state';
 import type { Z80Runtime } from '../../z80/runtime';
 import type { Tec1Runtime } from '../../platforms/tec1/runtime';
 import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
@@ -136,6 +140,7 @@ export interface LaunchSessionArtifacts {
   extraListingPaths: string[];
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
+  sourceMapSymbols: SourceMapDebugSymbol[];
   loadedProgram: HexProgram;
   loadedEntry: number | undefined;
   restartCaptureAddress: number | undefined;
@@ -307,6 +312,7 @@ export async function buildLaunchSession(
     extraListingPaths: builtSourceState.extraListingPaths,
     symbolAnchors: builtSourceState.symbolAnchors,
     symbolList: builtSourceState.symbolList,
+    sourceMapSymbols: builtSourceState.sourceMapSymbols,
     loadedProgram: program,
     loadedEntry: entry,
     restartCaptureAddress,

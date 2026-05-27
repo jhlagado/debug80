@@ -3,6 +3,7 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs';
 import { buildSymbolIndex } from '../mapping/symbol-service';
 import { SourceManager } from '../mapping/source-manager';
 import type { SourceStateManager } from '../mapping/source-state-manager';
@@ -20,6 +21,8 @@ import type { SourceMapIndex } from '../../mapping/source-map';
 import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
+import type { SourceMapDebugSymbol } from '../session/session-state';
+import { parseD8DebugMap } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
   sourceRoots: string[];
@@ -28,6 +31,7 @@ export interface LaunchSourceBuildResult {
   mappingIndex: SourceMapIndex;
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
+  sourceMapSymbols: SourceMapDebugSymbol[];
 }
 
 export function buildLaunchSourceState(
@@ -95,6 +99,22 @@ export function buildLaunchSourceState(
     sourceFile: sourceState.file,
   });
   sourceState.lookupAnchors = symbolIndex.lookupAnchors;
+  const sourceMapSymbols = readSourceMapSymbols({
+    baseDir,
+    listingPath,
+    asmPath,
+    mapArgs: {
+      ...(args.artifactBase !== undefined && args.artifactBase.length > 0
+        ? { artifactBase: args.artifactBase }
+        : {}),
+      ...(args.outputDir !== undefined && args.outputDir.length > 0
+        ? { outputDir: args.outputDir }
+        : {}),
+    },
+    resolveDebugMapPath: (mapArgs, dir, asm, listing) =>
+      resolveDebugMapPath(mapArgs, dir, asm, listing),
+    logger,
+  });
 
   return {
     sourceRoots: builtSourceState.sourceRoots,
@@ -103,7 +123,69 @@ export function buildLaunchSourceState(
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
+    sourceMapSymbols:
+      sourceMapSymbols.length > 0
+        ? sourceMapSymbols
+        : symbolIndex.list.map((symbol) => ({
+            name: symbol.name,
+            address: symbol.address,
+            kind: 'label',
+            file: sourceState.file ?? '',
+          })),
   };
+}
+
+function readSourceMapSymbols(options: {
+  baseDir: string;
+  listingPath: string;
+  asmPath: string | undefined;
+  mapArgs: { artifactBase?: string; outputDir?: string };
+  resolveDebugMapPath: (
+    args: { artifactBase?: string; outputDir?: string },
+    baseDir: string,
+    asmPath: string | undefined,
+    listingPath: string
+  ) => string;
+  logger: Logger;
+}): SourceMapDebugSymbol[] {
+  const mapPath = options.resolveDebugMapPath(
+    options.mapArgs,
+    options.baseDir,
+    options.asmPath,
+    options.listingPath
+  );
+  if (!fs.existsSync(mapPath)) {
+    return [];
+  }
+  try {
+    const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
+    if (parsed.map === undefined) {
+      options.logger.warn(`Debug80: Could not read source map symbols: ${parsed.error}`);
+      return [];
+    }
+    const symbols: SourceMapDebugSymbol[] = [];
+    for (const [file, entry] of Object.entries(parsed.map.files)) {
+      if (file.trim() === '') {
+        continue;
+      }
+      for (const symbol of entry.symbols ?? []) {
+        symbols.push({
+          name: symbol.name,
+          file,
+          ...(symbol.line !== undefined ? { line: symbol.line } : {}),
+          ...(symbol.address !== undefined ? { address: symbol.address } : {}),
+          ...(symbol.value !== undefined ? { value: symbol.value } : {}),
+          ...(symbol.size !== undefined ? { size: symbol.size } : {}),
+          ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
+          ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
+        });
+      }
+    }
+    return symbols.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    options.logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
+    return [];
+  }
 }
 
 function pushUniquePath(paths: string[], candidate: string): void {

@@ -64,7 +64,7 @@ export class Z80DebugSession extends DebugSession {
   private breakpointManager = new BreakpointManager();
   private sourceState = new SourceStateManager();
   private sessionState: SessionStateShape = createSessionState();
-  private variableHandles = new Handles<'registers'>();
+  private variableHandles = new Handles<string>();
   private variableService = new VariableService(this.variableHandles);
   private matrixHeldKeys = new Map<string, MatrixKeyCombo[]>();
   private commandRouter = new CommandRouter();
@@ -190,6 +190,7 @@ export class Z80DebugSession extends DebugSession {
     response.body.supportsConfigurationDoneRequest = true;
     response.body.supportsSingleThreadExecutionRequests = true;
     response.body.supportsSetVariable = true;
+    response.body.supportsGotoTargetsRequest = true;
 
     this.sendResponse(response);
     this.sendEvent(new InitializedEvent());
@@ -364,6 +365,20 @@ export class Z80DebugSession extends DebugSession {
     _args: DebugProtocol.PauseArguments
   ): void {
     this.requestController.pauseRequest(response, _args);
+  }
+
+  protected gotoTargetsRequest(
+    response: DebugProtocol.GotoTargetsResponse,
+    args: DebugProtocol.GotoTargetsArguments
+  ): void {
+    this.requestController.gotoTargetsRequest(response, args);
+  }
+
+  protected gotoRequest(
+    response: DebugProtocol.GotoResponse,
+    args: DebugProtocol.GotoArguments
+  ): void {
+    this.requestController.gotoRequest(response, args);
   }
 
   protected stackTraceRequest(

@@ -4,6 +4,7 @@
 
 import type { ListingInfo, HexProgram } from '../../z80/loaders';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
+import type { D8Symbol } from '../../mapping/d8-map';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import type { CpuStateSnapshot, Z80Runtime } from '../../z80/runtime';
 import type { LaunchRequestArguments } from './types';
@@ -30,6 +31,7 @@ export interface SessionSourceState {
   mappingIndex: SourceMapIndex | undefined;
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
+  sourceMapSymbols: SourceMapDebugSymbol[];
   sourceRoots: string[];
   extraListingPaths: string[];
 }
@@ -69,6 +71,7 @@ export interface SessionStateShape {
   mappingIndex: SourceMapIndex | undefined;
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
+  sourceMapSymbols: SourceMapDebugSymbol[];
   sourceRoots: string[];
   baseDir: string;
   terminalState: TerminalState | undefined;
@@ -92,6 +95,17 @@ export interface SessionStateShape {
   platform: SessionPlatformState;
   ui: SessionUiState;
   runState: RunState;
+}
+
+export interface SourceMapDebugSymbol {
+  name: string;
+  file: string;
+  line?: number;
+  address?: number;
+  value?: number;
+  size?: number;
+  kind?: D8Symbol['kind'];
+  scope?: D8Symbol['scope'];
 }
 
 /**
@@ -135,6 +149,7 @@ export function createSessionState(): SessionStateShape {
     mappingIndex: undefined as SourceMapIndex | undefined,
     symbolAnchors: [] as SourceMapAnchor[],
     symbolList: [] as Array<{ name: string; address: number }>,
+    sourceMapSymbols: [] as SourceMapDebugSymbol[],
     sourceRoots: [] as string[],
     baseDir: process.cwd(),
     terminalState: undefined as TerminalState | undefined,
@@ -203,6 +218,12 @@ export function createSessionState(): SessionStateShape {
     },
     set symbolList(v) {
       flat.symbolList = v;
+    },
+    get sourceMapSymbols() {
+      return flat.sourceMapSymbols;
+    },
+    set sourceMapSymbols(v) {
+      flat.sourceMapSymbols = v;
     },
     get sourceRoots() {
       return flat.sourceRoots;
@@ -320,6 +341,7 @@ export function resetSessionState(target: SessionStateShape): void {
   target.mappingIndex = next.mappingIndex;
   target.symbolAnchors = next.symbolAnchors;
   target.symbolList = next.symbolList;
+  target.sourceMapSymbols = next.sourceMapSymbols;
   target.sourceRoots = next.sourceRoots;
   target.baseDir = next.baseDir;
   target.terminalState = next.terminalState;

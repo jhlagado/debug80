@@ -188,6 +188,7 @@ export function applyLaunchSessionArtifacts(
   source.extraListingPaths = artifacts.extraListingPaths;
   source.symbolAnchors = artifacts.symbolAnchors;
   source.symbolList = artifacts.symbolList;
+  source.sourceMapSymbols = artifacts.sourceMapSymbols;
   runtimeState.execution = artifacts.runtime;
   ui.terminalState = artifacts.terminalState;
   platform.tec1Runtime = artifacts.tec1Runtime;
