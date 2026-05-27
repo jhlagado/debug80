@@ -35,6 +35,9 @@ are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
 - **Run to Cursor**: use VS Code's normal Run to Cursor action while debugging
   Z80 source; Debug80 resolves the current source line through the active source
   map and runs to the matching address.
+- **Z80-focused Watch expressions**: add registers, flags, symbols, and byte
+  memory reads to VS Code's Watch panel with expressions such as `A`, `HL`,
+  `zero`, `[PACMO_LIVES]`, `[HL]`, or `[IX + 4] eq 0`.
 - **Integrated assembler workflow**: a Z80 assembler is packaged with the
   extension and linked directly, so users do not need a global assembler install
   or a separate command-line toolchain just to start debugging.

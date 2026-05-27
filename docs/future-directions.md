@@ -142,19 +142,30 @@ symbol size, and optional display hints.
 
 ### Watch Panel
 
-The Watch panel could become a very practical assembly inspection tool. Instead
-of only accepting JavaScript-like expressions, it could accept Z80-focused
-expressions such as `A`, `HL`, `(HL)`, `(0x4000)`, `(symbol)`, `symbol+4`,
-`IX+2`, `SP+6`, `carry`, or `zero`.
+The Watch panel is now a practical assembly inspection tool. Instead of
+JavaScript-like expressions, it accepts a small Z80-focused expression language
+for runtime state:
+
+- registers such as `A`, `HL`, `IX`, `SP`, `PC`, `AF'`, and `BC'`
+- AZM register-care flag names such as `zero`, `carry`, `sign`, `parity`, and
+  `halfCarry`
+- active source-map symbols such as `PACMO_LIVES` or `MainLoop`
+- byte memory reads using square brackets, such as `[HL]`, `[PACMO_LIVES]`, and
+  `[IX + 4]`
+- grouping with parentheses, such as `(A + 1) eq $21`
+- arithmetic `+ - * / %`
+- bitwise `& | ^ ~`
+- comparisons `eq ne lt le gt ge`
+- logical `and`, `or`, and `not`
 
 This would be valuable because watch expressions are often more convenient than
 opening a full memory panel. A developer could pin a few important symbols,
 pointers, flags, or buffers and watch them while stepping.
 
-The tradeoff is that this needs a small expression evaluator. It should be
-intentionally limited and predictable. Failed watches should explain whether the
-symbol is missing, the expression is unsupported, the target has not built, or
-the memory address is unavailable.
+The language is intentionally limited and predictable. Failed watches should
+explain whether the symbol is missing, the expression is unsupported, the target
+has not built, or the memory address is unavailable. Truth follows the usual
+debugger convention: zero is false, and any non-zero value is true.
 
 Display modes would matter here: byte, signed byte, word, address, binary,
 character, short byte array, and nearest-symbol pointer display. Some of this

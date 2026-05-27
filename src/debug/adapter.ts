@@ -194,6 +194,7 @@ export class Z80DebugSession extends DebugSession {
     response.body.supportsSingleThreadExecutionRequests = true;
     response.body.supportsSetVariable = true;
     response.body.supportsGotoTargetsRequest = true;
+    response.body.supportsEvaluateForHovers = true;
 
     this.sendResponse(response);
     this.sendEvent(new InitializedEvent());
@@ -403,6 +404,13 @@ export class Z80DebugSession extends DebugSession {
     args: DebugProtocol.VariablesArguments
   ): void {
     this.requestController.variablesRequest(response, args);
+  }
+
+  protected evaluateRequest(
+    response: DebugProtocol.EvaluateResponse,
+    args: DebugProtocol.EvaluateArguments
+  ): void {
+    this.requestController.evaluateRequest(response, args);
   }
 
   protected setVariableRequest(

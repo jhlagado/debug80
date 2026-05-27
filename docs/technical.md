@@ -327,11 +327,11 @@ Mapped candidates are displayed as symbolic stack entries; unmapped candidates
 are shown as raw addresses marked as likely data. This is intentionally a view
 over the machine stack, not a guaranteed high-level language call stack.
 
-The command `Debug80: Run to Selected Stack Return` is available from the Call
-Stack context menu while debugging Z80 code. It only acts on caller return frames
-whose stack word maps to known source code. The command sets a temporary run
-target at that return address and lets the program execute normally until it
-arrives there; it does not rewrite `SP`, `PC`, or stack memory.
+The command `Run to Here` is available from the Call Stack context menu while
+debugging Z80 code. It only acts on caller return frames whose stack word maps
+to known source code. The command sets a temporary run target at that return
+address and lets the program execute normally until it arrives there; it does
+not rewrite `SP`, `PC`, or stack memory.
 
 The VS Code Variables panel now exposes source-map-backed Symbols and, when
 available, Constants instead of duplicating registers; register display/editing
@@ -342,6 +342,16 @@ than showing an empty group. Without richer AZM metadata, Debug80 presents
 memory-backed symbols conservatively: address, symbol kind, known size, first
 byte, a word when size suggests it, a short byte preview, printable ASCII where
 available, and source location.
+
+The VS Code Watch panel uses the same paused runtime state plus active D8 source
+map symbols to evaluate small Z80-focused expressions. Registers are available
+with their normal names, including alternates such as `AF'` and `BC'`. Flags use
+AZM register-care names (`zero`, `carry`, `sign`, `parity`, `halfCarry`) to avoid
+confusion with registers. Square brackets read one byte from memory (`[HL]`,
+`[PACMO_LIVES]`, `[IX + 4]`), while parentheses are reserved for grouping.
+Arithmetic supports `+ - * / %`; bitwise operators are `& | ^ ~`; comparisons
+are `eq ne lt le gt ge`; logical operators are `and`, `or`, and `not`. Zero is
+false and any non-zero value is true.
 
 The orchestration for loading, validating, building, and caching these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is

@@ -26,6 +26,7 @@ import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { ADDR_MASK } from '../../platforms/tec-common';
 import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
+import { buildEvaluateResponseBody } from './watch-expression';
 
 export interface AdapterRequestControllerDeps {
   threadId: number;
@@ -330,6 +331,21 @@ export class AdapterRequestController {
     };
 
     this.deps.sendResponse(response);
+  }
+
+  public evaluateRequest(
+    response: DebugProtocol.EvaluateResponse,
+    args: DebugProtocol.EvaluateArguments
+  ): void {
+    try {
+      response.body = buildEvaluateResponseBody(args.expression, {
+        runtime: this.deps.sessionState.runtime,
+        symbols: this.deps.sessionState.sourceMapSymbols,
+      });
+      this.deps.sendResponse(response);
+    } catch (err) {
+      this.deps.sendErrorResponse(response, 1, String(err instanceof Error ? err.message : err));
+    }
   }
 
   public setVariableRequest(
