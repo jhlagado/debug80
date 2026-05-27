@@ -94,6 +94,24 @@ describe('BreakpointManager', () => {
     expect(mgr.getCondition(0x100)).toBe('A eq $20');
   });
 
+  it('prefers the condition from the closest source line when breakpoints share an address', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map());
+    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
+    const listingPath = path.join(baseDir, 'program.lst');
+    const sourcePath = path.resolve(baseDir, 'file.asm');
+    const index = createMockIndex(new Map([[sourcePath, new Map([[12, [0x100]]])]]));
+
+    mgr.setPending(sourcePath, [
+      { line: 12, condition: 'BC = $1001' },
+      { line: 10, condition: '.include' },
+    ]);
+    mgr.rebuild(listing, listingPath, index);
+
+    expect(mgr.hasAddress(0x100)).toBe(true);
+    expect(mgr.getCondition(0x100)).toBe('BC = $1001');
+  });
+
   it('marks breakpoints as unverified when listing is missing', () => {
     const mgr = new BreakpointManager();
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
