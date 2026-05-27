@@ -5,7 +5,9 @@
 import * as path from 'path';
 import { StackFrame, Source } from '@vscode/debugadapter';
 import { ListingInfo } from '../../z80/loaders';
+import type { SourceMapAnchor } from '../../mapping/parser';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../../mapping/source-map';
+import { findNearestSymbol } from './symbol-service';
 import { canonicalizeDebuggerSourcePath } from './path-utils';
 
 export interface SourceLookupOptions {
@@ -13,6 +15,8 @@ export interface SourceLookupOptions {
   listingPath?: string;
   mappingIndex?: SourceMapIndex;
   sourceFile?: string;
+  symbolAnchors?: SourceMapAnchor[];
+  lookupAnchors?: SourceMapAnchor[];
   resolveMappedPath: (filePath: string) => string | undefined;
   getAddressAliases?: (address: number) => number[];
 }
@@ -23,10 +27,30 @@ export function buildStackFrames(
 ): { stackFrames: StackFrame[]; totalFrames: number } {
   const resolved = resolveSourceForAddress(pc, options);
   const source = new Source(path.basename(resolved.path), resolved.path);
+  const name = resolveFrameName(pc, options);
   return {
-    stackFrames: [new StackFrame(0, 'main', source, resolved.line)],
+    stackFrames: [new StackFrame(0, name, source, resolved.line)],
     totalFrames: 1,
   };
+}
+
+function resolveFrameName(pc: number, options: SourceLookupOptions): string {
+  const anchors = options.symbolAnchors ?? [];
+  const lookupAnchors = options.lookupAnchors ?? [];
+  if (anchors.length === 0 && lookupAnchors.length === 0) {
+    return 'main';
+  }
+
+  const addresses = options.getAddressAliases?.(pc) ?? [pc];
+  for (const address of addresses) {
+    const symbol = findNearestSymbol(address & 0xffff, { anchors, lookupAnchors });
+    if (symbol === null) {
+      continue;
+    }
+    const offset = (address & 0xffff) - symbol.address;
+    return offset > 0 ? `${symbol.name}+${offset}` : symbol.name;
+  }
+  return 'main';
 }
 
 export function resolveSourceForAddress(

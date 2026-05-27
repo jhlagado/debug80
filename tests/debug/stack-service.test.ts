@@ -34,7 +34,7 @@ describe('stack-service', () => {
   it('resolves source from mapping and builds stack frames', () => {
     const mapping: MappingParseResult = {
       segments: [makeSegment(0x1000, 0x1002, 'main.asm', 42)],
-      anchors: [],
+      anchors: [{ symbol: 'Start', address: 0x1000, file: 'main.asm', line: 42 }],
     };
     const resolvedPath = path.resolve(path.join(os.tmpdir(), 'main.asm'));
     const index = buildSourceMapIndex(mapping, () => resolvedPath);
@@ -51,11 +51,32 @@ describe('stack-service', () => {
       mappingIndex: index,
       resolveMappedPath: () => resolvedPath,
       sourceFile: resolvedPath,
+      symbolAnchors: mapping.anchors,
+      lookupAnchors: mapping.anchors,
     });
 
     expect(frames.totalFrames).toBe(1);
-    expect(frames.stackFrames[0]?.name).toBe('main');
+    expect(frames.stackFrames[0]?.name).toBe('Start');
     expect(frames.stackFrames[0]?.line).toBe(42);
+  });
+
+  it('uses the nearest source-map symbol as the stack frame label', () => {
+    const mapping: MappingParseResult = {
+      segments: [makeSegment(0x1000, 0x1006, 'main.asm', 12)],
+      anchors: [{ symbol: 'Loop', address: 0x1000, file: 'main.asm', line: 12 }],
+    };
+    const resolvedPath = path.resolve(path.join(os.tmpdir(), 'main.asm'));
+    const index = buildSourceMapIndex(mapping, () => resolvedPath);
+
+    const frames = buildStackFrames(0x1004, {
+      mappingIndex: index,
+      resolveMappedPath: () => resolvedPath,
+      sourceFile: resolvedPath,
+      symbolAnchors: mapping.anchors,
+      lookupAnchors: mapping.anchors,
+    });
+
+    expect(frames.stackFrames[0]?.name).toBe('Loop+4');
   });
 
   it('uses address aliases when direct mapping misses', () => {

@@ -15,6 +15,8 @@ type ProjectPayload = {
   coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+  sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+  sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 };
 
 function createVscodeMock(): VscodeApi {
@@ -52,6 +54,7 @@ function getElements() {
     platformInitButton: document.getElementById('platformInitButton') as HTMLButtonElement,
     sendHexToBoardButton: document.getElementById('sendHexToBoard') as HTMLButtonElement,
     hardwareStatusLine: document.getElementById('hardwareStatusLine') as HTMLElement,
+    sourceMapStatusLine: document.getElementById('sourceMapStatusLine') as HTMLElement,
     platformInfoControl: document.getElementById('platformInfoControl') as HTMLElement,
     platformValue: document.getElementById('platformValue') as HTMLElement,
     setupCard: document.getElementById('setupCard') as HTMLElement,
@@ -77,6 +80,7 @@ function applyProjectPayload(payload: ProjectPayload): void {
       platformInitButton: elements.platformInitButton,
       sendHexToBoardButton: elements.sendHexToBoardButton,
       hardwareStatusLine: elements.hardwareStatusLine,
+      sourceMapStatusLine: elements.sourceMapStatusLine,
       homeTargetSelect: elements.homeTargetSelect,
       getPlatform: () => elements.platformSelect.value,
     },
@@ -140,6 +144,7 @@ describe('project status UI invariants', () => {
           </div>
         </div>
         <button class="project-action-button" id="sendHexToBoard" type="button">Send to Board</button>
+        <div id="sourceMapStatusLine"></div>
         <div id="hardwareStatusLine"></div>
         <div class="setup-card" id="setupCard">
           <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
@@ -197,6 +202,8 @@ describe('project status UI invariants', () => {
       coolTermAvailable: false,
       coolTermHexPath: '/workspace/debug80/build/app.hex',
       hardwareStatusText: 'CoolTerm not detected.',
+      sourceMapStatusText: 'Source map: current.',
+      sourceMapStatusState: 'current',
     });
 
     const elements = getElements();
@@ -205,6 +212,9 @@ describe('project status UI invariants', () => {
     expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1G');
     expect(elements.hardwareStatusLine.hidden).toBe(false);
     expect(elements.hardwareStatusLine.textContent).toBe('CoolTerm not detected.');
+    expect(elements.sourceMapStatusLine.hidden).toBe(false);
+    expect(elements.sourceMapStatusLine.textContent).toBe('Source map: current.');
+    expect(elements.sourceMapStatusLine.dataset.sourceMapStatus).toBe('current');
   });
 
   it('enables send when CoolTerm and the selected target hex are available', () => {

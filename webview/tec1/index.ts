@@ -33,10 +33,9 @@ const platformInitButton = document.getElementById(
   'platformInitButton'
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
-const sendHexToBoardButton = document.getElementById(
-  'sendHexToBoard'
-) as HTMLButtonElement | null;
+const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLButtonElement | null;
 const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
+const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
@@ -119,6 +118,7 @@ const projectStatusUi = createProjectStatusUi(
     platformInitButton,
     sendHexToBoardButton,
     hardwareStatusLine,
+    sourceMapStatusLine,
     homeTargetSelect,
   },
   'tec1'
@@ -136,6 +136,8 @@ function applyProjectStatus(payload: {
   coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+  sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+  sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {
   projectStatusUi.applyProjectStatus(payload);
   if (platformSelectEl && payload.platform !== undefined) {

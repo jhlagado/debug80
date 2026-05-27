@@ -29,17 +29,19 @@ are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
 - **Source-map-backed editor help**: press `F12` / Go to Definition on symbols,
   search active-target symbols through VS Code's workspace symbol picker, and
   hover over symbols for compact address/value/source details from the last
-  successful build. If no source map exists yet, build the target first.
+  successful build. The Project panel reports whether the active source map is
+  current, missing, or stale; if no source map exists yet, build the target
+  first.
 - **Run to Cursor**: use VS Code's normal Run to Cursor action while debugging
   Z80 source; Debug80 resolves the current source line through the active source
   map and runs to the matching address.
 - **Integrated assembler workflow**: a Z80 assembler is packaged with the
   extension and linked directly, so users do not need a global assembler install
   or a separate command-line toolchain just to start debugging.
-- **Register, symbol, and memory visibility**: inspect CPU registers, source-map
-  symbols, constants, flags, program counter state, memory regions, RAM
-  contents, ROM-protected ranges, and platform-specific memory behaviour while a
-  session is paused.
+- **Register, symbol, stack, and memory visibility**: inspect CPU registers,
+  source-map symbols and constants, symbolic stack-frame names, flags, program
+  counter state, memory regions, RAM contents, ROM-protected ranges, and
+  platform-specific memory behaviour while a session is paused.
 - **TEC-1 and TEC-1G emulation**: run programs against machine profiles that
   model memory layout, reset behaviour, keypad input, seven-segment display,
   speaker output, bit-banged serial, monitor ROM workflows, and platform-specific

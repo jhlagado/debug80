@@ -155,7 +155,12 @@ export class VariableService {
     if (symbols.length === 0) {
       return [];
     }
-    return symbols.slice(0, 250).map((symbol, index) => {
+    const sorted = [...symbols].sort((a, b) =>
+      constantsOnly
+        ? a.name.localeCompare(b.name)
+        : (a.address ?? 0) - (b.address ?? 0) || a.name.localeCompare(b.name)
+    );
+    return sorted.slice(0, 250).map((symbol, index) => {
       const variableReference =
         !constantsOnly && symbol.address !== undefined
           ? this.createSymbolReference(parentReference, index, symbol)
@@ -198,6 +203,18 @@ export class VariableService {
     const word = bytes.length >= 2 ? bytes[0]! | (bytes[1]! << 8) : undefined;
     const variables: DebugProtocol.Variable[] = [
       { name: 'address', value: this.format16(address), variablesReference: 0 },
+      ...(symbol.kind !== undefined
+        ? [{ name: 'kind', value: symbol.kind, variablesReference: 0 }]
+        : []),
+      ...(symbol.size !== undefined
+        ? [
+            {
+              name: 'size',
+              value: `${symbol.size} byte${symbol.size === 1 ? '' : 's'}`,
+              variablesReference: 0,
+            },
+          ]
+        : []),
       { name: 'byte', value: this.format8(bytes[0] ?? 0), variablesReference: 0 },
     ];
     if (word !== undefined && (symbol.size === undefined || symbol.size >= 2)) {
@@ -236,7 +253,10 @@ export class VariableService {
       return `${prefix} / ${this.format16(word)}`;
     }
     if ((symbol.size ?? 0) > 2) {
-      return `${this.format16(address)} (${symbol.size} bytes)`;
+      const preview = Array.from({ length: Math.min(symbol.size ?? 0, 8) }, (_unused, offset) =>
+        this.format8(this.readByte(runtime, address + offset))
+      ).join(' ');
+      return `${this.format16(address)} (${symbol.size} bytes) ${preview}`;
     }
     return prefix;
   }

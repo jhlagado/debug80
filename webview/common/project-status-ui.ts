@@ -17,6 +17,7 @@ export type ProjectStatusUiElements = {
   platformInitButton: HTMLButtonElement | null;
   sendHexToBoardButton?: HTMLButtonElement | null;
   hardwareStatusLine?: HTMLElement | null;
+  sourceMapStatusLine?: HTMLElement | null;
   homeTargetSelect: HTMLSelectElement | null;
   getPlatform?: () => string | undefined;
 };
@@ -28,6 +29,8 @@ export type ProjectStatusUi = {
     targets?: ProjectStatusPayload['targets'];
     targetName?: ProjectStatusPayload['targetName'];
     projectState?: ProjectStatusPayload['projectState'];
+    sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+    sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
   }) => void;
   dispose: () => void;
 };
@@ -88,6 +91,7 @@ export function createProjectStatusUi(
     platformInitButton,
     sendHexToBoardButton,
     hardwareStatusLine,
+    sourceMapStatusLine,
     homeTargetSelect,
     getPlatform,
   } = elements;
@@ -145,6 +149,8 @@ export function createProjectStatusUi(
     coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
     coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
     hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+    sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+    sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
   }): void {
     const projectState = resolveProjectViewState(payload);
     const initializedProject = projectState === 'initialized';
@@ -182,6 +188,12 @@ export function createProjectStatusUi(
       const text = payload.hardwareStatusText ?? '';
       hardwareStatusLine.textContent = text;
       hardwareStatusLine.hidden = !initializedProject || text.length === 0;
+    }
+    if (sourceMapStatusLine) {
+      const text = payload.sourceMapStatusText ?? '';
+      sourceMapStatusLine.textContent = text;
+      sourceMapStatusLine.dataset.sourceMapStatus = payload.sourceMapStatusState ?? '';
+      sourceMapStatusLine.hidden = !initializedProject || text.length === 0;
     }
     const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
     const targetCount = payload.targets?.length ?? 0;

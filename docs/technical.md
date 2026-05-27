@@ -306,16 +306,26 @@ Symbol hovers also recognize nearby AZMDoc register-care contracts and render
 both current multi-line contract comments and future compact single-line
 contract comments as one concise hover line.
 
+The Project panel also shows the active target's source-map status. Missing maps
+tell the user to build the selected target, invalid maps ask for a rebuild, and
+stale maps are called out as advisory rather than blocking debugger launch.
+
 Run to Cursor is implemented through VS Code's normal DAP `gotoTargets` /
 `goto` flow. Debug80 resolves the requested source line through the active
 mapping index, creates a temporary run target, continues execution, and stops
 when the target address is reached.
 
+Stack traces are source-map aware. Debug80 still reports a single execution
+frame because the Z80 runtime does not maintain a high-level call stack, but the
+frame name now uses the nearest source-map symbol and an offset, for example
+`UpdatePlayer+6`, instead of the old generic `main` label.
+
 The VS Code Variables panel now exposes source-map-backed Symbols and Constants
 scopes instead of duplicating registers; register display/editing lives in
 Debug80's own Registers panel. Without richer AZM metadata, Debug80 presents
-memory-backed symbols conservatively: address, first byte, a word when size
-suggests it, a short byte preview, and printable ASCII where available.
+memory-backed symbols conservatively: address, symbol kind, known size, first
+byte, a word when size suggests it, a short byte preview, printable ASCII where
+available, and source location.
 
 The orchestration for loading, validating, building, and caching these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is

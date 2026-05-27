@@ -25,6 +25,9 @@ export type ProjectStatusPayload = {
   coolTermHexPath?: string;
   /** Current hardware transfer/setup status for the project area. */
   hardwareStatusText?: string;
+  /** Current source-map status for editor navigation and debugger symbol views. */
+  sourceMapStatusText?: string;
+  sourceMapStatusState?: 'current' | 'stale' | 'missing' | 'invalid' | 'unknown';
   roots: Array<{
     name: string;
     path: string;

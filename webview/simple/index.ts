@@ -37,6 +37,7 @@ const targetControl = homeTargetSelect?.closest('.project-control') as HTMLEleme
 const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
 const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
 const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
+const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
@@ -62,6 +63,7 @@ const projectStatusUi = createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    sourceMapStatusLine,
     homeTargetSelect,
   },
   'simple'
@@ -93,6 +95,8 @@ function applyProjectStatus(payload: {
   platform?: string;
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
+  sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+  sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {
   projectStatusUi.applyProjectStatus(payload);
   if (platformSelectEl && payload.platform !== undefined) {

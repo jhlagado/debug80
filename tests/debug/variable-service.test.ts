@@ -127,6 +127,18 @@ describe('VariableService', () => {
     });
 
     const expanded = service.resolveVariables(symbols[0]?.variablesReference ?? 0, runtime);
+    expect(expanded.map((entry) => entry.name)).toEqual(
+      expect.arrayContaining([
+        'address',
+        'kind',
+        'size',
+        'byte',
+        'word',
+        'bytes[2]',
+        'ascii',
+        'source',
+      ])
+    );
     expect(expanded.map((entry) => entry.name)).toContain('ascii');
   });
 });

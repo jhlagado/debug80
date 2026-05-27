@@ -6,6 +6,7 @@ const {
   readProjectConfig,
   resolveProjectPlatform,
   listProjectTargetChoices,
+  resolveTargetNameForConfig,
   resolveProjectStatusSummary,
   resolveRememberedWorkspaceFolder,
 } = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const {
   readProjectConfig: vi.fn(),
   resolveProjectPlatform: vi.fn(),
   listProjectTargetChoices: vi.fn(),
+  resolveTargetNameForConfig: vi.fn(),
   resolveProjectStatusSummary: vi.fn(),
   resolveRememberedWorkspaceFolder: vi.fn(),
 }));
@@ -35,6 +37,7 @@ vi.mock('../../src/extension/project-config', () => ({
 
 vi.mock('../../src/extension/project-target-selection', () => ({
   listProjectTargetChoices,
+  resolveTargetNameForConfig,
 }));
 
 vi.mock('../../src/extension/project-status', () => ({
@@ -65,6 +68,7 @@ describe('platform-view-project-status', () => {
     listProjectTargetChoices.mockReturnValue([
       { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
     ]);
+    resolveTargetNameForConfig.mockReturnValue('app');
     resolveProjectStatusSummary.mockReturnValue({
       projectName: 'project',
       targetName: 'app',
@@ -149,6 +153,8 @@ describe('platform-view-project-status', () => {
       azmContractUpdateMode: 'never',
       coolTermAvailable: false,
       hardwareStatusText: 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.',
+      sourceMapStatusText: 'Source map: missing, build the selected target.',
+      sourceMapStatusState: 'missing',
       targetName: 'app',
       entrySource: 'src/main.asm',
     });

@@ -259,6 +259,8 @@ export class AdapterRequestController {
       ...(this.deps.sourceState.file !== undefined
         ? { sourceFile: this.deps.sourceState.file }
         : {}),
+      symbolAnchors: this.deps.sessionState.symbolAnchors,
+      lookupAnchors: this.deps.sourceState.lookupAnchors,
       resolveMappedPath: resolveFn,
       getAddressAliases: (address) => {
         const masked = address & ADDR_MASK;

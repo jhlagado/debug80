@@ -43,10 +43,9 @@ const platformInitButton = document.getElementById(
   'platformInitButton'
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
-const sendHexToBoardButton = document.getElementById(
-  'sendHexToBoard'
-) as HTMLButtonElement | null;
+const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLButtonElement | null;
 const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
+const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const azmRegisterCareModeSelect = document.getElementById(
   'azmRegisterCareMode'
@@ -72,9 +71,7 @@ const accordionProject = document.getElementById('accordion-project') as HTMLEle
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
 const accordionSerial = document.getElementById('accordion-serial') as HTMLElement;
-const accordionMatrixKeyboard = document.getElementById(
-  'accordion-matrix-keyboard'
-) as HTMLElement;
+const accordionMatrixKeyboard = document.getElementById('accordion-matrix-keyboard') as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
 const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
@@ -140,6 +137,7 @@ const projectStatusUi = createTec1gProjectStatusUi(
     platformInitButton,
     sendHexToBoardButton,
     hardwareStatusLine,
+    sourceMapStatusLine,
     homeTargetSelect,
     getPlatform: () => platformSelectEl?.value ?? undefined,
   },
