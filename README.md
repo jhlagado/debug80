@@ -39,9 +39,11 @@ are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
   extension and linked directly, so users do not need a global assembler install
   or a separate command-line toolchain just to start debugging.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,
-  source-map symbols and constants, symbolic stack-frame names, flags, program
-  counter state, memory regions, RAM contents, ROM-protected ranges, and
-  platform-specific memory behaviour while a session is paused.
+  source-map symbols and constants, best-effort symbolic stack entries, flags,
+  program counter state, memory regions, RAM contents, ROM-protected ranges, and
+  platform-specific memory behaviour while a session is paused. Mapped stack
+  entries can be used as safe temporary run targets without directly rewriting
+  `SP` or `PC`.
 - **TEC-1 and TEC-1G emulation**: run programs against machine profiles that
   model memory layout, reset behaviour, keypad input, seven-segment display,
   speaker output, bit-banged serial, monitor ROM workflows, and platform-specific

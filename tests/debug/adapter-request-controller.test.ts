@@ -244,6 +244,42 @@ describe('AdapterRequestController Run to Cursor flow', () => {
       limitLabel: 'run to cursor',
     });
   });
+
+  it('runs to a selected mapped stack frame return address', () => {
+    const runUntilStopSpy = vi
+      .spyOn(runtimeControl, 'runUntilStopAsync')
+      .mockResolvedValue(undefined);
+    const { controller, deps, sessionState } = createController();
+    const memory = new Uint8Array(0x10000);
+    memory[0xff00] = 0x00;
+    memory[0xff01] = 0x41;
+    sessionState.mappingIndex = {
+      segmentsByAddress: [
+        {
+          start: 0x4100,
+          end: 0x4103,
+          loc: { file: 'src/main.z80', line: 8 },
+          lst: { line: 20, text: 'RET target' },
+          confidence: 'HIGH',
+        },
+      ],
+      segmentsByFileLine: new Map(),
+      anchorsByFile: new Map(),
+    };
+    sessionState.runtime = {
+      getPC: () => 0x4000,
+      getRegisters: () => ({ sp: 0xff00 }),
+      hardware: { memory },
+    } as never;
+
+    controller.runToStackFrameRequest({} as DebugProtocol.Response, { frameId: 1 });
+
+    expect(deps.sendResponse).toHaveBeenCalledTimes(1);
+    expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
+      extraBreakpoints: new Set([0x4100]),
+      limitLabel: 'stack frame return',
+    });
+  });
 });
 
 describe('AdapterRequestController setVariableRequest', () => {

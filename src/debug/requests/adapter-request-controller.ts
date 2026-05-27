@@ -18,7 +18,7 @@ import {
   type RuntimeControlContext,
 } from '../session/runtime-control';
 import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
-import { resolveExecutableLocation } from '../../mapping/source-map';
+import { findSegmentForAddress, resolveExecutableLocation } from '../../mapping/source-map';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
 import { emitDebugSessionStatus } from '../session/session-status';
 import type { VariableService } from './variable-service';
@@ -40,6 +40,14 @@ export interface AdapterRequestControllerDeps {
   sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
   sendEvent: (event: unknown) => void;
   getRuntimeControlContext: () => RuntimeControlContext;
+}
+
+function readFrameId(args: unknown): number | undefined {
+  if (typeof args !== 'object' || args === null || !('frameId' in args)) {
+    return undefined;
+  }
+  const value = (args as { frameId?: unknown }).frameId;
+  return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
 }
 
 /**
@@ -261,6 +269,12 @@ export class AdapterRequestController {
         : {}),
       symbolAnchors: this.deps.sessionState.symbolAnchors,
       lookupAnchors: this.deps.sourceState.lookupAnchors,
+      stackPointer: this.deps.sessionState.runtime.getRegisters().sp,
+      maxStackFrames: 8,
+      readMemory: (address) =>
+        this.deps.sessionState.runtime?.hardware.memRead?.(address) ??
+        this.deps.sessionState.runtime?.hardware.memory[address & ADDR_MASK] ??
+        0,
       resolveMappedPath: resolveFn,
       getAddressAliases: (address) => {
         const masked = address & ADDR_MASK;
@@ -389,6 +403,40 @@ export class AdapterRequestController {
     fallback(command, response, args);
   }
 
+  public runToStackFrameRequest(response: DebugProtocol.Response, args: unknown): boolean {
+    const frameId = readFrameId(args);
+    const runtime = this.deps.sessionState.runtime;
+    if (runtime === undefined) {
+      this.deps.sendErrorResponse(response, 1, 'No program loaded');
+      return true;
+    }
+    if (frameId === undefined || frameId < 1) {
+      this.deps.sendErrorResponse(response, 1, 'Select a stack return frame, not the current PC.');
+      return true;
+    }
+    const sp = runtime.getRegisters().sp & ADDR_MASK;
+    const stackAddress = (sp + (frameId - 1) * 2) & ADDR_MASK;
+    const returnAddress = this.readWord(stackAddress);
+    const segment =
+      this.deps.sessionState.mappingIndex !== undefined
+        ? findSegmentForAddress(this.deps.sessionState.mappingIndex, returnAddress)
+        : undefined;
+    if (segment === undefined || segment.loc.file === null) {
+      this.deps.sendErrorResponse(
+        response,
+        1,
+        `Stack entry $${returnAddress.toString(16).padStart(4, '0')} is not mapped to source code.`
+      );
+      return true;
+    }
+
+    this.deps.sendResponse(response);
+    this.deps.sessionState.runState.pauseRequested = false;
+    this.updateBreakpointSkip();
+    this.runUntilStop(new Set([returnAddress]), undefined, 'stack frame return');
+    return true;
+  }
+
   public isBreakpointAddress(address: number | null): boolean {
     return isBreakpointAddress(address, {
       hasBreakpoint: (addr) => this.deps.breakpointManager.hasAddress(addr),
@@ -450,6 +498,13 @@ export class AdapterRequestController {
       ...(extraBreakpoints !== undefined ? { extraBreakpoints } : {}),
       ...(maxInstructions !== undefined ? { maxInstructions } : {}),
     });
+  }
+
+  private readWord(address: number): number {
+    const runtime = this.deps.sessionState.runtime;
+    const readByte = (addr: number): number =>
+      runtime?.hardware.memRead?.(addr) ?? runtime?.hardware.memory[addr & ADDR_MASK] ?? 0;
+    return (readByte(address) & 0xff) | ((readByte((address + 1) & ADDR_MASK) & 0xff) << 8);
   }
 
   private handleSingleStepRequest(

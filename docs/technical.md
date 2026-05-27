@@ -315,10 +315,19 @@ Run to Cursor is implemented through VS Code's normal DAP `gotoTargets` /
 mapping index, creates a temporary run target, continues execution, and stops
 when the target address is reached.
 
-Stack traces are source-map aware. Debug80 still reports a single execution
-frame because the Z80 runtime does not maintain a high-level call stack, but the
-frame name now uses the nearest source-map symbol and an offset, for example
-`UpdatePlayer+6`, instead of the old generic `main` label.
+Stack traces are source-map aware. Frame 0 is the current PC, labelled with the
+nearest source-map symbol and an offset, for example `UpdatePlayer+6`, instead
+of the old generic `main` label. Debug80 then reads up to eight 16-bit words from
+the current Z80 `SP` and treats them as best-effort return-address candidates.
+Mapped candidates are displayed as symbolic stack entries; unmapped candidates
+are shown as raw addresses marked as likely data. This is intentionally a view
+over the machine stack, not a guaranteed high-level language call stack.
+
+The command `Debug80: Run to Selected Stack Return` is available from the Call
+Stack context menu while debugging Z80 code. It only acts on caller return frames
+whose stack word maps to known source code. The command sets a temporary run
+target at that return address and lets the program execute normally until it
+arrives there; it does not rewrite `SP`, `PC`, or stack memory.
 
 The VS Code Variables panel now exposes source-map-backed Symbols and Constants
 scopes instead of duplicating registers; register display/editing lives in

@@ -17,6 +17,9 @@ export interface SourceLookupOptions {
   sourceFile?: string;
   symbolAnchors?: SourceMapAnchor[];
   lookupAnchors?: SourceMapAnchor[];
+  stackPointer?: number;
+  maxStackFrames?: number;
+  readMemory?: (address: number) => number;
   resolveMappedPath: (filePath: string) => string | undefined;
   getAddressAliases?: (address: number) => number[];
 }
@@ -28,9 +31,11 @@ export function buildStackFrames(
   const resolved = resolveSourceForAddress(pc, options);
   const source = new Source(path.basename(resolved.path), resolved.path);
   const name = resolveFrameName(pc, options);
+  const stackFrames = [new StackFrame(0, name, source, resolved.line)];
+  stackFrames.push(...buildReturnStackFrames(options));
   return {
-    stackFrames: [new StackFrame(0, name, source, resolved.line)],
-    totalFrames: 1,
+    stackFrames,
+    totalFrames: stackFrames.length,
   };
 }
 
@@ -51,6 +56,55 @@ function resolveFrameName(pc: number, options: SourceLookupOptions): string {
     return offset > 0 ? `${symbol.name}+${offset}` : symbol.name;
   }
   return 'main';
+}
+
+function buildReturnStackFrames(options: SourceLookupOptions): StackFrame[] {
+  if (
+    options.stackPointer === undefined ||
+    options.readMemory === undefined ||
+    options.mappingIndex === undefined
+  ) {
+    return [];
+  }
+  const max = Math.max(0, Math.min(options.maxStackFrames ?? 8, 8));
+  const frames: StackFrame[] = [];
+  for (let i = 0; i < max; i += 1) {
+    const stackAddress = (options.stackPointer + i * 2) & 0xffff;
+    const address = readWord(options.readMemory, stackAddress);
+    const mapped = resolveSourceForAddressInternal(address, options);
+    const name = mapped
+      ? resolveFrameName(address, options)
+      : `$${formatHex16(address)} (likely data)`;
+    if (mapped) {
+      const resolved = finalizeSourcePath(mapped);
+      const source = new Source(path.basename(resolved.path), resolved.path);
+      frames.push(new StackFrame(i + 1, name, source, resolved.line));
+    } else {
+      frames.push(new StackFrame(i + 1, name));
+    }
+  }
+  return trimTrailingLikelyData(frames);
+}
+
+function trimTrailingLikelyData(frames: StackFrame[]): StackFrame[] {
+  let end = frames.length;
+  while (end > 0 && frames[end - 1]?.source === undefined) {
+    end -= 1;
+  }
+  if (end === 0) {
+    return frames.slice(0, 1);
+  }
+  return frames.slice(0, end);
+}
+
+function readWord(readMemory: (address: number) => number, address: number): number {
+  const lo = readMemory(address & 0xffff) & 0xff;
+  const hi = readMemory((address + 1) & 0xffff) & 0xff;
+  return lo | (hi << 8);
+}
+
+function formatHex16(address: number): string {
+  return (address & 0xffff).toString(16).padStart(4, '0');
 }
 
 export function resolveSourceForAddress(

@@ -364,6 +364,10 @@
         "title": "Debug80: Restart Debugging (Current Target)"
       },
       {
+        "command": "debug80.runToSelectedStackFrame",
+        "title": "Debug80: Run to Selected Stack Return"
+      },
+      {
         "command": "debug80.setEntrySource",
         "title": "Debug80: Set Program File"
       },
@@ -408,6 +412,13 @@
           "command": "debug80.setEntrySource",
           "when": "resourceExtname == .asm || resourceExtname == .z80",
           "group": "navigation@9"
+        }
+      ],
+      "debug/callstack/context": [
+        {
+          "command": "debug80.runToSelectedStackFrame",
+          "when": "debugType == z80",
+          "group": "navigation@20"
         }
       ]
     },

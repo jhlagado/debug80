@@ -22,6 +22,7 @@ export type CustomRequestType =
   | 'debug80/registerWrite'
   | 'debug80/memoryWrite'
   | 'debug80/rebuildWarm'
+  | 'debug80/runToStackFrame'
   | 'debug80/romSources';
 
 /**

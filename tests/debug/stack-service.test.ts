@@ -79,6 +79,49 @@ describe('stack-service', () => {
     expect(frames.stackFrames[0]?.name).toBe('Loop+4');
   });
 
+  it('walks stack words as best-effort symbolic return frames', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        makeSegment(0x1000, 0x1006, 'main.asm', 12),
+        makeSegment(0x2010, 0x2014, 'draw.asm', 20),
+        makeSegment(0x3000, 0x3003, 'loop.asm', 30),
+      ],
+      anchors: [
+        { symbol: 'Current', address: 0x1000, file: 'main.asm', line: 12 },
+        { symbol: 'DrawSprite', address: 0x2000, file: 'draw.asm', line: 18 },
+        { symbol: 'GameLoop', address: 0x3000, file: 'loop.asm', line: 30 },
+      ],
+    };
+    const root = os.tmpdir();
+    const index = buildSourceMapIndex(mapping, (file) => path.join(root, file));
+    const memory = new Uint8Array(0x10000);
+    memory[0xff00] = 0x12;
+    memory[0xff01] = 0x20;
+    memory[0xff02] = 0xaa;
+    memory[0xff03] = 0x55;
+    memory[0xff04] = 0x00;
+    memory[0xff05] = 0x30;
+
+    const frames = buildStackFrames(0x1002, {
+      mappingIndex: index,
+      resolveMappedPath: (file) => path.join(root, file),
+      sourceFile: path.join(root, 'main.asm'),
+      symbolAnchors: mapping.anchors,
+      lookupAnchors: mapping.anchors,
+      stackPointer: 0xff00,
+      maxStackFrames: 8,
+      readMemory: (address) => memory[address & 0xffff] ?? 0,
+    });
+
+    expect(frames.stackFrames.map((frame) => frame.name)).toEqual([
+      'Current+2',
+      'DrawSprite+18',
+      '$55aa (likely data)',
+      'GameLoop',
+    ]);
+    expect(frames.totalFrames).toBe(4);
+  });
+
   it('uses address aliases when direct mapping misses', () => {
     const mapping: MappingParseResult = {
       segments: [makeSegment(0x2000, 0x2002, 'main.asm', 7)],

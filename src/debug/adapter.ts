@@ -130,6 +130,9 @@ export class Z80DebugSession extends DebugSession {
     this.commandRouter.register('debug80/terminalBreak', (response) =>
       handleTerminalBreak(response, terminalDeps)
     );
+    this.commandRouter.register('debug80/runToStackFrame', (response, args) =>
+      this.requestController.runToStackFrameRequest(response, args)
+    );
     const memoryDeps = {
       getRuntime: () => this.sessionState.runtimeState.execution,
       getRunning: () => this.sessionState.runState.isRunning,
