@@ -487,7 +487,7 @@ export class AdapterRequestController {
           'console'
         )
       );
-      return true;
+      return false;
     }
   }
 
