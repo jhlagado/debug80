@@ -98,7 +98,7 @@ describe('tec1g UI visibility controls', () => {
       Array.from(doc.querySelectorAll<HTMLButtonElement>('[data-accordion-toggle]')).map(
         (button) => button.dataset.accordionToggle
       )
-    ).toEqual(['project', 'displays', 'machine', 'matrixKeyboard', 'serial', 'registers', 'memory']);
+    ).toEqual(['project', 'displays', 'machine', 'registers', 'memory', 'serial', 'matrixKeyboard']);
 
     const css = fs.readFileSync(CSS_PATH, 'utf8');
     expect(css).toContain('.tec1g-ui-frame');
