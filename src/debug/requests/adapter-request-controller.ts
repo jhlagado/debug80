@@ -481,9 +481,7 @@ export class AdapterRequestController {
     } catch (err) {
       this.deps.sendEvent(
         new OutputEvent(
-          `Debug80: Conditional breakpoint expression failed: ${String(
-            err instanceof Error ? err.message : err
-          )}\n`,
+          formatConditionalBreakpointError(condition, err),
           'console'
         )
       );
@@ -682,4 +680,14 @@ export class AdapterRequestController {
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
   }
+}
+
+function formatConditionalBreakpointError(condition: string, err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err);
+  return [
+    `Debug80: Invalid conditional breakpoint expression "${condition}".`,
+    `Reason: ${detail}`,
+    'Use registers, flags, symbols, memory reads such as [PACMO_LIVES], and comparisons such as BC = $1001.',
+    '',
+  ].join('\n');
 }

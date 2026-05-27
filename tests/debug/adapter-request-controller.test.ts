@@ -146,7 +146,7 @@ describe('adapter-request-controller conditional breakpoints', () => {
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
   });
 
-  it('skips and reports when a breakpoint condition cannot be evaluated', () => {
+  it('skips and reports a helpful diagnostic when a breakpoint condition cannot be evaluated', () => {
     const { controller, deps, sessionState } = createController();
     sessionState.runtime = createZ80Runtime({
       memory: new Uint8Array(0x10000),
@@ -157,6 +157,11 @@ describe('adapter-request-controller conditional breakpoints', () => {
 
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
     expect(deps.sendEvent).toHaveBeenCalledTimes(1);
+    const event = deps.sendEvent.mock.calls[0]?.[0] as { body?: { output?: string } };
+    expect(event.body?.output).toContain(
+      'Debug80: Invalid conditional breakpoint expression "UNKNOWN_SYMBOL eq 1".'
+    );
+    expect(event.body?.output).toContain('Use registers, flags, symbols');
   });
 });
 
