@@ -26,7 +26,7 @@ import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { ADDR_MASK } from '../../platforms/tec-common';
 import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
-import { buildEvaluateResponseBody } from './watch-expression';
+import { buildEvaluateResponseBody, evaluateWatchExpressionTruthy } from './watch-expression';
 
 export interface AdapterRequestControllerDeps {
   threadId: number;
@@ -461,6 +461,36 @@ export class AdapterRequestController {
     });
   }
 
+  public shouldStopAtBreakpoint(address: number | null): boolean {
+    if (address === null) {
+      return false;
+    }
+    const matched = this.findMatchedBreakpointAddress(address);
+    if (matched === null) {
+      return false;
+    }
+    const condition = this.deps.breakpointManager.getCondition(matched);
+    if (condition === undefined) {
+      return true;
+    }
+    try {
+      return evaluateWatchExpressionTruthy(condition, {
+        runtime: this.deps.sessionState.runtime,
+        symbols: this.deps.sessionState.sourceMapSymbols,
+      });
+    } catch (err) {
+      this.deps.sendEvent(
+        new OutputEvent(
+          `Debug80: Conditional breakpoint expression failed: ${String(
+            err instanceof Error ? err.message : err
+          )}\n`,
+          'console'
+        )
+      );
+      return true;
+    }
+  }
+
   public handleHaltStop(): void {
     this.deps.sessionState.runState.isRunning = false;
     if (!this.deps.sessionState.runState.haltNotified) {
@@ -514,6 +544,18 @@ export class AdapterRequestController {
       ...(extraBreakpoints !== undefined ? { extraBreakpoints } : {}),
       ...(maxInstructions !== undefined ? { maxInstructions } : {}),
     });
+  }
+
+  private findMatchedBreakpointAddress(address: number): number | null {
+    const masked = address & ADDR_MASK;
+    if (this.deps.breakpointManager.hasAddress(masked)) {
+      return masked;
+    }
+    const shadowAlias = this.getShadowAlias(masked);
+    if (shadowAlias !== null && this.deps.breakpointManager.hasAddress(shadowAlias)) {
+      return shadowAlias;
+    }
+    return null;
   }
 
   private readWord(address: number): number {

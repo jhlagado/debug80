@@ -82,6 +82,18 @@ describe('BreakpointManager', () => {
     expect(mgr.hasAddress(0x200)).toBe(true);
   });
 
+  it('stores conditions on resolved breakpoint addresses', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map([[10, 0x100]]));
+    const listingPath = path.join(path.parse(process.cwd()).root, 'test', 'program.lst');
+
+    mgr.setPending(listingPath, [{ line: 10, condition: 'A eq $20' }]);
+    mgr.applyAll(listing, listingPath, undefined);
+
+    expect(mgr.hasAddress(0x100)).toBe(true);
+    expect(mgr.getCondition(0x100)).toBe('A eq $20');
+  });
+
   it('marks breakpoints as unverified when listing is missing', () => {
     const mgr = new BreakpointManager();
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');

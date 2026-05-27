@@ -79,7 +79,7 @@ export class Z80DebugSession extends DebugSession {
       sessionState: this.sessionState,
       activePlatform: () => this.platformState.active,
       isBreakpointAddress: (address: number | null): boolean =>
-        this.requestController.isBreakpointAddress(address),
+        this.requestController.shouldStopAtBreakpoint(address),
       handleHaltStop: (): void => this.requestController.handleHaltStop(),
       sendEvent: (event: unknown): void => {
         this.sendEvent(event as DebugProtocol.Event);
@@ -195,6 +195,7 @@ export class Z80DebugSession extends DebugSession {
     response.body.supportsSetVariable = true;
     response.body.supportsGotoTargetsRequest = true;
     response.body.supportsEvaluateForHovers = true;
+    response.body.supportsConditionalBreakpoints = true;
 
     this.sendResponse(response);
     this.sendEvent(new InitializedEvent());

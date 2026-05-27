@@ -108,6 +108,17 @@ export function evaluateWatchExpression(
   };
 }
 
+export function evaluateWatchExpressionTruthy(
+  expression: string,
+  context: WatchEvaluationContext
+): boolean {
+  if (context.runtime === undefined) {
+    throw new Error('No active Debug80 runtime.');
+  }
+  const ast = new WatchExpressionParser(tokenize(expression)).parse();
+  return evaluate(ast, context).value !== 0;
+}
+
 export function buildEvaluateResponseBody(
   expression: string,
   context: WatchEvaluationContext

@@ -28,6 +28,7 @@ interface SourceBreakpointResolver {
 export class BreakpointManager {
   private readonly pendingBySource = new Map<string, DebugProtocol.SourceBreakpoint[]>();
   private readonly active = new Set<number>();
+  private readonly conditions = new Map<number, string>();
   private readonly sourceResolvers: SourceBreakpointResolver[];
 
   constructor() {
@@ -72,6 +73,7 @@ export class BreakpointManager {
   reset(): void {
     this.pendingBySource.clear();
     this.active.clear();
+    this.conditions.clear();
   }
 
   setPending(sourcePath: string, breakpoints: DebugProtocol.SourceBreakpoint[]): void {
@@ -127,6 +129,7 @@ export class BreakpointManager {
     mappingIndex: SourceMapIndex | undefined
   ): void {
     this.active.clear();
+    this.conditions.clear();
     if (listing === undefined || listingPath === undefined) {
       return;
     }
@@ -143,6 +146,9 @@ export class BreakpointManager {
         );
         for (const address of resolution.addresses) {
           this.active.add(address);
+          if (bp.condition !== undefined && bp.condition.trim().length > 0) {
+            this.conditions.set(address, bp.condition.trim());
+          }
         }
       }
     }
@@ -150,6 +156,10 @@ export class BreakpointManager {
 
   hasAddress(address: number): boolean {
     return this.active.has(address);
+  }
+
+  getCondition(address: number): string | undefined {
+    return this.conditions.get(address);
   }
 
   private resolveBreakpointForSource(

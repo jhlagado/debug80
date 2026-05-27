@@ -38,6 +38,9 @@ are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
 - **Z80-focused Watch expressions**: add registers, flags, symbols, and byte
   memory reads to VS Code's Watch panel with expressions such as `A`, `HL`,
   `zero`, `[PACMO_LIVES]`, `[HL]`, or `[IX + 4] eq 0`.
+- **Conditional breakpoints**: use the same Watch expression language in VS
+  Code breakpoint conditions, for example `[PACMO_LIVES] eq 0` or
+  `zero and A eq $20`.
 - **Integrated assembler workflow**: a Z80 assembler is packaged with the
   extension and linked directly, so users do not need a global assembler install
   or a separate command-line toolchain just to start debugging.

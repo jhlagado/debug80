@@ -353,6 +353,14 @@ Arithmetic supports `+ - * / %`; bitwise operators are `& | ^ ~`; comparisons
 are `eq ne lt le gt ge`; logical operators are `and`, `or`, and `not`. Zero is
 false and any non-zero value is true.
 
+Conditional breakpoints use the same evaluator. VS Code sends each breakpoint
+condition with the source breakpoint, Debug80 stores the condition on the
+resolved executable address, and the runtime checks it when the PC reaches that
+address. A false or zero result lets execution continue. A true or non-zero
+result stops with the normal breakpoint reason. Expression errors are treated as
+breakpoint hits and are reported to the Debug Console, which avoids silently
+skipping a breakpoint because of a typo or stale source-map symbol.
+
 The orchestration for loading, validating, building, and caching these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is
 distinct from the data-format layer in `src/mapping/`. Extra ROM listings (from `extraListings`

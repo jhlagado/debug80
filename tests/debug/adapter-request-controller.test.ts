@@ -23,6 +23,7 @@ function createController() {
       applyForSource: vi.fn(),
       rebuild: vi.fn(),
       hasAddress: vi.fn(() => false),
+      getCondition: vi.fn(() => undefined),
     },
     sourceState: {} as never,
     sessionState,
@@ -116,6 +117,46 @@ describe('adapter-request-controller startup sequencing', () => {
     controller.startConfiguredExecutionIfReady();
 
     expect(runUntilStopSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('adapter-request-controller conditional breakpoints', () => {
+  it('stops when a breakpoint has no condition', () => {
+    const { controller, deps } = createController();
+    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(true);
+  });
+
+  it('evaluates breakpoint conditions with the watch expression language', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    sessionState.runtime.cpu.a = 0x20;
+    sessionState.runtime.cpu.flags.Z = 1;
+    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
+    deps.breakpointManager.getCondition.mockReturnValue('zero and A eq $20');
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(true);
+
+    deps.breakpointManager.getCondition.mockReturnValue('carry');
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+  });
+
+  it('stops and reports when a breakpoint condition cannot be evaluated', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
+    deps.breakpointManager.getCondition.mockReturnValue('UNKNOWN_SYMBOL eq 1');
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(true);
+    expect(deps.sendEvent).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -167,6 +167,14 @@ explain whether the symbol is missing, the expression is unsupported, the target
 has not built, or the memory address is unavailable. Truth follows the usual
 debugger convention: zero is false, and any non-zero value is true.
 
+The same expression language is now used for VS Code conditional breakpoints.
+When execution reaches a source breakpoint with a condition, Debug80 evaluates
+the condition against the current CPU, memory, and active source-map symbols. If
+the expression is zero or false, execution continues. If it is non-zero or true,
+Debug80 stops at the breakpoint. If the expression cannot be evaluated, Debug80
+stops and writes the expression error to the Debug Console rather than silently
+running past a breakpoint the user expected to catch.
+
 Display modes would matter here: byte, signed byte, word, address, binary,
 character, short byte array, and nearest-symbol pointer display. Some of this
 can be inferred from D8, but manual suffixes such as `symbol:u8`, `symbol:u16`,
