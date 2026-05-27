@@ -13,6 +13,7 @@ export type ProviderPanelTab = 'ui' | 'memory';
 
 type StoredAccordionState = {
   debug80Accordion?: Partial<Record<AccordionPanel, boolean>>;
+  debug80AccordionOrder?: AccordionPanel[];
 };
 
 type AccordionLayoutOptions = {
@@ -51,6 +52,15 @@ const DEFAULT_OPEN_STATE: Record<AccordionPanel, boolean> = {
   registers: true,
   memory: false,
 };
+const PANEL_SET = new Set<AccordionPanel>([
+  'project',
+  'machine',
+  'displays',
+  'serial',
+  'matrixKeyboard',
+  'registers',
+  'memory',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -73,12 +83,34 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
   return result;
 }
 
-function writeStoredOpenState(vscode: VscodeApi, openState: Record<AccordionPanel, boolean>): void {
+function readStoredPanelOrder(vscode: VscodeApi, defaultOrder: AccordionPanel[]): AccordionPanel[] {
+  const state = vscode.getState();
+  if (!isRecord(state) || !Array.isArray(state.debug80AccordionOrder)) {
+    return [...defaultOrder];
+  }
+  const defaultSet = new Set(defaultOrder);
+  const seen = new Set<AccordionPanel>();
+  const storedOrder = state.debug80AccordionOrder.filter((panel): panel is AccordionPanel => {
+    if (!defaultSet.has(panel as AccordionPanel) || seen.has(panel as AccordionPanel)) {
+      return false;
+    }
+    seen.add(panel as AccordionPanel);
+    return true;
+  });
+  return [...storedOrder, ...defaultOrder.filter((panel) => !seen.has(panel))];
+}
+
+function writeStoredAccordionState(
+  vscode: VscodeApi,
+  openState: Record<AccordionPanel, boolean>,
+  panelOrder: AccordionPanel[]
+): void {
   const current = vscode.getState();
   const base = isRecord(current) ? current : {};
   const next: StoredAccordionState & Record<string, unknown> = {
     ...base,
     debug80Accordion: { ...openState },
+    debug80AccordionOrder: [...panelOrder],
   };
   vscode.setState(next);
 }
@@ -99,6 +131,15 @@ function resolveMemoryRowSize(width: number, currentSize: number): number {
 export function createAccordionLayoutController(
   options: AccordionLayoutOptions
 ): AccordionLayoutController {
+  const sectionByPanel = new Map<AccordionPanel, HTMLElement>();
+  const orderControlsByPanel = new Map<
+    AccordionPanel,
+    { moveUp: HTMLButtonElement; moveDown: HTMLButtonElement }
+  >();
+  const defaultOrder = options.buttons
+    .map((button) => button.dataset.accordionToggle)
+    .filter((panel): panel is AccordionPanel => Boolean(panel && PANEL_SET.has(panel as AccordionPanel)));
+  let panelOrder = readStoredPanelOrder(options.vscode, defaultOrder);
   const stored = readStoredOpenState(options.vscode);
   const openState: Record<AccordionPanel, boolean> = {
     ...DEFAULT_OPEN_STATE,
@@ -117,6 +158,15 @@ export function createAccordionLayoutController(
   let resizeTimer: number | null = null;
   let registerRefreshActive = false;
   let registerRefreshTimer: number | null = null;
+  const panelLabels: Record<AccordionPanel, string> = {
+    project: 'Project',
+    machine: 'Machine',
+    displays: 'Displays',
+    serial: 'Serial',
+    matrixKeyboard: 'Matrix Keyboard',
+    registers: 'Registers',
+    memory: 'Memory',
+  };
 
   function getContent(panel: AccordionPanel): HTMLElement | null {
     return options.panels[panel] ?? null;
@@ -135,6 +185,90 @@ export function createAccordionLayoutController(
       button.classList.toggle('active', openState[panel]);
       button.setAttribute('aria-expanded', openState[panel] ? 'true' : 'false');
     }
+  }
+
+  function getAccordionRoot(): HTMLElement | null {
+    return options.buttons[0]?.closest('.debug80-accordion') as HTMLElement | null;
+  }
+
+  function createMoveButton(panel: AccordionPanel, direction: 'up' | 'down'): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'debug80-accordion-move-button';
+    button.dataset.accordionMove = direction;
+    button.dataset.accordionPanel = panel;
+    button.textContent = direction === 'up' ? '↑' : '↓';
+    button.title = `Move ${panelLabels[panel]} ${direction}`;
+    button.setAttribute('aria-label', `Move ${panelLabels[panel]} ${direction}`);
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      movePanel(panel, direction);
+    });
+    return button;
+  }
+
+  function prepareOrderControls(): void {
+    for (const button of options.buttons) {
+      const panel = button.dataset.accordionToggle as AccordionPanel | undefined;
+      if (!panel || !PANEL_SET.has(panel)) {
+        continue;
+      }
+      const section = button.closest('.debug80-accordion-section') as HTMLElement | null;
+      if (!section) {
+        continue;
+      }
+      sectionByPanel.set(panel, section);
+      const row = document.createElement('div');
+      row.className = 'debug80-accordion-header-row';
+      section.insertBefore(row, button);
+      row.appendChild(button);
+      const controls = document.createElement('div');
+      controls.className = 'debug80-accordion-move-controls';
+      const moveUp = createMoveButton(panel, 'up');
+      const moveDown = createMoveButton(panel, 'down');
+      controls.append(moveUp, moveDown);
+      row.appendChild(controls);
+      orderControlsByPanel.set(panel, { moveUp, moveDown });
+    }
+  }
+
+  function applyPanelOrder(): void {
+    const root = getAccordionRoot();
+    if (!root) {
+      return;
+    }
+    for (const panel of panelOrder) {
+      const section = sectionByPanel.get(panel);
+      if (section) {
+        root.appendChild(section);
+      }
+    }
+    for (const panel of panelOrder) {
+      const controls = orderControlsByPanel.get(panel);
+      if (!controls) {
+        continue;
+      }
+      const index = panelOrder.indexOf(panel);
+      controls.moveUp.disabled = index <= 0;
+      controls.moveDown.disabled = index === -1 || index >= panelOrder.length - 1;
+    }
+  }
+
+  function movePanel(panel: AccordionPanel, direction: 'up' | 'down'): void {
+    const index = panelOrder.indexOf(panel);
+    if (index === -1) {
+      return;
+    }
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= panelOrder.length) {
+      return;
+    }
+    const nextOrder = [...panelOrder];
+    [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
+    panelOrder = nextOrder;
+    applyPanelOrder();
+    writeStoredAccordionState(options.vscode, openState, panelOrder);
   }
 
   function getNextProviderTab(): ProviderPanelTab {
@@ -194,7 +328,7 @@ export function createAccordionLayoutController(
   function setOpen(panel: AccordionPanel, open: boolean, notify: boolean): void {
     openState[panel] = open;
     applyPanelState(panel);
-    writeStoredOpenState(options.vscode, openState);
+    writeStoredAccordionState(options.vscode, openState, panelOrder);
     syncProviderTab(notify);
     if (panel === 'memory' && open) {
       updateMemoryLayout(true);
@@ -214,13 +348,15 @@ export function createAccordionLayoutController(
     openState.memory = false;
     applyPanelState('machine');
     applyPanelState('memory');
-    writeStoredOpenState(options.vscode, openState);
+    writeStoredAccordionState(options.vscode, openState, panelOrder);
     syncProviderTab(notify);
     syncRegisterRefresh();
   }
 
+  prepareOrderControls();
+  applyPanelOrder();
   (Object.keys(openState) as AccordionPanel[]).forEach(applyPanelState);
-  writeStoredOpenState(options.vscode, openState);
+  writeStoredAccordionState(options.vscode, openState, panelOrder);
   syncProviderTab(false);
 
   return {

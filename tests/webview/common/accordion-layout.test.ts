@@ -11,6 +11,30 @@ function button(panel: string): HTMLButtonElement {
   return element;
 }
 
+function accordionFixture(panels: string[]): {
+  root: HTMLElement;
+  buttons: HTMLButtonElement[];
+  sections: HTMLElement[];
+} {
+  const root = document.createElement('div');
+  root.className = 'debug80-accordion';
+  const buttons = panels.map((panel) => {
+    const section = document.createElement('section');
+    section.className = 'debug80-accordion-section';
+    section.dataset.panel = panel;
+    const header = button(panel);
+    section.appendChild(header);
+    root.appendChild(section);
+    return header;
+  });
+  document.body.appendChild(root);
+  return {
+    root,
+    buttons,
+    sections: Array.from(root.querySelectorAll<HTMLElement>('.debug80-accordion-section')),
+  };
+}
+
 function createVscodeMock(messages: PostedMessage[], initialState: unknown = null): VscodeApi {
   let state = initialState;
   return {
@@ -27,6 +51,7 @@ function createVscodeMock(messages: PostedMessage[], initialState: unknown = nul
 describe('accordion layout controller', () => {
   afterEach(() => {
     vi.useRealTimers();
+    document.body.innerHTML = '';
   });
 
   it('defaults to machine and registers open and persists toggled sections', () => {
@@ -77,6 +102,7 @@ describe('accordion layout controller', () => {
         registers: false,
         memory: true,
       },
+      debug80AccordionOrder: ['machine', 'registers', 'memory'],
     });
   });
 
@@ -160,6 +186,7 @@ describe('accordion layout controller', () => {
         registers: true,
         memory: false,
       },
+      debug80AccordionOrder: ['machine', 'serial', 'matrixKeyboard', 'memory'],
     });
   });
 
@@ -262,6 +289,54 @@ describe('accordion layout controller', () => {
         registers: true,
         memory: false,
       },
+      debug80AccordionOrder: ['machine', 'registers', 'memory'],
+    });
+  });
+
+  it('moves accordion sections up and down and persists the custom order', () => {
+    const messages: PostedMessage[] = [];
+    const fixture = accordionFixture(['project', 'displays', 'machine']);
+    const vscode = createVscodeMock(messages);
+
+    createAccordionLayoutController({
+      vscode,
+      buttons: fixture.buttons,
+      panels: {
+        project: document.createElement('div'),
+        displays: document.createElement('div'),
+        machine: document.createElement('div'),
+      },
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+    });
+
+    const displaysDown = fixture.sections[1].querySelector<HTMLButtonElement>(
+      '[data-accordion-move="down"]'
+    );
+    displaysDown?.click();
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual(['project', 'machine', 'displays']);
+    expect(vscode.getState()).toMatchObject({
+      debug80AccordionOrder: ['project', 'machine', 'displays'],
+    });
+
+    const displaysUp = fixture.sections[1].querySelector<HTMLButtonElement>(
+      '[data-accordion-move="up"]'
+    );
+    displaysUp?.click();
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual(['project', 'displays', 'machine']);
+    expect(vscode.getState()).toMatchObject({
+      debug80AccordionOrder: ['project', 'displays', 'machine'],
     });
   });
 

@@ -602,8 +602,14 @@ body {
     .debug80-accordion-section:last-child {
       border-bottom: 0;
     }
+    .debug80-accordion-header-row {
+      display: flex;
+      align-items: stretch;
+      background: #202020;
+    }
     .debug80-accordion-header {
-      width: 100%;
+      flex: 1 1 auto;
+      width: auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -620,6 +626,39 @@ body {
       text-transform: uppercase;
       cursor: pointer;
       text-align: left;
+    }
+    .debug80-accordion-move-controls {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      padding: 2px 4px 2px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .debug80-accordion-header.active + .debug80-accordion-move-controls {
+      border-bottom-color: #303030;
+    }
+    .debug80-accordion-move-button {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
+      color: #8a8a8a;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+    }
+    .debug80-accordion-move-button:hover:not(:disabled),
+    .debug80-accordion-move-button:focus-visible {
+      background: #2b2b2b;
+      border-color: #444;
+      color: #f0f0f0;
+    }
+    .debug80-accordion-move-button:disabled {
+      opacity: 0.25;
+      cursor: default;
     }
     .debug80-accordion-header::after {
       content: '▸';
