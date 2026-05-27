@@ -51,11 +51,13 @@ describe('Debug80 watch expressions', () => {
     expect(evaluateWatchExpression('zero and A eq $20', context).result).toBe('true');
   });
 
-  it('accepts single equals as an equality alias for breakpoint conditions', () => {
+  it('accepts equals aliases for breakpoint conditions', () => {
     const context = createContext();
 
     expect(evaluateWatchExpression('BC = $1234', context).result).toBe('true');
     expect(evaluateWatchExpression('BC = $1001', context).result).toBe('false');
+    expect(evaluateWatchExpression('BC == $1234', context).result).toBe('true');
+    expect(evaluateWatchExpression('BC == $1001', context).result).toBe('false');
   });
 
   it('uses square brackets for byte memory reads and parentheses for grouping', () => {

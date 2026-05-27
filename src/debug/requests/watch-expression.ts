@@ -172,7 +172,7 @@ class WatchExpressionParser {
         right: this.parseBitwiseOr(),
       };
     }
-    if (token.kind === 'operator' && token.text === '=') {
+    if (token.kind === 'operator' && (token.text === '=' || token.text === '==')) {
       this.index += 1;
       left = {
         kind: 'binary',
@@ -352,6 +352,11 @@ function tokenize(input: string): Token[] {
     if (char === ']') {
       tokens.push({ kind: 'rightBracket', text: char });
       index += 1;
+      continue;
+    }
+    if (rest.startsWith('==')) {
+      tokens.push({ kind: 'operator', text: '==' });
+      index += 2;
       continue;
     }
     if ('+-*/%&|^~='.includes(char)) {
