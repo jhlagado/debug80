@@ -43,9 +43,21 @@ describe('VariableService', () => {
   it('creates source-map symbol scopes without exposing registers', () => {
     const handles = new Handles<string>();
     const service = new VariableService(handles);
-    const scopes = service.createScopes();
+    const scopes = service.createScopes([
+      { name: 'START', kind: 'label', file: 'src/main.z80', address: 0x4000 },
+      { name: 'WIDTH', kind: 'constant', file: 'src/main.z80', value: 32 },
+    ]);
     expect(scopes.map((scope) => scope.name)).toEqual(['Symbols', 'Constants']);
     expect(scopes.find((scope) => scope.name === 'Registers')).toBeUndefined();
+  });
+
+  it('hides the constants scope when the source map has no constants', () => {
+    const handles = new Handles<string>();
+    const service = new VariableService(handles);
+    const scopes = service.createScopes([
+      { name: 'START', kind: 'label', file: 'src/main.z80', address: 0x4000 },
+    ]);
+    expect(scopes.map((scope) => scope.name)).toEqual(['Symbols']);
   });
 
   it('returns register variables for the registers scope', () => {

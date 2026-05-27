@@ -36,10 +36,11 @@ export class VariableService {
       this.constantsScopeRef = this.variableHandles.create('source-map-constants');
     }
     const hasSourceMapSymbols = symbols.length > 0;
-    return [
-      new Scope('Symbols', this.symbolsScopeRef, false),
-      new Scope('Constants', this.constantsScopeRef, false),
-    ].map((scope) => {
+    const scopes = [new Scope('Symbols', this.symbolsScopeRef, false)];
+    if (symbols.some((symbol) => symbol.value !== undefined && symbol.address === undefined)) {
+      scopes.push(new Scope('Constants', this.constantsScopeRef, false));
+    }
+    return scopes.map((scope) => {
       if (!hasSourceMapSymbols) {
         scope.expensive = true;
       }

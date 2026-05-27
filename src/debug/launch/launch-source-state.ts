@@ -22,6 +22,7 @@ import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceMapDebugSymbol } from '../session/session-state';
+import { D8_DEBUG_MAP_EXT } from '../mapping/d8-map-paths';
 import { parseD8DebugMap } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
@@ -148,13 +149,16 @@ function readSourceMapSymbols(options: {
   ) => string;
   logger: Logger;
 }): SourceMapDebugSymbol[] {
-  const mapPath = options.resolveDebugMapPath(
-    options.mapArgs,
-    options.baseDir,
-    options.asmPath,
-    options.listingPath
-  );
-  if (!fs.existsSync(mapPath)) {
+  const mapPath = resolvePreferredSymbolMapPath({
+    cacheMapPath: options.resolveDebugMapPath(
+      options.mapArgs,
+      options.baseDir,
+      options.asmPath,
+      options.listingPath
+    ),
+    listingPath: options.listingPath,
+  });
+  if (mapPath === undefined) {
     return [];
   }
   try {
@@ -186,6 +190,22 @@ function readSourceMapSymbols(options: {
     options.logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
     return [];
   }
+}
+
+function resolvePreferredSymbolMapPath(options: {
+  cacheMapPath: string;
+  listingPath: string;
+}): string | undefined {
+  const sidecar = path.join(
+    path.dirname(options.listingPath),
+    `${path.basename(options.listingPath, path.extname(options.listingPath))}${D8_DEBUG_MAP_EXT}`
+  );
+  for (const candidate of [sidecar, options.cacheMapPath]) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 function pushUniquePath(paths: string[], candidate: string): void {

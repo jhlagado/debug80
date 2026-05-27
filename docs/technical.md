@@ -293,7 +293,11 @@ For native producer-generated maps such as AZM `.d8.json` output, Debug80 now
 prefers the existing D8 map directly and does not treat it as stale relative to
 the listing file or overwrite it with an LST-regenerated cache.
 
-Debug80 always writes a `*.d8.json` file alongside the build artifacts.
+Debug80 may still maintain `.debug80/cache/*.d8.json` maps for fallback
+listing-derived workflows, but active-target runtime features prefer the native
+build-side map beside the listing. This matters for symbols and constants:
+native AZM maps can carry `files[*].symbols` entries that listing-derived cache
+maps cannot reconstruct.
 
 Editor navigation also uses source-map data. Debug80 registers VS Code providers
 for Go to Definition, workspace symbols, and compact symbol hover on `z80-asm`
@@ -329,9 +333,12 @@ whose stack word maps to known source code. The command sets a temporary run
 target at that return address and lets the program execute normally until it
 arrives there; it does not rewrite `SP`, `PC`, or stack memory.
 
-The VS Code Variables panel now exposes source-map-backed Symbols and Constants
-scopes instead of duplicating registers; register display/editing lives in
-Debug80's own Registers panel. Without richer AZM metadata, Debug80 presents
+The VS Code Variables panel now exposes source-map-backed Symbols and, when
+available, Constants instead of duplicating registers; register display/editing
+lives in Debug80's own Registers panel. Constants are value symbols from the
+active target's D8 map, typically `EQU`-style definitions emitted by AZM. If the
+active map has no value-only symbols, Debug80 hides the Constants scope rather
+than showing an empty group. Without richer AZM metadata, Debug80 presents
 memory-backed symbols conservatively: address, symbol kind, known size, first
 byte, a word when size suggests it, a short byte preview, printable ASCII where
 available, and source location.
