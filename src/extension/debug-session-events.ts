@@ -235,6 +235,7 @@ export function registerDebugSessionHandlers({
           return;
         }
         sessionState.mainSourceOpenedSessions.add(evt.session.id);
+        const stopOnEntry = evt.session.configuration?.stopOnEntry === true;
         const columns = sourceColumns.getSessionColumns(evt.session);
         const viewColumn = columns.source;
         let mainDoc: vscode.TextDocument | undefined;
@@ -242,7 +243,11 @@ export function registerDebugSessionHandlers({
           .openTextDocument(sourcePath)
           .then((doc) => {
             mainDoc = doc;
-            return vscode.window.showTextDocument(doc, { preview: false, viewColumn });
+            return vscode.window.showTextDocument(doc, {
+              preview: false,
+              preserveFocus: stopOnEntry,
+              viewColumn,
+            });
           })
           .then(async () => {
             const openRomSources = evt.session.configuration?.openRomSourcesOnLaunch !== false;
@@ -252,7 +257,7 @@ export function registerDebugSessionHandlers({
             return openRomSourcesForSession(evt.session, viewColumn).then(async (opened) => {
               if (opened) {
                 sessionState.romSourcesOpenedSessions.add(evt.session.id);
-                if (mainDoc !== undefined) {
+                if (!stopOnEntry && mainDoc !== undefined) {
                   await vscode.window.showTextDocument(mainDoc, {
                     preview: false,
                     preserveFocus: false,

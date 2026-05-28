@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { SessionStateManager } from '../../src/extension/session-state-manager';
 import { registerDebugSessionHandlers } from '../../src/extension/debug-session-events';
 
@@ -249,5 +250,74 @@ describe('debug session status bridge', () => {
 
     expect(openRomSourcesForSession).toHaveBeenCalledTimes(1);
     setTimeoutSpy.mockRestore();
+  });
+
+  it('does not refocus main source after ROM sources when stop on entry is active', async () => {
+    const platformViewProvider = {
+      setSessionStatus: vi.fn(),
+      clear: vi.fn(),
+      reveal: vi.fn(),
+      handleSessionTerminated: vi.fn(),
+      setPlatform: vi.fn(),
+      updateTec1: vi.fn(),
+      updateTec1g: vi.fn(),
+      appendTec1Serial: vi.fn(),
+      appendTec1gSerial: vi.fn(),
+    } as never;
+    const sessionState = new SessionStateManager();
+    const sourceColumns = {
+      onSessionStarted: vi.fn(),
+      onSessionTerminated: vi.fn(),
+      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
+    } as never;
+    const terminalPanel = {
+      clear: vi.fn(),
+      open: vi.fn(),
+      hasPanel: vi.fn(() => false),
+      appendOutput: vi.fn(),
+    } as never;
+    const workspaceSelection = {
+      rememberWorkspace: vi.fn(),
+    } as never;
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
+    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
+    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() } as never;
+    const showTextDocument = vi.mocked(vscode.window.showTextDocument);
+
+    registerDebugSessionHandlers({
+      context,
+      rebuildDiagnostics,
+      assemblyDiagnostics,
+      platformViewProvider,
+      sessionState,
+      sourceColumns,
+      terminalPanel,
+      workspaceSelection,
+    });
+
+    const session = {
+      id: 'session-stop-entry',
+      type: 'z80',
+      configuration: {
+        openRomSourcesOnLaunch: true,
+        openMainSourceOnLaunch: true,
+        stopOnEntry: true,
+      },
+      workspaceFolder: undefined,
+    };
+
+    customHandlers[0]?.({
+      session,
+      event: 'debug80/mainSource',
+      body: { path: '/workspace/main.asm' },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(openRomSourcesForSession).toHaveBeenCalledWith(session, 1);
+    expect(showTextDocument).toHaveBeenCalledTimes(1);
+    expect(showTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/main.asm' } }),
+      { preview: false, preserveFocus: true, viewColumn: 1 }
+    );
   });
 });
