@@ -4,16 +4,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/parser';
 import {
-  MappingParseResult,
-  SourceMapAnchor,
-  SourceMapSegment,
-  parseMapping,
-} from '../../mapping/parser';
-import { resolveAssemblerBackend } from '../launch/assembler-backend';
-import { resolveListingSourcePath } from './path-resolver';
-import {
-  applyLayer2,
   propagateMisassignedIncludeSegments,
   remapAsm80MisassignedIncludeAnchors,
   syncSegmentLocationsFromAnchors,
@@ -31,7 +23,7 @@ import {
   parseD8DebugMap,
 } from '../../mapping/d8-map';
 import { validateD8Segments } from '../../mapping/d8-validate';
-import { D8_DEBUG_MAP_EXT, legacyDebugMapPath } from './d8-map-paths';
+import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 import { Logger } from '../../util/logger';
 
 export interface MappingServiceOptions {
@@ -63,8 +55,7 @@ function collectDebugMapCandidates(mapPath: string, listingPath: string): string
     path.dirname(listingPath),
     `${path.basename(listingPath, path.extname(listingPath))}${D8_DEBUG_MAP_EXT}`
   );
-  const legacy = legacyDebugMapPath(mapPath);
-  const ordered = [sidecar, mapPath, legacy !== null ? legacy : undefined].filter(
+  const ordered = [sidecar, mapPath].filter(
     (p): p is string => p !== undefined && p.length > 0
   );
   return [...new Set(ordered)];
@@ -84,7 +75,11 @@ function loadFirstExistingDebugMap(
 }
 
 /**
- * Builds (or loads) a mapping for a primary listing file and any extra listings.
+ * Loads native D8 maps for a primary target and any extra ROM/platform maps.
+ *
+ * The historical name remains during the D8-only migration, but this no longer
+ * derives source maps from listing content. Missing or invalid D8 maps produce an
+ * empty mapping with a build-required warning.
  */
 export function buildMappingFromListing(options: {
   listingContent: string;
@@ -97,6 +92,8 @@ export function buildMappingFromListing(options: {
 }): MappingBuildResult {
   const { listingContent, listingPath, asmPath, sourceFile, extraListingPaths, mapArgs, service } =
     options;
+  void listingContent;
+  void sourceFile;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
   const debugMapCandidates = collectDebugMapCandidates(mapPath, listingPath);
@@ -114,65 +111,18 @@ export function buildMappingFromListing(options: {
       service.logger.warn(`Debug80: D8 quality warning [${w.file}]: ${w.message}`);
     }
   }
-
-  // Only apply listing-vs-map mtime for Debug80-generated maps. Native assembler maps
-  // must not be invalidated when the `.lst` is newer; mtimes are
-  // not a reliable ordering signal, and the listing parser is not a substitute.
-  const mapStale = !hasNativeMap && isDebugMapStale(debugMapLoadedFrom ?? mapPath, listingPath);
-
-  let debugMap = hasNativeMap ? loadedMap : mapStale ? undefined : loadedMap;
-  let missingSources: string[] = [];
-
-  if (!debugMap) {
-    const baseMapping = parseListingMapping(listingContent);
-    applySourceFallback(baseMapping, sourceFile, service.baseDir, service.resolveMappedPath);
-    const layer2 = applyLayer2(baseMapping, {
-      resolvePath: (file) => service.resolveMappedPath(file),
-      ...(sourceFile !== undefined && sourceFile.length > 0
-        ? { candidateFiles: [sourceFile] }
-        : {}),
-    });
-    missingSources = layer2.missingSources;
-    if (missingSources.length > 0) {
-      const unique = Array.from(new Set(missingSources));
-      service.logger.warn(
-        `Debug80: Missing source files for Layer 2 mapping: ${unique.join(', ')}`
-      );
-    }
-    debugMap = buildD8DebugMap(baseMapping, {
-      arch: 'z80',
-      addressWidth: 16,
-      endianness: 'little',
-      generator: { name: 'debug80' },
-    });
-  }
-
-  if (
-    debugMap !== undefined &&
-    !hasNativeMap &&
-    sourceFile !== undefined &&
-    sourceFile.length > 0 &&
-    !debugMapContainsSource(debugMap, sourceFile, service)
-  ) {
-    service.logger.info(
-      `Debug80: Debug80-generated D8 map did not include target source "${sourceFile}". Regenerating from LST.`
+  if (loadedMap !== undefined && !hasNativeMap) {
+    service.logger.warn(
+      `Debug80: Ignoring legacy Debug80-generated source map at "${debugMapLoadedFrom ?? mapPath}". Build the selected target with AZM to generate a native D8 source map.`
     );
-    const baseMapping = parseListingMapping(listingContent);
-    applySourceFallback(baseMapping, sourceFile, service.baseDir, service.resolveMappedPath);
-    const layer2 = applyLayer2(baseMapping, {
-      resolvePath: (file) => service.resolveMappedPath(file),
-      candidateFiles: [sourceFile],
-    });
-    missingSources = layer2.missingSources;
-    debugMap = buildD8DebugMap(baseMapping, {
-      arch: 'z80',
-      addressWidth: 16,
-      endianness: 'little',
-      generator: { name: 'debug80' },
-    });
+  }
+  if (loadedMap === undefined) {
+    service.logger.warn(
+      `Debug80: Source map missing at "${mapPath}". Build the selected target with AZM to generate a native D8 source map.`
+    );
   }
 
-  let mapping = buildMappingFromD8DebugMap(debugMap);
+  let mapping = hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
 
   const fileSet = new Set<string | null>();
   for (const seg of mapping.segments) {
@@ -211,60 +161,7 @@ export function buildMappingFromListing(options: {
       `${index.segmentsByFileLine.size} file entries, ${index.anchorsByFile.size} anchor files`
   );
 
-  return { mapping, index, missingSources };
-}
-
-function parseListingMapping(listingContent: string): MappingParseResult {
-  return parseMapping(listingContent);
-}
-
-function isDebugMapStale(mapPath: string, listingPath: string): boolean {
-  if (!fs.existsSync(listingPath)) {
-    return false;
-  }
-  const legacyPath = legacyDebugMapPath(mapPath);
-  const mapCandidates = [mapPath, legacyPath].filter(
-    (p): p is string => p !== null && fs.existsSync(p)
-  );
-  if (mapCandidates.length === 0) {
-    return false;
-  }
-  try {
-    const listingStat = fs.statSync(listingPath);
-    let newestMapMs = 0;
-    for (const p of mapCandidates) {
-      newestMapMs = Math.max(newestMapMs, fs.statSync(p).mtimeMs);
-    }
-    return listingStat.mtimeMs > newestMapMs;
-  } catch {
-    return false;
-  }
-}
-
-function applySourceFallback(
-  mapping: MappingParseResult,
-  sourceFile: string | undefined,
-  baseDir: string,
-  resolveMappedPath: ResolvePathFn
-): void {
-  if (sourceFile === undefined || sourceFile.length === 0) {
-    return;
-  }
-  const fallback = resolveMappedPath(sourceFile) ?? path.resolve(baseDir, sourceFile);
-  if (fallback.length === 0) {
-    return;
-  }
-  for (const segment of mapping.segments) {
-    const current = segment.loc.file;
-    if (current === null) {
-      segment.loc.file = fallback;
-      continue;
-    }
-    const resolved = resolveMappedPath(current) ?? path.resolve(baseDir, current);
-    if (!fs.existsSync(resolved)) {
-      segment.loc.file = fallback;
-    }
-  }
+  return { mapping, index, missingSources: [] };
 }
 
 function loadDebugMap(
@@ -280,7 +177,7 @@ function loadDebugMap(
     if (!map) {
       const prefix = `Debug80 [${service.platform}]`;
       service.logger.warn(
-        `${prefix}: Invalid D8 debug map at "${mapPath}". Regenerating from LST. (${error})`
+        `${prefix}: Invalid D8 debug map at "${mapPath}". Build the selected target with AZM to regenerate it. (${error})`
       );
       return undefined;
     }
@@ -288,26 +185,10 @@ function loadDebugMap(
   } catch (err) {
     const prefix = `Debug80 [${service.platform}]`;
     service.logger.error(
-      `${prefix}: Failed to read D8 debug map at "${mapPath}". Regenerating from LST. (${String(err)})`
+      `${prefix}: Failed to read D8 debug map at "${mapPath}". Build the selected target with AZM to regenerate it. (${String(err)})`
     );
     return undefined;
   }
-}
-
-function debugMapContainsSource(
-  map: D8DebugMap,
-  sourceFile: string,
-  service: MappingServiceOptions
-): boolean {
-  const sourceResolved =
-    service.resolveMappedPath(sourceFile) ?? path.resolve(service.baseDir, sourceFile);
-  for (const file of Object.keys(map.files)) {
-    const resolved = service.resolveMappedPath(file) ?? path.resolve(service.baseDir, file);
-    if (path.resolve(resolved) === path.resolve(sourceResolved)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function isNativeDebugMap(map: D8DebugMap): boolean {
@@ -350,19 +231,6 @@ function normalizeGeneratorIdentity(value: string | undefined): string | undefin
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function shouldRebuildGeneratedMap(
-  generatedMapping: MappingParseResult,
-  hasNativeMap: boolean,
-  listingPath: string
-): boolean {
-  if (hasNativeMap) {
-    return false; // native tool map wins; always use it
-  }
-  const generatedHasSource = generatedMapping.segments.some((s) => s.loc.file !== null);
-  const sourceNowExists = resolveListingSourcePath(listingPath) !== undefined;
-  return !generatedHasSource && sourceNowExists;
-}
-
 function loadExtraListingMapping(
   listingPaths: string[],
   service: MappingServiceOptions
@@ -382,38 +250,18 @@ function loadExtraListingMapping(
         );
       }
 
-      const mapStale = !hasNativeMap && isDebugMapStale(mapPath, listingPath);
-      if (mapStale) {
-        const prefix = `Debug80 [${service.platform}]`;
+      if (loadedMap !== undefined && !hasNativeMap) {
         service.logger.warn(
-          `${prefix}: D8 debug map for extra listing is older than the LST. Regenerating (${listingPath}).`
+          `Debug80: Ignoring legacy Debug80-generated ROM source map at "${mapPath}". Rebuild the ROM metadata with AZM to generate a native D8 source map.`
         );
       }
-
-      const debugMap = hasNativeMap
-        ? loadedMap
-        : !mapStale && fs.existsSync(mapPath)
-          ? loadedMap
-          : undefined;
-      if (debugMap) {
-        const generatedMapping = buildMappingFromD8DebugMap(debugMap);
-        if (!shouldRebuildGeneratedMap(generatedMapping, hasNativeMap, listingPath)) {
-          combined.segments.push(...generatedMapping.segments);
-          combined.anchors.push(...generatedMapping.anchors);
-          continue;
-        }
-        if (!hasNativeMap) {
-          const prefix = `Debug80 [${service.platform}]`;
-          service.logger.info(
-            `${prefix}: Debug80-generated D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
-          );
-        }
-      }
-
-      const mapping = buildExtraListingMapping(listingPath, service);
-      if (!mapping) {
+      if (!hasNativeMap || loadedMap === undefined) {
+        service.logger.warn(
+          `Debug80: ROM source map missing at "${mapPath}". Rebuild the ROM metadata with AZM to generate a native D8 source map.`
+        );
         continue;
       }
+      const mapping = buildMappingFromD8DebugMap(loadedMap);
       combined.segments.push(...mapping.segments);
       combined.anchors.push(...mapping.anchors);
     } catch (err) {
@@ -429,47 +277,15 @@ function loadExtraListingMapping(
   return combined;
 }
 
-function buildExtraListingMapping(
-  listingPath: string,
-  service: MappingServiceOptions
-): MappingParseResult | undefined {
-  const fallbackSource = resolveListingSourcePath(listingPath);
-  if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-    try {
-      const backend = resolveAssemblerBackend(undefined, fallbackSource);
-      const backendMapping = backend.compileMappingInProcess?.(
-        fallbackSource,
-        path.dirname(fallbackSource)
-      );
-      if (backendMapping) {
-        return backendMapping;
-      }
-    } catch (err) {
-      const prefix = `Debug80 [${service.platform}]`;
-      service.logger.error(
-        `${prefix}: failed to build ROM mapping for "${fallbackSource}": ${String(err)}`
-      );
-    }
-  }
-  const content = fs.readFileSync(listingPath, 'utf-8');
-  const parsed = parseMapping(content);
-  if (typeof fallbackSource === 'string' && fallbackSource.length > 0) {
-    const hasFile = parsed.segments.some((segment) => segment.loc.file !== null);
-    if (!hasFile) {
-      for (const segment of parsed.segments) {
-        segment.loc.file = fallbackSource;
-        segment.loc.line = segment.lst.line;
-      }
-    }
-  }
-  return parsed;
-}
-
 function mergeMappings(base: MappingParseResult, extra: MappingParseResult): MappingParseResult {
   return {
     segments: [...base.segments, ...extra.segments],
     anchors: [...base.anchors, ...extra.anchors],
   };
+}
+
+function emptyMapping(): MappingParseResult {
+  return { segments: [], anchors: [] };
 }
 
 function applyTec1gBootstrapAlias(mapping: MappingParseResult): void {
