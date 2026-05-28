@@ -77,6 +77,61 @@ describe('launch-source-state', () => {
     expect(resolveExecutableLocation(result.mappingIndex, sourcePath, 3)).toEqual([0x4000]);
   });
 
+  it('indexes bundled MON3 D8 file keys for ROM breakpoints', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-rom-source-'));
+    const projectRoot = path.join(tmpDir, 'project');
+    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
+    const listingPath = path.join(projectRoot, 'build', 'main.lst');
+    const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
+    const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
+    const mon3SourcePath = path.join(bundleRoot, 'mon3.z80');
+    const mon3ListingPath = path.join(bundleRoot, 'mon3.lst');
+
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
+    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
+    fs.writeFileSync(listingPath, 'LIST\n');
+    fs.writeFileSync(
+      d8Path,
+      `${JSON.stringify(
+        {
+          format: 'd8-debug-map',
+          version: 1,
+          arch: 'z80',
+          addressWidth: 16,
+          endianness: 'little',
+          files: {
+            'src/main.asm': {
+              segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
+            },
+          },
+          generator: { name: 'azm', tool: 'azm', version: '0.2.5' },
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const sourceState = new SourceStateManager();
+    const sessionState = createSessionState();
+    const result = buildLaunchSourceState(
+      { sourceRoots: ['src'], artifactBase: 'main', outputDir: 'build' } as LaunchRequestArguments,
+      'tec1g',
+      projectRoot,
+      sourcePath,
+      listingPath,
+      'LIST\n',
+      [mon3ListingPath],
+      sourceState,
+      sessionState,
+      new NullLogger()
+    );
+
+    expect(resolveExecutableLocation(result.mappingIndex, mon3SourcePath, 302)).toEqual([0xc100]);
+    expect(result.sourceRoots).toContain(bundleRoot);
+    expect(sessionState.sourceRoots).toContain(bundleRoot);
+  });
+
   it('reads source-map symbols from the build artifact', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-symbols-'));
     const projectRoot = path.join(tmpDir, 'project');

@@ -153,13 +153,26 @@ export async function handleWarmRebuildRequest(
     });
 
     if (!deps.sourceState.manager) {
+      const mappedPathCache = new Map<string, string | undefined>();
+      const resolveSessionMappedPath = (file: string): string | undefined => {
+        const cached = mappedPathCache.get(file);
+        if (cached !== undefined || mappedPathCache.has(file)) {
+          return cached;
+        }
+        const resolved = resolveMappedPath(
+          file,
+          deps.sessionState.listingPath,
+          deps.sessionState.sourceRoots
+        );
+        mappedPathCache.set(file, resolved);
+        return resolved;
+      };
       deps.sourceState.setManager(
         new SourceManager({
           platform: deps.platformState.active,
           baseDir,
           resolveRelative: (p, dir) => resolveRelative(p, dir),
-          resolveMappedPath: (file) =>
-            resolveMappedPath(file, deps.sessionState.listingPath, deps.sessionState.sourceRoots),
+          resolveMappedPath: resolveSessionMappedPath,
           relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
           resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, baseDir),
           resolveDebugMapPath: (args, dir, asm, listing) =>

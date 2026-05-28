@@ -55,17 +55,32 @@ export function buildLaunchSourceState(
   if (asmPath !== undefined && asmPath.length > 0) {
     pushUniquePath(preSourceRoots, path.dirname(resolveRelative(asmPath, baseDir)));
   }
+  for (const listing of extraListings) {
+    const listingPath = resolveRelative(listing, baseDir);
+    if (fs.existsSync(listingPath)) {
+      pushUniquePath(preSourceRoots, path.dirname(listingPath));
+    }
+  }
   pushUniquePath(preSourceRoots, resolveRelative(baseDir, baseDir));
   sessionState.sourceRoots = preSourceRoots;
   const resolvedSourceRoots = preSourceRoots.length > 0 ? preSourceRoots : (args.sourceRoots ?? []);
+  const mappedPathCache = new Map<string, string | undefined>();
+  const resolveSessionMappedPath = (file: string): string | undefined => {
+    const cached = mappedPathCache.get(file);
+    if (cached !== undefined || mappedPathCache.has(file)) {
+      return cached;
+    }
+    const resolved = resolveMappedPath(file, sessionState.listingPath, sessionState.sourceRoots);
+    mappedPathCache.set(file, resolved);
+    return resolved;
+  };
 
   sourceState.setManager(
     new SourceManager({
       platform,
       baseDir,
       resolveRelative: (value, dir) => resolveRelative(value, dir),
-      resolveMappedPath: (file): string | undefined =>
-        resolveMappedPath(file, sessionState.listingPath, sessionState.sourceRoots),
+      resolveMappedPath: resolveSessionMappedPath,
       relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
       resolveExtraDebugMapPath: (value) => resolveExtraDebugMapPath(value, baseDir),
       resolveDebugMapPath: (launchArgs, dir, asm, listing) =>
