@@ -51,6 +51,7 @@ export interface PlatformViewMessageDependencies {
   handleSerialSendFile: () => PromiseLike<void>;
   handleSerialSave: (text: string) => PromiseLike<void>;
   clearSerialBuffer: (platform: PlatformViewPlatform) => void;
+  handleRequestProjectStatus: () => PromiseLike<void>;
   handlePlatformMessage: (
     platform: PlatformViewPlatform,
     msg: PlatformViewMessage
@@ -61,6 +62,10 @@ export async function handlePlatformViewMessage(
   msg: PlatformViewMessage,
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
+  if (msg?.type === 'requestProjectStatus') {
+    await deps.handleRequestProjectStatus();
+    return;
+  }
   if (msg?.type === 'createProject') {
     const rootPath = rootPathFrom(msg);
     const platformRaw = (msg as { platform?: unknown }).platform;

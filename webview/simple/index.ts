@@ -8,6 +8,7 @@ import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
+import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import { acquireVscodeApi } from '../common/vscode';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 
@@ -68,6 +69,7 @@ const projectStatusUi = createProjectStatusUi(
   },
   'simple'
 );
+const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
   vscode.postMessage({ type: 'openWorkspaceFolder' });
@@ -250,6 +252,7 @@ window.addEventListener('message', (event: MessageEvent): void => {
 
 setTab('ui');
 applyProjectStatus({});
+requestProjectStatus(vscode);
 sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => scheduleMemoryResize());
 
@@ -257,4 +260,5 @@ window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   projectStatusUi.dispose();
+  projectStatusRefresh.dispose();
 });

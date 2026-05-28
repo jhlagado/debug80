@@ -14,6 +14,7 @@ import { MemoryPanel, type MemoryViewEntry } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
+import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
@@ -121,6 +122,7 @@ const projectStatusUi = createProjectStatusUi(
   },
   'tec1'
 );
+const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 function applyProjectStatus(payload: {
   rootPath?: ProjectStatusPayload['rootPath'];
@@ -311,6 +313,7 @@ matrixRenderer.build();
 matrixRenderer.draw();
 panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
+requestProjectStatus(vscode);
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 panelLayout.setRegisterRefreshActive(false);
@@ -330,4 +333,5 @@ window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   projectStatusUi.dispose();
+  projectStatusRefresh.dispose();
 });

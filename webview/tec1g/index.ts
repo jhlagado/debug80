@@ -19,6 +19,7 @@ import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
 import { wireSerialUi } from '../common/serial-ui';
+import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import type { IncomingMessage, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
@@ -148,6 +149,7 @@ const projectStatusUi = createTec1gProjectStatusUi(
   },
   'tec1g'
 );
+const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 let projectIsInitialized = false;
 
@@ -317,6 +319,7 @@ lcdRenderer.draw();
 glcdRenderer.draw();
 panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
+requestProjectStatus(vscode);
 keypad.focusKeypad();
 sessionStatusController.setStatus('not running');
 panelLayout.setRegisterRefreshActive(false);
@@ -353,4 +356,5 @@ window.addEventListener('beforeunload', () => {
   stopOnEntryControl.dispose();
   azmOptionsControl.dispose();
   projectStatusUi.dispose();
+  projectStatusRefresh.dispose();
 });

@@ -268,6 +268,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         handleSetAzmOptions: (registerCareMode, contractUpdateMode) =>
           this.handleSetAzmOptions(registerCareMode, contractUpdateMode),
         handleSetHardwareStatus: (message) => this.handleSetHardwareStatus(message),
+        handleRequestProjectStatus: () => this.postProjectStatus(),
         isPanelVisible: () => this.view?.visible === true,
       })
     );
