@@ -200,6 +200,28 @@ describe('adapter integration', () => {
     await client.sendRequest('disconnect');
   });
 
+  it('does not publish stop-on-entry before configuration is done', async () => {
+    const { client } = harness ?? createHarness();
+
+    await initialize(client);
+    await launchWithDiagnostics(client, {
+      target: 'app',
+      stopOnEntry: true,
+      openRomSourcesOnLaunch: false,
+      openMainSourceOnLaunch: false,
+    });
+
+    await expect(client.waitForEvent('stopped', undefined, 50)).rejects.toThrow(
+      'Timeout waiting for event stopped'
+    );
+
+    await client.sendRequest('configurationDone');
+    const stopped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
+    expect(stopped.body?.reason).toBe('entry');
+
+    await client.sendRequest('disconnect');
+  });
+
   it('routes built-in memory snapshot requests through the adapter after launch', async () => {
     const { client } = harness ?? createHarness();
 

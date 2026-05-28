@@ -310,11 +310,17 @@ export class Z80DebugSession extends DebugSession {
   }
 
   private sendEntryStopIfNeeded(): void {
-    if (!this.sessionState.runState.stopOnEntry) {
+    const runState = this.sessionState.runState;
+    if (
+      !runState.stopOnEntry ||
+      !runState.launchComplete ||
+      !runState.configurationDone ||
+      runState.lastStopReason === 'entry'
+    ) {
       return;
     }
-    this.sessionState.runState.lastStopReason = 'entry';
-    this.sessionState.runState.lastBreakpointAddress = null;
+    runState.lastStopReason = 'entry';
+    runState.lastBreakpointAddress = null;
     emitDebugSessionStatus((event) => this.sendEvent(event as DebugProtocol.Event), 'paused');
     this.sendEvent(new StoppedEvent('entry', THREAD_ID));
   }
@@ -331,6 +337,7 @@ export class Z80DebugSession extends DebugSession {
     _args: DebugProtocol.ConfigurationDoneArguments
   ): void {
     this.requestController.configurationDoneRequest(response, _args);
+    this.sendEntryStopIfNeeded();
   }
 
   protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
