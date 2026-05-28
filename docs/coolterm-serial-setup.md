@@ -56,13 +56,16 @@ matter.
 1. Select the Debug80 project folder.
 2. Select the target.
 3. Build the target so its `.hex` file exists in the build folder.
-4. Put the board into receive mode.
+4. On the TEC-1G, choose **Intel HEX Load** so MON3 is waiting for the first `:` record.
 5. Click **Send to Board** in Debug80.
 
-Debug80 sends the selected target's HEX file and waits for the board to reply:
+Debug80 sends the selected target's HEX file through CoolTerm. MON3 does not send a serial
+`PASSED` or `FAILED` response when the load finishes. Instead, check the TEC-1G seven-segment
+display:
 
 ```text
-PASSED
+PASS   load accepted
+ERROR  checksum or write verification failed
 ```
 
 If the HEX file is missing, build the target first. If the button is not visible, CoolTerm is not

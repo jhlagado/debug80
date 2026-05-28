@@ -111,7 +111,9 @@ native serial dependencies by using CoolTerm's documented Remote Control Socket:
 - The user installs and runs CoolTerm locally.
 - Debug80 connects to `127.0.0.1:51413`.
 - CoolTerm owns the serial port and sends the selected HEX file.
-- Debug80 polls CoolTerm until the board replies `PASSED`, `FAILED`, or the operation times out.
+- Debug80 treats a successful CoolTerm file-send operation as transport completion.
+- For TEC-1G MON3, the monitor reports load status on the seven-segment display (`PASS` or
+  `ERROR`), not by sending a serial `PASSED`/`FAILED` reply.
 
 This keeps the first hardware workflow dependency-light for Debug80 and avoids VSIX native module
 packaging risk. See `docs/coolterm-serial-setup.md`.
@@ -347,7 +349,8 @@ Initial send flow:
    - apply `charDelayMs` and `lineDelayMs`
    - report progress by line count and byte count
 8. Close the port unless a monitor session is explicitly open.
-9. Report success, cancellation, or the first serial error.
+9. Report success when the file has been handed to the serial transport; for MON3, instruct the
+   user to check the board display for `PASS` or `ERROR`.
 
 Potential later refinement:
 

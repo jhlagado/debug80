@@ -7,7 +7,6 @@ import { resolveCoolTermHexArtifact } from './coolterm-hex-artifact';
 export type CoolTermSendHexOptions = {
   rootPath: string;
   targetName?: string;
-  timeoutMs?: number;
   status?: (message: string) => void;
 };
 
@@ -39,7 +38,6 @@ export async function sendHexViaCoolTerm(options: CoolTermSendHexOptions): Promi
   }
 
   const fileName = path.basename(artifact.path);
-  const timeoutMs = options.timeoutMs ?? 30000;
   const client = new CoolTermRemoteClient({ timeoutMs: 3000 });
   options.status?.('Checking CoolTerm remote socket...');
   try {
@@ -79,32 +77,11 @@ export async function sendHexViaCoolTerm(options: CoolTermSendHexOptions): Promi
           return false;
         }
 
-        options.status?.(`Sent ${fileName}; waiting for PASSED from the board...`);
-        const deadline = Date.now() + timeoutMs;
-        let received = '';
-        while (Date.now() < deadline) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          await client.poll();
-          received += await client.readAll();
-          if (received.includes('PASSED')) {
-            options.status?.(`Transfer complete: ${fileName} sent and board replied PASSED.`);
-            void vscode.window.showInformationMessage(`Debug80: ${fileName} sent; board replied PASSED.`);
-            return true;
-          }
-          if (received.includes('FAILED')) {
-            options.status?.(`Transfer failed: ${fileName} sent, but board replied FAILED.`);
-            void vscode.window.showErrorMessage(`Debug80: ${fileName} sent; board replied FAILED.`);
-            return false;
-          }
-        }
-
-        options.status?.(
-          `Sent ${fileName} to the serial port, but no PASSED acknowledgement arrived before timeout.`
+        options.status?.(`Sent ${fileName}. Check the board display for PASS or ERROR.`);
+        void vscode.window.showInformationMessage(
+          `Debug80: ${fileName} sent. Check the board display for PASS or ERROR.`
         );
-        void vscode.window.showWarningMessage(
-          `Debug80: ${fileName} was sent, but no PASSED acknowledgement arrived before timeout.`
-        );
-        return false;
+        return true;
       } finally {
         client.dispose();
       }

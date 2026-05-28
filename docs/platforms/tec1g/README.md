@@ -186,7 +186,7 @@ MON-3 exposes a structured interface layer.
 
 ### 10.2 Serial data transfer is first-class (not optional)
 Key serial workflows exposed via API:
-- intelHexLoad: load Intel HEX via FTDI serial; shows progress on segments; PASS/FAIL at end.
+- intelHexLoad: load Intel HEX via FTDI serial; shows progress on segments; displays PASS or ERROR at end.
 - sendToSerial: binary dump memory to serial.
 - receiveFromSerial: binary receive into memory from serial.
 - sendAssembly: disassemble memory and print assembly over serial.
