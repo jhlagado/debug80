@@ -37,7 +37,12 @@ describe('project-config helpers', () => {
 
     const files = listProjectSourceFiles(root);
 
-    expect(files).toEqual(['src/games/tetro.z80', 'src/helpers.z80', 'src/pacmo.main.asm']);
+    expect(files).toEqual([
+      'src/games/tetro.z80',
+      'src/helpers.z80',
+      'src/main.asm',
+      'src/pacmo.main.asm',
+    ]);
   });
 
   it('falls back to top-level project source files when no src folder exists', () => {
@@ -54,7 +59,7 @@ describe('project-config helpers', () => {
 
     const files = listProjectSourceFiles(root);
 
-    expect(files).toEqual(['alt.z80', 'app.main.asm', 'lib/game.z80']);
+    expect(files).toEqual(['alt.z80', 'app.main.asm', 'lib/game.z80', 'main.asm']);
   });
 
   it('updates the selected target source in debug80.json', () => {

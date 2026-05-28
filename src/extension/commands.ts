@@ -660,7 +660,7 @@ export function registerExtensionCommands({
         const sources = listProjectSourceFiles(folder.uri.fsPath);
         if (sources.length === 0) {
           void vscode.window.showInformationMessage(
-            'Debug80: No .asm or .z80 source files were found in this project folder.'
+            'Debug80: No target entry files were found in this project folder (.z80, .main.asm, or main.asm).'
           );
           return undefined;
         }
@@ -802,7 +802,7 @@ export function registerExtensionCommands({
       const candidates = listProjectSourceFiles(folder.uri.fsPath);
       if (candidates.length === 0) {
         void vscode.window.showInformationMessage(
-          'Debug80: No .asm or .z80 source files were found in this project folder.'
+          'Debug80: No target entry files were found in this project folder (.z80, .main.asm, or main.asm).'
         );
         return undefined;
       }

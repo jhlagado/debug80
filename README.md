@@ -94,6 +94,7 @@ For now, target discovery focuses on clear Z80 entry-point conventions:
 
 - files ending in `.z80`
 - files ending in `.main.asm`
+- files named `main.asm`
 
 When more than one target is available, select the active target from the
 Debug80 panel or the **Debug80: Select Active Target** command.
