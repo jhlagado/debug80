@@ -128,11 +128,11 @@ export async function handleWarmRebuildRequest(
       sendEvent: (event) => deps.sendEvent(event as DebugProtocol.Event),
     });
 
-    if (!fs.existsSync(hexPath) || !fs.existsSync(listingPath)) {
+    if (!fs.existsSync(hexPath)) {
       sendWarmRebuildResult(
         response,
         deps,
-        createWarmRebuildFailureResult('Debug80: Rebuild did not produce HEX/LST artifacts.')
+        createWarmRebuildFailureResult('Debug80: Rebuild did not produce a HEX artifact.')
       );
       return;
     }

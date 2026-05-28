@@ -48,7 +48,6 @@ describe('azm-backend', () => {
     const asmPath = path.join(tmpDir, 'prog.asm');
     const outDir = path.join(tmpDir, 'build');
     const hexPath = path.join(outDir, 'prog.hex');
-    const listingPath = path.join(outDir, 'listings', 'prog.lst');
     const binPath = path.join(outDir, 'prog.bin');
 
     fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
@@ -57,12 +56,11 @@ describe('azm-backend', () => {
       artifacts: [
         { kind: 'hex', text: ':00000001FF\n' },
         { kind: 'bin', bytes: new Uint8Array([0x00]) },
-        { kind: 'lst', text: 'LISTING\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
       ],
     });
 
-    const result = await backend.assemble({ asmPath, hexPath, listingPath, sourceRoot: tmpDir });
+    const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
 
     expect(result.success).toBe(true);
     expectNoExternalProcess();
@@ -83,18 +81,16 @@ describe('azm-backend', () => {
     );
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
     expect([...fs.readFileSync(binPath)]).toEqual([0x00]);
-    expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
-    expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
+    expect(fs.existsSync(path.join(outDir, 'prog.lst'))).toBe(false);
     expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
   });
 
-  it('does not require legacy listing output when AZM emits a native D8 map', async () => {
+  it('requires native D8 output instead of legacy listing output', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.z80');
     const outDir = path.join(tmpDir, 'build');
     const hexPath = path.join(outDir, 'prog.hex');
-    const listingPath = path.join(outDir, 'prog.lst');
 
     fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
     compile.mockResolvedValue({
@@ -106,12 +102,12 @@ describe('azm-backend', () => {
       ],
     });
 
-    const result = await backend.assemble({ asmPath, hexPath, listingPath, sourceRoot: tmpDir });
+    const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
 
     expect(result.success).toBe(true);
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
-    expect(fs.readFileSync(listingPath, 'utf-8')).toContain('native D8 debug map');
+    expect(fs.existsSync(path.join(outDir, 'prog.lst'))).toBe(false);
   });
 
   it('passes AZM register-care launch options and writes register reports', async () => {
@@ -274,13 +270,30 @@ describe('azm-backend', () => {
     fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [{ kind: 'lst', text: 'LISTING\n' }],
+      artifacts: [{ kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } }],
     });
 
     const result = await backend.assemble({ asmPath, hexPath, listingPath });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('did not produce HEX output');
+  });
+
+  it('fails when AZM succeeds without a native D8 map', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+
+    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [{ kind: 'hex', text: ':00000001FF\n' }],
+    });
+
+    const result = await backend.assemble({ asmPath, hexPath });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('did not produce D8 output');
   });
 });
 

@@ -47,10 +47,18 @@ export function loadProgramArtifacts(options: ProgramLoaderOptions): ProgramLoad
     program.memory = buildTec1gMemory(hexContent, options);
   }
 
-  const listingContent = fs.readFileSync(listingPath, 'utf-8');
-  const listingInfo = parseListing(listingContent);
+  const listingContent = fs.existsSync(listingPath) ? fs.readFileSync(listingPath, 'utf-8') : '';
+  const listingInfo = listingContent.length > 0 ? parseListing(listingContent) : emptyListingInfo();
 
   return { program, listingInfo, listingContent };
+}
+
+function emptyListingInfo(): ListingInfo {
+  return {
+    lineToAddress: new Map<number, number>(),
+    addressToLine: new Map<number, number>(),
+    entries: [],
+  };
 }
 
 function buildTec1Memory(hexContent: string, options: ProgramLoaderOptions): Uint8Array {

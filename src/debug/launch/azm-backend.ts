@@ -26,11 +26,6 @@ interface HexArtifact {
   text: string;
 }
 
-interface ListingArtifact {
-  kind: 'lst';
-  text: string;
-}
-
 interface BinArtifact {
   kind: 'bin';
   bytes: Uint8Array;
@@ -53,7 +48,6 @@ interface RegisterCareInterfaceArtifact {
 
 type Artifact =
   | HexArtifact
-  | ListingArtifact
   | BinArtifact
   | D8mArtifact
   | RegisterCareReportArtifact
@@ -186,17 +180,6 @@ function writeBinaryArtifact(filePath: string, bytes: Uint8Array): void {
 
 function writeJsonArtifact(filePath: string, value: unknown): void {
   writeTextArtifact(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function writeD8PlaceholderListing(listingPath: string, d8Path: string): void {
-  writeTextArtifact(
-    listingPath,
-    [
-      '; AZM did not emit a legacy listing.',
-      `; Debug80 uses the native D8 debug map at ${path.basename(d8Path)} for source mapping.`,
-      '',
-    ].join('\n')
-  );
 }
 
 function azmFailure(message: string, diagnostic?: AssemblyDiagnostic): AssembleResult {
@@ -333,29 +316,10 @@ export class AzmBackend implements AssemblerBackend {
 
     const base = artifactBase(options.hexPath);
     const d8 = findArtifact(artifacts, 'd8m');
-    let hexD8Path: string | undefined;
-    if (d8 !== undefined) {
-      hexD8Path = `${base}${D8_DEBUG_MAP_EXT}`;
-      writeJsonArtifact(hexD8Path, d8.json);
-      const listingD8Path = path.join(
-        path.dirname(options.listingPath),
-        `${path.basename(base)}${D8_DEBUG_MAP_EXT}`
-      );
-      if (listingD8Path !== hexD8Path) {
-        writeJsonArtifact(listingD8Path, d8.json);
-      }
+    if (d8 === undefined) {
+      return azmFailure(`azm succeeded but did not produce D8 output for "${options.asmPath}".`);
     }
-
-    const listing = findArtifact(artifacts, 'lst');
-    if (listing !== undefined) {
-      writeTextArtifact(options.listingPath, listing.text);
-    } else if (hexD8Path !== undefined) {
-      writeD8PlaceholderListing(options.listingPath, hexD8Path);
-    } else {
-      return azmFailure(
-        `azm succeeded but did not produce listing or D8 output for "${options.asmPath}".`
-      );
-    }
+    writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8.json);
 
     const registerCareReport = findArtifact(artifacts, 'register-care-report');
     if (registerCareReport !== undefined) {

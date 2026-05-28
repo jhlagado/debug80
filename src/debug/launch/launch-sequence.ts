@@ -35,11 +35,8 @@ import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
 import type { ResolvedPlatformProvider } from '../../platforms/provider';
 
 export class MissingLaunchArtifactsError extends Error {
-  constructor(
-    public readonly hexPath: string,
-    public readonly listingPath: string
-  ) {
-    super(`Z80 artifacts not found. Expected HEX at "${hexPath}" and LST at "${listingPath}".`);
+  constructor(public readonly hexPath: string) {
+    super(`Z80 artifacts not found. Expected HEX at "${hexPath}".`);
     this.name = 'MissingLaunchArtifactsError';
   }
 }
@@ -97,7 +94,7 @@ export async function respondToMissingLaunchInputs(
     sendErrorResponse(
       response,
       1,
-      'Debug80: No asm/hex/listing provided and no debug80.json found. Add debug80.json or specify paths.'
+      'Debug80: No asm/hex provided and no debug80.json found. Add debug80.json or specify paths.'
     );
   } catch (err) {
     sendErrorResponse(response, 1, `Debug80: Failed to create project config: ${String(err)}`);
@@ -221,8 +218,8 @@ export async function buildLaunchSession(
     sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),
   });
 
-  if (!existsSync(hexPath) || !existsSync(listingPath)) {
-    throw new MissingLaunchArtifactsError(hexPath, listingPath);
+  if (!existsSync(hexPath)) {
+    throw new MissingLaunchArtifactsError(hexPath);
   }
 
   const { program, listingInfo, listingContent } = loadProgramArtifacts({
