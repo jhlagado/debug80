@@ -66,7 +66,7 @@ export function createMatrixUiController(
     if (raw <= 0) {
       return 0;
     }
-    const t = Math.min(1, (raw / 255) * 4);
+    const t = Math.min(1, (raw / 255) * 5.2);
     const gamma = Math.pow(t, 0.7);
     return Math.min(255, Math.round(255 * gamma + 18 * t));
   }

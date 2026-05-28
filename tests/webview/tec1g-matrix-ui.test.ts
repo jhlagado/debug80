@@ -104,8 +104,8 @@ describe('tec1g matrix ui', () => {
     controller.applyMatrixBrightness([32]);
 
     expect(firstDot.classList.contains('on')).toBe(true);
-    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.651');
-    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('0.651');
+    expect(firstDot.style.getPropertyValue('--matrix-level')).toBe('0.788');
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('0.788');
   });
 
   it('falls back to latch rows before brightness data arrives', () => {
