@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.9
+
+- Updated AZM to `0.2.5`.
+- Fixed MON-3 ROM source breakpoints using native `.d8.json` source maps.
+- Removed the old `.debug80` source-map cache and more listing-derived fallback
+  logic.
+- Updated docs for the AZM-only source-map flow.
+- Improved the TEC-1G starter program with LCD text and scanned `HELLO` output.
+- Shortened CoolTerm serial status messages to show filenames only.
+- Fixed stale Debug80 project status after webview restore and focus changes.
+- Improved TEC-1 / TEC-1G seven-segment brightness using scan duty-cycle
+  integration.
+- Added regression tests for ROM mapping, source maps, serial status text,
+  project refresh, and display duty-cycle behavior.
+
 ## 0.1.8
 
 - Added `main.asm` as a recognized Debug80 target entry-point convention,
