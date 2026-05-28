@@ -32,6 +32,7 @@ export interface PlatformViewWebviewHandlerContext {
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => void;
   handleSetHardwareStatus: (message: string | undefined) => void;
+  handleRequestProjectStatus: () => void;
   isPanelVisible: () => boolean;
 }
 
@@ -96,6 +97,10 @@ export function createPlatformViewWebviewHandler(
         if (bundle !== undefined) {
           clearPlatformSerial(bundle.state.serialBuffer);
         }
+      },
+      handleRequestProjectStatus: () => {
+        context.handleRequestProjectStatus();
+        return Promise.resolve();
       },
       handlePlatformMessage: async (platform, platformMsg) => {
         const bundle = context.getActiveBundle(platform);

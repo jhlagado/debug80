@@ -63,9 +63,11 @@ describe('platform-view webview handler', () => {
 
     await handler({ type: 'saveProjectConfig', platform: 'tec1' });
     await handler({ type: 'setStopOnEntry', stopOnEntry: true });
+    await handler({ type: 'requestProjectStatus' });
 
     expect(context.handleSaveProjectConfig).toHaveBeenCalledWith('tec1');
     expect(context.handleSetStopOnEntry).toHaveBeenCalledWith(true);
+    expect(context.handleRequestProjectStatus).toHaveBeenCalledTimes(1);
   });
 
   it('clears the active platform serial buffer', async () => {
@@ -113,6 +115,8 @@ function createContext(
     handleSaveProjectConfig: vi.fn(),
     handleSetStopOnEntry: vi.fn(),
     handleSetAzmOptions: vi.fn(),
+    handleSetHardwareStatus: vi.fn(),
+    handleRequestProjectStatus: vi.fn(),
     isPanelVisible: () => true,
     ...overrides,
   };

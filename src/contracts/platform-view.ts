@@ -41,6 +41,7 @@ export type ProjectStatusPayload = {
 };
 
 export type PlatformViewControlMessage =
+  | { type: 'requestProjectStatus' }
   | { type: 'startDebug'; rootPath?: string }
   | { type: 'restartDebug' }
   | { type: 'createProject'; rootPath?: string; platform?: string }

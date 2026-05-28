@@ -22,6 +22,7 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleSerialSendFile: vi.fn(() => undefined),
     handleSerialSave: vi.fn(() => undefined),
     clearSerialBuffer: vi.fn(() => undefined),
+    handleRequestProjectStatus: vi.fn(() => undefined),
     handlePlatformMessage: vi.fn(() => undefined),
   };
 }
@@ -43,6 +44,7 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'setEntrySource' }, deps);
     await handlePlatformViewMessage({ type: 'startDebug', rootPath: '/workspace/a' }, deps);
     await handlePlatformViewMessage({ type: 'openWorkspaceFolder' }, deps);
+    await handlePlatformViewMessage({ type: 'requestProjectStatus' }, deps);
     await handlePlatformViewMessage({ type: 'configureProject' }, deps);
     await handlePlatformViewMessage({ type: 'setStopOnEntry', stopOnEntry: true }, deps);
     await handlePlatformViewMessage(
@@ -65,6 +67,7 @@ describe('platform-view message routing', () => {
     expect(deps.handleSetEntrySource).toHaveBeenCalledTimes(1);
     expect(deps.handleStartDebug).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
     expect(deps.handleOpenWorkspaceFolder).toHaveBeenCalledTimes(1);
+    expect(deps.handleRequestProjectStatus).toHaveBeenCalledTimes(1);
     expect(deps.handleConfigureProject).toHaveBeenCalledTimes(1);
     expect(deps.handleSetStopOnEntry).toHaveBeenCalledWith(true);
     expect(deps.handleSetAzmOptions).toHaveBeenCalledWith('audit', 'never');
