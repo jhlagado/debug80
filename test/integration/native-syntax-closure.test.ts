@@ -64,11 +64,16 @@ x      .byte
     expect(Array.from(union.bytes)).toEqual([1, 0]);
   });
 
-  it('uses single quotes for byte character literals and double quotes for strings', () => {
+  it('tolerates ASM80 quote forms while preserving string data behavior', () => {
     const accepted = compileNext(`
 TEXT .equ "OK"
+SPACE .equ " "
 CHAR .equ 'A'
-        .db 'B', "CD", TEXT
+        ld a," "
+        cp " "
+        sub "a"-"A"
+        .db 'B', "CD", TEXT, SPACE
+        .db '<_>?)!@#$%^&*( : +|',22H
         .cstr "EF"
         .pstr "G"
         .istr "H"
@@ -76,11 +81,20 @@ CHAR .equ 'A'
 
     expect(accepted.diagnostics).toEqual([]);
     expect(Array.from(accepted.bytes)).toEqual([
+      0x3e,
+      0x20,
+      0xfe,
+      0x20,
+      0xd6,
+      0x20,
       0x42,
       0x43,
       0x44,
       0x4f,
       0x4b,
+      0x20,
+      ...[...'<_>?)!@#$%^&*( : +|'].map((char) => char.charCodeAt(0)),
+      0x22,
       0x45,
       0x46,
       0x00,
@@ -90,11 +104,9 @@ CHAR .equ 'A'
     ]);
 
     for (const [source, message] of [
-      ['.db \'AB\'', 'single quotes are for one character literal; use double quotes for strings'],
       ['.cstr \'A\'', '.cstr expects one double-quoted string'],
       ['.pstr \'A\'', '.pstr expects one double-quoted string'],
       ['.istr \'A\'', '.istr expects one double-quoted string'],
-      ['VALUE .equ "A"', 'double-quoted values are strings; use single quotes for character literals'],
     ]) {
       const result = compileNext(`${source}\n`);
       expect(result.diagnostics).toEqual([expect.objectContaining({ message })]);
