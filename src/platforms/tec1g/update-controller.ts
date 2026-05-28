@@ -6,7 +6,7 @@
 import {
   TEC_FAST_HZ,
   TEC_SLOW_HZ,
-  collectSevenSegmentIntensities,
+  readSevenSegmentIntensities,
   shouldUpdate,
 } from '../tec-common';
 import type { Tec1gState } from './runtime';
@@ -39,10 +39,7 @@ export function serializeTec1gUpdateFromRuntimeState(state: Tec1gState): Tec1gUp
   const { display, input, audio, lcdCtrl, timing, system } = state;
   return {
     digits: [...display.digits],
-    segmentIntensities: collectSevenSegmentIntensities(
-      display.segmentDuty,
-      timing.cycleClock.now()
-    ),
+    segmentIntensities: readSevenSegmentIntensities(display.segmentDuty),
     matrix: [...display.ledMatrixRedRows],
     matrixGreen: [...display.ledMatrixGreenRows],
     matrixBlue: [...display.ledMatrixBlueRows],

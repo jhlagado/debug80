@@ -25,7 +25,9 @@ import {
   KEY_NONE,
   collectSevenSegmentIntensities,
   createSevenSegmentDutyState,
+  maybeCommitSevenSegmentIntensitiesOnIdle,
   recordSevenSegmentDutyTransition,
+  readSevenSegmentIntensities,
   updateDisplayDigits,
   updateMatrixRow,
   calculateSpeakerFrequency,
@@ -120,6 +122,55 @@ describe('seven-segment duty integration', () => {
     expect(intensities[8]).toBeCloseTo(10 / 120);
     expect(intensities[40]).toBeCloseTo(100 / 120);
     expect(intensities[16]).toBe(0);
+  });
+
+  it('commits a scan frame when the digit scan wraps', () => {
+    const duty = createSevenSegmentDutyState(6, 0);
+
+    expect(recordSevenSegmentDutyTransition(duty, 0, 0b000001, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 10, 0b000010, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 20, 0b000100, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 30, 0b001000, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 40, 0b010000, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 50, 0b100000, 0x01)).toBe(false);
+    expect(recordSevenSegmentDutyTransition(duty, 60, 0b000001, 0x01)).toBe(true);
+
+    const intensities = collectSevenSegmentIntensities(duty, 60);
+
+    expect(intensities[0]).toBeCloseTo(10 / 60);
+    expect(intensities[8]).toBeCloseTo(10 / 60);
+    expect(intensities[16]).toBeCloseTo(10 / 60);
+    expect(intensities[24]).toBeCloseTo(10 / 60);
+    expect(intensities[32]).toBeCloseTo(10 / 60);
+    expect(intensities[40]).toBeCloseTo(10 / 60);
+  });
+
+  it('keeps the last committed frame separate from active scan accumulation', () => {
+    const duty = createSevenSegmentDutyState(6, 0);
+
+    recordSevenSegmentDutyTransition(duty, 0, 0b000001, 0x01);
+    recordSevenSegmentDutyTransition(duty, 10, 0b000010, 0x01);
+
+    expect(readSevenSegmentIntensities(duty)[0]).toBe(0);
+
+    const committed = collectSevenSegmentIntensities(duty, 20);
+
+    expect(committed[0]).toBeCloseTo(10 / 20);
+    expect(readSevenSegmentIntensities(duty)[0]).toBeCloseTo(10 / 20);
+  });
+
+  it('commits a partial scan after an idle timeout', () => {
+    const duty = createSevenSegmentDutyState(6, 0);
+
+    recordSevenSegmentDutyTransition(duty, 0, 0b000001, 0x01);
+    recordSevenSegmentDutyTransition(duty, 10, 0b000010, 0x01);
+
+    expect(maybeCommitSevenSegmentIntensitiesOnIdle(duty, 49, 1000, 40)).toBe(false);
+    expect(readSevenSegmentIntensities(duty)[0]).toBe(0);
+
+    expect(maybeCommitSevenSegmentIntensitiesOnIdle(duty, 50, 1000, 40)).toBe(true);
+    expect(readSevenSegmentIntensities(duty)[0]).toBeCloseTo(10 / 50);
+    expect(readSevenSegmentIntensities(duty)[8]).toBeCloseTo(40 / 50);
   });
 });
 

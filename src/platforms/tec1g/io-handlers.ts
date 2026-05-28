@@ -38,6 +38,7 @@ import {
 import {
   TEC_SILENCE_CYCLES,
   calculateSpeakerFrequency,
+  collectSevenSegmentIntensities,
   recordSevenSegmentDutyTransition,
   updateDisplayDigits,
 } from '../tec-common';
@@ -192,9 +193,13 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
   };
 
   const updateDisplay = (): void => {
-    if (updateDisplayDigits(display.digits, display.digitLatch, display.segmentLatch)) {
-      queueUpdate();
-    }
+    updateDisplayDigits(display.digits, display.digitLatch, display.segmentLatch);
+  };
+
+  const commitSevenSegmentFrame = (): void => {
+    collectSevenSegmentIntensities(display.segmentDuty, timing.cycleClock.now());
+    updateDisplayDigits(display.digits, display.digitLatch, display.segmentLatch);
+    queueUpdate();
   };
 
   const updateLedMatrix = (rowMask: number): void => {
@@ -321,7 +326,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       const p = fullPort & TEC1G_MASK_BYTE;
       void fullPort;
       if (p === TEC1G_PORT_DIGIT) {
-        recordSevenSegmentDutyTransition(
+        const frameComplete = recordSevenSegmentDutyTransition(
           display.segmentDuty,
           timing.cycleClock.now(),
           value & TEC1G_MASK_BYTE,
@@ -345,10 +350,13 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         }
         audio.speaker = speaker;
         updateDisplay();
+        if (frameComplete) {
+          commitSevenSegmentFrame();
+        }
         return;
       }
       if (p === TEC1G_PORT_SEGMENT) {
-        recordSevenSegmentDutyTransition(
+        const frameComplete = recordSevenSegmentDutyTransition(
           display.segmentDuty,
           timing.cycleClock.now(),
           display.digitLatch,
@@ -356,6 +364,9 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         );
         display.segmentLatch = value & TEC1G_MASK_BYTE;
         updateDisplay();
+        if (frameComplete) {
+          commitSevenSegmentFrame();
+        }
         return;
       }
       if (p === TEC1G_PORT_8X8_RED) {

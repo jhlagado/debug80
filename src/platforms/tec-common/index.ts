@@ -289,9 +289,12 @@ export function updateDisplayDigits(
 export interface SevenSegmentDutyState {
   activeDigitLatch: number;
   activeSegmentLatch: number;
+  digitsVisitedMask: number;
+  lastActivityCycle: number;
   lastCycle: number;
   windowStartCycle: number;
   segmentOnCycles: number[];
+  segmentIntensities: number[];
 }
 
 export function createSevenSegmentDutyState(
@@ -301,9 +304,12 @@ export function createSevenSegmentDutyState(
   return {
     activeDigitLatch: 0,
     activeSegmentLatch: 0,
+    digitsVisitedMask: 0,
+    lastActivityCycle: -1,
     lastCycle: cycle,
     windowStartCycle: cycle,
     segmentOnCycles: Array.from({ length: digitCount * 8 }, () => 0),
+    segmentIntensities: Array.from({ length: digitCount * 8 }, () => 0),
   };
 }
 
@@ -312,10 +318,23 @@ export function recordSevenSegmentDutyTransition(
   cycle: number,
   nextDigitLatch: number,
   nextSegmentLatch: number
-): void {
+): boolean {
   accumulateSevenSegmentDuty(state, cycle);
+  const nextDigitMask = nextDigitLatch & digitMaskForSevenSegmentState(state);
+  let frameComplete = false;
+  if (nextDigitMask !== 0) {
+    frameComplete =
+      (state.digitsVisitedMask & nextDigitMask) !== 0 &&
+      state.digitsVisitedMask === digitMaskForSevenSegmentState(state);
+    if (frameComplete) {
+      state.digitsVisitedMask = 0;
+    }
+    state.digitsVisitedMask |= nextDigitMask;
+  }
+  state.lastActivityCycle = cycle;
   state.activeDigitLatch = nextDigitLatch & BYTE_MASK;
   state.activeSegmentLatch = nextSegmentLatch & BYTE_MASK;
+  return frameComplete;
 }
 
 export function collectSevenSegmentIntensities(
@@ -327,10 +346,39 @@ export function collectSevenSegmentIntensities(
   const intensities = state.segmentOnCycles.map((onCycles) =>
     Math.max(0, Math.min(1, onCycles / elapsedCycles))
   );
+  state.segmentIntensities = intensities;
   state.segmentOnCycles.fill(0);
   state.windowStartCycle = cycle;
   state.lastCycle = cycle;
+  state.digitsVisitedMask = 0;
+  state.lastActivityCycle = -1;
   return intensities;
+}
+
+export function readSevenSegmentIntensities(state: SevenSegmentDutyState): number[] {
+  return [...state.segmentIntensities];
+}
+
+export function maybeCommitSevenSegmentIntensitiesOnIdle(
+  state: SevenSegmentDutyState,
+  cycle: number,
+  clockHz: number,
+  idleMs = 40
+): boolean {
+  if (state.lastActivityCycle < 0) {
+    return false;
+  }
+  const idleCycles = millisecondsToClocks(clockHz, idleMs);
+  if (idleCycles <= 0 || cycle - state.lastActivityCycle < idleCycles) {
+    return false;
+  }
+  collectSevenSegmentIntensities(state, cycle);
+  return true;
+}
+
+function digitMaskForSevenSegmentState(state: SevenSegmentDutyState): number {
+  const digitCount = Math.max(0, Math.floor(state.segmentOnCycles.length / 8));
+  return digitCount >= 31 ? 0x7fffffff : (1 << digitCount) - 1;
 }
 
 function accumulateSevenSegmentDuty(state: SevenSegmentDutyState, cycle: number): void {
@@ -338,7 +386,7 @@ function accumulateSevenSegmentDuty(state: SevenSegmentDutyState, cycle: number)
   if (duration === 0) {
     return;
   }
-  const digitMask = state.activeDigitLatch & 0x3f;
+  const digitMask = state.activeDigitLatch & digitMaskForSevenSegmentState(state);
   const segmentMask = state.activeSegmentLatch & BYTE_MASK;
   if (digitMask !== 0 && segmentMask !== 0) {
     for (let digit = 0; digit < state.segmentOnCycles.length / 8; digit += 1) {

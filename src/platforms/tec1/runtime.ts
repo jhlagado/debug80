@@ -54,7 +54,9 @@ import {
   TEC_KEY_HOLD_MS,
   collectSevenSegmentIntensities,
   createSevenSegmentDutyState,
+  maybeCommitSevenSegmentIntensitiesOnIdle,
   recordSevenSegmentDutyTransition,
+  readSevenSegmentIntensities,
   updateDisplayDigits,
   updateMatrixRow,
   calculateSpeakerFrequency,
@@ -218,10 +220,7 @@ export function createTec1Runtime(
 
   const sendUpdate = (): void => {
     const payload = serializeTec1UpdateFromRuntimeState(state);
-    payload.segmentIntensities = collectSevenSegmentIntensities(
-      state.segmentDuty,
-      state.cycleClock.now()
-    );
+    payload.segmentIntensities = readSevenSegmentIntensities(state.segmentDuty);
     onUpdate(payload);
   };
 
@@ -271,9 +270,13 @@ export function createTec1Runtime(
   };
 
   const updateDisplay = (): void => {
-    if (updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch)) {
-      queueUpdate();
-    }
+    updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch);
+  };
+
+  const commitSevenSegmentFrame = (): void => {
+    collectSevenSegmentIntensities(state.segmentDuty, state.cycleClock.now());
+    updateDisplayDigits(state.digits, state.digitLatch, state.segmentLatch);
+    queueUpdate();
   };
 
   const lcdIndexForAddr = (addr: number): number | null => {
@@ -351,7 +354,7 @@ export function createTec1Runtime(
     write: (port: number, value: number): void => {
       const p = port & TEC1_MASK_BYTE;
       if (p === TEC1_PORT_DIGIT) {
-        recordSevenSegmentDutyTransition(
+        const frameComplete = recordSevenSegmentDutyTransition(
           state.segmentDuty,
           state.cycleClock.now(),
           value & TEC1_MASK_BYTE,
@@ -378,10 +381,13 @@ export function createTec1Runtime(
         }
         state.speaker = speaker;
         updateDisplay();
+        if (frameComplete) {
+          commitSevenSegmentFrame();
+        }
         return;
       }
       if (p === TEC1_PORT_SEGMENT) {
-        recordSevenSegmentDutyTransition(
+        const frameComplete = recordSevenSegmentDutyTransition(
           state.segmentDuty,
           state.cycleClock.now(),
           state.digitLatch,
@@ -389,6 +395,9 @@ export function createTec1Runtime(
         );
         state.segmentLatch = value & TEC1_MASK_BYTE;
         updateDisplay();
+        if (frameComplete) {
+          commitSevenSegmentFrame();
+        }
         return;
       }
       if (p === TEC1_PORT_MATRIX_LATCH) {
@@ -528,6 +537,15 @@ export function createTec1Runtime(
       return;
     }
     state.cycleClock.advance(cycles);
+    if (
+      maybeCommitSevenSegmentIntensitiesOnIdle(
+        state.segmentDuty,
+        state.cycleClock.now(),
+        state.clockHz
+      )
+    ) {
+      queueUpdate();
+    }
   };
 
   const silenceSpeaker = (): void => {
