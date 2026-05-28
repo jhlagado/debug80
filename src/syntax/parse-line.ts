@@ -114,13 +114,6 @@ function parseEquItem(
   span: { readonly sourceName: string; readonly line: number; readonly column: number },
 ): ParseLineResult {
   const stringValue = parseWholeQuotedString(expressionText.trim());
-  const quotePolicyError = parseEquQuotePolicyError(expressionText.trim());
-  if (quotePolicyError) {
-    return {
-      items: [],
-      diagnostics: [parseError(line, quotePolicyError)],
-    };
-  }
   const expression =
     stringValue !== undefined && stringValue.length > 1
       ? { kind: 'number' as const, value: 0 }
@@ -191,10 +184,9 @@ function parseCanonicalStatement(
         ? parts.map(parseDataValue).filter((value) => value !== undefined)
         : parts.map(parseExpression).filter((value) => value !== undefined);
     if (values.length !== parts.length) {
-      const quotePolicyError = parts.map(parseDataQuotePolicyError).find(Boolean);
       return {
         items: [],
-        diagnostics: [parseError(line, quotePolicyError ?? `invalid .${directive} value list`)],
+        diagnostics: [parseError(line, `invalid .${directive} value list`)],
       };
     }
     return {
@@ -433,7 +425,7 @@ function parseDataValue(text: string): DataValue | undefined {
 function parseWholeQuotedString(text: string): string | undefined {
   const input = text.trim();
   const quote = input[0];
-  if (quote !== '"' || input[input.length - 1] !== quote) {
+  if ((quote !== '"' && quote !== "'") || input[input.length - 1] !== quote) {
     return undefined;
   }
 
@@ -454,24 +446,6 @@ function parseWholeQuotedString(text: string): string | undefined {
     value += char;
   }
   return value;
-}
-
-function parseEquQuotePolicyError(text: string): string | undefined {
-  if (!text.startsWith('"') || !text.endsWith('"')) {
-    return undefined;
-  }
-  const stringValue = parseWholeQuotedString(text);
-  return stringValue !== undefined && stringValue.length === 1
-    ? 'double-quoted values are strings; use single quotes for character literals'
-    : undefined;
-}
-
-function parseDataQuotePolicyError(text: string): string | undefined {
-  const input = text.trim();
-  if (!input.startsWith("'") || !input.endsWith("'")) {
-    return undefined;
-  }
-  return 'single quotes are for one character literal; use double quotes for strings';
 }
 
 function normalizeEntryLabelName(raw: string): string {

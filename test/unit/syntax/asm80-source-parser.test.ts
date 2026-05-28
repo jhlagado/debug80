@@ -175,6 +175,7 @@ describe('ASM80 source parser', () => {
         '.db "2025.16"',
         '.db "A,B",0',
         ".db 'a' - 'A'",
+        ".db '<_>?)!@#$%^&*( : +|',22H",
       ].join('\n'),
     );
 
@@ -211,6 +212,13 @@ describe('ASM80 source parser', () => {
             left: { kind: 'number', value: 97 },
             right: { kind: 'number', value: 65 },
           },
+        ],
+      },
+      {
+        kind: 'db',
+        values: [
+          { kind: 'string-fragment', value: '<_>?)!@#$%^&*( : +|' },
+          { kind: 'number', value: 0x22 },
         ],
       },
     ]);
