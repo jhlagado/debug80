@@ -134,9 +134,10 @@ reserved RAM. You can also preload RAM with an Intel HEX file via `ramInitHex`
 
 ## Panel keyboard shortcuts
 
-Keyboard input is routed to the keypad only when the keypad has focus. Click
-anywhere in the UI panel (display, background, keypad area) to claim focus. A
-focus ring appears around the keypad while it is active.
+Keyboard input is routed to the keypad whenever the Debug80 webview has focus
+and the active element is not a native control. Click the Machine panel to claim
+keypad focus for monitor or game input. Project selectors, text fields, buttons,
+and serial controls keep their own keyboard focus normally.
 
 ### Hex / control keys
 

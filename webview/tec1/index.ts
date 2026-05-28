@@ -1,6 +1,11 @@
 import { createMatrixRenderer } from '../common/matrix-renderer';
 import { createTecKeypad } from '../common/tec-keypad';
 import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
+import {
+  routeTecKeypadKeyup,
+  routeTecKeypadShortcut,
+  wireKeypadFocusPanels,
+} from '../common/keypad-focus-routing';
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
@@ -65,6 +70,7 @@ const accordionEl = document.getElementById('debug80Accordion') as HTMLElement |
 const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
 const keypad = createTecKeypad(vscode, keypadEl);
+wireKeypadFocusPanels([accordionMachine], keypad);
 
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createAccordionLayoutController({
@@ -80,14 +86,6 @@ const panelLayout = createAccordionLayoutController({
   getMemoryPanelController: () => memoryPanelController,
 });
 panelLayout.wireButtons();
-
-// Clicking anywhere in the UI panel that isn't a native control focuses the keypad.
-panelUi.addEventListener('mousedown', (event) => {
-  const target = event.target as HTMLElement;
-  if (target.closest('input, select, textarea, button')) return;
-  event.preventDefault();
-  keypad.focusKeypad();
-});
 
 let speedMode = 'fast';
 let uiRevision = 0;
@@ -319,25 +317,12 @@ panelLayout.setRegisterRefreshActive(false);
 window.addEventListener('resize', () => panelLayout.scheduleMemoryResize());
 panelLayout.updateMemoryLayout(false);
 
-keypadEl.addEventListener('keydown', (event) => {
-  if (event.repeat) return;
+window.addEventListener('keydown', (event) => {
   const shortcut = resolveTecKeypadShortcut(event.key);
-  if (shortcut.kind === 'key') {
-    keypad.sendKey(shortcut.code);
-    event.preventDefault();
-  } else if (shortcut.kind === 'reset') {
-    keypad.setShiftLatched(false);
-    vscode.postMessage({ type: 'reset' });
-    event.preventDefault();
-  } else if (shortcut.kind === 'shift') {
-    keypad.setShiftLatched(shortcut.latched);
-    event.preventDefault();
-  }
+  routeTecKeypadShortcut(event, shortcut, keypad, () => vscode.postMessage({ type: 'reset' }));
 });
-keypadEl.addEventListener('keyup', (event) => {
-  if (event.key === 'Shift' && keypad.getShiftLatched()) {
-    keypad.setShiftLatched(false);
-  }
+window.addEventListener('keyup', (event) => {
+  routeTecKeypadKeyup(event, keypad);
 });
 
 window.addEventListener('beforeunload', () => {

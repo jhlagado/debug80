@@ -147,9 +147,10 @@ switches (keyboard mode, protect on reset, expansion bank select).
 
 ## Panel keyboard shortcuts
 
-Keyboard input is routed to the keypad only when the keypad has focus. Click
-anywhere in the UI panel (display, background, keypad area) to claim focus. A
-focus ring appears around the keypad while it is active.
+Keyboard input is routed to the keypad whenever the Debug80 webview has focus
+and the active element is not a native control. Click the Displays or Machine
+panel to claim keypad focus for games. Project selectors, text fields, buttons,
+and serial controls keep their own keyboard focus normally.
 
 ### Hex / control keys
 
@@ -180,9 +181,10 @@ physical `Shift` key is equivalent: hold `Shift` + press a key.
 ### Focus
 
 - The keypad auto-focuses when the panel loads.
-- Click anywhere in the UI tab (display, background, status area, between keys)
-  to restore focus after interacting with other controls.
-- Native controls (`input`, `select`, `button`) keep their own focus normally.
+- Click anywhere in the Displays or Machine panels to restore keypad routing
+  after interacting with other controls.
+- Native controls (`input`, `select`, `textarea`, `button`) keep their own
+  focus normally.
 
 ## Examples
 
