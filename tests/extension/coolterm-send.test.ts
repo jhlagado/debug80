@@ -89,10 +89,33 @@ describe('sendHexViaCoolTerm', () => {
     expect(mocks.sendTextFile).toHaveBeenCalledWith('/workspace/build/demo.hex');
     expect(mocks.poll).not.toHaveBeenCalled();
     expect(mocks.readAll).not.toHaveBeenCalled();
+    expect(statuses).toContain('Sending demo.hex to the serial port...');
     expect(statuses.at(-1)).toBe('Sent demo.hex. Check the board display for PASS or ERROR.');
     expect(mocks.showInformationMessage).toHaveBeenCalledWith(
       'Debug80: demo.hex sent. Check the board display for PASS or ERROR.'
     );
     expect(mocks.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a missing HEX artifact by file name only', async () => {
+    const statuses: string[] = [];
+    mocks.resolveCoolTermHexArtifact.mockReturnValueOnce({
+      kind: 'missing',
+      path: '/workspace/build/demo.hex',
+    });
+
+    await expect(
+      sendHexViaCoolTerm({
+        rootPath: '/workspace',
+        targetName: 'demo',
+        status: (message) => statuses.push(message),
+      })
+    ).resolves.toBe(false);
+
+    expect(statuses).toEqual(['HEX file demo.hex was not found. Build the selected target first.']);
+    expect(mocks.showWarningMessage).toHaveBeenCalledWith(
+      'Debug80: HEX file demo.hex was not found. Build the selected target first.'
+    );
+    expect(mocks.CoolTermRemoteClient).not.toHaveBeenCalled();
   });
 });

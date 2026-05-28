@@ -158,7 +158,7 @@ function buildDefaultHardwareStatus(
     return `Ready to send ${path.basename(hexArtifact.path)} via CoolTerm.`;
   }
   if (hexArtifact.kind === 'missing') {
-    return `HEX file not found at ${hexArtifact.path}. Build the selected target first.`;
+    return `HEX file ${path.basename(hexArtifact.path)} was not found. Build the selected target first.`;
   }
   return 'Select a target with a buildable HEX artifact before sending to hardware.';
 }

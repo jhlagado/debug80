@@ -30,9 +30,10 @@ export async function sendHexViaCoolTerm(options: CoolTermSendHexOptions): Promi
     return false;
   }
   if (artifact.kind === 'missing') {
-    options.status?.(`HEX file not found at ${artifact.path}. Build the selected target first.`);
+    const fileName = path.basename(artifact.path);
+    options.status?.(`HEX file ${fileName} was not found. Build the selected target first.`);
     void vscode.window.showWarningMessage(
-      `Debug80: HEX file not found at ${artifact.path}. Build the selected target first.`
+      `Debug80: HEX file ${fileName} was not found. Build the selected target first.`
     );
     return false;
   }
@@ -69,7 +70,7 @@ export async function sendHexViaCoolTerm(options: CoolTermSendHexOptions): Promi
           return false;
         }
 
-        options.status?.(`Sending ${artifact.path} to the serial port...`);
+        options.status?.(`Sending ${fileName} to the serial port...`);
         const sent = await client.sendTextFile(artifact.path);
         if (!sent) {
           options.status?.('CoolTerm failed to send the HEX file.');
