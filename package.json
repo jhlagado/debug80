@@ -76,8 +76,7 @@
           {
             "scope": [
               "comment.line.semicolon.z80-asm",
-              "punctuation.definition.comment.z80-asm",
-              "comment.line.semicolon.z80-lst"
+              "punctuation.definition.comment.z80-asm"
             ],
             "settings": {
               "foreground": "#6A9955"
@@ -103,8 +102,7 @@
           {
             "scope": [
               "entity.name.label.z80-asm",
-              "entity.name.label.local.z80-asm",
-              "entity.name.label.z80-lst"
+              "entity.name.label.local.z80-asm"
             ],
             "settings": {
               "foreground": "#B77DFF"
@@ -114,8 +112,7 @@
             "scope": [
               "variable.other.symbol.z80-asm",
               "variable.other.field.z80-asm",
-              "constant.language.enum.member.z80-asm",
-              "variable.other.symbol.z80-lst"
+              "constant.language.enum.member.z80-asm"
             ],
             "settings": {
               "foreground": "#FF4D6D"
@@ -127,8 +124,7 @@
               "entity.name.type.z80-asm",
               "entity.name.type.enum.z80-asm",
               "support.type.z80-asm",
-              "support.type.primitive.z80-asm",
-              "entity.name.constant.equ.z80-lst"
+              "support.type.primitive.z80-asm"
             ],
             "settings": {
               "foreground": "#4DA3FF"
@@ -140,8 +136,7 @@
               "keyword.declaration.type.z80-asm",
               "keyword.declaration.enum.z80-asm",
               "keyword.declaration.op.z80-asm",
-              "storage.type.field.z80-asm",
-              "keyword.control.directive.z80-lst"
+              "storage.type.field.z80-asm"
             ],
             "settings": {
               "foreground": "#FF66C4"
@@ -159,8 +154,7 @@
           },
           {
             "scope": [
-              "keyword.instruction.z80-asm",
-              "keyword.instruction.z80-lst"
+              "keyword.instruction.z80-asm"
             ],
             "settings": {
               "foreground": "#FF9D00"
@@ -168,8 +162,7 @@
           },
           {
             "scope": [
-              "variable.language.register.z80-asm",
-              "variable.language.register.z80-lst"
+              "variable.language.register.z80-asm"
             ],
             "settings": {
               "foreground": "#00C2FF"
@@ -178,7 +171,6 @@
           {
             "scope": [
               "variable.language.condition.z80-asm",
-              "variable.language.condition.z80-lst",
               "variable.language.flag.z80-asm"
             ],
             "settings": {
@@ -188,8 +180,7 @@
           {
             "scope": [
               "string.quoted.double.z80-asm",
-              "string.quoted.single.z80-asm",
-              "string.quoted.double.z80-lst"
+              "string.quoted.single.z80-asm"
             ],
             "settings": {
               "foreground": "#A3E635"
@@ -213,13 +204,9 @@
               "punctuation.definition.typecast.end.z80-asm",
               "punctuation.separator.comma.z80-asm",
               "punctuation.separator.key-value.z80-asm",
-              "keyword.operator.z80-lst",
-              "punctuation.section.parens.z80-lst",
-              "punctuation.separator.comma.z80-lst",
               "meta.comment.separator.z80-asm",
               "meta.annotation.parameters.z80-asm",
-              "constant.character.escape.z80-asm",
-              "constant.character.escape.z80-lst"
+              "constant.character.escape.z80-asm"
             ],
             "settings": {
               "foreground": "#A0AEC0"
@@ -230,13 +217,7 @@
               "constant.numeric.hex.z80-asm",
               "constant.numeric.binary.z80-asm",
               "constant.numeric.decimal.z80-asm",
-              "constant.language.current-location.z80-asm",
-              "constant.numeric.address.z80-lst",
-              "constant.numeric.hex.z80-lst",
-              "constant.numeric.binary.z80-lst",
-              "constant.numeric.decimal.z80-lst",
-              "constant.language.current-location.z80-lst",
-              "constant.numeric.hexbyte.z80-lst"
+              "constant.language.current-location.z80-asm"
             ],
             "settings": {
               "foreground": "#FFD166"
@@ -272,16 +253,6 @@
           ".asmi"
         ],
         "configuration": "./language-configuration/z80-asm.json"
-      },
-      {
-        "id": "z80-lst",
-        "aliases": [
-          "Z80 Listing"
-        ],
-        "extensions": [
-          ".lst"
-        ],
-        "configuration": "./out/null-language.json"
       }
     ],
     "grammars": [
@@ -289,22 +260,11 @@
         "language": "z80-asm",
         "scopeName": "source.z80.asm",
         "path": "./syntaxes/z80-asm.tmLanguage.json"
-      },
-      {
-        "language": "z80-lst",
-        "scopeName": "source.z80.lst",
-        "path": "./syntaxes/z80-lst.tmLanguage.json"
       }
     ],
     "breakpoints": [
       {
-        "language": "z80-lst"
-      },
-      {
         "language": "asm-collection"
-      },
-      {
-        "language": "asm-list-file"
       },
       {
         "language": "z80-asm"
@@ -428,13 +388,11 @@
         "label": "Z80 Debug",
         "languages": [
           "asm-collection",
-          "asm-list-file",
           "z80-asm",
           "z80-macroasm",
           "wla-dx-asm",
           "asm",
-          "z80",
-          "z80-lst"
+          "z80"
         ],
         "configurationAttributes": {
           "launch": {
@@ -513,10 +471,6 @@
               "hex": {
                 "type": "string",
                 "description": "Path to a Z80 Intel HEX file (optional if asm is provided)"
-              },
-              "listing": {
-                "type": "string",
-                "description": "Path to a legacy Z80 listing file for fallback source mapping (optional if asm is provided)"
               },
               "entry": {
                 "type": "number",
