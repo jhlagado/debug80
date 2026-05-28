@@ -69,8 +69,6 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   sourceFile?: string;
   /** Path to the Intel HEX file */
   hex?: string;
-  /** Path to the listing file */
-  listing?: string;
   /** Output directory for build artifacts */
   outputDir?: string;
   /** Base name for output artifacts (default: derived from asm filename) */
@@ -132,7 +130,6 @@ export interface ProjectConfig {
   sourceFile?: string;
   source?: string;
   hex?: string;
-  listing?: string;
   outputDir?: string;
   artifactBase?: string;
   entry?: number;

@@ -400,7 +400,6 @@ describe('adapter integration', () => {
       launchWithDiagnostics(client, {
         target: 'app',
         hex: 'missing.hex',
-        listing: 'missing.lst',
         stopOnEntry: true,
         openRomSourcesOnLaunch: false,
         openMainSourceOnLaunch: false,

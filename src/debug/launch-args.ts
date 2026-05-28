@@ -410,11 +410,6 @@ export function populateFromConfig(
       merged.hex = hexResolved;
     }
 
-    const listingResolved = args.listing ?? targetCfg?.listing ?? cfg.listing;
-    if (listingResolved !== undefined) {
-      merged.listing = listingResolved;
-    }
-
     const outputDirResolved = args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir;
     if (outputDirResolved !== undefined) {
       merged.outputDir = outputDirResolved;

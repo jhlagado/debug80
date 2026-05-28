@@ -520,9 +520,9 @@ describe('launch-args', () => {
     );
   });
 
-  it('resolves artifacts when hex/listing are provided', () => {
+  it('resolves artifacts when hex is provided', () => {
     const baseDir = os.tmpdir();
-    const args = { hex: 'a.hex', listing: 'a.lst' } as LaunchRequestArguments;
+    const args = { hex: 'a.hex' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toBe(path.join(baseDir, 'a.hex'));
     expect(result.listingPath).toBe(path.join(baseDir, 'a.lst'));

@@ -134,12 +134,9 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
   const asmPath = resolveAsmPath(args.asm, baseDir);
 
   let hexPath = args.hex;
-  let listingPath = args.listing;
-
   const hexMissing = hexPath === undefined || hexPath === '';
-  const listingMissing = listingPath === undefined || listingPath === '';
 
-  if (hexMissing || listingMissing) {
+  if (hexMissing) {
     if (asmPath === undefined || asmPath === '') {
       throw FileResolutionError.missingSource();
     }
@@ -149,21 +146,36 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
     const outDir = resolveRelative(outDirRaw, baseDir);
 
     hexPath = path.join(outDir, `${artifactBase}.hex`);
-    listingPath = path.join(outDir, `${artifactBase}.lst`);
   }
 
-  if (hexPath === undefined || listingPath === undefined || hexPath === '' || listingPath === '') {
+  if (hexPath === undefined || hexPath === '') {
     throw FileResolutionError.missingArtifacts();
   }
 
   const hexAbs = resolveRelative(hexPath, baseDir);
-  const listingAbs = resolveRelative(listingPath, baseDir);
+  const listingAbs = resolveListingArtifactPath(args, baseDir, asmPath, hexAbs);
 
   const result: ResolvedArtifacts = { hexPath: hexAbs, listingPath: listingAbs };
   if (asmPath !== undefined) {
     result.asmPath = asmPath;
   }
   return result;
+}
+
+function resolveListingArtifactPath(
+  args: LaunchRequestArguments,
+  baseDir: string,
+  asmPath: string | undefined,
+  hexPath: string
+): string {
+  const artifactBase =
+    args.artifactBase ??
+    (asmPath !== undefined
+      ? path.basename(asmPath, path.extname(asmPath))
+      : path.basename(hexPath, path.extname(hexPath)));
+  const outDirRaw = args.outputDir ?? path.dirname(hexPath);
+  const outDir = resolveRelative(outDirRaw, baseDir);
+  return path.join(outDir, `${artifactBase}.lst`);
 }
 
 /**

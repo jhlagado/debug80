@@ -71,8 +71,7 @@ export function createLaunchLogger(
 export function hasLaunchInputs(args: LaunchRequestArguments): boolean {
   return !(
     (args.asm === undefined || args.asm === '') &&
-    (args.hex === undefined || args.hex === '') &&
-    (args.listing === undefined || args.listing === '')
+    (args.hex === undefined || args.hex === '')
   );
 }
 

@@ -423,7 +423,6 @@ export function validateLaunchArgs(args: unknown): ValidationResult {
   results.push(validatePath(la.asm, 'asm'));
   results.push(validatePath(la.sourceFile, 'sourceFile'));
   results.push(validatePath(la.hex, 'hex'));
-  results.push(validatePath(la.listing, 'listing'));
   results.push(validatePath(la.outputDir, 'outputDir'));
   results.push(validatePath(la.artifactBase, 'artifactBase'));
   results.push(validatePath(la.projectConfig, 'projectConfig'));
@@ -487,12 +486,11 @@ export function assertValidPlatform(platform: string): asserts platform is Valid
 export function assertHasSourcePaths(args: LaunchRequestArguments): void {
   const hasAsm = args.asm !== undefined && args.asm !== '';
   const hasHex = args.hex !== undefined && args.hex !== '';
-  const hasListing = args.listing !== undefined && args.listing !== '';
 
-  if (!hasAsm && !hasHex && !hasListing) {
+  if (!hasAsm && !hasHex) {
     throw new MissingConfigError(
-      'No source files specified. Provide "asm" (assembly source) or "hex" and "listing" paths.',
-      ['asm', 'hex', 'listing']
+      'No source files specified. Provide "asm" (assembly source) or "hex" paths.',
+      ['asm', 'hex']
     );
   }
 }

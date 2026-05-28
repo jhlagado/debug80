@@ -386,8 +386,8 @@ describe('config-validation', () => {
       expect(() => assertHasSourcePaths({ asm: 'main.asm' })).not.toThrow();
     });
 
-    it('should not throw when hex and listing are provided', () => {
-      expect(() => assertHasSourcePaths({ hex: 'main.hex', listing: 'main.lst' })).not.toThrow();
+    it('should not throw when hex is provided', () => {
+      expect(() => assertHasSourcePaths({ hex: 'main.hex' })).not.toThrow();
     });
 
     it('should throw MissingConfigError when no source paths', () => {
@@ -395,9 +395,7 @@ describe('config-validation', () => {
     });
 
     it('should throw for empty string paths', () => {
-      expect(() => assertHasSourcePaths({ asm: '', hex: '', listing: '' })).toThrow(
-        MissingConfigError
-      );
+      expect(() => assertHasSourcePaths({ asm: '', hex: '' })).toThrow(MissingConfigError);
     });
   });
 });
