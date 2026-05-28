@@ -10,17 +10,15 @@ const DEBUG80_GITIGNORE_BEGIN = '### Debug80 (do not remove this line) ###';
 const DEBUG80_GITIGNORE_END = '### end Debug80 ###';
 
 /**
- * Merges a small ignore block: extension cache, default build dir, local-only launch,
- * common junk. Idempotent. Does not ignore all of `.vscode/` (a config may
- * live at `.vscode/debug80.json`).
+ * Merges a small ignore block: default build dir, local-only launch, common
+ * junk. Idempotent. Does not ignore all of `.vscode/` (a config may live at
+ * `.vscode/debug80.json`).
  */
 export function ensureDebug80Gitignore(workspaceRoot: string, defaultOutputDir: string): void {
   const relOut = (defaultOutputDir || 'build').replace(/^\.\/+/, '').replace(/\/$/, '') || 'build';
   const block = [
     '',
     DEBUG80_GITIGNORE_BEGIN,
-    '# Extension cache and session data',
-    '.debug80/',
     `# Assembled output (scaffold default is "${relOut}/"; match your debug80.json outputDir)`,
     `${relOut}/`,
     'out/',

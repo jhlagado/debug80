@@ -150,7 +150,7 @@ function readSourceMapSymbols(options: {
   logger: Logger;
 }): SourceMapDebugSymbol[] {
   const mapPath = resolvePreferredSymbolMapPath({
-    cacheMapPath: options.resolveDebugMapPath(
+    mapPath: options.resolveDebugMapPath(
       options.mapArgs,
       options.baseDir,
       options.asmPath,
@@ -193,14 +193,14 @@ function readSourceMapSymbols(options: {
 }
 
 function resolvePreferredSymbolMapPath(options: {
-  cacheMapPath: string;
+  mapPath: string;
   listingPath: string;
 }): string | undefined {
   const sidecar = path.join(
     path.dirname(options.listingPath),
     `${path.basename(options.listingPath, path.extname(options.listingPath))}${D8_DEBUG_MAP_EXT}`
   );
-  for (const candidate of [sidecar, options.cacheMapPath]) {
+  for (const candidate of [sidecar, options.mapPath]) {
     if (fs.existsSync(candidate)) {
       return candidate;
     }

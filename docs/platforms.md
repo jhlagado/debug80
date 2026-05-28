@@ -273,11 +273,9 @@ Extra ROM listings:
   Debug80 will offer that source in the ROM source picker and use it for
   line-based breakpoints. Bundled profiles provide source snapshots for this
   where available; local files with the same configured paths take precedence.
-- Debug80 caches a D8 debug map under `<workspace>/.debug80/cache` as
-  `<listing-base>.<hash>.d8.json` (hash from the listing path). If the workspace cache
-  directory cannot be used, it falls back to the listing directory.
-- If the `.lst` changes, Debug80 rebuilds the cache automatically. To force a rebuild,
-  delete the matching `.d8.json` file (or the `.debug80/cache` directory).
+- Debug80 expects native AZM `.d8.json` maps beside build artifacts for active
+  targets. Legacy ROM listing compatibility may derive an in-memory map for a
+  session, but Debug80 no longer writes project-local `.debug80/cache` maps.
 - Missing listings emit a Debug Console message that includes the platform name.
 
 ```json

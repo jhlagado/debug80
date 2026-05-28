@@ -66,16 +66,14 @@ describe('launch-args', () => {
     expect(extraPath).toContain(path.join(baseDir, 'main.d8.json'));
   });
 
-  it('builds debug map paths using cache directory', () => {
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-cache-base-'));
+  it('builds debug map paths beside artifacts when the project root exists', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-base-'));
     const listingPath = path.join(baseDir, 'main.lst');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
-    expect(mapPath).toContain(path.join(baseDir, '.debug80', 'cache', 'main.'));
-    expect(mapPath.endsWith('.d8.json')).toBe(true);
+    expect(mapPath).toBe(path.join(baseDir, 'main.d8.json'));
     const extraPath = resolveExtraDebugMapPath(listingPath, baseDir);
-    expect(extraPath).toContain(path.join(baseDir, '.debug80', 'cache', 'main.'));
-    expect(extraPath.endsWith('.d8.json')).toBe(true);
+    expect(extraPath).toBe(path.join(baseDir, 'main.d8.json'));
   });
 
   it('merges config file values', () => {

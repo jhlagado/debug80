@@ -23,9 +23,10 @@ The legacy behavior is not isolated to one switch. The main areas are:
 - Launch schema still documents `assembler: "asm80"` as a legacy alias.
 - Project/config validation accepts both `azm` and `asm80`.
 - Technical docs still describe listing-derived map generation.
-- `src/debug/mapping/path-resolver.ts` creates `.debug80/cache/*.d8.json` paths.
-- `src/debug/mapping/mapping-service.ts` can parse `.lst` listings, apply Layer 2
-  source matching, and write generated D8 maps.
+- `src/debug/mapping/path-resolver.ts` now resolves D8 maps beside build/listing
+  artifacts, but listing compatibility still remains in the launch path.
+- `src/debug/mapping/mapping-service.ts` can parse `.lst` listings and apply
+  Layer 2 source matching.
 - `src/mapping/parser.ts`, `src/mapping/layer2.ts`, and related tests exist to
   reconstruct source maps from assembler listings.
 - Extra ROM mapping still uses `extraListings` and bundled `.lst` files for
@@ -33,9 +34,9 @@ The legacy behavior is not isolated to one switch. The main areas are:
 - The Z80 listing grammar and `.lst` language support still exist for viewing
   listing files, which is separate from using listings as debugger metadata.
 
-Recent work already moved runtime symbol loading toward the desired model:
-Variables now prefer the build-side `.d8.json` before any Debug80 cache, and
-empty Constants are hidden.
+Recent work moved runtime symbol loading and map paths toward the desired model:
+Variables prefer the build-side `.d8.json`, empty Constants are hidden, and the
+project-local `.debug80/cache` map path has been removed.
 
 ## What Should Stay
 
@@ -68,18 +69,17 @@ Recommended migration:
 
 ### 2. Listing-Derived Source Map Cache
 
-The `.debug80/cache/*.d8.json` map cache exists because Debug80 used to build
-source maps from listings. It should be phased out for active project targets.
+The old `.debug80/cache/*.d8.json` map cache existed because Debug80 used to
+build source maps from listings. That project-local cache path has now been
+removed: active target maps resolve to the build-side `<artifactBase>.d8.json`
+path, and new scaffolded projects no longer add `.debug80/` to `.gitignore`.
 
-Recommended migration:
+Completed migration steps:
 
-1. Stop using cache maps for active target source mapping when a build-side map
-   exists.
-2. Change source-map status and diagnostics to ask the user to build when the
-   build-side `.d8.json` is missing.
-3. Stop generating cache maps for normal project source.
-4. Remove `resolveCacheDir`, `buildListingCacheKey`, and cache-specific tests
-   once no runtime path depends on them.
+1. Stop using `.debug80/cache` maps for active target source mapping.
+2. Remove `resolveCacheDir` and `buildListingCacheKey`.
+3. Resolve primary and extra map paths beside their build/listing artifacts.
+4. Stop writing Debug80-generated active-target maps to a project cache.
 
 This should make the build directory the single visible place for generated
 debug artifacts.
@@ -145,10 +145,7 @@ consumer and validator of D8 maps.
 
 Likely removable or shrinkable after migration:
 
-- `resolveCacheDir` and `buildListingCacheKey` in
-  `src/debug/mapping/path-resolver.ts`
-- cache path behavior in `resolveDebugMapPath` and `resolveExtraDebugMapPath`
-- Debug80-generated D8 writing in `src/debug/mapping/mapping-service.ts`
+- remaining listing-to-D8 compatibility branches in `buildMappingFromListing`
 - listing-to-D8 generation branches in `buildMappingFromListing`
 - Layer 2 matching from the active project launch path
 - ASM80 include remap helpers from the active project launch path
@@ -183,7 +180,7 @@ maps replace `extraListings`.
 ### Phase 2: Stop Generating Project Source Maps from Listings
 
 - Require build-side D8 for active project targets.
-- Replace cache generation with "build target" guidance.
+- Replace in-memory listing fallback with "build target" guidance.
 - Keep listing parser only for ROM compatibility.
 - Update docs and troubleshooting.
 
@@ -196,7 +193,7 @@ maps replace `extraListings`.
 
 ### Phase 4: Remove Legacy Listing Machinery
 
-- Remove project source map cache.
+- Remove any remaining listing-derived active-target map generation.
 - Remove active-path listing parser and Layer 2 matching.
 - Remove ASM80 alias.
 - Remove stale schema/docs/tests.

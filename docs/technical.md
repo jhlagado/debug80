@@ -177,7 +177,8 @@ config. If the file exists in the workspace it is used as an override; if it is
 absent and `profiles.<name>.bundledAssets` maps that logical path to a shipped
 bundle, Debug80 uses the copy under `resources/bundles/`.
 
-Debug80 always writes a D8 debug map to `<artifactBase>.d8.json` in outputDir.
+AZM writes the D8 debug map to `<artifactBase>.d8.json` in `outputDir`; Debug80
+loads that map as the source of truth.
 
 ### 6.3 Scaffold command
 
@@ -232,8 +233,8 @@ Register display:
 ## 9. Source mapping pipeline
 
 The pipeline is **orchestrated from `src/debug/mapping-service.ts`** — start there when
-investigating how a listing becomes a source map, where D8 maps are loaded or written, or why
-a cached map is or is not being used. The files below are the components it drives.
+investigating how a D8 map is loaded, or how the remaining listing compatibility path derives
+an in-memory map. The files below are the components it drives.
 
 The mapping pipeline converts a .lst listing into segments and anchors
 used for breakpoints and stack frames.
@@ -284,20 +285,18 @@ Indexes built at launch:
 
 Debug80 uses the D8 map as the canonical mapping source for debugging. On
 launch it attempts to load `<artifactBase>.d8.json`; if the map is missing or
-invalid, it regenerates the map from the .lst and writes it to disk, then uses
-the regenerated map for the session. The on-disk standard is documented in
+invalid, legacy compatibility can still derive an in-memory map from the .lst
+for that session. The on-disk standard is documented in
 `docs/d8-debug-map.md` and is designed to be assembler-agnostic while
 preserving the existing LST-derived confidence data.
 
 For native producer-generated maps such as AZM `.d8.json` output, Debug80 now
 prefers the existing D8 map directly and does not treat it as stale relative to
-the listing file or overwrite it with an LST-regenerated cache.
-
-Debug80 may still maintain `.debug80/cache/*.d8.json` maps for fallback
-listing-derived workflows, but active-target runtime features prefer the native
-build-side map beside the listing. This matters for symbols and constants:
-native AZM maps can carry `files[*].symbols` entries that listing-derived cache
-maps cannot reconstruct.
+the listing file. The old `.debug80/cache/*.d8.json` project-local map cache has
+been removed; active-target runtime features use the native build-side map
+beside the artifact. This matters for symbols and constants: native AZM maps can
+carry `files[*].symbols` entries that listing-derived compatibility maps cannot
+reconstruct.
 
 Editor navigation also uses source-map data. Debug80 registers VS Code providers
 for Go to Definition, workspace symbols, and compact symbol hover on `z80-asm`
@@ -361,12 +360,10 @@ result stops with the normal breakpoint reason. Expression errors are treated as
 breakpoint hits and are reported to the Debug Console, which avoids silently
 skipping a breakpoint because of a typo or stale source-map symbol.
 
-The orchestration for loading, validating, building, and caching these maps lives in
+The orchestration for loading, validating, and building these maps lives in
 `src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is
 distinct from the data-format layer in `src/mapping/`. Extra ROM listings (from `extraListings`
-config) are handled separately via `loadExtraListingMapping`, which also detects when a cached
-map was built without source info (e.g. before the `.asm` file was materialized) and rebuilds
-it automatically once the source file appears next to the listing.
+config) are handled separately via `loadExtraListingMapping` for monitor ROM source navigation.
 
 ### 9.5 Platforms
 
@@ -621,4 +618,5 @@ If you want to add features, start here:
 
 - Mapping accuracy depends on the quality of the .lst listing and symbols.
 - process.cwd() discovery may miss the workspace in extension dev host.
-- Mapping cache output is described in older specs but not implemented yet.
+- Legacy `.debug80/cache` map output is removed; older specs that mention it
+  are historical.

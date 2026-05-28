@@ -6,7 +6,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import * as vscode from 'vscode';
 import { LaunchRequestArguments } from '../session/types';
@@ -18,11 +17,6 @@ import {
   relativeIfWithin,
 } from './path-utils';
 import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
-
-/**
- * Length of cache key hash (hex digits).
- */
-const CACHE_KEY_LENGTH = 12;
 
 /**
  * Resolved artifact paths for a debug session.
@@ -185,42 +179,6 @@ export function resolveSourceRoots(args: LaunchRequestArguments, baseDir: string
 }
 
 /**
- * Resolves the cache directory path.
- *
- * @param baseDir - Base directory
- * @returns Cache directory path, or undefined if it cannot be created
- */
-export function resolveCacheDir(baseDir: string): string | undefined {
-  if (!baseDir || baseDir.length === 0) {
-    return undefined;
-  }
-
-  try {
-    const stat = fs.statSync(baseDir);
-    if (!stat.isDirectory()) {
-      return undefined;
-    }
-
-    const cacheDir = path.resolve(baseDir, '.debug80', 'cache');
-    fs.mkdirSync(cacheDir, { recursive: true });
-    return cacheDir;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Builds a cache key for a listing file based on its path.
- *
- * @param listingPath - Path to the listing file
- * @returns Short hash string for use as cache key
- */
-export function buildListingCacheKey(listingPath: string): string {
-  const normalized = path.resolve(listingPath);
-  return crypto.createHash('sha1').update(normalized).digest('hex').slice(0, CACHE_KEY_LENGTH);
-}
-
-/**
  * Resolves the path to a D8 debug map file.
  *
  * @param args - Launch request arguments
@@ -241,12 +199,6 @@ export function resolveDebugMapPath(
       ? path.basename(listingPath, '.lst')
       : path.basename(asmPath, path.extname(asmPath)));
 
-  const cacheDir = resolveCacheDir(baseDir);
-  if (cacheDir !== undefined && cacheDir.length > 0) {
-    const key = buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${artifactBase}.${key}${D8_DEBUG_MAP_EXT}`);
-  }
-
   const outDirRaw = args.outputDir ?? path.dirname(listingPath);
   const outDir = resolveRelative(outDirRaw, baseDir);
   return path.join(outDir, `${artifactBase}${D8_DEBUG_MAP_EXT}`);
@@ -260,14 +212,8 @@ export function resolveDebugMapPath(
  * @returns Path to the debug map file
  */
 export function resolveExtraDebugMapPath(listingPath: string, baseDir: string): string {
+  void baseDir;
   const base = path.basename(listingPath, path.extname(listingPath));
-  const cacheDir = resolveCacheDir(baseDir);
-
-  if (cacheDir !== undefined && cacheDir.length > 0) {
-    const key = buildListingCacheKey(listingPath);
-    return path.join(cacheDir, `${base}.${key}${D8_DEBUG_MAP_EXT}`);
-  }
-
   const dir = path.dirname(listingPath);
   return path.join(dir, `${base}${D8_DEBUG_MAP_EXT}`);
 }

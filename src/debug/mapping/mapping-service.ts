@@ -58,10 +58,6 @@ export interface MappingBuildResult {
   missingSources: string[];
 }
 
-/**
- * Native assemblers write `<artifact>.d8.json` next to the listing; Debug80 also
- * stores a map under `.debug80/cache/...`. Prefer the sidecar so native tool maps win.
- */
 function collectDebugMapCandidates(mapPath: string, listingPath: string): string[] {
   const sidecar = path.join(
     path.dirname(listingPath),
@@ -149,7 +145,6 @@ export function buildMappingFromListing(options: {
       endianness: 'little',
       generator: { name: 'debug80' },
     });
-    writeDebugMap(debugMap, mapPath, service, listingPath);
   }
 
   if (
@@ -160,7 +155,7 @@ export function buildMappingFromListing(options: {
     !debugMapContainsSource(debugMap, sourceFile, service)
   ) {
     service.logger.info(
-      `Debug80: Cached D8 map did not include target source "${sourceFile}". Regenerating from LST.`
+      `Debug80: Debug80-generated D8 map did not include target source "${sourceFile}". Regenerating from LST.`
     );
     const baseMapping = parseListingMapping(listingContent);
     applySourceFallback(baseMapping, sourceFile, service.baseDir, service.resolveMappedPath);
@@ -175,7 +170,6 @@ export function buildMappingFromListing(options: {
       endianness: 'little',
       generator: { name: 'debug80' },
     });
-    writeDebugMap(debugMap, mapPath, service, listingPath);
   }
 
   let mapping = buildMappingFromD8DebugMap(debugMap);
@@ -356,40 +350,17 @@ function normalizeGeneratorIdentity(value: string | undefined): string | undefin
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function writeDebugMap(
-  map: ReturnType<typeof buildD8DebugMap>,
-  mapPath: string,
-  service: MappingServiceOptions,
-  listingPath: string
-): void {
-  try {
-    fs.mkdirSync(path.dirname(mapPath), { recursive: true });
-    const enriched = {
-      ...map,
-      generator: {
-        ...map.generator,
-        inputs: {
-          listing: service.relativeIfPossible(listingPath, service.baseDir),
-        },
-      },
-    };
-    fs.writeFileSync(mapPath, JSON.stringify(enriched, null, 2));
-  } catch (err) {
-    service.logger.error(`Debug80: Failed to write D8 debug map: ${String(err)}`);
-  }
-}
-
-function shouldRebuildCachedMap(
-  cachedMapping: MappingParseResult,
+function shouldRebuildGeneratedMap(
+  generatedMapping: MappingParseResult,
   hasNativeMap: boolean,
   listingPath: string
 ): boolean {
   if (hasNativeMap) {
     return false; // native tool map wins; always use it
   }
-  const cachedHasSource = cachedMapping.segments.some((s) => s.loc.file !== null);
+  const generatedHasSource = generatedMapping.segments.some((s) => s.loc.file !== null);
   const sourceNowExists = resolveListingSourcePath(listingPath) !== undefined;
-  return !cachedHasSource && sourceNowExists;
+  return !generatedHasSource && sourceNowExists;
 }
 
 function loadExtraListingMapping(
@@ -419,22 +390,22 @@ function loadExtraListingMapping(
         );
       }
 
-      let debugMap = hasNativeMap
+      const debugMap = hasNativeMap
         ? loadedMap
         : !mapStale && fs.existsSync(mapPath)
           ? loadedMap
           : undefined;
       if (debugMap) {
-        const cachedMapping = buildMappingFromD8DebugMap(debugMap);
-        if (!shouldRebuildCachedMap(cachedMapping, hasNativeMap, listingPath)) {
-          combined.segments.push(...cachedMapping.segments);
-          combined.anchors.push(...cachedMapping.anchors);
+        const generatedMapping = buildMappingFromD8DebugMap(debugMap);
+        if (!shouldRebuildGeneratedMap(generatedMapping, hasNativeMap, listingPath)) {
+          combined.segments.push(...generatedMapping.segments);
+          combined.anchors.push(...generatedMapping.anchors);
           continue;
         }
         if (!hasNativeMap) {
           const prefix = `Debug80 [${service.platform}]`;
           service.logger.info(
-            `${prefix}: Cached D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
+            `${prefix}: Debug80-generated D8 map for "${listingPath}" had no source info but source now found. Rebuilding.`
           );
         }
       }
@@ -445,13 +416,6 @@ function loadExtraListingMapping(
       }
       combined.segments.push(...mapping.segments);
       combined.anchors.push(...mapping.anchors);
-      debugMap = buildD8DebugMap(mapping, {
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        generator: { name: 'debug80' },
-      });
-      writeDebugMap(debugMap, mapPath, service, listingPath);
     } catch (err) {
       const prefix = `Debug80 [${service.platform}]`;
       service.logger.error(

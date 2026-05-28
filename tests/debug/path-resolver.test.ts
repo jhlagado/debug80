@@ -7,13 +7,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  buildListingCacheKey,
   isDebugMapStale,
   normalizeSourcePath,
   relativeIfPossible,
   resolveArtifacts,
   resolveBaseDir,
-  resolveCacheDir,
   resolveDebugMapPath,
   resolveExtraListingPaths,
   resolveFallbackSourceFile,
@@ -78,20 +76,16 @@ describe('path-resolver', () => {
     expect(resolved.asmPath).toBe(asmPath);
   });
 
-  it('creates cache directory and resolves debug map in cache', () => {
+  it('resolves debug map beside the build artifact without creating a project cache', () => {
     const baseDir = path.join(tmpDir, 'project');
     fs.mkdirSync(baseDir, { recursive: true });
     const listingPath = path.join(baseDir, 'demo.lst');
     fs.writeFileSync(listingPath, 'LIST\n');
 
-    const cacheDir = resolveCacheDir(baseDir);
-    expect(cacheDir).toBe(path.join(baseDir, '.debug80', 'cache'));
-    expect(fs.existsSync(cacheDir ?? '')).toBe(true);
-
     const args = { artifactBase: 'demo' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
-    const key = buildListingCacheKey(listingPath);
-    expect(mapPath).toBe(path.join(cacheDir ?? '', `demo.${key}.d8.json`));
+    expect(mapPath).toBe(path.join(baseDir, 'demo.d8.json'));
+    expect(fs.existsSync(path.join(baseDir, '.debug80'))).toBe(false);
   });
 
   it('filters extra listings to existing unique paths', () => {

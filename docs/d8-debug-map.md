@@ -212,15 +212,17 @@ Fields:
 ## Integration with Debug80
 
 - Debug80 loads `build/main.d8.json` if present.
-- If the map is missing or invalid, Debug80 regenerates a map from the `.lst`
-  and writes that cache alongside the build artifacts.
+- If the map is missing or invalid, current compatibility code can still derive
+  an in-memory map from the `.lst` for the session, but AZM-produced
+  `build/main.d8.json` is the expected source of truth.
 - For native producer-generated maps such as AZM output, Debug80 preserves the
   existing `.d8.json` even when it is older than the `.lst`.
 
 ## Workflow
 
-1. Assemble with AZM to produce `build/main.hex` and `build/main.lst`.
-2. The assembler or Debug80 may provide `build/main.d8.json`.
+1. Assemble with AZM to produce `build/main.hex` and `build/main.d8.json`.
+2. The assembler may also emit listing context, but Debug80 does not require a
+   project-local cache.
 3. Debug80 loads the map for debugging, with `.lst` as the fallback source.
 
 The map file can be treated as a build artifact in `build/` and is not

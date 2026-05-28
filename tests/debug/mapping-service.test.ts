@@ -58,7 +58,7 @@ describe('mapping-service', () => {
     expect(isNativeDebugMap({ ...baseMap, generator: { name: 'debug80' } })).toBe(false);
   });
 
-  it('generates a debug map and index from a listing', () => {
+  it('generates an in-memory debug map and index from a listing', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const listingPath = path.join(dir, 'simple.lst');
     const asmPath = path.join(dir, 'simple.asm');
@@ -91,7 +91,7 @@ describe('mapping-service', () => {
 
     expect(result.mapping.segments.length).toBeGreaterThan(0);
     expect(result.index.segmentsByAddress.length).toBeGreaterThan(0);
-    expect(fs.existsSync(mapPath)).toBe(true);
+    expect(fs.existsSync(mapPath)).toBe(false);
   });
 
   it('maps executable lines in the root source even when anchors only mention includes', () => {
@@ -100,7 +100,7 @@ describe('mapping-service', () => {
     const asmPath = path.join(dir, 'src', 'tetro.asm');
     const constantsPath = path.join(dir, 'src', 'inc', 'constants.asm');
     const modulePath = path.join(dir, 'src', 'modules', 'game_init.asm');
-    const mapPath = path.join(dir, '.debug80', 'cache', 'tetro.d8.json');
+    const mapPath = path.join(dir, 'build', 'tetro.d8.json');
     const listing = [
       '4000                          .ORG   0x4000',
       '4000                             ; constants',
