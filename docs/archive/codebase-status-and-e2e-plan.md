@@ -90,7 +90,7 @@ cases have been created. See issue #355 for the kickoff ticket.
 ### 2.1 Goals
 
 - Verify the **full debug flow** in a real VS Code instance: activation, launch, breakpoints, stepping, registers, and stop conditions.
-- Validate **adapter + runtime integration** using real artifacts (HEX/LST/D8M) without requiring asm80.
+- Validate **adapter + runtime integration** using real artifacts (HEX/D8) without requiring external tools.
 - Provide a **stable regression harness** for platform-specific behavior (Simple/TEC-1/TEC-1G) without coupling to hardware or external ROM repositories.
 
 ### 2.2 Non-goals (initially)
@@ -136,8 +136,8 @@ tests/
 ```
 
 Key rules:
-- Set `assemble: false` in the fixture config so tests do not depend on asm80.
-- Check in prebuilt HEX/LST/D8M artifacts (small, deterministic).
+- Set `assemble: false` in the fixture config so tests do not depend on external tools.
+- Check in prebuilt HEX/D8 artifacts (small, deterministic).
 - Keep the program tiny: a few instructions + a known loop + a known breakpoint address.
 
 ### 2.5 E2E test cases (minimum viable set)

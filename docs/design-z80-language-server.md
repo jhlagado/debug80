@@ -108,7 +108,7 @@ The client should pass workspace/project context to the server:
 - active Debug80 project folder, if selected
 - active target name and source file
 - `debug80.json` path
-- assembler backend (`azm`, with legacy `asm80` configs treated as AZM-compatible)
+- assembler backend (`azm`)
 - source roots and include roots
 - latest known map/debug-map path, if available
 
@@ -153,15 +153,14 @@ invocations can be indexed as symbols, but semantic expansion should wait.
 
 ## Dialect Strategy
 
-Debug80 currently supports multiple assembler realities:
+Debug80 currently supports AZM source plus older Z80 source styles used by the TEC monitor code:
 
-- AZM/ASM80-compatible sources
 - inherited TEC monitor sources and older Z80 style
 
 The LSP should model dialects explicitly instead of assuming one universal grammar:
 
 - **Core Z80 dialect:** mnemonics, registers, conditions, common number formats, labels.
-- **AZM profile:** AZM directives, ASM80-compatible include rules, and AZM-specific extensions.
+- **AZM profile:** AZM directives, include rules, and AZM-specific extensions.
 - **Legacy/common profile:** permissive handling for old source files.
 
 The selected Debug80 target should choose the active profile. Standalone files without a

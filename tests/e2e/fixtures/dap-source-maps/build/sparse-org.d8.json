@@ -5,7 +5,7 @@
   "addressWidth": 16,
   "endianness": "little",
   "generator": {
-    "name": "asm80-fixture"
+    "name": "debug80-fixture"
   },
   "files": {
     "src/sparse.asm": {

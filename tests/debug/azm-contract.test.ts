@@ -34,7 +34,6 @@ describe('azm compile contract', () => {
         emitBin: true,
         emitHex: true,
         emitD8m: true,
-        emitAsm80: true,
         d8mInputs: {
           hex: hexPath,
           bin: binPath,
@@ -44,12 +43,7 @@ describe('azm compile contract', () => {
     );
 
     expect(result.diagnostics).toEqual([]);
-    expect(result.artifacts.map((artifact) => artifact.kind).sort()).toEqual([
-      'asm80',
-      'bin',
-      'd8m',
-      'hex',
-    ]);
+    expect(result.artifacts.map((artifact) => artifact.kind).sort()).toEqual(['bin', 'd8m', 'hex']);
     expect(result.artifacts.some((artifact) => artifact.kind === 'lst')).toBe(false);
   });
 });

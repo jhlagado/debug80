@@ -8,7 +8,7 @@ import { parseMapping } from '../../src/mapping/parser';
 import {
   applyLayer2,
   propagateMisassignedIncludeSegments,
-  remapAsm80MisassignedIncludeAnchors,
+  remapMisassignedIncludeAnchors,
 } from '../../src/mapping/layer2';
 
 const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures');
@@ -179,7 +179,7 @@ describe('mapping-layer2', () => {
     expect(result).toBeDefined();
   });
 
-  it('remaps asm80 include anchors when the parent file does not contain that source line', () => {
+  it('remaps include anchors when the parent file does not contain that source line', () => {
     const mapping: MappingParseResult = {
       segments: [],
       anchors: [
@@ -238,7 +238,7 @@ describe('mapping-layer2', () => {
         { symbol: 'REALMAIN', address: 0xd900, file: 'packages.z80', line: 3 },
       ],
     };
-    const remaps = remapAsm80MisassignedIncludeAnchors(mapping.anchors, resolveTmp);
+    const remaps = remapMisassignedIncludeAnchors(mapping.anchors, resolveTmp);
     assert.equal(remaps.length, 1);
     propagateMisassignedIncludeSegments(mapping, remaps, resolveTmp);
     expect(mapping.segments[0]?.loc.file).toBe('glcd_library.z80');

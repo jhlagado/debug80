@@ -56,7 +56,7 @@ export type IncludeAnchorRemap = {
   newFile: string;
 };
 
-export function remapAsm80MisassignedIncludeAnchors(
+export function remapMisassignedIncludeAnchors(
   anchors: SourceMapAnchor[],
   resolvePath: (file: string) => string | undefined
 ): IncludeAnchorRemap[] {
@@ -126,7 +126,7 @@ function lineDefinesLabel(symbol: string, rawLine: string): boolean {
 
 /**
  * For segments whose start address had an anchor remapped, copy the anchor's
- * file/line onto the segment. Scoped to {@link remapAsm80MisassignedIncludeAnchors}
+ * file/line onto the segment. Scoped to {@link remapMisassignedIncludeAnchors}
  * output so we do not override unrelated instruction mappings.
  */
 export function syncSegmentLocationsFromAnchors(
@@ -155,7 +155,7 @@ export function syncSegmentLocationsFromAnchors(
 }
 
 /**
- * First address after {@link remapAsm80MisassignedIncludeAnchors} region: next symbol that still
+ * First address after {@link remapMisassignedIncludeAnchors} region: next symbol that still
  * maps to the parent file and whose label actually appears on that line in the parent source.
  */
 function findIncludeRegionEnd(
@@ -264,7 +264,7 @@ export function propagateMisassignedIncludeSegments(
  * ```
  */
 export function applyLayer2(mapping: MappingParseResult, options: Layer2Options): Layer2Result {
-  const includeRemaps = remapAsm80MisassignedIncludeAnchors(mapping.anchors, options.resolvePath);
+  const includeRemaps = remapMisassignedIncludeAnchors(mapping.anchors, options.resolvePath);
   propagateMisassignedIncludeSegments(mapping, includeRemaps, options.resolvePath);
 
   const files = collectSourceFiles(mapping);

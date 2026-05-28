@@ -431,15 +431,14 @@ describe('package.json language contracts', () => {
     expect(lang!.extensions).not.toContain('.s');
   });
 
-  it('launch schema keeps asm80 as a legacy AZM-compatible assembler alias', () => {
+  it('launch schema exposes AZM as the only assembler backend', () => {
     const debuggerContribution = contributes.debuggers.find((debuggerEntry) => {
       return debuggerEntry.type === 'z80';
     });
     const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
 
     expect(assembler?.default).toBe('azm');
-    expect(assembler?.enum).toContain('azm');
-    expect(assembler?.enum).toContain('asm80');
+    expect(assembler?.enum).toEqual(['azm']);
   });
 
   it('set-entry-source context menus cover AZM entry source extensions', () => {
@@ -1011,9 +1010,8 @@ describe('package.json language contracts', () => {
     expect(pkg.dependencies?.['@jhlagado/zax']).toBeUndefined();
   });
 
-  it('depends on AZM instead of asm80 for bundled assembly', () => {
+  it('depends on AZM for bundled assembly', () => {
     expect(pkg.dependencies?.['@jhlagado/azm']).toBeDefined();
-    expect(pkg.dependencies?.asm80).toBeUndefined();
   });
 
   it('every contributed language has a breakpoint entry', () => {

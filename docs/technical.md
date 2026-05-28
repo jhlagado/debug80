@@ -194,7 +194,6 @@ Command: debug80.createProject
 
 Debug80 routes assembly through a backend abstraction in `src/debug/launch/assembler-backend.ts`.
 The current default backend is `azm`, implemented in `src/debug/launch/azm-backend.ts`.
-Legacy configs that still say `assembler: "asm80"` are treated as AZM-compatible inputs.
 
 If `assemble !== false` and `sourceFile`/`asm` is provided:
 

@@ -102,7 +102,7 @@ Goal: remove cruft after all runtime callers are gone.
 - Delete stale listing cache checks.
 - Delete tests that only validate fallback behavior.
 - Remove user-facing schema/docs for `listing` and `extraListings`.
-- Remove the `asm80` assembler alias and related docs.
+- Remove obsolete assembler aliases and related docs.
 
 Expected result: Debug80 has one source-map architecture.
 

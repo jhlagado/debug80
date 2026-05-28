@@ -454,10 +454,9 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use (default: azm; asm80 is accepted as a legacy AZM-compatible alias)",
+                "description": "Assembler backend to use (default: azm)",
                 "enum": [
-                  "azm",
-                  "asm80"
+                  "azm"
                 ],
                 "default": "azm"
               },

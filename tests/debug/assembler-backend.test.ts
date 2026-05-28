@@ -20,18 +20,13 @@ describe('assembler-backend', () => {
     expect(resolveAssemblerBackend('azm', undefined)).toBeInstanceOf(AzmBackend);
   });
 
-  it('keeps asm80 as a backwards-compatible alias for azm', () => {
-    expect(resolveAssemblerBackend('asm80', undefined)).toBeInstanceOf(AzmBackend);
-  });
-
   it('returns azm for asm-family source paths', () => {
     expect(resolveAssemblerBackend(undefined, '/tmp/program.asm')).toBeInstanceOf(AzmBackend);
     expect(resolveAssemblerBackend(undefined, '/tmp/program.z80')).toBeInstanceOf(AzmBackend);
   });
 
-  it('matches azm and asm80 alias case-insensitively', () => {
+  it('matches azm case-insensitively', () => {
     expect(resolveAssemblerBackend('AZM', undefined)).toBeInstanceOf(AzmBackend);
-    expect(resolveAssemblerBackend('ASM80', undefined)).toBeInstanceOf(AzmBackend);
   });
 
   it('throws for unknown backends', () => {

@@ -95,7 +95,7 @@ describe('ProjectTargetSelectionController', () => {
       JSON.stringify({
         targets: {
           app: { sourceFile: 'src/main.asm', platform: 'simple' },
-          serial: { sourceFile: 'src/serial.asm', assembler: 'asm80' },
+          serial: { sourceFile: 'src/serial.asm', assembler: 'azm' },
         },
       })
     );

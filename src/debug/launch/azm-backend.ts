@@ -31,11 +31,6 @@ interface ListingArtifact {
   text: string;
 }
 
-interface LoweredSourceArtifact {
-  kind: 'asm80';
-  text: string;
-}
-
 interface BinArtifact {
   kind: 'bin';
   bytes: Uint8Array;
@@ -59,7 +54,6 @@ interface RegisterCareInterfaceArtifact {
 type Artifact =
   | HexArtifact
   | ListingArtifact
-  | LoweredSourceArtifact
   | BinArtifact
   | D8mArtifact
   | RegisterCareReportArtifact
@@ -75,7 +69,6 @@ interface CompilerOptions {
   emitBin?: boolean;
   emitHex?: boolean;
   emitD8m?: boolean;
-  emitAsm80?: boolean;
   registerCare?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
   emitRegisterReport?: boolean;
   emitRegisterInterface?: boolean;
@@ -304,7 +297,6 @@ export class AzmBackend implements AssemblerBackend {
           emitBin: true,
           emitHex: true,
           emitD8m: true,
-          emitAsm80: true,
           sourceRoot,
           ...(options.azm ?? {}),
           d8mInputs: {
@@ -363,11 +355,6 @@ export class AzmBackend implements AssemblerBackend {
       return azmFailure(
         `azm succeeded but did not produce listing or D8 output for "${options.asmPath}".`
       );
-    }
-
-    const lowered = findArtifact(artifacts, 'asm80');
-    if (lowered !== undefined) {
-      writeTextArtifact(`${base}.z80`, lowered.text);
     }
 
     const registerCareReport = findArtifact(artifacts, 'register-care-report');

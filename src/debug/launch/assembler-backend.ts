@@ -57,7 +57,7 @@ export function resolveAssemblerBackend(
   const id =
     explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
 
-  if (id === undefined || id === '' || id === 'azm' || id === 'asm80') {
+  if (id === undefined || id === '' || id === 'azm') {
     return new AzmBackend();
   }
 

@@ -23,7 +23,6 @@ vi.mock('@jhlagado/azm/compile', () => ({
     writeBin: vi.fn(),
     writeD8m: vi.fn(),
     writeListing: vi.fn(),
-    writeAsm80: vi.fn(),
   },
 }));
 
@@ -60,7 +59,6 @@ describe('azm-backend', () => {
         { kind: 'bin', bytes: new Uint8Array([0x00]) },
         { kind: 'lst', text: 'LISTING\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-        { kind: 'asm80', text: 'ORG 0100h\nNOP\n' },
       ],
     });
 
@@ -75,7 +73,6 @@ describe('azm-backend', () => {
         emitBin: true,
         emitHex: true,
         emitD8m: true,
-        emitAsm80: true,
         sourceRoot: tmpDir,
         d8mInputs: {
           hex: hexPath,
@@ -89,7 +86,7 @@ describe('azm-backend', () => {
     expect(fs.readFileSync(listingPath, 'utf-8')).toBe('LISTING\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'listings', 'prog.d8.json'))).toBe(true);
-    expect(fs.readFileSync(path.join(outDir, 'prog.z80'), 'utf-8')).toBe('ORG 0100h\nNOP\n');
+    expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
   });
 
   it('does not require legacy listing output when AZM emits a native D8 map', async () => {
@@ -106,7 +103,6 @@ describe('azm-backend', () => {
         { kind: 'hex', text: ':00000001FF\n' },
         { kind: 'bin', bytes: new Uint8Array([0x00]) },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-        { kind: 'asm80', text: 'ORG 4000h\nNOP\n' },
       ],
     });
 
@@ -244,7 +240,7 @@ describe('azm-backend', () => {
           message: 'Case style warning without a source location.',
         },
         {
-          code: 'AZMN_ASM80',
+          code: 'AZMN_LOAD',
           severity: 'error',
           message: 'Assembly failed before a source location was available.',
         },
@@ -266,7 +262,7 @@ describe('azm-backend', () => {
       message: 'Assembly failed before a source location was available.',
     });
     expect(result.diagnostic?.path).toBeUndefined();
-    expect(output.join('')).toContain('AZMN_ASM80');
+    expect(output.join('')).toContain('AZMN_LOAD');
   });
 
   it('fails when AZM succeeds but required artifacts are missing', async () => {

@@ -33,7 +33,7 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  return normalized === 'azm' || normalized === 'asm80';
+  return normalized === 'azm';
 }
 
 function isProjectProfileConfig(value: unknown): boolean {
