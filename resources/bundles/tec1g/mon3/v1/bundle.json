@@ -16,6 +16,11 @@
       "sha256": "f6f5032cc16dceed7e921efe863371d8f2773465860bd518c9d998d83a5b67bb"
     },
     {
+      "role": "debug_map",
+      "path": "mon3.d8.json",
+      "sha256": "a3d164350710285c4dac05c193f07eeff4ba64c548ad36ae9626b29d453e1380"
+    },
+    {
       "role": "source",
       "path": "packages.z80",
       "sha256": "c8fb2d98466d9aa5fa3c6b03f9f4918970e4760a9c5dfbeed51ab504315daa7b"

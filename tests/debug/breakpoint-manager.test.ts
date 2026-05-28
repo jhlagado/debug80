@@ -3,12 +3,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
 import * as path from 'path';
 import { BreakpointManager } from '../../src/debug/mapping/breakpoint-manager';
 import { normalizePathForKey } from '../../src/debug/mapping/path-utils';
 import type { ListingInfo } from '../../src/z80/loaders';
-import type { SourceMapIndex } from '../../src/mapping/source-map';
+import { buildSourceMapIndex, type SourceMapIndex } from '../../src/mapping/source-map';
 import type { SourceMapSegment } from '../../src/mapping/parser';
+import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
 
 function createMockListing(lineToAddress: Map<number, number>): ListingInfo {
   const entries = Array.from(lineToAddress.entries())
@@ -170,6 +172,34 @@ describe('BreakpointManager', () => {
 
     expect(applied.length).toBe(1);
     expect(applied[0]?.verified).toBe(true);
+  });
+
+  it('binds breakpoints in the bundled MON3 source from its native D8 map', () => {
+    const mgr = new BreakpointManager();
+    const listing = createMockListing(new Map());
+    const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
+    const sourcePath = path.join(bundleRoot, 'mon3.z80');
+    const listingPath = path.join(bundleRoot, 'mon3.lst');
+    const d8Path = path.join(bundleRoot, 'mon3.d8.json');
+    const parsed = parseD8DebugMap(fs.readFileSync(d8Path, 'utf-8'));
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.map).toBeDefined();
+    const mapping = buildMappingFromD8DebugMap(parsed.map!);
+    const index = buildSourceMapIndex(mapping, (file) => {
+      if (path.isAbsolute(file) && fs.existsSync(file)) {
+        return file;
+      }
+      const candidate = path.join(bundleRoot, file);
+      return fs.existsSync(candidate) ? candidate : undefined;
+    });
+
+    const applied = mgr.applyForSource(listing, listingPath, index, sourcePath, [{ line: 171 }]);
+
+    expect(applied).toEqual([{ line: 171, verified: true }]);
+    mgr.setPending(sourcePath, [{ line: 171 }]);
+    mgr.rebuild(listing, listingPath, index);
+    expect(mgr.hasAddress(0xc000)).toBe(true);
   });
 
   it('does not fall back to listing line for source files when mapping misses', () => {
