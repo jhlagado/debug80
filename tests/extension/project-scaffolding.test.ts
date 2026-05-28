@@ -167,7 +167,7 @@ describe('project-scaffolding helpers', () => {
     );
     const tec1gStarter = createStarterSourceContent(extensionUri, kit('tec1g/mon3'), 'asm');
     expect(tec1gStarter).toContain('ORG 0x4000');
-    expect(tec1gStarter).toContain('Hello from MON-3');
+    expect(tec1gStarter).toContain('Debug80 TEC-1G');
     expect(tec1gStarter).toContain('api_scan_segments');
   });
 
