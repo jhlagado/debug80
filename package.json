@@ -685,7 +685,7 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@jhlagado/azm": "0.2.4",
+    "@jhlagado/azm": "0.2.5",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },
