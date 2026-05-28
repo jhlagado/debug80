@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { Logger } from '../../src/util/logger';
+import { buildD8DebugMap } from '../../src/mapping/d8-map';
 
 vi.mock('../../src/debug/mapping/path-resolver', () => ({
   resolveListingSourcePath: () => undefined,
@@ -39,8 +40,54 @@ describe('source-manager', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-'));
     const listingPath = path.join(dir, 'simple.lst');
     const extraListingPath = path.join(dir, 'extra.lst');
+    const sourcePath = path.join(dir, 'simple.asm');
+    const extraSourcePath = path.join(dir, 'extra.asm');
+    const mapPath = path.join(dir, `${path.basename(listingPath)}.d8.json`);
+    const extraMapPath = path.join(dir, `${path.basename(extraListingPath)}.extra.json`);
     writeFile(listingPath, listingContent);
     writeFile(extraListingPath, listingContent.replace('0000', '0200'));
+    writeFile(sourcePath, 'START:\n  NOP\n');
+    writeFile(extraSourcePath, 'ROM_START:\n  NOP\n');
+    writeFile(
+      mapPath,
+      JSON.stringify(
+        buildD8DebugMap(
+          {
+            segments: [
+              {
+                start: 0x1000,
+                end: 0x1001,
+                loc: { file: sourcePath, line: 2 },
+                lst: { line: 1, text: 'NOP' },
+                confidence: 'HIGH',
+              },
+            ],
+            anchors: [],
+          },
+          { arch: 'z80', addressWidth: 16, endianness: 'little', generator: { tool: 'azm' } }
+        )
+      )
+    );
+    writeFile(
+      extraMapPath,
+      JSON.stringify(
+        buildD8DebugMap(
+          {
+            segments: [
+              {
+                start: 0x2000,
+                end: 0x2001,
+                loc: { file: extraSourcePath, line: 2 },
+                lst: { line: 1, text: 'NOP' },
+                confidence: 'HIGH',
+              },
+            ],
+            anchors: [],
+          },
+          { arch: 'z80', addressWidth: 16, endianness: 'little', generator: { tool: 'azm' } }
+        )
+      )
+    );
 
     const logs: string[] = [];
     const manager = new SourceManager({
