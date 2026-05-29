@@ -29,7 +29,7 @@ function createMockIndex(
             end,
             confidence: 'HIGH' as const,
             loc: { file, line },
-            lst: { line: 1, text: '' },
+            context: { line: 1, text: '' },
           };
         })
       );

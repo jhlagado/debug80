@@ -4,8 +4,8 @@
 
 - Updated AZM to `0.2.5`.
 - Fixed MON-3 ROM source breakpoints using native `.d8.json` source maps.
-- Removed the old `.debug80` source-map cache and more listing-derived fallback
-  logic.
+- Removed the old `.debug80` source-map cache and more legacy source-map
+  fallback logic.
 - Updated docs for the AZM-only source-map flow.
 - Improved the TEC-1G starter program with LCD text and scanned `HELLO` output.
 - Shortened CoolTerm serial status messages to show filenames only.
@@ -53,8 +53,7 @@ Marketplace release candidate refresh.
 
 Marketplace release candidate fix.
 
-- Updated the AZM backend integration to use AZM's native D8 debug-map output
-  without requiring a legacy listing artifact.
+- Updated the AZM backend integration to use AZM's native D8 debug-map output.
 - Removed stale AZM compile options from Debug80's assembler calls.
 - Added regression coverage for the current AZM compile artifact contract.
 

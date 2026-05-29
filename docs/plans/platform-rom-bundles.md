@@ -81,7 +81,7 @@ The TEC-1 MON-1B bundle currently ships:
 | --- | --- |
 | Extension = distribution | Versioned payloads plus manifest checksums. |
 | Project = source | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
-| D8 = debugger metadata | Source mapping, breakpoints and symbols come from D8, not listing files. |
+| D8 = debugger metadata | Source mapping, breakpoints and symbols come from D8. |
 | Config is the contract | Override by editing JSON or by materializing/replacing files under configured paths. |
 | No mandatory wizard | The wizard accelerates layout; hand-authored `debug80.json` should behave the same. |
 

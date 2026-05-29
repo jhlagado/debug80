@@ -19,7 +19,7 @@ const makeSegment = (start: number, end: number, file: string, line: number): So
   start,
   end,
   loc: { file, line },
-  lst: { line: 1, text: '' },
+  context: { line: 1, text: '' },
   confidence: 'HIGH',
 });
 

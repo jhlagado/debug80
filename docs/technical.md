@@ -234,9 +234,8 @@ The pipeline is **orchestrated from `src/debug/mapping-service.ts`**. Start
 there when investigating how an AZM D8 map is located, validated, converted to
 runtime segments/anchors, and indexed.
 
-Debug80 does not reconstruct maps from assembler listing files. If the D8 map is missing
-or invalid, source-map-backed features are unavailable until the target is
-rebuilt with AZM.
+Debug80 uses AZM's native D8 source map. If the D8 map is missing or invalid,
+source-map-backed features are unavailable until the target is rebuilt with AZM.
 
 ### 9.1 D8 loading and cleanup
 

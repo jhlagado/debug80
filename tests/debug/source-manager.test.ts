@@ -46,7 +46,7 @@ describe('source-manager', () => {
                 start: 0x1000,
                 end: 0x1001,
                 loc: { file: sourcePath, line: 2 },
-                lst: { line: 1, text: 'NOP' },
+                context: { line: 1, text: 'NOP' },
                 confidence: 'HIGH',
               },
             ],

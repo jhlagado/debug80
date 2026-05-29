@@ -55,7 +55,7 @@ export function buildSourceMapIndex(
   resolvePath: ResolvePathFn
 ): SourceMapIndex {
   const segmentsByAddress = [...mapping.segments].sort(
-    (a, b) => a.start - b.start || a.lst.line - b.lst.line
+    (a, b) => a.start - b.start || a.context.line - b.context.line
   );
 
   const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
@@ -78,7 +78,7 @@ export function buildSourceMapIndex(
 
   for (const fileMap of segmentsByFileLine.values()) {
     for (const list of fileMap.values()) {
-      list.sort((a, b) => a.start - b.start || a.lst.line - b.lst.line);
+      list.sort((a, b) => a.start - b.start || a.context.line - b.context.line);
     }
   }
 

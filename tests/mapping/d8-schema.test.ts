@@ -59,7 +59,7 @@ describe('D8 JSON Schema contract', () => {
           start: 0x1000,
           end: 0x1002,
           loc: { file: 'test.asm', line: 10 },
-          lst: { line: 1, text: 'LD A,B' },
+          context: { line: 1, text: 'LD A,B' },
           confidence: 'HIGH',
         },
       ],

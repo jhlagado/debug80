@@ -22,7 +22,6 @@ vi.mock('@jhlagado/azm/compile', () => ({
     writeHex: vi.fn(),
     writeBin: vi.fn(),
     writeD8m: vi.fn(),
-    writeListing: vi.fn(),
   },
 }));
 
@@ -82,7 +81,6 @@ describe('azm-backend', () => {
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
     expect([...fs.readFileSync(binPath)]).toEqual([0x00]);
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
-    expect(fs.existsSync(path.join(outDir, 'prog.lst'))).toBe(false);
     expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
   });
 
@@ -107,7 +105,6 @@ describe('azm-backend', () => {
     expect(result.success).toBe(true);
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
-    expect(fs.existsSync(path.join(outDir, 'prog.lst'))).toBe(false);
   });
 
   it('passes AZM register-care launch options and writes register reports', async () => {

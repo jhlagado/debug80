@@ -1,17 +1,14 @@
-# AZM-Only Source Map Removal Plan
+# AZM-Only Source Map Architecture
 
 ## Decision
 
-Debug80 should no longer reconstruct debugger source maps from assembler
-listings. AZM is now the supported assembler and emits native `.d8.json` maps.
-That file is the source of truth for source breakpoints, current source
-location, F12 navigation, hover data, Variables, Watches, call stack labels, and
-ROM source stepping.
+Debug80 consumes AZM's native `.d8.json` source maps as the debugger source of
+truth. AZM is the supported assembler. The assembler owns map correctness;
+Debug80 validates and indexes the D8 data.
 
-The old listing-derived path is not a supported fallback. If a required D8 map
-is missing or invalid, Debug80 should report that the target needs to be built
-with AZM. It should not parse listing files, regenerate maps, silently use stale
-compatibility caches, or recover by guessing source paths.
+If a required D8 map is missing or invalid, Debug80 reports that the selected
+target needs to be rebuilt with AZM. It does not regenerate maps, use project
+cache files, or guess source paths as a recovery mechanism.
 
 ## Target Contract
 
@@ -22,99 +19,37 @@ A runnable Debug80 target has:
 - source files resolvable from the project root and configured source roots;
 - optional platform/ROM D8 maps for monitor code and bundled ROM sources.
 
-The assembler owns map correctness. Debug80 consumes and validates D8 maps.
+## Removed Compatibility Paths
 
-## What Must Be Removed
+The old compatibility mechanisms have been removed from active behavior:
 
-The following are compatibility mechanisms, not desired architecture:
+- generated project-local source-map cache files;
+- fallback source-map reconstruction from assembler text output;
+- old source-text recovery passes in the launch path;
+- Debug80-generated compatibility D8 maps;
+- breakpoint binding against generated assembler text files;
+- platform ROM mapping through separate assembler text artifacts;
+- project scaffolding that configures ROM assembler text as debugger metadata;
+- tests whose only purpose was proving the old fallback path.
 
-- primary source map generation from listing files;
-- stale-map fallback from D8 to listing parsing;
-- Layer 2 listing/source recovery in the active launch path;
-- Debug80-generated compatibility D8 maps from listing content;
-- listing-file breakpoint binding as a first-class debugger workflow;
-- the old platform-ROM mapping mechanism based on separate listing artifacts;
-- project scaffolding that materializes or configures ROM listings as debug
-  metadata;
-- user-facing schema/docs that present listing files as normal launch inputs;
-- tests whose only purpose is proving listing-derived source maps still work.
+## Compatibility Fields That Remain
 
-## What Can Stay
+D8 v1 still contains historical field names such as `lstLine`, `lstText`, and
+`lstTextId`. Those names are part of the external D8 schema and are not a
+runtime fallback path. Inside Debug80, imported D8 segments store that data as
+assembler source context.
 
-Some listing-adjacent concepts are not fallback paths and can remain:
+## Current State
 
-- D8 fields such as `lstLine`, `lstText`, or shared listing text tables, because
-  they are data inside the native map;
-- low-level Intel HEX loading code;
+- Active launch source mapping loads native D8 only.
+- Missing or invalid D8 maps produce clear build-required logs.
+- Bundled profiles point at ROM binaries, source files, and native D8 maps.
+- The source-map cache directory is not created or written.
+- The source manager, symbol index, breakpoints, stack display, F12 navigation,
+  hovers, Variables, Watches, and conditional breakpoints all read the active
+  D8 map.
 
-## Staged Removal Status
+## Future Work
 
-### Stage 1: Runtime Cut To Native D8 Only - Done
-
-Goal: stop the active launch path from deriving maps from listings.
-
-- Replace listing-derived mapping behavior with native D8 loading.
-- Keep existing function names only where changing them would balloon the first
-  patch.
-- If the primary D8 map is absent or invalid, return an empty mapping and log a
-  clear build-required message.
-- For extra ROM metadata, load native D8 maps beside configured legacy entries
-  but do not parse listing content as fallback.
-- Keep source-root handling so bundled MON3 D8 maps still bind breakpoints.
-- Update tests to prove native D8 behavior and missing-map behavior.
-
-Expected result: Debug80 no longer fabricates source maps from listing files.
-
-### Stage 2: Rename The Model - Mostly Done
-
-Goal: make names match reality.
-
-- Bundled profiles point at `.d8.json`.
-- Internal listing-path and listing-content usage has been removed from the
-  launch, rebuild, mapping, source-state, and symbol-index paths.
-- No temporary compatibility alias for extra listing artifacts remains in active code.
-
-Expected result: new code and config no longer teach the listing mental model.
-
-### Stage 3: Remove Listing Breakpoint And ROM Listing Workflows - Done
-
-Goal: source files and D8 maps become the only debugger workflow.
-
-- Remove breakpoint binding directly against listing files.
-- Change “Open ROM Listing/Source” into “Open ROM Source” backed by D8/source
-  metadata. Done in active source and docs.
-- Stop materializing bundled listing files into new projects. Done for current
-  scaffolded bundles.
-- Remove bundled and fixture listing files that are not needed as source
-  references.
-
-Expected result: users debug source, not listings.
-
-### Stage 4: Delete Legacy Modules And Tests - In Progress
-
-Goal: remove cruft after all runtime callers are gone.
-
-- Delete listing-to-map generation code. Done.
-- Delete active-path Layer 2 recovery code. Done; the D8 include-remap helper
-  remains as `src/mapping/include-remap.ts`.
-- Delete stale listing cache checks.
-- Delete tests that only validate fallback behavior. Done for parser/layer2.
-- Remove user-facing schema/docs for listing artifacts. Active
-  docs and the bundled-ROM plan have been updated; archive documents may still
-  mention removed behavior as historical context.
-- Remove obsolete assembler aliases and related docs.
-
-Expected result: Debug80 has one source-map architecture.
-
-## First PR Scope
-
-The first PR should implement Stage 1 only:
-
-- no listing-derived source map fallback at runtime;
-- native primary D8 required for project source mapping;
-- native extra D8 maps loaded for ROM/platform sources;
-- clear logs when a D8 map is missing or invalid;
-- regression coverage for source breakpoints and bundled MON3 breakpoints.
-
-It should not attempt the large rename from `listing` to `debugMap` yet. That is
-the next PR, after behavior is already D8-only.
+Future map improvements should be made in AZM and represented in D8. Debug80
+should prefer richer D8 fields over adding another text-import path.

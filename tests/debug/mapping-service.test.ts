@@ -50,7 +50,7 @@ function nativeMapFor(filePath: string, line = 3): D8DebugMap {
           start: 0x2000,
           end: 0x2001,
           loc: { file: filePath, line },
-          lst: { line: 12, text: 'NOP' },
+          context: { line: 12, text: 'NOP' },
           confidence: 'HIGH',
         },
       ],
@@ -150,7 +150,7 @@ describe('mapping-service', () => {
             start: 0x2000,
             end: 0x2001,
             loc: { file: asmPath, line: 3 },
-            lst: { line: 1, text: 'NOP' },
+            context: { line: 1, text: 'NOP' },
             confidence: 'HIGH',
           },
         ],
@@ -245,7 +245,7 @@ describe('mapping-service', () => {
     });
 
     expect(result.mapping.segments[0]?.loc.line).toBe(42);
-    expect(result.mapping.segments[0]?.lst.line).toBe(42);
+    expect(result.mapping.segments[0]?.context.line).toBe(42);
   });
 
 });

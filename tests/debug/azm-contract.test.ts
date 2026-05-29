@@ -18,7 +18,7 @@ describe('azm compile contract', () => {
     }
   });
 
-  it('emits native D8 maps instead of legacy listing artifacts', async () => {
+  it('emits the native D8 artifact set expected by Debug80', async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-contract-'));
     const asmPath = path.join(tmpDir, 'main.z80');
     const hexPath = path.join(tmpDir, 'main.hex');
@@ -44,6 +44,5 @@ describe('azm compile contract', () => {
 
     expect(result.diagnostics).toEqual([]);
     expect(result.artifacts.map((artifact) => artifact.kind).sort()).toEqual(['bin', 'd8m', 'hex']);
-    expect(result.artifacts.some((artifact) => artifact.kind === 'lst')).toBe(false);
   });
 });

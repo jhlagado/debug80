@@ -100,9 +100,9 @@ export interface D8Segment {
   kind?: D8SegmentKind;
   /** Mapping confidence */
   confidence?: D8Confidence;
-  /** Listing file line number */
+  /** Assembler source-context line number */
   lstLine: number;
-  /** Listing text (inline) */
+  /** Assembler source-context text (inline) */
   lstText?: string;
   /** Index into lstText table (for deduplication) */
   lstTextId?: number;
@@ -231,7 +231,7 @@ export function buildD8DebugMap(
     const seg: D8Segment = {
       start: segment.start,
       end: segment.end,
-      lstLine: segment.lst.line,
+      lstLine: segment.context.line,
     };
 
     if (line !== null && line !== undefined) {
@@ -246,7 +246,7 @@ export function buildD8DebugMap(
       seg.confidence = conf;
     }
 
-    const text = segment.lst.text;
+    const text = segment.context.text;
     let textIndex = lstIndex.get(text);
     if (textIndex === undefined) {
       textIndex = lstText.length;
@@ -332,7 +332,7 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
           file,
           line,
         },
-        lst: {
+        context: {
           line: lstLine,
           text: lstTextValue,
         },

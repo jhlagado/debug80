@@ -10,7 +10,7 @@ const makeSegment = (start: number, end: number): SourceMapSegment => ({
   start,
   end,
   loc: { file: 'main.asm', line: 1 },
-  lst: { line: 1, text: '' },
+  context: { line: 1, text: '' },
   confidence: 'HIGH',
 });
 

@@ -12,21 +12,21 @@ const makeMapping = (): MappingParseResult => ({
       start: 0x1000,
       end: 0x1002,
       loc: { file: 'src/main.asm', line: 10 },
-      lst: { line: 120, text: 'LD A,B' },
+      context: { line: 120, text: 'LD A,B' },
       confidence: 'HIGH',
     },
     {
       start: 0x1002,
       end: 0x1003,
       loc: { file: 'src/main.asm', line: 11 },
-      lst: { line: 121, text: 'INC A' },
+      context: { line: 121, text: 'INC A' },
       confidence: 'HIGH',
     },
     {
       start: 0x1003,
       end: 0x1004,
       loc: { file: 'src/main.asm', line: 12 },
-      lst: { line: 122, text: 'NOP' },
+      context: { line: 122, text: 'NOP' },
       confidence: 'LOW',
     },
   ],
@@ -118,7 +118,7 @@ describe('d8-map', () => {
           start: 0x1000,
           end: 0x1001,
           loc: { file: 'src\\Main File.asm', line: 3 },
-          lst: { line: 9, text: 'NOP' },
+          context: { line: 9, text: 'NOP' },
           confidence: 'HIGH',
         },
       ],
@@ -235,7 +235,7 @@ describe('d8-map', () => {
 
     const rebuilt = buildMappingFromD8DebugMap(map as never);
     expect(rebuilt.segments[0]?.loc.line).toBe(99);
-    expect(rebuilt.segments[0]?.lst.line).toBe(99);
+    expect(rebuilt.segments[0]?.context.line).toBe(99);
   });
 
   it('keeps the explicit source line when lstLine is also present', () => {
@@ -254,7 +254,7 @@ describe('d8-map', () => {
 
     const rebuilt = buildMappingFromD8DebugMap(map as never);
     expect(rebuilt.segments[0]?.loc.line).toBe(10);
-    expect(rebuilt.segments[0]?.lst.line).toBe(42);
+    expect(rebuilt.segments[0]?.context.line).toBe(42);
   });
 
   it('keeps the source line unknown when both line and lstLine are absent', () => {

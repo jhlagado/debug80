@@ -41,7 +41,7 @@ export interface SourceMapSegment {
   /** Source location reference */
   loc: SourceLocation;
   /** Assembler context for display and tie-breaking */
-  lst: SegmentSourceText;
+  context: SegmentSourceText;
   /** Confidence level of the mapping */
   confidence: Confidence;
 }
