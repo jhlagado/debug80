@@ -171,18 +171,15 @@ export function createProjectStatusUi(
     if (sendHexToBoardButton) {
       const canSend =
         initializedProject &&
-        payload.coolTermAvailable === true &&
         Boolean(payload.targetName) &&
         Boolean(payload.coolTermHexPath);
       sendHexToBoardButton.hidden = !initializedProject;
       sendHexToBoardButton.disabled = !canSend;
       sendHexToBoardButton.textContent = sendButtonLabel(payload.platform);
       sendHexToBoardButton.title =
-        payload.coolTermAvailable === true
-          ? payload.coolTermHexPath !== undefined
-            ? `Send ${payload.coolTermHexPath} to the board via CoolTerm`
-            : 'Build the selected target before sending to the board'
-          : 'Start CoolTerm and enable the Remote Control Socket';
+        payload.coolTermHexPath !== undefined
+          ? `Send ${payload.coolTermHexPath} to the board via CoolTerm`
+          : 'Build the selected target before sending to the board';
     }
     if (hardwareStatusLine) {
       const text = payload.hardwareStatusText ?? '';

@@ -104,8 +104,7 @@ export function buildPlatformViewProjectStatus(
     azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     coolTermAvailable: ctx.coolTermAvailable === true,
     hardwareStatusText:
-      ctx.hardwareStatusText ??
-      buildDefaultHardwareStatus(ctx.coolTermAvailable === true, hexArtifact),
+      ctx.hardwareStatusText ?? buildDefaultHardwareStatus(hexArtifact),
     sourceMapStatusText: sourceMapStatus.text,
     sourceMapStatusState: sourceMapStatus.state,
     ...(hexArtifact.kind === 'found' || hexArtifact.kind === 'missing'
@@ -147,13 +146,7 @@ function resolveSourceMapStatus(
   return { text: 'Source map: current.', state: 'current' };
 }
 
-function buildDefaultHardwareStatus(
-  coolTermAvailable: boolean,
-  hexArtifact: ReturnType<typeof resolveCoolTermHexArtifact>
-): string {
-  if (!coolTermAvailable) {
-    return 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.';
-  }
+function buildDefaultHardwareStatus(hexArtifact: ReturnType<typeof resolveCoolTermHexArtifact>): string {
   if (hexArtifact.kind === 'found') {
     return `Ready to send ${path.basename(hexArtifact.path)} via CoolTerm.`;
   }

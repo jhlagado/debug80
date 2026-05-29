@@ -152,7 +152,7 @@ describe('platform-view-project-status', () => {
       azmRegisterCareMode: 'audit',
       azmContractUpdateMode: 'never',
       coolTermAvailable: false,
-      hardwareStatusText: 'CoolTerm not detected. Start CoolTerm and enable Remote Control Socket.',
+      hardwareStatusText: 'Select a target with a buildable HEX artifact before sending to hardware.',
       sourceMapStatusText: 'Source map: missing, build the selected target.',
       sourceMapStatusState: 'missing',
       targetName: 'app',

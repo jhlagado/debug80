@@ -190,7 +190,7 @@ describe('project status UI invariants', () => {
     expect(visiblePlatformControlCount()).toBe(0);
   });
 
-  it('keeps send visible but disabled until CoolTerm is detected', () => {
+  it('keeps send visible and lets the send command check CoolTerm availability', () => {
     applyProjectPayload({
       projectState: 'initialized',
       rootPath: '/workspace/debug80',
@@ -201,17 +201,17 @@ describe('project status UI invariants', () => {
       platform: 'tec1g',
       coolTermAvailable: false,
       coolTermHexPath: '/workspace/debug80/build/app.hex',
-      hardwareStatusText: 'CoolTerm not detected.',
+      hardwareStatusText: 'Ready to send app.hex via CoolTerm.',
       sourceMapStatusText: 'Source map: current.',
       sourceMapStatusState: 'current',
     });
 
     const elements = getElements();
     expect(elements.sendHexToBoardButton.hidden).toBe(false);
-    expect(elements.sendHexToBoardButton.disabled).toBe(true);
+    expect(elements.sendHexToBoardButton.disabled).toBe(false);
     expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1G');
     expect(elements.hardwareStatusLine.hidden).toBe(false);
-    expect(elements.hardwareStatusLine.textContent).toBe('CoolTerm not detected.');
+    expect(elements.hardwareStatusLine.textContent).toBe('Ready to send app.hex via CoolTerm.');
     expect(elements.sourceMapStatusLine.hidden).toBe(false);
     expect(elements.sourceMapStatusLine.textContent).toBe('Source map: current.');
     expect(elements.sourceMapStatusLine.dataset.sourceMapStatus).toBe('current');
