@@ -166,9 +166,11 @@ describe('project-scaffolding helpers', () => {
       'ORG 0x0900'
     );
     const tec1gStarter = createStarterSourceContent(extensionUri, kit('tec1g/mon3'), 'asm');
-    expect(tec1gStarter).toContain('ORG 0x4000');
+    expect(tec1gStarter).toContain('.org    0x4000');
     expect(tec1gStarter).toContain('Debug80 TEC-1G');
-    expect(tec1gStarter).toContain('api_scan_segments');
+    expect(tec1gStarter).toContain('API_SCAN_SEGMENTS');
+    expect(tec1gStarter).toContain('ScanHello:');
+    expect(tec1gStarter).not.toContain('LD      SP,');
   });
 
   it('creates a generic current-project launch config', () => {
