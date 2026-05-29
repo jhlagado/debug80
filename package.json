@@ -642,6 +642,7 @@
     "package": "vsce package",
     "package:verify": "node scripts/check-vsix-contents.cjs",
     "package:check": "npm run typecheck && npm run typecheck:webview && npm test && npm run package && npm run package:verify",
+    "preflight": "npm run lint && npm run package:check",
     "publish:marketplace": "vsce publish",
     "test:webview": "vitest run -c vitest.webview.config.ts",
     "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",

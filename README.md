@@ -137,11 +137,11 @@ For local testing as a packaged extension:
 
 ```bash
 npm ci
-npm run package:check
+npm run preflight
 code --install-extension debug80-0.0.1.vsix --force
 ```
 
-`package:check` runs type checks, tests, packaging, and VSIX content verification.
+`preflight` runs lint, type checks, tests, packaging, and VSIX content verification.
 The full release checklist is in [docs/release-process.md](docs/release-process.md).
 
 ## Development

@@ -29,10 +29,10 @@ Use this command before sharing a candidate VSIX:
 ```bash
 cd /Users/johnhardy/Documents/projects/debug80
 npm ci
-npm run package:check
+npm run preflight
 ```
 
-`package:check` runs:
+`preflight` runs lint plus the packaging checks. The packaging checks run:
 
 - `npm run typecheck`
 - `npm run typecheck:webview`
