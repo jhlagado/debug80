@@ -4,11 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
-import {
-  assembleIfRequested,
-  normalizeStepLimit,
-  resolveExtraListings,
-} from '../../src/debug/launch/launch-pipeline';
+import { assembleIfRequested, normalizeStepLimit } from '../../src/debug/launch/launch-pipeline';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-pipeline', () => {
@@ -31,12 +27,6 @@ describe('launch-pipeline', () => {
     expect(normalizeStepLimit(10.7, 5)).toBe(10);
     expect(normalizeStepLimit(Number.NaN, 5)).toBe(5);
     expect(normalizeStepLimit(-2, 5)).toBe(0);
-  });
-
-  it('resolves extra listings by platform', () => {
-    const list = resolveExtraListings('simple', { extraListings: ['a.lst'] });
-    expect(list).toEqual(['a.lst']);
-    expect(resolveExtraListings('tec1')).toEqual([]);
   });
 
   it('skips assembly when disabled', async () => {

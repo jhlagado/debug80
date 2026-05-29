@@ -33,7 +33,6 @@ export interface SessionSourceState {
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
   sourceRoots: string[];
-  extraListingPaths: string[];
 }
 
 export interface SessionLaunchState {
@@ -84,7 +83,6 @@ export interface SessionStateShape {
   restartCaptureAddress: number | undefined;
   entryCpuState: CpuStateSnapshot | undefined;
   launchArgs: LaunchRequestArguments | undefined;
-  extraListingPaths: string[];
   /**
    * Domain-scoped mutable views over the same backing fields.
    * New code should prefer these grouped objects to reduce coupling.
@@ -162,7 +160,6 @@ export function createSessionState(): SessionStateShape {
     restartCaptureAddress: undefined as number | undefined,
     entryCpuState: undefined as CpuStateSnapshot | undefined,
     launchArgs: undefined as LaunchRequestArguments | undefined,
-    extraListingPaths: [] as string[],
     runState: {
       stopOnEntry: false,
       launchComplete: false,
@@ -230,12 +227,6 @@ export function createSessionState(): SessionStateShape {
     },
     set sourceRoots(v) {
       flat.sourceRoots = v;
-    },
-    get extraListingPaths() {
-      return flat.extraListingPaths;
-    },
-    set extraListingPaths(v) {
-      flat.extraListingPaths = v;
     },
   };
 
@@ -354,7 +345,6 @@ export function resetSessionState(target: SessionStateShape): void {
   target.restartCaptureAddress = next.restartCaptureAddress;
   target.entryCpuState = next.entryCpuState;
   target.launchArgs = next.launchArgs;
-  target.extraListingPaths = next.extraListingPaths;
   target.runState.stopOnEntry = next.runState.stopOnEntry;
   target.runState.launchComplete = next.runState.launchComplete;
   target.runState.configurationDone = next.runState.configurationDone;

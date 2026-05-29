@@ -7,7 +7,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
-import { pathsEqual } from '../../src/debug/mapping/path-utils';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 import { resolveLocation } from '../../src/mapping/source-map';
 import type { Logger } from '../../src/util/logger';
@@ -38,8 +37,6 @@ function makeService(dir: string, mapPath: string, logs: string[] = []) {
     },
     relativeIfPossible: (filePath: string, baseDir: string) =>
       path.relative(baseDir, filePath) || filePath,
-    resolveExtraDebugMapPath: (p: string) =>
-      path.join(path.dirname(p), `${path.basename(p, path.extname(p))}.d8.json`),
     resolveDebugMapPath: () => mapPath,
     logger: createLogger(logs),
   };
@@ -107,7 +104,6 @@ describe('mapping-service', () => {
       listingPath,
       asmPath,
       sourceFile: asmPath,
-      extraListingPaths: [],
       mapArgs: {},
       service: makeService(dir, mapPath, logs),
     });
@@ -133,7 +129,6 @@ describe('mapping-service', () => {
       listingPath,
       asmPath,
       sourceFile: asmPath,
-      extraListingPaths: [],
       mapArgs: {},
       service: makeService(dir, mapPath, logs),
     });
@@ -180,7 +175,6 @@ describe('mapping-service', () => {
       listingPath,
       asmPath,
       sourceFile: asmPath,
-      extraListingPaths: [],
       mapArgs: {},
       service: makeService(dir, mapPath, logs),
     });
@@ -213,7 +207,6 @@ describe('mapping-service', () => {
       listingPath,
       asmPath,
       sourceFile: asmPath,
-      extraListingPaths: [],
       mapArgs: {},
       service: makeService(dir, mapPath, logs),
     });
@@ -252,7 +245,6 @@ describe('mapping-service', () => {
       listingPath,
       asmPath,
       sourceFile: asmPath,
-      extraListingPaths: [],
       mapArgs: {},
       service: makeService(dir, mapPath),
     });
@@ -261,40 +253,4 @@ describe('mapping-service', () => {
     expect(result.mapping.segments[0]?.lst.line).toBe(42);
   });
 
-  it('loads extra ROM mappings only from native D8 maps', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
-    const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8.json');
-    const extraListingPath = path.join(dir, 'rom', 'mon3.lst');
-    const extraSourcePath = path.join(dir, 'rom', 'mon3.z80');
-    const extraMapPath = path.join(dir, 'rom', 'mon3.d8.json');
-    const logs: string[] = [];
-
-    writeFile(listingPath, 'ignored listing content\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
-    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
-    writeFile(extraListingPath, 'C100 00 NOP\n');
-    writeFile(extraSourcePath, 'BOOT:\n  NOP\n');
-    writeFile(extraMapPath, JSON.stringify(nativeMapFor(extraSourcePath, 1), null, 2));
-
-    const result = buildMappingFromListing({
-      listingContent: 'ignored listing content\n',
-      listingPath,
-      asmPath,
-      sourceFile: asmPath,
-      extraListingPaths: [extraListingPath],
-      mapArgs: {},
-      service: makeService(dir, mapPath, logs),
-    });
-
-    expect(
-      result.mapping.segments.some(
-        (segment) =>
-          segment.loc.file !== null &&
-          pathsEqual(segment.loc.file, extraSourcePath) &&
-          segment.loc.line === 1
-      )
-    ).toBe(true);
-  });
 });

@@ -185,7 +185,6 @@ export function applyLaunchSessionArtifacts(
   source.mapping = artifacts.mapping;
   source.mappingIndex = artifacts.mappingIndex;
   source.sourceRoots = artifacts.sourceRoots;
-  source.extraListingPaths = artifacts.extraListingPaths;
   source.symbolAnchors = artifacts.symbolAnchors;
   source.symbolList = artifacts.symbolList;
   source.sourceMapSymbols = artifacts.sourceMapSymbols;

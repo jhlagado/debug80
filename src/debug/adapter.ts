@@ -164,9 +164,7 @@ export class Z80DebugSession extends DebugSession {
       return true;
     });
     this.commandRouter.register('debug80/romSources', (response) => {
-      response.body = buildRomSourcesResponse(
-        this.sourceState.collectRomSources(this.sessionState.source.extraListingPaths)
-      );
+      response.body = buildRomSourcesResponse([]);
       this.sendResponse(response);
       return true;
     });

@@ -217,20 +217,6 @@ export function resolveDebugMapPath(
 }
 
 /**
- * Resolves the path to a D8 debug map for an extra listing file.
- *
- * @param listingPath - Path to the extra listing file
- * @param baseDir - Base directory
- * @returns Path to the debug map file
- */
-export function resolveExtraDebugMapPath(listingPath: string, baseDir: string): string {
-  void baseDir;
-  const base = path.basename(listingPath, path.extname(listingPath));
-  const dir = path.dirname(listingPath);
-  return path.join(dir, `${base}${D8_DEBUG_MAP_EXT}`);
-}
-
-/**
  * Makes a path relative to base directory if possible.
  *
  * @param filePath - File path to make relative
@@ -271,60 +257,6 @@ export function isDebugMapStale(mapPath: string, listingPath: string): boolean {
   } catch {
     return false;
   }
-}
-
-/**
- * Resolves extra listing file paths.
- *
- * @param extraListings - Array of extra listing paths
- * @param baseDir - Base directory
- * @param primaryListingPath - Primary listing path to exclude
- * @param onMissing - Callback for missing files
- * @returns Array of resolved extra listing paths
- */
-export function resolveExtraListingPaths(
-  extraListings: string[],
-  baseDir: string,
-  primaryListingPath: string,
-  onMissing?: (path: string) => void
-): string[] {
-  if (!Array.isArray(extraListings) || extraListings.length === 0) {
-    return [];
-  }
-
-  const resolved: string[] = [];
-  const seen = new Set<string>();
-  const primary = path.resolve(primaryListingPath);
-
-  for (const entry of extraListings) {
-    if (typeof entry !== 'string') {
-      continue;
-    }
-
-    const trimmed = entry.trim();
-    if (trimmed === '') {
-      continue;
-    }
-
-    const abs = resolveRelative(trimmed, baseDir);
-    const normalized = path.resolve(abs);
-
-    if (normalized === primary || seen.has(normalized)) {
-      continue;
-    }
-
-    if (!fs.existsSync(normalized)) {
-      if (onMissing) {
-        onMissing(normalized);
-      }
-      continue;
-    }
-
-    resolved.push(normalized);
-    seen.add(normalized);
-  }
-
-  return resolved;
 }
 
 /**

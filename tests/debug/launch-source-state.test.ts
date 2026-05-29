@@ -68,7 +68,6 @@ describe('launch-source-state', () => {
       sourcePath,
       listingPath,
       'LIST\n',
-      [],
       sourceState,
       sessionState,
       new NullLogger()
@@ -85,7 +84,6 @@ describe('launch-source-state', () => {
     const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
     const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     const mon3SourcePath = path.join(bundleRoot, 'mon3.z80');
-    const mon3ListingPath = path.join(bundleRoot, 'mon3.lst');
 
     fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
     fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
@@ -104,6 +102,9 @@ describe('launch-source-state', () => {
             'src/main.asm': {
               segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
             },
+            [mon3SourcePath]: {
+              segments: [{ start: 0xc100, end: 0xc101, lstLine: 302, line: 302, kind: 'code' }],
+            },
           },
           generator: { name: 'azm', tool: 'azm', version: '0.2.5' },
         },
@@ -121,15 +122,12 @@ describe('launch-source-state', () => {
       sourcePath,
       listingPath,
       'LIST\n',
-      [mon3ListingPath],
       sourceState,
       sessionState,
       new NullLogger()
     );
 
     expect(resolveExecutableLocation(result.mappingIndex, mon3SourcePath, 302)).toEqual([0xc100]);
-    expect(result.sourceRoots).toContain(bundleRoot);
-    expect(sessionState.sourceRoots).toContain(bundleRoot);
   });
 
   it('reads source-map symbols from the build artifact', () => {
@@ -172,7 +170,6 @@ describe('launch-source-state', () => {
       sourcePath,
       listingPath,
       'LIST\n',
-      [],
       sourceState,
       sessionState,
       new NullLogger()

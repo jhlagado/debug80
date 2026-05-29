@@ -9,10 +9,6 @@ import * as path from 'path';
 import type { Logger } from '../../src/util/logger';
 import { buildD8DebugMap } from '../../src/mapping/d8-map';
 
-vi.mock('../../src/debug/mapping/path-resolver', () => ({
-  resolveListingSourcePath: () => undefined,
-}));
-
 import * as mappingService from '../../src/debug/mapping/mapping-service';
 import { SourceManager } from '../../src/debug/mapping/source-manager';
 
@@ -36,18 +32,13 @@ const createLogger = (logs: string[]): Logger => ({
 });
 
 describe('source-manager', () => {
-  it('builds mapping state and resolves extra listings', () => {
+  it('builds mapping state from the native debug map', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-'));
     const listingPath = path.join(dir, 'simple.lst');
-    const extraListingPath = path.join(dir, 'extra.lst');
     const sourcePath = path.join(dir, 'simple.asm');
-    const extraSourcePath = path.join(dir, 'extra.asm');
     const mapPath = path.join(dir, `${path.basename(listingPath)}.d8.json`);
-    const extraMapPath = path.join(dir, `${path.basename(extraListingPath)}.extra.json`);
     writeFile(listingPath, listingContent);
-    writeFile(extraListingPath, listingContent.replace('0000', '0200'));
     writeFile(sourcePath, 'START:\n  NOP\n');
-    writeFile(extraSourcePath, 'ROM_START:\n  NOP\n');
     writeFile(
       mapPath,
       JSON.stringify(
@@ -58,26 +49,6 @@ describe('source-manager', () => {
                 start: 0x1000,
                 end: 0x1001,
                 loc: { file: sourcePath, line: 2 },
-                lst: { line: 1, text: 'NOP' },
-                confidence: 'HIGH',
-              },
-            ],
-            anchors: [],
-          },
-          { arch: 'z80', addressWidth: 16, endianness: 'little', generator: { tool: 'azm' } }
-        )
-      )
-    );
-    writeFile(
-      extraMapPath,
-      JSON.stringify(
-        buildD8DebugMap(
-          {
-            segments: [
-              {
-                start: 0x2000,
-                end: 0x2001,
-                loc: { file: extraSourcePath, line: 2 },
                 lst: { line: 1, text: 'NOP' },
                 confidence: 'HIGH',
               },
@@ -101,9 +72,6 @@ describe('source-manager', () => {
       relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_args, _baseDir, _asm, listing) =>
         path.join(dir, `${path.basename(listing)}.d8.json`),
-      resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
-      resolveListingSourcePath: (listing) =>
-        listing.endsWith('.lst') ? listing.replace(/\.lst$/, '.asm') : undefined,
       logger: createLogger(logs),
     });
 
@@ -111,16 +79,13 @@ describe('source-manager', () => {
       listingContent,
       listingPath,
       sourceRoots: ['src'],
-      extraListings: [extraListingPath, extraListingPath, 'missing.lst'],
       mapArgs: {},
     });
 
     expect(state.mapping.segments.length).toBeGreaterThan(0);
     expect(state.mappingIndex.segmentsByAddress.length).toBeGreaterThan(0);
-    expect(state.extraListingPaths).toEqual([extraListingPath]);
     expect(state.sourceRoots).toContain(path.resolve(dir, 'src'));
-    expect(state.sourceRoots).toContain(path.dirname(extraListingPath));
-    expect(logs.some((line) => line.includes('extra listing not found'))).toBe(true);
+    expect(logs.some((line) => line.includes('Using native D8 map'))).toBe(true);
   });
 
   it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. AZM entry only)', () => {
@@ -145,8 +110,6 @@ describe('source-manager', () => {
       relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_a, _b, _c, listing) =>
         path.join(path.dirname(listing), `${path.basename(listing, '.lst')}.d8.json`),
-      resolveExtraDebugMapPath: (listing) => path.join(dir, `${path.basename(listing)}.extra.json`),
-      resolveListingSourcePath: () => undefined,
       logger: createLogger(logs),
     });
 
@@ -155,7 +118,6 @@ describe('source-manager', () => {
       listingPath,
       asmPath,
       sourceRoots: [],
-      extraListings: [],
       mapArgs: {},
     });
 
@@ -165,31 +127,5 @@ describe('source-manager', () => {
       })
     );
     buildMappingSpy.mockRestore();
-  });
-
-  it('collects listing and source entries for extra listings', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-'));
-    const extraListingPath = path.join(dir, 'extra.lst');
-    writeFile(extraListingPath, listingContent);
-
-    const manager = new SourceManager({
-      platform: 'simple',
-      baseDir: dir,
-      resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
-      resolveMappedPath: () => undefined,
-      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
-      resolveDebugMapPath: () => path.join(dir, 'map.json'),
-      resolveExtraDebugMapPath: () => path.join(dir, 'extra.json'),
-      resolveListingSourcePath: (listing) =>
-        listing.endsWith('.lst') ? listing.replace(/\.lst$/, '.asm') : undefined,
-      logger: createLogger([]),
-    });
-
-    const entries = manager.collectRomSources([extraListingPath]);
-
-    expect(entries).toEqual([
-      { label: 'extra.lst', path: extraListingPath, kind: 'listing' },
-      { label: 'extra.asm', path: extraListingPath.replace(/\.lst$/, '.asm'), kind: 'source' },
-    ]);
   });
 });

@@ -7,7 +7,6 @@ import type { BuildSourceStateArgs, SourceManagerState } from './source-manager'
 
 export type SourceState = {
   sourceRoots: string[];
-  extraListingPaths: string[];
   mapping: SourceManagerState['mapping'];
   mappingIndex: SourceManagerState['mappingIndex'];
 };
@@ -16,9 +15,6 @@ type BuildResult = SourceState & { sourceFile: string };
 
 export type SourceManagerLike = {
   buildState: (args: BuildSourceStateArgs) => SourceManagerState;
-  collectRomSources: (
-    extraListingPaths: string[]
-  ) => Array<{ label: string; path: string; kind: 'listing' | 'source' }>;
 };
 
 /**
@@ -41,19 +37,9 @@ export class SourceStateManager {
     this.file = state.sourceFile;
     return {
       sourceRoots: state.sourceRoots,
-      extraListingPaths: state.extraListingPaths,
       mapping: state.mapping,
       mappingIndex: state.mappingIndex,
       sourceFile: state.sourceFile,
     };
-  }
-
-  collectRomSources(
-    extraListingPaths: string[]
-  ): Array<{ label: string; path: string; kind: 'listing' | 'source' }> {
-    if (!this.manager) {
-      return [];
-    }
-    return this.manager.collectRomSources(extraListingPaths);
   }
 }

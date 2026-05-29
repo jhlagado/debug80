@@ -52,7 +52,6 @@ export interface ResolvedPlatformProvider {
   simpleConfig?: SimplePlatformConfigNormalized;
   tec1Config?: Tec1PlatformConfigNormalized;
   tec1gConfig?: Tec1gPlatformConfigNormalized;
-  extraListings: string[];
   runtimeOptions?: { romRanges: Array<{ start: number; end: number }> };
   registerCommands: (registry: PlatformRegistry, context: PlatformCommandContext) => void;
   buildIoHandlers: (callbacks: PlatformIoCallbacks) => Promise<PlatformIoBuildResult>;

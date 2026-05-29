@@ -2,33 +2,11 @@
  * @fileoverview Launch pipeline helpers (config normalization, assembly).
  */
 
-import type {
-  SimplePlatformConfigNormalized,
-  Tec1PlatformConfigNormalized,
-  Tec1gPlatformConfigNormalized,
-} from '../../platforms/types';
+import type { SimplePlatformConfigNormalized } from '../../platforms/types';
 import { AssembleFailureError } from './assembler';
 import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from '../session/types';
 import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
-
-export function resolveExtraListings(
-  platform: string,
-  simpleConfig?: SimplePlatformConfigNormalized,
-  tec1Config?: Tec1PlatformConfigNormalized,
-  tec1gConfig?: Tec1gPlatformConfigNormalized
-): string[] {
-  if (platform === 'simple') {
-    return simpleConfig?.extraListings ?? [];
-  }
-  if (platform === 'tec1') {
-    return tec1Config?.extraListings ?? [];
-  }
-  if (platform === 'tec1g') {
-    return tec1gConfig?.extraListings ?? [];
-  }
-  return [];
-}
 
 export async function assembleIfRequested(options: {
   backend: AssemblerBackend;

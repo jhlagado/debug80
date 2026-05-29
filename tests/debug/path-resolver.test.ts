@@ -13,7 +13,6 @@ import {
   resolveArtifacts,
   resolveBaseDir,
   resolveDebugMapPath,
-  resolveExtraListingPaths,
   resolveFallbackSourceFile,
   resolveListingSourcePath,
   resolveMappedPath,
@@ -86,21 +85,6 @@ describe('path-resolver', () => {
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
     expect(mapPath).toBe(path.join(baseDir, 'demo.d8.json'));
     expect(fs.existsSync(path.join(baseDir, '.debug80'))).toBe(false);
-  });
-
-  it('filters extra listings to existing unique paths', () => {
-    const listingA = path.join(tmpDir, 'a.lst');
-    const listingB = path.join(tmpDir, 'b.lst');
-    fs.writeFileSync(listingA, 'A');
-    fs.writeFileSync(listingB, 'B');
-
-    const resolved = resolveExtraListingPaths(
-      [listingA, listingB, listingA, path.join(tmpDir, 'missing.lst')],
-      tmpDir,
-      listingA
-    );
-
-    expect(resolved).toEqual([listingB]);
   });
 
   it('does not resolve listing source path from .source.asm', () => {

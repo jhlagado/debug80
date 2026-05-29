@@ -15,7 +15,6 @@ export function createSimplePlatformProvider(
     id: 'simple',
     payload: { id: 'simple' },
     simpleConfig,
-    extraListings: simpleConfig.extraListings ?? [],
     runtimeOptions: { romRanges: simpleConfig.romRanges },
     registerCommands: () => undefined,
     buildIoHandlers: async (callbacks) =>

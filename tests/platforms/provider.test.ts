@@ -77,7 +77,6 @@ describe('platform providers', () => {
     const customProvider = {
       id: 'microbee',
       payload: { id: 'microbee' },
-      extraListings: [],
       registerCommands: vi.fn(),
       buildIoHandlers: vi.fn(() => Promise.resolve({ ioHandlers: undefined })),
       resolveEntry: vi.fn(() => 0x4000),
@@ -106,12 +105,11 @@ describe('platform providers', () => {
     const provider = await resolvePlatformProvider({
       platform: 'simple',
       terminal: { txPort: 4 },
-      simple: { entry: 0x1234, extraListings: ['rom.lst'] },
+      simple: { entry: 0x1234 },
     });
 
     expect(provider.id).toBe('simple');
     expect(provider.payload).toEqual({ id: 'simple' });
-    expect(provider.extraListings).toEqual(['rom.lst']);
     expect(provider.resolveEntry()).toBe(0x1234);
     expect(provider.runtimeOptions).toEqual({
       romRanges: provider.simpleConfig?.romRanges ?? [],
@@ -137,7 +135,7 @@ describe('platform providers', () => {
   it('registers TEC-1 commands through the platform registry', async () => {
     const provider = await resolvePlatformProvider({
       platform: 'tec1',
-      tec1: { entry: 0x4567, extraListings: ['tec1.rom.lst'] },
+      tec1: { entry: 0x4567 },
     });
     const registry = new PlatformRegistry();
     const context = createCommandContext();
@@ -176,7 +174,6 @@ describe('platform providers', () => {
       tec1g: {
         entry: 0x2000,
         cartridgeHex: 'cart.hex',
-        extraListings: ['tec1g.rom.lst'],
       },
     });
     const context = createCommandContext();
@@ -268,7 +265,6 @@ describe('platform providers', () => {
     };
 
     expect(provider.payload).toEqual({ id: 'tec1g' });
-    expect(provider.extraListings).toEqual(['tec1g.rom.lst']);
     expect(provider.resolveEntry(assets)).toBe(0x3456);
 
     provider.finalizeRuntime?.({

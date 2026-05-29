@@ -17,12 +17,10 @@ import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import { assembleIfRequested } from '../launch/launch-pipeline';
 import type { WarmRebuildResult } from '../session/message-types';
 import {
-  resolveListingSourcePath,
   resolveMappedPath,
   resolveBaseDir,
   resolveArtifacts,
   resolveDebugMapPath,
-  resolveExtraDebugMapPath,
   resolveRelative,
   relativeIfPossible,
 } from '../mapping/path-resolver';
@@ -137,7 +135,6 @@ export async function handleWarmRebuildRequest(
       return;
     }
 
-    const simpleConfig = launchArgs.simple;
     const tec1Config = launchArgs.tec1;
     const tec1gConfig = launchArgs.tec1g;
     const { program, listingInfo, listingContent } = loadProgramArtifacts({
@@ -174,10 +171,8 @@ export async function handleWarmRebuildRequest(
           resolveRelative: (p, dir) => resolveRelative(p, dir),
           resolveMappedPath: resolveSessionMappedPath,
           relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveExtraDebugMapPath: (p) => resolveExtraDebugMapPath(p, baseDir),
           resolveDebugMapPath: (args, dir, asm, listing) =>
             resolveDebugMapPath(args as never, dir, asm, listing),
-          resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
           logger: deps.logger,
         })
       );
@@ -191,12 +186,6 @@ export async function handleWarmRebuildRequest(
         ? { sourceFile: launchArgs.sourceFile }
         : {}),
       sourceRoots: launchArgs.sourceRoots ?? [],
-      extraListings:
-        deps.platformState.active === 'simple'
-          ? (simpleConfig?.extraListings ?? [])
-          : deps.platformState.active === 'tec1'
-            ? (tec1Config?.extraListings ?? [])
-            : (tec1gConfig?.extraListings ?? []),
       mapArgs: {
         ...(launchArgs.artifactBase !== undefined && launchArgs.artifactBase.length > 0
           ? { artifactBase: launchArgs.artifactBase }
@@ -220,7 +209,6 @@ export async function handleWarmRebuildRequest(
     deps.sessionState.mapping = builtSourceState.mapping;
     deps.sessionState.mappingIndex = builtSourceState.mappingIndex;
     deps.sessionState.sourceRoots = builtSourceState.sourceRoots;
-    deps.sessionState.extraListingPaths = builtSourceState.extraListingPaths;
     deps.sessionState.symbolAnchors = symbolIndex.anchors;
     deps.sessionState.symbolList = symbolIndex.list;
     deps.sessionState.runState.callDepth = 0;

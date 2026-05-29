@@ -2,7 +2,6 @@
  * @file TEC-1G runtime configuration normalization.
  */
 
-import * as path from 'path';
 import type { Tec1gPlatformConfig, Tec1gPlatformConfigNormalized } from '../types';
 import { normalizeSimpleRegions } from '../simple/runtime';
 import {
@@ -52,11 +51,6 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
     Number.isFinite(config.yieldMs) && config.yieldMs !== undefined ? config.yieldMs : 0;
-  const extraListings = Array.isArray(config.extraListings)
-    ? config.extraListings
-        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
-        .filter((entry) => entry !== '')
-    : inferListingsFromRom(romHex);
   const gimpSignal = config.gimpSignal === true;
   const expansionBankHi = config.expansionBankHi === true;
   const matrixMode = config.matrixMode === true;
@@ -86,24 +80,5 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     sdHighCapacity,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
-    ...(extraListings && extraListings.length > 0 ? { extraListings } : {}),
   };
-}
-
-/**
- * Infers extra listing paths from a ROM hex path when none are configured explicitly.
- * Given `roms/tec1g/mon3.bin`, returns candidates `roms/tec1g/mon3.lst` and the
- * dash/underscore-stripped variant. Returns `undefined` when the ROM path is absent.
- */
-function inferListingsFromRom(romHex: string | undefined): string[] | undefined {
-  if (typeof romHex !== 'string' || romHex.trim() === '') {
-    return undefined;
-  }
-  const dir = path.dirname(romHex);
-  const base = path.basename(romHex, path.extname(romHex));
-  const candidates = [
-    path.join(dir, `${base}.lst`),
-    path.join(dir, `${base.replace(/[-_]/g, '')}.lst`),
-  ];
-  return [...new Set(candidates)];
 }

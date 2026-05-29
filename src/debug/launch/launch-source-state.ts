@@ -10,9 +10,7 @@ import type { SourceStateManager } from '../mapping/source-state-manager';
 import {
   relativeIfPossible,
   resolveDebugMapPath,
-  resolveExtraDebugMapPath,
   resolveRelative,
-  resolveListingSourcePath,
   resolveMappedPath,
 } from '../mapping/path-resolver';
 import type { PlatformKind } from './program-loader';
@@ -27,7 +25,6 @@ import { parseD8DebugMap } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
   sourceRoots: string[];
-  extraListingPaths: string[];
   mapping: MappingParseResult;
   mappingIndex: SourceMapIndex;
   symbolAnchors: SourceMapAnchor[];
@@ -42,7 +39,6 @@ export function buildLaunchSourceState(
   asmPath: string | undefined,
   listingPath: string,
   listingContent: string,
-  extraListings: string[],
   sourceState: SourceStateManager,
   sessionState: SessionStateShape,
   logger: Logger
@@ -54,12 +50,6 @@ export function buildLaunchSourceState(
   }
   if (asmPath !== undefined && asmPath.length > 0) {
     pushUniquePath(preSourceRoots, path.dirname(resolveRelative(asmPath, baseDir)));
-  }
-  for (const listing of extraListings) {
-    const listingPath = resolveRelative(listing, baseDir);
-    if (fs.existsSync(listingPath)) {
-      pushUniquePath(preSourceRoots, path.dirname(listingPath));
-    }
   }
   pushUniquePath(preSourceRoots, resolveRelative(baseDir, baseDir));
   sessionState.sourceRoots = preSourceRoots;
@@ -82,10 +72,8 @@ export function buildLaunchSourceState(
       resolveRelative: (value, dir) => resolveRelative(value, dir),
       resolveMappedPath: resolveSessionMappedPath,
       relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-      resolveExtraDebugMapPath: (value) => resolveExtraDebugMapPath(value, baseDir),
       resolveDebugMapPath: (launchArgs, dir, asm, listing) =>
         resolveDebugMapPath(launchArgs as LaunchRequestArguments, dir, asm, listing),
-      resolveListingSourcePath: (listing) => resolveListingSourcePath(listing),
       logger,
     })
   );
@@ -98,7 +86,6 @@ export function buildLaunchSourceState(
       ? { sourceFile: args.sourceFile }
       : {}),
     sourceRoots: resolvedSourceRoots,
-    extraListings,
     mapArgs: {
       ...(args.artifactBase !== undefined && args.artifactBase.length > 0
         ? { artifactBase: args.artifactBase }
@@ -134,7 +121,6 @@ export function buildLaunchSourceState(
 
   return {
     sourceRoots: builtSourceState.sourceRoots,
-    extraListingPaths: builtSourceState.extraListingPaths,
     mapping: builtSourceState.mapping,
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,

@@ -157,7 +157,6 @@ export function createTec1gPlatformProvider(
     id: 'tec1g',
     payload: { id: 'tec1g' },
     tec1gConfig,
-    extraListings: tec1gConfig.extraListings ?? [],
     runtimeOptions: { romRanges: tec1gConfig.romRanges },
     registerCommands: (registry, context): void => {
       registry.register(buildTec1gContribution(context));

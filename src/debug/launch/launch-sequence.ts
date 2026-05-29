@@ -133,7 +133,6 @@ export interface LaunchSessionArtifacts {
   mapping: MappingParseResult;
   mappingIndex: SourceMapIndex;
   sourceRoots: string[];
-  extraListingPaths: string[];
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
@@ -234,7 +233,6 @@ export async function buildLaunchSession(
   });
 
   context.sessionState.listingPath = listingPath;
-  const extraListings = platformProvider.extraListings;
   const builtSourceState = buildLaunchSourceState(
     merged,
     platform,
@@ -242,7 +240,6 @@ export async function buildLaunchSession(
     asmPath,
     listingPath,
     listingContent,
-    extraListings,
     context.sourceState,
     context.sessionState,
     context.logger
@@ -305,7 +302,6 @@ export async function buildLaunchSession(
     mapping: builtSourceState.mapping,
     mappingIndex: builtSourceState.mappingIndex,
     sourceRoots: builtSourceState.sourceRoots,
-    extraListingPaths: builtSourceState.extraListingPaths,
     symbolAnchors: builtSourceState.symbolAnchors,
     symbolList: builtSourceState.symbolList,
     sourceMapSymbols: builtSourceState.sourceMapSymbols,

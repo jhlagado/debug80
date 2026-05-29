@@ -31,7 +31,6 @@ export interface MappingServiceOptions {
   baseDir: string;
   resolveMappedPath: ResolvePathFn;
   relativeIfPossible: (filePath: string, baseDir: string) => string;
-  resolveExtraDebugMapPath: (listingPath: string) => string;
   resolveDebugMapPath: (
     args: {
       artifactBase?: string;
@@ -86,12 +85,10 @@ export function buildMappingFromListing(options: {
   listingPath: string;
   asmPath?: string;
   sourceFile?: string;
-  extraListingPaths: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
   service: MappingServiceOptions;
 }): MappingBuildResult {
-  const { listingContent, listingPath, asmPath, sourceFile, extraListingPaths, mapArgs, service } =
-    options;
+  const { listingContent, listingPath, asmPath, sourceFile, mapArgs, service } = options;
   void listingContent;
   void sourceFile;
 
@@ -122,7 +119,7 @@ export function buildMappingFromListing(options: {
     );
   }
 
-  let mapping = hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
+  const mapping = hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
 
   const fileSet = new Set<string | null>();
   for (const seg of mapping.segments) {
@@ -133,10 +130,6 @@ export function buildMappingFromListing(options: {
       `${mapping.anchors.length} anchors, files=[${[...fileSet].map((f) => f ?? '(null)').join(', ')}]`
   );
 
-  const extraMapping = loadExtraListingMapping(extraListingPaths, service);
-  if (extraMapping) {
-    mapping = mergeMappings(mapping, extraMapping);
-  }
   if (service.platform === 'tec1g') {
     applyTec1gBootstrapAlias(mapping);
   }
@@ -229,59 +222,6 @@ function normalizeGeneratorIdentity(value: string | undefined): string | undefin
   }
   const normalized = value.trim().toLowerCase();
   return normalized.length > 0 ? normalized : undefined;
-}
-
-function loadExtraListingMapping(
-  listingPaths: string[],
-  service: MappingServiceOptions
-): MappingParseResult | undefined {
-  if (listingPaths.length === 0) {
-    return undefined;
-  }
-  const combined: MappingParseResult = { segments: [], anchors: [] };
-  for (const listingPath of listingPaths) {
-    try {
-      const mapPath = service.resolveExtraDebugMapPath(listingPath);
-      const loadedMap = loadDebugMap(mapPath, service);
-      const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
-      if (hasNativeMap) {
-        service.logger.info(
-          `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${mapPath}".`
-        );
-      }
-
-      if (loadedMap !== undefined && !hasNativeMap) {
-        service.logger.warn(
-          `Debug80: Ignoring legacy Debug80-generated ROM source map at "${mapPath}". Rebuild the ROM metadata with AZM to generate a native D8 source map.`
-        );
-      }
-      if (!hasNativeMap || loadedMap === undefined) {
-        service.logger.warn(
-          `Debug80: ROM source map missing at "${mapPath}". Rebuild the ROM metadata with AZM to generate a native D8 source map.`
-        );
-        continue;
-      }
-      const mapping = buildMappingFromD8DebugMap(loadedMap);
-      combined.segments.push(...mapping.segments);
-      combined.anchors.push(...mapping.anchors);
-    } catch (err) {
-      const prefix = `Debug80 [${service.platform}]`;
-      service.logger.error(
-        `${prefix}: failed to read extra listing "${listingPath}": ${String(err)}`
-      );
-    }
-  }
-  if (combined.segments.length === 0 && combined.anchors.length === 0) {
-    return undefined;
-  }
-  return combined;
-}
-
-function mergeMappings(base: MappingParseResult, extra: MappingParseResult): MappingParseResult {
-  return {
-    segments: [...base.segments, ...extra.segments],
-    anchors: [...base.anchors, ...extra.anchors],
-  };
 }
 
 function emptyMapping(): MappingParseResult {

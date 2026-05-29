@@ -27,7 +27,6 @@ import {
   resolveAsmPath,
   resolveBaseDir,
   resolveDebugMapPath,
-  resolveExtraDebugMapPath,
   resolveRelative,
 } from '../../src/debug/mapping/path-resolver';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
@@ -62,8 +61,6 @@ describe('launch-args', () => {
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
     expect(mapPath).toContain(path.join(baseDir, 'main.d8.json'));
-    const extraPath = resolveExtraDebugMapPath(listingPath, baseDir);
-    expect(extraPath).toContain(path.join(baseDir, 'main.d8.json'));
   });
 
   it('builds debug map paths beside artifacts when the project root exists', () => {
@@ -72,8 +69,6 @@ describe('launch-args', () => {
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
     expect(mapPath).toBe(path.join(baseDir, 'main.d8.json'));
-    const extraPath = resolveExtraDebugMapPath(listingPath, baseDir);
-    expect(extraPath).toBe(path.join(baseDir, 'main.d8.json'));
   });
 
   it('merges config file values', () => {
@@ -181,18 +176,8 @@ describe('launch-args', () => {
       'v1',
       'mon3.bin'
     );
-    const bundledListing = path.join(
-      extensionRoot,
-      'resources',
-      'bundles',
-      'tec1g',
-      'mon3',
-      'v1',
-      'mon3.lst'
-    );
     fs.mkdirSync(path.dirname(bundledRom), { recursive: true });
     fs.writeFileSync(bundledRom, 'rom');
-    fs.writeFileSync(bundledListing, 'lst');
     getExtension.mockReturnValue({ extensionPath: extensionRoot } as never);
     fs.writeFileSync(
       configPath,
@@ -207,11 +192,6 @@ describe('launch-args', () => {
                 bundleId: 'tec1g/mon3/v1',
                 path: 'mon3.bin',
                 destination: 'roms/tec1g/mon3/mon3.bin',
-              },
-              listing: {
-                bundleId: 'tec1g/mon3/v1',
-                path: 'mon3.lst',
-                destination: 'roms/tec1g/mon3/mon3.lst',
               },
             },
           },
@@ -231,7 +211,6 @@ describe('launch-args', () => {
 
     expect(merged.platform).toBe('tec1g');
     expect(merged.tec1g?.romHex).toBe(bundledRom);
-    expect(merged.tec1g?.extraListings).toEqual([bundledListing]);
   });
 
   it('hydrates tec1 launch paths from bundled profile assets when workspace copies are absent', () => {
@@ -247,18 +226,8 @@ describe('launch-args', () => {
       'v1',
       'mon-1b.bin'
     );
-    const bundledListing = path.join(
-      extensionRoot,
-      'resources',
-      'bundles',
-      'tec1',
-      'mon1b',
-      'v1',
-      'mon-1b.lst'
-    );
     fs.mkdirSync(path.dirname(bundledRom), { recursive: true });
     fs.writeFileSync(bundledRom, 'rom');
-    fs.writeFileSync(bundledListing, 'lst');
     getExtension.mockReturnValue({ extensionPath: extensionRoot } as never);
     fs.writeFileSync(
       configPath,
@@ -273,11 +242,6 @@ describe('launch-args', () => {
                 bundleId: 'tec1/mon1b/v1',
                 path: 'mon-1b.bin',
                 destination: 'roms/tec1/mon1b/mon-1b.bin',
-              },
-              listing: {
-                bundleId: 'tec1/mon1b/v1',
-                path: 'mon-1b.lst',
-                destination: 'roms/tec1/mon1b/mon-1b.lst',
               },
             },
           },
@@ -297,17 +261,14 @@ describe('launch-args', () => {
 
     expect(merged.platform).toBe('tec1');
     expect(merged.tec1?.romHex).toBe(bundledRom);
-    expect(merged.tec1?.extraListings).toEqual([bundledListing]);
   });
 
   it('prefers workspace-local bundle overrides when they exist', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-local-tec1g-'));
     const configPath = path.join(dir, 'debug80.json');
     const workspaceRom = path.join(dir, 'roms', 'tec1g', 'mon3', 'mon3.bin');
-    const workspaceListing = path.join(dir, 'roms', 'tec1g', 'mon3', 'mon3.lst');
     fs.mkdirSync(path.dirname(workspaceRom), { recursive: true });
     fs.writeFileSync(workspaceRom, 'rom');
-    fs.writeFileSync(workspaceListing, 'lst');
     fs.writeFileSync(
       configPath,
       JSON.stringify({
@@ -322,11 +283,6 @@ describe('launch-args', () => {
                 path: 'mon3.bin',
                 destination: 'roms/tec1g/mon3/mon3.bin',
               },
-              listing: {
-                bundleId: 'tec1g/mon3/v1',
-                path: 'mon3.lst',
-                destination: 'roms/tec1g/mon3/mon3.lst',
-              },
             },
           },
         },
@@ -336,7 +292,6 @@ describe('launch-args', () => {
             profile: 'mon3',
             tec1g: {
               romHex: 'roms/tec1g/mon3/mon3.bin',
-              extraListings: ['roms/tec1g/mon3/mon3.lst'],
             },
           },
         },
@@ -348,7 +303,6 @@ describe('launch-args', () => {
     });
 
     expect(merged.tec1g?.romHex).toBe(workspaceRom);
-    expect(merged.tec1g?.extraListings).toEqual([workspaceListing]);
   });
 
   it('deep-merges tec1g so target overrides do not drop root romHex', () => {

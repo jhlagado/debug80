@@ -113,15 +113,13 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 Debug80 ships a bundled MON-3 profile for scaffolded projects. New projects
 record bundled asset references in `debug80.json`; launch resolves the extension
 bundle directly when no workspace copy exists. You can still provide `romHex` in
-the platform config (and optionally ROM listings via `extraListings`) to override
-the bundled profile or debug a custom ROM.
+the platform config to override the bundled profile or debug a custom ROM.
 
 **Shared MON-3 settings (recommended):** Scaffolded projects record MON-3 under
-a shared profile and point `tec1g.romHex` / `tec1g.extraListings` at stable
-workspace-relative override paths. When those local files are absent, launch
-uses the bundled extension copies. Put per-target `tec1g` fields only where a
-target actually differs, for example `appStart`, `matrixMode`, or
-`extraListings`.
+a shared profile and point `tec1g.romHex` at a stable workspace-relative
+override path. When the local file is absent, launch uses the bundled extension
+copy. Put per-target `tec1g` fields only where a target actually differs, for
+example `appStart`, `matrixMode`, or `protectOnReset`.
 
 ```json
 {
@@ -129,7 +127,6 @@ target actually differs, for example `appStart`, `matrixMode`, or
   "sourceRoots": ["src", "roms/tec1g/mon3"],
   "tec1g": {
     "romHex": "roms/tec1g/mon3/mon3.bin",
-    "extraListings": ["roms/tec1g/mon3/mon3.lst"],
     "appStart": 16384,
     "entry": 0,
     "matrixMode": false,

@@ -6,7 +6,6 @@
  * runtime state for display, keypad, and serial behavior.
  */
 
-import * as path from 'path';
 import { IoHandlers } from '../../z80/runtime';
 import { CycleClock } from '../cycle-clock';
 import { BitbangUartDecoder } from '../serial/bitbang-uart';
@@ -145,11 +144,6 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
   const yieldMs =
     Number.isFinite(config.yieldMs) && config.yieldMs !== undefined ? config.yieldMs : 0;
-  const extraListings = Array.isArray(config.extraListings)
-    ? config.extraListings
-        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
-        .filter((entry) => entry !== '')
-    : inferListingsFromRom(romHex);
   return {
     regions,
     romRanges,
@@ -159,26 +153,7 @@ export function normalizeTec1Config(cfg?: Tec1PlatformConfig): Tec1PlatformConfi
     ...(ramInitHex !== undefined ? { ramInitHex } : {}),
     updateMs: Math.max(0, updateMs),
     yieldMs: Math.max(0, yieldMs),
-    ...(extraListings && extraListings.length > 0 ? { extraListings } : {}),
   };
-}
-
-/**
- * Infers extra listing paths from a ROM hex path when none are configured explicitly.
- * Given `roms/tec1/mon1.bin`, returns candidates `roms/tec1/mon1.lst` and the
- * dash/underscore-stripped variant. Returns `undefined` when the ROM path is absent.
- */
-function inferListingsFromRom(romHex: string | undefined): string[] | undefined {
-  if (typeof romHex !== 'string' || romHex.trim() === '') {
-    return undefined;
-  }
-  const dir = path.dirname(romHex);
-  const base = path.basename(romHex, path.extname(romHex));
-  const candidates = [
-    path.join(dir, `${base}.lst`),
-    path.join(dir, `${base.replace(/[-_]/g, '')}.lst`),
-  ];
-  return [...new Set(candidates)];
 }
 
 /**

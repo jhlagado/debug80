@@ -456,15 +456,9 @@ export function populateFromConfig(
     }
 
     const bundledRomReference = resolveBundledAssetReference(cfg, targetCfg, 'romHex');
-    const bundledListingReference = resolveBundledAssetReference(cfg, targetCfg, 'listing');
     const resolvedRomHex = resolveBundledAssetRuntimePath(
       merged.tec1?.romHex ?? merged.tec1g?.romHex,
       bundledRomReference,
-      workspaceRoot
-    );
-    const resolvedExtraListing = resolveBundledAssetRuntimePath(
-      merged.tec1?.extraListings?.[0] ?? merged.tec1g?.extraListings?.[0],
-      bundledListingReference,
       workspaceRoot
     );
 
@@ -473,40 +467,6 @@ export function populateFromConfig(
         merged.tec1 = { ...(merged.tec1 ?? {}), romHex: resolvedRomHex };
       } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
         merged.tec1g = { ...(merged.tec1g ?? {}), romHex: resolvedRomHex };
-      }
-    }
-
-    if (resolvedExtraListing !== undefined) {
-      if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
-        const extraListings = (merged.tec1?.extraListings ?? [])
-          .map((entry) =>
-            resolveBundledAssetRuntimePath(entry, bundledListingReference, workspaceRoot)
-          )
-          .filter((entry): entry is string => entry !== undefined);
-        merged.tec1 = {
-          ...(merged.tec1 ?? {}),
-          extraListings:
-            extraListings.length > 0
-              ? extraListings
-              : resolvedExtraListing !== undefined
-                ? [resolvedExtraListing]
-                : [],
-        };
-      } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
-        const extraListings = (merged.tec1g?.extraListings ?? [])
-          .map((entry) =>
-            resolveBundledAssetRuntimePath(entry, bundledListingReference, workspaceRoot)
-          )
-          .filter((entry): entry is string => entry !== undefined);
-        merged.tec1g = {
-          ...(merged.tec1g ?? {}),
-          extraListings:
-            extraListings.length > 0
-              ? extraListings
-              : resolvedExtraListing !== undefined
-                ? [resolvedExtraListing]
-                : [],
-        };
       }
     }
 

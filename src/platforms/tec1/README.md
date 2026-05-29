@@ -195,7 +195,6 @@ You can override with `romHex` in the platform config.
     "appStart": 2048,
     "entry": 0,
     "romHex": "roms/tec1/mon1b/mon-1b.bin",
-    "extraListings": ["roms/tec1/mon1b/mon-1b.lst"],
     "ramInitHex": "build/main.hex",
     "updateMs": 16,
     "yieldMs": 0
@@ -209,4 +208,3 @@ You can override with `romHex` in the platform config.
 - Debug adapter wiring and TEC-1 custom requests: `src/platforms/tec1/provider.ts`
 - Memory panel HTML/browser helpers: `src/platforms/tec1/memory-panel-html.ts` and `src/platforms/tec1/memory-panel-browser.ts`
 - Bundled ROM override path: `roms/tec1/mon1b/mon-1b.bin`
-- Bundled listing override path: `roms/tec1/mon1b/mon-1b.lst`
