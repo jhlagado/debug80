@@ -18,16 +18,11 @@ import {
   listProjectTargetChoices,
   resolvePreferredTargetName,
 } from './project-target-selection';
-import { materializeBundledAsset } from './bundle-materialize';
 import { scaffoldProject } from './project-scaffolding';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
 import type { Debug80PlatformId } from '../debug/session/types';
-import {
-  buildBundledAssetFallbackPlans,
-  resolveProjectBundledAssetInstallPlan,
-} from './bundle-asset-installer';
 import {
   findWorkspaceFolder,
   resolveFolderForProjectCreation,
@@ -51,8 +46,10 @@ import type {
   AzmPanelContractUpdateMode,
   AzmPanelRegisterCareMode,
 } from '../contracts/platform-view';
-import { openPickedSourceFile } from './source-file-picker';
-import { showSourceMapStatus } from './source-map-status';
+import { registerPanelViewCommands } from './panel-view-commands';
+import { registerSourceCommands } from './source-commands';
+import { registerTerminalCommands } from './terminal-commands';
+import { registerBundledAssetCommands } from './bundled-asset-commands';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -204,12 +201,10 @@ export function registerExtensionCommands({
     )
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openDebug80View', () => {
-      platformViewProvider.reveal(true);
-      return true;
-    })
-  );
+  registerPanelViewCommands({ context, platformViewProvider, sourceColumns, terminalPanel });
+  registerSourceCommands({ context, sourceColumns, workspaceSelection });
+  registerTerminalCommands(context);
+  registerBundledAssetCommands({ context, workspaceSelection });
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.runToSelectedStackFrame', async (item?: unknown) => {
@@ -277,70 +272,6 @@ export function registerExtensionCommands({
           index: insertAt,
         } as vscode.WorkspaceFolder);
       workspaceSelection.rememberWorkspace(addedFolder);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.materializeBundledRom', async () => {
-      const folder = await workspaceSelection.resolveWorkspaceFolder({
-        prompt: true,
-        requireProject: false,
-        placeHolder: 'Select the workspace folder to install bundled assets',
-      });
-      if (folder === undefined) {
-        return false;
-      }
-      const projectConfigPath = findProjectConfigPath(folder);
-      const projectConfig =
-        projectConfigPath !== undefined ? readProjectConfig(projectConfigPath) : undefined;
-      const projectPlan =
-        projectConfig !== undefined
-          ? resolveProjectBundledAssetInstallPlan(projectConfig)
-          : undefined;
-      let installPlan = projectPlan;
-      if (installPlan === undefined) {
-        const pick = await vscode.window.showQuickPick(
-          buildBundledAssetFallbackPlans().map((plan) => ({
-            label: plan.label,
-            plan,
-          })),
-          {
-            placeHolder: 'Select the bundled asset set to install',
-          }
-        );
-        installPlan = pick?.plan;
-      }
-      if (installPlan === undefined) {
-        void vscode.window.showErrorMessage(
-          'Debug80: No bundled asset references were available to install.'
-        );
-        return false;
-      }
-      const pick = await vscode.window.showQuickPick(
-        [
-          { label: 'Skip existing files', value: false as const },
-          { label: 'Overwrite existing files', value: true as const },
-        ],
-        { placeHolder: 'If bundled files already exist, should they be overwritten?' }
-      );
-      if (pick === undefined) {
-        return undefined;
-      }
-      const installed: string[] = [];
-      for (const reference of installPlan.references) {
-        const result = materializeBundledAsset(context.extensionUri, folder.uri.fsPath, reference, {
-          overwrite: pick.value,
-        });
-        if (!result.ok) {
-          void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
-          return false;
-        }
-        installed.push(result.materializedRelativePath);
-      }
-      void vscode.window.showInformationMessage(
-        `Debug80: Installed bundled assets for ${installPlan.label}: ${installed.join(', ')}`
-      );
-      return true;
     })
   );
 
@@ -850,97 +781,6 @@ export function registerExtensionCommands({
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.openProjectConfigPanel', () =>
       openProjectConfigPanel(workspaceSelection, platformViewProvider)
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.terminalInput', async () => {
-      const session = vscode.debug.activeDebugSession;
-      if (!session || session.type !== 'z80') {
-        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
-        return;
-      }
-      const input = await vscode.window.showInputBox({
-        prompt: 'Enter text to send to the target terminal',
-        placeHolder: 'text',
-      });
-      if (input === undefined) {
-        return;
-      }
-      const payload = input.endsWith('\n') ? input : `${input}\n`;
-      try {
-        await session.customRequest('debug80/terminalInput', { text: payload });
-      } catch (err) {
-        void vscode.window.showErrorMessage(`Debug80: Failed to send input: ${String(err)}`);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTerminal', () => {
-      const session = vscode.debug.activeDebugSession;
-      if (!session || session.type !== 'z80') {
-        terminalPanel.open(undefined, { focus: true });
-        return;
-      }
-      const columns = sourceColumns.getSessionColumns(session);
-      terminalPanel.open(session, { focus: true, column: columns.panel });
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTec1', () => {
-      const session = vscode.debug.activeDebugSession;
-      if (session && session.type === 'z80') {
-        platformViewProvider.setPlatform('tec1', session, {
-          focus: true,
-          reveal: true,
-          tab: 'ui',
-        });
-        return;
-      }
-      platformViewProvider.setPlatform('tec1', undefined, {
-        focus: true,
-        reveal: true,
-        tab: 'ui',
-      });
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openTec1Memory', () => {
-      const session = vscode.debug.activeDebugSession;
-      if (session && session.type === 'z80') {
-        platformViewProvider.setPlatform('tec1', session, {
-          focus: true,
-          reveal: true,
-          tab: 'memory',
-        });
-        return;
-      }
-      platformViewProvider.setPlatform('tec1', undefined, {
-        focus: true,
-        reveal: true,
-        tab: 'memory',
-      });
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openSourceFile', async () =>
-      openPickedSourceFile(sourceColumns, { workspaceSelection })
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openRomSource', async () =>
-      openPickedSourceFile(sourceColumns, { workspaceSelection, romOnly: true })
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.showSourceMapStatus', async () =>
-      showSourceMapStatus()
     )
   );
 }
