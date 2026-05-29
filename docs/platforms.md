@@ -357,8 +357,8 @@ workspace files take precedence.
 
 **Commands:**
 
-- **Debug80: Open ROM Source** (`debug80.openRomSource`) opens the ROM source
-  files available to the active debug session.
+- **Debug80: Open Auxiliary Source** (`debug80.openRomSource`) opens platform
+  source files available to the active debug session.
 - **Debug80: Copy Bundled Assets into Workspace**
   (`debug80.materializeBundledRom`) copies bundled ROM, D8 map, and source
   assets such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection

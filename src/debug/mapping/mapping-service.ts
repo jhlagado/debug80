@@ -110,7 +110,7 @@ export function buildMappingFromDebugMap(options: {
     const auxiliaryMap = loadDebugMap(auxiliaryPath, service);
     if (auxiliaryMap === undefined) {
       service.logger.warn(
-        `Debug80: Auxiliary source map missing at "${auxiliaryPath}". ROM source mapping may be unavailable.`
+        `Debug80: Auxiliary source map missing at "${auxiliaryPath}". Platform source mapping may be unavailable.`
       );
       continue;
     }

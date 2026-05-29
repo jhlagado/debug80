@@ -1,5 +1,5 @@
 /**
- * @fileoverview Source file picker commands for project and ROM sources.
+ * @fileoverview Source file picker commands for project and auxiliary sources.
  */
 
 import * as fs from 'fs';
@@ -29,7 +29,7 @@ export async function openPickedSourceFile(
     for (const source of romSources) {
       items.push({
         label: source.label,
-        description: 'ROM source',
+        description: 'auxiliary source',
         detail: source.path,
         path: source.path,
       });
@@ -63,14 +63,14 @@ export async function openPickedSourceFile(
   if (items.length === 0) {
     void vscode.window.showInformationMessage(
       options.romOnly === true
-        ? 'Debug80: No ROM sources available for this session.'
+        ? 'Debug80: No auxiliary sources available for this session.'
         : 'Debug80: No source files available.'
     );
     return false;
   }
 
   const picked = await vscode.window.showQuickPick(items, {
-    placeHolder: options.romOnly === true ? 'Open ROM source' : 'Open Debug80 source file',
+    placeHolder: options.romOnly === true ? 'Open auxiliary source' : 'Open Debug80 source file',
     matchOnDescription: true,
     matchOnDetail: true,
   });

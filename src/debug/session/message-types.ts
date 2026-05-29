@@ -73,7 +73,7 @@ export interface SerialInputPayload {
 }
 
 /**
- * ROM source file entry.
+ * Auxiliary source file entry.
  */
 export interface RomSourceEntry {
   /** Display label */

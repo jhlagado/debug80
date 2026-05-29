@@ -1,5 +1,5 @@
 /**
- * @file ROM source helpers for Debug80 sessions.
+ * @file Auxiliary source helpers for Debug80 sessions.
  */
 
 import * as path from 'path';
@@ -71,7 +71,7 @@ export async function openRomSourcesForSession(
   }
   if (lastError !== undefined) {
     void vscode.window.showErrorMessage(
-      `Debug80: Failed to open ROM sources: ${String(lastError)}`
+      `Debug80: Failed to open auxiliary sources: ${String(lastError)}`
     );
   }
   return false;

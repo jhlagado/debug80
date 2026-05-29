@@ -17,7 +17,8 @@ A runnable Debug80 target has:
 - a program artifact, normally Intel HEX or binary;
 - a native Debug80 source map, `<artifactBase>.d8.json`;
 - source files resolvable from the project root and configured source roots;
-- optional platform/ROM D8 maps for monitor code and bundled ROM sources.
+- optional auxiliary platform D8 maps for monitor code and bundled platform
+  sources.
 
 ## Removed Compatibility Paths
 

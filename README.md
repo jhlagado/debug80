@@ -119,15 +119,15 @@ Debug80 contributes commands for the normal project workflow:
 
 - **Debug80: Create Project**: scaffold a project configuration and launch setup.
 - **Debug80: Start Debugging**: launch the selected project and target.
-- **Debug80: Restart Debugging (Current Target)**: rebuild/restart the active
-  target.
+- **Debug80: Build Current Target**: rebuild the active target and update the
+  current debug session.
 - **Debug80: Select Workspace Folder** and **Debug80: Select Active Target**:
   switch the active project context.
 - **Debug80: Set Program File**: choose the source entry point from an editor or
   Explorer context menu.
 - **Debug80: Open Project Configuration Panel**: open the active project config.
-- **Debug80: Open ROM Source**: open bundled or project-provided ROM source
-  material for the active platform profile.
+- **Debug80: Open Auxiliary Source**: open bundled or project-provided platform
+  source material for the active platform profile.
 - **Debug80: Copy Bundled Assets into Workspace**: materialise bundled platform
   assets when you want local inspection or overrides.
 

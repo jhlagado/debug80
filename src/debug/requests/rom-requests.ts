@@ -1,5 +1,5 @@
 /**
- * @fileoverview ROM source request helpers.
+ * @fileoverview Auxiliary source request helpers.
  */
 
 export type RomSource = { label: string; path: string; kind: 'source'; autoOpen?: boolean };

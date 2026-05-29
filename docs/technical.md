@@ -97,7 +97,7 @@ Registered commands (src/extension/commands.ts):
 
 - debug80.createProject — scaffold a debug80.json in the workspace
 - debug80.startDebug — launch a debug session for the selected target
-- debug80.restartDebug — restart the active debug session
+- debug80.restartDebug — build the active target and update the current debug session
 - debug80.selectWorkspaceFolder — change the active workspace root
 - debug80.selectTarget — change the active launch target
 - debug80.configureProject — open project config (currently a no-op; config is via project header)
@@ -105,9 +105,9 @@ Registered commands (src/extension/commands.ts):
 - debug80.setEntrySource — set the main source file for the active target
 - debug80.openTerminal — open the terminal panel (non-platform sessions)
 - debug80.terminalInput — send text input to the active debug session terminal
-- debug80.openTec1 — reveal the TEC-1 sidebar panel
-- debug80.openTec1Memory — switch the TEC-1 panel to the CPU tab
-- debug80.openRomSource — open ROM source files for the active session
+- debug80.openTec1 — reveal the Debug80 platform panel
+- debug80.openTec1Memory — switch the platform panel to the memory tab
+- debug80.openRomSource — open auxiliary source files for the active session
 - debug80.openDebug80View — reveal and focus the Debug80 sidebar panel
 - debug80.addWorkspaceFolder — open a folder picker and add the chosen folder to the workspace
 - debug80.materializeBundledRom — manually install bundled ROM assets into the active workspace

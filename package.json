@@ -301,11 +301,11 @@
       },
       {
         "command": "debug80.openTec1",
-        "title": "Debug80: Show TEC-1 Panel"
+        "title": "Debug80: Show Platform Panel"
       },
       {
         "command": "debug80.openTec1Memory",
-        "title": "Debug80: Show TEC-1 Memory Panel"
+        "title": "Debug80: Show Platform Memory Panel"
       },
       {
         "command": "debug80.selectWorkspaceFolder",
@@ -321,7 +321,7 @@
       },
       {
         "command": "debug80.restartDebug",
-        "title": "Debug80: Build and Restart Current Target"
+        "title": "Debug80: Build Current Target"
       },
       {
         "command": "debug80.runToSelectedStackFrame",
@@ -337,7 +337,7 @@
       },
       {
         "command": "debug80.openRomSource",
-        "title": "Debug80: Open ROM Source"
+        "title": "Debug80: Open Auxiliary Source"
       },
       {
         "command": "debug80.openSourceFile",
@@ -525,7 +525,7 @@
               },
               "openRomSourcesOnLaunch": {
                 "type": "boolean",
-                "description": "Open ROM source files automatically on launch",
+                "description": "Open auxiliary source files automatically on launch",
                 "default": true
               },
               "openMainSourceOnLaunch": {

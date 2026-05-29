@@ -22,8 +22,8 @@ MON3.
   Debug80 uses the extension copy.
 - `roms/` is ignored by default because it is for explicit local copies or user
   overrides, not required project source.
-- **Debug80: Open ROM Source** opens ROM source files available to the active
-  session.
+- **Debug80: Open Auxiliary Source** opens platform source files available to
+  the active session.
 - **Debug80: Copy Bundled Assets into Workspace** materializes bundled assets
   only when the user asks for local inspection or replacement files.
 
@@ -77,13 +77,13 @@ The TEC-1 MON-1B bundle currently ships:
 
 ## Design Principles
 
-| Principle | Implication |
-| --- | --- |
-| Extension = distribution | Versioned payloads plus manifest checksums. |
-| Project = source | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
-| D8 = debugger metadata | Source mapping, breakpoints and symbols come from D8. |
-| Config is the contract | Override by editing JSON or by materializing/replacing files under configured paths. |
-| No mandatory wizard | The wizard accelerates layout; hand-authored `debug80.json` should behave the same. |
+| Principle                | Implication                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| Extension = distribution | Versioned payloads plus manifest checksums.                                                     |
+| Project = source         | `debug80.json` and user source files are committed; stock ROM assets are not copied by default. |
+| D8 = debugger metadata   | Source mapping, breakpoints and symbols come from D8.                                           |
+| Config is the contract   | Override by editing JSON or by materializing/replacing files under configured paths.            |
+| No mandatory wizard      | The wizard accelerates layout; hand-authored `debug80.json` should behave the same.             |
 
 ## Future Work
 
