@@ -2,7 +2,6 @@
  * @file Command registration for the Debug80 extension.
  */
 
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
@@ -18,38 +17,25 @@ import {
   listProjectTargetChoices,
   resolvePreferredTargetName,
 } from './project-target-selection';
-import { scaffoldProject } from './project-scaffolding';
 import { SourceColumnController } from './source-columns';
 import { TerminalPanelController } from './terminal-panel';
 import { WorkspaceSelectionController } from './workspace-selection';
 import type { Debug80PlatformId } from '../debug/session/types';
-import {
-  findWorkspaceFolder,
-  resolveFolderForProjectCreation,
-  resolveProjectFolderFromResource,
-} from './workspace-folder-resolver';
+import { findWorkspaceFolder, resolveProjectFolderFromResource } from './workspace-folder-resolver';
 import { buildSourcePickItems, resolveResourceSourceSelection } from './source-selection';
-import {
-  startCurrentProjectDebugging,
-  maybeAutoStartSingleTargetForRootChange,
-  resolveProjectPlatformForFolder,
-  resolveSessionProjectConfigPath,
-  resolveSessionWorkspaceFolder,
-} from './debug-session-actions';
 import { openProjectConfigPanel } from './project-config-panel';
 import { sendHexViaCoolTerm } from './coolterm/coolterm-send';
 import {
   applyConfigureProjectTargetEdit,
   type ConfigureProjectTargetEdit,
 } from './configure-project-edit';
-import type {
-  AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
-} from '../contracts/platform-view';
 import { registerPanelViewCommands } from './panel-view-commands';
 import { registerSourceCommands } from './source-commands';
 import { registerTerminalCommands } from './terminal-commands';
 import { registerBundledAssetCommands } from './bundled-asset-commands';
+import { registerDebugLifecycleCommands } from './debug-lifecycle-commands';
+import { registerProjectWorkspaceCommands } from './project-workspace-commands';
+import { registerCallStackCommands } from './call-stack-commands';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -58,14 +44,6 @@ type CommandDependencies = {
   terminalPanel: TerminalPanelController;
   workspaceSelection: WorkspaceSelectionController;
   targetSelection: ProjectTargetSelectionController;
-};
-
-type SelectWorkspaceFolderArgs = {
-  rootPath?: string;
-};
-
-type StartDebugArgs = {
-  rootPath?: string;
 };
 
 type SelectTargetArgs = {
@@ -81,24 +59,6 @@ type ConfigureFieldId =
   | 'outputDir'
   | 'artifactBase';
 
-function panelLaunchOptions(platformViewProvider: PlatformViewProvider): {
-  stopOnEntry: boolean;
-  azmRegisterCareMode: AzmPanelRegisterCareMode;
-  azmContractUpdateMode: AzmPanelContractUpdateMode;
-} {
-  return {
-    stopOnEntry: platformViewProvider.stopOnEntry,
-    azmRegisterCareMode: platformViewProvider.azmRegisterCareMode ?? 'enforce',
-    azmContractUpdateMode: platformViewProvider.azmContractUpdateMode ?? 'ask',
-  };
-}
-
-const DEBUG_PROJECT_FOLDER_PROMPT = {
-  prompt: true,
-  requireProject: true,
-  placeHolder: 'Select the Debug80 project folder to debug',
-} as const;
-
 const TARGET_PROJECT_FOLDER_PROMPT = {
   prompt: true,
   requireProject: true,
@@ -109,30 +69,6 @@ type TargetProjectFolderResolution =
   | { kind: 'found'; folder: vscode.WorkspaceFolder }
   | { kind: 'missing-explicit-root'; rootPath: string }
   | { kind: 'none' };
-
-async function resolveDebugProjectFolder(
-  rootPath: string | undefined,
-  workspaceSelection: WorkspaceSelectionController
-): Promise<vscode.WorkspaceFolder | undefined> {
-  const directFolder = findWorkspaceFolder(rootPath);
-  if (directFolder !== undefined && findProjectConfigPath(directFolder) !== undefined) {
-    return directFolder;
-  }
-  return workspaceSelection.resolveWorkspaceFolder(DEBUG_PROJECT_FOLDER_PROMPT);
-}
-
-async function resolveRestartProjectFolder(
-  activeSession: vscode.DebugSession | undefined,
-  workspaceSelection: WorkspaceSelectionController
-): Promise<vscode.WorkspaceFolder | undefined> {
-  if (activeSession?.type === 'z80') {
-    const sessionFolder = resolveSessionWorkspaceFolder(activeSession);
-    if (sessionFolder !== undefined) {
-      return sessionFolder;
-    }
-  }
-  return workspaceSelection.resolveWorkspaceFolder(DEBUG_PROJECT_FOLDER_PROMPT);
-}
 
 async function resolveTargetProjectFolder(
   args: SelectTargetArgs | undefined,
@@ -161,228 +97,18 @@ export function registerExtensionCommands({
   workspaceSelection,
   targetSelection,
 }: CommandDependencies): void {
-  let creatingProject = false;
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'debug80.createProject',
-      async (args?: { rootPath?: string; platform?: string }) => {
-        if (creatingProject) {
-          return false;
-        }
-        creatingProject = true;
-        try {
-          // Defer one event-loop tick so that the trailing mouseup from a welcome-view
-          // link click settles before any quick-pick or open-dialog is shown.
-          // Without this the picker opens and is immediately dismissed.
-          await new Promise<void>((resolve) => setTimeout(resolve, 0));
-          const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
-          if (!folder) {
-            void vscode.window.showErrorMessage(
-              'Debug80: No workspace folder available for project creation.'
-            );
-            return false;
-          }
-          const created = await scaffoldProject(
-            folder,
-            false,
-            context.extensionUri,
-            args?.platform
-          );
-          if (created) {
-            workspaceSelection.rememberWorkspace(folder);
-            platformViewProvider.refreshIdleView();
-            platformViewProvider.reveal?.(false);
-          }
-          return created;
-        } finally {
-          creatingProject = false;
-        }
-      }
-    )
-  );
-
+  registerProjectWorkspaceCommands({ context, platformViewProvider, workspaceSelection });
   registerPanelViewCommands({ context, platformViewProvider, sourceColumns, terminalPanel });
   registerSourceCommands({ context, sourceColumns, workspaceSelection });
   registerTerminalCommands(context);
   registerBundledAssetCommands({ context, workspaceSelection });
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.runToSelectedStackFrame', async (item?: unknown) => {
-      const stackItem =
-        item instanceof vscode.DebugStackFrame ? item : vscode.debug.activeStackItem;
-      if (!(stackItem instanceof vscode.DebugStackFrame)) {
-        await vscode.window.showWarningMessage(
-          'Debug80: Select a return frame in the Call Stack view first.'
-        );
-        return false;
-      }
-      if (stackItem.frameId === 0) {
-        await vscode.window.showWarningMessage(
-          'Debug80: Select a caller return frame, not the current PC frame.'
-        );
-        return false;
-      }
-      try {
-        await stackItem.session.customRequest('debug80/runToStackFrame', {
-          frameId: stackItem.frameId,
-        });
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await vscode.window.showWarningMessage(`Debug80: ${message}`);
-        return false;
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.addWorkspaceFolder', async () => {
-      const picked = await vscode.window.showOpenDialog({
-        canSelectFiles: false,
-        canSelectFolders: true,
-        canSelectMany: false,
-        openLabel: 'Add Folder to Workspace',
-        title: 'Add a folder to the Debug80 workspace',
-      });
-      const folderUri = picked?.[0];
-      if (folderUri === undefined) {
-        return;
-      }
-      const existing = vscode.workspace.getWorkspaceFolder(folderUri);
-      if (existing !== undefined) {
-        workspaceSelection.rememberWorkspace(existing);
-        return;
-      }
-      const insertAt = vscode.workspace.workspaceFolders?.length ?? 0;
-      const added = vscode.workspace.updateWorkspaceFolders(insertAt, 0, {
-        uri: folderUri,
-        name: path.basename(folderUri.fsPath),
-      });
-      if (!added) {
-        void vscode.window.showErrorMessage(
-          'Debug80: Failed to add the selected folder to the workspace.'
-        );
-        return;
-      }
-      const addedFolder =
-        vscode.workspace.getWorkspaceFolder(folderUri) ??
-        ({
-          uri: folderUri,
-          name: path.basename(folderUri.fsPath),
-          index: insertAt,
-        } as vscode.WorkspaceFolder);
-      workspaceSelection.rememberWorkspace(addedFolder);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.startDebug', async (args?: StartDebugArgs) => {
-      const folder = await resolveDebugProjectFolder(args?.rootPath, workspaceSelection);
-      if (!folder) {
-        const workspaceFolderCount = vscode.workspace.workspaceFolders?.length ?? 0;
-        void vscode.window.showInformationMessage(
-          workspaceFolderCount === 0
-            ? 'Debug80: No workspace folder open. Open or create a project folder first.'
-            : 'Debug80: No configured Debug80 project found. Create a project first.'
-        );
-        return false;
-      }
-      return startCurrentProjectDebugging(
-        folder,
-        workspaceSelection,
-        panelLaunchOptions(platformViewProvider)
-      );
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.restartDebug', async () => {
-      const activeSession = vscode.debug.activeDebugSession;
-      const folder = await resolveRestartProjectFolder(activeSession, workspaceSelection);
-      if (!folder) {
-        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
-        return false;
-      }
-
-      if (activeSession?.type === 'z80') {
-        await vscode.debug.stopDebugging(activeSession);
-      }
-
-      return startCurrentProjectDebugging(
-        folder,
-        workspaceSelection,
-        panelLaunchOptions(platformViewProvider)
-      );
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'debug80.selectWorkspaceFolder',
-      async (args?: SelectWorkspaceFolderArgs | string) => {
-        const rootPath = typeof args === 'string' ? args : args?.rootPath;
-        const folder =
-          findWorkspaceFolder(rootPath) ??
-          (rootPath === undefined ? await workspaceSelection.selectWorkspaceFolder() : undefined);
-        if (!folder) {
-          if (rootPath !== undefined) {
-            void vscode.window.showInformationMessage(
-              `Debug80: The workspace root ${rootPath} is not open in this window.`
-            );
-            return undefined;
-          }
-          return undefined;
-        }
-
-        workspaceSelection.rememberWorkspace(folder);
-        platformViewProvider.refreshIdleView();
-        platformViewProvider.reveal?.(false);
-
-        let restartedForRootChange = false;
-        const activeSession = vscode.debug.activeDebugSession;
-        if (activeSession?.type === 'z80') {
-          const previousProjectConfig = resolveSessionProjectConfigPath(activeSession);
-          const nextProjectConfig = findProjectConfigPath(folder);
-          if (
-            previousProjectConfig !== undefined &&
-            nextProjectConfig !== undefined &&
-            path.normalize(nextProjectConfig) !== previousProjectConfig
-          ) {
-            await vscode.debug.stopDebugging(activeSession);
-            const restarted = await startCurrentProjectDebugging(
-              folder,
-              workspaceSelection,
-              panelLaunchOptions(platformViewProvider)
-            );
-            restartedForRootChange = restarted;
-            if (restarted) {
-              const nextPlatform = resolveProjectPlatformForFolder(folder);
-              void vscode.window.showInformationMessage(
-                nextPlatform !== undefined
-                  ? `Debug80: Selected root ${folder.name}; restarted debugging for ${nextPlatform}.`
-                  : `Debug80: Selected root ${folder.name}; restarted debugging.`
-              );
-            }
-          }
-        }
-
-        const singleTarget = restartedForRootChange
-          ? undefined
-          : await maybeAutoStartSingleTargetForRootChange(
-              folder,
-              workspaceSelection,
-              targetSelection,
-              panelLaunchOptions(platformViewProvider)
-            );
-        if (singleTarget !== undefined) {
-          void vscode.window.showInformationMessage(
-            `Debug80: Selected root ${folder.name} and started target ${singleTarget}.`
-          );
-        }
-        return folder;
-      }
-    )
-  );
+  registerCallStackCommands(context);
+  registerDebugLifecycleCommands({
+    context,
+    platformViewProvider,
+    workspaceSelection,
+    targetSelection,
+  });
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.selectTarget', async (args?: SelectTargetArgs) => {
