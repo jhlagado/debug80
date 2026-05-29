@@ -56,6 +56,7 @@ export type PlatformViewControlMessage =
       contractUpdateMode: AzmPanelContractUpdateMode;
     }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
+  | { type: 'testCoolTermConnection' }
   | { type: 'sendHexViaCoolTerm'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }
   | { type: 'serialSendFile' }

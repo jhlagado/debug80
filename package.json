@@ -320,6 +320,10 @@
         "title": "Debug80: Send HEX to Board via CoolTerm"
       },
       {
+        "command": "debug80.testCoolTermConnection",
+        "title": "Debug80: Test CoolTerm Connection"
+      },
+      {
         "command": "debug80.restartDebug",
         "title": "Debug80: Build Current Target"
       },

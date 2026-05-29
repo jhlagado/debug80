@@ -68,6 +68,10 @@ export function createPlatformViewWebviewHandler(
       handleSelectTarget: async (args) => {
         await vscode.commands.executeCommand('debug80.selectTarget', args);
       },
+      handleTestCoolTermConnection: async () => {
+        context.handleSetHardwareStatus('Checking CoolTerm remote socket...');
+        await vscode.commands.executeCommand('debug80.testCoolTermConnection');
+      },
       handleSendHexViaCoolTerm: async (args) => {
         context.handleSetHardwareStatus('Checking CoolTerm before sending...');
         await vscode.commands.executeCommand('debug80.sendHexViaCoolTerm', args);

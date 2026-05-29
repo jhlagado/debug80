@@ -10,12 +10,37 @@ export type CoolTermSendHexOptions = {
   status?: (message: string) => void;
 };
 
+export type CoolTermConnectionTestOptions = {
+  status?: (message: string) => void;
+};
+
 export async function isCoolTermRemoteAvailable(timeoutMs = 500): Promise<boolean> {
   const client = new CoolTermRemoteClient({ timeoutMs });
   try {
     await client.ping();
     return true;
   } catch {
+    return false;
+  } finally {
+    client.dispose();
+  }
+}
+
+export async function testCoolTermConnection(
+  options: CoolTermConnectionTestOptions = {}
+): Promise<boolean> {
+  const client = new CoolTermRemoteClient({ timeoutMs: 3000 });
+  options.status?.('Checking CoolTerm remote socket...');
+  try {
+    await client.ping();
+    options.status?.('Connected to CoolTerm remote socket.');
+    void vscode.window.showInformationMessage('Debug80: Connected to CoolTerm remote socket.');
+    return true;
+  } catch {
+    options.status?.('CoolTerm is not available. Start CoolTerm and enable Remote Control Socket.');
+    void vscode.window.showErrorMessage(
+      'Debug80: CoolTerm is not available. Start CoolTerm and enable Preferences > Scripting > Remote Control Socket on port 51413.'
+    );
     return false;
   } finally {
     client.dispose();

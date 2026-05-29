@@ -39,6 +39,7 @@ const platformInitButton = document.getElementById(
   'platformInitButton'
 ) as HTMLButtonElement | null;
 const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
+const testCoolTermButton = document.getElementById('testCoolTerm') as HTMLButtonElement | null;
 const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLButtonElement | null;
 const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
 const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
@@ -115,6 +116,7 @@ const projectStatusUi = createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    testCoolTermButton,
     sendHexToBoardButton,
     hardwareStatusLine,
     sourceMapStatusLine,

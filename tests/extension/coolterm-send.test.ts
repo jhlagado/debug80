@@ -56,7 +56,10 @@ vi.mock('../../src/extension/coolterm/coolterm-remote-client', () => ({
   CoolTermRemoteClient: mocks.CoolTermRemoteClient,
 }));
 
-import { sendHexViaCoolTerm } from '../../src/extension/coolterm/coolterm-send';
+import {
+  sendHexViaCoolTerm,
+  testCoolTermConnection,
+} from '../../src/extension/coolterm/coolterm-send';
 
 describe('sendHexViaCoolTerm', () => {
   afterEach(() => {
@@ -117,5 +120,46 @@ describe('sendHexViaCoolTerm', () => {
       'Debug80: HEX file demo.hex was not found. Build the selected target first.'
     );
     expect(mocks.CoolTermRemoteClient).not.toHaveBeenCalled();
+  });
+
+  it('tests CoolTerm connectivity with an explicit ping', async () => {
+    const statuses: string[] = [];
+    mocks.ping.mockResolvedValueOnce(undefined);
+
+    await expect(
+      testCoolTermConnection({
+        status: (message) => statuses.push(message),
+      })
+    ).resolves.toBe(true);
+
+    expect(statuses).toEqual([
+      'Checking CoolTerm remote socket...',
+      'Connected to CoolTerm remote socket.',
+    ]);
+    expect(mocks.showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: Connected to CoolTerm remote socket.'
+    );
+    expect(mocks.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports failed CoolTerm connectivity without sending a file', async () => {
+    const statuses: string[] = [];
+    mocks.ping.mockRejectedValueOnce(new Error('connection refused'));
+
+    await expect(
+      testCoolTermConnection({
+        status: (message) => statuses.push(message),
+      })
+    ).resolves.toBe(false);
+
+    expect(statuses).toEqual([
+      'Checking CoolTerm remote socket...',
+      'CoolTerm is not available. Start CoolTerm and enable Remote Control Socket.',
+    ]);
+    expect(mocks.sendTextFile).not.toHaveBeenCalled();
+    expect(mocks.showErrorMessage).toHaveBeenCalledWith(
+      'Debug80: CoolTerm is not available. Start CoolTerm and enable Preferences > Scripting > Remote Control Socket on port 51413.'
+    );
+    expect(mocks.dispose).toHaveBeenCalledTimes(1);
   });
 });

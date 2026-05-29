@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyInitializedProjectControls } from '../../../webview/common/project-controls';
 import { createProjectStatusUi } from '../../../webview/common/project-status-ui';
 import type { ProjectStatusPayload } from '../../../src/contracts/platform-view';
@@ -22,6 +22,14 @@ type ProjectPayload = {
 function createVscodeMock(): VscodeApi {
   return {
     postMessage: () => undefined,
+    getState: () => undefined,
+    setState: () => undefined,
+  };
+}
+
+function createPostingVscodeMock(postMessage: (message: unknown) => void): VscodeApi {
+  return {
+    postMessage,
     getState: () => undefined,
     setState: () => undefined,
   };
@@ -52,6 +60,7 @@ function getElements() {
       ?.closest('.project-control') as HTMLElement,
     platformSelect: document.getElementById('platformSelect') as HTMLSelectElement,
     platformInitButton: document.getElementById('platformInitButton') as HTMLButtonElement,
+    testCoolTermButton: document.getElementById('testCoolTerm') as HTMLButtonElement,
     sendHexToBoardButton: document.getElementById('sendHexToBoard') as HTMLButtonElement,
     hardwareStatusLine: document.getElementById('hardwareStatusLine') as HTMLElement,
     sourceMapStatusLine: document.getElementById('sourceMapStatusLine') as HTMLElement,
@@ -78,6 +87,7 @@ function applyProjectPayload(payload: ProjectPayload): void {
       setupCardText: elements.setupCardText,
       setupPrimaryAction: elements.setupPrimaryAction,
       platformInitButton: elements.platformInitButton,
+      testCoolTermButton: elements.testCoolTermButton,
       sendHexToBoardButton: elements.sendHexToBoardButton,
       hardwareStatusLine: elements.hardwareStatusLine,
       sourceMapStatusLine: elements.sourceMapStatusLine,
@@ -143,6 +153,7 @@ describe('project status UI invariants', () => {
             <span class="project-value" id="platformValue"></span>
           </div>
         </div>
+        <button class="project-action-button" id="testCoolTerm" type="button">Test CoolTerm</button>
         <button class="project-action-button" id="sendHexToBoard" type="button">Send to Board</button>
         <div id="sourceMapStatusLine"></div>
         <div id="hardwareStatusLine"></div>
@@ -209,12 +220,50 @@ describe('project status UI invariants', () => {
     const elements = getElements();
     expect(elements.sendHexToBoardButton.hidden).toBe(false);
     expect(elements.sendHexToBoardButton.disabled).toBe(false);
+    expect(elements.testCoolTermButton.hidden).toBe(false);
+    expect(elements.testCoolTermButton.disabled).toBe(false);
     expect(elements.sendHexToBoardButton.textContent).toBe('Send to TEC-1G');
     expect(elements.hardwareStatusLine.hidden).toBe(false);
     expect(elements.hardwareStatusLine.textContent).toBe('Ready to send app.hex via CoolTerm.');
     expect(elements.sourceMapStatusLine.hidden).toBe(false);
     expect(elements.sourceMapStatusLine.textContent).toBe('Source map: current.');
     expect(elements.sourceMapStatusLine.dataset.sourceMapStatus).toBe('current');
+  });
+
+  it('posts a CoolTerm connection test request from the project button', () => {
+    const postMessage = vi.fn();
+    const elements = getElements();
+    const ui = createProjectStatusUi(
+      createPostingVscodeMock(postMessage),
+      {
+        selectProjectButton: elements.selectProjectButton,
+        setupCard: elements.setupCard,
+        setupCardText: elements.setupCardText,
+        setupPrimaryAction: elements.setupPrimaryAction,
+        platformInitButton: elements.platformInitButton,
+        testCoolTermButton: elements.testCoolTermButton,
+        sendHexToBoardButton: elements.sendHexToBoardButton,
+        hardwareStatusLine: elements.hardwareStatusLine,
+        sourceMapStatusLine: elements.sourceMapStatusLine,
+        homeTargetSelect: elements.homeTargetSelect,
+        getPlatform: () => elements.platformSelect.value,
+      },
+      'tec1g'
+    );
+
+    ui.applyProjectStatus({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [{ name: 'app' }],
+      targetName: 'app',
+      hasProject: true,
+      platform: 'tec1g',
+    });
+    elements.testCoolTermButton.click();
+    ui.dispose();
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'testCoolTermConnection' });
   });
 
   it('enables send when CoolTerm and the selected target hex are available', () => {

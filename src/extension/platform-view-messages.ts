@@ -40,6 +40,7 @@ export interface PlatformViewMessageDependencies {
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
+  handleTestCoolTermConnection: () => PromiseLike<void>;
   handleSendHexViaCoolTerm: (args?: {
     rootPath?: string;
     targetName?: string;
@@ -132,6 +133,10 @@ export async function handlePlatformViewMessage(
       ...(rootPath !== undefined ? { rootPath } : {}),
       ...(targetName !== undefined ? { targetName } : {}),
     });
+    return;
+  }
+  if (msg?.type === 'testCoolTermConnection') {
+    await deps.handleTestCoolTermConnection();
     return;
   }
   if (msg?.type === 'restartDebug') {

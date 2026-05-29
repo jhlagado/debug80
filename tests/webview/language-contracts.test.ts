@@ -312,6 +312,7 @@ describe('package.json language contracts', () => {
       'debug80.showSourceMapStatus',
       'debug80.openDebug80View',
       'debug80.sendHexViaCoolTerm',
+      'debug80.testCoolTermConnection',
     ]);
     const contextOnly = new Set([
       'debug80.runToSelectedStackFrame',

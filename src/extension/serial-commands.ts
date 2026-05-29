@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import { findProjectConfigPath, readProjectConfig } from './project-config';
 import { resolvePreferredTargetName } from './project-target-selection';
-import { sendHexViaCoolTerm } from './coolterm/coolterm-send';
+import { sendHexViaCoolTerm, testCoolTermConnection } from './coolterm/coolterm-send';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { resolveTargetProjectFolder, type SelectTargetArgs } from './target-commands';
 
@@ -18,6 +18,13 @@ export function registerSerialCommands(options: {
   const { context, platformViewProvider, workspaceSelection } = options;
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.testCoolTermConnection', async () => {
+      const connected = await testCoolTermConnection({
+        status: (message) => platformViewProvider.setHardwareStatus?.(message),
+      });
+      platformViewProvider.refreshIdleView();
+      return connected;
+    }),
     vscode.commands.registerCommand(
       'debug80.sendHexViaCoolTerm',
       async (args?: SelectTargetArgs) => {

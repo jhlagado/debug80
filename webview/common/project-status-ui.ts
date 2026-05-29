@@ -15,6 +15,7 @@ export type ProjectStatusUiElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   platformInitButton: HTMLButtonElement | null;
+  testCoolTermButton?: HTMLButtonElement | null;
   sendHexToBoardButton?: HTMLButtonElement | null;
   hardwareStatusLine?: HTMLElement | null;
   sourceMapStatusLine?: HTMLElement | null;
@@ -89,6 +90,7 @@ export function createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    testCoolTermButton,
     sendHexToBoardButton,
     hardwareStatusLine,
     sourceMapStatusLine,
@@ -139,6 +141,10 @@ export function createProjectStatusUi(
     });
   });
 
+  testCoolTermButton?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'testCoolTermConnection' });
+  });
+
   function applyProjectStatus(payload: {
     rootPath?: ProjectStatusPayload['rootPath'];
     roots?: ProjectStatusPayload['roots'];
@@ -180,6 +186,10 @@ export function createProjectStatusUi(
         payload.coolTermHexPath !== undefined
           ? `Send ${payload.coolTermHexPath} to the board via CoolTerm`
           : 'Build the selected target before sending to the board';
+    }
+    if (testCoolTermButton) {
+      testCoolTermButton.hidden = !initializedProject;
+      testCoolTermButton.disabled = !initializedProject;
     }
     if (hardwareStatusLine) {
       const text = payload.hardwareStatusText ?? '';
