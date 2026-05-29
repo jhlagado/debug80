@@ -208,11 +208,6 @@ describe('project-scaffolding helpers', () => {
               path: 'mon-1b.bin',
               destination: 'roms/tec1/mon1b/mon-1b.bin',
             },
-            listing: {
-              bundleId: 'tec1/mon1b/v1',
-              path: 'mon-1b.lst',
-              destination: 'roms/tec1/mon1b/mon-1b.lst',
-            },
             source: {
               bundleId: 'tec1/mon1b/v1',
               path: 'mon-1b.asm',
@@ -237,7 +232,6 @@ describe('project-scaffolding helpers', () => {
             appStart: 0x0800,
             entry: 0,
             romHex: 'roms/tec1/mon1b/mon-1b.bin',
-            extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
           },
         },
       },
@@ -308,10 +302,10 @@ describe('project-scaffolding helpers', () => {
               path: 'mon3.bin',
               destination: 'roms/tec1g/mon3/mon3.bin',
             },
-            listing: {
+            debugMap: {
               bundleId: 'tec1g/mon3/v1',
-              path: 'mon3.lst',
-              destination: 'roms/tec1g/mon3/mon3.lst',
+              path: 'mon3.d8.json',
+              destination: 'roms/tec1g/mon3/mon3.d8.json',
             },
           },
         },
@@ -333,7 +327,6 @@ describe('project-scaffolding helpers', () => {
             appStart: 0x4000,
             entry: 0,
             romHex: 'roms/tec1g/mon3/mon3.bin',
-            extraListings: ['roms/tec1g/mon3/mon3.lst'],
           },
         },
       },
@@ -540,7 +533,6 @@ describe('project-scaffolding helpers', () => {
           appStart: 0x4000,
           entry: 0,
           romHex: 'roms/tec1g/mon3/mon3.bin',
-          extraListings: ['roms/tec1g/mon3/mon3.lst'],
         })
       );
 
@@ -610,7 +602,6 @@ describe('project-scaffolding helpers', () => {
       expect(writtenConfig.targets?.main?.tec1).toEqual(
         expect.objectContaining({
           romHex: 'roms/tec1/mon1b/mon-1b.bin',
-          extraListings: ['roms/tec1/mon1b/mon-1b.lst'],
         })
       );
 

@@ -377,10 +377,10 @@ describe('registerExtensionCommands', () => {
                 path: 'mon3.bin',
                 destination: 'roms/tec1g/mon3/mon3.bin',
               },
-              listing: {
+              debugMap: {
                 bundleId: 'tec1g/mon3/v1',
-                path: 'mon3.lst',
-                destination: 'roms/tec1g/mon3/mon3.lst',
+                path: 'mon3.d8.json',
+                destination: 'roms/tec1g/mon3/mon3.d8.json',
               },
             },
           },
@@ -430,8 +430,8 @@ describe('registerExtensionCommands', () => {
       '/workspace/tec1g-mon3',
       expect.objectContaining({
         bundleId: 'tec1g/mon3/v1',
-        path: 'mon3.lst',
-        destination: 'roms/tec1g/mon3/mon3.lst',
+        path: 'mon3.d8.json',
+        destination: 'roms/tec1g/mon3/mon3.d8.json',
       }),
       { overwrite: false }
     );

@@ -7,7 +7,7 @@
 export const BUNDLE_MANIFEST_SCHEMA_VERSION = 1 as const;
 
 /** Single file shipped inside a bundle directory (under resources/bundles/...). */
-export type BundleFileRole = 'rom' | 'listing' | 'debug_map' | 'source' | 'source_tree';
+export type BundleFileRole = 'rom' | 'debug_map' | 'source' | 'source_tree';
 
 export interface BundleFileEntry {
   role: BundleFileRole;
@@ -24,7 +24,7 @@ export interface BundleWorkspaceLayout {
 }
 
 /**
- * Parsed bundle.json next to shipped ROM/listing/source assets.
+ * Parsed bundle.json next to shipped ROM/debug-map/source assets.
  * Schema version allows future migrations.
  */
 export interface BundleManifestV1 {

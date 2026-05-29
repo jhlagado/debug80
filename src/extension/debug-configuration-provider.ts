@@ -12,7 +12,6 @@ type Debug80LaunchConfig = vscode.DebugConfiguration & {
   asm?: string;
   sourceFile?: string;
   hex?: string;
-  listing?: string;
 };
 
 export class Debug80ConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -175,8 +174,7 @@ export class Debug80ConfigurationProvider implements vscode.DebugConfigurationPr
     return Boolean(
       (config.asm !== undefined && config.asm !== '') ||
       (config.sourceFile !== undefined && config.sourceFile !== '') ||
-      (config.hex !== undefined && config.hex !== '') ||
-      (config.listing !== undefined && config.listing !== '')
+      (config.hex !== undefined && config.hex !== '')
     );
   }
 }

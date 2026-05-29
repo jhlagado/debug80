@@ -22,7 +22,6 @@ import {
   materializeBundledAsset,
   materializeBundledRom,
 } from '../../src/extension/bundle-materialize';
-import * as crypto from 'crypto';
 
 describe('bundle-materialize', () => {
   const tmpDirs: string[] = [];
@@ -69,7 +68,7 @@ describe('bundle-materialize', () => {
     expect(fs.readFileSync(out).length).toBe(16);
   });
 
-  it('materializes rom and listing and returns both relative paths', () => {
+  it('materializes rom and debug map and returns both relative paths', () => {
     const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund2-'));
     tmpDirs.push(workspaceRoot);
 
@@ -79,7 +78,7 @@ describe('bundle-materialize', () => {
     const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
     fs.mkdirSync(bundleDir, { recursive: true });
     fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([1, 2, 3]));
-    fs.writeFileSync(path.join(bundleDir, 'rom.lst'), '0000\n');
+    fs.writeFileSync(path.join(bundleDir, 'rom.d8.json'), '{}\n');
 
     const manifest = {
       schemaVersion: 1,
@@ -89,7 +88,7 @@ describe('bundle-materialize', () => {
       label: 'Demo',
       files: [
         { role: 'rom' as const, path: 'rom.bin' },
-        { role: 'listing' as const, path: 'rom.lst' },
+        { role: 'debug_map' as const, path: 'rom.d8.json' },
       ],
       workspaceLayout: { destination: 'roms/out' },
     };
@@ -102,7 +101,7 @@ describe('bundle-materialize', () => {
       return;
     }
     expect(result.romRelativePath).toBe('roms/out/rom.bin');
-    expect(result.listingRelativePath).toBe('roms/out/rom.lst');
+    expect(result.debugMapRelativePath).toBe('roms/out/rom.d8.json');
   });
 
   it('materializes a single bundled asset reference to an explicit destination', () => {
@@ -262,43 +261,6 @@ describe('bundle-materialize', () => {
     expect(BUNDLED_MON3_V1_REL).toBe('tec1g/mon3/v1');
   });
 
-  it('accepts listing checksum when file differs only by CRLF line endings', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-crlf-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-crlf-'));
-    tmpDirs.push(bundleRoot);
-    const rel = 'demo/crlf';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
-
-    fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([0xaa, 0xbb]));
-    const listingLf = '0000: NOP\n0001: HALT\n';
-    const listingCrlf = listingLf.replace(/\n/g, '\r\n');
-    fs.writeFileSync(path.join(bundleDir, 'rom.lst'), listingCrlf, 'utf-8');
-    const listingLfHash = crypto
-      .createHash('sha256')
-      .update(Buffer.from(listingLf, 'utf-8'))
-      .digest('hex');
-
-    const manifest = {
-      schemaVersion: 1,
-      id: 'demo-crlf',
-      version: '1',
-      platform: 'tec1g',
-      label: 'Demo CRLF',
-      files: [
-        { role: 'rom' as const, path: 'rom.bin' },
-        { role: 'listing' as const, path: 'rom.lst', sha256: listingLfHash },
-      ],
-      workspaceLayout: { destination: 'roms/crlf' },
-    };
-    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
-
-    const result = materializeBundledRom(vscode.Uri.file(bundleRoot), workspaceRoot, rel);
-    expect(result.ok).toBe(true);
-  });
-
   it('materializes the committed MON3 bundle (checksums in bundle.json)', () => {
     const repoRoot = path.resolve(__dirname, '..', '..');
     const bundleDir = path.join(repoRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
@@ -307,22 +269,20 @@ describe('bundle-materialize', () => {
       return;
     }
 
-    // On Windows CI checkouts, text EOL conversion can alter mon3.lst bytes and
-    // make manifest SHA-256 validation fail in source-tree tests. To keep this
-    // test focused on materialization paths/content presence, use a copied manifest
-    // with checksum fields removed while still sourcing committed assets.
+    // Keep this test focused on materialization paths/content presence by using
+    // a copied manifest with checksum fields removed while still sourcing committed assets.
     const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-real-'));
     tmpDirs.push(extensionRoot);
     const copiedBundleDir = path.join(extensionRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     fs.mkdirSync(copiedBundleDir, { recursive: true });
     fs.copyFileSync(path.join(bundleDir, 'mon3.bin'), path.join(copiedBundleDir, 'mon3.bin'));
-    fs.copyFileSync(path.join(bundleDir, 'mon3.lst'), path.join(copiedBundleDir, 'mon3.lst'));
+    fs.copyFileSync(path.join(bundleDir, 'mon3.d8.json'), path.join(copiedBundleDir, 'mon3.d8.json'));
     const manifest = JSON.parse(fs.readFileSync(bundleJson, 'utf-8')) as {
       files?: Array<Record<string, unknown>>;
     };
     if (Array.isArray(manifest.files)) {
       manifest.files = manifest.files
-        .filter((entry) => entry['role'] === 'rom' || entry['role'] === 'listing')
+        .filter((entry) => entry['role'] === 'rom' || entry['role'] === 'debug_map')
         .map((entry) => {
           const next = { ...entry };
           delete next.sha256;
@@ -345,8 +305,10 @@ describe('bundle-materialize', () => {
       return;
     }
     expect(result.romRelativePath).toBe('roms/tec1g/mon3/mon3.bin');
-    expect(result.listingRelativePath).toBe('roms/tec1g/mon3/mon3.lst');
+    expect(result.debugMapRelativePath).toBe('roms/tec1g/mon3/mon3.d8.json');
     expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.bin'))).toBe(true);
-    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.lst'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceRoot, 'roms', 'tec1g', 'mon3', 'mon3.d8.json'))).toBe(
+      true
+    );
   });
 });

@@ -23,7 +23,7 @@ export type ProjectKit = {
   bundledProfile?: {
     bundleRelPath: string;
     romPath: string;
-    listingPath?: string;
+    debugMapPath?: string;
     /** Workspace-relative path to the ROM monitor source file (.source.asm), if bundled. */
     sourcePath?: string;
     sourceRoots: string[];
@@ -57,7 +57,6 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     bundledProfile: {
       bundleRelPath: BUNDLED_MON1B_V1_REL,
       romPath: 'roms/tec1/mon1b/mon-1b.bin',
-      listingPath: 'roms/tec1/mon1b/mon-1b.lst',
       sourcePath: 'roms/tec1/mon1b/mon-1b.asm',
       sourceRoots: ['src', 'roms/tec1/mon1b'],
     },
@@ -88,7 +87,7 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     bundledProfile: {
       bundleRelPath: BUNDLED_MON3_V1_REL,
       romPath: 'roms/tec1g/mon3/mon3.bin',
-      listingPath: 'roms/tec1g/mon3/mon3.lst',
+      debugMapPath: 'roms/tec1g/mon3/mon3.d8.json',
       sourceRoots: ['src', 'roms/tec1g/mon3'],
     },
   },

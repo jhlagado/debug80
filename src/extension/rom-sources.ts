@@ -5,7 +5,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export type RomSource = { label: string; path: string; kind: 'listing' | 'source' };
+export type RomSource = { label: string; path: string; kind: 'source' };
 
 export async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[]> {
   const payload = (await session.customRequest('debug80/romSources')) as
@@ -18,7 +18,7 @@ export async function fetchRomSources(session: vscode.DebugSession): Promise<Rom
   return sources.map((source) => ({
     label: source.label ?? path.basename(source.path ?? ''),
     path: source.path ?? '',
-    kind: source.kind === 'listing' ? 'listing' : 'source',
+    kind: 'source',
   }));
 }
 

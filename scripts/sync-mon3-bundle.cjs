@@ -3,14 +3,11 @@
  * Maintainers: refresh the bundled MON3 payload under resources/bundles/tec1g/mon3/v1.
  *
  * 1. Copies `MON3-1G_BC25-16.bin` from a MON3 checkout → `mon3.bin` (canonical release ROM).
- * 2. Unzips `MON3-1G_BC25-16_src.zip`, runs AZM on `mon3.z80` → `mon3.lst` (and a temp bin).
+ * 2. Unzips `MON3-1G_BC25-16_src.zip`, runs AZM on `mon3.z80` → `mon3.d8.json`.
  *
  * Set MON3_ROOT to your MON3 repository root (default: ../MON3 next to this repo).
  * Requires `unzip`; AZM is resolved from this repo's npm dependencies.
  *
- * Note: the release `.bin` and an assembler build from the published source zip can differ by a
- * few bytes at the end of the image; the listing still maps the monitor for debugging. See
- * bundle README.
  */
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +20,7 @@ const srcBin = path.join(mon3Root, 'MON3-1G_BC25-16.bin');
 const srcZip = path.join(mon3Root, 'MON3-1G_BC25-16_src.zip');
 const destDir = path.join(repoRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
 const destBin = path.join(destDir, 'mon3.bin');
-const destLst = path.join(destDir, 'mon3.lst');
+const destD8 = path.join(destDir, 'mon3.d8.json');
 const azmBin = path.join(
   repoRoot,
   'node_modules',
@@ -42,7 +39,7 @@ fs.copyFileSync(srcBin, destBin);
 console.log(`sync-mon3-bundle: copied ${srcBin} -> ${destBin}`);
 
 if (!fs.existsSync(srcZip)) {
-  console.error(`sync-mon3-bundle: source zip not found (needed for mon3.lst): ${srcZip}`);
+  console.error(`sync-mon3-bundle: source zip not found (needed for mon3.d8.json): ${srcZip}`);
   process.exit(1);
 }
 
@@ -70,20 +67,20 @@ try {
     process.exit(1);
   }
 
-  const builtLst = path.join(tmpDir, 'mon3.lst');
-  if (!fs.existsSync(builtLst)) {
-    console.error('sync-mon3-bundle: AZM did not produce mon3.lst');
+  const builtD8 = path.join(tmpDir, 'mon3.d8.json');
+  if (!fs.existsSync(builtD8)) {
+    console.error('sync-mon3-bundle: AZM did not produce mon3.d8.json');
     process.exit(1);
   }
-  fs.copyFileSync(builtLst, destLst);
-  console.log(`sync-mon3-bundle: wrote ${destLst}`);
+  fs.copyFileSync(builtD8, destD8);
+  console.log(`sync-mon3-bundle: wrote ${destD8}`);
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
 console.log(
-  'sync-mon3-bundle: update bundle.json sha256 values for mon3.bin and mon3.lst if they changed:'
+  'sync-mon3-bundle: update bundle.json sha256 values for mon3.bin and mon3.d8.json if they changed:'
 );
 console.log(
-  '  shasum -a 256 resources/bundles/tec1g/mon3/v1/mon3.bin resources/bundles/tec1g/mon3/v1/mon3.lst'
+  '  shasum -a 256 resources/bundles/tec1g/mon3/v1/mon3.bin resources/bundles/tec1g/mon3/v1/mon3.d8.json'
 );

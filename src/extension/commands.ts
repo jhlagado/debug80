@@ -936,12 +936,12 @@ export function registerExtensionCommands({
         }
         const items = sources.map((source) => ({
           label: source.label,
-          description: source.kind === 'listing' ? 'listing' : 'source',
+          description: 'source',
           detail: source.path,
           path: source.path,
         }));
         const picked = await vscode.window.showQuickPick(items, {
-          placeHolder: 'Open ROM listing/source',
+          placeHolder: 'Open ROM source',
           matchOnDescription: true,
           matchOnDetail: true,
         });

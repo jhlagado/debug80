@@ -1,5 +1,5 @@
 /**
- * @file Helpers for ensuring bundled ROM/listing assets are present in the workspace.
+ * @file Helpers for ensuring bundled ROM/debug-map/source assets are present in the workspace.
  */
 
 import * as vscode from 'vscode';
@@ -82,21 +82,21 @@ export function buildBundledAssetFallbackPlans(): BundledAssetInstallPlan[] {
       label: 'MON3 (TEC-1G)',
       references: [
         { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.bin' },
-        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.lst' },
+        { bundleId: BUNDLED_MON3_V1_REL, path: 'mon3.d8.json' },
       ],
     },
     {
       label: 'MON-1B (TEC-1)',
       references: [
         { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.bin' },
-        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.lst' },
+        { bundleId: BUNDLED_MON1B_V1_REL, path: 'mon-1b.asm' },
       ],
     },
   ];
 }
 
 /**
- * Silently copies any bundled ROM/listing assets that are referenced in the project config
+ * Silently copies any bundled ROM/debug-map/source assets that are referenced in the project config
  * but not yet present in the workspace. Called on every debug launch so that new projects
  * work without a manual "Install bundled assets" step.
  */
@@ -110,7 +110,7 @@ export function ensureBundledAssetsPresent(
     return;
   }
   // Collect unique bundle IDs and re-materialize each bundle as a whole.
-  // materializeBundledRom copies every file in the bundle (rom, listing, and all
+  // materializeBundledRom copies every file in the bundle (ROM, debug map, and all
   // source files), so multi-file source trees like MON-3 are recovered in full
   // without needing every file enumerated individually in bundledAssets.
   const bundleIds = new Set<string>();

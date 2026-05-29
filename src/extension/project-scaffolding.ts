@@ -118,12 +118,12 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
         path: path.basename(plan.kit.bundledProfile.romPath),
         destination: plan.kit.bundledProfile.romPath,
       },
-      ...(plan.kit.bundledProfile.listingPath !== undefined
+      ...(plan.kit.bundledProfile.debugMapPath !== undefined
         ? {
-            listing: {
+            debugMap: {
               bundleId: plan.kit.bundledProfile.bundleRelPath,
-              path: path.basename(plan.kit.bundledProfile.listingPath),
-              destination: plan.kit.bundledProfile.listingPath,
+              path: path.basename(plan.kit.bundledProfile.debugMapPath),
+              destination: plan.kit.bundledProfile.debugMapPath,
             },
           }
         : {}),
@@ -157,9 +157,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
         ? {
             ...base,
             romHex: plan.kit.bundledProfile.romPath,
-            ...(plan.kit.bundledProfile.listingPath !== undefined
-              ? { extraListings: [plan.kit.bundledProfile.listingPath] }
-              : {}),
           }
         : base;
   } else if (plan.kit.platform === 'tec1g') {
@@ -169,9 +166,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
         ? {
             ...base,
             romHex: plan.kit.bundledProfile.romPath,
-            ...(plan.kit.bundledProfile.listingPath !== undefined
-              ? { extraListings: [plan.kit.bundledProfile.listingPath] }
-              : {}),
           }
         : base;
   } else {

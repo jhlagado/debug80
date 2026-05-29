@@ -1,5 +1,5 @@
 /**
- * @file Copy bundled ROM assets from the extension into the workspace.
+ * @file Copy bundled ROM/debug-map/source assets from the extension into the workspace.
  */
 
 import * as crypto from 'crypto';
@@ -21,7 +21,7 @@ export type MaterializeBundledRomResult =
       ok: true;
       destinationRelative: string;
       romRelativePath: string;
-      listingRelativePath?: string;
+      debugMapRelativePath?: string;
       sourceRelativePath?: string;
       sourceRootRelative?: string;
     }
@@ -65,15 +65,9 @@ function readManifest(
   }
 }
 
-function sha256File(filePath: string, normalizeLineEndings = false): string {
+function sha256File(filePath: string): string {
   const data = fs.readFileSync(filePath);
-  if (!normalizeLineEndings) {
-    return crypto.createHash('sha256').update(data).digest('hex');
-  }
-  // Windows checkouts may materialize listings with CRLF even when bundle checksums
-  // were generated from LF content; normalize to LF for checksum verification only.
-  const normalized = Buffer.from(data.toString('utf-8').replace(/\r\n/g, '\n'), 'utf-8');
-  return crypto.createHash('sha256').update(normalized).digest('hex');
+  return crypto.createHash('sha256').update(data).digest('hex');
 }
 
 function verifyEntryChecksum(
@@ -87,13 +81,6 @@ function verifyEntryChecksum(
   const direct = sha256File(filePath).toLowerCase();
   if (direct === expected) {
     return undefined;
-  }
-  if (entry.role === 'listing') {
-    const normalized = sha256File(filePath, true).toLowerCase();
-    if (normalized === expected) {
-      return undefined;
-    }
-    return direct;
   }
   return direct;
 }
@@ -252,7 +239,7 @@ export function materializeBundledRom(
   }
 
   let romRel: string | undefined;
-  let listingRel: string | undefined;
+  let debugMapRel: string | undefined;
   let sourceRel: string | undefined;
   let sourceTreeRel: string | undefined;
 
@@ -286,8 +273,8 @@ export function materializeBundledRom(
     const rel = path.join(manifest.workspaceLayout.destination, destName).split(path.sep).join('/');
     if (entry.role === 'rom') {
       romRel = rel;
-    } else if (entry.role === 'listing') {
-      listingRel = rel;
+    } else if (entry.role === 'debug_map') {
+      debugMapRel = rel;
     } else if (entry.role === 'source') {
       sourceRel = rel;
     } else if (entry.role === 'source_tree') {
@@ -304,7 +291,7 @@ export function materializeBundledRom(
     ok: true,
     destinationRelative: manifest.workspaceLayout.destination,
     romRelativePath: romRel,
-    ...(listingRel !== undefined ? { listingRelativePath: listingRel } : {}),
+    ...(debugMapRel !== undefined ? { debugMapRelativePath: debugMapRel } : {}),
     ...(sourceRel !== undefined ? { sourceRelativePath: sourceRel } : {}),
     ...(sourceTreeRel !== undefined ? { sourceRootRelative: sourceTreeRel } : {}),
   };
