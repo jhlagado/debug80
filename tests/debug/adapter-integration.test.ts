@@ -370,6 +370,23 @@ describe('adapter integration', () => {
       openRomSourcesOnLaunch: false,
       openMainSourceOnLaunch: false,
     });
+    const mon3SourcePath = path.join(
+      path.resolve(__dirname, '../..'),
+      'resources',
+      'bundles',
+      'tec1g',
+      'mon3',
+      'v1',
+      'mon3.z80'
+    );
+    const breakpoints = await client.sendRequest<{
+      body?: { breakpoints?: Array<{ verified?: boolean; line?: number }> };
+    }>('setBreakpoints', {
+      source: { path: mon3SourcePath },
+      breakpoints: [{ line: 302 }],
+    });
+    expect(breakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
+
     await client.sendRequest('configurationDone');
     await client.waitForEvent('stopped');
 
@@ -377,16 +394,13 @@ describe('adapter integration', () => {
       body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
     }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
     const frame = stack.body?.stackFrames?.[0];
-    expect(frame?.source?.path).toContain(path.join('tec1g', 'mon3', 'v1', 'mon3.z80'));
+    expect(frame?.source?.path).toBe(mon3SourcePath);
+    expect(frame?.line).toBe(171);
 
     const romSources = await client.sendRequest<{
       body?: { sources?: Array<{ path?: string }> };
     }>('debug80/romSources');
-    expect(
-      romSources.body?.sources?.some((source) =>
-        source.path?.endsWith(path.join('tec1g', 'mon3', 'v1', 'mon3.z80'))
-      )
-    ).toBe(true);
+    expect(romSources.body?.sources?.some((source) => source.path === mon3SourcePath)).toBe(true);
 
     await client.sendRequest('disconnect');
     fs.rmSync(fixture.root, { recursive: true, force: true });

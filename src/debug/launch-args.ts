@@ -178,6 +178,31 @@ function resolveBundledAssetRuntimePath(
   return resolveExtensionBundledAssetPath(reference) ?? resolvedCandidate;
 }
 
+function inferSiblingDebugMapReference(
+  reference: BundledAssetReferenceLike | undefined
+): BundledAssetReferenceLike | undefined {
+  const bundleId = normalizePathString(reference?.bundleId);
+  const assetPath = normalizePathString(reference?.path);
+  if (bundleId === undefined || assetPath === undefined) {
+    return undefined;
+  }
+  const parsed = path.parse(assetPath);
+  if (parsed.name.length === 0) {
+    return undefined;
+  }
+  const debugMapPath = path.join(parsed.dir, `${parsed.name}.d8.json`);
+  const destination = normalizePathString(reference?.destination);
+  return {
+    bundleId,
+    path: debugMapPath,
+    ...(destination !== undefined
+      ? {
+          destination: path.join(path.dirname(destination), `${parsed.name}.d8.json`),
+        }
+      : {}),
+  };
+}
+
 function resolveLaunchPlatform(
   args: LaunchRequestArguments,
   cfg: LaunchConfigManifest,
@@ -475,7 +500,9 @@ export function populateFromConfig(
       }
     }
 
-    const bundledDebugMapReference = resolveBundledAssetReference(cfg, targetCfg, 'debugMap');
+    const bundledDebugMapReference =
+      resolveBundledAssetReference(cfg, targetCfg, 'debugMap') ??
+      inferSiblingDebugMapReference(bundledRomReference);
     const resolvedDebugMap = resolveBundledAssetRuntimePath(
       undefined,
       bundledDebugMapReference,

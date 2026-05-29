@@ -220,6 +220,58 @@ describe('launch-args', () => {
     expect(merged.debugMaps).toEqual([bundledMap]);
   });
 
+  it('infers bundled MON-3 debug map from the bundled ROM reference for older configs', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1g-'));
+    const configPath = path.join(dir, 'debug80.json');
+    const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-extension-'));
+    const bundledRom = path.join(
+      extensionRoot,
+      'resources',
+      'bundles',
+      'tec1g',
+      'mon3',
+      'v1',
+      'mon3.bin'
+    );
+    const bundledMap = path.join(path.dirname(bundledRom), 'mon3.d8.json');
+    fs.mkdirSync(path.dirname(bundledRom), { recursive: true });
+    fs.writeFileSync(bundledRom, 'rom');
+    fs.writeFileSync(bundledMap, '{}');
+    getExtension.mockReturnValue({ extensionPath: extensionRoot } as never);
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        defaultTarget: 'app',
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            platform: 'tec1g',
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+                destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+            },
+          },
+        },
+        targets: {
+          app: {
+            asm: 'src/main.asm',
+            profile: 'mon3',
+          },
+        },
+      })
+    );
+
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
+
+    expect(merged.tec1g?.romHex).toBe(bundledRom);
+    expect(merged.debugMaps).toEqual([bundledMap]);
+  });
+
   it('hydrates tec1 launch paths from bundled profile assets when workspace copies are absent', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1-'));
     const configPath = path.join(dir, 'debug80.json');
