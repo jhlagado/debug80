@@ -4,7 +4,7 @@
  * @see docs/d8-debug-map.md for format specification
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './types';
 import { validateD8DebugMap } from './d8-map-validate';
 
 /** Byte order for multi-byte values */

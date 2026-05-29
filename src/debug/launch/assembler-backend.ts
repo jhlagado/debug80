@@ -3,7 +3,7 @@
  */
 
 import * as path from 'path';
-import type { MappingParseResult } from '../../mapping/parser';
+import type { MappingParseResult } from '../../mapping/types';
 import type { AzmLaunchOptions } from '../session/types';
 import type { AssembleResult } from './assembler';
 import { AzmBackend } from './azm-backend';

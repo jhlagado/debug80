@@ -3,7 +3,7 @@
  */
 
 import { findNearestSymbol } from '../mapping/symbol-service';
-import type { SourceMapAnchor } from '../../mapping/parser';
+import type { SourceMapAnchor } from '../../mapping/types';
 import { buildMemorySnapshotViews, clampMemoryWindow } from './memory-view';
 import { extractMemorySnapshotPayload, extractViewEntry } from './memory-types';
 import type { Cpu, Flags } from '../../z80/types';

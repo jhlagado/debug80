@@ -2,7 +2,7 @@
  * @fileoverview Symbol index helpers for debug session symbol lookup.
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/types';
 
 export interface SymbolIndex {
   anchors: SourceMapAnchor[];

@@ -108,7 +108,7 @@ export class MissingConfigError extends ConfigurationError {
 export class FileResolutionError extends Debug80Error {
   /** The path that could not be resolved */
   readonly filePath?: string;
-  /** The type of file (hex, listing, asm, etc.) */
+  /** The type of file (hex, asm, etc.) */
   readonly fileType?: string;
 
   /**
@@ -130,11 +130,11 @@ export class FileResolutionError extends Debug80Error {
 
   /**
    * Creates an error for missing artifact paths.
-   * @returns FileResolutionError for missing HEX/LST paths
+   * @returns FileResolutionError for missing HEX path
    */
   static missingArtifacts(): FileResolutionError {
     return new FileResolutionError(
-      'Z80 runtime requires resolvable HEX and LST paths.',
+      'Z80 runtime requires a resolvable HEX path.',
       undefined,
       'artifacts'
     );
@@ -146,7 +146,7 @@ export class FileResolutionError extends Debug80Error {
    */
   static missingSource(): FileResolutionError {
     return new FileResolutionError(
-      'Z80 runtime requires "asm" (root asm file) or explicit "hex" and "listing" paths.',
+      'Z80 runtime requires "asm" (root asm file) or explicit "hex" path.',
       undefined,
       'asm'
     );

@@ -72,7 +72,7 @@ export interface SerialInputPayload {
 }
 
 /**
- * ROM source file entry for listing.
+ * ROM source file entry.
  */
 export interface RomSourceEntry {
   /** Display label */
@@ -80,7 +80,7 @@ export interface RomSourceEntry {
   /** Absolute file path */
   path: string;
   /** Type of source */
-  kind: 'listing' | 'source';
+  kind: 'source';
 }
 
 export interface RebuildIssueLocation {

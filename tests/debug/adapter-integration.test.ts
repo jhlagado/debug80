@@ -67,12 +67,6 @@ function createFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
     kitId === 'tec1g/mon3' ? ':034000000018FDA8\n:00000001FF\n' : ':030800000018FDE0\n:00000001FF\n'
   );
   fs.writeFileSync(
-    path.join(buildDir, 'main.lst'),
-    kitId === 'tec1g/mon3'
-      ? '4000   00           NOP\n4001   18 FD        JR start\n'
-      : '0800   00           NOP\n0801   18 FD        JR start\n'
-  );
-  fs.writeFileSync(
     path.join(root, 'debug80.json'),
     `${JSON.stringify(
       createDefaultProjectConfig({

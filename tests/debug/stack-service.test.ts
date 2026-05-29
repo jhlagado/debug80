@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { buildSourceMapIndex } from '../../src/mapping/source-map';
-import { MappingParseResult, SourceMapSegment } from '../../src/mapping/parser';
+import { MappingParseResult, SourceMapSegment } from '../../src/mapping/types';
 import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/mapping/stack-service';
 import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
 import { resolveMappedPath } from '../../src/debug/mapping/path-resolver';
@@ -158,10 +158,10 @@ describe('stack-service AZM D8 integration', () => {
   it('resolves stack frame from native AZM D8 with relative file key', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
-    const listingPath = path.join(buildDir, 'matrix.lst');
+    const artifactPath = path.join(buildDir, 'matrix.hex');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(sourceFile, '; matrix source\nNOP\nHALT\n');
-    fs.writeFileSync(listingPath, '0000 00 NOP\n0001 76 HALT\n');
+    fs.writeFileSync(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',
@@ -189,7 +189,7 @@ describe('stack-service AZM D8 integration', () => {
     expect(mapping.segments[0].loc.file).toBe('matrix.asm');
 
     const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, listingPath, sourceRoots);
+    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
 
     const index = buildSourceMapIndex(mapping, resolve);
     expect(index.segmentsByAddress.length).toBe(2);
@@ -198,7 +198,6 @@ describe('stack-service AZM D8 integration', () => {
       mappingIndex: index,
       resolveMappedPath: resolve,
       sourceFile: sourceFile,
-      listingPath,
     });
 
     expect(result.line).toBe(2);
@@ -209,10 +208,10 @@ describe('stack-service AZM D8 integration', () => {
   it('resolves stack frame after stepping to second instruction', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
-    const listingPath = path.join(buildDir, 'matrix.lst');
+    const artifactPath = path.join(buildDir, 'matrix.hex');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(sourceFile, '; src\nLD A, 0\nHALT\n');
-    fs.writeFileSync(listingPath, 'listing');
+    fs.writeFileSync(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',
@@ -233,14 +232,13 @@ describe('stack-service AZM D8 integration', () => {
     const { map } = parseD8DebugMap(d8Content);
     const mapping = buildMappingFromD8DebugMap(map!);
     const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, listingPath, sourceRoots);
+    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
     const index = buildSourceMapIndex(mapping, resolve);
 
     const step1 = resolveSourceForAddress(0xc000, {
       mappingIndex: index,
       resolveMappedPath: resolve,
       sourceFile,
-      listingPath,
     });
     expect(step1.line).toBe(2);
 
@@ -248,7 +246,6 @@ describe('stack-service AZM D8 integration', () => {
       mappingIndex: index,
       resolveMappedPath: resolve,
       sourceFile,
-      listingPath,
     });
     expect(step2.line).toBe(3);
     expect(step2.path).toBe(step1.path);
@@ -256,10 +253,10 @@ describe('stack-service AZM D8 integration', () => {
 
   it('falls back to sourceFile at line 1 when D8 has no segment for PC', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
-    const listingPath = path.join(tmpDir, 'build', 'matrix.lst');
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
+    const artifactPath = path.join(tmpDir, 'build', 'matrix.hex');
+    fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
     fs.writeFileSync(sourceFile, 'NOP');
-    fs.writeFileSync(listingPath, 'listing');
+    fs.writeFileSync(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',
@@ -277,14 +274,13 @@ describe('stack-service AZM D8 integration', () => {
     const { map } = parseD8DebugMap(d8Content);
     const mapping = buildMappingFromD8DebugMap(map!);
     const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, listingPath, sourceRoots);
+    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
     const index = buildSourceMapIndex(mapping, resolve);
 
     const result = resolveSourceForAddress(0xffff, {
       mappingIndex: index,
       resolveMappedPath: resolve,
       sourceFile,
-      listingPath,
     });
 
     expect(result.line).toBe(1);

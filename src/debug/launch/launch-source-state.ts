@@ -14,7 +14,7 @@ import {
   resolveMappedPath,
 } from '../mapping/path-resolver';
 import type { PlatformKind } from './program-loader';
-import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
+import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';

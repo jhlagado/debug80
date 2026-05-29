@@ -50,9 +50,9 @@ Some listing-adjacent concepts are not fallback paths and can remain:
 - parser tests for historical files only if they are no longer connected to the
   debug launch path.
 
-## Staged Removal
+## Staged Removal Status
 
-### Stage 1: Runtime Cut To Native D8 Only
+### Stage 1: Runtime Cut To Native D8 Only - Done
 
 Goal: stop the active launch path from deriving maps from listings.
 
@@ -68,40 +68,42 @@ Goal: stop the active launch path from deriving maps from listings.
 
 Expected result: Debug80 no longer fabricates source maps from `.lst` files.
 
-### Stage 2: Rename The Model
+### Stage 2: Rename The Model - Mostly Done
 
 Goal: make names match reality.
 
-- Introduce `debugMap`, `debugMaps`, or `romDebugMaps` config fields.
-- Migrate bundled profiles to point at `.d8.json`.
-- Keep `extraListings` only as a temporary migration alias that is translated to
-  adjacent `.d8.json` paths.
-- Rename internal `listingPath` usage where it now means artifact base or map
-  sidecar location.
+- Bundled profiles point at `.d8.json`.
+- Internal `listingPath` and `listingContent` usage has been removed from the
+  launch, rebuild, mapping, source-state, and symbol-index paths.
+- No temporary `extraListings` compatibility alias remains in active code.
 
 Expected result: new code and config no longer teach the listing mental model.
 
-### Stage 3: Remove Listing Breakpoint And ROM Listing Workflows
+### Stage 3: Remove Listing Breakpoint And ROM Listing Workflows - In Progress
 
 Goal: source files and D8 maps become the only debugger workflow.
 
 - Remove breakpoint binding directly against `.lst` files.
 - Change “Open ROM Listing/Source” into “Open ROM Source” backed by D8/source
-  metadata.
-- Stop materializing bundled `.lst` files into new projects.
+  metadata. Done in active source and docs.
+- Stop materializing bundled `.lst` files into new projects. Done for current
+  scaffolded bundles.
 - Keep bundled `.lst` files only if they are documentation/reference assets.
 
 Expected result: users debug source, not listings.
 
-### Stage 4: Delete Legacy Modules And Tests
+### Stage 4: Delete Legacy Modules And Tests - In Progress
 
 Goal: remove cruft after all runtime callers are gone.
 
-- Delete listing-to-map generation code.
-- Delete active-path Layer 2 recovery code.
+- Delete listing-to-map generation code. Done.
+- Delete active-path Layer 2 recovery code. Done; the D8 include-remap helper
+  remains as `src/mapping/include-remap.ts`.
 - Delete stale listing cache checks.
-- Delete tests that only validate fallback behavior.
-- Remove user-facing schema/docs for `listing` and `extraListings`.
+- Delete tests that only validate fallback behavior. Done for parser/layer2.
+- Remove user-facing schema/docs for `listing` and `extraListings`. In progress;
+  active docs have been updated, historical archive/planning docs may still
+  mention removed behavior.
 - Remove obsolete assembler aliases and related docs.
 
 Expected result: Debug80 has one source-map architecture.

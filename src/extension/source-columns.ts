@@ -112,7 +112,7 @@ function isSourceDocument(doc: vscode.TextDocument): boolean {
     return false;
   }
   const ext = path.extname(doc.fileName).toLowerCase();
-  return ext === '.asm' || ext === '.lst';
+  return ext === '.asm' || ext === '.z80';
 }
 
 function closeDocumentTabsInOtherGroups(uri: vscode.Uri, keepColumn: vscode.ViewColumn): void {

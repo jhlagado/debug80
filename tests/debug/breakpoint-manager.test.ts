@@ -8,7 +8,7 @@ import * as path from 'path';
 import { BreakpointManager } from '../../src/debug/mapping/breakpoint-manager';
 import { normalizePathForKey } from '../../src/debug/mapping/path-utils';
 import { buildSourceMapIndex, type SourceMapIndex } from '../../src/mapping/source-map';
-import type { SourceMapSegment } from '../../src/mapping/parser';
+import type { SourceMapSegment } from '../../src/mapping/types';
 import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
 
 function createMockIndex(
@@ -68,7 +68,7 @@ describe('BreakpointManager', () => {
     expect(mgr.getCondition(0x100)).toBe('BC = $1001');
   });
 
-  it('marks breakpoints as unverified when listing is missing', () => {
+  it('marks breakpoints as unverified when no source map is available', () => {
     const mgr = new BreakpointManager();
     const baseDir = path.join(path.parse(process.cwd()).root, 'test');
     mgr.setPending(path.join(baseDir, 'file.asm'), [{ line: 10 }]);
@@ -148,7 +148,7 @@ describe('BreakpointManager', () => {
     expect(mgr.hasAddress(0xc000)).toBe(true);
   });
 
-  it('does not fall back to listing line for source files when mapping misses', () => {
+  it('does not bind source breakpoints when the D8 map has no matching line', () => {
     const mgr = new BreakpointManager();
     const sourcePath = path.resolve('/workspace/roms/mon3.z80');
     const index = createMockIndex(new Map());

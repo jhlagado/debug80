@@ -9,7 +9,7 @@ interested in the assembler pipeline, source mapping, and stepping behavior.
 Debug80 is a VS Code extension that embeds a Z80 debug adapter. It:
 
 - Loads Intel HEX for runtime memory.
-- Reads a .lst listing or native D8 map for address-to-source mapping.
+- Reads AZM native D8 maps for address-to-source mapping.
 - Optionally runs AZM before each launch.
 - Implements stepping, breakpoints, registers, and a simple terminal I/O bridge.
 
@@ -77,10 +77,10 @@ Key concepts:
   - Key files: types.ts, session-state.ts, runtime-control.ts, platform-host.ts,
     platform-registry.ts, adapter-ui.ts, errors.ts, message-types.ts, memory-\*.ts.
 - src/mapping/\*
-  - Listing -> segments/anchors, layer 2 matching, and index building.
+  - D8 map conversion, validation, include-remap cleanup, and index building.
 - src/z80/\*
   - CPU, runtime, and instruction execution.
-  - HEX and listing loaders.
+  - HEX loading.
 
 ## 4. Extension activation and commands
 
@@ -165,7 +165,7 @@ Common fields:
 - artifactBase
 - entry
 - assemble (default true)
-- hex / listing (override)
+- hex (override)
 - sourceRoots (list of extra source folders)
 - stepOverMaxInstructions / stepOutMaxInstructions
 - terminal (I/O bridge config)
@@ -197,9 +197,9 @@ The current default backend is `azm`, implemented in `src/debug/launch/azm-backe
 
 If `assemble !== false` and `sourceFile`/`asm` is provided:
 
-- The selected backend assembles the program to HEX and LST artifacts.
+- The selected backend assembles the program to HEX, BIN, and D8 artifacts.
 - Debug80 links the `@jhlagado/azm` compiler directly through its public library API and writes
-  HEX, compact BIN, LST, D8M, and lowered `.z80` artifacts itself.
+  HEX, compact BIN, D8, and register-care artifacts itself.
 - The backend interface is async even when a backend is currently synchronous. This keeps launch and
   warm-rebuild semantics consistent and avoids shelling out for ESM-only libraries.
 - Errors are printed to the Debug Console and returned as structured assembly diagnostics when possible.
@@ -207,7 +207,6 @@ If `assemble !== false` and `sourceFile`/`asm` is provided:
 The backend also optionally supports:
 
 - A binary output pass for `simple.binFrom` / `simple.binTo`.
-- In-process mapping compilation for extra ROM listings.
 
 Expected tools:
 
@@ -231,46 +230,29 @@ Register display:
 
 ## 9. Source mapping pipeline
 
-The pipeline is **orchestrated from `src/debug/mapping-service.ts`** — start there when
-investigating how a D8 map is loaded, or how the remaining listing compatibility path derives
-an in-memory map. The files below are the components it drives.
+The pipeline is **orchestrated from `src/debug/mapping-service.ts`**. Start
+there when investigating how an AZM D8 map is located, validated, converted to
+runtime segments/anchors, and indexed.
 
-The mapping pipeline converts a .lst listing into segments and anchors
-used for breakpoints and stack frames.
+Debug80 does not reconstruct maps from `.lst` files. If the D8 map is missing
+or invalid, source-map-backed features are unavailable until the target is
+rebuilt with AZM.
 
-### 9.1 Listing parser (Layer 1)
+### 9.1 D8 loading and cleanup
 
-File: src/mapping/parser.ts
+Files:
 
-- Listing lines are detected by a leading 4-hex address.
-- Byte tokens following the address determine end address.
-- The remainder is captured as asmText.
-- Symbol anchors are parsed from lines containing:
-  "DEFINED AT LINE <n> IN <file>"
+- `src/debug/mapping/mapping-service.ts`
+- `src/mapping/d8-map.ts`
+- `src/mapping/d8-map-validate.ts`
+- `src/mapping/include-remap.ts`
 
-Outputs:
+The D8 loader converts native `files[*].segments` and `files[*].symbols`
+entries into Debug80's internal segments and anchors. A small include-remap pass
+handles known cases where an assembler attributes included source to the parent
+file even though the sibling include file owns the label.
 
-- segments[]: address ranges with lst text and optional source location.
-- anchors[]: address -> file/line symbols.
-
-Confidence:
-
-- HIGH: exact anchor hit.
-- MEDIUM: duplicate address or inferred between anchors.
-- LOW: no anchors yet.
-
-### 9.2 Layer 2 matching (optional refinement)
-
-File: src/mapping/layer2.ts
-
-- Resolves source files referenced by anchors.
-- Normalizes asm lines (strip comments, uppercase, normalize whitespace).
-- Searches a window around the anchor line to match lst text.
-- Upgrades line accuracy where possible; downgrades data/macro regions.
-
-Missing source files are reported to the Debug Console but are non-fatal.
-
-### 9.3 Indexes for fast lookup
+### 9.2 Indexes for fast lookup
 
 File: src/mapping/source-map.ts
 
@@ -280,22 +262,17 @@ Indexes built at launch:
 - segmentsByFileLine (for breakpoint resolution)
 - anchorsByFile (for fallback when no exact line match exists)
 
-### 9.4 D8 Debug Map (D8M) format
+### 9.3 D8 Debug Map (D8M) format
 
 Debug80 uses the D8 map as the canonical mapping source for debugging. On
-launch it attempts to load `<artifactBase>.d8.json`; if the map is missing or
-invalid, legacy compatibility can still derive an in-memory map from the .lst
-for that session. The on-disk standard is documented in
-`docs/d8-debug-map.md` and is designed to be assembler-agnostic while
-preserving the existing LST-derived confidence data.
+launch it attempts to load `<artifactBase>.d8.json` beside the build artifact.
+The on-disk standard is documented in `docs/d8-debug-map.md`.
 
-For native producer-generated maps such as AZM `.d8.json` output, Debug80 now
-prefers the existing D8 map directly and does not treat it as stale relative to
-the listing file. The old `.debug80/cache/*.d8.json` project-local map cache has
-been removed; active-target runtime features use the native build-side map
-beside the artifact. This matters for symbols and constants: native AZM maps can
-carry `files[*].symbols` entries that listing-derived compatibility maps cannot
-reconstruct.
+The old `.debug80/cache/*.d8.json` project-local map cache has been removed;
+active-target runtime features use the native build-side map beside the
+artifact. Native AZM maps carry `files[*].symbols` entries for labels and
+constants, which power navigation, hovers, variables, watches, and call stack
+labels.
 
 Editor navigation also uses source-map data. Debug80 registers VS Code providers
 for Go to Definition, workspace symbols, and compact symbol hover on `z80-asm`
@@ -359,12 +336,11 @@ result stops with the normal breakpoint reason. Expression errors are treated as
 breakpoint hits and are reported to the Debug Console, which avoids silently
 skipping a breakpoint because of a typo or stale source-map symbol.
 
-The orchestration for loading, validating, and building these maps lives in
-`src/debug/mapping-service.ts` (`buildMappingFromListing`, `loadExtraListingMapping`). This is
-distinct from the data-format layer in `src/mapping/`. Extra ROM listings (from `extraListings`
-config) are handled separately via `loadExtraListingMapping` for monitor ROM source navigation.
+The orchestration for loading and validating these maps lives in
+`src/debug/mapping-service.ts` (`buildMappingFromDebugMap`). This is distinct
+from the data-format layer in `src/mapping/`.
 
-### 9.5 Platforms
+### 9.4 Platforms
 
 The debugger core runs against a platform abstraction that supplies memory and
 I/O devices. Platform selection is per target in `debug80.json`. The platform
@@ -377,16 +353,15 @@ For UI/runtime lifecycle nuances that are easy to miss in isolated files, see
 
 ### 10.1 Breakpoint resolution
 
-- For .asm source breakpoints:
-  - Resolve exact file:line to segments, else fallback to nearest anchor <= line.
-- For .lst breakpoints:
-  - Use listing lineToAddress map.
+- For source breakpoints, resolve exact file:line to executable D8 segments.
+- Non-executable symbols can still appear in navigation and variables, but they
+  are not bound as executable breakpoints.
 
 ### 10.2 PC -> source location
 
 - If a segment contains the PC and has loc.file, use it.
 - If loc.line is missing, fallback to nearest anchor line <= PC.
-- If no mapping exists, fall back to listing file/line.
+- If no mapping exists, use the configured source file as a minimal fallback.
 
 ## 11. Stepping behavior
 
@@ -615,7 +590,7 @@ If you want to add features, start here:
 
 ## 16. Known limitations
 
-- Mapping accuracy depends on the quality of the .lst listing and symbols.
+- Mapping accuracy depends on the quality of the AZM D8 map.
 - process.cwd() discovery may miss the workspace in extension dev host.
 - Legacy `.debug80/cache` map output is removed; older specs that mention it
   are historical.

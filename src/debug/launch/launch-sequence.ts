@@ -17,7 +17,7 @@ import { emitMainSource } from '../session/adapter-ui';
 import { resolvePlatformProvider } from '../../platforms/provider';
 import { buildLaunchSourceState } from './launch-source-state';
 import { createZ80Runtime } from '../../z80/runtime';
-import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
+import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import { formatLogMessage, type Logger } from '../../util/logger';
 import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';

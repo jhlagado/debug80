@@ -3,7 +3,7 @@
  * Provides efficient address-to-source and source-to-address resolution.
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './types';
 import { normalizePathForKey } from '../common/path-utils';
 
 let onSegmentWarning: ((message: string) => void) | undefined;
@@ -26,7 +26,7 @@ export interface SourceMapIndex {
 
 /**
  * Function type for resolving relative file paths to absolute paths.
- * @param file - Relative file path from the listing
+ * @param file - Relative file path from the debug map
  * @returns Resolved absolute path, or undefined if not found
  */
 export type ResolvePathFn = (file: string) => string | undefined;
@@ -39,7 +39,7 @@ export type ResolvePathFn = (file: string) => string | undefined;
  * - Segments indexed by file and line for source-to-address lookup
  * - Anchors indexed by file for symbol lookup
  *
- * @param mapping - Parsed mapping result from listing
+ * @param mapping - Parsed mapping result from a D8 debug map
  * @param resolvePath - Function to resolve relative paths
  * @returns Indexed source map
  *
@@ -182,7 +182,7 @@ export function resolveLocation(index: SourceMapIndex, filePath: string, line: n
  * Resolves a source location to executable memory addresses only.
  *
  * Zero-width segments represent labels, constants, and assembler directives in
- * assembler listings. They are useful for stack display context but must not become
+ * debug maps. They are useful for stack display context but must not become
  * active breakpoints.
  */
 export function resolveExecutableLocation(

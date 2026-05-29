@@ -11,7 +11,7 @@ import * as path from 'path';
 import { describe, it, expect } from 'vitest';
 import Ajv from 'ajv';
 import { buildD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
-import type { MappingParseResult } from '../../src/mapping/parser';
+import type { MappingParseResult } from '../../src/mapping/types';
 
 const schemaPath = path.join(process.cwd(), 'schemas', 'd8-debug-map.schema.json');
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));

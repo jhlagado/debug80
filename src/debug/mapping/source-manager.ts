@@ -3,7 +3,7 @@
  */
 
 import * as path from 'path';
-import { MappingParseResult } from '../../mapping/parser';
+import { MappingParseResult } from '../../mapping/types';
 import { SourceMapIndex } from '../../mapping/source-map';
 import { buildMappingFromDebugMap, MappingBuildResult } from './mapping-service';
 import { Logger } from '../../util/logger';

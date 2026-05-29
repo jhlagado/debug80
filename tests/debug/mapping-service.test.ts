@@ -137,7 +137,7 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('Build the selected target with AZM'))).toBe(true);
   });
 
-  it('ignores legacy Debug80-generated D8 maps instead of using listing fallback', () => {
+  it('ignores legacy Debug80-generated D8 maps instead of fabricating fallback maps', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');

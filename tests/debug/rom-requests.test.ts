@@ -11,7 +11,6 @@ describe('rom-requests', () => {
   it('wraps ROM sources in response body', () => {
     const tmpDir = os.tmpdir();
     const sources = [
-      { label: 'main.lst', path: path.join(tmpDir, 'main.lst'), kind: 'listing' as const },
       { label: 'main.asm', path: path.join(tmpDir, 'main.asm'), kind: 'source' as const },
     ];
     expect(buildRomSourcesResponse(sources)).toEqual({ sources });

@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import { StackFrame, Source } from '@vscode/debugadapter';
-import type { SourceMapAnchor } from '../../mapping/parser';
+import type { SourceMapAnchor } from '../../mapping/types';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../../mapping/source-map';
 import { findNearestSymbol } from './symbol-service';
 import { canonicalizeDebuggerSourcePath } from './path-utils';

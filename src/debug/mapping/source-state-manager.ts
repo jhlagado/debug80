@@ -2,7 +2,7 @@
  * @fileoverview Source state manager for the debug adapter.
  */
 
-import type { SourceMapAnchor } from '../../mapping/parser';
+import type { SourceMapAnchor } from '../../mapping/types';
 import type { BuildSourceStateArgs, SourceManagerState } from './source-manager';
 
 export type SourceState = {

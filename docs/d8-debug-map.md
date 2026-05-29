@@ -1,8 +1,8 @@
 # D8 Debug Map (D8M) v1
 
 This document defines a JSON mapping format for Z80 debugging. The intent is to
-support deterministic address-to-source mapping across assemblers, while still
-allowing best-effort maps derived from listings.
+support deterministic address-to-source mapping from assembler-produced debug
+metadata.
 
 ## Naming
 
@@ -38,7 +38,7 @@ Required:
 
 Optional:
 
-- `lstText`: string table for listing text
+- `lstText`: optional assembler source-context text table
 - `segmentDefaults`: defaults applied to segments when fields are omitted
 - `symbolDefaults`: defaults applied to symbols when fields are omitted
 - `memory`: memory layout information
@@ -110,7 +110,8 @@ Optional fields:
 Notes:
 
 - `end` is exclusive. Length is `end - start`.
-- `confidence` should be used when mapping is inferred from listings.
+- `confidence` describes how strongly the assembler can associate the segment
+  with a source location.
 
 Example:
 
@@ -128,7 +129,7 @@ Example:
 
 ### 2a) `lstText` (optional)
 
-`lstText` is a string table for listing text. When present, segments can
+`lstText` is a historical field name for assembler source context text. When present, segments can
 reference `lstTextId` instead of repeating `lstText` inline.
 
 Example:
@@ -198,7 +199,7 @@ Fields:
 - `version`: string (optional)
 - `args`: array of strings (optional)
 - `createdAt`: string (ISO-8601, optional)
-- `inputs`: object (optional), e.g. `{ "lst": "build/main.lst", "hex": "build/main.hex" }`
+- `inputs`: object (optional), e.g. `{ "hex": "build/main.hex", "source": "src/main.asm" }`
 
 ### 6) `diagnostics`
 
@@ -212,18 +213,16 @@ Fields:
 ## Integration with Debug80
 
 - Debug80 loads `build/main.d8.json` if present.
-- If the map is missing or invalid, current compatibility code can still derive
-  an in-memory map from the `.lst` for the session, but AZM-produced
-  `build/main.d8.json` is the expected source of truth.
-- For native producer-generated maps such as AZM output, Debug80 preserves the
-  existing `.d8.json` even when it is older than the `.lst`.
+- If the map is missing or invalid, source-map-backed debugging features require
+  the user to rebuild with AZM.
+- AZM-produced `build/main.d8.json` is the expected source of truth.
 
 ## Workflow
 
 1. Assemble with AZM to produce `build/main.hex` and `build/main.d8.json`.
-2. The assembler may also emit listing context, but Debug80 does not require a
-   project-local cache.
-3. Debug80 loads the map for debugging, with `.lst` as the fallback source.
+2. The assembler may also emit source context in `lstLine` / `lstText` D8
+   fields, but Debug80 does not require a project-local cache.
+3. Debug80 loads the D8 map for debugging.
 
 The map file can be treated as a build artifact in `build/` and is not
 expected to be committed by default.

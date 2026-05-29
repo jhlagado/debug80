@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import * as fs from 'fs';
 import * as path from 'path';
-import type { MappingParseResult } from '../../src/mapping/parser';
-import { parseMapping } from '../../src/mapping/parser';
+import type { MappingParseResult } from '../../src/mapping/types';
 import {
   buildSourceMapIndex,
   findAnchorLine,
@@ -13,11 +11,45 @@ import {
 } from '../../src/mapping/source-map';
 
 const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures');
-const lstPath = path.join(fixtureDir, 'simple.lst');
 const asmPath = path.join(fixtureDir, 'simple.asm');
 
-const listingContent = fs.readFileSync(lstPath, 'utf-8');
-const mapping = parseMapping(listingContent);
+const mapping: MappingParseResult = {
+  segments: [
+    {
+      start: 0x0000,
+      end: 0x0001,
+      loc: { file: 'simple.asm', line: 1 },
+      lst: { line: 1, text: 'START:' },
+      confidence: 'HIGH',
+    },
+    {
+      start: 0x0001,
+      end: 0x0002,
+      loc: { file: 'simple.asm', line: 2 },
+      lst: { line: 3, text: 'NOP' },
+      confidence: 'HIGH',
+    },
+    {
+      start: 0x0003,
+      end: 0x0004,
+      loc: { file: 'simple.asm', line: 4 },
+      lst: { line: 4, text: 'DUP: EQU $0003' },
+      confidence: 'MEDIUM',
+    },
+    {
+      start: 0x0003,
+      end: 0x0005,
+      loc: { file: 'simple.asm', line: 5 },
+      lst: { line: 5, text: 'TARGET:' },
+      confidence: 'HIGH',
+    },
+  ],
+  anchors: [
+    { address: 0x0000, symbol: 'START', file: 'simple.asm', line: 1 },
+    { address: 0x0003, symbol: 'DUP', file: 'simple.asm', line: 4 },
+    { address: 0x0003, symbol: 'TARGET', file: 'simple.asm', line: 5 },
+  ],
+};
 const resolvePath = (file: string): string | undefined =>
   file === 'simple.asm' ? asmPath : undefined;
 const index = buildSourceMapIndex(mapping, resolvePath);

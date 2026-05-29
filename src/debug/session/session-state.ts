@@ -3,7 +3,7 @@
  */
 
 import type { HexProgram } from '../../z80/loaders';
-import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
+import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { D8Symbol } from '../../mapping/d8-map';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import type { CpuStateSnapshot, Z80Runtime } from '../../z80/runtime';

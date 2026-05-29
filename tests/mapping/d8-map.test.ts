@@ -4,7 +4,7 @@ import {
   buildMappingFromD8DebugMap,
   parseD8DebugMap,
 } from '../../src/mapping/d8-map';
-import { MappingParseResult } from '../../src/mapping/parser';
+import { MappingParseResult } from '../../src/mapping/types';
 
 const makeMapping = (): MappingParseResult => ({
   segments: [

@@ -5,7 +5,7 @@
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as path from 'path';
 import type { SourceMapIndex } from '../../mapping/source-map';
-import type { SourceMapSegment } from '../../mapping/parser';
+import type { SourceMapSegment } from '../../mapping/types';
 import { normalizePathForKey } from './path-utils';
 
 type SourceBreakpointResolution = {

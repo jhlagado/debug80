@@ -45,8 +45,8 @@ describe('errors', () => {
   });
 
   it('builds missing config error', () => {
-    const err = new MissingConfigError('missing', ['asm', 'listing']);
-    expect(err.missingKeys).toEqual(['asm', 'listing']);
+    const err = new MissingConfigError('missing', ['asm', 'hex']);
+    expect(err.missingKeys).toEqual(['asm', 'hex']);
   });
 
   it('builds file resolution errors and helpers', () => {

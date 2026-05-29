@@ -3,12 +3,12 @@
  */
 
 import * as fs from 'fs';
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/parser';
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/types';
 import {
   propagateMisassignedIncludeSegments,
   remapMisassignedIncludeAnchors,
   syncSegmentLocationsFromAnchors,
-} from '../../mapping/layer2';
+} from '../../mapping/include-remap';
 import {
   buildSourceMapIndex,
   SourceMapIndex,

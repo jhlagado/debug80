@@ -76,7 +76,7 @@ src/
 Each platform can have its own dependencies. Shared serial helpers and TEC
 constants live alongside the platform code. TEC-1 and TEC-1G now have their
 runtime, controller, and webview panel modules under `src/platforms/`, while
-the adapter and extension still orchestrate wiring. Bundled ROM, listing, and
+the adapter and extension still orchestrate wiring. Bundled ROM, D8 map, and
 source assets live under `resources/bundles/`; project-local `roms/` files are
 optional overrides or explicit inspection copies.
 
@@ -261,29 +261,12 @@ Optional tuning fields:
 - `updateMs` (default 16): min milliseconds between TEC-1 panel updates.
 - `yieldMs` (default 0): extra yield delay when the emulator is ahead of real time.
 - `ramInitHex`: optional Intel HEX file to preload RAM (e.g. a starter program).
-- `extraListings`: optional list of additional `.lst` files to load for ROM/debug mapping.
-
-Extra ROM listings:
-
-- Use `extraListings` to load ROM listings for monitor/debug ROMs. Paths are
-  resolved relative to the `debug80.json` base directory; absolute paths also
-  work. For scaffolded bundled profiles, a missing workspace-relative listing
-  is smart-resolved to the copy shipped inside the extension.
-- If a listing sits next to a matching `.asm` or `.z80` source file,
-  Debug80 will offer that source in the ROM source picker and use it for
-  line-based breakpoints. Bundled profiles provide source snapshots for this
-  where available; local files with the same configured paths take precedence.
-- Debug80 expects native AZM `.d8.json` maps beside build artifacts for active
-  targets. Legacy ROM listing compatibility may derive an in-memory map for a
-  session, but Debug80 no longer writes project-local `.debug80/cache` maps.
-- Missing listings emit a Debug Console message that includes the platform name.
 
 ```json
 {
   "platform": "tec1",
   "tec1": {
-    "romHex": "roms/tec1/mon1b/mon-1b.bin",
-    "extraListings": ["roms/tec1/mon1b/mon-1b.lst"]
+    "romHex": "roms/tec1/mon1b/mon-1b.bin"
   }
 }
 ```
@@ -365,8 +348,8 @@ reference in `debug80.json` and resolves the shipped bundle on launch when no
 workspace copy is present:
 
 - `roms/tec1g/mon3/mon3.bin` — monitor ROM image (`tec1g.romHex`; `.bin` or `.hex` per program loader rules).
-- `roms/tec1g/mon3/mon3.lst` — assembler listing for ROM source mapping (`tec1g.extraListings`).
-- root or target `sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly when a listing is present.
+- `roms/tec1g/mon3/mon3.d8.json` — AZM D8 map for ROM source mapping.
+- root or target `sourceRoots` includes `src` and `roms/tec1g/mon3` so monitor sources resolve cleanly.
 
 These `roms/` paths are stable project override paths. If the files are absent,
 Debug80 resolves the bundled extension copies. If the files are present, local
@@ -374,17 +357,18 @@ workspace files take precedence.
 
 **Commands:**
 
-- **Debug80: Open ROM Listing/Source** (`debug80.openRomSource`) opens the
-  ROM listing/source files available to the active debug session.
+- **Debug80: Open ROM Source** (`debug80.openRomSource`) opens the ROM source
+  files available to the active debug session.
 - **Debug80: Copy Bundled Assets into Workspace**
-  (`debug80.materializeBundledRom`) copies bundled ROM/listing/source assets
-  such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection or
-  override.
+  (`debug80.materializeBundledRom`) copies bundled ROM, D8 map, and source
+  assets such as TEC-1G MON3 and TEC-1 MON-1B on demand for local inspection
+  or override.
 
-**Manual project (no wizard):** either point `tec1g.romHex` and
-`tec1g.extraListings` at your own workspace-relative/absolute files, or use a
-scaffolded project as a template so the `profiles.<name>.bundledAssets`
-references can smart-resolve missing local ROM files to the extension bundle.
+**Manual project (no wizard):** either point `tec1g.romHex` at your own
+workspace-relative/absolute ROM file and provide a matching D8 map beside the
+build artifact, or use a scaffolded project as a template so the
+`profiles.<name>.bundledAssets` references can smart-resolve missing local ROM
+files to the extension bundle.
 Example with explicit local files:
 
 ```json
@@ -405,8 +389,7 @@ Example with explicit local files:
         ],
         "appStart": 16384,
         "entry": 0,
-        "romHex": "roms/tec1g/mon3/mon3.bin",
-        "extraListings": ["roms/tec1g/mon3/mon3.lst"]
+        "romHex": "roms/tec1g/mon3/mon3.bin"
       }
     }
   }
@@ -414,8 +397,8 @@ Example with explicit local files:
 ```
 
 **Overrides:** materialize the bundled files and replace them on disk, or change
-`romHex` / `extraListings` / `sourceRoots` to your own MON3 build. Day-to-day
-debugging does not require project-local ROM files.
+`romHex` / `sourceRoots` to your own MON3 build. Day-to-day debugging does not
+require project-local ROM files.
 
 More hardware and I/O detail: `docs/platforms/tec1g/README.md`.
 

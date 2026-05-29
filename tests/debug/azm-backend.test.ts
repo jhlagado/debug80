@@ -86,7 +86,7 @@ describe('azm-backend', () => {
     expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
   });
 
-  it('requires native D8 output instead of legacy listing output', async () => {
+  it('requires native D8 output for source mapping', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.z80');
     const outDir = path.join(tmpDir, 'build');
