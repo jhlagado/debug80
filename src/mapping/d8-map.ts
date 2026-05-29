@@ -38,7 +38,7 @@ export interface D8DebugMap {
   endianness: D8Endianness;
   /** Source files with their segments and symbols */
   files: Record<string, D8FileEntry>;
-  /** Shared listing text table for deduplication */
+  /** Shared assembler source-context text table for deduplication */
   lstText?: string[];
   /** Default values for segment properties */
   segmentDefaults?: D8SegmentDefaults;

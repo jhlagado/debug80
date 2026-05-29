@@ -129,7 +129,6 @@ tests/
           launch.json
         build/
           app.hex
-          app.lst
           app.d8.json
         src/
           app.asm

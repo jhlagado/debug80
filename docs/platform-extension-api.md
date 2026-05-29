@@ -73,7 +73,8 @@ important members are:
   - Optional hook for post-runtime wiring such as memory overlays.
 
 In practice, most platforms also expose normalized config on the provider so the
-launch path can feed ROM overlays, listings, and runtime options into the core.
+launch path can feed ROM overlays, source-map references, and runtime options
+into the core.
 
 ### Provider checklist
 

@@ -92,7 +92,7 @@ Required fields:
 
 - `start`: number, start address (0..65535)
 - `end`: number, end address (exclusive)
-- `lstLine`: number, listing line number
+- `lstLine`: number, assembler source-context line number
 
 Optional fields:
 
@@ -100,7 +100,7 @@ Optional fields:
 - `column`: number, 1-based column number
 - `kind`: string enum: `code`, `data`, `directive`, `label`, `macro`, `unknown`
 - `confidence`: string enum: `high`, `medium`, `low`
-- `lstText`: string, listing asm text (optional)
+- `lstText`: string, assembler source-context text (optional)
 - `lstTextId`: number, index into `lstText` (optional)
 - `includeChain`: array of strings, include path stack
 - `macro`: object with expansion details:

@@ -42,7 +42,7 @@
     "lstText": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Shared listing text table for deduplication."
+      "description": "Shared assembler source-context text table for deduplication."
     },
     "segmentDefaults": { "$ref": "#/definitions/segmentDefaults" },
     "symbolDefaults": { "$ref": "#/definitions/symbolDefaults" },

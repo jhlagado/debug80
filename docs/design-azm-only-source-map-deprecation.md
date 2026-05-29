@@ -10,7 +10,7 @@ ROM source stepping.
 
 The old listing-derived path is not a supported fallback. If a required D8 map
 is missing or invalid, Debug80 should report that the target needs to be built
-with AZM. It should not parse `.lst` files, regenerate maps, silently use stale
+with AZM. It should not parse listing files, regenerate maps, silently use stale
 compatibility caches, or recover by guessing source paths.
 
 ## Target Contract
@@ -28,12 +28,12 @@ The assembler owns map correctness. Debug80 consumes and validates D8 maps.
 
 The following are compatibility mechanisms, not desired architecture:
 
-- primary source map generation from `.lst` files;
+- primary source map generation from listing files;
 - stale-map fallback from D8 to listing parsing;
 - Layer 2 listing/source recovery in the active launch path;
 - Debug80-generated compatibility D8 maps from listing content;
-- `.lst` breakpoint binding as a first-class debugger workflow;
-- `extraListings` as the platform ROM mapping mechanism;
+- listing-file breakpoint binding as a first-class debugger workflow;
+- the old platform-ROM mapping mechanism based on separate listing artifacts;
 - project scaffolding that materializes or configures ROM listings as debug
   metadata;
 - user-facing schema/docs that present listing files as normal launch inputs;
@@ -45,10 +45,7 @@ Some listing-adjacent concepts are not fallback paths and can remain:
 
 - D8 fields such as `lstLine`, `lstText`, or shared listing text tables, because
   they are data inside the native map;
-- syntax highlighting for `.lst` files as a viewer convenience, if still useful;
 - low-level Intel HEX loading code;
-- parser tests for historical files only if they are no longer connected to the
-  debug launch path.
 
 ## Staged Removal Status
 
@@ -56,7 +53,7 @@ Some listing-adjacent concepts are not fallback paths and can remain:
 
 Goal: stop the active launch path from deriving maps from listings.
 
-- Replace `buildMappingFromListing` behavior with native D8 loading.
+- Replace listing-derived mapping behavior with native D8 loading.
 - Keep existing function names only where changing them would balloon the first
   patch.
 - If the primary D8 map is absent or invalid, return an empty mapping and log a
@@ -66,29 +63,30 @@ Goal: stop the active launch path from deriving maps from listings.
 - Keep source-root handling so bundled MON3 D8 maps still bind breakpoints.
 - Update tests to prove native D8 behavior and missing-map behavior.
 
-Expected result: Debug80 no longer fabricates source maps from `.lst` files.
+Expected result: Debug80 no longer fabricates source maps from listing files.
 
 ### Stage 2: Rename The Model - Mostly Done
 
 Goal: make names match reality.
 
 - Bundled profiles point at `.d8.json`.
-- Internal `listingPath` and `listingContent` usage has been removed from the
+- Internal listing-path and listing-content usage has been removed from the
   launch, rebuild, mapping, source-state, and symbol-index paths.
-- No temporary `extraListings` compatibility alias remains in active code.
+- No temporary compatibility alias for extra listing artifacts remains in active code.
 
 Expected result: new code and config no longer teach the listing mental model.
 
-### Stage 3: Remove Listing Breakpoint And ROM Listing Workflows - In Progress
+### Stage 3: Remove Listing Breakpoint And ROM Listing Workflows - Done
 
 Goal: source files and D8 maps become the only debugger workflow.
 
-- Remove breakpoint binding directly against `.lst` files.
+- Remove breakpoint binding directly against listing files.
 - Change “Open ROM Listing/Source” into “Open ROM Source” backed by D8/source
   metadata. Done in active source and docs.
-- Stop materializing bundled `.lst` files into new projects. Done for current
+- Stop materializing bundled listing files into new projects. Done for current
   scaffolded bundles.
-- Keep bundled `.lst` files only if they are documentation/reference assets.
+- Remove bundled and fixture listing files that are not needed as source
+  references.
 
 Expected result: users debug source, not listings.
 
@@ -101,9 +99,9 @@ Goal: remove cruft after all runtime callers are gone.
   remains as `src/mapping/include-remap.ts`.
 - Delete stale listing cache checks.
 - Delete tests that only validate fallback behavior. Done for parser/layer2.
-- Remove user-facing schema/docs for `listing` and `extraListings`. In progress;
-  active docs have been updated, historical archive/planning docs may still
-  mention removed behavior.
+- Remove user-facing schema/docs for listing artifacts. Active
+  docs and the bundled-ROM plan have been updated; archive documents may still
+  mention removed behavior as historical context.
 - Remove obsolete assembler aliases and related docs.
 
 Expected result: Debug80 has one source-map architecture.
