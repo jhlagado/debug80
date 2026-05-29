@@ -181,6 +181,30 @@ describe('adapter-request-controller conditional breakpoints', () => {
       'Debug80: Invalid conditional breakpoint expression "resetting".'
     );
   });
+
+  it('clears stale invalid-condition reports when breakpoints are reapplied', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
+    deps.breakpointManager.getCondition.mockReturnValue('resetting');
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+
+    controller.setBreakPointsRequest(
+      {} as never,
+      {
+        source: { path: '/workspace/src/main.asm' },
+        breakpoints: [{ line: 4, condition: 'resetting' }],
+      } as never
+    );
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+    expect(deps.sendEvent).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('AdapterRequestController single-step flow', () => {

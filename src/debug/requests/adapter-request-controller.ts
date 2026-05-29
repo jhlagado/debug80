@@ -88,6 +88,7 @@ export class AdapterRequestController {
     if (normalized !== undefined) {
       this.deps.breakpointManager.setPending(normalized, breakpoints);
     }
+    this.reportedInvalidBreakpointConditions.clear();
 
     const verified =
       normalized !== undefined

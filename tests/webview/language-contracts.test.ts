@@ -37,6 +37,7 @@ interface PackageJson {
     grammars: Array<{ language: string; scopeName: string; path: string }>;
     breakpoints: Array<{ language: string }>;
     debuggers: Array<{ type: string; languages: string[] }>;
+    commands: Array<{ command: string; title: string }>;
     views: Record<
       string,
       Array<{
@@ -293,27 +294,13 @@ describe('package.json language contracts', () => {
     }
   });
 
-  it('hides support-only Debug80 commands from the command palette', () => {
+  it('classifies every Debug80 command as visible, context-only, or internal', () => {
     const hidden = new Set(
       (contributes.menus.commandPalette ?? [])
         .filter((entry) => entry.when === 'false')
         .map((entry) => entry.command)
     );
-
-    for (const command of [
-      'debug80.terminalInput',
-      'debug80.openTerminal',
-      'debug80.openTec1',
-      'debug80.openTec1Memory',
-      'debug80.runToSelectedStackFrame',
-      'debug80.setEntrySource',
-      'debug80.openProjectConfigPanel',
-      'debug80.materializeBundledRom',
-    ]) {
-      expect(hidden.has(command)).toBe(true);
-    }
-
-    for (const command of [
+    const visible = new Set([
       'debug80.createProject',
       'debug80.startDebug',
       'debug80.restartDebug',
@@ -325,7 +312,29 @@ describe('package.json language contracts', () => {
       'debug80.showSourceMapStatus',
       'debug80.openDebug80View',
       'debug80.sendHexViaCoolTerm',
-    ]) {
+    ]);
+    const contextOnly = new Set([
+      'debug80.runToSelectedStackFrame',
+      'debug80.setEntrySource',
+      'debug80.openProjectConfigPanel',
+      'debug80.materializeBundledRom',
+    ]);
+    const internal = new Set([
+      'debug80.terminalInput',
+      'debug80.openTerminal',
+      'debug80.openTec1',
+      'debug80.openTec1Memory',
+    ]);
+
+    const classified = new Set([...visible, ...contextOnly, ...internal]);
+    const contributed = (contributes.commands ?? []).map((entry) => entry.command);
+    expect(new Set(contributed)).toEqual(classified);
+
+    for (const command of [...contextOnly, ...internal]) {
+      expect(hidden.has(command)).toBe(true);
+    }
+
+    for (const command of visible) {
       expect(hidden.has(command)).toBe(false);
     }
   });
