@@ -344,6 +344,10 @@
         "title": "Debug80: Open Source File"
       },
       {
+        "command": "debug80.showSourceMapStatus",
+        "title": "Debug80: Show Source Map Status"
+      },
+      {
         "command": "debug80.openProjectConfigPanel",
         "title": "Debug80: Open Project Configuration Panel"
       },

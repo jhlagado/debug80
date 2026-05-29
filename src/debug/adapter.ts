@@ -40,6 +40,7 @@ import { resolveBaseDir } from './mapping/path-resolver';
 import { emitAssemblyFailed, emitConsoleOutput } from './session/adapter-ui';
 import { AssembleFailureError } from './launch/assembler';
 import { buildRomSourcesResponse } from './requests/rom-requests';
+import { buildSourceMapStatus } from './requests/source-map-status-request';
 import { handleTerminalInput, handleTerminalBreak } from './requests/terminal-request';
 import { handleMemorySnapshotRequest } from './requests/memory-request';
 import { handleMemoryWriteRequest } from './requests/memory-write';
@@ -176,6 +177,11 @@ export class Z80DebugSession extends DebugSession {
           autoOpen: autoOpen.has(path.normalize(sourcePath)),
         }))
       );
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/sourceMapStatus', (response) => {
+      response.body = buildSourceMapStatus(this.sessionState);
       this.sendResponse(response);
       return true;
     });

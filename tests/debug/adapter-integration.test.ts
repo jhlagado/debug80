@@ -66,6 +66,55 @@ function createFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
     path.join(buildDir, 'main.hex'),
     kitId === 'tec1g/mon3' ? ':034000000018FDA8\n:00000001FF\n' : ':030800000018FDE0\n:00000001FF\n'
   );
+  const startAddress = kitId === 'tec1g/mon3' ? 0x4000 : 0x0800;
+  fs.writeFileSync(
+    path.join(buildDir, 'main.d8.json'),
+    `${JSON.stringify(
+      {
+        format: 'd8-debug-map',
+        version: 1,
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        generator: { name: 'debug80-fresh-project-fixture' },
+        files: {
+          'src/main.asm': {
+            segments: [
+              {
+                start: startAddress,
+                end: startAddress + 1,
+                line: 4,
+                lstLine: 4,
+                lstText: 'start:  NOP',
+                kind: 'code',
+                confidence: 'high',
+              },
+              {
+                start: startAddress + 1,
+                end: startAddress + 3,
+                line: 5,
+                lstLine: 5,
+                lstText: '        JR  start',
+                kind: 'code',
+                confidence: 'high',
+              },
+            ],
+            symbols: [
+              {
+                name: 'start',
+                address: startAddress,
+                line: 4,
+                kind: 'label',
+                scope: 'global',
+              },
+            ],
+          },
+        },
+      },
+      null,
+      2
+    )}\n`
+  );
   fs.writeFileSync(
     path.join(root, 'debug80.json'),
     `${JSON.stringify(
@@ -353,65 +402,103 @@ describe('adapter integration', () => {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   });
 
-  it('maps TEC-1G stop-on-entry frames and ROM sources through the bundled MON-3 D8 map', async () => {
-    const fixture = createFreshProjectFixture('tec1g/mon3');
-    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
-    getExtension.mockReturnValue({
-      extensionPath: path.resolve(__dirname, '../..'),
-    } as never);
+  describe('TEC-1G/MON-3 golden launch contract', () => {
+    it('maps fresh-project target source, ROM entry frames, ROM breakpoints, and ROM source picker contents', async () => {
+      const fixture = createFreshProjectFixture('tec1g/mon3');
+      workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
+      getExtension.mockReturnValue({
+        extensionPath: path.resolve(__dirname, '../..'),
+      } as never);
 
-    const { client } = harness ?? createHarness();
+      const { client } = harness ?? createHarness();
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
-      assemble: false,
-      stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
+      await initialize(client);
+      await launchWithDiagnostics(client, {
+        target: 'app',
+        assemble: false,
+        stopOnEntry: true,
+        openRomSourcesOnLaunch: false,
+        openMainSourceOnLaunch: false,
+      });
+      const mon3SourcePath = path.join(
+        path.resolve(__dirname, '../..'),
+        'resources',
+        'bundles',
+        'tec1g',
+        'mon3',
+        'v1',
+        'mon3.z80'
+      );
+      const userBreakpoints = await client.sendRequest<{
+        body?: { breakpoints?: Array<{ verified?: boolean; line?: number }> };
+      }>('setBreakpoints', {
+        source: { path: fixture.sourcePath },
+        breakpoints: [{ line: 4 }],
+      });
+      expect(userBreakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
+
+      const romBreakpoints = await client.sendRequest<{
+        body?: { breakpoints?: Array<{ verified?: boolean; line?: number }> };
+      }>('setBreakpoints', {
+        source: { path: mon3SourcePath },
+        breakpoints: [{ line: 302 }],
+      });
+      expect(romBreakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
+
+      await client.sendRequest('configurationDone');
+      await client.waitForEvent('stopped');
+
+      const stack = await client.sendRequest<{
+        body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
+      }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
+      const frame = stack.body?.stackFrames?.[0];
+      expect(frame?.source?.path).toBe(mon3SourcePath);
+      expect(frame?.line).toBe(171);
+
+      const romSources = await client.sendRequest<{
+        body?: { sources?: Array<{ path?: string }> };
+      }>('debug80/romSources');
+      expect(
+        romSources.body?.sources?.some((source) => source.path?.endsWith('disassembler.z80'))
+      ).toBe(true);
+      expect(romSources.body?.sources?.find((source) => source.path === mon3SourcePath)).toEqual({
+        label: 'mon3.z80',
+        path: mon3SourcePath,
+        kind: 'source',
+        autoOpen: true,
+      });
+
+      const sourceMapStatus = await client.sendRequest<{
+        body?: {
+          targetMap?: { path?: string; exists?: boolean };
+          auxiliaryMaps?: Array<{ path?: string; exists?: boolean }>;
+          counts?: { sourceFiles?: number; symbols?: number; segments?: number };
+          currentPc?: {
+            address?: number;
+            mapsToSource?: boolean;
+            source?: { path?: string; line?: number };
+          };
+        };
+      }>('debug80/sourceMapStatus');
+      expect(sourceMapStatus.body?.targetMap?.path).toBe(
+        path.join(fixture.root, 'build', 'main.d8.json')
+      );
+      expect(sourceMapStatus.body?.targetMap?.exists).toBe(true);
+      expect(
+        sourceMapStatus.body?.auxiliaryMaps?.some(
+          (entry) => entry.path?.endsWith('mon3.d8.json') === true && entry.exists === true
+        )
+      ).toBe(true);
+      expect(sourceMapStatus.body?.counts?.sourceFiles).toBeGreaterThanOrEqual(2);
+      expect(sourceMapStatus.body?.counts?.segments).toBeGreaterThan(0);
+      expect(sourceMapStatus.body?.counts?.symbols).toBeGreaterThan(0);
+      expect(sourceMapStatus.body?.currentPc?.address).toBeTypeOf('number');
+      expect(sourceMapStatus.body?.currentPc?.mapsToSource).toBe(true);
+      expect(sourceMapStatus.body?.currentPc?.source?.path).toBe(mon3SourcePath);
+
+      await client.sendRequest('disconnect');
+      fs.rmSync(fixture.root, { recursive: true, force: true });
     });
-    const mon3SourcePath = path.join(
-      path.resolve(__dirname, '../..'),
-      'resources',
-      'bundles',
-      'tec1g',
-      'mon3',
-      'v1',
-      'mon3.z80'
-    );
-    const breakpoints = await client.sendRequest<{
-      body?: { breakpoints?: Array<{ verified?: boolean; line?: number }> };
-    }>('setBreakpoints', {
-      source: { path: mon3SourcePath },
-      breakpoints: [{ line: 302 }],
-    });
-    expect(breakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
-
-    await client.sendRequest('configurationDone');
-    await client.waitForEvent('stopped');
-
-    const stack = await client.sendRequest<{
-      body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
-    }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
-    const frame = stack.body?.stackFrames?.[0];
-    expect(frame?.source?.path).toBe(mon3SourcePath);
-    expect(frame?.line).toBe(171);
-
-    const romSources = await client.sendRequest<{
-      body?: { sources?: Array<{ path?: string }> };
-    }>('debug80/romSources');
-    expect(
-      romSources.body?.sources?.some((source) => source.path?.endsWith('disassembler.z80'))
-    ).toBe(true);
-    expect(romSources.body?.sources?.find((source) => source.path === mon3SourcePath)).toEqual({
-      label: 'mon3.z80',
-      path: mon3SourcePath,
-      kind: 'source',
-      autoOpen: true,
-    });
-
-    await client.sendRequest('disconnect');
-    fs.rmSync(fixture.root, { recursive: true, force: true });
   });
 
   it('preserves launch diagnostics on the DAP output stream', async () => {

@@ -23,7 +23,8 @@ export type CustomRequestType =
   | 'debug80/memoryWrite'
   | 'debug80/rebuildWarm'
   | 'debug80/runToStackFrame'
-  | 'debug80/romSources';
+  | 'debug80/romSources'
+  | 'debug80/sourceMapStatus';
 
 /**
  * Payload for terminal input request.

@@ -28,7 +28,9 @@ let panelHtml = '';
 
 class DebugStackFrame {
   public constructor(
-    public readonly session: { customRequest: (command: string, args: unknown) => Promise<unknown> },
+    public readonly session: {
+      customRequest: (command: string, args: unknown) => Promise<unknown>;
+    },
     public readonly threadId: number,
     public readonly frameId: number
   ) {}
@@ -332,6 +334,38 @@ describe('registerExtensionCommands', () => {
 
     expect(result).toBe(true);
     expect(reveal).toHaveBeenCalledWith(true);
+  });
+
+  it('shows source-map diagnostics for the active z80 debug session', async () => {
+    const customRequest = vi.fn().mockResolvedValue({
+      targetMap: { path: '/workspace/tec1g-mon3/build/main.d8.json', exists: true },
+      auxiliaryMaps: [
+        { path: '/debug80/resources/bundles/tec1g/mon3/v1/mon3.d8.json', exists: true },
+      ],
+      counts: { sourceFiles: 4, symbols: 30, segments: 120, anchors: 20 },
+      currentPc: {
+        address: 0,
+        mapsToSource: true,
+        source: { path: '/debug80/resources/bundles/tec1g/mon3/v1/mon3.z80', line: 171 },
+      },
+    });
+    const vscode = await import('vscode');
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      customRequest,
+    };
+
+    await registerCommands();
+    const showSourceMapStatus = registeredCommands.get('debug80.showSourceMapStatus');
+    expect(showSourceMapStatus).toBeTypeOf('function');
+
+    const result = await showSourceMapStatus?.();
+
+    expect(result).toBe(true);
+    expect(customRequest).toHaveBeenCalledWith('debug80/sourceMapStatus');
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('Source map OK'));
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('main.d8.json'));
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('mon3.z80:171'));
   });
 
   it('runs to the call stack frame supplied by the context menu', async () => {
