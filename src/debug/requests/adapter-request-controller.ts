@@ -56,6 +56,7 @@ function readFrameId(args: unknown): number | undefined {
  */
 export class AdapterRequestController {
   private readonly gotoTargets = new Map<number, number>();
+  private readonly reportedInvalidBreakpointConditions = new Set<string>();
   private nextGotoTargetId = 1;
 
   public constructor(private readonly deps: AdapterRequestControllerDeps) {}
@@ -460,12 +461,13 @@ export class AdapterRequestController {
         symbols: this.deps.sessionState.sourceMapSymbols,
       });
     } catch (err) {
-      this.deps.sendEvent(
-        new OutputEvent(
-          formatConditionalBreakpointError(condition, err),
-          'console'
-        )
-      );
+      const reportKey = `${matched}:${condition}`;
+      if (!this.reportedInvalidBreakpointConditions.has(reportKey)) {
+        this.reportedInvalidBreakpointConditions.add(reportKey);
+        this.deps.sendEvent(
+          new OutputEvent(formatConditionalBreakpointError(condition, err), 'console')
+        );
+      }
       return false;
     }
   }

@@ -121,7 +121,7 @@ export function buildLaunchSourceState(
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
-    romSourcePaths: collectDebugMapSourcePaths(args.debugMaps ?? []),
+    romSourcePaths: collectDebugMapPrimarySourcePaths(args.debugMaps ?? []),
     sourceMapSymbols:
       sourceMapSymbols.length > 0
         ? sourceMapSymbols
@@ -203,7 +203,7 @@ function pushUniquePath(paths: string[], candidate: string): void {
   }
 }
 
-function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
+function collectDebugMapPrimarySourcePaths(debugMaps: string[]): string[] {
   const paths = new Set<string>();
   for (const mapPath of debugMaps) {
     try {
@@ -211,15 +211,24 @@ function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
       if (parsed.map === undefined) {
         continue;
       }
-      for (const file of Object.keys(parsed.map.files)) {
-        if (file.trim() === '') {
-          continue;
-        }
-        paths.add(path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file));
+      const primarySource = findPrimaryDebugMapSource(mapPath, Object.keys(parsed.map.files));
+      if (primarySource !== undefined) {
+        paths.add(primarySource);
       }
     } catch {
       // Source opening is best-effort; mapping load logs parse/read failures.
     }
   }
   return [...paths].sort((a, b) => a.localeCompare(b));
+}
+
+function findPrimaryDebugMapSource(mapPath: string, files: string[]): string | undefined {
+  const mapBase = path.basename(mapPath, '.d8.json').toLowerCase();
+  const candidates = files
+    .filter((file) => file.trim().length > 0)
+    .map((file) => (path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file)));
+  const exact = candidates.find(
+    (file) => path.basename(file, path.extname(file)).toLowerCase() === mapBase
+  );
+  return exact ?? candidates[0];
 }

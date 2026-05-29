@@ -163,6 +163,24 @@ describe('adapter-request-controller conditional breakpoints', () => {
     );
     expect(event.body?.output).toContain('Use registers, flags, symbols');
   });
+
+  it('reports each invalid breakpoint condition only once while treating it as no breakpoint', () => {
+    const { controller, deps, sessionState } = createController();
+    sessionState.runtime = createZ80Runtime({
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+    });
+    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
+    deps.breakpointManager.getCondition.mockReturnValue('resetting');
+
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+    expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
+    expect(deps.sendEvent).toHaveBeenCalledTimes(1);
+    const event = deps.sendEvent.mock.calls[0]?.[0] as { body?: { output?: string } };
+    expect(event.body?.output).toContain(
+      'Debug80: Invalid conditional breakpoint expression "resetting".'
+    );
+  });
 });
 
 describe('AdapterRequestController single-step flow', () => {

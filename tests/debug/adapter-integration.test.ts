@@ -400,7 +400,9 @@ describe('adapter integration', () => {
     const romSources = await client.sendRequest<{
       body?: { sources?: Array<{ path?: string }> };
     }>('debug80/romSources');
-    expect(romSources.body?.sources?.some((source) => source.path === mon3SourcePath)).toBe(true);
+    expect(romSources.body?.sources).toEqual([
+      { label: 'mon3.z80', path: mon3SourcePath, kind: 'source' },
+    ]);
 
     await client.sendRequest('disconnect');
     fs.rmSync(fixture.root, { recursive: true, force: true });
