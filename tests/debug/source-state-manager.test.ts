@@ -20,8 +20,7 @@ describe('SourceStateManager', () => {
     const state = new SourceStateManager();
     expect(() =>
       state.build({
-        listingContent: '',
-        listingPath: path.join(os.tmpdir(), 'test.lst'),
+        hexPath: path.join(os.tmpdir(), 'test.hex'),
         sourceRoots: [],
         mapArgs: {},
       })
@@ -36,7 +35,7 @@ describe('SourceStateManager', () => {
     };
     const manager: SourceManagerLike = {
       buildState: (args: BuildSourceStateArgs): SourceManagerState => ({
-        sourceFile: args.sourceFile ?? args.listingPath,
+        sourceFile: args.sourceFile ?? args.hexPath,
         sourceRoots: args.sourceRoots,
         mapping: { segments: [], anchors: [] },
         mappingIndex: emptyIndex,
@@ -47,15 +46,14 @@ describe('SourceStateManager', () => {
     const state = new SourceStateManager();
     state.setManager(manager);
 
-    const listingPath = path.join(os.tmpdir(), 'test.lst');
+    const hexPath = path.join(os.tmpdir(), 'test.hex');
     const build = state.build({
-      listingContent: '',
-      listingPath,
+      hexPath,
       sourceRoots: ['src'],
       mapArgs: {},
     });
 
-    expect(build.sourceFile).toBe(listingPath);
+    expect(build.sourceFile).toBe(hexPath);
     expect(build.sourceRoots).toContain('src');
   });
 });

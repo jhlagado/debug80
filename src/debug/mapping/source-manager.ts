@@ -5,7 +5,7 @@
 import * as path from 'path';
 import { MappingParseResult } from '../../mapping/parser';
 import { SourceMapIndex } from '../../mapping/source-map';
-import { buildMappingFromListing, MappingBuildResult } from './mapping-service';
+import { buildMappingFromDebugMap, MappingBuildResult } from './mapping-service';
 import { Logger } from '../../util/logger';
 
 export interface SourceManagerOptions {
@@ -18,7 +18,7 @@ export interface SourceManagerOptions {
     args: { artifactBase?: string; outputDir?: string },
     baseDir: string,
     asmPath: string | undefined,
-    listingPath: string
+    hexPath: string
   ) => string;
   logger: Logger;
 }
@@ -32,8 +32,7 @@ export interface SourceManagerState {
 }
 
 export interface BuildSourceStateArgs {
-  listingContent: string;
-  listingPath: string;
+  hexPath: string;
   asmPath?: string;
   sourceFile?: string;
   sourceRoots: string[];
@@ -50,7 +49,7 @@ export class SourceManager {
     args: { artifactBase?: string; outputDir?: string },
     baseDir: string,
     asmPath: string | undefined,
-    listingPath: string
+    hexPath: string
   ) => string;
   private logger: Logger;
 
@@ -68,7 +67,7 @@ export class SourceManager {
     const sourceFileResolved = this.resolveMainSourceFile(
       args.asmPath,
       args.sourceFile,
-      args.listingPath
+      args.hexPath
     );
     let sourceRoots = this.resolveSourceRoots(args.sourceRoots);
     if (args.asmPath !== undefined && args.asmPath.length > 0) {
@@ -82,8 +81,7 @@ export class SourceManager {
         : undefined;
 
     const mappingResult = this.buildMapping({
-      listingContent: args.listingContent,
-      listingPath: args.listingPath,
+      hexPath: args.hexPath,
       ...(args.asmPath !== undefined && args.asmPath.length > 0 ? { asmPath: args.asmPath } : {}),
       ...(mappingSourceForFallback !== undefined ? { sourceFile: mappingSourceForFallback } : {}),
       mapArgs: args.mapArgs,
@@ -99,15 +97,13 @@ export class SourceManager {
   }
 
   private buildMapping(args: {
-    listingContent: string;
-    listingPath: string;
+    hexPath: string;
     asmPath?: string;
     sourceFile?: string;
     mapArgs: { artifactBase?: string; outputDir?: string };
   }): MappingBuildResult {
-    return buildMappingFromListing({
-      listingContent: args.listingContent,
-      listingPath: args.listingPath,
+    return buildMappingFromDebugMap({
+      hexPath: args.hexPath,
       ...(args.asmPath !== undefined && args.asmPath.length > 0 ? { asmPath: args.asmPath } : {}),
       ...(args.sourceFile !== undefined && args.sourceFile.length > 0
         ? { sourceFile: args.sourceFile }
@@ -118,8 +114,7 @@ export class SourceManager {
         baseDir: this.baseDir,
         resolveMappedPath: (file) => this.resolveMappedPath(file),
         relativeIfPossible: (filePath, dir) => this.relativeIfPossible(filePath, dir),
-        resolveDebugMapPath: (args, dir, asm, listing) =>
-          this.resolveDebugMapPath(args, dir, asm, listing),
+        resolveDebugMapPath: (args, dir, asm, hex) => this.resolveDebugMapPath(args, dir, asm, hex),
         logger: this.logger,
       },
     });
@@ -128,7 +123,7 @@ export class SourceManager {
   private resolveMainSourceFile(
     asmPath: string | undefined,
     sourceFile: string | undefined,
-    listingPath: string
+    hexPath: string
   ): string {
     if (asmPath !== undefined && asmPath.length > 0) {
       return path.isAbsolute(asmPath)
@@ -138,7 +133,7 @@ export class SourceManager {
     if (sourceFile !== undefined && sourceFile.length > 0) {
       return this.resolveRelative(sourceFile, this.baseDir);
     }
-    return listingPath;
+    return hexPath;
   }
 
   private resolveSourceRoots(roots: string[]): string[] {

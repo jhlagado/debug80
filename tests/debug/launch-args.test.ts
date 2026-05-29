@@ -52,22 +52,21 @@ describe('launch-args', () => {
     const args = { asm: 'main.asm' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toContain(path.join(baseDir, 'main.hex'));
-    expect(result.listingPath).toContain(path.join(baseDir, 'main.lst'));
-  });
+      });
 
   it('builds debug map paths', () => {
     const baseDir = path.join(os.tmpdir(), 'debug80-missing-base', 'nested');
-    const listingPath = path.join(baseDir, 'main.lst');
+    const hexPath = path.join(baseDir, 'main.hex');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
-    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
     expect(mapPath).toContain(path.join(baseDir, 'main.d8.json'));
   });
 
   it('builds debug map paths beside artifacts when the project root exists', () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-base-'));
-    const listingPath = path.join(baseDir, 'main.lst');
+    const hexPath = path.join(baseDir, 'main.hex');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
-    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
     expect(mapPath).toBe(path.join(baseDir, 'main.d8.json'));
   });
 
@@ -479,8 +478,7 @@ describe('launch-args', () => {
     const args = { hex: 'a.hex' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toBe(path.join(baseDir, 'a.hex'));
-    expect(result.listingPath).toBe(path.join(baseDir, 'a.lst'));
-    expect(result.asmPath).toBeUndefined();
+        expect(result.asmPath).toBeUndefined();
   });
 
   it('throws when artifacts are missing and asm is undefined', () => {
@@ -491,10 +489,10 @@ describe('launch-args', () => {
 
   it('resolves debug map paths with asm and outputDir', () => {
     const baseDir = path.join(os.tmpdir(), 'debug80-no-cache-output', 'nested');
-    const listingPath = path.join(baseDir, 'main.lst');
+    const hexPath = path.join(baseDir, 'build', 'main.hex');
     const asmPath = path.join(baseDir, 'src', 'main.asm');
     const args = { outputDir: 'out' } as LaunchRequestArguments;
-    const mapPath = resolveDebugMapPath(args, baseDir, asmPath, listingPath);
+    const mapPath = resolveDebugMapPath(args, baseDir, asmPath, hexPath);
     expect(mapPath).toContain(path.join(baseDir, 'out', 'main.d8.json'));
   });
 

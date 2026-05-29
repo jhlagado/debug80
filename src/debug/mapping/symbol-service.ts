@@ -12,17 +12,10 @@ export interface SymbolIndex {
 
 export function buildSymbolIndex(options: {
   mapping?: MappingParseResult;
-  listingContent?: string;
-  sourceFile?: string;
 }): SymbolIndex {
-  const { mapping, listingContent, sourceFile } = options;
+  const { mapping } = options;
   const hasAnchors = mapping !== undefined && mapping.anchors.length > 0;
-  const hasListing = listingContent !== undefined && listingContent.length > 0;
-  const anchors = hasAnchors
-    ? mapping.anchors
-    : hasListing
-      ? extractAnchorsFromListing(listingContent, sourceFile)
-      : [];
+  const anchors = hasAnchors ? mapping.anchors : [];
   if (anchors.length === 0) {
     return { anchors: [], lookupAnchors: [], list: [] };
   }
@@ -40,54 +33,6 @@ export function buildSymbolIndex(options: {
     lookupAnchors: lookupAnchors.length > 0 ? lookupAnchors : sorted,
     list,
   };
-}
-
-function extractAnchorsFromListing(
-  listingContent: string,
-  defaultFile: string | undefined
-): SourceMapAnchor[] {
-  const anchors: SourceMapAnchor[] = [];
-  const lines = listingContent.split(/\r?\n/);
-  const fallbackFile =
-    typeof defaultFile === 'string' && defaultFile.length > 0 ? defaultFile : 'unknown.asm';
-  const anchorLine =
-    /^\s*([A-Za-z_.$][\w.$]*):\s+([0-9A-Fa-f]{4})\s+DEFINED AT LINE\s+(\d+)(?:\s+IN\s+(.+))?$/;
-  for (const line of lines) {
-    if (!line.includes('DEFINED AT LINE') || line.includes('USED AT LINE')) {
-      continue;
-    }
-    const match = anchorLine.exec(line);
-    if (!match) {
-      continue;
-    }
-    const symbol = match[1];
-    const addressStr = match[2];
-    const lineStr = match[3];
-    const fileRaw = match[4] ?? '';
-    if (
-      symbol === undefined ||
-      addressStr === undefined ||
-      lineStr === undefined ||
-      symbol.length === 0 ||
-      addressStr.length === 0 ||
-      lineStr.length === 0
-    ) {
-      continue;
-    }
-    const address = Number.parseInt(addressStr, 16);
-    const lineNumber = Number.parseInt(lineStr, 10);
-    if (!Number.isFinite(lineNumber)) {
-      continue;
-    }
-    const file = fileRaw.trim().length > 0 ? fileRaw.trim() : fallbackFile;
-    anchors.push({
-      symbol,
-      address,
-      file,
-      line: lineNumber,
-    });
-  }
-  return anchors;
 }
 
 export function findNearestSymbol(

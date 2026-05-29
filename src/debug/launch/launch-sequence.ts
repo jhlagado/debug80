@@ -199,7 +199,7 @@ export async function buildLaunchSession(
 
   const baseDir = resolveBaseDir(merged);
   context.sessionState.baseDir = baseDir;
-  const { hexPath, listingPath, asmPath } = resolveArtifacts(merged, baseDir);
+  const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 
   await assembleIfRequested({
@@ -207,7 +207,6 @@ export async function buildLaunchSession(
     args: merged,
     asmPath,
     hexPath,
-    listingPath,
     sourceRoot: baseDir,
     platform,
     ...(simpleConfig !== undefined ? { simpleConfig } : {}),
@@ -234,8 +233,7 @@ export async function buildLaunchSession(
     platform,
     baseDir,
     asmPath,
-    listingPath,
-    '',
+    hexPath,
     context.sourceState,
     context.sessionState,
     context.logger

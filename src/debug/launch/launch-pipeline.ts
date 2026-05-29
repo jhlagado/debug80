@@ -13,7 +13,6 @@ export async function assembleIfRequested(options: {
   args: LaunchRequestArguments;
   asmPath: string | undefined;
   hexPath: string;
-  listingPath: string;
   sourceRoot?: string;
   platform: string;
   simpleConfig?: SimplePlatformConfigNormalized;
@@ -24,7 +23,6 @@ export async function assembleIfRequested(options: {
     args,
     asmPath,
     hexPath,
-    listingPath,
     sourceRoot,
     platform,
     simpleConfig,
@@ -37,7 +35,6 @@ export async function assembleIfRequested(options: {
   const result = await backend.assemble({
     asmPath,
     hexPath,
-    listingPath,
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     ...(args.azm !== undefined ? { azm: args.azm } : {}),
     onOutput: (message) => {

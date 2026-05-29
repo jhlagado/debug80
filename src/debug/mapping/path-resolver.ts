@@ -24,8 +24,6 @@ import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 export interface ResolvedArtifacts {
   /** Path to the Intel HEX file */
   hexPath: string;
-  /** Path to the listing file */
-  listingPath: string;
   /** Path to the assembly source file (if known) */
   asmPath?: string;
 }
@@ -123,7 +121,7 @@ export function resolveAsmPath(asm: string | undefined, baseDir: string): string
 }
 
 /**
- * Resolves HEX and listing file paths from launch arguments.
+ * Resolves build artifact paths from launch arguments.
  *
  * @param args - Launch request arguments
  * @param baseDir - Base directory
@@ -153,29 +151,11 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
   }
 
   const hexAbs = resolveRelative(hexPath, baseDir);
-  const listingAbs = resolveListingArtifactPath(args, baseDir, asmPath, hexAbs);
-
-  const result: ResolvedArtifacts = { hexPath: hexAbs, listingPath: listingAbs };
+  const result: ResolvedArtifacts = { hexPath: hexAbs };
   if (asmPath !== undefined) {
     result.asmPath = asmPath;
   }
   return result;
-}
-
-function resolveListingArtifactPath(
-  args: LaunchRequestArguments,
-  baseDir: string,
-  asmPath: string | undefined,
-  hexPath: string
-): string {
-  const artifactBase =
-    args.artifactBase ??
-    (asmPath !== undefined
-      ? path.basename(asmPath, path.extname(asmPath))
-      : path.basename(hexPath, path.extname(hexPath)));
-  const outDirRaw = args.outputDir ?? path.dirname(hexPath);
-  const outDir = resolveRelative(outDirRaw, baseDir);
-  return path.join(outDir, `${artifactBase}.lst`);
 }
 
 /**
@@ -196,22 +176,22 @@ export function resolveSourceRoots(args: LaunchRequestArguments, baseDir: string
  * @param args - Launch request arguments
  * @param baseDir - Base directory
  * @param asmPath - Assembly source path (optional)
- * @param listingPath - Listing file path
+ * @param hexPath - HEX artifact path
  * @returns Path to the debug map file
  */
 export function resolveDebugMapPath(
   args: LaunchRequestArguments,
   baseDir: string,
   asmPath: string | undefined,
-  listingPath: string
+  hexPath: string
 ): string {
   const artifactBase =
     args.artifactBase ??
     (asmPath === undefined
-      ? path.basename(listingPath, '.lst')
+      ? path.basename(hexPath, path.extname(hexPath))
       : path.basename(asmPath, path.extname(asmPath)));
 
-  const outDirRaw = args.outputDir ?? path.dirname(listingPath);
+  const outDirRaw = args.outputDir ?? path.dirname(hexPath);
   const outDir = resolveRelative(outDirRaw, baseDir);
   return path.join(outDir, `${artifactBase}${D8_DEBUG_MAP_EXT}`);
 }
@@ -239,52 +219,9 @@ export function relativeIfPossible(filePath: string, baseDir: string): string {
 }
 
 /**
- * Checks if a debug map file is older than its source listing.
- *
- * @param mapPath - Path to the debug map file
- * @param listingPath - Path to the listing file
- * @returns True if the map is stale
- */
-export function isDebugMapStale(mapPath: string, listingPath: string): boolean {
-  if (!fs.existsSync(mapPath) || !fs.existsSync(listingPath)) {
-    return false;
-  }
-
-  try {
-    const mapStat = fs.statSync(mapPath);
-    const listingStat = fs.statSync(listingPath);
-    return listingStat.mtimeMs > mapStat.mtimeMs;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Resolves the source file path for a listing file.
- *
- * @param listingPath - Path to the listing file
- * @returns Path to the source file, or undefined
- */
-export function resolveListingSourcePath(listingPath: string): string | undefined {
-  const dir = path.dirname(listingPath);
-  const base = path.basename(listingPath, path.extname(listingPath));
-  const candidates = [`${base}.asm`, `${base}.z80`];
-
-  for (const candidate of candidates) {
-    const candidatePath = path.join(dir, candidate);
-    if (fs.existsSync(candidatePath)) {
-      return candidatePath;
-    }
-  }
-
-  return undefined;
-}
-
-/**
  * Resolves a mapped file path using source roots.
  *
  * @param file - File path from source map
- * @param listingPath - Path to the listing file
  * @param sourceRoots - Array of source root directories
  * @returns Resolved absolute path, or undefined
  */
@@ -302,7 +239,7 @@ function stripFileScheme(mappedFile: string): string {
 
 export function resolveMappedPath(
   file: string,
-  listingPath: string | undefined,
+  artifactPath: string | undefined,
   sourceRoots: string[]
 ): string | undefined {
   const raw = stripFileScheme(file);
@@ -315,8 +252,8 @@ export function resolveMappedPath(
   }
 
   const roots: string[] = [...sourceRoots];
-  if (listingPath !== undefined) {
-    roots.push(path.dirname(listingPath));
+  if (artifactPath !== undefined) {
+    roots.push(path.dirname(artifactPath));
   }
 
   for (const root of roots) {

@@ -12,9 +12,6 @@ import { buildD8DebugMap } from '../../src/mapping/d8-map';
 import * as mappingService from '../../src/debug/mapping/mapping-service';
 import { SourceManager } from '../../src/debug/mapping/source-manager';
 
-const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures');
-const listingContent = fs.readFileSync(path.join(fixturesDir, 'simple.lst'), 'utf-8');
-
 const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
@@ -34,10 +31,10 @@ const createLogger = (logs: string[]): Logger => ({
 describe('source-manager', () => {
   it('builds mapping state from the native debug map', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const sourcePath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, `${path.basename(listingPath)}.d8.json`);
-    writeFile(listingPath, listingContent);
+    const mapPath = path.join(dir, 'simple.d8.json');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(sourcePath, 'START:\n  NOP\n');
     writeFile(
       mapPath,
@@ -70,14 +67,12 @@ describe('source-manager', () => {
         return fs.existsSync(candidate) ? candidate : undefined;
       },
       relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
-      resolveDebugMapPath: (_args, _baseDir, _asm, listing) =>
-        path.join(dir, `${path.basename(listing)}.d8.json`),
+      resolveDebugMapPath: () => mapPath,
       logger: createLogger(logs),
     });
 
     const state = manager.buildState({
-      listingContent,
-      listingPath,
+      hexPath,
       sourceRoots: ['src'],
       mapArgs: {},
     });
@@ -90,13 +85,13 @@ describe('source-manager', () => {
 
   it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. AZM entry only)', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-azm-'));
-    const listingPath = path.join(dir, 'out.lst');
+    const hexPath = path.join(dir, 'out.hex');
     const asmPath = 'src/matrix.asm';
-    writeFile(listingPath, listingContent);
+    writeFile(hexPath, ':00000001FF\n');
     const zaxPath = path.join(dir, 'src', 'matrix.asm');
     writeFile(zaxPath, 'nop\n');
 
-    const buildMappingSpy = vi.spyOn(mappingService, 'buildMappingFromListing');
+    const buildMappingSpy = vi.spyOn(mappingService, 'buildMappingFromDebugMap');
 
     const logs: string[] = [];
     const manager = new SourceManager({
@@ -108,14 +103,13 @@ describe('source-manager', () => {
         return fs.existsSync(candidate) ? candidate : undefined;
       },
       relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
-      resolveDebugMapPath: (_a, _b, _c, listing) =>
-        path.join(path.dirname(listing), `${path.basename(listing, '.lst')}.d8.json`),
+      resolveDebugMapPath: (_a, _b, _c, hex) =>
+        path.join(path.dirname(hex), `${path.basename(hex, '.hex')}.d8.json`),
       logger: createLogger(logs),
     });
 
     manager.buildState({
-      listingContent,
-      listingPath,
+      hexPath,
       asmPath,
       sourceRoots: [],
       mapArgs: {},

@@ -112,7 +112,7 @@ export async function handleWarmRebuildRequest(
 
   try {
     const baseDir = deps.sessionState.baseDir || resolveBaseDir(launchArgs);
-    const { asmPath, hexPath, listingPath } = resolveArtifacts(launchArgs, baseDir);
+    const { asmPath, hexPath } = resolveArtifacts(launchArgs, baseDir);
     const backend = resolveAssemblerBackend(launchArgs.assembler, asmPath);
 
     await assembleIfRequested({
@@ -120,7 +120,6 @@ export async function handleWarmRebuildRequest(
       args: launchArgs,
       asmPath,
       hexPath,
-      listingPath,
       sourceRoot: baseDir,
       platform: deps.platformState.active,
       sendEvent: (event) => deps.sendEvent(event as DebugProtocol.Event),
@@ -166,16 +165,15 @@ export async function handleWarmRebuildRequest(
           resolveRelative: (p, dir) => resolveRelative(p, dir),
           resolveMappedPath: resolveSessionMappedPath,
           relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveDebugMapPath: (args, dir, asm, listing) =>
-            resolveDebugMapPath(args as never, dir, asm, listing),
+          resolveDebugMapPath: (args, dir, asm, hex) =>
+            resolveDebugMapPath(args as never, dir, asm, hex),
           logger: deps.logger,
         })
       );
     }
 
     const builtSourceState = deps.sourceState.build({
-      listingContent: '',
-      listingPath,
+      hexPath,
       ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
       ...(launchArgs.sourceFile !== undefined && launchArgs.sourceFile.length > 0
         ? { sourceFile: launchArgs.sourceFile }
@@ -193,7 +191,6 @@ export async function handleWarmRebuildRequest(
 
     const symbolIndex = buildSymbolIndex({
       mapping: builtSourceState.mapping,
-      sourceFile: deps.sourceState.file,
     });
 
     applyWriteRanges(runtime.hardware.memory, deps.sessionState.loadedProgram, program);
@@ -222,7 +219,7 @@ export async function handleWarmRebuildRequest(
       runtime.reset(program, deps.sessionState.loadedEntry);
     }
 
-    const successSummary = `${path.basename(asmPath ?? listingPath)} rebuilt and restarted`;
+    const successSummary = `${path.basename(asmPath ?? hexPath)} rebuilt and restarted`;
     sendWarmRebuildResult(
       response,
       deps,

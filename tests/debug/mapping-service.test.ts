@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { buildMappingFromListing, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
+import { buildMappingFromDebugMap, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 import { resolveLocation } from '../../src/mapping/source-map';
 import type { Logger } from '../../src/util/logger';
@@ -90,18 +90,17 @@ describe('mapping-service', () => {
 
   it('loads a native D8 map when available', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
     const logs: string[] = [];
 
-    writeFile(listingPath, 'ignored listing content\n');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(asmPath, 'START:\n  NOP\n');
     writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
 
-    const result = buildMappingFromListing({
-      listingContent: 'ignored listing content\n',
-      listingPath,
+    const result = buildMappingFromDebugMap({
+      hexPath,
       asmPath,
       sourceFile: asmPath,
       mapArgs: {},
@@ -114,19 +113,18 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('Using native D8 map from "azm"'))).toBe(true);
   });
 
-  it('does not derive a source map from listing content when native D8 is missing', () => {
+  it('does not derive a source map when native D8 is missing', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
     const logs: string[] = [];
 
-    writeFile(listingPath, '2000 00 NOP\n');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(asmPath, 'START:\n  NOP\n');
 
-    const result = buildMappingFromListing({
-      listingContent: '2000 00 NOP\n',
-      listingPath,
+    const result = buildMappingFromDebugMap({
+      hexPath,
       asmPath,
       sourceFile: asmPath,
       mapArgs: {},
@@ -141,7 +139,7 @@ describe('mapping-service', () => {
 
   it('ignores legacy Debug80-generated D8 maps instead of using listing fallback', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
     const logs: string[] = [];
@@ -166,13 +164,12 @@ describe('mapping-service', () => {
       }
     );
 
-    writeFile(listingPath, '2000 00 NOP\n');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(asmPath, 'START:\n  NOP\n');
     writeFile(mapPath, JSON.stringify(legacyMap, null, 2));
 
-    const result = buildMappingFromListing({
-      listingContent: '2000 00 NOP\n',
-      listingPath,
+    const result = buildMappingFromDebugMap({
+      hexPath,
       asmPath,
       sourceFile: asmPath,
       mapArgs: {},
@@ -185,26 +182,25 @@ describe('mapping-service', () => {
     );
   });
 
-  it('prefers a stale native debug map without regenerating it', () => {
+  it('prefers an existing native debug map without regenerating it', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
     const logs: string[] = [];
     const originalContent = JSON.stringify(nativeMapFor(asmPath, 42), null, 2);
 
-    writeFile(listingPath, '2000 00 NOP\n');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(asmPath, 'START:\n  NOP\n');
     writeFile(mapPath, originalContent);
 
     const past = new Date(Date.now() - 2000);
     fs.utimesSync(mapPath, past, past);
     const now = new Date();
-    fs.utimesSync(listingPath, now, now);
+    fs.utimesSync(hexPath, now, now);
 
-    const result = buildMappingFromListing({
-      listingContent: '2000 00 NOP\n',
-      listingPath,
+    const result = buildMappingFromDebugMap({
+      hexPath,
       asmPath,
       sourceFile: asmPath,
       mapArgs: {},
@@ -219,7 +215,7 @@ describe('mapping-service', () => {
 
   it('uses lstLine as a fallback source line when loading native D8 segments', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
-    const listingPath = path.join(dir, 'simple.lst');
+    const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
     const nativeMap = {
@@ -236,13 +232,12 @@ describe('mapping-service', () => {
       },
     };
 
-    writeFile(listingPath, 'ignored listing content\n');
+    writeFile(hexPath, ':00000001FF\n');
     writeFile(asmPath, 'START:\n  NOP\n');
     writeFile(mapPath, JSON.stringify(nativeMap, null, 2));
 
-    const result = buildMappingFromListing({
-      listingContent: 'ignored listing content\n',
-      listingPath,
+    const result = buildMappingFromDebugMap({
+      hexPath,
       asmPath,
       sourceFile: asmPath,
       mapArgs: {},

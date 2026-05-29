@@ -30,13 +30,13 @@ describe('launch-source-state', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-source-'));
     const projectRoot = path.join(tmpDir, 'project');
     const sourcePath = path.join(projectRoot, 'src', 'pacmo', 'pacmo.z80');
-    const listingPath = path.join(projectRoot, 'build', 'pacmo.lst');
+    const hexPath = path.join(projectRoot, 'build', 'pacmo.hex');
     const d8Path = path.join(projectRoot, 'build', 'pacmo.d8.json');
 
     fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
     fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
-    fs.writeFileSync(listingPath, 'LIST\n');
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(hexPath, ':00000001FF\n');
     fs.writeFileSync(
       d8Path,
       `${JSON.stringify(
@@ -66,8 +66,7 @@ describe('launch-source-state', () => {
       'tec1g',
       projectRoot,
       sourcePath,
-      listingPath,
-      'LIST\n',
+      hexPath,
       sourceState,
       sessionState,
       new NullLogger()
@@ -80,15 +79,15 @@ describe('launch-source-state', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-rom-source-'));
     const projectRoot = path.join(tmpDir, 'project');
     const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const listingPath = path.join(projectRoot, 'build', 'main.lst');
+    const hexPath = path.join(projectRoot, 'build', 'main.hex');
     const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
     const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     const mon3SourcePath = path.join(bundleRoot, 'mon3.z80');
 
     fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
     fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
-    fs.writeFileSync(listingPath, 'LIST\n');
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(hexPath, ':00000001FF\n');
     fs.writeFileSync(
       d8Path,
       `${JSON.stringify(
@@ -120,8 +119,7 @@ describe('launch-source-state', () => {
       'tec1g',
       projectRoot,
       sourcePath,
-      listingPath,
-      'LIST\n',
+      hexPath,
       sourceState,
       sessionState,
       new NullLogger()
@@ -134,13 +132,13 @@ describe('launch-source-state', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-symbols-'));
     const projectRoot = path.join(tmpDir, 'project');
     const sourcePath = path.join(projectRoot, 'src', 'pacmo.z80');
-    const listingPath = path.join(projectRoot, 'build', 'pacmo.lst');
+    const hexPath = path.join(projectRoot, 'build', 'pacmo.hex');
     const buildMapPath = path.join(projectRoot, 'build', 'pacmo.d8.json');
 
     fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
     fs.writeFileSync(sourcePath, 'START:\n  NOP\nWIDTH .equ 32\n');
-    fs.writeFileSync(listingPath, 'LIST\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
     fs.writeFileSync(
       buildMapPath,
       JSON.stringify({
@@ -168,8 +166,7 @@ describe('launch-source-state', () => {
       'tec1g',
       projectRoot,
       sourcePath,
-      listingPath,
-      'LIST\n',
+      hexPath,
       sourceState,
       sessionState,
       new NullLogger()

@@ -13,7 +13,6 @@ const azmSourceExtensions = new Set(['.asm', '.inc', '.z80']);
 export interface AssembleOptions {
   asmPath: string;
   hexPath: string;
-  listingPath?: string;
   sourceRoot?: string;
   azm?: AzmLaunchOptions;
   onOutput?: (message: string) => void;

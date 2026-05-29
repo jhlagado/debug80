@@ -115,7 +115,6 @@ describe('azm-backend', () => {
     const asmPath = path.join(tmpDir, 'prog.asm');
     const outDir = path.join(tmpDir, 'build');
     const hexPath = path.join(outDir, 'prog.hex');
-    const listingPath = path.join(outDir, 'prog.lst');
 
     fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
     compile.mockResolvedValue({
@@ -130,7 +129,6 @@ describe('azm-backend', () => {
     const result = await backend.assemble({
       asmPath,
       hexPath,
-      listingPath,
       azm: {
         registerCare: 'audit',
         emitRegisterReport: true,
@@ -184,7 +182,6 @@ describe('azm-backend', () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
     const output: string[] = [];
 
     fs.writeFileSync(asmPath, 'BADOP\n');
@@ -205,7 +202,6 @@ describe('azm-backend', () => {
     const result = await backend.assemble({
       asmPath,
       hexPath,
-      listingPath,
       onOutput: (message) => output.push(message),
     });
 
@@ -224,7 +220,6 @@ describe('azm-backend', () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
     const output: string[] = [];
 
     fs.writeFileSync(asmPath, 'BADOP\n');
@@ -247,7 +242,6 @@ describe('azm-backend', () => {
     const result = await backend.assemble({
       asmPath,
       hexPath,
-      listingPath,
       onOutput: (message) => output.push(message),
     });
 
@@ -265,7 +259,6 @@ describe('azm-backend', () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
-    const listingPath = path.join(tmpDir, 'prog.lst');
 
     fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
@@ -273,7 +266,7 @@ describe('azm-backend', () => {
       artifacts: [{ kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } }],
     });
 
-    const result = await backend.assemble({ asmPath, hexPath, listingPath });
+    const result = await backend.assemble({ asmPath, hexPath });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('did not produce HEX output');

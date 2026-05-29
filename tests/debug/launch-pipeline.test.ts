@@ -37,7 +37,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         platform: 'simple',
         sendEvent: () => undefined,
       })
@@ -56,7 +55,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         platform: 'simple',
         sendEvent: () => undefined,
       })
@@ -71,7 +69,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         sourceRoot: '/project',
         platform: 'simple',
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
@@ -99,7 +96,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         platform: 'simple',
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
@@ -120,7 +116,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         platform: 'simple',
         simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
         sendEvent: () => undefined,
@@ -138,7 +133,6 @@ describe('launch-pipeline', () => {
         args,
         asmPath: 'a.asm',
         hexPath: 'a.hex',
-        listingPath: 'a.lst',
         platform: 'simple',
         sendEvent: () => undefined,
       })

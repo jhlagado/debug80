@@ -3,7 +3,6 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/parser';
 import {
   propagateMisassignedIncludeSegments,
@@ -23,7 +22,6 @@ import {
   parseD8DebugMap,
 } from '../../mapping/d8-map';
 import { validateD8Segments } from '../../mapping/d8-validate';
-import { D8_DEBUG_MAP_EXT } from './d8-map-paths';
 import { Logger } from '../../util/logger';
 
 export interface MappingServiceOptions {
@@ -38,7 +36,7 @@ export interface MappingServiceOptions {
     },
     baseDir: string,
     asmPath: string | undefined,
-    listingPath: string
+    hexPath: string
   ) => string;
   logger: Logger;
 }
@@ -47,17 +45,6 @@ export interface MappingBuildResult {
   mapping: MappingParseResult;
   index: SourceMapIndex;
   missingSources: string[];
-}
-
-function collectDebugMapCandidates(mapPath: string, listingPath: string): string[] {
-  const sidecar = path.join(
-    path.dirname(listingPath),
-    `${path.basename(listingPath, path.extname(listingPath))}${D8_DEBUG_MAP_EXT}`
-  );
-  const ordered = [sidecar, mapPath].filter(
-    (p): p is string => p !== undefined && p.length > 0
-  );
-  return [...new Set(ordered)];
 }
 
 function loadFirstExistingDebugMap(
@@ -74,28 +61,21 @@ function loadFirstExistingDebugMap(
 }
 
 /**
- * Loads native D8 maps for a primary target and any extra ROM/platform maps.
- *
- * The historical name remains during the D8-only migration, but this no longer
- * derives source maps from listing content. Missing or invalid D8 maps produce an
- * empty mapping with a build-required warning.
+ * Loads the native D8 map for the current target.
  */
-export function buildMappingFromListing(options: {
-  listingContent: string;
-  listingPath: string;
+export function buildMappingFromDebugMap(options: {
+  hexPath: string;
   asmPath?: string;
   sourceFile?: string;
   mapArgs: { artifactBase?: string; outputDir?: string };
   service: MappingServiceOptions;
 }): MappingBuildResult {
-  const { listingContent, listingPath, asmPath, sourceFile, mapArgs, service } = options;
-  void listingContent;
+  const { hexPath, asmPath, sourceFile, mapArgs, service } = options;
   void sourceFile;
 
-  const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, listingPath);
-  const debugMapCandidates = collectDebugMapCandidates(mapPath, listingPath);
+  const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, hexPath);
   const { map: loadedMap, pathUsed: debugMapLoadedFrom } = loadFirstExistingDebugMap(
-    debugMapCandidates,
+    [mapPath],
     service
   );
   const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
@@ -119,7 +99,8 @@ export function buildMappingFromListing(options: {
     );
   }
 
-  const mapping = hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
+  const mapping =
+    hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
 
   const fileSet = new Set<string | null>();
   for (const seg of mapping.segments) {
@@ -134,7 +115,7 @@ export function buildMappingFromListing(options: {
     applyTec1gBootstrapAlias(mapping);
   }
 
-  // Native `.d8.json` maps skip the listing→Layer2 path; some assemblers still attribute many
+  // Some assemblers still attribute many
   // labels to an include parent (e.g. packages.z80 vs glcd_library.z80). Remap, propagate
   // segment files across the whole included routine, then sync anchor lines onto segment starts.
   const includeAnchorRemaps = remapMisassignedIncludeAnchors(mapping.anchors, (file) =>

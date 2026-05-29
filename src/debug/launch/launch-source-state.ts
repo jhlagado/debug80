@@ -20,7 +20,6 @@ import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceMapDebugSymbol } from '../session/session-state';
-import { D8_DEBUG_MAP_EXT } from '../mapping/d8-map-paths';
 import { parseD8DebugMap } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
@@ -37,8 +36,7 @@ export function buildLaunchSourceState(
   platform: PlatformKind,
   baseDir: string,
   asmPath: string | undefined,
-  listingPath: string,
-  listingContent: string,
+  hexPath: string,
   sourceState: SourceStateManager,
   sessionState: SessionStateShape,
   logger: Logger
@@ -71,15 +69,14 @@ export function buildLaunchSourceState(
       resolveRelative: (value, dir) => resolveRelative(value, dir),
       resolveMappedPath: resolveSessionMappedPath,
       relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-      resolveDebugMapPath: (launchArgs, dir, asm, listing) =>
-        resolveDebugMapPath(launchArgs as LaunchRequestArguments, dir, asm, listing),
+      resolveDebugMapPath: (launchArgs, dir, asm, hex) =>
+        resolveDebugMapPath(launchArgs as LaunchRequestArguments, dir, asm, hex),
       logger,
     })
   );
 
   const builtSourceState = sourceState.build({
-    listingContent,
-    listingPath,
+    hexPath,
     ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
     ...(args.sourceFile !== undefined && args.sourceFile.length > 0
       ? { sourceFile: args.sourceFile }
@@ -97,12 +94,11 @@ export function buildLaunchSourceState(
 
   const symbolIndex = buildSymbolIndex({
     mapping: builtSourceState.mapping,
-    sourceFile: sourceState.file,
   });
   sourceState.lookupAnchors = symbolIndex.lookupAnchors;
   const sourceMapSymbols = readSourceMapSymbols({
     baseDir,
-    listingPath,
+    hexPath,
     asmPath,
     mapArgs: {
       ...(args.artifactBase !== undefined && args.artifactBase.length > 0
@@ -112,8 +108,7 @@ export function buildLaunchSourceState(
         ? { outputDir: args.outputDir }
         : {}),
     },
-    resolveDebugMapPath: (mapArgs, dir, asm, listing) =>
-      resolveDebugMapPath(mapArgs, dir, asm, listing),
+    resolveDebugMapPath: (mapArgs, dir, asm, hex) => resolveDebugMapPath(mapArgs, dir, asm, hex),
     logger,
   });
 
@@ -137,14 +132,14 @@ export function buildLaunchSourceState(
 
 function readSourceMapSymbols(options: {
   baseDir: string;
-  listingPath: string;
+  hexPath: string;
   asmPath: string | undefined;
   mapArgs: { artifactBase?: string; outputDir?: string };
   resolveDebugMapPath: (
     args: { artifactBase?: string; outputDir?: string },
     baseDir: string,
     asmPath: string | undefined,
-    listingPath: string
+    hexPath: string
   ) => string;
   logger: Logger;
 }): SourceMapDebugSymbol[] {
@@ -153,9 +148,8 @@ function readSourceMapSymbols(options: {
       options.mapArgs,
       options.baseDir,
       options.asmPath,
-      options.listingPath
+      options.hexPath
     ),
-    listingPath: options.listingPath,
   });
   if (mapPath === undefined) {
     return [];
@@ -191,20 +185,8 @@ function readSourceMapSymbols(options: {
   }
 }
 
-function resolvePreferredSymbolMapPath(options: {
-  mapPath: string;
-  listingPath: string;
-}): string | undefined {
-  const sidecar = path.join(
-    path.dirname(options.listingPath),
-    `${path.basename(options.listingPath, path.extname(options.listingPath))}${D8_DEBUG_MAP_EXT}`
-  );
-  for (const candidate of [sidecar, options.mapPath]) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
+function resolvePreferredSymbolMapPath(options: { mapPath: string }): string | undefined {
+  return fs.existsSync(options.mapPath) ? options.mapPath : undefined;
 }
 
 function pushUniquePath(paths: string[], candidate: string): void {

@@ -35,20 +35,6 @@ describe('symbol-service', () => {
     ]);
   });
 
-  it('parses anchors from listing content with fallback file', () => {
-    const listing = [
-      'LABEL: 1234 DEFINED AT LINE 5 IN file.asm',
-      'OTHER: 5678 DEFINED AT LINE 10',
-    ].join('\n');
-
-    const index = buildSymbolIndex({ listingContent: listing, sourceFile: 'fallback.asm' });
-
-    expect(index.anchors).toEqual([
-      { symbol: 'LABEL', address: 0x1234, file: 'file.asm', line: 5 },
-      { symbol: 'OTHER', address: 0x5678, file: 'fallback.asm', line: 10 },
-    ]);
-  });
-
   it('finds the nearest symbol at or before the target address', () => {
     const mapping: MappingParseResult = {
       segments: [makeSegment(0x1000, 0x1004)],

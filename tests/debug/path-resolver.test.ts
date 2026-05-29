@@ -7,14 +7,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  isDebugMapStale,
   normalizeSourcePath,
   relativeIfPossible,
   resolveArtifacts,
   resolveBaseDir,
   resolveDebugMapPath,
   resolveFallbackSourceFile,
-  resolveListingSourcePath,
   resolveMappedPath,
 } from '../../src/debug/mapping/path-resolver';
 import { canonicalizeDebuggerSourcePath } from '../../src/debug/mapping/path-utils';
@@ -71,63 +69,40 @@ describe('path-resolver', () => {
 
     const resolved = resolveArtifacts(args, tmpDir);
     expect(resolved.hexPath).toBe(path.join(tmpDir, 'demo.hex'));
-    expect(resolved.listingPath).toBe(path.join(tmpDir, 'demo.lst'));
     expect(resolved.asmPath).toBe(asmPath);
   });
 
   it('resolves debug map beside the build artifact without creating a project cache', () => {
     const baseDir = path.join(tmpDir, 'project');
     fs.mkdirSync(baseDir, { recursive: true });
-    const listingPath = path.join(baseDir, 'demo.lst');
-    fs.writeFileSync(listingPath, 'LIST\n');
+    const hexPath = path.join(baseDir, 'demo.hex');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
 
     const args = { artifactBase: 'demo' } as LaunchRequestArguments;
-    const mapPath = resolveDebugMapPath(args, baseDir, undefined, listingPath);
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
     expect(mapPath).toBe(path.join(baseDir, 'demo.d8.json'));
     expect(fs.existsSync(path.join(baseDir, '.debug80'))).toBe(false);
   });
 
-  it('does not resolve listing source path from .source.asm', () => {
-    const dir = path.join(tmpDir, 'build');
-    fs.mkdirSync(dir, { recursive: true });
-    const listing = path.join(dir, 'demo.lst');
-    const source = path.join(dir, 'demo.source.asm');
-    fs.writeFileSync(listing, 'LIST');
-    fs.writeFileSync(source, 'NOP');
-
-    expect(resolveListingSourcePath(listing)).toBeUndefined();
-  });
-
-  it('resolves listing source path from .z80 when present', () => {
-    const dir = path.join(tmpDir, 'build');
-    fs.mkdirSync(dir, { recursive: true });
-    const listing = path.join(dir, 'mon3.lst');
-    const source = path.join(dir, 'mon3.z80');
-    fs.writeFileSync(listing, 'LIST');
-    fs.writeFileSync(source, 'NOP');
-
-    expect(resolveListingSourcePath(listing)).toBe(source);
-  });
-
-  it('resolves mapped path using listing directory and source roots', () => {
-    const listingPath = path.join(tmpDir, 'build', 'demo.lst');
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
-    fs.writeFileSync(listingPath, 'LIST');
+  it('resolves mapped path using artifact directory and source roots', () => {
+    const hexPath = path.join(tmpDir, 'build', 'demo.hex');
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(hexPath, ':00000001FF\n');
 
     const sourceRoot = path.join(tmpDir, 'src');
     fs.mkdirSync(sourceRoot, { recursive: true });
     const filePath = path.join(sourceRoot, 'lib.asm');
     fs.writeFileSync(filePath, 'NOP');
 
-    expect(resolveMappedPath('lib.asm', listingPath, [sourceRoot])).toBe(
+    expect(resolveMappedPath('lib.asm', hexPath, [sourceRoot])).toBe(
       canonicalizeDebuggerSourcePath(filePath)
     );
   });
 
-  it('prefers source roots over generated files next to the listing', () => {
-    const listingPath = path.join(tmpDir, 'build', 'pacmo.lst');
-    fs.mkdirSync(path.dirname(listingPath), { recursive: true });
-    fs.writeFileSync(listingPath, 'LIST');
+  it('prefers source roots over generated files next to the build artifact', () => {
+    const hexPath = path.join(tmpDir, 'build', 'pacmo.hex');
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(hexPath, ':00000001FF\n');
     fs.writeFileSync(path.join(tmpDir, 'build', 'pacmo.z80'), '; lowered AZM output\n');
 
     const sourceRoot = path.join(tmpDir, 'src', 'pacmo');
@@ -135,7 +110,7 @@ describe('path-resolver', () => {
     const sourcePath = path.join(sourceRoot, 'pacmo.z80');
     fs.writeFileSync(sourcePath, 'nop\n');
 
-    expect(resolveMappedPath('pacmo.z80', listingPath, [sourceRoot])).toBe(
+    expect(resolveMappedPath('pacmo.z80', hexPath, [sourceRoot])).toBe(
       canonicalizeDebuggerSourcePath(sourcePath)
     );
   });
@@ -148,19 +123,6 @@ describe('path-resolver', () => {
 
     const resolved = resolveFallbackSourceFile(filePath, tmpDir, [root]);
     expect(resolved).toBe(path.join('demo.asm'));
-  });
-
-  it('detects stale debug maps based on timestamps', () => {
-    const listing = path.join(tmpDir, 'demo.lst');
-    const map = path.join(tmpDir, 'demo.d8.json');
-    fs.writeFileSync(listing, 'LIST');
-    fs.writeFileSync(map, 'MAP');
-
-    const now = Date.now();
-    fs.utimesSync(map, now / 1000 - 10, now / 1000 - 10);
-    fs.utimesSync(listing, now / 1000, now / 1000);
-
-    expect(isDebugMapStale(map, listing)).toBe(true);
   });
 
   it('returns relative paths when within base', () => {
