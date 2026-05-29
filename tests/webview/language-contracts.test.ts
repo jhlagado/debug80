@@ -46,6 +46,7 @@ interface PackageJson {
         visibility?: string;
       }>
     >;
+    menus: Record<string, Array<{ command: string; when?: string }>>;
   };
 }
 
@@ -289,6 +290,42 @@ describe('package.json language contracts', () => {
       expect(row!.when).not.toContain('resourceExtname == .a80');
       expect(row!.when).not.toContain('resourceExtname == .s');
       expect(row!.when).not.toContain('resourceExtname == .asmi');
+    }
+  });
+
+  it('hides support-only Debug80 commands from the command palette', () => {
+    const hidden = new Set(
+      (contributes.menus.commandPalette ?? [])
+        .filter((entry) => entry.when === 'false')
+        .map((entry) => entry.command)
+    );
+
+    for (const command of [
+      'debug80.terminalInput',
+      'debug80.openTerminal',
+      'debug80.openTec1',
+      'debug80.openTec1Memory',
+      'debug80.runToSelectedStackFrame',
+      'debug80.setEntrySource',
+      'debug80.openProjectConfigPanel',
+      'debug80.materializeBundledRom',
+    ]) {
+      expect(hidden.has(command)).toBe(true);
+    }
+
+    for (const command of [
+      'debug80.createProject',
+      'debug80.startDebug',
+      'debug80.restartDebug',
+      'debug80.selectWorkspaceFolder',
+      'debug80.selectTarget',
+      'debug80.configureProject',
+      'debug80.openSourceFile',
+      'debug80.openRomSource',
+      'debug80.openDebug80View',
+      'debug80.sendHexViaCoolTerm',
+    ]) {
+      expect(hidden.has(command)).toBe(false);
     }
   });
 

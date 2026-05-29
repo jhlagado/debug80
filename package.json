@@ -321,7 +321,7 @@
       },
       {
         "command": "debug80.restartDebug",
-        "title": "Debug80: Restart Debugging (Current Target)"
+        "title": "Debug80: Build and Restart Current Target"
       },
       {
         "command": "debug80.runToSelectedStackFrame",
@@ -357,6 +357,40 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "debug80.terminalInput",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTerminal",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTec1",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTec1Memory",
+          "when": "false"
+        },
+        {
+          "command": "debug80.runToSelectedStackFrame",
+          "when": "false"
+        },
+        {
+          "command": "debug80.setEntrySource",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openProjectConfigPanel",
+          "when": "false"
+        },
+        {
+          "command": "debug80.materializeBundledRom",
+          "when": "false"
+        }
+      ],
       "explorer/context": [
         {
           "command": "debug80.setEntrySource",
