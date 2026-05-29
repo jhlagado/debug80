@@ -4,15 +4,12 @@
 
 import * as path from 'path';
 import { StackFrame, Source } from '@vscode/debugadapter';
-import { ListingInfo } from '../../z80/loaders';
 import type { SourceMapAnchor } from '../../mapping/parser';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../../mapping/source-map';
 import { findNearestSymbol } from './symbol-service';
 import { canonicalizeDebuggerSourcePath } from './path-utils';
 
 export interface SourceLookupOptions {
-  listing?: ListingInfo;
-  listingPath?: string;
   mappingIndex?: SourceMapIndex;
   sourceFile?: string;
   symbolAnchors?: SourceMapAnchor[];
@@ -111,11 +108,7 @@ export function resolveSourceForAddress(
   address: number,
   options: SourceLookupOptions
 ): { path: string; line: number } {
-  const listingPath = options.listingPath;
-  const listingLine = options.listing?.addressToLine.get(address) ?? 1;
-  const sourcePath = options.sourceFile ?? listingPath ?? '';
-  const fallbackLine = listingPath !== undefined && sourcePath === listingPath ? listingLine : 1;
-  const fallback = finalizeSourcePath({ path: sourcePath, line: fallbackLine });
+  const fallback = finalizeSourcePath({ path: options.sourceFile ?? '', line: 1 });
 
   const resolved = resolveSourceForAddressInternal(address, options);
   if (resolved) {

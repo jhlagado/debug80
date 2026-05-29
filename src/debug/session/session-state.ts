@@ -2,7 +2,7 @@
  * @fileoverview Session state defaults and reset helpers for the debug adapter.
  */
 
-import type { ListingInfo, HexProgram } from '../../z80/loaders';
+import type { HexProgram } from '../../z80/loaders';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
 import type { D8Symbol } from '../../mapping/d8-map';
 import type { SourceMapIndex } from '../../mapping/source-map';
@@ -25,8 +25,6 @@ export type ActivePlatformRuntime = Pick<
 >;
 
 export interface SessionSourceState {
-  listing: ListingInfo | undefined;
-  listingPath: string | undefined;
   mapping: MappingParseResult | undefined;
   mappingIndex: SourceMapIndex | undefined;
   symbolAnchors: SourceMapAnchor[];
@@ -64,8 +62,6 @@ export interface SessionUiState {
  */
 export interface SessionStateShape {
   runtime: Z80Runtime | undefined;
-  listing: ListingInfo | undefined;
-  listingPath: string | undefined;
   mapping: MappingParseResult | undefined;
   mappingIndex: SourceMapIndex | undefined;
   symbolAnchors: SourceMapAnchor[];
@@ -141,8 +137,6 @@ export function createSessionState(): SessionStateShape {
   // below are thin get/set facades over these same slots.
   const flat = {
     runtime: undefined as Z80Runtime | undefined,
-    listing: undefined as ListingInfo | undefined,
-    listingPath: undefined as string | undefined,
     mapping: undefined as MappingParseResult | undefined,
     mappingIndex: undefined as SourceMapIndex | undefined,
     symbolAnchors: [] as SourceMapAnchor[],
@@ -180,18 +174,6 @@ export function createSessionState(): SessionStateShape {
   // These close over `flat` so reads/writes go directly to the same
   // backing slots as the flat fields on the final merged state object.
   const source: SessionSourceState = {
-    get listing() {
-      return flat.listing;
-    },
-    set listing(v) {
-      flat.listing = v;
-    },
-    get listingPath() {
-      return flat.listingPath;
-    },
-    set listingPath(v) {
-      flat.listingPath = v;
-    },
     get mapping() {
       return flat.mapping;
     },
@@ -326,8 +308,6 @@ export function createSessionState(): SessionStateShape {
 export function resetSessionState(target: SessionStateShape): void {
   const next = createSessionState();
   target.runtime = next.runtime;
-  target.listing = next.listing;
-  target.listingPath = next.listingPath;
   target.mapping = next.mapping;
   target.mappingIndex = next.mappingIndex;
   target.symbolAnchors = next.symbolAnchors;

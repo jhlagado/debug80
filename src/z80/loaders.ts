@@ -1,6 +1,5 @@
 /**
- * @fileoverview Loaders for Intel HEX and assembler listing files.
- * Provides parsing utilities for loading Z80 programs and debug information.
+ * @fileoverview Intel HEX loader utilities for Z80 programs.
  */
 
 import { HexParseError } from '../debug/session/errors';
@@ -15,18 +14,6 @@ export interface HexProgram {
   startAddress: number;
   /** Address ranges written by the HEX payload (end exclusive) */
   writeRanges?: Array<{ start: number; end: number }>;
-}
-
-/**
- * Parsed listing file information for debugging.
- */
-export interface ListingInfo {
-  /** Map from listing line number to memory address */
-  lineToAddress: Map<number, number>;
-  /** Map from memory address to listing line number */
-  addressToLine: Map<number, number>;
-  /** Detailed entries with line, address, and byte count */
-  entries: Array<{ line: number; address: number; length: number }>;
 }
 
 /**
@@ -99,62 +86,4 @@ export function parseIntelHex(content: string): HexProgram {
   }
 
   return { memory, startAddress, writeRanges };
-}
-
-/**
- * Parses assembler listing file to build address-to-line mappings.
- *
- * Extracts lines with format: `ADDR BYTES... TEXT`
- * - ADDR: 4-digit hex address
- * - BYTES: Space-separated hex bytes
- * - TEXT: Assembly instruction text
- *
- * Lines without bytes (comments, directives) are skipped.
- *
- * @param content - Listing file content
- * @returns Listing info with bidirectional line/address mappings
- *
- * @example
- * ```typescript
- * const lst = fs.readFileSync('program.lst', 'utf-8');
- * const info = parseListing(lst);
- * const addr = info.lineToAddress.get(10); // Get address at line 10
- * ```
- */
-export function parseListing(content: string): ListingInfo {
-  const lineToAddress = new Map<number, number>();
-  const addressToLine = new Map<number, number>();
-  const entries: Array<{ line: number; address: number; length: number }> = [];
-
-  const lines = content.split(/\r?\n/);
-  const lineRegex = /^([0-9A-Fa-f]{4})\s+/;
-
-  lines.forEach((line, idx) => {
-    const match = lineRegex.exec(line);
-    if (!match) {
-      return;
-    }
-    const addressStr = match[1]!;
-
-    // Require at least one byte on the line; skip pure comments/directives.
-    const remainder = line.slice(match[0].length);
-    const byteTokens = remainder.match(/\b[0-9A-Fa-f]{2}\b/g) ?? [];
-    const byteCount = byteTokens.length;
-    if (byteCount === 0) {
-      return;
-    }
-
-    const address = parseInt(addressStr, 16);
-    const lineNumber = idx + 1;
-    if (!lineToAddress.has(lineNumber)) {
-      lineToAddress.set(lineNumber, address);
-    }
-    // Map every byte of the instruction/data to the current line for precise lookup.
-    for (let i = 0; i < byteCount; i++) {
-      addressToLine.set(address + i, lineNumber);
-    }
-    entries.push({ line: lineNumber, address, length: byteCount });
-  });
-
-  return { lineToAddress, addressToLine, entries };
 }

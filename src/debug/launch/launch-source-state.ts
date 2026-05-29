@@ -43,7 +43,6 @@ export function buildLaunchSourceState(
   sessionState: SessionStateShape,
   logger: Logger
 ): LaunchSourceBuildResult {
-  sessionState.listingPath = listingPath;
   const preSourceRoots: string[] = [];
   for (const root of args.sourceRoots ?? []) {
     pushUniquePath(preSourceRoots, resolveRelative(root, baseDir));
@@ -60,7 +59,7 @@ export function buildLaunchSourceState(
     if (cached !== undefined || mappedPathCache.has(file)) {
       return cached;
     }
-    const resolved = resolveMappedPath(file, sessionState.listingPath, sessionState.sourceRoots);
+    const resolved = resolveMappedPath(file, undefined, sessionState.sourceRoots);
     mappedPathCache.set(file, resolved);
     return resolved;
   };
@@ -98,7 +97,6 @@ export function buildLaunchSourceState(
 
   const symbolIndex = buildSymbolIndex({
     mapping: builtSourceState.mapping,
-    listingContent,
     sourceFile: sourceState.file,
   });
   sourceState.lookupAnchors = symbolIndex.lookupAnchors;

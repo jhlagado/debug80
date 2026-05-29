@@ -137,11 +137,10 @@ export async function handleWarmRebuildRequest(
 
     const tec1Config = launchArgs.tec1;
     const tec1gConfig = launchArgs.tec1g;
-    const { program, listingInfo, listingContent } = loadProgramArtifacts({
+    const { program } = loadProgramArtifacts({
       platform: deps.platformState.active,
       baseDir,
       hexPath,
-      listingPath,
       resolveRelative: (p, dir) => resolveRelative(p, dir),
       resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
       logger: deps.logger,
@@ -156,11 +155,7 @@ export async function handleWarmRebuildRequest(
         if (cached !== undefined || mappedPathCache.has(file)) {
           return cached;
         }
-        const resolved = resolveMappedPath(
-          file,
-          deps.sessionState.listingPath,
-          deps.sessionState.sourceRoots
-        );
+        const resolved = resolveMappedPath(file, undefined, deps.sessionState.sourceRoots);
         mappedPathCache.set(file, resolved);
         return resolved;
       };
@@ -179,7 +174,7 @@ export async function handleWarmRebuildRequest(
     }
 
     const builtSourceState = deps.sourceState.build({
-      listingContent,
+      listingContent: '',
       listingPath,
       ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
       ...(launchArgs.sourceFile !== undefined && launchArgs.sourceFile.length > 0
@@ -198,14 +193,11 @@ export async function handleWarmRebuildRequest(
 
     const symbolIndex = buildSymbolIndex({
       mapping: builtSourceState.mapping,
-      listingContent,
       sourceFile: deps.sourceState.file,
     });
 
     applyWriteRanges(runtime.hardware.memory, deps.sessionState.loadedProgram, program);
     deps.sessionState.loadedProgram = program;
-    deps.sessionState.listing = listingInfo;
-    deps.sessionState.listingPath = listingPath;
     deps.sessionState.mapping = builtSourceState.mapping;
     deps.sessionState.mappingIndex = builtSourceState.mappingIndex;
     deps.sessionState.sourceRoots = builtSourceState.sourceRoots;
@@ -219,11 +211,7 @@ export async function handleWarmRebuildRequest(
 
     emitMainSource((event) => deps.sendEvent(event as DebugProtocol.Event), deps.sourceState.file);
 
-    const applied = deps.breakpointManager.applyAll(
-      deps.sessionState.listing,
-      deps.sessionState.listingPath,
-      deps.sessionState.mappingIndex
-    );
+    const applied = deps.breakpointManager.applyAll(deps.sessionState.mappingIndex);
     for (const bp of applied) {
       deps.sendEvent(new BreakpointEvent('changed', bp));
     }

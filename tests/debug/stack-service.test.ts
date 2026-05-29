@@ -8,7 +8,6 @@ import * as os from 'os';
 import * as path from 'path';
 import { buildSourceMapIndex } from '../../src/mapping/source-map';
 import { MappingParseResult, SourceMapSegment } from '../../src/mapping/parser';
-import { ListingInfo } from '../../src/z80/loaders';
 import { buildStackFrames, resolveSourceForAddress } from '../../src/debug/mapping/stack-service';
 import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
 import { resolveMappedPath } from '../../src/debug/mapping/path-resolver';
@@ -22,12 +21,6 @@ const makeSegment = (start: number, end: number, file: string, line: number): So
   loc: { file, line },
   lst: { line: 1, text: '' },
   confidence: 'HIGH',
-});
-
-const makeListing = (address: number, line: number): ListingInfo => ({
-  lineToAddress: new Map([[line, address]]),
-  addressToLine: new Map([[address, line]]),
-  entries: [{ line, address, length: 1 }],
 });
 
 describe('stack-service', () => {
@@ -140,16 +133,14 @@ describe('stack-service', () => {
     expect(result).toEqual({ path: resolvedPath, line: 7 });
   });
 
-  it('falls back to listing line when no mapping is available', () => {
-    const listingPath = path.resolve(path.join(os.tmpdir(), 'program.lst'));
-    const listing = makeListing(0x1234, 9);
+  it('falls back to the active source file when no mapping is available', () => {
+    const sourcePath = path.resolve(path.join(os.tmpdir(), 'program.z80'));
     const result = resolveSourceForAddress(0x1234, {
-      listing,
-      listingPath,
+      sourceFile: sourcePath,
       resolveMappedPath: () => undefined,
     });
 
-    expect(result).toEqual({ path: listingPath, line: 9 });
+    expect(result).toEqual({ path: sourcePath, line: 1 });
   });
 });
 

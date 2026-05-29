@@ -89,23 +89,15 @@ export class AdapterRequestController {
     }
 
     const verified =
-      this.deps.sessionState.listing !== undefined && normalized !== undefined
+      normalized !== undefined
         ? this.deps.breakpointManager.applyForSource(
-            this.deps.sessionState.listing,
-            this.deps.sessionState.listingPath,
             this.deps.sessionState.mappingIndex,
             normalized,
             breakpoints
           )
         : breakpoints.map((bp) => ({ line: bp.line, verified: false }));
 
-    if (this.deps.sessionState.listing !== undefined) {
-      this.deps.breakpointManager.rebuild(
-        this.deps.sessionState.listing,
-        this.deps.sessionState.listingPath,
-        this.deps.sessionState.mappingIndex
-      );
-    }
+    this.deps.breakpointManager.rebuild(this.deps.sessionState.mappingIndex);
 
     response.body = { breakpoints: verified };
     this.deps.sendResponse(response);
@@ -250,18 +242,8 @@ export class AdapterRequestController {
     }
     const pc = this.deps.sessionState.runtime.getPC();
     const resolveFn = (file: string): string | undefined =>
-      resolveMappedPath(
-        file,
-        this.deps.sessionState.listingPath,
-        this.deps.sessionState.sourceRoots
-      );
+      resolveMappedPath(file, undefined, this.deps.sessionState.sourceRoots);
     const responseBody = buildStackFrames(pc, {
-      ...(this.deps.sessionState.listing !== undefined
-        ? { listing: this.deps.sessionState.listing }
-        : {}),
-      ...(this.deps.sessionState.listingPath !== undefined
-        ? { listingPath: this.deps.sessionState.listingPath }
-        : {}),
       ...(this.deps.sessionState.mappingIndex !== undefined
         ? { mappingIndex: this.deps.sessionState.mappingIndex }
         : {}),
@@ -297,7 +279,6 @@ export class AdapterRequestController {
         `[debug80-diag] PC=0x${pc.toString(16).padStart(4, '0')} ` +
           `mappingIndex=${hasMappingIndex} (${segCount} segs) ` +
           `sourceFile="${this.deps.sourceState.file ?? '(none)'}" ` +
-          `listingPath="${this.deps.sessionState.listingPath ?? '(none)'}" ` +
           `sourceRoots=[${this.deps.sessionState.sourceRoots.join(', ')}]`,
         ...diagLines,
         `  => frame.source="${frame?.source?.path ?? '(none)'}" line=${frame?.line ?? '?'}`,

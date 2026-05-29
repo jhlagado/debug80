@@ -21,7 +21,7 @@ import type { MappingParseResult, SourceMapAnchor } from '../../mapping/parser';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import { formatLogMessage, type Logger } from '../../util/logger';
 import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
-import type { ListingInfo, HexProgram } from '../../z80/loaders';
+import type { HexProgram } from '../../z80/loaders';
 import type { LaunchRequestArguments } from '../session/types';
 import type { TerminalState } from '../session/terminal-types';
 import type {
@@ -128,8 +128,6 @@ export async function respondToMissingArtifacts(
 
 export interface LaunchSessionArtifacts {
   platform: PlatformKind;
-  listing: ListingInfo;
-  listingPath: string;
   mapping: MappingParseResult;
   mappingIndex: SourceMapIndex;
   sourceRoots: string[];
@@ -220,11 +218,10 @@ export async function buildLaunchSession(
     throw new MissingLaunchArtifactsError(hexPath);
   }
 
-  const { program, listingInfo, listingContent } = loadProgramArtifacts({
+  const { program } = loadProgramArtifacts({
     platform,
     baseDir,
     hexPath,
-    listingPath,
     resolveRelative: (p, dir) => resolveRelative(p, dir),
     resolveBundledTec1Rom: () => resolveBundledTec1Rom(),
     logger: context.logger,
@@ -232,14 +229,13 @@ export async function buildLaunchSession(
     ...(tec1gConfig ? { tec1gConfig } : {}),
   });
 
-  context.sessionState.listingPath = listingPath;
   const builtSourceState = buildLaunchSourceState(
     merged,
     platform,
     baseDir,
     asmPath,
     listingPath,
-    listingContent,
+    '',
     context.sourceState,
     context.sessionState,
     context.logger
@@ -297,8 +293,6 @@ export async function buildLaunchSession(
 
   return {
     platform,
-    listing: listingInfo,
-    listingPath,
     mapping: builtSourceState.mapping,
     mappingIndex: builtSourceState.mappingIndex,
     sourceRoots: builtSourceState.sourceRoots,

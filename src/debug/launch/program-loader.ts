@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { ListingInfo, HexProgram, parseIntelHex, parseListing } from '../../z80/loaders';
+import { HexProgram, parseIntelHex } from '../../z80/loaders';
 import { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../../platforms/types';
 import { Z80_ADDRESS_SPACE, TEC1_ROM_LOAD_ADDR } from '../../platforms/tec-common';
 import { Logger } from '../../util/logger';
@@ -16,7 +16,6 @@ export interface ProgramLoaderOptions {
   platform: PlatformKind;
   baseDir: string;
   hexPath: string;
-  listingPath: string;
   resolveRelative: (p: string, baseDir: string) => string;
   resolveBundledTec1Rom: () => string | undefined;
   logger: Logger;
@@ -26,18 +25,16 @@ export interface ProgramLoaderOptions {
 
 export interface ProgramLoadResult {
   program: HexProgram;
-  listingInfo: ListingInfo;
-  listingContent: string;
 }
 
 /**
- * Loads HEX + LST artifacts, applies platform ROM/RAM overlays, and parses listings.
+ * Loads HEX artifacts and applies platform ROM/RAM overlays.
  *
  * @param options - Program load configuration
- * @returns Parsed program + listing info
+ * @returns Parsed program
  */
 export function loadProgramArtifacts(options: ProgramLoaderOptions): ProgramLoadResult {
-  const { hexPath, listingPath, platform } = options;
+  const { hexPath, platform } = options;
   const hexContent = fs.readFileSync(hexPath, 'utf-8');
   const program = parseIntelHex(hexContent);
 
@@ -47,18 +44,7 @@ export function loadProgramArtifacts(options: ProgramLoaderOptions): ProgramLoad
     program.memory = buildTec1gMemory(hexContent, options);
   }
 
-  const listingContent = fs.existsSync(listingPath) ? fs.readFileSync(listingPath, 'utf-8') : '';
-  const listingInfo = listingContent.length > 0 ? parseListing(listingContent) : emptyListingInfo();
-
-  return { program, listingInfo, listingContent };
-}
-
-function emptyListingInfo(): ListingInfo {
-  return {
-    lineToAddress: new Map<number, number>(),
-    addressToLine: new Map<number, number>(),
-    entries: [],
-  };
+  return { program };
 }
 
 function buildTec1Memory(hexContent: string, options: ProgramLoaderOptions): Uint8Array {

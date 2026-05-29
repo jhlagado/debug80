@@ -259,11 +259,7 @@ export class Z80DebugSession extends DebugSession {
       captureEntryCpuStateIfNeeded(this.getRuntimeControlContext());
       applyLaunchBreakpoints(
         this.breakpointManager,
-        {
-          listing: this.sessionState.listing,
-          listingPath: this.sessionState.listingPath,
-          mappingIndex: this.sessionState.mappingIndex,
-        },
+        { mappingIndex: this.sessionState.mappingIndex },
         (event) => {
           this.sendEvent(event);
         }

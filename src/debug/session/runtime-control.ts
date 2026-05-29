@@ -180,8 +180,6 @@ export function applyLaunchSessionArtifacts(
   const ui = target.sessionState.ui;
 
   target.platformState.active = artifacts.platform;
-  source.listing = artifacts.listing;
-  source.listingPath = artifacts.listingPath;
   source.mapping = artifacts.mapping;
   source.mappingIndex = artifacts.mappingIndex;
   source.sourceRoots = artifacts.sourceRoots;
@@ -262,8 +260,6 @@ function stopAndEmit(
 }
 
 export interface LaunchBreakpointsTarget {
-  listing: LaunchSessionArtifacts['listing'] | undefined;
-  listingPath: string | undefined;
   mappingIndex: LaunchSessionArtifacts['mappingIndex'] | undefined;
 }
 
@@ -272,14 +268,7 @@ export function applyLaunchBreakpoints(
   target: LaunchBreakpointsTarget,
   sendEvent: (event: DebugProtocol.Event) => void
 ): void {
-  if (target.listing === undefined) {
-    return;
-  }
-  const applied = breakpointManager.applyAll(
-    target.listing,
-    target.listingPath,
-    target.mappingIndex
-  );
+  const applied = breakpointManager.applyAll(target.mappingIndex);
   for (const bp of applied) {
     sendEvent(new BreakpointEvent('changed', bp));
   }
