@@ -30,6 +30,7 @@ export interface LaunchSourceBuildResult {
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
   romSourcePaths: string[];
+  autoOpenRomSourcePaths: string[];
 }
 
 export function buildLaunchSourceState(
@@ -121,7 +122,8 @@ export function buildLaunchSourceState(
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
-    romSourcePaths: collectDebugMapPrimarySourcePaths(args.debugMaps ?? []),
+    romSourcePaths: collectDebugMapSourcePaths(args.debugMaps ?? []),
+    autoOpenRomSourcePaths: collectDebugMapPrimarySourcePaths(args.debugMaps ?? []),
     sourceMapSymbols:
       sourceMapSymbols.length > 0
         ? sourceMapSymbols
@@ -214,6 +216,27 @@ function collectDebugMapPrimarySourcePaths(debugMaps: string[]): string[] {
       const primarySource = findPrimaryDebugMapSource(mapPath, Object.keys(parsed.map.files));
       if (primarySource !== undefined) {
         paths.add(primarySource);
+      }
+    } catch {
+      // Source opening is best-effort; mapping load logs parse/read failures.
+    }
+  }
+  return [...paths].sort((a, b) => a.localeCompare(b));
+}
+
+function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
+  const paths = new Set<string>();
+  for (const mapPath of debugMaps) {
+    try {
+      const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
+      if (parsed.map === undefined) {
+        continue;
+      }
+      for (const file of Object.keys(parsed.map.files)) {
+        if (file.trim().length === 0) {
+          continue;
+        }
+        paths.add(path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file));
       }
     } catch {
       // Source opening is best-effort; mapping load logs parse/read failures.

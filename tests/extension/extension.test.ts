@@ -150,6 +150,7 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1Memory', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openRomSource', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.openSourceFile', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openDebug80View', expect.anything());
     expect(context.subscriptions.length).toBeGreaterThan(0);
     expect(api.listPlatforms()).toEqual([

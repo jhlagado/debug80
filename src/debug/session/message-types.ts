@@ -81,6 +81,8 @@ export interface RomSourceEntry {
   path: string;
   /** Type of source */
   kind: 'source';
+  /** Whether this source should be opened automatically at launch */
+  autoOpen?: boolean;
 }
 
 export interface RebuildIssueLocation {

@@ -3,6 +3,7 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { PlatformViewProvider } from './platform-view-provider';
 import {
@@ -83,6 +84,10 @@ type ConfigureFieldId =
   | 'outputDir'
   | 'artifactBase';
 
+type SourceFilePickItem = vscode.QuickPickItem & {
+  path: string;
+};
+
 function panelLaunchOptions(platformViewProvider: PlatformViewProvider): {
   stopOnEntry: boolean;
   azmRegisterCareMode: AzmPanelRegisterCareMode;
@@ -155,6 +160,112 @@ async function resolveTargetProjectFolder(
     : { kind: 'none' };
 }
 
+function listWorkspaceSourceFiles(rootPath: string): string[] {
+  const results: string[] = [];
+  collectWorkspaceSourceFiles(rootPath, rootPath, results);
+  return results.sort((a, b) => a.localeCompare(b));
+}
+
+function collectWorkspaceSourceFiles(
+  rootPath: string,
+  currentPath: string,
+  results: string[]
+): void {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(currentPath, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(currentPath, entry.name);
+    if (entry.isDirectory()) {
+      const lower = entry.name.toLowerCase();
+      if (lower === '.git' || lower === 'node_modules' || lower === 'build' || lower === 'out') {
+        continue;
+      }
+      collectWorkspaceSourceFiles(rootPath, fullPath, results);
+      continue;
+    }
+    if (!entry.isFile() || !/\.(asm|z80|asmi)$/i.test(entry.name)) {
+      continue;
+    }
+    results.push(path.relative(rootPath, fullPath).split(path.sep).join('/'));
+  }
+}
+
+async function openPickedSourceFile(
+  sourceColumns: SourceColumnController,
+  options: {
+    workspaceSelection: WorkspaceSelectionController;
+    romOnly?: boolean;
+  }
+): Promise<boolean | undefined> {
+  const session = vscode.debug.activeDebugSession;
+  const items: SourceFilePickItem[] = [];
+
+  if (session?.type === 'z80') {
+    const romSources = await fetchRomSources(session);
+    for (const source of romSources) {
+      items.push({
+        label: source.label,
+        description: 'ROM source',
+        detail: source.path,
+        path: source.path,
+      });
+    }
+  } else if (options.romOnly === true) {
+    void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
+    return false;
+  }
+
+  if (options.romOnly !== true) {
+    const folder =
+      session?.type === 'z80'
+        ? resolveSessionWorkspaceFolder(session)
+        : await options.workspaceSelection.resolveWorkspaceFolder({
+            prompt: true,
+            requireProject: false,
+            placeHolder: 'Select the workspace folder to browse',
+          });
+    if (folder !== undefined) {
+      for (const source of listWorkspaceSourceFiles(folder.uri.fsPath)) {
+        items.push({
+          label: source,
+          description: 'project source',
+          detail: path.join(folder.uri.fsPath, source),
+          path: path.join(folder.uri.fsPath, source),
+        });
+      }
+    }
+  }
+
+  if (items.length === 0) {
+    void vscode.window.showInformationMessage(
+      options.romOnly === true
+        ? 'Debug80: No ROM sources available for this session.'
+        : 'Debug80: No source files available.'
+    );
+    return false;
+  }
+
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: options.romOnly === true ? 'Open ROM source' : 'Open Debug80 source file',
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!picked) {
+    return undefined;
+  }
+  const doc = await vscode.workspace.openTextDocument(picked.path);
+  const columns = session?.type === 'z80' ? sourceColumns.getSessionColumns(session) : undefined;
+  await vscode.window.showTextDocument(doc, {
+    preview: false,
+    ...(columns !== undefined ? { viewColumn: columns.source } : {}),
+  });
+  return true;
+}
+
 export function registerExtensionCommands({
   context,
   platformViewProvider,
@@ -212,7 +323,8 @@ export function registerExtensionCommands({
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.runToSelectedStackFrame', async (item?: unknown) => {
-      const stackItem = item instanceof vscode.DebugStackFrame ? item : vscode.debug.activeStackItem;
+      const stackItem =
+        item instanceof vscode.DebugStackFrame ? item : vscode.debug.activeStackItem;
       if (!(stackItem instanceof vscode.DebugStackFrame)) {
         await vscode.window.showWarningMessage(
           'Debug80: Select a return frame in the Call Stack view first.'
@@ -539,42 +651,47 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.sendHexViaCoolTerm', async (args?: SelectTargetArgs) => {
-      const folderResolution = await resolveTargetProjectFolder(args, workspaceSelection);
-      if (folderResolution.kind === 'missing-explicit-root') {
-        void vscode.window.showInformationMessage(
-          `Debug80: The workspace root ${folderResolution.rootPath} is not open in this window.`
-        );
-        return false;
-      }
-      if (folderResolution.kind === 'none') {
-        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
-        return false;
-      }
+    vscode.commands.registerCommand(
+      'debug80.sendHexViaCoolTerm',
+      async (args?: SelectTargetArgs) => {
+        const folderResolution = await resolveTargetProjectFolder(args, workspaceSelection);
+        if (folderResolution.kind === 'missing-explicit-root') {
+          void vscode.window.showInformationMessage(
+            `Debug80: The workspace root ${folderResolution.rootPath} is not open in this window.`
+          );
+          return false;
+        }
+        if (folderResolution.kind === 'none') {
+          void vscode.window.showInformationMessage(
+            'Debug80: No configured Debug80 project found.'
+          );
+          return false;
+        }
 
-      const projectConfig = findProjectConfigPath(folderResolution.folder);
-      if (projectConfig === undefined) {
-        void vscode.window.showErrorMessage(
-          `Debug80: Could not find a project config in ${folderResolution.folder.uri.fsPath}.`
-        );
-        return false;
+        const projectConfig = findProjectConfigPath(folderResolution.folder);
+        if (projectConfig === undefined) {
+          void vscode.window.showErrorMessage(
+            `Debug80: Could not find a project config in ${folderResolution.folder.uri.fsPath}.`
+          );
+          return false;
+        }
+
+        const config = readProjectConfig(projectConfig);
+        const targetName =
+          args?.targetName ??
+          resolvePreferredTargetName(context.workspaceState, projectConfig) ??
+          config?.target ??
+          config?.defaultTarget;
+
+        const sent = await sendHexViaCoolTerm({
+          rootPath: folderResolution.folder.uri.fsPath,
+          ...(targetName !== undefined ? { targetName } : {}),
+          status: (message) => platformViewProvider.setHardwareStatus?.(message),
+        });
+        platformViewProvider.refreshIdleView();
+        return sent;
       }
-
-      const config = readProjectConfig(projectConfig);
-      const targetName =
-        args?.targetName ??
-        resolvePreferredTargetName(context.workspaceState, projectConfig) ??
-        config?.target ??
-        config?.defaultTarget;
-
-      const sent = await sendHexViaCoolTerm({
-        rootPath: folderResolution.folder.uri.fsPath,
-        ...(targetName !== undefined ? { targetName } : {}),
-        status: (message) => platformViewProvider.setHardwareStatus?.(message),
-      });
-      platformViewProvider.refreshIdleView();
-      return sent;
-    })
+    )
   );
 
   context.subscriptions.push(
@@ -920,40 +1037,14 @@ export function registerExtensionCommands({
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('debug80.openRomSource', async () => {
-      const session = vscode.debug.activeDebugSession;
-      if (!session || session.type !== 'z80') {
-        void vscode.window.showErrorMessage('Debug80: No active z80 debug session.');
-        return;
-      }
-      try {
-        const sources = await fetchRomSources(session);
-        if (sources.length === 0) {
-          void vscode.window.showInformationMessage(
-            'Debug80: No ROM sources available for this session.'
-          );
-          return;
-        }
-        const items = sources.map((source) => ({
-          label: source.label,
-          description: 'source',
-          detail: source.path,
-          path: source.path,
-        }));
-        const picked = await vscode.window.showQuickPick(items, {
-          placeHolder: 'Open ROM source',
-          matchOnDescription: true,
-          matchOnDetail: true,
-        });
-        if (!picked) {
-          return;
-        }
-        const doc = await vscode.workspace.openTextDocument(picked.path);
-        const columns = sourceColumns.getSessionColumns(session);
-        await vscode.window.showTextDocument(doc, { preview: false, viewColumn: columns.source });
-      } catch (err) {
-        void vscode.window.showErrorMessage(`Debug80: Failed to list ROM sources: ${String(err)}`);
-      }
-    })
+    vscode.commands.registerCommand('debug80.openSourceFile', async () =>
+      openPickedSourceFile(sourceColumns, { workspaceSelection })
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.openRomSource', async () =>
+      openPickedSourceFile(sourceColumns, { workspaceSelection, romOnly: true })
+    )
   );
 }

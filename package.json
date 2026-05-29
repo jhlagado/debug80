@@ -340,6 +340,10 @@
         "title": "Debug80: Open ROM Source"
       },
       {
+        "command": "debug80.openSourceFile",
+        "title": "Debug80: Open Source File"
+      },
+      {
         "command": "debug80.openProjectConfigPanel",
         "title": "Debug80: Open Project Configuration Panel"
       },

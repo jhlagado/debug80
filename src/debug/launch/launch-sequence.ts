@@ -135,6 +135,7 @@ export interface LaunchSessionArtifacts {
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
   romSourcePaths: string[];
+  autoOpenRomSourcePaths: string[];
   loadedProgram: HexProgram;
   loadedEntry: number | undefined;
   restartCaptureAddress: number | undefined;
@@ -299,6 +300,7 @@ export async function buildLaunchSession(
     symbolList: builtSourceState.symbolList,
     sourceMapSymbols: builtSourceState.sourceMapSymbols,
     romSourcePaths: builtSourceState.romSourcePaths,
+    autoOpenRomSourcePaths: builtSourceState.autoOpenRomSourcePaths,
     loadedProgram: program,
     loadedEntry: entry,
     restartCaptureAddress,

@@ -165,11 +165,15 @@ export class Z80DebugSession extends DebugSession {
       return true;
     });
     this.commandRouter.register('debug80/romSources', (response) => {
+      const autoOpen = new Set(
+        this.sessionState.autoOpenRomSourcePaths.map((p) => path.normalize(p))
+      );
       response.body = buildRomSourcesResponse(
         this.sessionState.romSourcePaths.map((sourcePath) => ({
           label: path.basename(sourcePath),
           path: sourcePath,
           kind: 'source',
+          autoOpen: autoOpen.has(path.normalize(sourcePath)),
         }))
       );
       this.sendResponse(response);

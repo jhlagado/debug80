@@ -5,11 +5,11 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export type RomSource = { label: string; path: string; kind: 'source' };
+export type RomSource = { label: string; path: string; kind: 'source'; autoOpen?: boolean };
 
 export async function fetchRomSources(session: vscode.DebugSession): Promise<RomSource[]> {
   const payload = (await session.customRequest('debug80/romSources')) as
-    | { sources?: Array<{ label?: string; path?: string; kind?: string }> }
+    | { sources?: Array<{ label?: string; path?: string; kind?: string; autoOpen?: unknown }> }
     | undefined;
   const sources =
     payload?.sources?.filter(
@@ -19,6 +19,7 @@ export async function fetchRomSources(session: vscode.DebugSession): Promise<Rom
     label: source.label ?? path.basename(source.path ?? ''),
     path: source.path ?? '',
     kind: 'source',
+    ...(typeof source.autoOpen === 'boolean' ? { autoOpen: source.autoOpen } : {}),
   }));
 }
 
@@ -33,7 +34,9 @@ export async function openRomSourcesForSession(
     if (sources.length === 0) {
       return false;
     }
-    const preferred = sources.filter((source) => source.kind === 'source');
+    const preferred = sources.filter(
+      (source) => source.kind === 'source' && source.autoOpen !== false
+    );
     const targets = preferred.length > 0 ? preferred : sources;
     const seen = new Set<string>();
     for (const source of targets) {

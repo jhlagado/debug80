@@ -31,6 +31,7 @@ export interface SessionSourceState {
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
   romSourcePaths: string[];
+  autoOpenRomSourcePaths: string[];
   sourceRoots: string[];
 }
 
@@ -69,6 +70,7 @@ export interface SessionStateShape {
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
   romSourcePaths: string[];
+  autoOpenRomSourcePaths: string[];
   sourceRoots: string[];
   baseDir: string;
   terminalState: TerminalState | undefined;
@@ -145,6 +147,7 @@ export function createSessionState(): SessionStateShape {
     symbolList: [] as Array<{ name: string; address: number }>,
     sourceMapSymbols: [] as SourceMapDebugSymbol[],
     romSourcePaths: [] as string[],
+    autoOpenRomSourcePaths: [] as string[],
     sourceRoots: [] as string[],
     baseDir: process.cwd(),
     terminalState: undefined as TerminalState | undefined,
@@ -212,6 +215,12 @@ export function createSessionState(): SessionStateShape {
     },
     set romSourcePaths(v) {
       flat.romSourcePaths = v;
+    },
+    get autoOpenRomSourcePaths() {
+      return flat.autoOpenRomSourcePaths;
+    },
+    set autoOpenRomSourcePaths(v) {
+      flat.autoOpenRomSourcePaths = v;
     },
     get sourceRoots() {
       return flat.sourceRoots;
