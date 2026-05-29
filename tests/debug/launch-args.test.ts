@@ -52,7 +52,7 @@ describe('launch-args', () => {
     const args = { asm: 'main.asm' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toContain(path.join(baseDir, 'main.hex'));
-      });
+  });
 
   it('builds debug map paths', () => {
     const baseDir = path.join(os.tmpdir(), 'debug80-missing-base', 'nested');
@@ -175,8 +175,10 @@ describe('launch-args', () => {
       'v1',
       'mon3.bin'
     );
+    const bundledMap = path.join(path.dirname(bundledRom), 'mon3.d8.json');
     fs.mkdirSync(path.dirname(bundledRom), { recursive: true });
     fs.writeFileSync(bundledRom, 'rom');
+    fs.writeFileSync(bundledMap, '{}');
     getExtension.mockReturnValue({ extensionPath: extensionRoot } as never);
     fs.writeFileSync(
       configPath,
@@ -191,6 +193,11 @@ describe('launch-args', () => {
                 bundleId: 'tec1g/mon3/v1',
                 path: 'mon3.bin',
                 destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+              debugMap: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.d8.json',
+                destination: 'roms/tec1g/mon3/mon3.d8.json',
               },
             },
           },
@@ -210,6 +217,7 @@ describe('launch-args', () => {
 
     expect(merged.platform).toBe('tec1g');
     expect(merged.tec1g?.romHex).toBe(bundledRom);
+    expect(merged.debugMaps).toEqual([bundledMap]);
   });
 
   it('hydrates tec1 launch paths from bundled profile assets when workspace copies are absent', () => {
@@ -478,7 +486,7 @@ describe('launch-args', () => {
     const args = { hex: 'a.hex' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
     expect(result.hexPath).toBe(path.join(baseDir, 'a.hex'));
-        expect(result.asmPath).toBeUndefined();
+    expect(result.asmPath).toBeUndefined();
   });
 
   it('throws when artifacts are missing and asm is undefined', () => {

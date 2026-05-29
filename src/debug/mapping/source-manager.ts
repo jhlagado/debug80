@@ -36,6 +36,7 @@ export interface BuildSourceStateArgs {
   asmPath?: string;
   sourceFile?: string;
   sourceRoots: string[];
+  debugMaps?: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
 }
 
@@ -85,6 +86,7 @@ export class SourceManager {
       ...(args.asmPath !== undefined && args.asmPath.length > 0 ? { asmPath: args.asmPath } : {}),
       ...(mappingSourceForFallback !== undefined ? { sourceFile: mappingSourceForFallback } : {}),
       mapArgs: args.mapArgs,
+      auxiliaryDebugMaps: args.debugMaps ?? [],
     });
 
     return {
@@ -101,6 +103,7 @@ export class SourceManager {
     asmPath?: string;
     sourceFile?: string;
     mapArgs: { artifactBase?: string; outputDir?: string };
+    auxiliaryDebugMaps: string[];
   }): MappingBuildResult {
     return buildMappingFromDebugMap({
       hexPath: args.hexPath,
@@ -109,6 +112,7 @@ export class SourceManager {
         ? { sourceFile: args.sourceFile }
         : {}),
       mapArgs: args.mapArgs,
+      auxiliaryDebugMaps: args.auxiliaryDebugMaps,
       service: {
         platform: this.platform,
         baseDir: this.baseDir,

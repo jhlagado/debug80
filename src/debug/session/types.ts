@@ -87,6 +87,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   assemble?: boolean;
   /** Additional directories to search for source files */
   sourceRoots?: string[];
+  /** Additional D8 source maps to merge into the debug session, usually platform ROM maps */
+  debugMaps?: string[];
   /** Maximum instructions to execute during step over (0 = unlimited) */
   stepOverMaxInstructions?: number;
   /** Maximum instructions to execute during step out (0 = unlimited) */

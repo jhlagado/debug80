@@ -186,6 +186,7 @@ export function applyLaunchSessionArtifacts(
   source.symbolAnchors = artifacts.symbolAnchors;
   source.symbolList = artifacts.symbolList;
   source.sourceMapSymbols = artifacts.sourceMapSymbols;
+  source.romSourcePaths = artifacts.romSourcePaths;
   runtimeState.execution = artifacts.runtime;
   ui.terminalState = artifacts.terminalState;
   platform.tec1Runtime = artifacts.tec1Runtime;

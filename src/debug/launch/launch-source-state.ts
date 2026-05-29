@@ -29,6 +29,7 @@ export interface LaunchSourceBuildResult {
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
+  romSourcePaths: string[];
 }
 
 export function buildLaunchSourceState(
@@ -82,6 +83,7 @@ export function buildLaunchSourceState(
       ? { sourceFile: args.sourceFile }
       : {}),
     sourceRoots: resolvedSourceRoots,
+    debugMaps: args.debugMaps ?? [],
     mapArgs: {
       ...(args.artifactBase !== undefined && args.artifactBase.length > 0
         ? { artifactBase: args.artifactBase }
@@ -100,6 +102,7 @@ export function buildLaunchSourceState(
     baseDir,
     hexPath,
     asmPath,
+    debugMaps: args.debugMaps ?? [],
     mapArgs: {
       ...(args.artifactBase !== undefined && args.artifactBase.length > 0
         ? { artifactBase: args.artifactBase }
@@ -118,6 +121,7 @@ export function buildLaunchSourceState(
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
+    romSourcePaths: collectDebugMapSourcePaths(args.debugMaps ?? []),
     sourceMapSymbols:
       sourceMapSymbols.length > 0
         ? sourceMapSymbols
@@ -134,6 +138,7 @@ function readSourceMapSymbols(options: {
   baseDir: string;
   hexPath: string;
   asmPath: string | undefined;
+  debugMaps: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
   resolveDebugMapPath: (
     args: { artifactBase?: string; outputDir?: string },
@@ -143,46 +148,48 @@ function readSourceMapSymbols(options: {
   ) => string;
   logger: Logger;
 }): SourceMapDebugSymbol[] {
-  const mapPath = resolvePreferredSymbolMapPath({
-    mapPath: options.resolveDebugMapPath(
-      options.mapArgs,
-      options.baseDir,
-      options.asmPath,
-      options.hexPath
-    ),
-  });
-  if (mapPath === undefined) {
-    return [];
-  }
-  try {
-    const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
-    if (parsed.map === undefined) {
-      options.logger.warn(`Debug80: Could not read source map symbols: ${parsed.error}`);
-      return [];
-    }
-    const symbols: SourceMapDebugSymbol[] = [];
-    for (const [file, entry] of Object.entries(parsed.map.files)) {
-      if (file.trim() === '') {
+  const mapPaths = [
+    resolvePreferredSymbolMapPath({
+      mapPath: options.resolveDebugMapPath(
+        options.mapArgs,
+        options.baseDir,
+        options.asmPath,
+        options.hexPath
+      ),
+    }),
+    ...options.debugMaps,
+  ].filter((mapPath): mapPath is string => mapPath !== undefined);
+  const symbols: SourceMapDebugSymbol[] = [];
+  for (const mapPath of mapPaths) {
+    try {
+      const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
+      if (parsed.map === undefined) {
+        options.logger.warn(`Debug80: Could not read source map symbols: ${parsed.error}`);
         continue;
       }
-      for (const symbol of entry.symbols ?? []) {
-        symbols.push({
-          name: symbol.name,
-          file,
-          ...(symbol.line !== undefined ? { line: symbol.line } : {}),
-          ...(symbol.address !== undefined ? { address: symbol.address } : {}),
-          ...(symbol.value !== undefined ? { value: symbol.value } : {}),
-          ...(symbol.size !== undefined ? { size: symbol.size } : {}),
-          ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
-          ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
-        });
+      for (const [file, entry] of Object.entries(parsed.map.files)) {
+        if (file.trim() === '') {
+          continue;
+        }
+        const resolvedFile = path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file);
+        for (const symbol of entry.symbols ?? []) {
+          symbols.push({
+            name: symbol.name,
+            file: resolvedFile,
+            ...(symbol.line !== undefined ? { line: symbol.line } : {}),
+            ...(symbol.address !== undefined ? { address: symbol.address } : {}),
+            ...(symbol.value !== undefined ? { value: symbol.value } : {}),
+            ...(symbol.size !== undefined ? { size: symbol.size } : {}),
+            ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
+            ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
+          });
+        }
       }
+    } catch (err) {
+      options.logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
     }
-    return symbols.sort((a, b) => a.name.localeCompare(b.name));
-  } catch (err) {
-    options.logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
-    return [];
   }
+  return symbols.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function resolvePreferredSymbolMapPath(options: { mapPath: string }): string | undefined {
@@ -194,4 +201,25 @@ function pushUniquePath(paths: string[], candidate: string): void {
   if (!paths.some((entry) => path.resolve(entry) === normalized)) {
     paths.push(candidate);
   }
+}
+
+function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
+  const paths = new Set<string>();
+  for (const mapPath of debugMaps) {
+    try {
+      const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
+      if (parsed.map === undefined) {
+        continue;
+      }
+      for (const file of Object.keys(parsed.map.files)) {
+        if (file.trim() === '') {
+          continue;
+        }
+        paths.add(path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file));
+      }
+    } catch {
+      // Source opening is best-effort; mapping load logs parse/read failures.
+    }
+  }
+  return [...paths].sort((a, b) => a.localeCompare(b));
 }

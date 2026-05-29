@@ -238,7 +238,7 @@ describe('debug session status bridge', () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(openRomSourcesForSession).toHaveBeenCalledTimes(1);
-    expect(openRomSourcesForSession).toHaveBeenCalledWith(session, 1);
+    expect(openRomSourcesForSession).toHaveBeenCalledWith(session, 1, { preserveFocus: true });
     expect(sessionState.romSourcesOpenedSessions.has('session-2')).toBe(true);
 
     customHandlers[0]?.({
@@ -313,7 +313,7 @@ describe('debug session status bridge', () => {
     });
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(openRomSourcesForSession).toHaveBeenCalledWith(session, 1);
+    expect(openRomSourcesForSession).toHaveBeenCalledWith(session, 1, { preserveFocus: false });
     expect(showTextDocument).toHaveBeenCalledTimes(1);
     expect(showTextDocument).toHaveBeenCalledWith(
       expect.objectContaining({ uri: { fsPath: '/workspace/main.asm' } }),

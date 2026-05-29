@@ -24,8 +24,10 @@ export async function fetchRomSources(session: vscode.DebugSession): Promise<Rom
 
 export async function openRomSourcesForSession(
   session: vscode.DebugSession,
-  viewColumn?: vscode.ViewColumn
+  viewColumn?: vscode.ViewColumn,
+  options: { preserveFocus?: boolean } = {}
 ): Promise<boolean> {
+  const preserveFocus = options.preserveFocus ?? true;
   const attemptOpen = async (): Promise<boolean> => {
     const sources = await fetchRomSources(session);
     if (sources.length === 0) {
@@ -42,7 +44,7 @@ export async function openRomSourcesForSession(
       const doc = await vscode.workspace.openTextDocument(source.path);
       await vscode.window.showTextDocument(doc, {
         preview: false,
-        preserveFocus: true,
+        preserveFocus,
         ...(viewColumn !== undefined ? { viewColumn } : {}),
       });
     }

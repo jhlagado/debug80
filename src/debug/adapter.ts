@@ -3,6 +3,7 @@
  * Provides DAP (Debug Adapter Protocol) support for Z80 assembly debugging.
  */
 
+import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   DebugSession,
@@ -164,7 +165,13 @@ export class Z80DebugSession extends DebugSession {
       return true;
     });
     this.commandRouter.register('debug80/romSources', (response) => {
-      response.body = buildRomSourcesResponse([]);
+      response.body = buildRomSourcesResponse(
+        this.sessionState.romSourcePaths.map((sourcePath) => ({
+          label: path.basename(sourcePath),
+          path: sourcePath,
+          kind: 'source',
+        }))
+      );
       this.sendResponse(response);
       return true;
     });

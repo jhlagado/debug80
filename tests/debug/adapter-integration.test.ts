@@ -353,6 +353,45 @@ describe('adapter integration', () => {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   });
 
+  it('maps TEC-1G stop-on-entry frames and ROM sources through the bundled MON-3 D8 map', async () => {
+    const fixture = createFreshProjectFixture('tec1g/mon3');
+    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
+    getExtension.mockReturnValue({
+      extensionPath: path.resolve(__dirname, '../..'),
+    } as never);
+
+    const { client } = harness ?? createHarness();
+
+    await initialize(client);
+    await launchWithDiagnostics(client, {
+      target: 'app',
+      assemble: false,
+      stopOnEntry: true,
+      openRomSourcesOnLaunch: false,
+      openMainSourceOnLaunch: false,
+    });
+    await client.sendRequest('configurationDone');
+    await client.waitForEvent('stopped');
+
+    const stack = await client.sendRequest<{
+      body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
+    }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
+    const frame = stack.body?.stackFrames?.[0];
+    expect(frame?.source?.path).toContain(path.join('tec1g', 'mon3', 'v1', 'mon3.z80'));
+
+    const romSources = await client.sendRequest<{
+      body?: { sources?: Array<{ path?: string }> };
+    }>('debug80/romSources');
+    expect(
+      romSources.body?.sources?.some((source) =>
+        source.path?.endsWith(path.join('tec1g', 'mon3', 'v1', 'mon3.z80'))
+      )
+    ).toBe(true);
+
+    await client.sendRequest('disconnect');
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  });
+
   it('preserves launch diagnostics on the DAP output stream', async () => {
     const { client } = harness ?? createHarness();
 

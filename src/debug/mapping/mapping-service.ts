@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/types';
 import {
   propagateMisassignedIncludeSegments,
@@ -68,9 +69,10 @@ export function buildMappingFromDebugMap(options: {
   asmPath?: string;
   sourceFile?: string;
   mapArgs: { artifactBase?: string; outputDir?: string };
+  auxiliaryDebugMaps?: string[];
   service: MappingServiceOptions;
 }): MappingBuildResult {
-  const { hexPath, asmPath, sourceFile, mapArgs, service } = options;
+  const { hexPath, asmPath, sourceFile, mapArgs, auxiliaryDebugMaps = [], service } = options;
   void sourceFile;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, hexPath);
@@ -100,7 +102,31 @@ export function buildMappingFromDebugMap(options: {
   }
 
   const mapping =
-    hasNativeMap && loadedMap !== undefined ? buildMappingFromD8DebugMap(loadedMap) : emptyMapping();
+    hasNativeMap && loadedMap !== undefined
+      ? buildMappingFromD8DebugMap(loadedMap)
+      : emptyMapping();
+
+  for (const auxiliaryPath of auxiliaryDebugMaps) {
+    const auxiliaryMap = loadDebugMap(auxiliaryPath, service);
+    if (auxiliaryMap === undefined) {
+      service.logger.warn(
+        `Debug80: Auxiliary source map missing at "${auxiliaryPath}". ROM source mapping may be unavailable.`
+      );
+      continue;
+    }
+    if (!isNativeDebugMap(auxiliaryMap)) {
+      service.logger.warn(`Debug80: Ignoring legacy auxiliary source map at "${auxiliaryPath}".`);
+      continue;
+    }
+    service.logger.info(
+      `Debug80: Using auxiliary D8 map from "${getDebugMapGeneratorLabel(auxiliaryMap)}" at "${auxiliaryPath}".`
+    );
+    const auxiliaryMapping = buildMappingFromD8DebugMap(
+      absolutizeRelativeDebugMapFiles(auxiliaryMap, auxiliaryPath)
+    );
+    mapping.segments.push(...auxiliaryMapping.segments);
+    mapping.anchors.push(...auxiliaryMapping.anchors);
+  }
 
   const fileSet = new Set<string | null>();
   for (const seg of mapping.segments) {
@@ -136,6 +162,19 @@ export function buildMappingFromDebugMap(options: {
   );
 
   return { mapping, index, missingSources: [] };
+}
+
+function absolutizeRelativeDebugMapFiles(map: D8DebugMap, mapPath: string): D8DebugMap {
+  const baseDir = path.dirname(mapPath);
+  const files: D8DebugMap['files'] = {};
+  for (const [fileKey, entry] of Object.entries(map.files)) {
+    const absoluteKey =
+      path.isAbsolute(fileKey) || fileKey.startsWith('file:')
+        ? fileKey
+        : path.join(baseDir, fileKey);
+    files[absoluteKey] = entry;
+  }
+  return { ...map, files };
 }
 
 function loadDebugMap(

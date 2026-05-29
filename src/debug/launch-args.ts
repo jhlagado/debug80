@@ -455,6 +455,11 @@ export function populateFromConfig(
       merged.sourceRoots = sourceRootsResolved;
     }
 
+    const debugMapsResolved = args.debugMaps ?? targetCfg?.debugMaps ?? cfg.debugMaps;
+    if (debugMapsResolved !== undefined) {
+      merged.debugMaps = debugMapsResolved;
+    }
+
     const bundledRomReference = resolveBundledAssetReference(cfg, targetCfg, 'romHex');
     const resolvedRomHex = resolveBundledAssetRuntimePath(
       merged.tec1?.romHex ?? merged.tec1g?.romHex,
@@ -468,6 +473,19 @@ export function populateFromConfig(
       } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
         merged.tec1g = { ...(merged.tec1g ?? {}), romHex: resolvedRomHex };
       }
+    }
+
+    const bundledDebugMapReference = resolveBundledAssetReference(cfg, targetCfg, 'debugMap');
+    const resolvedDebugMap = resolveBundledAssetRuntimePath(
+      undefined,
+      bundledDebugMapReference,
+      workspaceRoot
+    );
+    if (resolvedDebugMap !== undefined) {
+      const existing = merged.debugMaps ?? [];
+      merged.debugMaps = existing.includes(resolvedDebugMap)
+        ? existing
+        : [...existing, resolvedDebugMap];
     }
 
     if (launchPlatformResolved !== undefined) {

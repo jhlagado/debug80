@@ -254,7 +254,9 @@ export function registerDebugSessionHandlers({
             if (!openRomSources || sessionState.romSourcesOpenedSessions.has(evt.session.id)) {
               return;
             }
-            return openRomSourcesForSession(evt.session, viewColumn).then(async (opened) => {
+            return openRomSourcesForSession(evt.session, viewColumn, {
+              preserveFocus: !stopOnEntry,
+            }).then(async (opened) => {
               if (opened) {
                 sessionState.romSourcesOpenedSessions.add(evt.session.id);
                 if (!stopOnEntry && mainDoc !== undefined) {

@@ -30,6 +30,7 @@ export interface SessionSourceState {
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
+  romSourcePaths: string[];
   sourceRoots: string[];
 }
 
@@ -67,6 +68,7 @@ export interface SessionStateShape {
   symbolAnchors: SourceMapAnchor[];
   symbolList: Array<{ name: string; address: number }>;
   sourceMapSymbols: SourceMapDebugSymbol[];
+  romSourcePaths: string[];
   sourceRoots: string[];
   baseDir: string;
   terminalState: TerminalState | undefined;
@@ -142,6 +144,7 @@ export function createSessionState(): SessionStateShape {
     symbolAnchors: [] as SourceMapAnchor[],
     symbolList: [] as Array<{ name: string; address: number }>,
     sourceMapSymbols: [] as SourceMapDebugSymbol[],
+    romSourcePaths: [] as string[],
     sourceRoots: [] as string[],
     baseDir: process.cwd(),
     terminalState: undefined as TerminalState | undefined,
@@ -203,6 +206,12 @@ export function createSessionState(): SessionStateShape {
     },
     set sourceMapSymbols(v) {
       flat.sourceMapSymbols = v;
+    },
+    get romSourcePaths() {
+      return flat.romSourcePaths;
+    },
+    set romSourcePaths(v) {
+      flat.romSourcePaths = v;
     },
     get sourceRoots() {
       return flat.sourceRoots;
