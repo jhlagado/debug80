@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.10
+
+- Added workspace-wide symbol search backed by the latest Debug80 source map,
+  making it easier to jump to known labels and symbols from the active build.
+- Improved command palette classification for the symbol search command.
+- Strengthened AZM build failure reporting with clearer build-failed
+  notifications, better Problems panel diagnostics, correct project-relative
+  source path resolution, and empty or invalid HEX output handling as a build
+  failure instead of silently loading zeros.
+- Added TEC-1G CoolTerm settings for the standard serial transfer setup:
+  4800 baud, 8 data bits, no parity, and 2 stop bits.
+- Expanded watch and conditional breakpoint expression syntax to support `=`,
+  `==`, `<>`, `!=`, `<`, `<=`, `>`, and `>=`, while keeping existing word forms
+  such as `eq`, `ne`, `lt`, `le`, `gt`, and `ge`.
+
 ## 0.1.9
 
 - Updated AZM to `0.2.5`.
