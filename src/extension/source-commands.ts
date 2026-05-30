@@ -32,4 +32,10 @@ export function registerSourceCommands(options: {
       showSourceMapStatus()
     )
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.searchWorkspaceSymbols', async () =>
+      vscode.commands.executeCommand('workbench.action.showAllSymbols')
+    )
+  );
 }

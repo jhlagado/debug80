@@ -352,6 +352,10 @@
         "title": "Debug80: Show Source Map Status"
       },
       {
+        "command": "debug80.searchWorkspaceSymbols",
+        "title": "Debug80: Search Workspace Symbols"
+      },
+      {
         "command": "debug80.openProjectConfigPanel",
         "title": "Debug80: Open Project Configuration Panel"
       },
