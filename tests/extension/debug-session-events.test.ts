@@ -62,6 +62,9 @@ vi.mock('vscode', () => ({
   },
   Uri: {
     file: (value: string) => ({ fsPath: value }),
+    joinPath: (base: { fsPath: string }, relativePath: string) => ({
+      fsPath: `${base.fsPath}/${relativePath}`,
+    }),
   },
   Range: class Range {
     constructor(
@@ -318,6 +321,85 @@ describe('debug session status bridge', () => {
     expect(showTextDocument).toHaveBeenCalledWith(
       expect.objectContaining({ uri: { fsPath: '/workspace/main.asm' } }),
       { preview: false, preserveFocus: true, viewColumn: 1 }
+    );
+  });
+
+  it('publishes launch assembly diagnostics against the workspace source file', () => {
+    const platformViewProvider = {
+      setSessionStatus: vi.fn(),
+      clear: vi.fn(),
+      reveal: vi.fn(),
+      handleSessionTerminated: vi.fn(),
+      setPlatform: vi.fn(),
+      updateTec1: vi.fn(),
+      updateTec1g: vi.fn(),
+      appendTec1Serial: vi.fn(),
+      appendTec1gSerial: vi.fn(),
+      setHardwareStatus: vi.fn(),
+    } as never;
+    const sessionState = new SessionStateManager();
+    const sourceColumns = {
+      onSessionStarted: vi.fn(),
+      onSessionTerminated: vi.fn(),
+      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
+    } as never;
+    const terminalPanel = {
+      clear: vi.fn(),
+      open: vi.fn(),
+      hasPanel: vi.fn(() => false),
+      appendOutput: vi.fn(),
+    } as never;
+    const workspaceSelection = {
+      rememberWorkspace: vi.fn(),
+    } as never;
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
+    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
+    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() };
+
+    registerDebugSessionHandlers({
+      context,
+      rebuildDiagnostics,
+      assemblyDiagnostics: assemblyDiagnostics as never,
+      platformViewProvider,
+      sessionState,
+      sourceColumns,
+      terminalPanel,
+      workspaceSelection,
+    });
+
+    customHandlers[0]?.({
+      session: {
+        id: 'session-build-fail',
+        type: 'z80',
+        workspaceFolder: { uri: { fsPath: '/workspace/tetro' } },
+      },
+      event: 'debug80/assemblyFailed',
+      body: {
+        diagnostic: {
+          path: 'src/tetro/tetro.main.asm',
+          line: 43,
+          column: 9,
+          message: 'Unresolved symbol "InitdeState".',
+          sourceLine: '        CALL    InitdeState',
+        },
+        error: 'src/tetro/tetro.main.asm:43:9: error',
+      },
+    });
+
+    expect(assemblyDiagnostics.set).toHaveBeenCalledWith(
+      { fsPath: '/workspace/tetro/src/tetro/tetro.main.asm' },
+      [
+        expect.objectContaining({
+          message: 'Unresolved symbol "InitdeState".',
+          severity: 0,
+        }),
+      ]
+    );
+    expect(platformViewProvider.setHardwareStatus).toHaveBeenCalledWith(
+      'Build failed: Unresolved symbol "InitdeState".'
+    );
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'Debug80: Build failed: Unresolved symbol "InitdeState".'
     );
   });
 });

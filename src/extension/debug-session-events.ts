@@ -36,13 +36,20 @@ type AssemblyFailedPayload = {
 
 function applyLaunchAssemblyDiagnostic(
   assemblyDiagnostics: vscode.DiagnosticCollection,
-  payload: AssemblyFailedPayload
+  payload: AssemblyFailedPayload,
+  workspaceFolder?: vscode.WorkspaceFolder
 ): void {
   const d = payload.diagnostic;
   if (d?.path === undefined || d.path === '' || d.line === undefined) {
     return;
   }
-  const uri = vscode.Uri.file(d.path);
+  const diagnosticPath =
+    d.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(d.path)
+      ? d.path
+      : workspaceFolder !== undefined
+        ? vscode.Uri.joinPath(workspaceFolder.uri, d.path).fsPath
+        : d.path;
+  const uri = vscode.Uri.file(diagnosticPath);
   const startLine = Math.max(0, d.line - 1);
   const startCharacter = Math.max(0, (d.column ?? 1) - 1);
   const endCharacter = Math.max(startCharacter + 1, d.sourceLine?.length ?? 1);
@@ -220,7 +227,13 @@ export function registerDebugSessionHandlers({
       if (evt.event === 'debug80/assemblyFailed') {
         const body = evt.body as AssemblyFailedPayload | undefined;
         if (body !== undefined) {
-          applyLaunchAssemblyDiagnostic(assemblyDiagnostics, body);
+          applyLaunchAssemblyDiagnostic(assemblyDiagnostics, body, evt.session.workspaceFolder);
+          const summary =
+            body.diagnostic?.message ??
+            body.error?.split(/\r?\n/, 1)[0] ??
+            'Assembly failed';
+          platformViewProvider.setHardwareStatus?.(`Build failed: ${summary}`);
+          void vscode.window.showErrorMessage(`Debug80: Build failed: ${summary}`);
         }
         return;
       }

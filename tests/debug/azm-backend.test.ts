@@ -53,7 +53,7 @@ describe('azm-backend', () => {
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [
-        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
         { kind: 'bin', bytes: new Uint8Array([0x00]) },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
       ],
@@ -78,7 +78,7 @@ describe('azm-backend', () => {
       },
       expect.objectContaining({ formats: expect.any(Object) })
     );
-    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
+    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':0101000000FE\n:00000001FF\n');
     expect([...fs.readFileSync(binPath)]).toEqual([0x00]);
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
@@ -94,7 +94,7 @@ describe('azm-backend', () => {
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [
-        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
         { kind: 'bin', bytes: new Uint8Array([0x00]) },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
       ],
@@ -103,7 +103,7 @@ describe('azm-backend', () => {
     const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
 
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':00000001FF\n');
+    expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':0101000000FE\n:00000001FF\n');
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
   });
 
@@ -117,7 +117,7 @@ describe('azm-backend', () => {
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [
-        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
         { kind: 'register-care-report', text: 'Register care report\n' },
       ],
@@ -177,10 +177,11 @@ describe('azm-backend', () => {
 
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
+    const asmPath = path.join(tmpDir, 'src', 'prog.asm');
     const hexPath = path.join(tmpDir, 'prog.hex');
     const output: string[] = [];
 
+    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
     fs.writeFileSync(asmPath, 'BADOP\n');
     compile.mockResolvedValue({
       diagnostics: [
@@ -211,6 +212,39 @@ describe('azm-backend', () => {
       message: 'Unsupported instruction BADOP.',
     });
     expect(output.join('')).toContain('AZM200');
+  });
+
+  it('resolves project-relative AZM diagnostics against the source root', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'src', 'prog.asm');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+
+    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
+    fs.writeFileSync(asmPath, 'CALL Missing\n');
+    compile.mockResolvedValue({
+      diagnostics: [
+        {
+          id: 'AZMN_SYMBOL',
+          severity: 'error',
+          message: 'Unresolved symbol "Missing".',
+          file: 'src/prog.asm',
+          line: 1,
+          column: 6,
+        },
+      ],
+      artifacts: [],
+    });
+
+    const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
+
+    expect(result.success).toBe(false);
+    expect(result.diagnostic).toMatchObject({
+      path: asmPath,
+      line: 1,
+      column: 6,
+      message: 'Unresolved symbol "Missing".',
+      sourceLine: 'CALL Missing',
+    });
   });
 
   it('handles AZM diagnostics that do not include a source file', async () => {
@@ -277,13 +311,34 @@ describe('azm-backend', () => {
     fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [{ kind: 'hex', text: ':00000001FF\n' }],
+      artifacts: [{ kind: 'hex', text: ':0101000000FE\n:00000001FF\n' }],
     });
 
     const result = await backend.assemble({ asmPath, hexPath });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('did not produce D8 output');
+  });
+
+  it('fails when AZM produces an empty HEX artifact', async () => {
+    const backend = new AzmBackend();
+    const asmPath = path.join(tmpDir, 'prog.asm');
+    const hexPath = path.join(tmpDir, 'prog.hex');
+
+    fs.writeFileSync(asmPath, 'ORG 0100h\n');
+    compile.mockResolvedValue({
+      diagnostics: [],
+      artifacts: [
+        { kind: 'hex', text: ':00000001FF\n' },
+        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
+      ],
+    });
+
+    const result = await backend.assemble({ asmPath, hexPath });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('produced no HEX data records');
+    expect(fs.existsSync(hexPath)).toBe(false);
   });
 });
 

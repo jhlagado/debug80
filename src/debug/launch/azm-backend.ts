@@ -158,13 +158,38 @@ function formatDiagnostic(diagnostic: Diagnostic): string {
   return `${location}: ${diagnosticSeverity(diagnostic)}: [${diagnosticId(diagnostic)}] ${diagnosticMessage(diagnostic)}`;
 }
 
-function toAssemblyDiagnostic(diagnostic: Diagnostic): AssemblyDiagnostic {
+function resolveDiagnosticPath(file: string, sourceRoot: string | undefined): string {
+  if (path.isAbsolute(file) || sourceRoot === undefined || sourceRoot.length === 0) {
+    return file;
+  }
+  return path.resolve(sourceRoot, file);
+}
+
+function readDiagnosticSourceLine(filePath: string, line: number | undefined): string | undefined {
+  if (line === undefined || line <= 0) {
+    return undefined;
+  }
+  try {
+    return fs.readFileSync(filePath, 'utf-8').split(/\r?\n/)[line - 1];
+  } catch {
+    return undefined;
+  }
+}
+
+function toAssemblyDiagnostic(
+  diagnostic: Diagnostic,
+  sourceRoot: string | undefined
+): AssemblyDiagnostic {
   const file = diagnosticFile(diagnostic);
+  const resolvedFile = file !== '' ? resolveDiagnosticPath(file, sourceRoot) : '';
+  const sourceLine =
+    resolvedFile !== '' ? readDiagnosticSourceLine(resolvedFile, diagnostic.line) : undefined;
   return {
-    ...(file !== '' ? { path: file } : {}),
+    ...(resolvedFile !== '' ? { path: resolvedFile } : {}),
     ...(diagnostic.line !== undefined ? { line: diagnostic.line } : {}),
     ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
     message: diagnosticMessage(diagnostic),
+    ...(sourceLine !== undefined ? { sourceLine } : {}),
   };
 }
 
@@ -249,6 +274,18 @@ function emitDiagnostics(diagnostics: Diagnostic[], onOutput: AssembleOptions['o
   }
 }
 
+function hasIntelHexDataRecords(text: string): boolean {
+  return text.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(':') || trimmed.length < 11) {
+      return false;
+    }
+    const byteCount = Number.parseInt(trimmed.slice(1, 3), 16);
+    const recordType = Number.parseInt(trimmed.slice(7, 9), 16);
+    return Number.isFinite(byteCount) && byteCount > 0 && recordType === 0;
+  });
+}
+
 function isCompileSuccess(result: CompileOutcome): result is CompileSuccess {
   return result.success === true && 'artifacts' in result;
 }
@@ -290,7 +327,11 @@ export class AzmBackend implements AssemblerBackend {
         { formats: modules.defaultFormatWriters }
       );
       emitDiagnostics(compiled.diagnostics, options.onOutput);
-      result = compileResultToAssembleResult(compiled.diagnostics, compiled.artifacts);
+      result = compileResultToAssembleResult(
+        compiled.diagnostics,
+        compiled.artifacts,
+        sourceRoot
+      );
     } catch (err) {
       const message = `azm failed: ${err instanceof Error ? err.message : String(err)}`;
       options.onOutput?.(`${message}\n`);
@@ -307,6 +348,18 @@ export class AzmBackend implements AssemblerBackend {
       return azmFailure(`azm succeeded but did not produce HEX output for "${options.asmPath}".`);
     }
 
+    const base = artifactBase(options.hexPath);
+    const d8 = findArtifact(artifacts, 'd8m');
+    if (d8 === undefined) {
+      return azmFailure(`azm succeeded but did not produce D8 output for "${options.asmPath}".`);
+    }
+
+    if (!hasIntelHexDataRecords(hex.text)) {
+      return azmFailure(
+        `azm succeeded but produced no HEX data records for "${options.asmPath}".`
+      );
+    }
+
     writeTextArtifact(options.hexPath, hex.text);
 
     const bin = findArtifact(artifacts, 'bin');
@@ -314,11 +367,6 @@ export class AzmBackend implements AssemblerBackend {
       writeBinaryArtifact(binPath, bin.bytes);
     }
 
-    const base = artifactBase(options.hexPath);
-    const d8 = findArtifact(artifacts, 'd8m');
-    if (d8 === undefined) {
-      return azmFailure(`azm succeeded but did not produce D8 output for "${options.asmPath}".`);
-    }
     writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8.json);
 
     const registerCareReport = findArtifact(artifacts, 'register-care-report');
@@ -367,7 +415,11 @@ export class AzmBackend implements AssemblerBackend {
         { formats }
       );
       emitDiagnostics(compiled.diagnostics, options.onOutput);
-      result = compileResultToAssembleResult(compiled.diagnostics, compiled.artifacts);
+      result = compileResultToAssembleResult(
+        compiled.diagnostics,
+        compiled.artifacts,
+        options.sourceRoot
+      );
     } catch (err) {
       const message = `azm bin failed: ${err instanceof Error ? err.message : String(err)}`;
       options.onOutput?.(`${message}\n`);
@@ -390,12 +442,13 @@ export class AzmBackend implements AssemblerBackend {
 
 function compileResultToAssembleResult(
   diagnostics: Diagnostic[],
-  artifacts: Artifact[]
+  artifacts: Artifact[],
+  sourceRoot: string | undefined
 ): CompileOutcome {
   const sorted = [...diagnostics].sort(compareDiagnostics);
   const firstError = sorted.find((diagnostic) => diagnosticSeverity(diagnostic) === 'error');
   if (firstError !== undefined) {
-    return azmFailure(formatDiagnostic(firstError), toAssemblyDiagnostic(firstError));
+    return azmFailure(formatDiagnostic(firstError), toAssemblyDiagnostic(firstError, sourceRoot));
   }
   return {
     success: true,
