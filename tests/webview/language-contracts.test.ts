@@ -310,6 +310,7 @@ describe('package.json language contracts', () => {
       'debug80.openSourceFile',
       'debug80.openRomSource',
       'debug80.showSourceMapStatus',
+      'debug80.searchWorkspaceSymbols',
       'debug80.openDebug80View',
       'debug80.sendHexViaCoolTerm',
       'debug80.testCoolTermConnection',
