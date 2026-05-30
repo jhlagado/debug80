@@ -172,11 +172,12 @@ class WatchExpressionParser {
         right: this.parseBitwiseOr(),
       };
     }
-    if (token.kind === 'operator' && (token.text === '=' || token.text === '==')) {
+    const symbolicComparison = getSymbolicComparisonOperator(token.text);
+    if (token.kind === 'operator' && symbolicComparison !== undefined) {
       this.index += 1;
       left = {
         kind: 'binary',
-        operator: 'eq',
+        operator: symbolicComparison,
         left,
         right: this.parseBitwiseOr(),
       };
@@ -354,12 +355,13 @@ function tokenize(input: string): Token[] {
       index += 1;
       continue;
     }
-    if (rest.startsWith('==')) {
-      tokens.push({ kind: 'operator', text: '==' });
-      index += 2;
+    const twoCharOperator = scanTwoCharOperator(rest);
+    if (twoCharOperator !== undefined) {
+      tokens.push({ kind: 'operator', text: twoCharOperator });
+      index += twoCharOperator.length;
       continue;
     }
-    if ('+-*/%&|^~='.includes(char)) {
+    if ('+-*/%&|^~=<>'.includes(char)) {
       tokens.push({ kind: 'operator', text: char });
       index += 1;
       continue;
@@ -409,6 +411,31 @@ function scanNumber(text: string): { value: number; length: number } | undefined
 
 function isComparisonKeyword(text: string): boolean {
   return ['eq', 'ne', 'lt', 'le', 'gt', 'ge'].includes(text.toLowerCase());
+}
+
+function scanTwoCharOperator(text: string): string | undefined {
+  return ['==', '<>', '!=', '<=', '>='].find((operator) => text.startsWith(operator));
+}
+
+function getSymbolicComparisonOperator(operator: string): string | undefined {
+  switch (operator) {
+    case '=':
+    case '==':
+      return 'eq';
+    case '<>':
+    case '!=':
+      return 'ne';
+    case '<':
+      return 'lt';
+    case '<=':
+      return 'le';
+    case '>':
+      return 'gt';
+    case '>=':
+      return 'ge';
+    default:
+      return undefined;
+  }
 }
 
 function evaluate(expression: Expr, context: WatchEvaluationContext): WatchValue {

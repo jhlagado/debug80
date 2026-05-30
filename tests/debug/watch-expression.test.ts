@@ -60,6 +60,19 @@ describe('Debug80 watch expressions', () => {
     expect(evaluateWatchExpression('BC == $1001', context).result).toBe('false');
   });
 
+  it('accepts symbolic comparison operators for breakpoint conditions', () => {
+    const context = createContext();
+
+    expect(evaluateWatchExpression('BC <> $1001', context).result).toBe('true');
+    expect(evaluateWatchExpression('BC <> $1234', context).result).toBe('false');
+    expect(evaluateWatchExpression('BC != $1001', context).result).toBe('true');
+    expect(evaluateWatchExpression('BC != $1234', context).result).toBe('false');
+    expect(evaluateWatchExpression('A < $21', context).result).toBe('true');
+    expect(evaluateWatchExpression('A <= $20', context).result).toBe('true');
+    expect(evaluateWatchExpression('A > $1f', context).result).toBe('true');
+    expect(evaluateWatchExpression('A >= $20', context).result).toBe('true');
+  });
+
   it('uses square brackets for byte memory reads and parentheses for grouping', () => {
     const context = createContext();
 
