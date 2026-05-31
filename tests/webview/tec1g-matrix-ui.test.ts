@@ -264,6 +264,22 @@ describe('tec1g matrix ui', () => {
     });
     expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
     expect(capsKey.classList.contains('active')).toBe(true);
+
+    messages.length = 0;
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: true,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+    expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
+    expect(capsKey.classList.contains('active')).toBe(true);
   });
 
   it('applies caps lock to physical letter keys while matrix mode is active', () => {
@@ -301,6 +317,44 @@ describe('tec1g matrix ui', () => {
 
     altKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     expect(altKeys.every((key) => key.classList.contains('active'))).toBe(true);
+  });
+
+  it('clears one-shot and held-key state when matrix mode is disabled', () => {
+    controller.applyMatrixMode(true);
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    shiftKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    controller.applyMatrixMode(false);
+    expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
+    expect(matrixKey.classList.contains('pressed')).toBe(false);
+
+    controller.applyMatrixMode(true);
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
+    expect(messages.filter((message) => message.key === 'a' && message.pressed === true)).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: true,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
   });
 
   it('ignores key events from inputs, repeated presses, and inactive matrix mode', () => {

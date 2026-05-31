@@ -69,9 +69,6 @@ export function applyTec1gPlatformUpdate(
     deps.keypad.updateSysCtrl();
     deps.keypad.updateStatusLeds();
   }
-  if (typeof data.capsLock === 'boolean') {
-    deps.matrixUi.applyCapsLock(data.capsLock);
-  }
   if (deps.isMatrixKeyboardOpen) {
     deps.matrixUi.applyMatrixMode(deps.isMatrixKeyboardOpen());
   } else if (typeof data.matrixMode === 'boolean') {

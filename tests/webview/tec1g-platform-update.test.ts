@@ -81,4 +81,14 @@ describe('tec1g platform update application', () => {
 
     expect(deps.matrixUi.applyMatrixMode).toHaveBeenCalledWith(true);
   });
+
+  it('does not let platform caps state override local matrix keyboard caps state', () => {
+    const deps = makeDeps();
+
+    applyTec1gPlatformUpdate(deps, {
+      capsLock: false,
+    });
+
+    expect(deps.matrixUi.applyCapsLock).not.toHaveBeenCalled();
+  });
 });

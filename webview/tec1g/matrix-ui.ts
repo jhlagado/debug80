@@ -130,7 +130,20 @@ export function createMatrixUiController(
   }
 
   function applyMatrixMode(enabled) {
+    if (!enabled) {
+      matrixHeldKeys.clear();
+      clearOneShotMatrixMods();
+      setMatrixKeyPressed('Shift', false);
+      setMatrixKeyPressed('Control', false);
+      setMatrixKeyPressed('Fn', false);
+      setMatrixKeyPressed('Alt', false);
+      setMatrixKeyPressed('CapsLock', false);
+      matrixKeyboardGrid
+        ?.querySelectorAll('.matrix-key.pressed')
+        .forEach((key) => key.classList.remove('pressed'));
+    }
     matrixModeEnabled = !!enabled;
+    refreshMatrixModifierKeys();
   }
 
   function applyCapsLock(enabled) {

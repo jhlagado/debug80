@@ -189,10 +189,11 @@ export function handleMatrixModeRequest(
   if (enabled === undefined) {
     return 'Debug80: Missing matrix mode flag.';
   }
+  heldKeys.forEach((entries) => {
+    entries.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
+  });
+  heldKeys.clear();
   runtime.setMatrixMode(enabled);
-  if (!enabled) {
-    heldKeys.clear();
-  }
   return null;
 }
 

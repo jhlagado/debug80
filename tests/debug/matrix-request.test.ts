@@ -10,12 +10,36 @@ import {
   resolveMatrixAscii,
   resolveMatrixPayloadAscii,
   buildMatrixKeyId,
+  handleMatrixModeRequest,
   handleMatrixKeyRequest,
 } from '../../src/debug/requests/matrix-request';
 import type { MatrixKeyCombo } from '../../src/platforms/tec1g/matrix-keymap';
 import type { MatrixRuntime } from '../../src/debug/requests/matrix-request';
 
 describe('matrix-request', () => {
+  describe('handleMatrixModeRequest', () => {
+    it('clears stale held keys when matrix mode is restored enabled', () => {
+      const released: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: false, capsLock: false },
+        setMatrixMode: (enabled) => {
+          runtime.state.matrixModeEnabled = enabled;
+        },
+        applyMatrixKey: (row, col, pressed) => {
+          released.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+      heldKeys.set('a|0000', [{ row: 3, col: 2 }]);
+
+      expect(handleMatrixModeRequest(runtime, heldKeys, { enabled: true })).toBeNull();
+
+      expect(runtime.state.matrixModeEnabled).toBe(true);
+      expect(heldKeys.size).toBe(0);
+      expect(released).toEqual([{ row: 3, col: 2, pressed: false }]);
+    });
+  });
+
   describe('selectMatrixCombo', () => {
     const plain: MatrixKeyCombo = { row: 3, col: 2 };
     const shifted: MatrixKeyCombo = { row: 3, col: 2, modifier: 'shift' };
