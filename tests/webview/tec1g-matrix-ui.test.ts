@@ -164,6 +164,29 @@ describe('tec1g matrix ui', () => {
     });
   });
 
+  it('treats the right-side S key as a compact shift key', () => {
+    controller.applyMatrixMode(true);
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
+    const rightShift = shiftKeys[shiftKeys.length - 1];
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    expect(rightShift.textContent).toContain('S');
+    expect(rightShift.textContent).toContain('SHIFT');
+
+    rightShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: true,
+      ctrl: false,
+      alt: false,
+    });
+  });
+
   it('sends caps lock clicks as matrix key events', () => {
     controller.applyMatrixMode(true);
     const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;

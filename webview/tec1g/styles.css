@@ -412,6 +412,7 @@
       border: 1px solid #2f2f2f;
       border-radius: 5px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
@@ -429,6 +430,19 @@
         0 0 0 1px rgba(255, 255, 255, 0.05);
       text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
       user-select: none;
+    }
+    .matrix-key-label,
+    .matrix-key-sub-label {
+      display: block;
+      line-height: 1;
+    }
+    .matrix-key-with-sub-label {
+      gap: 3px;
+    }
+    .matrix-key-sub-label {
+      font-size: 7px;
+      letter-spacing: 0.08em;
+      opacity: 0.78;
     }
     .matrix-key.pressed {
       background: #f1b500;
