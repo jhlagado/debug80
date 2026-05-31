@@ -1,7 +1,8 @@
 # Debug80 Documentation
 
 This directory contains repository-local engineering notes. Keep durable user-facing explanations in
-the external `debug80-docs` manual, and keep unfinished design work here until it settles.
+the external Debug80 manual at [debug80.com](https://debug80.com/), and keep unfinished design work
+here until it settles.
 
 ## Reference
 

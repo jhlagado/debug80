@@ -16,7 +16,7 @@ bundled ROM assets and emulator panels for the front-panel hardware users
 actually interact with.
 
 Full user guides, AZM course material, and engineering reference documentation
-are available at [debug80 Docs](https://jhlagado.github.io/debug80-docs/).
+are available at [debug80.com](https://debug80.com/).
 
 ## Features
 
@@ -157,12 +157,12 @@ not need `npm link`, sibling checkouts, or globally installed assembler binaries
 
 ## Documentation
 
-- [debug80 Docs](https://jhlagado.github.io/debug80-docs/): published user
+- [debug80.com](https://debug80.com/): published user
   guides, AZM books/manual, and engineering reference.
-- [Using Debug80 in VS Code](https://jhlagado.github.io/debug80-docs/manual/):
+- [Using Debug80 in VS Code](https://debug80.com/manual/):
   project setup, debugging workflow, panels, ROMs, serial, source mapping, and
   troubleshooting.
-- [AZM Books and Manual](https://jhlagado.github.io/debug80-docs/azm-book/):
+- [AZM Books and Manual](https://debug80.com/azm-book/):
   Z80 learning material and AZM assembler reference.
 - [Technical guide](docs/technical.md): extension architecture, launch pipeline,
   adapter behaviour, mapping, and stepping.
