@@ -8,7 +8,11 @@ import { resolveBundledTec1Rom } from './assembler';
 import { emitConsoleOutput } from '../session/adapter-ui';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import type { PlatformRegistry } from '../session/platform-registry';
-import { handleMatrixKeyRequest, handleMatrixModeRequest } from '../requests/matrix-request';
+import {
+  handleMatrixKeyRequest,
+  handleMatrixModeRequest,
+  type MatrixRuntime,
+} from '../requests/matrix-request';
 import { resolveArtifacts, resolveRelative, resolveBaseDir } from '../mapping/path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
@@ -172,27 +176,29 @@ export async function buildLaunchSession(
   const tec1gConfig = platformProvider.tec1gConfig;
 
   context.platformRegistry.clear();
-  const tec1gMatrixRuntime =
-    context.sessionState.tec1gRuntime === undefined
+  const getTec1gMatrixRuntime = (): MatrixRuntime | undefined => {
+    const runtime = context.sessionState.tec1gRuntime;
+    return runtime === undefined
       ? undefined
       : {
           state: {
-            matrixModeEnabled: context.sessionState.tec1gRuntime.state.input.matrixModeEnabled,
-            capsLock: context.sessionState.tec1gRuntime.state.system.capsLock,
+            matrixModeEnabled: runtime.state.input.matrixModeEnabled,
+            capsLock: runtime.state.system.capsLock,
           },
           setMatrixMode: (enabled: boolean) =>
             context.sessionState.tec1gRuntime?.setMatrixMode(enabled),
           applyMatrixKey: (row: number, col: number, pressed: boolean) =>
             context.sessionState.tec1gRuntime?.applyMatrixKey(row, col, pressed),
         };
+  };
   platformProvider.registerCommands(context.platformRegistry, {
     sessionState: context.sessionState,
     sendResponse: context.sendResponse,
     sendErrorResponse: context.sendErrorResponse,
     handleMatrixModeRequest: (args) =>
-      handleMatrixModeRequest(tec1gMatrixRuntime, context.matrixHeldKeys, args),
+      handleMatrixModeRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
     handleMatrixKeyRequest: (args) =>
-      handleMatrixKeyRequest(tec1gMatrixRuntime, context.matrixHeldKeys, args),
+      handleMatrixKeyRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
     clearMatrixHeldKeys: () => {
       context.matrixHeldKeys.clear();
     },
