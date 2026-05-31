@@ -8,6 +8,7 @@ import {
   expandMatrixCombo,
   parseMatrixKeyPayload,
   resolveMatrixAscii,
+  resolveMatrixPayloadAscii,
   buildMatrixKeyId,
 } from '../../src/debug/requests/matrix-request';
 import type { MatrixKeyCombo } from '../../src/platforms/tec1g/matrix-keymap';
@@ -123,6 +124,23 @@ describe('matrix-request', () => {
 
     it('returns undefined for unknown keys', () => {
       expect(resolveMatrixAscii('ArrowUp')).toBeUndefined();
+    });
+  });
+
+  describe('resolveMatrixPayloadAscii', () => {
+    it('capitalizes letters when the matrix shift latch is active', () => {
+      expect(resolveMatrixPayloadAscii({ key: 'a', pressed: true, shift: true })).toBe(0x41);
+    });
+
+    it('maps shifted number and punctuation keys to their shifted ASCII characters', () => {
+      expect(resolveMatrixPayloadAscii({ key: '1', pressed: true, shift: true })).toBe(0x21);
+      expect(resolveMatrixPayloadAscii({ key: '/', pressed: true, shift: true })).toBe(0x3f);
+      expect(resolveMatrixPayloadAscii({ key: ';', pressed: true, shift: true })).toBe(0x3a);
+    });
+
+    it('leaves physical shifted key values alone when the browser already supplied them', () => {
+      expect(resolveMatrixPayloadAscii({ key: 'A', pressed: true, shift: true })).toBe(0x41);
+      expect(resolveMatrixPayloadAscii({ key: '!', pressed: true, shift: true })).toBe(0x21);
     });
   });
 

@@ -69,6 +69,42 @@ export function resolveMatrixAscii(key: string): number | undefined {
   return undefined;
 }
 
+const SHIFTED_KEY_ASCII: Record<string, string> = {
+  '1': '!',
+  '2': '@',
+  '3': '#',
+  '4': '$',
+  '5': '%',
+  '6': '^',
+  '7': '&',
+  '8': '*',
+  '9': '(',
+  '0': ')',
+  '-': '_',
+  '=': '+',
+  '[': '{',
+  ']': '}',
+  '\\': '|',
+  ';': ':',
+  "'": '"',
+  ',': '<',
+  '.': '>',
+  '/': '?',
+};
+
+export function resolveMatrixPayloadAscii(payload: MatrixKeyPayload): number | undefined {
+  if (payload.shift === true && payload.ctrl !== true && payload.alt !== true) {
+    if (/^[a-z]$/.test(payload.key)) {
+      return payload.key.toUpperCase().charCodeAt(0);
+    }
+    const shifted = SHIFTED_KEY_ASCII[payload.key];
+    if (shifted !== undefined) {
+      return shifted.charCodeAt(0);
+    }
+  }
+  return resolveMatrixAscii(payload.key);
+}
+
 export function buildMatrixKeyId(payload: MatrixKeyPayload): string {
   return (
     payload.key +
@@ -156,7 +192,7 @@ export function handleMatrixKeyRequest(
   if (!runtime.state.matrixModeEnabled) {
     return null;
   }
-  const ascii = resolveMatrixAscii(payload.key);
+  const ascii = resolveMatrixPayloadAscii(payload);
   if (ascii === undefined) {
     return null;
   }
