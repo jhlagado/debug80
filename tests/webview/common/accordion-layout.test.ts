@@ -346,6 +346,33 @@ describe('accordion layout controller', () => {
     });
   });
 
+  it('uses an explicit default panel order before source order', () => {
+    const messages: PostedMessage[] = [];
+    const fixture = accordionFixture(['project', 'displays', 'machine', 'serial']);
+    const vscode = createVscodeMock(messages);
+
+    createAccordionLayoutController({
+      vscode,
+      buttons: fixture.buttons,
+      panels: {
+        project: document.createElement('div'),
+        displays: document.createElement('div'),
+        machine: document.createElement('div'),
+        serial: document.createElement('div'),
+      },
+      defaultPanelOrder: ['project', 'machine', 'displays', 'serial'],
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+    });
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual(['project', 'machine', 'displays', 'serial']);
+  });
+
   it('polls registers while registers are open and memory is closed', () => {
     vi.useFakeTimers();
     const messages: PostedMessage[] = [];

@@ -20,6 +20,7 @@ type AccordionLayoutOptions = {
   vscode: VscodeApi;
   buttons: HTMLElement[];
   panels: Partial<Record<AccordionPanel, HTMLElement | null>>;
+  defaultPanelOrder?: AccordionPanel[];
   memoryPanel: HTMLElement | null;
   defaultTab: ProviderPanelTab;
   getMemoryPanelController: () => MemoryPanel | null;
@@ -137,9 +138,14 @@ export function createAccordionLayoutController(
     AccordionPanel,
     { moveUp: HTMLButtonElement; moveDown: HTMLButtonElement }
   >();
-  const defaultOrder = options.buttons
+  const buttonOrder = options.buttons
     .map((button) => button.dataset.accordionToggle)
     .filter((panel): panel is AccordionPanel => Boolean(panel && PANEL_SET.has(panel as AccordionPanel)));
+  const defaultPanelOrder = options.defaultPanelOrder?.filter((panel) => buttonOrder.includes(panel)) ?? [];
+  const defaultOrder = [
+    ...defaultPanelOrder,
+    ...buttonOrder.filter((panel) => !defaultPanelOrder.includes(panel)),
+  ];
   let panelOrder = readStoredPanelOrder(options.vscode, defaultOrder);
   const stored = readStoredOpenState(options.vscode);
   const openState: Record<AccordionPanel, boolean> = {

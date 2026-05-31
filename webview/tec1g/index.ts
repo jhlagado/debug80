@@ -129,6 +129,15 @@ const panelLayout = createAccordionLayoutController({
     registers: accordionRegisters,
     memory: accordionMemory,
   },
+  defaultPanelOrder: [
+    'project',
+    'machine',
+    'displays',
+    'matrixKeyboard',
+    'registers',
+    'memory',
+    'serial',
+  ],
   getMemoryPanelController: () => memoryPanelController,
   onPanelOpenChange: (panel, open) => {
     if (panel !== 'matrixKeyboard') {
