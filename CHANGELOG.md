@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.11
+
+- Refactored launch argument handling so project config, target selection,
+  platform blocks, artifacts, source paths, and bundled ROM/source-map paths are
+  merged through smaller focused helpers.
+- Documented Debug80's fallback policy: UI state can be tolerant, but build
+  artifacts and AZM-native D8 source maps are strict source-of-truth
+  requirements.
+- Split watch expression handling into tokenizer, parser, evaluator, shared
+  types, and public facade modules.
+- Centralized debug session event emission for runtime stops,
+  request-controller events, stop-on-entry, breakpoint refresh, and
+  console/status output.
+- Cleaned legacy source-map/config paths, including removal of remaining
+  `.debug80.json` discovery and obsolete compatibility-map references.
+- Removed several unused exported symbols from extension, mapping, opcode,
+  CoolTerm, bundle manifest, workspace selection, and keypad modules.
+- Extracted memory panel formatting and memory dump rendering helpers from the
+  main webview memory panel.
+- Extracted project target dropdown rendering and "Send to TEC-1/TEC-1G" label
+  logic from the project status UI.
+- Kept behavior covered by focused debug/webview tests and the full webview
+  test suite.
+
 ## 0.1.10
 
 - Added workspace-wide symbol search backed by the latest Debug80 source map,
