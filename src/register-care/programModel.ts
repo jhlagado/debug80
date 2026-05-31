@@ -15,6 +15,80 @@ function routineNameFromExpression(expression: Expression): string | undefined {
   return expression.kind === 'symbol' ? expression.name : undefined;
 }
 
+function evaluateConstantExpression(
+  expression: Expression,
+  constants: ReadonlyMap<string, number>,
+): number | undefined {
+  switch (expression.kind) {
+    case 'number':
+      return expression.value;
+    case 'symbol':
+      return constants.get(expression.name);
+    case 'unary': {
+      const value = evaluateConstantExpression(expression.expression, constants);
+      if (value === undefined) return undefined;
+      switch (expression.operator) {
+        case '+':
+          return value;
+        case '-':
+          return -value;
+        case '~':
+          return ~value;
+      }
+    }
+    case 'binary': {
+      const left = evaluateConstantExpression(expression.left, constants);
+      const right = evaluateConstantExpression(expression.right, constants);
+      if (left === undefined || right === undefined) return undefined;
+      switch (expression.operator) {
+        case '+':
+          return left + right;
+        case '-':
+          return left - right;
+        case '*':
+          return left * right;
+        case '/':
+          return right === 0 ? undefined : Math.trunc(left / right);
+        case '%':
+          return right === 0 ? undefined : left % right;
+        case '&':
+          return left & right;
+        case '^':
+          return left ^ right;
+        case '|':
+          return left | right;
+        case '<<':
+          return left << right;
+        case '>>':
+          return left >> right;
+      }
+    }
+    case 'byte-function': {
+      const value = evaluateConstantExpression(expression.expression, constants);
+      if (value === undefined) return undefined;
+      return expression.function === 'LSB' ? value & 0xff : (value >> 8) & 0xff;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function collectConstants(items: readonly SourceItem[]): ReadonlyMap<string, number> {
+  const constants = new Map<string, number>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const item of items) {
+      if (item.kind !== 'equ' || constants.has(item.name)) continue;
+      const value = evaluateConstantExpression(item.expression, constants);
+      if (value === undefined) continue;
+      constants.set(item.name, value);
+      changed = true;
+    }
+  }
+  return constants;
+}
+
 function instructionCallTarget(item: SourceItem): string | undefined {
   if (item.kind !== 'instruction') return undefined;
   const mnemonic = item.instruction.mnemonic;
@@ -41,6 +115,7 @@ function instructionTailJumpTarget(
 function toInstruction(
   item: Extract<SourceItem, { kind: 'instruction' }>,
   labels: readonly string[],
+  constants: ReadonlyMap<string, number>,
 ): RegisterCareInstruction {
   return {
     instruction: item.instruction,
@@ -48,6 +123,7 @@ function toInstruction(
     line: item.span.line,
     column: item.span.column,
     labels: [...labels],
+    constants,
   };
 }
 
@@ -62,9 +138,12 @@ function pushDirectBoundary(
   boundaries.push({ target, subject, file, line, column });
 }
 
-export function buildRegisterCareProgramModel(items: readonly SourceItem[]): RegisterCareProgramModel {
+export function buildRegisterCareProgramModel(
+  items: readonly SourceItem[],
+): RegisterCareProgramModel {
   const routines: RegisterCareRoutine[] = [];
   const directCalls: RegisterCareDirectCall[] = [];
+  const constants = collectConstants(items);
   const filesWithEntryLabels = new Set(
     items
       .filter((item): item is Extract<SourceItem, { kind: 'label' }> => item.kind === 'label')
@@ -101,6 +180,7 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
         labels: [...labels],
         entryLabels: [...entryLabels],
         instructions: [],
+        constants,
         span: {
           file: sourceName ?? '',
           start: { line: routineStartLine, column: routineStartColumn ?? 1 },
@@ -117,6 +197,7 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
       labels: [...labels],
       entryLabels: [...entryLabels],
       instructions: [...instructions],
+      constants,
       span: {
         file: sourceName ?? '',
         start: { line: routineStartLine, column: routineStartColumn ?? 1 },
@@ -152,7 +233,7 @@ export function buildRegisterCareProgramModel(items: readonly SourceItem[]): Reg
       if (item.span.sourceName !== sourceName) {
         continue;
       }
-      instructions.push(toInstruction(item, labels));
+      instructions.push(toInstruction(item, labels, constants));
       const directTarget = instructionCallTarget(item);
       if (directTarget !== undefined) {
         pushDirectBoundary(
