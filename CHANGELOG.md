@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.12
+
+- Fixed matrix keyboard recovery after extension/webview restart.
+- Matrix key input now self-recovers if the accordion restored open but the
+  initial `matrixMode` sync was missed by the debug session.
+- Fixed TEC-1G panel message forwarding so the `fn` modifier reaches the
+  adapter.
+- Added regression coverage for missed startup matrix-mode sync and modifier
+  forwarding.
+- Included the matrix keyboard rework from late May 31: keycap-based modifier
+  lights, CapsLock latch behavior, right Shift, separate Fn/Alt handling,
+  matrix-mode tied to accordion visibility, compact keyboard styling, and
+  default accordion ordering.
+
 ## 0.1.11
 
 - Refactored launch argument handling so project config, target selection,
