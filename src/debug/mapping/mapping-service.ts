@@ -83,7 +83,7 @@ export function buildMappingFromDebugMap(options: {
   const hasNativeMap = loadedMap !== undefined && isNativeDebugMap(loadedMap);
   if (hasNativeMap) {
     service.logger.info(
-      `Debug80: Using native D8 map from "${getDebugMapGeneratorLabel(loadedMap)}" at "${debugMapLoadedFrom ?? mapPath}".`
+      `Debug80: Source map loaded: ${formatMapDisplayPath(debugMapLoadedFrom ?? mapPath, service)} (${getDebugMapGeneratorLabel(loadedMap)}, target).`
     );
     const d8Warnings = validateD8Segments(loadedMap);
     for (const w of d8Warnings) {
@@ -119,7 +119,7 @@ export function buildMappingFromDebugMap(options: {
       continue;
     }
     service.logger.info(
-      `Debug80: Using auxiliary D8 map from "${getDebugMapGeneratorLabel(auxiliaryMap)}" at "${auxiliaryPath}".`
+      `Debug80: Source map loaded: ${formatMapDisplayPath(auxiliaryPath, service)} (${getDebugMapGeneratorLabel(auxiliaryMap)}, platform ROM).`
     );
     const auxiliaryMapping = buildMappingFromD8DebugMap(
       absolutizeRelativeDebugMapFiles(auxiliaryMap, auxiliaryPath)
@@ -132,10 +132,8 @@ export function buildMappingFromDebugMap(options: {
   for (const seg of mapping.segments) {
     fileSet.add(seg.loc.file);
   }
-  service.logger.info(
-    `Debug80: mapping has ${mapping.segments.length} segments, ` +
-      `${mapping.anchors.length} anchors, files=[${[...fileSet].map((f) => f ?? '(null)').join(', ')}]`
-  );
+  const mappedFiles = [...fileSet].map((f) => f ?? '(null)');
+  service.logger.debug(`Debug80: source-map files=[${mappedFiles.join(', ')}]`);
 
   if (service.platform === 'tec1g') {
     applyTec1gBootstrapAlias(mapping);
@@ -157,11 +155,23 @@ export function buildMappingFromDebugMap(options: {
   const index = buildSourceMapIndex(mapping, (file) => service.resolveMappedPath(file));
 
   service.logger.info(
-    `Debug80: index built with ${index.segmentsByAddress.length} address-sorted segments, ` +
-      `${index.segmentsByFileLine.size} file entries, ${index.anchorsByFile.size} anchor files`
+    `Debug80: Source mapping ready: ${formatCount(index.segmentsByAddress.length)} executable ranges across ` +
+      `${formatCount(index.segmentsByFileLine.size)} files; ${formatCount(mapping.anchors.length)} anchors.`
   );
 
   return { mapping, index, missingSources: [] };
+}
+
+function formatMapDisplayPath(mapPath: string, service: MappingServiceOptions): string {
+  const relative = service.relativeIfPossible(mapPath, service.baseDir);
+  if (relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+    return relative;
+  }
+  return path.basename(mapPath);
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString('en-US');
 }
 
 function absolutizeRelativeDebugMapFiles(map: D8DebugMap, mapPath: string): D8DebugMap {

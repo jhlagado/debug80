@@ -80,7 +80,7 @@ describe('source-manager', () => {
     expect(state.mapping.segments.length).toBeGreaterThan(0);
     expect(state.mappingIndex.segmentsByAddress.length).toBeGreaterThan(0);
     expect(state.sourceRoots).toContain(path.resolve(dir, 'src'));
-    expect(logs.some((line) => line.includes('Using native D8 map'))).toBe(true);
+    expect(logs.some((line) => line.includes('Source map loaded: simple.d8.json'))).toBe(true);
   });
 
   it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. AZM entry only)', () => {

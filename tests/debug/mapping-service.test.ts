@@ -110,7 +110,10 @@ describe('mapping-service', () => {
     expect(result.mapping.segments).toHaveLength(1);
     expect(result.index.segmentsByAddress).toHaveLength(1);
     expect(resolveLocation(result.index, asmPath, 3)).toEqual([0x2000]);
-    expect(logs.some((line) => line.includes('Using native D8 map from "azm"'))).toBe(true);
+    expect(logs.some((line) => line.includes('Source map loaded: simple.d8.json (azm, target)'))).toBe(
+      true
+    );
+    expect(logs.some((line) => line.includes('Source mapping ready:'))).toBe(true);
   });
 
   it('does not derive a source map when native D8 is missing', () => {
