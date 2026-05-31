@@ -232,6 +232,12 @@ export function createMatrixUiController(
     setMatrixMod(mod, !matrixClickMods[mod]);
   }
 
+  function clearOneShotMatrixMods() {
+    setMatrixMod('shift', false);
+    setMatrixMod('ctrl', false);
+    setMatrixMod('alt', false);
+  }
+
   function buildMatrixKeyboard() {
     if (!matrixKeyboardGrid) {
       return;
@@ -299,7 +305,7 @@ export function createMatrixUiController(
       ],
       [
         { label: 'CTRL', key: 'Control', unit: 1.15 },
-        { label: 'FN', key: 'Alt', unit: 1.05 },
+        { label: 'FN', key: 'Fn', unit: 1.05 },
         { label: 'ALT', key: 'Alt', unit: 1.15 },
         { label: 'SPACE', key: ' ', unit: 6.8 },
         { label: 'ALT', key: 'Alt', unit: 1.15 },
@@ -342,7 +348,7 @@ export function createMatrixUiController(
             toggleMatrixMod('ctrl');
             return;
           }
-          if (keyValue === 'Alt') {
+          if (keyValue === 'Alt' || keyValue === 'Fn') {
             toggleMatrixMod('alt');
             return;
           }
@@ -350,11 +356,18 @@ export function createMatrixUiController(
           sendMatrixKey(keyValue, true, matrixClickMods);
         });
         const release = () => {
-          if (keyValue === 'Shift' || keyValue === 'Control' || keyValue === 'Alt') {
+          if (
+            keyValue === 'Shift' ||
+            keyValue === 'Control' ||
+            keyValue === 'Alt' ||
+            keyValue === 'Fn'
+          ) {
             return;
           }
           setMatrixKeyPressed(keyValue, false);
-          sendMatrixKey(keyValue, false, matrixClickMods);
+          if (sendMatrixKey(keyValue, false, matrixClickMods)) {
+            clearOneShotMatrixMods();
+          }
         };
         keyEl.addEventListener('mouseup', release);
         keyEl.addEventListener('mouseleave', release);

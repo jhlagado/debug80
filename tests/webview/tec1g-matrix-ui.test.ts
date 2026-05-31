@@ -144,7 +144,7 @@ describe('tec1g matrix ui', () => {
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-    expect(matrixShift.classList.contains('active')).toBe(true);
+    expect(matrixShift.classList.contains('active')).toBe(false);
     expect(matrixKey.classList.contains('pressed')).toBe(false);
     expect(messages).toContainEqual({
       type: 'matrixKey',
@@ -159,6 +159,31 @@ describe('tec1g matrix ui', () => {
       key: 'a',
       pressed: false,
       shift: true,
+      ctrl: false,
+      alt: false,
+    });
+  });
+
+  it('sends caps lock clicks as matrix key events', () => {
+    controller.applyMatrixMode(true);
+    const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
+
+    capsKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    capsKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'CapsLock',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      alt: false,
+    });
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'CapsLock',
+      pressed: false,
+      shift: false,
       ctrl: false,
       alt: false,
     });

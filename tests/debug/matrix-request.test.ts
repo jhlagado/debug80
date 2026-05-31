@@ -10,8 +10,10 @@ import {
   resolveMatrixAscii,
   resolveMatrixPayloadAscii,
   buildMatrixKeyId,
+  handleMatrixKeyRequest,
 } from '../../src/debug/requests/matrix-request';
 import type { MatrixKeyCombo } from '../../src/platforms/tec1g/matrix-keymap';
+import type { MatrixRuntime } from '../../src/debug/requests/matrix-request';
 
 describe('matrix-request', () => {
   describe('selectMatrixCombo', () => {
@@ -150,6 +152,32 @@ describe('matrix-request', () => {
       expect(buildMatrixKeyId({ key: 'a', pressed: true, shift: true })).toBe('a|100');
       expect(buildMatrixKeyId({ key: 'a', pressed: true, ctrl: true })).toBe('a|010');
       expect(buildMatrixKeyId({ key: 'a', pressed: true, alt: true })).toBe('a|001');
+    });
+  });
+
+  describe('handleMatrixKeyRequest', () => {
+    it('routes CapsLock to the MON-3 matrix caps key position', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'CapsLock', pressed: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'CapsLock', pressed: false })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 0, col: 7, pressed: true },
+        { row: 0, col: 7, pressed: false },
+      ]);
     });
   });
 });

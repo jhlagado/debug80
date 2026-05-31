@@ -115,6 +115,10 @@ export function buildMatrixKeyId(payload: MatrixKeyPayload): string {
   );
 }
 
+const SPECIAL_MATRIX_KEYS: Record<string, MatrixKeyCombo[]> = {
+  CapsLock: [{ row: 0, col: 7 }],
+};
+
 export function selectMatrixCombo(
   combos: MatrixKeyCombo[],
   payload: MatrixKeyPayload,
@@ -192,6 +196,21 @@ export function handleMatrixKeyRequest(
   if (!runtime.state.matrixModeEnabled) {
     return null;
   }
+  const keyId = buildMatrixKeyId(payload);
+  const specialCombos = SPECIAL_MATRIX_KEYS[payload.key];
+  if (specialCombos) {
+    if (payload.pressed) {
+      if (!heldKeys.has(keyId)) {
+        heldKeys.set(keyId, specialCombos);
+        specialCombos.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, true));
+      }
+      return null;
+    }
+    const held = heldKeys.get(keyId) ?? specialCombos;
+    held.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
+    heldKeys.delete(keyId);
+    return null;
+  }
   const ascii = resolveMatrixPayloadAscii(payload);
   if (ascii === undefined) {
     return null;
@@ -200,7 +219,6 @@ export function handleMatrixKeyRequest(
   if (combos.length === 0) {
     return null;
   }
-  const keyId = buildMatrixKeyId(payload);
   const combo = selectMatrixCombo(combos, payload, runtime.state.capsLock);
   if (!combo) {
     return null;
