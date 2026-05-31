@@ -2,7 +2,6 @@
  * @fileoverview Runtime execution helpers for stepping and stopping.
  */
 
-import { BreakpointEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { Z80Runtime } from '../../z80/runtime';
 import type { StepInfo } from '../../z80/types';
@@ -17,8 +16,15 @@ import type { LaunchSequenceContext } from '../launch/launch-sequence';
 import type { LaunchSessionArtifacts } from '../launch/launch-sequence';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CpuStateSnapshot } from '../../z80/runtime';
-import { emitDebugSessionStatus } from './session-status';
 import { createRuntimePerformanceMonitor } from './performance-monitor';
+import {
+  emitChangedBreakpoints,
+  emitRuntimeLimitStopped,
+  emitRuntimeRunning,
+  emitRuntimeStopped,
+  markRuntimeStopped,
+  stopRuntimeAndEmit,
+} from './runtime-events';
 
 const HOST_FAIRNESS_YIELD_MS = 0;
 
@@ -235,32 +241,6 @@ function getPerformanceLogger(context: RuntimeControlContext): Logger {
   return context.getLogger?.() ?? nullPerformanceLogger;
 }
 
-function markStopped(
-  context: RuntimeControlContext,
-  reason: StopReason,
-  breakpointAddress: number | null
-): void {
-  context.setHaltNotified(false);
-  context.setRunning(false);
-  context.setLastStopReason(reason);
-  context.setLastBreakpointAddress(breakpointAddress);
-}
-
-function emitStopped(context: RuntimeControlContext, reason: string): void {
-  emitDebugSessionStatus(context.sendEvent, 'paused');
-  context.sendEvent(new StoppedEvent(reason, 1));
-}
-
-function stopAndEmit(
-  context: RuntimeControlContext,
-  stateReason: StopReason,
-  eventReason: string,
-  breakpointAddress: number | null
-): void {
-  markStopped(context, stateReason, breakpointAddress);
-  emitStopped(context, eventReason);
-}
-
 export interface LaunchBreakpointsTarget {
   mappingIndex: LaunchSessionArtifacts['mappingIndex'] | undefined;
 }
@@ -271,9 +251,7 @@ export function applyLaunchBreakpoints(
   sendEvent: (event: DebugProtocol.Event) => void
 ): void {
   const applied = breakpointManager.applyAll(target.mappingIndex);
-  for (const bp of applied) {
-    sendEvent(new BreakpointEvent('changed', bp));
-  }
+  emitChangedBreakpoints(sendEvent, applied);
 }
 
 export function applyStepInfo(context: RuntimeControlContext, trace: StepInfo): void {
@@ -374,7 +352,7 @@ export async function runUntilStopAsync(
     platform: context.getActivePlatform(),
     clockHz: initialCapabilities?.getClockHz() ?? 0,
   });
-  emitDebugSessionStatus(context.sendEvent, 'running');
+  emitRuntimeRunning(context);
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const chunkStartedMs = Date.now();
@@ -386,9 +364,9 @@ export async function runUntilStopAsync(
       captureEntryCpuStateIfNeeded(context);
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
-        markStopped(context, 'pause', null);
+        markRuntimeStopped(context, 'pause', null);
         getRuntimeCapabilities()?.silenceSpeaker();
-        emitStopped(context, 'pause');
+        emitRuntimeStopped(context, 'pause');
         return;
       }
       if (
@@ -414,11 +392,11 @@ export async function runUntilStopAsync(
       }
       const pc = activeRuntime.getPC();
       if (context.isBreakpointAddress(pc)) {
-        stopAndEmit(context, 'breakpoint', 'breakpoint', pc);
+        stopRuntimeAndEmit(context, 'breakpoint', 'breakpoint', pc);
         return;
       }
       if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
-        stopAndEmit(context, 'step', 'step', null);
+        stopRuntimeAndEmit(context, 'step', 'step', null);
         return;
       }
       const result = stepRuntimeOnce({
@@ -437,14 +415,10 @@ export async function runUntilStopAsync(
         return;
       }
       if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
-        markStopped(context, 'step', null);
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(
-          new OutputEvent(
-            `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
-          )
+        emitRuntimeLimitStopped(
+          context,
+          `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
         );
-        context.sendEvent(new StoppedEvent('step', 1));
         return;
       }
     }
@@ -503,7 +477,7 @@ export async function runUntilReturnAsync(
     platform: context.getActivePlatform(),
     clockHz: initialCapabilities?.getClockHz() ?? 0,
   });
-  emitDebugSessionStatus(context.sendEvent, 'running');
+  emitRuntimeRunning(context);
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const chunkStartedMs = Date.now();
@@ -514,9 +488,9 @@ export async function runUntilReturnAsync(
       }
       if (context.getPauseRequested()) {
         context.setPauseRequested(false);
-        markStopped(context, 'pause', null);
+        markRuntimeStopped(context, 'pause', null);
         getRuntimeCapabilities()?.silenceSpeaker();
-        emitStopped(context, 'pause');
+        emitRuntimeStopped(context, 'pause');
         return;
       }
       if (
@@ -541,7 +515,7 @@ export async function runUntilReturnAsync(
       } else {
         const pc = activeRuntime.getPC();
         if (context.isBreakpointAddress(pc)) {
-          stopAndEmit(context, 'breakpoint', 'breakpoint', pc);
+          stopRuntimeAndEmit(context, 'breakpoint', 'breakpoint', pc);
           return;
         }
         const result = stepRuntimeOnce({
@@ -563,20 +537,16 @@ export async function runUntilReturnAsync(
 
       if (trace.kind === 'ret' && trace.taken) {
         if (baselineDepth === 0 || context.getCallDepth() < baselineDepth) {
-          stopAndEmit(context, 'step', 'step', null);
+          stopRuntimeAndEmit(context, 'step', 'step', null);
           return;
         }
       }
 
       if (maxInstructions > 0 && executed >= maxInstructions) {
-        markStopped(context, 'step', null);
-        emitDebugSessionStatus(context.sendEvent, 'paused');
-        context.sendEvent(
-          new OutputEvent(
-            `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
-          )
+        emitRuntimeLimitStopped(
+          context,
+          `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
         );
-        context.sendEvent(new StoppedEvent('step', 1));
         return;
       }
     }

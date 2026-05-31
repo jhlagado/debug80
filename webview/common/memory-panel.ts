@@ -1,4 +1,14 @@
 import type { VscodeApi } from './vscode';
+import {
+  formatHex,
+  formatRegisterHex,
+  isMemoryByteInput,
+  normalizeHexInput,
+  parseAddress,
+  registerAnchorFromText,
+  renderDump,
+  selectedOptionLabel,
+} from './memory-panel-format';
 
 export type MemoryViewEntry = {
   id: string;
@@ -540,16 +550,16 @@ export class MemoryPanel {
       }
       target.addr.textContent = formatHex(entry.address ?? 0, 4);
       if (!this.isEditingMemoryDump(target.dump)) {
-        renderDump(
-          target.dump,
-          entry.start,
-          entry.bytes,
-          entry.writable ?? [],
-          entry.focus ?? 0,
+        renderDump({
+          el: target.dump,
+          start: entry.start,
+          bytes: entry.bytes,
+          writable: entry.writable ?? [],
+          focusOffset: entry.focus ?? 0,
           rowSize,
-          this.editingEnabled,
-          this.allowReadOnlyWrites
-        );
+          editingEnabled: this.editingEnabled,
+          allowReadOnlyWrites: this.allowReadOnlyWrites,
+        });
       }
       if (entry.symbol) {
         if (entry.symbolOffset) {
@@ -628,114 +638,4 @@ export class MemoryPanel {
     });
     shell.prepend(label);
   }
-}
-
-function formatRegisterHex(value: number, width: number): string {
-  return value.toString(16).toUpperCase().padStart(width, '0');
-}
-
-function formatHex(value: number, width: number): string {
-  return '0x' + value.toString(16).toUpperCase().padStart(width, '0');
-}
-
-function selectedOptionLabel(select: HTMLSelectElement): string {
-  return select.selectedOptions[0]?.textContent?.trim() || select.value.toUpperCase();
-}
-
-function registerAnchorFromText(value: string): string | null {
-  switch (value) {
-    case 'pc':
-    case 'sp':
-    case 'bc':
-    case 'de':
-    case 'hl':
-    case 'ix':
-    case 'iy':
-      return value;
-    default:
-      return null;
-  }
-}
-
-function normalizeHexInput(value: string, width: number): string | null {
-  const trimmed = value.trim().toUpperCase();
-  if (trimmed.length === 0 || trimmed.startsWith('0X')) {
-    return null;
-  }
-  if (!/^[0-9A-F]+$/.test(trimmed) || trimmed.length > width) {
-    return null;
-  }
-  return trimmed.padStart(width, '0');
-}
-
-function renderDump(
-  el: HTMLElement,
-  start: number,
-  bytes: number[],
-  writable: boolean[],
-  focusOffset: number,
-  rowSize: number,
-  editingEnabled: boolean,
-  allowReadOnlyWrites: boolean
-): void {
-  let html = '';
-  for (let i = 0; i < bytes.length; i += rowSize) {
-    const rowAddr = (start + i) & 0xffff;
-    html += '<div class="row"><span class="row-addr">' + formatHex(rowAddr, 4) + '</span>';
-    let ascii = '';
-    for (let j = 0; j < rowSize && i + j < bytes.length; j++) {
-      const idx = i + j;
-      const value = bytes[idx];
-      const isWritable = writable[idx] !== false;
-      const cls =
-        'byte' +
-        (idx === focusOffset ? ' focus' : '') +
-        (!isWritable ? ' read-only-memory-byte' : '');
-      const byteValue = formatByteHex(value);
-      html +=
-        '<input class="' +
-        cls +
-        ' memory-byte-input" type="text" spellcheck="false" autocomplete="off" inputmode="text" maxlength="2" data-address="' +
-        formatByteHex((rowAddr + j) & 0xffff, 4) +
-        '" data-previous="' +
-        byteValue +
-        '" data-read-only="' +
-        (!isWritable ? 'true' : 'false') +
-        '" value="' +
-        byteValue +
-        '"' +
-        (editingEnabled && (isWritable || allowReadOnlyWrites) ? '' : ' disabled') +
-        ' />';
-      ascii += value >= 32 && value <= 126 ? String.fromCharCode(value) : '.';
-    }
-    html += '<span class="ascii">' + ascii + '</span></div>';
-  }
-  el.innerHTML = html;
-}
-
-function isMemoryByteInput(target: EventTarget | null): target is HTMLInputElement {
-  return target instanceof HTMLInputElement && target.classList.contains('memory-byte-input');
-}
-
-function formatByteHex(value: number, width = 2): string {
-  return value.toString(16).toUpperCase().padStart(width, '0');
-}
-
-function parseAddress(text: string): number | undefined {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const lower = trimmed.toLowerCase();
-  if (lower.startsWith('d:')) {
-    const value = parseInt(lower.slice(2), 10);
-    return Number.isFinite(value) ? value & 0xffff : undefined;
-  }
-  const hexText = lower.startsWith('0x')
-    ? lower.slice(2)
-    : lower.endsWith('h')
-      ? lower.slice(0, -1)
-      : lower;
-  const value = parseInt(hexText, 16);
-  return Number.isFinite(value) ? value & 0xffff : undefined;
 }
