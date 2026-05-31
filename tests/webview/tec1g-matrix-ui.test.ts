@@ -67,12 +67,14 @@ describe('tec1g matrix ui', () => {
   });
 
   it('applies caps lock state to the DOM', () => {
-    const matrixCapsStatus = document.getElementById('matrixCapsStatus') as HTMLElement;
+    const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
 
     controller.applyMatrixMode(true);
     controller.applyCapsLock(true);
 
-    expect(matrixCapsStatus.classList.contains('on')).toBe(true);
+    expect(capsKey.classList.contains('active')).toBe(true);
+    expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
   });
 
   it('renders matrix brightness as a fading display level', () => {
@@ -132,14 +134,15 @@ describe('tec1g matrix ui', () => {
 
   it('tracks modifier state when clicking matrix keys', () => {
     controller.applyMatrixMode(true);
-    const matrixShift = document.getElementById('matrixShift') as HTMLElement;
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
+    const matrixShift = shiftKeys[0];
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
-    matrixShift.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    matrixShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-    expect(matrixShift.classList.contains('active')).toBe(false);
+    expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
     expect(matrixKey.classList.contains('pressed')).toBe(false);
     expect(messages).toContainEqual({
       type: 'matrixKey',
@@ -188,19 +191,18 @@ describe('tec1g matrix ui', () => {
   it('keeps fn and alt click modifiers distinct', () => {
     controller.applyMatrixMode(true);
     const fnKey = document.querySelector('[data-key="Fn"]') as HTMLElement;
-    const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
-    const altIndicator = document.getElementById('matrixAlt') as HTMLElement;
+    const altKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Alt"]'));
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
     fnKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-    altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-    expect(altIndicator.classList.contains('active')).toBe(true);
+    altKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(altKeys.every((key) => key.classList.contains('active'))).toBe(true);
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    expect(altIndicator.classList.contains('active')).toBe(false);
+    expect(altKeys.some((key) => key.classList.contains('active'))).toBe(false);
 
     expect(messages).toContainEqual({
       type: 'matrixKey',
@@ -222,12 +224,16 @@ describe('tec1g matrix ui', () => {
     });
   });
 
-  it('sends caps lock clicks as matrix key events', () => {
+  it('uses caps lock as a persistent letter shift and lights the shift keys', () => {
     controller.applyMatrixMode(true);
     const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
 
     capsKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     capsKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
     expect(messages).toContainEqual({
       type: 'matrixKey',
@@ -247,6 +253,54 @@ describe('tec1g matrix ui', () => {
       fn: false,
       alt: false,
     });
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: true,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+    expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
+    expect(capsKey.classList.contains('active')).toBe(true);
+  });
+
+  it('applies caps lock to physical letter keys while matrix mode is active', () => {
+    controller.applyMatrixMode(true);
+
+    controller.handleKeyEvent(makeKeyEvent('keydown', 'CapsLock'), true);
+    controller.handleKeyEvent(makeKeyEvent('keyup', 'CapsLock'), false);
+    controller.handleKeyEvent(makeKeyEvent('keydown', 'a'), true);
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: true,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+  });
+
+  it('lights duplicate modifier keys together and clears one-shot modifiers after a key', () => {
+    controller.applyMatrixMode(true);
+    const leftShift = document.querySelector<HTMLElement>('[data-key="Shift"]') as HTMLElement;
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
+    const altKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Alt"]'));
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    leftShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
+
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
+
+    altKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(altKeys.every((key) => key.classList.contains('active'))).toBe(true);
   });
 
   it('ignores key events from inputs, repeated presses, and inactive matrix mode', () => {

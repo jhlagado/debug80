@@ -18,12 +18,7 @@ export function createMatrixUiController(
   isUiTabActive: () => boolean
 ): MatrixUiController {
   const matrixGrid = document.getElementById('matrixGrid') as HTMLElement;
-  const matrixCapsStatus = document.getElementById('matrixCapsStatus') as HTMLElement;
   const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid') as HTMLElement;
-  const matrixShift = document.getElementById('matrixShift') as HTMLElement;
-  const matrixCtrl = document.getElementById('matrixCtrl') as HTMLElement;
-  const matrixFn = document.getElementById('matrixFn') as HTMLElement;
-  const matrixAlt = document.getElementById('matrixAlt') as HTMLElement;
 
   let matrixModeEnabled = false;
   let capsLockEnabled = false;
@@ -34,7 +29,7 @@ export function createMatrixUiController(
     fn: false,
     alt: false,
   };
-  const matrixKeyElements = new Map<string, HTMLElement>();
+  const matrixKeyElements = new Map<string, HTMLElement[]>();
   let matrixRedRows = new Array(8).fill(0);
   let matrixGreenRows = new Array(8).fill(0);
   let matrixBlueRows = new Array(8).fill(0);
@@ -140,9 +135,7 @@ export function createMatrixUiController(
 
   function applyCapsLock(enabled) {
     capsLockEnabled = !!enabled;
-    if (matrixCapsStatus) {
-      matrixCapsStatus.classList.toggle('on', capsLockEnabled);
-    }
+    refreshMatrixModifierKeys();
   }
 
   function shouldIgnoreKeyEvent(event) {
@@ -153,14 +146,17 @@ export function createMatrixUiController(
     );
   }
 
-  function setMatrixKeyPressed(key, pressed) {
+  function matrixElementsForKey(key: string): HTMLElement[] {
     if (!key) {
-      return;
+      return [];
     }
     const direct = matrixKeyElements.get(key);
     const fallback = key.length === 1 ? matrixKeyElements.get(key.toLowerCase()) : undefined;
-    const el = direct ?? fallback;
-    if (el) {
+    return direct ?? fallback ?? [];
+  }
+
+  function setMatrixKeyPressed(key, pressed) {
+    for (const el of matrixElementsForKey(key)) {
       el.classList.toggle('pressed', pressed);
     }
   }
@@ -207,12 +203,16 @@ export function createMatrixUiController(
     if (pressed && event.repeat) {
       return true;
     }
+    if (key === 'CapsLock' && pressed) {
+      applyCapsLock(!capsLockEnabled);
+    }
+    const payloadKey = key.length === 1 ? key.toLowerCase() : key;
     setMatrixKeyPressed(key, pressed);
     if (key.length === 1 && key !== key.toLowerCase()) {
       setMatrixKeyPressed(key.toLowerCase(), pressed);
     }
-    sendMatrixKey(key, pressed, {
-      shift: event.shiftKey,
+    sendMatrixKey(payloadKey, pressed, {
+      shift: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
       ctrl: event.ctrlKey,
       fn: false,
       alt: event.altKey,
@@ -220,21 +220,40 @@ export function createMatrixUiController(
     return true;
   }
 
+  function isLetterKey(key: string): boolean {
+    return /^[a-z]$/i.test(key);
+  }
+
+  function clickModsForKey(key: string) {
+    return {
+      shift: matrixClickMods.shift || (capsLockEnabled && isLetterKey(key)),
+      ctrl: matrixClickMods.ctrl,
+      fn: matrixClickMods.fn,
+      alt: matrixClickMods.alt,
+    };
+  }
+
+  function refreshMatrixModifierKeys() {
+    for (const el of matrixElementsForKey('Shift')) {
+      el.classList.toggle('active', matrixClickMods.shift || capsLockEnabled);
+    }
+    for (const el of matrixElementsForKey('Control')) {
+      el.classList.toggle('active', matrixClickMods.ctrl);
+    }
+    for (const el of matrixElementsForKey('Fn')) {
+      el.classList.toggle('active', matrixClickMods.fn);
+    }
+    for (const el of matrixElementsForKey('Alt')) {
+      el.classList.toggle('active', matrixClickMods.alt);
+    }
+    for (const el of matrixElementsForKey('CapsLock')) {
+      el.classList.toggle('active', capsLockEnabled);
+    }
+  }
+
   function setMatrixMod(mod, active) {
     matrixClickMods[mod] = active;
-    const el =
-      mod === 'shift'
-        ? matrixShift
-        : mod === 'ctrl'
-          ? matrixCtrl
-          : mod === 'fn'
-            ? matrixFn
-            : mod === 'alt'
-              ? matrixAlt
-              : null;
-    if (el) {
-      el.classList.toggle('active', active);
-    }
+    refreshMatrixModifierKeys();
   }
 
   function toggleMatrixMod(mod) {
@@ -355,15 +374,13 @@ export function createMatrixUiController(
         }
         const keyValue = keyDef.key;
         keyEl.dataset.key = keyValue;
-        if (
-          keyValue !== 'Shift' &&
-          keyValue !== 'Control' &&
-          keyValue !== 'Alt' &&
-          keyValue !== 'CapsLock'
-        ) {
-          if (!matrixKeyElements.has(keyValue)) {
-            matrixKeyElements.set(keyValue, keyEl);
-          }
+        const elements = matrixKeyElements.get(keyValue) ?? [];
+        elements.push(keyEl);
+        matrixKeyElements.set(keyValue, elements);
+        if (keyValue.length === 1 && keyValue !== keyValue.toLowerCase()) {
+          const lowerElements = matrixKeyElements.get(keyValue.toLowerCase()) ?? [];
+          lowerElements.push(keyEl);
+          matrixKeyElements.set(keyValue.toLowerCase(), lowerElements);
         }
         keyEl.addEventListener('mousedown', (event) => {
           event.preventDefault();
@@ -386,8 +403,14 @@ export function createMatrixUiController(
             toggleMatrixMod('alt');
             return;
           }
+          if (keyValue === 'CapsLock') {
+            applyCapsLock(!capsLockEnabled);
+            setMatrixKeyPressed(keyValue, true);
+            sendMatrixKey(keyValue, true, matrixClickMods);
+            return;
+          }
           setMatrixKeyPressed(keyValue, true);
-          sendMatrixKey(keyValue, true, matrixClickMods);
+          sendMatrixKey(keyValue, true, clickModsForKey(keyValue));
         });
         const release = () => {
           if (
@@ -398,8 +421,9 @@ export function createMatrixUiController(
           ) {
             return;
           }
+          const releaseMods = keyValue === 'CapsLock' ? matrixClickMods : clickModsForKey(keyValue);
           setMatrixKeyPressed(keyValue, false);
-          if (sendMatrixKey(keyValue, false, matrixClickMods)) {
+          if (sendMatrixKey(keyValue, false, releaseMods)) {
             clearOneShotMatrixMods();
           }
         };
@@ -417,18 +441,6 @@ export function createMatrixUiController(
     buildMatrixKeyboard();
     applyMatrixMode(matrixModeEnabled);
     applyCapsLock(capsLockEnabled);
-    if (matrixShift) {
-      matrixShift.addEventListener('click', () => toggleMatrixMod('shift'));
-    }
-    if (matrixCtrl) {
-      matrixCtrl.addEventListener('click', () => toggleMatrixMod('ctrl'));
-    }
-    if (matrixFn) {
-      matrixFn.addEventListener('click', () => toggleMatrixMod('fn'));
-    }
-    if (matrixAlt) {
-      matrixAlt.addEventListener('click', () => toggleMatrixMod('alt'));
-    }
   }
 
   function padRowPlane(rows: number[]): number[] {
