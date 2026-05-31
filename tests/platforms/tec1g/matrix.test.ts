@@ -209,10 +209,10 @@ describe('TEC-1G matrix keyboard', () => {
     expect(leftmostRt.state.display.ledMatrixBrightnessR[7]).toBe(0);
   });
 
-  it('suppresses keypad NMI when matrix mode is enabled', () => {
+  it('allows explicit keypad input while matrix mode is enabled', () => {
     const rt = makeRuntime(true);
     rt.applyKey(0x12);
-    expect(rt.state.input.nmiPending).toBe(false);
-    expect(rt.state.input.keyValue).toBe(0x7f);
+    expect(rt.state.input.nmiPending).toBe(true);
+    expect(rt.state.input.keyValue).toBe(0x12);
   });
 });

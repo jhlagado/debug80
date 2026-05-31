@@ -109,6 +109,10 @@ const azmOptionsControl = wireAzmOptionsControl(
 
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
+const matrixUi = createMatrixUiController(
+  vscode,
+  () => !accordionMatrixKeyboard.hidden
+);
 
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createAccordionLayoutController({
@@ -126,13 +130,15 @@ const panelLayout = createAccordionLayoutController({
     memory: accordionMemory,
   },
   getMemoryPanelController: () => memoryPanelController,
+  onPanelOpenChange: (panel, open) => {
+    if (panel !== 'matrixKeyboard') {
+      return;
+    }
+    matrixUi.applyMatrixMode(open);
+    vscode.postMessage({ type: 'matrixMode', enabled: open });
+  },
 });
 panelLayout.wireButtons();
-
-const matrixUi = createMatrixUiController(
-  vscode,
-  () => panelLayout.isMatrixKeyboardOpen()
-);
 
 const projectStatusUi = createTec1gProjectStatusUi(
   vscode,
@@ -317,6 +323,8 @@ audio.applyMuteState();
 document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
 document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
+matrixUi.applyMatrixMode(panelLayout.isMatrixKeyboardOpen());
+vscode.postMessage({ type: 'matrixMode', enabled: panelLayout.isMatrixKeyboardOpen() });
 lcdRenderer.draw();
 glcdRenderer.draw();
 panelLayout.setProviderTab(DEFAULT_TAB, false);

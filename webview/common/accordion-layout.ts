@@ -23,6 +23,7 @@ type AccordionLayoutOptions = {
   memoryPanel: HTMLElement | null;
   defaultTab: ProviderPanelTab;
   getMemoryPanelController: () => MemoryPanel | null;
+  onPanelOpenChange?: (panel: AccordionPanel, open: boolean) => void;
 };
 
 export type AccordionLayoutController = {
@@ -329,6 +330,7 @@ export function createAccordionLayoutController(
     openState[panel] = open;
     applyPanelState(panel);
     writeStoredAccordionState(options.vscode, openState, panelOrder);
+    options.onPanelOpenChange?.(panel, open);
     syncProviderTab(notify);
     if (panel === 'memory' && open) {
       updateMemoryLayout(true);

@@ -140,6 +140,7 @@ describe('accordion layout controller', () => {
 
   it('toggles serial and matrix keyboard panels without switching provider tabs', () => {
     const messages: PostedMessage[] = [];
+    const panelChanges: Array<{ panel: string; open: boolean }> = [];
     const serialButton = button('serial');
     const matrixKeyboardButton = button('matrixKeyboard');
     const serialContent = document.createElement('div');
@@ -158,6 +159,7 @@ describe('accordion layout controller', () => {
       memoryPanel: document.createElement('div'),
       defaultTab: 'ui',
       getMemoryPanelController: () => null,
+      onPanelOpenChange: (panel, open) => panelChanges.push({ panel, open }),
     });
     controller.wireButtons();
 
@@ -175,6 +177,10 @@ describe('accordion layout controller', () => {
     expect(messages).toEqual([
       { type: 'tab', tab: 'ui' },
       { type: 'tab', tab: 'ui' },
+    ]);
+    expect(panelChanges).toEqual([
+      { panel: 'serial', open: true },
+      { panel: 'matrixKeyboard', open: true },
     ]);
     expect(vscode.getState()).toEqual({
       debug80Accordion: {

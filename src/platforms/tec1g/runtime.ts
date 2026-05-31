@@ -160,9 +160,6 @@ export function createTec1gRuntime(
   };
 
   const applyKey = (code: number): void => {
-    if (input.matrixModeEnabled) {
-      return;
-    }
     input.keyValue = code & TEC1G_MASK_LOW7;
     input.rawKeyActive = (input.keyValue & TEC1G_MASK_LOW7) !== TEC1G_MASK_LOW7;
     input.shiftKeyActive = input.rawKeyActive && (input.keyValue & TEC1G_KEY_SHIFT_MASK) === 0;
