@@ -167,8 +167,8 @@ describe('tec1g matrix ui', () => {
     const rightShift = shiftKeys[shiftKeys.length - 1];
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
-    expect(rightShift.textContent).toContain('S');
-    expect(rightShift.textContent).toContain('SHIFT');
+    expect(rightShift.textContent).toBe('SHIFT');
+    expect(rightShift.querySelector('.matrix-key-sub-label')?.textContent).toBe('SHIFT');
 
     rightShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));

@@ -252,7 +252,14 @@ export function createMatrixUiController(
     if (!matrixKeyboardGrid) {
       return;
     }
-    const rows = [
+    type MatrixKeyDef = {
+      label: string;
+      key: string;
+      unit?: number;
+      subLabel?: string;
+      smallLabel?: boolean;
+    };
+    const rows: MatrixKeyDef[][] = [
       [
         { label: 'ESC', key: 'Escape', unit: 1.25 },
         { label: '1!', key: '1' },
@@ -311,7 +318,7 @@ export function createMatrixUiController(
         { label: '.>', key: '.' },
         { label: '/?', key: '/' },
         { label: '▲', key: 'ArrowUp' },
-        { label: 'S', subLabel: 'SHIFT', key: 'Shift' },
+        { label: 'SHIFT', key: 'Shift', smallLabel: true },
       ],
       [
         { label: 'CTRL', key: 'Control', unit: 1.15 },
@@ -333,10 +340,13 @@ export function createMatrixUiController(
         keyEl.className = 'matrix-key';
         keyEl.style.setProperty('--key-unit', String(keyDef.unit ?? 1));
         const primaryLabel = document.createElement('span');
-        primaryLabel.className = 'matrix-key-label';
+        primaryLabel.className =
+          'smallLabel' in keyDef && keyDef.smallLabel
+            ? 'matrix-key-label matrix-key-sub-label'
+            : 'matrix-key-label';
         primaryLabel.textContent = keyDef.label;
         keyEl.appendChild(primaryLabel);
-        if ('subLabel' in keyDef && keyDef.subLabel) {
+        if (keyDef.subLabel) {
           keyEl.classList.add('matrix-key-with-sub-label');
           const subLabel = document.createElement('span');
           subLabel.className = 'matrix-key-sub-label';
