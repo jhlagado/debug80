@@ -103,8 +103,8 @@ This keeps config flexibility without forcing new users to think in target-level
 
 Debug80 project config should live in the folder:
 
-- preferred: `.vscode/debug80.json`
-- optional compatibility: `debug80.json` or `.debug80.json`
+- preferred: `debug80.json`
+- supported: `.vscode/debug80.json`
 
 The key rule is that the project belongs to the folder, not to the workspace file. This
 keeps projects portable in saved and unsaved workspaces.
@@ -230,10 +230,9 @@ These actions should update project config rather than relying on ad hoc launch 
 
 Each root folder should be scanned for these indicators, in order:
 
-1. `.vscode/debug80.json`
-2. `debug80.json`
-3. `.debug80.json`
-4. presence of `*.asm` or `*.z80`
+1. `debug80.json`
+2. `.vscode/debug80.json`
+3. presence of `*.asm` or `*.z80`
 
 Each folder then gets a derived state:
 

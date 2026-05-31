@@ -183,5 +183,3 @@ export function createTecKeypad(
     focusKeypad: () => core.focusKeypad(),
   };
 }
-
-export { TEC1G_KEY_MAP, TEC1G_SHIFT_BIT };

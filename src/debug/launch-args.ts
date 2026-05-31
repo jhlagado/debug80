@@ -71,6 +71,18 @@ type BundledAssetReferenceLike = {
   destination?: string;
 };
 
+type ConfigDiscoveryHelpers = { resolveBaseDir: (args: LaunchRequestArguments) => string };
+
+type LoadedLaunchConfig = {
+  path: string;
+  manifest: LaunchConfigManifest;
+};
+
+type ResolvedLaunchConfig = LoadedLaunchConfig & {
+  targetName: string | undefined;
+  targetCfg: LaunchTargetConfig | undefined;
+};
+
 function normalizeNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
@@ -270,6 +282,351 @@ function resolveTec1gBaseForMerge(cfg: {
   return { ...inherited, ...(root ?? {}) };
 }
 
+function resolveConfigSearchStart(args: LaunchRequestArguments, workspaceRoot: string): string {
+  const sourcePath =
+    args.asm !== undefined && args.asm !== ''
+      ? args.asm
+      : args.sourceFile !== undefined && args.sourceFile !== ''
+        ? args.sourceFile
+        : undefined;
+  return sourcePath !== undefined ? path.dirname(sourcePath) : workspaceRoot;
+}
+
+function ancestorDirs(startDir: string): string[] {
+  const dirs: string[] = [];
+  for (let dir = startDir; ; ) {
+    dirs.push(dir);
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return dirs;
+}
+
+function configCandidateNames(args: LaunchRequestArguments): string[] {
+  const candidates: string[] = [];
+  if (args.projectConfig !== undefined && args.projectConfig !== '') {
+    candidates.push(args.projectConfig);
+  }
+  candidates.push('debug80.json');
+  candidates.push(path.join('.vscode', 'debug80.json'));
+  return candidates;
+}
+
+function findConfigPath(args: LaunchRequestArguments, workspaceRoot: string): string | undefined {
+  const candidates = configCandidateNames(args);
+  const startDir = resolveConfigSearchStart(args, workspaceRoot);
+  for (const dir of ancestorDirs(startDir)) {
+    for (const candidate of candidates) {
+      const full = path.isAbsolute(candidate) ? candidate : path.join(dir, candidate);
+      if (fs.existsSync(full)) {
+        return full;
+      }
+    }
+    const pkgPath = path.join(dir, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkgRaw = fs.readFileSync(pkgPath, 'utf-8');
+        const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
+        if (pkg.debug80 !== undefined) {
+          return pkgPath;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return undefined;
+}
+
+function readLaunchConfig(configPath: string): LaunchConfigManifest {
+  if (configPath.endsWith('package.json')) {
+    const pkgRaw = fs.readFileSync(configPath, 'utf-8');
+    const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
+    return (pkg.debug80 as LaunchConfigManifest | undefined) ?? { targets: {} };
+  }
+
+  const raw = fs.readFileSync(configPath, 'utf-8');
+  return JSON.parse(raw) as LaunchConfigManifest;
+}
+
+function loadLaunchConfig(
+  args: LaunchRequestArguments,
+  helpers: ConfigDiscoveryHelpers
+): LoadedLaunchConfig | undefined {
+  const workspaceRoot = helpers.resolveBaseDir(args);
+  const configPath = findConfigPath(args, workspaceRoot);
+  if (configPath === undefined) {
+    return undefined;
+  }
+  return { path: configPath, manifest: readLaunchConfig(configPath) };
+}
+
+function resolveLaunchTarget(
+  loaded: LoadedLaunchConfig,
+  args: LaunchRequestArguments
+): ResolvedLaunchConfig {
+  const cfg = loaded.manifest;
+  const targets = cfg.targets ?? {};
+  const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
+  return {
+    ...loaded,
+    targetName,
+    targetCfg: targetName !== undefined ? (targets[targetName] ?? undefined) : undefined,
+  };
+}
+
+function applyPlatformBlockMerges(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  const mergedSimple = mergeNestedPlatformBlock(cfg.simple, targetCfg?.simple, args.simple);
+  if (mergedSimple !== undefined) {
+    merged.simple = mergedSimple;
+  } else {
+    delete merged.simple;
+  }
+
+  const mergedTec1 = mergeNestedPlatformBlock(cfg.tec1, targetCfg?.tec1, args.tec1);
+  if (mergedTec1 !== undefined) {
+    merged.tec1 = mergedTec1;
+  } else {
+    delete merged.tec1;
+  }
+
+  const mergedTec1g = mergeNestedPlatformBlock(
+    resolveTec1gBaseForMerge(cfg),
+    targetCfg?.tec1g,
+    args.tec1g
+  );
+  if (mergedTec1g !== undefined) {
+    merged.tec1g = mergedTec1g;
+  } else {
+    delete merged.tec1g;
+  }
+}
+
+function setIfDefined<K extends keyof LaunchRequestArguments>(
+  merged: LaunchRequestArguments,
+  key: K,
+  value: LaunchRequestArguments[K] | undefined
+): void {
+  if (value !== undefined) {
+    merged[key] = value;
+  }
+}
+
+function resolveAsmInput(
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): string | undefined {
+  return (
+    args.asm ??
+    args.sourceFile ??
+    targetCfg?.asm ??
+    targetCfg?.sourceFile ??
+    targetCfg?.source ??
+    cfg.asm ??
+    cfg.sourceFile ??
+    cfg.source
+  );
+}
+
+function resolveSourceInput(
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): string | undefined {
+  return (
+    args.sourceFile ??
+    args.asm ??
+    targetCfg?.sourceFile ??
+    targetCfg?.asm ??
+    targetCfg?.source ??
+    cfg.sourceFile ??
+    cfg.asm ??
+    cfg.source
+  );
+}
+
+function applyAzmOptions(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  const azmResolved = { ...(cfg.azm ?? {}), ...(targetCfg?.azm ?? {}), ...(args.azm ?? {}) };
+  setIfDefined(
+    merged,
+    'azm',
+    Object.keys(azmResolved).length > 0 ? azmResolved : undefined
+  );
+}
+
+function applySourceLaunchFields(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  setIfDefined(merged, 'asm', resolveAsmInput(cfg, targetCfg, args));
+  setIfDefined(merged, 'assembler', args.assembler ?? targetCfg?.assembler ?? cfg.assembler);
+  applyAzmOptions(merged, cfg, targetCfg, args);
+  setIfDefined(merged, 'sourceFile', resolveSourceInput(cfg, targetCfg, args));
+}
+
+function applyArtifactLaunchFields(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  setIfDefined(merged, 'hex', args.hex ?? targetCfg?.hex ?? cfg.hex);
+  setIfDefined(merged, 'outputDir', args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir);
+  setIfDefined(
+    merged,
+    'artifactBase',
+    args.artifactBase ?? targetCfg?.artifactBase ?? cfg.artifactBase
+  );
+  setIfDefined(
+    merged,
+    'sourceRoots',
+    args.sourceRoots ?? targetCfg?.sourceRoots ?? cfg.sourceRoots
+  );
+  setIfDefined(merged, 'debugMaps', args.debugMaps ?? targetCfg?.debugMaps ?? cfg.debugMaps);
+}
+
+function applyExecutionLaunchFields(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  setIfDefined(merged, 'entry', args.entry ?? targetCfg?.entry ?? cfg.entry);
+  setIfDefined(merged, 'simple', args.simple ?? targetCfg?.simple ?? cfg.simple);
+  setIfDefined(
+    merged,
+    'stopOnEntry',
+    args.stopOnEntry !== undefined ? args.stopOnEntry : (targetCfg?.stopOnEntry ?? cfg.stopOnEntry)
+  );
+  setIfDefined(merged, 'assemble', args.assemble ?? targetCfg?.assemble ?? cfg.assemble);
+  setIfDefined(
+    merged,
+    'stepOverMaxInstructions',
+    args.stepOverMaxInstructions ??
+      targetCfg?.stepOverMaxInstructions ??
+      cfg.stepOverMaxInstructions
+  );
+  setIfDefined(
+    merged,
+    'stepOutMaxInstructions',
+    args.stepOutMaxInstructions ?? targetCfg?.stepOutMaxInstructions ?? cfg.stepOutMaxInstructions
+  );
+}
+
+function applyBundledRomPath(
+  merged: LaunchRequestArguments,
+  options: {
+    platformResolved: string | undefined;
+    launchPlatformResolved: string | undefined;
+    bundledRomReference: BundledAssetReferenceLike | undefined;
+    workspaceRoot: string;
+  }
+): void {
+  const resolvedRomHex = resolveBundledAssetRuntimePath(
+    merged.tec1?.romHex ?? merged.tec1g?.romHex,
+    options.bundledRomReference,
+    options.workspaceRoot
+  );
+  if (resolvedRomHex === undefined) {
+    return;
+  }
+  if (options.launchPlatformResolved === 'tec1' || options.platformResolved === 'tec1') {
+    merged.tec1 = { ...(merged.tec1 ?? {}), romHex: resolvedRomHex };
+  } else if (
+    options.launchPlatformResolved === 'tec1g' ||
+    options.platformResolved === 'tec1g'
+  ) {
+    merged.tec1g = { ...(merged.tec1g ?? {}), romHex: resolvedRomHex };
+  }
+}
+
+function applyBundledDebugMapPath(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  bundledRomReference: BundledAssetReferenceLike | undefined,
+  workspaceRoot: string
+): void {
+  const bundledDebugMapReference =
+    resolveBundledAssetReference(cfg, targetCfg, 'debugMap') ??
+    inferSiblingDebugMapReference(bundledRomReference);
+  const resolvedDebugMap = resolveBundledAssetRuntimePath(
+    undefined,
+    bundledDebugMapReference,
+    workspaceRoot
+  );
+  if (resolvedDebugMap !== undefined) {
+    const existing = merged.debugMaps ?? [];
+    merged.debugMaps = existing.includes(resolvedDebugMap)
+      ? existing
+      : [...existing, resolvedDebugMap];
+  }
+}
+
+function applyBundledAssetPaths(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments,
+  workspaceRoot: string
+): void {
+  const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
+  const launchPlatformResolved = resolveLaunchPlatform(args, cfg, targetCfg);
+  const bundledRomReference = resolveBundledAssetReference(cfg, targetCfg, 'romHex');
+
+  applyBundledRomPath(merged, {
+    platformResolved,
+    launchPlatformResolved,
+    bundledRomReference,
+    workspaceRoot,
+  });
+  applyBundledDebugMapPath(merged, cfg, targetCfg, bundledRomReference, workspaceRoot);
+
+  if (launchPlatformResolved !== undefined) {
+    merged.platform = launchPlatformResolved;
+  } else if (platformResolved !== undefined) {
+    merged.platform = platformResolved;
+  }
+}
+
+function buildMergedLaunchArgs(
+  resolved: ResolvedLaunchConfig,
+  args: LaunchRequestArguments,
+  workspaceRoot: string
+): LaunchRequestArguments {
+  const cfg = resolved.manifest;
+  const targetCfg = resolved.targetCfg;
+  const merged: LaunchRequestArguments = {
+    ...cfg,
+    ...targetCfg,
+    ...args,
+  };
+
+  applyPlatformBlockMerges(merged, cfg, targetCfg, args);
+  applySourceLaunchFields(merged, cfg, targetCfg, args);
+  applyArtifactLaunchFields(merged, cfg, targetCfg, args);
+  applyExecutionLaunchFields(merged, cfg, targetCfg, args);
+  applyBundledAssetPaths(merged, cfg, targetCfg, args, workspaceRoot);
+  setIfDefined(merged, 'target', resolved.targetName ?? args.target);
+  return merged;
+}
+
 export function normalizePlatformName(args: LaunchRequestArguments): PlatformKind {
   const raw = args.platform ?? 'simple';
   const name = raw.trim().toLowerCase();
@@ -281,268 +638,15 @@ export function normalizePlatformName(args: LaunchRequestArguments): PlatformKin
 
 export function populateFromConfig(
   args: LaunchRequestArguments,
-  helpers: { resolveBaseDir: (args: LaunchRequestArguments) => string }
+  helpers: ConfigDiscoveryHelpers
 ): LaunchRequestArguments {
-  const configCandidates: string[] = [];
-
-  if (args.projectConfig !== undefined && args.projectConfig !== '') {
-    configCandidates.push(args.projectConfig);
-  }
-  configCandidates.push('debug80.json');
-  configCandidates.push('.debug80.json');
-  configCandidates.push(path.join('.vscode', 'debug80.json'));
-
-  const workspaceRoot = helpers.resolveBaseDir(args);
-  const startDir =
-    args.asm !== undefined && args.asm !== ''
-      ? path.dirname(args.asm)
-      : args.sourceFile !== undefined && args.sourceFile !== ''
-        ? path.dirname(args.sourceFile)
-        : workspaceRoot;
-
-  const dirsToCheck: string[] = [];
-  for (let dir = startDir; ; ) {
-    dirsToCheck.push(dir);
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-
-  let configPath: string | undefined;
-  for (const dir of dirsToCheck) {
-    for (const candidate of configCandidates) {
-      const full = path.isAbsolute(candidate) ? candidate : path.join(dir, candidate);
-      if (fs.existsSync(full)) {
-        configPath = full;
-        break;
-      }
-    }
-    if (configPath !== undefined) {
-      break;
-    }
-    const pkgPath = path.join(dir, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      try {
-        const pkgRaw = fs.readFileSync(pkgPath, 'utf-8');
-        const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
-        if (pkg.debug80 !== undefined) {
-          configPath = pkgPath;
-          break;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-
-  if (configPath === undefined) {
-    return args;
-  }
-
   try {
-    let cfg: LaunchConfigManifest;
-
-    if (configPath.endsWith('package.json')) {
-      const pkgRaw = fs.readFileSync(configPath, 'utf-8');
-      const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
-      cfg =
-        (pkg.debug80 as typeof cfg) ??
-        ({
-          targets: {},
-        } as typeof cfg);
-    } else {
-      const raw = fs.readFileSync(configPath, 'utf-8');
-      cfg = JSON.parse(raw) as typeof cfg;
+    const workspaceRoot = helpers.resolveBaseDir(args);
+    const loaded = loadLaunchConfig(args, helpers);
+    if (loaded === undefined) {
+      return args;
     }
-
-    const targets = cfg.targets ?? {};
-    const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
-    const targetCfg = (targetName !== undefined ? targets[targetName] : undefined) ?? undefined;
-
-    const merged: LaunchRequestArguments = {
-      ...cfg,
-      ...targetCfg,
-      ...args,
-    };
-
-    const mergedSimple = mergeNestedPlatformBlock(cfg.simple, targetCfg?.simple, args.simple);
-    if (mergedSimple !== undefined) {
-      merged.simple = mergedSimple;
-    } else {
-      delete merged.simple;
-    }
-    const mergedTec1 = mergeNestedPlatformBlock(cfg.tec1, targetCfg?.tec1, args.tec1);
-    if (mergedTec1 !== undefined) {
-      merged.tec1 = mergedTec1;
-    } else {
-      delete merged.tec1;
-    }
-    const mergedTec1g = mergeNestedPlatformBlock(
-      resolveTec1gBaseForMerge(cfg),
-      targetCfg?.tec1g,
-      args.tec1g
-    );
-    if (mergedTec1g !== undefined) {
-      merged.tec1g = mergedTec1g;
-    } else {
-      delete merged.tec1g;
-    }
-
-    const asmResolved =
-      args.asm ??
-      args.sourceFile ??
-      targetCfg?.asm ??
-      targetCfg?.sourceFile ??
-      targetCfg?.source ??
-      cfg.asm ??
-      cfg.sourceFile ??
-      cfg.source;
-    if (asmResolved !== undefined) {
-      merged.asm = asmResolved;
-    }
-
-    const assemblerResolved = args.assembler ?? targetCfg?.assembler ?? cfg.assembler;
-    if (assemblerResolved !== undefined) {
-      merged.assembler = assemblerResolved;
-    }
-
-    const azmResolved = {
-      ...(cfg.azm ?? {}),
-      ...(targetCfg?.azm ?? {}),
-      ...(args.azm ?? {}),
-    };
-    if (Object.keys(azmResolved).length > 0) {
-      merged.azm = azmResolved;
-    }
-
-    const sourceResolved =
-      args.sourceFile ??
-      args.asm ??
-      targetCfg?.sourceFile ??
-      targetCfg?.asm ??
-      targetCfg?.source ??
-      cfg.sourceFile ??
-      cfg.asm ??
-      cfg.source;
-    if (sourceResolved !== undefined) {
-      merged.sourceFile = sourceResolved;
-    }
-
-    const hexResolved = args.hex ?? targetCfg?.hex ?? cfg.hex;
-    if (hexResolved !== undefined) {
-      merged.hex = hexResolved;
-    }
-
-    const outputDirResolved = args.outputDir ?? targetCfg?.outputDir ?? cfg.outputDir;
-    if (outputDirResolved !== undefined) {
-      merged.outputDir = outputDirResolved;
-    }
-
-    const artifactResolved = args.artifactBase ?? targetCfg?.artifactBase ?? cfg.artifactBase;
-    if (artifactResolved !== undefined) {
-      merged.artifactBase = artifactResolved;
-    }
-
-    const entryResolved = args.entry ?? targetCfg?.entry ?? cfg.entry;
-    if (entryResolved !== undefined) {
-      merged.entry = entryResolved;
-    }
-
-    const platformResolved = args.platform ?? targetCfg?.platform ?? cfg.platform;
-    const launchPlatformResolved = resolveLaunchPlatform(args, cfg, targetCfg);
-
-    const simpleResolved = args.simple ?? targetCfg?.simple ?? cfg.simple;
-    if (simpleResolved !== undefined) {
-      merged.simple = simpleResolved;
-    }
-
-    // args.stopOnEntry carries the global session setting from the Debug80 panel
-    // (managed in PlatformViewProvider, not stored in debug80.json). It always
-    // takes priority. Fall back to the project config only when the launch was
-    // triggered without an explicit value (e.g. a raw launch.json with no panel).
-    const stopOnEntryResolved =
-      args.stopOnEntry !== undefined
-        ? args.stopOnEntry
-        : (targetCfg?.stopOnEntry ?? cfg.stopOnEntry);
-    if (stopOnEntryResolved !== undefined) {
-      merged.stopOnEntry = stopOnEntryResolved;
-    }
-
-    const assembleResolved = args.assemble ?? targetCfg?.assemble ?? cfg.assemble;
-    if (assembleResolved !== undefined) {
-      merged.assemble = assembleResolved;
-    }
-
-    const sourceRootsResolved = args.sourceRoots ?? targetCfg?.sourceRoots ?? cfg.sourceRoots;
-    if (sourceRootsResolved !== undefined) {
-      merged.sourceRoots = sourceRootsResolved;
-    }
-
-    const debugMapsResolved = args.debugMaps ?? targetCfg?.debugMaps ?? cfg.debugMaps;
-    if (debugMapsResolved !== undefined) {
-      merged.debugMaps = debugMapsResolved;
-    }
-
-    const bundledRomReference = resolveBundledAssetReference(cfg, targetCfg, 'romHex');
-    const resolvedRomHex = resolveBundledAssetRuntimePath(
-      merged.tec1?.romHex ?? merged.tec1g?.romHex,
-      bundledRomReference,
-      workspaceRoot
-    );
-
-    if (resolvedRomHex !== undefined) {
-      if (launchPlatformResolved === 'tec1' || platformResolved === 'tec1') {
-        merged.tec1 = { ...(merged.tec1 ?? {}), romHex: resolvedRomHex };
-      } else if (launchPlatformResolved === 'tec1g' || platformResolved === 'tec1g') {
-        merged.tec1g = { ...(merged.tec1g ?? {}), romHex: resolvedRomHex };
-      }
-    }
-
-    const bundledDebugMapReference =
-      resolveBundledAssetReference(cfg, targetCfg, 'debugMap') ??
-      inferSiblingDebugMapReference(bundledRomReference);
-    const resolvedDebugMap = resolveBundledAssetRuntimePath(
-      undefined,
-      bundledDebugMapReference,
-      workspaceRoot
-    );
-    if (resolvedDebugMap !== undefined) {
-      const existing = merged.debugMaps ?? [];
-      merged.debugMaps = existing.includes(resolvedDebugMap)
-        ? existing
-        : [...existing, resolvedDebugMap];
-    }
-
-    if (launchPlatformResolved !== undefined) {
-      merged.platform = launchPlatformResolved;
-    } else if (platformResolved !== undefined) {
-      merged.platform = platformResolved;
-    }
-
-    const stepOverResolved =
-      args.stepOverMaxInstructions ??
-      targetCfg?.stepOverMaxInstructions ??
-      cfg.stepOverMaxInstructions;
-    if (stepOverResolved !== undefined) {
-      merged.stepOverMaxInstructions = stepOverResolved;
-    }
-
-    const stepOutResolved =
-      args.stepOutMaxInstructions ??
-      targetCfg?.stepOutMaxInstructions ??
-      cfg.stepOutMaxInstructions;
-    if (stepOutResolved !== undefined) {
-      merged.stepOutMaxInstructions = stepOutResolved;
-    }
-
-    const targetResolved = targetName ?? args.target;
-    if (targetResolved !== undefined) {
-      merged.target = targetResolved;
-    }
-
-    return merged;
+    return buildMergedLaunchArgs(resolveLaunchTarget(loaded, args), args, workspaceRoot);
   } catch {
     return args;
   }

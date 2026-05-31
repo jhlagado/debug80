@@ -26,7 +26,7 @@ platform-specific emulation. No single test style can cover all of that reliably
 
 ### Launch and Assembly
 
-- AZM target assembles in-process and writes HEX, LST, D8M, compact BIN, and lowered `.z80`.
+- AZM target assembles in-process and writes HEX, native D8, compact BIN, and optional register-care artifacts.
 - Sparse `ORG` programs preserve address-bearing HEX and compact raw BIN semantics.
 - Failed assembly reports structured diagnostics.
 
@@ -34,8 +34,8 @@ platform-specific emulation. No single test style can cover all of that reliably
 
 - Breakpoint in the target source verifies and stops.
 - Breakpoint in an included source verifies and stops.
-- Native D8 maps are preferred over regenerated maps.
-- `lstLine` fallback remains supported for D8 segments.
+- Native D8 maps are required; Debug80-generated or listing-derived maps are ignored.
+- Historical D8 fields such as `lstLine` remain accepted only as fields inside native D8 segments.
 - Windows-style and portable paths resolve consistently.
 
 ### Runtime and Debug Requests

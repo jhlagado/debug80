@@ -14,5 +14,3 @@ export function createTec1gKeypad(
 ): Tec1gKeypad {
   return createTecKeypad(vscode, keypadEl, { statusEls });
 }
-
-export { TEC1G_KEY_MAP, TEC1G_SHIFT_BIT } from '../common/tec-keypad';

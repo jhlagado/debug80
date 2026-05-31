@@ -15,14 +15,14 @@ export const OP_CALL_M = 0xfc;
 export const OP_CALL_NN = 0xcd;
 
 // RST (restart) instructions - single-byte calls to fixed addresses
-export const OP_RST_00 = 0xc7;
-export const OP_RST_08 = 0xcf;
-export const OP_RST_10 = 0xd7;
-export const OP_RST_18 = 0xdf;
-export const OP_RST_20 = 0xe7;
-export const OP_RST_28 = 0xef;
-export const OP_RST_30 = 0xf7;
-export const OP_RST_38 = 0xff;
+const OP_RST_00 = 0xc7;
+const OP_RST_08 = 0xcf;
+const OP_RST_10 = 0xd7;
+const OP_RST_18 = 0xdf;
+const OP_RST_20 = 0xe7;
+const OP_RST_28 = 0xef;
+const OP_RST_30 = 0xf7;
+const OP_RST_38 = 0xff;
 
 export const RST_OPCODES = new Set<number>([
   OP_RST_00,
@@ -48,14 +48,14 @@ export const OP_RET_M = 0xf8;
 
 // ED prefix and extended return instructions
 export const OP_PREFIX_ED = 0xed;
-export const OP_RETN_1 = 0x45;
-export const OP_RETI = 0x4d;
-export const OP_RETN_2 = 0x55;
-export const OP_RETN_3 = 0x5d;
-export const OP_RETN_4 = 0x65;
-export const OP_RETN_5 = 0x6d;
-export const OP_RETN_6 = 0x75;
-export const OP_RETN_7 = 0x7d;
+const OP_RETN_1 = 0x45;
+const OP_RETI = 0x4d;
+const OP_RETN_2 = 0x55;
+const OP_RETN_3 = 0x5d;
+const OP_RETN_4 = 0x65;
+const OP_RETN_5 = 0x6d;
+const OP_RETN_6 = 0x75;
+const OP_RETN_7 = 0x7d;
 
 export const ED_RET_OPCODES = new Set<number>([
   OP_RETN_1,

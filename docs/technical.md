@@ -128,8 +128,8 @@ DAP lifecycle (simplified):
    - Announces adapter capabilities.
 2. launchRequest
    - Merges launch args with debug80.json.
-   - Resolves artifacts (HEX, LST) and runs AZM if enabled.
-   - Parses HEX and LST.
+   - Resolves artifacts (HEX, BIN, D8) and runs AZM if enabled.
+   - Parses HEX and native D8 source maps.
    - Builds source mapping and indexes.
    - Creates the runtime and applies breakpoints.
 3. configurationDoneRequest (implicit behavior)
@@ -144,8 +144,7 @@ Sources are searched in this order:
 1. launch args.projectConfig
 2. debug80.json ← checked first among file candidates (PROJECT_CONFIG_CANDIDATES)
 3. .vscode/debug80.json
-4. .debug80.json
-5. package.json (debug80 block)
+4. package.json (debug80 block)
 
 Search origin:
 

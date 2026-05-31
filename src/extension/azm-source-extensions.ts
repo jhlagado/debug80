@@ -4,11 +4,11 @@
 
 import * as path from 'path';
 
-export const AZM_ENTRY_SOURCE_EXTENSIONS = ['.z80'] as const;
-export const AZM_ENTRY_SOURCE_SUFFIXES = ['.main.asm'] as const;
-export const AZM_ENTRY_SOURCE_FILENAMES: readonly string[] = ['main.asm'];
 export const AZM_LANGUAGE_EXTENSIONS = ['.asm', '.z80', '.asmi'] as const;
-export const AZM_REBUILD_EXTENSIONS = AZM_LANGUAGE_EXTENSIONS;
+
+const AZM_ENTRY_SOURCE_EXTENSIONS = ['.z80'] as const;
+const AZM_ENTRY_SOURCE_SUFFIXES = ['.main.asm'] as const;
+const AZM_ENTRY_SOURCE_FILENAMES: readonly string[] = ['main.asm'];
 
 function hasExtension(filePath: string, extensions: readonly string[]): boolean {
   return extensions.includes(path.extname(filePath).toLowerCase());
@@ -24,5 +24,5 @@ export function isAzmEntrySourcePath(filePath: string): boolean {
 }
 
 export function isAzmRebuildSourcePath(filePath: string): boolean {
-  return hasExtension(filePath, AZM_REBUILD_EXTENSIONS);
+  return hasExtension(filePath, AZM_LANGUAGE_EXTENSIONS);
 }

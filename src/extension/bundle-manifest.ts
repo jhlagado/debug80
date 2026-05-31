@@ -4,7 +4,7 @@
  * @see docs/plans/platform-rom-bundles.md
  */
 
-export const BUNDLE_MANIFEST_SCHEMA_VERSION = 1 as const;
+const BUNDLE_MANIFEST_SCHEMA_VERSION = 1 as const;
 
 /** Single file shipped inside a bundle directory (under resources/bundles/...). */
 export type BundleFileRole = 'rom' | 'debug_map' | 'source' | 'source_tree';

@@ -31,8 +31,8 @@ deliberate compatibility project.
    - Published behavior must not depend on `PATH`, `npm link`, or globally installed CLIs.
 
 2. **Assembler artifact contract**
-   - AZM writes HEX, compact BIN, LST, native D8M, and lowered `.z80` from in-memory artifacts.
-   - HEX/D8M are authoritative for sparse address spaces; raw BIN is a convenience artifact and has
+   - AZM writes HEX, compact BIN, native D8, and optional register-care artifacts from in-memory artifacts.
+   - HEX/D8 are authoritative for sparse address spaces; raw BIN is a convenience artifact and has
      no embedded load address.
 
 3. **Windows compatibility**

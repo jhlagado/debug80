@@ -199,7 +199,6 @@ export function resolveProjectPlatform(config: ProjectConfig | undefined): strin
 const PROJECT_CONFIG_CANDIDATES = [
   'debug80.json',
   path.join('.vscode', 'debug80.json'),
-  '.debug80.json',
 ];
 const SOURCE_DISCOVERY_EXCLUDED_DIRS = new Set([
   '.git',

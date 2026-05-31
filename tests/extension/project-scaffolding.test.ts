@@ -19,8 +19,7 @@ function defaultExistsSync(candidate: string): boolean {
   }
   return (
     !normalized.endsWith('/debug80.json') &&
-    !normalized.endsWith('/.vscode/debug80.json') &&
-    !normalized.endsWith('/.debug80.json')
+    !normalized.endsWith('/.vscode/debug80.json')
   );
 }
 
@@ -362,7 +361,6 @@ describe('project-scaffolding helpers', () => {
         }
         return (
           !normalized.endsWith('/debug80.json') &&
-          !normalized.endsWith('/.debug80.json') &&
           !normalized.endsWith('/src/main.asm')
         );
       });
@@ -432,7 +430,6 @@ describe('project-scaffolding helpers', () => {
         }
         return (
           !normalized.endsWith('/debug80.json') &&
-          !normalized.endsWith('/.debug80.json') &&
           !normalized.endsWith('/src/main.asm') &&
           !normalized.endsWith('/.vscode/launch.json')
         );
@@ -472,8 +469,7 @@ describe('project-scaffolding helpers', () => {
       const normalized = candidate.replace(/\\/g, '/');
       if (
         normalized.endsWith('/debug80.json') ||
-        normalized.endsWith('/.vscode/debug80.json') ||
-        normalized.endsWith('/.debug80.json')
+        normalized.endsWith('/.vscode/debug80.json')
       ) {
         return false;
       }
@@ -562,8 +558,7 @@ describe('project-scaffolding helpers', () => {
       const normalized = candidate.replace(/\\/g, '/');
       if (
         normalized.endsWith('/debug80.json') ||
-        normalized.endsWith('/.vscode/debug80.json') ||
-        normalized.endsWith('/.debug80.json')
+        normalized.endsWith('/.vscode/debug80.json')
       ) {
         return false;
       }

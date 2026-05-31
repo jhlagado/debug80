@@ -22,7 +22,7 @@ type CoolTermPacket = {
   data: string;
 };
 
-export class CoolTermRemoteError extends Error {
+class CoolTermRemoteError extends Error {
   constructor(
     message: string,
     public readonly ack?: number
