@@ -9,6 +9,7 @@ export type MatrixKeyPayload = {
   pressed: boolean;
   shift?: boolean;
   ctrl?: boolean;
+  fn?: boolean;
   alt?: boolean;
 };
 
@@ -35,6 +36,7 @@ export function parseMatrixKeyPayload(args: unknown): MatrixKeyPayload | null {
     pressed?: unknown;
     shift?: unknown;
     ctrl?: unknown;
+    fn?: unknown;
     alt?: unknown;
   };
   if (typeof candidate.key !== 'string' || typeof candidate.pressed !== 'boolean') {
@@ -49,6 +51,9 @@ export function parseMatrixKeyPayload(args: unknown): MatrixKeyPayload | null {
   }
   if (candidate.ctrl === true) {
     payload.ctrl = true;
+  }
+  if (candidate.fn === true) {
+    payload.fn = true;
   }
   if (candidate.alt === true) {
     payload.alt = true;
@@ -93,7 +98,12 @@ const SHIFTED_KEY_ASCII: Record<string, string> = {
 };
 
 export function resolveMatrixPayloadAscii(payload: MatrixKeyPayload): number | undefined {
-  if (payload.shift === true && payload.ctrl !== true && payload.alt !== true) {
+  if (
+    payload.shift === true &&
+    payload.ctrl !== true &&
+    payload.fn !== true &&
+    payload.alt !== true
+  ) {
     if (/^[a-z]$/.test(payload.key)) {
       return payload.key.toUpperCase().charCodeAt(0);
     }
@@ -111,6 +121,7 @@ export function buildMatrixKeyId(payload: MatrixKeyPayload): string {
     '|' +
     (payload.shift === true ? '1' : '0') +
     (payload.ctrl === true ? '1' : '0') +
+    (payload.fn === true ? '1' : '0') +
     (payload.alt === true ? '1' : '0')
   );
 }
@@ -129,7 +140,7 @@ export function selectMatrixCombo(
       ? 'ctrl'
       : payload.shift === true
         ? 'shift'
-        : payload.alt === true
+        : payload.fn === true
           ? 'fn'
           : undefined;
   const matchesCaps = (combo: MatrixKeyCombo): boolean =>

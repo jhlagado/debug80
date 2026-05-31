@@ -152,6 +152,7 @@ describe('tec1g matrix ui', () => {
       pressed: true,
       shift: true,
       ctrl: false,
+      fn: false,
       alt: false,
     });
     expect(messages).toContainEqual({
@@ -160,6 +161,7 @@ describe('tec1g matrix ui', () => {
       pressed: false,
       shift: true,
       ctrl: false,
+      fn: false,
       alt: false,
     });
   });
@@ -183,7 +185,42 @@ describe('tec1g matrix ui', () => {
       pressed: true,
       shift: true,
       ctrl: false,
+      fn: false,
       alt: false,
+    });
+  });
+
+  it('keeps fn and alt click modifiers distinct', () => {
+    controller.applyMatrixMode(true);
+    const fnKey = document.querySelector('[data-key="Fn"]') as HTMLElement;
+    const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    fnKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: true,
+      alt: false,
+    });
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: true,
     });
   });
 
@@ -200,6 +237,7 @@ describe('tec1g matrix ui', () => {
       pressed: true,
       shift: false,
       ctrl: false,
+      fn: false,
       alt: false,
     });
     expect(messages).toContainEqual({
@@ -208,6 +246,7 @@ describe('tec1g matrix ui', () => {
       pressed: false,
       shift: false,
       ctrl: false,
+      fn: false,
       alt: false,
     });
   });
@@ -240,6 +279,7 @@ describe('tec1g matrix ui', () => {
         pressed: true,
         shift: false,
         ctrl: false,
+        fn: false,
         alt: false,
       },
       {
@@ -248,6 +288,7 @@ describe('tec1g matrix ui', () => {
         pressed: false,
         shift: false,
         ctrl: false,
+        fn: false,
         alt: false,
       },
     ]);
@@ -270,6 +311,7 @@ describe('tec1g matrix ui', () => {
       pressed: true,
       shift: false,
       ctrl: false,
+      fn: false,
       alt: false,
     });
   });

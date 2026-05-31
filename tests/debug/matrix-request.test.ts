@@ -47,9 +47,14 @@ describe('matrix-request', () => {
       expect(result).toBe(ctrl);
     });
 
-    it('prefers fn combo when alt is pressed', () => {
-      const result = selectMatrixCombo([plain, fn], { key: 'a', pressed: true, alt: true }, false);
+    it('prefers fn combo when fn is pressed', () => {
+      const result = selectMatrixCombo([plain, fn], { key: 'a', pressed: true, fn: true }, false);
       expect(result).toBe(fn);
+    });
+
+    it('does not treat alt as the MON-3 fn modifier', () => {
+      const result = selectMatrixCombo([plain, fn], { key: 'a', pressed: true, alt: true }, false);
+      expect(result).toBe(plain);
     });
 
     it('respects capsLock state', () => {
@@ -97,8 +102,8 @@ describe('matrix-request', () => {
 
   describe('parseMatrixKeyPayload', () => {
     it('parses valid payload', () => {
-      const result = parseMatrixKeyPayload({ key: 'a', pressed: true, shift: true });
-      expect(result).toEqual({ key: 'a', pressed: true, shift: true });
+      const result = parseMatrixKeyPayload({ key: 'a', pressed: true, shift: true, fn: true });
+      expect(result).toEqual({ key: 'a', pressed: true, shift: true, fn: true });
     });
 
     it('returns null for missing key', () => {
@@ -148,10 +153,11 @@ describe('matrix-request', () => {
 
   describe('buildMatrixKeyId', () => {
     it('encodes modifier flags', () => {
-      expect(buildMatrixKeyId({ key: 'a', pressed: true })).toBe('a|000');
-      expect(buildMatrixKeyId({ key: 'a', pressed: true, shift: true })).toBe('a|100');
-      expect(buildMatrixKeyId({ key: 'a', pressed: true, ctrl: true })).toBe('a|010');
-      expect(buildMatrixKeyId({ key: 'a', pressed: true, alt: true })).toBe('a|001');
+      expect(buildMatrixKeyId({ key: 'a', pressed: true })).toBe('a|0000');
+      expect(buildMatrixKeyId({ key: 'a', pressed: true, shift: true })).toBe('a|1000');
+      expect(buildMatrixKeyId({ key: 'a', pressed: true, ctrl: true })).toBe('a|0100');
+      expect(buildMatrixKeyId({ key: 'a', pressed: true, fn: true })).toBe('a|0010');
+      expect(buildMatrixKeyId({ key: 'a', pressed: true, alt: true })).toBe('a|0001');
     });
   });
 

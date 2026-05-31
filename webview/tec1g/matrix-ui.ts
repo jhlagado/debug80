@@ -24,7 +24,7 @@ export function createMatrixUiController(
   const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid') as HTMLElement;
   const matrixShift = document.getElementById('matrixShift') as HTMLElement;
   const matrixCtrl = document.getElementById('matrixCtrl') as HTMLElement;
-  const matrixAlt = document.getElementById('matrixAlt') as HTMLElement;
+  const matrixFn = document.getElementById('matrixFn') as HTMLElement;
 
   let matrixModeEnabled = false;
   let capsLockEnabled = false;
@@ -32,6 +32,7 @@ export function createMatrixUiController(
   const matrixClickMods = {
     shift: false,
     ctrl: false,
+    fn: false,
     alt: false,
   };
   const matrixKeyElements = new Map<string, HTMLElement>();
@@ -174,7 +175,12 @@ export function createMatrixUiController(
 
   function sendMatrixKey(key, pressed, mods) {
     const keyId =
-      key + '|' + (mods.shift ? '1' : '0') + (mods.ctrl ? '1' : '0') + (mods.alt ? '1' : '0');
+      key +
+      '|' +
+      (mods.shift ? '1' : '0') +
+      (mods.ctrl ? '1' : '0') +
+      (mods.fn ? '1' : '0') +
+      (mods.alt ? '1' : '0');
     if (pressed) {
       if (matrixHeldKeys.has(keyId)) {
         return true;
@@ -192,6 +198,7 @@ export function createMatrixUiController(
       pressed: !!pressed,
       shift: mods.shift,
       ctrl: mods.ctrl,
+      fn: mods.fn,
       alt: mods.alt,
     });
     return true;
@@ -215,6 +222,7 @@ export function createMatrixUiController(
     sendMatrixKey(key, pressed, {
       shift: event.shiftKey,
       ctrl: event.ctrlKey,
+      fn: false,
       alt: event.altKey,
     });
     return true;
@@ -222,7 +230,8 @@ export function createMatrixUiController(
 
   function setMatrixMod(mod, active) {
     matrixClickMods[mod] = active;
-    const el = mod === 'shift' ? matrixShift : mod === 'ctrl' ? matrixCtrl : matrixAlt;
+    const el =
+      mod === 'shift' ? matrixShift : mod === 'ctrl' ? matrixCtrl : mod === 'fn' ? matrixFn : null;
     if (el) {
       el.classList.toggle('active', active);
     }
@@ -235,6 +244,7 @@ export function createMatrixUiController(
   function clearOneShotMatrixMods() {
     setMatrixMod('shift', false);
     setMatrixMod('ctrl', false);
+    setMatrixMod('fn', false);
     setMatrixMod('alt', false);
   }
 
@@ -358,7 +368,11 @@ export function createMatrixUiController(
             toggleMatrixMod('ctrl');
             return;
           }
-          if (keyValue === 'Alt' || keyValue === 'Fn') {
+          if (keyValue === 'Fn') {
+            toggleMatrixMod('fn');
+            return;
+          }
+          if (keyValue === 'Alt') {
             toggleMatrixMod('alt');
             return;
           }
@@ -406,8 +420,8 @@ export function createMatrixUiController(
     if (matrixCtrl) {
       matrixCtrl.addEventListener('click', () => toggleMatrixMod('ctrl'));
     }
-    if (matrixAlt) {
-      matrixAlt.addEventListener('click', () => toggleMatrixMod('alt'));
+    if (matrixFn) {
+      matrixFn.addEventListener('click', () => toggleMatrixMod('fn'));
     }
   }
 
