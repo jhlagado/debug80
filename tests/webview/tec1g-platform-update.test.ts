@@ -65,4 +65,20 @@ describe('tec1g platform update application', () => {
 
     expect(deps.matrixUi.applyMatrixBrightness).toHaveBeenCalledWith(undefined, undefined, [64]);
   });
+
+  it('uses matrix accordion visibility as the matrix mode source of truth', () => {
+    const deps = makeDeps();
+
+    applyTec1gPlatformUpdate(
+      {
+        ...deps,
+        isMatrixKeyboardOpen: () => true,
+      },
+      {
+        matrixMode: false,
+      }
+    );
+
+    expect(deps.matrixUi.applyMatrixMode).toHaveBeenCalledWith(true);
+  });
 });

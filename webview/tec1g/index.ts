@@ -239,6 +239,7 @@ const platformUpdateDeps = {
   matrixUi,
   glcdRenderer,
   keypad,
+  isMatrixKeyboardOpen: () => panelLayout.isMatrixKeyboardOpen(),
 };
 
 function applyUpdateFromPayload(payload: Tec1gUpdatePayload | null | undefined): void {

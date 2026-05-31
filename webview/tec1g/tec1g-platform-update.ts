@@ -18,6 +18,7 @@ export type Tec1gPlatformUpdateDeps = {
   matrixUi: ReturnType<typeof createMatrixUiController>;
   glcdRenderer: ReturnType<typeof createGlcdRenderer>;
   keypad: Tec1gKeypad;
+  isMatrixKeyboardOpen?: () => boolean;
 };
 
 /**
@@ -71,7 +72,9 @@ export function applyTec1gPlatformUpdate(
   if (typeof data.capsLock === 'boolean') {
     deps.matrixUi.applyCapsLock(data.capsLock);
   }
-  if (typeof data.matrixMode === 'boolean') {
+  if (deps.isMatrixKeyboardOpen) {
+    deps.matrixUi.applyMatrixMode(deps.isMatrixKeyboardOpen());
+  } else if (typeof data.matrixMode === 'boolean') {
     deps.matrixUi.applyMatrixMode(data.matrixMode);
   }
   deps.glcdRenderer.applyGlcdUpdate(data);
