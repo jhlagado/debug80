@@ -237,50 +237,87 @@ export function createMatrixUiController(
       return;
     }
     const rows = [
-      ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
-      ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\\\'],
-      ['Caps', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
-      ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
-      ['Ctrl', 'Alt', 'Space', 'Alt', 'Ctrl'],
+      [
+        { label: 'ESC', key: 'Escape', unit: 1.25 },
+        { label: '1!', key: '1' },
+        { label: '2@', key: '2' },
+        { label: '3#', key: '3' },
+        { label: '4$', key: '4' },
+        { label: '5%', key: '5' },
+        { label: '6^', key: '6' },
+        { label: '7&', key: '7' },
+        { label: '8*', key: '8' },
+        { label: '9(', key: '9' },
+        { label: '0)', key: '0' },
+        { label: '-_', key: '-' },
+        { label: '=+', key: '=' },
+        { label: 'DEL', key: 'Backspace', unit: 1.35 },
+      ],
+      [
+        { label: 'TAB', key: 'Tab', unit: 1.35 },
+        { label: 'Q', key: 'q' },
+        { label: 'W', key: 'w' },
+        { label: 'E', key: 'e' },
+        { label: 'R', key: 'r' },
+        { label: 'T', key: 't' },
+        { label: 'Y', key: 'y' },
+        { label: 'U', key: 'u' },
+        { label: 'I', key: 'i' },
+        { label: 'O', key: 'o' },
+        { label: 'P', key: 'p' },
+        { label: '"\'', key: "'" },
+        { label: '\\|', key: '\\' },
+      ],
+      [
+        { label: 'CAPS', key: 'CapsLock', unit: 1.55 },
+        { label: 'A', key: 'a' },
+        { label: 'S', key: 's' },
+        { label: 'D', key: 'd' },
+        { label: 'F', key: 'f' },
+        { label: 'G', key: 'g' },
+        { label: 'H', key: 'h' },
+        { label: 'J', key: 'j' },
+        { label: 'K', key: 'k' },
+        { label: 'L', key: 'l' },
+        { label: ';:', key: ';' },
+        { label: 'ENTER', key: 'Enter', unit: 1.9 },
+      ],
+      [
+        { label: 'SHIFT', key: 'Shift', unit: 1.75 },
+        { label: 'Z', key: 'z' },
+        { label: 'X', key: 'x' },
+        { label: 'C', key: 'c' },
+        { label: 'V', key: 'v' },
+        { label: 'B', key: 'b' },
+        { label: 'N', key: 'n' },
+        { label: 'M', key: 'm' },
+        { label: ',<', key: ',' },
+        { label: '.>', key: '.' },
+        { label: '/?', key: '/' },
+        { label: '▲', key: 'ArrowUp' },
+        { label: 'S', key: 's' },
+      ],
+      [
+        { label: 'CTRL', key: 'Control', unit: 1.15 },
+        { label: 'FN', key: 'Alt', unit: 1.05 },
+        { label: 'ALT', key: 'Alt', unit: 1.15 },
+        { label: 'SPACE', key: ' ', unit: 6.8 },
+        { label: 'ALT', key: 'Alt', unit: 1.15 },
+        { label: '◀', key: 'ArrowLeft' },
+        { label: '▼', key: 'ArrowDown' },
+        { label: '▶', key: 'ArrowRight' },
+      ],
     ];
-    const spans = {
-      Backspace: 2,
-      Tab: 2,
-      Caps: 2,
-      Enter: 2,
-      Shift: 2,
-      Ctrl: 2,
-      Alt: 2,
-      Space: 6,
-    };
     matrixKeyboardGrid.innerHTML = '';
     rows.forEach((row) => {
-      row.forEach((label) => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'matrix-keyboard-row';
+      row.forEach((keyDef) => {
         const keyEl = document.createElement('div');
-        keyEl.className = 'matrix-key' + (spans[label] ? ' wide' : '');
-        const span = spans[label] ?? 1;
-        keyEl.style.gridColumn = 'span ' + span;
-        keyEl.textContent = label;
-        const keyValue =
-          label === 'Space'
-            ? ' '
-            : label === 'Backspace'
-              ? 'Backspace'
-              : label === 'Enter'
-                ? 'Enter'
-                : label === 'Esc'
-                  ? 'Escape'
-                  : label === 'Tab'
-                    ? 'Tab'
-                    : label === 'Caps'
-                      ? 'CapsLock'
-                      : label === 'Shift'
-                        ? 'Shift'
-                        : label === 'Ctrl'
-                          ? 'Control'
-                          : label === 'Alt'
-                            ? 'Alt'
-                            : label;
+        keyEl.className = 'matrix-key';
+        keyEl.style.setProperty('--key-unit', String(keyDef.unit ?? 1));
+        keyEl.textContent = keyDef.label;
+        const keyValue = keyDef.key;
         keyEl.dataset.key = keyValue;
         if (
           keyValue !== 'Shift' &&
@@ -288,7 +325,9 @@ export function createMatrixUiController(
           keyValue !== 'Alt' &&
           keyValue !== 'CapsLock'
         ) {
-          matrixKeyElements.set(keyValue, keyEl);
+          if (!matrixKeyElements.has(keyValue)) {
+            matrixKeyElements.set(keyValue, keyEl);
+          }
         }
         keyEl.addEventListener('mousedown', (event) => {
           event.preventDefault();
@@ -319,8 +358,9 @@ export function createMatrixUiController(
         };
         keyEl.addEventListener('mouseup', release);
         keyEl.addEventListener('mouseleave', release);
-        matrixKeyboardGrid.appendChild(keyEl);
+        rowEl.appendChild(keyEl);
       });
+      matrixKeyboardGrid.appendChild(rowEl);
     });
   }
 

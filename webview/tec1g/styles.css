@@ -392,31 +392,43 @@
       border-color: #d69a00;
       color: #121212;
     }
-    .matrix-keyboard-hint {
-      font-size: 10px;
-      color: #7f7f7f;
-      letter-spacing: 0.1em;
-      margin-top: 6px;
-      text-transform: uppercase;
-    }
     .matrix-keyboard-grid {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 4px;
-      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 10px;
+      max-width: 980px;
+    }
+    .matrix-keyboard-row {
+      display: flex;
+      gap: 5px;
+      align-items: stretch;
     }
     .matrix-key {
+      --key-unit: 1;
+      flex: var(--key-unit) 1 0;
+      min-width: 0;
+      height: 42px;
       border: 1px solid #2f2f2f;
-      padding: 6px 0;
-      border-radius: 4px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      font-size: 9px;
-      letter-spacing: 0.08em;
-      color: #bfbfbf;
-      background: #1b1b1b;
-    }
-    .matrix-key.wide {
-      grid-column: span 2;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #f4f1e8;
+      background:
+        radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.18), transparent 35%),
+        linear-gradient(180deg, #171717 0%, #070707 65%, #010101 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -6px 10px rgba(255, 255, 255, 0.05),
+        0 2px 0 #000,
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+      text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+      user-select: none;
     }
     .matrix-key.pressed {
       background: #f1b500;
