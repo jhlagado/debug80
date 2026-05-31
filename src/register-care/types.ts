@@ -52,6 +52,7 @@ export interface RegisterCareInstruction {
   line: number;
   column: number;
   labels: string[];
+  constants?: ReadonlyMap<string, number>;
 }
 
 export interface RegisterCareRoutine {
@@ -59,6 +60,7 @@ export interface RegisterCareRoutine {
   labels: string[];
   entryLabels: string[];
   instructions: RegisterCareInstruction[];
+  constants?: ReadonlyMap<string, number>;
   span: {
     file: string;
     start: {

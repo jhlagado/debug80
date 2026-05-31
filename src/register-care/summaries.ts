@@ -43,7 +43,13 @@ export function buildProfileSummaries(
   if (profile === undefined) {
     return [];
   }
-  return [...profile.rst.values(), ...profile.rstServices.values()];
+  return [
+    ...profile.rst.values(),
+    ...profile.rstServices.values(),
+    ...[...profile.rstDispatchers.values()].flatMap((dispatcher) => [
+      ...dispatcher.services.values(),
+    ]),
+  ];
 }
 
 export function buildProfileSummaryLookup(
@@ -58,6 +64,11 @@ export function buildProfileSummaryLookup(
   for (const summary of profile.rstServices.values()) {
     out.set(summary.name, summary);
   }
+  for (const dispatcher of profile.rstDispatchers.values()) {
+    for (const summary of dispatcher.services.values()) {
+      out.set(summary.name, summary);
+    }
+  }
   return out;
 }
 
@@ -71,12 +82,9 @@ export function buildSummaries(
   profileSummaries: readonly RoutineSummary[] = [],
 ): RoutineSummary[] {
   const names = routineNameSet(routines);
-  const routineSummaries = inferRoutineSummariesToFixedPoint(
-    [...routines],
-    contractMap,
-    names,
-    [...profileSummaries],
-  );
+  const routineSummaries = inferRoutineSummariesToFixedPoint([...routines], contractMap, names, [
+    ...profileSummaries,
+  ]);
   const summaries = routineSummaries.map((item) => item.summary);
   return summariesWithExternalContracts(summaries, contractMap, names);
 }

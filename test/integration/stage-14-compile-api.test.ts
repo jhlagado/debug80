@@ -24,12 +24,16 @@ describe('stage 14 register-care compile API slice', () => {
       await writeFile(entry, 'start:\n  ret\n.end\n', 'utf8');
       await writeFile(iface, ['extern MON', 'clobbers A', 'end'].join('\n'), 'utf8');
 
-      const result = await compile(entry, {
-        registerCareInterfaces: [iface],
-        emitRegisterReport: true,
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCareInterfaces: [iface],
+          emitRegisterReport: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual([
         {
@@ -101,11 +105,7 @@ describe('stage 14 register-care compile API slice', () => {
         ].join('\n'),
         'utf8',
       );
-      await writeFile(
-        iface,
-        ['extern MASK', 'out A', 'end'].join('\n'),
-        'utf8',
-      );
+      await writeFile(iface, ['extern MASK', 'out A', 'end'].join('\n'), 'utf8');
 
       const result = await compile(
         entry,
@@ -303,11 +303,15 @@ describe('stage 14 register-care compile API slice', () => {
         'utf8',
       );
 
-      const result = await compile(entry, {
-        registerCare: 'warn',
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual(
         expect.arrayContaining([
@@ -341,11 +345,15 @@ describe('stage 14 register-care compile API slice', () => {
         'utf8',
       );
 
-      const result = await compile(entry, {
-        registerCare: 'error',
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'error',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual(
         expect.arrayContaining([
@@ -367,12 +375,16 @@ describe('stage 14 register-care compile API slice', () => {
         'utf8',
       );
 
-      const result = await compile(entry, {
-        registerCare: 'strict',
-        emitRegisterReport: true,
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'strict',
+          emitRegisterReport: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual(
         expect.arrayContaining([
@@ -393,21 +405,12 @@ describe('stage 14 register-care compile API slice', () => {
     await withTempDir('azm-next-regcare-compile-external-contract-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const iface = join(dir, 'runtime.asmi');
-      await writeFile(
-        iface,
-        ['extern HELPER', 'clobbers DE', 'end'].join('\n'),
-        'utf8',
-      );
+      await writeFile(iface, ['extern HELPER', 'clobbers DE', 'end'].join('\n'), 'utf8');
       await writeFile(
         entry,
-        [
-          'START:',
-          '    ld de,$1000',
-          '    call HELPER',
-          '    inc de',
-          '    ret',
-          '.end',
-        ].join('\n'),
+        ['START:', '    ld de,$1000', '    call HELPER', '    inc de', '    ret', '.end'].join(
+          '\n',
+        ),
         'utf8',
       );
 
@@ -457,13 +460,17 @@ describe('stage 14 register-care compile API slice', () => {
         'utf8',
       );
 
-      const result = await compile(entry, {
-        registerCare: 'warn',
-        registerCareProfile: 'mon3',
-        emitRegisterReport: true,
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+          emitRegisterReport: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual([]);
       const report = result.artifacts.find((artifact) => artifact.kind === 'register-care-report');
@@ -473,27 +480,225 @@ describe('stage 14 register-care compile API slice', () => {
     });
   });
 
-  it('falls back to generic RST boundary for mon3 when no service is declared', async () => {
-    await withTempDir('azm-next-regcare-compile-rst-generic-', async (dir) => {
+  it('uses mon3 dispatcher service contracts for numeric RST $10 API selectors', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-api-number-', async (dir) => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
         [
           'START:',
-          '  ld a, $12',
+          '  ld c,18',
           '  rst $10',
-          '  inc a',
+          '  ld c,54',
+          '  rst $10',
+          '  jr nc,START',
+          '  cp 13',
           '.end',
         ].join('\n'),
         'utf8',
       );
 
-      const result = await compile(entry, {
-        registerCare: 'warn',
-        registerCareProfile: 'mon3',
-      }, {
-        formats: defaultFormatWriters,
-      });
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+          emitRegisterReport: true,
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+      const report = result.artifacts.find((artifact) => artifact.kind === 'register-care-report');
+      expect(report?.text).toContain('MON3_API_54_PARSE_MATRIX_SCAN');
+    });
+  });
+
+  it('constant-folds mon3 dispatcher API selectors from equates', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-api-equate-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'API_BASE .equ 0',
+          'API_MATRIX_SCAN .equ API_BASE + 18',
+          'API_PARSE_MATRIX_SCAN .equ API_BASE + 54',
+          'START:',
+          '  ld c,API_MATRIX_SCAN',
+          '  rst $10',
+          '  ld c,API_PARSE_MATRIX_SCAN',
+          '  rst $10',
+          '  jr nc,START',
+          '  cp 13',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  it('uses mon3 dispatcher contracts for LCD APIs that preserve caller flags', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-lcd-api-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'API_COMMAND_TO_LCD .equ 15',
+          'API_CHAR_TO_LCD .equ 14',
+          'START:',
+          '  cp 13',
+          '  jr z,ShowReturn',
+          'ShowAscii:',
+          '  ld b,1',
+          '  ld c,API_COMMAND_TO_LCD',
+          '  rst $10',
+          '  ld c,API_CHAR_TO_LCD',
+          '  rst $10',
+          '  ret',
+          'ShowReturn:',
+          "  ld a,'R'",
+          '  jr ShowAscii',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  it('accepts the mon3 matrix keyboard dispatcher flow', async () => {
+    await withTempDir('azm-next-regcare-compile-matrix-flow-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          'API_MATRIX_SCAN .equ 18',
+          'API_PARSE_MATRIX_SCAN .equ 54',
+          'API_COMMAND_TO_LCD .equ 15',
+          'API_CHAR_TO_LCD .equ 14',
+          'ASCII_CR .equ 13',
+          'ASCII_ESC .equ 27',
+          'START:',
+          'PollMatrix:',
+          '  ld c,API_MATRIX_SCAN',
+          '  rst $10',
+          '  ld c,API_PARSE_MATRIX_SCAN',
+          '  rst $10',
+          '  jr nc,PollMatrix',
+          '  cp ASCII_CR',
+          '  jr z,ShowReturn',
+          '  cp ASCII_ESC',
+          '  jr z,ShowEscape',
+          'ShowAscii:',
+          '  ld b,1',
+          '  ld c,API_COMMAND_TO_LCD',
+          '  rst $10',
+          '  ld c,API_CHAR_TO_LCD',
+          '  rst $10',
+          '  jr PollMatrix',
+          'ShowReturn:',
+          "  ld a,'R'",
+          '  jr ShowAscii',
+          'ShowEscape:',
+          "  ld a,'E'",
+          '  jr ShowAscii',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  it('falls back to generic RST boundary for mon3 when no service is declared', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-generic-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        ['START:', '  ld a, $12', '  rst $10', '  inc a', '.end'].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
+
+      expect(result.diagnostics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            severity: 'warning',
+            message: expect.stringContaining('RST_$10 may modify A'),
+          }),
+        ]),
+      );
+    });
+  });
+
+  it('falls back to generic RST boundary when the mon3 selector value is unknown', async () => {
+    await withTempDir('azm-next-regcare-compile-rst-unknown-selector-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        ['START:', '  ld a,$12', '  ld c,a', '  rst $10', '  inc a', '.end'].join('\n'),
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        {
+          registerCare: 'warn',
+          registerCareProfile: 'mon3',
+        },
+        {
+          formats: defaultFormatWriters,
+        },
+      );
 
       expect(result.diagnostics).toEqual(
         expect.arrayContaining([

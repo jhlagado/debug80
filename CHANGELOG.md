@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- None.
+
+## 0.2.6 - 2026-05-31
+
+- Added MON3-aware register-care dispatch for `RST $10` calls selected by the
+  proven value in register `C`, with conservative fallback to generic `RST_$10`
+  when the selector is unknown.
+- Added named MON3 API contracts for the full `APITable` service range, with
+  precise contracts for the matrix keyboard and LCD services used by Debug80
+  matrix-keyboard experiments.
+
+## 0.2.5
+
 - Retired the historical oracle tree and removed package, script, and test
   dependencies on `legacy-root-azm/`.
 - Replaced legacy differential gates with promoted implementation self-checks,

@@ -1,7 +1,11 @@
 import { getZ80InstructionEffect } from '../z80/effects.js';
-import { precedingCServiceName } from './boundaryHints.js';
+import { precedingCServiceName, precedingRegisterImmediateValue } from './boundaryHints.js';
 import { instructionSuccessors, labelIndex } from './controlFlow.js';
-import { rstServiceTargetName, rstTargetName } from './profiles.js';
+import {
+  rstDispatcherServiceTargetNames,
+  rstServiceTargetName,
+  rstTargetName,
+} from './profiles.js';
 import type {
   LocatedSmartComment,
   InstructionEffect,
@@ -59,10 +63,15 @@ function boundaryTarget(
   }
   if (effect.control.kind === 'rst' && effect.control.vector !== undefined) {
     const target = rstTargetName(effect.control.vector);
+    const previous = routine.instructions[index - 1];
     const service = precedingCServiceName(routine.instructions[index - 1]);
-    const targets = service
-      ? [rstServiceTargetName(effect.control.vector, service), target]
-      : [target];
+    const targets = [
+      ...rstDispatcherServiceTargetNames(effect.control.vector, (register) =>
+        precedingRegisterImmediateValue(previous, register),
+      ),
+      ...(service ? [rstServiceTargetName(effect.control.vector, service)] : []),
+      target,
+    ];
     return { targets, conditional: false, subject: target };
   }
   return undefined;
