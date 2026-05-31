@@ -4,7 +4,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { BreakpointEvent } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import {
   AssembleFailureError,
@@ -30,6 +29,7 @@ import type { SourceStateManager } from '../mapping/source-state-manager';
 import { SourceManager } from '../mapping/source-manager';
 import { buildSymbolIndex } from '../mapping/symbol-service';
 import type { Logger } from '../../util/logger';
+import { emitChangedBreakpoints } from '../session/runtime-events';
 
 type RebuildDeps = {
   logger: Logger;
@@ -209,9 +209,7 @@ export async function handleWarmRebuildRequest(
     emitMainSource((event) => deps.sendEvent(event as DebugProtocol.Event), deps.sourceState.file);
 
     const applied = deps.breakpointManager.applyAll(deps.sessionState.mappingIndex);
-    for (const bp of applied) {
-      deps.sendEvent(new BreakpointEvent('changed', bp));
-    }
+    emitChangedBreakpoints(deps.sendEvent, applied);
 
     if (deps.sessionState.entryCpuState !== undefined) {
       runtime.restoreCpuState(deps.sessionState.entryCpuState);

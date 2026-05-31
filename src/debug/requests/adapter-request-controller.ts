@@ -2,7 +2,7 @@
  * @fileoverview DAP request/control helpers for the debug adapter.
  */
 
-import { OutputEvent, StoppedEvent, TerminatedEvent, Thread } from '@vscode/debugadapter';
+import { Thread } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { StepInfo } from '../../z80/types';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
@@ -20,13 +20,20 @@ import {
 import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
 import { findSegmentForAddress, resolveExecutableLocation } from '../../mapping/source-map';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
-import { emitDebugSessionStatus } from '../session/session-status';
 import type { VariableService } from './variable-service';
 import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
 import { ADDR_MASK } from '../../platforms/tec-common';
 import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
 import { buildEvaluateResponseBody, evaluateWatchExpressionTruthy } from './watch-expression';
+import {
+  emitConsoleDiagnostic,
+  emitHaltStopped,
+  emitInvalidConditionalBreakpoint,
+  emitSourceMapMissing,
+  emitStepStopped,
+  emitTerminated,
+} from './request-events';
 
 export interface AdapterRequestControllerDeps {
   threadId: number;
@@ -190,9 +197,7 @@ export class AdapterRequestController {
     const mappingIndex = this.deps.sessionState.mappingIndex;
     if (sourcePath === undefined || sourcePath.length === 0 || mappingIndex === undefined) {
       response.body = { targets: [] };
-      this.deps.sendEvent(
-        new OutputEvent('Debug80: Source map missing. Build the target first.\n', 'console')
-      );
+      emitSourceMapMissing(this.deps.sendEvent);
       this.deps.sendResponse(response);
       return;
     }
@@ -285,7 +290,7 @@ export class AdapterRequestController {
         ...diagLines,
         `  => frame.source="${frame?.source?.path ?? '(none)'}" line=${frame?.line ?? '?'}`,
       ].join('\n');
-      this.deps.sendEvent(new OutputEvent(diagText + '\n', 'console'));
+      emitConsoleDiagnostic(this.deps.sendEvent, diagText);
     }
 
     response.body = responseBody;
@@ -465,9 +470,7 @@ export class AdapterRequestController {
       const reportKey = `${matched}:${condition}`;
       if (!this.reportedInvalidBreakpointConditions.has(reportKey)) {
         this.reportedInvalidBreakpointConditions.add(reportKey);
-        this.deps.sendEvent(
-          new OutputEvent(formatConditionalBreakpointError(condition, err), 'console')
-        );
+        emitInvalidConditionalBreakpoint(this.deps.sendEvent, condition, err);
       }
       return false;
     }
@@ -479,14 +482,13 @@ export class AdapterRequestController {
       this.deps.sessionState.runState.haltNotified = true;
       this.deps.sessionState.runState.lastStopReason = 'halt';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
-      emitDebugSessionStatus(this.deps.sendEvent, 'paused');
-      this.deps.sendEvent(new StoppedEvent('halt', this.deps.threadId));
+      emitHaltStopped(this.deps.sendEvent, this.deps.threadId);
       return;
     }
 
     this.deps.sessionState.tec1Runtime?.silenceSpeaker();
     this.deps.sessionState.platformRuntime?.silenceSpeaker();
-    this.deps.sendEvent(new TerminatedEvent());
+    emitTerminated(this.deps.sendEvent);
   }
 
   private continueExecution(response: DebugProtocol.Response): void {
@@ -583,7 +585,7 @@ export class AdapterRequestController {
     }
 
     this.markStepStopped();
-    this.deps.sendEvent(new StoppedEvent('step', this.deps.threadId));
+    emitStepStopped(this.deps.sendEvent, this.deps.threadId);
   }
 
   private continueStepOverIfNeeded(
@@ -664,14 +666,4 @@ export class AdapterRequestController {
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
   }
-}
-
-function formatConditionalBreakpointError(condition: string, err: unknown): string {
-  const detail = err instanceof Error ? err.message : String(err);
-  return [
-    `Debug80: Invalid conditional breakpoint expression "${condition}".`,
-    `Reason: ${detail}`,
-    'Use registers, flags, symbols, memory reads such as [PACMO_LIVES], and comparisons such as BC = $1001.',
-    '',
-  ].join('\n');
 }

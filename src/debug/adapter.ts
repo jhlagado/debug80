@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import {
   DebugSession,
   InitializedEvent,
-  StoppedEvent,
   Handles,
   Event as DapEvent,
 } from '@vscode/debugadapter';
@@ -37,7 +36,7 @@ import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
 
 import { LaunchRequestArguments } from './session/types';
 import { resolveBaseDir } from './mapping/path-resolver';
-import { emitAssemblyFailed, emitConsoleOutput } from './session/adapter-ui';
+import { emitAssemblyFailed, emitConsoleOutput, emitEntryStopped } from './session/adapter-ui';
 import { AssembleFailureError } from './launch/assembler';
 import { buildRomSourcesResponse } from './requests/rom-requests';
 import { buildSourceMapStatus } from './requests/source-map-status-request';
@@ -57,7 +56,6 @@ import {
 import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './requests/adapter-request-controller';
 import { handleWarmRebuildRequest } from './requests/rebuild-request';
-import { emitDebugSessionStatus } from './session/session-status';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -332,8 +330,7 @@ export class Z80DebugSession extends DebugSession {
     }
     runState.lastStopReason = 'entry';
     runState.lastBreakpointAddress = null;
-    emitDebugSessionStatus((event) => this.sendEvent(event as DebugProtocol.Event), 'paused');
-    this.sendEvent(new StoppedEvent('entry', THREAD_ID));
+    emitEntryStopped((event) => this.sendEvent(event as DebugProtocol.Event), THREAD_ID);
   }
 
   protected setBreakPointsRequest(

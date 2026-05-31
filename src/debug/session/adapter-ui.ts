@@ -2,8 +2,9 @@
  * @fileoverview Debug adapter UI helpers.
  */
 
-import { OutputEvent, Event as DapEvent } from '@vscode/debugadapter';
+import { OutputEvent, Event as DapEvent, StoppedEvent } from '@vscode/debugadapter';
 import type { AssemblyDiagnostic } from '../launch/assembler';
+import { emitDebugSessionStatus } from './session-status';
 
 export type EventSender = (event: unknown) => void;
 
@@ -27,4 +28,9 @@ export function emitAssemblyFailed(
   payload: { diagnostic?: AssemblyDiagnostic; error?: string }
 ): void {
   sendEvent(new DapEvent('debug80/assemblyFailed', payload));
+}
+
+export function emitEntryStopped(sendEvent: EventSender, threadId: number): void {
+  emitDebugSessionStatus(sendEvent, 'paused');
+  sendEvent(new StoppedEvent('entry', threadId));
 }
