@@ -30,8 +30,21 @@ describe('TEC-1G matrix keyboard', () => {
   it('returns row data based on high byte when matrix mode is enabled', () => {
     const rt = makeRuntime(true);
     rt.applyMatrixKey(3, 5, true);
-    const value = rt.ioHandlers.read(0x03fe);
+    const value = rt.ioHandlers.read(0xf7fe);
     expect(value & (1 << 5)).toBe(0);
+  });
+
+  it('decodes each active-low matrix keyboard row address', () => {
+    const rt = makeRuntime(true);
+    const rowPorts = [0xfefe, 0xfdfe, 0xfbfe, 0xf7fe, 0xeffe, 0xdffe, 0xbffe, 0x7ffe];
+
+    for (let row = 0; row < rowPorts.length; row += 1) {
+      rt.applyMatrixKey(row, row, true);
+    }
+
+    rowPorts.forEach((port, row) => {
+      expect(rt.ioHandlers.read(port) & (1 << row)).toBe(0);
+    });
   });
 
   it('drives the 8x8 display from red port 0x06 and row 0x05 independently of keyboard state', () => {
@@ -50,7 +63,7 @@ describe('TEC-1G matrix keyboard', () => {
     rt.recordCycles(idleCycles);
     expect(rt.state.display.ledMatrixBrightnessR[17]).toBe(0);
     expect(rt.state.display.ledMatrixBrightnessR[22]).toBe(255);
-    expect(rt.ioHandlers.read(0x02fe) & (1 << 4)).toBe(0);
+    expect(rt.ioHandlers.read(0xfbfe) & (1 << 4)).toBe(0);
   });
 
   it('drives green and blue column latches on 0xF8 and 0xF9', () => {

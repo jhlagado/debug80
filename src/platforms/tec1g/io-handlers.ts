@@ -31,7 +31,6 @@ import {
   TEC1G_STATUS_SERIAL_RX,
   TEC1G_STATUS_SHIFT,
   TEC1G_MASK_BYTE,
-  TEC1G_MASK_LOW4,
   TEC1G_MASK_LOW7,
   TEC1G_ADDR_MAX,
 } from './constants';
@@ -164,6 +163,22 @@ function createTec1gPortStatus(state: Tec1gState): number {
 }
 
 /**
+ * Decodes the active-low row address used by the MON-3 matrix scanner.
+ */
+function decodeMatrixKeyboardRow(highByte: number): number | undefined {
+  const selected = (~highByte) & TEC1G_MASK_BYTE;
+  if (selected === 0) {
+    return undefined;
+  }
+  for (let row = 0; row < 8; row += 1) {
+    if ((selected & (1 << row)) !== 0) {
+      return row;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Builds the TEC-1G runtime port handlers.
  */
 export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
@@ -288,7 +303,10 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         if (!input.matrixModeEnabled) {
           return TEC1G_MASK_BYTE;
         }
-        const row = highByte & TEC1G_MASK_LOW4;
+        const row = decodeMatrixKeyboardRow(highByte);
+        if (row === undefined) {
+          return TEC1G_MASK_BYTE;
+        }
         return input.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
       }
       if (p === TEC1G_PORT_LCD_CMD) {
