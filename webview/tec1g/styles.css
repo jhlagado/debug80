@@ -343,17 +343,17 @@
       filter: brightness(1.08) saturate(1.18);
     }
     .matrix-keyboard {
-      margin-top: 12px;
+      margin-top: 8px;
       background: #151515;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border: 1px solid #2b2b2b;
     }
     .matrix-keyboard-title {
       font-size: 11px;
       letter-spacing: 0.14em;
       color: #bdbdbd;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       text-transform: uppercase;
     }
     .matrix-keyboard-controls {
@@ -395,20 +395,20 @@
     .matrix-keyboard-grid {
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      margin-top: 10px;
+      gap: 4px;
+      margin-top: 8px;
       max-width: 980px;
     }
     .matrix-keyboard-row {
       display: flex;
-      gap: 5px;
+      gap: 4px;
       align-items: stretch;
     }
     .matrix-key {
       --key-unit: 1;
       flex: var(--key-unit) 1 0;
       min-width: 0;
-      height: 42px;
+      height: 32px;
       border: 1px solid #2f2f2f;
       border-radius: 5px;
       display: flex;
@@ -416,7 +416,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #f4f1e8;
@@ -437,7 +437,7 @@
       line-height: 1;
     }
     .matrix-key-with-sub-label {
-      gap: 3px;
+      gap: 2px;
     }
     .matrix-key-sub-label {
       font-size: 7px;
