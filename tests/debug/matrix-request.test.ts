@@ -204,6 +204,26 @@ describe('matrix-request', () => {
   });
 
   describe('handleMatrixKeyRequest', () => {
+    it('enables matrix mode when a matrix key arrives after a missed startup mode sync', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: false, capsLock: false },
+        setMatrixMode: (enabled) => {
+          runtime.state.matrixModeEnabled = enabled;
+        },
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 'a', pressed: true })).toBeNull();
+
+      expect(runtime.state.matrixModeEnabled).toBe(true);
+      expect(applied.length).toBeGreaterThan(0);
+      expect(applied.some((entry) => entry.pressed)).toBe(true);
+    });
+
     it('routes CapsLock to the MON-3 matrix caps key position', () => {
       const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
       const runtime: MatrixRuntime = {

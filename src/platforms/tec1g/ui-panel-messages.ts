@@ -13,6 +13,7 @@ export type Tec1gMessage = PanelMessage & {
   pressed?: boolean;
   shift?: boolean;
   ctrl?: boolean;
+  fn?: boolean;
   alt?: boolean;
   enabled?: boolean;
 };
@@ -49,6 +50,7 @@ export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext)
         pressed: msg.pressed,
         shift: msg.shift,
         ctrl: msg.ctrl,
+        fn: msg.fn,
         alt: msg.alt,
       });
     } catch {

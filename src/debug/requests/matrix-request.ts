@@ -210,7 +210,7 @@ export function handleMatrixKeyRequest(
     return 'Debug80: Missing matrix key payload.';
   }
   if (!runtime.state.matrixModeEnabled) {
-    return null;
+    runtime.setMatrixMode(true);
   }
   const keyId = buildMatrixKeyId(payload);
   const specialCombos = SPECIAL_MATRIX_KEYS[payload.key];

@@ -88,4 +88,24 @@ describe('tec1g ui-panel-messages', () => {
     expect(customRequest).toHaveBeenCalledWith('debug80/tec1gSpeed', { mode: 'slow' });
     expect(customRequest).toHaveBeenCalledWith('debug80/tec1gSerialInput', { text: 'HI' });
   });
+
+  it('forwards matrix key modifier flags', async () => {
+    const { ctx } = createContext();
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    ctx.getSession = () => ({ type: 'z80', customRequest });
+
+    await handleTec1gMessage(
+      { type: 'matrixKey', key: 'a', pressed: true, shift: true, ctrl: false, fn: true, alt: false },
+      ctx
+    );
+
+    expect(customRequest).toHaveBeenCalledWith('debug80/tec1gMatrixKey', {
+      key: 'a',
+      pressed: true,
+      shift: true,
+      ctrl: false,
+      fn: true,
+      alt: false,
+    });
+  });
 });
