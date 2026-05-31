@@ -131,7 +131,7 @@ panelLayout.wireButtons();
 
 const matrixUi = createMatrixUiController(
   vscode,
-  () => panelLayout.isMachineOpen() || panelLayout.isMatrixKeyboardOpen()
+  () => panelLayout.isMatrixKeyboardOpen()
 );
 
 const projectStatusUi = createTec1gProjectStatusUi(
@@ -331,7 +331,7 @@ window.addEventListener('resize', () => {
 panelLayout.updateMemoryLayout(false);
 wireSerialUi(vscode);
 
-// Matrix keyboard stays at window level — it has its own mode system
+// Matrix keyboard owns physical typing while its accordion panel is open.
 window.addEventListener('keydown', (event) => {
   if (event.repeat) {
     return;
@@ -342,16 +342,21 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
+  if (panelLayout.isMatrixKeyboardOpen()) {
+    return;
+  }
   const shortcut = resolveTecKeypadShortcut(event.key);
   routeTecKeypadShortcut(event, shortcut, keypad, () => vscode.postMessage({ type: 'reset' }));
 });
 window.addEventListener('keyup', (event) => {
-  routeTecKeypadKeyup(event, keypad);
-});
-window.addEventListener('keyup', (event) => {
   if (matrixUi.handleKeyEvent(event, false)) {
     event.preventDefault();
+    return;
   }
+  if (panelLayout.isMatrixKeyboardOpen()) {
+    return;
+  }
+  routeTecKeypadKeyup(event, keypad);
 });
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();

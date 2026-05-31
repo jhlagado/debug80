@@ -204,4 +204,25 @@ describe('tec1g matrix ui', () => {
       },
     ]);
   });
+
+  it('only routes physical keys while the matrix keyboard panel is active', () => {
+    let panelActive = false;
+    const gatedController = createMatrixUiController(createVscodeMock(messages), () => panelActive);
+    gatedController.init();
+    gatedController.applyMatrixMode(true);
+
+    expect(gatedController.handleKeyEvent(makeKeyEvent('keydown', 'b'), true)).toBe(false);
+
+    panelActive = true;
+    expect(gatedController.handleKeyEvent(makeKeyEvent('keydown', 'b'), true)).toBe(true);
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'b',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      alt: false,
+    });
+  });
 });
