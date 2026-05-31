@@ -2,7 +2,7 @@
  * @file Matrix keyboard mapping helpers aligned with MON-3 routines.
  */
 
-export type MatrixModifier = 'shift' | 'ctrl' | 'fn';
+export type MatrixModifier = 'shift' | 'ctrl' | 'fn' | 'alt';
 
 export type MatrixKeyCombo = {
   row: number;
@@ -45,6 +45,7 @@ const SHIFT_TABLE: number[] = [
 const SHIFT_SECONDARY = 0x00;
 const CTRL_SECONDARY = 0x01;
 const FN_SECONDARY = 0x02;
+const ALT_SECONDARY = 0x03;
 const NO_SECONDARY = 0xff;
 
 const SECONDARY_TO_MOD: Array<[number, MatrixModifier | undefined]> = [
@@ -52,6 +53,7 @@ const SECONDARY_TO_MOD: Array<[number, MatrixModifier | undefined]> = [
   [SHIFT_SECONDARY, 'shift'],
   [CTRL_SECONDARY, 'ctrl'],
   [FN_SECONDARY, 'fn'],
+  [ALT_SECONDARY, 'alt'],
 ];
 
 const ASCII_MIN = 0x20;

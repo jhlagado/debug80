@@ -142,7 +142,9 @@ export function selectMatrixCombo(
         ? 'shift'
         : payload.fn === true
           ? 'fn'
-          : undefined;
+          : payload.alt === true
+            ? 'alt'
+            : undefined;
   const matchesCaps = (combo: MatrixKeyCombo): boolean =>
     combo.capsLock === undefined || combo.capsLock === capsLock;
   if (preferred !== undefined) {
@@ -169,6 +171,8 @@ export function expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; c
     entries.push({ row: 0, col: 1 });
   } else if (combo.modifier === 'fn') {
     entries.push({ row: 0, col: 2 });
+  } else if (combo.modifier === 'alt') {
+    entries.push({ row: 0, col: 3 });
   }
   return entries;
 }

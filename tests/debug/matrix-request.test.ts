@@ -21,6 +21,7 @@ describe('matrix-request', () => {
     const shifted: MatrixKeyCombo = { row: 3, col: 2, modifier: 'shift' };
     const ctrl: MatrixKeyCombo = { row: 3, col: 2, modifier: 'ctrl' };
     const fn: MatrixKeyCombo = { row: 3, col: 2, modifier: 'fn' };
+    const alt: MatrixKeyCombo = { row: 3, col: 2, modifier: 'alt' };
     const capsOnly: MatrixKeyCombo = { row: 4, col: 1, capsLock: true };
     const noCaps: MatrixKeyCombo = { row: 4, col: 1, capsLock: false };
 
@@ -50,6 +51,15 @@ describe('matrix-request', () => {
     it('prefers fn combo when fn is pressed', () => {
       const result = selectMatrixCombo([plain, fn], { key: 'a', pressed: true, fn: true }, false);
       expect(result).toBe(fn);
+    });
+
+    it('prefers alt combo when alt is pressed', () => {
+      const result = selectMatrixCombo(
+        [plain, fn, alt],
+        { key: 'a', pressed: true, alt: true },
+        false
+      );
+      expect(result).toBe(alt);
     });
 
     it('does not treat alt as the MON-3 fn modifier', () => {
@@ -96,6 +106,14 @@ describe('matrix-request', () => {
       expect(result).toEqual([
         { row: 3, col: 2 },
         { row: 0, col: 2 },
+      ]);
+    });
+
+    it('adds raw alt modifier row for alt combo', () => {
+      const result = expandMatrixCombo({ row: 3, col: 2, modifier: 'alt' });
+      expect(result).toEqual([
+        { row: 3, col: 2 },
+        { row: 0, col: 3 },
       ]);
     });
   });
