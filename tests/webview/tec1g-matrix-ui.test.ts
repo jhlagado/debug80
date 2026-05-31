@@ -66,17 +66,12 @@ describe('tec1g matrix ui', () => {
     document.documentElement.innerHTML = '';
   });
 
-  it('applies matrix mode and caps lock state to the DOM', () => {
-    const matrixModeToggle = document.getElementById('matrixModeToggle') as HTMLElement;
-    const matrixModeStatus = document.getElementById('matrixModeStatus') as HTMLElement;
+  it('applies caps lock state to the DOM', () => {
     const matrixCapsStatus = document.getElementById('matrixCapsStatus') as HTMLElement;
 
     controller.applyMatrixMode(true);
     controller.applyCapsLock(true);
 
-    expect(matrixModeToggle.classList.contains('active')).toBe(true);
-    expect(matrixModeStatus.textContent).toBe('ON');
-    expect(matrixModeStatus.classList.contains('on')).toBe(true);
     expect(matrixCapsStatus.classList.contains('on')).toBe(true);
   });
 
@@ -194,6 +189,7 @@ describe('tec1g matrix ui', () => {
     controller.applyMatrixMode(true);
     const fnKey = document.querySelector('[data-key="Fn"]') as HTMLElement;
     const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
+    const altIndicator = document.getElementById('matrixAlt') as HTMLElement;
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
     fnKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
@@ -201,8 +197,10 @@ describe('tec1g matrix ui', () => {
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
     altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    expect(altIndicator.classList.contains('active')).toBe(true);
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(altIndicator.classList.contains('active')).toBe(false);
 
     expect(messages).toContainEqual({
       type: 'matrixKey',

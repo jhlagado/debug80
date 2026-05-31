@@ -18,13 +18,12 @@ export function createMatrixUiController(
   isUiTabActive: () => boolean
 ): MatrixUiController {
   const matrixGrid = document.getElementById('matrixGrid') as HTMLElement;
-  const matrixModeToggle = document.getElementById('matrixModeToggle') as HTMLElement;
-  const matrixModeStatus = document.getElementById('matrixModeStatus') as HTMLElement;
   const matrixCapsStatus = document.getElementById('matrixCapsStatus') as HTMLElement;
   const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid') as HTMLElement;
   const matrixShift = document.getElementById('matrixShift') as HTMLElement;
   const matrixCtrl = document.getElementById('matrixCtrl') as HTMLElement;
   const matrixFn = document.getElementById('matrixFn') as HTMLElement;
+  const matrixAlt = document.getElementById('matrixAlt') as HTMLElement;
 
   let matrixModeEnabled = false;
   let capsLockEnabled = false;
@@ -137,13 +136,6 @@ export function createMatrixUiController(
 
   function applyMatrixMode(enabled) {
     matrixModeEnabled = !!enabled;
-    if (matrixModeToggle) {
-      matrixModeToggle.classList.toggle('active', matrixModeEnabled);
-    }
-    if (matrixModeStatus) {
-      matrixModeStatus.textContent = matrixModeEnabled ? 'ON' : 'OFF';
-      matrixModeStatus.classList.toggle('on', matrixModeEnabled);
-    }
   }
 
   function applyCapsLock(enabled) {
@@ -231,7 +223,15 @@ export function createMatrixUiController(
   function setMatrixMod(mod, active) {
     matrixClickMods[mod] = active;
     const el =
-      mod === 'shift' ? matrixShift : mod === 'ctrl' ? matrixCtrl : mod === 'fn' ? matrixFn : null;
+      mod === 'shift'
+        ? matrixShift
+        : mod === 'ctrl'
+          ? matrixCtrl
+          : mod === 'fn'
+            ? matrixFn
+            : mod === 'alt'
+              ? matrixAlt
+              : null;
     if (el) {
       el.classList.toggle('active', active);
     }
@@ -407,13 +407,6 @@ export function createMatrixUiController(
     buildMatrixKeyboard();
     applyMatrixMode(matrixModeEnabled);
     applyCapsLock(capsLockEnabled);
-    if (matrixModeToggle) {
-      matrixModeToggle.addEventListener('click', () => {
-        const next = !matrixModeEnabled;
-        applyMatrixMode(next);
-        vscode.postMessage({ type: 'matrixMode', enabled: next });
-      });
-    }
     if (matrixShift) {
       matrixShift.addEventListener('click', () => toggleMatrixMod('shift'));
     }
@@ -422,6 +415,9 @@ export function createMatrixUiController(
     }
     if (matrixFn) {
       matrixFn.addEventListener('click', () => toggleMatrixMod('fn'));
+    }
+    if (matrixAlt) {
+      matrixAlt.addEventListener('click', () => toggleMatrixMod('alt'));
     }
   }
 
