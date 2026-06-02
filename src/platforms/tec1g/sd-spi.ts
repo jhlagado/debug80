@@ -74,14 +74,17 @@ export class SdSpi {
     const nextCsActive = this.csActiveLow ? !csLineHigh : csLineHigh;
 
     if (!nextCsActive) {
-      this.resetTransaction();
       this.csActive = false;
       this.clk = nextClk;
       return;
     }
 
     if (!this.csActive && nextCsActive) {
-      this.beginTransaction();
+      const appCommand = this.appCommand;
+      if (!this.hasActiveTransaction()) {
+        this.beginTransaction();
+        this.appCommand = appCommand;
+      }
     }
 
     if (!this.clk && nextClk) {
@@ -113,6 +116,17 @@ export class SdSpi {
     return this.lastCommand;
   }
 
+  private hasActiveTransaction(): boolean {
+    return (
+      this.commandBytes.length > 0 ||
+      this.pendingResponse !== null ||
+      this.outputQueue.length > 0 ||
+      this.outShift !== 0xff ||
+      this.outBitIndex !== 0 ||
+      this.writeState !== null
+    );
+  }
+
   private beginTransaction(): void {
     this.inShift = 0;
     this.inBitIndex = 0;
@@ -129,20 +143,6 @@ export class SdSpi {
     this.csActive = true;
   }
 
-  private resetTransaction(): void {
-    this.inShift = 0;
-    this.inBitIndex = 0;
-    this.outShift = 0xff;
-    this.outBitIndex = 0;
-    this.ioOut = 1;
-    this.commandBytes = [];
-    this.outputQueue = [];
-    this.lastCommand = undefined;
-    this.appCommand = false;
-    this.pendingResponse = null;
-    this.delayBytes = 0;
-    this.writeState = null;
-  }
 
   private shiftIn(bit: number): void {
     this.inShift = ((this.inShift << 1) | (bit & 0x01)) & 0xff;

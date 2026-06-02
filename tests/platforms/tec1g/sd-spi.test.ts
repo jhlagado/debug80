@@ -22,6 +22,11 @@ function writeByte(spi: SdSpi, value: number): void {
   }
 }
 
+function writeByteWithMon3Idle(spi: SdSpi, value: number): void {
+  writeByte(spi, value);
+  writeSpi(spi, MOSI_BIT | CS_BIT);
+}
+
 function readByte(spi: SdSpi): number {
   let value = 0;
   for (let i = 0; i < 8; i += 1) {
@@ -46,6 +51,10 @@ function readResponseByte(spi: SdSpi): number {
 
 function sendCommand(spi: SdSpi, bytes: number[]): void {
   bytes.forEach((byte) => writeByte(spi, byte));
+}
+
+function sendMon3IdleCommand(spi: SdSpi, bytes: number[]): void {
+  bytes.forEach((byte) => writeByteWithMon3Idle(spi, byte));
 }
 
 function writeDataBlock(spi: SdSpi, payload: Uint8Array): void {
@@ -78,6 +87,45 @@ describe('SdSpi', () => {
     expect(cmd?.cmd).toBe(0);
     expect(cmd?.arg).toBe(0);
     expect(cmd?.crc).toBe(0x95);
+  });
+
+  it('captures MON3-style command frames with CS idled between bytes', () => {
+    const spi = new SdSpi({ csMask: CS_BIT });
+    writeSpi(spi, 0x00);
+    sendMon3IdleCommand(spi, [0x40, 0x00, 0x00, 0x00, 0x00, 0x95]);
+    const cmd = spi.getLastCommand();
+    expect(cmd).toBeDefined();
+    expect(cmd?.cmd).toBe(0);
+    expect(cmd?.arg).toBe(0);
+    expect(cmd?.crc).toBe(0x95);
+    expect(readResponseByte(spi)).toBe(0x01);
+  });
+
+  it('completes MON3-style SDHC init with CS idled between command bytes', () => {
+    const spi = new SdSpi({ csMask: CS_BIT, highCapacity: true });
+    writeSpi(spi, 0x00);
+    sendMon3IdleCommand(spi, [0x40, 0x00, 0x00, 0x00, 0x00, 0x95]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendMon3IdleCommand(spi, [0x48, 0x00, 0x00, 0x01, 0xaa, 0x87]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x01);
+    expect(readByte(spi)).toBe(0xaa);
+    sendMon3IdleCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendMon3IdleCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendMon3IdleCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendMon3IdleCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    sendMon3IdleCommand(spi, [0x7a, 0x00, 0x00, 0x00, 0x00, 0xfd]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xc0);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
   });
 
   it('responds to CMD0 and CMD8 with R1/R7 bytes', () => {
