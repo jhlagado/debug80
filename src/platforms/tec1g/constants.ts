@@ -22,8 +22,6 @@ export const TEC1G_PORT_8X8_RED = 0x06;
 export const TEC1G_PORT_8X8_GREEN = 0xf8;
 /** 8x8 RGB matrix blue column latch. */
 export const TEC1G_PORT_8X8_BLUE = 0xf9;
-/** @deprecated Use {@link TEC1G_PORT_8X8_RED}; kept for callers that still say "data". */
-export const TEC1G_PORT_8X8_DATA = TEC1G_PORT_8X8_RED;
 /** GLCD command register (ST7920). */
 export const TEC1G_PORT_GLCD_CMD = 0x07;
 /** LCD data register. */
@@ -130,8 +128,6 @@ export const TEC1G_MASK_BYTE = 0xff;
 export const TEC1G_MASK_LOW7 = 0x7f;
 export const TEC1G_MASK_LOW6 = 0x3f;
 export const TEC1G_MASK_LOW5 = 0x1f;
-export const TEC1G_MASK_LOW4 = 0x0f;
-export const TEC1G_MASK_LOW3 = 0x07;
 export const TEC1G_MASK_LOW2 = 0x03;
 export const TEC1G_NMI_VECTOR = 0x66;
 export const TEC1G_KEY_SHIFT_MASK = 0x20;

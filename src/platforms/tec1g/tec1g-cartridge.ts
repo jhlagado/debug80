@@ -15,7 +15,7 @@ export type Tec1gCartridgeImage = {
 /**
  * Returns whether the loaded image contains any non-zero data in the cartridge expansion region.
  */
-export function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
+function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
   for (let addr = TEC1G_EXPAND_START; addr < 0x10000; addr += 1) {
     if (memory[addr] !== 0) {
       return true;

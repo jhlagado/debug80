@@ -84,6 +84,25 @@ describe('path-resolver', () => {
     expect(fs.existsSync(path.join(baseDir, '.debug80'))).toBe(false);
   });
 
+  it('does not resolve source maps from the retired project cache directory', () => {
+    const baseDir = path.join(tmpDir, 'project');
+    const cacheDir = path.join(baseDir, '.debug80', 'cache');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'demo.cached.d8.json'), '{}\n');
+    const hexPath = path.join(baseDir, 'build', 'demo.hex');
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+
+    const args = {
+      artifactBase: 'demo',
+      outputDir: 'build',
+    } as LaunchRequestArguments;
+    const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
+
+    expect(mapPath).toBe(path.join(baseDir, 'build', 'demo.d8.json'));
+    expect(mapPath).not.toContain(`${path.sep}.debug80${path.sep}`);
+  });
+
   it('resolves mapped path using artifact directory and source roots', () => {
     const hexPath = path.join(tmpDir, 'build', 'demo.hex');
     fs.mkdirSync(path.dirname(hexPath), { recursive: true });

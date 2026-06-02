@@ -4,7 +4,6 @@
 
 import { cycle_counts_cb } from './constants';
 import { OpcodeHandler } from './opcode-types';
-import { DecodeContext, DecodeUtils } from './decode-types';
 import { Callbacks, Cpu } from './types';
 
 type ByteOpHandler = (value: number) => number;
@@ -135,19 +134,4 @@ export const buildCbHandler = (ctx: CbContext): OpcodeHandler => {
   return (): void => {
     executeCbCore(cpu, cb, ctx);
   };
-};
-
-export const executeCbPrefix = (ctx: DecodeContext, utils: DecodeUtils): void => {
-  executeCbCore(ctx.cpu, ctx.cb, {
-    cpu: ctx.cpu,
-    cb: ctx.cb,
-    do_rlc: (value) => utils.doRlc(ctx, value),
-    do_rrc: (value) => utils.doRrc(ctx, value),
-    do_rl: (value) => utils.doRl(ctx, value),
-    do_rr: (value) => utils.doRr(ctx, value),
-    do_sla: (value) => utils.doSla(ctx, value),
-    do_sra: (value) => utils.doSra(ctx, value),
-    do_sll: (value) => utils.doSll(ctx, value),
-    do_srl: (value) => utils.doSrl(ctx, value),
-  });
 };

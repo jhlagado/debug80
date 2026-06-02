@@ -272,6 +272,21 @@ artifact. Native AZM maps carry `files[*].symbols` entries for labels and
 constants, which power navigation, hovers, variables, watches, and call stack
 labels.
 
+Source-map fallback policy:
+
+- Debug80 loads the selected target source map from the resolved build artifact
+  path: `<outputDir>/<artifactBase>.d8.json`.
+- Platform ROM mapping is loaded only from explicit bundled/source-map paths in
+  the platform configuration.
+- Debug80 does not search `.debug80/cache`, does not generate D8 maps from
+  listings, and does not derive fallback maps from source text.
+- Current AZM D8 files may still contain historical field names such as
+  `lstLine`, `lstText`, and `lstTextId`; these fields are accepted only as
+  native AZM source-context fields, not as evidence of listing-derived Debug80
+  fallback behavior.
+- If the source map is missing or invalid, source-map-backed features become
+  unavailable until the user builds the target again.
+
 Editor navigation also uses source-map data. Debug80 registers VS Code providers
 for Go to Definition, workspace symbols, and compact symbol hover on `z80-asm`
 documents. These providers load the active target's D8 map and use

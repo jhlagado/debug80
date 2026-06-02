@@ -127,7 +127,7 @@ export function createGlcdState(): GlcdState {
 /**
  *
  */
-export function resetGlcdState(state: GlcdState, cycleClock: CycleClock): void {
+function resetGlcdState(state: GlcdState, cycleClock: CycleClock): void {
   state.glcd.fill(0);
   state.glcdRowAddr = 0;
   state.glcdRowBase = 0;

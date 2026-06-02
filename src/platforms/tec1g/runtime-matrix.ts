@@ -68,7 +68,7 @@ export function maybeCommitMatrixOnIdle(
 /**
  * Collects any currently accumulated matrix duty into display brightness.
  */
-export function collectMatrixDutyBrightness(
+function collectMatrixDutyBrightness(
   display: Tec1gState['display'],
   cycle: number
 ): void {

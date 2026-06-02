@@ -93,32 +93,28 @@ Fallow found no circular dependencies and no unused package dependencies. That
 is important: the codebase is not trapped in an untestable dependency knot. The
 cleanup programme can therefore be incremental and PR-driven.
 
-### P1: Listing/Cache Retirement Is Not Fully Complete
+### P1: Listing/Cache Retirement Policy Must Stay Explicit
 
 Runtime behavior no longer depends on listing-derived source maps, and docs say
-native AZM D8 maps are the source of truth. However, committed artifacts and
-schema/runtime vocabulary still carry historical listing/cache names:
+native AZM D8 maps are the source of truth. The old project-local cache
+directory is ignored by `.gitignore` and should not be committed. Some
+schema/runtime vocabulary still carries historical listing names because the
+current native AZM D8 format still uses those field names for source context:
 
-- `.debug80/cache` directories remain committed under resources, ROMs, and E2E
-  fixtures.
 - `lstLine`, `lstText`, and `lstTextId` remain part of the D8 schema and D8
   mapping types.
 - `mapping-service` still logs "Ignoring legacy Debug80-generated source map".
 - Tests still assert legacy-map rejection and `lstLine` fallback behavior.
 
-Some of this may be unavoidable because AZM's current D8 format still uses
-`lstLine`/`lstText` field names for source context. The policy needs to be made
-explicit:
+The policy needs to stay explicit:
 
 - Allowed: native AZM D8 fields named `lstLine`/`lstText`, while AZM continues to
   emit them.
 - Not allowed: project-local `.debug80/cache` discovery, generated map fallback,
   listing-derived map creation, or committed cache artifacts.
 
-Recommended first PR:
+Recommended cleanup:
 
-- Delete committed `.debug80/cache` directories outside deliberately named test
-  fixtures.
 - Keep tests proving Debug80 does not create project caches.
 - Rename user-facing messages from "D8 map" or "legacy map" to "source map"
   where possible.
@@ -303,8 +299,7 @@ Goal: reduce noise without changing behavior.
 
 Candidate work:
 
-- Remove committed `.debug80/cache` artifacts where not explicitly test
-  fixtures.
+- Keep `.debug80/cache` artifacts out of the repository.
 - Remove dead simple platform UI state exports if confirmed unused.
 - Remove unused TEC-1 and TEC-1G constants/helpers.
 - Remove stale integration test extension id `jhlagado.z80-debugger` if no
@@ -435,7 +430,7 @@ Avoid cleanup that:
 
 Start with Phase 1 and Phase 2 together because they are related and low-risk:
 
-> Remove remaining committed `.debug80/cache` artifacts and confirmed dead
+> Keep `.debug80/cache` artifacts out of the repository, remove confirmed dead
 > exports, document the source-map fallback policy, and add regression tests that
 > ensure Debug80 only uses native AZM source maps from build/bundled outputs.
 

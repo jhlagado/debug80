@@ -170,16 +170,6 @@ export const MATRIX_ASCII_MAP: Record<string, MatrixKeyCombo[]> = ((): Record<
 })();
 
 /**
- * Returns matrix combos for a single character.
- */
-export function getMatrixCombosForChar(ch: string): MatrixKeyCombo[] {
-  if (!ch) {
-    return [];
-  }
-  return MATRIX_ASCII_MAP[ch] ?? [];
-}
-
-/**
  * Returns matrix combos for an ASCII code.
  */
 export function getMatrixCombosForAscii(ascii: number): MatrixKeyCombo[] {

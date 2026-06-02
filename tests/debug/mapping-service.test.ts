@@ -140,6 +140,31 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('Build the selected target with AZM'))).toBe(true);
   });
 
+  it('does not load retired project-cache maps when the build-side source map is missing', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const hexPath = path.join(dir, 'build', 'simple.hex');
+    const asmPath = path.join(dir, 'src', 'simple.asm');
+    const buildMapPath = path.join(dir, 'build', 'simple.d8.json');
+    const cacheMapPath = path.join(dir, '.debug80', 'cache', 'simple.cached.d8.json');
+    const logs: string[] = [];
+
+    writeFile(hexPath, ':00000001FF\n');
+    writeFile(asmPath, 'START:\n  NOP\n');
+    writeFile(cacheMapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      service: makeService(dir, buildMapPath, logs),
+    });
+
+    expect(result.mapping.segments).toHaveLength(0);
+    expect(logs.some((line) => line.includes('Source map missing'))).toBe(true);
+    expect(logs.some((line) => line.includes('.debug80'))).toBe(false);
+  });
+
   it('ignores legacy Debug80-generated D8 maps instead of fabricating fallback maps', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const hexPath = path.join(dir, 'simple.hex');
@@ -214,6 +239,72 @@ describe('mapping-service', () => {
     expect(result.mapping.segments[0]?.loc.line).toBe(42);
     expect(logs.some((line) => line.includes('Regenerating'))).toBe(false);
     expect(fs.readFileSync(mapPath, 'utf-8')).toBe(originalContent);
+  });
+
+  it('loads native auxiliary source maps from explicit platform ROM paths', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const hexPath = path.join(dir, 'build', 'simple.hex');
+    const asmPath = path.join(dir, 'src', 'simple.asm');
+    const mapPath = path.join(dir, 'build', 'simple.d8.json');
+    const auxiliaryDir = path.join(dir, 'bundle', 'mon3');
+    const auxiliarySource = path.join(auxiliaryDir, 'mon3.z80');
+    const auxiliaryMapPath = path.join(auxiliaryDir, 'mon3.d8.json');
+    const logs: string[] = [];
+
+    writeFile(hexPath, ':00000001FF\n');
+    writeFile(asmPath, 'START:\n  NOP\n');
+    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
+    writeFile(auxiliarySource, 'BOOT:\n  NOP\n');
+    writeFile(auxiliaryMapPath, JSON.stringify(nativeMapFor('mon3.z80', 2), null, 2));
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      auxiliaryDebugMaps: [auxiliaryMapPath],
+      service: makeService(dir, mapPath, logs),
+    });
+
+    expect(result.mapping.segments).toHaveLength(2);
+    expect(result.mapping.segments.some((seg) => seg.loc.file === auxiliarySource)).toBe(true);
+    expect(logs.some((line) => line.includes('(azm, platform ROM)'))).toBe(true);
+  });
+
+  it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const hexPath = path.join(dir, 'build', 'simple.hex');
+    const asmPath = path.join(dir, 'src', 'simple.asm');
+    const mapPath = path.join(dir, 'build', 'simple.d8.json');
+    const auxiliaryMapPath = path.join(dir, 'bundle', 'mon3', 'mon3.d8.json');
+    const logs: string[] = [];
+
+    writeFile(hexPath, ':00000001FF\n');
+    writeFile(asmPath, 'START:\n  NOP\n');
+    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
+    writeFile(
+      auxiliaryMapPath,
+      JSON.stringify(
+        {
+          ...nativeMapFor('mon3.z80', 2),
+          generator: { name: 'debug80' },
+        },
+        null,
+        2
+      )
+    );
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      auxiliaryDebugMaps: [auxiliaryMapPath],
+      service: makeService(dir, mapPath, logs),
+    });
+
+    expect(result.mapping.segments).toHaveLength(1);
+    expect(logs.some((line) => line.includes('Ignoring legacy auxiliary source map'))).toBe(true);
   });
 
   it('uses lstLine as a fallback source line when loading native D8 segments', () => {

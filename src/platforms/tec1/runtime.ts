@@ -106,8 +106,8 @@ export interface Tec1Runtime {
   queueUpdate(): void;
 }
 
-export const TEC1_SLOW_HZ = TEC_SLOW_HZ;
-export const TEC1_FAST_HZ = TEC_FAST_HZ;
+const TEC1_SLOW_HZ = TEC_SLOW_HZ;
+const TEC1_FAST_HZ = TEC_FAST_HZ;
 const TEC1_SILENCE_CYCLES = TEC_SILENCE_CYCLES;
 const TEC1_SERIAL_BAUD = 9600;
 const TEC1_KEY_HOLD_MS = TEC_KEY_HOLD_MS;

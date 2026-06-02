@@ -65,7 +65,7 @@ const decoderCache = new WeakMap<Cpu, { cb: Callbacks; decoder: Decoder }>();
  * decodeInstruction(cpu, callbacks, opcode);
  * ```
  */
-export const createDecoder = (cpu: Cpu, cb: Callbacks): Decoder => {
+const createDecoder = (cpu: Cpu, cb: Callbacks): Decoder => {
   // ==========================================================================
   // UTILITY FUNCTIONS
   // ==========================================================================
