@@ -15,6 +15,8 @@ function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
     handleSetStopOnEntry: vi.fn(() => undefined),
     handleSetAzmOptions: vi.fn(() => undefined),
     handleSelectTarget: vi.fn(() => undefined),
+    handleTestCoolTermConnection: vi.fn(() => undefined),
+    handleSendHexViaCoolTerm: vi.fn(() => undefined),
     handleRestartDebug: vi.fn(() => undefined),
     handleSetEntrySource: vi.fn(() => undefined),
     currentPlatform: vi.fn(() => platform),
@@ -51,6 +53,11 @@ describe('platform-view message routing', () => {
       { type: 'setAzmOptions', registerCareMode: 'audit', contractUpdateMode: 'never' },
       deps
     );
+    await handlePlatformViewMessage(
+      { type: 'sendHexViaCoolTerm', rootPath: '/workspace/a', targetName: 'app' },
+      deps
+    );
+    await handlePlatformViewMessage({ type: 'testCoolTermConnection' }, deps);
     await handlePlatformViewMessage({ type: 'serialSendFile' }, deps);
     await handlePlatformViewMessage({ type: 'serialSave', text: 'hello' }, deps);
 
@@ -71,8 +78,34 @@ describe('platform-view message routing', () => {
     expect(deps.handleConfigureProject).toHaveBeenCalledTimes(1);
     expect(deps.handleSetStopOnEntry).toHaveBeenCalledWith(true);
     expect(deps.handleSetAzmOptions).toHaveBeenCalledWith('audit', 'never');
+    expect(deps.handleSendHexViaCoolTerm).toHaveBeenCalledWith({
+      rootPath: '/workspace/a',
+      targetName: 'app',
+    });
+    expect(deps.handleTestCoolTermConnection).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSendFile).toHaveBeenCalledTimes(1);
     expect(deps.handleSerialSave).toHaveBeenCalledWith('hello');
+  });
+
+  it('swallows malformed project control messages instead of delegating them', async () => {
+    const deps = createDependencies('tec1g');
+
+    await handlePlatformViewMessage({ type: 'setAzmOptions', registerCareMode: 'strict' }, deps);
+    await handlePlatformViewMessage({ type: 'saveProjectConfig', platform: 12 }, deps);
+
+    expect(deps.handleSetAzmOptions).not.toHaveBeenCalled();
+    expect(deps.handleSaveProjectConfig).not.toHaveBeenCalled();
+    expect(deps.handlePlatformMessage).not.toHaveBeenCalled();
+  });
+
+  it('preserves platform fallback for malformed serial payloads', async () => {
+    const deps = createDependencies('tec1g');
+    const msg = { type: 'serialSave', text: 12 };
+
+    await handlePlatformViewMessage(msg, deps);
+
+    expect(deps.handleSerialSave).not.toHaveBeenCalled();
+    expect(deps.handlePlatformMessage).toHaveBeenCalledWith('tec1g', msg);
   });
 
   it('clears the active serial buffer for TEC-1 and TEC-1G', async () => {
