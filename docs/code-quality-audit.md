@@ -297,6 +297,16 @@ Recommended approach:
 - Keep low-level unit tests local and explicit.
 - Refactor only repeated fixture setup, not the assertions themselves.
 
+Completed fixture cleanup:
+
+- Added shared e2e adapter helpers for workspace harness creation, harness
+  disposal, launch/configuration, and top stack-frame reads.
+- Moved repeated setup out of the step, terminate, adapter, and source-map e2e
+  tests while keeping each test's assertions local.
+- Fallow no longer reports duplicated setup among those e2e adapter tests; the
+  remaining changed-file duplicate signals are inherited similarities with older
+  `tests/debug/adapter-integration.test.ts` helpers.
+
 ## Proposed Cleanup Programme
 
 ### Phase 1: Remove Confirmed Dead Surface
@@ -396,7 +406,7 @@ npm exec --yes fallow -- audit --changed-since HEAD --format compact
 Additional note:
 
 ```sh
-npx vitest run -c vitest.e2e.config.ts tests/e2e/adapter/step.test.ts
+npx vitest run -c vitest.e2e.config.ts tests/e2e/adapter/adapter.e2e.test.ts tests/e2e/adapter/step.test.ts tests/e2e/adapter/terminate.test.ts tests/e2e/adapter/source-maps.e2e.test.ts
 ```
 
 This e2e adapter step test has been repaired as a runtime-control gate. It no
@@ -404,7 +414,8 @@ longer expects the retired DAP register scope; instead, it verifies that steppin
 lands on the expected mapped source line, DAP scopes expose the current Symbols
 scope, and the `PC` register is available through the watch/evaluate path. The
 e2e Vitest config now uses `cacheDir`, removing the previous cache deprecation
-warning from this gate.
+warning from this gate. The surrounding e2e adapter tests now share harness
+setup and stopped-frame helpers, reducing repeated launch/stop boilerplate.
 
 ### Phase 5: Split Launch/Project Policy
 

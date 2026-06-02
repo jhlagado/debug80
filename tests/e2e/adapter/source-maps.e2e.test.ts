@@ -1,11 +1,13 @@
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { workspace } from './vscode-mock';
 import {
-  createHarness,
+  configureAndReadStoppedFrame,
+  createWorkspaceHarness,
+  disposeHarness,
   initialize,
   launchWithDiagnostics,
   THREAD_ID,
+  waitForStoppedFrame,
   type SessionHarness,
 } from './harness';
 
@@ -21,24 +23,15 @@ type SetBreakpointsResponse = {
   };
 };
 
-type StackTraceResponse = {
-  body?: {
-    stackFrames?: Array<{ line: number; source?: { path?: string } }>;
-  };
-};
-
 describe('Debug80 adapter source map e2e', () => {
   let harness: SessionHarness | undefined;
 
   beforeEach(() => {
-    workspace.workspaceFolders = [{ uri: { fsPath: sourceMapFixtureRoot } }];
-    harness = createHarness();
+    harness = createWorkspaceHarness(sourceMapFixtureRoot);
   });
 
   afterEach(() => {
-    harness?.client.dispose();
-    harness?.input.end();
-    harness?.output.end();
+    disposeHarness(harness);
     harness = undefined;
   });
 
@@ -66,31 +59,17 @@ describe('Debug80 adapter source map e2e', () => {
     });
     expect(includeBreakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
 
-    await client.sendRequest('configurationDone');
-
-    const mainStopped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
+    const { stopped: mainStopped, frame: mainFrame } = await configureAndReadStoppedFrame(client);
     expect(mainStopped.body?.reason).toBe('breakpoint');
-
-    const mainStack = await client.sendRequest<StackTraceResponse>('stackTrace', {
-      threadId: THREAD_ID,
-      startFrame: 0,
-      levels: 1,
-    });
-    expect(mainStack.body?.stackFrames?.[0]?.line).toBe(3);
-    expect(mainStack.body?.stackFrames?.[0]?.source?.path).toBe(mainSourcePath);
+    expect(mainFrame?.line).toBe(3);
+    expect(mainFrame?.source?.path).toBe(mainSourcePath);
 
     await client.sendRequest('continue', { threadId: THREAD_ID });
 
-    const includeStopped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
+    const { stopped: includeStopped, frame: includeFrame } = await waitForStoppedFrame(client);
     expect(includeStopped.body?.reason).toBe('breakpoint');
-
-    const includeStack = await client.sendRequest<StackTraceResponse>('stackTrace', {
-      threadId: THREAD_ID,
-      startFrame: 0,
-      levels: 1,
-    });
-    expect(includeStack.body?.stackFrames?.[0]?.line).toBe(2);
-    expect(includeStack.body?.stackFrames?.[0]?.source?.path).toBe(includeSourcePath);
+    expect(includeFrame?.line).toBe(2);
+    expect(includeFrame?.source?.path).toBe(includeSourcePath);
 
     await client.sendRequest('disconnect');
   });
@@ -113,18 +92,11 @@ describe('Debug80 adapter source map e2e', () => {
     });
     expect(sparseBreakpoints.body?.breakpoints?.[0]?.verified).toBe(true);
 
-    await client.sendRequest('configurationDone');
-
-    const stopped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
+    const { stopped, frame } = await configureAndReadStoppedFrame(client);
     expect(stopped.body?.reason).toBe('breakpoint');
 
-    const stack = await client.sendRequest<StackTraceResponse>('stackTrace', {
-      threadId: THREAD_ID,
-      startFrame: 0,
-      levels: 1,
-    });
-    expect(stack.body?.stackFrames?.[0]?.line).toBe(3);
-    expect(stack.body?.stackFrames?.[0]?.source?.path).toBe(sparseSourcePath);
+    expect(frame?.line).toBe(3);
+    expect(frame?.source?.path).toBe(sparseSourcePath);
 
     await client.sendRequest('disconnect');
   });
