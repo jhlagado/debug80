@@ -27,6 +27,7 @@ These documents describe current behavior or stable interfaces:
 These notes are not commitments, but they capture product and implementation ideas that should not
 be lost:
 
+- [Code quality audit](code-quality-audit.md)
 - [Future directions](future-directions.md)
 
 ## ADRs And Plans
