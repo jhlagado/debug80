@@ -292,6 +292,48 @@ RTC, SD/SPI, memory protection, and expansion bank selection.
 These should not become another large dashboard. The value is quick intuition:
 "is the program talking to this hardware at all?"
 
+### TEC-1G Peripheral Accordions
+
+The TEC-1G panel is becoming dense enough that optional peripherals should be
+visible without competing with the main machine view. Closed accordion panels
+are a good compromise: the user can ignore a peripheral until they are actively
+developing against it, but the state is discoverable when needed.
+
+Useful closed panels would include storage, RTC/PRAM, joystick, and possibly a
+generic GPIO/port view.
+
+The storage panel should start as a diagnostic view over the mounted SD image.
+Debug80 owns the host-side image file through `sdImagePath`, so it can inspect
+that image directly instead of asking MON-3 to list files through the emulated
+machine. A first version should be read-only and show SD enabled/disabled state,
+image filename, capacity, SDHC/SDSC mode, last command, last sector read or
+written, and basic filesystem detection.
+
+Filesystem browsing is feasible if the image format is known. FAT32 can be
+parsed from the partition table, boot sector, FAT, and directory entries. A
+TEC-1G-specific format such as TEC-FS can also be parsed if the fixed sector and
+FCB layout is used. Unknown images should fall back to sector-level information
+and a hex preview rather than pretending to know the file structure. File
+injection or image modification should wait until the read-only parser has been
+well tested.
+
+The RTC panel should expose the DS1302 clock/calendar and its 31 bytes of
+battery-backed PRAM. This matters because MON-3 uses PRAM for monitor settings,
+quick jump addresses, quick backup ranges, baud-rate settings, and a checksum.
+Longer term, Debug80 should persist the emulated PRAM to a project-side file so
+settings survive emulator restarts, matching the purpose of the real RTC board.
+
+The joystick panel should drive the same matrix/keyboard read path that MON-3
+uses for `joystickScan`, rather than inventing a separate high-level API. A
+small directional pad plus fire buttons would be enough. The panel should show
+the resulting bitfield and make clear that combinations such as up+fire are
+valid.
+
+A GPIO or port-inspection panel could show the current state of ports such as
+`0xFC`, `0xFD`, `0xFE`, and `0xFF`, recent reads/writes, decoded bit meanings,
+and whether a device is currently attached. This would be more of a diagnostic
+tool than an everyday user control.
+
 ## Real Hardware Integration
 
 Debug80 already has a direction for sending built HEX files to hardware through

@@ -1,8 +1,12 @@
 # Debug80 Documentation
 
-This directory contains repository-local engineering notes. Keep durable user-facing explanations in
-the external Debug80 manual at [debug80.com](https://debug80.com/), and keep unfinished design work
-here until it settles.
+This directory contains repository-local engineering notes. It is not the Debug80 user manual.
+Keep durable user-facing explanations in the external Debug80 manual at
+[debug80.com](https://debug80.com/), and keep only implementation references, design notes, release
+process notes, and unfinished future work here.
+
+When a document becomes historical, move it to [archive](archive/) or retire it. Avoid duplicating
+how-to material that already belongs in the manual site.
 
 ## Reference
 
@@ -22,6 +26,7 @@ These documents describe current behavior or stable interfaces:
 
 These are still useful for product and implementation decisions:
 
+- [Future directions](future-directions.md)
 - [Debug80 IDE UX](design-debug80-ide-ux.md)
 - [Project workflow](design-project-workflow.md)
 - [Platform UI runtime behavior](design-platform-ui-runtime-behaviors.md)
