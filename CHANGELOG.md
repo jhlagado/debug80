@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.13
+
+- Improved TEC-1G SD SPI emulation for MON3 and ZAD-style host-backed storage
+  workflows, including `0xFD` port behavior, command-frame preservation across
+  short CS-high idle gaps, and 512-byte sector read/write coverage.
+- Improved DS1302 RTC protocol behavior and tests around port `0xFC`.
+- Corrected TEC-1G `SYS_CTRL` caps lock mapping to follow MON3, with CAPSLOCK
+  on bit `0x80` and bit `0x20` no longer treated as caps.
+- Displayed `SYS_CTRL` bits `0x08`, `0x10`, `0x20`, and `0x40` as Memory
+  Expansion bank lamps, while keeping bit `0x08` as the current `E_A14`
+  two-bank selector for the `0x8000-0xBFFF` expansion window.
+- Retired remaining source-map cache fallback remnants and clarified Debug80's
+  native AZM D8 map policy for build and bundled outputs.
+- Improved source-map diagnostics and added path resolving/mapping tests to
+  protect the AZM-only source-map policy.
+- Deduplicated runtime control logic while preserving stepping, pause, run, and
+  temporary-breakpoint behavior.
+- Repaired e2e adapter step tests and added shared adapter harness helpers for
+  launch, stop, stopped-frame, termination, and source-map e2e coverage.
+- Split platform panel message routing into smaller project, serial, platform,
+  runtime, tab, and edit message modules with clearer typed message boundaries.
+- Added reusable platform panel and webview message fixtures.
+- Pruned stale repository docs that moved to the external Debug80 manual/docs
+  site, added `docs/code-quality-audit.md`, and updated TEC-1G future-work notes
+  for peripherals, SD/PATA, RTC, FRAM, joystick, expansion decks, and the
+  current MON3/SYS_CTRL contract.
+
 ## 0.1.12
 
 - Fixed matrix keyboard recovery after extension/webview restart.
