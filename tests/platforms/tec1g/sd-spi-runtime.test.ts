@@ -68,7 +68,7 @@ function readByte(rt: ReturnType<typeof createTec1gRuntime>): number {
   for (let i = 0; i < 8; i += 1) {
     writePort(rt, MOSI_BIT);
     writePort(rt, MOSI_BIT | CLK_BIT);
-    const bit = readPort(rt) & 1;
+    const bit = (readPort(rt) >> 7) & 1;
     writePort(rt, MOSI_BIT);
     value = ((value << 1) | bit) & 0xff;
   }
@@ -109,7 +109,7 @@ function initHighCapacity(rt: ReturnType<typeof createTec1gRuntime>): void {
   expect(readResponse(rt)).toBe(0x00);
   sendCommand(rt, [0x7a, 0x00, 0x00, 0x00, 0x00, 0xfd]);
   expect(readResponse(rt)).toBe(0x00);
-  expect(readByte(rt)).toBe(0x40);
+  expect(readByte(rt)).toBe(0xc0);
   expect(readByte(rt)).toBe(0x00);
   expect(readByte(rt)).toBe(0x00);
   expect(readByte(rt)).toBe(0x00);

@@ -95,13 +95,15 @@ export class SdSpi {
   }
 
   /**
-   * Reads the current MISO bit (LSB).
+   * Reads the current MISO bit on the TEC-1G SDIO port.
+   *
+   * MON-3 samples bit 7 with `in a,(SDIO)` followed by `rla`.
    */
   public read(): number {
     if (!this.csActive) {
       return 0xff;
     }
-    return this.ioOut & 0x01;
+    return this.ioOut ? 0x80 : 0x00;
   }
 
   /**
@@ -252,8 +254,13 @@ export class SdSpi {
         break;
       }
       case 58: {
-        const ocr = this.highCapacity ? 0x40 : 0x00;
+        const ocr = this.highCapacity ? 0xc0 : 0x80;
         this.pendingResponse = [this.ready ? 0x00 : 0x01, ocr, 0x00, 0x00, 0x00];
+        this.delayBytes = 1;
+        break;
+      }
+      case 16: {
+        this.pendingResponse = [this.ready ? 0x00 : 0x01];
         this.delayBytes = 1;
         break;
       }

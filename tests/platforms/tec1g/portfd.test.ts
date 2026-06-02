@@ -53,7 +53,7 @@ function readByte(rt: ReturnType<typeof makeRuntime>): number {
   for (let i = 0; i < 8; i += 1) {
     writePort(rt, MOSI_BIT);
     writePort(rt, MOSI_BIT | CLK_BIT);
-    const bit = readPort(rt) & 1;
+    const bit = (readPort(rt) >> 7) & 1;
     writePort(rt, MOSI_BIT);
     value = ((value << 1) | bit) & 0xff;
   }

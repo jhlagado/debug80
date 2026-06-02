@@ -27,7 +27,7 @@ function readByte(spi: SdSpi): number {
   for (let i = 0; i < 8; i += 1) {
     writeSpi(spi, MOSI_BIT);
     writeSpi(spi, MOSI_BIT | CLK_BIT);
-    const bit = spi.read() & 1;
+    const bit = (spi.read() >> 7) & 1;
     writeSpi(spi, MOSI_BIT);
     value = ((value << 1) | bit) & 0xff;
   }
@@ -106,7 +106,7 @@ describe('SdSpi', () => {
     expect(readResponseByte(spi)).toBe(0x00);
     sendCommand(spi, [0x7a, 0x00, 0x00, 0x00, 0x00, 0xfd]);
     expect(readResponseByte(spi)).toBe(0x00);
-    expect(readByte(spi)).toBe(0x40);
+    expect(readByte(spi)).toBe(0xc0);
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x00);
@@ -131,6 +131,27 @@ describe('SdSpi', () => {
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0x5a);
+  });
+
+  it('reports SDSC OCR and accepts CMD16 block length', () => {
+    const spi = new SdSpi({ csMask: CS_BIT, highCapacity: false });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    sendCommand(spi, [0x7a, 0x00, 0x00, 0x00, 0x00, 0xfd]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x80);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0x00);
+    sendCommand(spi, [0x50, 0x00, 0x00, 0x02, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
   });
 
   it('treats CMD17 argument as block address for high capacity cards', () => {
