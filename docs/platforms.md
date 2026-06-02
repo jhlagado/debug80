@@ -15,7 +15,6 @@ surface documented in `docs/platform-extension-api.md`.
 
 For per-platform details, see `src/platforms/README.md`.
 For timing and time-series I/O, see `docs/timing-model.md`.
-TEC-1G notes: `docs/platforms/tec1g/README.md`.
 
 ## Goals
 
@@ -399,8 +398,6 @@ Example with explicit local files:
 **Overrides:** materialize the bundled files and replace them on disk, or change
 `romHex` / `sourceRoots` to your own MON3 build. Day-to-day debugging does not
 require project-local ROM files.
-
-More hardware and I/O detail: `docs/platforms/tec1g/README.md`.
 
 ## Build and launch flow
 

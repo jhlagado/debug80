@@ -1,8 +1,8 @@
 # TEC-1G Platform (MON-3)
 
 This is Debug80's TEC-1G platform implementation. It targets the MON-3 monitor
-workflow and hardware contract. For full MON-3 behavior notes, see
-`docs/platforms/tec1g/README.md`.
+workflow and hardware contract. User-facing TEC-1G guidance belongs in the
+external Debug80 manual at https://debug80.com/.
 
 ## Current support
 

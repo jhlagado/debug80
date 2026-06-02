@@ -5,8 +5,8 @@ Keep durable user-facing explanations in the external Debug80 manual at
 [debug80.com](https://debug80.com/), and keep only implementation references, design notes, release
 process notes, and unfinished future work here.
 
-When a document becomes historical, move it to [archive](archive/) or retire it. Avoid duplicating
-how-to material that already belongs in the manual site.
+When a document becomes historical, retire it. Avoid duplicating how-to material that already
+belongs in the manual site.
 
 ## Reference
 
@@ -22,28 +22,14 @@ These documents describe current behavior or stable interfaces:
 - [Performance diagnostics](performance-diagnostics.md)
 - [Release process](release-process.md)
 
-## Active Design Notes
+## Active Future Work
 
-These are still useful for product and implementation decisions:
+These notes are not commitments, but they capture product and implementation ideas that should not
+be lost:
 
 - [Future directions](future-directions.md)
-- [Debug80 IDE UX](design-debug80-ide-ux.md)
-- [Project workflow](design-project-workflow.md)
-- [Platform UI runtime behavior](design-platform-ui-runtime-behaviors.md)
-- [Production readiness](design-production-readiness.md)
-- [Hardware serial link](design-hardware-serial-link.md)
-
-## Platform Notes
-
-- [TEC-1G platform notes](platforms/tec1g/README.md)
-- [TEC-1G emulation review](platforms/tec1g/emulation-review.md)
 
 ## ADRs And Plans
 
 - [ADR 0001: project workspace root control](adr/0001-project-workspace-root-control.md)
 - [Platform ROM bundles plan](plans/platform-rom-bundles.md)
-
-## Archive
-
-The [archive](archive/) contains completed or superseded plans. These files are retained for
-historical context, not as the active implementation roadmap.
