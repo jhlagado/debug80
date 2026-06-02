@@ -3,7 +3,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PassThrough } from 'stream';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -22,23 +21,28 @@ vi.mock('vscode', () => {
   };
 });
 
-import { Z80DebugSession } from '../../src/debug/adapter';
-import { DapClient } from '../e2e/adapter/dap-client';
 import { createDefaultProjectConfig } from '../../src/extension/project-scaffolding';
 import { getProjectKitById } from '../../src/extension/project-kits';
+import {
+  configureAndReadStoppedFrame,
+  createWorkspaceHarness,
+  disposeHarness,
+  initialize,
+  launchWithDiagnostics,
+  readTopStackFrame,
+  type SessionHarness,
+} from '../e2e/adapter/harness';
 const { commands, workspace } = vscodeMock;
 
 const fixtureRoot = path.resolve(__dirname, '../e2e/fixtures/simple');
 const sourcePath = path.join(fixtureRoot, 'src', 'simple.asm');
+const debug80Root = path.resolve(__dirname, '../..');
+const defaultLaunchFlags = {
+  openRomSourcesOnLaunch: false,
+  openMainSourceOnLaunch: false,
+} as const;
 
-const THREAD_ID = 1;
-
-type SessionHarness = {
-  session: Z80DebugSession;
-  client: DapClient;
-  input: PassThrough;
-  output: PassThrough;
-};
+type AdapterClient = SessionHarness['client'];
 
 function createFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
   root: string;
@@ -133,48 +137,23 @@ function createFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
   return { root, sourcePath };
 }
 
-function createHarness(): SessionHarness {
-  const input = new PassThrough();
-  const output = new PassThrough();
-  const session = new Z80DebugSession();
-  session.setRunAsServer(true);
-  session.start(input, output);
-  const client = new DapClient(input, output);
-  return { session, client, input, output };
+function useFreshProjectFixture(kitId: 'tec1/mon1b' | 'tec1g/mon3'): {
+  root: string;
+  sourcePath: string;
+} {
+  const fixture = createFreshProjectFixture(kitId);
+  workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
+  getExtension.mockReturnValue({ extensionPath: debug80Root } as never);
+  return fixture;
 }
 
-async function initialize(client: DapClient): Promise<void> {
-  await client.sendRequest('initialize', {
-    adapterID: 'z80',
-    pathFormat: 'path',
-    linesStartAt1: true,
-    columnsStartAt1: true,
+async function launchApp(client: AdapterClient, args: Record<string, unknown> = {}): Promise<void> {
+  await initialize(client);
+  await launchWithDiagnostics(client, {
+    target: 'app',
+    ...defaultLaunchFlags,
+    ...args,
   });
-  await client.waitForEvent('initialized');
-}
-
-async function launchWithDiagnostics(
-  client: DapClient,
-  args: Record<string, unknown>
-): Promise<void> {
-  try {
-    await client.sendRequest('launch', args);
-  } catch (err) {
-    let output = '';
-    try {
-      const event = await client.waitForEvent<{ body?: { output?: string } }>(
-        'output',
-        undefined,
-        1000
-      );
-      output = event.body?.output?.trim() ?? '';
-    } catch {
-      // ignore missing output
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    const detail = output.length > 0 ? `${message}\n${output}` : message;
-    throw new Error(detail);
-  }
 }
 
 describe('adapter integration', () => {
@@ -184,22 +163,16 @@ describe('adapter integration', () => {
     vi.restoreAllMocks();
     getExtension.mockReset();
     getExtension.mockReturnValue(undefined);
-    workspace.workspaceFolders = [{ uri: { fsPath: fixtureRoot } }];
-    harness = createHarness();
+    harness = createWorkspaceHarness(fixtureRoot);
   });
 
   afterEach(() => {
-    if (!harness) {
-      return;
-    }
-    harness.client.dispose();
-    harness.input.end();
-    harness.output.end();
+    disposeHarness(harness);
     harness = undefined;
   });
 
   it('initialize response advertises setVariable for native register editing', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
     const initResp = await client.sendRequest<{ body?: { supportsSetVariable?: boolean } }>(
       'initialize',
       {
@@ -215,28 +188,18 @@ describe('adapter integration', () => {
   });
 
   it('launches from discovered workspace config when projectConfig is omitted', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
     await client.sendRequest('setBreakpoints', {
       source: { path: sourcePath },
       breakpoints: [],
     });
-    await client.sendRequest('configurationDone');
-
-    const stopped = await client.waitForEvent<{ body?: { reason?: string } }>('stopped');
+    const { stopped, frame } = await configureAndReadStoppedFrame(client);
     expect(stopped.body?.reason).toBe('entry');
 
-    const stack = await client.sendRequest<{
-      body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
-    }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
-    const frame = stack.body?.stackFrames?.[0];
     expect(frame?.line).toBe(2);
     expect(frame?.source?.path).toBe(sourcePath);
 
@@ -244,14 +207,10 @@ describe('adapter integration', () => {
   });
 
   it('does not publish stop-on-entry before configuration is done', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
 
     await expect(client.waitForEvent('stopped', undefined, 50)).rejects.toThrow(
@@ -266,14 +225,10 @@ describe('adapter integration', () => {
   });
 
   it('routes built-in memory snapshot requests through the adapter after launch', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
     await client.sendRequest('setBreakpoints', {
       source: { path: sourcePath },
@@ -308,18 +263,14 @@ describe('adapter integration', () => {
   });
 
   it('routes TEC-1 provider requests through the adapter and emits update events', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       platform: 'tec1',
       tec1: {
         entry: 0,
       },
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
     await client.sendRequest('setBreakpoints', {
       source: { path: sourcePath },
@@ -344,21 +295,13 @@ describe('adapter integration', () => {
   });
 
   it('emits an initial TEC-1 update before user interaction', async () => {
-    const fixture = createFreshProjectFixture('tec1/mon1b');
-    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
-    getExtension.mockReturnValue({
-      extensionPath: path.resolve(__dirname, '../..'),
-    } as never);
+    const fixture = useFreshProjectFixture('tec1/mon1b');
 
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       assemble: false,
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
 
     const update = await client.waitForEvent<{
@@ -373,21 +316,13 @@ describe('adapter integration', () => {
   });
 
   it('emits an initial TEC-1G update for a freshly initialized MON-3 project before user interaction', async () => {
-    const fixture = createFreshProjectFixture('tec1g/mon3');
-    workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
-    getExtension.mockReturnValue({
-      extensionPath: path.resolve(__dirname, '../..'),
-    } as never);
+    const fixture = useFreshProjectFixture('tec1g/mon3');
 
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       assemble: false,
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
 
     const update = await client.waitForEvent<{
@@ -404,24 +339,16 @@ describe('adapter integration', () => {
 
   describe('TEC-1G/MON-3 golden launch contract', () => {
     it('maps fresh-project target source, ROM entry frames, ROM breakpoints, and ROM source picker contents', async () => {
-      const fixture = createFreshProjectFixture('tec1g/mon3');
-      workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
-      getExtension.mockReturnValue({
-        extensionPath: path.resolve(__dirname, '../..'),
-      } as never);
+      const fixture = useFreshProjectFixture('tec1g/mon3');
 
-      const { client } = harness ?? createHarness();
+      const { client } = harness!;
 
-      await initialize(client);
-      await launchWithDiagnostics(client, {
-        target: 'app',
+      await launchApp(client, {
         assemble: false,
         stopOnEntry: true,
-        openRomSourcesOnLaunch: false,
-        openMainSourceOnLaunch: false,
       });
       const mon3SourcePath = path.join(
-        path.resolve(__dirname, '../..'),
+        debug80Root,
         'resources',
         'bundles',
         'tec1g',
@@ -448,10 +375,7 @@ describe('adapter integration', () => {
       await client.sendRequest('configurationDone');
       await client.waitForEvent('stopped');
 
-      const stack = await client.sendRequest<{
-        body?: { stackFrames?: Array<{ line: number; source?: { path?: string } }> };
-      }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
-      const frame = stack.body?.stackFrames?.[0];
+      const frame = await readTopStackFrame(client);
       expect(frame?.source?.path).toBe(mon3SourcePath);
       expect(frame?.line).toBe(171);
 
@@ -502,19 +426,15 @@ describe('adapter integration', () => {
   });
 
   it('preserves launch diagnostics on the DAP output stream', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
 
-    await initialize(client);
-    await launchWithDiagnostics(client, {
-      target: 'app',
+    await launchApp(client, {
       platform: 'tec1',
       tec1: {
         entry: 0,
         romHex: 'missing.hex',
       },
       stopOnEntry: true,
-      openRomSourcesOnLaunch: false,
-      openMainSourceOnLaunch: false,
     });
 
     const output = await client.waitForEvent<{ body?: { output?: string } }>('output', (event) => {
@@ -533,18 +453,13 @@ describe('adapter integration', () => {
   });
 
   it('returns a launch error when config creation prompt rejects on missing artifacts', async () => {
-    const { client } = harness ?? createHarness();
+    const { client } = harness!;
     vi.spyOn(commands, 'executeCommand').mockRejectedValueOnce(new Error('command failed'));
 
-    await initialize(client);
-
     await expect(
-      launchWithDiagnostics(client, {
-        target: 'app',
+      launchApp(client, {
         hex: 'missing.hex',
         stopOnEntry: true,
-        openRomSourcesOnLaunch: false,
-        openMainSourceOnLaunch: false,
       })
     ).rejects.toThrow('Debug80: Failed to create project config: Error: command failed');
   });

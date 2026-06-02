@@ -303,9 +303,12 @@ Completed fixture cleanup:
   disposal, launch/configuration, and top stack-frame reads.
 - Moved repeated setup out of the step, terminate, adapter, and source-map e2e
   tests while keeping each test's assertions local.
-- Fallow no longer reports duplicated setup among those e2e adapter tests; the
-  remaining changed-file duplicate signals are inherited similarities with older
-  `tests/debug/adapter-integration.test.ts` helpers.
+- Consolidated `tests/debug/adapter-integration.test.ts` onto the same DAP
+  stream harness helpers where practical. The integration test keeps local
+  helpers only for temp project creation and mocked extension-root policy.
+- Fallow reports zero duplication in the changed adapter integration file. Its
+  remaining warning is the large TEC-1G/MON-3 golden contract scenario, which is
+  test-specific behavior coverage rather than repeated harness setup.
 
 ## Proposed Cleanup Programme
 
