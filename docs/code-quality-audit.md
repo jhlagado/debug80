@@ -459,6 +459,18 @@ npm run test:webview
 
 ## Quality Criteria For Future PRs
 
+### Latest Goal Note: TEC-1G SYS_CTRL Bit Contract
+
+The TEC-1G `SYS_CTRL` decoder now follows MON-3 for caps lock: bit `0x80`
+is CAPSLOCK. Bits `0x08`, `0x10`, `0x20`, and `0x40` are treated as the
+four Memory Expansion bank lamps in the webview, with bit `0x08` still serving
+as the current two-bank `E_A14` selector for the 0x8000-0xBFFF window.
+
+This removes a stale emulator assumption where bit `0x20` was shown as CAPS.
+Future expansion-deck work should keep MON-3 source as the source of truth for
+port contracts and avoid assigning user-visible meanings to SYS_CTRL bits
+without a regression test in both the decoder and webview status layer.
+
 Use these criteria when deciding whether cleanup is worthwhile:
 
 - Does it remove obsolete behavior, not just move code around?

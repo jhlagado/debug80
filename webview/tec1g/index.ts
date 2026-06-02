@@ -71,6 +71,10 @@ const statusShadow = document.getElementById('statusShadow') as HTMLElement;
 const statusProtect = document.getElementById('statusProtect') as HTMLElement;
 const statusExpand = document.getElementById('statusExpand') as HTMLElement;
 const statusCaps = document.getElementById('statusCaps') as HTMLElement;
+const statusBank0 = document.getElementById('statusBank0') as HTMLElement;
+const statusBank1 = document.getElementById('statusBank1') as HTMLElement;
+const statusBank2 = document.getElementById('statusBank2') as HTMLElement;
+const statusBank3 = document.getElementById('statusBank3') as HTMLElement;
 const accordionButtons = Array.from(
   document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
 );
@@ -207,6 +211,10 @@ const keypad = createTec1gKeypad(vscode, keypadEl, {
   statusProtect,
   statusExpand,
   statusCaps,
+  statusBank0,
+  statusBank1,
+  statusBank2,
+  statusBank3,
 });
 wireKeypadFocusPanels([accordionDisplays, accordionMachine], keypad);
 

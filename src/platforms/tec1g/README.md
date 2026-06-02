@@ -16,7 +16,8 @@ external Debug80 manual at https://debug80.com/.
 ## Not yet emulated
 
 - Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
-- SYS_CTRL bits 3-7: latched and decoded but bank switching not yet wired to memory.
+- SYS_CTRL bits 3-6: latched as the future Memory Expansion bank field; bit 3 is also the
+  currently active 16K expansion-bank select.
 - SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
@@ -75,10 +76,11 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
   - Bit 0: ~SHADOW (active low — 0 = shadow on).
   - Bit 1: PROTECT (1 = write-protect 0x4000-0x7FFF).
   - Bit 2: EXPAND (1 = expansion window at 0x8000-0xBFFF).
-  - Bit 3: FF-D3 / E_A14 (expansion bank select — not yet decoded).
-  - Bit 4: FF-D4 (reserved — not yet decoded).
-  - Bit 5: CAPS (caps lock — not yet decoded).
-  - Bits 6-7: FF-D5/FF-D6 (reserved — not yet decoded).
+  - Bit 3: E_A14 / Memory Expansion bit 0.
+  - Bit 4: Memory Expansion bit 1.
+  - Bit 5: Memory Expansion bit 2.
+  - Bit 6: Memory Expansion bit 3.
+  - Bit 7: CAPSLOCK, matching MON-3's `CAPSLOCK .equ 80H`.
 - `OUT 0xFC`: RTC DS1302 (bit-banged emulation).
 - `OUT 0xFD`: SD card SPI (bit-banged emulation, SPI mode; read + write single block).
 
@@ -107,6 +109,8 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 - Shadow mirrors ROM into 0x0000-0x07FF for legacy monitors; writes go to RAM.
 - Protect makes 0x4000-0x7FFF read-only.
 - Expand exposes a banked 16K window at 0x8000-0xBFFF.
+- The current banked window uses bit 3 as A14, selecting one of two 16K banks. Bits 3-6 are
+  reserved in Debug80 as the future four-bit Memory Expansion bank field.
 
 ## ROMs and config
 

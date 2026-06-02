@@ -16,14 +16,12 @@ export type Tec1gSysCtrlState = {
   expandEnabled: boolean;
   /** Expansion bank A14 (bit 3) - bank select for expansion window */
   bankA14: boolean;
-  /** Reserved latch bit (bit 4) */
-  ffD4: boolean;
-  /** Caps lock (bit 5) */
+  /** Future memory expansion bank select bits (bits 3-6, bit 3 is also E_A14). */
+  memoryExpansionBankBits: [boolean, boolean, boolean, boolean];
+  /** Future memory expansion bank value from bits 3-6. */
+  memoryExpansionBankValue: number;
+  /** Caps lock (bit 7) */
   capsLock: boolean;
-  /** Reserved latch bit (bit 6) */
-  ffD5: boolean;
-  /** Reserved latch bit (bit 7) */
-  ffD6: boolean;
 };
 
 /**
@@ -33,25 +31,30 @@ export type Tec1gSysCtrlState = {
  * - Bit 0: ~SHADOW (active low — 0 = shadow on)
  * - Bit 1: PROTECT (1 = write-protect 0x4000-0x7FFF)
  * - Bit 2: EXPAND (1 = expansion window at 0x8000-0xBFFF)
- * - Bit 3: E_A14 (expansion bank select)
- * - Bit 4: FF-D4 (reserved)
- * - Bit 5: CAPS (caps lock)
- * - Bit 6: FF-D5 (reserved)
- * - Bit 7: FF-D6 (reserved)
+ * - Bit 3: E_A14 / Memory Expansion bit 0
+ * - Bit 4: Memory Expansion bit 1
+ * - Bit 5: Memory Expansion bit 2
+ * - Bit 6: Memory Expansion bit 3
+ * - Bit 7: CAPS (caps lock)
  *
  * @param value - Raw port 0xFF value
  * @returns Decoded system control state
  */
 export const decodeSysCtrl = (value: number): Tec1gSysCtrlState => {
   const masked = value & 0xff;
+  const memoryExpansionBankValue = (masked >> 3) & 0x0f;
   return {
     shadowEnabled: (masked & 0x01) === 0,
     protectEnabled: (masked & 0x02) !== 0,
     expandEnabled: (masked & 0x04) !== 0,
     bankA14: (masked & 0x08) !== 0,
-    ffD4: (masked & 0x10) !== 0,
-    capsLock: (masked & 0x20) !== 0,
-    ffD5: (masked & 0x40) !== 0,
-    ffD6: (masked & 0x80) !== 0,
+    memoryExpansionBankBits: [
+      (masked & 0x08) !== 0,
+      (masked & 0x10) !== 0,
+      (masked & 0x20) !== 0,
+      (masked & 0x40) !== 0,
+    ],
+    memoryExpansionBankValue,
+    capsLock: (masked & 0x80) !== 0,
   };
 };

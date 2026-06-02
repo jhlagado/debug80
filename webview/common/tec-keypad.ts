@@ -17,6 +17,10 @@ export type TecKeypadStatusEls = {
   statusProtect: HTMLElement | null;
   statusExpand: HTMLElement | null;
   statusCaps: HTMLElement | null;
+  statusBank0?: HTMLElement | null;
+  statusBank1?: HTMLElement | null;
+  statusBank2?: HTMLElement | null;
+  statusBank3?: HTMLElement | null;
 };
 
 export type TecKeypad = {
@@ -108,8 +112,17 @@ export function createTecKeypad(
     const shadowOn = (sysCtrlValue & 0x01) === 0;
     const protectOn = (sysCtrlValue & 0x02) !== 0;
     const expandOn = (sysCtrlValue & 0x04) !== 0;
-    const capsOn = (sysCtrlValue & 0x20) !== 0;
-    const { statusShadow, statusProtect, statusExpand, statusCaps } = statusEls;
+    const capsOn = (sysCtrlValue & 0x80) !== 0;
+    const {
+      statusShadow,
+      statusProtect,
+      statusExpand,
+      statusCaps,
+      statusBank0,
+      statusBank1,
+      statusBank2,
+      statusBank3,
+    } = statusEls;
     if (statusShadow) {
       statusShadow.classList.toggle('on', shadowOn);
     }
@@ -122,6 +135,10 @@ export function createTecKeypad(
     if (statusCaps) {
       statusCaps.classList.toggle('on', capsOn);
     }
+    statusBank0?.classList.toggle('on', (sysCtrlValue & 0x08) !== 0);
+    statusBank1?.classList.toggle('on', (sysCtrlValue & 0x10) !== 0);
+    statusBank2?.classList.toggle('on', (sysCtrlValue & 0x20) !== 0);
+    statusBank3?.classList.toggle('on', (sysCtrlValue & 0x40) !== 0);
   }
 
   addButton(

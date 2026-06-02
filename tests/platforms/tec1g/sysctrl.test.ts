@@ -18,15 +18,16 @@ describe('decodeSysCtrl', () => {
     expect(decodeSysCtrl(0x08).bankA14).toBe(true);
   });
 
-  it('decodes caps lock (bit 5)', () => {
+  it('decodes caps lock (bit 7)', () => {
     expect(decodeSysCtrl(0x00).capsLock).toBe(false);
-    expect(decodeSysCtrl(0x20).capsLock).toBe(true);
+    expect(decodeSysCtrl(0x20).capsLock).toBe(false);
+    expect(decodeSysCtrl(0x80).capsLock).toBe(true);
   });
 
-  it('decodes reserved bits (ffD4, ffD5, ffD6)', () => {
-    expect(decodeSysCtrl(0x10).ffD4).toBe(true);
-    expect(decodeSysCtrl(0x40).ffD5).toBe(true);
-    expect(decodeSysCtrl(0x80).ffD6).toBe(true);
+  it('decodes memory expansion bank bits (bits 3-6)', () => {
+    const state = decodeSysCtrl(0x78);
+    expect(state.memoryExpansionBankBits).toEqual([true, true, true, true]);
+    expect(state.memoryExpansionBankValue).toBe(0x0f);
   });
 
   it('decodes all bits from 0xFF', () => {
@@ -35,10 +36,9 @@ describe('decodeSysCtrl', () => {
     expect(state.protectEnabled).toBe(true);
     expect(state.expandEnabled).toBe(true);
     expect(state.bankA14).toBe(true);
-    expect(state.ffD4).toBe(true);
+    expect(state.memoryExpansionBankBits).toEqual([true, true, true, true]);
+    expect(state.memoryExpansionBankValue).toBe(0x0f);
     expect(state.capsLock).toBe(true);
-    expect(state.ffD5).toBe(true);
-    expect(state.ffD6).toBe(true);
   });
 
   it('decodes all bits from 0x00', () => {
@@ -47,9 +47,8 @@ describe('decodeSysCtrl', () => {
     expect(state.protectEnabled).toBe(false);
     expect(state.expandEnabled).toBe(false);
     expect(state.bankA14).toBe(false);
-    expect(state.ffD4).toBe(false);
+    expect(state.memoryExpansionBankBits).toEqual([false, false, false, false]);
+    expect(state.memoryExpansionBankValue).toBe(0);
     expect(state.capsLock).toBe(false);
-    expect(state.ffD5).toBe(false);
-    expect(state.ffD6).toBe(false);
   });
 });
