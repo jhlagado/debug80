@@ -344,18 +344,26 @@ npm run test -- tests/debug/path-resolver.test.ts tests/debug/mapping-service.te
 
 Goal: make new UI/debug features less likely to regress unrelated behavior.
 
-Candidate work:
+Completed work:
 
-- Split `handlePlatformViewMessage` into message-family handlers.
-- Split common panel message handling into tab, memory, register, key/reset,
-  speed, and serial handlers.
-- Add small tests around payload parsing and command dispatch.
+- Split `handlePlatformViewMessage` into project/session, serial, and
+  platform-specific message-family handlers.
+- Split common panel message handling into layout/refresh, register/memory edit,
+  and runtime control handlers.
+- Added focused tests around payload parsing, command dispatch, malformed known
+  messages, and inactive-session behavior.
+- Added reusable test fixtures for platform-view dependency mocks, panel message
+  contexts, and refresh controllers so future routing tests do not repeat setup
+  blocks.
+- Fallow changed-file audit reports zero dead-code and zero complexity findings
+  for the dispatcher/fixture cleanup.
 
 Verification:
 
 ```sh
 npm run typecheck
-npm run test -- tests/extension/platform-view-messages.test.ts tests/platforms/panel-messages.test.ts
+npm run test -- tests/extension/platform-view-messages.test.ts tests/platforms/panel-messages.test.ts tests/extension/platform-view-memory-refresh.test.ts
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
 ```
 
 ### Phase 4: De-duplicate Runtime Control

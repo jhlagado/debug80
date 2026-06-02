@@ -3,63 +3,18 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { createMemoryViewState } from '../../src/platforms/panel-memory';
-import { createRefreshController } from '../../src/platforms/panel-refresh';
 import { handleCommonPanelMessage } from '../../src/platforms/panel-messages';
+import {
+  handlePanelMessageWithDefaultContext,
+  PANEL_TEST_COMMANDS,
+  createPanelTestContext,
+} from './panel-message-fixtures';
 
 describe('panel-messages', () => {
-  function createContext(options?: {
-    customRequest?: ReturnType<typeof vi.fn>;
-    sessionType?: string;
-    visible?: boolean;
-  }) {
-    const memoryViews = createMemoryViewState();
-    const postSnapshot = vi.fn().mockResolvedValue(undefined);
-    const refreshController = createRefreshController(() => ({ views: [] }), {
-      postSnapshot,
-      onSnapshotPosted: vi.fn(),
-      onSnapshotFailed: vi.fn(),
-    });
-    const customRequest = options?.customRequest ?? vi.fn().mockResolvedValue(undefined);
-    return {
-      ctx: {
-        getSession: () => ({ type: options?.sessionType ?? 'z80', customRequest }),
-        refreshController,
-        autoRefreshMs: 150,
-        setActiveTab: vi.fn(),
-        getActiveTab: vi.fn(() => 'memory'),
-        isPanelVisible: vi.fn(() => options?.visible ?? true),
-        memoryViews,
-      },
-      customRequest,
-      postSnapshot,
-    };
-  }
-
-  const commands = {
-    key: 'debug80/tec1Key',
-    reset: 'debug80/tec1Reset',
-    speed: 'debug80/tec1Speed',
-    serialSend: 'debug80/tec1SerialInput',
-    registerWrite: 'debug80/registerWrite',
-    memoryWrite: 'debug80/memoryWrite',
-  };
-
-  async function handleWithDefaultContext(
-    message: Parameters<typeof handleCommonPanelMessage>[0],
-    options?: Parameters<typeof createContext>[0]
-  ) {
-    const state = createContext(options);
-    const handled = await handleCommonPanelMessage(message, state.ctx, commands);
-    return { ...state, handled };
-  }
-
   it('sends register write requests and refreshes after success', async () => {
-    const { customRequest, handled, postSnapshot } = await handleWithDefaultContext({
-      type: 'registerEdit',
-      register: 'bc',
-      value: '1234',
-    });
+    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
+      registerEditMessage()
+    );
 
     expect(handled).toBe(true);
     expect(customRequest).toHaveBeenCalledWith('debug80/registerWrite', {
@@ -70,12 +25,16 @@ describe('panel-messages', () => {
   });
 
   it('forwards runtime messages through configured commands', async () => {
-    const { ctx, customRequest } = createContext();
+    const { ctx, customRequest } = createPanelTestContext();
 
-    await handleCommonPanelMessage({ type: 'key', code: 0x0a }, ctx, commands);
-    await handleCommonPanelMessage({ type: 'reset' }, ctx, commands);
-    await handleCommonPanelMessage({ type: 'speed', mode: 'fast' }, ctx, commands);
-    await handleCommonPanelMessage({ type: 'serialSend', text: 'HELLO\r' }, ctx, commands);
+    await handleCommonPanelMessage({ type: 'key', code: 0x0a }, ctx, PANEL_TEST_COMMANDS);
+    await handleCommonPanelMessage({ type: 'reset' }, ctx, PANEL_TEST_COMMANDS);
+    await handleCommonPanelMessage({ type: 'speed', mode: 'fast' }, ctx, PANEL_TEST_COMMANDS);
+    await handleCommonPanelMessage(
+      { type: 'serialSend', text: 'HELLO\r' },
+      ctx,
+      PANEL_TEST_COMMANDS
+    );
 
     expect(customRequest).toHaveBeenCalledWith('debug80/tec1Key', { code: 0x0a });
     expect(customRequest).toHaveBeenCalledWith('debug80/tec1Reset', {});
@@ -84,7 +43,7 @@ describe('panel-messages', () => {
   });
 
   it('returns false for unsupported runtime commands on an active session', async () => {
-    const { ctx } = createContext();
+    const { ctx } = createPanelTestContext();
 
     await expect(
       handleCommonPanelMessage({ type: 'key', code: 0x0a }, ctx, {
@@ -95,18 +54,18 @@ describe('panel-messages', () => {
   });
 
   it('absorbs runtime messages while no Z80 session is active', async () => {
-    const { ctx, customRequest } = createContext({ sessionType: 'extension-host' });
+    const { ctx, customRequest } = createPanelTestContext({ sessionType: 'extension-host' });
 
-    await expect(handleCommonPanelMessage({ type: 'key', code: 0x0a }, ctx, commands)).resolves.toBe(
-      true
-    );
+    await expect(
+      handleCommonPanelMessage({ type: 'key', code: 0x0a }, ctx, PANEL_TEST_COMMANDS)
+    ).resolves.toBe(true);
 
     expect(customRequest).not.toHaveBeenCalled();
   });
 
   it('refreshes the snapshot when register writes are rejected', async () => {
-    const { customRequest, handled, postSnapshot } = await handleWithDefaultContext(
-      { type: 'registerEdit', register: 'bc', value: '1234' },
+    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
+      registerEditMessage(),
       { customRequest: vi.fn().mockRejectedValue(new Error('running')) }
     );
 
@@ -119,11 +78,9 @@ describe('panel-messages', () => {
   });
 
   it('sends memory write requests and refreshes after success', async () => {
-    const { customRequest, handled, postSnapshot } = await handleWithDefaultContext({
-      type: 'memoryEdit',
-      address: 0x1234,
-      value: 'AB',
-    });
+    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
+      memoryEditMessage()
+    );
 
     expect(handled).toBe(true);
     expect(customRequest).toHaveBeenCalledWith('debug80/memoryWrite', {
@@ -134,8 +91,8 @@ describe('panel-messages', () => {
   });
 
   it('refreshes the snapshot when memory writes are rejected', async () => {
-    const { customRequest, handled, postSnapshot } = await handleWithDefaultContext(
-      { type: 'memoryEdit', address: 0x1234, value: 'AB' },
+    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
+      memoryEditMessage(),
       { customRequest: vi.fn().mockRejectedValue(new Error('running')) }
     );
 
@@ -148,12 +105,9 @@ describe('panel-messages', () => {
   });
 
   it('forwards explicit read-only memory override requests', async () => {
-    const { customRequest, handled } = await handleWithDefaultContext({
-      type: 'memoryEdit',
-      address: 0x1234,
-      value: 'AB',
-      allowReadOnly: true,
-    });
+    const { customRequest, handled } = await handlePanelMessageWithDefaultContext(
+      memoryEditMessage({ allowReadOnly: true })
+    );
 
     expect(handled).toBe(true);
     expect(customRequest).toHaveBeenCalledWith('debug80/memoryWrite', {
@@ -163,3 +117,16 @@ describe('panel-messages', () => {
     });
   });
 });
+
+function registerEditMessage() {
+  return { type: 'registerEdit', register: 'bc', value: '1234' };
+}
+
+function memoryEditMessage(options?: { allowReadOnly?: boolean }) {
+  return {
+    type: 'memoryEdit',
+    address: 0x1234,
+    value: 'AB',
+    ...(options?.allowReadOnly === true ? { allowReadOnly: true } : {}),
+  };
+}

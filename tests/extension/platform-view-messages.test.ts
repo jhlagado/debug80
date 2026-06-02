@@ -2,36 +2,13 @@
  * @file Message routing tests for the Debug80 platform view webview.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { handlePlatformViewMessage } from '../../src/extension/platform-view-messages';
-
-function createDependencies(platform: 'simple' | 'tec1' | 'tec1g' | undefined) {
-  return {
-    handleCreateProject: vi.fn(() => undefined),
-    handleOpenWorkspaceFolder: vi.fn(() => undefined),
-    handleSelectProject: vi.fn(() => undefined),
-    handleConfigureProject: vi.fn(() => undefined),
-    handleSaveProjectConfig: vi.fn(() => undefined),
-    handleSetStopOnEntry: vi.fn(() => undefined),
-    handleSetAzmOptions: vi.fn(() => undefined),
-    handleSelectTarget: vi.fn(() => undefined),
-    handleTestCoolTermConnection: vi.fn(() => undefined),
-    handleSendHexViaCoolTerm: vi.fn(() => undefined),
-    handleRestartDebug: vi.fn(() => undefined),
-    handleSetEntrySource: vi.fn(() => undefined),
-    currentPlatform: vi.fn(() => platform),
-    handleStartDebug: vi.fn(() => undefined),
-    handleSerialSendFile: vi.fn(() => undefined),
-    handleSerialSave: vi.fn(() => undefined),
-    clearSerialBuffer: vi.fn(() => undefined),
-    handleRequestProjectStatus: vi.fn(() => undefined),
-    handlePlatformMessage: vi.fn(() => undefined),
-  };
-}
+import { createPlatformViewDependencies } from './platform-view-message-fixtures';
 
 describe('platform-view message routing', () => {
   it('routes control messages to the expected handlers', async () => {
-    const deps = createDependencies('simple');
+    const deps = createPlatformViewDependencies('simple');
 
     await handlePlatformViewMessage(
       { type: 'createProject', rootPath: '/workspace/a', platform: 'tec1g' },
@@ -88,7 +65,7 @@ describe('platform-view message routing', () => {
   });
 
   it('swallows malformed project control messages instead of delegating them', async () => {
-    const deps = createDependencies('tec1g');
+    const deps = createPlatformViewDependencies('tec1g');
 
     await handlePlatformViewMessage({ type: 'setAzmOptions', registerCareMode: 'strict' }, deps);
     await handlePlatformViewMessage({ type: 'saveProjectConfig', platform: 12 }, deps);
@@ -99,7 +76,7 @@ describe('platform-view message routing', () => {
   });
 
   it('preserves platform fallback for malformed serial payloads', async () => {
-    const deps = createDependencies('tec1g');
+    const deps = createPlatformViewDependencies('tec1g');
     const msg = { type: 'serialSave', text: 12 };
 
     await handlePlatformViewMessage(msg, deps);
@@ -109,8 +86,8 @@ describe('platform-view message routing', () => {
   });
 
   it('clears the active serial buffer for TEC-1 and TEC-1G', async () => {
-    const tec1Deps = createDependencies('tec1');
-    const tec1gDeps = createDependencies('tec1g');
+    const tec1Deps = createPlatformViewDependencies('tec1');
+    const tec1gDeps = createPlatformViewDependencies('tec1g');
 
     await handlePlatformViewMessage({ type: 'serialClear' }, tec1Deps);
     await handlePlatformViewMessage({ type: 'serialClear' }, tec1gDeps);
@@ -120,8 +97,8 @@ describe('platform-view message routing', () => {
   });
 
   it('routes platform payloads to the active platform handler', async () => {
-    const tec1Deps = createDependencies('tec1');
-    const tec1gDeps = createDependencies('tec1g');
+    const tec1Deps = createPlatformViewDependencies('tec1');
+    const tec1gDeps = createPlatformViewDependencies('tec1g');
 
     const tec1Message = { type: 'update' };
     const tec1gMessage = { type: 'update' };
@@ -134,7 +111,7 @@ describe('platform-view message routing', () => {
   });
 
   it('ignores serialClear for idle simple view state', async () => {
-    const deps = createDependencies('simple');
+    const deps = createPlatformViewDependencies('simple');
 
     await handlePlatformViewMessage({ type: 'serialClear' }, deps);
 

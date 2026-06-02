@@ -4,12 +4,12 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryViewState } from '../../src/platforms/panel-memory';
-import { createRefreshController } from '../../src/platforms/panel-refresh';
 import {
   buildMemorySnapshotPayload,
   stopMemoryRefresh,
   syncMemoryRefresh,
 } from '../../src/extension/platform-view-memory-refresh';
+import { createRefreshTestController } from '../platforms/panel-message-fixtures';
 
 describe('platform-view-memory-refresh', () => {
   afterEach(() => {
@@ -36,12 +36,7 @@ describe('platform-view-memory-refresh', () => {
 
   it('starts refresh and rehydrates when the visible active tab is memory', async () => {
     vi.useFakeTimers();
-    const postSnapshot = vi.fn().mockResolvedValue(undefined);
-    const refreshController = createRefreshController(() => ({ views: [] }), {
-      postSnapshot,
-      onSnapshotPosted: vi.fn(),
-      onSnapshotFailed: vi.fn(),
-    });
+    const { postSnapshot, refreshController } = createRefreshTestController();
 
     syncMemoryRefresh({
       visible: true,
@@ -63,12 +58,7 @@ describe('platform-view-memory-refresh', () => {
 
   it('stops refresh when the visible active tab is not memory', () => {
     vi.useFakeTimers();
-    const postSnapshot = vi.fn().mockResolvedValue(undefined);
-    const refreshController = createRefreshController(() => ({ views: [] }), {
-      postSnapshot,
-      onSnapshotPosted: vi.fn(),
-      onSnapshotFailed: vi.fn(),
-    });
+    const { refreshController } = createRefreshTestController();
 
     syncMemoryRefresh({
       visible: true,
@@ -92,12 +82,7 @@ describe('platform-view-memory-refresh', () => {
 
   it('does not start refresh while the view is hidden', () => {
     vi.useFakeTimers();
-    const postSnapshot = vi.fn().mockResolvedValue(undefined);
-    const refreshController = createRefreshController(() => ({ views: [] }), {
-      postSnapshot,
-      onSnapshotPosted: vi.fn(),
-      onSnapshotFailed: vi.fn(),
-    });
+    const { postSnapshot, refreshController } = createRefreshTestController();
 
     syncMemoryRefresh({
       visible: false,
