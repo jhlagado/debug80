@@ -92,12 +92,12 @@ export function buildMappingFromDebugMap(options: {
   }
   if (loadedMap !== undefined && !hasNativeMap) {
     service.logger.warn(
-      `Debug80: Ignoring legacy Debug80-generated source map at "${debugMapLoadedFrom ?? mapPath}". Build the selected target with AZM to generate a native D8 source map.`
+      `Debug80: Ignoring non-native source map: ${formatMapDisplayPath(debugMapLoadedFrom ?? mapPath, service)}. Build the selected target with AZM to regenerate it.`
     );
   }
   if (loadedMap === undefined) {
     service.logger.warn(
-      `Debug80: Source map missing at "${mapPath}". Build the selected target with AZM to generate a native D8 source map.`
+      `Debug80: Source map missing: ${formatMapDisplayPath(mapPath, service)}. Build the selected target with AZM to generate it.`
     );
   }
 
@@ -106,18 +106,22 @@ export function buildMappingFromDebugMap(options: {
       ? buildMappingFromD8DebugMap(loadedMap)
       : emptyMapping();
 
+  let auxiliaryLoadedCount = 0;
   for (const auxiliaryPath of auxiliaryDebugMaps) {
     const auxiliaryMap = loadDebugMap(auxiliaryPath, service);
     if (auxiliaryMap === undefined) {
       service.logger.warn(
-        `Debug80: Auxiliary source map missing at "${auxiliaryPath}". Platform source mapping may be unavailable.`
+        `Debug80: Platform source map missing: ${formatMapDisplayPath(auxiliaryPath, service)}. ROM source mapping may be unavailable.`
       );
       continue;
     }
     if (!isNativeDebugMap(auxiliaryMap)) {
-      service.logger.warn(`Debug80: Ignoring legacy auxiliary source map at "${auxiliaryPath}".`);
+      service.logger.warn(
+        `Debug80: Ignoring non-native platform source map: ${formatMapDisplayPath(auxiliaryPath, service)}.`
+      );
       continue;
     }
+    auxiliaryLoadedCount += 1;
     service.logger.info(
       `Debug80: Source map loaded: ${formatMapDisplayPath(auxiliaryPath, service)} (${getDebugMapGeneratorLabel(auxiliaryMap)}, platform ROM).`
     );
@@ -127,13 +131,6 @@ export function buildMappingFromDebugMap(options: {
     mapping.segments.push(...auxiliaryMapping.segments);
     mapping.anchors.push(...auxiliaryMapping.anchors);
   }
-
-  const fileSet = new Set<string | null>();
-  for (const seg of mapping.segments) {
-    fileSet.add(seg.loc.file);
-  }
-  const mappedFiles = [...fileSet].map((f) => f ?? '(null)');
-  service.logger.debug(`Debug80: source-map files=[${mappedFiles.join(', ')}]`);
 
   if (service.platform === 'tec1g') {
     applyTec1gBootstrapAlias(mapping);
@@ -153,10 +150,18 @@ export function buildMappingFromDebugMap(options: {
   setSegmentWarningHandler((msg) => service.logger.warn(`Debug80: ${msg}`));
 
   const index = buildSourceMapIndex(mapping, (file) => service.resolveMappedPath(file));
+  const mappedFileCount = countMappedFiles(mapping.segments);
+  const mapSources = [
+    hasNativeMap ? 'target' : undefined,
+    auxiliaryLoadedCount > 0
+      ? `${formatCount(auxiliaryLoadedCount)} platform ROM ${auxiliaryLoadedCount === 1 ? 'map' : 'maps'}`
+      : undefined,
+  ].filter((value): value is string => value !== undefined);
 
   service.logger.info(
     `Debug80: Source mapping ready: ${formatCount(index.segmentsByAddress.length)} executable ranges across ` +
-      `${formatCount(index.segmentsByFileLine.size)} files; ${formatCount(mapping.anchors.length)} anchors.`
+      `${formatCount(mappedFileCount)} files; ${formatCount(mapping.anchors.length)} anchors` +
+      `${mapSources.length > 0 ? ` (${mapSources.join(', ')})` : ''}.`
   );
 
   return { mapping, index, missingSources: [] };
@@ -172,6 +177,16 @@ function formatMapDisplayPath(mapPath: string, service: MappingServiceOptions): 
 
 function formatCount(value: number): string {
   return value.toLocaleString('en-US');
+}
+
+function countMappedFiles(segments: SourceMapSegment[]): number {
+  const fileSet = new Set<string>();
+  for (const seg of segments) {
+    if (seg.loc.file !== null) {
+      fileSet.add(seg.loc.file);
+    }
+  }
+  return fileSet.size;
 }
 
 function absolutizeRelativeDebugMapFiles(map: D8DebugMap, mapPath: string): D8DebugMap {

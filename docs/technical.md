@@ -602,5 +602,5 @@ If you want to add features, start here:
 
 - Mapping accuracy depends on the quality of the AZM D8 map.
 - process.cwd() discovery may miss the workspace in extension dev host.
-- Legacy `.debug80/cache` map output is removed; older specs that mention it
+- Retired `.debug80/cache` map output is removed; older specs that mention it
   are historical.

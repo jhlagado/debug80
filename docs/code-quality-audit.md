@@ -103,8 +103,10 @@ current native AZM D8 format still uses those field names for source context:
 
 - `lstLine`, `lstText`, and `lstTextId` remain part of the D8 schema and D8
   mapping types.
-- `mapping-service` still logs "Ignoring legacy Debug80-generated source map".
-- Tests still assert legacy-map rejection and `lstLine` fallback behavior.
+- `mapping-service` now uses user-facing "source map" wording and avoids the
+  older noisy file-list console dump.
+- Tests assert non-native map rejection, cache-path rejection, compact summary
+  output, and `lstLine` fallback behavior.
 
 The policy needs to stay explicit:
 
@@ -113,12 +115,13 @@ The policy needs to stay explicit:
 - Not allowed: project-local `.debug80/cache` discovery, generated map fallback,
   listing-derived map creation, or committed cache artifacts.
 
-Recommended cleanup:
+Required guardrails:
 
 - Keep tests proving Debug80 does not create project caches.
-- Rename user-facing messages from "D8 map" or "legacy map" to "source map"
-  where possible.
-- Add a short fallback policy note to `docs/technical.md` or this document.
+- Keep user-facing messages compact and refer to "source maps" rather than D8
+  internals unless the file format itself is being discussed.
+- Keep the fallback policy note in `docs/technical.md` aligned with runtime
+  behavior.
 
 ### P1: Complex Dispatchers Need Smaller Units
 
@@ -319,13 +322,16 @@ npm exec --yes fallow -- --only dead-code --format compact
 Goal: make native AZM D8 behavior explicit and prevent old listing fallback from
 returning.
 
-Candidate work:
+Completed guardrails:
 
-- Add a short source-map policy section to `docs/technical.md`.
-- Rename internal concepts where "legacy" wording is user-facing.
+- Added a short source-map policy section to `docs/technical.md`.
+- Renamed user-facing mapping messages away from "legacy" and toward compact
+  "source map" wording.
 - Keep compatibility with current AZM field names, but document that
   `.debug80/cache` discovery is not allowed.
-- Add tests that fail if `.debug80/cache` is selected as a source-map location.
+- Added tests that fail if `.debug80/cache` is selected as a source-map
+  location, if non-native maps are accepted, or if the old noisy file-list dump
+  returns.
 
 Verification:
 

@@ -113,7 +113,8 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('Source map loaded: simple.d8.json (azm, target)'))).toBe(
       true
     );
-    expect(logs.some((line) => line.includes('Source mapping ready:'))).toBe(true);
+    expect(logs.some((line) => line.includes('Source mapping ready: 1 executable ranges across 1 files; 1 anchors (target).'))).toBe(true);
+    expect(logs.some((line) => line.includes('files=['))).toBe(false);
   });
 
   it('does not derive a source map when native D8 is missing', () => {
@@ -165,7 +166,7 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('.debug80'))).toBe(false);
   });
 
-  it('ignores legacy Debug80-generated D8 maps instead of fabricating fallback maps', () => {
+  it('ignores non-native Debug80-generated D8 maps instead of fabricating fallback maps', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
@@ -205,9 +206,7 @@ describe('mapping-service', () => {
     });
 
     expect(result.mapping.segments).toHaveLength(0);
-    expect(logs.some((line) => line.includes('Ignoring legacy Debug80-generated source map'))).toBe(
-      true
-    );
+    expect(logs.some((line) => line.includes('Ignoring non-native source map: simple.d8.json'))).toBe(true);
   });
 
   it('prefers an existing native debug map without regenerating it', () => {
@@ -269,6 +268,11 @@ describe('mapping-service', () => {
     expect(result.mapping.segments).toHaveLength(2);
     expect(result.mapping.segments.some((seg) => seg.loc.file === auxiliarySource)).toBe(true);
     expect(logs.some((line) => line.includes('(azm, platform ROM)'))).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes('Source mapping ready: 2 executable ranges across 2 files; 2 anchors (target, 1 platform ROM map).')
+      )
+    ).toBe(true);
   });
 
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
@@ -304,7 +308,7 @@ describe('mapping-service', () => {
     });
 
     expect(result.mapping.segments).toHaveLength(1);
-    expect(logs.some((line) => line.includes('Ignoring legacy auxiliary source map'))).toBe(true);
+    expect(logs.some((line) => line.includes('Ignoring non-native platform source map'))).toBe(true);
   });
 
   it('uses lstLine as a fallback source line when loading native D8 segments', () => {
