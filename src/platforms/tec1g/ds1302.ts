@@ -6,7 +6,7 @@ type Ds1302Mode = 'idle' | 'command' | 'read' | 'write';
 
 const CE_BIT = 0x10;
 const CLK_BIT = 0x40;
-const IO_BIT = 0x01;
+const IO_OUT_BIT = 0x80;
 const REGISTER_COUNT = 0x20;
 const RAM_OFFSET = 0x20;
 const RAM_SIZE = 0x20;
@@ -45,7 +45,7 @@ export class Ds1302 {
   write(value: number): void {
     const nextCe = (value & CE_BIT) !== 0;
     const nextClk = (value & CLK_BIT) !== 0;
-    const ioIn = (value & IO_BIT) !== 0 ? 1 : 0;
+    const ioIn = (value & IO_OUT_BIT) !== 0 ? 1 : 0;
 
     if (!nextCe) {
       this.resetTransaction();

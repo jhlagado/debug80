@@ -270,6 +270,26 @@ export class SdSpi {
         this.delayBytes = 1;
         break;
       }
+      case 9: {
+        if (!this.ready) {
+          this.pendingResponse = [0x01];
+          this.delayBytes = 1;
+          break;
+        }
+        this.pendingResponse = [0x00, 0xfe, ...this.makeCsd(), 0xff, 0xff];
+        this.delayBytes = 1;
+        break;
+      }
+      case 10: {
+        if (!this.ready) {
+          this.pendingResponse = [0x01];
+          this.delayBytes = 1;
+          break;
+        }
+        this.pendingResponse = [0x00, 0xfe, ...this.makeCid(), 0xff, 0xff];
+        this.delayBytes = 1;
+        break;
+      }
       case 17: {
         if (!this.ready) {
           this.pendingResponse = [0x01];
@@ -325,6 +345,31 @@ export class SdSpi {
       }
     }
     return payload;
+  }
+
+  private makeCid(): number[] {
+    const cid = new Array<number>(16).fill(0x00);
+    cid[0] = 0x03;
+    cid[1] = 0x44;
+    cid[2] = 0x38;
+    cid[3] = 0x44; // PNM, visible to TEC-1G SD diagnostics.
+    cid[4] = 0x45;
+    cid[5] = 0x42;
+    cid[6] = 0x38;
+    cid[7] = 0x30;
+    cid[8] = 0x10;
+    return cid;
+  }
+
+  private makeCsd(): number[] {
+    const csd = new Array<number>(16).fill(0x00);
+    csd[0] = this.highCapacity ? 0x40 : 0x00;
+    csd[1] = 0x0e;
+    csd[5] = 0x5a;
+    csd[8] = 0x00;
+    csd[9] = 0x1f;
+    csd[10] = 0xff;
+    return csd;
   }
 
   private consumeWriteByte(byte: number): void {

@@ -154,6 +154,35 @@ describe('SdSpi', () => {
     expect(readResponseByte(spi)).toBe(0x00);
   });
 
+  it('returns CID and CSD blocks for TEC-1G diagnostics', () => {
+    const spi = new SdSpi({ csMask: CS_BIT, highCapacity: true });
+    writeSpi(spi, 0x00);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x65]);
+    readResponseByte(spi);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x77]);
+    expect(readResponseByte(spi)).toBe(0x00);
+
+    sendCommand(spi, [0x4a, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
+    expect(readByte(spi)).toBe(0x03);
+    expect(readByte(spi)).toBe(0x44);
+    expect(readByte(spi)).toBe(0x38);
+    expect(readByte(spi)).toBe(0x44);
+    for (let i = 0; i < 14; i += 1) {
+      readByte(spi);
+    }
+
+    sendCommand(spi, [0x49, 0x00, 0x00, 0x00, 0x00, 0xff]);
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
+    expect(readByte(spi)).toBe(0x40);
+  });
+
   it('treats CMD17 argument as block address for high capacity cards', () => {
     const image = new Uint8Array(2048);
     image[0x0202] = 0xa5;

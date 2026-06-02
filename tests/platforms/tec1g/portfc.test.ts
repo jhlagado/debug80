@@ -4,7 +4,7 @@ import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types
 
 const CE_BIT = 0x10;
 const CLK_BIT = 0x40;
-const IO_BIT = 0x01;
+const IO_BIT = 0x80;
 
 function makeRuntime(rtcEnabled: boolean) {
   const config: Tec1gPlatformConfigNormalized = {
@@ -66,12 +66,12 @@ describe('port 0xFC (DS1302)', () => {
     const rt = makeRuntime(true);
     writePort(rt, CE_BIT);
     const addr = 0x02;
-    writeByte(rt, (addr << 1) | 0x00);
+    writeByte(rt, 0x80 | (addr << 1));
     writeByte(rt, 0xa5);
     writePort(rt, 0x00);
 
     writePort(rt, CE_BIT);
-    writeByte(rt, (addr << 1) | 0x01);
+    writeByte(rt, 0x81 | (addr << 1));
     const value = readByte(rt);
     writePort(rt, 0x00);
     expect(value).toBe(0xa5);

@@ -3,7 +3,7 @@ import { Ds1302 } from '../../../src/platforms/tec1g/ds1302';
 
 const CE_BIT = 0x10;
 const CLK_BIT = 0x40;
-const IO_BIT = 0x01;
+const IO_BIT = 0x80;
 
 function pulse(ds: Ds1302, bit: number): void {
   const io = bit ? IO_BIT : 0;
@@ -31,17 +31,31 @@ function readByte(ds: Ds1302): number {
 }
 
 describe('Ds1302', () => {
+  it('uses TEC-1G port bit 7 for writes and bit 0 for reads', () => {
+    const ds = new Ds1302();
+    ds.write(CE_BIT);
+    writeByte(ds, 0x8e); // DS1302 write-protect register write.
+    writeByte(ds, 0x00);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0x81); // seconds register read.
+    const seconds = readByte(ds);
+    ds.write(0x00);
+    expect(seconds).toBeLessThan(0x60);
+  });
+
   it('writes then reads a register value', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
     const addr = 0x02;
-    const cmdWrite = (addr << 1) | 0x00;
+    const cmdWrite = 0x80 | (addr << 1);
     writeByte(ds, cmdWrite);
     writeByte(ds, 0xa5);
     ds.write(0x00);
 
     ds.write(CE_BIT);
-    const cmdRead = (addr << 1) | 0x01;
+    const cmdRead = 0x81 | (addr << 1);
     writeByte(ds, cmdRead);
     const value = readByte(ds);
     ds.write(0x00);
@@ -51,7 +65,7 @@ describe('Ds1302', () => {
   it('returns BCD time values', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
-    const cmdRead = (0x00 << 1) | 0x01;
+    const cmdRead = 0x81;
     writeByte(ds, cmdRead);
     const value = readByte(ds);
     ds.write(0x00);
@@ -66,13 +80,13 @@ describe('Ds1302', () => {
   it('writes and reads PRAM when not write protected', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
-    const cmdWrite = (0x20 << 1) | 0x00;
+    const cmdWrite = 0xc0;
     writeByte(ds, cmdWrite);
     writeByte(ds, 0x5a);
     ds.write(0x00);
 
     ds.write(CE_BIT);
-    const cmdRead = (0x20 << 1) | 0x01;
+    const cmdRead = 0xc1;
     writeByte(ds, cmdRead);
     const value = readByte(ds);
     ds.write(0x00);
@@ -82,19 +96,19 @@ describe('Ds1302', () => {
   it('honors write protect', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
-    const cmdWp = (0x07 << 1) | 0x00;
+    const cmdWp = 0x8e;
     writeByte(ds, cmdWp);
     writeByte(ds, 0x80);
     ds.write(0x00);
 
     ds.write(CE_BIT);
-    const cmdWrite = (0x20 << 1) | 0x00;
+    const cmdWrite = 0xc0;
     writeByte(ds, cmdWrite);
     writeByte(ds, 0x12);
     ds.write(0x00);
 
     ds.write(CE_BIT);
-    const cmdRead = (0x20 << 1) | 0x01;
+    const cmdRead = 0xc1;
     writeByte(ds, cmdRead);
     const value = readByte(ds);
     ds.write(0x00);
@@ -104,12 +118,12 @@ describe('Ds1302', () => {
   it('supports burst read for sequential registers', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
-    writeByte(ds, (0x01 << 1) | 0x00);
+    writeByte(ds, 0x82);
     writeByte(ds, 0x11);
     ds.write(0x00);
 
     ds.write(CE_BIT);
-    writeByte(ds, (0x02 << 1) | 0x00);
+    writeByte(ds, 0x84);
     writeByte(ds, 0x22);
     ds.write(0x00);
 
