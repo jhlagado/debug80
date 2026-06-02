@@ -10,7 +10,7 @@ import {
   type SessionHarness,
 } from './harness';
 
-describe('step and register read', () => {
+describe('step and debug adapter state read', () => {
   let harness: SessionHarness | undefined;
 
   beforeEach(() => {
@@ -52,18 +52,20 @@ describe('step and register read', () => {
     }>('stackTrace', { threadId: THREAD_ID, startFrame: 0, levels: 1 });
     expect(stack.body?.stackFrames?.[0]?.line).toBe(3);
 
-    // Verify PC register reads back correctly
+    // Registers are shown in Debug80's own registers panel, not in the DAP
+    // Variables scopes. Verify the PC through the current watch/evaluate path.
     const frameId = stack.body?.stackFrames?.[0]?.id ?? 0;
     const scopes = await client.sendRequest<{
       body?: { scopes?: Array<{ name: string; variablesReference: number }> };
     }>('scopes', { frameId });
-    const regScope = scopes.body?.scopes?.find((s) => /register/i.test(s.name));
-    expect(regScope).toBeDefined();
-    const vars = await client.sendRequest<{
-      body?: { variables?: Array<{ name: string; value: string }> };
-    }>('variables', { variablesReference: regScope!.variablesReference });
-    const pc = vars.body?.variables?.find((v) => v.name.toUpperCase() === 'PC');
-    expect(pc?.value).toMatch(/0001/i);
+    expect(scopes.body?.scopes?.map((scope) => scope.name)).toEqual(['Symbols']);
+
+    const pc = await client.sendRequest<{ body?: { result?: string } }>('evaluate', {
+      expression: 'PC',
+      frameId,
+      context: 'watch',
+    });
+    expect(pc.body?.result).toBe('0x01 / 1');
 
     await client.sendRequest('disconnect');
   });

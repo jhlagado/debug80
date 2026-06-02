@@ -7,6 +7,7 @@ const cacheDir = path.resolve(
 );
 
 export default defineConfig({
+  cacheDir,
   resolve: {
     alias: {
       vscode: path.resolve(__dirname, 'tests/e2e/adapter/vscode-mock.ts'),
@@ -17,8 +18,5 @@ export default defineConfig({
     include: ['tests/e2e/**/*.test.ts'],
     testTimeout: 20000,
     hookTimeout: 20000,
-    cache: {
-      dir: cacheDir,
-    },
   },
 });

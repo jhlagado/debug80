@@ -173,8 +173,8 @@ Remaining guidance:
   skip-once, run-to-cursor, run-to-stack-return, and step-out semantics.
 - Avoid a larger state-machine rewrite unless tests expand around every debug
   adapter control path.
-- The separate e2e adapter step test currently exposes a register-scope fixture
-  issue and should be repaired before being used as a runtime-control gate.
+- The e2e adapter step test now verifies stepping, source mapping, current DAP
+  scopes, and PC evaluation without depending on the retired register scope.
 
 ### P1: Launch And Project Config Are Too Broad
 
@@ -399,11 +399,12 @@ Additional note:
 npx vitest run -c vitest.e2e.config.ts tests/e2e/adapter/step.test.ts
 ```
 
-The e2e adapter step test currently fails at
-`tests/e2e/adapter/step.test.ts:61` because the test cannot find a register
-scope. The stepping path reaches the expected frame, so this is tracked as a
-separate adapter/e2e fixture issue rather than a blocker for this runtime-loop
-deduplication goal.
+This e2e adapter step test has been repaired as a runtime-control gate. It no
+longer expects the retired DAP register scope; instead, it verifies that stepping
+lands on the expected mapped source line, DAP scopes expose the current Symbols
+scope, and the `PC` register is available through the watch/evaluate path. The
+e2e Vitest config now uses `cacheDir`, removing the previous cache deprecation
+warning from this gate.
 
 ### Phase 5: Split Launch/Project Policy
 
