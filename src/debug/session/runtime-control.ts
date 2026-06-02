@@ -142,26 +142,35 @@ function createRuntimeControlCapabilities(options: {
     if (runtime === undefined) {
       return undefined;
     }
-    return {
-      recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
-      silenceSpeaker: (): void => runtime.silenceSpeaker(),
-      getClockHz: (): number => runtime.state.clockHz,
-      getYieldMs: (): number => runtime.state.yieldMs,
-    };
+    return createPlatformRuntimeCapabilities(
+      (cycles) => runtime.recordCycles(cycles),
+      () => runtime.silenceSpeaker(),
+      () => runtime.state.clockHz,
+      () => runtime.state.yieldMs
+    );
   }
   if (options.activePlatform === 'tec1g') {
     const runtime = options.tec1gRuntime;
     if (runtime === undefined) {
       return undefined;
     }
-    return {
-      recordCycles: (cycles: number): void => runtime.recordCycles(cycles),
-      silenceSpeaker: (): void => runtime.silenceSpeaker(),
-      getClockHz: (): number => runtime.state.timing.clockHz,
-      getYieldMs: (): number => runtime.state.timing.yieldMs,
-    };
+    return createPlatformRuntimeCapabilities(
+      (cycles) => runtime.recordCycles(cycles),
+      () => runtime.silenceSpeaker(),
+      () => runtime.state.timing.clockHz,
+      () => runtime.state.timing.yieldMs
+    );
   }
   return undefined;
+}
+
+function createPlatformRuntimeCapabilities(
+  recordCycles: (cycles: number) => void,
+  silenceSpeaker: () => void,
+  getClockHz: () => number,
+  getYieldMs: () => number
+): RuntimeControlCapabilities {
+  return { recordCycles, silenceSpeaker, getClockHz, getYieldMs };
 }
 
 export function createLaunchSequenceContext(
@@ -302,11 +311,41 @@ type RuntimeStepResult = {
   cycles: number;
 };
 
+type RuntimeLoopMode = 'run' | 'step-out';
+
+type RuntimeStepOptions = {
+  recordCycles: boolean;
+  captureEntry: boolean;
+};
+
+type RuntimeLoopState = {
+  executed: number;
+  cyclesSinceThrottle: number;
+  lastThrottleMs: number;
+};
+
+type RuntimeLoopMonitor = ReturnType<typeof createRuntimePerformanceMonitor>;
+type RuntimeLoopResult = 'continue' | 'stop';
+type RuntimeLoopIteration = (options: RuntimeLoopIterationOptions) => RuntimeLoopResult;
+
+type RuntimeLoopIterationOptions = {
+  context: RuntimeControlContext;
+  runtime: Z80Runtime;
+  trace: StepInfo;
+  monitor: RuntimeLoopMonitor;
+  state: RuntimeLoopState;
+};
+
+const RUN_STEP_OPTIONS: RuntimeStepOptions = { recordCycles: true, captureEntry: true };
+const STEP_OUT_SKIP_OPTIONS: RuntimeStepOptions = { recordCycles: false, captureEntry: false };
+const STEP_OUT_STEP_OPTIONS: RuntimeStepOptions = { recordCycles: true, captureEntry: false };
+const RUNTIME_LOOP_CHUNK = 1000;
+
 function stepRuntimeOnce(options: {
   context: RuntimeControlContext;
   runtime: Z80Runtime;
   trace: StepInfo;
-  monitor: ReturnType<typeof createRuntimePerformanceMonitor>;
+  monitor: RuntimeLoopMonitor;
   recordCycles: boolean;
   captureEntry: boolean;
 }): RuntimeStepResult {
@@ -323,6 +362,200 @@ function stepRuntimeOnce(options: {
   return { halted: result.halted, cycles };
 }
 
+function handlePauseIfRequested(context: RuntimeControlContext): boolean {
+  if (!context.getPauseRequested()) {
+    return false;
+  }
+  context.setPauseRequested(false);
+  markRuntimeStopped(context, 'pause', null);
+  context.getRuntimeCapabilities()?.silenceSpeaker();
+  emitRuntimeStopped(context, 'pause');
+  return true;
+}
+
+function handleHaltedStep(context: RuntimeControlContext, mode: RuntimeLoopMode): void {
+  if (mode === 'run') {
+    context.setRunning(false);
+  }
+  context.handleHaltStop();
+}
+
+function handleSkipBreakpointStep(options: {
+  context: RuntimeControlContext;
+  runtime: Z80Runtime;
+  trace: StepInfo;
+  monitor: RuntimeLoopMonitor;
+  state: RuntimeLoopState;
+  stepOptions: RuntimeStepOptions;
+  mode: RuntimeLoopMode;
+}): RuntimeStepResult | undefined {
+  const skipAddress = options.context.getSkipBreakpointOnce();
+  if (skipAddress === null || options.runtime.getPC() !== skipAddress) {
+    return undefined;
+  }
+  options.context.setSkipBreakpointOnce(null);
+  return stepRuntimeAndTrack(options);
+}
+
+function handleBreakpointStop(options: {
+  context: RuntimeControlContext;
+  runtime: Z80Runtime;
+  extraBreakpoints?: Set<number>;
+}): boolean {
+  const pc = options.runtime.getPC();
+  if (options.context.isBreakpointAddress(pc)) {
+    stopRuntimeAndEmit(options.context, 'breakpoint', 'breakpoint', pc);
+    return true;
+  }
+  if (options.extraBreakpoints !== undefined && options.extraBreakpoints.has(pc)) {
+    stopRuntimeAndEmit(options.context, 'step', 'step', null);
+    return true;
+  }
+  return false;
+}
+
+function stepRuntimeAndTrack(options: {
+  context: RuntimeControlContext;
+  runtime: Z80Runtime;
+  trace: StepInfo;
+  monitor: RuntimeLoopMonitor;
+  state: RuntimeLoopState;
+  stepOptions: RuntimeStepOptions;
+  mode: RuntimeLoopMode;
+}): RuntimeStepResult {
+  const result = stepRuntimeOnce({
+    context: options.context,
+    runtime: options.runtime,
+    trace: options.trace,
+    monitor: options.monitor,
+    recordCycles: options.stepOptions.recordCycles,
+    captureEntry: options.stepOptions.captureEntry,
+  });
+  options.state.executed += 1;
+  options.state.cyclesSinceThrottle += result.cycles;
+  if (result.halted) {
+    handleHaltedStep(options.context, options.mode);
+  }
+  return result;
+}
+
+async function throttleRuntimeLoop(options: {
+  context: RuntimeControlContext;
+  monitor: RuntimeLoopMonitor;
+  state: RuntimeLoopState;
+  chunkStartedMs: number;
+}): Promise<void> {
+  const capabilities = options.context.getRuntimeCapabilities();
+  if (isClockThrottledPlatform(options.context) && (capabilities?.getClockHz() ?? 0) > 0) {
+    await yieldForPlatformClock({ ...options, capabilities });
+    resetRuntimeLoopThrottle(options.state);
+    return;
+  }
+
+  resetRuntimeLoopThrottle(options.state);
+  await yieldForHost(options.monitor, capabilities?.getYieldMs() ?? 0);
+}
+
+function resetRuntimeLoopThrottle(state: RuntimeLoopState): void {
+  state.cyclesSinceThrottle = 0;
+  state.lastThrottleMs = Date.now();
+}
+
+function isClockThrottledPlatform(context: RuntimeControlContext): boolean {
+  const platform = context.getActivePlatform();
+  return platform === 'tec1' || platform === 'tec1g';
+}
+
+async function yieldForPlatformClock(options: {
+  monitor: RuntimeLoopMonitor;
+  state: RuntimeLoopState;
+  chunkStartedMs: number;
+  capabilities: RuntimeControlCapabilities | undefined;
+}): Promise<void> {
+  const clockHz = options.capabilities?.getClockHz() ?? 0;
+  const targetMs = (options.state.cyclesSinceThrottle / clockHz) * 1000;
+  const now = Date.now();
+  const elapsed = now - options.state.lastThrottleMs;
+  const waitMs = targetMs - elapsed;
+  options.monitor.recordChunk(now - options.chunkStartedMs, targetMs);
+  await monitoredYield(options.monitor, selectRuntimeYieldMs(waitMs, options.capabilities));
+}
+
+function selectRuntimeYieldMs(
+  waitMs: number,
+  capabilities: RuntimeControlCapabilities | undefined
+): number {
+  if (waitMs > 0) {
+    return waitMs;
+  }
+  const yieldMs = capabilities?.getYieldMs() ?? 0;
+  if (yieldMs > 0) {
+    return yieldMs;
+  }
+  return HOST_FAIRNESS_YIELD_MS;
+}
+
+async function yieldForHost(monitor: RuntimeLoopMonitor, yieldMs: number): Promise<void> {
+  await monitoredYield(monitor, yieldMs > 0 ? yieldMs : 0);
+}
+
+function createRuntimeLoopState(): RuntimeLoopState {
+  return {
+    executed: 0,
+    cyclesSinceThrottle: 0,
+    lastThrottleMs: Date.now(),
+  };
+}
+
+function createRuntimeLoopMonitor(
+  context: RuntimeControlContext,
+  label: string
+): RuntimeLoopMonitor {
+  const initialCapabilities = context.getRuntimeCapabilities();
+  return createRuntimePerformanceMonitor({
+    logger: getPerformanceLogger(context),
+    label,
+    platform: context.getActivePlatform(),
+    clockHz: initialCapabilities?.getClockHz() ?? 0,
+  });
+}
+
+async function runRuntimeLoop(options: {
+  context: RuntimeControlContext;
+  label: string;
+  iterate: RuntimeLoopIteration;
+}): Promise<void> {
+  if (options.context.getRuntime() === undefined) {
+    return;
+  }
+  const trace: StepInfo = { taken: false };
+  const state = createRuntimeLoopState();
+  const monitor = createRuntimeLoopMonitor(options.context, options.label);
+  emitRuntimeRunning(options.context);
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const chunkStartedMs = Date.now();
+    for (let i = 0; i < RUNTIME_LOOP_CHUNK; i += 1) {
+      const runtime = options.context.getRuntime();
+      if (runtime === undefined) {
+        return;
+      }
+      const result = options.iterate({
+        context: options.context,
+        runtime,
+        trace,
+        monitor,
+        state,
+      });
+      if (result === 'stop') {
+        return;
+      }
+    }
+    await throttleRuntimeLoop({ context: options.context, monitor, state, chunkStartedMs });
+  }
+}
+
 export async function runUntilStopAsync(
   context: RuntimeControlContext,
   options?: {
@@ -331,127 +564,21 @@ export async function runUntilStopAsync(
     limitLabel?: string;
   }
 ): Promise<void> {
-  const runtime = context.getRuntime();
-  if (runtime === undefined) {
-    return;
-  }
   const extraBreakpoints = options?.extraBreakpoints;
   const maxInstructions = options?.maxInstructions;
   const limitLabel = options?.limitLabel ?? 'step';
-  const CHUNK = 1000;
-  const trace: StepInfo = { taken: false };
-  let executed = 0;
-  let cyclesSinceThrottle = 0;
-  let lastThrottleMs = Date.now();
-  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
-    context.getRuntimeCapabilities();
-  const initialCapabilities = getRuntimeCapabilities();
-  const monitor = createRuntimePerformanceMonitor({
-    logger: getPerformanceLogger(context),
+
+  await runRuntimeLoop({
+    context,
     label: 'run',
-    platform: context.getActivePlatform(),
-    clockHz: initialCapabilities?.getClockHz() ?? 0,
+    iterate: (iteration) =>
+      runUntilStopIteration({
+        ...iteration,
+        extraBreakpoints,
+        maxInstructions,
+        limitLabel,
+      }),
   });
-  emitRuntimeRunning(context);
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const chunkStartedMs = Date.now();
-    for (let i = 0; i < CHUNK; i += 1) {
-      const activeRuntime = context.getRuntime();
-      if (activeRuntime === undefined) {
-        return;
-      }
-      captureEntryCpuStateIfNeeded(context);
-      if (context.getPauseRequested()) {
-        context.setPauseRequested(false);
-        markRuntimeStopped(context, 'pause', null);
-        getRuntimeCapabilities()?.silenceSpeaker();
-        emitRuntimeStopped(context, 'pause');
-        return;
-      }
-      if (
-        context.getSkipBreakpointOnce() !== null &&
-        activeRuntime.getPC() === context.getSkipBreakpointOnce()
-      ) {
-        context.setSkipBreakpointOnce(null);
-        const stepped = stepRuntimeOnce({
-          context,
-          runtime: activeRuntime,
-          trace,
-          monitor,
-          recordCycles: true,
-          captureEntry: true,
-        });
-        executed += 1;
-        cyclesSinceThrottle += stepped.cycles;
-        if (stepped.halted) {
-          context.handleHaltStop();
-          return;
-        }
-        continue;
-      }
-      const pc = activeRuntime.getPC();
-      if (context.isBreakpointAddress(pc)) {
-        stopRuntimeAndEmit(context, 'breakpoint', 'breakpoint', pc);
-        return;
-      }
-      if (extraBreakpoints !== undefined && extraBreakpoints.has(pc)) {
-        stopRuntimeAndEmit(context, 'step', 'step', null);
-        return;
-      }
-      const result = stepRuntimeOnce({
-        context,
-        runtime: activeRuntime,
-        trace,
-        monitor,
-        recordCycles: true,
-        captureEntry: true,
-      });
-      executed += 1;
-      cyclesSinceThrottle += result.cycles;
-      if (result.halted) {
-        context.setRunning(false);
-        context.handleHaltStop();
-        return;
-      }
-      if (maxInstructions !== undefined && maxInstructions > 0 && executed >= maxInstructions) {
-        emitRuntimeLimitStopped(
-          context,
-          `Debug80: ${limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`
-        );
-        return;
-      }
-    }
-    if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const capabilities = getRuntimeCapabilities();
-      const clockHz = capabilities?.getClockHz() ?? 0;
-      if (clockHz > 0) {
-        const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
-        const now = Date.now();
-        const elapsed = now - lastThrottleMs;
-        const waitMs = targetMs - elapsed;
-        monitor.recordChunk(now - chunkStartedMs, targetMs);
-        if (waitMs > 0) {
-          await monitoredYield(monitor, waitMs);
-        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await monitoredYield(monitor, capabilities?.getYieldMs() ?? 0);
-        } else {
-          await monitoredYield(monitor, HOST_FAIRNESS_YIELD_MS);
-        }
-        lastThrottleMs = Date.now();
-        cyclesSinceThrottle = 0;
-        continue;
-      }
-    }
-    cyclesSinceThrottle = 0;
-    lastThrottleMs = Date.now();
-    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
-    if (yieldMs > 0) {
-      await monitoredYield(monitor, yieldMs);
-    } else {
-      await monitoredYield(monitor, 0);
-    }
-  }
 }
 
 export async function runUntilReturnAsync(
@@ -459,125 +586,151 @@ export async function runUntilReturnAsync(
   baselineDepth: number,
   maxInstructions: number
 ): Promise<void> {
-  const runtime = context.getRuntime();
-  if (runtime === undefined) {
-    return;
-  }
-  const CHUNK = 1000;
-  const trace: StepInfo = { taken: false };
-  let executed = 0;
-  let cyclesSinceThrottle = 0;
-  let lastThrottleMs = Date.now();
-  const getRuntimeCapabilities = (): RuntimeControlCapabilities | undefined =>
-    context.getRuntimeCapabilities();
-  const initialCapabilities = getRuntimeCapabilities();
-  const monitor = createRuntimePerformanceMonitor({
-    logger: getPerformanceLogger(context),
+  await runRuntimeLoop({
+    context,
     label: 'step-out',
-    platform: context.getActivePlatform(),
-    clockHz: initialCapabilities?.getClockHz() ?? 0,
+    iterate: (iteration) =>
+      runUntilReturnIteration({
+        ...iteration,
+        baselineDepth,
+        maxInstructions,
+      }),
   });
-  emitRuntimeRunning(context);
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const chunkStartedMs = Date.now();
-    for (let i = 0; i < CHUNK; i += 1) {
-      const activeRuntime = context.getRuntime();
-      if (activeRuntime === undefined) {
-        return;
-      }
-      if (context.getPauseRequested()) {
-        context.setPauseRequested(false);
-        markRuntimeStopped(context, 'pause', null);
-        getRuntimeCapabilities()?.silenceSpeaker();
-        emitRuntimeStopped(context, 'pause');
-        return;
-      }
-      if (
-        context.getSkipBreakpointOnce() !== null &&
-        activeRuntime.getPC() === context.getSkipBreakpointOnce()
-      ) {
-        context.setSkipBreakpointOnce(null);
-        const stepped = stepRuntimeOnce({
-          context,
-          runtime: activeRuntime,
-          trace,
-          monitor,
-          recordCycles: false,
-          captureEntry: false,
-        });
-        executed += 1;
-        cyclesSinceThrottle += stepped.cycles;
-        if (stepped.halted) {
-          context.handleHaltStop();
-          return;
-        }
-      } else {
-        const pc = activeRuntime.getPC();
-        if (context.isBreakpointAddress(pc)) {
-          stopRuntimeAndEmit(context, 'breakpoint', 'breakpoint', pc);
-          return;
-        }
-        const result = stepRuntimeOnce({
-          context,
-          runtime: activeRuntime,
-          trace,
-          monitor,
-          recordCycles: true,
-          captureEntry: false,
-        });
-        executed += 1;
-        cyclesSinceThrottle += result.cycles;
-        if (result.halted) {
-          context.setRunning(false);
-          context.handleHaltStop();
-          return;
-        }
-      }
+}
 
-      if (trace.kind === 'ret' && trace.taken) {
-        if (baselineDepth === 0 || context.getCallDepth() < baselineDepth) {
-          stopRuntimeAndEmit(context, 'step', 'step', null);
-          return;
-        }
-      }
-
-      if (maxInstructions > 0 && executed >= maxInstructions) {
-        emitRuntimeLimitStopped(
-          context,
-          `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`
-        );
-        return;
-      }
-    }
-    if (context.getActivePlatform() === 'tec1' || context.getActivePlatform() === 'tec1g') {
-      const capabilities = getRuntimeCapabilities();
-      const clockHz = capabilities?.getClockHz() ?? 0;
-      if (clockHz > 0) {
-        const targetMs = (cyclesSinceThrottle / clockHz) * 1000;
-        const now = Date.now();
-        const elapsed = now - lastThrottleMs;
-        const waitMs = targetMs - elapsed;
-        monitor.recordChunk(now - chunkStartedMs, targetMs);
-        if (waitMs > 0) {
-          await monitoredYield(monitor, waitMs);
-        } else if ((capabilities?.getYieldMs() ?? 0) > 0) {
-          await monitoredYield(monitor, capabilities?.getYieldMs() ?? 0);
-        } else {
-          await monitoredYield(monitor, HOST_FAIRNESS_YIELD_MS);
-        }
-        lastThrottleMs = Date.now();
-        cyclesSinceThrottle = 0;
-        continue;
-      }
-    }
-    cyclesSinceThrottle = 0;
-    lastThrottleMs = Date.now();
-    const yieldMs = getRuntimeCapabilities()?.getYieldMs() ?? 0;
-    if (yieldMs > 0) {
-      await monitoredYield(monitor, yieldMs);
-    } else {
-      await monitoredYield(monitor, 0);
-    }
+function runUntilStopIteration(
+  options: RuntimeLoopIterationOptions & {
+    extraBreakpoints: Set<number> | undefined;
+    maxInstructions: number | undefined;
+    limitLabel: string;
   }
+): RuntimeLoopResult {
+  captureEntryCpuStateIfNeeded(options.context);
+  if (handlePauseIfRequested(options.context)) {
+    return 'stop';
+  }
+  const skipped = handleSkipBreakpointStep({
+    context: options.context,
+    runtime: options.runtime,
+    trace: options.trace,
+    monitor: options.monitor,
+    state: options.state,
+    stepOptions: RUN_STEP_OPTIONS,
+    mode: 'run',
+  });
+  if (skipped !== undefined) {
+    return skipped.halted ? 'stop' : 'continue';
+  }
+  if (
+    handleBreakpointStop({
+      context: options.context,
+      runtime: options.runtime,
+      ...(options.extraBreakpoints !== undefined
+        ? { extraBreakpoints: options.extraBreakpoints }
+        : {}),
+    })
+  ) {
+    return 'stop';
+  }
+  const result = stepRuntimeAndTrack({
+    context: options.context,
+    runtime: options.runtime,
+    trace: options.trace,
+    monitor: options.monitor,
+    state: options.state,
+    stepOptions: RUN_STEP_OPTIONS,
+    mode: 'run',
+  });
+  if (result.halted) {
+    return 'stop';
+  }
+  return stopIfInstructionLimitReached({
+    context: options.context,
+    state: options.state,
+    maxInstructions: options.maxInstructions,
+    message: (maxInstructions) =>
+      `Debug80: ${options.limitLabel} stopped after ${maxInstructions} instructions (target not reached).\n`,
+  });
+}
+
+function runUntilReturnIteration(
+  options: RuntimeLoopIterationOptions & {
+    baselineDepth: number;
+    maxInstructions: number;
+  }
+): RuntimeLoopResult {
+  if (handlePauseIfRequested(options.context)) {
+    return 'stop';
+  }
+  const skipped = handleSkipBreakpointStep({
+    context: options.context,
+    runtime: options.runtime,
+    trace: options.trace,
+    monitor: options.monitor,
+    state: options.state,
+    stepOptions: STEP_OUT_SKIP_OPTIONS,
+    mode: 'step-out',
+  });
+  if (skipped !== undefined && skipped.halted) {
+    return 'stop';
+  }
+  if (skipped === undefined && stepOutNormalInstruction(options) === 'stop') {
+    return 'stop';
+  }
+  if (isReturnPastBaseline(options.context, options.trace, options.baselineDepth)) {
+    stopRuntimeAndEmit(options.context, 'step', 'step', null);
+    return 'stop';
+  }
+  return stopIfInstructionLimitReached({
+    context: options.context,
+    state: options.state,
+    maxInstructions: options.maxInstructions,
+    message: (maxInstructions) =>
+      `Debug80: step out stopped after ${maxInstructions} instructions (return not observed).\n`,
+  });
+}
+
+function stepOutNormalInstruction(options: RuntimeLoopIterationOptions): RuntimeLoopResult {
+  if (handleBreakpointStop({ context: options.context, runtime: options.runtime })) {
+    return 'stop';
+  }
+  const result = stepRuntimeAndTrack({
+    context: options.context,
+    runtime: options.runtime,
+    trace: options.trace,
+    monitor: options.monitor,
+    state: options.state,
+    stepOptions: STEP_OUT_STEP_OPTIONS,
+    mode: 'run',
+  });
+  return result.halted ? 'stop' : 'continue';
+}
+
+function isReturnPastBaseline(
+  context: RuntimeControlContext,
+  trace: StepInfo,
+  baselineDepth: number
+): boolean {
+  return (
+    trace.kind === 'ret' &&
+    trace.taken &&
+    (baselineDepth === 0 || context.getCallDepth() < baselineDepth)
+  );
+}
+
+function stopIfInstructionLimitReached(options: {
+  context: RuntimeControlContext;
+  state: RuntimeLoopState;
+  maxInstructions: number | undefined;
+  message: (maxInstructions: number) => string;
+}): RuntimeLoopResult {
+  if (
+    options.maxInstructions === undefined ||
+    options.maxInstructions <= 0 ||
+    options.state.executed < options.maxInstructions
+  ) {
+    return 'continue';
+  }
+  emitRuntimeLimitStopped(options.context, options.message(options.maxInstructions));
+  return 'stop';
 }
