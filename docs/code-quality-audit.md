@@ -457,6 +457,133 @@ npm run typecheck:webview
 npm run test:webview
 ```
 
+### Phase 7: Main Panel UI State Harmonization
+
+Goal: study and simplify the Debug80 main panel accordion implementation now
+that the product shape is clearer. This is primarily a UI design and
+state-management audit, not a dead-code cleanup pass. The current UI works, but
+several panels grew on different timelines and use different local state styles,
+fallbacks, and message paths. The main question for each panel is: "what is the
+single authority for this state, and can the UI reach the same state through
+more than one path?"
+
+Future work should make each panel follow the same pattern:
+
+1. normalize incoming extension/platform payloads into a small panel state,
+2. derive pure UI actions from that state,
+3. keep DOM mutation/rendering in small named helpers,
+4. keep VS Code message posting at the panel boundary.
+
+This mirrors the completed Project panel cleanup and should reduce recurring
+race-condition risks without changing user-visible behavior.
+
+Design risks to look for before changing code:
+
+- multiple authorities for the same state, for example extension session state,
+  webview local fields, DOM `hidden` flags, and VS Code persisted webview state
+  all independently implying whether a panel is active;
+- compatibility fallbacks that were useful while requirements were unclear but
+  now allow ambiguous behavior;
+- event handlers that read stale local state when a live DOM value is the real
+  user selection, or the inverse;
+- panel lifecycle rules hidden inside unrelated code, such as matrix-mode
+  activation being coupled to accordion state;
+- state transitions that are only implied by DOM mutation instead of being
+  represented by a named state model;
+- rendering code that also decides business policy, such as whether a key event
+  belongs to matrix keyboard or keypad.
+
+Findings from the latest UI audit:
+
+- `webview/common/memory-panel.ts` is the largest common webview module. It
+  combines anchor resolution, symbol lookup, register rendering, memory dump
+  rendering, edit validation, readonly-memory policy, and refresh messaging.
+  The design issue is not just size: Registers and Memory are now separate
+  accordion concepts, but they are still controlled by one class with shared
+  refresh/edit state. That makes it harder to reason about which panel owns
+  which snapshot request and which edits are valid while the debug session is
+  running.
+- `webview/tec1g/matrix-ui.ts` is a recent hotspot. It combines RGB matrix
+  rendering, keyboard layout construction, modifier state, caps-lock behavior,
+  mouse events, physical keyboard routing, and message posting. The design
+  issue is that "matrix mode" is currently both a UI visibility condition and a
+  platform input-routing condition. It needs a `MatrixKeyboardState` /
+  `MatrixKeyEvent` model so modifier/caps behavior and routing decisions can be
+  tested without relying on DOM focus accidents.
+- `webview/common/accordion-layout.ts` owns persisted open state, panel order,
+  provider tab compatibility, memory row sizing, register auto-refresh, and
+  matrix-mode lifecycle notification. The design issue is that one controller
+  decides visual layout, VS Code compatibility tab state, and runtime refresh
+  policy. It is readable, but it has become a central coordinator for unrelated
+  policies.
+- `webview/tec1g/index.ts` is a composition root and therefore expected to be
+  broad. It currently also handles message dispatch, initial UI rehydration,
+  keypad/matrix focus routing, and project-status propagation. The design
+  issue is that startup state replay and live message updates are not clearly
+  distinguished, even though regressions often happen at that boundary.
+- `webview/tec1g/glcd-renderer.ts` and `webview/tec1g/lcd-renderer.ts` contain
+  dense drawing logic. Fallow flags both renderers, especially GLCD `draw`.
+  This is mostly legitimate graphics complexity, but helper extraction would
+  make the rendering rules easier to verify: background fill, graphics plane,
+  text overlay, reverse rows, and cursor pass should be named stages.
+- `src/platforms/tec1g/ui-panel-state.ts` and
+  `webview/tec1g/tec1g-platform-update.ts` both apply partial TEC-1G update
+  payloads in long field-by-field functions. These should share small
+  normalizers for fixed-length byte arrays and optional state patches so the
+  backend rehydration model and webview update model stay aligned.
+- Memory view DOM descriptors are duplicated between Simple, TEC-1, and TEC-1G
+  webviews. A shared `createMemoryViews(ids)` helper would remove repeated A-D
+  DOM lookup blocks and make future memory panel changes safer.
+
+Suggested goal order:
+
+1. **Memory/register panel split**: extract register item construction and
+   register edit handling from `MemoryPanel`, leaving memory dump state and
+   register strip state as separate subcontrollers. Add focused tests for
+   register rendering/edit messages and memory edit messages.
+2. **Shared memory view descriptors**: replace repeated A-D DOM lookup blocks
+   in Simple, TEC-1, and TEC-1G with a common helper. This is low-risk and
+   removes known duplication before deeper memory work.
+3. **Matrix keyboard state model**: introduce pure helpers for modifier/caps
+   state, key normalization, and click/keyboard event payload derivation. Keep
+   DOM rendering separate. This directly protects the recent matrix keyboard
+   behavior.
+4. **Accordion controller split**: extract persisted accordion state/order
+   helpers and isolate runtime side effects such as register auto-refresh,
+   memory resize, and matrix-mode notification.
+5. **TEC-1G update normalizers**: add shared fixed-length array and state patch
+   helpers for `ui-panel-state` and `tec1g-platform-update`, preserving payload
+   compatibility.
+6. **Renderer pass extraction**: split LCD/GLCD drawing into named render
+   passes. This is readability work, not a behavior change; verify with
+   renderer tests or screenshot/pixel tests if available.
+7. **Composition-root message dispatcher**: move `message.type` dispatch and
+   startup replay in `webview/tec1g/index.ts` into small functions after the
+   panel-specific cleanups have reduced coupling.
+
+Verification:
+
+```sh
+npm run typecheck:webview
+npx vitest run -c vitest.webview.config.ts tests/webview/common tests/webview/tec1g
+npm run typecheck
+npx vitest run tests/extension/platform-view-provider.test.ts tests/platforms/tec1g
+npm exec --yes fallow -- health --format compact --top 40
+```
+
+Notes:
+
+- Treat Fallow as a locator only. The main purpose of this phase is to remove
+  redundant state paths and inherited fallbacks, not to chase metric scores.
+  Renderer complexity and Z80 decode complexity are sometimes legitimate;
+  refactor only when named helper boundaries make the hardware behavior easier
+  to understand or test.
+- Avoid changing accordion defaults, matrix-mode behavior, focus routing, or
+  display brightness during structural cleanup. Those are product behavior
+  changes and should be separate goals.
+- Prefer small, behavior-preserving goals. The main risk in this UI is not a
+  single large file; it is several independent state models drifting apart.
+
 ## Quality Criteria For Future PRs
 
 ### Latest Goal Note: TEC-1G SYS_CTRL Bit Contract
