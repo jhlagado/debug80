@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.15
+
+- Updated AZM to `0.2.8`.
+- Renamed Debug80's AZM integration terminology from "register care" to
+  "register contracts".
+- Updated AZM launch/config options to use the new `registerContracts`,
+  `registerContractsProfile`, and `registerContractsInterfaces` names.
+- Updated register contract report handling for AZM's new artifact naming.
+- Changed generated report output from `.regcare.txt` to `.regcontracts.txt`.
+- Updated Debug80 UI labels, package schema text, docs, and tests to match
+  AZM's new terminology.
+- Preserved existing user-facing modes: `Enforce`, `Audit`, and `Off`.
+- Verified the update with TypeScript checks, targeted backend/extension tests,
+  webview tests, webview build, formatting checks, and Fallow audit.
+
 ## 0.1.14
 
 - Fixed project initialization so selecting and initializing a new workspace
