@@ -4,6 +4,16 @@
 
 - None.
 
+## 0.2.8 - 2026-06-04
+
+- Fixed strict register contracts stack inference so ordinary internal direct
+  calls to known, stack-balanced routines no longer poison callers with unknown
+  stack effects.
+- Treated `RET cc` as a routine exit for stack inference while still rejecting
+  conditional returns that can leave pushed stack values unrestored.
+- Made `.regcontracts.txt` reports explicitly opt-in debug/export artifacts and
+  documented diagnostics as the normal register contracts workflow.
+
 ## 0.2.6 - 2026-05-31
 
 - Added MON3-aware register-care dispatch for `RST $10` calls selected by the
