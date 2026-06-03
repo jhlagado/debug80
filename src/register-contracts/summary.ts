@@ -5,7 +5,6 @@ import {
   isImmediateZeroOperand,
   isPureTokenTransferInstruction,
   isRegisterOperand,
-  isUnconditionalReturnInstruction,
 } from './instruction-predicates.js';
 import { boundarySummary } from './summary-boundary.js';
 import {
@@ -40,8 +39,8 @@ function isOpaqueBoundary(item: RegisterContractsInstruction, effect: Instructio
   );
 }
 
-function isUnconditionalReturn(item: RegisterContractsInstruction): boolean {
-  return isUnconditionalReturnInstruction(item);
+function isRoutineReturn(effect: InstructionEffect): boolean {
+  return effect.control.kind === 'return';
 }
 
 function isPureTokenTransfer(item: RegisterContractsInstruction): boolean {
@@ -189,6 +188,10 @@ function applyStackEffect(
     state.hasUnknownStackEffect = true;
     applyUnknownStackUnits(tokens, consumedProduced, intendedProduced, effect.stack.units);
     return;
+  }
+
+  if (expectedTerminalReturn && stack.length !== 0) {
+    state.stackBalanced = false;
   }
 
   if (
@@ -368,8 +371,7 @@ function instructionInferenceContext(
     effect,
     knownBoundary: boundarySummary(routine, index, boundarySummaries),
     carryClearBeforeSbcHl,
-    expectedTerminalReturn:
-      index === routine.instructions.length - 1 && isUnconditionalReturn(item),
+    expectedTerminalReturn: isRoutineReturn(effect),
     effectWrites: new Set(effect.writes),
     instructionIntentOutputs: carryClearBeforeSbcHl ? [] : intentOutputUnits(item),
     semanticReads: carryClearBeforeSbcHl

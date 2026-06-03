@@ -187,6 +187,35 @@ describe('register-contracts integration', () => {
     expect(iface?.text).not.toContain('No inferred contracts were emitted');
   });
 
+  it('proves strict stack discipline through known internal direct calls', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-strict-internal-call-', [
+      '@START:',
+      '    call WRAPPER',
+      '    ret',
+      '@WRAPPER:',
+      '    call HELPER',
+      '    ret',
+      '@HELPER:',
+      '    cp 0',
+      '    ret z',
+      '    xor a',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(res.diagnostics).not.toContainEqual(
+      expect.objectContaining({
+        code: 'AZMN_REGISTER_CONTRACTS',
+        message: expect.stringContaining('stack effect is unknown'),
+      }),
+    );
+  });
+
   it('emits register-contracts source annotation artifacts when requested', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-annotations-'));
     const entry = join(dir, 'main.asm');
@@ -688,6 +717,32 @@ describe('register-contracts integration', () => {
         message: expect.stringContaining(
           'Register contracts cannot prove stack discipline for START',
         ),
+      }),
+    );
+  });
+
+  it('emits strict errors for conditional returns before stack restoration', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-strict-early-ret-stack-', [
+      '@START:',
+      '    call HELPER',
+      '    ret',
+      '@HELPER:',
+      '    push bc',
+      '    ret z',
+      '    pop bc',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+    });
+
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'AZMN_REGISTER_CONTRACTS',
+        severity: 'error',
+        message: expect.stringContaining('stack is unbalanced'),
       }),
     );
   });

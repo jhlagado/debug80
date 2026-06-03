@@ -154,12 +154,13 @@ npm run test:asm80:baseline
 Run register contracts analysis without changing ASM80-baseline output:
 
 ```sh
-npm run azm -- --rc audit --reg-report path/to/source.z80
+npm run azm -- --rc audit path/to/source.z80
 ```
 
-This writes `path/to/source.regcontracts.txt`. The default mode remains `off`, so
-existing ASM80 baseline checks are unchanged unless a register-contracts flag is
-supplied.
+This reports issues through diagnostics. It does not write
+`path/to/source.regcontracts.txt` unless `--reg-report` is supplied explicitly.
+The default mode remains `off`, so existing ASM80 baseline checks are unchanged
+unless a register-contracts flag is supplied.
 
 Run the opt-in Tetro application check when touching loadable binary range
 semantics, `DS` behavior, or ASM `EQU` resolution:
