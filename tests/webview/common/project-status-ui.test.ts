@@ -317,6 +317,49 @@ describe('project status UI invariants', () => {
     expect(visibleInitializeAffordanceCount()).toBe(1);
   });
 
+  it('initializes the selected uninitialized root instead of falling back to the remembered project', () => {
+    const postMessage = vi.fn();
+    const elements = getElements();
+    const ui = createProjectStatusUi(
+      createPostingVscodeMock(postMessage),
+      {
+        selectProjectButton: elements.selectProjectButton,
+        setupCard: elements.setupCard,
+        setupCardText: elements.setupCardText,
+        setupPrimaryAction: elements.setupPrimaryAction,
+        platformInitButton: elements.platformInitButton,
+        testCoolTermButton: elements.testCoolTermButton,
+        sendHexToBoardButton: elements.sendHexToBoardButton,
+        hardwareStatusLine: elements.hardwareStatusLine,
+        sourceMapStatusLine: elements.sourceMapStatusLine,
+        homeTargetSelect: elements.homeTargetSelect,
+        getPlatform: () => elements.platformSelect.value,
+      },
+      'tec1g'
+    );
+
+    ui.applyProjectStatus({
+      projectState: 'uninitialized',
+      rootPath: '/workspace/new-project',
+      roots: [
+        { name: 'old-project', path: '/workspace/old-project', hasProject: true },
+        { name: 'new-project', path: '/workspace/new-project', hasProject: false },
+      ],
+      targets: [],
+      hasProject: false,
+      platform: 'tec1g',
+    });
+    elements.platformSelect.value = 'tec1g';
+    elements.platformInitButton.click();
+    ui.dispose();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'createProject',
+      platform: 'tec1g',
+      rootPath: '/workspace/new-project',
+    });
+  });
+
   it('does not render duplicate platform selectors for initialized or uninitialized states', () => {
     applyProjectPayload({
       projectState: 'initialized',

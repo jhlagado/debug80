@@ -77,11 +77,11 @@ export function createProjectStatusUi(
       vscode.postMessage({ type: 'selectProject' });
       return;
     }
-    sendCreateProject(vscode, getPlatform?.() ?? platform);
+    sendCreateProject(vscode, getPlatform?.() ?? platform, currentRootPath || undefined);
   });
 
   platformInitButton?.addEventListener('click', () => {
-    sendCreateProject(vscode, getPlatform?.() ?? platform);
+    sendCreateProject(vscode, getPlatform?.() ?? platform, currentRootPath || undefined);
   });
 
   homeTargetSelect?.addEventListener('change', () => {
