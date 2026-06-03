@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.14
+
+- Fixed project initialization so selecting and initializing a new workspace
+  folder no longer jumps back to the previously selected project.
+- Simplified the Project panel state model by consolidating
+  project/setup/root-selection state into a clearer `ProjectPanelState` flow,
+  reducing duplicated setup-card and project-status logic, and adding focused
+  webview tests for project panel behavior.
+- Audited the main Debug80 panel UI state model and documented the next cleanup
+  priorities in the code-quality audit.
+- Extracted the register strip into its own controller so registers are no
+  longer mixed directly into the memory panel implementation, with focused
+  register panel tests.
+- Added a Matrix Keyboard routing cue: when the Matrix Keyboard accordion is
+  open, the Machine panel now shows that PC keyboard input is routed to the
+  Matrix Keyboard, the keypad is marked mouse-only, and the Matrix Keyboard
+  accordion header shows an active marker.
+- Kept accordion open state as the single source of truth for Matrix Keyboard
+  routing; no extra toggle was added.
+- Verified the work with TypeScript checks, full webview tests, webview build,
+  Fallow changed-file audit, and git diff checks.
+
 ## 0.1.13
 
 - Improved TEC-1G SD SPI emulation for MON3 and ZAD-style host-backed storage
