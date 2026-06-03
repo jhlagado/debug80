@@ -55,9 +55,12 @@ describe('tec1g UI visibility controls', () => {
     const hardwareGrid = doc.querySelector('.hardware-grid');
     const displayCol = doc.querySelector('.hardware-display-col');
     const keypadCol = doc.querySelector('.hardware-keypad-col');
+    const keypadRoutingCue = doc.querySelector('#keypadRoutingCue');
     const peripheralGrid = doc.querySelector('.peripheral-grid');
 
-    expect(projectContent?.querySelector('#projectHeader')).toBe(doc.querySelector('#projectHeader'));
+    expect(projectContent?.querySelector('#projectHeader')).toBe(
+      doc.querySelector('#projectHeader')
+    );
     expect(projectContent?.querySelector('#setupCard')).toBe(doc.querySelector('#setupCard'));
     expect(projectContent?.querySelector('.debug80-toolbar')).toBe(
       doc.querySelector('.debug80-toolbar')
@@ -74,6 +77,9 @@ describe('tec1g UI visibility controls', () => {
     expect(glcdStack?.children[1]).toBe(doc.querySelector('.glcd'));
     expect(hardwareGrid?.children[0]).toBe(displayCol);
     expect(hardwareGrid?.children[1]).toBe(keypadCol);
+    expect(keypadCol?.querySelector('#keypadRoutingCue')).toBe(keypadRoutingCue);
+    expect(keypadRoutingCue?.textContent).toContain('PC keys: Matrix Keyboard');
+    expect(keypadRoutingCue?.textContent).toContain('Keypad mouse only');
     expect(displayCol?.querySelector('.lcd')).not.toBeNull();
     expect(displayCol?.querySelector('.display-block')).not.toBeNull();
     expect(status?.querySelector('#statusLeds')).not.toBeNull();
@@ -85,20 +91,31 @@ describe('tec1g UI visibility controls', () => {
       doc.querySelector('.matrix-keyboard')
     );
     expect(
-      doc.querySelector<HTMLButtonElement>('[data-accordion-toggle="displays"]')?.textContent
+      doc
+        .querySelector<HTMLButtonElement>('[data-accordion-toggle="displays"]')
+        ?.textContent?.trim()
     ).toBe('Displays');
     expect(
-      doc.querySelector<HTMLButtonElement>('[data-accordion-toggle="serial"]')?.textContent
+      doc.querySelector<HTMLButtonElement>('[data-accordion-toggle="serial"]')?.textContent?.trim()
     ).toBe('Serial');
     expect(
-      doc.querySelector<HTMLButtonElement>('[data-accordion-toggle="matrixKeyboard"]')
-        ?.textContent
+      doc
+        .querySelector<HTMLButtonElement>('[data-accordion-toggle="matrixKeyboard"]')
+        ?.textContent?.trim()
     ).toBe('Matrix Keyboard');
     expect(
       Array.from(doc.querySelectorAll<HTMLButtonElement>('[data-accordion-toggle]')).map(
         (button) => button.dataset.accordionToggle
       )
-    ).toEqual(['project', 'displays', 'machine', 'registers', 'memory', 'serial', 'matrixKeyboard']);
+    ).toEqual([
+      'project',
+      'displays',
+      'machine',
+      'registers',
+      'memory',
+      'serial',
+      'matrixKeyboard',
+    ]);
 
     const css = fs.readFileSync(CSS_PATH, 'utf8');
     expect(css).toContain('.tec1g-ui-frame');
@@ -117,6 +134,9 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('align-self: flex-end');
     expect(css).toContain('width: max-content');
     expect(css).toContain('.hardware-keypad-col');
+    expect(css).toContain('.keypad-routing-cue');
+    expect(css).toContain('.keypad--keyboard-routed-to-matrix');
+    expect(css).toContain('.matrix-keyboard-active');
     expect(css).toContain('--tec1g-display-stack-width: 320px');
     expect(css).toContain('--tec1g-keypad-content-width');
     expect(css).toContain('.hardware-display-col .lcd-canvas');
@@ -171,12 +191,7 @@ describe('tec1g UI visibility controls', () => {
       Array.from(doc.querySelectorAll('.status-leds .status-led')).map(
         (node) => node.firstElementChild?.className
       )
-    ).toEqual([
-      'status-led-light',
-      'status-led-light',
-      'status-led-light',
-      'status-led-light',
-    ]);
+    ).toEqual(['status-led-light', 'status-led-light', 'status-led-light', 'status-led-light']);
     expect(
       Array.from(doc.querySelectorAll('.status-bank-leds .status-led-label')).map((node) =>
         node.textContent?.trim()

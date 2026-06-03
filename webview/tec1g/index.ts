@@ -28,6 +28,7 @@ import { createTec1gAudio } from './tec1g-audio';
 import { createTec1gKeypad } from './tec1g-keypad';
 import { applyTec1gPlatformUpdate } from './tec1g-platform-update';
 import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
+import { applyMatrixRoutingCue } from './matrix-routing-cue';
 
 const vscode = acquireVscodeApi();
 
@@ -63,6 +64,7 @@ const azmContractUpdateModeSelect = document.getElementById(
 const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
+const keypadRoutingCue = document.getElementById('keypadRoutingCue') as HTMLElement | null;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
 const speakerLabel = document.getElementById('speakerLabel') as HTMLElement;
 const speedEl = document.getElementById('speed') as HTMLElement;
@@ -78,6 +80,8 @@ const statusBank3 = document.getElementById('statusBank3') as HTMLElement;
 const accordionButtons = Array.from(
   document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
 );
+const matrixKeyboardHeader =
+  accordionButtons.find((button) => button.dataset.accordionToggle === 'matrixKeyboard') ?? null;
 const accordionProject = document.getElementById('accordion-project') as HTMLElement;
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
@@ -113,10 +117,16 @@ const azmOptionsControl = wireAzmOptionsControl(
 
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
-const matrixUi = createMatrixUiController(
-  vscode,
-  () => !accordionMatrixKeyboard.hidden
-);
+const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard.hidden);
+
+function applyMatrixKeyboardOpenState(open: boolean): void {
+  matrixUi.applyMatrixMode(open);
+  applyMatrixRoutingCue(
+    { appRoot, keypad: keypadEl, cue: keypadRoutingCue, header: matrixKeyboardHeader },
+    open
+  );
+  vscode.postMessage({ type: 'matrixMode', enabled: open });
+}
 
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createAccordionLayoutController({
@@ -147,8 +157,7 @@ const panelLayout = createAccordionLayoutController({
     if (panel !== 'matrixKeyboard') {
       return;
     }
-    matrixUi.applyMatrixMode(open);
-    vscode.postMessage({ type: 'matrixMode', enabled: open });
+    applyMatrixKeyboardOpenState(open);
   },
 });
 panelLayout.wireButtons();
@@ -341,8 +350,7 @@ audio.applyMuteState();
 document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
 document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
-matrixUi.applyMatrixMode(panelLayout.isMatrixKeyboardOpen());
-vscode.postMessage({ type: 'matrixMode', enabled: panelLayout.isMatrixKeyboardOpen() });
+applyMatrixKeyboardOpenState(panelLayout.isMatrixKeyboardOpen());
 lcdRenderer.draw();
 glcdRenderer.draw();
 panelLayout.setProviderTab(DEFAULT_TAB, false);

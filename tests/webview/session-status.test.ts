@@ -55,7 +55,7 @@ describe('shared restart control', () => {
     expect(stopOnEntryLabel?.title).toBe(
       'Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json.'
     );
-    expect(restartButton?.textContent).toBe('Build');
+    expect(restartButton?.textContent?.trim()).toBe('Build');
     expect(restartButton?.dataset.status).toBe('not-running');
     expect(restartButton?.disabled).toBe(false);
     expect(restartButton?.title).toBe(

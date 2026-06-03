@@ -72,18 +72,18 @@ Authored code is concentrated in these areas:
 
 Largest authored source files:
 
-| File | Lines | Notes |
-| --- | ---: | --- |
-| `webview/common/styles.css` | 1019 | Shared UI styling; high visual coupling across platform panels. |
-| `src/z80/decode-primary.ts` | 913 | Decoder table/logic; large but domain-driven. |
-| `src/debug/requests/adapter-request-controller.ts` | 669 | DAP request orchestration; many responsibilities. |
-| `src/debug/launch-args.ts` | 653 | Config discovery and merge behavior; cross-cutting and hard to scan. |
-| `webview/common/memory-panel.ts` | 641 | Memory/register panel UI logic; substantial DOM state handling. |
-| `src/platforms/tec1/runtime.ts` | 585 | TEC-1 runtime; includes some dead exports. |
-| `src/debug/session/runtime-control.ts` | 583 | Run/step/step-out loops; duplicated control flow. |
-| `src/z80/decode-helpers.ts` | 548 | Instruction helpers; domain complexity. |
-| `src/extension/platform-view-provider.ts` | 543 | Webview provider state and messaging; high fan-out/fan-in. |
-| `src/debug/launch/config-validation.ts` | 521 | Repetitive validators; good candidate for helper extraction. |
+| File                                               | Lines | Notes                                                                |
+| -------------------------------------------------- | ----: | -------------------------------------------------------------------- |
+| `webview/common/styles.css`                        |  1019 | Shared UI styling; high visual coupling across platform panels.      |
+| `src/z80/decode-primary.ts`                        |   913 | Decoder table/logic; large but domain-driven.                        |
+| `src/debug/requests/adapter-request-controller.ts` |   669 | DAP request orchestration; many responsibilities.                    |
+| `src/debug/launch-args.ts`                         |   653 | Config discovery and merge behavior; cross-cutting and hard to scan. |
+| `webview/common/memory-panel.ts`                   |   641 | Memory/register panel UI logic; substantial DOM state handling.      |
+| `src/platforms/tec1/runtime.ts`                    |   585 | TEC-1 runtime; includes some dead exports.                           |
+| `src/debug/session/runtime-control.ts`             |   583 | Run/step/step-out loops; duplicated control flow.                    |
+| `src/z80/decode-helpers.ts`                        |   548 | Instruction helpers; domain complexity.                              |
+| `src/extension/platform-view-provider.ts`          |   543 | Webview provider state and messaging; high fan-out/fan-in.           |
+| `src/debug/launch/config-validation.ts`            |   521 | Repetitive validators; good candidate for helper extraction.         |
 
 ## Findings
 
@@ -585,6 +585,18 @@ Notes:
   single large file; it is several independent state models drifting apart.
 
 ## Quality Criteria For Future PRs
+
+### Latest Goal Note: Matrix Keyboard Routing Cue
+
+The TEC-1G webview now shows a passive Machine-panel cue when the Matrix
+Keyboard accordion is open. The cue marks the keypad as mouse-only and marks
+the Matrix Keyboard accordion header as active, but it does not introduce a
+second "matrix mode" setting. The accordion open state remains the single
+authority for physical keyboard routing.
+
+This is a deliberate state-management constraint: future matrix-keyboard UI
+work should keep routing indicators derived from the accordion/controller
+state instead of adding independent flags that can drift after webview reloads.
 
 ### Latest Goal Note: TEC-1G SYS_CTRL Bit Contract
 

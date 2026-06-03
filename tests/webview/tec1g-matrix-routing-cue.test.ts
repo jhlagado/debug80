@@ -1,0 +1,36 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { applyMatrixRoutingCue } from '../../webview/tec1g/matrix-routing-cue';
+
+describe('tec1g matrix routing cue', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    delete document.body.dataset.matrixKeyboardActive;
+  });
+
+  it('marks the keypad as mouse-only while the matrix keyboard owns physical keys', () => {
+    const appRoot = document.createElement('div');
+    const keypad = document.createElement('div');
+    const cue = document.createElement('div');
+    const header = document.createElement('button');
+    cue.id = 'keypadRoutingCue';
+    document.body.append(appRoot, keypad, cue, header);
+
+    applyMatrixRoutingCue({ appRoot, keypad, cue, header }, true);
+
+    expect(document.body.dataset.matrixKeyboardActive).toBe('true');
+    expect(appRoot.dataset.matrixKeyboardActive).toBe('true');
+    expect(keypad.classList.contains('keypad--keyboard-routed-to-matrix')).toBe(true);
+    expect(keypad.getAttribute('aria-describedby')).toBe('keypadRoutingCue');
+    expect(cue.hidden).toBe(false);
+    expect(header.classList.contains('matrix-keyboard-active')).toBe(true);
+
+    applyMatrixRoutingCue({ appRoot, keypad, cue, header }, false);
+
+    expect(document.body.dataset.matrixKeyboardActive).toBe('false');
+    expect(appRoot.dataset.matrixKeyboardActive).toBe('false');
+    expect(keypad.classList.contains('keypad--keyboard-routed-to-matrix')).toBe(false);
+    expect(keypad.hasAttribute('aria-describedby')).toBe(false);
+    expect(cue.hidden).toBe(true);
+    expect(header.classList.contains('matrix-keyboard-active')).toBe(false);
+  });
+});
