@@ -39,19 +39,19 @@ export interface ProjectProfileConfig {
   bundledAssets?: Record<string, BundledAssetReference>;
 }
 
-export type AzmRegisterCareMode = 'off' | 'audit' | 'warn' | 'error' | 'strict';
+export type AzmRegisterContractsMode = 'off' | 'audit' | 'warn' | 'error' | 'strict';
 
 export interface AzmLaunchOptions {
-  /** Register-care analysis mode passed to AZM. */
-  registerCare?: AzmRegisterCareMode;
-  /** Emit AZM register-care report artifacts. */
+  /** Register contracts analysis mode passed to AZM. */
+  registerContracts?: AzmRegisterContractsMode;
+  /** Emit AZM register contracts report artifacts. */
   emitRegisterReport?: boolean;
-  /** Emit inferred AZM register-care interface artifacts. */
+  /** Emit inferred AZM register contracts interface artifacts. */
   emitRegisterInterface?: boolean;
-  /** Use a built-in register-care profile such as MON-3. */
-  registerCareProfile?: 'mon3';
-  /** External .asmi register-care interface files. */
-  registerCareInterfaces?: string[];
+  /** Use a built-in register contracts profile such as MON-3. */
+  registerContractsProfile?: 'mon3';
+  /** External .asmi register contracts interface files. */
+  registerContractsInterfaces?: string[];
 }
 
 /**

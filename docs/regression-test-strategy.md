@@ -26,7 +26,7 @@ platform-specific emulation. No single test style can cover all of that reliably
 
 ### Launch and Assembly
 
-- AZM target assembles in-process and writes HEX, native D8, compact BIN, and optional register-care artifacts.
+- AZM target assembles in-process and writes HEX, native D8, compact BIN, and optional register contracts artifacts.
 - Sparse `ORG` programs preserve address-bearing HEX and compact raw BIN semantics.
 - Failed assembly reports structured diagnostics.
 

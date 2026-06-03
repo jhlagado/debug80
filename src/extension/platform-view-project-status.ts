@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
   PlatformId,
   ProjectStatusPayload,
 } from '../contracts/platform-view';
@@ -20,7 +20,7 @@ export interface PlatformViewProjectStatusContext {
   selectedWorkspace: vscode.WorkspaceFolder | undefined;
   currentPlatform: PlatformId | undefined;
   stopOnEntry: boolean;
-  azmRegisterCareMode?: AzmPanelRegisterCareMode;
+  azmRegisterContractsMode?: AzmPanelRegisterContractsMode;
   azmContractUpdateMode?: AzmPanelContractUpdateMode;
   coolTermAvailable?: boolean;
   hardwareStatusText?: string;
@@ -60,7 +60,7 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
-      azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+      azmRegisterContractsMode: ctx.azmRegisterContractsMode ?? 'enforce',
       azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     };
   }
@@ -81,7 +81,7 @@ export function buildPlatformViewProjectStatus(
       hasProject: false,
       platform: ctx.currentPlatform ?? 'simple',
       stopOnEntry: ctx.stopOnEntry,
-      azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+      azmRegisterContractsMode: ctx.azmRegisterContractsMode ?? 'enforce',
       azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     };
   }
@@ -100,11 +100,10 @@ export function buildPlatformViewProjectStatus(
     hasProject: true,
     platform,
     stopOnEntry: ctx.stopOnEntry,
-    azmRegisterCareMode: ctx.azmRegisterCareMode ?? 'enforce',
+    azmRegisterContractsMode: ctx.azmRegisterContractsMode ?? 'enforce',
     azmContractUpdateMode: ctx.azmContractUpdateMode ?? 'ask',
     coolTermAvailable: ctx.coolTermAvailable === true,
-    hardwareStatusText:
-      ctx.hardwareStatusText ?? buildDefaultHardwareStatus(hexArtifact),
+    hardwareStatusText: ctx.hardwareStatusText ?? buildDefaultHardwareStatus(hexArtifact),
     sourceMapStatusText: sourceMapStatus.text,
     sourceMapStatusState: sourceMapStatus.state,
     ...(hexArtifact.kind === 'found' || hexArtifact.kind === 'missing'
@@ -146,7 +145,9 @@ function resolveSourceMapStatus(
   return { text: 'Source map: current.', state: 'current' };
 }
 
-function buildDefaultHardwareStatus(hexArtifact: ReturnType<typeof resolveCoolTermHexArtifact>): string {
+function buildDefaultHardwareStatus(
+  hexArtifact: ReturnType<typeof resolveCoolTermHexArtifact>
+): string {
   if (hexArtifact.kind === 'found') {
     return `Ready to send ${path.basename(hexArtifact.path)} via CoolTerm.`;
   }

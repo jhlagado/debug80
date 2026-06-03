@@ -2,7 +2,7 @@ import type { Tec1Message } from '../platforms/tec1/ui-panel-messages';
 import type { Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
 
 export type PlatformId = 'simple' | 'tec1' | 'tec1g';
-export type AzmPanelRegisterCareMode = 'enforce' | 'audit' | 'off';
+export type AzmPanelRegisterContractsMode = 'enforce' | 'audit' | 'off';
 export type AzmPanelContractUpdateMode = 'ask' | 'auto' | 'never';
 
 export type ProjectStatusPayload = {
@@ -15,8 +15,8 @@ export type ProjectStatusPayload = {
   platform?: string;
   /** Panel stop-on-entry toggle for this window session (not read from or written to debug80.json). */
   stopOnEntry?: boolean;
-  /** Panel AZM register-care mode for this window session. */
-  azmRegisterCareMode?: AzmPanelRegisterCareMode;
+  /** Panel AZM register contracts mode for this window session. */
+  azmRegisterContractsMode?: AzmPanelRegisterContractsMode;
   /** Panel AZM contract-update mode for this window session. */
   azmContractUpdateMode?: AzmPanelContractUpdateMode;
   /** True when CoolTerm's localhost remote control socket responds to Debug80. */
@@ -52,7 +52,7 @@ export type PlatformViewControlMessage =
   | { type: 'setStopOnEntry'; stopOnEntry: boolean }
   | {
       type: 'setAzmOptions';
-      registerCareMode: AzmPanelRegisterCareMode;
+      registerContractsMode: AzmPanelRegisterContractsMode;
       contractUpdateMode: AzmPanelContractUpdateMode;
     }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }

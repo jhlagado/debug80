@@ -46,7 +46,7 @@ export type IncomingMessage =
       entrySource?: string;
       platform?: string;
       stopOnEntry?: boolean;
-      azmRegisterCareMode?: 'enforce' | 'audit' | 'off';
+      azmRegisterContractsMode?: 'enforce' | 'audit' | 'off';
       azmContractUpdateMode?: 'ask' | 'auto' | 'never';
       coolTermAvailable?: boolean;
       coolTermHexPath?: string;

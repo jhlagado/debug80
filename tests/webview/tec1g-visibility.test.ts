@@ -160,7 +160,7 @@ describe('tec1g UI visibility controls', () => {
   it('keeps AZM experiment controls on the project restart row', () => {
     expect(doc.querySelector('#accordion-project .azm-option-row')).not.toBeNull();
     expect(
-      Array.from(doc.querySelectorAll<HTMLOptionElement>('#azmRegisterCareMode option')).map(
+      Array.from(doc.querySelectorAll<HTMLOptionElement>('#azmRegisterContractsMode option')).map(
         (option) => option.value
       )
     ).toEqual(['enforce', 'audit', 'off']);

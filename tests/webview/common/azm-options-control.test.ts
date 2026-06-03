@@ -25,30 +25,30 @@ describe('azm options controls', () => {
       getState: () => null,
       setState: () => undefined,
     } satisfies VscodeApi;
-    const registerCare = selectWith(['enforce', 'audit', 'off']);
+    const registerContracts = selectWith(['enforce', 'audit', 'off']);
     const contractUpdates = selectWith(['ask', 'auto', 'never']);
 
-    const control = wireAzmOptionsControl(vscode, registerCare, contractUpdates);
+    const control = wireAzmOptionsControl(vscode, registerContracts, contractUpdates);
     control.applyProjectStatus({
       hasProject: true,
-      azmRegisterCareMode: 'audit',
+      azmRegisterContractsMode: 'audit',
       azmContractUpdateMode: 'never',
     });
 
-    expect(registerCare.disabled).toBe(false);
+    expect(registerContracts.disabled).toBe(false);
     expect(contractUpdates.disabled).toBe(false);
-    expect(registerCare.value).toBe('audit');
+    expect(registerContracts.value).toBe('audit');
     expect(contractUpdates.value).toBe('never');
     expect(messages).toEqual([]);
 
-    registerCare.value = 'enforce';
+    registerContracts.value = 'enforce';
     contractUpdates.value = 'ask';
-    registerCare.dispatchEvent(new Event('change'));
+    registerContracts.dispatchEvent(new Event('change'));
 
     expect(messages).toEqual([
       {
         type: 'setAzmOptions',
-        registerCareMode: 'enforce',
+        registerContractsMode: 'enforce',
         contractUpdateMode: 'ask',
       },
     ]);
@@ -61,15 +61,15 @@ describe('azm options controls', () => {
       getState: () => null,
       setState: () => undefined,
     } satisfies VscodeApi;
-    const registerCare = selectWith(['enforce', 'audit', 'off']);
+    const registerContracts = selectWith(['enforce', 'audit', 'off']);
     const contractUpdates = selectWith(['ask', 'auto', 'never']);
 
-    const control = wireAzmOptionsControl(vscode, registerCare, contractUpdates);
+    const control = wireAzmOptionsControl(vscode, registerContracts, contractUpdates);
     control.applyProjectStatus({ hasProject: false });
 
-    expect(registerCare.disabled).toBe(true);
+    expect(registerContracts.disabled).toBe(true);
     expect(contractUpdates.disabled).toBe(true);
-    expect(registerCare.value).toBe('enforce');
+    expect(registerContracts.value).toBe('enforce');
     expect(contractUpdates.value).toBe('ask');
   });
 });

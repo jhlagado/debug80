@@ -120,7 +120,7 @@ describe('platform-view-project-status', () => {
       hasProject: false,
       platform: 'simple',
       stopOnEntry: false,
-      azmRegisterCareMode: 'enforce',
+      azmRegisterContractsMode: 'enforce',
       azmContractUpdateMode: 'ask',
     });
   });
@@ -135,7 +135,7 @@ describe('platform-view-project-status', () => {
           selectedWorkspace: project,
           currentPlatform: 'simple',
           stopOnEntry: true,
-          azmRegisterCareMode: 'audit',
+          azmRegisterContractsMode: 'audit',
           azmContractUpdateMode: 'never',
         },
         [project]
@@ -149,10 +149,11 @@ describe('platform-view-project-status', () => {
       hasProject: true,
       platform: 'tec1g',
       stopOnEntry: true,
-      azmRegisterCareMode: 'audit',
+      azmRegisterContractsMode: 'audit',
       azmContractUpdateMode: 'never',
       coolTermAvailable: false,
-      hardwareStatusText: 'Select a target with a buildable HEX artifact before sending to hardware.',
+      hardwareStatusText:
+        'Select a target with a buildable HEX artifact before sending to hardware.',
       sourceMapStatusText: 'Source map: missing, build the selected target.',
       sourceMapStatusState: 'missing',
       targetName: 'app',

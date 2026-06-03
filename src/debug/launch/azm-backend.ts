@@ -36,13 +36,13 @@ interface D8mArtifact {
   json: unknown;
 }
 
-interface RegisterCareReportArtifact {
-  kind: 'register-care-report';
+interface RegisterContractsReportArtifact {
+  kind: 'register-contracts-report';
   text: string;
 }
 
-interface RegisterCareInterfaceArtifact {
-  kind: 'register-care-interface';
+interface RegisterContractsInterfaceArtifact {
+  kind: 'register-contracts-interface';
   text: string;
 }
 
@@ -50,8 +50,8 @@ type Artifact =
   | HexArtifact
   | BinArtifact
   | D8mArtifact
-  | RegisterCareReportArtifact
-  | RegisterCareInterfaceArtifact;
+  | RegisterContractsReportArtifact
+  | RegisterContractsInterfaceArtifact;
 
 interface CompilerOptions {
   outputType: 'bin' | 'hex';
@@ -63,11 +63,11 @@ interface CompilerOptions {
   emitBin?: boolean;
   emitHex?: boolean;
   emitD8m?: boolean;
-  registerCare?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
+  registerContracts?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
   emitRegisterReport?: boolean;
   emitRegisterInterface?: boolean;
-  registerCareProfile?: 'mon3';
-  registerCareInterfaces?: string[];
+  registerContractsProfile?: 'mon3';
+  registerContractsInterfaces?: string[];
 }
 
 interface EmittedByteMap {
@@ -154,7 +154,9 @@ function formatDiagnostic(diagnostic: Diagnostic): string {
       ? `${file !== '' ? file : 'azm'}:${diagnostic.line}:${diagnostic.column}`
       : diagnostic.line !== undefined
         ? `${file !== '' ? file : 'azm'}:${diagnostic.line}`
-        : (file !== '' ? file : 'azm');
+        : file !== ''
+          ? file
+          : 'azm';
   return `${location}: ${diagnosticSeverity(diagnostic)}: [${diagnosticId(diagnostic)}] ${diagnosticMessage(diagnostic)}`;
 }
 
@@ -219,8 +221,8 @@ function resolveBinPath(hexPath: string): string {
   return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
 }
 
-function resolveRegisterCareReportPath(hexPath: string): string {
-  return `${artifactBase(hexPath)}.regcare.txt`;
+function resolveRegisterContractsReportPath(hexPath: string): string {
+  return `${artifactBase(hexPath)}.regcontracts.txt`;
 }
 
 function compactBinaryFromEmittedMap(map: EmittedByteMap, from = 0x0000, to = 0xffff): Uint8Array {
@@ -327,11 +329,7 @@ export class AzmBackend implements AssemblerBackend {
         { formats: modules.defaultFormatWriters }
       );
       emitDiagnostics(compiled.diagnostics, options.onOutput);
-      result = compileResultToAssembleResult(
-        compiled.diagnostics,
-        compiled.artifacts,
-        sourceRoot
-      );
+      result = compileResultToAssembleResult(compiled.diagnostics, compiled.artifacts, sourceRoot);
     } catch (err) {
       const message = `azm failed: ${err instanceof Error ? err.message : String(err)}`;
       options.onOutput?.(`${message}\n`);
@@ -355,9 +353,7 @@ export class AzmBackend implements AssemblerBackend {
     }
 
     if (!hasIntelHexDataRecords(hex.text)) {
-      return azmFailure(
-        `azm succeeded but produced no HEX data records for "${options.asmPath}".`
-      );
+      return azmFailure(`azm succeeded but produced no HEX data records for "${options.asmPath}".`);
     }
 
     writeTextArtifact(options.hexPath, hex.text);
@@ -369,14 +365,17 @@ export class AzmBackend implements AssemblerBackend {
 
     writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8.json);
 
-    const registerCareReport = findArtifact(artifacts, 'register-care-report');
-    if (registerCareReport !== undefined) {
-      writeTextArtifact(resolveRegisterCareReportPath(options.hexPath), registerCareReport.text);
+    const registerContractsReport = findArtifact(artifacts, 'register-contracts-report');
+    if (registerContractsReport !== undefined) {
+      writeTextArtifact(
+        resolveRegisterContractsReportPath(options.hexPath),
+        registerContractsReport.text
+      );
     }
 
-    const registerCareInterface = findArtifact(artifacts, 'register-care-interface');
-    if (registerCareInterface !== undefined) {
-      writeTextArtifact(`${base}.asmi`, registerCareInterface.text);
+    const registerContractsInterface = findArtifact(artifacts, 'register-contracts-interface');
+    if (registerContractsInterface !== undefined) {
+      writeTextArtifact(`${base}.asmi`, registerContractsInterface.text);
     }
 
     return {

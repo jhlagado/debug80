@@ -4,7 +4,7 @@
 
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
   ProjectStatusPayload,
 } from '../../src/contracts/platform-view';
 import type { VscodeApi } from './vscode';
@@ -13,18 +13,22 @@ export type AzmOptionsControl = {
   applyProjectStatus: (
     payload: Pick<
       ProjectStatusPayload,
-      'hasProject' | 'azmRegisterCareMode' | 'azmContractUpdateMode'
+      'hasProject' | 'azmRegisterContractsMode' | 'azmContractUpdateMode'
     >
   ) => void;
   dispose: () => void;
 };
 
-const REGISTER_CARE_MODES = new Set<AzmPanelRegisterCareMode>(['enforce', 'audit', 'off']);
+const REGISTER_CONTRACTS_MODES = new Set<AzmPanelRegisterContractsMode>([
+  'enforce',
+  'audit',
+  'off',
+]);
 const CONTRACT_UPDATE_MODES = new Set<AzmPanelContractUpdateMode>(['ask', 'auto', 'never']);
 
-function registerCareModeFrom(value: string): AzmPanelRegisterCareMode {
-  return REGISTER_CARE_MODES.has(value as AzmPanelRegisterCareMode)
-    ? (value as AzmPanelRegisterCareMode)
+function registerContractsModeFrom(value: string): AzmPanelRegisterContractsMode {
+  return REGISTER_CONTRACTS_MODES.has(value as AzmPanelRegisterContractsMode)
+    ? (value as AzmPanelRegisterContractsMode)
     : 'enforce';
 }
 
@@ -36,10 +40,10 @@ function contractUpdateModeFrom(value: string): AzmPanelContractUpdateMode {
 
 export function wireAzmOptionsControl(
   vscode: VscodeApi,
-  registerCareSelect: HTMLSelectElement | null,
+  registerContractsSelect: HTMLSelectElement | null,
   contractUpdateSelect: HTMLSelectElement | null
 ): AzmOptionsControl {
-  if (registerCareSelect === null || contractUpdateSelect === null) {
+  if (registerContractsSelect === null || contractUpdateSelect === null) {
     return {
       applyProjectStatus: () => undefined,
       dispose: () => undefined,
@@ -54,7 +58,7 @@ export function wireAzmOptionsControl(
     }
     vscode.postMessage({
       type: 'setAzmOptions',
-      registerCareMode: registerCareModeFrom(registerCareSelect.value),
+      registerContractsMode: registerContractsModeFrom(registerContractsSelect.value),
       contractUpdateMode: contractUpdateModeFrom(contractUpdateSelect.value),
     });
   };
@@ -62,25 +66,25 @@ export function wireAzmOptionsControl(
   const applyProjectStatus = (
     payload: Pick<
       ProjectStatusPayload,
-      'hasProject' | 'azmRegisterCareMode' | 'azmContractUpdateMode'
+      'hasProject' | 'azmRegisterContractsMode' | 'azmContractUpdateMode'
     >
   ): void => {
     const hasProject = payload.hasProject === true;
-    registerCareSelect.disabled = !hasProject;
+    registerContractsSelect.disabled = !hasProject;
     contractUpdateSelect.disabled = !hasProject;
     applying = true;
-    registerCareSelect.value = payload.azmRegisterCareMode ?? 'enforce';
+    registerContractsSelect.value = payload.azmRegisterContractsMode ?? 'enforce';
     contractUpdateSelect.value = payload.azmContractUpdateMode ?? 'ask';
     applying = false;
   };
 
-  registerCareSelect.addEventListener('change', postCurrent);
+  registerContractsSelect.addEventListener('change', postCurrent);
   contractUpdateSelect.addEventListener('change', postCurrent);
 
   return {
     applyProjectStatus,
     dispose: () => {
-      registerCareSelect.removeEventListener('change', postCurrent);
+      registerContractsSelect.removeEventListener('change', postCurrent);
       contractUpdateSelect.removeEventListener('change', postCurrent);
     },
   };

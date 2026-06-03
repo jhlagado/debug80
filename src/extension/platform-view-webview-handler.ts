@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
   PlatformId,
   PlatformViewInboundMessage,
 } from '../contracts/platform-view';
@@ -28,7 +28,7 @@ export interface PlatformViewWebviewHandlerContext {
   handleSaveProjectConfig: (platform: string) => void;
   handleSetStopOnEntry: (value: boolean) => void;
   handleSetAzmOptions: (
-    registerCareMode: AzmPanelRegisterCareMode,
+    registerContractsMode: AzmPanelRegisterContractsMode,
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => void;
   handleSetHardwareStatus: (message: string | undefined) => void;
@@ -61,8 +61,8 @@ export function createPlatformViewWebviewHandler(
         context.handleSetStopOnEntry(value);
         return Promise.resolve();
       },
-      handleSetAzmOptions: (registerCareMode, contractUpdateMode) => {
-        context.handleSetAzmOptions(registerCareMode, contractUpdateMode);
+      handleSetAzmOptions: (registerContractsMode, contractUpdateMode) => {
+        context.handleSetAzmOptions(registerContractsMode, contractUpdateMode);
         return Promise.resolve();
       },
       handleSelectTarget: async (args) => {

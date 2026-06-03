@@ -4,7 +4,7 @@
 
 import {
   contractUpdateModeFrom,
-  registerCareModeFrom,
+  registerContractsModeFrom,
   rootPathFrom,
   targetNameFrom,
   type PlatformViewMessage,
@@ -92,14 +92,14 @@ async function handleSetAzmOptionsMessage(
   msg: PlatformViewMessage,
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
-  const registerCareMode = registerCareModeFrom(
-    (msg as { registerCareMode?: unknown }).registerCareMode
+  const registerContractsMode = registerContractsModeFrom(
+    (msg as { registerContractsMode?: unknown }).registerContractsMode
   );
   const contractUpdateMode = contractUpdateModeFrom(
     (msg as { contractUpdateMode?: unknown }).contractUpdateMode
   );
-  if (registerCareMode !== undefined && contractUpdateMode !== undefined) {
-    await deps.handleSetAzmOptions(registerCareMode, contractUpdateMode);
+  if (registerContractsMode !== undefined && contractUpdateMode !== undefined) {
+    await deps.handleSetAzmOptions(registerContractsMode, contractUpdateMode);
   }
 }
 
@@ -134,4 +134,3 @@ async function handleStartDebugMessage(
   const rootPath = rootPathFrom(msg);
   await deps.handleStartDebug(rootPath !== undefined ? { rootPath } : undefined);
 }
-

@@ -107,7 +107,7 @@ describe('azm-backend', () => {
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
   });
 
-  it('passes AZM register-care launch options and writes register reports', async () => {
+  it('passes AZM register contracts launch options and writes register reports', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');
     const outDir = path.join(tmpDir, 'build');
@@ -119,7 +119,7 @@ describe('azm-backend', () => {
       artifacts: [
         { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-        { kind: 'register-care-report', text: 'Register care report\n' },
+        { kind: 'register-contracts-report', text: 'Register contracts report\n' },
       ],
     });
 
@@ -127,9 +127,9 @@ describe('azm-backend', () => {
       asmPath,
       hexPath,
       azm: {
-        registerCare: 'audit',
+        registerContracts: 'audit',
         emitRegisterReport: true,
-        registerCareProfile: 'mon3',
+        registerContractsProfile: 'mon3',
       },
     });
 
@@ -137,14 +137,14 @@ describe('azm-backend', () => {
     expect(compile).toHaveBeenCalledWith(
       asmPath,
       expect.objectContaining({
-        registerCare: 'audit',
+        registerContracts: 'audit',
         emitRegisterReport: true,
-        registerCareProfile: 'mon3',
+        registerContractsProfile: 'mon3',
       }),
       expect.objectContaining({ formats: expect.any(Object) })
     );
-    expect(fs.readFileSync(path.join(outDir, 'prog.regcare.txt'), 'utf-8')).toBe(
-      'Register care report\n'
+    expect(fs.readFileSync(path.join(outDir, 'prog.regcontracts.txt'), 'utf-8')).toBe(
+      'Register contracts report\n'
     );
   });
 

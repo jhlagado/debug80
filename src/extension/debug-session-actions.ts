@@ -17,28 +17,38 @@ import {
 import { WorkspaceSelectionController } from './workspace-selection';
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
 } from '../contracts/platform-view';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
-  azmRegisterCareMode: AzmPanelRegisterCareMode;
+  azmRegisterContractsMode: AzmPanelRegisterContractsMode;
   azmContractUpdateMode: AzmPanelContractUpdateMode;
 };
 
-function resolveAzmLaunchOptions(options: PanelLaunchOptions): {
-  registerCare: 'off' | 'audit' | 'error';
-  emitRegisterReport?: boolean;
-  registerCareProfile?: 'mon3';
-} | undefined {
+function resolveAzmLaunchOptions(options: PanelLaunchOptions):
+  | {
+      registerContracts: 'off' | 'audit' | 'error';
+      emitRegisterReport?: boolean;
+      registerContractsProfile?: 'mon3';
+    }
+  | undefined {
   void options.azmContractUpdateMode;
-  if (options.azmRegisterCareMode === 'enforce') {
-    return { registerCare: 'error', emitRegisterReport: true, registerCareProfile: 'mon3' };
+  if (options.azmRegisterContractsMode === 'enforce') {
+    return {
+      registerContracts: 'error',
+      emitRegisterReport: true,
+      registerContractsProfile: 'mon3',
+    };
   }
-  if (options.azmRegisterCareMode === 'audit') {
-    return { registerCare: 'audit', emitRegisterReport: true, registerCareProfile: 'mon3' };
+  if (options.azmRegisterContractsMode === 'audit') {
+    return {
+      registerContracts: 'audit',
+      emitRegisterReport: true,
+      registerContractsProfile: 'mon3',
+    };
   }
-  return { registerCare: 'off' };
+  return { registerContracts: 'off' };
 }
 
 export async function startCurrentProjectDebugging(

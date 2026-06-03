@@ -486,9 +486,9 @@ describe('launch-args', () => {
       configPath,
       JSON.stringify({
         azm: {
-          registerCare: 'audit',
+          registerContracts: 'audit',
           emitRegisterReport: false,
-          registerCareProfile: 'mon3',
+          registerContractsProfile: 'mon3',
         },
         targets: {
           matrix: {
@@ -506,16 +506,16 @@ describe('launch-args', () => {
       {
         projectConfig: configPath,
         azm: {
-          registerCare: 'error',
+          registerContracts: 'error',
         },
       } as LaunchRequestArguments,
       { resolveBaseDir: () => dir }
     );
 
     expect(merged.azm).toEqual({
-      registerCare: 'error',
+      registerContracts: 'error',
       emitRegisterReport: true,
-      registerCareProfile: 'mon3',
+      registerContractsProfile: 'mon3',
     });
   });
 

@@ -198,7 +198,7 @@ If `assemble !== false` and `sourceFile`/`asm` is provided:
 
 - The selected backend assembles the program to HEX, BIN, and D8 artifacts.
 - Debug80 links the `@jhlagado/azm` compiler directly through its public library API and writes
-  HEX, compact BIN, D8, and register-care artifacts itself.
+  HEX, compact BIN, D8, and register contracts artifacts itself.
 - The backend interface is async even when a backend is currently synchronous. This keeps launch and
   warm-rebuild semantics consistent and avoids shelling out for ESM-only libraries.
 - Errors are printed to the Debug Console and returned as structured assembly diagnostics when possible.
@@ -294,7 +294,7 @@ documents. These providers load the active target's D8 map and use
 text. User-facing messages call this a "source map": if no map exists, the user
 must build the target before source-map-backed navigation is available; if the
 map appears older than mapped source files, Debug80 warns but still uses it.
-Symbol hovers also recognize nearby AZMDoc register-care contracts and render
+Symbol hovers also recognize nearby AZMDoc register contracts and render
 both current multi-line contract comments and future compact single-line
 contract comments as one concise hover line.
 
@@ -334,7 +334,7 @@ available, and source location.
 The VS Code Watch panel uses the same paused runtime state plus active D8 source
 map symbols to evaluate small Z80-focused expressions. Registers are available
 with their normal names, including alternates such as `AF'` and `BC'`. Flags use
-AZM register-care names (`zero`, `carry`, `sign`, `parity`, `halfCarry`) to avoid
+AZM register contracts names (`zero`, `carry`, `sign`, `parity`, `halfCarry`) to avoid
 confusion with registers. Square brackets read one byte from memory (`[HL]`,
 `[PACMO_LIVES]`, `[IX + 4]`), while parentheses are reserved for grouping.
 Arithmetic supports `+ - * / %`; bitwise operators are `& | ^ ~`; comparisons

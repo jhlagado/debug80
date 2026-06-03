@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
 } from '../contracts/platform-view';
 import { PlatformViewProvider } from './platform-view-provider';
 import { ProjectTargetSelectionController } from './project-target-selection';
@@ -149,12 +149,12 @@ export function registerDebugLifecycleCommands(options: {
 
 function panelLaunchOptions(platformViewProvider: PlatformViewProvider): {
   stopOnEntry: boolean;
-  azmRegisterCareMode: AzmPanelRegisterCareMode;
+  azmRegisterContractsMode: AzmPanelRegisterContractsMode;
   azmContractUpdateMode: AzmPanelContractUpdateMode;
 } {
   return {
     stopOnEntry: platformViewProvider.stopOnEntry,
-    azmRegisterCareMode: platformViewProvider.azmRegisterCareMode ?? 'enforce',
+    azmRegisterContractsMode: platformViewProvider.azmRegisterContractsMode ?? 'enforce',
     azmContractUpdateMode: platformViewProvider.azmContractUpdateMode ?? 'ask',
   };
 }

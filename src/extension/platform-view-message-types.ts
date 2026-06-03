@@ -4,7 +4,7 @@
 
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
   PlatformId as PlatformViewPlatform,
   PlatformViewInboundMessage as PlatformViewMessage,
 } from '../contracts/platform-view';
@@ -19,7 +19,7 @@ export interface PlatformViewMessageDependencies {
   handleSaveProjectConfig: (platform: string) => PromiseLike<void>;
   handleSetStopOnEntry: (value: boolean) => PromiseLike<void>;
   handleSetAzmOptions: (
-    registerCareMode: AzmPanelRegisterCareMode,
+    registerContractsMode: AzmPanelRegisterContractsMode,
     contractUpdateMode: AzmPanelContractUpdateMode
   ) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
@@ -52,11 +52,12 @@ export function targetNameFrom(msg: PlatformViewMessage): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export function registerCareModeFrom(value: unknown): AzmPanelRegisterCareMode | undefined {
+export function registerContractsModeFrom(
+  value: unknown
+): AzmPanelRegisterContractsMode | undefined {
   return value === 'enforce' || value === 'audit' || value === 'off' ? value : undefined;
 }
 
 export function contractUpdateModeFrom(value: unknown): AzmPanelContractUpdateMode | undefined {
   return value === 'ask' || value === 'auto' || value === 'never' ? value : undefined;
 }
-

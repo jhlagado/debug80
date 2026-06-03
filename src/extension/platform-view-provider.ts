@@ -15,7 +15,7 @@ import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import type {
   AzmPanelContractUpdateMode,
-  AzmPanelRegisterCareMode,
+  AzmPanelRegisterContractsMode,
   PlatformId,
 } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
@@ -80,8 +80,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
-  /** Session-scoped AZM register-care mode. */
-  public azmRegisterCareMode: AzmPanelRegisterCareMode = 'enforce';
+  /** Session-scoped AZM register contracts mode. */
+  public azmRegisterContractsMode: AzmPanelRegisterContractsMode = 'enforce';
   /** Session-scoped AZM contract-update preference. */
   public azmContractUpdateMode: AzmPanelContractUpdateMode = 'ask';
 
@@ -265,8 +265,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         getActiveBundle: (platform) => this.getActiveBundle(platform),
         handleSaveProjectConfig: (platform) => this.handleSaveProjectConfig(platform),
         handleSetStopOnEntry: (value) => this.handleSetStopOnEntry(value),
-        handleSetAzmOptions: (registerCareMode, contractUpdateMode) =>
-          this.handleSetAzmOptions(registerCareMode, contractUpdateMode),
+        handleSetAzmOptions: (registerContractsMode, contractUpdateMode) =>
+          this.handleSetAzmOptions(registerContractsMode, contractUpdateMode),
         handleSetHardwareStatus: (message) => this.handleSetHardwareStatus(message),
         handleRequestProjectStatus: () => this.postProjectStatus(),
         isPanelVisible: () => this.view?.visible === true,
@@ -407,10 +407,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private handleSetAzmOptions(
-    registerCareMode: AzmPanelRegisterCareMode,
+    registerContractsMode: AzmPanelRegisterContractsMode,
     contractUpdateMode: AzmPanelContractUpdateMode
   ): void {
-    this.azmRegisterCareMode = registerCareMode;
+    this.azmRegisterContractsMode = registerContractsMode;
     this.azmContractUpdateMode = contractUpdateMode;
     this.postProjectStatus();
   }
@@ -435,7 +435,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         selectedWorkspace: this.selectedWorkspace,
         currentPlatform: this.currentPlatform,
         stopOnEntry: this.stopOnEntry,
-        azmRegisterCareMode: this.azmRegisterCareMode,
+        azmRegisterContractsMode: this.azmRegisterContractsMode,
         azmContractUpdateMode: this.azmContractUpdateMode,
         coolTermAvailable: this.coolTermAvailable,
         ...(this.hardwareStatusText !== undefined

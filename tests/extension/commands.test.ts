@@ -1491,7 +1491,7 @@ describe('registerExtensionCommands', () => {
     );
   });
 
-  it('restarts with the current AZM register-care enforcement state', async () => {
+  it('restarts with the current AZM register contracts enforcement state', async () => {
     const vscode = await import('vscode');
 
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
@@ -1504,7 +1504,7 @@ describe('registerExtensionCommands', () => {
       platformViewProvider: {
         refreshIdleView: vi.fn(),
         stopOnEntry: false,
-        azmRegisterCareMode: 'enforce',
+        azmRegisterContractsMode: 'enforce',
         azmContractUpdateMode: 'ask',
       } as never,
       workspaceSelection: {
@@ -1521,7 +1521,7 @@ describe('registerExtensionCommands', () => {
     stopDebugging.mockResolvedValueOnce(undefined);
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
       type: 'z80',
-      id: 'session-azm-register-care',
+      id: 'session-azm-register contracts',
     };
 
     const result = await restartDebug?.();
@@ -1534,9 +1534,9 @@ describe('registerExtensionCommands', () => {
         request: 'launch',
         projectConfig: projectConfigPath,
         azm: {
-          registerCare: 'error',
+          registerContracts: 'error',
           emitRegisterReport: true,
-          registerCareProfile: 'mon3',
+          registerContractsProfile: 'mon3',
         },
       })
     );

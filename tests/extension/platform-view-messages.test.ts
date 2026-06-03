@@ -27,7 +27,7 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'configureProject' }, deps);
     await handlePlatformViewMessage({ type: 'setStopOnEntry', stopOnEntry: true }, deps);
     await handlePlatformViewMessage(
-      { type: 'setAzmOptions', registerCareMode: 'audit', contractUpdateMode: 'never' },
+      { type: 'setAzmOptions', registerContractsMode: 'audit', contractUpdateMode: 'never' },
       deps
     );
     await handlePlatformViewMessage(
@@ -67,7 +67,10 @@ describe('platform-view message routing', () => {
   it('swallows malformed project control messages instead of delegating them', async () => {
     const deps = createPlatformViewDependencies('tec1g');
 
-    await handlePlatformViewMessage({ type: 'setAzmOptions', registerCareMode: 'strict' }, deps);
+    await handlePlatformViewMessage(
+      { type: 'setAzmOptions', registerContractsMode: 'strict' },
+      deps
+    );
     await handlePlatformViewMessage({ type: 'saveProjectConfig', platform: 12 }, deps);
 
     expect(deps.handleSetAzmOptions).not.toHaveBeenCalled();

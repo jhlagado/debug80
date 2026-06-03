@@ -55,8 +55,8 @@ const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLBu
 const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
 const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
 const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
-const azmRegisterCareModeSelect = document.getElementById(
-  'azmRegisterCareMode'
+const azmRegisterContractsModeSelect = document.getElementById(
+  'azmRegisterContractsMode'
 ) as HTMLSelectElement | null;
 const azmContractUpdateModeSelect = document.getElementById(
   'azmContractUpdateMode'
@@ -111,7 +111,7 @@ const sessionStatusController = createSessionStatusController(vscode, restartDeb
 const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
 const azmOptionsControl = wireAzmOptionsControl(
   vscode,
-  azmRegisterCareModeSelect,
+  azmRegisterContractsModeSelect,
   azmContractUpdateModeSelect
 );
 
@@ -310,7 +310,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     });
     azmOptionsControl.applyProjectStatus({
       hasProject: initialized,
-      azmRegisterCareMode: message.azmRegisterCareMode,
+      azmRegisterContractsMode: message.azmRegisterContractsMode,
       azmContractUpdateMode: message.azmContractUpdateMode,
     });
     return;

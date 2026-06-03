@@ -147,7 +147,7 @@ JavaScript-like expressions, it accepts a small Z80-focused expression language
 for runtime state:
 
 - registers such as `A`, `HL`, `IX`, `SP`, `PC`, `AF'`, and `BC'`
-- AZM register-care flag names such as `zero`, `carry`, `sign`, `parity`, and
+- AZM register contracts flag names such as `zero`, `carry`, `sign`, `parity`, and
   `halfCarry`
 - active source-map symbols such as `PACMO_LIVES` or `MainLoop`
 - byte memory reads using square brackets, such as `[HL]`, `[PACMO_LIVES]`, and
@@ -352,18 +352,18 @@ is very clean.
 
 ## Build And AZM Integration
 
-### Register Care UI
+### Register Contracts UI
 
-AZM register-care analysis is one of the most promising quality features, but
+AZM register contracts analysis is one of the most promising quality features, but
 it should be presented simply. A normal user should not need to understand every
 AZM switch.
 
 The visible mode could be:
 
-- Enforce: compile with register-care errors enabled and block launch on real
+- Enforce: compile with register contracts errors enabled and block launch on real
   errors.
 - Audit: generate findings and reports without blocking launch.
-- Off: disable register-care checking.
+- Off: disable register contracts checking.
 
 Contract updates should be a separate action. Restart/build should normally be
 read-only. If Debug80 offers to update AZMDoc contracts, it should preview or
@@ -375,7 +375,7 @@ rewrites source code.
 ### Artifact Browser
 
 The Project panel could expose build artifacts: HEX, BIN, D8 map,
-register-care report, lowered source, and any future AZM reports.
+register contracts report, lowered source, and any future AZM reports.
 
 This should stay compact. The point is not to create a file manager inside the
 debugger. The point is to make the important generated outputs discoverable and
