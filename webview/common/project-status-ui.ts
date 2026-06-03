@@ -5,9 +5,16 @@
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import type { VscodeApi } from '../common/vscode';
 import { createProjectRootButtonController } from '../common/project-root-button';
-import { resolveProjectViewState } from '../common/project-state';
-import { resolveSetupCardState } from '../common/setup-card-state';
-import { sendCreateProject } from '../common/create-project';
+import {
+  createProjectAction,
+  createProjectPanelState,
+  selectTargetAction,
+  sendHexAction,
+  setupCardForProjectPanel,
+  setupPrimaryAction as createSetupPrimaryAction,
+  type ProjectPanelAction,
+  type ProjectPanelState,
+} from '../common/project-panel-state';
 import { sendButtonLabel, setTargetOptions } from './project-status-targets';
 
 export type ProjectStatusUiElements = {
@@ -24,18 +31,111 @@ export type ProjectStatusUiElements = {
   getPlatform?: () => string | undefined;
 };
 
+type ApplyProjectStatusPayload = {
+  rootPath?: ProjectStatusPayload['rootPath'];
+  roots?: ProjectStatusPayload['roots'];
+  targets?: ProjectStatusPayload['targets'];
+  targetName?: ProjectStatusPayload['targetName'];
+  projectState?: ProjectStatusPayload['projectState'];
+  platform?: ProjectStatusPayload['platform'];
+  coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
+  coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
+  hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+  sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
+  sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
+};
+
 export type ProjectStatusUi = {
-  applyProjectStatus: (payload: {
-    rootPath?: ProjectStatusPayload['rootPath'];
-    roots?: ProjectStatusPayload['roots'];
-    targets?: ProjectStatusPayload['targets'];
-    targetName?: ProjectStatusPayload['targetName'];
-    projectState?: ProjectStatusPayload['projectState'];
-    sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
-    sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
-  }) => void;
+  applyProjectStatus: (payload: ApplyProjectStatusPayload) => void;
   dispose: () => void;
 };
+
+function applyTargetOptions(
+  targetSelect: HTMLSelectElement | null,
+  state: ProjectPanelState
+): void {
+  if (targetSelect) {
+    setTargetOptions(
+      targetSelect,
+      state.kind === 'initialized' ? state.targets : [],
+      state.targetName
+    );
+  }
+}
+
+function updateSendHexButton(
+  button: HTMLButtonElement | null | undefined,
+  state: ProjectPanelState
+): void {
+  if (!button) {
+    return;
+  }
+  const initializedProject = state.kind === 'initialized';
+  const canSend =
+    initializedProject && Boolean(state.targetName) && Boolean(state.coolTermHexPath);
+  button.hidden = !initializedProject;
+  button.disabled = !canSend;
+  button.textContent = sendButtonLabel(state.platform);
+  button.title =
+    state.coolTermHexPath !== undefined
+      ? `Send ${state.coolTermHexPath} to the board via CoolTerm`
+      : 'Build the selected target before sending to the board';
+}
+
+function updateInitializedButton(
+  button: HTMLButtonElement | null | undefined,
+  initialized: boolean
+): void {
+  if (button) {
+    button.hidden = !initialized;
+    button.disabled = !initialized;
+  }
+}
+
+function updateStatusLine(
+  line: HTMLElement | null | undefined,
+  text: string,
+  visible: boolean
+): void {
+  if (line) {
+    line.textContent = text;
+    line.hidden = !visible || text.length === 0;
+  }
+}
+
+function updateSourceMapStatusLine(
+  line: HTMLElement | null | undefined,
+  state: ProjectPanelState,
+  initialized: boolean
+): void {
+  if (line) {
+    line.dataset.sourceMapStatus = state.sourceMapStatusState;
+  }
+  updateStatusLine(line, state.sourceMapStatusText, initialized);
+}
+
+function updateSetupCard(
+  setupCard: HTMLElement | null,
+  setupCardText: HTMLElement | null,
+  setupPrimaryAction: HTMLButtonElement | null,
+  state: ProjectPanelState
+): void {
+  if (!setupCard || !setupCardText || !setupPrimaryAction) {
+    return;
+  }
+  const setupState = setupCardForProjectPanel(state);
+  if (setupState === null) {
+    setupCard.hidden = true;
+    return;
+  }
+  setupCard.hidden = false;
+  setupCardText.textContent = setupState.text;
+  // When createProject is the pending action, platformInitButton is the primary CTA;
+  // hide the setup card button to avoid showing two equivalent "Initialize" actions.
+  const isCreateProject = setupState.primaryAction === 'createProject';
+  setupPrimaryAction.hidden = isCreateProject;
+  setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
+}
 
 /**
  * Wires workspace/target controls and returns `applyProjectStatus` for extension messages.
@@ -61,133 +161,54 @@ export function createProjectStatusUi(
     getPlatform,
   } = elements;
 
-  let currentRootPath = '';
-  let currentRoots: Array<{ name: string; path: string; hasProject: boolean }> = [];
-  let setupPrimaryActionType: 'openWorkspaceFolder' | 'selectProject' | 'createProject' =
-    'openWorkspaceFolder';
+  let currentState: ProjectPanelState = createProjectPanelState({ projectState: 'noWorkspace' });
 
   const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
 
+  function postProjectAction(action: ProjectPanelAction | undefined): void {
+    if (action !== undefined) {
+      vscode.postMessage(action);
+    }
+  }
+
+  function selectedPlatform(): string {
+    return getPlatform?.() ?? platform;
+  }
+
   setupPrimaryAction?.addEventListener('click', () => {
-    if (setupPrimaryActionType === 'openWorkspaceFolder') {
-      vscode.postMessage({ type: 'openWorkspaceFolder' });
-      return;
-    }
-    if (setupPrimaryActionType === 'selectProject') {
-      vscode.postMessage({ type: 'selectProject' });
-      return;
-    }
-    sendCreateProject(vscode, getPlatform?.() ?? platform, currentRootPath || undefined);
+    postProjectAction(createSetupPrimaryAction(currentState, selectedPlatform()));
   });
 
   platformInitButton?.addEventListener('click', () => {
-    sendCreateProject(vscode, getPlatform?.() ?? platform, currentRootPath || undefined);
+    postProjectAction(createProjectAction(currentState, selectedPlatform()));
   });
 
   homeTargetSelect?.addEventListener('change', () => {
-    const targetName = homeTargetSelect.value;
-    if (!targetName) {
-      return;
-    }
-    vscode.postMessage({
-      type: 'selectTarget',
-      rootPath: currentRootPath,
-      targetName,
-    });
+    postProjectAction(selectTargetAction(currentState, homeTargetSelect.value));
   });
 
   sendHexToBoardButton?.addEventListener('click', () => {
-    vscode.postMessage({
-      type: 'sendHexViaCoolTerm',
-      rootPath: currentRootPath,
-      targetName: homeTargetSelect?.value || undefined,
-    });
+    postProjectAction(sendHexAction(currentState, homeTargetSelect?.value));
   });
 
   testCoolTermButton?.addEventListener('click', () => {
     vscode.postMessage({ type: 'testCoolTermConnection' });
   });
 
-  function applyProjectStatus(payload: {
-    rootPath?: ProjectStatusPayload['rootPath'];
-    roots?: ProjectStatusPayload['roots'];
-    targets?: ProjectStatusPayload['targets'];
-    targetName?: ProjectStatusPayload['targetName'];
-    projectState?: ProjectStatusPayload['projectState'];
-    platform?: ProjectStatusPayload['platform'];
-    coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
-    coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
-    hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
-    sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
-    sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
-  }): void {
-    const projectState = resolveProjectViewState(payload);
-    const initializedProject = projectState === 'initialized';
-    currentRootPath = payload.rootPath ?? '';
-    currentRoots = payload.roots ?? [];
+  function applyProjectStatus(payload: ApplyProjectStatusPayload): void {
+    currentState = createProjectPanelState(payload);
+    const initializedProject = currentState.kind === 'initialized';
     projectRootController.applyProjectStatus({
       rootPath: payload.rootPath,
-      roots: payload.roots ?? [],
-      targetCount: payload.targets?.length ?? 0,
+      roots: currentState.roots,
+      targetCount: currentState.targets.length,
     });
-    if (homeTargetSelect) {
-      setTargetOptions(
-        homeTargetSelect,
-        initializedProject ? (payload.targets ?? []) : [],
-        payload.targetName
-      );
-    }
-    if (sendHexToBoardButton) {
-      const canSend =
-        initializedProject &&
-        Boolean(payload.targetName) &&
-        Boolean(payload.coolTermHexPath);
-      sendHexToBoardButton.hidden = !initializedProject;
-      sendHexToBoardButton.disabled = !canSend;
-      sendHexToBoardButton.textContent = sendButtonLabel(payload.platform);
-      sendHexToBoardButton.title =
-        payload.coolTermHexPath !== undefined
-          ? `Send ${payload.coolTermHexPath} to the board via CoolTerm`
-          : 'Build the selected target before sending to the board';
-    }
-    if (testCoolTermButton) {
-      testCoolTermButton.hidden = !initializedProject;
-      testCoolTermButton.disabled = !initializedProject;
-    }
-    if (hardwareStatusLine) {
-      const text = payload.hardwareStatusText ?? '';
-      hardwareStatusLine.textContent = text;
-      hardwareStatusLine.hidden = !initializedProject || text.length === 0;
-    }
-    if (sourceMapStatusLine) {
-      const text = payload.sourceMapStatusText ?? '';
-      sourceMapStatusLine.textContent = text;
-      sourceMapStatusLine.dataset.sourceMapStatus = payload.sourceMapStatusState ?? '';
-      sourceMapStatusLine.hidden = !initializedProject || text.length === 0;
-    }
-    const selected = currentRoots.find((root) => root.path === currentRootPath) ?? currentRoots[0];
-    const targetCount = payload.targets?.length ?? 0;
-    if (!setupCard || !setupCardText || !setupPrimaryAction) {
-      return;
-    }
-    const setupState = resolveSetupCardState(
-      selected,
-      projectState,
-      targetCount,
-      currentRoots.length
-    );
-    if (setupState === null) {
-      setupCard.hidden = true;
-      return;
-    }
-    setupCard.hidden = false;
-    setupPrimaryActionType = setupState.primaryAction;
-    setupCardText.textContent = setupState.text;
-    // When createProject is the pending action, platformInitButton is the primary CTA;
-    // hide the setup card button to avoid showing two equivalent "Initialize" actions.
-    const isCreateProject = setupState.primaryAction === 'createProject';
-    setupPrimaryAction.hidden = isCreateProject;
-    setupPrimaryAction.textContent = isCreateProject ? '' : setupState.primaryLabel;
+    applyTargetOptions(homeTargetSelect, currentState);
+    updateSendHexButton(sendHexToBoardButton, currentState);
+    updateInitializedButton(testCoolTermButton, initializedProject);
+    updateStatusLine(hardwareStatusLine, currentState.hardwareStatusText, initializedProject);
+    updateSourceMapStatusLine(sourceMapStatusLine, currentState, initializedProject);
+    updateSetupCard(setupCard, setupCardText, setupPrimaryAction, currentState);
   }
 
   return {

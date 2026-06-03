@@ -266,6 +266,87 @@ describe('project status UI invariants', () => {
     expect(postMessage).toHaveBeenCalledWith({ type: 'testCoolTermConnection' });
   });
 
+  it('sends the live target dropdown value without waiting for a status refresh', () => {
+    const postMessage = vi.fn();
+    const elements = getElements();
+    const ui = createProjectStatusUi(
+      createPostingVscodeMock(postMessage),
+      {
+        selectProjectButton: elements.selectProjectButton,
+        setupCard: elements.setupCard,
+        setupCardText: elements.setupCardText,
+        setupPrimaryAction: elements.setupPrimaryAction,
+        platformInitButton: elements.platformInitButton,
+        testCoolTermButton: elements.testCoolTermButton,
+        sendHexToBoardButton: elements.sendHexToBoardButton,
+        hardwareStatusLine: elements.hardwareStatusLine,
+        sourceMapStatusLine: elements.sourceMapStatusLine,
+        homeTargetSelect: elements.homeTargetSelect,
+        getPlatform: () => elements.platformSelect.value,
+      },
+      'tec1g'
+    );
+
+    ui.applyProjectStatus({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [{ name: 'app' }, { name: 'tests' }],
+      targetName: 'app',
+      hasProject: true,
+      platform: 'tec1g',
+      coolTermHexPath: '/workspace/debug80/build/app.hex',
+    });
+    elements.homeTargetSelect.value = 'tests';
+    elements.sendHexToBoardButton.click();
+    ui.dispose();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'sendHexViaCoolTerm',
+      rootPath: '/workspace/debug80',
+      targetName: 'tests',
+    });
+  });
+
+  it('does not initialize an arbitrary root when none is selected', () => {
+    const postMessage = vi.fn();
+    const elements = getElements();
+    const ui = createProjectStatusUi(
+      createPostingVscodeMock(postMessage),
+      {
+        selectProjectButton: elements.selectProjectButton,
+        setupCard: elements.setupCard,
+        setupCardText: elements.setupCardText,
+        setupPrimaryAction: elements.setupPrimaryAction,
+        platformInitButton: elements.platformInitButton,
+        testCoolTermButton: elements.testCoolTermButton,
+        sendHexToBoardButton: elements.sendHexToBoardButton,
+        hardwareStatusLine: elements.hardwareStatusLine,
+        sourceMapStatusLine: elements.sourceMapStatusLine,
+        homeTargetSelect: elements.homeTargetSelect,
+        getPlatform: () => elements.platformSelect.value,
+      },
+      'tec1g'
+    );
+
+    ui.applyProjectStatus({
+      projectState: 'uninitialized',
+      roots: [
+        { name: 'alpha', path: '/workspace/alpha', hasProject: false },
+        { name: 'beta', path: '/workspace/beta', hasProject: true },
+      ],
+      targets: [],
+      hasProject: false,
+      platform: 'tec1g',
+    });
+    elements.platformInitButton.click();
+    elements.setupPrimaryAction.click();
+    ui.dispose();
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({ type: 'selectProject' });
+  });
+
   it('enables send when CoolTerm and the selected target hex are available', () => {
     applyProjectPayload({
       projectState: 'initialized',

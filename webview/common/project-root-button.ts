@@ -38,8 +38,8 @@ function selectedRoot(
 }
 
 /**
- * Controls the Project root selector only. Empty-state "Create Project" lives on the setup card
- * (`setupPrimaryAction` + `resolveSetupCardState`) — do not add a second header button for it.
+ * Controls the Project root selector only. Empty-state project actions are derived by
+ * `project-panel-state` and rendered on the setup card.
  */
 export function createProjectRootButtonController(
   vscode: VsCodeLike,

@@ -471,6 +471,19 @@ Future expansion-deck work should keep MON-3 source as the source of truth for
 port contracts and avoid assigning user-visible meanings to SYS_CTRL bits
 without a regression test in both the decoder and webview status layer.
 
+### Latest Goal Note: Project Panel State Simplification
+
+The project panel webview now uses a canonical `ProjectPanelState` model and
+pure action helpers for setup, initialization, target selection, and CoolTerm
+send actions. This replaces the previous split between `project-state`,
+`setup-card-state`, `create-project`, local `currentRootPath` fields, and
+setup-card action flags.
+
+The remaining compatibility fallback for compact project payloads lives in one
+normalizer, `createProjectPanelState`, instead of being duplicated across DOM
+controllers. Future project-panel changes should add state/action tests first
+and avoid introducing new root-selection fallback in button handlers.
+
 Use these criteria when deciding whether cleanup is worthwhile:
 
 - Does it remove obsolete behavior, not just move code around?
