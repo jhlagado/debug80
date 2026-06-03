@@ -368,17 +368,24 @@ when the routine returns.
 Run the analysis with:
 
 ```sh
-azm --rc audit --reg-report program.asm
+azm --rc audit program.asm
+azm --rc warn program.asm
 azm --rc error --interface monitor.asmi program.asm
+azm --rc strict program.asm
 ```
 
 The main modes are `audit`, `warn`, `error` and `strict`. Use `audit` for a
-non-blocking report, `warn` for visible diagnostics with a successful compile,
-`error` to fail on proven caller/callee register conflicts, and `strict` to
-fail on any register contracts issue AZM cannot prove safe, including unknown call
-boundaries and unbalanced or unknown stack effects. AZM can also emit
-register contract reports and `.asmi` interface files for externally assembled
-routines.
+non-blocking check, `warn` for visible diagnostics with a successful compile,
+`error` to fail on proven caller/callee register conflicts, and `strict` to fail
+on any register contracts issue AZM cannot prove safe, including unknown call
+boundaries and unbalanced or unknown stack effects.
+
+The normal register contracts interface is compiler diagnostics plus source
+contracts. Use `--contracts` or `--fix` when you want AZM to update compact
+AZMDoc contract comments in source. Use `.asmi` files for externally assembled
+routines or monitor/system APIs. Text report files are available with
+`--reg-report`, but they are an explicit debug/export option and are not part of
+the normal workflow.
 
 ## Ops and Aliases
 
@@ -459,8 +466,10 @@ azm --asm80 program.asm
 Run register contracts analysis:
 
 ```sh
-azm --rc audit --reg-report program.asm
+azm --rc audit program.asm
+azm --rc warn program.asm
 azm --rc error --interface monitor.asmi program.asm
+azm --rc strict program.asm
 azm --contracts --rc audit program.asm
 ```
 
@@ -477,7 +486,7 @@ The main switches are:
 | `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                   |
 | `--case-style <mode>`                         | Lint mnemonic, register and op-head case style.                     |
 | `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, `strict`. |
-| `--reg-report, --emit-register-report`        | Write `.regcontracts.txt`.                                          |
+| `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                     |
 | `--reg-interface, --emit-register-interface`  | Write inferred `.asmi` interface metadata.                          |
 | `--contracts, --annotate-register-contracts`  | Update AZMDoc contract comments in source.                          |
 | `--fix`                                       | Apply conservative register contract source fixes.                  |
@@ -503,7 +512,7 @@ using the same base path.
 | `.bin`              | flat binary                                  |
 | `.d8.json`          | Debug80 map                                  |
 | `.z80`              | ASM80-compatible lowered source when enabled |
-| `.regcontracts.txt` | register contracts report when enabled       |
+| `.regcontracts.txt` | opt-in register contracts debug report       |
 | `.asmi`             | register contracts interface when enabled    |
 
 ## Programmatic API

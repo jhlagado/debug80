@@ -51,20 +51,20 @@ azm --source-root . --output build/program.hex src/program.asm
 By default AZM writes the primary output plus useful side artifacts using the
 same base path.
 
-| Artifact            | Meaning                               |
-| ------------------- | ------------------------------------- |
-| `.hex`              | Intel HEX output                      |
-| `.bin`              | flat binary output                    |
-| `.d8.json`          | Debug80 map                           |
-| `.z80`              | lowered assembler source              |
-| `.regcontracts.txt` | register contracts report             |
-| `.asmi`             | inferred register contracts interface |
+| Artifact            | Meaning                                |
+| ------------------- | -------------------------------------- |
+| `.hex`              | Intel HEX output                       |
+| `.bin`              | flat binary output                     |
+| `.d8.json`          | Debug80 map                            |
+| `.z80`              | lowered assembler source               |
+| `.regcontracts.txt` | opt-in register contracts debug report |
+| `.asmi`             | inferred register contracts interface  |
 
 Disable standard artifacts when they are not needed:
 
 ```sh
 azm --nod8m program.asm
-azm --nobin --nohex --reg-report --rc audit program.asm
+azm --nobin --nohex --nod8m --rc audit program.asm
 ```
 
 ## Options
@@ -80,7 +80,7 @@ azm --nobin --nohex --reg-report --rc audit program.asm
 | `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                              |
 | `--case-style <mode>`                         | Lint mnemonic/register/op-head case: `off`, `upper`, `lower`, or `consistent`. |
 | `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, or `strict`.         |
-| `--reg-report, --emit-register-report`        | Write `.regcontracts.txt`.                                                     |
+| `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                                |
 | `--reg-interface, --emit-register-interface`  | Write inferred `.asmi` interface.                                              |
 | `--contracts, --annotate-register-contracts`  | Update AZMDoc contract comments in source.                                     |
 | `--fix`                                       | Apply conservative register contract source fixes and update contracts.        |
@@ -109,7 +109,7 @@ labels and addressable data carry `address`.
 Audit inferred contracts without failing the build:
 
 ```sh
-azm --rc audit --reg-report program.asm
+azm --rc audit program.asm
 ```
 
 Treat contract conflicts as build failures:
@@ -122,7 +122,7 @@ Treat every register contracts issue as a build failure, including unknown call
 boundaries and stack effects AZM cannot prove within an `@` routine boundary:
 
 ```sh
-azm --rc strict --reg-report program.asm
+azm --rc strict program.asm
 ```
 
 Generate compact AZMDoc blocks in source:

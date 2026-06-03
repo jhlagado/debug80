@@ -80,7 +80,7 @@ match the units whose register and stack effects you want AZM to prove."
 Document the intended mode ladder:
 
 - `off`: no register contracts analysis.
-- `audit`: generate report/interface/annotations without blocking the build.
+- `audit`: run diagnostics without blocking the build.
 - `warn`: emit diagnostics but keep the compile successful.
 - `error`: fail on proven register conflicts.
 - `strict`: fail on any register contracts issue AZM cannot prove safe, including
@@ -134,9 +134,9 @@ routine bodies or missing external contracts as build failures.
 Recommended development loop:
 
 1. Write or edit the routine.
-2. Run `azm --rc audit --reg-report program.asm` to inspect inferred effects.
+2. Run `azm --rc audit program.asm` and read compiler diagnostics.
 3. Add or regenerate `;!` contracts.
-4. Run `azm --rc strict --reg-report program.asm`.
+4. Run `azm --rc strict program.asm`.
 5. Fix code structure, contracts, or external `.asmi` interfaces until strict
    passes.
 

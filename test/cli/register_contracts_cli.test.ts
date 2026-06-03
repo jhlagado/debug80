@@ -55,6 +55,18 @@ describe('register-contracts cli', () => {
     await ensureCliBuilt();
   }, 180_000);
 
+  it('does not write a register-contracts report unless explicitly requested', async () => {
+    await withRegisterContractsFixture('azm-regcontracts-cli-default-', async ({ work, entry }) => {
+      await writeEntry(entry, ['START:', '    nop', '    ret', '.end']);
+
+      const res = await runCli([...artifactlessArgs, '--register-contracts', 'audit', entry]);
+      expect(res.code).toBe(0);
+
+      expect(res.stdout.trim()).toBe('');
+      expect(await exists(join(work, 'main.regcontracts.txt'))).toBe(false);
+    });
+  }, 20_000);
+
   it('writes a register-contracts report artifact in audit mode', async () => {
     await withRegisterContractsFixture('azm-regcontracts-cli-', async ({ work, entry }) => {
       await writeEntry(entry, ['START:', '    nop', '    ret', '.end']);
