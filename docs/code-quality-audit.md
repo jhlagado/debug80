@@ -611,6 +611,20 @@ normalizer, `createProjectPanelState`, instead of being duplicated across DOM
 controllers. Future project-panel changes should add state/action tests first
 and avoid introducing new root-selection fallback in button handlers.
 
+### Latest Goal Note: Register Strip Extraction
+
+The register strip has been split out of `MemoryPanel` into
+`webview/common/register-panel.ts`. `MemoryPanel` still coordinates memory
+anchors, memory dumps, readonly-memory policy, and snapshot requests, but
+register item construction, register DOM rendering, focused-register refresh
+preservation, and register edit messages now live behind a focused
+`RegisterPanel` controller.
+
+This removes one mixed responsibility from the memory controller and gives
+register behavior direct tests. Fallow still reports inherited complexity in
+memory anchor/edit paths, but the previous register-rendering complexity is no
+longer part of `MemoryPanel`.
+
 Use these criteria when deciding whether cleanup is worthwhile:
 
 - Does it remove obsolete behavior, not just move code around?

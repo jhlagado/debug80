@@ -1,7 +1,6 @@
 import type { VscodeApi } from './vscode';
 import {
   formatHex,
-  formatRegisterHex,
   isMemoryByteInput,
   normalizeHexInput,
   parseAddress,
@@ -9,6 +8,7 @@ import {
   renderDump,
   selectedOptionLabel,
 } from './memory-panel-format';
+import { RegisterPanel, type RegisterData } from './register-panel';
 
 export type MemoryViewEntry = {
   id: string;
@@ -17,17 +17,6 @@ export type MemoryViewEntry = {
   addr: HTMLElement | null;
   symbol: HTMLElement | null;
   dump: HTMLElement | null;
-};
-
-type RegisterData = Record<string, number | string | undefined>;
-
-type RegisterItem = {
-  label: string;
-  value: string;
-  width?: number;
-  editable?: boolean;
-  register?: string;
-  flags?: boolean;
 };
 
 type SnapshotView = {
@@ -58,11 +47,18 @@ type MemoryPanelOptions = {
 export class MemoryPanel {
   private readonly symbolMap = new Map<string, number>();
   private readonly pickerMap = new Map<HTMLSelectElement, HTMLInputElement>();
+  private readonly registerPanel: RegisterPanel;
   private symbolsKey = '';
   private editingEnabled = false;
   private allowReadOnlyWrites = false;
 
-  constructor(private readonly options: MemoryPanelOptions) {}
+  constructor(private readonly options: MemoryPanelOptions) {
+    this.registerPanel = new RegisterPanel({
+      vscode: options.vscode,
+      registerStrip: options.registerStrip,
+      statusEl: options.statusEl,
+    });
+  }
 
   wire(): void {
     this.installReadOnlyToggle();
@@ -173,7 +169,7 @@ export class MemoryPanel {
       this.setEditingEnabled(!payload.running);
     }
     if (payload.registers) {
-      this.renderRegisters(payload.registers);
+      this.registerPanel.render(payload.registers);
     }
     if (Array.isArray(payload.views)) {
       this.renderViews(payload.views);
@@ -348,197 +344,6 @@ export class MemoryPanel {
       element.value = name;
       list.appendChild(element);
     }
-  }
-
-  private renderRegisters(data: RegisterData): void {
-    if (!this.options.registerStrip || !data) {
-      return;
-    }
-    if (this.isEditingRegister()) {
-      return;
-    }
-    const items: RegisterItem[] = [
-      {
-        label: 'BC',
-        register: 'bc',
-        value: formatRegisterHex((data.bc as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'DE',
-        register: 'de',
-        value: formatRegisterHex((data.de as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'HL',
-        register: 'hl',
-        value: formatRegisterHex((data.hl as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: "BC'",
-        register: 'bcp',
-        value: formatRegisterHex((data.bcp as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: "DE'",
-        register: 'dep',
-        value: formatRegisterHex((data.dep as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: "HL'",
-        register: 'hlp',
-        value: formatRegisterHex((data.hlp as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'PC',
-        register: 'pc',
-        value: formatRegisterHex((data.pc as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'SP',
-        register: 'sp',
-        value: formatRegisterHex((data.sp as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'IX',
-        register: 'ix',
-        value: formatRegisterHex((data.ix as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'IY',
-        register: 'iy',
-        value: formatRegisterHex((data.iy as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: 'AF',
-        register: 'af',
-        value: formatRegisterHex((data.af as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      {
-        label: "AF'",
-        register: 'afp',
-        value: formatRegisterHex((data.afp as number) || 0, 4),
-        width: 4,
-        editable: true,
-      },
-      { label: 'I', value: formatRegisterHex((data.i as number) || 0, 2), width: 2 },
-      { label: 'R', value: formatRegisterHex((data.r as number) || 0, 2), width: 2 },
-      {
-        label: 'Flags',
-        register: 'flags',
-        value: (data.flags as string) || '--------',
-        editable: true,
-        flags: true,
-      },
-      {
-        label: "Flags'",
-        register: 'flagsp',
-        value: (data.flagsPrime as string) || '--------',
-        editable: true,
-        flags: true,
-      },
-    ];
-    this.options.registerStrip.innerHTML = '';
-    items.forEach((item) => {
-      const row = document.createElement('div');
-      row.className = 'register-item' + (item.editable ? ' editable' : '');
-      row.classList.toggle('flag-register', item.flags === true);
-      const label = document.createElement('span');
-      label.className = 'register-label';
-      label.textContent = item.label;
-      row.appendChild(label);
-      if (item.editable && item.register !== undefined) {
-        const input = document.createElement('input');
-        input.className = item.flags ? 'register-input register-flags' : 'register-input';
-        input.type = 'text';
-        input.value = item.value;
-        input.spellcheck = false;
-        input.autocomplete = 'off';
-        input.inputMode = 'text';
-        if (item.width !== undefined) {
-          input.maxLength = item.width;
-        }
-        input.dataset.register = item.register;
-        if (item.width !== undefined) {
-          input.dataset.width = String(item.width);
-        }
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            input.blur();
-          } else if (event.key === 'Escape') {
-            event.preventDefault();
-            input.value = item.value;
-            input.blur();
-          }
-        });
-        input.addEventListener('blur', () => {
-          void this.commitRegisterEdit(input, item.value);
-        });
-        row.appendChild(input);
-      } else {
-        const value = document.createElement('span');
-        value.className = item.flags ? 'register-flags' : 'register-value';
-        value.textContent = item.value;
-        row.appendChild(value);
-      }
-      this.options.registerStrip?.appendChild(row);
-    });
-  }
-
-  private isEditingRegister(): boolean {
-    const active = document.activeElement;
-    return (
-      active instanceof HTMLInputElement &&
-      active.classList.contains('register-input') &&
-      this.options.registerStrip?.contains(active) === true
-    );
-  }
-
-  private commitRegisterEdit(input: HTMLInputElement, previousValue: string): void {
-    const register = input.dataset.register;
-    const width = Number.parseInt(input.dataset.width ?? '', 10);
-    const value =
-      register === 'flags' || register === 'flagsp'
-        ? input.value.trim()
-        : normalizeHexInput(input.value, width);
-    if (!register || value === null) {
-      input.value = previousValue;
-      if (this.options.statusEl) {
-        this.options.statusEl.textContent = 'Register edit failed';
-      }
-      return;
-    }
-    if (value === previousValue) {
-      return;
-    }
-    input.value = value;
-    this.options.vscode.postMessage({
-      type: 'registerEdit',
-      register,
-      value,
-    });
   }
 
   private renderViews(views: SnapshotView[]): void {
