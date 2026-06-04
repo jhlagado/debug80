@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.16
 
 - Fixed Matrix Keyboard capture shutdown so held matrix keys are released before
   capture is disabled, preventing stale pressed keys in the emulator runtime.
