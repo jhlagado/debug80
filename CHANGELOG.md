@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed Matrix Keyboard capture shutdown so held matrix keys are released before
+  capture is disabled, preventing stale pressed keys in the emulator runtime.
+- Clarified TEC-1G matrix keyboard documentation so keyboard capture is distinct
+  from MON-3 Matrix CONFIG mode.
+
 ## 0.1.15
 
 - Updated AZM to `0.2.8`.

@@ -179,7 +179,6 @@ export function expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; c
 
 export function handleMatrixModeRequest(
   runtime: MatrixRuntime | undefined,
-  heldKeys: Map<string, MatrixKeyCombo[]>,
   args: unknown
 ): string | null {
   if (!runtime) {
@@ -189,10 +188,6 @@ export function handleMatrixModeRequest(
   if (enabled === undefined) {
     return 'Debug80: Missing matrix mode flag.';
   }
-  heldKeys.forEach((entries) => {
-    entries.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
-  });
-  heldKeys.clear();
   runtime.setMatrixMode(enabled);
   return null;
 }

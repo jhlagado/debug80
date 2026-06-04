@@ -18,7 +18,7 @@ external Debug80 manual at https://debug80.com/.
 - Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
 - SYS_CTRL bits 3-6: latched as the future Memory Expansion bank field; bit 3 is also the
   currently active 16K expansion-bank select.
-- SYS_INPUT bits 0 (SKEY), 4 (RKEY), 5 (GIMP): state exposed but no hardware trigger wired.
+- SYS_INPUT bits 4 (RKEY) and 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
 ## Memory map (MON-3 view)
@@ -47,7 +47,7 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
   - Keycodes: 0x00-0x0f (hex), 0x10 (▶ right), 0x11 (◀ left), 0x12 (GO), 0x13 (AD), 0x02 (FN). (ROMs may use K_PLUS/K_MINUS; keycaps are chevrons.)
 - `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
-  - Bit 0 (0x01): SKEY — shift key (not yet emulated).
+  - Bit 0 (0x01): Matrix CONFIG — MON-3 matrix keyboard takeover mode.
   - Bit 1 (0x02): PROTECT — fed back from SYS_CTRL.
   - Bit 2 (0x04): EXPAND — fed back from SYS_CTRL.
   - Bit 3 (0x08): CART — cartridge present flag.

@@ -195,8 +195,7 @@ export async function buildLaunchSession(
     sessionState: context.sessionState,
     sendResponse: context.sendResponse,
     sendErrorResponse: context.sendErrorResponse,
-    handleMatrixModeRequest: (args) =>
-      handleMatrixModeRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
+    handleMatrixModeRequest: (args) => handleMatrixModeRequest(getTec1gMatrixRuntime(), args),
     handleMatrixKeyRequest: (args) =>
       handleMatrixKeyRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
     clearMatrixHeldKeys: () => {

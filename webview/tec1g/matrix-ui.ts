@@ -13,6 +13,18 @@ interface VscodeApi {
   postMessage(message: unknown): void;
 }
 
+type MatrixKeyMods = {
+  shift: boolean;
+  ctrl: boolean;
+  fn: boolean;
+  alt: boolean;
+};
+
+type MatrixHeldKey = {
+  key: string;
+  mods: MatrixKeyMods;
+};
+
 export function createMatrixUiController(
   vscode: VscodeApi,
   isUiTabActive: () => boolean
@@ -22,7 +34,7 @@ export function createMatrixUiController(
 
   let keyboardCaptureEnabled = false;
   let capsLockEnabled = false;
-  const matrixHeldKeys = new Set<string>();
+  const matrixHeldKeys = new Map<string, MatrixHeldKey>();
   const matrixClickMods = {
     shift: false,
     ctrl: false,
@@ -131,7 +143,7 @@ export function createMatrixUiController(
 
   function applyKeyboardCapture(enabled) {
     if (!enabled) {
-      matrixHeldKeys.clear();
+      releaseHeldMatrixKeys();
       clearOneShotMatrixMods();
       setMatrixKeyPressed('Shift', false);
       setMatrixKeyPressed('Control', false);
@@ -186,7 +198,15 @@ export function createMatrixUiController(
       if (matrixHeldKeys.has(keyId)) {
         return true;
       }
-      matrixHeldKeys.add(keyId);
+      matrixHeldKeys.set(keyId, {
+        key,
+        mods: {
+          shift: !!mods.shift,
+          ctrl: !!mods.ctrl,
+          fn: !!mods.fn,
+          alt: !!mods.alt,
+        },
+      });
     } else {
       if (!matrixHeldKeys.has(keyId)) {
         return false;
@@ -203,6 +223,21 @@ export function createMatrixUiController(
       alt: mods.alt,
     });
     return true;
+  }
+
+  function releaseHeldMatrixKeys() {
+    for (const held of matrixHeldKeys.values()) {
+      vscode.postMessage({
+        type: 'matrixKey',
+        key: held.key,
+        pressed: false,
+        shift: held.mods.shift,
+        ctrl: held.mods.ctrl,
+        fn: held.mods.fn,
+        alt: held.mods.alt,
+      });
+    }
+    matrixHeldKeys.clear();
   }
 
   function handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean {

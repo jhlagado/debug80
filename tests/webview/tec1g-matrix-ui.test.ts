@@ -335,11 +335,20 @@ describe('tec1g matrix ui', () => {
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
     expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
-    expect(messages.filter((message) => message.key === 'a' && message.pressed === true)).toEqual([
+    expect(messages.filter((message) => message.key === 'a')).toEqual([
       {
         type: 'matrixKey',
         key: 'a',
         pressed: true,
+        shift: true,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: false,
         shift: true,
         ctrl: false,
         fn: false,

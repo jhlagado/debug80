@@ -18,25 +18,21 @@ import type { MatrixRuntime } from '../../src/debug/requests/matrix-request';
 
 describe('matrix-request', () => {
   describe('handleMatrixModeRequest', () => {
-    it('clears stale held keys when matrix mode is restored enabled', () => {
-      const released: Array<{ row: number; col: number; pressed: boolean }> = [];
+    it('toggles MON-3 matrix mode without clearing held raw matrix keys', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
       const runtime: MatrixRuntime = {
         state: { matrixModeEnabled: false, capsLock: false },
         setMatrixMode: (enabled) => {
           runtime.state.matrixModeEnabled = enabled;
         },
         applyMatrixKey: (row, col, pressed) => {
-          released.push({ row, col, pressed });
+          applied.push({ row, col, pressed });
         },
       };
-      const heldKeys = new Map<string, MatrixKeyCombo[]>();
-      heldKeys.set('a|0000', [{ row: 3, col: 2 }]);
-
-      expect(handleMatrixModeRequest(runtime, heldKeys, { enabled: true })).toBeNull();
+      expect(handleMatrixModeRequest(runtime, { enabled: true })).toBeNull();
 
       expect(runtime.state.matrixModeEnabled).toBe(true);
-      expect(heldKeys.size).toBe(0);
-      expect(released).toEqual([{ row: 3, col: 2, pressed: false }]);
+      expect(applied).toEqual([]);
     });
   });
 
