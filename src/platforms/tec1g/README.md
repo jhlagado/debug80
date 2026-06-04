@@ -57,7 +57,8 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
   - Bit 7 (0x80): RX — serial receive (idle high).
 - `IN 0x04`: LCD busy flag + address counter (HD44780 status read).
 - `IN 0x84`: LCD data read (supported).
-- `IN 0xFE`: matrix keyboard rows (returns 0xFF when matrix mode is disabled).
+- `IN 0xFE`: matrix keyboard rows. The raw matrix port remains readable whether
+  or not MON-3 Matrix CONFIG mode is enabled.
 
 ### Output
 
@@ -144,7 +145,7 @@ example `appStart`, `matrixMode`, or `protectOnReset`.
 ```
 
 `matrixMode`, `protectOnReset`, and `expansionBankHi` correspond to the CONFIG DIP
-switches (keyboard mode, protect on reset, expansion bank select).
+switches (MON-3 matrix keyboard mode, protect on reset, expansion bank select).
 
 ## Panel keyboard shortcuts
 

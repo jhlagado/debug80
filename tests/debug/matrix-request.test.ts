@@ -204,7 +204,7 @@ describe('matrix-request', () => {
   });
 
   describe('handleMatrixKeyRequest', () => {
-    it('enables matrix mode when a matrix key arrives after a missed startup mode sync', () => {
+    it('does not enable MON-3 matrix mode when a matrix key arrives', () => {
       const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
       const runtime: MatrixRuntime = {
         state: { matrixModeEnabled: false, capsLock: false },
@@ -219,7 +219,7 @@ describe('matrix-request', () => {
 
       expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 'a', pressed: true })).toBeNull();
 
-      expect(runtime.state.matrixModeEnabled).toBe(true);
+      expect(runtime.state.matrixModeEnabled).toBe(false);
       expect(applied.length).toBeGreaterThan(0);
       expect(applied.some((entry) => entry.pressed)).toBe(true);
     });

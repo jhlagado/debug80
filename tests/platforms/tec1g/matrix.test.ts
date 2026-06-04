@@ -77,11 +77,11 @@ describe('TEC-1G matrix keyboard', () => {
     expect(rt.state.display.ledMatrixBlueRows[0]).toBe(0xf0);
   });
 
-  it('returns 0xff when matrix mode is disabled', () => {
+  it('keeps raw matrix keyboard port readable when MON-3 matrix mode is disabled', () => {
     const rt = makeRuntime(false);
     rt.applyMatrixKey(1, 2, true);
     const value = rt.ioHandlers.read(0x01fe);
-    expect(value).toBe(0xff);
+    expect(value & (1 << 2)).toBe(0);
   });
 
   it('clears the 8x8 display state on reset', () => {

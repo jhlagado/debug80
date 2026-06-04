@@ -13,7 +13,7 @@ function makeDeps() {
       applyMatrixBlueRows: vi.fn(),
       applyMatrixBrightness: vi.fn(),
       applyCapsLock: vi.fn(),
-      applyMatrixMode: vi.fn(),
+      applyKeyboardCapture: vi.fn(),
       handleKeyEvent: vi.fn(),
       init: vi.fn(),
     },
@@ -66,20 +66,14 @@ describe('tec1g platform update application', () => {
     expect(deps.matrixUi.applyMatrixBrightness).toHaveBeenCalledWith(undefined, undefined, [64]);
   });
 
-  it('uses matrix accordion visibility as the matrix mode source of truth', () => {
+  it('does not use MON-3 matrix mode updates as keyboard capture state', () => {
     const deps = makeDeps();
 
-    applyTec1gPlatformUpdate(
-      {
-        ...deps,
-        isMatrixKeyboardOpen: () => true,
-      },
-      {
-        matrixMode: false,
-      }
-    );
+    applyTec1gPlatformUpdate(deps, {
+      matrixMode: true,
+    });
 
-    expect(deps.matrixUi.applyMatrixMode).toHaveBeenCalledWith(true);
+    expect(deps.matrixUi.applyKeyboardCapture).not.toHaveBeenCalled();
   });
 
   it('does not let platform caps state override local matrix keyboard caps state', () => {

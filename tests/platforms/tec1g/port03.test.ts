@@ -28,10 +28,10 @@ function makeRuntime(overrides: Partial<Tec1gPlatformConfigNormalized> = {}) {
 }
 
 describe('port 0x03 (SYS_INPUT)', () => {
-  it('bit 0 (SKEY) reflects shift key state', () => {
+  it('bit 0 (MATRIX) reflects MON-3 matrix config mode', () => {
     const rt = makeRuntime();
     expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0);
-    rt.state.input.shiftKeyActive = true;
+    rt.setMatrixMode(true);
     expect(rt.ioHandlers.read(0x03) & 0x01).toBe(0x01);
   });
 

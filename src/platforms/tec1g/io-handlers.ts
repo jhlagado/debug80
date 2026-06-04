@@ -29,7 +29,7 @@ import {
   TEC1G_STATUS_PROTECT,
   TEC1G_STATUS_RAW_KEY,
   TEC1G_STATUS_SERIAL_RX,
-  TEC1G_STATUS_SHIFT,
+  TEC1G_STATUS_MATRIX,
   TEC1G_MASK_BYTE,
   TEC1G_MASK_LOW7,
   TEC1G_ADDR_MAX,
@@ -138,8 +138,8 @@ type Tec1gPortContext = {
 function createTec1gPortStatus(state: Tec1gState): number {
   const keyPressed = (state.input.keyValue & TEC1G_MASK_LOW7) !== TEC1G_MASK_LOW7;
   let value = 0;
-  if (state.input.shiftKeyActive) {
-    value |= TEC1G_STATUS_SHIFT;
+  if (state.input.matrixModeEnabled) {
+    value |= TEC1G_STATUS_MATRIX;
   }
   if (state.system.protectEnabled) {
     value |= TEC1G_STATUS_PROTECT;
@@ -166,7 +166,7 @@ function createTec1gPortStatus(state: Tec1gState): number {
  * Decodes the active-low row address used by the MON-3 matrix scanner.
  */
 function decodeMatrixKeyboardRow(highByte: number): number | undefined {
-  const selected = (~highByte) & TEC1G_MASK_BYTE;
+  const selected = ~highByte & TEC1G_MASK_BYTE;
   if (selected === 0) {
     return undefined;
   }
@@ -300,9 +300,6 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         return key | (serial.getRxLevel() ? TEC1G_STATUS_SERIAL_RX : 0);
       }
       if (p === TEC1G_PORT_MATRIX_KEYBOARD) {
-        if (!input.matrixModeEnabled) {
-          return TEC1G_MASK_BYTE;
-        }
         const row = decodeMatrixKeyboardRow(highByte);
         if (row === undefined) {
           return TEC1G_MASK_BYTE;

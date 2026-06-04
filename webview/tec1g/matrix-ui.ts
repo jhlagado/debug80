@@ -4,7 +4,7 @@ export interface MatrixUiController {
   applyMatrixBlueRows(rows: number[]): void;
   applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]): void;
   applyCapsLock(enabled: boolean): void;
-  applyMatrixMode(enabled: boolean): void;
+  applyKeyboardCapture(enabled: boolean): void;
   handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean;
   init(): void;
 }
@@ -20,7 +20,7 @@ export function createMatrixUiController(
   const matrixGrid = document.getElementById('matrixGrid') as HTMLElement;
   const matrixKeyboardGrid = document.getElementById('matrixKeyboardGrid') as HTMLElement;
 
-  let matrixModeEnabled = false;
+  let keyboardCaptureEnabled = false;
   let capsLockEnabled = false;
   const matrixHeldKeys = new Set<string>();
   const matrixClickMods = {
@@ -129,7 +129,7 @@ export function createMatrixUiController(
     drawMatrix();
   }
 
-  function applyMatrixMode(enabled) {
+  function applyKeyboardCapture(enabled) {
     if (!enabled) {
       matrixHeldKeys.clear();
       clearOneShotMatrixMods();
@@ -142,7 +142,7 @@ export function createMatrixUiController(
         ?.querySelectorAll('.matrix-key.pressed')
         .forEach((key) => key.classList.remove('pressed'));
     }
-    matrixModeEnabled = !!enabled;
+    keyboardCaptureEnabled = !!enabled;
     refreshMatrixModifierKeys();
   }
 
@@ -206,7 +206,7 @@ export function createMatrixUiController(
   }
 
   function handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean {
-    if (!matrixModeEnabled || !isUiTabActive() || shouldIgnoreKeyEvent(event)) {
+    if (!keyboardCaptureEnabled || !isUiTabActive() || shouldIgnoreKeyEvent(event)) {
       return false;
     }
     const key = event.key;
@@ -397,7 +397,7 @@ export function createMatrixUiController(
         }
         keyEl.addEventListener('mousedown', (event) => {
           event.preventDefault();
-          if (!matrixModeEnabled || !isUiTabActive()) {
+          if (!keyboardCaptureEnabled || !isUiTabActive()) {
             return;
           }
           if (keyValue === 'Shift') {
@@ -452,7 +452,7 @@ export function createMatrixUiController(
     buildMatrix();
     drawMatrix();
     buildMatrixKeyboard();
-    applyMatrixMode(matrixModeEnabled);
+    applyKeyboardCapture(keyboardCaptureEnabled);
     applyCapsLock(capsLockEnabled);
   }
 
@@ -479,7 +479,7 @@ export function createMatrixUiController(
     },
     applyMatrixBrightness,
     applyCapsLock,
-    applyMatrixMode,
+    applyKeyboardCapture,
     handleKeyEvent,
     init,
   };

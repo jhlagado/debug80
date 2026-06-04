@@ -147,6 +147,34 @@
       box-sizing: border-box;
       margin-top: 0;
     }
+    .matrix-keyboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .matrix-keyboard-header .matrix-keyboard-title {
+      margin-bottom: 0;
+    }
+    .matrix-config-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #d0d0d0;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .matrix-config-switch input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
     .hardware-display-col .lcd,
     .hardware-display-col .display {
       width: 100%;

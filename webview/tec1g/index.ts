@@ -82,6 +82,7 @@ const accordionButtons = Array.from(
 );
 const matrixKeyboardHeader =
   accordionButtons.find((button) => button.dataset.accordionToggle === 'matrixKeyboard') ?? null;
+const matrixConfigSwitch = document.getElementById('matrixConfigSwitch') as HTMLInputElement | null;
 const accordionProject = document.getElementById('accordion-project') as HTMLElement;
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
@@ -120,12 +121,11 @@ const lcdRenderer = createLcdRenderer();
 const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard.hidden);
 
 function applyMatrixKeyboardOpenState(open: boolean): void {
-  matrixUi.applyMatrixMode(open);
+  matrixUi.applyKeyboardCapture(open);
   applyMatrixRoutingCue(
     { appRoot, keypad: keypadEl, cue: keypadRoutingCue, header: matrixKeyboardHeader },
     open
   );
-  vscode.postMessage({ type: 'matrixMode', enabled: open });
 }
 
 let memoryPanelController: MemoryPanel | null = null;
@@ -240,6 +240,10 @@ platformSelectEl?.addEventListener('change', () => {
   }
 });
 
+matrixConfigSwitch?.addEventListener('change', () => {
+  vscode.postMessage({ type: 'matrixMode', enabled: matrixConfigSwitch.checked });
+});
+
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
   applySpeed(next);
@@ -256,7 +260,6 @@ const platformUpdateDeps = {
   matrixUi,
   glcdRenderer,
   keypad,
-  isMatrixKeyboardOpen: () => panelLayout.isMatrixKeyboardOpen(),
 };
 
 function applyUpdateFromPayload(payload: Tec1gUpdatePayload | null | undefined): void {
@@ -332,6 +335,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
         return;
       }
       uiRevision = message.uiRevision;
+    }
+    if (typeof message.matrixMode === 'boolean' && matrixConfigSwitch) {
+      matrixConfigSwitch.checked = message.matrixMode;
     }
     applyUpdateFromPayload(message);
     return;

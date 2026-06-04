@@ -70,7 +70,7 @@ describe('tec1g matrix ui', () => {
     const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
 
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     controller.applyCapsLock(true);
 
     expect(capsKey.classList.contains('active')).toBe(true);
@@ -133,7 +133,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('tracks modifier state when clicking matrix keys', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
     const matrixShift = shiftKeys[0];
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
@@ -165,7 +165,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('treats the right-side S key as a compact shift key', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
     const rightShift = shiftKeys[shiftKeys.length - 1];
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
@@ -189,7 +189,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('keeps fn and alt click modifiers distinct', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const fnKey = document.querySelector('[data-key="Fn"]') as HTMLElement;
     const altKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Alt"]'));
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
@@ -225,7 +225,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('uses caps lock as a persistent letter shift and lights the shift keys', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
@@ -282,8 +282,8 @@ describe('tec1g matrix ui', () => {
     expect(capsKey.classList.contains('active')).toBe(true);
   });
 
-  it('applies caps lock to physical letter keys while matrix mode is active', () => {
-    controller.applyMatrixMode(true);
+  it('applies caps lock to physical letter keys while keyboard capture is active', () => {
+    controller.applyKeyboardCapture(true);
 
     controller.handleKeyEvent(makeKeyEvent('keydown', 'CapsLock'), true);
     controller.handleKeyEvent(makeKeyEvent('keyup', 'CapsLock'), false);
@@ -301,7 +301,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('lights duplicate modifier keys together and clears one-shot modifiers after a key', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const leftShift = document.querySelector<HTMLElement>('[data-key="Shift"]') as HTMLElement;
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
     const altKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Alt"]'));
@@ -319,19 +319,19 @@ describe('tec1g matrix ui', () => {
     expect(altKeys.every((key) => key.classList.contains('active'))).toBe(true);
   });
 
-  it('clears one-shot and held-key state when matrix mode is disabled', () => {
-    controller.applyMatrixMode(true);
+  it('clears one-shot and held-key state when keyboard capture is disabled', () => {
+    controller.applyKeyboardCapture(true);
     const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
     const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
     shiftKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-    controller.applyMatrixMode(false);
+    controller.applyKeyboardCapture(false);
     expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
     expect(matrixKey.classList.contains('pressed')).toBe(false);
 
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
     expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
@@ -357,8 +357,8 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
-  it('ignores key events from inputs, repeated presses, and inactive matrix mode', () => {
-    controller.applyMatrixMode(true);
+  it('ignores key events from inputs, repeated presses, and inactive keyboard capture', () => {
+    controller.applyKeyboardCapture(true);
     const input = document.getElementById('serialInput') as HTMLInputElement;
     const inputEvent = setEventTarget(makeKeyEvent('keydown', 'a'), input);
     const repeatEvent = makeKeyEvent('keydown', 'a', { repeat: true });
@@ -372,7 +372,7 @@ describe('tec1g matrix ui', () => {
   });
 
   it('sends key press and release messages once per event', () => {
-    controller.applyMatrixMode(true);
+    controller.applyKeyboardCapture(true);
     const keydown = makeKeyEvent('keydown', 'a');
     const keyup = makeKeyEvent('keyup', 'a');
 
@@ -404,7 +404,7 @@ describe('tec1g matrix ui', () => {
     let panelActive = false;
     const gatedController = createMatrixUiController(createVscodeMock(messages), () => panelActive);
     gatedController.init();
-    gatedController.applyMatrixMode(true);
+    gatedController.applyKeyboardCapture(true);
 
     expect(gatedController.handleKeyEvent(makeKeyEvent('keydown', 'b'), true)).toBe(false);
 

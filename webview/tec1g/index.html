@@ -326,7 +326,16 @@
         <div class="debug80-accordion-content" id="accordion-matrix-keyboard">
           <div class="panel panel-matrix-keyboard">
             <div class="matrix-keyboard">
-              <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+              <div class="matrix-keyboard-header">
+                <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+                <label
+                  class="matrix-config-switch"
+                  title="Emulates the TEC-1G CONFIG Matrix switch. When on, MON-3 scanKeys uses the matrix keyboard as its monitor input source."
+                >
+                  <input type="checkbox" id="matrixConfigSwitch" />
+                  <span>MON-3 Matrix</span>
+                </label>
+              </div>
               <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
             </div>
           </div>

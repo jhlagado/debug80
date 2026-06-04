@@ -506,10 +506,12 @@ Findings from the latest UI audit:
 - `webview/tec1g/matrix-ui.ts` is a recent hotspot. It combines RGB matrix
   rendering, keyboard layout construction, modifier state, caps-lock behavior,
   mouse events, physical keyboard routing, and message posting. The design
-  issue is that "matrix mode" is currently both a UI visibility condition and a
-  platform input-routing condition. It needs a `MatrixKeyboardState` /
-  `MatrixKeyEvent` model so modifier/caps behavior and routing decisions can be
-  tested without relying on DOM focus accidents.
+  issue is that host keyboard capture, MON-3 Matrix CONFIG mode, and raw matrix
+  key state all need to remain separate. Recent work split the visible
+  accordion capture state from the real MON-3 Matrix CONFIG switch; the next
+  cleanup should still introduce a `MatrixKeyboardState` / `MatrixKeyEvent`
+  model so modifier/caps behavior and routing decisions can be tested without
+  relying on DOM focus accidents.
 - `webview/common/accordion-layout.ts` owns persisted open state, panel order,
   provider tab compatibility, memory row sizing, register auto-refresh, and
   matrix-mode lifecycle notification. The design issue is that one controller
@@ -578,7 +580,7 @@ Notes:
   Renderer complexity and Z80 decode complexity are sometimes legitimate;
   refactor only when named helper boundaries make the hardware behavior easier
   to understand or test.
-- Avoid changing accordion defaults, matrix-mode behavior, focus routing, or
+- Avoid changing accordion defaults, MON-3 matrix-mode behavior, focus routing, or
   display brightness during structural cleanup. Those are product behavior
   changes and should be separate goals.
 - Prefer small, behavior-preserving goals. The main risk in this UI is not a
@@ -591,12 +593,26 @@ Notes:
 The TEC-1G webview now shows a passive Machine-panel cue when the Matrix
 Keyboard accordion is open. The cue marks the keypad as mouse-only and marks
 the Matrix Keyboard accordion header as active, but it does not introduce a
-second "matrix mode" setting. The accordion open state remains the single
-authority for physical keyboard routing.
+second host-keyboard routing setting. The accordion open state remains the
+single authority for physical keyboard routing.
 
 This is a deliberate state-management constraint: future matrix-keyboard UI
 work should keep routing indicators derived from the accordion/controller
 state instead of adding independent flags that can drift after webview reloads.
+
+### Latest Goal Note: MON-3 Matrix CONFIG Switch
+
+The TEC-1G matrix keyboard now separates three states:
+
+- the Matrix Keyboard accordion controls host keyboard capture only;
+- the `MON-3 Matrix` toggle emulates the real CONFIG DIP switch exposed on
+  `SYS_INPUT` / port `0x03` bit `0`;
+- the raw matrix keyboard port `0xFE` remains readable even when the MON-3
+  Matrix CONFIG switch is off.
+
+This matches the real hardware model: a matrix keyboard can be attached and
+used by programs through `matrixScan` while MON-3's universal `scanKeys` path
+continues to use the hex keypad unless the Matrix CONFIG switch is enabled.
 
 ### Latest Goal Note: TEC-1G SYS_CTRL Bit Contract
 

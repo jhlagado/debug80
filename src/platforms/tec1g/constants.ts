@@ -10,7 +10,7 @@ export const TEC1G_PORT_KEYBOARD = 0x00;
 export const TEC1G_PORT_DIGIT = 0x01;
 /** 7-seg segment latch. */
 export const TEC1G_PORT_SEGMENT = 0x02;
-/** Status input (shift/protect/expand/etc). */
+/** Status input (matrix config/protect/expand/etc). */
 export const TEC1G_PORT_STATUS = 0x03;
 /** LCD command register (HD44780). */
 export const TEC1G_PORT_LCD_CMD = 0x04;
@@ -38,7 +38,7 @@ export const TEC1G_PORT_MATRIX_KEYBOARD = 0xfe;
 export const TEC1G_PORT_SYSCTRL = 0xff;
 
 // ===== Status Register Bits =====
-export const TEC1G_STATUS_SHIFT = 0x01;
+export const TEC1G_STATUS_MATRIX = 0x01;
 export const TEC1G_STATUS_PROTECT = 0x02;
 export const TEC1G_STATUS_EXPAND = 0x04;
 export const TEC1G_STATUS_CARTRIDGE = 0x08;
