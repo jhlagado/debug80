@@ -182,11 +182,14 @@
   grid-template-rows: repeat(4, 46px);
   width: var(--tec1g-keypad-content-width);
 }
-.hardware-keypad-col .keypad.keypad--keyboard-routed-to-matrix {
+.hardware-keypad-col .keypad.keypad--matrix-attached-disabled {
   border-color: rgba(255, 184, 77, 0.86);
   box-shadow:
     0 0 0 1px rgba(255, 184, 77, 0.35),
     0 0 12px rgba(255, 184, 77, 0.18);
+  opacity: 0.62;
+  pointer-events: none;
+  filter: grayscale(0.18);
 }
 .hardware-keypad-col .keycap {
   width: 46px;

@@ -8,6 +8,10 @@
   from MON-3 Matrix CONFIG mode.
 - Removed the separate MON-3 Matrix checkbox; opening the Matrix Keyboard
   accordion now emulates keyboard attachment and sets the Matrix CONFIG bit.
+- Disabled the hex keypad while the Matrix Keyboard accordion is open, matching
+  MON-3's matrix-input takeover model.
+- Added matrix keyboard mappings for MON-3 low control codes such as arrow,
+  Backspace, and Tab keys so matrix-aware programs can read the full key set.
 - Moved the Debug80 Engineering Manual into `docs/codebase` so the codebase
   reference lives in the repository beside the source it describes.
 
@@ -41,7 +45,7 @@
   register panel tests.
 - Added a Matrix Keyboard routing cue: when the Matrix Keyboard accordion is
   open, the Machine panel now shows that PC keyboard input is routed to the
-  Matrix Keyboard, the keypad is marked mouse-only, and the Matrix Keyboard
+  Matrix Keyboard, the keypad is marked disabled, and the Matrix Keyboard
   accordion header shows an active marker.
 - Kept accordion open state as the single source of truth for Matrix Keyboard
   routing; no extra toggle was added.

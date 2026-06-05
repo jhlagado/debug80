@@ -65,6 +65,24 @@ export function resolveMatrixAscii(key: string): number | undefined {
   if (key.length === 1) {
     return key.charCodeAt(0);
   }
+  if (key === 'ArrowUp') {
+    return 0x03;
+  }
+  if (key === 'ArrowDown') {
+    return 0x04;
+  }
+  if (key === 'ArrowLeft') {
+    return 0x05;
+  }
+  if (key === 'ArrowRight') {
+    return 0x06;
+  }
+  if (key === 'Backspace') {
+    return 0x08;
+  }
+  if (key === 'Tab') {
+    return 0x09;
+  }
   if (key === 'Enter') {
     return 0x0d;
   }

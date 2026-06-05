@@ -601,10 +601,10 @@ release process, regression strategy, and active code-quality audit notes.
 ### Latest Goal Note: Matrix Keyboard Routing Cue
 
 The TEC-1G webview now shows a passive Machine-panel cue when the Matrix
-Keyboard accordion is open. The cue marks the keypad as mouse-only and marks
-the Matrix Keyboard accordion header as active, but it does not introduce a
-second host-keyboard routing setting. The accordion open state remains the
-single authority for physical keyboard routing.
+Keyboard accordion is open. The cue marks the keypad as disabled and marks the
+Matrix Keyboard accordion header as active, but it does not introduce a second
+host-keyboard routing setting. The accordion open state remains the single
+authority for physical keyboard routing and MON-3 Matrix CONFIG attachment.
 
 This is a deliberate state-management constraint: future matrix-keyboard UI
 work should keep routing indicators derived from the accordion/controller

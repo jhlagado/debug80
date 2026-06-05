@@ -255,17 +255,17 @@ The row select is also active-low. `decodeMatrixKeyboardRow()` in `src/platforms
 
 ### ASCII translation
 
-`matrixScanAscii()` in `src/platforms/tec1g/matrix-keymap.ts` converts a (key, shift, capsLock) combination to an ASCII character code. The function:
+`matrixScanAscii()` in `src/platforms/tec1g/matrix-keymap.ts` converts a (key, shift, capsLock) combination to MON-3's matrix character/control code. The function:
 
-1. Checks for special keys (Enter, Escape, Space, Delete, function keys) — returns the appropriate control code.
+1. Checks for special keys (arrow keys, Backspace, Tab, Enter, Escape and Space) — returns the appropriate low control/key code.
 2. For letter keys, applies CAPS LOCK and Shift to determine case.
 3. For digit and punctuation keys, applies Shift to select the shifted variant.
 
-This is used by the `debug80/tec1gMatrixKey` request to translate keyboard events from the webview into character codes the program can consume.
+This is used by the `debug80/tec1gMatrixKey` request to translate keyboard events from the webview back into the matrix row/column positions that would produce those codes through MON-3. Arrow and editing keys use the same low-code convention as MON-3: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`.
 
 ### Matrix keyboard attachment
 
-Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode and routes physical PC keyboard events to the matrix keyboard. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
+Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, routes physical PC keyboard events to the matrix keyboard and disables the hex keypad. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
 
 The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
 

@@ -10,6 +10,14 @@ describe('TEC-1G matrix keymap', () => {
     }
   });
 
+  it('covers MON-3 matrix control keys used by arrows and editing keys', () => {
+    for (const code of [0x03, 0x04, 0x05, 0x06, 0x08, 0x09, 0x0d, 0x1b]) {
+      const ch = String.fromCharCode(code);
+      const combos = MATRIX_ASCII_MAP[ch];
+      expect(combos?.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+
   it('returns combos within matrix bounds', () => {
     for (const combos of Object.values(MATRIX_ASCII_MAP)) {
       for (const combo of combos) {

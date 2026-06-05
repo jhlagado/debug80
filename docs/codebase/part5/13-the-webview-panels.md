@@ -364,7 +364,9 @@ function applyMatrixBrightness(dots: HTMLElement[], r: number[], g: number[], b:
 
 The 64-entry brightness arrays (one per channel) come from the `matrixBrightnessR/G/B` fields of the TEC-1G update message. Each value is 0–255. `matrix-ui.ts` maps those duty-cycle values to stronger visible LED colours, currently with an extra 30% intensity boost over the previous display curve. This does not change the platform runtime's timing model; it only changes how the webview paints the already-calculated brightness so games such as Pacmo are easier to read while uneven scan timing remains visible.
 
-**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }`, enables host-keyboard capture for that panel and keeps the hex keypad clickable by mouse. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
+**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }`, enables host-keyboard capture for that panel and disables the hex keypad, matching MON-3's matrix-input takeover model. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
+
+Matrix keyboard arrows and editing keys are not routed through the hex keypad shortcut table. They are emitted as matrix key positions whose MON-3 `matrixScanASCII` translation produces low control codes: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`. Programs that need physical key identity should read the raw `matrixScan` result; text-like input can use `matrixScanASCII` or `parseMatrixScan`.
 
 Each matrix key sends:
 

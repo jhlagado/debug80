@@ -5,14 +5,19 @@ export type MatrixRoutingCueElements = {
   header: HTMLElement | null;
 };
 
-const KEYPAD_ROUTED_CLASS = 'keypad--keyboard-routed-to-matrix';
+const KEYPAD_DISABLED_CLASS = 'keypad--matrix-attached-disabled';
 const HEADER_ACTIVE_CLASS = 'matrix-keyboard-active';
 
 export function applyMatrixRoutingCue(elements: MatrixRoutingCueElements, active: boolean): void {
   const activeValue = active ? 'true' : 'false';
   document.body.dataset.matrixKeyboardActive = activeValue;
   elements.appRoot?.setAttribute('data-matrix-keyboard-active', activeValue);
-  elements.keypad?.classList.toggle(KEYPAD_ROUTED_CLASS, active);
+  elements.keypad?.classList.toggle(KEYPAD_DISABLED_CLASS, active);
+  if (active) {
+    elements.keypad?.setAttribute('aria-disabled', 'true');
+  } else {
+    elements.keypad?.removeAttribute('aria-disabled');
+  }
   elements.header?.classList.toggle(HEADER_ACTIVE_CLASS, active);
 
   if (elements.cue) {

@@ -7,7 +7,7 @@ describe('tec1g matrix routing cue', () => {
     delete document.body.dataset.matrixKeyboardActive;
   });
 
-  it('marks the keypad as mouse-only while the matrix keyboard owns physical keys', () => {
+  it('disables the keypad while the matrix keyboard owns monitor input', () => {
     const appRoot = document.createElement('div');
     const keypad = document.createElement('div');
     const cue = document.createElement('div');
@@ -19,7 +19,8 @@ describe('tec1g matrix routing cue', () => {
 
     expect(document.body.dataset.matrixKeyboardActive).toBe('true');
     expect(appRoot.dataset.matrixKeyboardActive).toBe('true');
-    expect(keypad.classList.contains('keypad--keyboard-routed-to-matrix')).toBe(true);
+    expect(keypad.classList.contains('keypad--matrix-attached-disabled')).toBe(true);
+    expect(keypad.getAttribute('aria-disabled')).toBe('true');
     expect(keypad.getAttribute('aria-describedby')).toBe('keypadRoutingCue');
     expect(cue.hidden).toBe(false);
     expect(header.classList.contains('matrix-keyboard-active')).toBe(true);
@@ -28,7 +29,8 @@ describe('tec1g matrix routing cue', () => {
 
     expect(document.body.dataset.matrixKeyboardActive).toBe('false');
     expect(appRoot.dataset.matrixKeyboardActive).toBe('false');
-    expect(keypad.classList.contains('keypad--keyboard-routed-to-matrix')).toBe(false);
+    expect(keypad.classList.contains('keypad--matrix-attached-disabled')).toBe(false);
+    expect(keypad.hasAttribute('aria-disabled')).toBe(false);
     expect(keypad.hasAttribute('aria-describedby')).toBe(false);
     expect(cue.hidden).toBe(true);
     expect(header.classList.contains('matrix-keyboard-active')).toBe(false);

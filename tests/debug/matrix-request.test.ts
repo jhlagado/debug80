@@ -167,8 +167,20 @@ describe('matrix-request', () => {
       expect(resolveMatrixAscii('Escape')).toBe(0x1b);
     });
 
+    it('maps matrix arrows to MON-3 low control key codes', () => {
+      expect(resolveMatrixAscii('ArrowUp')).toBe(0x03);
+      expect(resolveMatrixAscii('ArrowDown')).toBe(0x04);
+      expect(resolveMatrixAscii('ArrowLeft')).toBe(0x05);
+      expect(resolveMatrixAscii('ArrowRight')).toBe(0x06);
+    });
+
+    it('maps matrix editing keys to MON-3 control key codes', () => {
+      expect(resolveMatrixAscii('Backspace')).toBe(0x08);
+      expect(resolveMatrixAscii('Tab')).toBe(0x09);
+    });
+
     it('returns undefined for unknown keys', () => {
-      expect(resolveMatrixAscii('ArrowUp')).toBeUndefined();
+      expect(resolveMatrixAscii('Home')).toBeUndefined();
     });
   });
 
@@ -241,6 +253,38 @@ describe('matrix-request', () => {
       expect(applied).toEqual([
         { row: 0, col: 7, pressed: true },
         { row: 0, col: 7, pressed: false },
+      ]);
+    });
+
+    it('routes matrix arrows as raw matrix key positions', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'ArrowUp', pressed: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'ArrowUp', pressed: false })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'ArrowRight', pressed: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'ArrowRight', pressed: false })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 0, col: 3, pressed: true },
+        { row: 0, col: 3, pressed: false },
+        { row: 0, col: 6, pressed: true },
+        { row: 0, col: 6, pressed: false },
       ]);
     });
   });

@@ -80,7 +80,7 @@ describe('tec1g UI visibility controls', () => {
     expect(hardwareGrid?.children[1]).toBe(keypadCol);
     expect(keypadCol?.querySelector('#keypadRoutingCue')).toBe(keypadRoutingCue);
     expect(keypadRoutingCue?.textContent).toContain('PC keys: Matrix Keyboard');
-    expect(keypadRoutingCue?.textContent).toContain('Keypad mouse only');
+    expect(keypadRoutingCue?.textContent).toContain('Hex keypad disabled');
     expect(displayCol?.querySelector('.lcd')).not.toBeNull();
     expect(displayCol?.querySelector('.display-block')).not.toBeNull();
     expect(status?.querySelector('#statusLeds')).not.toBeNull();
@@ -138,7 +138,7 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('width: max-content');
     expect(css).toContain('.hardware-keypad-col');
     expect(css).toContain('.keypad-routing-cue');
-    expect(css).toContain('.keypad--keyboard-routed-to-matrix');
+    expect(css).toContain('.keypad--matrix-attached-disabled');
     expect(css).toContain('.matrix-keyboard-active');
     expect(css).toContain('--tec1g-display-stack-width: 320px');
     expect(css).toContain('--tec1g-keypad-content-width');
