@@ -16,6 +16,8 @@
   sample arrow and control keys from the on-screen keyboard.
 - Reasserted TEC-1G matrix mode after pressing RESET while the Matrix Keyboard
   accordion is open, avoiding a stale hex-keypad mode until close/reopen.
+- Reasserted TEC-1G matrix mode when a debug session starts with the persisted
+  Matrix Keyboard accordion already open.
 - Added matrix keyboard mappings for MON-3 low control codes such as arrow,
   Backspace, and Tab keys so matrix-aware programs can read the full key set.
 - Moved the Debug80 Engineering Manual into `docs/codebase` so the codebase

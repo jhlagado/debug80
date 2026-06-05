@@ -632,6 +632,11 @@ message path. If the Matrix Keyboard accordion is open, Debug80 performs the
 board reset first and then reasserts MON-3 Matrix CONFIG, keeping the runtime in
 sync with the visible attached-keyboard state.
 
+The same sync is now applied when a debug session starts with the Matrix
+Keyboard accordion already open from persisted UI state. The webview reasserts
+matrix mode when the session becomes running/paused, and when a platform update
+reports matrix mode off while the accordion is visibly attached.
+
 This matches the practical hardware model while keeping the raw matrix keyboard
 port `0xFE` readable by programs that poll it directly.
 

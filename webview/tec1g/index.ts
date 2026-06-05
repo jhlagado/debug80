@@ -128,6 +128,12 @@ function applyMatrixKeyboardOpenState(open: boolean): void {
   );
 }
 
+function reassertMatrixKeyboardOpenState(): void {
+  if (panelLayout.isMatrixKeyboardOpen()) {
+    applyMatrixKeyboardOpenState(true);
+  }
+}
+
 let memoryPanelController: MemoryPanel | null = null;
 const panelLayout = createAccordionLayoutController({
   vscode,
@@ -331,6 +337,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     panelLayout.setRegisterRefreshActive(
       message.status === 'running' || message.status === 'paused'
     );
+    if (message.status === 'running' || message.status === 'paused') {
+      reassertMatrixKeyboardOpenState();
+    }
     return;
   }
   if (message.type === 'selectTab') {
@@ -345,6 +354,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       uiRevision = message.uiRevision;
     }
     applyUpdateFromPayload(message);
+    if (message.matrixMode === false) {
+      reassertMatrixKeyboardOpenState();
+    }
     return;
   }
   if (message.type === 'snapshot') {

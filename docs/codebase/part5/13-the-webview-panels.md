@@ -370,6 +370,8 @@ Matrix keyboard arrows and editing keys are not routed through the hex keypad sh
 
 When RESET is clicked while the Matrix Keyboard accordion is open, the webview includes that attachment state with the reset request. The extension host resets the board and then reasserts matrix mode, so MON-3 continues scanning the matrix keyboard instead of silently reverting to hex-keypad mode until the accordion is toggled.
 
+The panel also reasserts matrix attachment when a debug session becomes active and the Matrix Keyboard accordion was already open from persisted UI state. This covers the startup case where the webview may have sent its initial matrix-mode request before a Z80 debug session existed.
+
 Physical PC keyboard events use direct keydown/keyup timing. On-screen matrix-keyboard clicks are held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
 
 Each matrix key sends:

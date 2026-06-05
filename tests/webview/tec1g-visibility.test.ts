@@ -183,6 +183,9 @@ describe('tec1g UI visibility controls', () => {
     expect(doc.querySelector('#matrixConfigSwitch')).toBeNull();
     expect(source).not.toContain('matrixConfigSwitch');
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
+    expect(source).toContain('function reassertMatrixKeyboardOpenState()');
+    expect(source).toContain("message.status === 'running' || message.status === 'paused'");
+    expect(source).toContain('if (message.matrixMode === false)');
   });
 
   it('labels all eight status lamps including the Memory Expansion bank bits', () => {
