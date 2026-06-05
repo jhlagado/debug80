@@ -267,9 +267,11 @@ This is used by the `debug80/tec1gMatrixKey` request to translate keyboard event
 
 Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, routes physical PC keyboard events to the matrix keyboard and disables the scanned hex keypad keys. RESET remains active because it is a board-level reset control rather than a scanned keypad key. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
 
+The accordion open state is persisted by the webview, but MON-3 Matrix CONFIG is session runtime state. Debug80 therefore reasserts matrix mode when a debug session becomes active with the accordion already open, and again after a RESET clicked while the accordion is open. This keeps persisted UI state and runtime input routing aligned without requiring a close/reopen cycle.
+
 The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
 
-The on-screen matrix keyboard maintains visible modifier state for Shift, Ctrl, Fn, Alt and CAPS LOCK. CAPS LOCK is latched, Shifted clicks send shifted ASCII where appropriate, and Alt is sent as its own raw secondary modifier rather than being collapsed into another key state.
+The on-screen matrix keyboard maintains visible modifier state for Shift, Ctrl, Fn, Alt and CAPS LOCK. CAPS LOCK is latched, Shifted clicks send shifted ASCII where appropriate, and Alt is sent as its own raw secondary modifier rather than being collapsed into another key state. Physical PC keyboard events use direct keydown/keyup timing; mouse-clicked matrix keys are held briefly before release so MON-3's polling loop can sample them reliably.
 
 ---
 
