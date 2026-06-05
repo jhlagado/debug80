@@ -120,8 +120,8 @@ Required guardrails:
 - Keep tests proving Debug80 does not create project caches.
 - Keep user-facing messages compact and refer to "source maps" rather than D8
   internals unless the file format itself is being discussed.
-- Keep source-map policy guardrails in tests and in the external Debug80
-  Engineering Manual aligned with runtime behavior.
+- Keep source-map policy guardrails in tests and in `docs/codebase` aligned with
+  runtime behavior.
 
 ### P1: Complex Dispatchers Need Smaller Units
 
@@ -340,7 +340,7 @@ returning.
 
 Completed guardrails:
 
-- Moved source-map policy into tests and the external Debug80 Engineering Manual.
+- Moved source-map policy into tests and the Debug80 Engineering Manual.
 - Renamed user-facing mapping messages away from "legacy" and toward compact
   "source map" wording.
 - Keep compatibility with current AZM field names, but document that
@@ -586,19 +586,16 @@ Notes:
 - Prefer small, behavior-preserving goals. The main risk in this UI is not a
   single large file; it is several independent state models drifting apart.
 
-### Latest Goal Note: Repo Documentation Cleanup
+### Latest Goal Note: Engineering Manual Moved Into Repo
 
-Repo-local docs have been reduced to checkout-specific process and maintenance
-notes. The durable technical and user-facing manuals now live in the external
-Debug80 documentation site at `debug80.com`, including the Engineering Manual
-and D8 format reference.
+The Debug80 Engineering Manual has moved from `debug80-docs/codebase` into this
+repository at `docs/codebase`. User-facing guides and AZM books remain published
+through `debug80.com`, but the codebase reference now lives beside the source it
+describes.
 
-This cleanup removed local duplicates for the technical guide, platform
-specification, platform extension guide, platform development guide, D8 debug
-map format, timing model, performance diagnostics, future directions, project
-selection ADR, and platform ROM bundle plan. Future durable docs should be
-written in `debug80-docs`; this repo should keep only release process,
-regression strategy, and active code-quality audit notes.
+Repo-local docs should avoid reviving old duplicate planning notes. The intended
+shape is now `docs/codebase` for the engineering manual plus the checkout
+release process, regression strategy, and active code-quality audit notes.
 
 ## Quality Criteria For Future PRs
 

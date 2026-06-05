@@ -1,7 +1,7 @@
 /**
  * @fileoverview D8 Debug Map format support.
  * Implements the D8 debug map specification for portable debug information.
- * @see https://debug80.com/codebase/appendices/g-d8-debug-map-format/
+ * @see docs/codebase/appendices/g-d8-debug-map-format.md
  */
 
 import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './types';

@@ -157,15 +157,15 @@ not need `npm link`, sibling checkouts, or globally installed assembler binaries
 
 ## Documentation
 
-- [debug80.com](https://debug80.com/): published user
-  guides, AZM books/manual, and engineering reference.
+- [debug80.com](https://debug80.com/): published user guides and AZM
+  books/manual.
 - [Using Debug80 in VS Code](https://debug80.com/manual/):
   project setup, debugging workflow, panels, ROMs, serial, source mapping, and
   troubleshooting.
-- [Debug80 Engineering Manual](https://debug80.com/codebase/):
+- [Debug80 Engineering Manual](docs/codebase/index.md):
   extension architecture, launch pipeline, platform runtimes, webview panels,
   source mapping, extension points, release testing, and regression gates.
-- [D8 Debug Map Format](https://debug80.com/codebase/appendices/g-d8-debug-map-format/):
+- [D8 Debug Map Format](docs/codebase/appendices/g-d8-debug-map-format.md):
   native source mapping format consumed by Debug80.
 - [AZM Books and Manual](https://debug80.com/azm-book/):
   Z80 learning material and AZM assembler reference.

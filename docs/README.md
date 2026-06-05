@@ -1,16 +1,17 @@
 # Debug80 Repo Documentation
 
-This directory is intentionally small. Durable user-facing and engineering
-manuals live at [debug80.com](https://debug80.com/), including the
-[Debug80 Engineering Manual](https://debug80.com/codebase/) and
-[D8 Debug Map Format](https://debug80.com/codebase/appendices/g-d8-debug-map-format/).
+This directory contains the Debug80 engineering manual plus checkout-specific
+release, regression, and code-quality notes. User-facing guides and AZM books
+remain published at [debug80.com](https://debug80.com/).
 
-Keep only checkout-specific process and maintenance notes here. Do not duplicate
-manual chapters, platform reference, D8 format reference, or historical planning
-notes in this repository.
+The engineering manual was moved here from the `debug80-docs` repository so the
+codebase reference lives beside the source it describes.
 
 ## Local References
 
+- [Debug80 Engineering Manual](codebase/index.md): architecture, launch pipeline,
+  platform runtimes, webview panels, source mapping, extension points, release
+  testing, and regression gates.
 - [Release process](release-process.md): VSIX and Marketplace release checklist
   for this checkout.
 - [Regression test strategy](regression-test-strategy.md): local test layers and
