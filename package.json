@@ -33,8 +33,7 @@
   },
   "files": [
     "dist/src",
-    "docs/reference/cli.md",
-    "docs/reference/tooling-api.md"
+    "docs/codebase"
   ],
   "publishConfig": {
     "access": "public"

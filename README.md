@@ -505,8 +505,8 @@ The main switches are:
 | `-V, --version`                               | Print package version.                                              |
 | `-h, --help`                                  | Print CLI help.                                                     |
 
-See [docs/reference/cli.md](docs/reference/cli.md) for the complete option
-reference.
+See the [AZM Engineering Manual](docs/codebase/) for the maintained codebase,
+CLI and package-interface reference.
 
 ## Output Artifacts
 
@@ -625,8 +625,8 @@ Public tooling types include `Diagnostic`, `LoadedProgram`,
 `AnalyzeProgramResult`, `LoadProgramResult`, `RegisterContractsCandidateDiagnostic`
 and the Debug80 map artifact types `D8mArtifact`, `D8mJson` and `D8mSymbol`.
 
-See [docs/reference/tooling-api.md](docs/reference/tooling-api.md) for current
-API notes.
+See the [public surface reference](docs/codebase/appendices/c-public-surface-reference.md)
+for current API notes.
 
 ## Development
 
@@ -641,8 +641,8 @@ npm run test:azm:corpus
 npm test
 ```
 
-The live source map is maintained in
-[docs/reference/source-overview.md](docs/reference/source-overview.md).
+The live source map is maintained in the
+[AZM Engineering Manual](docs/codebase/).
 
 ## License
 
