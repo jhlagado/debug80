@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.17
+
+- Added TEC-1G matrix-keyboard takeover behavior that more closely matches
+  MON-3: opening the Matrix Keyboard accordion now acts as the attachment
+  switch, keeps RESET available, holds clicked keys long enough for monitor
+  scans, and reasserts matrix mode after RESET or debug-session startup.
+- Completed TEC-1G matrix input handling so on-screen keys stay synchronized
+  with monitor state when sessions start or the machine resets.
+- Updated GLCD canvas rendering to use integer scaling for sharper display
+  output.
+- Pruned obsolete repository docs, moved the engineering manual into
+  `docs/codebase`, and refreshed TEC-1G matrix lifecycle documentation.
+
 ## 0.1.16
 
 - Fixed Matrix Keyboard capture shutdown so held matrix keys are released before
