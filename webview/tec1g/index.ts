@@ -82,7 +82,6 @@ const accordionButtons = Array.from(
 );
 const matrixKeyboardHeader =
   accordionButtons.find((button) => button.dataset.accordionToggle === 'matrixKeyboard') ?? null;
-const matrixConfigSwitch = document.getElementById('matrixConfigSwitch') as HTMLInputElement | null;
 const accordionProject = document.getElementById('accordion-project') as HTMLElement;
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
@@ -122,6 +121,7 @@ const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard
 
 function applyMatrixKeyboardOpenState(open: boolean): void {
   matrixUi.applyKeyboardCapture(open);
+  vscode.postMessage({ type: 'matrixMode', enabled: open });
   applyMatrixRoutingCue(
     { appRoot, keypad: keypadEl, cue: keypadRoutingCue, header: matrixKeyboardHeader },
     open
@@ -240,10 +240,6 @@ platformSelectEl?.addEventListener('change', () => {
   }
 });
 
-matrixConfigSwitch?.addEventListener('change', () => {
-  vscode.postMessage({ type: 'matrixMode', enabled: matrixConfigSwitch.checked });
-});
-
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
   applySpeed(next);
@@ -335,9 +331,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
         return;
       }
       uiRevision = message.uiRevision;
-    }
-    if (typeof message.matrixMode === 'boolean' && matrixConfigSwitch) {
-      matrixConfigSwitch.checked = message.matrixMode;
     }
     applyUpdateFromPayload(message);
     return;

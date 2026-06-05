@@ -263,11 +263,11 @@ The row select is also active-low. `decodeMatrixKeyboardRow()` in `src/platforms
 
 This is used by the `debug80/tec1gMatrixKey` request to translate keyboard events from the webview into character codes the program can consume.
 
-### Matrix mode
+### Matrix keyboard attachment
 
-Matrix mode (`debug80/tec1gMatrixMode`) switches the keyboard input model from hex keypad (NMI-driven) to matrix keyboard (polled via port 0xFE). The MON-3 monitor polls the matrix continuously; the webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
+Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode and routes physical PC keyboard events to the matrix keyboard. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
 
-`setMatrixMode(enabled)` is also called by the webview's own controls and is passed through the `PlatformCommandContext` during `registerCommands()`. In the current webview, matrix mode follows the matrix-keyboard accordion visibility and is restored from accordion state after a webview reload. Typed keys are routed to the matrix keyboard only while the UI tab and matrix panel are active, so the hex keypad remains clickable outside that mode.
+The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
 
 The on-screen matrix keyboard maintains visible modifier state for Shift, Ctrl, Fn, Alt and CAPS LOCK. CAPS LOCK is latched, Shifted clicks send shifted ASCII where appropriate, and Alt is sent as its own raw secondary modifier rather than being collapsed into another key state.
 

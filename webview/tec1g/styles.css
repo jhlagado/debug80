@@ -1,511 +1,497 @@
 /* TEC-1G — GLCD, RGB matrix “.on”, section toggles, status LEDs. Shared: ../common/styles.css */
 
-    .debug80-accordion {
-      --tec1g-display-stack-width: 320px;
-      --tec1g-glcd-panel-width: 346px;
-      --tec1g-matrix-panel-width: 296px;
-      --tec1g-panel-gap: 14px;
-      --tec1g-keypad-content-width: calc(
-        var(--tec1g-panel-width) - var(--tec1g-display-stack-width) -
-          var(--tec1g-panel-gap) - 20px
-      );
-      --tec1g-panel-width: calc(
-        var(--tec1g-glcd-panel-width) + var(--tec1g-panel-gap) +
-          var(--tec1g-matrix-panel-width)
-      );
-    }
-    .tec1g-ui-frame {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      align-items: flex-start;
-      width: var(--tec1g-panel-width);
-      max-width: none;
-    }
-    .tec1g-layout {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      align-items: flex-start;
-      width: 100%;
-      max-width: none;
-    }
-    .hardware-grid {
-      display: inline-flex;
-      flex-direction: row;
-      gap: 14px;
-      align-items: flex-start;
-      justify-content: flex-start;
-      align-self: flex-end;
-      width: max-content;
-      max-width: none;
-    }
-    .hardware-display-col {
-      flex: 0 0 auto;
-      width: var(--tec1g-display-stack-width);
-      gap: 10px;
-    }
-    .hardware-keypad-col {
-      flex: 0 0 auto;
-      align-self: flex-start;
-      justify-self: start;
-    }
-    .keypad-routing-cue {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      width: var(--tec1g-keypad-content-width);
-      max-width: var(--tec1g-keypad-content-width);
-      min-height: 22px;
-      box-sizing: border-box;
-      margin: 0 0 6px;
-      padding: 3px 8px;
-      border: 1px solid rgba(255, 184, 77, 0.5);
-      border-radius: 999px;
-      background: rgba(255, 184, 77, 0.11);
-      color: #ffd68a;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      line-height: 1;
-      text-transform: uppercase;
-      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
-    }
-    .keypad-routing-cue[hidden] {
-      display: none;
-    }
-    .keypad-routing-dot {
-      width: 8px;
-      height: 8px;
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: #ffb84d;
-      box-shadow: 0 0 8px rgba(255, 184, 77, 0.9);
-    }
-    .keypad-routing-note {
-      margin-left: auto;
-      color: #d6c4a4;
-      font-size: 8px;
-      font-weight: 600;
-      opacity: 0.88;
-    }
-    .glcd-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: var(--tec1g-glcd-panel-width);
-    }
-    .glcd-stack > .status {
-      display: flex;
-      flex-direction: column;
-      flex-wrap: nowrap;
-      gap: 5px;
-      align-items: stretch;
-      justify-content: center;
-      width: var(--tec1g-glcd-panel-width);
-      max-width: var(--tec1g-glcd-panel-width);
-      margin-top: 0;
-      padding: 5px 8px;
-      height: 97px;
-      border: 1px solid #2b2b2b;
-      border-radius: 8px;
-      background: #151515;
-      box-sizing: border-box;
-    }
-    .peripheral-grid {
-      display: grid;
-      grid-template-columns: max-content max-content;
-      gap: var(--tec1g-panel-gap);
-      align-items: end;
-      justify-items: start;
-      width: max-content;
-      max-width: none;
-    }
-    .peripheral-grid .matrix {
-      width: var(--tec1g-matrix-panel-width);
-    }
-    .peripheral-grid .glcd,
-    .peripheral-grid .matrix {
-      min-width: 0;
-      margin-top: 0;
-      box-sizing: border-box;
-    }
-    .peripheral-grid .matrix-grid {
-      margin: 0 auto;
-    }
-    .panel-displays,
-    .panel-serial,
-    .panel-matrix-keyboard {
-      width: var(--tec1g-panel-width);
-      max-width: 100%;
-      box-sizing: border-box;
-    }
-    .panel-serial .serial,
-    .panel-matrix-keyboard .matrix-keyboard {
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      margin-top: 0;
-    }
-    .matrix-keyboard-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .matrix-keyboard-header .matrix-keyboard-title {
-      margin-bottom: 0;
-    }
-    .matrix-config-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: #d0d0d0;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      line-height: 1;
-      text-transform: uppercase;
-      white-space: nowrap;
-      user-select: none;
-    }
-    .matrix-config-switch input {
-      width: 14px;
-      height: 14px;
-      margin: 0;
-    }
-    .hardware-display-col .lcd,
-    .hardware-display-col .display {
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .hardware-display-col .lcd-canvas {
-      display: block;
-      width: 90%;
-      height: 70px;
-      margin: 0 auto;
-    }
-    .hardware-display-col .display {
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .hardware-display-col .digit svg {
-      width: 40px;
-      height: 66px;
-    }
-    .hardware-display-col .digit--data + .digit--data {
-      margin-left: 1rem;
-    }
-    .hardware-keypad-col .keypad {
-      grid-template-columns: repeat(6, 46px);
-      grid-template-rows: repeat(4, 46px);
-      width: var(--tec1g-keypad-content-width);
-    }
-    .hardware-keypad-col .keypad.keypad--keyboard-routed-to-matrix {
-      border-color: rgba(255, 184, 77, 0.86);
-      box-shadow:
-        0 0 0 1px rgba(255, 184, 77, 0.35),
-        0 0 12px rgba(255, 184, 77, 0.18);
-    }
-    .hardware-keypad-col .keycap {
-      width: 46px;
-      height: 46px;
-    }
-    .display .digit--data .seg {
-      fill: #002a18;
-    }
-    .display .digit--data .seg.on {
-      fill: #35ff8f;
-      filter: drop-shadow(0 0 4px rgba(53, 255, 143, 0.75));
-    }
-    .status {
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      align-content: flex-start;
-    }
-    .status-actions {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-    }
-    .glcd-stack > .status .key.speed,
-    .glcd-stack > .status .key.mute {
-      padding: 2px 8px;
-      font-size: 11px;
-      line-height: 1.1;
-    }
-    .glcd-stack > .status .key.speed {
-      min-width: 54px;
-    }
-    .glcd-stack > .status .key.mute {
-      min-width: 66px;
-    }
-    .glcd-stack > .status .speaker {
-      min-width: 44px;
-      padding: 2px 8px;
-      font-size: 11px;
-      line-height: 1.1;
-    }
-    .status-leds {
-      display: grid;
-      flex: 0 0 auto;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 4px;
-      align-items: center;
-      width: 100%;
-      min-height: 19px;
-      box-sizing: border-box;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #1f1f1f;
-      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
-    }
-    .status-led {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      min-width: 0;
-      font-size: 10px;
-      letter-spacing: 0.02em;
-      color: #cfcfcf;
-    }
-    .status-led-label {
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      line-height: 1;
-      white-space: nowrap;
-    }
-    .status-led-light {
-      width: 10px;
-      height: 10px;
-      flex: 0 0 auto;
-      border-radius: 3px;
-      background: #3f3f3f;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
-      display: inline-block;
-    }
-    .status-led-light.on {
-      background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
-      box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
-    }
-    .status-bank-panel {
-      display: flex;
-      flex-direction: column;
-      flex: 0 0 auto;
-      gap: 3px;
-      width: 100%;
-    }
-    .status-bank-title {
-      color: #9aa0a6;
-      font-size: 9px;
-      letter-spacing: 0.07em;
-      line-height: 1;
-      text-align: center;
-      text-transform: uppercase;
-    }
-    .status-bank-leds {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 4px;
-      align-items: center;
-      width: 100%;
-      min-height: 19px;
-      box-sizing: border-box;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #1f1f1f;
-      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
-    }
-    .glcd {
-      margin-top: 0;
-      background: #2f6b4a;
-      border-radius: 8px;
-      padding: 10px 12px;
-      border: 1px solid #243528;
-      width: var(--tec1g-glcd-panel-width);
-      max-width: 100%;
-      box-sizing: border-box;
-    }
-    .glcd-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: #7fb88a;
-      margin-bottom: 6px;
-    }
-    .glcd-canvas {
-      display: block;
-      border: 1px solid #274334;
-      border-radius: 6px;
-      background: #9eb663;
-      image-rendering: pixelated;
-      width: 320px;
-      max-width: 100%;
-      height: auto;
-      box-shadow: inset 0 0 10px rgba(10, 20, 10, 0.5);
-    }
-    .matrix {
-      margin-top: 12px;
-      background: #151515;
-      border-radius: 8px;
-      padding: 10px 12px;
-      border: 1px solid #2b2b2b;
-    }
-    .matrix-title {
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      color: #bdbdbd;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
-    .matrix-grid {
-      background: #000000;
-      border-color: #1a1a1a;
-    }
-    /* Off pixels: frosted RGB diffuser (not mono red — classic TEC-1 uses common --matrix-off-*). */
-    .matrix-dot {
-      --matrix-level: 0;
-      --matrix-r: 0;
-      --matrix-g: 0;
-      --matrix-b: 0;
-      background: radial-gradient(
-        circle at 38% 32%,
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(200, 204, 212, 0.12) 45%,
-        rgba(110, 115, 125, 0.09) 100%
-      );
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.18),
-        inset 0 -1px 3px rgba(0, 0, 0, 0.4);
-      transition: box-shadow 40ms linear, background 40ms linear, filter 40ms linear;
-    }
-    .matrix-dot.on {
-      /* Hot centre + saturated rim: reads closer to real RGB matrix / LED sign */
-      background: radial-gradient(
-        circle at 42% 32%,
-        rgb(
-          calc(70 + 185 * var(--matrix-r)),
-          calc(70 + 185 * var(--matrix-g)),
-          calc(70 + 185 * var(--matrix-b))
-        ) 0%,
-        rgb(
-          calc(20 + 235 * var(--matrix-r)),
-          calc(20 + 235 * var(--matrix-g)),
-          calc(20 + 235 * var(--matrix-b))
-        ) 42%,
-        rgb(
-          calc(4 + 120 * var(--matrix-r)),
-          calc(4 + 120 * var(--matrix-g)),
-          calc(4 + 120 * var(--matrix-b))
-        ) 100%
-      );
-      box-shadow:
-        0 0 calc(4px + (var(--matrix-level) * 18px))
-          rgba(
-            calc(100 + 155 * var(--matrix-r)),
-            calc(100 + 155 * var(--matrix-g)),
-            calc(100 + 155 * var(--matrix-b)),
-            0.92
-          ),
-        inset 0 1px 3px rgba(255, 255, 255, 0.45);
-      filter: brightness(1.08) saturate(1.18);
-    }
-    .matrix-keyboard {
-      margin-top: 8px;
-      background: #151515;
-      border-radius: 8px;
-      padding: 8px 10px;
-      border: 1px solid #2b2b2b;
-    }
-    .matrix-keyboard-title {
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      color: #bdbdbd;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-    .matrix-keyboard-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 980px;
-    }
-    .matrix-keyboard-row {
-      display: flex;
-      gap: 4px;
-      align-items: stretch;
-    }
-    .matrix-key {
-      --key-unit: 1;
-      flex: var(--key-unit) 1 0;
-      min-width: 0;
-      height: 32px;
-      border: 1px solid #2f2f2f;
-      border-radius: 5px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: #f4f1e8;
-      background:
-        radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.18), transparent 35%),
-        linear-gradient(180deg, #171717 0%, #070707 65%, #010101 100%);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.24),
-        inset 0 -6px 10px rgba(255, 255, 255, 0.05),
-        0 2px 0 #000,
-        0 0 0 1px rgba(255, 255, 255, 0.05);
-      text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
-      user-select: none;
-    }
-    .matrix-key-label,
-    .matrix-key-sub-label {
-      display: block;
-      line-height: 1;
-    }
-    .matrix-key-with-sub-label {
-      gap: 2px;
-    }
-    .matrix-key-sub-label {
-      font-size: 7px;
-      letter-spacing: 0.08em;
-      opacity: 0.78;
-    }
-    .matrix-key.pressed,
-    .matrix-key.active {
-      background: #f1b500;
-      color: #1f1f1f;
-      border-color: #d69a00;
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.55),
-        inset 0 -6px 10px rgba(90, 55, 0, 0.18),
-        0 2px 0 #000,
-        0 0 14px rgba(241, 181, 0, 0.55);
-      text-shadow: none;
-    }
-    .debug80-accordion-header[data-accordion-toggle='matrixKeyboard'].matrix-keyboard-active {
-      color: #ffd68a;
-    }
-    .debug80-accordion-header[data-accordion-toggle='matrixKeyboard'].matrix-keyboard-active::before {
-      content: 'ACTIVE';
-      flex: 0 0 auto;
-      order: 1;
-      margin-left: auto;
-      padding: 1px 5px;
-      border: 1px solid rgba(255, 184, 77, 0.5);
-      border-radius: 999px;
-      background: rgba(255, 184, 77, 0.12);
-      color: #ffd68a;
-      font-size: 8px;
-      letter-spacing: 0.08em;
-      line-height: 1.2;
-    }
+.debug80-accordion {
+  --tec1g-display-stack-width: 320px;
+  --tec1g-glcd-panel-width: 346px;
+  --tec1g-matrix-panel-width: 296px;
+  --tec1g-panel-gap: 14px;
+  --tec1g-keypad-content-width: calc(
+    var(--tec1g-panel-width) - var(--tec1g-display-stack-width) - var(--tec1g-panel-gap) - 20px
+  );
+  --tec1g-panel-width: calc(
+    var(--tec1g-glcd-panel-width) + var(--tec1g-panel-gap) + var(--tec1g-matrix-panel-width)
+  );
+}
+.tec1g-ui-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  width: var(--tec1g-panel-width);
+  max-width: none;
+}
+.tec1g-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: none;
+}
+.hardware-grid {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  align-self: flex-end;
+  width: max-content;
+  max-width: none;
+}
+.hardware-display-col {
+  flex: 0 0 auto;
+  width: var(--tec1g-display-stack-width);
+  gap: 10px;
+}
+.hardware-keypad-col {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  justify-self: start;
+}
+.keypad-routing-cue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: var(--tec1g-keypad-content-width);
+  max-width: var(--tec1g-keypad-content-width);
+  min-height: 22px;
+  box-sizing: border-box;
+  margin: 0 0 6px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 184, 77, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 184, 77, 0.11);
+  color: #ffd68a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
+}
+.keypad-routing-cue[hidden] {
+  display: none;
+}
+.keypad-routing-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #ffb84d;
+  box-shadow: 0 0 8px rgba(255, 184, 77, 0.9);
+}
+.keypad-routing-note {
+  margin-left: auto;
+  color: #d6c4a4;
+  font-size: 8px;
+  font-weight: 600;
+  opacity: 0.88;
+}
+.glcd-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: var(--tec1g-glcd-panel-width);
+}
+.glcd-stack > .status {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 5px;
+  align-items: stretch;
+  justify-content: center;
+  width: var(--tec1g-glcd-panel-width);
+  max-width: var(--tec1g-glcd-panel-width);
+  margin-top: 0;
+  padding: 5px 8px;
+  height: 97px;
+  border: 1px solid #2b2b2b;
+  border-radius: 8px;
+  background: #151515;
+  box-sizing: border-box;
+}
+.peripheral-grid {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: var(--tec1g-panel-gap);
+  align-items: end;
+  justify-items: start;
+  width: max-content;
+  max-width: none;
+}
+.peripheral-grid .matrix {
+  width: var(--tec1g-matrix-panel-width);
+}
+.peripheral-grid .glcd,
+.peripheral-grid .matrix {
+  min-width: 0;
+  margin-top: 0;
+  box-sizing: border-box;
+}
+.peripheral-grid .matrix-grid {
+  margin: 0 auto;
+}
+.panel-displays,
+.panel-serial,
+.panel-matrix-keyboard {
+  width: var(--tec1g-panel-width);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.panel-serial .serial,
+.panel-matrix-keyboard .matrix-keyboard {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+}
+.matrix-keyboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.matrix-keyboard-header .matrix-keyboard-title {
+  margin-bottom: 0;
+}
+.hardware-display-col .lcd,
+.hardware-display-col .display {
+  width: 100%;
+  box-sizing: border-box;
+}
+.hardware-display-col .lcd-canvas {
+  display: block;
+  width: 90%;
+  height: 70px;
+  margin: 0 auto;
+}
+.hardware-display-col .display {
+  justify-content: space-between;
+  gap: 8px;
+}
+.hardware-display-col .digit svg {
+  width: 40px;
+  height: 66px;
+}
+.hardware-display-col .digit--data + .digit--data {
+  margin-left: 1rem;
+}
+.hardware-keypad-col .keypad {
+  grid-template-columns: repeat(6, 46px);
+  grid-template-rows: repeat(4, 46px);
+  width: var(--tec1g-keypad-content-width);
+}
+.hardware-keypad-col .keypad.keypad--keyboard-routed-to-matrix {
+  border-color: rgba(255, 184, 77, 0.86);
+  box-shadow:
+    0 0 0 1px rgba(255, 184, 77, 0.35),
+    0 0 12px rgba(255, 184, 77, 0.18);
+}
+.hardware-keypad-col .keycap {
+  width: 46px;
+  height: 46px;
+}
+.display .digit--data .seg {
+  fill: #002a18;
+}
+.display .digit--data .seg.on {
+  fill: #35ff8f;
+  filter: drop-shadow(0 0 4px rgba(53, 255, 143, 0.75));
+}
+.status {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: flex-start;
+}
+.status-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.glcd-stack > .status .key.speed,
+.glcd-stack > .status .key.mute {
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.glcd-stack > .status .key.speed {
+  min-width: 54px;
+}
+.glcd-stack > .status .key.mute {
+  min-width: 66px;
+}
+.glcd-stack > .status .speaker {
+  min-width: 44px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.status-leds {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 19px;
+  box-sizing: border-box;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #1f1f1f;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
+}
+.status-led {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: #cfcfcf;
+}
+.status-led-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.status-led-light {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: #3f3f3f;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  display: inline-block;
+}
+.status-led-light.on {
+  background: linear-gradient(to bottom, #ffd84d 0%, #e08a2a 100%);
+  box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
+}
+.status-bank-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 3px;
+  width: 100%;
+}
+.status-bank-title {
+  color: #9aa0a6;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+.status-bank-leds {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 19px;
+  box-sizing: border-box;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #1f1f1f;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06);
+}
+.glcd {
+  margin-top: 0;
+  background: #2f6b4a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid #243528;
+  width: var(--tec1g-glcd-panel-width);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.glcd-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #7fb88a;
+  margin-bottom: 6px;
+}
+.glcd-canvas {
+  display: block;
+  border: 1px solid #274334;
+  border-radius: 6px;
+  background: #9eb663;
+  image-rendering: pixelated;
+  width: 320px;
+  max-width: 100%;
+  height: auto;
+  box-shadow: inset 0 0 10px rgba(10, 20, 10, 0.5);
+}
+.matrix {
+  margin-top: 12px;
+  background: #151515;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid #2b2b2b;
+}
+.matrix-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #bdbdbd;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.matrix-grid {
+  background: #000000;
+  border-color: #1a1a1a;
+}
+/* Off pixels: frosted RGB diffuser (not mono red — classic TEC-1 uses common --matrix-off-*). */
+.matrix-dot {
+  --matrix-level: 0;
+  --matrix-r: 0;
+  --matrix-g: 0;
+  --matrix-b: 0;
+  background: radial-gradient(
+    circle at 38% 32%,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(200, 204, 212, 0.12) 45%,
+    rgba(110, 115, 125, 0.09) 100%
+  );
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.4);
+  transition:
+    box-shadow 40ms linear,
+    background 40ms linear,
+    filter 40ms linear;
+}
+.matrix-dot.on {
+  /* Hot centre + saturated rim: reads closer to real RGB matrix / LED sign */
+  background: radial-gradient(
+    circle at 42% 32%,
+    rgb(
+        calc(70 + 185 * var(--matrix-r)),
+        calc(70 + 185 * var(--matrix-g)),
+        calc(70 + 185 * var(--matrix-b))
+      )
+      0%,
+    rgb(
+        calc(20 + 235 * var(--matrix-r)),
+        calc(20 + 235 * var(--matrix-g)),
+        calc(20 + 235 * var(--matrix-b))
+      )
+      42%,
+    rgb(
+        calc(4 + 120 * var(--matrix-r)),
+        calc(4 + 120 * var(--matrix-g)),
+        calc(4 + 120 * var(--matrix-b))
+      )
+      100%
+  );
+  box-shadow:
+    0 0 calc(4px + (var(--matrix-level) * 18px))
+      rgba(
+        calc(100 + 155 * var(--matrix-r)),
+        calc(100 + 155 * var(--matrix-g)),
+        calc(100 + 155 * var(--matrix-b)),
+        0.92
+      ),
+    inset 0 1px 3px rgba(255, 255, 255, 0.45);
+  filter: brightness(1.08) saturate(1.18);
+}
+.matrix-keyboard {
+  margin-top: 8px;
+  background: #151515;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #2b2b2b;
+}
+.matrix-keyboard-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #bdbdbd;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+.matrix-keyboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 980px;
+}
+.matrix-keyboard-row {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+.matrix-key {
+  --key-unit: 1;
+  flex: var(--key-unit) 1 0;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid #2f2f2f;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f4f1e8;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.18), transparent 35%),
+    linear-gradient(180deg, #171717 0%, #070707 65%, #010101 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -6px 10px rgba(255, 255, 255, 0.05),
+    0 2px 0 #000,
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+  user-select: none;
+}
+.matrix-key-label,
+.matrix-key-sub-label {
+  display: block;
+  line-height: 1;
+}
+.matrix-key-with-sub-label {
+  gap: 2px;
+}
+.matrix-key-sub-label {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  opacity: 0.78;
+}
+.matrix-key.pressed,
+.matrix-key.active {
+  background: #f1b500;
+  color: #1f1f1f;
+  border-color: #d69a00;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -6px 10px rgba(90, 55, 0, 0.18),
+    0 2px 0 #000,
+    0 0 14px rgba(241, 181, 0, 0.55);
+  text-shadow: none;
+}
+.debug80-accordion-header[data-accordion-toggle='matrixKeyboard'].matrix-keyboard-active {
+  color: #ffd68a;
+}
+.debug80-accordion-header[data-accordion-toggle='matrixKeyboard'].matrix-keyboard-active::before {
+  content: 'ACTIVE';
+  flex: 0 0 auto;
+  order: 1;
+  margin-left: auto;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 184, 77, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 184, 77, 0.12);
+  color: #ffd68a;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}

@@ -47,7 +47,9 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `IN 0x00` (KEYBUF): keycode in lower bits, serial RX on bit 7 (idle high).
   - Keycodes: 0x00-0x0f (hex), 0x10 (▶ right), 0x11 (◀ left), 0x12 (GO), 0x13 (AD), 0x02 (FN). (ROMs may use K_PLUS/K_MINUS; keycaps are chevrons.)
 - `IN 0x03` (SYS_INPUT): system flags (U18 74HCT373).
-  - Bit 0 (0x01): Matrix CONFIG — MON-3 matrix keyboard takeover mode.
+  - Bit 0 (0x01): Matrix CONFIG — MON-3 matrix keyboard takeover mode. The webview
+    sets this while the Matrix Keyboard accordion is open, matching the hardware
+    keyboard attachment reed switch.
   - Bit 1 (0x02): PROTECT — fed back from SYS_CTRL.
   - Bit 2 (0x04): EXPAND — fed back from SYS_CTRL.
   - Bit 3 (0x08): CART — cartridge present flag.
@@ -124,7 +126,7 @@ the platform config to override the bundled profile or debug a custom ROM.
 a shared profile and point `tec1g.romHex` at a stable workspace-relative
 override path. When the local file is absent, launch uses the bundled extension
 copy. Put per-target `tec1g` fields only where a target actually differs, for
-example `appStart`, `matrixMode`, or `protectOnReset`.
+example `appStart` or `protectOnReset`.
 
 ```json
 {
@@ -134,7 +136,6 @@ example `appStart`, `matrixMode`, or `protectOnReset`.
     "romHex": "roms/tec1g/mon3/mon3.bin",
     "appStart": 16384,
     "entry": 0,
-    "matrixMode": false,
     "protectOnReset": false,
     "expansionBankHi": false,
     "sdEnabled": false,
@@ -144,8 +145,9 @@ example `appStart`, `matrixMode`, or `protectOnReset`.
 }
 ```
 
-`matrixMode`, `protectOnReset`, and `expansionBankHi` correspond to the CONFIG DIP
-switches (MON-3 matrix keyboard mode, protect on reset, expansion bank select).
+`protectOnReset` and `expansionBankHi` correspond to CONFIG DIP switches. The
+Matrix CONFIG bit is normally controlled by Matrix Keyboard panel visibility,
+which models attaching or removing the keyboard.
 
 ## Panel keyboard shortcuts
 

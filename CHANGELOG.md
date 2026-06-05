@@ -6,6 +6,8 @@
   capture is disabled, preventing stale pressed keys in the emulator runtime.
 - Clarified TEC-1G matrix keyboard documentation so keyboard capture is distinct
   from MON-3 Matrix CONFIG mode.
+- Removed the separate MON-3 Matrix checkbox; opening the Matrix Keyboard
+  accordion now emulates keyboard attachment and sets the Matrix CONFIG bit.
 - Moved the Debug80 Engineering Manual into `docs/codebase` so the codebase
   reference lives in the repository beside the source it describes.
 

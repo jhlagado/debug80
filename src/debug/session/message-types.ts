@@ -52,7 +52,7 @@ export interface MatrixKeyPayload {
 }
 
 /**
- * Payload for matrix mode toggle.
+ * Payload for the TEC-1G Matrix CONFIG input.
  */
 export interface MatrixModePayload {
   enabled: boolean;

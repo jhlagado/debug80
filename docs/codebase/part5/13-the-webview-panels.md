@@ -364,15 +364,15 @@ function applyMatrixBrightness(dots: HTMLElement[], r: number[], g: number[], b:
 
 The 64-entry brightness arrays (one per channel) come from the `matrixBrightnessR/G/B` fields of the TEC-1G update message. Each value is 0–255. `matrix-ui.ts` maps those duty-cycle values to stronger visible LED colours, currently with an extra 30% intensity boost over the previous display curve. This does not change the platform runtime's timing model; it only changes how the webview paints the already-calculated brightness so games such as Pacmo are easier to read while uneven scan timing remains visible.
 
-**Matrix keyboard input.** When matrix mode is enabled, the LED matrix area also acts as a clickable keyboard. Each dot element gets a click listener that sends:
+**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }`, enables host-keyboard capture for that panel and keeps the hex keypad clickable by mouse. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
+
+Each matrix key sends:
 
 ```typescript
 { type: 'matrixKey', key: string, pressed: boolean, shift: boolean, ctrl: boolean, alt: boolean }
 ```
 
-The `key` field encodes the row and column. Physical keyboard events are captured globally when matrix mode is active and translated to the same message format.
-
-`createMatrixUiController()` also handles the matrix mode toggle button, which sends `{ type: 'matrixMode', enabled: boolean }`.
+The `key` field encodes the row and column. Physical keyboard events are captured while the Matrix Keyboard accordion is active and translated to the same message format.
 
 ### Platform update application (`tec1g-platform-update.ts`)
 

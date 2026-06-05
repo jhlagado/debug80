@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const HTML_PATH = path.resolve(__dirname, '../../webview/tec1g/index.html');
+const SOURCE_PATH = path.resolve(__dirname, '../../webview/tec1g/index.ts');
 const CSS_PATH = path.resolve(__dirname, '../../webview/tec1g/styles.css');
 const COMMON_CSS_PATH = path.resolve(__dirname, '../../webview/common/styles.css');
 
@@ -90,6 +91,8 @@ describe('tec1g UI visibility controls', () => {
     expect(matrixKeyboardContent?.querySelector('.matrix-keyboard')).toBe(
       doc.querySelector('.matrix-keyboard')
     );
+    expect(matrixKeyboardContent?.querySelector('#matrixConfigSwitch')).toBeNull();
+    expect(matrixKeyboardContent?.textContent).not.toContain('MON-3 Matrix');
     expect(
       doc
         .querySelector<HTMLButtonElement>('[data-accordion-toggle="displays"]')
@@ -170,6 +173,14 @@ describe('tec1g UI visibility controls', () => {
       )
     ).toEqual(['ask', 'auto', 'never']);
     expect(doc.querySelector('#accordion-project #restartDebug')).not.toBeNull();
+  });
+
+  it('uses Matrix Keyboard accordion visibility as the matrix attachment switch', () => {
+    const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+
+    expect(doc.querySelector('#matrixConfigSwitch')).toBeNull();
+    expect(source).not.toContain('matrixConfigSwitch');
+    expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
   });
 
   it('labels all eight status lamps including the Memory Expansion bank bits', () => {
