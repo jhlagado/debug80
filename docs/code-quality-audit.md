@@ -618,6 +618,10 @@ Matrix CONFIG input. In Debug80, opening the accordion enables host keyboard
 capture and sets `SYS_INPUT` / port `0x03` bit `0`; closing it releases held
 matrix keys, disables host keyboard capture and clears that bit.
 
+RESET is intentionally excluded from the disabled scanned-key group. It remains
+available while the matrix keyboard is attached because it models a board reset
+button rather than a scanned monitor key.
+
 This matches the practical hardware model while keeping the raw matrix keyboard
 port `0xFE` readable by programs that poll it directly.
 

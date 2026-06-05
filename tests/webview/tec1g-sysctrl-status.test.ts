@@ -20,25 +20,22 @@ function makeKeypad() {
   const statusBank2 = makeStatusElement('statusBank2');
   const statusBank3 = makeStatusElement('statusBank3');
 
-  const keypad = createTecKeypad(
-    { postMessage: () => undefined },
-    keypadEl,
-    {
-      statusEls: {
-        statusShadow,
-        statusProtect,
-        statusExpand,
-        statusCaps,
-        statusBank0,
-        statusBank1,
-        statusBank2,
-        statusBank3,
-      },
-    }
-  );
+  const keypad = createTecKeypad({ postMessage: () => undefined }, keypadEl, {
+    statusEls: {
+      statusShadow,
+      statusProtect,
+      statusExpand,
+      statusCaps,
+      statusBank0,
+      statusBank1,
+      statusBank2,
+      statusBank3,
+    },
+  });
 
   return {
     keypad,
+    keypadEl,
     statusCaps,
     statusBank0,
     statusBank1,
@@ -48,6 +45,12 @@ function makeKeypad() {
 }
 
 describe('TEC-1G SYS_CTRL status lamps', () => {
+  it('marks RESET separately so matrix attachment can disable scanned keys only', () => {
+    const { keypadEl } = makeKeypad();
+
+    expect(keypadEl.querySelector('.keycap-reset')?.textContent).toContain('RESET');
+  });
+
   it('uses bit 7 for caps lock and bits 3-6 for memory expansion bank lamps', () => {
     const { keypad, statusCaps, statusBank0, statusBank1, statusBank2, statusBank3 } = makeKeypad();
 

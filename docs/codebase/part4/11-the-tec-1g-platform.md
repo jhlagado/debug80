@@ -265,7 +265,7 @@ This is used by the `debug80/tec1gMatrixKey` request to translate keyboard event
 
 ### Matrix keyboard attachment
 
-Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, routes physical PC keyboard events to the matrix keyboard and disables the hex keypad. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
+Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, routes physical PC keyboard events to the matrix keyboard and disables the scanned hex keypad keys. RESET remains active because it is a board-level reset control rather than a scanned keypad key. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
 
 The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
 

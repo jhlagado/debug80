@@ -20,7 +20,8 @@ describe('tec1g matrix routing cue', () => {
     expect(document.body.dataset.matrixKeyboardActive).toBe('true');
     expect(appRoot.dataset.matrixKeyboardActive).toBe('true');
     expect(keypad.classList.contains('keypad--matrix-attached-disabled')).toBe(true);
-    expect(keypad.getAttribute('aria-disabled')).toBe('true');
+    expect(keypad.getAttribute('data-scanned-keys-disabled')).toBe('true');
+    expect(keypad.hasAttribute('aria-disabled')).toBe(false);
     expect(keypad.getAttribute('aria-describedby')).toBe('keypadRoutingCue');
     expect(cue.hidden).toBe(false);
     expect(header.classList.contains('matrix-keyboard-active')).toBe(true);
@@ -30,7 +31,7 @@ describe('tec1g matrix routing cue', () => {
     expect(document.body.dataset.matrixKeyboardActive).toBe('false');
     expect(appRoot.dataset.matrixKeyboardActive).toBe('false');
     expect(keypad.classList.contains('keypad--matrix-attached-disabled')).toBe(false);
-    expect(keypad.hasAttribute('aria-disabled')).toBe(false);
+    expect(keypad.hasAttribute('data-scanned-keys-disabled')).toBe(false);
     expect(keypad.hasAttribute('aria-describedby')).toBe(false);
     expect(cue.hidden).toBe(true);
     expect(header.classList.contains('matrix-keyboard-active')).toBe(false);

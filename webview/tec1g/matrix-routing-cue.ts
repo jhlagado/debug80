@@ -14,9 +14,9 @@ export function applyMatrixRoutingCue(elements: MatrixRoutingCueElements, active
   elements.appRoot?.setAttribute('data-matrix-keyboard-active', activeValue);
   elements.keypad?.classList.toggle(KEYPAD_DISABLED_CLASS, active);
   if (active) {
-    elements.keypad?.setAttribute('aria-disabled', 'true');
+    elements.keypad?.setAttribute('data-scanned-keys-disabled', 'true');
   } else {
-    elements.keypad?.removeAttribute('aria-disabled');
+    elements.keypad?.removeAttribute('data-scanned-keys-disabled');
   }
   elements.header?.classList.toggle(HEADER_ACTIVE_CLASS, active);
 

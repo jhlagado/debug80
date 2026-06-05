@@ -187,9 +187,17 @@
   box-shadow:
     0 0 0 1px rgba(255, 184, 77, 0.35),
     0 0 12px rgba(255, 184, 77, 0.18);
-  opacity: 0.62;
+}
+.hardware-keypad-col .keypad.keypad--matrix-attached-disabled .keycap:not(.keycap-reset),
+.hardware-keypad-col .keypad.keypad--matrix-attached-disabled .sysctrl {
+  opacity: 0.55;
   pointer-events: none;
-  filter: grayscale(0.18);
+  filter: grayscale(0.35);
+}
+.hardware-keypad-col .keypad.keypad--matrix-attached-disabled .keycap-reset {
+  opacity: 1;
+  pointer-events: auto;
+  filter: none;
 }
 .hardware-keypad-col .keycap {
   width: 46px;

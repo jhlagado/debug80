@@ -147,7 +147,7 @@ export function createTecKeypad(
       core.setShiftLatched(false);
       vscode.postMessage({ type: 'reset' });
     },
-    'keycap-light',
+    'keycap-light keycap-reset',
     1,
     1,
     true
