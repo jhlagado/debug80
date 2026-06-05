@@ -9,7 +9,7 @@ The remaining `next/` directory is archival only. It keeps scaffold-era support
 files such as fixtures and local package metadata that were useful during the
 replacement track, but it is no longer the active implementation root.
 
-Current implementation history and parity records live under `docs/next/`.
+The maintained codebase map now lives under `docs/codebase/`.
 
 Use the repository root for development and verification:
 
