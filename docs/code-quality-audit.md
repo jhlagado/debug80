@@ -627,6 +627,11 @@ a race where browser `mousedown`/`mouseup` can press and release a matrix key
 between MON-3 polling samples, while preserving direct keydown/keyup behavior
 for the physical PC keyboard.
 
+RESET now carries the webview's matrix-accordion state through the TEC-1G panel
+message path. If the Matrix Keyboard accordion is open, Debug80 performs the
+board reset first and then reasserts MON-3 Matrix CONFIG, keeping the runtime in
+sync with the visible attached-keyboard state.
+
 This matches the practical hardware model while keeping the raw matrix keyboard
 port `0xFE` readable by programs that poll it directly.
 

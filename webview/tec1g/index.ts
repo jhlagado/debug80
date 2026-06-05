@@ -215,16 +215,28 @@ function applySpeed(mode: Tec1gSpeedMode): void {
   speedEl.classList.toggle('fast', mode === 'fast');
 }
 
-const keypad = createTec1gKeypad(vscode, keypadEl, {
-  statusShadow,
-  statusProtect,
-  statusExpand,
-  statusCaps,
-  statusBank0,
-  statusBank1,
-  statusBank2,
-  statusBank3,
-});
+const keypad = createTec1gKeypad(
+  vscode,
+  keypadEl,
+  {
+    statusShadow,
+    statusProtect,
+    statusExpand,
+    statusCaps,
+    statusBank0,
+    statusBank1,
+    statusBank2,
+    statusBank3,
+  },
+  {
+    onReset: () => {
+      vscode.postMessage({
+        type: 'reset',
+        matrixModeAfterReset: panelLayout.isMatrixKeyboardOpen(),
+      });
+    },
+  }
+);
 wireKeypadFocusPanels([accordionDisplays, accordionMachine], keypad);
 
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });

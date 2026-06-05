@@ -37,6 +37,8 @@ export type TecKeypad = {
 export type TecKeypadOptions = {
   /** When set, SysCtrl strip + status LED wiring is shown (TEC-1G only). */
   statusEls?: TecKeypadStatusEls | null;
+  /** Optional platform-specific board reset hook. Defaults to posting `{ type: 'reset' }`. */
+  onReset?: () => void;
 };
 
 /**
@@ -145,7 +147,11 @@ export function createTecKeypad(
     'RESET',
     () => {
       core.setShiftLatched(false);
-      vscode.postMessage({ type: 'reset' });
+      if (options?.onReset) {
+        options.onReset();
+      } else {
+        vscode.postMessage({ type: 'reset' });
+      }
     },
     'keycap-light keycap-reset',
     1,

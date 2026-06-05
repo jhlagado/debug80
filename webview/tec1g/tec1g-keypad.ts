@@ -7,10 +7,15 @@ import { createTecKeypad, type TecKeypad, type TecKeypadStatusEls } from '../com
 
 export type Tec1gKeypad = TecKeypad;
 
+export type Tec1gKeypadOptions = {
+  onReset?: () => void;
+};
+
 export function createTec1gKeypad(
   vscode: VscodeApi,
   keypadEl: HTMLElement,
-  statusEls: TecKeypadStatusEls
+  statusEls: TecKeypadStatusEls,
+  options?: Tec1gKeypadOptions
 ): Tec1gKeypad {
-  return createTecKeypad(vscode, keypadEl, { statusEls });
+  return createTecKeypad(vscode, keypadEl, { statusEls, onReset: options?.onReset });
 }

@@ -51,6 +51,21 @@ describe('TEC-1G SYS_CTRL status lamps', () => {
     expect(keypadEl.querySelector('.keycap-reset')?.textContent).toContain('RESET');
   });
 
+  it('allows TEC-1G callers to override the RESET message', () => {
+    const resetMessages: unknown[] = [];
+    document.body.innerHTML = '';
+    const keypadEl = document.createElement('div');
+    document.body.appendChild(keypadEl);
+
+    createTecKeypad({ postMessage: (message) => resetMessages.push(message) }, keypadEl, {
+      onReset: () => resetMessages.push({ type: 'reset', matrixModeAfterReset: true }),
+    });
+
+    keypadEl.querySelector<HTMLElement>('.keycap-reset')?.click();
+
+    expect(resetMessages).toEqual([{ type: 'reset', matrixModeAfterReset: true }]);
+  });
+
   it('uses bit 7 for caps lock and bits 3-6 for memory expansion bank lamps', () => {
     const { keypad, statusCaps, statusBank0, statusBank1, statusBank2, statusBank3 } = makeKeypad();
 

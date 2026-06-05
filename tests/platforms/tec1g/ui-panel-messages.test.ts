@@ -89,13 +89,32 @@ describe('tec1g ui-panel-messages', () => {
     expect(customRequest).toHaveBeenCalledWith('debug80/tec1gSerialInput', { text: 'HI' });
   });
 
+  it('reasserts matrix mode after reset when the matrix keyboard accordion is open', async () => {
+    const { ctx } = createContext();
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    ctx.getSession = () => ({ type: 'z80', customRequest });
+
+    await handleTec1gMessage({ type: 'reset', matrixModeAfterReset: true }, ctx);
+
+    expect(customRequest).toHaveBeenNthCalledWith(1, 'debug80/tec1gReset', {});
+    expect(customRequest).toHaveBeenNthCalledWith(2, 'debug80/tec1gMatrixMode', { enabled: true });
+  });
+
   it('forwards matrix key modifier flags', async () => {
     const { ctx } = createContext();
     const customRequest = vi.fn().mockResolvedValue(undefined);
     ctx.getSession = () => ({ type: 'z80', customRequest });
 
     await handleTec1gMessage(
-      { type: 'matrixKey', key: 'a', pressed: true, shift: true, ctrl: false, fn: true, alt: false },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: true,
+        ctrl: false,
+        fn: true,
+        alt: false,
+      },
       ctx
     );
 

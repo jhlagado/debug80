@@ -368,6 +368,8 @@ The 64-entry brightness arrays (one per channel) come from the `matrixBrightness
 
 Matrix keyboard arrows and editing keys are not routed through the hex keypad shortcut table. They are emitted as matrix key positions whose MON-3 `matrixScanASCII` translation produces low control codes: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`. Programs that need physical key identity should read the raw `matrixScan` result; text-like input can use `matrixScanASCII` or `parseMatrixScan`.
 
+When RESET is clicked while the Matrix Keyboard accordion is open, the webview includes that attachment state with the reset request. The extension host resets the board and then reasserts matrix mode, so MON-3 continues scanning the matrix keyboard instead of silently reverting to hex-keypad mode until the accordion is toggled.
+
 Physical PC keyboard events use direct keydown/keyup timing. On-screen matrix-keyboard clicks are held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
 
 Each matrix key sends:

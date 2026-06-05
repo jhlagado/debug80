@@ -16,6 +16,7 @@ export type Tec1gMessage = PanelMessage & {
   fn?: boolean;
   alt?: boolean;
   enabled?: boolean;
+  matrixModeAfterReset?: boolean;
 };
 
 /**
@@ -27,6 +28,28 @@ export type MessageContext = PanelMessageContext<'ui' | 'memory'>;
  * Handles inbound webview messages for the TEC-1G panel.
  */
 export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext): Promise<void> {
+  if (msg.type === 'reset') {
+    if (
+      await handleCommonPanelMessage(msg, ctx, {
+        reset: 'debug80/tec1gReset',
+        registerWrite: 'debug80/registerWrite',
+        memoryWrite: 'debug80/memoryWrite',
+      })
+    ) {
+      if (msg.matrixModeAfterReset === true) {
+        const target = ctx.getSession();
+        if (target?.type === 'z80') {
+          try {
+            await target.customRequest('debug80/tec1gMatrixMode', { enabled: true });
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return;
+    }
+  }
+
   if (
     await handleCommonPanelMessage(msg, ctx, {
       key: 'debug80/tec1gKey',
