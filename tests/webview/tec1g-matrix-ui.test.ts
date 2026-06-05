@@ -2,7 +2,7 @@
  * @file Regression tests: TEC-1G matrix UI contract.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createMatrixUiController } from '../../webview/tec1g/matrix-ui';
@@ -52,17 +52,24 @@ function setEventTarget<T extends Event>(event: T, target: EventTarget): T {
   return event;
 }
 
+function flushMatrixClickHold(): void {
+  vi.advanceTimersByTime(90);
+}
+
 describe('tec1g matrix ui', () => {
   let messages: PostedMessage[];
   let controller: ReturnType<typeof createMatrixUiController>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     buildDom();
     messages = [];
     controller = createController(messages);
   });
 
   afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
     document.documentElement.innerHTML = '';
   });
 
@@ -141,6 +148,7 @@ describe('tec1g matrix ui', () => {
     matrixShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
 
     expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
     expect(matrixKey.classList.contains('pressed')).toBe(false);
@@ -188,6 +196,40 @@ describe('tec1g matrix ui', () => {
     });
   });
 
+  it('holds clicked matrix arrow keys long enough for the monitor scan to sample them', () => {
+    controller.applyKeyboardCapture(true);
+    const rightArrow = document.querySelector('[data-key="ArrowRight"]') as HTMLElement;
+
+    rightArrow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    rightArrow.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(rightArrow.classList.contains('pressed')).toBe(true);
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'ArrowRight',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+
+    flushMatrixClickHold();
+
+    expect(rightArrow.classList.contains('pressed')).toBe(false);
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'ArrowRight',
+      pressed: false,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+  });
+
   it('keeps fn and alt click modifiers distinct', () => {
     controller.applyKeyboardCapture(true);
     const fnKey = document.querySelector('[data-key="Fn"]') as HTMLElement;
@@ -197,11 +239,13 @@ describe('tec1g matrix ui', () => {
     fnKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
 
     altKeys[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     expect(altKeys.every((key) => key.classList.contains('active'))).toBe(true);
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
     expect(altKeys.some((key) => key.classList.contains('active'))).toBe(false);
 
     expect(messages).toContainEqual({
@@ -232,6 +276,7 @@ describe('tec1g matrix ui', () => {
 
     capsKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     capsKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
@@ -264,6 +309,7 @@ describe('tec1g matrix ui', () => {
     });
     expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
     expect(capsKey.classList.contains('active')).toBe(true);
+    flushMatrixClickHold();
 
     messages.length = 0;
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
@@ -312,6 +358,7 @@ describe('tec1g matrix ui', () => {
 
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
 
     expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
 

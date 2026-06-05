@@ -622,6 +622,11 @@ RESET is intentionally excluded from the disabled scanned-key group. It remains
 available while the matrix keyboard is attached because it models a board reset
 button rather than a scanned monitor key.
 
+Mouse-clicked matrix keys now use a short webview-side hold window. This avoids
+a race where browser `mousedown`/`mouseup` can press and release a matrix key
+between MON-3 polling samples, while preserving direct keydown/keyup behavior
+for the physical PC keyboard.
+
 This matches the practical hardware model while keeping the raw matrix keyboard
 port `0xFE` readable by programs that poll it directly.
 

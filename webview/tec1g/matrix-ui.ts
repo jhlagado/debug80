@@ -25,6 +25,8 @@ type MatrixHeldKey = {
   mods: MatrixKeyMods;
 };
 
+const MATRIX_CLICK_HOLD_MS = 80;
+
 export function createMatrixUiController(
   vscode: VscodeApi,
   isUiTabActive: () => boolean
@@ -35,6 +37,7 @@ export function createMatrixUiController(
   let keyboardCaptureEnabled = false;
   let capsLockEnabled = false;
   const matrixHeldKeys = new Map<string, MatrixHeldKey>();
+  const matrixClickReleaseTimers = new Map<string, number>();
   const matrixClickMods = {
     shift: false,
     ctrl: false,
@@ -186,15 +189,29 @@ export function createMatrixUiController(
     }
   }
 
-  function sendMatrixKey(key, pressed, mods) {
-    const keyId =
+  function matrixKeyId(key: string, mods: MatrixKeyMods): string {
+    return (
       key +
       '|' +
       (mods.shift ? '1' : '0') +
       (mods.ctrl ? '1' : '0') +
       (mods.fn ? '1' : '0') +
-      (mods.alt ? '1' : '0');
+      (mods.alt ? '1' : '0')
+    );
+  }
+
+  function clearMatrixClickReleaseTimer(keyId: string): void {
+    const timer = matrixClickReleaseTimers.get(keyId);
+    if (timer !== undefined) {
+      window.clearTimeout(timer);
+      matrixClickReleaseTimers.delete(keyId);
+    }
+  }
+
+  function sendMatrixKey(key, pressed, mods) {
+    const keyId = matrixKeyId(key, mods);
     if (pressed) {
+      clearMatrixClickReleaseTimer(keyId);
       if (matrixHeldKeys.has(keyId)) {
         return true;
       }
@@ -208,6 +225,7 @@ export function createMatrixUiController(
         },
       });
     } else {
+      clearMatrixClickReleaseTimer(keyId);
       if (!matrixHeldKeys.has(keyId)) {
         return false;
       }
@@ -225,7 +243,24 @@ export function createMatrixUiController(
     return true;
   }
 
+  function scheduleMatrixClickRelease(key: string, mods: MatrixKeyMods): void {
+    const keyId = matrixKeyId(key, mods);
+    clearMatrixClickReleaseTimer(keyId);
+    const timer = window.setTimeout(() => {
+      matrixClickReleaseTimers.delete(keyId);
+      setMatrixKeyPressed(key, false);
+      if (sendMatrixKey(key, false, mods)) {
+        clearOneShotMatrixMods();
+      }
+    }, MATRIX_CLICK_HOLD_MS);
+    matrixClickReleaseTimers.set(keyId, timer);
+  }
+
   function releaseHeldMatrixKeys() {
+    for (const timer of matrixClickReleaseTimers.values()) {
+      window.clearTimeout(timer);
+    }
+    matrixClickReleaseTimers.clear();
     for (const held of matrixHeldKeys.values()) {
       vscode.postMessage({
         type: 'matrixKey',
@@ -470,10 +505,7 @@ export function createMatrixUiController(
             return;
           }
           const releaseMods = keyValue === 'CapsLock' ? matrixClickMods : clickModsForKey(keyValue);
-          setMatrixKeyPressed(keyValue, false);
-          if (sendMatrixKey(keyValue, false, releaseMods)) {
-            clearOneShotMatrixMods();
-          }
+          scheduleMatrixClickRelease(keyValue, releaseMods);
         };
         keyEl.addEventListener('mouseup', release);
         keyEl.addEventListener('mouseleave', release);

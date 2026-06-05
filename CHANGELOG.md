@@ -12,6 +12,8 @@
   MON-3's matrix-input takeover model.
 - Kept the TEC-1G RESET button active during matrix-keyboard takeover because
   it is a board reset control, not a scanned keypad key.
+- Held mouse-clicked matrix keys briefly so MON-3's matrix scan can reliably
+  sample arrow and control keys from the on-screen keyboard.
 - Added matrix keyboard mappings for MON-3 low control codes such as arrow,
   Backspace, and Tab keys so matrix-aware programs can read the full key set.
 - Moved the Debug80 Engineering Manual into `docs/codebase` so the codebase
