@@ -388,7 +388,7 @@ The `key` field encodes the row and column. Physical keyboard events are capture
 
 ### GLCD renderer (`glcd-renderer.ts`)
 
-`createGlcdRenderer()` renders the ST7920 128×64 monochrome display onto a `<canvas>` element.
+`createGlcdRenderer()` renders the ST7920 128×64 monochrome display onto a `<canvas>` element. The visible TEC-1G GLCD canvas is 384×192, an exact 3× scale, so each emulated GLCD pixel maps to a uniform 3×3 canvas block. Avoid non-integer display sizes here: a 2.5× scale such as 320×160 makes the browser distribute source pixels unevenly and can make identical font strokes appear to have different thicknesses.
 
 The GDRAM is a 1024-byte array: 64 rows, 16 bytes per row (128 pixels at 1 bit per pixel). The renderer reads each bit and sets the corresponding canvas pixel:
 

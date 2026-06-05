@@ -155,9 +155,13 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('margin-left: 1rem');
     expect(css).toContain('grid-template-columns: repeat(6, 46px)');
     expect(css).toContain('grid-template-rows: repeat(4, 46px)');
-    expect(css).toContain('--tec1g-glcd-panel-width: 346px');
+    expect(css).toContain('--tec1g-glcd-panel-width: 410px');
     expect(css).toContain('width: var(--tec1g-glcd-panel-width)');
     expect(css).toContain('max-width: var(--tec1g-glcd-panel-width)');
+    expect(doc.querySelector('#glcdCanvas')?.getAttribute('width')).toBe('384');
+    expect(doc.querySelector('#glcdCanvas')?.getAttribute('height')).toBe('192');
+    expect(css).toContain('width: 384px');
+    expect(css).toContain('height: 192px');
     expect(css).toContain('flex-wrap: nowrap');
     expect(css).toContain('flex: 0 0 auto');
   });
