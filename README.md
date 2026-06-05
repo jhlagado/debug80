@@ -162,14 +162,12 @@ not need `npm link`, sibling checkouts, or globally installed assembler binaries
 - [Using Debug80 in VS Code](https://debug80.com/manual/):
   project setup, debugging workflow, panels, ROMs, serial, source mapping, and
   troubleshooting.
+- [Debug80 Engineering Manual](https://debug80.com/codebase/):
+  extension architecture, launch pipeline, platform runtimes, webview panels,
+  source mapping, extension points, release testing, and regression gates.
+- [D8 Debug Map Format](https://debug80.com/codebase/appendices/g-d8-debug-map-format/):
+  native source mapping format consumed by Debug80.
 - [AZM Books and Manual](https://debug80.com/azm-book/):
   Z80 learning material and AZM assembler reference.
-- [Technical guide](docs/technical.md): extension architecture, launch pipeline,
-  adapter behaviour, mapping, and stepping.
-- [Platform architecture](docs/platforms.md): platform model and configuration.
-- [Platform extension API](docs/platform-extension-api.md): registering external
-  runtime/UI platforms.
-- [D8 debug map](docs/d8-debug-map.md): native source mapping format.
-- [Timing model](docs/timing-model.md): cycle timing and platform I/O timing.
-- [Platform development guide](docs/platform-development-guide.md): adding new
-  platform runtimes and panels.
+- [Release process](docs/release-process.md): local checkout checklist for
+  VSIX preparation and publishing.

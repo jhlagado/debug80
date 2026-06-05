@@ -64,7 +64,7 @@ inside high-frequency loops.
   instruction rate, effective emulated speed, yield lag, and UI update rate.
 - Runtime and webview instrumentation should remain available for manual diagnosis via
   `DEBUG80_PERF=1`, while severe starvation warnings should remain visible in the Debug80 output
-  channel. See [Performance diagnostics](performance-diagnostics.md).
+  channel.
 
 These tests should use broad regression thresholds rather than fragile absolute benchmarks. The goal
 is to catch order-of-magnitude mistakes such as rebuilding decoder tables per instruction, not to

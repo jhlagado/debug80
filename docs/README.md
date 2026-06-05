@@ -1,36 +1,19 @@
-# Debug80 Documentation
+# Debug80 Repo Documentation
 
-This directory contains repository-local engineering notes. It is not the Debug80 user manual.
-Keep durable user-facing explanations in the external Debug80 manual at
-[debug80.com](https://debug80.com/), and keep only implementation references, design notes, release
-process notes, and unfinished future work here.
+This directory is intentionally small. Durable user-facing and engineering
+manuals live at [debug80.com](https://debug80.com/), including the
+[Debug80 Engineering Manual](https://debug80.com/codebase/) and
+[D8 Debug Map Format](https://debug80.com/codebase/appendices/g-d8-debug-map-format/).
 
-When a document becomes historical, retire it. Avoid duplicating how-to material that already
-belongs in the manual site.
+Keep only checkout-specific process and maintenance notes here. Do not duplicate
+manual chapters, platform reference, D8 format reference, or historical planning
+notes in this repository.
 
-## Reference
+## Local References
 
-These documents describe current behavior or stable interfaces:
-
-- [Technical overview](technical.md)
-- [Platform overview](platforms.md)
-- [Platform extension API](platform-extension-api.md)
-- [Platform development guide](platform-development-guide.md)
-- [D8 debug map format](d8-debug-map.md)
-- [Timing model](timing-model.md)
-- [Regression test strategy](regression-test-strategy.md)
-- [Performance diagnostics](performance-diagnostics.md)
-- [Release process](release-process.md)
-
-## Active Future Work
-
-These notes are not commitments, but they capture product and implementation ideas that should not
-be lost:
-
-- [Code quality audit](code-quality-audit.md)
-- [Future directions](future-directions.md)
-
-## ADRs And Plans
-
-- [ADR 0001: project workspace root control](adr/0001-project-workspace-root-control.md)
-- [Platform ROM bundles plan](plans/platform-rom-bundles.md)
+- [Release process](release-process.md): VSIX and Marketplace release checklist
+  for this checkout.
+- [Regression test strategy](regression-test-strategy.md): local test layers and
+  release gates for this repository.
+- [Code quality audit](code-quality-audit.md): current maintainability findings
+  and cleanup priorities.

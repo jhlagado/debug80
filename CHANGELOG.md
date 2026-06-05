@@ -6,6 +6,9 @@
   capture is disabled, preventing stale pressed keys in the emulator runtime.
 - Clarified TEC-1G matrix keyboard documentation so keyboard capture is distinct
   from MON-3 Matrix CONFIG mode.
+- Reduced repo-local documentation to checkout-specific process and maintenance
+  notes, with durable user and engineering documentation now linked through
+  debug80.com.
 
 ## 0.1.15
 

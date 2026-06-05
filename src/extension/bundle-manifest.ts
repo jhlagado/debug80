@@ -1,7 +1,7 @@
 /**
  * @file ROM bundle manifest (extension-shipped platform payloads).
  *
- * @see docs/plans/platform-rom-bundles.md
+ * @see https://debug80.com/codebase/appendices/d-bundle-manifest/
  */
 
 const BUNDLE_MANIFEST_SCHEMA_VERSION = 1 as const;
