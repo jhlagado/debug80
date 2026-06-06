@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.18
+
+- Added TEC-1G matrix keyboard handling for physical Ctrl+letter chords so
+  `Ctrl+A` through `Ctrl+Z` map to ASCII control codes and preserve the native
+  matrix Control modifier path used by MON-3-aware software.
+- Added focused backend, keymap, and webview coverage for matrix Ctrl-letter
+  chords, including ambiguous low control codes that must remain available both
+  as native matrix keys and as Control-modified letters.
+- Stopped auto-discovering `.z80` files as runnable targets while keeping them
+  supported as Z80/AZM source files, and updated target-discovery messaging and
+  docs to point users to explicit `debug80.json` configuration when needed.
+
 ## 0.1.17
 
 - Added TEC-1G matrix-keyboard takeover behavior that more closely matches
