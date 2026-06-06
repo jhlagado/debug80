@@ -18,6 +18,26 @@ describe('TEC-1G matrix keymap', () => {
     }
   });
 
+  it('covers the full Ctrl+A through Ctrl+Z ASCII control-code range', () => {
+    for (let code = 0x01; code <= 0x1a; code += 1) {
+      const ch = String.fromCharCode(code);
+      const combos = MATRIX_ASCII_MAP[ch] ?? [];
+      const ctrlCombo = combos.find((combo) => combo.modifier === 'ctrl');
+
+      expect(ctrlCombo, `Ctrl+${String.fromCharCode(code + 0x40)}`).toBeDefined();
+    }
+  });
+
+  it('keeps ambiguous low codes available as native unmodified matrix keys', () => {
+    for (const code of [0x03, 0x04, 0x05, 0x06, 0x08, 0x09]) {
+      const ch = String.fromCharCode(code);
+      const combos = MATRIX_ASCII_MAP[ch] ?? [];
+
+      expect(combos.some((combo) => combo.modifier === undefined)).toBe(true);
+      expect(combos.some((combo) => combo.modifier === 'ctrl')).toBe(true);
+    }
+  });
+
   it('returns combos within matrix bounds', () => {
     for (const combos of Object.values(MATRIX_ASCII_MAP)) {
       for (const combo of combos) {

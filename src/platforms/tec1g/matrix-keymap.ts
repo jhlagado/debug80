@@ -58,6 +58,8 @@ const SECONDARY_TO_MOD: Array<[number, MatrixModifier | undefined]> = [
 
 const ASCII_MIN = 0x20;
 const ASCII_MAX = 0x7e;
+const ASCII_CONTROL_LETTER_MIN = 0x01;
+const ASCII_CONTROL_LETTER_MAX = 0x1a;
 const MON3_MATRIX_CONTROL_CODES = new Set([0x03, 0x04, 0x05, 0x06, 0x08, 0x09]);
 const ASCII_CR = 0x0d;
 const ASCII_ESC = 0x1b;
@@ -137,8 +139,13 @@ export const MATRIX_ASCII_MAP: Record<string, MatrixKeyCombo[]> = ((): Record<
       for (const key of keys) {
         const ascii = matrixScanAscii(key, secondary, capsLock);
         const isPrintable = ascii >= ASCII_MIN && ascii <= ASCII_MAX;
+        const isControlLetter =
+          ascii >= ASCII_CONTROL_LETTER_MIN && ascii <= ASCII_CONTROL_LETTER_MAX;
         const isControl =
-          MON3_MATRIX_CONTROL_CODES.has(ascii) || ascii === ASCII_CR || ascii === ASCII_ESC;
+          isControlLetter ||
+          MON3_MATRIX_CONTROL_CODES.has(ascii) ||
+          ascii === ASCII_CR ||
+          ascii === ASCII_ESC;
         if (!isPrintable && !isControl) {
           continue;
         }

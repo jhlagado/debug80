@@ -116,6 +116,9 @@ const SHIFTED_KEY_ASCII: Record<string, string> = {
 };
 
 export function resolveMatrixPayloadAscii(payload: MatrixKeyPayload): number | undefined {
+  if (payload.ctrl === true && /^[a-z]$/i.test(payload.key)) {
+    return payload.key.toUpperCase().charCodeAt(0) & 0x1f;
+  }
   if (
     payload.shift === true &&
     payload.ctrl !== true &&

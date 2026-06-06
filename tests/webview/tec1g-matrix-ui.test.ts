@@ -34,13 +34,16 @@ function createController(messages: PostedMessage[]) {
 function makeKeyEvent(
   type: 'keydown' | 'keyup',
   key: string,
-  options?: { repeat?: boolean }
+  options?: { repeat?: boolean; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }
 ): KeyboardEvent {
   return new KeyboardEvent(type, {
     bubbles: true,
     cancelable: true,
     key,
     repeat: options?.repeat ?? false,
+    ctrlKey: options?.ctrlKey ?? false,
+    shiftKey: options?.shiftKey ?? false,
+    altKey: options?.altKey ?? false,
   });
 }
 
@@ -450,6 +453,36 @@ describe('tec1g matrix ui', () => {
         pressed: false,
         shift: false,
         ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('preserves physical Ctrl-letter chords as native matrix key plus ctrl modifier', () => {
+    controller.applyKeyboardCapture(true);
+    const keydown = makeKeyEvent('keydown', 's', { ctrlKey: true });
+    const keyup = makeKeyEvent('keyup', 's', { ctrlKey: true });
+
+    expect(controller.handleKeyEvent(keydown, true)).toBe(true);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(true);
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: true,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: false,
+        shift: false,
+        ctrl: true,
         fn: false,
         alt: false,
       },

@@ -395,6 +395,7 @@ window.addEventListener('keydown', (event) => {
   }
   if (matrixUi.handleKeyEvent(event, true)) {
     event.preventDefault();
+    event.stopPropagation();
   }
 });
 
@@ -408,6 +409,7 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('keyup', (event) => {
   if (matrixUi.handleKeyEvent(event, false)) {
     event.preventDefault();
+    event.stopPropagation();
     return;
   }
   if (panelLayout.isMatrixKeyboardOpen()) {

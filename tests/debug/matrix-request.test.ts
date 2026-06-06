@@ -199,6 +199,16 @@ describe('matrix-request', () => {
       expect(resolveMatrixPayloadAscii({ key: 'A', pressed: true, shift: true })).toBe(0x41);
       expect(resolveMatrixPayloadAscii({ key: '!', pressed: true, shift: true })).toBe(0x21);
     });
+
+    it('maps physical Ctrl-letter chords to ASCII control codes', () => {
+      for (let code = 1; code <= 26; code += 1) {
+        const lower = String.fromCharCode(code + 0x60);
+        const upper = String.fromCharCode(code + 0x40);
+
+        expect(resolveMatrixPayloadAscii({ key: lower, pressed: true, ctrl: true })).toBe(code);
+        expect(resolveMatrixPayloadAscii({ key: upper, pressed: true, ctrl: true })).toBe(code);
+      }
+    });
   });
 
   describe('buildMatrixKeyId', () => {
@@ -286,6 +296,68 @@ describe('matrix-request', () => {
         { row: 0, col: 6, pressed: true },
         { row: 0, col: 6, pressed: false },
       ]);
+    });
+
+    it('routes physical Ctrl+S and Ctrl+Q as modifier combos, not plain letters', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: true, ctrl: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: false, ctrl: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'q', pressed: true, ctrl: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'q', pressed: false, ctrl: true })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 6, col: 6, pressed: true },
+        { row: 0, col: 1, pressed: true },
+        { row: 6, col: 6, pressed: false },
+        { row: 0, col: 1, pressed: false },
+        { row: 6, col: 4, pressed: true },
+        { row: 0, col: 1, pressed: true },
+        { row: 6, col: 4, pressed: false },
+        { row: 0, col: 1, pressed: false },
+      ]);
+    });
+
+    it('routes every physical Ctrl-letter chord through the native matrix Control modifier', () => {
+      for (let code = 1; code <= 26; code += 1) {
+        const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+        const runtime: MatrixRuntime = {
+          state: { matrixModeEnabled: true, capsLock: false },
+          setMatrixMode: () => {},
+          applyMatrixKey: (row, col, pressed) => {
+            applied.push({ row, col, pressed });
+          },
+        };
+        const heldKeys = new Map<string, MatrixKeyCombo[]>();
+        const key = String.fromCharCode(code + 0x60);
+
+        expect(
+          handleMatrixKeyRequest(runtime, heldKeys, { key, pressed: true, ctrl: true })
+        ).toBeNull();
+        expect(
+          handleMatrixKeyRequest(runtime, heldKeys, { key, pressed: false, ctrl: true })
+        ).toBeNull();
+
+        const controlTransitions = applied.filter((entry) => entry.row === 0 && entry.col === 1);
+        expect(controlTransitions.some((entry) => entry.pressed === true)).toBe(true);
+        expect(controlTransitions.some((entry) => entry.pressed === false)).toBe(true);
+      }
     });
   });
 });
