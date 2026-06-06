@@ -92,9 +92,12 @@ can run.
 
 For now, target discovery focuses on clear Z80 entry-point conventions:
 
-- files ending in `.z80`
 - files ending in `.main.asm`
 - files named `main.asm`
+
+Files with `.z80` are still supported as Z80/AZM source files, but they are no
+longer auto-discovered as runnable targets. Add them explicitly to
+`debug80.json` if a project still needs one as its entry file.
 
 When more than one target is available, select the active target from the
 Debug80 panel or the **Debug80: Select Active Target** command.

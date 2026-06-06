@@ -268,7 +268,7 @@ export function registerTargetCommands(options: {
       const candidates = listProjectSourceFiles(folder.uri.fsPath);
       if (candidates.length === 0) {
         void vscode.window.showInformationMessage(
-          'Debug80: No target entry files were found in this project folder (.z80, .main.asm, or main.asm).'
+          'Debug80: No target entry files were found in this project folder (.main.asm or main.asm).'
         );
         return undefined;
       }
@@ -357,7 +357,7 @@ async function resolveTargetEdit(
     const sources = listProjectSourceFiles(folder.uri.fsPath);
     if (sources.length === 0) {
       void vscode.window.showInformationMessage(
-        'Debug80: No target entry files were found in this project folder (.z80, .main.asm, or main.asm).'
+        'Debug80: No target entry files were found in this project folder (.main.asm or main.asm).'
       );
       return undefined;
     }

@@ -443,7 +443,7 @@ When a source file is selected or changed, the system infers the assembler from 
 
 - `.asm`, `.z80`, and `.inc` → use AZM
 
-Target discovery is independent of a mandatory `src/` folder. Debug80 looks for entry points by convention: files named exactly `main.asm`, files ending in `.z80`, and files ending in `.main.asm`. The exact `main.asm` case matters because the project scaffolder creates `src/main.asm`; ordinary helper `.asm` files are still left out of automatic target discovery unless they are selected explicitly with **Debug80: Set Program File**.
+Target discovery is independent of a mandatory `src/` folder. Debug80 looks for entry points by convention: files named exactly `main.asm` and files ending in `.main.asm`. The exact `main.asm` case matters because the project scaffolder creates `src/main.asm`; ordinary helper `.asm` files, including `.z80` files, are still left out of automatic target discovery unless they are selected explicitly with **Debug80: Set Program File**.
 
 ---
 
