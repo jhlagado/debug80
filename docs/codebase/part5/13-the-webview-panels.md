@@ -206,7 +206,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Project button** — always visible whenever the header is visible. Shows the selected workspace folder name (or a placeholder when no folder is selected). Clicking it sends `{ type: 'selectProject', rootPath }`, triggering workspace selection.
 
-**Add folder button** (`+`) — always visible, next to the root button. Clicking it sends `{ type: 'openWorkspaceFolder' }`, which runs the VS Code command to add a new folder to the workspace. This button is always present so the user can add workspace folders from any state without needing to navigate away from the panel.
+**Add folder button** (`+`) — always visible, next to the root button. Clicking it sends `{ type: 'openWorkspaceFolder', platform }`, where `platform` is the current platform selector value. The extension host forwards that to `debug80.addWorkspaceFolder`, so a new workspace folder can be added with the same platform context the panel is already showing. This button is always present so the user can add workspace folders from any state without needing to navigate away from the panel.
 
 **Target selector** — visible only when `projectState === 'initialized'`. A `<select>` populated from the `targets[]` array in the `projectStatus` message. When the user picks a target, the webview sends `{ type: 'selectTarget', rootPath, targetName }`.
 
@@ -243,7 +243,7 @@ The setup card state is recalculated on every `projectStatus` message by `resolv
 
 ## Tab switching
 
-Tab and accordion state are now handled by common panel helpers. The platform entry points apply the selected provider tab, update active CSS state, and notify the extension host when the provider tab changes. TEC-1G uses its panel layout controller to coordinate provider tabs, accordion bodies, register refresh, and memory-panel sizing.
+Tab and accordion state are now handled by common panel helpers. The platform entry points apply the selected provider tab, update active CSS state, and notify the extension host when the provider tab changes. TEC-1G uses its panel layout controller to coordinate provider tabs, accordion bodies, register refresh, memory-panel sizing, and matrix-keyboard attachment state.
 
 `setTab(tab, notify)`:
 
@@ -257,6 +257,15 @@ Tab and accordion state are now handled by common panel helpers. The platform en
 - Called on window resize.
 - Chooses 8 or 16 bytes per row based on panel width (breakpoint at ~500px).
 - If the row size changed, requests a new snapshot.
+
+### TEC-1G matrix capture flow
+
+The TEC-1G panel distinguishes matrix attachment from physical keyboard capture.
+
+- Opening the **Matrix Keyboard** accordion posts `{ type: 'matrixMode', enabled: true }`, which attaches the emulated matrix keyboard for MON-3 and disables scanned hex keypad input.
+- Host-keyboard capture stays released until the user clicks within the emulator surfaces. A capture-state cue in `matrix-routing-cue.ts` switches between **Keyboard released** and **Keyboard captured** and applies matching `data-matrix-keyboard-captured` state to the page root.
+- Pointer events outside the emulator surfaces and `window.blur` release host-keyboard capture without closing the accordion or disabling matrix mode.
+- The reset button clears transient matrix UI state before posting `{ type: 'reset', matrixModeAfterReset }`. The extension-host adapter handles `debug80/tec1gReset` first, then reissues `debug80/tec1gMatrixMode` when `matrixModeAfterReset` is true so the persisted accordion-open state stays aligned with the MON-3 CONFIG bit after reset.
 
 ---
 
@@ -364,7 +373,7 @@ function applyMatrixBrightness(dots: HTMLElement[], r: number[], g: number[], b:
 
 The 64-entry brightness arrays (one per channel) come from the `matrixBrightnessR/G/B` fields of the TEC-1G update message. Each value is 0–255. `matrix-ui.ts` maps those duty-cycle values to stronger visible LED colours, currently with an extra 30% intensity boost over the previous display curve. This does not change the platform runtime's timing model; it only changes how the webview paints the already-calculated brightness so games such as Pacmo are easier to read while uneven scan timing remains visible.
 
-**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }`, enables host-keyboard capture for that panel and disables the scanned hex keypad keys, matching MON-3's matrix-input takeover model. The RESET control remains active because it resets the board rather than participating in keypad scanning. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
+**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }` and disables the scanned hex keypad keys, matching MON-3's matrix-input takeover model. Host-keyboard capture stays released until the user clicks within the emulator surfaces, at which point the routing cue switches to **Keyboard captured**. Clicking outside those surfaces, blurring the window, or pressing Ctrl-Escape or Command-Escape releases host-keyboard capture without disabling matrix mode. The RESET control remains active because it resets the board rather than participating in keypad scanning. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
 
 Matrix keyboard arrows and editing keys are not routed through the hex keypad shortcut table. They are emitted as matrix key positions whose MON-3 `matrixScanASCII` translation produces low control codes: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`. Programs that need physical key identity should read the raw `matrixScan` result; text-like input can use `matrixScanASCII` or `parseMatrixScan`.
 
@@ -372,15 +381,15 @@ When RESET is clicked while the Matrix Keyboard accordion is open, the webview i
 
 The panel also reasserts matrix attachment when a debug session becomes active and the Matrix Keyboard accordion was already open from persisted UI state. This covers the startup case where the webview may have sent its initial matrix-mode request before a Z80 debug session existed.
 
-Physical PC keyboard events use direct keydown/keyup timing. On-screen matrix-keyboard clicks are held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
+Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup and translate Ctrl-letter or Command-letter chords into MON-3 control-letter input. Plain Escape is forwarded into the emulated matrix keyboard. On-screen matrix-keyboard clicks are held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
 
 Each matrix key sends:
 
 ```typescript
-{ type: 'matrixKey', key: string, pressed: boolean, shift: boolean, ctrl: boolean, alt: boolean }
+{ type: 'matrixKey', key: string, pressed: boolean, shift: boolean, ctrl: boolean, fn: boolean, alt: boolean }
 ```
 
-The `key` field encodes the row and column. Physical keyboard events are captured while the Matrix Keyboard accordion is active and translated to the same message format.
+The `key` field encodes the row and column. Physical keyboard events are captured only while host-keyboard capture is active and are translated to the same message format.
 
 ### Platform update application (`tec1g-platform-update.ts`)
 

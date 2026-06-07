@@ -265,13 +265,15 @@ This is used by the `debug80/tec1gMatrixKey` request to translate keyboard event
 
 ### Matrix keyboard attachment
 
-Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, routes physical PC keyboard events to the matrix keyboard and disables the scanned hex keypad keys. RESET remains active because it is a board-level reset control rather than a scanned keypad key. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
+Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CONFIG input. On hardware, attaching the keyboard brings magnets near a reed switch and sets this bit. In the webview, opening the Matrix Keyboard accordion is treated as attaching the keyboard: Debug80 enables matrix mode, disables the scanned hex keypad keys and exposes a captured-versus-released host-keyboard state inside the attached panel. RESET remains active because it is a board-level reset control rather than a scanned keypad key. Closing the accordion releases any held matrix keys, disables host-keyboard capture and clears matrix mode.
 
 The accordion open state is persisted by the webview, but MON-3 Matrix CONFIG is session runtime state. Debug80 therefore reasserts matrix mode when a debug session becomes active with the accordion already open, and again after a RESET clicked while the accordion is open. This keeps persisted UI state and runtime input routing aligned without requiring a close/reopen cycle.
 
 The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
 
-The on-screen matrix keyboard maintains visible modifier state for Shift, Ctrl, Fn, Alt and CAPS LOCK. CAPS LOCK is latched, Shifted clicks send shifted ASCII where appropriate, and Alt is sent as its own raw secondary modifier rather than being collapsed into another key state. Physical PC keyboard events use direct keydown/keyup timing; mouse-clicked matrix keys are held briefly before release so MON-3's polling loop can sample them reliably.
+While the accordion is open, pointer focus controls keyboard capture. Clicking within the emulator display, machine, or matrix-keyboard surfaces captures the host keyboard. Clicking elsewhere in the document or blurring the window releases it. The routing cue and accordion header reflect both states separately: attached means MON-3 reads the matrix keyboard, captured means the host keyboard is currently being forwarded into that matrix scan path.
+
+The on-screen matrix keyboard maintains visible modifier state for Shift, Ctrl, Fn, Alt and CAPS LOCK. CAPS LOCK is latched, Shifted clicks send shifted ASCII where appropriate, and Alt is sent as its own raw secondary modifier rather than being collapsed into another key state. Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup, and treat Ctrl-letter or Command-letter chords as matrix control-letter input. Plain Escape is forwarded to MON-3, while Ctrl-Escape and Command-Escape release host-keyboard capture without sending an Escape key to the emulated machine. Mouse-clicked matrix keys are held briefly before release so MON-3's polling loop can sample them reliably.
 
 ---
 
@@ -378,11 +380,11 @@ The TEC-1G provider registers six commands:
 | `debug80/tec1gKey`         | Queue a hex keypad press               |
 | `debug80/tec1gMatrixKey`   | Press or release a matrix keyboard key |
 | `debug80/tec1gMatrixMode`  | Enable or disable matrix keyboard mode |
-| `debug80/tec1gReset`       | Reset CPU and all platform state       |
+| `debug80/tec1gReset`       | Reset CPU and platform state while preserving MON-3 monitor RAM at `0x0800-0x0FFF` |
 | `debug80/tec1gSpeed`       | Switch clock speed                     |
 | `debug80/tec1gSerialInput` | Queue bytes for serial RX              |
 
-The reset command additionally clears the `matrixHeldKeys` map in the session — this tracks which matrix keys the webview believes are held down, and it must be flushed on reset to prevent stale key state after the CPU restarts.
+The reset command snapshots the active MON-3 monitor RAM window at `0x0800-0x0FFF`, performs the cold runtime reset, restores that RAM range, resets TEC-1G platform state and clears the `matrixHeldKeys` map in the session. This preserves monitor-owned state such as MON-3 workspace data across a panel reset while still returning the rest of the machine to its launch image.
 
 ---
 

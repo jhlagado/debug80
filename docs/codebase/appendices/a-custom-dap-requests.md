@@ -55,7 +55,7 @@ Registered by `createTec1gPlatformProvider` → `registerCommands`. Only present
 | `debug80/tec1gKey`         | `{ code: number }`                                                                                | —             | Emulates a keypad key press; pass `KEY_RESET` to reset                 |
 | `debug80/tec1gMatrixKey`   | `{ key: string; pressed: boolean; shift?: boolean; ctrl?: boolean; fn?: boolean; alt?: boolean }` | —             | Emulates a matrix keyboard key press or release with modifier state    |
 | `debug80/tec1gMatrixMode`  | `{ enabled: boolean }`                                                                            | —             | Sets the MON-3 Matrix CONFIG input, normally from accordion visibility |
-| `debug80/tec1gReset`       | —                                                                                                 | —             | Cold-resets the TEC-1G to the entry point                              |
+| `debug80/tec1gReset`       | —                                                                                                 | —             | Cold-resets the TEC-1G to the entry point while restoring MON-3 monitor RAM at `0x0800-0x0FFF` after the reset |
 | `debug80/tec1gSpeed`       | `{ mode: 'slow' \| 'fast' }`                                                                      | —             | Switches clock speed                                                   |
 | `debug80/tec1gSerialInput` | `{ text: string }`                                                                                | —             | Queues bytes for the 4800-baud serial receive line                     |
 
