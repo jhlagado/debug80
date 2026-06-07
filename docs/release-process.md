@@ -7,12 +7,35 @@ one-off process.
 ## Release Principles
 
 - Releases are built from a clean git commit on `main`.
+- Definition of Done includes CI visibility: after pushing a change, confirm the GitHub Actions run
+  for that commit has started and reaches a passing state before calling the change complete.
 - Runtime dependencies must be packaged inside the VSIX. Users must not need a global assembler,
   `npm link`, or sibling checkouts.
 - `@jhlagado/azm` stays in `dependencies`, not `devDependencies`.
 - `npm run package` must rebuild `out/` before packaging so the VSIX cannot contain stale extension
   host code.
 - Manual VSIX testing comes before marketplace publishing.
+
+## Definition of Done
+
+For every code or packaging change:
+
+1. Run the relevant local verification command before committing.
+2. Commit from a clean, reviewed diff.
+3. Push the branch or `main`.
+4. Confirm GitHub Actions has created a CI run for the pushed commit.
+5. Treat the work as complete only after that CI run passes, or explicitly report any CI failure as
+   remaining work.
+
+Useful commands:
+
+```bash
+git rev-parse --short HEAD
+gh run list --workflow CI --branch main --limit 5
+gh run watch
+```
+
+For pull-request work, use the PR branch instead of `main` and check the PR checks before merging.
 
 ## Local VSIX Test Build
 

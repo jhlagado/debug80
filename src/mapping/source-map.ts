@@ -54,10 +54,9 @@ export function buildSourceMapIndex(
   mapping: MappingParseResult,
   resolvePath: ResolvePathFn
 ): SourceMapIndex {
-  const segmentsByAddress = mapping.segments
-    .map((segment, order) => ({ segment, order }))
-    .sort((a, b) => a.segment.start - b.segment.start || a.order - b.order)
-    .map(({ segment }) => segment);
+  const segmentsByAddress = [...mapping.segments].sort(
+    (a, b) => a.start - b.start || a.context.line - b.context.line
+  );
 
   const segmentsByFileLine = new Map<string, Map<number, SourceMapSegment[]>>();
   for (const segment of mapping.segments) {

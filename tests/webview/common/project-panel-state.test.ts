@@ -19,7 +19,10 @@ describe('project panel state', () => {
       primaryLabel: 'Open Folder',
       primaryAction: 'openWorkspaceFolder',
     });
-    expect(setupPrimaryAction(state, 'tec1g')).toEqual({ type: 'openWorkspaceFolder' });
+    expect(setupPrimaryAction(state, 'tec1g')).toEqual({
+      type: 'openWorkspaceFolder',
+      platform: 'tec1g',
+    });
   });
 
   it('normalizes an uninitialized selected root and keeps create-project actions explicit', () => {
@@ -60,7 +63,10 @@ describe('project panel state', () => {
     expect(state.selectedRoot).toBeUndefined();
     expect(setupCardForProjectPanel(state)?.primaryAction).toBe('selectProject');
     expect(createProjectAction(state, 'tec1g')).toBeUndefined();
-    expect(setupPrimaryAction(state, 'tec1g')).toEqual({ type: 'selectProject' });
+    expect(setupPrimaryAction(state, 'tec1g')).toEqual({
+      type: 'selectProject',
+      platform: 'tec1g',
+    });
   });
 
   it('normalizes ready projects and derives target/send actions from selected root', () => {

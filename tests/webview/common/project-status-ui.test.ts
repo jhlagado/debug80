@@ -344,7 +344,7 @@ describe('project status UI invariants', () => {
     ui.dispose();
 
     expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith({ type: 'selectProject' });
+    expect(postMessage).toHaveBeenCalledWith({ type: 'selectProject', platform: 'simple' });
   });
 
   it('enables send when CoolTerm and the selected target hex are available', () => {

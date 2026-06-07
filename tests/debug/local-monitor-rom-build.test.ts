@@ -33,7 +33,10 @@ describe('local monitor ROM build conventions', () => {
     const args: LaunchRequestArguments = {
       assemble: false,
       sourceRoots: ['src'],
-      debugMaps: ['/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json'],
+      debugMaps: [
+        '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
+        '/workspace/project/build/app-support.d8.json',
+      ],
     };
     const result = await buildLocalMonitorRomIfPresent({
       platform: 'tec1g',
@@ -48,10 +51,7 @@ describe('local monitor ROM build conventions', () => {
     applyLocalMonitorRomToLaunchArgs(args, 'tec1g', result);
 
     expect(args.tec1g?.romHex).toBe(hexPath);
-    expect(args.debugMaps).toEqual([
-      d8Path,
-      '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
-    ]);
+    expect(args.debugMaps).toEqual([d8Path, '/workspace/project/build/app-support.d8.json']);
     expect(args.sourceRoots).toEqual(['src', 'roms/tec1g/mon3']);
   });
 

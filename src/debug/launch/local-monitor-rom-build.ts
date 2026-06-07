@@ -72,8 +72,8 @@ export function applyLocalMonitorRomToLaunchArgs(
   }
 
   if (fs.existsSync(result.rom.outputDebugMapPath)) {
-    const debugMaps = (args.debugMaps ?? []).filter(
-      (mapPath) => mapPath !== result.rom.outputDebugMapPath
+    const debugMaps = (args.debugMaps ?? []).filter((mapPath) =>
+      shouldKeepExistingDebugMap(mapPath, result.rom)
     );
     args.debugMaps = [result.rom.outputDebugMapPath, ...debugMaps];
   }
@@ -82,4 +82,23 @@ export function applyLocalMonitorRomToLaunchArgs(
   if (!sourceRoots.includes(result.rom.destinationRel)) {
     args.sourceRoots = [...sourceRoots, result.rom.destinationRel];
   }
+}
+
+function shouldKeepExistingDebugMap(mapPath: string, rom: LocalMonitorRom): boolean {
+  if (mapPath === rom.outputDebugMapPath) {
+    return false;
+  }
+
+  const normalized = mapPath.split(/[\\/]+/).join('/');
+  const bundleMapPrefix = `resources/bundles/${rom.bundleId}/`;
+  if (normalized.includes(bundleMapPrefix) && normalized.endsWith('.d8.json')) {
+    return false;
+  }
+
+  const workspaceMapPrefix = `${rom.destinationRel}/`;
+  if (normalized.includes(workspaceMapPrefix) && normalized.endsWith('.d8.json')) {
+    return false;
+  }
+
+  return true;
 }

@@ -102,3 +102,17 @@ It must exclude development-only material such as `src/`, `tests/`, `docs/`, `co
 Marketplace publishing should be the final step after local VSIX testing and CI gates pass. Until
 that process is fully automated, GitHub Releases are the safer place to attach pre-release VSIX
 candidates for manual testing.
+
+## CI Gate
+
+CI is part of the Definition of Done for Debug80 changes. After pushing, confirm that GitHub
+Actions has started a `CI` workflow run for the pushed commit and that it passes before treating the
+change as complete or publishing a VSIX.
+
+```bash
+git rev-parse --short HEAD
+gh run list --workflow CI --branch main --limit 5
+gh run watch
+```
+
+For PR branches, check the PR branch checks before merge instead of only checking `main`.
