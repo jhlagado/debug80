@@ -701,8 +701,9 @@ The TEC-1G webview now separates matrix keyboard attachment from physical PC
 keyboard capture. Opening the Matrix Keyboard accordion still represents the
 hardware being attached and keeps MON-3 matrix mode active, but physical host
 keystrokes are only routed to the matrix keyboard after the user clicks an
-emulator surface. Clicking outside those surfaces releases capture, `Escape`
-releases capture, and webview blur releases held matrix keys.
+emulator surface. Plain `Escape` is delivered to MON-3 as the matrix ESC key;
+clicking outside those surfaces releases capture, `Cmd/Ctrl+Escape` is a
+host-only release chord, and webview blur releases held matrix keys.
 
 This removes an implicit coupling where "accordion open" meant both hardware
 attached and physical keyboard captured. Future keyboard work should preserve

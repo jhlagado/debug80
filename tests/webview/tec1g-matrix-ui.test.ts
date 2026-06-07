@@ -551,10 +551,39 @@ describe('tec1g matrix ui', () => {
     expect(controller.isKeyboardCaptured()).toBe(false);
   });
 
-  it('uses Escape as a physical keyboard capture release key', () => {
+  it('routes plain Escape to the matrix keyboard while capture is active', () => {
     controller.applyKeyboardCapture(true);
 
     expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape'), true)).toBe(true);
+    expect(controller.handleKeyEvent(makeKeyEvent('keyup', 'Escape'), false)).toBe(true);
+
+    expect(controller.isKeyboardCaptured()).toBe(true);
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'Escape',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'Escape',
+        pressed: false,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('uses modified Escape as a host-only keyboard capture release chord', () => {
+    controller.applyKeyboardCapture(true);
+
+    expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape', { metaKey: true }), true)).toBe(true);
 
     expect(controller.isKeyboardCaptured()).toBe(false);
     expect(messages).toEqual([]);

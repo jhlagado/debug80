@@ -33,7 +33,7 @@ export function applyMatrixRoutingCue(
     elements.cue.hidden = !active;
     elements.cue.innerHTML = active
       ? captured
-        ? '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard captured</span><span class="keypad-routing-note">Esc releases</span>'
+        ? '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard captured</span><span class="keypad-routing-note">click outside to release</span>'
         : '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard released</span><span class="keypad-routing-note">click emulator to capture</span>'
       : '';
   }

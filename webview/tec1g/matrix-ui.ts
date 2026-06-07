@@ -360,7 +360,7 @@ export function createMatrixUiController(
       return false;
     }
     consumeHandledKeyEvent(event);
-    if (pressed && key === 'Escape') {
+    if (pressed && key === 'Escape' && (event.metaKey || event.ctrlKey)) {
       applyKeyboardCapture(false);
       return true;
     }

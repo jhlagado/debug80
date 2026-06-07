@@ -56,7 +56,7 @@ describe('tec1g matrix routing cue', () => {
 
     expect(appRoot.dataset.matrixKeyboardCaptured).toBe('true');
     expect(cue.textContent).toContain('Keyboard captured');
-    expect(cue.textContent).toContain('Esc releases');
+    expect(cue.textContent).toContain('click outside to release');
     expect(header.classList.contains('matrix-keyboard-captured')).toBe(true);
   });
 });
