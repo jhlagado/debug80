@@ -695,6 +695,21 @@ register behavior direct tests. Fallow still reports inherited complexity in
 memory anchor/edit paths, but the previous register-rendering complexity is no
 longer part of `MemoryPanel`.
 
+### Latest Goal Note: TEC-1G Matrix Keyboard Capture State
+
+The TEC-1G webview now separates matrix keyboard attachment from physical PC
+keyboard capture. Opening the Matrix Keyboard accordion still represents the
+hardware being attached and keeps MON-3 matrix mode active, but physical host
+keystrokes are only routed to the matrix keyboard after the user clicks an
+emulator surface. Clicking outside those surfaces releases capture, `Escape`
+releases capture, and webview blur releases held matrix keys.
+
+This removes an implicit coupling where "accordion open" meant both hardware
+attached and physical keyboard captured. Future keyboard work should preserve
+that distinction: attachment is hardware state, capture is host-input focus
+state. Any new path that disables capture must release held keys and refresh the
+visible routing cue.
+
 Use these criteria when deciding whether cleanup is worthwhile:
 
 - Does it remove obsolete behavior, not just move code around?

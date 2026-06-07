@@ -142,6 +142,7 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('.keycap-reset');
     expect(css).toContain('.keycap:not(.keycap-reset)');
     expect(css).toContain('.matrix-keyboard-active');
+    expect(css).toContain('.matrix-keyboard-captured');
     expect(css).toContain('--tec1g-display-stack-width: 320px');
     expect(css).toContain('--tec1g-keypad-content-width');
     expect(css).toContain('.hardware-display-col .lcd-canvas');
@@ -188,6 +189,8 @@ describe('tec1g UI visibility controls', () => {
     expect(source).not.toContain('matrixConfigSwitch');
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
     expect(source).toContain('function reassertMatrixKeyboardOpenState()');
+    expect(source).toContain('function applyMatrixKeyboardCapture(captured: boolean)');
+    expect(source).toContain("window.addEventListener('blur', () => applyMatrixKeyboardCapture(false))");
     expect(source).toContain("message.status === 'running' || message.status === 'paused'");
     expect(source).toContain('if (message.matrixMode === false)');
   });

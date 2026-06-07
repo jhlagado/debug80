@@ -36,4 +36,27 @@ describe('tec1g matrix routing cue', () => {
     expect(cue.hidden).toBe(true);
     expect(header.classList.contains('matrix-keyboard-active')).toBe(false);
   });
+
+  it('distinguishes matrix attachment from physical keyboard capture', () => {
+    const appRoot = document.createElement('div');
+    const keypad = document.createElement('div');
+    const cue = document.createElement('div');
+    const header = document.createElement('button');
+    document.body.append(appRoot, keypad, cue, header);
+
+    applyMatrixRoutingCue({ appRoot, keypad, cue, header }, true, false);
+
+    expect(appRoot.dataset.matrixKeyboardActive).toBe('true');
+    expect(appRoot.dataset.matrixKeyboardCaptured).toBe('false');
+    expect(cue.textContent).toContain('Keyboard released');
+    expect(cue.textContent).toContain('click emulator to capture');
+    expect(header.classList.contains('matrix-keyboard-captured')).toBe(false);
+
+    applyMatrixRoutingCue({ appRoot, keypad, cue, header }, true, true);
+
+    expect(appRoot.dataset.matrixKeyboardCaptured).toBe('true');
+    expect(cue.textContent).toContain('Keyboard captured');
+    expect(cue.textContent).toContain('Esc releases');
+    expect(header.classList.contains('matrix-keyboard-captured')).toBe(true);
+  });
 });

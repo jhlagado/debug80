@@ -119,13 +119,23 @@ const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
 const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard.hidden);
 
-function applyMatrixKeyboardOpenState(open: boolean): void {
-  matrixUi.applyKeyboardCapture(open);
-  vscode.postMessage({ type: 'matrixMode', enabled: open });
+function updateMatrixKeyboardCue(): void {
   applyMatrixRoutingCue(
     { appRoot, keypad: keypadEl, cue: keypadRoutingCue, header: matrixKeyboardHeader },
-    open
+    panelLayout.isMatrixKeyboardOpen(),
+    matrixUi.isKeyboardCaptured()
   );
+}
+
+function applyMatrixKeyboardCapture(captured: boolean): void {
+  matrixUi.applyKeyboardCapture(captured && panelLayout.isMatrixKeyboardOpen());
+  updateMatrixKeyboardCue();
+}
+
+function applyMatrixKeyboardOpenState(open: boolean): void {
+  matrixUi.applyKeyboardCapture(false);
+  vscode.postMessage({ type: 'matrixMode', enabled: open });
+  updateMatrixKeyboardCue();
 }
 
 function reassertMatrixKeyboardOpenState(): void {
@@ -389,12 +399,34 @@ window.addEventListener('resize', () => {
 panelLayout.updateMemoryLayout(false);
 wireSerialUi(vscode);
 
+function isMatrixCaptureSurface(target: EventTarget | null): boolean {
+  if (!(target instanceof Node)) {
+    return false;
+  }
+  return [accordionDisplays, accordionMachine, accordionMatrixKeyboard].some((surface) =>
+    surface.contains(target)
+  );
+}
+
+document.addEventListener(
+  'pointerdown',
+  (event) => {
+    if (!panelLayout.isMatrixKeyboardOpen()) {
+      return;
+    }
+    applyMatrixKeyboardCapture(isMatrixCaptureSurface(event.target));
+  },
+  { capture: true }
+);
+window.addEventListener('blur', () => applyMatrixKeyboardCapture(false));
+
 // Matrix keyboard owns physical typing while its accordion panel is open.
 window.addEventListener('keydown', (event) => {
   if (event.repeat) {
     return;
   }
   if (matrixUi.handleKeyEvent(event, true)) {
+    updateMatrixKeyboardCue();
     return;
   }
 }, { capture: true });
@@ -408,6 +440,7 @@ window.addEventListener('keydown', (event) => {
 });
 window.addEventListener('keyup', (event) => {
   if (matrixUi.handleKeyEvent(event, false)) {
+    updateMatrixKeyboardCue();
     return;
   }
   if (panelLayout.isMatrixKeyboardOpen()) {

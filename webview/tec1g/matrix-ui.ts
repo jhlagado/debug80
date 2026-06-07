@@ -5,6 +5,8 @@ export interface MatrixUiController {
   applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]): void;
   applyCapsLock(enabled: boolean): void;
   applyKeyboardCapture(enabled: boolean): void;
+  releaseKeyboardCapture(): void;
+  isKeyboardCaptured(): boolean;
   resetTransientState(): void;
   handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean;
   init(): void;
@@ -358,6 +360,10 @@ export function createMatrixUiController(
       return false;
     }
     consumeHandledKeyEvent(event);
+    if (pressed && key === 'Escape') {
+      applyKeyboardCapture(false);
+      return true;
+    }
     if (pressed && event.repeat) {
       return true;
     }
@@ -637,6 +643,12 @@ export function createMatrixUiController(
     applyMatrixBrightness,
     applyCapsLock,
     applyKeyboardCapture,
+    releaseKeyboardCapture() {
+      applyKeyboardCapture(false);
+    },
+    isKeyboardCaptured() {
+      return keyboardCaptureEnabled;
+    },
     resetTransientState,
     handleKeyEvent,
     init,

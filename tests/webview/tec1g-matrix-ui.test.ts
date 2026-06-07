@@ -503,6 +503,63 @@ describe('tec1g matrix ui', () => {
     });
   });
 
+  it('keeps matrix hardware attached but ignores physical keys until capture is enabled', () => {
+    controller.applyKeyboardCapture(false);
+
+    expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'a'), true)).toBe(false);
+
+    controller.applyKeyboardCapture(true);
+
+    expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'a'), true)).toBe(true);
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+  });
+
+  it('releases held physical keys when keyboard capture is released', () => {
+    controller.applyKeyboardCapture(true);
+
+    controller.handleKeyEvent(makeKeyEvent('keydown', 's', { altKey: true, code: 'KeyS' }), true);
+    controller.releaseKeyboardCapture();
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: false,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+    ]);
+    expect(controller.isKeyboardCaptured()).toBe(false);
+  });
+
+  it('uses Escape as a physical keyboard capture release key', () => {
+    controller.applyKeyboardCapture(true);
+
+    expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape'), true)).toBe(true);
+
+    expect(controller.isKeyboardCaptured()).toBe(false);
+    expect(messages).toEqual([]);
+  });
+
   it('lights duplicate modifier keys together and clears one-shot modifiers after a key', () => {
     controller.applyKeyboardCapture(true);
     const leftShift = document.querySelector<HTMLElement>('[data-key="Shift"]') as HTMLElement;
