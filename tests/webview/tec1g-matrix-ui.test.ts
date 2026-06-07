@@ -278,6 +278,116 @@ describe('tec1g matrix ui', () => {
     });
   });
 
+  it('sends clicked Alt-letter chords as stable one-shot press and release pairs', () => {
+    controller.applyKeyboardCapture(true);
+    const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
+
+    altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+    ]);
+
+    flushMatrixClickHold();
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: false,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+    ]);
+  });
+
+  it('consumes clicked Alt as a one-shot modifier on the next matrix key', () => {
+    controller.applyKeyboardCapture(true);
+    const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
+    const rightArrow = document.querySelector('[data-key="ArrowRight"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
+
+    altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    rightArrow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    rightArrow.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'ArrowRight',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: true,
+    });
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 's',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+  });
+
+  it('clears one-shot click modifiers immediately after the modified key press', () => {
+    controller.applyKeyboardCapture(true);
+    const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
+    const sKey = document.querySelector('[data-key="s"]') as HTMLElement;
+    const aKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    altKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    sKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    sKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    aKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: true,
+      },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
   it('uses caps lock as a persistent letter shift and lights the shift keys', () => {
     controller.applyKeyboardCapture(true);
     const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;

@@ -39,6 +39,7 @@ export function createMatrixUiController(
   let capsLockEnabled = false;
   const matrixHeldKeys = new Map<string, MatrixHeldKey>();
   const matrixClickReleaseTimers = new Map<string, number>();
+  const matrixClickPressMods = new Map<string, MatrixKeyMods>();
   const matrixClickMods = {
     shift: false,
     ctrl: false,
@@ -255,10 +256,9 @@ export function createMatrixUiController(
     clearMatrixClickReleaseTimer(keyId);
     const timer = window.setTimeout(() => {
       matrixClickReleaseTimers.delete(keyId);
+      matrixClickPressMods.delete(key);
       setMatrixKeyPressed(key, false);
-      if (sendMatrixKey(key, false, mods)) {
-        clearOneShotMatrixMods();
-      }
+      sendMatrixKey(key, false, mods);
     }, MATRIX_CLICK_HOLD_MS);
     matrixClickReleaseTimers.set(keyId, timer);
   }
@@ -268,6 +268,7 @@ export function createMatrixUiController(
       window.clearTimeout(timer);
     }
     matrixClickReleaseTimers.clear();
+    matrixClickPressMods.clear();
     for (const held of matrixHeldKeys.values()) {
       vscode.postMessage({
         type: 'matrixKey',
@@ -499,8 +500,11 @@ export function createMatrixUiController(
             sendMatrixKey(keyValue, true, matrixClickMods);
             return;
           }
+          const pressMods = clickModsForKey(keyValue);
+          matrixClickPressMods.set(keyValue, pressMods);
           setMatrixKeyPressed(keyValue, true);
-          sendMatrixKey(keyValue, true, clickModsForKey(keyValue));
+          sendMatrixKey(keyValue, true, pressMods);
+          clearOneShotMatrixMods();
         });
         const release = () => {
           if (
@@ -511,7 +515,10 @@ export function createMatrixUiController(
           ) {
             return;
           }
-          const releaseMods = keyValue === 'CapsLock' ? matrixClickMods : clickModsForKey(keyValue);
+          const releaseMods =
+            keyValue === 'CapsLock'
+              ? matrixClickMods
+              : (matrixClickPressMods.get(keyValue) ?? clickModsForKey(keyValue));
           scheduleMatrixClickRelease(keyValue, releaseMods);
         };
         keyEl.addEventListener('mouseup', release);

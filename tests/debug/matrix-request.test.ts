@@ -334,6 +334,32 @@ describe('matrix-request', () => {
       ]);
     });
 
+    it('routes Alt-letter chords through the native matrix Alt modifier', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: true, alt: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: false, alt: true })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 6, col: 6, pressed: true },
+        { row: 0, col: 3, pressed: true },
+        { row: 6, col: 6, pressed: false },
+        { row: 0, col: 3, pressed: false },
+      ]);
+    });
+
     it('routes every physical Ctrl-letter chord through the native matrix Control modifier', () => {
       for (let code = 1; code <= 26; code += 1) {
         const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
