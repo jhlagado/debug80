@@ -175,4 +175,87 @@ describe('launch-source-state', () => {
     expect(result.sourceMapSymbols.some((symbol) => symbol.name === 'WIDTH')).toBe(true);
     expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'WIDTH')?.value).toBe(32);
   });
+
+  it('resolves local ROM D8 file keys through source roots, not the map directory', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-local-rom-source-'));
+    const projectRoot = path.join(tmpDir, 'project');
+    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
+    const hexPath = path.join(projectRoot, 'build', 'main.hex');
+    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
+    const localRomSourcePath = path.join(projectRoot, 'roms', 'tec1g', 'mon3', 'mon3.z80');
+    const localRomMapPath = path.join(
+      projectRoot,
+      'build',
+      'roms',
+      'tec1g',
+      'mon3',
+      'mon3.d8.json'
+    );
+
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(localRomSourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.mkdirSync(path.dirname(localRomMapPath), { recursive: true });
+    fs.writeFileSync(sourcePath, 'START:\n  NOP\n');
+    fs.writeFileSync(localRomSourcePath, 'Boot:\n  nop\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+    fs.writeFileSync(
+      buildMapPath,
+      JSON.stringify({
+        format: 'd8-debug-map',
+        version: 1,
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        files: {
+          'src/main.asm': {
+            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+          },
+        },
+        generator: { name: 'azm' },
+      })
+    );
+    fs.writeFileSync(
+      localRomMapPath,
+      JSON.stringify({
+        format: 'd8-debug-map',
+        version: 1,
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        files: {
+          'roms/tec1g/mon3/mon3.z80': {
+            segments: [{ start: 0x0000, end: 0x0001, lstLine: 1, line: 2, kind: 'code' }],
+            symbols: [{ name: 'Boot', kind: 'label', address: 0x0000, line: 1 }],
+          },
+        },
+        generator: { name: 'azm' },
+      })
+    );
+
+    const sourceState = new SourceStateManager();
+    const sessionState = createSessionState();
+    const result = buildLaunchSourceState(
+      {
+        sourceRoots: ['src', 'roms/tec1g/mon3'],
+        artifactBase: 'main',
+        outputDir: 'build',
+        debugMaps: [localRomMapPath],
+      } as LaunchRequestArguments,
+      'tec1g',
+      projectRoot,
+      sourcePath,
+      hexPath,
+      sourceState,
+      sessionState,
+      new NullLogger()
+    );
+
+    const canonicalLocalRomSourcePath = fs.realpathSync(localRomSourcePath);
+    expect(result.romSourcePaths).toContain(canonicalLocalRomSourcePath);
+    expect(result.autoOpenRomSourcePaths).toContain(canonicalLocalRomSourcePath);
+    expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'Boot')?.file).toBe(
+      canonicalLocalRomSourcePath
+    );
+  });
 });

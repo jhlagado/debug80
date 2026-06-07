@@ -248,4 +248,32 @@ describe('source-map', () => {
     assert.equal(seg.loc.line, 7);
     assert.equal(seg.end - seg.start, 2);
   });
+
+  it('preserves map load order for equally specific address segments', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x0000,
+          end: 0x0001,
+          loc: { file: 'roms/tec1g/mon3/mon3.z80', line: 302 },
+          context: { line: 302, text: 'local rom source' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x0000,
+          end: 0x0001,
+          loc: { file: 'resources/bundles/tec1g/mon3/v1/mon3.z80', line: 12 },
+          context: { line: 12, text: 'bundled rom source' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const resolveAll = (file: string) => `/test/${file}`;
+    const idx = buildSourceMapIndex(mapping, resolveAll);
+
+    const seg = findSegmentForAddress(idx, 0x0000);
+    assert.ok(seg);
+    assert.equal(seg.loc.file, 'roms/tec1g/mon3/mon3.z80');
+  });
 });

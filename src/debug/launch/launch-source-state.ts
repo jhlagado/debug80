@@ -99,11 +99,13 @@ export function buildLaunchSourceState(
     mapping: builtSourceState.mapping,
   });
   sourceState.lookupAnchors = symbolIndex.lookupAnchors;
+  const auxiliarySourceRoots = sessionState.sourceRoots;
   const sourceMapSymbols = readSourceMapSymbols({
     baseDir,
     hexPath,
     asmPath,
     debugMaps: args.debugMaps ?? [],
+    sourceRoots: auxiliarySourceRoots,
     mapArgs: {
       ...(args.artifactBase !== undefined && args.artifactBase.length > 0
         ? { artifactBase: args.artifactBase }
@@ -122,8 +124,11 @@ export function buildLaunchSourceState(
     mappingIndex: builtSourceState.mappingIndex,
     symbolAnchors: symbolIndex.anchors,
     symbolList: symbolIndex.list,
-    romSourcePaths: collectDebugMapSourcePaths(args.debugMaps ?? []),
-    autoOpenRomSourcePaths: collectDebugMapPrimarySourcePaths(args.debugMaps ?? []),
+    romSourcePaths: collectDebugMapSourcePaths(args.debugMaps ?? [], auxiliarySourceRoots),
+    autoOpenRomSourcePaths: collectDebugMapPrimarySourcePaths(
+      args.debugMaps ?? [],
+      auxiliarySourceRoots
+    ),
     sourceMapSymbols:
       sourceMapSymbols.length > 0
         ? sourceMapSymbols
@@ -141,6 +146,7 @@ function readSourceMapSymbols(options: {
   hexPath: string;
   asmPath: string | undefined;
   debugMaps: string[];
+  sourceRoots: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
   resolveDebugMapPath: (
     args: { artifactBase?: string; outputDir?: string },
@@ -173,7 +179,7 @@ function readSourceMapSymbols(options: {
         if (file.trim() === '') {
           continue;
         }
-        const resolvedFile = path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file);
+        const resolvedFile = resolveDebugMapFilePath(file, mapPath, options.sourceRoots);
         for (const symbol of entry.symbols ?? []) {
           symbols.push({
             name: symbol.name,
@@ -205,7 +211,7 @@ function pushUniquePath(paths: string[], candidate: string): void {
   }
 }
 
-function collectDebugMapPrimarySourcePaths(debugMaps: string[]): string[] {
+function collectDebugMapPrimarySourcePaths(debugMaps: string[], sourceRoots: string[]): string[] {
   const paths = new Set<string>();
   for (const mapPath of debugMaps) {
     try {
@@ -213,7 +219,11 @@ function collectDebugMapPrimarySourcePaths(debugMaps: string[]): string[] {
       if (parsed.map === undefined) {
         continue;
       }
-      const primarySource = findPrimaryDebugMapSource(mapPath, Object.keys(parsed.map.files));
+      const primarySource = findPrimaryDebugMapSource(
+        mapPath,
+        Object.keys(parsed.map.files),
+        sourceRoots
+      );
       if (primarySource !== undefined) {
         paths.add(primarySource);
       }
@@ -224,7 +234,7 @@ function collectDebugMapPrimarySourcePaths(debugMaps: string[]): string[] {
   return [...paths].sort((a, b) => a.localeCompare(b));
 }
 
-function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
+function collectDebugMapSourcePaths(debugMaps: string[], sourceRoots: string[]): string[] {
   const paths = new Set<string>();
   for (const mapPath of debugMaps) {
     try {
@@ -236,7 +246,7 @@ function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
         if (file.trim().length === 0) {
           continue;
         }
-        paths.add(path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file));
+        paths.add(resolveDebugMapFilePath(file, mapPath, sourceRoots));
       }
     } catch {
       // Source opening is best-effort; mapping load logs parse/read failures.
@@ -245,13 +255,24 @@ function collectDebugMapSourcePaths(debugMaps: string[]): string[] {
   return [...paths].sort((a, b) => a.localeCompare(b));
 }
 
-function findPrimaryDebugMapSource(mapPath: string, files: string[]): string | undefined {
+function findPrimaryDebugMapSource(
+  mapPath: string,
+  files: string[],
+  sourceRoots: string[]
+): string | undefined {
   const mapBase = path.basename(mapPath, '.d8.json').toLowerCase();
   const candidates = files
     .filter((file) => file.trim().length > 0)
-    .map((file) => (path.isAbsolute(file) ? file : path.join(path.dirname(mapPath), file)));
+    .map((file) => resolveDebugMapFilePath(file, mapPath, sourceRoots));
   const exact = candidates.find(
     (file) => path.basename(file, path.extname(file)).toLowerCase() === mapBase
   );
   return exact ?? candidates[0];
+}
+
+function resolveDebugMapFilePath(file: string, mapPath: string, sourceRoots: string[]): string {
+  if (path.isAbsolute(file)) {
+    return file;
+  }
+  return resolveMappedPath(file, undefined, sourceRoots) ?? path.join(path.dirname(mapPath), file);
 }

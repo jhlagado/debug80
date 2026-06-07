@@ -312,6 +312,7 @@ describe('package.json language contracts', () => {
       'debug80.showSourceMapStatus',
       'debug80.searchWorkspaceSymbols',
       'debug80.openDebug80View',
+      'debug80.materializeBundledRom',
       'debug80.sendHexViaCoolTerm',
       'debug80.testCoolTermConnection',
     ]);
@@ -319,7 +320,6 @@ describe('package.json language contracts', () => {
       'debug80.runToSelectedStackFrame',
       'debug80.setEntrySource',
       'debug80.openProjectConfigPanel',
-      'debug80.materializeBundledRom',
     ]);
     const internal = new Set([
       'debug80.terminalInput',

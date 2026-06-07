@@ -12,6 +12,7 @@ const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => u
 const existsSync = vi.fn();
 const readFileSync = vi.fn();
 const writeFileSync = vi.fn();
+const mkdirSync = vi.fn();
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
 const createWebviewPanel = vi.fn();
@@ -38,6 +39,7 @@ class DebugStackFrame {
 
 vi.mock('fs', () => ({
   existsSync,
+  mkdirSync,
   readFileSync,
   writeFileSync,
 }));
@@ -444,7 +446,7 @@ describe('registerExtensionCommands', () => {
     expect(showErrorMessage).not.toHaveBeenCalled();
   });
 
-  it('materializes manifest-backed bundled asset references from the project config', async () => {
+  it('copies monitor ROM bundles into the project and creates a ROM entry source', async () => {
     const vscode = await import('vscode');
 
     const folder = {
@@ -452,6 +454,16 @@ describe('registerExtensionCommands', () => {
       uri: { fsPath: '/workspace/tec1g-mon3' },
       index: 0,
     };
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === projectConfigPath) {
+        return true;
+      }
+      if (normalized.endsWith(path.normalize('roms/tec1g/mon3/mon3.rom.asm'))) {
+        return false;
+      }
+      return false;
+    });
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(folder);
     const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
     showQuickPickMock.mockResolvedValueOnce({
@@ -483,11 +495,12 @@ describe('registerExtensionCommands', () => {
         },
       })
     );
-    materializeBundledAsset.mockImplementation(
-      (_extensionUri: unknown, _workspaceRoot: string, reference: { destination?: string }) => ({
+    materializeBundledRom.mockImplementation(
+      (_extensionUri: unknown, _workspaceRoot: string, _bundleId: string) => ({
         ok: true,
-        destinationRelative: reference.destination ?? 'roms/tec1g/mon3',
-        materializedRelativePath: reference.destination ?? 'roms/tec1g/mon3',
+        destinationRelative: 'roms/tec1g/mon3',
+        romRelativePath: 'roms/tec1g/mon3/mon3.bin',
+        debugMapRelativePath: 'roms/tec1g/mon3/mon3.d8.json',
       })
     );
 
@@ -505,31 +518,19 @@ describe('registerExtensionCommands', () => {
     const result = await materializeBundledRomCommand?.();
 
     expect(result).toBe(true);
-    expect(materializeBundledAsset).toHaveBeenCalledTimes(2);
-    expect(materializeBundledAsset).toHaveBeenNthCalledWith(
-      1,
+    expect(materializeBundledRom).toHaveBeenCalledTimes(1);
+    expect(materializeBundledRom).toHaveBeenCalledWith(
       undefined,
       '/workspace/tec1g-mon3',
-      expect.objectContaining({
-        bundleId: 'tec1g/mon3/v1',
-        path: 'mon3.bin',
-        destination: 'roms/tec1g/mon3/mon3.bin',
-      }),
+      'tec1g/mon3/v1',
       { overwrite: false }
     );
-    expect(materializeBundledAsset).toHaveBeenNthCalledWith(
-      2,
-      undefined,
-      '/workspace/tec1g-mon3',
-      expect.objectContaining({
-        bundleId: 'tec1g/mon3/v1',
-        path: 'mon3.d8.json',
-        destination: 'roms/tec1g/mon3/mon3.d8.json',
-      }),
-      { overwrite: false }
+    expect(writeFileSync).toHaveBeenCalledWith(
+      path.join('/workspace/tec1g-mon3', 'roms', 'tec1g', 'mon3', 'mon3.rom.asm'),
+      expect.stringContaining('.include "mon3.z80"')
     );
     expect(showInformationMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Installed bundled assets for profile:mon3')
+      expect.stringContaining('Copied monitor ROM into project for profile:mon3')
     );
   });
 

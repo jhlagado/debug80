@@ -493,7 +493,14 @@ The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, ar
 
 When the scaffold creates or updates project files, it also calls `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` to create or append a standard **Debug80**-marked ignore block (see Chapter 2). The normal panel initialization path writes root `debug80.json` and does not create `.vscode/launch.json`; launch scaffolding is an explicit optional path.
 
-Bundled ROM files are **not copied during scaffolding**. The generated profile records `BundledAssetReference` entries. During launch, `resolveBundledAssetRuntimePath()` in `src/debug/launch-args.ts` checks the workspace path first; if that path is missing and corresponds to the bundled asset destination, it falls back to the copy inside the extension bundle. The explicit `debug80.materializeBundledRom` command copies local files when the user wants workspace copies.
+Bundled ROM files are **not copied during scaffolding**. The generated profile records `BundledAssetReference` entries. During launch, `resolveBundledAssetRuntimePath()` in `src/debug/launch-args.ts` checks the workspace path first; if that path is missing and corresponds to the bundled asset destination, it falls back to the copy inside the extension bundle. The explicit `debug80.materializeBundledRom` command is surfaced as **Debug80: Copy Monitor ROM into Project** and copies the whole monitor bundle when the user wants to work on monitor source locally.
+
+Local monitor development is enabled by a convention rather than another user-facing config field. The copy command creates a platform-specific ROM entry source:
+
+- TEC-1G / MON-3: `roms/tec1g/mon3/mon3.rom.asm`
+- TEC-1 / MON-1B: `roms/tec1/mon1b/mon1b.rom.asm`
+
+On launch, `buildLocalMonitorRomIfPresent()` in `src/debug/launch/local-monitor-rom-build.ts` checks for the current platform's conventional `*.rom.asm` file. If it exists and assembly is enabled, Debug80 builds it with AZM into `build/roms/...`, then mutates the launch arguments so the platform `romHex` points at the generated ROM HEX and `debugMaps` includes the generated D8 map. If the `*.rom.asm` file is absent, no local-ROM override happens and the normal bundled-ROM fallback remains in effect.
 
 ### Starter templates
 
@@ -533,7 +540,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, and the active platform ID. It emits one of three `projectState` values and drives the project header (Project button + `+` Add-folder button, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Restart button).
 
-- Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively (command palette path); `getDefaultProjectKitForPlatform()` selects the bundle-first default silently (panel initialization path). `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies on demand.
+- Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively (command palette path); `getDefaultProjectKitForPlatform()` selects the bundle-first default silently (panel initialization path). `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies and the conventional local `*.rom.asm` entry point on demand.
 
 ---
 

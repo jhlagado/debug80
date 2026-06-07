@@ -365,7 +365,7 @@
       },
       {
         "command": "debug80.materializeBundledRom",
-        "title": "Debug80: Copy Bundled Assets into Workspace"
+        "title": "Debug80: Copy Monitor ROM into Project"
       }
     ],
     "menus": {
@@ -396,10 +396,6 @@
         },
         {
           "command": "debug80.openProjectConfigPanel",
-          "when": "false"
-        },
-        {
-          "command": "debug80.materializeBundledRom",
           "when": "false"
         }
       ],

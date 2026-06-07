@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import { resolveBundledTec1Rom } from './assembler';
+import { normalizePlatformName } from '../launch-args';
 import { emitConsoleOutput } from '../session/adapter-ui';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import type { PlatformRegistry } from '../session/platform-registry';
@@ -15,6 +16,10 @@ import {
 } from '../requests/matrix-request';
 import { resolveArtifacts, resolveRelative, resolveBaseDir } from '../mapping/path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
+import {
+  applyLocalMonitorRomToLaunchArgs,
+  buildLocalMonitorRomIfPresent,
+} from './local-monitor-rom-build';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
 import { resolveAssemblerBackend } from './assembler-backend';
 import { emitMainSource } from '../session/adapter-ui';
@@ -169,6 +174,17 @@ export async function buildLaunchSession(
   merged: LaunchRequestArguments,
   context: LaunchSequenceContext
 ): Promise<LaunchSessionArtifacts> {
+  const baseDir = resolveBaseDir(merged);
+  context.sessionState.baseDir = baseDir;
+  const launchPlatform = normalizePlatformName(merged);
+  const localMonitorRom = await buildLocalMonitorRomIfPresent({
+    platform: launchPlatform,
+    baseDir,
+    args: merged,
+    sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),
+  });
+  applyLocalMonitorRomToLaunchArgs(merged, launchPlatform, localMonitorRom);
+
   const platformProvider = await resolvePlatformProvider(merged);
   const platform = platformProvider.id;
   const simpleConfig = platformProvider.simpleConfig;
@@ -204,8 +220,6 @@ export async function buildLaunchSession(
   });
   context.emitDapEvent('debug80/platform', platformProvider.payload);
 
-  const baseDir = resolveBaseDir(merged);
-  context.sessionState.baseDir = baseDir;
   const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 

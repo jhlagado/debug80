@@ -3,8 +3,14 @@
  */
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import {
+  createMonitorRomEntrySource,
+  monitorRomConventionForBundle,
+} from '../debug/monitor-rom-conventions';
 import { findProjectConfigPath, readProjectConfig } from './project-config';
-import { materializeBundledAsset } from './bundle-materialize';
+import { materializeBundledRom } from './bundle-materialize';
 import {
   buildBundledAssetFallbackPlans,
   resolveProjectBundledAssetInstallPlan,
@@ -64,20 +70,54 @@ export function registerBundledAssetCommands(options: {
         return undefined;
       }
       const installed: string[] = [];
-      for (const reference of installPlan.references) {
-        const result = materializeBundledAsset(context.extensionUri, folder.uri.fsPath, reference, {
+      const bundleIds = [...new Set(installPlan.references.map((reference) => reference.bundleId))];
+      for (const bundleId of bundleIds) {
+        const result = materializeBundledRom(context.extensionUri, folder.uri.fsPath, bundleId, {
           overwrite: pick.value,
         });
         if (!result.ok) {
           void vscode.window.showErrorMessage(`Debug80: ${result.reason}`);
           return false;
         }
-        installed.push(result.materializedRelativePath);
+        installed.push(result.destinationRelative);
+        const entryResult = ensureMonitorRomEntrySource(folder.uri.fsPath, bundleId, pick.value);
+        if (!entryResult.ok) {
+          void vscode.window.showErrorMessage(`Debug80: ${entryResult.reason}`);
+          return false;
+        }
+        if (entryResult.createdRelativePath !== undefined) {
+          installed.push(entryResult.createdRelativePath);
+        }
       }
       void vscode.window.showInformationMessage(
-        `Debug80: Installed bundled assets for ${installPlan.label}: ${installed.join(', ')}`
+        `Debug80: Copied monitor ROM into project for ${installPlan.label}: ${installed.join(', ')}`
       );
       return true;
     })
   );
+}
+
+function ensureMonitorRomEntrySource(
+  workspaceRoot: string,
+  bundleId: string,
+  overwrite: boolean
+): { ok: true; createdRelativePath?: string } | { ok: false; reason: string } {
+  const convention = monitorRomConventionForBundle(bundleId);
+  if (convention === undefined) {
+    return { ok: true };
+  }
+  const target = path.resolve(workspaceRoot, convention.sourceEntryRel);
+  if (fs.existsSync(target) && !overwrite) {
+    return { ok: true };
+  }
+  try {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, createMonitorRomEntrySource(convention));
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `Could not create ${convention.sourceEntryRel}: ${String(err)}`,
+    };
+  }
+  return { ok: true, createdRelativePath: convention.sourceEntryRel };
 }

@@ -149,7 +149,8 @@ The MON-1B v1 `bundle.json`:
 
 ### `materializeBundledAsset()` — single asset reference
 
-This is the per-asset materialization path used by the `debug80.materializeBundledRom` command:
+This is the per-asset materialization path used by internal bundle resolution and
+tests that need one exact file from a bundle:
 
 ```typescript
 function materializeBundledAsset(
@@ -194,7 +195,7 @@ function materializeBundledRom(
    - Otherwise copy with `fs.copyFileSync()`.
 4. Return `{ ok: true, destinationRelative, romRelativePath, debugMapRelativePath? }`.
 
-On success, `romRelativePath` and `debugMapRelativePath` are workspace-relative paths (using `/` separators) that can be written directly into `debug80.json` as ROM and source-map bundle references.
+On success, `romRelativePath` and `debugMapRelativePath` are workspace-relative paths (using `/` separators). The explicit monitor-copy command uses this to install the whole source bundle into the project's conventional `roms/` location.
 
 The `overwrite: false` default means subsequent calls on the same workspace are idempotent — files already present are not clobbered, but their paths are still resolved and returned.
 
@@ -228,15 +229,17 @@ The two monitor-backed kits and their bundles:
 
 ### Explicit command
 
-The `debug80.materializeBundledRom` VS Code command (registered in `src/extension/commands.ts`) lets users run materialization manually. The command:
+The `debug80.materializeBundledRom` VS Code command is shown to users as **Debug80: Copy Monitor ROM into Project**. The command:
 
 1. Prompts for a workspace folder.
 2. If a `debug80.json` exists, reads the `bundledAssets` from the default profile and uses those references.
-3. If no project config is found, shows a quick-pick with the available fallback plans (MON3 and MON-1B) and uses `materializeBundledAsset()` for each selected reference.
+3. If no project config is found, shows a quick-pick with the available fallback plans (MON3 and MON-1B).
 4. Asks whether to overwrite existing files or skip them.
-5. Reports success or failure via `vscode.window.showInformationMessage()`.
+5. Copies the whole selected monitor bundle with `materializeBundledRom()`.
+6. Creates the conventional local ROM entry source where applicable: `roms/tec1g/mon3/mon3.rom.asm` or `roms/tec1/mon1b/mon1b.rom.asm`.
+7. Reports success or failure via `vscode.window.showInformationMessage()`.
 
-This is useful if a user wants local ROM/source-map files for inspection or replacement. Normal launch does not require this step.
+This is useful if a user wants local ROM source files for inspection, replacement, or monitor development. Normal launch does not require this step. Once the `*.rom.asm` entry source exists, the launch path builds it with AZM and uses its generated ROM HEX and D8 map instead of the bundled ROM/map.
 
 ---
 
@@ -262,7 +265,7 @@ The manifest validator (`isBundleManifestV1`) checks `schemaVersion === 1`. Futu
 | `src/extension/bundle-materialize.ts`        | `materializeBundledAsset()`, `materializeBundledRom()`, `BUNDLED_MON1B_V1_REL`, `BUNDLED_MON3_V1_REL`          |
 | `src/extension/project-kits.ts`              | `ProjectKit` type with `bundledProfile`; kit registry for all platforms                                        |
 | `src/extension/project-scaffolding.ts`       | `createDefaultProjectConfig()` writes `bundledAssets` into profile from kit metadata                           |
-| `src/extension/commands.ts`                  | Registers `debug80.materializeBundledRom` command (thin shell; logic delegated to `bundle-asset-installer.ts`) |
+| `src/extension/bundled-asset-commands.ts`    | Registers `debug80.materializeBundledRom`; copies whole monitor bundles and creates conventional `*.rom.asm` entry sources |
 | `src/extension/bundle-asset-installer.ts`    | `buildBundledAssetFallbackPlans()` and bundled asset install plan logic for the explicit install command       |
 | `resources/bundles/tec1/mon1b/v1/`           | Shipped MON-1B bundle: `bundle.json`, `mon-1b.bin`, `mon-1b.asm`                                               |
 | `resources/bundles/tec1g/mon3/v1/`           | Shipped MON3 bundle: `bundle.json`, `mon3.bin`, `mon3.d8.json`, MON3 `.z80` source modules                     |

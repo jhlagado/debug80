@@ -112,9 +112,11 @@ Debug80 currently promotes two hardware-focused profiles:
   LCD/GLCD, RGB matrix output, memory protection/expansion behaviour, and
   optional RTC/SD hooks.
 
-Scaffolded TEC-1 and TEC-1G projects use bundled ROM assets supplied by the
-extension. Copy those assets into your workspace only when you want to inspect,
-replace, or override them.
+Scaffolded TEC-1 and TEC-1G projects use monitor ROM assets supplied by the
+extension. Copy the monitor ROM into your project only when you want to inspect,
+modify, replace, or debug the monitor source itself. Debug80 recognizes local
+monitor ROM entry points by convention (`*.rom.asm`) and uses the local ROM build
+instead of the bundled ROM when that entry point exists.
 
 ## Useful Commands
 
@@ -131,8 +133,9 @@ Debug80 contributes commands for the normal project workflow:
 - **Debug80: Open Project Configuration Panel**: open the active project config.
 - **Debug80: Open Auxiliary Source**: open bundled or project-provided platform
   source material for the active platform profile.
-- **Debug80: Copy Bundled Assets into Workspace**: materialise bundled platform
-  assets when you want local inspection or overrides.
+- **Debug80: Copy Monitor ROM into Project**: copy the bundled monitor source
+  into the project `roms/` folder and create the local `*.rom.asm` ROM entry
+  point used for monitor development.
 
 ## Local VSIX Builds
 
