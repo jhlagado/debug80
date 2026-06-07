@@ -4,6 +4,7 @@
 
 import {
   contractUpdateModeFrom,
+  platformFrom,
   registerContractsModeFrom,
   rootPathFrom,
   targetNameFrom,
@@ -20,7 +21,7 @@ const PROJECT_MESSAGE_HANDLERS: Record<string, ProjectMessageHandler> = {
   requestProjectStatus: async (_msg, deps) => deps.handleRequestProjectStatus(),
   createProject: handleCreateProjectMessage,
   selectProject: handleSelectProjectMessage,
-  openWorkspaceFolder: async (_msg, deps) => deps.handleOpenWorkspaceFolder(),
+  openWorkspaceFolder: handleOpenWorkspaceFolderMessage,
   configureProject: async (_msg, deps) => deps.handleConfigureProject(),
   saveProjectConfig: handleSaveProjectConfigMessage,
   setStopOnEntry: handleSetStopOnEntryMessage,
@@ -65,7 +66,19 @@ async function handleSelectProjectMessage(
   deps: PlatformViewMessageDependencies
 ): Promise<void> {
   const rootPath = rootPathFrom(msg);
-  await deps.handleSelectProject(rootPath !== undefined ? { rootPath } : undefined);
+  const platform = platformFrom(msg);
+  await deps.handleSelectProject({
+    ...(rootPath !== undefined ? { rootPath } : {}),
+    ...(platform !== undefined ? { platform } : {}),
+  });
+}
+
+async function handleOpenWorkspaceFolderMessage(
+  msg: PlatformViewMessage,
+  deps: PlatformViewMessageDependencies
+): Promise<void> {
+  const platform = platformFrom(msg);
+  await deps.handleOpenWorkspaceFolder(platform !== undefined ? { platform } : undefined);
 }
 
 async function handleSaveProjectConfigMessage(

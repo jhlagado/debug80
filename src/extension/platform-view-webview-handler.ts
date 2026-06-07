@@ -44,8 +44,12 @@ export function createPlatformViewWebviewHandler(
       handleCreateProject: async (args) => {
         await vscode.commands.executeCommand('debug80.createProject', args);
       },
-      handleOpenWorkspaceFolder: async () => {
-        await vscode.commands.executeCommand('debug80.addWorkspaceFolder');
+      handleOpenWorkspaceFolder: async (args) => {
+        if (args === undefined) {
+          await vscode.commands.executeCommand('debug80.addWorkspaceFolder');
+          return;
+        }
+        await vscode.commands.executeCommand('debug80.addWorkspaceFolder', args);
       },
       handleSelectProject: async (args) => {
         await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);

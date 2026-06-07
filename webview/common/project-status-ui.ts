@@ -71,8 +71,7 @@ function updateSendHexButton(
     return;
   }
   const initializedProject = state.kind === 'initialized';
-  const canSend =
-    initializedProject && Boolean(state.targetName) && Boolean(state.coolTermHexPath);
+  const canSend = initializedProject && Boolean(state.targetName) && Boolean(state.coolTermHexPath);
   button.hidden = !initializedProject;
   button.disabled = !canSend;
   button.textContent = sendButtonLabel(state.platform);
@@ -163,8 +162,6 @@ export function createProjectStatusUi(
 
   let currentState: ProjectPanelState = createProjectPanelState({ projectState: 'noWorkspace' });
 
-  const projectRootController = createProjectRootButtonController(vscode, selectProjectButton);
-
   function postProjectAction(action: ProjectPanelAction | undefined): void {
     if (action !== undefined) {
       vscode.postMessage(action);
@@ -174,6 +171,17 @@ export function createProjectStatusUi(
   function selectedPlatform(): string {
     return getPlatform?.() ?? platform;
   }
+
+  const projectRootController = createProjectRootButtonController(
+    {
+      postMessage(message) {
+        vscode.postMessage(
+          message.type === 'selectProject' ? { ...message, platform: selectedPlatform() } : message
+        );
+      },
+    },
+    selectProjectButton
+  );
 
   setupPrimaryAction?.addEventListener('click', () => {
     postProjectAction(createSetupPrimaryAction(currentState, selectedPlatform()));

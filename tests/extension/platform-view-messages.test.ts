@@ -14,7 +14,10 @@ describe('platform-view message routing', () => {
       { type: 'createProject', rootPath: '/workspace/a', platform: 'tec1g' },
       deps
     );
-    await handlePlatformViewMessage({ type: 'selectProject', rootPath: '/workspace/a' }, deps);
+    await handlePlatformViewMessage(
+      { type: 'selectProject', rootPath: '/workspace/a', platform: 'tec1g' },
+      deps
+    );
     await handlePlatformViewMessage(
       { type: 'selectTarget', rootPath: '/workspace/a', targetName: 'app' },
       deps
@@ -22,7 +25,7 @@ describe('platform-view message routing', () => {
     await handlePlatformViewMessage({ type: 'restartDebug' }, deps);
     await handlePlatformViewMessage({ type: 'setEntrySource' }, deps);
     await handlePlatformViewMessage({ type: 'startDebug', rootPath: '/workspace/a' }, deps);
-    await handlePlatformViewMessage({ type: 'openWorkspaceFolder' }, deps);
+    await handlePlatformViewMessage({ type: 'openWorkspaceFolder', platform: 'tec1g' }, deps);
     await handlePlatformViewMessage({ type: 'requestProjectStatus' }, deps);
     await handlePlatformViewMessage({ type: 'configureProject' }, deps);
     await handlePlatformViewMessage({ type: 'setStopOnEntry', stopOnEntry: true }, deps);
@@ -42,7 +45,10 @@ describe('platform-view message routing', () => {
       rootPath: '/workspace/a',
       platform: 'tec1g',
     });
-    expect(deps.handleSelectProject).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
+    expect(deps.handleSelectProject).toHaveBeenCalledWith({
+      rootPath: '/workspace/a',
+      platform: 'tec1g',
+    });
     expect(deps.handleSelectTarget).toHaveBeenCalledWith({
       rootPath: '/workspace/a',
       targetName: 'app',
@@ -50,7 +56,7 @@ describe('platform-view message routing', () => {
     expect(deps.handleRestartDebug).toHaveBeenCalledTimes(1);
     expect(deps.handleSetEntrySource).toHaveBeenCalledTimes(1);
     expect(deps.handleStartDebug).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
-    expect(deps.handleOpenWorkspaceFolder).toHaveBeenCalledTimes(1);
+    expect(deps.handleOpenWorkspaceFolder).toHaveBeenCalledWith({ platform: 'tec1g' });
     expect(deps.handleRequestProjectStatus).toHaveBeenCalledTimes(1);
     expect(deps.handleConfigureProject).toHaveBeenCalledTimes(1);
     expect(deps.handleSetStopOnEntry).toHaveBeenCalledWith(true);

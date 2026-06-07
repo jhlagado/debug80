@@ -61,8 +61,8 @@ export type ProjectPanelState =
     };
 
 export type ProjectPanelAction =
-  | { type: 'openWorkspaceFolder' }
-  | { type: 'selectProject' }
+  | { type: 'openWorkspaceFolder'; platform?: string }
+  | { type: 'selectProject'; platform?: string }
   | { type: 'createProject'; rootPath?: string; platform: string }
   | { type: 'selectTarget'; rootPath: string; targetName: string }
   | { type: 'sendHexViaCoolTerm'; rootPath: string; targetName?: string }
@@ -199,18 +199,15 @@ export function createProjectAction(
   };
 }
 
-export function setupPrimaryAction(
-  state: ProjectPanelState,
-  platform: string
-): ProjectPanelAction {
+export function setupPrimaryAction(state: ProjectPanelState, platform: string): ProjectPanelAction {
   const setup = setupCardForProjectPanel(state);
   if (setup?.primaryAction === 'selectProject') {
-    return { type: 'selectProject' };
+    return { type: 'selectProject', platform };
   }
   if (setup?.primaryAction === 'createProject') {
     return createProjectAction(state, platform);
   }
-  return { type: 'openWorkspaceFolder' };
+  return { type: 'openWorkspaceFolder', platform };
 }
 
 export function selectTargetAction(

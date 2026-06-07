@@ -316,6 +316,65 @@ describe('registerExtensionCommands', () => {
     expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, 'tec1g');
   });
 
+  it('adds a folder from Debug80 and offers to initialize it', async () => {
+    const vscode = (await import('vscode')) as unknown as {
+      window: { showOpenDialog: ReturnType<typeof vi.fn> };
+      workspace: {
+        getWorkspaceFolder: ReturnType<typeof vi.fn>;
+        updateWorkspaceFolders: ReturnType<typeof vi.fn>;
+      };
+    };
+    const rootPath = '/workspace/new-debug80-project';
+    workspaceFolders = [];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    vscode.window.showOpenDialog.mockResolvedValueOnce([{ fsPath: rootPath }]);
+    vscode.workspace.getWorkspaceFolder.mockReturnValue(undefined);
+    vscode.workspace.updateWorkspaceFolders.mockReturnValue(true);
+    showInformationMessage.mockResolvedValueOnce('Initialize');
+    executeCommand.mockResolvedValueOnce(true);
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const addFolder = registeredCommands.get('debug80.addWorkspaceFolder');
+    expect(addFolder).toBeTypeOf('function');
+
+    await addFolder?.({ platform: 'tec1g' });
+
+    expect(vscode.workspace.updateWorkspaceFolders).toHaveBeenCalledWith(0, 0, {
+      uri: { fsPath: rootPath },
+      name: 'new-debug80-project',
+    });
+    expect(rememberWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'new-debug80-project', uri: { fsPath: rootPath } })
+    );
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: new-debug80-project is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
+      rootPath,
+      platform: 'tec1g',
+    });
+    expect(refreshIdleView).toHaveBeenCalled();
+  });
+
   it('reveals the Debug80 view through the dedicated command', async () => {
     const reveal = vi.fn();
     await registerCommands({
@@ -572,6 +631,104 @@ describe('registerExtensionCommands', () => {
     expect(result).toEqual(folder);
     expect(refreshIdleView).toHaveBeenCalled();
     expect(reveal).toHaveBeenCalledWith(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('offers to initialize an unconfigured root selected from the Debug80 project UI', async () => {
+    const rootPath = '/workspace/empty-root';
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: rootPath },
+      index: 0,
+    };
+    workspaceFolders = [folder];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    showInformationMessage.mockResolvedValueOnce('Initialize');
+    executeCommand.mockResolvedValueOnce(true);
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView, reveal } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
+
+    expect(result).toEqual(folder);
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: empty-root is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
+      rootPath,
+      platform: 'tec1g',
+    });
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unconfigured root selected when initialization is declined', async () => {
+    const rootPath = '/workspace/empty-root';
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: rootPath },
+      index: 0,
+    };
+    workspaceFolders = [folder];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    showInformationMessage.mockResolvedValueOnce('Not Now');
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      platformViewProvider: { refreshIdleView, reveal: vi.fn() } as never,
+    });
+
+    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
+    expect(selectRoot).toBeTypeOf('function');
+
+    const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
+
+    expect(result).toEqual(folder);
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: empty-root is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).not.toHaveBeenCalledWith('debug80.createProject', expect.anything());
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
     expect(startDebugging).not.toHaveBeenCalled();
   });
 

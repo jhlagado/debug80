@@ -12,6 +12,7 @@ import { PlatformViewProvider } from './platform-view-provider';
 import { ProjectTargetSelectionController } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { findProjectConfigPath } from './project-config';
+import { promptToInitializeSelectedFolder } from './project-initialization-prompt';
 import { findWorkspaceFolder } from './workspace-folder-resolver';
 import {
   maybeAutoStartSingleTargetForRootChange,
@@ -23,6 +24,7 @@ import {
 
 type SelectWorkspaceFolderArgs = {
   rootPath?: string;
+  platform?: string;
 };
 
 type StartDebugArgs = {
@@ -83,6 +85,7 @@ export function registerDebugLifecycleCommands(options: {
       'debug80.selectWorkspaceFolder',
       async (args?: SelectWorkspaceFolderArgs | string) => {
         const rootPath = typeof args === 'string' ? args : args?.rootPath;
+        const platform = typeof args === 'string' ? undefined : args?.platform;
         const folder =
           findWorkspaceFolder(rootPath) ??
           (rootPath === undefined ? await workspaceSelection.selectWorkspaceFolder() : undefined);
@@ -100,11 +103,22 @@ export function registerDebugLifecycleCommands(options: {
         platformViewProvider.refreshIdleView();
         platformViewProvider.reveal?.(false);
 
+        const projectConfigPath = findProjectConfigPath(folder);
+        if (projectConfigPath === undefined) {
+          const created = await promptToInitializeSelectedFolder(folder, platform);
+          if (created) {
+            workspaceSelection.rememberWorkspace(folder);
+            platformViewProvider.refreshIdleView();
+            platformViewProvider.reveal?.(false);
+          }
+          return folder;
+        }
+
         let restartedForRootChange = false;
         const activeSession = vscode.debug.activeDebugSession;
         if (activeSession?.type === 'z80') {
           const previousProjectConfig = resolveSessionProjectConfigPath(activeSession);
-          const nextProjectConfig = findProjectConfigPath(folder);
+          const nextProjectConfig = projectConfigPath;
           if (
             previousProjectConfig !== undefined &&
             nextProjectConfig !== undefined &&

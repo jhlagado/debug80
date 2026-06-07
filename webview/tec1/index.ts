@@ -96,7 +96,7 @@ let projectIsInitialized = false;
 const audio = createAudioController(muteEl, vscode);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder' });
+  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl.value });
 });
 
 platformSelectEl?.addEventListener('change', () => {

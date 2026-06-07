@@ -36,7 +36,7 @@ describe('platform-view webview handler', () => {
     await handler({ type: 'restartDebug' });
     await handler({ type: 'setEntrySource' });
     await handler({ type: 'startDebug', rootPath: '/workspace/demo' });
-    await handler({ type: 'openWorkspaceFolder' });
+    await handler({ type: 'openWorkspaceFolder', platform: 'tec1g' });
 
     expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
       rootPath: '/workspace/demo',
@@ -54,7 +54,9 @@ describe('platform-view webview handler', () => {
     expect(executeCommand).toHaveBeenCalledWith('debug80.startDebug', {
       rootPath: '/workspace/demo',
     });
-    expect(executeCommand).toHaveBeenCalledWith('debug80.addWorkspaceFolder');
+    expect(executeCommand).toHaveBeenCalledWith('debug80.addWorkspaceFolder', {
+      platform: 'tec1g',
+    });
   });
 
   it('routes provider-owned state callbacks without going through commands', async () => {

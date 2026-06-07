@@ -249,7 +249,7 @@ const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });
 audio.wireMuteClick();
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder' });
+  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl.value });
 });
 
 platformSelectEl?.addEventListener('change', () => {
