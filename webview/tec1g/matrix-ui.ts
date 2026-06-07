@@ -5,6 +5,7 @@ export interface MatrixUiController {
   applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]): void;
   applyCapsLock(enabled: boolean): void;
   applyKeyboardCapture(enabled: boolean): void;
+  resetTransientState(): void;
   handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean;
   init(): void;
 }
@@ -144,18 +145,24 @@ export function createMatrixUiController(
     drawMatrix();
   }
 
+  function resetTransientState() {
+    releaseHeldMatrixKeys();
+    clearOneShotMatrixMods();
+    applyCapsLock(false);
+    setMatrixKeyPressed('Shift', false);
+    setMatrixKeyPressed('Control', false);
+    setMatrixKeyPressed('Fn', false);
+    setMatrixKeyPressed('Alt', false);
+    setMatrixKeyPressed('CapsLock', false);
+    matrixKeyboardGrid
+      ?.querySelectorAll('.matrix-key.pressed')
+      .forEach((key) => key.classList.remove('pressed'));
+    refreshMatrixModifierKeys();
+  }
+
   function applyKeyboardCapture(enabled) {
     if (!enabled) {
-      releaseHeldMatrixKeys();
-      clearOneShotMatrixMods();
-      setMatrixKeyPressed('Shift', false);
-      setMatrixKeyPressed('Control', false);
-      setMatrixKeyPressed('Fn', false);
-      setMatrixKeyPressed('Alt', false);
-      setMatrixKeyPressed('CapsLock', false);
-      matrixKeyboardGrid
-        ?.querySelectorAll('.matrix-key.pressed')
-        .forEach((key) => key.classList.remove('pressed'));
+      resetTransientState();
     }
     keyboardCaptureEnabled = !!enabled;
     refreshMatrixModifierKeys();
@@ -547,6 +554,7 @@ export function createMatrixUiController(
     applyMatrixBrightness,
     applyCapsLock,
     applyKeyboardCapture,
+    resetTransientState,
     handleKeyEvent,
     init,
   };

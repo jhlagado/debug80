@@ -338,6 +338,41 @@ describe('tec1g matrix ui', () => {
     expect(capsKey.classList.contains('active')).toBe(true);
   });
 
+  it('resets transient matrix keyboard modifier UI state without disabling capture', () => {
+    controller.applyKeyboardCapture(true);
+    const capsKey = document.querySelector('[data-key="CapsLock"]') as HTMLElement;
+    const shiftKeys = Array.from(document.querySelectorAll<HTMLElement>('[data-key="Shift"]'));
+    const matrixShift = shiftKeys[0];
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    matrixShift.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    capsKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    capsKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
+
+    expect(shiftKeys.every((key) => key.classList.contains('active'))).toBe(true);
+    expect(capsKey.classList.contains('active')).toBe(true);
+
+    controller.resetTransientState();
+
+    expect(shiftKeys.some((key) => key.classList.contains('active'))).toBe(false);
+    expect(capsKey.classList.contains('active')).toBe(false);
+
+    messages.length = 0;
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'a',
+      pressed: true,
+      shift: false,
+      ctrl: false,
+      fn: false,
+      alt: false,
+    });
+  });
+
   it('applies caps lock to physical letter keys while keyboard capture is active', () => {
     controller.applyKeyboardCapture(true);
 

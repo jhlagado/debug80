@@ -236,6 +236,7 @@ const keypad = createTec1gKeypad(
   },
   {
     onReset: () => {
+      matrixUi.resetTransientState();
       vscode.postMessage({
         type: 'reset',
         matrixModeAfterReset: panelLayout.isMatrixKeyboardOpen(),
