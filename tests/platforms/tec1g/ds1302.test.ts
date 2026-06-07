@@ -118,6 +118,11 @@ describe('Ds1302', () => {
   it('supports burst read for sequential registers', () => {
     const ds = new Ds1302();
     ds.write(CE_BIT);
+    writeByte(ds, 0x80);
+    writeByte(ds, 0x10);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
     writeByte(ds, 0x82);
     writeByte(ds, 0x11);
     ds.write(0x00);
@@ -131,8 +136,34 @@ describe('Ds1302', () => {
     writeByte(ds, 0xbf);
     const first = readByte(ds);
     const second = readByte(ds);
+    const third = readByte(ds);
     ds.write(0x00);
-    expect(first).toBe(0x11);
-    expect(second).toBe(0x22);
+    expect(first).toBe(0x10);
+    expect(second).toBe(0x11);
+    expect(third).toBe(0x22);
+  });
+
+  it('supports the DIAG RTC setup and 12-hour toggle register pattern', () => {
+    const ds = new Ds1302();
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0x8e); // clear write protect
+    writeByte(ds, 0x00);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0x90); // clear trickle-charge register
+    writeByte(ds, 0x00);
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0x84); // write hours
+    writeByte(ds, 0x92); // 12 AM with 12-hour mode bit
+    ds.write(0x00);
+
+    ds.write(CE_BIT);
+    writeByte(ds, 0x85); // read hours
+    expect(readByte(ds)).toBe(0x92);
+    ds.write(0x00);
   });
 });

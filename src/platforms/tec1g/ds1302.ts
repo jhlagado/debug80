@@ -103,7 +103,7 @@ export class Ds1302 {
         let burst = false;
         if ((rawCommand & 0xfe) === 0xbe) {
           burst = true;
-          addr = 0x01;
+          addr = 0x00;
         } else if ((rawCommand & 0xfe) === 0xfe) {
           burst = true;
           addr = RAM_OFFSET;

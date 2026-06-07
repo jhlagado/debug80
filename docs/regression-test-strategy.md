@@ -47,6 +47,32 @@ platform-specific emulation. No single test style can cover all of that reliably
 - Register writes apply to the runtime.
 - RAM writes apply; ROM writes obey protect/unprotect policy.
 
+### TEC-1G Hardware DIAG Corpus
+
+The TEC-1G hardware DIAG sources are useful as a behaviour reference corpus, but
+they should not be imported wholesale as opaque pass/fail tests. Many DIAG
+routines were written to exercise real hardware and then rely on a human to
+inspect LCD text, GLCD pixels, LEDs, sounds, or menu state. Debug80 should adopt
+those routines by reading the intended hardware behaviour, then writing focused
+assertions against emulator state.
+
+The first DIAG-derived priorities are SD SPI and DS1302 RTC, because those are
+the protocol-heavy devices where visual inspection is weakest and timing/bit
+ordering mistakes are easiest to miss.
+
+- SD coverage should mirror the TEC-1G DIAG card-info flow: 80 idle SPI clocks,
+  CMD0, CMD8, CMD55/ACMD41 retry, CID read, and CSD read. Tests should assert
+  the response bytes and the fields that DIAG displays, such as CID PNM, CSD
+  type bits, and size fields.
+- RTC coverage should mirror the DIAG DS1302 flow: clear write protect, clear
+  trickle charge, read clock/calendar registers through the TEC-1G port bit
+  layout, and preserve 12/24-hour mode values. Tests should assert protocol
+  sequencing and register values directly, rather than relying on displayed
+  strings.
+- Other DIAG routines, such as LCD, GLCD, 7-seg, 8x8, matrix keyboard, shadow,
+  protect, expand, and RAM checks, should be used selectively when they reveal
+  a hardware convention not already covered by focused platform tests.
+
 ### Performance Regression Contracts
 
 Debug80 should treat performance as a regression surface, not only as manual UX feedback. The

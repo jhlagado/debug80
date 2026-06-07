@@ -22,6 +22,14 @@ function writeByte(spi: SdSpi, value: number): void {
   }
 }
 
+function writeDiagIdleClocks(spi: SdSpi, clocks: number): void {
+  for (let i = 0; i < clocks; i += 1) {
+    writeSpi(spi, MOSI_BIT | CS_BIT);
+    writeSpi(spi, MOSI_BIT | CLK_BIT | CS_BIT);
+    writeSpi(spi, MOSI_BIT | CS_BIT);
+  }
+}
+
 function writeByteWithMon3Idle(spi: SdSpi, value: number): void {
   writeByte(spi, value);
   writeSpi(spi, MOSI_BIT | CS_BIT);
@@ -229,6 +237,52 @@ describe('SdSpi', () => {
     expect(readResponseByte(spi)).toBe(0x00);
     expect(readByte(spi)).toBe(0xfe);
     expect(readByte(spi)).toBe(0x40);
+  });
+
+  it('follows the TEC-1G DIAG SD initialization and card-info sequence', () => {
+    const spi = new SdSpi({ csMask: CS_BIT, highCapacity: true });
+
+    writeSpi(spi, MOSI_BIT | CS_BIT); // DIAG spi_init idle state.
+    writeDiagIdleClocks(spi, 80);
+    writeSpi(spi, MOSI_BIT); // DIAG asserts CS to enter SPI mode.
+
+    sendCommand(spi, [0x40, 0x00, 0x00, 0x00, 0x00, 0x95]); // CMD0
+    expect(readResponseByte(spi)).toBe(0x01);
+
+    sendCommand(spi, [0x48, 0x00, 0x00, 0x01, 0xaa, 0x87]); // CMD8
+    expect(readResponseByte(spi)).toBe(0x01);
+    expect([readByte(spi), readByte(spi), readByte(spi), readByte(spi)]).toEqual([
+      0x00, 0x00, 0x01, 0xaa,
+    ]);
+
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x01]); // CMD55
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x01]); // ACMD41
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x77, 0x00, 0x00, 0x00, 0x00, 0x01]); // CMD55
+    expect(readResponseByte(spi)).toBe(0x01);
+    sendCommand(spi, [0x69, 0x40, 0x00, 0x00, 0x00, 0x01]); // ACMD41
+    expect(readResponseByte(spi)).toBe(0x00);
+
+    sendCommand(spi, [0x4a, 0x00, 0x00, 0x00, 0x00, 0x01]); // CMD10 CID
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
+    const cid = Array.from({ length: 16 }, () => readByte(spi));
+    expect(String.fromCharCode(...cid.slice(3, 8))).toBe('DEB80');
+    readByte(spi);
+    readByte(spi);
+
+    sendCommand(spi, [0x49, 0x00, 0x00, 0x01, 0xaa, 0x87]); // CMD9 CSD
+    expect(readResponseByte(spi)).toBe(0x00);
+    expect(readByte(spi)).toBe(0xfe);
+    const csd = Array.from({ length: 16 }, () => readByte(spi));
+    const typeBits = (csd[0] ?? 0) & 0xc0;
+    const typeAfterFirstRlca = ((typeBits << 1) | (typeBits >> 7)) & 0xff;
+    const diagTypeByte = ((typeAfterFirstRlca << 1) | (typeAfterFirstRlca >> 7)) & 0xff;
+    expect(csd[0]).toBe(0x40);
+    expect(diagTypeByte + 1).toBe(2);
+    expect(csd[9]).toBe(0x1f);
+    expect(csd[10]).toBe(0xff);
   });
 
   it('treats CMD17 argument as block address for high capacity cards', () => {

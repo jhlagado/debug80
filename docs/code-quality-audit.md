@@ -28,6 +28,22 @@ changing behavior:
    regressed: source-map resolution, project selection persistence, launch
    diagnostics, matrix keyboard focus, and display duty-cycle rendering.
 
+## Recent Updates
+
+### 2026-06-07: TEC-1G Protocol Regression Depth
+
+The TEC-1G SD SPI and DS1302 RTC tests now use the hardware DIAG routines as a
+behaviour reference rather than treating the DIAG ROM as an opaque pass/fail
+artifact. The SD test suite includes a DIAG-style card-info sequence covering
+idle clocks, CMD0, CMD8, CMD55/ACMD41, CID, and CSD fields. The RTC suite now
+checks DIAG setup behaviour and correct DS1302 clock burst ordering from the
+seconds register. This corrected a protocol detail where clock burst reads had
+started at minutes instead of seconds.
+
+The broader regression strategy now documents this policy: import DIAG-derived
+behaviour where it strengthens emulator confidence, but prefer focused
+assertions against emulator state over wholesale interactive ROM tests.
+
 ## Audit Inputs
 
 Commands used:
