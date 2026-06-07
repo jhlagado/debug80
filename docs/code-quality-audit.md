@@ -711,18 +711,6 @@ that distinction: attachment is hardware state, capture is host-input focus
 state. Any new path that disables capture must release held keys and refresh the
 visible routing cue.
 
-### Latest Goal Note: TEC-1G Reset Preserves Monitor RAM
-
-The TEC-1G reset request now models a board reset rather than a full program
-reload. It resets the CPU to the configured entry/reset address and resets
-platform devices, but it does not reload the program image or clear RAM. MON-3
-depends on this because it writes its `ROMSIG` warm-boot signature into monitor
-RAM and checks that signature on the next reset.
-
-Future reset/rebuild work should keep this split explicit: Build/rebuild may
-patch or reload program bytes, but the panel Reset button should preserve RAM so
-MON-3 can distinguish hard initialization from soft boot.
-
 Use these criteria when deciding whether cleanup is worthwhile:
 
 - Does it remove obsolete behavior, not just move code around?

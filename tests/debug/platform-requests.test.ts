@@ -31,21 +31,21 @@ describe('platform-requests', () => {
   });
 
   it('handles reset requests', () => {
-    const calls: unknown[] = [];
+    const calls: string[] = [];
     const runtime = {
-      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
+      reset: () => calls.push('reset'),
       restoreCpuState: () => calls.push('restore'),
     };
     const platform = { resetState: () => calls.push('platform-reset') };
     const error = handleResetRequest(runtime, {}, 1234, platform);
     expect(error).toBeNull();
-    expect(calls).toEqual([['reset', undefined, 1234], 'platform-reset']);
+    expect(calls).toEqual(['reset', 'platform-reset']);
   });
 
-  it('resets hardware to the entry address instead of restoring a captured entry snapshot', () => {
-    const calls: unknown[] = [];
+  it('always performs a cold reset instead of restoring a captured entry snapshot', () => {
+    const calls: string[] = [];
     const runtime = {
-      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
+      reset: () => calls.push('reset'),
       restoreCpuState: () => calls.push('restore'),
     };
     const platform = { resetState: () => calls.push('platform-reset') };
@@ -53,7 +53,7 @@ describe('platform-requests', () => {
     const error = handleResetRequest(runtime, {}, 1234, platform);
 
     expect(error).toBeNull();
-    expect(calls).toEqual([['reset', undefined, 1234], 'platform-reset']);
+    expect(calls).toEqual(['reset', 'platform-reset']);
   });
 
   it('handles speed and serial requests', () => {

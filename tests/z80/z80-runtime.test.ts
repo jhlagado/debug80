@@ -27,20 +27,6 @@ describe('z80-runtime', () => {
     assert.equal(runtime.getPC(), 0x2003);
   });
 
-  it('can reset the CPU to an entry address without clearing RAM', () => {
-    const program = makeProgram([0x00], 0x0000);
-    const runtime = createZ80Runtime(program);
-
-    runtime.hardware.memory[0x0800] = 0x4d;
-    runtime.hardware.memory[0x0801] = 0x4f;
-
-    runtime.reset(undefined, 0x1234);
-
-    assert.equal(runtime.getPC(), 0x1234);
-    assert.equal(runtime.hardware.memory[0x0800], 0x4d);
-    assert.equal(runtime.hardware.memory[0x0801], 0x4f);
-  });
-
   it('calls IO write handler on OUT (n),A', () => {
     const writes: Array<{ port: number; value: number }> = [];
     const program = makeProgram(

@@ -161,7 +161,10 @@ describe('platform providers', () => {
     const resetHandler = registry.getHandler('debug80/tec1Reset');
     expect(resetHandler).toBeDefined();
     resetHandler?.({} as DebugProtocol.Response, undefined);
-    expect(context.sessionState.runtime?.reset).toHaveBeenCalledWith(undefined, 0x4567);
+    expect(context.sessionState.runtime?.reset).toHaveBeenCalledWith(
+      context.sessionState.loadedProgram,
+      0x4567
+    );
     expect(context.sessionState.tec1Runtime?.resetState).toHaveBeenCalledTimes(1);
   });
 
