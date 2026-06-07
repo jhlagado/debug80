@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.20
+
+- Improved TEC-1G matrix keyboard capture and modifier handling, including
+  stable click modifiers, physical modifier chords, Escape routing to MON-3,
+  and reset cleanup for transient keyboard UI state.
+- Preserved TEC-1G RAM across reset while keeping reset side effects covered.
+- Added DIAG-derived SD SPI and DS1302 RTC protocol coverage.
+- Expanded regression documentation and tests for matrix keyboard behavior,
+  reset handling, platform requests, and Z80 runtime reset behavior.
+
 ## 0.1.19
 
 - Added a local monitor ROM workflow for project workspaces, including monitor
