@@ -34,7 +34,13 @@ function createController(messages: PostedMessage[]) {
 function makeKeyEvent(
   type: 'keydown' | 'keyup',
   key: string,
-  options?: { repeat?: boolean; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }
+  options?: {
+    repeat?: boolean;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
+  }
 ): KeyboardEvent {
   return new KeyboardEvent(type, {
     bubbles: true,
@@ -44,6 +50,7 @@ function makeKeyEvent(
     ctrlKey: options?.ctrlKey ?? false,
     shiftKey: options?.shiftKey ?? false,
     altKey: options?.altKey ?? false,
+    metaKey: options?.metaKey ?? false,
   });
 }
 
@@ -480,6 +487,36 @@ describe('tec1g matrix ui', () => {
       {
         type: 'matrixKey',
         key: 's',
+        pressed: false,
+        shift: false,
+        ctrl: true,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('maps physical Meta key chords to the native matrix ctrl modifier', () => {
+    controller.applyKeyboardCapture(true);
+    const keydown = makeKeyEvent('keydown', 'ArrowUp', { metaKey: true });
+    const keyup = makeKeyEvent('keyup', 'ArrowUp', { metaKey: true });
+
+    expect(controller.handleKeyEvent(keydown, true)).toBe(true);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(true);
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'ArrowUp',
+        pressed: true,
+        shift: false,
+        ctrl: true,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'ArrowUp',
         pressed: false,
         shift: false,
         ctrl: true,

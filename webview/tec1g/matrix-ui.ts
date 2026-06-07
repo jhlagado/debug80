@@ -296,7 +296,7 @@ export function createMatrixUiController(
     }
     sendMatrixKey(payloadKey, pressed, {
       shift: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
-      ctrl: event.ctrlKey,
+      ctrl: event.ctrlKey || event.metaKey,
       fn: false,
       alt: event.altKey,
     });
