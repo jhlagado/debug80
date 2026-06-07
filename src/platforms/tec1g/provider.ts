@@ -31,6 +31,9 @@ type Tec1gPlatformAssets = {
   cartridgeImage: Tec1gCartridgeImage | null;
 };
 
+const TEC1G_MON3_MONITOR_RAM_START = 0x0800;
+const TEC1G_MON3_MONITOR_RAM_END = 0x1000;
+
 /**
  * Sends a successful or failed custom request response.
  */
@@ -73,7 +76,15 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
             context.sessionState.runtime,
             context.sessionState.loadedProgram,
             context.sessionState.loadedEntry,
-            context.sessionState.tec1gRuntime
+            context.sessionState.tec1gRuntime,
+            {
+              preserveRanges: [
+                {
+                  start: TEC1G_MON3_MONITOR_RAM_START,
+                  end: TEC1G_MON3_MONITOR_RAM_END,
+                },
+              ],
+            }
           ),
           context,
           () => context.clearMatrixHeldKeys()

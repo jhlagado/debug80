@@ -168,6 +168,48 @@ describe('platform providers', () => {
     expect(context.sessionState.tec1Runtime?.resetState).toHaveBeenCalledTimes(1);
   });
 
+  it('registers TEC-1G reset with MON-3 monitor RAM preservation', async () => {
+    const provider = await resolvePlatformProvider({
+      platform: 'tec1g',
+      tec1g: { entry: 0x0000 },
+    });
+    const registry = new PlatformRegistry();
+    const context = createCommandContext();
+    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
+    program.memory[0x0800] = 0x00;
+    program.memory[0x4000] = 0x3e;
+    const memory = new Uint8Array(0x10000);
+    memory[0x0800] = 0x4d;
+    memory[0x0888] = 0x80;
+    memory[0x4000] = 0x00;
+    context.sessionState.runtime = {
+      hardware: { memory },
+      reset: vi.fn((nextProgram?: typeof program) => {
+        memory.fill(0);
+        if (nextProgram) {
+          memory.set(nextProgram.memory);
+        }
+      }),
+    } as never;
+    context.sessionState.tec1gRuntime = {
+      resetState: vi.fn(),
+    } as never;
+    context.sessionState.loadedProgram = program as never;
+    context.sessionState.loadedEntry = 0x0000;
+
+    provider.registerCommands(registry, context);
+
+    const resetHandler = registry.getHandler('debug80/tec1gReset');
+    expect(resetHandler).toBeDefined();
+    resetHandler?.({} as DebugProtocol.Response, undefined);
+
+    expect(context.sessionState.runtime?.reset).toHaveBeenCalledWith(program, 0x0000);
+    expect(memory[0x0800]).toBe(0x4d);
+    expect(memory[0x0888]).toBe(0x80);
+    expect(memory[0x4000]).toBe(0x3e);
+    expect(context.sessionState.tec1gRuntime?.resetState).toHaveBeenCalledTimes(1);
+  });
+
   it('finalizes TEC-1G runtime setup through the provider hook', async () => {
     const provider = await resolvePlatformProvider({
       platform: 'tec1g',

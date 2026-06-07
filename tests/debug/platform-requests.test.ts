@@ -31,28 +31,67 @@ describe('platform-requests', () => {
   });
 
   it('handles reset requests', () => {
-    const calls: string[] = [];
+    const calls: unknown[] = [];
+    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
     const runtime = {
-      reset: () => calls.push('reset'),
+      hardware: { memory: new Uint8Array(0x10000) },
+      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
       restoreCpuState: () => calls.push('restore'),
     };
     const platform = { resetState: () => calls.push('platform-reset') };
-    const error = handleResetRequest(runtime, {}, 1234, platform);
+    const error = handleResetRequest(runtime, program, 1234, platform);
     expect(error).toBeNull();
-    expect(calls).toEqual(['reset', 'platform-reset']);
+    expect(calls).toEqual([['reset', program, 1234], 'platform-reset']);
   });
 
-  it('always performs a cold reset instead of restoring a captured entry snapshot', () => {
-    const calls: string[] = [];
+  it('resets hardware to the entry address instead of restoring a captured entry snapshot', () => {
+    const calls: unknown[] = [];
+    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
     const runtime = {
-      reset: () => calls.push('reset'),
+      hardware: { memory: new Uint8Array(0x10000) },
+      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
       restoreCpuState: () => calls.push('restore'),
     };
     const platform = { resetState: () => calls.push('platform-reset') };
 
-    const error = handleResetRequest(runtime, {}, 1234, platform);
+    const error = handleResetRequest(runtime, program, 1234, platform);
 
     expect(error).toBeNull();
+    expect(calls).toEqual([['reset', program, 1234], 'platform-reset']);
+  });
+
+  it('reloads app memory while preserving platform monitor RAM ranges', () => {
+    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
+    program.memory[0x0800] = 0x00;
+    program.memory[0x0888] = 0x00;
+    program.memory[0x4000] = 0x3e;
+
+    const memory = new Uint8Array(0x10000);
+    memory[0x0800] = 0x4d;
+    memory[0x0888] = 0x80;
+    memory[0x4000] = 0x00;
+    const calls: string[] = [];
+    const runtime = {
+      hardware: { memory },
+      reset: (nextProgram?: typeof program) => {
+        memory.fill(0);
+        if (nextProgram) {
+          memory.set(nextProgram.memory);
+        }
+        calls.push('reset');
+      },
+      restoreCpuState: () => calls.push('restore'),
+    };
+    const platform = { resetState: () => calls.push('platform-reset') };
+
+    const error = handleResetRequest(runtime, program, 0, platform, {
+      preserveRanges: [{ start: 0x0800, end: 0x0900 }],
+    });
+
+    expect(error).toBeNull();
+    expect(memory[0x0800]).toBe(0x4d);
+    expect(memory[0x0888]).toBe(0x80);
+    expect(memory[0x4000]).toBe(0x3e);
     expect(calls).toEqual(['reset', 'platform-reset']);
   });
 
