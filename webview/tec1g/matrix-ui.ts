@@ -40,6 +40,7 @@ export function createMatrixUiController(
   const matrixHeldKeys = new Map<string, MatrixHeldKey>();
   const matrixClickReleaseTimers = new Map<string, number>();
   const matrixClickPressMods = new Map<string, MatrixKeyMods>();
+  const matrixPhysicalPressMods = new Map<string, MatrixKeyMods>();
   const matrixClickMods = {
     shift: false,
     ctrl: false,
@@ -182,6 +183,70 @@ export function createMatrixUiController(
     );
   }
 
+  function consumeHandledKeyEvent(event: KeyboardEvent): void {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  const PHYSICAL_CODE_TO_MATRIX_KEY: Record<string, string> = {
+    Backquote: '`',
+    Digit1: '1',
+    Digit2: '2',
+    Digit3: '3',
+    Digit4: '4',
+    Digit5: '5',
+    Digit6: '6',
+    Digit7: '7',
+    Digit8: '8',
+    Digit9: '9',
+    Digit0: '0',
+    Minus: '-',
+    Equal: '=',
+    BracketLeft: '[',
+    BracketRight: ']',
+    Backslash: '\\',
+    Semicolon: ';',
+    Quote: "'",
+    Comma: ',',
+    Period: '.',
+    Slash: '/',
+    Space: ' ',
+    Tab: 'Tab',
+    Enter: 'Enter',
+    Escape: 'Escape',
+    Backspace: 'Backspace',
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    CapsLock: 'CapsLock',
+  };
+  for (let code = 65; code <= 90; code += 1) {
+    const letter = String.fromCharCode(code);
+    PHYSICAL_CODE_TO_MATRIX_KEY[`Key${letter}`] = letter.toLowerCase();
+  }
+
+  function resolvePhysicalMatrixKey(event: KeyboardEvent): string {
+    const usesModifier =
+      event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.key === 'CapsLock';
+    if (usesModifier) {
+      const mapped = PHYSICAL_CODE_TO_MATRIX_KEY[event.code];
+      if (mapped !== undefined) {
+        return mapped;
+      }
+    }
+    return event.key;
+  }
+
+  function cloneMatrixMods(mods: MatrixKeyMods): MatrixKeyMods {
+    return {
+      shift: mods.shift,
+      ctrl: mods.ctrl,
+      fn: mods.fn,
+      alt: mods.alt,
+    };
+  }
+
   function matrixElementsForKey(key: string): HTMLElement[] {
     if (!key) {
       return [];
@@ -269,6 +334,7 @@ export function createMatrixUiController(
     }
     matrixClickReleaseTimers.clear();
     matrixClickPressMods.clear();
+    matrixPhysicalPressMods.clear();
     for (const held of matrixHeldKeys.values()) {
       vscode.postMessage({
         type: 'matrixKey',
@@ -287,10 +353,11 @@ export function createMatrixUiController(
     if (!keyboardCaptureEnabled || !isUiTabActive() || shouldIgnoreKeyEvent(event)) {
       return false;
     }
-    const key = event.key;
+    const key = resolvePhysicalMatrixKey(event);
     if (!key) {
       return false;
     }
+    consumeHandledKeyEvent(event);
     if (pressed && event.repeat) {
       return true;
     }
@@ -298,16 +365,25 @@ export function createMatrixUiController(
       applyCapsLock(!capsLockEnabled);
     }
     const payloadKey = key.length === 1 ? key.toLowerCase() : key;
-    setMatrixKeyPressed(key, pressed);
-    if (key.length === 1 && key !== key.toLowerCase()) {
-      setMatrixKeyPressed(key.toLowerCase(), pressed);
-    }
-    sendMatrixKey(payloadKey, pressed, {
+    const eventMods = {
       shift: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
       ctrl: event.ctrlKey || event.metaKey,
       fn: false,
       alt: event.altKey,
-    });
+    };
+    const mods = pressed
+      ? eventMods
+      : (matrixPhysicalPressMods.get(payloadKey) ?? eventMods);
+    setMatrixKeyPressed(key, pressed);
+    if (key.length === 1 && key !== key.toLowerCase()) {
+      setMatrixKeyPressed(key.toLowerCase(), pressed);
+    }
+    sendMatrixKey(payloadKey, pressed, mods);
+    if (pressed) {
+      matrixPhysicalPressMods.set(payloadKey, cloneMatrixMods(mods));
+    } else {
+      matrixPhysicalPressMods.delete(payloadKey);
+    }
     return true;
   }
 

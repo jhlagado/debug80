@@ -395,10 +395,9 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (matrixUi.handleKeyEvent(event, true)) {
-    event.preventDefault();
-    event.stopPropagation();
+    return;
   }
-});
+}, { capture: true });
 
 window.addEventListener('keydown', (event) => {
   if (panelLayout.isMatrixKeyboardOpen()) {
@@ -409,15 +408,13 @@ window.addEventListener('keydown', (event) => {
 });
 window.addEventListener('keyup', (event) => {
   if (matrixUi.handleKeyEvent(event, false)) {
-    event.preventDefault();
-    event.stopPropagation();
     return;
   }
   if (panelLayout.isMatrixKeyboardOpen()) {
     return;
   }
   routeTecKeypadKeyup(event, keypad);
-});
+}, { capture: true });
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
