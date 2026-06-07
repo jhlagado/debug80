@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.19
+
+- Added a local monitor ROM workflow for project workspaces, including monitor
+  ROM build conventions, launch-source state handling, bundled asset commands,
+  and focused tests for the new build path.
+- Improved Debug80 project folder setup and status handling across extension
+  commands, platform view messages, and webview project panel state.
+- Mapped the macOS Command key to matrix Control for TEC-1G matrix keyboard
+  input.
+- Added release process and CI gate documentation, including local VSIX
+  workflow notes and Windows CI path assertion fixes.
+
 ## 0.1.18
 
 - Added TEC-1G matrix keyboard handling for physical Ctrl+letter chords so

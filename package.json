@@ -2,7 +2,7 @@
   "name": "debug80",
   "displayName": "Debug80 IDE for Z80 Development",
   "description": "Source-level Z80 debugging environment with built-in assembler and TEC-1/TEC-1G emulation.",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "publisher": "jhlagado",
   "license": "GPL-3.0-or-later",
   "icon": "assets/debug80-icon.png",
