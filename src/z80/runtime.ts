@@ -455,5 +455,9 @@ function resetRuntime(this: Z80RuntimeImpl, prog?: HexProgram, ent?: number): vo
   resetCpu(this.cpu);
   if (prog) {
     loadProgram(this.hardware, this.cpu, prog, ent);
+    return;
+  }
+  if (ent !== undefined && ent >= 0 && ent < 0x10000) {
+    this.cpu.pc = ent;
   }
 }

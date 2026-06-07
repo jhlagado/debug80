@@ -46,9 +46,9 @@ export function handleResetRequest(
     return 'Debug80: No program loaded.';
   }
 
-  // Hardware reset should be a cold reset of the machine state, not a warm jump
-  // back into the captured app entry snapshot.
-  runtime.reset(program as never, entry);
+  // Hardware reset restarts the CPU without reloading RAM; MON-3 uses monitor
+  // RAM contents to distinguish cold boot from soft boot.
+  runtime.reset(undefined, entry);
   platformRuntime?.resetState();
   return null;
 }
