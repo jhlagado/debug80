@@ -525,10 +525,11 @@ describe('registerExtensionCommands', () => {
       'tec1g/mon3/v1',
       { overwrite: false }
     );
-    expect(writeFileSync).toHaveBeenCalledWith(
-      path.join('/workspace/tec1g-mon3', 'roms', 'tec1g', 'mon3', 'mon3.rom.asm'),
-      expect.stringContaining('.include "mon3.z80"')
+    const [entryPath, entrySource] = vi.mocked(writeFileSync).mock.calls[0] ?? [];
+    expect(String(entryPath).replace(/\\/g, '/')).toMatch(
+      /\/workspace\/tec1g-mon3\/roms\/tec1g\/mon3\/mon3\.rom\.asm$/
     );
+    expect(entrySource).toEqual(expect.stringContaining('.include "mon3.z80"'));
     expect(showInformationMessage).toHaveBeenCalledWith(
       expect.stringContaining('Copied monitor ROM into project for profile:mon3')
     );

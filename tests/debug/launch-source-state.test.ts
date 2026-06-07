@@ -251,11 +251,16 @@ describe('launch-source-state', () => {
       new NullLogger()
     );
 
-    const canonicalLocalRomSourcePath = fs.realpathSync(localRomSourcePath);
-    expect(result.romSourcePaths).toContain(canonicalLocalRomSourcePath);
-    expect(result.autoOpenRomSourcePaths).toContain(canonicalLocalRomSourcePath);
-    expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'Boot')?.file).toBe(
-      canonicalLocalRomSourcePath
+    const localRomSourceSuffix = ['roms', 'tec1g', 'mon3', 'mon3.z80'].join('/');
+    const toPortablePath = (value: string) => value.replace(/\\/g, '/');
+    expect(result.romSourcePaths.map(toPortablePath)).toContainEqual(
+      expect.stringContaining(localRomSourceSuffix)
+    );
+    expect(result.autoOpenRomSourcePaths.map(toPortablePath)).toContainEqual(
+      expect.stringContaining(localRomSourceSuffix)
+    );
+    expect(toPortablePath(result.sourceMapSymbols.find((symbol) => symbol.name === 'Boot')?.file ?? '')).toContain(
+      localRomSourceSuffix
     );
   });
 });
