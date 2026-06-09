@@ -381,7 +381,11 @@ When RESET is clicked while the Matrix Keyboard accordion is open, the webview i
 
 The panel also reasserts matrix attachment when a debug session becomes active and the Matrix Keyboard accordion was already open from persisted UI state. This covers the startup case where the webview may have sent its initial matrix-mode request before a Z80 debug session existed.
 
-Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup and translate Ctrl-letter or Command-letter chords into MON-3 control-letter input. Plain Escape is forwarded into the emulated matrix keyboard. On-screen matrix-keyboard clicks are held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
+Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup and translate Ctrl-letter or Command-letter chords into MON-3 control-letter input. Raw host `Shift`, `Control`, `Fn`, and `Alt` events are posted as their own matrix-key requests, which keeps the modifier row active across the full host key hold instead of only during derived ASCII chords. Plain Escape is forwarded into the emulated matrix keyboard.
+
+On-screen modifier clicks are one-shot arming actions. Clicking Shift, Ctrl, Fn, or Alt highlights that modifier, applies it to the next non-modifier click, then clears the armed state immediately after the press message is posted. Non-modifier clicks are still held briefly before release so MON-3's polling loop can sample the emulated row/column state reliably; without this, a fast browser click can press and release between monitor scans.
+
+For diagnosis, `matrix-ui.ts` logs every posted matrix-key payload and modifier-arm or modifier-clear transition with a source tag (`mouse`, `physical`, or `system`) to the Extension Development Host window's Developer Tools Console. Adapter-side matrix row traces remain separate: `launch-sequence.ts` logs the incoming `debug80/tec1gMatrixKey` payload plus the active non-`0xFF` matrix rows to the `Debug80` Output channel when `DEBUG80_TRACE_MATRIX=1` is set. The repository's local `.vscode/launch.json` enables that env var for the `Extension debug80` launch configuration so Extension Host repro runs emit both sides of the trace by default.
 
 Each matrix key sends:
 
