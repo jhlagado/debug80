@@ -408,6 +408,26 @@ describe('matrix-request', () => {
       ]);
     });
 
+    it('keeps raw Alt held after releasing an Alt-letter chord while Alt remains down', () => {
+      const matrixRows = new Uint8Array(16).fill(0xff);
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          const mask = 1 << col;
+          matrixRows[row] = pressed ? matrixRows[row]! & ~mask : matrixRows[row]! | mask;
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 'Alt', pressed: true, alt: true })).toBeNull();
+      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: true, alt: true })).toBeNull();
+      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: false, alt: true })).toBeNull();
+
+      expect(matrixRows[0] & (1 << 3)).toBe(0);
+      expect(matrixRows[6] & (1 << 6)).not.toBe(0);
+    });
+
     it('routes every physical Ctrl-letter chord through the native matrix Control modifier', () => {
       for (let code = 1; code <= 26; code += 1) {
         const applied: Array<{ row: number; col: number; pressed: boolean }> = [];

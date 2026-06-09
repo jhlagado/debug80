@@ -285,18 +285,11 @@ export function createMatrixUiController(
     }
   }
 
-  function isMatrixTraceEnabled(): boolean {
-    return (window as Window & { __debug80MatrixTrace?: boolean }).__debug80MatrixTrace === true;
-  }
-
   function logMatrixModifierState(
     action: 'armed' | 'cleared',
     modifier?: keyof MatrixKeyMods
   ): void {
-    if (!isMatrixTraceEnabled()) {
-      return;
-    }
-    // eslint-disable-next-line no-console -- opt-in matrix trace for webview input debugging
+    // eslint-disable-next-line no-console -- matrix trace for webview input debugging
     console.log('[Debug80 matrix] modifiers', {
       action,
       modifier,
@@ -315,20 +308,18 @@ export function createMatrixUiController(
     pressed: boolean,
     mods: MatrixKeyMods
   ) {
-    if (isMatrixTraceEnabled()) {
-      // eslint-disable-next-line no-console -- opt-in matrix trace for webview input debugging
-      console.log('[Debug80 matrix] send', {
-        source,
-        key,
-        pressed: !!pressed,
-        shift: !!mods.shift,
-        ctrl: !!mods.ctrl,
-        fn: !!mods.fn,
-        alt: !!mods.alt,
-        capsLock: capsLockEnabled,
-        capture: keyboardCaptureEnabled,
-      });
-    }
+    // eslint-disable-next-line no-console -- matrix trace for webview input debugging
+    console.log('[Debug80 matrix] send', {
+      source,
+      key,
+      pressed: !!pressed,
+      shift: !!mods.shift,
+      ctrl: !!mods.ctrl,
+      fn: !!mods.fn,
+      alt: !!mods.alt,
+      capsLock: capsLockEnabled,
+      capture: keyboardCaptureEnabled,
+    });
     vscode.postMessage({
       type: 'matrixKey',
       key: key,

@@ -69,7 +69,6 @@ function flushMatrixClickHold(): void {
 }
 
 describe('tec1g matrix ui', () => {
-  const traceWindow = window as Window & { __debug80MatrixTrace?: boolean };
   let messages: PostedMessage[];
   let controller: ReturnType<typeof createMatrixUiController>;
 
@@ -83,7 +82,6 @@ describe('tec1g matrix ui', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
-    delete traceWindow.__debug80MatrixTrace;
     document.documentElement.innerHTML = '';
   });
 
@@ -382,26 +380,11 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
-  it('does not log matrix events unless tracing is enabled', () => {
+  it('logs clicked Ctrl-letter chords with the emitted matrix payload', () => {
     controller.applyKeyboardCapture(true);
     const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
     const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-
-    ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-
-    expect(logSpy).not.toHaveBeenCalled();
-
-    logSpy.mockRestore();
-  });
-
-  it('logs clicked Ctrl-letter chords with the emitted matrix payload when tracing is enabled', () => {
-    controller.applyKeyboardCapture(true);
-    const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
-    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    traceWindow.__debug80MatrixTrace = true;
 
     ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));

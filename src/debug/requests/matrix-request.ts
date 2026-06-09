@@ -2,7 +2,11 @@
  * @fileoverview Matrix keyboard request handlers extracted from the debug adapter.
  */
 
-import { getMatrixCombosForAscii, type MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
+import {
+  getMatrixCombosForAscii,
+  type MatrixKeyCombo,
+  type MatrixModifier,
+} from '../../platforms/tec1g/matrix-keymap';
 
 export type MatrixKeyPayload = {
   key: string;
@@ -155,6 +159,13 @@ const SPECIAL_MATRIX_KEYS: Record<string, MatrixKeyCombo[]> = {
   Alt: [{ row: 0, col: 3 }],
 };
 
+const MODIFIER_KEY_NAMES: Record<MatrixModifier, string> = {
+  shift: 'Shift',
+  ctrl: 'Control',
+  fn: 'Fn',
+  alt: 'Alt',
+};
+
 export function selectMatrixCombo(
   combos: MatrixKeyCombo[],
   payload: MatrixKeyPayload,
@@ -200,6 +211,24 @@ export function expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; c
     entries.push({ row: 0, col: 3 });
   }
   return entries;
+}
+
+function isRawModifierHeld(
+  heldKeys: Map<string, MatrixKeyCombo[]>,
+  modifier: MatrixModifier | undefined
+): boolean {
+  if (modifier === undefined) {
+    return false;
+  }
+  const payload: MatrixKeyPayload = {
+    key: MODIFIER_KEY_NAMES[modifier],
+    pressed: true,
+    ...(modifier === 'shift' ? { shift: true } : {}),
+    ...(modifier === 'ctrl' ? { ctrl: true } : {}),
+    ...(modifier === 'fn' ? { fn: true } : {}),
+    ...(modifier === 'alt' ? { alt: true } : {}),
+  };
+  return heldKeys.has(buildMatrixKeyId(payload));
 }
 
 function orderMatrixTransitions(
@@ -269,16 +298,20 @@ export function handleMatrixKeyRequest(
     return null;
   }
   const applied = expandMatrixCombo(combo);
+  const effectiveApplied =
+    combo.modifier !== undefined && isRawModifierHeld(heldKeys, combo.modifier)
+      ? applied.slice(0, 1)
+      : applied;
   if (payload.pressed) {
     if (!heldKeys.has(keyId)) {
-      heldKeys.set(keyId, applied);
-      orderMatrixTransitions(applied, true).forEach((entry) =>
+      heldKeys.set(keyId, effectiveApplied);
+      orderMatrixTransitions(effectiveApplied, true).forEach((entry) =>
         runtime.applyMatrixKey(entry.row, entry.col, true)
       );
     }
     return null;
   }
-  const held = heldKeys.get(keyId) ?? applied;
+  const held = heldKeys.get(keyId) ?? effectiveApplied;
   orderMatrixTransitions(held, false).forEach((entry) =>
     runtime.applyMatrixKey(entry.row, entry.col, false)
   );
