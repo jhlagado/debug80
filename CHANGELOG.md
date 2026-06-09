@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.21
+
+- Fixed TEC-1G matrix keyboard modifier chords so modifier releases preserve
+  the original key combo state and avoid stale matrix input.
+- Preserved MON-3 monitor RAM across TEC-1G reset while keeping the broader
+  reset path cold for non-monitor memory state.
+- Updated the Debug80 engineering manual and code-quality notes for TEC-1G
+  reset, keyboard capture, and matrix request behavior.
+
 ## 0.1.20
 
 - Improved TEC-1G matrix keyboard capture and modifier handling, including
