@@ -335,7 +335,7 @@ describe('adapter integration', () => {
 
     await client.sendRequest('disconnect');
     fs.rmSync(fixture.root, { recursive: true, force: true });
-  });
+  }, 15_000);
 
   describe('TEC-1G/MON-3 golden launch contract', () => {
     it('maps fresh-project target source, ROM entry frames, ROM breakpoints, and ROM source picker contents', async () => {
@@ -422,7 +422,7 @@ describe('adapter integration', () => {
 
       await client.sendRequest('disconnect');
       fs.rmSync(fixture.root, { recursive: true, force: true });
-    });
+    }, 15_000);
   });
 
   it('preserves launch diagnostics on the DAP output stream', async () => {

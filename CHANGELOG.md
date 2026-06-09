@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.22
+
+- Fixed physical Alt matrix input so raw Alt state remains held after releasing
+  an Alt-letter chord, avoiding overlap between modified and unmodified matrix
+  key state.
+- Updated matrix request and TEC-1G matrix UI coverage for the Alt modifier
+  overlap path.
+
 ## 0.1.21
 
 - Fixed TEC-1G matrix keyboard modifier chords so modifier releases preserve
