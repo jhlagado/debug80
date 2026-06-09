@@ -77,6 +77,26 @@ export function createLaunchLogger(
   };
 }
 
+function isMatrixTraceEnabled(): boolean {
+  return process.env.DEBUG80_TRACE_MATRIX === '1';
+}
+
+function summarizeActiveMatrixRows(
+  rows: Uint8Array | undefined
+): Array<{ row: number; value: string }> {
+  if (!rows) {
+    return [];
+  }
+  const active: Array<{ row: number; value: string }> = [];
+  for (let row = 0; row < rows.length; row += 1) {
+    const value = rows[row];
+    if (value !== undefined && value !== 0xff) {
+      active.push({ row, value: value.toString(16).padStart(2, '0') });
+    }
+  }
+  return active;
+}
+
 export function hasLaunchInputs(args: LaunchRequestArguments): boolean {
   return !(
     (args.asm === undefined || args.asm === '') &&
@@ -212,8 +232,18 @@ export async function buildLaunchSession(
     sendResponse: context.sendResponse,
     sendErrorResponse: context.sendErrorResponse,
     handleMatrixModeRequest: (args) => handleMatrixModeRequest(getTec1gMatrixRuntime(), args),
-    handleMatrixKeyRequest: (args) =>
-      handleMatrixKeyRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
+    handleMatrixKeyRequest: (args) => {
+      const runtime = getTec1gMatrixRuntime();
+      const result = handleMatrixKeyRequest(runtime, context.matrixHeldKeys, args);
+      if (isMatrixTraceEnabled()) {
+        context.logger.info('Debug80 matrix trace request', args);
+        context.logger.info(
+          'Debug80 matrix trace state',
+          summarizeActiveMatrixRows(context.sessionState.tec1gRuntime?.state.input.matrixKeyStates)
+        );
+      }
+      return result;
+    },
     clearMatrixHeldKeys: () => {
       context.matrixHeldKeys.clear();
     },

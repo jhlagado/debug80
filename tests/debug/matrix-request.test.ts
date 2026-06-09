@@ -222,6 +222,54 @@ describe('matrix-request', () => {
   });
 
   describe('handleMatrixKeyRequest', () => {
+    it('routes a raw Control key event to the matrix control modifier row', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'Control', pressed: true, ctrl: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'Control', pressed: false, ctrl: true })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 0, col: 1, pressed: true },
+        { row: 0, col: 1, pressed: false },
+      ]);
+    });
+
+    it('routes a raw Alt key event to the matrix alt modifier row', () => {
+      const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+      const runtime: MatrixRuntime = {
+        state: { matrixModeEnabled: true, capsLock: false },
+        setMatrixMode: () => {},
+        applyMatrixKey: (row, col, pressed) => {
+          applied.push({ row, col, pressed });
+        },
+      };
+      const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'Alt', pressed: true, alt: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'Alt', pressed: false, alt: true })
+      ).toBeNull();
+
+      expect(applied).toEqual([
+        { row: 0, col: 3, pressed: true },
+        { row: 0, col: 3, pressed: false },
+      ]);
+    });
+
     it('does not enable MON-3 matrix mode when a matrix key arrives', () => {
       const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
       const runtime: MatrixRuntime = {
@@ -323,12 +371,12 @@ describe('matrix-request', () => {
       ).toBeNull();
 
       expect(applied).toEqual([
-        { row: 6, col: 6, pressed: true },
         { row: 0, col: 1, pressed: true },
+        { row: 6, col: 6, pressed: true },
         { row: 6, col: 6, pressed: false },
         { row: 0, col: 1, pressed: false },
-        { row: 6, col: 4, pressed: true },
         { row: 0, col: 1, pressed: true },
+        { row: 6, col: 4, pressed: true },
         { row: 6, col: 4, pressed: false },
         { row: 0, col: 1, pressed: false },
       ]);
@@ -353,8 +401,8 @@ describe('matrix-request', () => {
       ).toBeNull();
 
       expect(applied).toEqual([
-        { row: 6, col: 6, pressed: true },
         { row: 0, col: 3, pressed: true },
+        { row: 6, col: 6, pressed: true },
         { row: 6, col: 6, pressed: false },
         { row: 0, col: 3, pressed: false },
       ]);

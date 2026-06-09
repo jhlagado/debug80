@@ -149,6 +149,10 @@ export function buildMatrixKeyId(payload: MatrixKeyPayload): string {
 
 const SPECIAL_MATRIX_KEYS: Record<string, MatrixKeyCombo[]> = {
   CapsLock: [{ row: 0, col: 7 }],
+  Shift: [{ row: 0, col: 0 }],
+  Control: [{ row: 0, col: 1 }],
+  Fn: [{ row: 0, col: 2 }],
+  Alt: [{ row: 0, col: 3 }],
 };
 
 export function selectMatrixCombo(
@@ -196,6 +200,18 @@ export function expandMatrixCombo(combo: MatrixKeyCombo): Array<{ row: number; c
     entries.push({ row: 0, col: 3 });
   }
   return entries;
+}
+
+function orderMatrixTransitions(
+  entries: Array<{ row: number; col: number }>,
+  pressed: boolean
+): Array<{ row: number; col: number }> {
+  if (entries.length < 2) {
+    return entries;
+  }
+  const first = entries[0]!;
+  const second = entries[1]!;
+  return pressed ? [second, first] : entries;
 }
 
 export function handleMatrixModeRequest(
@@ -256,12 +272,16 @@ export function handleMatrixKeyRequest(
   if (payload.pressed) {
     if (!heldKeys.has(keyId)) {
       heldKeys.set(keyId, applied);
-      applied.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, true));
+      orderMatrixTransitions(applied, true).forEach((entry) =>
+        runtime.applyMatrixKey(entry.row, entry.col, true)
+      );
     }
     return null;
   }
   const held = heldKeys.get(keyId) ?? applied;
-  held.forEach((entry) => runtime.applyMatrixKey(entry.row, entry.col, false));
+  orderMatrixTransitions(held, false).forEach((entry) =>
+    runtime.applyMatrixKey(entry.row, entry.col, false)
+  );
   heldKeys.delete(keyId);
   return null;
 }

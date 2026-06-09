@@ -69,6 +69,7 @@ function flushMatrixClickHold(): void {
 }
 
 describe('tec1g matrix ui', () => {
+  const traceWindow = window as Window & { __debug80MatrixTrace?: boolean };
   let messages: PostedMessage[];
   let controller: ReturnType<typeof createMatrixUiController>;
 
@@ -82,6 +83,7 @@ describe('tec1g matrix ui', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
+    delete traceWindow.__debug80MatrixTrace;
     document.documentElement.innerHTML = '';
   });
 
@@ -357,6 +359,69 @@ describe('tec1g matrix ui', () => {
     });
   });
 
+  it('keeps clicked Ctrl armed across repeated modifier clicks before the chord key', () => {
+    controller.applyKeyboardCapture(true);
+    const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
+
+    ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: true,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('does not log matrix events unless tracing is enabled', () => {
+    controller.applyKeyboardCapture(true);
+    const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(logSpy).not.toHaveBeenCalled();
+
+    logSpy.mockRestore();
+  });
+
+  it('logs clicked Ctrl-letter chords with the emitted matrix payload when tracing is enabled', () => {
+    controller.applyKeyboardCapture(true);
+    const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
+    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    traceWindow.__debug80MatrixTrace = true;
+
+    ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+    expect(logSpy).toHaveBeenCalledWith(
+      '[Debug80 matrix] send',
+      expect.objectContaining({
+        source: 'mouse',
+        key: 's',
+        pressed: true,
+        shift: false,
+        ctrl: true,
+        fn: false,
+        alt: false,
+      })
+    );
+
+    logSpy.mockRestore();
+  });
+
   it('clears one-shot click modifiers immediately after the modified key press', () => {
     controller.applyKeyboardCapture(true);
     const altKey = document.querySelector('[data-key="Alt"]') as HTMLElement;
@@ -583,7 +648,9 @@ describe('tec1g matrix ui', () => {
   it('uses modified Escape as a host-only keyboard capture release chord', () => {
     controller.applyKeyboardCapture(true);
 
-    expect(controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape', { metaKey: true }), true)).toBe(true);
+    expect(
+      controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape', { metaKey: true }), true)
+    ).toBe(true);
 
     expect(controller.isKeyboardCaptured()).toBe(false);
     expect(messages).toEqual([]);
