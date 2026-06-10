@@ -6,11 +6,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-  listProjectSourceFiles,
   readProjectConfig,
   updateProjectTargetSource,
 } from './project-config';
-import { isAzmEntrySourcePath } from './azm-source-extensions';
+import { isTargetEntrySourcePath, listTargetEntrySourceFiles } from './target-discovery';
 
 const TARGET_KEY_PREFIX = 'debug80.selectedTarget:';
 
@@ -23,7 +22,7 @@ function getCachedSourceFiles(projectRoot: string): string[] {
   if (cached !== undefined && Date.now() - cached.cachedAt < SOURCE_FILE_CACHE_TTL_MS) {
     return cached.files;
   }
-  const files = listProjectSourceFiles(projectRoot);
+  const files = listTargetEntrySourceFiles(projectRoot);
   sourceFileCache.set(projectRoot, { files, cachedAt: Date.now() });
   return files;
 }
@@ -304,7 +303,7 @@ export class ProjectTargetSelectionController {
         continue;
       }
       const key = entrySourceKey(projectRoot, src);
-      if (isAzmEntrySourcePath(src)) {
+      if (isTargetEntrySourcePath(src)) {
         const list = targetsPerSourcePath.get(key) ?? [];
         list.push(name);
         targetsPerSourcePath.set(key, list);
@@ -313,7 +312,7 @@ export class ProjectTargetSelectionController {
 
     try {
       const all = getCachedSourceFiles(projectRoot);
-      azmPaths = all.filter((p) => isAzmEntrySourcePath(p));
+      azmPaths = all.filter((p) => isTargetEntrySourcePath(p));
     } catch {
       azmPaths = [];
     }
@@ -428,7 +427,7 @@ function normalizeProjectRelativePath(p: string): string {
   return p.replace(/\\/g, '/').trim();
 }
 
-/** Keys match {@link listProjectSourceFiles} paths (relative to project root, forward slashes). */
+/** Keys match target entry source paths (relative to project root, forward slashes). */
 function entrySourceKey(projectRoot: string, src: string): string {
   const norm = normalizeProjectRelativePath(src);
   if (path.isAbsolute(src)) {

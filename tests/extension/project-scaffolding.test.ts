@@ -69,13 +69,13 @@ vi.mock('../../src/debug/launch/config-utils', () => ({
   })),
 }));
 
-vi.mock('../../src/extension/project-config', async () => {
-  const actual = await vi.importActual<typeof import('../../src/extension/project-config')>(
-    '../../src/extension/project-config'
+vi.mock('../../src/extension/target-discovery', async () => {
+  const actual = await vi.importActual<typeof import('../../src/extension/target-discovery')>(
+    '../../src/extension/target-discovery'
   );
   return {
     ...actual,
-    listProjectSourceFiles: vi.fn(() => []),
+    listTargetEntrySourceFiles: vi.fn(() => []),
   };
 });
 

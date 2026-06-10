@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ProjectConfig } from '../debug/session/types';
-import { isAzmEntrySourcePath } from './azm-source-extensions';
 
 export const DEBUG80_PROJECT_VERSION = 2 as const;
 
@@ -200,18 +199,6 @@ const PROJECT_CONFIG_CANDIDATES = [
   'debug80.json',
   path.join('.vscode', 'debug80.json'),
 ];
-const SOURCE_DISCOVERY_EXCLUDED_DIRS = new Set([
-  '.git',
-  '.hg',
-  '.svn',
-  '.vscode',
-  'build',
-  'coverage',
-  'dist',
-  'node_modules',
-  'out',
-]);
-
 export function findProjectConfigPath(folder: vscode.WorkspaceFolder): string | undefined {
   for (const candidate of PROJECT_CONFIG_CANDIDATES) {
     const full = path.join(folder.uri.fsPath, candidate);
@@ -372,36 +359,5 @@ export function updateProjectTargetSource(
     return true;
   } catch {
     return false;
-  }
-}
-
-export function listProjectSourceFiles(rootPath: string): string[] {
-  const results: string[] = [];
-  collectProjectSourceFiles(rootPath, rootPath, results);
-  results.sort((left, right) => left.localeCompare(right));
-  return results;
-}
-
-function collectProjectSourceFiles(rootPath: string, currentPath: string, results: string[]): void {
-  const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(currentPath, entry.name);
-    if (entry.isDirectory()) {
-      if (SOURCE_DISCOVERY_EXCLUDED_DIRS.has(entry.name.toLowerCase())) {
-        continue;
-      }
-      collectProjectSourceFiles(rootPath, fullPath, results);
-      continue;
-    }
-
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    if (!isAzmEntrySourcePath(entry.name)) {
-      continue;
-    }
-
-    results.push(path.relative(rootPath, fullPath).split(path.sep).join('/'));
   }
 }

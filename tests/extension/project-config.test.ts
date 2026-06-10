@@ -6,7 +6,6 @@ import {
   DEBUG80_PROJECT_VERSION,
   isDebug80ProjectConfig,
   isInitializedDebug80Project,
-  listProjectSourceFiles,
   readProjectConfig,
   resolveProjectPlatform,
   resolveStopOnEntryForTarget,
@@ -16,45 +15,6 @@ import {
 describe('project-config helpers', () => {
   afterEach(() => {
     // temp directories are left for the OS to clean up
-  });
-
-  it('lists AZM entry source files relative to the project root', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-sources-'));
-    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'src', 'games'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'tools'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'build'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'src', 'main.asm'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'pacmo.main.asm'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'helpers.z80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'loader.a80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'startup.s'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'contracts.asmi'), 'extern MON_PRINT_CHAR\n');
-    fs.writeFileSync(path.join(root, 'src', 'games', 'tetro.z80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'src', 'games', 'include.asm'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'tools', 'ignore.txt'), 'x\n');
-    fs.writeFileSync(path.join(root, 'build', 'generated.z80'), 'nop\n');
-
-    const files = listProjectSourceFiles(root);
-
-    expect(files).toEqual(['src/main.asm', 'src/pacmo.main.asm']);
-  });
-
-  it('falls back to top-level project source files when no src folder exists', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-root-sources-'));
-    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'main.asm'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'app.main.asm'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'alt.z80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'loader.a80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'startup.s'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'contracts.asmi'), 'extern MON_PRINT_CHAR\n');
-    fs.writeFileSync(path.join(root, 'lib', 'game.z80'), 'nop\n');
-    fs.writeFileSync(path.join(root, 'lib', 'include.asm'), 'nop\n');
-
-    const files = listProjectSourceFiles(root);
-
-    expect(files).toEqual(['app.main.asm', 'main.asm']);
   });
 
   it('updates the selected target source in debug80.json', () => {

@@ -1005,6 +1005,28 @@ clean gate:
 npm exec --yes fallow -- --only dead-code --format compact
 ```
 
+### Latest Goal Note: Phase 5 Target Discovery Split
+
+Phase 5 has started with a behavior-preserving target-discovery extraction.
+Runnable target entry conventions now live in `src/extension/target-discovery.ts`
+instead of being mixed into AZM source-extension helpers or project config
+helpers. The new module owns the convention list:
+
+- exact file name: `main.asm`
+- suffix: `.main.asm`
+- excluded discovery directories such as `build`, `out`, `.vscode`, and
+  `node_modules`
+
+This keeps runnable target discovery separate from broader AZM language/source
+support. `.z80`, `.asm`, and `.asmi` remain supported for language association
+and AZM rebuild/source handling, but `.z80` is not an automatically discovered
+runnable target unless explicitly configured by the user.
+
+Production callers that perform target discovery now use
+`listTargetEntrySourceFiles()` directly. `project-config.ts` no longer owns
+filesystem target discovery, and the old `isAzmEntrySourcePath()` helper was
+removed so there is only one target-entry convention source.
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -1063,8 +1085,9 @@ The next matrix step should be smaller again: extract click-release timer
 decision bookkeeping only if it can be isolated behind direct tests without
 moving DOM or postMessage behavior. If matrix behavior needs a cooling-off
 period, the Phase 1 dead-export cleanup has now been refreshed and the current
-dead-code gate is clean. Follow with Phase 5 launch/project policy split as a
-separate PR.
+dead-code gate is clean. Phase 5 has now started with target discovery split
+out; continue with launch config merge staging or target selection/persistence
+cleanup as separate, behavior-preserving steps.
 
 ## Priority Summary (2026-06-10)
 

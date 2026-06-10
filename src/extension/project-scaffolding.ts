@@ -9,8 +9,8 @@ import { ensureDirExists, inferDefaultTarget } from '../debug/launch/config-util
 import {
   DEBUG80_PROJECT_VERSION,
   findProjectConfigPath,
-  listProjectSourceFiles,
 } from './project-config';
+import { listTargetEntrySourceFiles } from './target-discovery';
 import {
   TEC1G_RAM_END,
   TEC1G_RAM_START,
@@ -373,7 +373,7 @@ async function chooseEntrySource(
   folder: vscode.WorkspaceFolder,
   inferredSourceFile: string
 ): Promise<SourceChoice | undefined> {
-  const sourceFiles = listProjectSourceFiles(folder.uri.fsPath);
+  const sourceFiles = listTargetEntrySourceFiles(folder.uri.fsPath);
   const inferredExists = sourceFiles.includes(inferredSourceFile);
   if (sourceFiles.length === 1) {
     return { kind: 'existing', sourceFile: sourceFiles[0] ?? inferredSourceFile };

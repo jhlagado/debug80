@@ -8,11 +8,11 @@ import { PlatformViewProvider } from './platform-view-provider';
 import {
   addProjectTarget,
   findProjectConfigPath,
-  listProjectSourceFiles,
   readProjectConfig,
   updateProjectTargetSource,
   writeProjectConfig,
 } from './project-config';
+import { listTargetEntrySourceFiles } from './target-discovery';
 import { openProjectConfigPanel } from './project-config-panel';
 import {
   ProjectTargetSelectionController,
@@ -265,7 +265,7 @@ export function registerTargetCommands(options: {
 
       const config = readProjectConfig(projectConfig);
       const currentSource = config?.targets?.[target]?.sourceFile ?? config?.targets?.[target]?.asm;
-      const candidates = listProjectSourceFiles(folder.uri.fsPath);
+      const candidates = listTargetEntrySourceFiles(folder.uri.fsPath);
       if (candidates.length === 0) {
         void vscode.window.showInformationMessage(
           'Debug80: No target entry files were found in this project folder (.main.asm or main.asm).'
@@ -354,7 +354,7 @@ async function resolveTargetEdit(
       : undefined;
   }
   if (field === 'program') {
-    const sources = listProjectSourceFiles(folder.uri.fsPath);
+    const sources = listTargetEntrySourceFiles(folder.uri.fsPath);
     if (sources.length === 0) {
       void vscode.window.showInformationMessage(
         'Debug80: No target entry files were found in this project folder (.main.asm or main.asm).'
