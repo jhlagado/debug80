@@ -1027,6 +1027,28 @@ Production callers that perform target discovery now use
 filesystem target discovery, and the old `isAzmEntrySourcePath()` helper was
 removed so there is only one target-entry convention source.
 
+### Latest Goal Note: Phase 5 Launch Config Merge Staging
+
+Launch config merge policy has been split out of `src/debug/launch-args.ts`
+into `src/debug/launch/launch-config-merge.ts`. The public
+`populateFromConfig()` entry point remains unchanged, but `launch-args.ts` now
+owns only config discovery/loading and target selection before delegating to the
+staged merge helper.
+
+The extracted helper keeps the existing merge order explicit:
+
+- root project config
+- selected target config
+- explicit launch request arguments
+- nested platform block merges
+- source, artifact, execution, AZM, bundled ROM, and debug-map resolution
+
+Focused tests in `tests/debug/launch-config-merge.test.ts` now pin the staging
+behavior directly, including explicit argument precedence, TEC-1G `romHex`
+preservation, and bundled MON-3 debug-map inference. This makes future launch
+policy cleanup possible without using the full adapter launch path as the only
+safety net.
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -1086,8 +1108,8 @@ decision bookkeeping only if it can be isolated behind direct tests without
 moving DOM or postMessage behavior. If matrix behavior needs a cooling-off
 period, the Phase 1 dead-export cleanup has now been refreshed and the current
 dead-code gate is clean. Phase 5 has now started with target discovery split
-out; continue with launch config merge staging or target selection/persistence
-cleanup as separate, behavior-preserving steps.
+out and launch config merge staging extracted; continue with target
+selection/persistence cleanup as a separate, behavior-preserving step.
 
 ## Priority Summary (2026-06-10)
 
