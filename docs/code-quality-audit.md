@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Config Utils Test Fixture Cleanup
+
+`tests/debug/config-utils.test.ts` now uses a local `writeTextFile` helper for
+the source-file fixtures used by default-target inference tests. The tests still
+cover recursive directory creation, empty/current directory handling, existing
+directories, `src/main.asm` inference, fallback to the first `.asm` file, and
+the not-found default target.
+
+This is intentionally test-only cleanup. It removes repeated source fixture
+setup without changing launch configuration utilities, default target
+inference, or directory creation behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/config-utils.test.ts
+```
+
 ### 2026-06-11: Stack Service Test Fixture Cleanup
 
 `tests/debug/stack-service.test.ts` now uses a local `writeFixtureFile`

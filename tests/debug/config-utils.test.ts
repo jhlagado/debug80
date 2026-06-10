@@ -14,6 +14,11 @@ const withTempDir = (fn: (dir: string) => void): void => {
   }
 };
 
+const writeTextFile = (filePath: string, contents: string): void => {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+};
+
 describe('config-utils', () => {
   describe('ensureDirExists', () => {
     it('creates directory recursively', () => {
@@ -49,10 +54,8 @@ describe('config-utils', () => {
   describe('inferDefaultTarget', () => {
     it('infers src/main.asm when present', () => {
       withTempDir((dir) => {
-        const srcDir = path.join(dir, 'src');
-        ensureDirExists(srcDir);
-        const mainPath = path.join(srcDir, 'main.asm');
-        fs.writeFileSync(mainPath, '; test');
+        const mainPath = path.join(dir, 'src', 'main.asm');
+        writeTextFile(mainPath, '; test');
 
         const inferred = inferDefaultTarget(dir);
         assert.equal(inferred.sourceFile, 'src/main.asm');
@@ -64,10 +67,8 @@ describe('config-utils', () => {
 
     it('falls back to first asm in tree when main not present', () => {
       withTempDir((dir) => {
-        const srcDir = path.join(dir, 'src', 'lib');
-        ensureDirExists(srcDir);
-        const asmPath = path.join(srcDir, 'util.asm');
-        fs.writeFileSync(asmPath, '; util');
+        const asmPath = path.join(dir, 'src', 'lib', 'util.asm');
+        writeTextFile(asmPath, '; util');
 
         const inferred = inferDefaultTarget(dir);
         assert.equal(inferred.sourceFile, 'src/lib/util.asm');
