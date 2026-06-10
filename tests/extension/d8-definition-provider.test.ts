@@ -42,6 +42,8 @@ vi.mock('vscode', () => ({
 
 import {
   buildD8SymbolIndex,
+  collectD8EditorSymbols,
+  d8SymbolToEditorSymbol,
   formatD8Hover,
   isD8MapPossiblyStale,
   lookupD8Definition,
@@ -72,7 +74,56 @@ function makeMap(): D8DebugMap {
   };
 }
 
+function makeMapWithNonNavigableSymbols(): D8DebugMap {
+  return {
+    ...makeMap(),
+    files: {
+      '': {
+        symbols: [{ name: 'BlankFile', kind: 'label', address: 0x4000, line: 1 }],
+      },
+      'src/generated.z80': {
+        symbols: [
+          { name: 'NoLine', kind: 'label', address: 0x4001 },
+          { name: 'BadLine', kind: 'label', address: 0x4002, line: 0 },
+        ],
+      },
+    },
+  };
+}
+
 describe('D8 definition provider helpers', () => {
+  it('converts only navigable D8 symbols into editor symbols', () => {
+    expect(
+      d8SymbolToEditorSymbol('src/main.z80', {
+        name: 'Start',
+        kind: 'label',
+        address: 0x4000,
+        line: 4,
+      })
+    ).toMatchObject({
+      name: 'Start',
+      file: 'src/main.z80',
+      line: 4,
+      address: 0x4000,
+    });
+
+    expect(
+      d8SymbolToEditorSymbol('', {
+        name: 'Start',
+        kind: 'label',
+        address: 0x4000,
+        line: 4,
+      })
+    ).toBeUndefined();
+    expect(
+      d8SymbolToEditorSymbol('src/main.z80', {
+        name: 'Start',
+        kind: 'label',
+        address: 0x4000,
+      })
+    ).toBeUndefined();
+  });
+
   it('indexes address and value-only symbols with source lines', () => {
     const index = buildD8SymbolIndex(makeMap());
 
@@ -84,6 +135,18 @@ describe('D8 definition provider helpers', () => {
       value: 32,
     });
     expect(index.get('PlayerX')?.[0]).toMatchObject({ address: 0x4200, size: 1 });
+  });
+
+  it('collects only D8 symbols that can navigate to a source line', () => {
+    const symbols = collectD8EditorSymbols(makeMapWithNonNavigableSymbols());
+
+    expect(symbols).toEqual([]);
+  });
+
+  it('indexes only D8 symbols that can navigate to a source line', () => {
+    const index = buildD8SymbolIndex(makeMapWithNonNavigableSymbols());
+
+    expect([...index.keys()]).toEqual([]);
   });
 
   it('normalizes public routine calls to @ routine definitions', () => {

@@ -33,6 +33,39 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: D8 Definition Provider Helper Cleanup
+
+`src/extension/d8-definition-provider.ts` now shares the D8 editor-symbol
+conversion path used by F12 definitions, hover lookup, and workspace symbols.
+The extraction keeps symbol navigation policy in one place:
+
+- blank D8 file keys are ignored;
+- symbols without a positive source line are ignored for editor navigation;
+- D8 symbol metadata is converted through the shared source-map symbol helper
+  before the editor-specific `line` field is attached.
+
+The provider also has smaller private helpers for target D8 path resolution and
+AZMDoc contract parsing. These helpers preserve the existing behavior while
+reducing the complexity of the public entry points that tests exercise for
+definition lookup, hover formatting, workspace-symbol indexing, and stale
+source-map detection.
+
+Focused tests in `tests/extension/d8-definition-provider.test.ts` now cover the
+pure editor-symbol conversion and collection behavior directly, alongside the
+existing F12, hover, target path, and staleness helper coverage.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/d8-definition-provider.test.ts
+npm run typecheck
+npm run lint
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+npm run package:check --if-present
+```
+
+Fallow exits cleanly for the changed definition-provider files.
+
 ### 2026-06-11: Launch Source-State Test Fixture Cleanup
 
 `tests/debug/launch-source-state.test.ts` now uses small local fixtures for the

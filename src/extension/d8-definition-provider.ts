@@ -17,8 +17,13 @@ export type D8EditorSymbol = D8SourceMapSymbol & {
   column?: number;
 };
 
+type Debug80ProjectConfig = NonNullable<ReturnType<typeof readProjectConfig>>;
+type Debug80TargetConfig = NonNullable<Debug80ProjectConfig['targets']>[string];
+type ContractClauseKey = 'in' | 'out' | 'clobbers' | 'preserves';
+
 const SYMBOL_RE = /[@.$?A-Za-z_][@.$?A-Za-z0-9_]*/;
 const D8_EXT = '.d8.json';
+const AZMDOC_CONTRACT_KEYS: ContractClauseKey[] = ['in', 'out', 'clobbers', 'preserves'];
 
 export function registerD8DefinitionProvider(
   context: vscode.ExtensionContext,
@@ -53,22 +58,35 @@ export function registerD8HoverProvider(
 
 export function buildD8SymbolIndex(map: D8DebugMap): Map<string, D8EditorSymbol[]> {
   const index = new Map<string, D8EditorSymbol[]>();
-  for (const [fileKey, entry] of Object.entries(map.files)) {
-    if (fileKey.trim() === '') {
-      continue;
-    }
-    for (const symbol of entry.symbols ?? []) {
-      const line = symbol.line;
-      if (line === undefined || line < 1) {
-        continue;
-      }
-      const def: D8EditorSymbol = { ...d8SymbolToSourceMapSymbol(symbol, fileKey), line };
-      const list = index.get(symbol.name) ?? [];
-      list.push(def);
-      index.set(symbol.name, list);
-    }
+  for (const symbol of collectD8EditorSymbols(map)) {
+    const list = index.get(symbol.name) ?? [];
+    list.push(symbol);
+    index.set(symbol.name, list);
   }
   return index;
+}
+
+export function collectD8EditorSymbols(map: D8DebugMap): D8EditorSymbol[] {
+  const symbols: D8EditorSymbol[] = [];
+  for (const [fileKey, entry] of Object.entries(map.files)) {
+    for (const symbol of entry.symbols ?? []) {
+      const def = d8SymbolToEditorSymbol(fileKey, symbol);
+      if (def !== undefined) {
+        symbols.push(def);
+      }
+    }
+  }
+  return symbols;
+}
+
+export function d8SymbolToEditorSymbol(
+  fileKey: string,
+  symbol: D8Symbol
+): D8EditorSymbol | undefined {
+  if (fileKey.trim() === '' || symbol.line === undefined || symbol.line < 1) {
+    return undefined;
+  }
+  return { ...d8SymbolToSourceMapSymbol(symbol, fileKey), line: symbol.line };
 }
 
 export function resolveD8MapPathForTarget(
@@ -82,30 +100,51 @@ export function resolveD8MapPathForTarget(
   }
   const targetName = resolveTargetNameForConfig(workspaceState, configPath);
   const target = targetName !== undefined ? config.targets?.[targetName] : undefined;
-  const sourcePath =
-    target?.sourceFile ??
-    target?.asm ??
-    target?.source ??
-    config.sourceFile ??
-    config.asm ??
-    config.source;
-  const artifactBase =
-    target?.artifactBase ??
-    config.artifactBase ??
-    (sourcePath !== undefined
-      ? path.basename(sourcePath, path.extname(sourcePath))
-      : (targetName ?? config.target ?? config.defaultTarget));
+  const sourcePath = resolveConfiguredSourcePath(config, target);
+  const artifactBase = resolveConfiguredArtifactBase(config, target, targetName, sourcePath);
   if (artifactBase === undefined || artifactBase.trim() === '') {
     return undefined;
   }
-  const outputDir = target?.outputDir ?? config.outputDir;
-  const baseDir =
-    outputDir !== undefined && outputDir.trim() !== ''
-      ? resolveProjectPath(projectRoot, outputDir)
-      : sourcePath !== undefined
-        ? path.dirname(resolveProjectPath(projectRoot, sourcePath))
-        : projectRoot;
+  const baseDir = resolveD8OutputDirectory(projectRoot, config.outputDir, target?.outputDir, sourcePath);
   return path.join(baseDir, `${artifactBase}${D8_EXT}`);
+}
+
+function resolveConfiguredSourcePath(
+  config: Debug80ProjectConfig,
+  target: Debug80TargetConfig | undefined
+): string | undefined {
+  return target?.sourceFile ?? target?.asm ?? target?.source ?? config.sourceFile ?? config.asm ?? config.source;
+}
+
+function resolveConfiguredArtifactBase(
+  config: Debug80ProjectConfig,
+  target: Debug80TargetConfig | undefined,
+  targetName: string | undefined,
+  sourcePath: string | undefined
+): string | undefined {
+  if (target?.artifactBase !== undefined || config.artifactBase !== undefined) {
+    return target?.artifactBase ?? config.artifactBase;
+  }
+  if (sourcePath !== undefined) {
+    return path.basename(sourcePath, path.extname(sourcePath));
+  }
+  return targetName ?? config.target ?? config.defaultTarget;
+}
+
+function resolveD8OutputDirectory(
+  projectRoot: string,
+  configOutputDir: string | undefined,
+  targetOutputDir: string | undefined,
+  sourcePath: string | undefined
+): string {
+  const outputDir = targetOutputDir ?? configOutputDir;
+  if (outputDir !== undefined && outputDir.trim() !== '') {
+    return resolveProjectPath(projectRoot, outputDir);
+  }
+  if (sourcePath !== undefined) {
+    return path.dirname(resolveProjectPath(projectRoot, sourcePath));
+  }
+  return projectRoot;
 }
 
 export function lookupD8Definition(
@@ -160,6 +199,12 @@ export function parseAzmDocContractNearLine(
   definitionLine: number
 ): string | undefined {
   const lines = sourceText.split(/\r?\n/);
+  const clauses = parseAzmDocContractClauses(collectAzmDocContractLines(lines, definitionLine));
+  const ordered = formatAzmDocContractClauses(clauses);
+  return ordered.length > 0 ? ordered.join('    ') : undefined;
+}
+
+function collectAzmDocContractLines(lines: string[], definitionLine: number): string[] {
   const start = Math.max(0, definitionLine - 2);
   const contractLines: string[] = [];
   for (let i = start; i >= 0 && contractLines.length < 8; i -= 1) {
@@ -176,33 +221,51 @@ export function parseAzmDocContractNearLine(
     }
     contractLines.unshift(match[1] ?? '');
   }
-  const clauses = new Map<string, string>();
+  return contractLines;
+}
+
+function parseAzmDocContractClauses(contractLines: string[]): Map<ContractClauseKey, string> {
+  const clauses = new Map<ContractClauseKey, string>();
   for (const line of contractLines) {
     for (const part of line.split(';')) {
-      const trimmed = part.trim();
-      if (trimmed === '') {
-        continue;
-      }
-      const compact = /^(in|out|clobbers|preserves)\s*:\s*(.+)$/i.exec(trimmed);
-      const plain = /^(in|out|clobbers|preserves)\b\s+(.+)$/i.exec(trimmed);
-      const match = compact ?? plain;
-      if (!match) {
-        continue;
-      }
-      const key = match[1]?.toLowerCase();
-      const value = match[2]?.trim();
-      if (key !== undefined && value !== undefined && value !== '') {
-        clauses.set(key, value.replace(/\s*,\s*/g, ','));
+      const clause = parseAzmDocContractClause(part);
+      if (clause !== undefined) {
+        clauses.set(clause.key, clause.value);
       }
     }
   }
-  const ordered = ['in', 'out', 'clobbers', 'preserves']
-    .map((key) => {
-      const value = clauses.get(key);
-      return value !== undefined ? `${key}: ${value}` : undefined;
-    })
-    .filter((entry): entry is string => entry !== undefined);
-  return ordered.length > 0 ? ordered.join('    ') : undefined;
+  return clauses;
+}
+
+function parseAzmDocContractClause(
+  text: string
+): { key: ContractClauseKey; value: string } | undefined {
+  const trimmed = text.trim();
+  if (trimmed === '') {
+    return undefined;
+  }
+  const compact = /^(in|out|clobbers|preserves)\s*:\s*(.+)$/i.exec(trimmed);
+  const plain = /^(in|out|clobbers|preserves)\b\s+(.+)$/i.exec(trimmed);
+  const match = compact ?? plain;
+  const rawKey = match?.[1]?.toLowerCase();
+  const rawValue = match?.[2]?.trim();
+  if (!isContractClauseKey(rawKey) || rawValue === undefined || rawValue === '') {
+    return undefined;
+  }
+  return { key: rawKey, value: rawValue.replace(/\s*,\s*/g, ',') };
+}
+
+function formatAzmDocContractClauses(clauses: Map<ContractClauseKey, string>): string[] {
+  return AZMDOC_CONTRACT_KEYS.map((key) => {
+    const value = clauses.get(key);
+    return value !== undefined ? `${key}: ${value}` : undefined;
+  }).filter((entry): entry is string => entry !== undefined);
+}
+
+function isContractClauseKey(value: string | undefined): value is ContractClauseKey {
+  return (
+    value === 'in' || value === 'out' || value === 'clobbers' || value === 'preserves'
+  );
 }
 
 export function isD8MapPossiblyStale(
@@ -416,19 +479,11 @@ function loadD8MapForFolder(
 }
 
 function flattenD8Symbols(map: D8DebugMap): D8EditorSymbol[] {
-  const symbols: D8EditorSymbol[] = [];
-  for (const [fileKey, entry] of Object.entries(map.files)) {
-    if (fileKey.trim() === '') {
-      continue;
-    }
-    for (const symbol of entry.symbols ?? []) {
-      if (symbol.line === undefined || symbol.line < 1) {
-        continue;
-      }
-      symbols.push({ ...d8SymbolToSourceMapSymbol(symbol, fileKey), line: symbol.line });
-    }
-  }
-  return symbols.sort((a, b) => a.name.localeCompare(b.name) || a.file.localeCompare(b.file));
+  return collectD8EditorSymbols(map).sort(compareD8EditorSymbols);
+}
+
+function compareD8EditorSymbols(a: D8EditorSymbol, b: D8EditorSymbol): number {
+  return a.name.localeCompare(b.name) || a.file.localeCompare(b.file);
 }
 
 function symbolKindForD8(symbol: D8EditorSymbol): vscode.SymbolKind {
