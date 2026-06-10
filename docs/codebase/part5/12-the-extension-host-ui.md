@@ -493,7 +493,7 @@ The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, ar
 
 When the scaffold creates or updates project files, it also calls `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` to create or append a standard **Debug80**-marked ignore block (see Chapter 2). The normal panel initialization path writes root `debug80.json` and does not create `.vscode/launch.json`; launch scaffolding is an explicit optional path.
 
-Bundled ROM files are **not copied during scaffolding**. The generated profile records `BundledAssetReference` entries. During launch, `resolveBundledAssetRuntimePath()` in `src/debug/launch-args.ts` checks the workspace path first; if that path is missing and corresponds to the bundled asset destination, it falls back to the copy inside the extension bundle. The explicit `debug80.materializeBundledRom` command is surfaced as **Debug80: Copy Monitor ROM into Project** and copies the whole monitor bundle when the user wants to work on monitor source locally.
+Bundled ROM files are **not copied during scaffolding**. The generated profile records `BundledAssetReference` entries. During launch, `resolveBundledAssetRuntimePath()` in `src/debug/launch/launch-config-merge.ts` checks the workspace path first; if that path is missing and corresponds to the bundled asset destination, it falls back to the copy inside the extension bundle. The explicit `debug80.materializeBundledRom` command is surfaced as **Debug80: Copy Monitor ROM into Project** and copies the whole monitor bundle when the user wants to work on monitor source locally.
 
 Local monitor development is enabled by a convention rather than another user-facing config field. The copy command creates a platform-specific ROM entry source:
 

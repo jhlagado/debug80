@@ -23,13 +23,13 @@ The launch pipeline has seven stages, each handled by a different module:
 ```
 launchRequest arrives
     │
-    ├─ 1. Configuration merge        (launch-args.ts)
-    │     Merge launch.json args with debug80.json → LaunchRequestArguments
+    ├─ 1. Configuration merge        (launch-args.ts, launch/launch-config-merge.ts)
+    │     Discover config, then merge launch.json args with debug80.json → LaunchRequestArguments
     │
     ├─ 2. Platform resolution         (platforms/manifest.ts)
     │     Lazy-load the platform provider → ResolvedPlatformProvider
     │
-    ├─ 3. Artifact path resolution    (launch-args.ts, mapping/path-resolver.ts)
+    ├─ 3. Artifact path resolution    (launch/launch-config-merge.ts, mapping/path-resolver.ts)
     │     Derive source, .hex and D8 source-map paths → absolute file paths
     │
     ├─ 4. Assembly                    (launch-pipeline.ts, launch/assembler.ts)
@@ -38,8 +38,8 @@ launchRequest arrives
     ├─ 5. Program loading             (launch/program-loader.ts)
     │     Parse HEX, build memory image → HexProgram
     │
-    ├─ 6. Source mapping              (launch/launch-source-state.ts)
-    │     Load native D8 map → MappingIndex + source-map symbol lists
+    ├─ 6. Source mapping              (launch/launch-source-state.ts, launch/source-state-build-options.ts)
+    │     Load native D8 map → MappingIndex + source roots + source-map symbol lists
     │
     └─ 7. Runtime creation            (launch/launch-sequence.ts)
           Create Z80Runtime with platform I/O → ready to execute
@@ -53,7 +53,7 @@ If any stage fails, the error propagates up to `handleLaunchRequest()` in the se
 
 ## Stage 1: Configuration merge
 
-The raw `LaunchRequestArguments` from VS Code's `launch.json` is sparse — it might contain only a `projectConfig` path and a `target` name. `populateFromConfig()` in `src/debug/launch-args.ts` fills in the gaps by reading the project configuration file and merging its fields. (Note: `launch-args.ts` remains at the `src/debug/` top level.)
+The raw `LaunchRequestArguments` from VS Code's `launch.json` is sparse — it might contain only a `projectConfig` path and a `target` name. `populateFromConfig()` in `src/debug/launch-args.ts` fills in the gaps by reading the project configuration file and delegating the staged merge to `mergeLaunchConfigStages()` in `src/debug/launch/launch-config-merge.ts`. `launch-args.ts` remains at the `src/debug/` top level because adapter and platform entry points both depend on it for config discovery.
 
 The merge follows the four-layer pipeline described in Chapter 2:
 
@@ -81,7 +81,7 @@ The `.debug80.json`, `.vscode/debug80.json`, and `package.json` `debug80` field 
 
 ### Platform block merging
 
-Platform-specific configuration blocks (`tec1`, `tec1g`, `simple`) are **shallow merged**, not replaced. If the root config has `tec1g: { romHex: "mon3.hex" }` and the target has `tec1g: { clockSpeed: 4000000 }`, the merged result is `tec1g: { romHex: "mon3.hex", clockSpeed: 4000000 }`. This is handled by `mergeNestedPlatformBlock()`.
+Platform-specific configuration blocks (`tec1`, `tec1g`, `simple`) are **shallow merged**, not replaced. If the root config has `tec1g: { romHex: "mon3.hex" }` and the target has `tec1g: { clockSpeed: 4000000 }`, the merged result is `tec1g: { romHex: "mon3.hex", clockSpeed: 4000000 }`. This is handled by `mergeNestedPlatformBlock()` in `launch-config-merge.ts`.
 
 The TEC-1G platform has an additional inheritance rule: `resolveTec1gBaseForMerge()` ensures that the `romHex` field from the first target definition carries forward to other targets that don't specify their own ROM. This allows a project to define a ROM once and share it across targets.
 
@@ -95,7 +95,7 @@ After merging, `populateFromConfig()` resolves each field individually:
 - `entry` — parsed as a number (hex if prefixed with `0x`).
 - `assembler` — left as-is or inferred from the source file extension.
 
-The result is a fully populated `LaunchRequestArguments` with all paths absolute and all defaults filled in.
+The result is a fully populated `LaunchRequestArguments` with all paths absolute and all defaults filled in. Bundled ROM and D8 map references are also resolved here by `resolveBundledAssetRuntimePath()`, which prefers a workspace copy when it exists and otherwise falls back to the extension-bundled asset when the config reference points at the bundle destination.
 
 ---
 
@@ -165,7 +165,7 @@ The resolution rules:
 
 The source-map artifact is the native D8 map written beside the build output, normally `program.d8.json`. The D8 path is resolved later by `resolveDebugMapPath()` from the HEX path, optional `artifactBase`, optional `outputDir`, and source path.
 
-The base directory (`baseDir`) is resolved from the workspace root or the project config file's parent directory. Path resolution functions live in two files: `src/debug/launch-args.ts` for the pure logic (testable without VS Code) and `src/debug/mapping/path-resolver.ts` for the VS Code-aware version (uses `vscode.workspace.workspaceFolders`).
+The base directory (`baseDir`) is resolved from the workspace root or the project config file's parent directory. Config discovery stays in `src/debug/launch-args.ts`. The staged path normalization and bundled-asset resolution live in `src/debug/launch/launch-config-merge.ts`. Source-map path derivation for active sessions lives in `src/debug/mapping/path-resolver.ts`.
 
 ---
 
@@ -294,7 +294,7 @@ The overlay order matters. The user's program is applied last, so it can overwri
 
 Source mapping connects memory addresses to source file locations. This is what makes "set a breakpoint on line 12" work — the breakpoint manager needs to know which memory address corresponds to line 12.
 
-The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. As of the extraction described below, all of this is handled by `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts`. `launch-sequence.ts` calls it with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
+The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts` owns the top-level orchestration and delegates the reusable source-root, map-argument, and `SourceManager` construction helpers to `src/debug/launch/source-state-build-options.ts`. `launch-sequence.ts` calls it with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
 
 ### `buildLaunchSourceState()` — `src/debug/launch/launch-source-state.ts`
 
@@ -302,9 +302,9 @@ The source mapping stage has three parts: building the debug map, building the s
 
 The function:
 
-1. **Resolves source roots** — walks `args.sourceRoots` and the assembly source directory to build the initial root list.
-2. **Instantiates `SourceManager`** — creates the manager with path-resolution callbacks for the current session and injects it into the `SourceStateManager`.
-3. **Calls `sourceState.build()`** — triggers D8 source-map discovery and `buildSourceMapIndex()` invocation via the manager.
+1. **Resolves source roots** — `buildLaunchSessionSourceRoots()` walks `args.sourceRoots`, the assembly source directory, and the base directory to build the initial root list.
+2. **Instantiates `SourceManager`** — `createSourceStateManager()` creates the manager with path-resolution callbacks for the current session and injects it into the `SourceStateManager`.
+3. **Calls `sourceState.build()`** — `buildSourceStateBuildArgs()` and `buildSourceMapArgs()` package the map inputs, then D8 source-map discovery and `buildSourceMapIndex()` run via the manager.
 4. **Builds the symbol index** — calls `buildSymbolIndex()` from `src/debug/mapping/symbol-service.ts` and applies the lookup anchors back to `sourceState`.
 5. **Returns** a `LaunchSourceBuildResult` containing `sourceRoots`, `mapping`, `mappingIndex`, `symbolAnchors`, `symbolList`, and D8-backed source-map symbols.
 
@@ -501,7 +501,7 @@ All three paths send an error response to VS Code, which shows the error and cle
 
 - Program loading builds a platform-specific memory image: plain for simple, ROM + RAM overlay for TEC-1/TEC-1G. Source mapping and symbols come from the native D8 map emitted by AZM.
 
-- Source mapping is handled by `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts`. This function owns source-root resolution, D8 map detection, `buildSourceMapIndex()` invocation, and source-map symbol construction. It was extracted from `launch-sequence.ts` to give source-state setup a single testable entry point.
+- Source mapping is handled by `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts`. This function owns source-state orchestration, while `src/debug/launch/source-state-build-options.ts` holds the reusable source-root, map-argument, and `SourceManager` setup helpers. Together they give source-state setup a focused testable boundary.
 
 - The Z80 runtime is created last, with platform I/O handlers and ROM protection ranges. Platform providers can finalize the runtime with additional setup after creation.
 

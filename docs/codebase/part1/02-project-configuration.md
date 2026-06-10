@@ -180,7 +180,7 @@ debug80.selectedTarget:{projectConfigPath}
 
 The key includes the config file path, so different projects in a multi-root workspace each remember their own target independently. On the next launch, the stored target is preferred over the config's `defaultTarget`, unless it no longer exists in the config.
 
-The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`.
+The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable `main.asm` and `*.main.asm` entry sources.
 
 ---
 
@@ -193,7 +193,7 @@ Several fields have aliases — different names for the same value. This exists 
 | `asm`           | `sourceFile`, `source` | The assembly source file path  |
 | `defaultTarget` | `target`               | Which target to use by default |
 
-During resolution, all aliases are checked in a defined order. The first non-undefined value wins. If you are writing code that reads these fields, always use the resolution helpers in `launch-args.ts` rather than reading fields directly — they handle the alias chain correctly.
+During resolution, all aliases are checked in a defined order. The first non-undefined value wins. If you are writing code that reads these fields, always use the merge helpers behind `populateFromConfig()` rather than reading fields directly. `src/debug/launch/launch-config-merge.ts` now owns the field-by-field merge and alias handling while `src/debug/launch-args.ts` stays responsible for config discovery and top-level launch argument entry.
 
 One practical example is `stopOnEntry`: the panel-level toggle is **not** written back into `debug80.json`, but target/root-level config values still merge through the launch pipeline. `resolveStopOnEntryForTarget()` in `src/extension/project-config.ts` mirrors the launch merge so the panel can show the effective project-level value without pretending it is persisted UI state.
 
@@ -213,7 +213,7 @@ Root config               (from debug80.json root)
 Platform defaults          (lowest priority)
 ```
 
-Each layer is optional. Missing layers are skipped. For simple scalar fields (strings, numbers, booleans), the first non-undefined value in priority order wins. This merge happens in `populateFromConfig()`.
+Each layer is optional. Missing layers are skipped. For simple scalar fields (strings, numbers, booleans), the first non-undefined value in priority order wins. `populateFromConfig()` still drives the process, but the actual staged merge now lives in `mergeLaunchConfigStages()` in `src/debug/launch/launch-config-merge.ts`.
 
 ### Platform block merging
 
@@ -249,7 +249,7 @@ The `app` target's effective `tec1g` block is:
 }
 ```
 
-The target overrode `appStart` but inherited `romHex` and `entry` from the root. If the blocks were replaced instead of merged, the target would lose the ROM path — a subtle and frustrating bug. The merge function `mergeNestedPlatformBlock()` in `launch-args.ts` handles this with `Object.assign()` over three layers (root, target, runtime).
+The target overrode `appStart` but inherited `romHex` and `entry` from the root. If the blocks were replaced instead of merged, the target would lose the ROM path. The merge function `mergeNestedPlatformBlock()` in `src/debug/launch/launch-config-merge.ts` handles this with `Object.assign()` over three layers: root, target, and runtime.
 
 ### TEC-1G ROM inheritance
 
