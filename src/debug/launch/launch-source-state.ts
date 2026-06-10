@@ -5,14 +5,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { buildSymbolIndex } from '../mapping/symbol-service';
-import { SourceManager } from '../mapping/source-manager';
 import type { SourceStateManager } from '../mapping/source-state-manager';
-import {
-  relativeIfPossible,
-  resolveDebugMapPath,
-  resolveRelative,
-  resolveMappedPath,
-} from '../mapping/path-resolver';
+import { resolveDebugMapPath, resolveMappedPath } from '../mapping/path-resolver';
 import type { PlatformKind } from './program-loader';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
@@ -20,6 +14,12 @@ import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceMapDebugSymbol } from '../session/session-state';
+import {
+  buildLaunchSessionSourceRoots,
+  buildSourceMapArgs,
+  buildSourceStateBuildArgs,
+  createSourceStateManager,
+} from './source-state-build-options';
 import {
   parseD8DebugMap,
   type D8DebugMap,
@@ -48,57 +48,25 @@ export function buildLaunchSourceState(
   sessionState: SessionStateShape,
   logger: Logger
 ): LaunchSourceBuildResult {
-  const preSourceRoots: string[] = [];
-  for (const root of args.sourceRoots ?? []) {
-    pushUniquePath(preSourceRoots, resolveRelative(root, baseDir));
-  }
-  if (asmPath !== undefined && asmPath.length > 0) {
-    pushUniquePath(preSourceRoots, path.dirname(resolveRelative(asmPath, baseDir)));
-  }
-  pushUniquePath(preSourceRoots, resolveRelative(baseDir, baseDir));
+  const preSourceRoots = buildLaunchSessionSourceRoots({ args, baseDir, asmPath });
   sessionState.sourceRoots = preSourceRoots;
-  const resolvedSourceRoots = preSourceRoots.length > 0 ? preSourceRoots : (args.sourceRoots ?? []);
-  const mappedPathCache = new Map<string, string | undefined>();
-  const resolveSessionMappedPath = (file: string): string | undefined => {
-    const cached = mappedPathCache.get(file);
-    if (cached !== undefined || mappedPathCache.has(file)) {
-      return cached;
-    }
-    const resolved = resolveMappedPath(file, undefined, sessionState.sourceRoots);
-    mappedPathCache.set(file, resolved);
-    return resolved;
-  };
 
   sourceState.setManager(
-    new SourceManager({
+    createSourceStateManager({
       platform,
       baseDir,
-      resolveRelative: (value, dir) => resolveRelative(value, dir),
-      resolveMappedPath: resolveSessionMappedPath,
-      relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-      resolveDebugMapPath: (launchArgs, dir, asm, hex) =>
-        resolveDebugMapPath(launchArgs as LaunchRequestArguments, dir, asm, hex),
+      getSourceRoots: () => sessionState.sourceRoots,
       logger,
     })
   );
 
-  const builtSourceState = sourceState.build({
+  const builtSourceState = sourceState.build(buildSourceStateBuildArgs({
+    args,
     hexPath,
-    ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
-    ...(args.sourceFile !== undefined && args.sourceFile.length > 0
-      ? { sourceFile: args.sourceFile }
-      : {}),
-    sourceRoots: resolvedSourceRoots,
+    asmPath,
+    sourceRoots: preSourceRoots,
     debugMaps: args.debugMaps ?? [],
-    mapArgs: {
-      ...(args.artifactBase !== undefined && args.artifactBase.length > 0
-        ? { artifactBase: args.artifactBase }
-        : {}),
-      ...(args.outputDir !== undefined && args.outputDir.length > 0
-        ? { outputDir: args.outputDir }
-        : {}),
-    },
-  });
+  }));
 
   const symbolIndex = buildSymbolIndex({
     mapping: builtSourceState.mapping,
@@ -111,14 +79,7 @@ export function buildLaunchSourceState(
     asmPath,
     debugMaps: args.debugMaps ?? [],
     sourceRoots: auxiliarySourceRoots,
-    mapArgs: {
-      ...(args.artifactBase !== undefined && args.artifactBase.length > 0
-        ? { artifactBase: args.artifactBase }
-        : {}),
-      ...(args.outputDir !== undefined && args.outputDir.length > 0
-        ? { outputDir: args.outputDir }
-        : {}),
-    },
+    mapArgs: buildSourceMapArgs(args),
     resolveDebugMapPath: (mapArgs, dir, asm, hex) => resolveDebugMapPath(mapArgs, dir, asm, hex),
     logger,
   });
@@ -254,13 +215,6 @@ function sortSourceMapSymbols(symbols: SourceMapDebugSymbol[]): SourceMapDebugSy
 
 function resolvePreferredSymbolMapPath(options: { mapPath: string }): string | undefined {
   return fs.existsSync(options.mapPath) ? options.mapPath : undefined;
-}
-
-function pushUniquePath(paths: string[], candidate: string): void {
-  const normalized = path.resolve(candidate);
-  if (!paths.some((entry) => path.resolve(entry) === normalized)) {
-    paths.push(candidate);
-  }
 }
 
 function collectDebugMapPrimarySourcePaths(debugMaps: string[], sourceRoots: string[]): string[] {

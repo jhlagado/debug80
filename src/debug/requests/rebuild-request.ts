@@ -16,20 +16,20 @@ import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import { assembleIfRequested } from '../launch/launch-pipeline';
 import type { WarmRebuildResult } from '../session/message-types';
 import {
-  resolveMappedPath,
   resolveBaseDir,
   resolveArtifacts,
-  resolveDebugMapPath,
   resolveRelative,
-  relativeIfPossible,
 } from '../mapping/path-resolver';
 import { loadProgramArtifacts } from '../launch/program-loader';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceStateManager } from '../mapping/source-state-manager';
-import { SourceManager } from '../mapping/source-manager';
 import { buildSymbolIndex } from '../mapping/symbol-service';
 import type { Logger } from '../../util/logger';
 import { emitChangedBreakpoints } from '../session/runtime-events';
+import {
+  buildSourceStateBuildArgs,
+  createSourceStateManager,
+} from '../launch/source-state-build-options';
 
 type RebuildDeps = {
   logger: Logger;
@@ -94,6 +94,60 @@ function buildCompactFailureDetail(err: AssembleFailureError): string | undefine
   return err.result.error;
 }
 
+function createAssemblyFailureLocation(
+  err: AssembleFailureError
+): WarmRebuildResult['location'] | undefined {
+  const diagnostic = err.result.diagnostic;
+  if (diagnostic?.path === undefined || diagnostic.line === undefined) {
+    return undefined;
+  }
+  return {
+    path: diagnostic.path,
+    line: diagnostic.line,
+    ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
+    ...(diagnostic.sourceLine !== undefined ? { sourceLine: diagnostic.sourceLine } : {}),
+  };
+}
+
+function createAssemblyFailureDetail(err: AssembleFailureError): string {
+  return (
+    buildCompactFailureDetail(err) ??
+    formatAssemblyDiagnostic(
+      err.result.diagnostic ?? {
+        message: err.result.error ?? String(err),
+      }
+    )
+  );
+}
+
+function createAssemblyFailureResult(err: AssembleFailureError): WarmRebuildResult {
+  const location = createAssemblyFailureLocation(err);
+  const summary =
+    location !== undefined ? `${path.basename(location.path)}:${location.line}` : 'assembly';
+  const detail = createAssemblyFailureDetail(err);
+  return createWarmRebuildFailureResult(summary, {
+    ...(detail !== summary ? { detail } : {}),
+    ...(location !== undefined ? { location } : {}),
+  });
+}
+
+function sendWarmRebuildErrorResult(
+  response: DebugProtocol.Response,
+  deps: RebuildDeps,
+  err: unknown
+): void {
+  if (err instanceof AssembleFailureError) {
+    sendWarmRebuildResult(response, deps, createAssemblyFailureResult(err));
+    return;
+  }
+
+  sendWarmRebuildResult(
+    response,
+    deps,
+    createWarmRebuildFailureResult('Rebuild failed', { detail: String(err) })
+  );
+}
+
 export async function handleWarmRebuildRequest(
   response: DebugProtocol.Response,
   deps: RebuildDeps
@@ -148,46 +202,22 @@ export async function handleWarmRebuildRequest(
     });
 
     if (!deps.sourceState.manager) {
-      const mappedPathCache = new Map<string, string | undefined>();
-      const resolveSessionMappedPath = (file: string): string | undefined => {
-        const cached = mappedPathCache.get(file);
-        if (cached !== undefined || mappedPathCache.has(file)) {
-          return cached;
-        }
-        const resolved = resolveMappedPath(file, undefined, deps.sessionState.sourceRoots);
-        mappedPathCache.set(file, resolved);
-        return resolved;
-      };
       deps.sourceState.setManager(
-        new SourceManager({
+        createSourceStateManager({
           platform: deps.platformState.active,
           baseDir,
-          resolveRelative: (p, dir) => resolveRelative(p, dir),
-          resolveMappedPath: resolveSessionMappedPath,
-          relativeIfPossible: (filePath, dir) => relativeIfPossible(filePath, dir),
-          resolveDebugMapPath: (args, dir, asm, hex) =>
-            resolveDebugMapPath(args as never, dir, asm, hex),
+          getSourceRoots: () => deps.sessionState.sourceRoots,
           logger: deps.logger,
         })
       );
     }
 
-    const builtSourceState = deps.sourceState.build({
+    const builtSourceState = deps.sourceState.build(buildSourceStateBuildArgs({
+      args: launchArgs,
       hexPath,
-      ...(asmPath !== undefined && asmPath.length > 0 ? { asmPath } : {}),
-      ...(launchArgs.sourceFile !== undefined && launchArgs.sourceFile.length > 0
-        ? { sourceFile: launchArgs.sourceFile }
-        : {}),
+      asmPath,
       sourceRoots: launchArgs.sourceRoots ?? [],
-      mapArgs: {
-        ...(launchArgs.artifactBase !== undefined && launchArgs.artifactBase.length > 0
-          ? { artifactBase: launchArgs.artifactBase }
-          : {}),
-        ...(launchArgs.outputDir !== undefined && launchArgs.outputDir.length > 0
-          ? { outputDir: launchArgs.outputDir }
-          : {}),
-      },
-    });
+    }));
 
     const symbolIndex = buildSymbolIndex({
       mapping: builtSourceState.mapping,
@@ -230,44 +260,6 @@ export async function handleWarmRebuildRequest(
     );
     return;
   } catch (err) {
-    if (err instanceof AssembleFailureError) {
-      const diagnostic = err.result.diagnostic;
-      const location =
-        diagnostic?.path !== undefined && diagnostic.line !== undefined
-          ? {
-              path: diagnostic.path,
-              line: diagnostic.line,
-              ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
-              ...(diagnostic.sourceLine !== undefined ? { sourceLine: diagnostic.sourceLine } : {}),
-            }
-          : undefined;
-      const locationLabel =
-        location !== undefined ? `${path.basename(location.path)}:${location.line}` : 'assembly';
-      const summary = locationLabel;
-      const detail =
-        buildCompactFailureDetail(err) ??
-        formatAssemblyDiagnostic(
-          diagnostic ?? {
-            message: err.result.error ?? String(err),
-          }
-        );
-      sendWarmRebuildResult(
-        response,
-        deps,
-        createWarmRebuildFailureResult(summary, {
-          ...(detail !== summary ? { detail } : {}),
-          ...(location !== undefined ? { location } : {}),
-        })
-      );
-      return;
-    }
-
-    const detail = String(err);
-    sendWarmRebuildResult(
-      response,
-      deps,
-      createWarmRebuildFailureResult('Rebuild failed', { detail })
-    );
-    return;
+    sendWarmRebuildErrorResult(response, deps, err);
   }
 }

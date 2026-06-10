@@ -33,6 +33,41 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch/Rebuild Source-State Setup Extraction
+
+Launch and warm rebuild now share source-state setup helpers in
+`src/debug/launch/source-state-build-options.ts`. The helper centralizes:
+
+- launch session source-root construction and de-duplication;
+- optional `asmPath` / `sourceFile` shaping;
+- optional `artifactBase` / `outputDir` map-argument shaping;
+- cached `SourceManager` creation for source-map path resolution.
+
+This removes the Fallow-reported duplication between
+`src/debug/launch/launch-source-state.ts` and
+`src/debug/requests/rebuild-request.ts` without changing each path's source-root
+policy: launch still seeds the session roots from configured roots, the entry
+source directory, and project base; warm rebuild still rebuilds from the active
+launch arguments and existing session mapping state.
+
+`handleWarmRebuildRequest` also had its assembly-failure formatting moved into
+small helpers so touching rebuild setup does not leave the changed file over the
+complexity gate. New focused tests cover the shared option-shaping rules.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/source-state-build-options.test.ts tests/debug/launch-source-state.test.ts
+npm run typecheck
+npm run lint
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow now exits cleanly for this cleanup. Remaining clone groups are inherited
+path-resolution helper similarities in launch source-state and the D8 definition
+provider, plus small repeated test-fixture setup blocks in the focused
+source-state tests.
+
 ### 2026-06-11: Launch Source Symbol Reader Extraction
 
 `src/debug/launch/launch-source-state.ts` now splits source-map symbol loading
