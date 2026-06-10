@@ -22,6 +22,35 @@ vi.mock('vscode', () => ({
   },
 }));
 
+function withTempProject<T>(run: (projectRoot: string) => T): T {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-state-options-'));
+  try {
+    return run(path.join(tmpDir, 'project'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+function writeTextFile(filePath: string, contents: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
+function writeD8Map(filePath: string, files: Record<string, unknown>): void {
+  writeTextFile(
+    filePath,
+    JSON.stringify({
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files,
+      generator: { name: 'azm' },
+    })
+  );
+}
+
 describe('source-state build option helpers', () => {
   it('keeps only non-empty source map arguments', () => {
     expect(
@@ -69,49 +98,35 @@ describe('source-state build option helpers', () => {
   });
 
   it('resolves mapped paths against the latest source roots', () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-state-options-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const hexPath = path.join(projectRoot, 'build', 'main.hex');
-    const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
-    let sourceRoots: string[] = [];
+    withTempProject((projectRoot) => {
+      const sourcePath = path.join(projectRoot, 'src', 'main.asm');
+      const hexPath = path.join(projectRoot, 'build', 'main.hex');
+      const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
+      let sourceRoots: string[] = [];
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'START:\n  NOP\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      d8Path,
-      JSON.stringify({
-        format: 'd8-debug-map',
-        version: 1,
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        files: {
-          'src/main.asm': {
-            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
-          },
+      writeTextFile(sourcePath, 'START:\n  NOP\n');
+      writeTextFile(hexPath, ':00000001FF\n');
+      writeD8Map(d8Path, {
+        'src/main.asm': {
+          segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
         },
-        generator: { name: 'azm' },
-      })
-    );
+      });
 
-    const manager = createSourceStateManager({
-      platform: 'tec1g',
-      baseDir: projectRoot,
-      getSourceRoots: () => sourceRoots,
-      logger: new NullLogger(),
+      const manager = createSourceStateManager({
+        platform: 'tec1g',
+        baseDir: projectRoot,
+        getSourceRoots: () => sourceRoots,
+        logger: new NullLogger(),
+      });
+
+      sourceRoots = [projectRoot];
+      const state = manager.buildState({
+        hexPath,
+        sourceRoots,
+        mapArgs: { artifactBase: 'main', outputDir: 'build' },
+      });
+
+      expect(resolveExecutableLocation(state.mappingIndex, sourcePath, 2)).toEqual([0x4000]);
     });
-
-    sourceRoots = [projectRoot];
-    const state = manager.buildState({
-      hexPath,
-      sourceRoots,
-      mapArgs: { artifactBase: 'main', outputDir: 'build' },
-    });
-
-    expect(resolveExecutableLocation(state.mappingIndex, sourcePath, 2)).toEqual([0x4000]);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });

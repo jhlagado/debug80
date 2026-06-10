@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Source-State Build Options Test Fixture Cleanup
+
+`tests/debug/source-state-build-options.test.ts` now uses local helpers for the
+one file-system-backed source-map fixture. The helper owns temporary project
+creation, recursive cleanup, text-file writes, and minimal D8 map writing, while
+the test itself keeps the source-root mutation and executable-location assertion
+visible.
+
+This is intentionally test-only cleanup. It reduces repeated file setup around
+the source-state helper coverage without changing launch, rebuild, or source-map
+production behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/source-state-build-options.test.ts
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
 ### 2026-06-11: D8 Source-Path Test Fixture Cleanup
 
 `tests/debug/d8-source-paths.test.ts` now uses small local helpers for temporary
