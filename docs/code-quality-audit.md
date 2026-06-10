@@ -4,31 +4,90 @@ This document records the current code-health state of Debug80 and proposes a
 staged cleanup programme. It is intentionally engineering-facing; user-facing
 manual content belongs at [debug80.com](https://debug80.com/).
 
-Audit date: 2026-06-02
+Audit date: 2026-06-02 (last reviewed 2026-06-10)
 
 ## Summary
 
-Debug80 is in a healthy state for a fast-moving pre-release extension: there are
-no circular dependencies, no unused package dependencies reported by Fallow, and
-the major systems now have meaningful test coverage. The main maintainability
-risks are not architectural collapse; they are accumulated branch complexity,
-large composition files, dead exported surface area, and remaining historical
-source-map/cache vocabulary that can obscure the current AZM-only model.
+Debug80 is in a healthy state for a fast-moving pre-release extension (v0.1.22,
+~66k LOC, 214 `src/` files, ~150 test files): there are no circular
+dependencies, no unused package dependencies reported by Fallow, strict
+TypeScript in `src/`, strong multi-OS CI, and an in-repo engineering manual.
+Phases 1–4 of the cleanup programme are complete. The main maintainability risks
+are not architectural collapse; they are accumulated branch complexity in
+recent hot zones, large composition files, webview/backend type-safety
+divergence, dead exported surface area, and remaining historical source-map/cache
+vocabulary that can obscure the current AZM-only model.
 
-The highest-value cleanup is to make the code easier to reason about without
-changing behavior:
+The highest-value cleanup is now to harden the areas that have already regressed
+multiple times — TEC-1G matrix keyboard state, reset/MON-3 RAM policy, and
+launch orchestration — while continuing the Phase 5–7 programme:
 
-1. Remove dead exports and stale artifacts that no longer serve public behavior.
-2. Finish retiring listing/cache concepts from runtime code and committed assets.
-3. Split complex dispatchers and validators into table-driven or smaller helper
-   modules.
-4. Factor duplicated runtime/debug/webview patterns into explicit shared
-   utilities.
-5. Add a small number of regression tests around the areas that have repeatedly
-   regressed: source-map resolution, project selection persistence, launch
-   diagnostics, matrix keyboard focus, and display duty-cycle rendering.
+1. Extract pure state models and add direct unit tests in untested orchestration
+   paths (`launch-sequence.ts`, `io-handlers.ts`).
+2. Incrementally tighten webview TypeScript (`strictNullChecks` per module).
+3. Split launch/project policy and webview boundaries (Phases 5–7).
+4. Remove dead exports and stale artifacts that no longer serve public behavior.
+5. Reduce test harness duplication in oversized integration test files.
 
 ## Recent Updates
+
+### 2026-06-10: Full Code Quality Review (v0.1.22)
+
+A full codebase review was performed with emphasis on the last ~30 commits
+(releases 0.1.17–0.1.22). Findings are integrated throughout this document.
+
+**Recent change concentration.** Almost all recent work clusters around TEC-1G
+matrix keyboard behavior and reset/MON-3 RAM policy:
+
+| Theme | Signal | Key files |
+| ----- | ------ | --------- |
+| Matrix modifier chords (Ctrl/Shift/Fn/Alt) | 10+ fix commits | `matrix-request.ts`, `matrix-ui.ts`, `launch-sequence.ts` |
+| Keyboard capture vs. attachment | 3 commits | `matrix-ui.ts`, `matrix-routing-cue.ts`, `index.ts` |
+| Reset preserves MON-3 monitor RAM | revert/re-apply cycle | `platform-requests.ts`, `provider.ts` |
+| SD SPI / DS1302 DIAG protocol tests | 1 commit | `ds1302.ts`, `sd-spi.test.ts` |
+
+Repeated fix commits on the same matrix/reset surface indicate policy-heavy,
+multi-authority state that is hard to reason about and easy to regress. Tests
+were added alongside fixes (good), but production complexity is mirroring into
+931-line webview test files.
+
+**Critical gaps identified.**
+
+1. **TEC-1G matrix keyboard: fragmented state authority.** Matrix behavior
+   spans `matrix-request.ts`, `launch-sequence.ts`, `provider.ts`, and
+   `matrix-ui.ts` (695 lines) with overlapping mutable state (accordion
+   attachment, keyboard capture, held keys, modifier maps, click-hold timers).
+   The audit's documented invariants are correct, but implementation still
+   spreads rules across closures and side-effect paths rather than a single pure
+   state model.
+
+2. **`launch-sequence.ts` has no direct unit tests.** The ~370-line launch
+   orchestrator was modified in recent matrix tracing work. No test file
+   references `launch-sequence`; coverage relies entirely on adapter
+   integration/e2e tests.
+
+3. **`io-handlers.ts` is an untested god dispatcher.** The 447-line TEC-1G port
+   handler centralizes LCD, GLCD, matrix, SD, RTC, and 7-seg I/O. No dedicated
+   test file; behavior is only indirectly covered via peripheral-specific tests.
+
+4. **Webview TypeScript is deliberately non-strict.** `webview/tsconfig.json`
+   sets `strict: false`, `noImplicitAny: false`, `strictNullChecks: false`,
+   while `src/` enforces strict mode and `@typescript-eslint/no-explicit-any:
+   error`. The type-safety cliff sits exactly where recent bugs occurred.
+
+**Maintainability scorecard (2026-06-10).**
+
+| Dimension | Rating | Notes |
+| --------- | ------ | ----- |
+| Architecture | Strong | Clear layers, plugin platforms, no circular deps |
+| Type safety (`src/`) | Strong | Among strictest extension TS configs |
+| Type safety (webview) | Weak | `strict: false` is the main gap |
+| Test culture | Strong | Layered gates, DIAG-derived protocol tests |
+| Documentation | Strong | Engineering manual + living audit |
+| Complexity management | Moderate | Large files, UI state coupling |
+| Change velocity risk | Moderate–High | Matrix/reset hot zones |
+
+**Recommended immediate next step:** Phase A (stabilize hot zones) below.
 
 ### 2026-06-07: TEC-1G Protocol Regression Depth
 
@@ -86,20 +145,21 @@ Authored code is concentrated in these areas:
 - `webview`: platform panel front-end code and shared webview controls.
 - `tests`: broad unit, webview, mapping, debug, platform, and adapter coverage.
 
-Largest authored source files:
+Largest authored source files (2026-06-10):
 
 | File                                               | Lines | Notes                                                                |
 | -------------------------------------------------- | ----: | -------------------------------------------------------------------- |
 | `webview/common/styles.css`                        |  1019 | Shared UI styling; high visual coupling across platform panels.      |
 | `src/z80/decode-primary.ts`                        |   913 | Decoder table/logic; large but domain-driven.                        |
+| `src/debug/session/runtime-control.ts`             |   736 | Run/step loops; partially refactored (Phase 4 complete).             |
+| `webview/tec1g/matrix-ui.ts`                       |   695 | Matrix UI + input + protocol + rendering; recent regression hotspot. |
 | `src/debug/requests/adapter-request-controller.ts` |   669 | DAP request orchestration; many responsibilities.                    |
 | `src/debug/launch-args.ts`                         |   653 | Config discovery and merge behavior; cross-cutting and hard to scan. |
-| `webview/common/memory-panel.ts`                   |   641 | Memory/register panel UI logic; substantial DOM state handling.      |
-| `src/platforms/tec1/runtime.ts`                    |   585 | TEC-1 runtime; includes some dead exports.                           |
-| `src/debug/session/runtime-control.ts`             |   583 | Run/step/step-out loops; duplicated control flow.                    |
-| `src/z80/decode-helpers.ts`                        |   548 | Instruction helpers; domain complexity.                              |
 | `src/extension/platform-view-provider.ts`          |   543 | Webview provider state and messaging; high fan-out/fan-in.           |
 | `src/debug/launch/config-validation.ts`            |   521 | Repetitive validators; good candidate for helper extraction.         |
+| `src/platforms/tec1g/io-handlers.ts`               |   447 | TEC-1G port dispatcher; no direct unit tests.                        |
+| `webview/common/memory-panel.ts`                   |   446 | Memory panel UI; register strip extracted (Phase 7 progress).        |
+| `src/debug/launch/launch-sequence.ts`              |   369 | Launch orchestration; no direct unit tests.                          |
 
 ## Findings
 
@@ -138,6 +198,77 @@ Required guardrails:
   internals unless the file format itself is being discussed.
 - Keep source-map policy guardrails in tests and in `docs/codebase` aligned with
   runtime behavior.
+
+### P1: TEC-1G Matrix Keyboard State Is Fragmented (Hot Zone)
+
+The matrix keyboard subsystem is the highest regression-risk area as of
+2026-06-10. State authority is split across four layers with overlapping
+mutable state:
+
+- `src/debug/requests/matrix-request.ts` — combo selection, held keys
+- `src/debug/launch/launch-sequence.ts` — matrix trace hooks, session-held keys
+- `src/platforms/tec1g/provider.ts` — hardware attachment, SYS_INPUT
+- `webview/tec1g/matrix-ui.ts` — capture vs. attachment, modifier maps,
+  click-hold timers, LED rendering
+
+The documented invariants (accordion = attachment authority; capture = separate
+focus state; reset reasserts matrix mode) are correct, but implementation still
+spreads these rules across closures and side-effect paths. Recent releases
+0.1.17–0.1.22 required 10+ fix commits on this surface.
+
+Recommended approach:
+
+- Extract a pure `MatrixKeyboardState` module with shared normalization helpers
+  between backend and webview where semantics must align.
+- Test state transitions in isolation before touching DOM or DAP.
+- Keep attachment (hardware state) and capture (host-input focus state) as
+  explicit, separately testable fields — do not re-couple them.
+- Mirror backend modifier/caps semantics from `matrix-request.ts` in webview
+  pure helpers rather than duplicating branch logic in event handlers.
+
+### P1: Launch Orchestration Lacks Direct Unit Tests
+
+`src/debug/launch/launch-sequence.ts` (~370 lines) orchestrates assembly,
+platform resolution, runtime creation, matrix trace setup, and artifact loading.
+It was modified in recent matrix tracing work. As of 2026-06-10, no test file
+references `launch-sequence`; coverage relies entirely on adapter
+integration/e2e tests.
+
+Recommended approach:
+
+- Add `tests/debug/launch-sequence.test.ts` with mocked filesystem, assembler, and
+  platform registry.
+- Cover: missing inputs, artifact resolution, matrix trace flag, platform kind
+  selection.
+
+### P1: TEC-1G IO Handler Lacks Direct Contract Tests
+
+`src/platforms/tec1g/io-handlers.ts` (447 lines) centralizes port reads/writes
+for LCD, GLCD, matrix, SD, RTC, 7-seg, and related peripherals. No dedicated
+test file exists; behavior is only indirectly covered via peripheral-specific
+tests. Adding or changing one peripheral can break unrelated ports.
+
+Recommended approach:
+
+- Add `tests/platforms/tec1g/io-handlers.test.ts` with one describe block per
+  port family (keyboard, matrix, SYS_CTRL, SD, RTC).
+- Keep the port handler as a dispatch surface; move device-specific behavior
+  into device adapters over time.
+
+### P1: Webview TypeScript Is Non-Strict
+
+`webview/tsconfig.json` sets `strict: false`, `noImplicitAny: false`, and
+`strictNullChecks: false`, while `src/` enforces strict mode and ESLint
+`@typescript-eslint/no-explicit-any: error`. ESLint also relaxes most
+type-checking rules for webview. This is a deliberate tradeoff, but it creates a
+type-safety cliff exactly where recent bugs occurred (matrix UI, routing cues,
+visibility).
+
+Recommended approach:
+
+- Incrementally enable `strictNullChecks` in webview, one module at a time,
+  starting with `matrix-ui.ts`.
+- Do not flip the whole webview at once.
 
 ### P1: Complex Dispatchers Need Smaller Units
 
@@ -283,8 +414,10 @@ Recommended approach:
 ### P2: TEC-1G Peripheral Code Is Improving But Needs Protocol Boundaries
 
 Recent work improved SD SPI, RTC, matrix keyboard, display scanning, and
-CoolTerm behavior. The code now has good low-level tests, but `io-handlers.ts`
-still centralizes many unrelated port behaviors.
+CoolTerm behavior. The code now has good low-level tests (including DIAG-derived
+SD SPI and DS1302 RTC protocol coverage), but `io-handlers.ts` still
+centralizes many unrelated port behaviors and lacks direct contract tests (see
+P1 above).
 
 Recommended approach:
 
@@ -295,16 +428,43 @@ Recommended approach:
 - For future Storage/RTC/Joystick UI accordions, add runtime state queries before
   building UI so panels can be tested independently from DOM rendering.
 
+### P2: Coverage Gate Excludes Substantial Core Paths
+
+`vitest.config.ts` excludes from the 80% threshold: entire Z80 core
+(`cpu.ts`, `runtime.ts`, `decode.ts`), platform runtimes (`tec1/runtime.ts`,
+`tec1g/runtime.ts`), extension entrypoints (`extension.ts`, `commands.ts`,
+`platform-view-provider.ts`), and the DAP session (`adapter.ts`). This is honest
+and documented, but `npm run coverage` can pass while core execution paths are
+integration-tested only.
+
+Recommended approach:
+
+- Re-evaluate whether `z80/runtime.ts` can accept partial unit coverage.
+- Keep exclusions documented; do not treat the 80% gate as full-core coverage.
+
 ### P3: Tests Are Strong But Heavy And Duplicated
 
-The test suite is broad, which is a strength. The downside is duplicated fixture
-setup in integration-style tests:
+The test suite is broad, which is a strength (~150 test files, layered gates:
+unit, webview contracts, adapter E2E, VS Code smoke, package verify). Recent
+hot zones have excellent targeted coverage (`matrix-request.test.ts`,
+`tec1g-matrix-ui.test.ts`, `platform-requests.test.ts`). The downside is
+duplicated fixture setup and test files that mirror production complexity:
 
-- `tests/extension/commands.test.ts`
-- `tests/extension/platform-view-provider.test.ts`
-- `tests/debug/adapter-integration.test.ts`
-- `tests/debug/runtime-control.test.ts`
-- Webview panel tests
+| Test file | Lines | Concern |
+| --------- | ----: | ------- |
+| `tests/extension/commands.test.ts` | 1703 | Repeated VS Code mock setup |
+| `tests/extension/platform-view-provider.test.ts` | 1021 | Large integration harness |
+| `tests/webview/tec1g-matrix-ui.test.ts` | 931 | Mirrors matrix-ui complexity |
+
+**Coverage gaps (2026-06-10):**
+
+| Area | Status |
+| ---- | ------ |
+| `launch-sequence.ts` | No direct unit tests |
+| `io-handlers.ts` | No direct unit tests |
+| `auto-rebuild.ts` | Only referenced in cross-layer contract test |
+| Z80 `cpu.ts` / core execution | Excluded from coverage; adapter/runtime tests only |
+| Webview `tec1g/index.ts` composition root | Partially covered via integration-style tests |
 
 Recommended approach:
 
@@ -327,6 +487,36 @@ Completed fixture cleanup:
   test-specific behavior coverage rather than repeated harness setup.
 
 ## Proposed Cleanup Programme
+
+Phases 1–4 are complete. Phases 5–7 remain. Phase A (hot-zone stabilization)
+is the recommended immediate next step based on the 2026-06-10 review.
+
+### Phase A: Stabilize Hot Zones (Highest ROI)
+
+Goal: reduce matrix/reset/launch regression risk without UX changes.
+
+Candidate work:
+
+- Extract pure `MatrixKeyboardState` helpers from `webview/tec1g/matrix-ui.ts`
+  — modifier normalization, click-hold timing, capture vs. attachment routing.
+  Mirror backend semantics from `matrix-request.ts` where they must align.
+- Add `tests/debug/launch-sequence.test.ts` — mock filesystem, assembler,
+  platform registry; cover missing inputs, artifact resolution, matrix trace
+  flag, platform kind selection.
+- Add `tests/platforms/tec1g/io-handlers.test.ts` — one describe block per port
+  family (keyboard, matrix, SYS_CTRL, SD, RTC).
+- Centralize `TEC1G_MON3_MONITOR_RAM_START/END` as a single source of truth and
+  name reset policy explicitly in tests: reload program bytes, preserve monitor
+  RAM `0x0800..0x0fff`, reset devices, reassert matrix attachment.
+
+Verification:
+
+```sh
+npm run typecheck && npm run typecheck:webview
+npm test -- tests/debug/launch-sequence.test.ts tests/platforms/tec1g/io-handlers.test.ts
+npm run test:webview -- tests/webview/tec1g-matrix-ui.test.ts
+npm test -- tests/debug/platform-requests.test.ts tests/platforms/provider.test.ts
+```
 
 ### Phase 1: Remove Confirmed Dead Surface
 
@@ -511,22 +701,21 @@ Design risks to look for before changing code:
 
 Findings from the latest UI audit:
 
-- `webview/common/memory-panel.ts` is the largest common webview module. It
-  combines anchor resolution, symbol lookup, register rendering, memory dump
-  rendering, edit validation, readonly-memory policy, and refresh messaging.
-  The design issue is not just size: Registers and Memory are now separate
-  accordion concepts, but they are still controlled by one class with shared
-  refresh/edit state. That makes it harder to reason about which panel owns
-  which snapshot request and which edits are valid while the debug session is
-  running.
-- `webview/tec1g/matrix-ui.ts` is a recent hotspot. It combines RGB matrix
-  rendering, keyboard layout construction, modifier state, caps-lock behavior,
-  mouse events, physical keyboard routing, and message posting. The design
-  issue is that host keyboard capture, MON-3 Matrix CONFIG mode, and raw matrix
-  key state are coordinated by accordion visibility. The next cleanup should
-  still introduce a `MatrixKeyboardState` / `MatrixKeyEvent` model so
-  modifier/caps behavior and routing decisions can be tested without relying on
-  DOM focus accidents.
+- `webview/common/memory-panel.ts` (446 lines after register-strip extraction)
+  still combines anchor resolution, symbol lookup, memory dump rendering, edit
+  validation, readonly-memory policy, and refresh messaging. Register rendering
+  now lives in `register-panel.ts`, but memory and register panels still share
+  refresh coordination through `MemoryPanel`. Further split of memory-only
+  subcontroller state is lower priority than matrix keyboard work.
+- `webview/tec1g/matrix-ui.ts` (695 lines) remains the highest-priority UI
+  hotspot. It combines RGB matrix rendering, keyboard layout construction,
+  modifier state, caps-lock behavior, mouse events, physical keyboard routing,
+  and message posting. Attachment (accordion/MON-3 Matrix CONFIG) and capture
+  (host-input focus) are now separate concepts (see Latest Goal Note below),
+  but state is still spread across closures rather than a pure
+  `MatrixKeyboardState` / `MatrixKeyEvent` model. The next cleanup should
+  extract pure helpers so modifier/caps behavior and routing decisions can be
+  tested without DOM focus accidents.
 - `webview/common/accordion-layout.ts` owns persisted open state, panel order,
   provider tab compatibility, memory row sizing, register auto-refresh, and
   matrix-mode lifecycle notification. The design issue is that one controller
@@ -741,11 +930,27 @@ Avoid cleanup that:
 
 ## Suggested First Goal
 
-Start with Phase 1 and Phase 2 together because they are related and low-risk:
+Phases 1–4 are complete. Start with **Phase A** (stabilize hot zones):
 
-> Keep `.debug80/cache` artifacts out of the repository, remove confirmed dead
-> exports, document the source-map fallback policy, and add regression tests that
-> ensure Debug80 only uses native AZM source maps from build/bundled outputs.
+> Extract pure matrix keyboard state helpers, add direct unit tests for
+> `launch-sequence.ts` and `io-handlers.ts`, and lock reset/MON-3 RAM policy
+> with explicit constants and test naming — all without changing user-visible
+> behavior.
 
-That goal should produce a small PR with clear verification and minimal product
-behavior change.
+Follow with Phase 1 dead-export cleanup and Phase 5 launch/project policy split
+as separate PRs. Each phase should produce clear verification and minimal
+product behavior change.
+
+## Priority Summary (2026-06-10)
+
+| Priority | Issue | Primary files |
+| -------- | ----- | ------------- |
+| Critical | Matrix keyboard multi-authority state | `matrix-ui.ts`, `matrix-request.ts`, `accordion-layout.ts`, `launch-sequence.ts` |
+| Critical | Launch orchestration untested directly | `src/debug/launch/launch-sequence.ts` |
+| Critical | IO dispatcher untested directly | `src/platforms/tec1g/io-handlers.ts` |
+| Critical | Webview non-strict TypeScript | `webview/tsconfig.json`, `matrix-ui.ts` |
+| Medium | Large orchestration files | `adapter-request-controller.ts`, `launch-args.ts`, `runtime-control.ts` |
+| Medium | Launch policy spread | `launch-args.ts`, `config-validation.ts`, `target-commands.ts` |
+| Medium | Bloated test files | `commands.test.ts`, `tec1g-matrix-ui.test.ts` |
+| Medium | Coverage exclusions mask core | `vitest.config.ts` |
+| Low | Dead exports, CSS monolith, magic numbers | per Fallow list, `styles.css`, `matrix-ui.ts` |
