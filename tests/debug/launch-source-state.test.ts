@@ -14,6 +14,21 @@ import { resolveExecutableLocation } from '../../src/mapping/source-map';
 import type { Logger } from '../../src/util/logger';
 import { NullLogger } from '../../src/util/logger';
 
+type D8MapFiles = Record<
+  string,
+  {
+    segments?: Array<Record<string, unknown>>;
+    symbols?: Array<Record<string, unknown>>;
+  }
+>;
+
+interface LaunchProjectFixture {
+  projectRoot: string;
+  sourcePath: string;
+  hexPath: string;
+  buildMapPath: string;
+}
+
 vi.mock('vscode', () => ({
   workspace: {
     workspaceFolders: [],
@@ -27,102 +42,91 @@ describe('launch-source-state', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('indexes AZM project-relative D8 file keys for source breakpoints', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-source-'));
+  const createProjectFixture = (
+    prefix: string,
+    sourceRelativePath: string,
+    artifactBase: string
+  ): LaunchProjectFixture => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
     const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'pacmo', 'pacmo.z80');
-    const hexPath = path.join(projectRoot, 'build', 'pacmo.hex');
-    const d8Path = path.join(projectRoot, 'build', 'pacmo.d8.json');
+    const sourcePath = path.join(projectRoot, sourceRelativePath);
+    const hexPath = path.join(projectRoot, 'build', `${artifactBase}.hex`);
+    const buildMapPath = path.join(projectRoot, 'build', `${artifactBase}.d8.json`);
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      d8Path,
-      `${JSON.stringify(
-        {
-          format: 'd8-debug-map',
-          version: 1,
-          arch: 'z80',
-          addressWidth: 16,
-          endianness: 'little',
-          files: {
-            'src/pacmo/pacmo.z80': {
-              segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
-              symbols: [{ name: 'START', kind: 'label', address: 0x4000, line: 2 }],
-            },
-          },
-          generator: { name: 'azm', tool: 'azm', version: '0.1.1' },
+    writeTextFile(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
+    writeTextFile(hexPath, ':00000001FF\n');
+
+    return { projectRoot, sourcePath, hexPath, buildMapPath };
+  };
+
+  const buildFixtureSourceState = (
+    fixture: LaunchProjectFixture,
+    args: LaunchRequestArguments,
+    logger: Logger = new NullLogger()
+  ) => {
+    return buildLaunchSourceState(
+      args,
+      'tec1g',
+      fixture.projectRoot,
+      fixture.sourcePath,
+      fixture.hexPath,
+      new SourceStateManager(),
+      createSessionState(),
+      logger
+    );
+  };
+
+  it('indexes AZM project-relative D8 file keys for source breakpoints', () => {
+    const fixture = createProjectFixture(
+      'debug80-launch-source-',
+      path.join('src', 'pacmo', 'pacmo.z80'),
+      'pacmo'
+    );
+    writeD8Map(
+      fixture.buildMapPath,
+      {
+        'src/pacmo/pacmo.z80': {
+          segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
+          symbols: [{ name: 'START', kind: 'label', address: 0x4000, line: 2 }],
         },
-        null,
-        2
-      )}\n`
+      },
+      { name: 'azm', tool: 'azm', version: '0.1.1' }
     );
 
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
+    const result = buildFixtureSourceState(
+      fixture,
       { sourceRoots: ['src'], artifactBase: 'pacmo' } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
       new NullLogger()
     );
 
-    expect(resolveExecutableLocation(result.mappingIndex, sourcePath, 3)).toEqual([0x4000]);
+    expect(resolveExecutableLocation(result.mappingIndex, fixture.sourcePath, 3)).toEqual([0x4000]);
   });
 
   it('indexes bundled MON3 D8 file keys for ROM breakpoints', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-rom-source-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const hexPath = path.join(projectRoot, 'build', 'main.hex');
-    const d8Path = path.join(projectRoot, 'build', 'main.d8.json');
+    const fixture = createProjectFixture(
+      'debug80-launch-rom-source-',
+      path.join('src', 'main.asm'),
+      'main'
+    );
     const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     const mon3SourcePath = path.join(bundleRoot, 'mon3.z80');
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'ORG 4000h\nSTART:\n  NOP\n');
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      d8Path,
-      `${JSON.stringify(
-        {
-          format: 'd8-debug-map',
-          version: 1,
-          arch: 'z80',
-          addressWidth: 16,
-          endianness: 'little',
-          files: {
-            'src/main.asm': {
-              segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
-            },
-            [mon3SourcePath]: {
-              segments: [{ start: 0xc100, end: 0xc101, lstLine: 302, line: 302, kind: 'code' }],
-            },
-          },
-          generator: { name: 'azm', tool: 'azm', version: '0.2.5' },
+    writeD8Map(
+      fixture.buildMapPath,
+      {
+        'src/main.asm': {
+          segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 3, kind: 'code' }],
         },
-        null,
-        2
-      )}\n`
+        [mon3SourcePath]: {
+          segments: [{ start: 0xc100, end: 0xc101, lstLine: 302, line: 302, kind: 'code' }],
+        },
+      },
+      { name: 'azm', tool: 'azm', version: '0.2.5' }
     );
 
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
+    const result = buildFixtureSourceState(
+      fixture,
       { sourceRoots: ['src'], artifactBase: 'main', outputDir: 'build' } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
       new NullLogger()
     );
 
@@ -130,47 +134,25 @@ describe('launch-source-state', () => {
   });
 
   it('reads source-map symbols from the build artifact', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-symbols-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'pacmo.z80');
-    const hexPath = path.join(projectRoot, 'build', 'pacmo.hex');
-    const buildMapPath = path.join(projectRoot, 'build', 'pacmo.d8.json');
-
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'START:\n  NOP\nWIDTH .equ 32\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      buildMapPath,
-      JSON.stringify({
-        format: 'd8-debug-map',
-        version: 1,
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        files: {
-          'src/pacmo.z80': {
-            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
-            symbols: [
-              { name: 'START', kind: 'label', address: 0x4000, line: 1 },
-              { name: 'WIDTH', kind: 'constant', value: 32, line: 3 },
-            ],
-          },
-        },
-        generator: { name: 'azm' },
-      })
+    const fixture = createProjectFixture(
+      'debug80-launch-symbols-',
+      path.join('src', 'pacmo.z80'),
+      'pacmo'
     );
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
-      { artifactBase: 'pacmo', outputDir: 'build' } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
-      new NullLogger()
+    writeTextFile(fixture.sourcePath, 'START:\n  NOP\nWIDTH .equ 32\n');
+    writeD8Map(fixture.buildMapPath, {
+      'src/pacmo.z80': {
+        segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+        symbols: [
+          { name: 'START', kind: 'label', address: 0x4000, line: 1 },
+          { name: 'WIDTH', kind: 'constant', value: 32, line: 3 },
+        ],
+      },
+    });
+
+    const result = buildFixtureSourceState(
+      fixture,
+      { artifactBase: 'pacmo', outputDir: 'build' } as LaunchRequestArguments
     );
 
     expect(result.sourceMapSymbols.some((symbol) => symbol.name === 'WIDTH')).toBe(true);
@@ -178,14 +160,20 @@ describe('launch-source-state', () => {
   });
 
   it('resolves local ROM D8 file keys through source roots, not the map directory', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-local-rom-source-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const hexPath = path.join(projectRoot, 'build', 'main.hex');
-    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
-    const localRomSourcePath = path.join(projectRoot, 'roms', 'tec1g', 'mon3', 'mon3.z80');
+    const fixture = createProjectFixture(
+      'debug80-launch-local-rom-source-',
+      path.join('src', 'main.asm'),
+      'main'
+    );
+    const localRomSourcePath = path.join(
+      fixture.projectRoot,
+      'roms',
+      'tec1g',
+      'mon3',
+      'mon3.z80'
+    );
     const localRomMapPath = path.join(
-      projectRoot,
+      fixture.projectRoot,
       'build',
       'roms',
       'tec1g',
@@ -193,102 +181,54 @@ describe('launch-source-state', () => {
       'mon3.d8.json'
     );
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(localRomSourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.mkdirSync(path.dirname(localRomMapPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'START:\n  NOP\n');
-    fs.writeFileSync(localRomSourcePath, 'Boot:\n  nop\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      buildMapPath,
-      JSON.stringify({
-        format: 'd8-debug-map',
-        version: 1,
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        files: {
-          'src/main.asm': {
-            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
-          },
-        },
-        generator: { name: 'azm' },
-      })
-    );
-    fs.writeFileSync(
-      localRomMapPath,
-      JSON.stringify({
-        format: 'd8-debug-map',
-        version: 1,
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        files: {
-          'roms/tec1g/mon3/mon3.z80': {
-            segments: [{ start: 0x0000, end: 0x0001, lstLine: 1, line: 2, kind: 'code' }],
-            symbols: [{ name: 'Boot', kind: 'label', address: 0x0000, line: 1 }],
-          },
-        },
-        generator: { name: 'azm' },
-      })
-    );
+    writeTextFile(localRomSourcePath, 'Boot:\n  nop\n');
+    writeD8Map(fixture.buildMapPath, {
+      'src/main.asm': {
+        segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+      },
+    });
+    writeD8Map(localRomMapPath, {
+      'roms/tec1g/mon3/mon3.z80': {
+        segments: [{ start: 0x0000, end: 0x0001, lstLine: 1, line: 2, kind: 'code' }],
+        symbols: [{ name: 'Boot', kind: 'label', address: 0x0000, line: 1 }],
+      },
+    });
 
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
+    const result = buildFixtureSourceState(
+      fixture,
       {
         sourceRoots: ['src', 'roms/tec1g/mon3'],
         artifactBase: 'main',
         outputDir: 'build',
         debugMaps: [localRomMapPath],
-      } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
-      new NullLogger()
+      } as LaunchRequestArguments
     );
 
     const localRomSourceSuffix = ['roms', 'tec1g', 'mon3', 'mon3.z80'].join('/');
-    const toPortablePath = (value: string) => value.replace(/\\/g, '/');
     expect(result.romSourcePaths.map(toPortablePath)).toContainEqual(
       expect.stringContaining(localRomSourceSuffix)
     );
     expect(result.autoOpenRomSourcePaths.map(toPortablePath)).toContainEqual(
       expect.stringContaining(localRomSourceSuffix)
     );
-    expect(toPortablePath(result.sourceMapSymbols.find((symbol) => symbol.name === 'Boot')?.file ?? '')).toContain(
-      localRomSourceSuffix
-    );
+    expect(
+      toPortablePath(result.sourceMapSymbols.find((symbol) => symbol.name === 'Boot')?.file ?? '')
+    ).toContain(localRomSourceSuffix);
   });
 
   it('logs a warning and returns no symbols when the build D8 cannot be parsed', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-bad-symbol-map-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const hexPath = path.join(projectRoot, 'build', 'main.hex');
-    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
+    const fixture = createProjectFixture(
+      'debug80-launch-bad-symbol-map-',
+      path.join('src', 'main.asm'),
+      'main'
+    );
     const logger = new RecordingLogger();
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'START:\n  NOP\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(buildMapPath, '{not valid JSON');
+    writeD8Text(fixture.buildMapPath, '{not valid JSON');
 
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
+    const result = buildFixtureSourceState(
+      fixture,
       { artifactBase: 'main', outputDir: 'build' } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
       logger
     );
 
@@ -299,50 +239,29 @@ describe('launch-source-state', () => {
   });
 
   it('logs unreadable auxiliary D8 maps while keeping symbols from the build artifact', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-missing-aux-symbol-map-'));
-    const projectRoot = path.join(tmpDir, 'project');
-    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
-    const hexPath = path.join(projectRoot, 'build', 'main.hex');
-    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
-    const missingAuxMapPath = path.join(projectRoot, 'build', 'roms', 'missing.d8.json');
+    const fixture = createProjectFixture(
+      'debug80-launch-missing-aux-symbol-map-',
+      path.join('src', 'main.asm'),
+      'main'
+    );
+    const missingAuxMapPath = path.join(fixture.projectRoot, 'build', 'roms', 'missing.d8.json');
     const logger = new RecordingLogger();
 
-    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'Main:\n  NOP\n');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(
-      buildMapPath,
-      JSON.stringify({
-        format: 'd8-debug-map',
-        version: 1,
-        arch: 'z80',
-        addressWidth: 16,
-        endianness: 'little',
-        files: {
-          'src/main.asm': {
-            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
-            symbols: [{ name: 'Main', kind: 'label', address: 0x4000, line: 1 }],
-          },
-        },
-        generator: { name: 'azm' },
-      })
-    );
+    writeTextFile(fixture.sourcePath, 'Main:\n  NOP\n');
+    writeD8Map(fixture.buildMapPath, {
+      'src/main.asm': {
+        segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+        symbols: [{ name: 'Main', kind: 'label', address: 0x4000, line: 1 }],
+      },
+    });
 
-    const sourceState = new SourceStateManager();
-    const sessionState = createSessionState();
-    const result = buildLaunchSourceState(
+    const result = buildFixtureSourceState(
+      fixture,
       {
         artifactBase: 'main',
         outputDir: 'build',
         debugMaps: [missingAuxMapPath],
       } as LaunchRequestArguments,
-      'tec1g',
-      projectRoot,
-      sourcePath,
-      hexPath,
-      sourceState,
-      sessionState,
       logger
     );
 
@@ -354,6 +273,42 @@ describe('launch-source-state', () => {
     );
   });
 });
+
+function writeTextFile(filePath: string, contents: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
+function writeD8Text(filePath: string, contents: string): void {
+  writeTextFile(filePath, contents);
+}
+
+function writeD8Map(
+  filePath: string,
+  files: D8MapFiles,
+  generator: Record<string, string> = { name: 'azm' }
+): void {
+  writeD8Text(
+    filePath,
+    `${JSON.stringify(
+      {
+        format: 'd8-debug-map',
+        version: 1,
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        files,
+        generator,
+      },
+      null,
+      2
+    )}\n`
+  );
+}
+
+function toPortablePath(value: string): string {
+  return value.replace(/\\/g, '/');
+}
 
 class RecordingLogger implements Logger {
   public readonly warns: string[] = [];

@@ -33,6 +33,32 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch Source-State Test Fixture Cleanup
+
+`tests/debug/launch-source-state.test.ts` now uses small local fixtures for the
+repeated source-map launch setup. The cleanup keeps the behavior assertions and
+D8 map contents visible in each test while sharing the boilerplate for:
+
+- creating throwaway project roots, source files, hex artifacts, and build-map
+  paths;
+- writing minimal D8 maps with the standard header fields;
+- invoking `buildLaunchSourceState` with fresh source/session state.
+
+The focused tests still cover project-relative user sources, bundled MON-3 ROM
+sources, build-artifact symbols, local project ROM maps, malformed build maps,
+and unreadable auxiliary maps. This is intentionally test-only cleanup; it does
+not touch production launch behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-source-state.test.ts
+npm run typecheck
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow now exits cleanly for the changed launch-source-state test file.
+
 ### 2026-06-11: Shared Auxiliary D8 Map Collection
 
 `src/debug/launch/launch-source-state.ts` now shares the best-effort auxiliary
