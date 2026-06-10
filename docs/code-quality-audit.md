@@ -1479,6 +1479,32 @@ duplication around artifact writing and assemble/assembleBin result handling.
 Treat it as build-critical: add characterization tests around emitted artifacts
 and failure diagnostics before extracting anything.
 
+### Latest Goal Note: AZM Backend Artifact Helper Extraction
+
+`src/debug/launch/azm-backend.ts` now centralizes the repeated AZM module-load,
+compile-result conversion, required-artifact lookup, and optional text-artifact
+writing logic used by HEX and BIN assembly paths. The refactor keeps the same
+AZM compile options, output artifact paths, and failure message prefixes
+(`azm failed:` and `azm bin failed:`), but removes the duplicated inline
+load/catch/diagnostic/result handling from the two public methods.
+
+`tests/debug/azm-backend.test.ts` now characterizes both register-contract
+side artifacts from AZM: `.regcontracts.txt` and `.asmi`. That locks down the
+artifact-writing behavior before future register-contract integration work.
+
+Changed-file Fallow no longer reports production duplication in
+`azm-backend.ts`. Remaining changed-file warnings are inherited test setup
+clones and the existing `compactBinaryFromEmittedMap` complexity warning, which
+is a better future target only if binary-range behavior is characterized first.
+
+Verification for this goal covered the focused AZM backend tests, TypeScript,
+lint, changed-file Fallow, and the full `package:check` gate.
+
+Next safe cleanup candidate: audit the inherited duplication in
+`tests/debug/azm-backend.test.ts` and extract only local fixture helpers that
+make artifact setup clearer. Keep this test-only; avoid further build-path
+production changes until a new behavior goal requires them.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

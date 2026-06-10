@@ -92,6 +92,11 @@ type AzmModules = {
 
 type CompileSuccess = { success: true; artifacts: Artifact[] };
 type CompileOutcome = AssembleResult | CompileSuccess;
+type LoadAzmFailure = { success: false; result: AssembleResult };
+type LoadAzmResult = { success: true; modules: AzmModules } | LoadAzmFailure;
+type RequiredArtifactResult<K extends Artifact['kind']> =
+  | { ok: true; artifact: Extract<Artifact, { kind: K }> }
+  | { ok: false; result: AssembleResult };
 
 async function loadAzmModules(): Promise<AzmModules> {
   const { compile, defaultFormatWriters } =
@@ -225,6 +230,18 @@ function resolveRegisterContractsReportPath(hexPath: string): string {
   return `${artifactBase(hexPath)}.regcontracts.txt`;
 }
 
+async function loadAzmModulesForAssembly(
+  onOutput: AssembleOptions['onOutput']
+): Promise<LoadAzmResult> {
+  try {
+    return { success: true, modules: await loadAzmModules() };
+  } catch (err) {
+    const message = `azm library failed to load: ${err instanceof Error ? err.message : String(err)}`;
+    onOutput?.(`${message}\n`);
+    return { success: false, result: azmFailure(message) };
+  }
+}
+
 function compactBinaryFromEmittedMap(map: EmittedByteMap, from = 0x0000, to = 0xffff): Uint8Array {
   const bytes = new Map<number, number>();
   let min = Number.POSITIVE_INFINITY;
@@ -292,6 +309,57 @@ function isCompileSuccess(result: CompileOutcome): result is CompileSuccess {
   return result.success === true && 'artifacts' in result;
 }
 
+function requireArtifact<K extends Artifact['kind']>(
+  artifacts: Artifact[],
+  kind: K,
+  label: string,
+  asmPath: string
+): RequiredArtifactResult<K> {
+  const artifact = findArtifact(artifacts, kind);
+  if (artifact === undefined) {
+    return {
+      ok: false,
+      result: azmFailure(`azm succeeded but did not produce ${label} output for "${asmPath}".`),
+    };
+  }
+  return { ok: true, artifact };
+}
+
+function writeOptionalTextArtifact(
+  artifacts: Artifact[],
+  kind: 'register-contracts-report' | 'register-contracts-interface',
+  filePath: string
+): void {
+  const artifact = findArtifact(artifacts, kind);
+  if (artifact !== undefined) {
+    writeTextArtifact(filePath, artifact.text);
+  }
+}
+
+function compileOutcome(
+  compiled: { diagnostics: Diagnostic[]; artifacts: Artifact[] },
+  sourceRoot: string | undefined,
+  onOutput: AssembleOptions['onOutput']
+): CompileOutcome {
+  emitDiagnostics(compiled.diagnostics, onOutput);
+  return compileResultToAssembleResult(compiled.diagnostics, compiled.artifacts, sourceRoot);
+}
+
+async function runAzmCompile(
+  compileTask: () => Promise<{ diagnostics: Diagnostic[]; artifacts: Artifact[] }>,
+  sourceRoot: string | undefined,
+  onOutput: AssembleOptions['onOutput'],
+  failurePrefix: string
+): Promise<CompileOutcome> {
+  try {
+    return compileOutcome(await compileTask(), sourceRoot, onOutput);
+  } catch (err) {
+    const message = `${failurePrefix}: ${err instanceof Error ? err.message : String(err)}`;
+    onOutput?.(`${message}\n`);
+    return azmFailure(message);
+  }
+}
+
 export class AzmBackend implements AssemblerBackend {
   public readonly id = 'azm';
 
@@ -301,56 +369,52 @@ export class AzmBackend implements AssemblerBackend {
     const sourceRoot = options.sourceRoot ?? path.dirname(options.asmPath);
     fs.mkdirSync(outDir, { recursive: true });
 
-    let modules: AzmModules;
-    try {
-      modules = await loadAzmModules();
-    } catch (err) {
-      const message = `azm library failed to load: ${err instanceof Error ? err.message : String(err)}`;
-      options.onOutput?.(`${message}\n`);
-      return azmFailure(message);
+    const loaded = await loadAzmModulesForAssembly(options.onOutput);
+    if (!loaded.success) {
+      return loaded.result;
     }
+    const { modules } = loaded;
 
-    let result: CompileOutcome;
-    try {
-      const compiled = await modules.compile(
-        options.asmPath,
-        {
-          outputType: 'hex',
-          emitBin: true,
-          emitHex: true,
-          emitD8m: true,
-          sourceRoot,
-          ...(options.azm ?? {}),
-          d8mInputs: {
-            hex: options.hexPath,
-            bin: binPath,
+    const result = await runAzmCompile(
+      () =>
+        modules.compile(
+          options.asmPath,
+          {
+            outputType: 'hex',
+            emitBin: true,
+            emitHex: true,
+            emitD8m: true,
+            sourceRoot,
+            ...(options.azm ?? {}),
+            d8mInputs: {
+              hex: options.hexPath,
+              bin: binPath,
+            },
           },
-        },
-        { formats: modules.defaultFormatWriters }
-      );
-      emitDiagnostics(compiled.diagnostics, options.onOutput);
-      result = compileResultToAssembleResult(compiled.diagnostics, compiled.artifacts, sourceRoot);
-    } catch (err) {
-      const message = `azm failed: ${err instanceof Error ? err.message : String(err)}`;
-      options.onOutput?.(`${message}\n`);
-      return azmFailure(message);
-    }
+          { formats: modules.defaultFormatWriters }
+        ),
+      sourceRoot,
+      options.onOutput,
+      'azm failed'
+    );
 
     if (!isCompileSuccess(result)) {
       return result;
     }
 
     const artifacts = result.artifacts;
-    const hex = findArtifact(artifacts, 'hex');
-    if (hex === undefined) {
-      return azmFailure(`azm succeeded but did not produce HEX output for "${options.asmPath}".`);
+    const hexResult = requireArtifact(artifacts, 'hex', 'HEX', options.asmPath);
+    if (!hexResult.ok) {
+      return hexResult.result;
     }
+    const hex = hexResult.artifact;
 
     const base = artifactBase(options.hexPath);
-    const d8 = findArtifact(artifacts, 'd8m');
-    if (d8 === undefined) {
-      return azmFailure(`azm succeeded but did not produce D8 output for "${options.asmPath}".`);
+    const d8Result = requireArtifact(artifacts, 'd8m', 'D8', options.asmPath);
+    if (!d8Result.ok) {
+      return d8Result.result;
     }
+    const d8 = d8Result.artifact;
 
     if (!hasIntelHexDataRecords(hex.text)) {
       return azmFailure(`azm succeeded but produced no HEX data records for "${options.asmPath}".`);
@@ -365,18 +429,12 @@ export class AzmBackend implements AssemblerBackend {
 
     writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8.json);
 
-    const registerContractsReport = findArtifact(artifacts, 'register-contracts-report');
-    if (registerContractsReport !== undefined) {
-      writeTextArtifact(
-        resolveRegisterContractsReportPath(options.hexPath),
-        registerContractsReport.text
-      );
-    }
-
-    const registerContractsInterface = findArtifact(artifacts, 'register-contracts-interface');
-    if (registerContractsInterface !== undefined) {
-      writeTextArtifact(`${base}.asmi`, registerContractsInterface.text);
-    }
+    writeOptionalTextArtifact(
+      artifacts,
+      'register-contracts-report',
+      resolveRegisterContractsReportPath(options.hexPath)
+    );
+    writeOptionalTextArtifact(artifacts, 'register-contracts-interface', `${base}.asmi`);
 
     return {
       success: true,
@@ -385,54 +443,46 @@ export class AzmBackend implements AssemblerBackend {
   }
 
   public async assembleBin(options: AssembleBinOptions): Promise<AssembleResult> {
-    let modules: AzmModules;
-    try {
-      modules = await loadAzmModules();
-    } catch (err) {
-      const message = `azm library failed to load: ${err instanceof Error ? err.message : String(err)}`;
-      options.onOutput?.(`${message}\n`);
-      return azmFailure(message);
+    const loaded = await loadAzmModulesForAssembly(options.onOutput);
+    if (!loaded.success) {
+      return loaded.result;
     }
+    const { modules } = loaded;
 
-    let result: CompileOutcome;
-    try {
-      const formats = withRangedBinaryWriter(
-        modules.defaultFormatWriters,
-        options.binFrom,
-        options.binTo
-      );
-      const compiled = await modules.compile(
-        options.asmPath,
-        {
-          outputType: 'bin',
-          emitBin: true,
-          emitHex: false,
-          emitD8m: false,
-          ...(options.azm ?? {}),
-          ...(options.sourceRoot !== undefined ? { sourceRoot: options.sourceRoot } : {}),
-        },
-        { formats }
-      );
-      emitDiagnostics(compiled.diagnostics, options.onOutput);
-      result = compileResultToAssembleResult(
-        compiled.diagnostics,
-        compiled.artifacts,
-        options.sourceRoot
-      );
-    } catch (err) {
-      const message = `azm bin failed: ${err instanceof Error ? err.message : String(err)}`;
-      options.onOutput?.(`${message}\n`);
-      return azmFailure(message);
-    }
+    const result = await runAzmCompile(
+      () => {
+        const formats = withRangedBinaryWriter(
+          modules.defaultFormatWriters,
+          options.binFrom,
+          options.binTo
+        );
+        return modules.compile(
+          options.asmPath,
+          {
+            outputType: 'bin',
+            emitBin: true,
+            emitHex: false,
+            emitD8m: false,
+            ...(options.azm ?? {}),
+            ...(options.sourceRoot !== undefined ? { sourceRoot: options.sourceRoot } : {}),
+          },
+          { formats }
+        );
+      },
+      options.sourceRoot,
+      options.onOutput,
+      'azm bin failed'
+    );
 
     if (!isCompileSuccess(result)) {
       return result;
     }
 
-    const bin = findArtifact(result.artifacts, 'bin');
-    if (bin === undefined) {
-      return azmFailure(`azm succeeded but did not produce BIN output for "${options.asmPath}".`);
+    const binResult = requireArtifact(result.artifacts, 'bin', 'BIN', options.asmPath);
+    if (!binResult.ok) {
+      return binResult.result;
     }
+    const bin = binResult.artifact;
 
     writeBinaryArtifact(resolveBinPath(options.hexPath), bin.bytes);
     return { success: true };

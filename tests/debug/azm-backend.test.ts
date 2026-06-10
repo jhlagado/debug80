@@ -107,7 +107,7 @@ describe('azm-backend', () => {
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
   });
 
-  it('passes AZM register contracts launch options and writes register reports', async () => {
+  it('passes AZM register contracts launch options and writes register contract artifacts', async () => {
     const backend = new AzmBackend();
     const asmPath = path.join(tmpDir, 'prog.asm');
     const outDir = path.join(tmpDir, 'build');
@@ -120,6 +120,7 @@ describe('azm-backend', () => {
         { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
         { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
         { kind: 'register-contracts-report', text: 'Register contracts report\n' },
+        { kind: 'register-contracts-interface', text: 'extern MON_PRINT_CHAR\nend\n' },
       ],
     });
 
@@ -145,6 +146,9 @@ describe('azm-backend', () => {
     );
     expect(fs.readFileSync(path.join(outDir, 'prog.regcontracts.txt'), 'utf-8')).toBe(
       'Register contracts report\n'
+    );
+    expect(fs.readFileSync(path.join(outDir, 'prog.asmi'), 'utf-8')).toBe(
+      'extern MON_PRINT_CHAR\nend\n'
     );
   });
 
