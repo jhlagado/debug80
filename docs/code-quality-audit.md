@@ -271,6 +271,31 @@ Recommended approach:
   starting with `matrix-ui.ts`.
 - Do not flip the whole webview at once.
 
+Current strict-null survey:
+
+```sh
+npx tsc -p webview/tsconfig.json --noEmit --strictNullChecks true --pretty false
+```
+
+As of this audit pass, a full webview `strictNullChecks` run reports only five
+errors:
+
+- `webview/common/project-panel-state.ts`: `setupPrimaryAction` returns the
+  optional result of `createProjectAction` on a branch where TypeScript cannot
+  prove `selectedRoot` exists.
+- `webview/simple/index.ts`, `webview/tec1/index.ts`, and
+  `webview/tec1g/index.ts`: the add-folder button handlers dereference
+  `platformSelectEl.value` even though the element is typed nullable.
+- `webview/tec1g/tec1g-platform-update.ts`: `applyMatrixBrightness` accepts a
+  required red-channel array, but the update path deliberately calls it when
+  only green or blue brightness data is present.
+
+The first low-risk strictness cleanup should be a behavior-preserving boundary
+pass that fixes these five type issues and then flips only `strictNullChecks`
+for the webview project. This should avoid matrix keyboard behavior changes and
+should be covered by existing `project-panel-state`, platform update, and
+webview typecheck tests.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
