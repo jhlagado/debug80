@@ -403,6 +403,30 @@ Do not use the next DOM-boundary pass to refactor matrix keyboard production
 state. Matrix work should continue only through isolated characterization tests
 or explicitly matrix-scoped goals.
 
+Remaining webview-entrypoint survey (2026-06-11):
+
+The current broad Fallow health pass reports no dead exports and keeps the main
+webview entrypoint signals in the same places:
+
+- `webview/simple/index.ts` still has a high-complexity message listener because
+  it handles project/session/tab/serial/snapshot messages directly.
+- `webview/tec1/index.ts` and `webview/tec1g/index.ts` still have inherited
+  high-complexity message/update handlers, but the TEC-1/TEC-1G serial path is
+  already delegated to `webview/common/serial-ui.ts`.
+- Fallow duplication now points at import/message-handler similarity rather than
+  the removed project-panel or memory-view element arrays.
+- Renderer complexity in `glcd-renderer.ts` and `lcd-renderer.ts` is real but
+  graphics-domain-specific, higher risk, and not the next cleanup target.
+- Matrix keyboard complexity is still a known hot zone, but should not be folded
+  into general webview cleanup.
+
+The smallest safe next cleanup boundary is therefore the Simple webview's serial
+terminal path. It should use the shared `wireSerialUi` helper where possible, or
+the helper should be generalized just enough to support Simple's terminal-only
+markup. This would remove duplicated serial message handling from
+`webview/simple/index.ts` and lower its message-listener complexity without
+changing platform behavior or touching matrix keyboard production code.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
