@@ -744,6 +744,22 @@ Changed-file Fallow now passes. Remaining warnings are inherited and intentional
 separate: TEC-1 `applyUpdate` complexity and TEC-1/TEC-1G update-branch
 similarity.
 
+TEC-1 platform update cleanup status:
+
+`webview/tec1/platform-update.ts` now owns the TEC-1 update application logic
+that was previously embedded in the composition root. The entrypoint still
+supplies the same display, speaker, audio, speed, LCD, and matrix dependencies,
+but seven-segment updates, speaker/frequency updates, audio refresh, speed
+changes, and renderer forwarding are now split into smaller tested operations.
+
+Focused coverage in `tests/webview/tec1-platform-update.test.ts` preserves the
+existing behavior: segment intensities win over digit masks, missing digits
+fall back to an empty display, speaker CSS/frequency text/audio state update
+together, invalid speed strings are ignored, and LCD/matrix renderers receive
+the original payload. Changed-file Fallow now passes without the previous TEC-1
+`applyUpdate` complexity finding. The remaining clone warnings are inherited
+TEC-1/TEC-1G message/update branch similarity and should be treated separately.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:

@@ -31,6 +31,7 @@ import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
 import { createTec1MessageHandler } from './message-handler';
+import { applyTec1PlatformUpdate } from './platform-update';
 
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
@@ -151,31 +152,15 @@ function applyUpdate(payload: {
   lcd?: number[];
   speakerHz?: number;
 }): void {
-  if (Array.isArray(payload.segmentIntensities)) {
-    display.applySegmentIntensities(payload.segmentIntensities);
-  } else {
-    display.applyDigits(payload.digits || []);
-  }
-  if (payload.speaker) {
-    speakerEl.classList.add('on');
-  } else {
-    speakerEl.classList.remove('on');
-  }
-  if (speakerHzEl && typeof payload.speakerHz === 'number') {
-    if (payload.speakerHz > 0) {
-      speakerHzEl.textContent = payload.speakerHz + ' Hz';
-      audio.setSpeakerHz(payload.speakerHz);
-    } else {
-      speakerHzEl.textContent = '';
-      audio.setSpeakerHz(0);
-    }
-  }
-  audio.updateAudio();
-  if (payload.speedMode === 'slow' || payload.speedMode === 'fast') {
-    applySpeed(payload.speedMode);
-  }
-  lcdRenderer.applyLcdUpdate(payload);
-  matrixRenderer.applyMatrixUpdate(payload);
+  applyTec1PlatformUpdate(payload, {
+    audio,
+    applySpeed,
+    display,
+    lcdRenderer,
+    matrixRenderer,
+    speakerEl,
+    speakerHzEl,
+  });
 }
 
 const statusEl = getOptionalElementById(document, 'status', HTMLElement);
