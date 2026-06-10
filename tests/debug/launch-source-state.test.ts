@@ -347,6 +347,8 @@ describe('launch-source-state', () => {
     );
 
     expect(result.sourceMapSymbols.map((symbol) => symbol.name)).toEqual(['Main']);
+    expect(result.romSourcePaths).toEqual([]);
+    expect(result.autoOpenRomSourcePaths).toEqual([]);
     expect(logger.warns.some((message) => message.includes('Failed to read source map symbols'))).toBe(
       true
     );

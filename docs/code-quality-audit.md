@@ -33,6 +33,35 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Shared Auxiliary D8 Map Collection
+
+`src/debug/launch/launch-source-state.ts` now shares the best-effort auxiliary
+D8 map read/parse loop used by ROM source collection. The two public outcomes
+remain separate:
+
+- `romSourcePaths` collects every non-empty file key from auxiliary maps;
+- `autoOpenRomSourcePaths` selects the map-named primary source, falling back to
+  the first source key.
+
+The shared helper preserves the existing policy that malformed or missing
+auxiliary maps are ignored for source opening; source-map symbol loading still
+has its separate warning path. The focused launch-source-state test now asserts
+that unreadable auxiliary maps leave both ROM source lists empty while keeping
+valid build-artifact symbols.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-source-state.test.ts
+npm run typecheck
+npm run lint
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow no longer reports production duplication in launch source-state for this
+area. The remaining changed-file clone groups are repeated test-fixture setup
+blocks, which are lower-risk and can be handled separately.
+
 ### 2026-06-11: Shared D8 Symbol Conversion
 
 Launch source-state symbol loading and editor D8 navigation now share common D8
@@ -61,9 +90,10 @@ npm run lint
 npm exec --yes fallow -- audit --changed-since HEAD --format compact
 ```
 
-Fallow exits cleanly for the changed-file gate. The remaining changed-file clone
-group is the separate pair of auxiliary-map collection loops inside
-`src/debug/launch/launch-source-state.ts`; that is a distinct cleanup candidate.
+Fallow exits cleanly for the changed-file gate. At the time of this change the
+remaining changed-file clone group was the separate pair of auxiliary-map
+collection loops inside `src/debug/launch/launch-source-state.ts`; that was left
+as a distinct cleanup candidate.
 
 ### 2026-06-11: Shared D8 Source Path Resolution
 

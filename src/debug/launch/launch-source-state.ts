@@ -208,44 +208,40 @@ function resolvePreferredSymbolMapPath(options: { mapPath: string }): string | u
 
 function collectDebugMapPrimarySourcePaths(debugMaps: string[], sourceRoots: string[]): string[] {
   const paths = new Set<string>();
-  for (const mapPath of debugMaps) {
-    try {
-      const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
-      if (parsed.map === undefined) {
-        continue;
-      }
-      const primarySource = findPrimaryDebugMapSource(
-        mapPath,
-        Object.keys(parsed.map.files),
-        sourceRoots
-      );
-      if (primarySource !== undefined) {
-        paths.add(primarySource);
-      }
-    } catch {
-      // Source opening is best-effort; mapping load logs parse/read failures.
+  collectFromAuxiliaryDebugMaps(debugMaps, (mapPath, map) => {
+    const primarySource = findPrimaryDebugMapSource(mapPath, Object.keys(map.files), sourceRoots);
+    if (primarySource !== undefined) {
+      paths.add(primarySource);
     }
-  }
+  });
   return [...paths].sort((a, b) => a.localeCompare(b));
 }
 
 function collectDebugMapSourcePaths(debugMaps: string[], sourceRoots: string[]): string[] {
   const paths = new Set<string>();
+  collectFromAuxiliaryDebugMaps(debugMaps, (mapPath, map) => {
+    for (const file of Object.keys(map.files)) {
+      if (file.trim().length === 0) {
+        continue;
+      }
+      paths.add(resolveDebugMapFilePath(file, mapPath, sourceRoots));
+    }
+  });
+  return [...paths].sort((a, b) => a.localeCompare(b));
+}
+
+function collectFromAuxiliaryDebugMaps(
+  debugMaps: string[],
+  collect: (mapPath: string, map: D8DebugMap) => void
+): void {
   for (const mapPath of debugMaps) {
     try {
       const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
-      if (parsed.map === undefined) {
-        continue;
-      }
-      for (const file of Object.keys(parsed.map.files)) {
-        if (file.trim().length === 0) {
-          continue;
-        }
-        paths.add(resolveDebugMapFilePath(file, mapPath, sourceRoots));
+      if (parsed.map !== undefined) {
+        collect(mapPath, parsed.map);
       }
     } catch {
       // Source opening is best-effort; mapping load logs parse/read failures.
     }
   }
-  return [...paths].sort((a, b) => a.localeCompare(b));
 }
