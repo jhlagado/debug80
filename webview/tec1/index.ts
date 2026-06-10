@@ -11,6 +11,11 @@ import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { MemoryPanel } from '../common/memory-panel';
 import { createMemoryViewEntries } from '../common/memory-view-elements';
+import {
+  getOptionalElementById,
+  getOptionalElementBySelector,
+  getRequiredElementById,
+} from '../common/dom-elements';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
@@ -30,25 +35,25 @@ const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
 const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
-const displayEl = document.getElementById('display') as HTMLElement;
-const keypadEl = document.getElementById('keypad') as HTMLElement;
-const speakerEl = document.getElementById('speaker') as HTMLElement;
-const speakerHzEl = document.getElementById('speakerHz') as HTMLElement;
-const speedEl = document.getElementById('speed') as HTMLElement;
-const muteEl = document.getElementById('mute') as HTMLElement;
+const displayEl = getRequiredElementById(document, 'display', HTMLElement);
+const keypadEl = getRequiredElementById(document, 'keypad', HTMLElement);
+const speakerEl = getRequiredElementById(document, 'speaker', HTMLElement);
+const speakerHzEl = getRequiredElementById(document, 'speakerHz', HTMLElement);
+const speedEl = getRequiredElementById(document, 'speed', HTMLElement);
+const muteEl = getRequiredElementById(document, 'mute', HTMLElement);
 const accordionButtons = Array.from(
   document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
 );
-const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
-const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
-const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
-const panelUi = document.getElementById('panel-ui') as HTMLElement;
-const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
-const panelMemory = document.getElementById('panel-memory') as HTMLElement;
-const registerStrip = document.getElementById('registerStrip') as HTMLElement;
-const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
-const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
-const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
+const accordionMachine = getRequiredElementById(document, 'accordion-machine', HTMLElement);
+const accordionRegisters = getRequiredElementById(document, 'accordion-registers', HTMLElement);
+const accordionMemory = getRequiredElementById(document, 'accordion-memory', HTMLElement);
+const panelUi = getRequiredElementById(document, 'panel-ui', HTMLElement);
+const panelRegisters = getRequiredElementById(document, 'panel-registers', HTMLElement);
+const panelMemory = getRequiredElementById(document, 'panel-memory', HTMLElement);
+const registerStrip = getRequiredElementById(document, 'registerStrip', HTMLElement);
+const memoryPanel = getRequiredElementById(document, 'memoryPanel', HTMLElement);
+const toolbarEl = getOptionalElementBySelector(document, '.debug80-toolbar', HTMLElement);
+const accordionEl = getOptionalElementById(document, 'debug80Accordion', HTMLElement);
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
 const keypad = createTecKeypad(vscode, keypadEl);
 wireKeypadFocusPanels([accordionMachine], keypad);
@@ -173,7 +178,7 @@ function applyUpdate(payload: {
   matrixRenderer.applyMatrixUpdate(payload);
 }
 
-const statusEl = document.getElementById('status');
+const statusEl = getOptionalElementById(document, 'status', HTMLElement);
 const views = createMemoryViewEntries(document);
 
 memoryPanelController = new MemoryPanel({

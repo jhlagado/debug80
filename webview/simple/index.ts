@@ -5,6 +5,11 @@
 import { MemoryPanel } from '../common/memory-panel';
 import { handleMemoryPanelMessage } from '../common/memory-panel-messages';
 import { createMemoryViewEntries } from '../common/memory-view-elements';
+import {
+  getOptionalElementById,
+  getOptionalElementBySelector,
+  getRequiredElementById,
+} from '../common/dom-elements';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSessionStatusController } from '../common/session-status';
 import type { SessionStatus } from '../common/session-status';
@@ -31,12 +36,12 @@ type SimpleMessageHandler = (data: SimpleMessage) => boolean;
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
 
-const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
-const panelUi = document.getElementById('panel-ui') as HTMLElement;
-const panelMemory = document.getElementById('panel-memory') as HTMLElement;
+const tabsEl = getOptionalElementBySelector(document, '.tabs', HTMLElement);
+const panelUi = getRequiredElementById(document, 'panel-ui', HTMLElement);
+const panelMemory = getRequiredElementById(document, 'panel-memory', HTMLElement);
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
-const registerStrip = document.getElementById('registerStrip') as HTMLElement;
-const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
+const registerStrip = getRequiredElementById(document, 'registerStrip', HTMLElement);
+const memoryPanelEl = getRequiredElementById(document, 'memoryPanel', HTMLElement);
 
 let activeTab: 'ui' | 'memory' = 'ui';
 let projectIsInitialized = false;
@@ -109,7 +114,7 @@ tabButtons.forEach((button) => {
 
 const views = createMemoryViewEntries(document);
 
-const statusEl = document.getElementById('status');
+const statusEl = getOptionalElementById(document, 'status', HTMLElement);
 const memoryPanelController = new MemoryPanel({
   vscode,
   registerStrip,

@@ -706,6 +706,25 @@ The test covers Simple's terminal-only output/clear contract and the full
 TEC-1/TEC-1G send/send-file/save/clear contract through the same helper.
 Changed-file Fallow now passes for this cleanup.
 
+Required DOM element lookup cleanup status:
+
+`webview/common/dom-elements.ts` now provides small typed DOM lookup helpers for
+required and optional element IDs/selectors. The helper gives composition roots
+a single policy for missing required handles and wrong element classes instead
+of repeating raw `as HTMLElement` assertions inline.
+
+The first use is deliberately narrow and non-matrix: `webview/simple/index.ts`
+and `webview/tec1/index.ts` now use the helper for platform entrypoint handles
+such as display/keypad/status, panel roots, toolbar, and memory elements.
+`webview/tec1g/index.ts` was left untouched in this pass to avoid folding matrix
+keyboard production state into a generic DOM-boundary cleanup.
+
+Focused coverage lives in `tests/webview/common/dom-elements.test.ts` and checks
+optional lookup, required missing-element errors, mismatched element errors, and
+selector lookup. Changed-file Fallow passes in new-only mode; it still reports
+inherited TEC-1/TEC-1G message/update branch similarity when the TEC-1
+entrypoint is touched. Treat that as a separate message-boundary cleanup goal.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
