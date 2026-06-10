@@ -380,12 +380,24 @@ them into project-panel cleanup.
 
 The next DOM-boundary cleanup should be similarly scoped. Candidate areas:
 
-- shared memory-view element collection for the repeated `view-a` through
-  `view-d` lookup blocks;
 - a typed `getRequiredElement` helper for platform-only elements that are
   currently asserted with non-null casts;
 - message payload parsing at the `window.addEventListener('message', ...)`
   boundary.
+
+Memory-view boundary cleanup status:
+
+`webview/common/memory-view-elements.ts` now owns the fixed `view-a` through
+`view-d` DOM lookup policy used by the Simple, TEC-1, and TEC-1G memory panels.
+The Simple and TEC-1 entrypoints call it directly, while the TEC-1G platform
+wrapper delegates to the same helper so the platform-facing API remains stable.
+The helper is covered by `tests/webview/common/memory-view-elements.test.ts`.
+
+This removes the repeated memory-view element arrays from the changed
+entrypoints. Fallow still reports inherited warnings when those files are
+touched, but the memory-view clone is gone. The remaining warnings now point at
+older import similarity, repeated serial/message branches, and high-complexity
+message/update handlers. Those should be handled as separate goals.
 
 Do not use the next DOM-boundary pass to refactor matrix keyboard production
 state. Matrix work should continue only through isolated characterization tests
