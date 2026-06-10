@@ -2,10 +2,12 @@
  * @file Simple platform webview entry — project header, session status, terminal, CPU memory viewer.
  */
 
-import { appendSerialText } from '../common/serial';
 import { MemoryPanel } from '../common/memory-panel';
+import { handleMemoryPanelMessage } from '../common/memory-panel-messages';
 import { createMemoryViewEntries } from '../common/memory-view-elements';
+import { wireSerialUi } from '../common/serial-ui';
 import { createSessionStatusController } from '../common/session-status';
+import type { SessionStatus } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
 import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
@@ -17,7 +19,14 @@ import {
 } from '../common/project-panel-elements';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 
-const TERMINAL_MAX = 8000;
+type SimpleMessage = {
+  type?: unknown;
+  status?: unknown;
+  tab?: unknown;
+  message?: unknown;
+} & Partial<ProjectStatusPayload>;
+
+type SimpleMessageHandler = (data: SimpleMessage) => boolean;
 
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
@@ -28,8 +37,6 @@ const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
-const terminalOutEl = document.getElementById('terminalOut') as HTMLElement | null;
-const terminalClearEl = document.getElementById('terminalClear') as HTMLElement | null;
 
 let activeTab: 'ui' | 'memory' = 'ui';
 let projectIsInitialized = false;
@@ -49,13 +56,6 @@ const projectStatusUi = createProjectStatusUi(
 const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 wireProjectPanelPlatformControls(vscode, projectElements, 'simple', () => projectIsInitialized);
-
-terminalClearEl?.addEventListener('click', () => {
-  if (terminalOutEl) {
-    terminalOutEl.textContent = '';
-  }
-  vscode.postMessage({ type: 'serialClear' });
-});
 
 function applyProjectStatus(payload: {
   rootPath?: ProjectStatusPayload['rootPath'];
@@ -91,6 +91,14 @@ function setTab(tab: 'ui' | 'memory'): void {
   tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
 }
 
+function setKnownTab(tab: unknown): boolean {
+  if (tab !== 'ui' && tab !== 'memory') {
+    return false;
+  }
+  setTab(tab);
+  return true;
+}
+
 tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
     const tab = button.dataset.tab as 'ui' | 'memory';
@@ -111,6 +119,10 @@ const memoryPanelController = new MemoryPanel({
   isActive: () => activeTab === 'memory',
 });
 memoryPanelController.wire();
+const serialUi = wireSerialUi(vscode, {
+  outputId: 'terminalOut',
+  clearId: 'terminalClear',
+});
 
 function scheduleMemoryResize(): void {
   if (resizeTimer !== null) {
@@ -127,50 +139,61 @@ function scheduleMemoryResize(): void {
   }, 150);
 }
 
+function isSimpleMessage(data: unknown): data is SimpleMessage {
+  return typeof data === 'object' && data !== null;
+}
+
+function handleSimpleProjectMessage(data: SimpleMessage): boolean {
+  if (data.type !== 'projectStatus') {
+    return false;
+  }
+  applyProjectStatus(data);
+  return true;
+}
+
+function isSessionStatus(status: unknown): status is SessionStatus {
+  return (
+    status === 'starting' ||
+    status === 'running' ||
+    status === 'paused' ||
+    status === 'not running'
+  );
+}
+
+function handleSimpleSessionMessage(data: SimpleMessage): boolean {
+  if (data.type !== 'sessionStatus') {
+    return false;
+  }
+  if (isSessionStatus(data.status)) {
+    sessionStatusController.setStatus(data.status);
+  }
+  return true;
+}
+
+function handleSimpleTabMessage(data: SimpleMessage): boolean {
+  if (data.type !== 'selectTab') {
+    return false;
+  }
+  setKnownTab(data.tab);
+  return true;
+}
+
+const simpleMessageHandlers: SimpleMessageHandler[] = [
+  handleSimpleProjectMessage,
+  handleSimpleSessionMessage,
+  handleSimpleTabMessage,
+  (data) => handleMemoryPanelMessage(data, memoryPanelController),
+];
+
+function handleSimpleMessage(data: unknown): void {
+  if (!isSimpleMessage(data)) {
+    return;
+  }
+  simpleMessageHandlers.some((handler) => handler(data));
+}
+
 window.addEventListener('message', (event: MessageEvent): void => {
-  if (!event.data) {
-    return;
-  }
-  if (event.data.type === 'projectStatus') {
-    applyProjectStatus(event.data);
-    return;
-  }
-  if (event.data.type === 'sessionStatus') {
-    sessionStatusController.setStatus(event.data.status);
-    return;
-  }
-  if (event.data.type === 'selectTab') {
-    const tab = event.data.tab as string;
-    if (tab === 'ui' || tab === 'memory') {
-      setTab(tab);
-    }
-    return;
-  }
-  if (event.data.type === 'serial') {
-    if (terminalOutEl) {
-      appendSerialText(terminalOutEl, event.data.text || '', TERMINAL_MAX);
-    }
-    return;
-  }
-  if (event.data.type === 'serialInit') {
-    if (terminalOutEl) {
-      terminalOutEl.textContent = event.data.text || '';
-    }
-    return;
-  }
-  if (event.data.type === 'serialClear') {
-    if (terminalOutEl) {
-      terminalOutEl.textContent = '';
-    }
-    return;
-  }
-  if (event.data.type === 'snapshot') {
-    memoryPanelController.handleSnapshot(event.data);
-    return;
-  }
-  if (event.data.type === 'snapshotError') {
-    memoryPanelController.handleSnapshotError(event.data.message);
-  }
+  handleSimpleMessage(event.data);
 });
 
 setTab('ui');
@@ -180,6 +203,7 @@ sessionStatusController.setStatus('not running');
 window.addEventListener('resize', () => scheduleMemoryResize());
 
 window.addEventListener('beforeunload', () => {
+  serialUi.dispose();
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   projectStatusUi.dispose();

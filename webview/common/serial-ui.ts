@@ -7,23 +7,39 @@ export interface SerialUiController {
   dispose(): void;
 }
 
-export function wireSerialUi(vscode: VscodeApi): SerialUiController {
-  const serialOutEl = document.getElementById('serialOut') as HTMLElement | null;
-  const serialInputEl = document.getElementById('serialInput') as HTMLInputElement | null;
-  const serialSendEl = document.getElementById('serialSend') as HTMLElement | null;
-  const serialSendFileEl = document.getElementById('serialSendFile') as HTMLElement | null;
-  const serialSaveEl = document.getElementById('serialSave') as HTMLElement | null;
-  const serialClearEl = document.getElementById('serialClear') as HTMLElement | null;
+export interface SerialUiOptions {
+  outputId?: string;
+  inputId?: string;
+  sendId?: string;
+  sendFileId?: string;
+  saveId?: string;
+  clearId?: string;
+  maxTextLength?: number;
+}
+
+export function wireSerialUi(
+  vscode: VscodeApi,
+  options: SerialUiOptions = {}
+): SerialUiController {
+  const {
+    outputId = 'serialOut',
+    inputId = 'serialInput',
+    sendId = 'serialSend',
+    sendFileId = 'serialSendFile',
+    saveId = 'serialSave',
+    clearId = 'serialClear',
+    maxTextLength = SERIAL_MAX,
+  } = options;
+
+  const serialOutEl = document.getElementById(outputId) as HTMLElement | null;
+  const serialInputEl = document.getElementById(inputId) as HTMLInputElement | null;
+  const serialSendEl = document.getElementById(sendId) as HTMLElement | null;
+  const serialSendFileEl = document.getElementById(sendFileId) as HTMLElement | null;
+  const serialSaveEl = document.getElementById(saveId) as HTMLElement | null;
+  const serialClearEl = document.getElementById(clearId) as HTMLElement | null;
   const appEl = document.getElementById('app') as HTMLElement | null;
 
-  if (
-    !serialOutEl ||
-    !serialInputEl ||
-    !serialSendEl ||
-    !serialSendFileEl ||
-    !serialSaveEl ||
-    !serialClearEl
-  ) {
+  if (!serialOutEl) {
     return { dispose: (): void => {} };
   }
 
@@ -32,7 +48,7 @@ export function wireSerialUi(vscode: VscodeApi): SerialUiController {
       return;
     }
     if (event.data.type === 'serial') {
-      appendSerialText(serialOutEl, event.data.text || '', SERIAL_MAX);
+      appendSerialText(serialOutEl, event.data.text || '', maxTextLength);
       return;
     }
     if (event.data.type === 'serialInit') {
@@ -46,23 +62,25 @@ export function wireSerialUi(vscode: VscodeApi): SerialUiController {
 
   window.addEventListener('message', onMessage);
 
-  serialSendEl.addEventListener('click', () => {
-    sendSerialInput(serialInputEl, vscode);
+  serialSendEl?.addEventListener('click', () => {
+    if (serialInputEl) {
+      sendSerialInput(serialInputEl, vscode);
+    }
   });
-  serialInputEl.addEventListener('keydown', (event) => {
+  serialInputEl?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       sendSerialInput(serialInputEl, vscode);
       event.preventDefault();
     }
   });
-  serialSendFileEl.addEventListener('click', () => {
+  serialSendFileEl?.addEventListener('click', () => {
     vscode.postMessage({ type: 'serialSendFile' });
   });
-  serialSaveEl.addEventListener('click', () => {
+  serialSaveEl?.addEventListener('click', () => {
     const text = serialOutEl.textContent || '';
     vscode.postMessage({ type: 'serialSave', text });
   });
-  serialClearEl.addEventListener('click', () => {
+  serialClearEl?.addEventListener('click', () => {
     serialOutEl.textContent = '';
     vscode.postMessage({ type: 'serialClear' });
   });

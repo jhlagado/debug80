@@ -427,6 +427,25 @@ markup. This would remove duplicated serial message handling from
 `webview/simple/index.ts` and lower its message-listener complexity without
 changing platform behavior or touching matrix keyboard production code.
 
+Simple serial boundary cleanup status:
+
+`webview/common/serial-ui.ts` now accepts optional element IDs, so the Simple
+platform's terminal-only serial surface can use the same serial message handler
+as the TEC-1 and TEC-1G panels. `webview/simple/index.ts` no longer owns
+terminal append/init/clear branches directly; it wires the shared helper with
+`terminalOut` and `terminalClear`.
+
+The Simple webview message listener was also split into tiny typed branch
+handlers for project status, session status, tab selection, and memory snapshot
+messages. The memory snapshot tail now uses
+`webview/common/memory-panel-messages.ts`, keeping this cleanup at the message
+boundary without touching matrix keyboard production code.
+
+Serial UI coverage has been consolidated into `tests/webview/serial-ui.test.ts`.
+The test covers Simple's terminal-only output/clear contract and the full
+TEC-1/TEC-1G send/send-file/save/clear contract through the same helper.
+Changed-file Fallow now passes for this cleanup.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
