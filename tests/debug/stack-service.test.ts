@@ -23,6 +23,11 @@ const makeSegment = (start: number, end: number, file: string, line: number): So
   confidence: 'HIGH',
 });
 
+function writeFixtureFile(filePath: string, contents: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
 describe('stack-service', () => {
   it('resolves source from mapping and builds stack frames', () => {
     const mapping: MappingParseResult = {
@@ -159,9 +164,8 @@ describe('stack-service AZM D8 integration', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
     const artifactPath = path.join(buildDir, 'matrix.hex');
-    fs.mkdirSync(buildDir, { recursive: true });
-    fs.writeFileSync(sourceFile, '; matrix source\nNOP\nHALT\n');
-    fs.writeFileSync(artifactPath, ':00000001FF\n');
+    writeFixtureFile(sourceFile, '; matrix source\nNOP\nHALT\n');
+    writeFixtureFile(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',
@@ -180,7 +184,7 @@ describe('stack-service AZM D8 integration', () => {
       },
     });
     const d8Path = path.join(buildDir, 'matrix.d8.json');
-    fs.writeFileSync(d8Path, d8Content);
+    writeFixtureFile(d8Path, d8Content);
 
     const { map } = parseD8DebugMap(d8Content);
     expect(map).toBeDefined();
@@ -209,9 +213,8 @@ describe('stack-service AZM D8 integration', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
     const buildDir = path.join(tmpDir, 'build');
     const artifactPath = path.join(buildDir, 'matrix.hex');
-    fs.mkdirSync(buildDir, { recursive: true });
-    fs.writeFileSync(sourceFile, '; src\nLD A, 0\nHALT\n');
-    fs.writeFileSync(artifactPath, ':00000001FF\n');
+    writeFixtureFile(sourceFile, '; src\nLD A, 0\nHALT\n');
+    writeFixtureFile(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',
@@ -254,9 +257,8 @@ describe('stack-service AZM D8 integration', () => {
   it('falls back to sourceFile at line 1 when D8 has no segment for PC', () => {
     const sourceFile = path.join(tmpDir, 'matrix.asm');
     const artifactPath = path.join(tmpDir, 'build', 'matrix.hex');
-    fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
-    fs.writeFileSync(sourceFile, 'NOP');
-    fs.writeFileSync(artifactPath, ':00000001FF\n');
+    writeFixtureFile(sourceFile, 'NOP');
+    writeFixtureFile(artifactPath, ':00000001FF\n');
 
     const d8Content = JSON.stringify({
       format: 'd8-debug-map',

@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Stack Service Test Fixture Cleanup
+
+`tests/debug/stack-service.test.ts` now uses a local `writeFixtureFile`
+helper for the repeated source, artifact, and D8 fixture writes in the AZM D8
+integration scenarios. The tests still cover source-map stack frames, symbolic
+return-frame walking, address aliases, fallback source behavior, relative D8
+file keys, and stepping between mapped instructions.
+
+This is intentionally test-only cleanup. It removes repeated filesystem
+fixture setup without changing stack-frame construction, source lookup, D8 map
+parsing, or path-resolution behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/stack-service.test.ts
+```
+
 ### 2026-06-11: Path Resolver Test Fixture Cleanup
 
 `tests/debug/path-resolver.test.ts` now uses a local `writeFixtureFile`
