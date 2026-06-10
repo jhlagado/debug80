@@ -266,10 +266,29 @@ still have many ad hoc `as HTMLElement` casts and loosely grouped element
 handles. These are safer than `any`, but they still make UI refactors easier to
 break.
 
+The safest first cleanup is the shared project-panel boundary, not the matrix
+keyboard. `webview/simple/index.ts`, `webview/tec1/index.ts`, and
+`webview/tec1g/index.ts` all repeat the same project controls:
+
+- root selector and add-folder buttons;
+- setup card, setup text, setup primary action, and initialize button;
+- target and platform selects plus their surrounding project-control elements;
+- stop-on-entry, source-map/hardware status lines, and platform display text.
+
+Those handles are passed into both `createProjectStatusUi` and
+`applyInitializedProjectControls`, so the current duplication is a real boundary
+risk rather than just cosmetic repetition. A small helper can collect these
+handles once, keep nullable optional elements explicit, and return typed bundles
+for each consumer. That would reduce composition-root casts without changing
+runtime behavior or touching the matrix keyboard state machine.
+
 Recommended approach:
 
 - Keep `strict: true` enabled for webview.
-- Group DOM handles into small typed panel bundles before changing behavior.
+- Start with shared project-panel DOM handle bundles for `simple`, `tec1`, and
+  `tec1g`.
+- Cover the helper with focused DOM fixture tests before rewiring entrypoints.
+- Keep matrix keyboard production code out of the first DOM-boundary cleanup.
 - Continue using webview contract tests for panel order, matrix lifecycle, and
   platform update payloads.
 
