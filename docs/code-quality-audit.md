@@ -24,7 +24,8 @@ typing — while continuing the Phase 5–7 programme:
 
 1. Continue extracting pure matrix state helpers only where direct tests already
    characterize the behavior.
-2. Incrementally tighten webview TypeScript (`strictNullChecks` per module).
+2. Improve webview DOM/message boundary typing now that webview TypeScript runs
+   with `strict: true`.
 3. Finish launch/project policy documentation and avoid further target-selection
    churn unless new behavior appears.
 4. Remove dead exports and stale artifacts that no longer serve public behavior.
@@ -62,10 +63,10 @@ were added alongside fixes (good), but production complexity is mirroring into
    spreads rules across closures and side-effect paths rather than a single pure
    state model.
 
-2. **Webview TypeScript is deliberately non-strict.** `webview/tsconfig.json`
-   sets `strict: false`, `noImplicitAny: false`, `strictNullChecks: false`,
-   while `src/` enforces strict mode and `@typescript-eslint/no-explicit-any:
-   error`. The type-safety cliff sits exactly where recent bugs occurred.
+2. **Webview boundary typing is now compiler-strict but still cast-heavy.**
+   `webview/tsconfig.json` now enables `strict: true`. The remaining type-safety
+   gap is not compiler flags; it is repeated DOM casts and untyped message
+   boundary patterns in composition roots.
 
 3. **Large dispatch/orchestration files remain expensive to change.** Direct
    safety tests now cover `launch-sequence.ts` and `io-handlers.ts`, but those
@@ -79,7 +80,7 @@ were added alongside fixes (good), but production complexity is mirroring into
 | --------- | ------ | ----- |
 | Architecture | Strong | Clear layers, plugin platforms, no circular deps |
 | Type safety (`src/`) | Strong | Among strictest extension TS configs |
-| Type safety (webview) | Weak | `strict: false` is the main gap |
+| Type safety (webview) | Moderate | `strict: true`; DOM/message boundaries remain cast-heavy |
 | Test culture | Strong | Layered gates, DIAG-derived protocol tests |
 | Documentation | Strong | Engineering manual + living audit |
 | Complexity management | Moderate | Large files, UI state coupling |
@@ -256,20 +257,21 @@ Recommended approach:
 - Keep the port handler as a dispatch surface; move device-specific behavior
   into device adapters only when a real behavior change creates the need.
 
-### P1: Webview TypeScript Is Non-Strict
+### P1: Webview Boundary Typing Remains Cast-Heavy
 
-`webview/tsconfig.json` sets `strict: false`, `noImplicitAny: false`, and
-`strictNullChecks: false`, while `src/` enforces strict mode and ESLint
-`@typescript-eslint/no-explicit-any: error`. ESLint also relaxes most
-type-checking rules for webview. This is a deliberate tradeoff, but it creates a
-type-safety cliff exactly where recent bugs occurred (matrix UI, routing cues,
-visibility).
+`webview/tsconfig.json` now enables `strict: true`, matching the main extension
+compiler posture. The old compiler-flag gap has been closed. The remaining
+webview type-safety work is at the DOM and message boundaries: composition roots
+still have many ad hoc `as HTMLElement` casts and loosely grouped element
+handles. These are safer than `any`, but they still make UI refactors easier to
+break.
 
 Recommended approach:
 
-- Incrementally enable `strictNullChecks` in webview, one module at a time,
-  starting with `matrix-ui.ts`.
-- Do not flip the whole webview at once.
+- Keep `strict: true` enabled for webview.
+- Group DOM handles into small typed panel bundles before changing behavior.
+- Continue using webview contract tests for panel order, matrix lifecycle, and
+  platform update payloads.
 
 Strict-null cleanup status:
 
@@ -298,9 +300,8 @@ That cleanup has now been applied. `webview/tsconfig.json` enables
   action cannot be formed;
 - matrix brightness accepts partial channel updates at the type boundary.
 
-The next strictness step should not enable all of `strict` at once. Survey
-`noImplicitAny` separately and continue with small, behavior-preserving boundary
-passes.
+The next strictness step was to survey `noImplicitAny` separately and continue
+with small, behavior-preserving boundary passes.
 
 No-implicit-any cleanup status:
 
@@ -322,9 +323,20 @@ That cleanup has now been applied. `webview/tsconfig.json` enables
 return types. Key-routing, modifier, capture, and timer behavior should remain
 unchanged.
 
-The next webview strictness step should survey full `strict: true` separately.
-Do not flip it globally without first recording the blocker count and grouping
-the fixes into small behavior-preserving passes.
+Full strict-mode status:
+
+```sh
+npx tsc -p webview/tsconfig.json --noEmit --strict true --pretty false
+```
+
+After the strict-null and no-implicit-any passes, full webview strict mode
+reported no remaining compiler blockers. `webview/tsconfig.json` now enables
+`strict: true`; the redundant individual strictness flags are no longer needed.
+
+The next webview type-safety work should move from compiler flags to typed
+message/DOM boundary cleanup: reduce `as HTMLElement` casts at composition
+roots, group panel DOM handles into typed bundles, and keep behavior covered by
+webview contract tests.
 
 ### P1: Complex Dispatchers Need Smaller Units
 
@@ -1247,7 +1259,7 @@ and extract only the new policy boundary, not the VS Code interaction glue.
 | Priority | Issue | Primary files |
 | -------- | ----- | ------------- |
 | Critical | Matrix keyboard multi-authority state | `matrix-ui.ts`, `matrix-request.ts`, `accordion-layout.ts`, `launch-sequence.ts` |
-| Critical | Webview non-strict TypeScript | `webview/tsconfig.json`, `matrix-ui.ts` |
+| Critical | Cast-heavy webview DOM/message boundaries | `webview/tec1g/index.ts`, `webview/common/project-status-ui.ts`, `matrix-ui.ts` |
 | High | Launch orchestration breadth | `src/debug/launch/launch-sequence.ts` |
 | High | IO dispatcher breadth | `src/platforms/tec1g/io-handlers.ts` |
 | Medium | Large orchestration files | `adapter-request-controller.ts`, `launch-args.ts`, `runtime-control.ts` |
