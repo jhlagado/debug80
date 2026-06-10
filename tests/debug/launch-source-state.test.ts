@@ -11,6 +11,7 @@ import { SourceStateManager } from '../../src/debug/mapping/source-state-manager
 import { createSessionState } from '../../src/debug/session/session-state';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 import { resolveExecutableLocation } from '../../src/mapping/source-map';
+import type { Logger } from '../../src/util/logger';
 import { NullLogger } from '../../src/util/logger';
 
 vi.mock('vscode', () => ({
@@ -263,4 +264,105 @@ describe('launch-source-state', () => {
       localRomSourceSuffix
     );
   });
+
+  it('logs a warning and returns no symbols when the build D8 cannot be parsed', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-bad-symbol-map-'));
+    const projectRoot = path.join(tmpDir, 'project');
+    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
+    const hexPath = path.join(projectRoot, 'build', 'main.hex');
+    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
+    const logger = new RecordingLogger();
+
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(sourcePath, 'START:\n  NOP\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+    fs.writeFileSync(buildMapPath, '{not valid JSON');
+
+    const sourceState = new SourceStateManager();
+    const sessionState = createSessionState();
+    const result = buildLaunchSourceState(
+      { artifactBase: 'main', outputDir: 'build' } as LaunchRequestArguments,
+      'tec1g',
+      projectRoot,
+      sourcePath,
+      hexPath,
+      sourceState,
+      sessionState,
+      logger
+    );
+
+    expect(result.sourceMapSymbols).toEqual([]);
+    expect(logger.warns.some((message) => message.includes('Could not read source map symbols'))).toBe(
+      true
+    );
+  });
+
+  it('logs unreadable auxiliary D8 maps while keeping symbols from the build artifact', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-missing-aux-symbol-map-'));
+    const projectRoot = path.join(tmpDir, 'project');
+    const sourcePath = path.join(projectRoot, 'src', 'main.asm');
+    const hexPath = path.join(projectRoot, 'build', 'main.hex');
+    const buildMapPath = path.join(projectRoot, 'build', 'main.d8.json');
+    const missingAuxMapPath = path.join(projectRoot, 'build', 'roms', 'missing.d8.json');
+    const logger = new RecordingLogger();
+
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+    fs.writeFileSync(sourcePath, 'Main:\n  NOP\n');
+    fs.writeFileSync(hexPath, ':00000001FF\n');
+    fs.writeFileSync(
+      buildMapPath,
+      JSON.stringify({
+        format: 'd8-debug-map',
+        version: 1,
+        arch: 'z80',
+        addressWidth: 16,
+        endianness: 'little',
+        files: {
+          'src/main.asm': {
+            segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+            symbols: [{ name: 'Main', kind: 'label', address: 0x4000, line: 1 }],
+          },
+        },
+        generator: { name: 'azm' },
+      })
+    );
+
+    const sourceState = new SourceStateManager();
+    const sessionState = createSessionState();
+    const result = buildLaunchSourceState(
+      {
+        artifactBase: 'main',
+        outputDir: 'build',
+        debugMaps: [missingAuxMapPath],
+      } as LaunchRequestArguments,
+      'tec1g',
+      projectRoot,
+      sourcePath,
+      hexPath,
+      sourceState,
+      sessionState,
+      logger
+    );
+
+    expect(result.sourceMapSymbols.map((symbol) => symbol.name)).toEqual(['Main']);
+    expect(logger.warns.some((message) => message.includes('Failed to read source map symbols'))).toBe(
+      true
+    );
+  });
 });
+
+class RecordingLogger implements Logger {
+  public readonly warns: string[] = [];
+
+  public debug(): void {}
+
+  public info(): void {}
+
+  public warn(message: string): void {
+    this.warns.push(message);
+  }
+
+  public error(): void {}
+}

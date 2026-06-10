@@ -33,6 +33,38 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch Source Symbol Reader Extraction
+
+`src/debug/launch/launch-source-state.ts` now splits source-map symbol loading
+into focused private helpers for map-path collection, D8 parse/read warning
+handling, per-file symbol conversion, individual D8 symbol conversion, and final
+sorting. This keeps `buildLaunchSourceState` behavior unchanged while making the
+symbol-reader branch easier to test and review.
+
+Focused launch-source tests now cover two important failure boundaries:
+
+- a malformed preferred build source map logs a source-map-symbol warning and
+  does not invent synthetic symbols without a usable map;
+- an unreadable auxiliary map logs a warning without discarding symbols from the
+  valid build artifact.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-source-state.test.ts
+npm run typecheck
+npm run lint
+npm run package:check --if-present
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow still reports the inherited `buildLaunchSourceState` cyclomatic
+complexity plus several small clone groups in launch source-state, definition
+provider, and repeated launch-source test setup. The recommended next cleanup
+target is the duplicated launch/rebuild source-root and map-argument setup,
+because it appears in both changed-file Fallow output and the current
+source-state orchestration.
+
 ### 2026-06-10: Full Code Quality Review (v0.1.22)
 
 A full codebase review was performed with emphasis on the last ~30 commits

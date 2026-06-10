@@ -20,7 +20,12 @@ import type { Logger } from '../../util/logger';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceMapDebugSymbol } from '../session/session-state';
-import { parseD8DebugMap } from '../../mapping/d8-map';
+import {
+  parseD8DebugMap,
+  type D8DebugMap,
+  type D8FileEntry,
+  type D8Symbol,
+} from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
   sourceRoots: string[];
@@ -156,7 +161,31 @@ function readSourceMapSymbols(options: {
   ) => string;
   logger: Logger;
 }): SourceMapDebugSymbol[] {
-  const mapPaths = [
+  const mapPaths = collectSourceMapSymbolPaths(options);
+  const symbols: SourceMapDebugSymbol[] = [];
+  for (const mapPath of mapPaths) {
+    const map = readD8MapForSourceMapSymbols(mapPath, options.logger);
+    if (map !== undefined) {
+      symbols.push(...sourceMapSymbolsFromD8Map(map, mapPath, options.sourceRoots));
+    }
+  }
+  return sortSourceMapSymbols(symbols);
+}
+
+function collectSourceMapSymbolPaths(options: {
+  baseDir: string;
+  hexPath: string;
+  asmPath: string | undefined;
+  debugMaps: string[];
+  mapArgs: { artifactBase?: string; outputDir?: string };
+  resolveDebugMapPath: (
+    args: { artifactBase?: string; outputDir?: string },
+    baseDir: string,
+    asmPath: string | undefined,
+    hexPath: string
+  ) => string;
+}): string[] {
+  return [
     resolvePreferredSymbolMapPath({
       mapPath: options.resolveDebugMapPath(
         options.mapArgs,
@@ -167,36 +196,59 @@ function readSourceMapSymbols(options: {
     }),
     ...options.debugMaps,
   ].filter((mapPath): mapPath is string => mapPath !== undefined);
-  const symbols: SourceMapDebugSymbol[] = [];
-  for (const mapPath of mapPaths) {
-    try {
-      const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
-      if (parsed.map === undefined) {
-        options.logger.warn(`Debug80: Could not read source map symbols: ${parsed.error}`);
-        continue;
-      }
-      for (const [file, entry] of Object.entries(parsed.map.files)) {
-        if (file.trim() === '') {
-          continue;
-        }
-        const resolvedFile = resolveDebugMapFilePath(file, mapPath, options.sourceRoots);
-        for (const symbol of entry.symbols ?? []) {
-          symbols.push({
-            name: symbol.name,
-            file: resolvedFile,
-            ...(symbol.line !== undefined ? { line: symbol.line } : {}),
-            ...(symbol.address !== undefined ? { address: symbol.address } : {}),
-            ...(symbol.value !== undefined ? { value: symbol.value } : {}),
-            ...(symbol.size !== undefined ? { size: symbol.size } : {}),
-            ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
-            ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
-          });
-        }
-      }
-    } catch (err) {
-      options.logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
+}
+
+function readD8MapForSourceMapSymbols(mapPath: string, logger: Logger): D8DebugMap | undefined {
+  try {
+    const parsed = parseD8DebugMap(fs.readFileSync(mapPath, 'utf-8'));
+    if (parsed.map === undefined) {
+      logger.warn(`Debug80: Could not read source map symbols: ${parsed.error}`);
+      return undefined;
     }
+    return parsed.map;
+  } catch (err) {
+    logger.warn(`Debug80: Failed to read source map symbols: ${String(err)}`);
+    return undefined;
   }
+}
+
+function sourceMapSymbolsFromD8Map(
+  map: D8DebugMap,
+  mapPath: string,
+  sourceRoots: string[]
+): SourceMapDebugSymbol[] {
+  return Object.entries(map.files).flatMap(([file, entry]) =>
+    sourceMapSymbolsFromD8File(file, entry, mapPath, sourceRoots)
+  );
+}
+
+function sourceMapSymbolsFromD8File(
+  file: string,
+  entry: D8FileEntry,
+  mapPath: string,
+  sourceRoots: string[]
+): SourceMapDebugSymbol[] {
+  if (file.trim() === '') {
+    return [];
+  }
+  const resolvedFile = resolveDebugMapFilePath(file, mapPath, sourceRoots);
+  return (entry.symbols ?? []).map((symbol) => sourceMapSymbolFromD8Symbol(symbol, resolvedFile));
+}
+
+function sourceMapSymbolFromD8Symbol(symbol: D8Symbol, file: string): SourceMapDebugSymbol {
+  return {
+    name: symbol.name,
+    file,
+    ...(symbol.line !== undefined ? { line: symbol.line } : {}),
+    ...(symbol.address !== undefined ? { address: symbol.address } : {}),
+    ...(symbol.value !== undefined ? { value: symbol.value } : {}),
+    ...(symbol.size !== undefined ? { size: symbol.size } : {}),
+    ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
+    ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
+  };
+}
+
+function sortSourceMapSymbols(symbols: SourceMapDebugSymbol[]): SourceMapDebugSymbol[] {
   return symbols.sort((a, b) => a.name.localeCompare(b.name));
 }
 
