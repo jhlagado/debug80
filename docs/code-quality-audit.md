@@ -725,6 +725,25 @@ selector lookup. Changed-file Fallow passes in new-only mode; it still reports
 inherited TEC-1/TEC-1G message/update branch similarity when the TEC-1
 entrypoint is touched. Treat that as a separate message-boundary cleanup goal.
 
+TEC-1 message boundary cleanup status:
+
+`webview/tec1/message-handler.ts` now owns the TEC-1 webview message dispatcher
+that was previously inline in `webview/tec1/index.ts`. The composition root now
+wires dependencies into a small handler factory, while the handler module owns
+message routing for project status, session status/register refresh, selected
+tab, update revision filtering, memory snapshots, and snapshot errors.
+
+Focused coverage in `tests/webview/tec1-message-handler.test.ts` preserves the
+old permissive boundary behavior: non-object messages are ignored, session
+messages toggle register refresh only for running/paused, stale `uiRevision`
+updates are ignored, equal revisions are still accepted, and unversioned updates
+still apply. This reduces TEC-1 entrypoint message-listener complexity without
+touching TEC-1G matrix keyboard production code.
+
+Changed-file Fallow now passes. Remaining warnings are inherited and intentionally
+separate: TEC-1 `applyUpdate` complexity and TEC-1/TEC-1G update-branch
+similarity.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:

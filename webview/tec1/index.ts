@@ -30,6 +30,7 @@ import { createAccordionLayoutController, type ProviderPanelTab } from '../commo
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
+import { createTec1MessageHandler } from './message-handler';
 
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
@@ -74,7 +75,6 @@ const panelLayout = createAccordionLayoutController({
 panelLayout.wireButtons();
 
 let speedMode = 'fast';
-let uiRevision = 0;
 let projectIsInitialized = false;
 
 const audio = createAudioController(muteEl, vscode);
@@ -192,40 +192,20 @@ memoryPanelController = new MemoryPanel({
 memoryPanelController.wire();
 const serialUi = wireSerialUi(vscode);
 
-window.addEventListener('message', (event) => {
-  if (!event.data) return;
-  if (event.data.type === 'projectStatus') {
-    applyProjectStatus(event.data);
-    return;
-  }
-  if (event.data.type === 'sessionStatus') {
-    sessionStatusController.setStatus(event.data.status);
-    panelLayout.setRegisterRefreshActive(
-      event.data.status === 'running' || event.data.status === 'paused'
-    );
-    return;
-  }
-  if (event.data.type === 'selectTab') {
-    panelLayout.setProviderTab(event.data.tab, false);
-    return;
-  }
-  if (event.data.type === 'update') {
-    if (typeof event.data.uiRevision === 'number') {
-      if (event.data.uiRevision < uiRevision) {
-        return;
-      }
-      uiRevision = event.data.uiRevision;
-    }
-    applyUpdate(event.data);
-    return;
-  }
-  if (event.data.type === 'snapshot') {
-    memoryPanelController?.handleSnapshot(event.data);
-    return;
-  }
-  if (event.data.type === 'snapshotError') {
-    memoryPanelController?.handleSnapshotError(event.data.message);
-  }
+const handleTec1Message = createTec1MessageHandler({
+  applyProjectStatus,
+  setSessionStatus: (status) => sessionStatusController.setStatus(status),
+  setRegisterRefreshActive: (active) => panelLayout.setRegisterRefreshActive(active),
+  setProviderTab: (tab, pushState) => panelLayout.setProviderTab(tab, pushState),
+  applyUpdate,
+  handleSnapshot: (payload) =>
+    memoryPanelController?.handleSnapshot(payload as Parameters<MemoryPanel['handleSnapshot']>[0]),
+  handleSnapshotError: (message) =>
+    memoryPanelController?.handleSnapshotError(message as string | undefined),
+});
+
+window.addEventListener('message', (event: MessageEvent): void => {
+  handleTec1Message(event.data);
 });
 
 applySpeed(speedMode);
