@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: CoolTerm Hex Artifact Test Helper Cleanup
+
+`tests/extension/coolterm-hex-artifact.test.ts` now uses a local
+`writeHexArtifact` helper for the repeated build-directory and `.hex` fixture
+setup. The tests still cover explicit target hex paths, inferred
+`outputDir`/`artifactBase` paths, and missing inferred artifacts.
+
+This is intentionally test-only cleanup. It removes duplicated CoolTerm hex
+artifact fixture setup without changing CoolTerm path resolution, project
+configuration parsing, or serial-transfer behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/coolterm-hex-artifact.test.ts
+```
+
 ### 2026-06-11: Mapping Service Test Fixture Cleanup
 
 `tests/debug/mapping-service.test.ts` now tracks and removes the temporary

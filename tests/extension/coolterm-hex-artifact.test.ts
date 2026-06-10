@@ -14,6 +14,13 @@ function makeProject(config: unknown): string {
   return root;
 }
 
+function writeHexArtifact(root: string, relativePath: string): string {
+  const artifactPath = path.join(root, relativePath);
+  fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+  fs.writeFileSync(artifactPath, ':00000001FF\n');
+  return artifactPath;
+}
+
 describe('resolveCoolTermHexArtifact', () => {
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
@@ -27,12 +34,11 @@ describe('resolveCoolTermHexArtifact', () => {
         app: { hex: 'build/app.hex' },
       },
     });
-    fs.mkdirSync(path.join(root, 'build'));
-    fs.writeFileSync(path.join(root, 'build', 'app.hex'), ':00000001FF\n');
+    const hexPath = writeHexArtifact(root, 'build/app.hex');
 
     expect(resolveCoolTermHexArtifact(root, 'app')).toEqual({
       kind: 'found',
-      path: path.join(root, 'build', 'app.hex'),
+      path: hexPath,
     });
   });
 
@@ -43,12 +49,11 @@ describe('resolveCoolTermHexArtifact', () => {
         app: { artifactBase: 'monitor' },
       },
     });
-    fs.mkdirSync(path.join(root, 'build'));
-    fs.writeFileSync(path.join(root, 'build', 'monitor.hex'), ':00000001FF\n');
+    const hexPath = writeHexArtifact(root, 'build/monitor.hex');
 
     expect(resolveCoolTermHexArtifact(root, 'app')).toEqual({
       kind: 'found',
-      path: path.join(root, 'build', 'monitor.hex'),
+      path: hexPath,
     });
   });
 
