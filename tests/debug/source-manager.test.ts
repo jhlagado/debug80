@@ -2,7 +2,7 @@
  * @file Source manager tests.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -29,8 +29,17 @@ const createLogger = (logs: string[]): Logger => ({
 });
 
 describe('source-manager', () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tmpDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
+  });
+
   it('builds mapping state from the native debug map', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-'));
+    const dir = makeTempDir('debug80-source-');
     const hexPath = path.join(dir, 'simple.hex');
     const sourcePath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
@@ -84,7 +93,7 @@ describe('source-manager', () => {
   });
 
   it('passes resolved asm path as mapping sourceFile when sourceFile is omitted (e.g. AZM entry only)', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-source-azm-'));
+    const dir = makeTempDir('debug80-source-azm-');
     const hexPath = path.join(dir, 'out.hex');
     const asmPath = 'src/matrix.asm';
     writeFile(hexPath, ':00000001FF\n');
@@ -122,4 +131,10 @@ describe('source-manager', () => {
     );
     buildMappingSpy.mockRestore();
   });
+
+  function makeTempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
 });

@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Source Manager Test Fixture Cleanup
+
+`tests/debug/source-manager.test.ts` now owns its temporary source-map project
+fixtures through a small local helper and `afterEach` cleanup. The tests still
+exercise the same source-manager behavior: loading native D8 source maps into
+mapping state, preserving source roots, and passing the resolved AZM entry file
+to mapping construction when `sourceFile` is omitted.
+
+This is intentionally test-only cleanup. It removes leaked temporary directories
+from the source-manager coverage without changing production source-map loading,
+launch behavior, or mapping policy.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/source-manager.test.ts
+```
+
 ### 2026-06-11: Source-State Build Options Test Fixture Cleanup
 
 `tests/debug/source-state-build-options.test.ts` now uses local helpers for the
