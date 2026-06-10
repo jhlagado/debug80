@@ -2,7 +2,7 @@
  * @file Launch args helpers tests.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -32,10 +32,19 @@ import {
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
 describe('launch-args', () => {
+  let tempDirs: string[];
+
   beforeEach(() => {
+    tempDirs = [];
     getExtension.mockReset();
     getExtension.mockReturnValue(undefined);
     vscodeWorkspace.workspaceFolders = [];
+  });
+
+  afterEach(() => {
+    for (const dir of tempDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('normalizes platform names', () => {
@@ -63,7 +72,7 @@ describe('launch-args', () => {
   });
 
   it('builds debug map paths beside artifacts when the project root exists', () => {
-    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-base-'));
+    const baseDir = makeTempDir('debug80-map-base-');
     const hexPath = path.join(baseDir, 'main.hex');
     const args = { artifactBase: 'main' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
@@ -71,12 +80,12 @@ describe('launch-args', () => {
   });
 
   it('merges config file values', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-config-'));
-    const configPath = path.join(dir, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({ asm: 'a.asm', assembler: 'azm', entry: 4660, target: 'default' })
-    );
+    const { dir, configPath } = createConfigFixture('debug80-config-', {
+      asm: 'a.asm',
+      assembler: 'azm',
+      entry: 4660,
+      target: 'default',
+    });
     const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
       resolveBaseDir: () => dir,
     });
@@ -86,19 +95,16 @@ describe('launch-args', () => {
   });
 
   it('merges config from package.json and selects target', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-pkg-'));
+    const dir = makeTempDir('debug80-pkg-');
     const pkgPath = path.join(dir, 'package.json');
-    fs.writeFileSync(
-      pkgPath,
-      JSON.stringify({
-        debug80: {
-          defaultTarget: 'app',
-          targets: {
-            app: { asm: 'main.asm', outputDir: 'build' },
-          },
+    writeJsonFile(pkgPath, {
+      debug80: {
+        defaultTarget: 'app',
+        targets: {
+          app: { asm: 'main.asm', outputDir: 'build' },
         },
-      })
-    );
+      },
+    });
     const merged = populateFromConfig({ projectConfig: pkgPath } as LaunchRequestArguments, {
       resolveBaseDir: () => dir,
     });
@@ -107,25 +113,20 @@ describe('launch-args', () => {
   });
 
   it('resolves platform from target profile metadata when explicit platform is absent', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-target-'));
-    const configPath = path.join(dir, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        defaultTarget: 'app',
-        profiles: {
-          mon3: {
-            platform: 'tec1g',
-          },
+    const { dir, configPath } = createConfigFixture('debug80-profile-target-', {
+      defaultTarget: 'app',
+      profiles: {
+        mon3: {
+          platform: 'tec1g',
         },
-        targets: {
-          app: {
-            asm: 'src/main.asm',
-            profile: 'mon3',
-          },
+      },
+      targets: {
+        app: {
+          asm: 'src/main.asm',
+          profile: 'mon3',
         },
-      })
-    );
+      },
+    });
 
     const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
       resolveBaseDir: () => dir,
@@ -135,25 +136,20 @@ describe('launch-args', () => {
   });
 
   it('resolves platform from defaultProfile when target profile is absent', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-default-'));
-    const configPath = path.join(dir, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        defaultTarget: 'app',
-        defaultProfile: 'mon3',
-        profiles: {
-          mon3: {
-            platform: 'tec1g',
-          },
+    const { dir, configPath } = createConfigFixture('debug80-profile-default-', {
+      defaultTarget: 'app',
+      defaultProfile: 'mon3',
+      profiles: {
+        mon3: {
+          platform: 'tec1g',
         },
-        targets: {
-          app: {
-            asm: 'src/main.asm',
-          },
+      },
+      targets: {
+        app: {
+          asm: 'src/main.asm',
         },
-      })
-    );
+      },
+    });
 
     const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
       resolveBaseDir: () => dir,
@@ -163,9 +159,9 @@ describe('launch-args', () => {
   });
 
   it('hydrates tec1g launch paths from bundled profile assets when workspace copies are absent', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1g-'));
+    const dir = makeTempDir('debug80-profile-bundle-tec1g-');
     const configPath = path.join(dir, 'debug80.json');
-    const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-extension-'));
+    const extensionRoot = makeTempDir('debug80-extension-');
     const bundledRom = path.join(
       extensionRoot,
       'resources',
@@ -221,9 +217,9 @@ describe('launch-args', () => {
   });
 
   it('infers bundled MON-3 debug map from the bundled ROM reference for older configs', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1g-'));
+    const dir = makeTempDir('debug80-profile-bundle-tec1g-');
     const configPath = path.join(dir, 'debug80.json');
-    const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-extension-'));
+    const extensionRoot = makeTempDir('debug80-extension-');
     const bundledRom = path.join(
       extensionRoot,
       'resources',
@@ -273,9 +269,9 @@ describe('launch-args', () => {
   });
 
   it('hydrates tec1 launch paths from bundled profile assets when workspace copies are absent', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-bundle-tec1-'));
+    const dir = makeTempDir('debug80-profile-bundle-tec1-');
     const configPath = path.join(dir, 'debug80.json');
-    const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-extension-'));
+    const extensionRoot = makeTempDir('debug80-extension-');
     const bundledRom = path.join(
       extensionRoot,
       'resources',
@@ -323,7 +319,7 @@ describe('launch-args', () => {
   });
 
   it('prefers workspace-local bundle overrides when they exist', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-profile-local-tec1g-'));
+    const dir = makeTempDir('debug80-profile-local-tec1g-');
     const configPath = path.join(dir, 'debug80.json');
     const workspaceRom = path.join(dir, 'roms', 'tec1g', 'mon3', 'mon3.bin');
     fs.mkdirSync(path.dirname(workspaceRom), { recursive: true });
@@ -365,7 +361,7 @@ describe('launch-args', () => {
   });
 
   it('deep-merges tec1g so target overrides do not drop root romHex', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-merge-'));
+    const dir = makeTempDir('debug80-tec1g-merge-');
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -407,7 +403,7 @@ describe('launch-args', () => {
   });
 
   it('inherits tec1g.romHex from another target when root has no romHex', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-tec1g-inherit-'));
+    const dir = makeTempDir('debug80-tec1g-inherit-');
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -442,12 +438,12 @@ describe('launch-args', () => {
   });
 
   it('returns args when config is missing or unreadable', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-missing-'));
+    const dir = makeTempDir('debug80-missing-');
     const args = { asm: path.join(dir, 'main.asm') } as LaunchRequestArguments;
     const merged = populateFromConfig(args, { resolveBaseDir: () => dir });
     expect(merged).toEqual(args);
 
-    const badDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bad-'));
+    const badDir = makeTempDir('debug80-bad-');
     const badConfig = path.join(badDir, 'debug80.json');
     fs.writeFileSync(badConfig, '{not json');
     const badArgs = { asm: path.join(badDir, 'main.asm') } as LaunchRequestArguments;
@@ -456,7 +452,7 @@ describe('launch-args', () => {
   });
 
   it('prefers explicit launch stopOnEntry over project config when projectConfig is present', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-stoponentry-'));
+    const dir = makeTempDir('debug80-stoponentry-');
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -480,7 +476,7 @@ describe('launch-args', () => {
   });
 
   it('merges AZM options from project, target, and explicit launch arguments', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-options-'));
+    const dir = makeTempDir('debug80-azm-options-');
     const configPath = path.join(dir, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -578,4 +574,25 @@ describe('launch-args', () => {
     const args = { projectConfig: outside } as LaunchRequestArguments;
     expect(resolveBaseDir(args)).toBe(path.dirname(outside));
   });
+
+  function makeTempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tempDirs.push(dir);
+    return dir;
+  }
+
+  function writeJsonFile(filePath: string, value: unknown): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(value));
+  }
+
+  function createConfigFixture(
+    prefix: string,
+    config: Record<string, unknown>
+  ): { dir: string; configPath: string } {
+    const dir = makeTempDir(prefix);
+    const configPath = path.join(dir, 'debug80.json');
+    writeJsonFile(configPath, config);
+    return { dir, configPath };
+  }
 });

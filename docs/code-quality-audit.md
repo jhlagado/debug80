@@ -2010,6 +2010,26 @@ was to correct the audit so the next cleanup does not churn an already-extracted
 source-map path. Future source-state cleanup should be driven by a fresh survey
 or a concrete behavior problem, not the stale `readSourceMapSymbols` note.
 
+### Latest Goal Note: Fresh Survey And Launch Args Test Fixture Cleanup
+
+A fresh local survey could not use Fallow because the optional
+`@fallow-cli/darwin-arm64` binary still fails to resolve in this checkout. The
+replacement survey used repo-native signals: largest TypeScript files, current
+audit hot zones, repeated test fixture setup, and the rule to avoid matrix
+keyboard and TEC-1G hardware behavior in broad cleanup goals.
+
+The safest clear target was a test-only slice of
+`tests/debug/launch-args.test.ts`, which is large but outside the runtime hot
+zones. The first cleanup pass added local temporary-directory cleanup and small
+JSON/config fixture helpers for repeated launch-config setup. The behavior
+assertions remain visible in each test, and the production launch-argument
+policy was not changed.
+
+Verification for this goal covered the focused launch-args test, TypeScript,
+lint, and the full `package:check` gate. Fallow remains blocked by the missing
+optional platform binary, so do not treat Fallow as current evidence until that
+tooling issue is fixed.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
