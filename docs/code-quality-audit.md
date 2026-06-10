@@ -877,29 +877,51 @@ Recommended approach:
 
 ### P2: Dead Export Surface Should Be Reduced
 
-Fallow reported 66 dead-code/export findings. Some are likely false positives or
-public extension seams, but several look like genuine cleanup candidates:
+Earlier Fallow output reported a broad dead-code/export surface. A fresh manual
+audit of the remaining small candidates found that the actionable list is now
+much smaller than the older report suggested:
 
-- `src/platforms/tec1/runtime.ts`: `TEC1_SLOW_HZ`, `TEC1_FAST_HZ`.
-- `src/platforms/tec1g/constants.ts`: deprecated/unused aliases.
-- `src/platforms/tec1g/glcd.ts`: `resetGlcdState`.
-- `src/platforms/tec1g/matrix-keymap.ts`: `getMatrixCombosForChar`.
-- `src/platforms/tec1g/runtime-matrix.ts`: `collectMatrixDutyBrightness`.
-- `src/platforms/tec1g/tec1g-cartridge.ts`: `isTec1gCartridgeBootable`.
-- `src/z80/decode.ts`: `createDecoder`.
-- `src/z80/decode-cb.ts`: `executeCbPrefix`.
+- `src/platforms/simple/ui-panel-state.ts` is not dead. It is loaded dynamically
+  by `src/extension/platform-ui-entries.ts` as the Simple platform's UI-state
+  contract, so it should remain unless the platform UI manifest contract itself
+  changes.
+- `src/platforms/tec1/runtime.ts` no longer exports `TEC1_SLOW_HZ` or
+  `TEC1_FAST_HZ`; they are private aliases used internally by TEC-1 runtime
+  initialization and speed switching.
+- `src/z80/decode.ts` no longer exports `createDecoder`; it is a private cached
+  decoder builder used by `decodeInstruction`.
+- `src/z80/decode-cb.ts` no longer has an `executeCbPrefix` export; the current
+  public CB-prefix seam is `buildCbHandler`.
+- `src/platforms/tec1g/glcd.ts` keeps `resetGlcdState` private and uses it from
+  the GLCD controller reset path.
+- `src/platforms/tec1g/tec1g-cartridge.ts` keeps
+  `isTec1gCartridgeBootable` private and uses it from
+  `loadTec1gCartridgeImage`.
+- `src/platforms/tec1g/constants.ts` status/sysctrl constants checked in this
+  pass are used by TEC-1G runtime or IO-handler tests. The bank/protect aliases
+  are part of the current SYS_CTRL implementation, not confirmed dead code.
+
+Matrix-specific entries from the old report are deliberately excluded from the
+general cleanup stream. `getMatrixCombosForChar` has been superseded by the
+live `getMatrixCombosForAscii` request path, and matrix duty collection is
+private runtime behavior. These belong to dedicated matrix work, not casual
+dead-export cleanup.
 
 Recommended approach:
 
-- Treat dead exports as a quick-win cleanup stream.
+- Treat dead exports as a quick-win cleanup stream only when current evidence is
+  strong.
 - For each finding, first `rg` the symbol and check whether it is used by tests,
   public API, dynamic imports, or intended extension contracts.
 - Remove only confirmed dead exports, then run typecheck and targeted tests.
+- Do not remove TEC-1G matrix or display internals as part of broad cleanup;
+  those areas need behavior-first characterization.
 
-Current correction: `src/platforms/simple/ui-panel-state.ts` is not dead. It is
-loaded dynamically by `src/extension/platform-ui-entries.ts` as the Simple
-platform's UI-state contract, so it should remain unless the platform UI
-manifest contract itself changes.
+Tooling note: `npm exec --yes fallow -- audit --format compact` currently fails
+in this checkout because the optional `@fallow-cli/darwin-arm64` binary tarball
+for the resolved Fallow version is unavailable from npm. Until that is fixed,
+use direct source searches plus TypeScript/tests as the authoritative evidence
+for this dead-export section.
 
 ### P2: Duplication Is Manageable But Useful To Reduce
 
