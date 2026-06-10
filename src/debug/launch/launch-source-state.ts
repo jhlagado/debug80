@@ -2,11 +2,11 @@
  * @fileoverview Source-state setup for launch session assembly.
  */
 
-import * as path from 'path';
 import * as fs from 'fs';
 import { buildSymbolIndex } from '../mapping/symbol-service';
 import type { SourceStateManager } from '../mapping/source-state-manager';
-import { resolveDebugMapPath, resolveMappedPath } from '../mapping/path-resolver';
+import { resolveDebugMapPath } from '../mapping/path-resolver';
+import { findPrimaryDebugMapSource, resolveDebugMapFilePath } from '../mapping/d8-source-paths';
 import type { PlatformKind } from './program-loader';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
@@ -259,26 +259,4 @@ function collectDebugMapSourcePaths(debugMaps: string[], sourceRoots: string[]):
     }
   }
   return [...paths].sort((a, b) => a.localeCompare(b));
-}
-
-function findPrimaryDebugMapSource(
-  mapPath: string,
-  files: string[],
-  sourceRoots: string[]
-): string | undefined {
-  const mapBase = path.basename(mapPath, '.d8.json').toLowerCase();
-  const candidates = files
-    .filter((file) => file.trim().length > 0)
-    .map((file) => resolveDebugMapFilePath(file, mapPath, sourceRoots));
-  const exact = candidates.find(
-    (file) => path.basename(file, path.extname(file)).toLowerCase() === mapBase
-  );
-  return exact ?? candidates[0];
-}
-
-function resolveDebugMapFilePath(file: string, mapPath: string, sourceRoots: string[]): string {
-  if (path.isAbsolute(file)) {
-    return file;
-  }
-  return resolveMappedPath(file, undefined, sourceRoots) ?? path.join(path.dirname(mapPath), file);
 }

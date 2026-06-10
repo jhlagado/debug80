@@ -33,6 +33,39 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Shared D8 Source Path Resolution
+
+Launch source-state loading and editor D8 navigation now share native source-map
+file-key resolution through `src/debug/mapping/d8-source-paths.ts`. The helper
+centralizes the behavior that both areas rely on:
+
+- absolute D8 file keys remain absolute, with existing files canonicalized;
+- relative file keys prefer existing files below supplied source roots;
+- launch-side auxiliary maps still fall back beside the map file;
+- editor navigation still falls back to the project root, preserving the old
+  "project-relative missing file" behavior for F12/hover/workspace symbols.
+
+`src/debug/launch/launch-source-state.ts` no longer owns a private
+`resolveDebugMapFilePath` / `findPrimaryDebugMapSource` pair, and
+`src/extension/d8-definition-provider.ts` now uses the same resolver when
+opening definitions, workspace symbols, hover contract files, and staleness
+checks. Focused tests in `tests/debug/d8-source-paths.test.ts` characterize the
+shared path rules directly.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/d8-source-paths.test.ts tests/debug/launch-source-state.test.ts tests/extension/d8-definition-provider.test.ts
+npm run typecheck
+npm run lint
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow exits cleanly for the changed-file gate. It still reports inherited
+duplication in D8 symbol-object construction and launch auxiliary-map collection
+loops; those are separate cleanup candidates and were left alone to keep this
+path-resolution change behavior-preserving.
+
 ### 2026-06-11: Launch/Rebuild Source-State Setup Extraction
 
 Launch and warm rebuild now share source-state setup helpers in

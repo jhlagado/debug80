@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { D8DebugMap, D8Symbol } from '../mapping/d8-map';
 import { parseD8DebugMap } from '../mapping/d8-map';
+import { resolveDebugMapFilePath } from '../debug/mapping/d8-source-paths';
 import { findProjectConfigPath, readProjectConfig } from './project-config';
 import { resolveTargetNameForConfig } from './project-target-selection';
 
@@ -235,7 +236,9 @@ export function isD8MapPossiblyStale(
       continue;
     }
     try {
-      const sourceMtime = fs.statSync(resolveProjectPath(projectRoot, fileKey)).mtimeMs;
+      const sourceMtime = fs.statSync(
+        resolveEditorDebugMapFilePath(fileKey, mapPath, projectRoot)
+      ).mtimeMs;
       if (sourceMtime > mapMtime + 1000) {
         return true;
       }
@@ -297,7 +300,7 @@ class D8DefinitionProvider implements vscode.DefinitionProvider {
     if (definition === undefined) {
       return undefined;
     }
-    const targetPath = resolveProjectPath(folder.uri.fsPath, definition.file);
+    const targetPath = resolveEditorDebugMapFilePath(definition.file, d8Path, folder.uri.fsPath);
     const targetPosition = new vscode.Position(Math.max(0, definition.line - 1), 0);
     return new vscode.Location(vscode.Uri.file(targetPath), targetPosition);
   }
@@ -330,7 +333,11 @@ class D8WorkspaceSymbolProvider implements vscode.Disposable {
       needle === '' ? true : symbol.name.toLowerCase().includes(needle)
     );
     return symbols.map((symbol) => {
-      const targetPath = resolveProjectPath(loaded.folder.uri.fsPath, symbol.file);
+      const targetPath = resolveEditorDebugMapFilePath(
+        symbol.file,
+        loaded.path,
+        loaded.folder.uri.fsPath
+      );
       const location = new vscode.Location(
         vscode.Uri.file(targetPath),
         new vscode.Position(Math.max(0, symbol.line - 1), Math.max(0, (symbol.column ?? 1) - 1))
@@ -373,7 +380,7 @@ class D8HoverProvider implements vscode.HoverProvider {
     if (symbol === undefined) {
       return undefined;
     }
-    const targetPath = resolveProjectPath(folder.uri.fsPath, symbol.file);
+    const targetPath = resolveEditorDebugMapFilePath(symbol.file, loaded.path, folder.uri.fsPath);
     const contractLine = readContractLine(targetPath, symbol.line);
     const markdown = new vscode.MarkdownString();
     markdown.appendCodeblock(formatD8Hover(symbol, contractLine), 'text');
@@ -465,6 +472,13 @@ function symbolKindForD8(symbol: D8EditorSymbol): vscode.SymbolKind {
 
 function resolveProjectPath(projectRoot: string, value: string): string {
   return path.isAbsolute(value) ? value : path.join(projectRoot, value);
+}
+
+function resolveEditorDebugMapFilePath(file: string, mapPath: string, projectRoot: string): string {
+  return resolveDebugMapFilePath(file, mapPath, [projectRoot], {
+    fallbackDir: projectRoot,
+    canonicalize: false,
+  });
 }
 
 function normalizePathKey(value: string): string {
