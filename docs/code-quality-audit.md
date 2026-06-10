@@ -1857,10 +1857,34 @@ moment because the optional `@fallow-cli/darwin-arm64` binary package fails to
 resolve from npm. Use focused tests, lint, package checks, and TypeScript as
 the local verification evidence until the Fallow package issue is fixed.
 
-Next safe cleanup candidate: `src/debug/launch/azm-backend.ts` still has small
-duplication around artifact writing and assemble/assembleBin result handling.
-Treat it as build-critical: add characterization tests around emitted artifacts
-and failure diagnostics before extracting anything.
+The small `src/debug/launch/azm-backend.ts` artifact-writing follow-up noted
+here has now been handled. Treat future build-path cleanup as higher-friction:
+prefer characterization tests first, because this area controls emitted HEX,
+BIN, D8, and register-contract artifacts.
+
+### Latest Goal Note: AZM Backend Artifact Publishing Follow-up
+
+`src/debug/launch/azm-backend.ts` now finishes the earlier backend cleanup by
+moving post-compile artifact publishing into narrow helpers. `assemble()` now
+reads as load AZM, compile, then publish the required HEX/D8 artifacts plus
+optional BIN and register-contract outputs. `assembleBin()` uses the same
+required-BIN artifact writer for rebuild output.
+
+The change deliberately leaves AZM compile options, result conversion,
+diagnostic formatting, artifact paths, and failure messages unchanged. The
+focused AZM backend tests already cover the important behavior: required HEX
+and D8 artifacts, empty HEX rejection, optional BIN output, register-contract
+report/interface output, and binary rebuild output.
+
+Current tooling note: Fallow still cannot be rerun in this checkout because the
+optional `@fallow-cli/darwin-arm64` binary package fails to resolve from npm.
+Use focused tests, lint, package checks, TypeScript, high-effort review, and CI
+as the verification evidence until the Fallow package issue is fixed.
+
+Next safe cleanup candidate: use the later "Fresh Post-AZM Cleanup Survey" in
+this document as the current prioritization point, rather than adding more AZM
+backend churn. Prefer a test-only or helper-only target outside the TEC-1G
+matrix keyboard path unless a behavior goal explicitly requires otherwise.
 
 ### Latest Goal Note: AZM Backend Artifact Helper Extraction
 

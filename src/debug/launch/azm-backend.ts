@@ -336,6 +336,57 @@ function writeOptionalTextArtifact(
   }
 }
 
+function writeBinArtifactFromCompile(
+  artifacts: Artifact[],
+  binPath: string,
+  asmPath: string
+): AssembleResult | undefined {
+  const binResult = requireArtifact(artifacts, 'bin', 'BIN', asmPath);
+  if (!binResult.ok) {
+    return binResult.result;
+  }
+  writeBinaryArtifact(binPath, binResult.artifact.bytes);
+  return undefined;
+}
+
+function writeAssemblyArtifacts(
+  options: AssembleOptions,
+  artifacts: Artifact[],
+  binPath: string
+): AssembleResult | undefined {
+  const hexResult = requireArtifact(artifacts, 'hex', 'HEX', options.asmPath);
+  if (!hexResult.ok) {
+    return hexResult.result;
+  }
+
+  const d8Result = requireArtifact(artifacts, 'd8m', 'D8', options.asmPath);
+  if (!d8Result.ok) {
+    return d8Result.result;
+  }
+
+  if (!hasIntelHexDataRecords(hexResult.artifact.text)) {
+    return azmFailure(`azm succeeded but produced no HEX data records for "${options.asmPath}".`);
+  }
+
+  const base = artifactBase(options.hexPath);
+  writeTextArtifact(options.hexPath, hexResult.artifact.text);
+
+  const bin = findArtifact(artifacts, 'bin');
+  if (bin !== undefined) {
+    writeBinaryArtifact(binPath, bin.bytes);
+  }
+
+  writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8Result.artifact.json);
+  writeOptionalTextArtifact(
+    artifacts,
+    'register-contracts-report',
+    resolveRegisterContractsReportPath(options.hexPath)
+  );
+  writeOptionalTextArtifact(artifacts, 'register-contracts-interface', `${base}.asmi`);
+
+  return undefined;
+}
+
 function compileOutcome(
   compiled: { diagnostics: Diagnostic[]; artifacts: Artifact[] },
   sourceRoot: string | undefined,
@@ -402,39 +453,10 @@ export class AzmBackend implements AssemblerBackend {
       return result;
     }
 
-    const artifacts = result.artifacts;
-    const hexResult = requireArtifact(artifacts, 'hex', 'HEX', options.asmPath);
-    if (!hexResult.ok) {
-      return hexResult.result;
+    const artifactFailure = writeAssemblyArtifacts(options, result.artifacts, binPath);
+    if (artifactFailure !== undefined) {
+      return artifactFailure;
     }
-    const hex = hexResult.artifact;
-
-    const base = artifactBase(options.hexPath);
-    const d8Result = requireArtifact(artifacts, 'd8m', 'D8', options.asmPath);
-    if (!d8Result.ok) {
-      return d8Result.result;
-    }
-    const d8 = d8Result.artifact;
-
-    if (!hasIntelHexDataRecords(hex.text)) {
-      return azmFailure(`azm succeeded but produced no HEX data records for "${options.asmPath}".`);
-    }
-
-    writeTextArtifact(options.hexPath, hex.text);
-
-    const bin = findArtifact(artifacts, 'bin');
-    if (bin !== undefined) {
-      writeBinaryArtifact(binPath, bin.bytes);
-    }
-
-    writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8.json);
-
-    writeOptionalTextArtifact(
-      artifacts,
-      'register-contracts-report',
-      resolveRegisterContractsReportPath(options.hexPath)
-    );
-    writeOptionalTextArtifact(artifacts, 'register-contracts-interface', `${base}.asmi`);
 
     return {
       success: true,
@@ -478,13 +500,14 @@ export class AzmBackend implements AssemblerBackend {
       return result;
     }
 
-    const binResult = requireArtifact(result.artifacts, 'bin', 'BIN', options.asmPath);
-    if (!binResult.ok) {
-      return binResult.result;
+    const artifactFailure = writeBinArtifactFromCompile(
+      result.artifacts,
+      resolveBinPath(options.hexPath),
+      options.asmPath
+    );
+    if (artifactFailure !== undefined) {
+      return artifactFailure;
     }
-    const bin = binResult.artifact;
-
-    writeBinaryArtifact(resolveBinPath(options.hexPath), bin.bytes);
     return { success: true };
   }
 }
