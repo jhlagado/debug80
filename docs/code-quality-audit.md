@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Mapping Service Test Fixture Cleanup
+
+`tests/debug/mapping-service.test.ts` now tracks and removes the temporary
+source-map fixture directories created by the mapping-service scenarios. A local
+`makeTempMapDir` helper owns temp-directory creation, while `afterEach` removes
+all directories created by each test.
+
+This is intentionally test-only cleanup. It removes leaked D8 mapping fixtures
+without changing native-map detection, missing-map handling, auxiliary platform
+ROM map loading, stale-cache rejection, or source-location behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/mapping-service.test.ts
+```
+
 ### 2026-06-11: Project Gitignore Test Fixture Cleanup
 
 `tests/extension/project-scaffolding-gitignore.test.ts` now uses a small

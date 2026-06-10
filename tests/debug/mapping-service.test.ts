@@ -2,7 +2,7 @@
  * @file Mapping service tests.
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -15,6 +15,21 @@ const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
 };
+
+const tmpDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tmpDirs) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  tmpDirs.length = 0;
+});
+
+function makeTempMapDir(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+  tmpDirs.push(dir);
+  return dir;
+}
 
 const createLogger = (logs: string[]): Logger => ({
   debug: (message: string, ...args: unknown[]) =>
@@ -89,7 +104,7 @@ describe('mapping-service', () => {
   });
 
   it('loads a native D8 map when available', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
@@ -118,7 +133,7 @@ describe('mapping-service', () => {
   });
 
   it('does not derive a source map when native D8 is missing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
@@ -142,7 +157,7 @@ describe('mapping-service', () => {
   });
 
   it('does not load retired project-cache maps when the build-side source map is missing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'build', 'simple.hex');
     const asmPath = path.join(dir, 'src', 'simple.asm');
     const buildMapPath = path.join(dir, 'build', 'simple.d8.json');
@@ -167,7 +182,7 @@ describe('mapping-service', () => {
   });
 
   it('ignores non-native Debug80-generated D8 maps instead of fabricating fallback maps', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
@@ -210,7 +225,7 @@ describe('mapping-service', () => {
   });
 
   it('prefers an existing native debug map without regenerating it', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
@@ -241,7 +256,7 @@ describe('mapping-service', () => {
   });
 
   it('loads native auxiliary source maps from explicit platform ROM paths', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'build', 'simple.hex');
     const asmPath = path.join(dir, 'src', 'simple.asm');
     const mapPath = path.join(dir, 'build', 'simple.d8.json');
@@ -276,7 +291,7 @@ describe('mapping-service', () => {
   });
 
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'build', 'simple.hex');
     const asmPath = path.join(dir, 'src', 'simple.asm');
     const mapPath = path.join(dir, 'build', 'simple.d8.json');
@@ -312,7 +327,7 @@ describe('mapping-service', () => {
   });
 
   it('uses lstLine as a fallback source line when loading native D8 segments', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-map-'));
+    const dir = makeTempMapDir();
     const hexPath = path.join(dir, 'simple.hex');
     const asmPath = path.join(dir, 'simple.asm');
     const mapPath = path.join(dir, 'simple.d8.json');
