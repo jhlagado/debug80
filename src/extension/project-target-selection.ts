@@ -2,14 +2,17 @@
  * @file Project target selection and persistence helpers.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { readProjectConfig, updateProjectTargetSource } from './project-config';
 import {
   loadVisibleTargetChoices,
   type LoadedTargetChoices,
 } from './project-target-config-policy';
+import {
+  ProjectTargetSourceFileCache,
+  projectRootFromProjectConfigPath,
+  targetProgramFileExists,
+} from './project-target-filesystem';
 import {
   buildEntrySourcePickRows,
   buildTargetChoicePickRows,
@@ -20,24 +23,11 @@ import { resolveTargetSelectionDecision, targetSelectionKeyFor } from './project
 import {
   buildCoveredEntrySourceKeys,
   buildTargetsPerEntrySourcePath,
-  normalizeProjectRelativePath,
   withDiscoverableTargetChoices,
 } from './project-target-source-policy';
-import { isTargetEntrySourcePath, listTargetEntrySourceFiles } from './target-discovery';
+import { isTargetEntrySourcePath } from './target-discovery';
 
-type SourceFileCache = { files: string[]; cachedAt: number };
-const sourceFileCache = new Map<string, SourceFileCache>();
-const SOURCE_FILE_CACHE_TTL_MS = 2000;
-
-function getCachedSourceFiles(projectRoot: string): string[] {
-  const cached = sourceFileCache.get(projectRoot);
-  if (cached !== undefined && Date.now() - cached.cachedAt < SOURCE_FILE_CACHE_TTL_MS) {
-    return cached.files;
-  }
-  const files = listTargetEntrySourceFiles(projectRoot);
-  sourceFileCache.set(projectRoot, { files, cachedAt: Date.now() });
-  return files;
-}
+const sourceFileCache = new ProjectTargetSourceFileCache();
 
 type ResolveTargetOptions = {
   prompt?: boolean;
@@ -133,7 +123,7 @@ export function listProjectTargetChoices(projectConfigPath: string): Discoverabl
 
   let allSourceFiles: string[] = [];
   try {
-    allSourceFiles = getCachedSourceFiles(projectRoot);
+    allSourceFiles = sourceFileCache.get(projectRoot);
   } catch {
     // filesystem errors — skip discovery silently
   }
@@ -242,7 +232,7 @@ function buildTargetQuickPickItems(
   );
 
   try {
-    const all = getCachedSourceFiles(projectRoot);
+    const all = sourceFileCache.get(projectRoot);
     azmPaths = all.filter((p) => isTargetEntrySourcePath(p));
   } catch {
     azmPaths = [];
@@ -263,21 +253,6 @@ function buildTargetQuickPickItems(
   return items;
 }
 
-function targetProgramFileExists(projectRoot: string, target: Record<string, unknown>): boolean {
-  const sourcePath = target.sourceFile ?? target.asm ?? target.source;
-  if (typeof sourcePath !== 'string' || sourcePath.trim().length === 0) {
-    return true;
-  }
-  const abs = path.isAbsolute(sourcePath)
-    ? sourcePath
-    : path.join(projectRoot, normalizeProjectRelativePath(sourcePath));
-  try {
-    return fs.existsSync(abs);
-  } catch {
-    return false;
-  }
-}
-
 function loadTargetChoices(projectConfigPath: string): LoadedTargetChoices {
   const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
   const config = readProjectConfig(projectConfigPath);
@@ -286,13 +261,4 @@ function loadTargetChoices(projectConfigPath: string): LoadedTargetChoices {
     config,
     targetExists: (target) => targetProgramFileExists(projectRoot, target),
   });
-}
-
-/** Workspace root for a config at `.vscode/debug80.json` or `debug80.json` next to sources. */
-function projectRootFromProjectConfigPath(projectConfigPath: string): string {
-  const normalized = projectConfigPath.replace(/\\/g, '/');
-  if (normalized.endsWith('.vscode/debug80.json')) {
-    return path.dirname(path.dirname(projectConfigPath));
-  }
-  return path.dirname(projectConfigPath);
 }

@@ -1158,6 +1158,18 @@ and should be weighed against churn: `projectRootFromProjectConfigPath`,
 `targetProgramFileExists`, and source-file caching are still local because they
 are filesystem/VS Code-adjacent rather than product policy.
 
+### Latest Goal Note: Target Filesystem And Path Utilities Split
+
+`src/extension/project-target-filesystem.ts` now owns project-root resolution,
+target program source existence checks, and the short-lived source-file
+discovery cache used by target selection. `project-target-selection.ts` keeps
+the VS Code/project orchestration and delegates filesystem/path behavior to the
+new helper.
+
+The helper has focused coverage for root and `.vscode/debug80.json` project
+config paths, relative and absolute source-file existence checks, filesystem
+error handling, and TTL-based source discovery caching.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
