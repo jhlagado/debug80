@@ -302,6 +302,27 @@ The next strictness step should not enable all of `strict` at once. Survey
 `noImplicitAny` separately and continue with small, behavior-preserving boundary
 passes.
 
+Current no-implicit-any survey:
+
+```sh
+npx tsc -p webview/tsconfig.json --noEmit --noImplicitAny true --pretty false
+```
+
+As of this audit pass, `noImplicitAny` reports only `webview/tec1g/matrix-ui.ts`
+callback/helper parameters:
+
+- `applyKeyboardCapture(enabled)` and `applyCapsLock(enabled)`;
+- `shouldIgnoreKeyEvent(event)`;
+- `setMatrixKeyPressed(key, pressed)`;
+- `sendMatrixKey(key, pressed, mods, source)`;
+- `setMatrixMod(mod, active)` and `armMatrixMod(mod)`.
+
+The first safe `noImplicitAny` cleanup should add explicit parameter and return
+types to these existing matrix UI helpers without changing key-routing,
+modifier, capture, or timer behavior. Because this file is a regression
+hotspot, verify with the full matrix UI webview test file and keep the patch to
+type annotations unless the compiler exposes a real mismatch.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
