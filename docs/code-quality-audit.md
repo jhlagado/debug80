@@ -1111,6 +1111,21 @@ dead-code gate is clean. Phase 5 has now started with target discovery split
 out and launch config merge staging extracted; continue with target
 selection/persistence cleanup as a separate, behavior-preserving step.
 
+### Latest Goal Note: Target Selection Policy Boundary
+
+`src/extension/project-target-policy.ts` now owns the pure target selection
+decision: remembered target, configured default target, sole-target fallback,
+forced prompt behavior, and the workspace memento key format. The VS Code
+controller still owns filesystem discovery, target mutation, and QuickPick UI,
+but it no longer duplicates the precedence rules in each caller.
+
+This gives future project workflow cleanup a smaller safety surface. If target
+selection changes again, add characterization in
+`tests/extension/project-target-policy.test.ts` first, then rewire the UI
+controller. Remaining complexity in `project-target-selection.ts` is mostly
+discovery and QuickPick row construction; that should be split only after adding
+similarly direct tests for source-file discovery and entry-source binding.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

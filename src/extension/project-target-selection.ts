@@ -9,9 +9,11 @@ import {
   readProjectConfig,
   updateProjectTargetSource,
 } from './project-config';
+import {
+  resolveTargetSelectionDecision,
+  targetSelectionKeyFor,
+} from './project-target-policy';
 import { isTargetEntrySourcePath, listTargetEntrySourceFiles } from './target-discovery';
-
-const TARGET_KEY_PREFIX = 'debug80.selectedTarget:';
 
 type SourceFileCache = { files: string[]; cachedAt: number };
 const sourceFileCache = new Map<string, SourceFileCache>();
@@ -77,7 +79,7 @@ function getStoredTargetName(
   workspaceState: vscode.Memento,
   projectConfigPath: string
 ): string | undefined {
-  return workspaceState.get<string>(targetKeyFor(projectConfigPath));
+  return workspaceState.get<string>(targetSelectionKeyFor(projectConfigPath));
 }
 
 export function resolvePreferredTargetName(
@@ -89,20 +91,12 @@ export function resolvePreferredTargetName(
     return undefined;
   }
 
-  const stored = getStoredTargetName(workspaceState, projectConfigPath);
-  if (stored !== undefined && choices.some((choice) => choice.name === stored)) {
-    return stored;
-  }
-
-  if (defaultTarget !== undefined && choices.some((choice) => choice.name === defaultTarget)) {
-    return defaultTarget;
-  }
-
-  if (choices.length === 1) {
-    return choices[0]?.name;
-  }
-
-  return undefined;
+  const decision = resolveTargetSelectionDecision({
+    choices,
+    defaultTarget,
+    storedTarget: getStoredTargetName(workspaceState, projectConfigPath),
+  });
+  return decision.kind === 'use' ? decision.targetName : undefined;
 }
 
 /**
@@ -120,13 +114,11 @@ export function resolveTargetNameForConfig(
   if (choices.length === 0) {
     return undefined;
   }
-  if (defaultTarget !== undefined && choices.some((c) => c.name === defaultTarget)) {
-    return defaultTarget;
-  }
-  if (choices.length === 1) {
-    return choices[0]?.name;
-  }
-  return undefined;
+  const decision = resolveTargetSelectionDecision({
+    choices,
+    defaultTarget,
+  });
+  return decision.kind === 'use' ? decision.targetName : undefined;
 }
 
 export function listProjectTargetChoices(projectConfigPath: string): DiscoverableTargetChoice[] {
@@ -237,7 +229,7 @@ export class ProjectTargetSelectionController {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   rememberTarget(projectConfigPath: string, targetName: string): void {
-    void this.context.workspaceState.update(targetKeyFor(projectConfigPath), targetName);
+    void this.context.workspaceState.update(targetSelectionKeyFor(projectConfigPath), targetName);
   }
 
   async resolveTarget(
@@ -251,29 +243,18 @@ export class ProjectTargetSelectionController {
 
     const stored = getStoredTargetName(this.context.workspaceState, projectConfigPath);
     const forcePrompt = options.forcePrompt === true;
-    const hasStored = stored !== undefined && choices.some((choice) => choice.name === stored);
-    const hasDefault =
-      defaultTarget !== undefined && choices.some((choice) => choice.name === defaultTarget);
-
-    if (!forcePrompt && hasStored && stored !== undefined) {
-      this.rememberTarget(projectConfigPath, stored);
-      return stored;
+    const decision = resolveTargetSelectionDecision({
+      choices,
+      defaultTarget,
+      storedTarget: stored,
+      forcePrompt,
+    });
+    if (decision.kind === 'use') {
+      this.rememberTarget(projectConfigPath, decision.targetName);
+      return decision.targetName;
     }
 
-    if (!forcePrompt && hasDefault && defaultTarget !== undefined) {
-      this.rememberTarget(projectConfigPath, defaultTarget);
-      return defaultTarget;
-    }
-
-    if (choices.length === 1) {
-      const only = choices[0]?.name;
-      if (only !== undefined) {
-        this.rememberTarget(projectConfigPath, only);
-      }
-      return only;
-    }
-
-    if (options.prompt !== true) {
+    if (decision.kind === 'none' || options.prompt !== true) {
       return undefined;
     }
 
@@ -417,10 +398,6 @@ function projectRootFromProjectConfigPath(projectConfigPath: string): string {
     return path.dirname(path.dirname(projectConfigPath));
   }
   return path.dirname(projectConfigPath);
-}
-
-function targetKeyFor(projectConfigPath: string): string {
-  return `${TARGET_KEY_PREFIX}${projectConfigPath}`;
 }
 
 function normalizeProjectRelativePath(p: string): string {
