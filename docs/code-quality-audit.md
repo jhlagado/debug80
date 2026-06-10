@@ -1987,6 +1987,29 @@ Why this is the best next step:
 - The extraction can be done with behavior-preserving helpers and a narrow
   changed-file Fallow gate.
 
+### Latest Goal Note: Launch Source-State Survey Reconciliation
+
+The `readSourceMapSymbols` recommendation above is now historical rather than
+current. Commit `1045a1a9` had already split the source-map symbol path into
+small helpers for preferred-map collection, D8 read/parse warning behavior,
+file-symbol conversion, and sorting:
+
+- `collectSourceMapSymbolPaths`;
+- `readD8MapForSourceMapSymbols`;
+- `sourceMapSymbolsFromD8Map`;
+- `sourceMapSymbolsFromD8File`;
+- `sortSourceMapSymbols`.
+
+The focused launch-source-state tests already cover the behavior that mattered
+for that recommendation: build-artifact symbols, local ROM auxiliary symbols,
+malformed build-map warnings, unreadable auxiliary-map warnings, source-root
+path resolution, bundled MON-3 source keys, and ROM auto-open source paths.
+
+No production refactor was made for this reconciliation goal. The useful action
+was to correct the audit so the next cleanup does not churn an already-extracted
+source-map path. Future source-state cleanup should be driven by a fresh survey
+or a concrete behavior problem, not the stale `readSourceMapSymbols` note.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
