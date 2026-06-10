@@ -9,7 +9,14 @@ import {
   type PanelSession,
 } from './panel-message-types';
 
-const RUNTIME_MESSAGE_TYPES = new Set(['key', 'reset', 'speed', 'serialSend']);
+const RUNTIME_MESSAGE_TYPES = ['key', 'reset', 'speed', 'serialSend'] as const;
+const RUNTIME_MESSAGE_TYPE_SET = new Set<string>(RUNTIME_MESSAGE_TYPES);
+
+type RuntimeMessageHandler = (
+  msg: PanelMessage,
+  session: Exclude<PanelSession, undefined>,
+  commands: PanelCommands
+) => Promise<boolean>;
 
 export async function handlePanelRuntimeMessage(
   msg: PanelMessage,
@@ -17,14 +24,27 @@ export async function handlePanelRuntimeMessage(
   commands: PanelCommands
 ): Promise<boolean> {
   if (session?.type !== 'z80') {
-    return msg.type !== undefined && RUNTIME_MESSAGE_TYPES.has(msg.type);
+    return isRuntimeMessageType(msg.type);
   }
-  return (
-    (await handleKeyMessage(msg, session, commands)) ||
-    (await handleResetMessage(msg, session, commands)) ||
-    (await handleSpeedMessage(msg, session, commands)) ||
-    (await handleSerialMessage(msg, session, commands))
-  );
+
+  return handleActiveRuntimeMessage(msg, session, commands);
+}
+
+function isRuntimeMessageType(type: unknown): boolean {
+  return typeof type === 'string' && RUNTIME_MESSAGE_TYPE_SET.has(type);
+}
+
+async function handleActiveRuntimeMessage(
+  msg: PanelMessage,
+  session: Exclude<PanelSession, undefined>,
+  commands: PanelCommands
+): Promise<boolean> {
+  for (const handler of RUNTIME_MESSAGE_HANDLERS) {
+    if (await handler(msg, session, commands)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 async function handleKeyMessage(
@@ -77,3 +97,10 @@ async function handleSerialMessage(
   await sendPanelCommand(session, commands.serialSend, { text: msg.text });
   return true;
 }
+
+const RUNTIME_MESSAGE_HANDLERS: RuntimeMessageHandler[] = [
+  handleKeyMessage,
+  handleResetMessage,
+  handleSpeedMessage,
+  handleSerialMessage,
+];

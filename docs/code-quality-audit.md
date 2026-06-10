@@ -783,6 +783,24 @@ Recommended approach:
 - Prefer one message family per module: project, serial, platform, target, AZM
   options, debug lifecycle.
 
+Panel runtime message cleanup status:
+
+`src/platforms/panel-runtime-messages.ts` now uses an explicit runtime message
+type guard and a small handler table for active Z80 sessions instead of a
+boolean `||` dispatch chain. The inactive-session behavior is intentionally
+preserved: recognized runtime message types are absorbed when no Z80 session is
+active, even if the payload would be invalid for an active target. That keeps
+stale webview runtime events from surfacing as user-facing errors while still
+requiring valid payloads and configured commands before forwarding to a live
+debug session.
+
+Focused coverage in `tests/platforms/panel-runtime-messages.test.ts` now locks
+down inactive-session absorption, non-runtime rejection, valid active-session
+dispatch, active-session payload/command validation, and the existing policy
+that failed `customRequest` dispatches are treated as handled runtime messages.
+This is a small common-panel parser cleanup and deliberately avoids the TEC-1G
+matrix keyboard production path.
+
 ### P1: Runtime Control Loop Duplication Has Been Reduced
 
 `src/debug/session/runtime-control.ts` previously duplicated substantial
