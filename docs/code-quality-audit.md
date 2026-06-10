@@ -1505,6 +1505,32 @@ Next safe cleanup candidate: audit the inherited duplication in
 make artifact setup clearer. Keep this test-only; avoid further build-path
 production changes until a new behavior goal requires them.
 
+### Latest Goal Note: AZM Backend Test Fixture Cleanup
+
+`tests/debug/azm-backend.test.ts` now uses local fixture helpers for common
+source/output path setup, successful HEX/D8 artifact setup, diagnostic compile
+results, and output capture. This is intentionally a test-only cleanup after
+the AZM backend production refactor: the production assembler backend was not
+changed in this goal.
+
+The tests still assert the same behavior: Debug80-controlled artifact writing,
+native D8 map requirements, register-contract report/interface artifacts,
+binary rebuild bounds, source-root diagnostic resolution, source-less
+diagnostics, and required-artifact failures.
+
+Changed-file Fallow is clean for the test file. The only remaining warning is
+an inherited cross-file setup similarity between this test and
+`tests/debug/stack-service.test.ts`, which is not worth abstracting without a
+broader debug-test fixture pass.
+
+Verification for this goal covered `npx vitest run
+tests/debug/azm-backend.test.ts`, `npm run typecheck`, `npm run lint`,
+changed-file Fallow, and `npm run package:check --if-present`.
+
+Next safe cleanup candidate: run a fresh changed-code survey and choose a
+non-hot-zone target with focused tests. Avoid matrix keyboard production code
+unless the goal is specifically matrix behavior with characterization coverage.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

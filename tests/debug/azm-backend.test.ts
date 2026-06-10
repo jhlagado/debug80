@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { AzmBackend } from '../../src/debug/launch/azm-backend';
+import type { AssembleResult } from '../../src/debug/launch/assembler';
 
 const compile = vi.hoisted(() => vi.fn());
 const childProcess = vi.hoisted(() => ({
@@ -44,20 +45,11 @@ describe('azm-backend', () => {
 
   it('assembles through the AZM library and writes Debug80-controlled artifacts', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const outDir = path.join(tmpDir, 'build');
-    const hexPath = path.join(outDir, 'prog.hex');
-    const binPath = path.join(outDir, 'prog.bin');
-
-    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
-    compile.mockResolvedValue({
-      diagnostics: [],
-      artifacts: [
-        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
-        { kind: 'bin', bytes: new Uint8Array([0x00]) },
-        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-      ],
-    });
+    const { asmPath, outDir, hexPath, binPath } = createAssemblyFixture(
+      tmpDir,
+      'ORG 0100h\nSTART: NOP\n'
+    );
+    mockSuccessfulHexCompile({ binBytes: [0x00] });
 
     const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
 
@@ -86,19 +78,12 @@ describe('azm-backend', () => {
 
   it('requires native D8 output for source mapping', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.z80');
-    const outDir = path.join(tmpDir, 'build');
-    const hexPath = path.join(outDir, 'prog.hex');
-
-    fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
-    compile.mockResolvedValue({
-      diagnostics: [],
-      artifacts: [
-        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
-        { kind: 'bin', bytes: new Uint8Array([0x00]) },
-        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-      ],
-    });
+    const { asmPath, outDir, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'ORG 4000h\nSTART: NOP\n',
+      'prog.z80'
+    );
+    mockSuccessfulHexCompile({ binBytes: [0x00] });
 
     const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
 
@@ -109,16 +94,14 @@ describe('azm-backend', () => {
 
   it('passes AZM register contracts launch options and writes register contract artifacts', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const outDir = path.join(tmpDir, 'build');
-    const hexPath = path.join(outDir, 'prog.hex');
-
-    fs.writeFileSync(asmPath, 'ORG 4000h\nSTART: NOP\n');
+    const { asmPath, outDir, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'ORG 4000h\nSTART: NOP\n'
+    );
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [
-        { kind: 'hex', text: ':0101000000FE\n:00000001FF\n' },
-        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
+        ...successfulHexArtifacts(),
         { kind: 'register-contracts-report', text: 'Register contracts report\n' },
         { kind: 'register-contracts-interface', text: 'extern MON_PRINT_CHAR\nend\n' },
       ],
@@ -154,10 +137,8 @@ describe('azm-backend', () => {
 
   it('uses binFrom and binTo as compact output bounds for binary rebuilds', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const hexPath = path.join(tmpDir, 'build', 'prog.hex');
+    const { asmPath, hexPath, binPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nDB 1,2,3\n');
 
-    fs.writeFileSync(asmPath, 'ORG 4000h\nDB 1,2,3\n');
     compile.mockResolvedValue({
       diagnostics: [],
       artifacts: [{ kind: 'bin', bytes: new Uint8Array([1, 2, 3]) }],
@@ -176,36 +157,27 @@ describe('azm-backend', () => {
       }),
       expect.objectContaining({ formats: expect.any(Object) })
     );
-    expect([...fs.readFileSync(path.join(tmpDir, 'build', 'prog.bin'))]).toEqual([1, 2, 3]);
+    expect([...fs.readFileSync(binPath)]).toEqual([1, 2, 3]);
   });
 
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'src', 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const output: string[] = [];
+    const { asmPath, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'BADOP\n',
+      path.join('src', 'prog.asm'),
+      tmpDir
+    );
 
-    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
-    fs.writeFileSync(asmPath, 'BADOP\n');
-    compile.mockResolvedValue({
-      diagnostics: [
-        {
-          id: 'AZM200',
-          severity: 'error',
-          message: 'Unsupported instruction BADOP.',
-          file: asmPath,
-          line: 1,
-          column: 1,
-        },
-      ],
-      artifacts: [],
+    mockDiagnosticCompile({
+      id: 'AZM200',
+      message: 'Unsupported instruction BADOP.',
+      file: asmPath,
+      line: 1,
+      column: 1,
     });
 
-    const result = await backend.assemble({
-      asmPath,
-      hexPath,
-      onOutput: (message) => output.push(message),
-    });
+    const { result, output } = await assembleWithOutput(backend, asmPath, hexPath);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Unsupported instruction BADOP.');
@@ -220,23 +192,19 @@ describe('azm-backend', () => {
 
   it('resolves project-relative AZM diagnostics against the source root', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'src', 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
+    const { asmPath, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'CALL Missing\n',
+      path.join('src', 'prog.asm'),
+      tmpDir
+    );
 
-    fs.mkdirSync(path.dirname(asmPath), { recursive: true });
-    fs.writeFileSync(asmPath, 'CALL Missing\n');
-    compile.mockResolvedValue({
-      diagnostics: [
-        {
-          id: 'AZMN_SYMBOL',
-          severity: 'error',
-          message: 'Unresolved symbol "Missing".',
-          file: 'src/prog.asm',
-          line: 1,
-          column: 6,
-        },
-      ],
-      artifacts: [],
+    mockDiagnosticCompile({
+      id: 'AZMN_SYMBOL',
+      message: 'Unresolved symbol "Missing".',
+      file: 'src/prog.asm',
+      line: 1,
+      column: 6,
     });
 
     const result = await backend.assemble({ asmPath, hexPath, sourceRoot: tmpDir });
@@ -253,11 +221,8 @@ describe('azm-backend', () => {
 
   it('handles AZM diagnostics that do not include a source file', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
-    const output: string[] = [];
+    const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'BADOP\n', 'prog.asm', tmpDir);
 
-    fs.writeFileSync(asmPath, 'BADOP\n');
     compile.mockResolvedValue({
       diagnostics: [
         {
@@ -274,11 +239,7 @@ describe('azm-backend', () => {
       artifacts: [],
     });
 
-    const result = await backend.assemble({
-      asmPath,
-      hexPath,
-      onOutput: (message) => output.push(message),
-    });
+    const { result, output } = await assembleWithOutput(backend, asmPath, hexPath);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Assembly failed before a source location was available.');
@@ -292,13 +253,16 @@ describe('azm-backend', () => {
 
   it('fails when AZM succeeds but required artifacts are missing', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
+    const { asmPath, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'ORG 0100h\nSTART: NOP\n',
+      'prog.asm',
+      tmpDir
+    );
 
-    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [{ kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } }],
+      artifacts: [d8Artifact()],
     });
 
     const result = await backend.assemble({ asmPath, hexPath });
@@ -309,13 +273,16 @@ describe('azm-backend', () => {
 
   it('fails when AZM succeeds without a native D8 map', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
+    const { asmPath, hexPath } = createAssemblyFixture(
+      tmpDir,
+      'ORG 0100h\nSTART: NOP\n',
+      'prog.asm',
+      tmpDir
+    );
 
-    fs.writeFileSync(asmPath, 'ORG 0100h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [{ kind: 'hex', text: ':0101000000FE\n:00000001FF\n' }],
+      artifacts: [hexArtifact()],
     });
 
     const result = await backend.assemble({ asmPath, hexPath });
@@ -326,16 +293,11 @@ describe('azm-backend', () => {
 
   it('fails when AZM produces an empty HEX artifact', async () => {
     const backend = new AzmBackend();
-    const asmPath = path.join(tmpDir, 'prog.asm');
-    const hexPath = path.join(tmpDir, 'prog.hex');
+    const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'ORG 0100h\n', 'prog.asm', tmpDir);
 
-    fs.writeFileSync(asmPath, 'ORG 0100h\n');
     compile.mockResolvedValue({
       diagnostics: [],
-      artifacts: [
-        { kind: 'hex', text: ':00000001FF\n' },
-        { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } },
-      ],
+      artifacts: [hexArtifact(':00000001FF\n'), d8Artifact()],
     });
 
     const result = await backend.assemble({ asmPath, hexPath });
@@ -345,6 +307,88 @@ describe('azm-backend', () => {
     expect(fs.existsSync(hexPath)).toBe(false);
   });
 });
+
+interface AssemblyFixture {
+  asmPath: string;
+  outDir: string;
+  hexPath: string;
+  binPath: string;
+}
+
+interface TestHexArtifactsOptions {
+  binBytes?: number[];
+}
+
+interface TestDiagnostic {
+  id?: string;
+  code?: string;
+  severity?: 'error' | 'warning' | 'info';
+  message: string;
+  file?: string;
+  line?: number;
+  column?: number;
+}
+
+function createAssemblyFixture(
+  tmpDir: string,
+  source: string,
+  sourceFile = 'prog.asm',
+  outputDir = path.join(tmpDir, 'build')
+): AssemblyFixture {
+  const asmPath = path.join(tmpDir, sourceFile);
+  const outDir = outputDir;
+  const hexPath = path.join(outDir, 'prog.hex');
+  const binPath = path.join(outDir, 'prog.bin');
+  fs.mkdirSync(path.dirname(asmPath), { recursive: true });
+  fs.writeFileSync(asmPath, source);
+  return { asmPath, outDir, hexPath, binPath };
+}
+
+function hexArtifact(text = ':0101000000FE\n:00000001FF\n'): { kind: 'hex'; text: string } {
+  return { kind: 'hex', text };
+}
+
+function d8Artifact(): { kind: 'd8m'; json: { format: string; version: number; arch: string } } {
+  return { kind: 'd8m', json: { format: 'd8-debug-map', version: 1, arch: 'z80' } };
+}
+
+function successfulHexArtifacts(options: TestHexArtifactsOptions = {}): unknown[] {
+  return [
+    hexArtifact(),
+    ...(options.binBytes !== undefined
+      ? [{ kind: 'bin', bytes: new Uint8Array(options.binBytes) }]
+      : []),
+    d8Artifact(),
+  ];
+}
+
+function mockSuccessfulHexCompile(options: TestHexArtifactsOptions = {}): void {
+  compile.mockResolvedValue({
+    diagnostics: [],
+    artifacts: successfulHexArtifacts(options),
+  });
+}
+
+function mockDiagnosticCompile(diagnostic: TestDiagnostic): void {
+  compile.mockResolvedValue({
+    diagnostics: [{ severity: 'error', ...diagnostic }],
+    artifacts: [],
+  });
+}
+
+async function assembleWithOutput(
+  backend: AzmBackend,
+  asmPath: string,
+  hexPath: string
+): Promise<{ result: AssembleResult; output: string[] }> {
+  const output: string[] = [];
+  const result = await backend.assemble({
+    asmPath,
+    hexPath,
+    onOutput: (message) => output.push(message),
+  });
+  return { result, output };
+}
 
 function expectNoExternalProcess(): void {
   for (const mock of Object.values(childProcess)) {
