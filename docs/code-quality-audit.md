@@ -19,13 +19,14 @@ divergence, dead exported surface area, and remaining historical source-map/cach
 vocabulary that can obscure the current AZM-only model.
 
 The highest-value cleanup is now to harden the areas that have already regressed
-multiple times — TEC-1G matrix keyboard state, reset/MON-3 RAM policy, and
-launch orchestration — while continuing the Phase 5–7 programme:
+multiple times — especially TEC-1G matrix keyboard state and webview boundary
+typing — while continuing the Phase 5–7 programme:
 
-1. Extract pure state models and add direct unit tests in untested orchestration
-   paths (`launch-sequence.ts`, `io-handlers.ts`).
+1. Continue extracting pure matrix state helpers only where direct tests already
+   characterize the behavior.
 2. Incrementally tighten webview TypeScript (`strictNullChecks` per module).
-3. Split launch/project policy and webview boundaries (Phases 5–7).
+3. Finish launch/project policy documentation and avoid further target-selection
+   churn unless new behavior appears.
 4. Remove dead exports and stale artifacts that no longer serve public behavior.
 5. Reduce test harness duplication in oversized integration test files.
 
@@ -61,19 +62,16 @@ were added alongside fixes (good), but production complexity is mirroring into
    spreads rules across closures and side-effect paths rather than a single pure
    state model.
 
-2. **`launch-sequence.ts` has no direct unit tests.** The ~370-line launch
-   orchestrator was modified in recent matrix tracing work. No test file
-   references `launch-sequence`; coverage relies entirely on adapter
-   integration/e2e tests.
-
-3. **`io-handlers.ts` is an untested god dispatcher.** The 447-line TEC-1G port
-   handler centralizes LCD, GLCD, matrix, SD, RTC, and 7-seg I/O. No dedicated
-   test file; behavior is only indirectly covered via peripheral-specific tests.
-
-4. **Webview TypeScript is deliberately non-strict.** `webview/tsconfig.json`
+2. **Webview TypeScript is deliberately non-strict.** `webview/tsconfig.json`
    sets `strict: false`, `noImplicitAny: false`, `strictNullChecks: false`,
    while `src/` enforces strict mode and `@typescript-eslint/no-explicit-any:
    error`. The type-safety cliff sits exactly where recent bugs occurred.
+
+3. **Large dispatch/orchestration files remain expensive to change.** Direct
+   safety tests now cover `launch-sequence.ts` and `io-handlers.ts`, but those
+   modules are still broad composition surfaces. Future changes should keep
+   their direct contract tests current instead of relying only on adapter/e2e
+   coverage.
 
 **Maintainability scorecard (2026-06-10).**
 
@@ -87,7 +85,10 @@ were added alongside fixes (good), but production complexity is mirroring into
 | Complexity management | Moderate | Large files, UI state coupling |
 | Change velocity risk | Moderate–High | Matrix/reset hot zones |
 
-**Recommended immediate next step:** Phase A (stabilize hot zones) below.
+**Recommended immediate next step:** continue with small, test-first cleanup in
+Phase 6/7 webview boundaries, or remove confirmed dead exports. Do not continue
+splitting target selection unless new product behavior creates a clearer policy
+boundary.
 
 ### 2026-06-07: TEC-1G Protocol Regression Depth
 
@@ -157,9 +158,9 @@ Largest authored source files (2026-06-10):
 | `src/debug/launch-args.ts`                         |   653 | Config discovery and merge behavior; cross-cutting and hard to scan. |
 | `src/extension/platform-view-provider.ts`          |   543 | Webview provider state and messaging; high fan-out/fan-in.           |
 | `src/debug/launch/config-validation.ts`            |   521 | Repetitive validators; good candidate for helper extraction.         |
-| `src/platforms/tec1g/io-handlers.ts`               |   447 | TEC-1G port dispatcher; no direct unit tests.                        |
+| `src/platforms/tec1g/io-handlers.ts`               |   447 | TEC-1G port dispatcher; now has direct contract tests.               |
 | `webview/common/memory-panel.ts`                   |   446 | Memory panel UI; register strip extracted (Phase 7 progress).        |
-| `src/debug/launch/launch-sequence.ts`              |   369 | Launch orchestration; no direct unit tests.                          |
+| `src/debug/launch/launch-sequence.ts`              |   369 | Launch orchestration; now has direct safety tests.                   |
 
 ## Findings
 
@@ -226,34 +227,34 @@ Recommended approach:
 - Mirror backend modifier/caps semantics from `matrix-request.ts` in webview
   pure helpers rather than duplicating branch logic in event handlers.
 
-### P1: Launch Orchestration Lacks Direct Unit Tests
+### P1: Launch Orchestration Is Broad But Now Directly Tested
 
 `src/debug/launch/launch-sequence.ts` (~370 lines) orchestrates assembly,
 platform resolution, runtime creation, matrix trace setup, and artifact loading.
-It was modified in recent matrix tracing work. As of 2026-06-10, no test file
-references `launch-sequence`; coverage relies entirely on adapter
-integration/e2e tests.
+It was modified in recent matrix tracing work. Direct tests now cover the
+highest-risk launch-session construction contracts, so the current risk is file
+size and breadth rather than absence of coverage.
 
 Recommended approach:
 
-- Add `tests/debug/launch-sequence.test.ts` with mocked filesystem, assembler, and
-  platform registry.
-- Cover: missing inputs, artifact resolution, matrix trace flag, platform kind
-  selection.
+- Keep `tests/debug/launch-sequence.test.ts` current when launch-session
+  construction changes.
+- Add new cases only for new behavior; avoid duplicating adapter e2e coverage.
 
-### P1: TEC-1G IO Handler Lacks Direct Contract Tests
+### P1: TEC-1G IO Handler Is Broad But Now Directly Tested
 
 `src/platforms/tec1g/io-handlers.ts` (447 lines) centralizes port reads/writes
-for LCD, GLCD, matrix, SD, RTC, 7-seg, and related peripherals. No dedicated
-test file exists; behavior is only indirectly covered via peripheral-specific
-tests. Adding or changing one peripheral can break unrelated ports.
+for LCD, GLCD, matrix, SD, RTC, 7-seg, and related peripherals. It now has
+direct dispatcher contract tests in addition to peripheral-specific tests. The
+remaining risk is that adding or changing one peripheral can still touch a broad
+dispatcher surface.
 
 Recommended approach:
 
-- Add `tests/platforms/tec1g/io-handlers.test.ts` with one describe block per
-  port family (keyboard, matrix, SYS_CTRL, SD, RTC).
+- Keep `tests/platforms/tec1g/io-handlers.test.ts` aligned with any new port
+  family or routing rule.
 - Keep the port handler as a dispatch surface; move device-specific behavior
-  into device adapters over time.
+  into device adapters only when a real behavior change creates the need.
 
 ### P1: Webview TypeScript Is Non-Strict
 
@@ -416,8 +417,9 @@ Recommended approach:
 Recent work improved SD SPI, RTC, matrix keyboard, display scanning, and
 CoolTerm behavior. The code now has good low-level tests (including DIAG-derived
 SD SPI and DS1302 RTC protocol coverage), but `io-handlers.ts` still
-centralizes many unrelated port behaviors and lacks direct contract tests (see
-P1 above).
+centralizes many unrelated port behaviors. Direct dispatcher contract tests now
+cover this surface, so the remaining risk is broad routing responsibility rather
+than absent direct coverage.
 
 Recommended approach:
 
@@ -460,8 +462,8 @@ duplicated fixture setup and test files that mirror production complexity:
 
 | Area | Status |
 | ---- | ------ |
-| `launch-sequence.ts` | No direct unit tests |
-| `io-handlers.ts` | No direct unit tests |
+| `launch-sequence.ts` | Direct safety tests added |
+| `io-handlers.ts` | Direct dispatcher tests added |
 | `auto-rebuild.ts` | Only referenced in cross-layer contract test |
 | Z80 `cpu.ts` / core execution | Excluded from coverage; adapter/runtime tests only |
 | Webview `tec1g/index.ts` composition root | Partially covered via integration-style tests |
@@ -1190,9 +1192,9 @@ and extract only the new policy boundary, not the VS Code interaction glue.
 | Priority | Issue | Primary files |
 | -------- | ----- | ------------- |
 | Critical | Matrix keyboard multi-authority state | `matrix-ui.ts`, `matrix-request.ts`, `accordion-layout.ts`, `launch-sequence.ts` |
-| Critical | Launch orchestration untested directly | `src/debug/launch/launch-sequence.ts` |
-| Critical | IO dispatcher untested directly | `src/platforms/tec1g/io-handlers.ts` |
 | Critical | Webview non-strict TypeScript | `webview/tsconfig.json`, `matrix-ui.ts` |
+| High | Launch orchestration breadth | `src/debug/launch/launch-sequence.ts` |
+| High | IO dispatcher breadth | `src/platforms/tec1g/io-handlers.ts` |
 | Medium | Large orchestration files | `adapter-request-controller.ts`, `launch-args.ts`, `runtime-control.ts` |
 | Medium | Launch policy spread | `launch-args.ts`, `config-validation.ts`, `target-commands.ts` |
 | Medium | Bloated test files | `commands.test.ts`, `tec1g-matrix-ui.test.ts` |
