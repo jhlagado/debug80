@@ -7,6 +7,10 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { readProjectConfig, updateProjectTargetSource } from './project-config';
 import {
+  loadVisibleTargetChoices,
+  type LoadedTargetChoices,
+} from './project-target-config-policy';
+import {
   buildEntrySourcePickRows,
   buildTargetChoicePickRows,
   type TargetPickRow,
@@ -71,11 +75,6 @@ function isTargetPickRow(item: vscode.QuickPickItem): item is TargetQuickPickIte
   const row = item as TargetQuickPickItem;
   return typeof row.targetName === 'string' && row.targetName.length > 0;
 }
-
-type LoadedTargetChoices = {
-  choices: TargetChoice[];
-  defaultTarget?: string;
-};
 
 function getStoredTargetName(
   workspaceState: vscode.Memento,
@@ -282,38 +281,11 @@ function targetProgramFileExists(projectRoot: string, target: Record<string, unk
 function loadTargetChoices(projectConfigPath: string): LoadedTargetChoices {
   const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
   const config = readProjectConfig(projectConfigPath);
-  const targets = config?.targets ?? {};
-  const entries = Object.entries(targets).filter(([, t]) => {
-    if (t === null || typeof t !== 'object' || Array.isArray(t)) {
-      return false;
-    }
-    return targetProgramFileExists(projectRoot, t as Record<string, unknown>);
+  return loadVisibleTargetChoices({
+    projectRoot,
+    config,
+    targetExists: (target) => targetProgramFileExists(projectRoot, target),
   });
-  const choices = entries.map(([name, target]) => {
-    const sourcePath = target.sourceFile ?? target.asm ?? target.source;
-    const tags: string[] = [];
-    if (target.platform !== undefined && target.platform !== '') {
-      tags.push(String(target.platform));
-    }
-    const description =
-      typeof sourcePath === 'string' && sourcePath.length > 0
-        ? [sourcePath, ...tags].join(' • ')
-        : tags.length > 0
-          ? tags.join(' • ')
-          : undefined;
-
-    return {
-      name,
-      ...(description !== undefined ? { description } : {}),
-      ...(typeof sourcePath === 'string' && sourcePath.length > 0 ? { detail: sourcePath } : {}),
-    };
-  });
-
-  const defaultTarget = config?.target ?? config?.defaultTarget;
-  return {
-    choices,
-    ...(defaultTarget !== undefined ? { defaultTarget } : {}),
-  };
 }
 
 /** Workspace root for a config at `.vscode/debug80.json` or `debug80.json` next to sources. */

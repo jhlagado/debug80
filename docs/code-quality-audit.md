@@ -1143,6 +1143,21 @@ pass can split target config parsing and display summary construction out of
 `loadTargetChoices`, but it should be tested separately because it affects
 target visibility and platform/source descriptions.
 
+### Latest Goal Note: Target Config Display Policy Split
+
+`src/extension/project-target-config-policy.ts` now owns the conversion from
+raw `debug80.json` target entries to visible target choices. It filters malformed
+targets, asks the caller whether each target program still exists, preserves the
+`target`/`defaultTarget` fallback, and builds the source/platform description
+strings used in the project UI and target QuickPick.
+
+`project-target-selection.ts` is now mostly orchestration: read config, resolve
+project root, call pure policy helpers, show QuickPick, update config, and
+remember selection. The remaining cleanup opportunities in this area are smaller
+and should be weighed against churn: `projectRootFromProjectConfigPath`,
+`targetProgramFileExists`, and source-file caching are still local because they
+are filesystem/VS Code-adjacent rather than product policy.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
