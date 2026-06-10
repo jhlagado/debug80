@@ -7,6 +7,7 @@ import { buildSymbolIndex } from '../mapping/symbol-service';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import { resolveDebugMapPath } from '../mapping/path-resolver';
 import { findPrimaryDebugMapSource, resolveDebugMapFilePath } from '../mapping/d8-source-paths';
+import { d8SymbolToSourceMapSymbol } from '../mapping/d8-symbols';
 import type { PlatformKind } from './program-loader';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
@@ -24,7 +25,6 @@ import {
   parseD8DebugMap,
   type D8DebugMap,
   type D8FileEntry,
-  type D8Symbol,
 } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
@@ -193,20 +193,9 @@ function sourceMapSymbolsFromD8File(
     return [];
   }
   const resolvedFile = resolveDebugMapFilePath(file, mapPath, sourceRoots);
-  return (entry.symbols ?? []).map((symbol) => sourceMapSymbolFromD8Symbol(symbol, resolvedFile));
-}
-
-function sourceMapSymbolFromD8Symbol(symbol: D8Symbol, file: string): SourceMapDebugSymbol {
-  return {
-    name: symbol.name,
-    file,
-    ...(symbol.line !== undefined ? { line: symbol.line } : {}),
-    ...(symbol.address !== undefined ? { address: symbol.address } : {}),
-    ...(symbol.value !== undefined ? { value: symbol.value } : {}),
-    ...(symbol.size !== undefined ? { size: symbol.size } : {}),
-    ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
-    ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
-  };
+  return (entry.symbols ?? []).map((symbol) =>
+    d8SymbolToSourceMapSymbol(symbol, resolvedFile)
+  );
 }
 
 function sortSourceMapSymbols(symbols: SourceMapDebugSymbol[]): SourceMapDebugSymbol[] {

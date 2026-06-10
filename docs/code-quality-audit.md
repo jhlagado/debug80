@@ -33,6 +33,38 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Shared D8 Symbol Conversion
+
+Launch source-state symbol loading and editor D8 navigation now share common D8
+symbol metadata conversion through `src/debug/mapping/d8-symbols.ts`. The helper
+copies the stable source-map symbol fields (`name`, `file`, optional `line`,
+`address`, `value`, `size`, `kind`, and `scope`) without inventing absent
+fields. Editor-specific concerns such as "line is required for navigation" stay
+in `src/extension/d8-definition-provider.ts`.
+
+This removes the Fallow-reported repeated optional-property object construction
+from:
+
+- `src/debug/launch/launch-source-state.ts`;
+- `src/extension/d8-definition-provider.ts` symbol index construction;
+- `src/extension/d8-definition-provider.ts` workspace-symbol flattening.
+
+Focused tests in `tests/debug/d8-symbols.test.ts` characterize the shared field
+copying behavior, including omission of undefined fields.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/d8-symbols.test.ts tests/debug/launch-source-state.test.ts tests/extension/d8-definition-provider.test.ts
+npm run typecheck
+npm run lint
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow exits cleanly for the changed-file gate. The remaining changed-file clone
+group is the separate pair of auxiliary-map collection loops inside
+`src/debug/launch/launch-source-state.ts`; that is a distinct cleanup candidate.
+
 ### 2026-06-11: Shared D8 Source Path Resolution
 
 Launch source-state loading and editor D8 navigation now share native source-map
@@ -61,10 +93,10 @@ npm run lint
 npm exec --yes fallow -- audit --changed-since HEAD --format compact
 ```
 
-Fallow exits cleanly for the changed-file gate. It still reports inherited
-duplication in D8 symbol-object construction and launch auxiliary-map collection
-loops; those are separate cleanup candidates and were left alone to keep this
-path-resolution change behavior-preserving.
+Fallow exits cleanly for the changed-file gate. At the time of this change it
+still reported inherited duplication in D8 symbol-object construction and launch
+auxiliary-map collection loops; those were left as separate cleanup candidates
+to keep this path-resolution change behavior-preserving.
 
 ### 2026-06-11: Launch/Rebuild Source-State Setup Extraction
 

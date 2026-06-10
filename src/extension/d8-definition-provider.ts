@@ -8,19 +8,13 @@ import * as vscode from 'vscode';
 import type { D8DebugMap, D8Symbol } from '../mapping/d8-map';
 import { parseD8DebugMap } from '../mapping/d8-map';
 import { resolveDebugMapFilePath } from '../debug/mapping/d8-source-paths';
+import { d8SymbolToSourceMapSymbol, type D8SourceMapSymbol } from '../debug/mapping/d8-symbols';
 import { findProjectConfigPath, readProjectConfig } from './project-config';
 import { resolveTargetNameForConfig } from './project-target-selection';
 
-export type D8EditorSymbol = {
-  name: string;
-  file: string;
+export type D8EditorSymbol = D8SourceMapSymbol & {
   line: number;
   column?: number;
-  address?: number;
-  value?: number;
-  size?: number;
-  kind?: D8Symbol['kind'];
-  scope?: D8Symbol['scope'];
 };
 
 const SYMBOL_RE = /[@.$?A-Za-z_][@.$?A-Za-z0-9_]*/;
@@ -68,16 +62,7 @@ export function buildD8SymbolIndex(map: D8DebugMap): Map<string, D8EditorSymbol[
       if (line === undefined || line < 1) {
         continue;
       }
-      const def: D8EditorSymbol = {
-        name: symbol.name,
-        file: fileKey,
-        line,
-        ...(symbol.address !== undefined ? { address: symbol.address } : {}),
-        ...(symbol.value !== undefined ? { value: symbol.value } : {}),
-        ...(symbol.size !== undefined ? { size: symbol.size } : {}),
-        ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
-        ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
-      };
+      const def: D8EditorSymbol = { ...d8SymbolToSourceMapSymbol(symbol, fileKey), line };
       const list = index.get(symbol.name) ?? [];
       list.push(def);
       index.set(symbol.name, list);
@@ -440,16 +425,7 @@ function flattenD8Symbols(map: D8DebugMap): D8EditorSymbol[] {
       if (symbol.line === undefined || symbol.line < 1) {
         continue;
       }
-      symbols.push({
-        name: symbol.name,
-        file: fileKey,
-        line: symbol.line,
-        ...(symbol.address !== undefined ? { address: symbol.address } : {}),
-        ...(symbol.value !== undefined ? { value: symbol.value } : {}),
-        ...(symbol.size !== undefined ? { size: symbol.size } : {}),
-        ...(symbol.kind !== undefined ? { kind: symbol.kind } : {}),
-        ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
-      });
+      symbols.push({ ...d8SymbolToSourceMapSymbol(symbol, fileKey), line: symbol.line });
     }
   }
   return symbols.sort((a, b) => a.name.localeCompare(b.name) || a.file.localeCompare(b.file));
