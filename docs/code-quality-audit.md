@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Path Resolver Test Fixture Cleanup
+
+`tests/debug/path-resolver.test.ts` now uses a local `writeFixtureFile`
+helper for fixture files that need parent-directory creation. The tests still
+cover workspace-relative base resolution, artifact and D8 map path resolution,
+source-root preference, fallback source paths, and Windows path normalization.
+
+This is intentionally test-only cleanup. It removes repeated filesystem fixture
+boilerplate without changing path resolution, source-map lookup, cache
+retirement policy, or debugger source path normalization behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/path-resolver.test.ts
+```
+
 ### 2026-06-11: CoolTerm Hex Artifact Test Helper Cleanup
 
 `tests/extension/coolterm-hex-artifact.test.ts` now uses a local

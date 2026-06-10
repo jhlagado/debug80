@@ -26,6 +26,11 @@ vi.mock('vscode', () => ({
   workspace: workspaceState,
 }));
 
+function writeFixtureFile(filePath: string, contents: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
 describe('path-resolver', () => {
   let tmpDir: string;
 
@@ -64,7 +69,7 @@ describe('path-resolver', () => {
 
   it('resolves artifacts relative to the base dir', () => {
     const asmPath = path.join(tmpDir, 'demo.asm');
-    fs.writeFileSync(asmPath, 'NOP\n');
+    writeFixtureFile(asmPath, 'NOP\n');
     const args = { asm: asmPath } as LaunchRequestArguments;
 
     const resolved = resolveArtifacts(args, tmpDir);
@@ -74,9 +79,8 @@ describe('path-resolver', () => {
 
   it('resolves debug map beside the build artifact without creating a project cache', () => {
     const baseDir = path.join(tmpDir, 'project');
-    fs.mkdirSync(baseDir, { recursive: true });
     const hexPath = path.join(baseDir, 'demo.hex');
-    fs.writeFileSync(hexPath, ':00000001FF\n');
+    writeFixtureFile(hexPath, ':00000001FF\n');
 
     const args = { artifactBase: 'demo' } as LaunchRequestArguments;
     const mapPath = resolveDebugMapPath(args, baseDir, undefined, hexPath);
@@ -90,8 +94,7 @@ describe('path-resolver', () => {
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'demo.cached.d8.json'), '{}\n');
     const hexPath = path.join(baseDir, 'build', 'demo.hex');
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
+    writeFixtureFile(hexPath, ':00000001FF\n');
 
     const args = {
       artifactBase: 'demo',
@@ -105,13 +108,11 @@ describe('path-resolver', () => {
 
   it('resolves mapped path using artifact directory and source roots', () => {
     const hexPath = path.join(tmpDir, 'build', 'demo.hex');
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
+    writeFixtureFile(hexPath, ':00000001FF\n');
 
     const sourceRoot = path.join(tmpDir, 'src');
-    fs.mkdirSync(sourceRoot, { recursive: true });
     const filePath = path.join(sourceRoot, 'lib.asm');
-    fs.writeFileSync(filePath, 'NOP');
+    writeFixtureFile(filePath, 'NOP');
 
     expect(resolveMappedPath('lib.asm', hexPath, [sourceRoot])).toBe(
       canonicalizeDebuggerSourcePath(filePath)
@@ -120,14 +121,12 @@ describe('path-resolver', () => {
 
   it('prefers source roots over generated files next to the build artifact', () => {
     const hexPath = path.join(tmpDir, 'build', 'pacmo.hex');
-    fs.mkdirSync(path.dirname(hexPath), { recursive: true });
-    fs.writeFileSync(hexPath, ':00000001FF\n');
-    fs.writeFileSync(path.join(tmpDir, 'build', 'pacmo.z80'), '; lowered AZM output\n');
+    writeFixtureFile(hexPath, ':00000001FF\n');
+    writeFixtureFile(path.join(tmpDir, 'build', 'pacmo.z80'), '; lowered AZM output\n');
 
     const sourceRoot = path.join(tmpDir, 'src', 'pacmo');
-    fs.mkdirSync(sourceRoot, { recursive: true });
     const sourcePath = path.join(sourceRoot, 'pacmo.z80');
-    fs.writeFileSync(sourcePath, 'nop\n');
+    writeFixtureFile(sourcePath, 'nop\n');
 
     expect(resolveMappedPath('pacmo.z80', hexPath, [sourceRoot])).toBe(
       canonicalizeDebuggerSourcePath(sourcePath)
@@ -137,8 +136,7 @@ describe('path-resolver', () => {
   it('resolves fallback source file relative to source roots', () => {
     const root = path.join(tmpDir, 'src');
     const filePath = path.join(root, 'demo.asm');
-    fs.mkdirSync(root, { recursive: true });
-    fs.writeFileSync(filePath, 'NOP');
+    writeFixtureFile(filePath, 'NOP');
 
     const resolved = resolveFallbackSourceFile(filePath, tmpDir, [root]);
     expect(resolved).toBe(path.join('demo.asm'));
