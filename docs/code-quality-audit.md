@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: AZM Contract Test Fixture Cleanup
+
+`tests/debug/azm-contract.test.ts` now uses a scoped `withTempDir` helper for
+the temporary source/output directory used by the AZM public compile contract
+test. The helper owns cleanup directly around the async compile operation,
+replacing mutable test-suite state and an `afterEach` hook.
+
+This is intentionally test-only cleanup. It preserves the existing contract
+coverage that AZM emits the native Debug80 artifact set (`hex`, `bin`, and
+`d8m`) through the public compile API without changing the AZM backend,
+assembler options, or launch behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/azm-contract.test.ts
+```
+
 ### 2026-06-11: D8 Definition Provider Test Fixture Cleanup
 
 `tests/extension/d8-definition-provider.test.ts` now uses a local
