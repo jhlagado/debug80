@@ -271,14 +271,13 @@ Recommended approach:
   starting with `matrix-ui.ts`.
 - Do not flip the whole webview at once.
 
-Current strict-null survey:
+Strict-null cleanup status:
 
 ```sh
 npx tsc -p webview/tsconfig.json --noEmit --strictNullChecks true --pretty false
 ```
 
-As of this audit pass, a full webview `strictNullChecks` run reports only five
-errors:
+The first full webview `strictNullChecks` survey reported five errors:
 
 - `webview/common/project-panel-state.ts`: `setupPrimaryAction` returns the
   optional result of `createProjectAction` on a branch where TypeScript cannot
@@ -290,11 +289,18 @@ errors:
   required red-channel array, but the update path deliberately calls it when
   only green or blue brightness data is present.
 
-The first low-risk strictness cleanup should be a behavior-preserving boundary
-pass that fixes these five type issues and then flips only `strictNullChecks`
-for the webview project. This should avoid matrix keyboard behavior changes and
-should be covered by existing `project-panel-state`, platform update, and
-webview typecheck tests.
+That cleanup has now been applied. `webview/tsconfig.json` enables
+`strictNullChecks`, and the boundary fixes are intentionally narrow:
+
+- add-folder button handlers use platform-specific fallbacks if their select
+  element is missing;
+- project setup actions fall back to selecting a project if a create-project
+  action cannot be formed;
+- matrix brightness accepts partial channel updates at the type boundary.
+
+The next strictness step should not enable all of `strict` at once. Survey
+`noImplicitAny` separately and continue with small, behavior-preserving boundary
+passes.
 
 ### P1: Complex Dispatchers Need Smaller Units
 

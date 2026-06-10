@@ -19,7 +19,7 @@ export interface MatrixUiController {
   applyMatrixRows(rows: number[]): void;
   applyMatrixGreenRows(rows: number[]): void;
   applyMatrixBlueRows(rows: number[]): void;
-  applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]): void;
+  applyMatrixBrightness(levels?: number[], green?: number[], blue?: number[]): void;
   applyCapsLock(enabled: boolean): void;
   applyKeyboardCapture(enabled: boolean): void;
   releaseKeyboardCapture(): void;
@@ -126,7 +126,7 @@ export function createMatrixUiController(
     });
   }
 
-  function applyMatrixBrightness(levels: number[], green?: number[], blue?: number[]) {
+  function applyMatrixBrightness(levels?: number[], green?: number[], blue?: number[]) {
     const hadMatrixBrightness = hasMatrixBrightness;
     hasMatrixBrightness = true;
     const pad64 = (source: number[] | undefined, fill: number): number[] =>
@@ -137,7 +137,11 @@ export function createMatrixUiController(
         }
         return Math.max(0, Math.min(255, Math.trunc(value)));
       });
-    matrixBrightnessR = pad64(levels, 0);
+    if (levels !== undefined) {
+      matrixBrightnessR = pad64(levels, 0);
+    } else if (!hadMatrixBrightness) {
+      matrixBrightnessR = new Array(64).fill(0);
+    }
     if (green !== undefined) {
       matrixBrightnessG = pad64(green, 0);
     } else if (!hadMatrixBrightness) {

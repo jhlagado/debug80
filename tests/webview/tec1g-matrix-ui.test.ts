@@ -149,6 +149,12 @@ describe('tec1g matrix ui', () => {
     expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
     expect(firstDot.style.getPropertyValue('--matrix-g')).toBe('1.000');
     expect(firstDot.style.getPropertyValue('--matrix-b')).toBe('0.000');
+
+    controller.applyMatrixBrightness(undefined, [32]);
+
+    expect(firstDot.style.getPropertyValue('--matrix-r')).toBe('1.000');
+    expect(firstDot.style.getPropertyValue('--matrix-g')).toBe('0.788');
+    expect(firstDot.style.getPropertyValue('--matrix-b')).toBe('0.000');
   });
 
   it('tracks modifier state when clicking matrix keys', () => {

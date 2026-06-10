@@ -205,7 +205,7 @@ export function setupPrimaryAction(state: ProjectPanelState, platform: string): 
     return { type: 'selectProject', platform };
   }
   if (setup?.primaryAction === 'createProject') {
-    return createProjectAction(state, platform);
+    return createProjectAction(state, platform) ?? { type: 'selectProject', platform };
   }
   return { type: 'openWorkspaceFolder', platform };
 }

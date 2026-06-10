@@ -72,7 +72,7 @@ const projectStatusUi = createProjectStatusUi(
 const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl.value });
+  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl?.value ?? 'simple' });
 });
 
 platformSelectEl?.addEventListener('change', () => {
