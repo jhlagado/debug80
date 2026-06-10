@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Local Monitor ROM Test Fixture Cleanup
+
+`tests/debug/local-monitor-rom-build.test.ts` now uses a local
+`createTec1gLocalRomFixture` helper for the conventional project-local MON3
+ROM source and artifact layout. The helper owns the `.rom.asm`, `.hex`, and
+`.d8.json` fixture writes, leaving the test body focused on discovery and
+launch-argument mutation.
+
+This is intentionally test-only cleanup. It preserves the coverage for
+discovering a project-local TEC-1G monitor ROM, replacing the bundled MON3 map
+with the local D8 map, adding the local ROM source root, and doing nothing for
+platforms with no local ROM convention.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/local-monitor-rom-build.test.ts
+```
+
 ### 2026-06-11: Program Loader Test Fixture Cleanup
 
 `tests/debug/program-loader.test.ts` now uses a local `createProgramFixture`
