@@ -1170,6 +1170,21 @@ The helper has focused coverage for root and `.vscode/debug80.json` project
 config paths, relative and absolute source-file existence checks, filesystem
 error handling, and TTL-based source discovery caching.
 
+### Latest Goal Note: Target Selection Cleanup Boundary
+
+After the policy, QuickPick row, config-display, and filesystem/path splits,
+`src/extension/project-target-selection.ts` no longer has an obvious next
+low-risk extraction. Its remaining responsibilities are intentionally
+VS Code-facing: read the current project config, resolve remembered/default
+target choices through the pure policy helpers, build the QuickPick, persist the
+selection, and apply an entry-source binding when the user chooses a discovered
+source file.
+
+Further splitting inside this file would mostly move orchestration into another
+orchestration module. Leave this area stable unless a future product change adds
+new behavior. If that happens, add focused tests around the new behavior first
+and extract only the new policy boundary, not the VS Code interaction glue.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
