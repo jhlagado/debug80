@@ -51,6 +51,15 @@ import {
   resolveD8MapPathForTarget,
 } from '../../src/extension/d8-definition-provider';
 
+function withTempDir<T>(prefix: string, run: (root: string) => T): T {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  try {
+    return run(root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 function makeMap(): D8DebugMap {
   return {
     format: 'd8-debug-map',
@@ -169,29 +178,30 @@ describe('D8 definition provider helpers', () => {
   });
 
   it('resolves the current target D8 sidecar path from debug80.json', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-d8-defs-'));
-    const configPath = path.join(root, 'debug80.json');
-    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'src', 'pacmo.z80'), 'Start:\n');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        projectVersion: 2,
-        defaultTarget: 'pacmo',
-        targets: {
-          pacmo: {
-            sourceFile: 'src/pacmo.z80',
-            outputDir: 'build',
-            artifactBase: 'pacmo',
+    withTempDir('debug80-d8-defs-', (root) => {
+      const configPath = path.join(root, 'debug80.json');
+      fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'src', 'pacmo.z80'), 'Start:\n');
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          projectVersion: 2,
+          defaultTarget: 'pacmo',
+          targets: {
+            pacmo: {
+              sourceFile: 'src/pacmo.z80',
+              outputDir: 'build',
+              artifactBase: 'pacmo',
+            },
           },
-        },
-      })
-    );
-    const workspaceState = { get: vi.fn(() => 'pacmo') } as never;
+        })
+      );
+      const workspaceState = { get: vi.fn(() => 'pacmo') } as never;
 
-    expect(resolveD8MapPathForTarget(root, configPath, workspaceState)).toBe(
-      path.join(root, 'build', 'pacmo.d8.json')
-    );
+      expect(resolveD8MapPathForTarget(root, configPath, workspaceState)).toBe(
+        path.join(root, 'build', 'pacmo.d8.json')
+      );
+    });
   });
 
   it('formats compact hover text for source-map symbols', () => {
@@ -227,18 +237,19 @@ describe('D8 definition provider helpers', () => {
   });
 
   it('detects source maps older than mapped source files', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-d8-stale-'));
-    const sourceDir = path.join(root, 'src');
-    fs.mkdirSync(sourceDir, { recursive: true });
-    const sourcePath = path.join(sourceDir, 'main.z80');
-    const mapPath = path.join(root, 'build', 'main.d8.json');
-    fs.mkdirSync(path.dirname(mapPath), { recursive: true });
-    fs.writeFileSync(sourcePath, 'Start:\n');
-    fs.writeFileSync(mapPath, JSON.stringify(makeMap()));
-    const now = Date.now();
-    fs.utimesSync(mapPath, new Date(now - 5000), new Date(now - 5000));
-    fs.utimesSync(sourcePath, new Date(now), new Date(now));
+    withTempDir('debug80-d8-stale-', (root) => {
+      const sourceDir = path.join(root, 'src');
+      fs.mkdirSync(sourceDir, { recursive: true });
+      const sourcePath = path.join(sourceDir, 'main.z80');
+      const mapPath = path.join(root, 'build', 'main.d8.json');
+      fs.mkdirSync(path.dirname(mapPath), { recursive: true });
+      fs.writeFileSync(sourcePath, 'Start:\n');
+      fs.writeFileSync(mapPath, JSON.stringify(makeMap()));
+      const now = Date.now();
+      fs.utimesSync(mapPath, new Date(now - 5000), new Date(now - 5000));
+      fs.utimesSync(sourcePath, new Date(now), new Date(now));
 
-    expect(isD8MapPossiblyStale(makeMap(), mapPath, root)).toBe(true);
+      expect(isD8MapPossiblyStale(makeMap(), mapPath, root)).toBe(true);
+    });
   });
 });

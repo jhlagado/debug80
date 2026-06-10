@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: D8 Definition Provider Test Fixture Cleanup
+
+`tests/extension/d8-definition-provider.test.ts` now uses a local
+`withTempDir` helper for the temporary projects created by source-map sidecar
+resolution and stale-map detection tests. The helper removes each fixture after
+the test body finishes, replacing leaked temp directories with explicit
+ownership at the test boundary.
+
+This is intentionally test-only cleanup. It preserves the existing coverage for
+D8 symbol indexing, F12 definition lookup, compact hovers, AZMDoc contract
+normalization, target sidecar path resolution, and source-map staleness
+detection without changing extension source-map behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/d8-definition-provider.test.ts
+```
+
 ### 2026-06-11: Config Utils Test Fixture Cleanup
 
 `tests/debug/config-utils.test.ts` now uses a local `writeTextFile` helper for
