@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Breakpoint Manager Test Fixture Cleanup
+
+`tests/debug/breakpoint-manager.test.ts` now uses a local
+`createBreakpointManager` helper and a shared test base path for repeated
+manager and path setup. The test cases still exercise pending breakpoint
+storage, source-map binding, basename fallback for ROM sources, bundled MON3
+D8 binding, zero-width segment rejection, duplicate-address condition
+selection, and missing-map behavior.
+
+This is intentionally test-only cleanup. It keeps the breakpoint manager
+behavior under the same coverage while reducing repeated fixture wiring in a
+file that protects source-level breakpoint behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/breakpoint-manager.test.ts
+```
+
 ### 2026-06-11: Source Manager Dependency Wiring Cleanup
 
 `tests/debug/source-manager.test.ts` now uses a local `createSourceManager`

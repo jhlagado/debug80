@@ -11,6 +11,12 @@ import { buildSourceMapIndex, type SourceMapIndex } from '../../src/mapping/sour
 import type { SourceMapSegment } from '../../src/mapping/types';
 import { buildMappingFromD8DebugMap, parseD8DebugMap } from '../../src/mapping/d8-map';
 
+const testBaseDir = path.join(path.parse(process.cwd()).root, 'test');
+
+function createBreakpointManager(): BreakpointManager {
+  return new BreakpointManager();
+}
+
 function createMockIndex(
   fileMap: Map<string, Map<number, Array<number | { start: number; end: number }>>>
 ): SourceMapIndex {
@@ -45,17 +51,15 @@ function createMockIndex(
 
 describe('BreakpointManager', () => {
   it('stores and clears pending breakpoints', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    mgr.setPending(path.join(baseDir, 'file.asm'), [{ line: 10 }, { line: 20 }]);
+    const mgr = createBreakpointManager();
+    mgr.setPending(path.join(testBaseDir, 'file.asm'), [{ line: 10 }, { line: 20 }]);
     mgr.reset();
     expect(mgr.hasAddress(0x100)).toBe(false);
   });
 
   it('prefers the condition from the closest source line when breakpoints share an address', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    const sourcePath = path.resolve(baseDir, 'file.asm');
+    const mgr = createBreakpointManager();
+    const sourcePath = path.resolve(testBaseDir, 'file.asm');
     const index = createMockIndex(new Map([[sourcePath, new Map([[12, [0x100]]])]]));
 
     mgr.setPending(sourcePath, [
@@ -69,9 +73,8 @@ describe('BreakpointManager', () => {
   });
 
   it('marks breakpoints as unverified when no source map is available', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    mgr.setPending(path.join(baseDir, 'file.asm'), [{ line: 10 }]);
+    const mgr = createBreakpointManager();
+    mgr.setPending(path.join(testBaseDir, 'file.asm'), [{ line: 10 }]);
     const applied = mgr.applyAll(undefined);
 
     expect(applied.length).toBe(1);
@@ -79,9 +82,8 @@ describe('BreakpointManager', () => {
   });
 
   it('applies breakpoints from source mapping', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    const sourcePath = path.resolve(baseDir, 'file.asm');
+    const mgr = createBreakpointManager();
+    const sourcePath = path.resolve(testBaseDir, 'file.asm');
 
     const index = createMockIndex(new Map([[sourcePath, new Map([[15, [0x300]]])]]));
 
@@ -93,12 +95,11 @@ describe('BreakpointManager', () => {
   });
 
   it('does not fall back to .source.asm when resolving breakpoints', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    const sourcePath = path.resolve(baseDir, 'mon.asm');
+    const mgr = createBreakpointManager();
+    const sourcePath = path.resolve(testBaseDir, 'mon.asm');
 
     const index = createMockIndex(
-      new Map([[path.resolve(baseDir, 'mon.source.asm'), new Map([[42, [0x400]]])]])
+      new Map([[path.resolve(testBaseDir, 'mon.source.asm'), new Map([[42, [0x400]]])]])
     );
 
     mgr.setPending(sourcePath, [{ line: 42 }]);
@@ -109,7 +110,7 @@ describe('BreakpointManager', () => {
   });
 
   it('falls back by basename when mapped path differs', () => {
-    const mgr = new BreakpointManager();
+    const mgr = createBreakpointManager();
     const requestedPath = path.resolve('/workspace/roms/mon3.z80');
     const mappedPath = path.resolve('/private/tmp/debug80/roms/mon3.z80');
 
@@ -123,7 +124,7 @@ describe('BreakpointManager', () => {
   });
 
   it('binds breakpoints in the bundled MON3 source from its native D8 map', () => {
-    const mgr = new BreakpointManager();
+    const mgr = createBreakpointManager();
     const bundleRoot = path.join(process.cwd(), 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     const sourcePath = path.join(bundleRoot, 'mon3.z80');
     const d8Path = path.join(bundleRoot, 'mon3.d8.json');
@@ -149,7 +150,7 @@ describe('BreakpointManager', () => {
   });
 
   it('does not bind source breakpoints when the D8 map has no matching line', () => {
-    const mgr = new BreakpointManager();
+    const mgr = createBreakpointManager();
     const sourcePath = path.resolve('/workspace/roms/mon3.z80');
     const index = createMockIndex(new Map());
 
@@ -164,7 +165,7 @@ describe('BreakpointManager', () => {
   });
 
   it('does not bind source breakpoints to zero-width directive or constant segments', () => {
-    const mgr = new BreakpointManager();
+    const mgr = createBreakpointManager();
     const sourcePath = path.resolve('/workspace/src/inc/constants.asm');
     const index = createMockIndex(
       new Map([[sourcePath, new Map([[39, [{ start: 0x4000, end: 0x4000 }]]])]])
@@ -179,7 +180,7 @@ describe('BreakpointManager', () => {
   });
 
   it('activates every executable address mapped to the same source line', () => {
-    const mgr = new BreakpointManager();
+    const mgr = createBreakpointManager();
     const sourcePath = path.resolve('/workspace/src/main.asm');
     const index = createMockIndex(new Map([[sourcePath, new Map([[12, [0x4100, 0x4104]]])]]));
 
@@ -193,9 +194,8 @@ describe('BreakpointManager', () => {
   });
 
   it('handles missing mapping gracefully', () => {
-    const mgr = new BreakpointManager();
-    const baseDir = path.join(path.parse(process.cwd()).root, 'test');
-    const sourcePath = path.resolve(baseDir, 'other.asm');
+    const mgr = createBreakpointManager();
+    const sourcePath = path.resolve(testBaseDir, 'other.asm');
 
     mgr.setPending(sourcePath, [{ line: 5 }]);
     const applied = mgr.applyForSource(undefined, sourcePath, [{ line: 5 }]);
