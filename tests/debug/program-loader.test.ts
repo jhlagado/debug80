@@ -2,7 +2,7 @@
  * @file Program loader tests.
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -34,8 +34,17 @@ const createLogger = (logs: string[]): Logger => ({
 });
 
 describe('program-loader', () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tmpDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
+  });
+
   it('loads TEC-1 overlays and applies program hex', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
     const romPath = path.join(dir, 'rom.hex');
     const ramPath = path.join(dir, 'ram.hex');
@@ -62,7 +71,7 @@ describe('program-loader', () => {
   });
 
   it('loads TEC-1G ROM binary at C000 and applies program hex', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
     const romPath = path.join(dir, 'rom.bin');
     const ramPath = path.join(dir, 'ram.hex');
@@ -90,7 +99,7 @@ describe('program-loader', () => {
   });
 
   it('logs warning when TEC-1 ROM is missing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
 
     writeHexFile(hexPath, 0x1000, 0xbb);
@@ -111,7 +120,7 @@ describe('program-loader', () => {
   });
 
   it('logs warning when TEC-1G ROM is missing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
 
     writeHexFile(hexPath, 0x2000, 0xcc);
@@ -132,7 +141,7 @@ describe('program-loader', () => {
   });
 
   it('logs warning when RAM init file is missing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
 
     writeHexFile(hexPath, 0x1000, 0xdd);
@@ -153,7 +162,7 @@ describe('program-loader', () => {
   });
 
   it('loads simple platform without overlays', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    const dir = makeTempDir();
     const hexPath = path.join(dir, 'program.hex');
 
     writeHexFile(hexPath, 0x0100, 0xee);
@@ -171,4 +180,10 @@ describe('program-loader', () => {
     expect(result.program.memory[0x0100]).toBe(0xee);
     expect(logs.length).toBe(0);
   });
+
+  function makeTempDir(): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    tmpDirs.push(dir);
+    return dir;
+  }
 });

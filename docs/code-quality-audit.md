@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Program Loader Test Fixture Cleanup
+
+`tests/debug/program-loader.test.ts` now tracks and removes the temporary
+artifact directories created by each program-loader scenario. The helper keeps
+the repeated `mkdtemp` setup out of the individual tests while preserving the
+existing assertions for TEC-1 overlays, TEC-1G ROM binaries, missing ROM/RAM
+warnings, and simple-platform loading.
+
+This is intentionally test-only cleanup. It removes leaked temporary program
+artifacts without changing production artifact loading, ROM overlay behavior, or
+platform launch policy.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/program-loader.test.ts
+```
+
 ### 2026-06-11: Source Manager Test Fixture Cleanup
 
 `tests/debug/source-manager.test.ts` now owns its temporary source-map project
