@@ -1362,6 +1362,73 @@ orchestration module. Leave this area stable unless a future product change adds
 new behavior. If that happens, add focused tests around the new behavior first
 and extract only the new policy boundary, not the VS Code interaction glue.
 
+### Latest Goal Note: Remaining Webview-Entrypoint Survey
+
+After the memory-view and project-panel handle splits, `webview/common` is in a
+better shape: repeated DOM lookup and message-shape assumptions now live behind
+small helper modules. Fallow still flags the platform entrypoints as broad
+orchestrators, especially `webview/tec1g/index.ts` and `webview/tec1/index.ts`,
+but those files sit close to matrix keyboard lifecycle, platform attachment, and
+runtime update routing.
+
+The next webview cleanup should therefore stay away from TEC-1G matrix behavior
+unless it has a narrow characterization test first. Safer candidates are:
+
+- shared platform-message routing helpers for non-keyboard messages;
+- explicit element-handle modules for Simple/TEC-1-only panels;
+- additional tests around panel bootstrap order before moving any logic.
+
+Do not start with `webview/tec1g/matrix-ui.ts` or the matrix parts of
+`webview/tec1g/index.ts`. That code is intentionally treated as a hot zone after
+the keyboard regressions.
+
+### Latest Goal Note: Simple Serial Boundary Cleanup Status
+
+`webview/common/serial-ui.ts` now supports the Simple terminal IDs through a
+small options object, so Simple/TEC-1/TEC-1G serial panels share the same UI
+wiring without copy-pasted clear/send/status handling. The Simple webview now
+also routes memory snapshot messages through `memory-panel-messages.ts`, leaving
+`webview/simple/index.ts` as a smaller bootstrap file: project status, memory
+panel, serial terminal, and platform update dispatch.
+
+The old split TEC-1/TEC-1G serial tests were consolidated into
+`tests/webview/serial-ui.test.ts`, with Simple coverage added in the same place.
+That file is now the contract for serial UI message behavior across platforms.
+
+This closes the most obvious low-risk webview boundary cleanup that did not
+touch matrix keyboard production behavior. Remaining webview work should be more
+selective: the TEC-1G entrypoint and renderers still score high, but they have a
+higher regression cost than the Simple serial boundary had.
+
+### Latest Goal Note: Post-Serial Fallow Target Survey
+
+The post-serial survey found no actionable dead-code signal. Duplication is now
+mostly in older launch/config validation, mapping, Z80 decode, and test-helper
+areas rather than the Simple serial boundary. Broad Fallow health still points
+at several high-complexity files, but the risk profile matters more than the raw
+score:
+
+- `webview/tec1g/glcd-renderer.ts` and `webview/tec1g/lcd-renderer.ts` are
+  rendering-heavy and visually sensitive. They are not good next refactor
+  targets unless the goal is specifically rendering verification.
+- `webview/tec1g/matrix-ui.ts`, `src/debug/requests/matrix-request.ts`, and the
+  matrix portions of `webview/tec1g/index.ts` remain deliberately out of scope
+  for general cleanup.
+- `src/platforms/tec1g/io-handlers.ts`, `src/platforms/tec1g/sd-spi.ts`, and
+  RTC/GLCD platform internals are hardware-behavior hot zones. Prefer direct
+  behavioral tests before further extraction.
+- `src/extension/debug-session-events.ts` is the best next small target. It has
+  critical Fallow complexity, but its risk is bounded by existing focused tests
+  for session status, platform events, terminal routing, ROM/main source opening
+  order, stop-on-entry focus, and assembly failure diagnostics.
+
+Recommended next goal: decompose `src/extension/debug-session-events.ts` into
+named event handlers and small pure-ish helpers for diagnostic path/range
+construction, platform/session-status dispatch, terminal-output routing, and
+main/ROM source-opening decisions. Keep the public `registerDebugSessionHandlers`
+entrypoint intact, add any missing characterization tests first, and avoid
+touching matrix keyboard production behavior.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
