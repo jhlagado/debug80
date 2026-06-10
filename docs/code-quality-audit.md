@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Program Loader Test Fixture Cleanup
+
+`tests/debug/program-loader.test.ts` now uses a local `createProgramFixture`
+helper for the repeated temporary program HEX fixture and a `loadFixture`
+helper for the repeated `loadProgramArtifacts` dependency wiring. The tests
+still cover TEC-1 ROM/RAM overlays, TEC-1G ROM binary loading at `0xc000`,
+missing ROM warnings, missing RAM-init warnings, and simple-platform loading.
+
+This is intentionally test-only cleanup. It keeps program-artifact loading
+coverage intact while reducing repeated launch-loader setup in a file that
+protects ROM overlay and program HEX loading behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/program-loader.test.ts
+```
+
 ### 2026-06-11: Breakpoint Manager Test Fixture Cleanup
 
 `tests/debug/breakpoint-manager.test.ts` now uses a local

@@ -9,6 +9,19 @@ import * as path from 'path';
 import { loadProgramArtifacts } from '../../src/debug/launch/program-loader';
 import { TEC1_ROM_LOAD_ADDR } from '../../src/platforms/tec-common';
 import type { Logger } from '../../src/util/logger';
+import type { PlatformId } from '../../src/debug/session/types';
+
+type ProgramLoaderFixture = {
+  dir: string;
+  hexPath: string;
+};
+
+type LoadFixtureOptions = {
+  platform?: PlatformId;
+  logs?: string[];
+  tec1Config?: Parameters<typeof loadProgramArtifacts>[0]['tec1Config'];
+  tec1gConfig?: Parameters<typeof loadProgramArtifacts>[0]['tec1gConfig'];
+};
 
 const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -44,23 +57,18 @@ describe('program-loader', () => {
   });
 
   it('loads TEC-1 overlays and applies program hex', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
+    const fixture = createProgramFixture(0x1000, 0xaa);
+    const { dir } = fixture;
     const romPath = path.join(dir, 'rom.hex');
     const ramPath = path.join(dir, 'ram.hex');
 
-    writeHexFile(hexPath, 0x1000, 0xaa);
     writeHexFile(romPath, 0x0000, 0x55);
     writeHexFile(ramPath, 0x2000, 0x66);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'tec1',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
       tec1Config: { romHex: romPath, ramInitHex: ramPath },
     });
 
@@ -71,23 +79,18 @@ describe('program-loader', () => {
   });
 
   it('loads TEC-1G ROM binary at C000 and applies program hex', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
+    const fixture = createProgramFixture(0x3000, 0x99);
+    const { dir } = fixture;
     const romPath = path.join(dir, 'rom.bin');
     const ramPath = path.join(dir, 'ram.hex');
 
-    writeHexFile(hexPath, 0x3000, 0x99);
     fs.writeFileSync(romPath, Buffer.from([0x11, 0x22]));
     writeHexFile(ramPath, 0x4000, 0x77);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'tec1g',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
       tec1gConfig: { romHex: romPath, ramInitHex: ramPath },
     });
 
@@ -99,19 +102,12 @@ describe('program-loader', () => {
   });
 
   it('logs warning when TEC-1 ROM is missing', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
-
-    writeHexFile(hexPath, 0x1000, 0xbb);
+    const fixture = createProgramFixture(0x1000, 0xbb);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'tec1',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
       tec1Config: { romHex: 'nonexistent.hex' },
     });
 
@@ -120,19 +116,12 @@ describe('program-loader', () => {
   });
 
   it('logs warning when TEC-1G ROM is missing', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
-
-    writeHexFile(hexPath, 0x2000, 0xcc);
+    const fixture = createProgramFixture(0x2000, 0xcc);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'tec1g',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
       tec1gConfig: { romHex: 'nonexistent.bin' },
     });
 
@@ -141,19 +130,12 @@ describe('program-loader', () => {
   });
 
   it('logs warning when RAM init file is missing', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
-
-    writeHexFile(hexPath, 0x1000, 0xdd);
+    const fixture = createProgramFixture(0x1000, 0xdd);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'tec1',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
       tec1Config: { ramInitHex: 'nonexistent-ram.hex' },
     });
 
@@ -162,19 +144,12 @@ describe('program-loader', () => {
   });
 
   it('loads simple platform without overlays', () => {
-    const dir = makeTempDir();
-    const hexPath = path.join(dir, 'program.hex');
-
-    writeHexFile(hexPath, 0x0100, 0xee);
+    const fixture = createProgramFixture(0x0100, 0xee);
 
     const logs: string[] = [];
-    const result = loadProgramArtifacts({
+    const result = loadFixture(fixture, {
       platform: 'simple',
-      baseDir: dir,
-      hexPath,
-      resolveRelative: (p, base) => path.resolve(base, p),
-      resolveBundledTec1Rom: () => undefined,
-      logger: createLogger(logs),
+      logs,
     });
 
     expect(result.program.memory[0x0100]).toBe(0xee);
@@ -185,5 +160,29 @@ describe('program-loader', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
     tmpDirs.push(dir);
     return dir;
+  }
+
+  function createProgramFixture(address: number, value: number): ProgramLoaderFixture {
+    const dir = makeTempDir();
+    const hexPath = path.join(dir, 'program.hex');
+    writeHexFile(hexPath, address, value);
+    return { dir, hexPath };
+  }
+
+  function loadFixture(
+    fixture: ProgramLoaderFixture,
+    options: LoadFixtureOptions = {}
+  ): ReturnType<typeof loadProgramArtifacts> {
+    const logs = options.logs ?? [];
+    return loadProgramArtifacts({
+      platform: options.platform ?? 'tec1',
+      baseDir: fixture.dir,
+      hexPath: fixture.hexPath,
+      resolveRelative: (p, base) => path.resolve(base, p),
+      resolveBundledTec1Rom: () => undefined,
+      logger: createLogger(logs),
+      tec1Config: options.tec1Config,
+      tec1gConfig: options.tec1gConfig,
+    });
   }
 });
