@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Target Discovery Test Fixture Cleanup
+
+`tests/extension/target-discovery.test.ts` now tracks and removes the temporary
+workspace roots used by target-entry discovery tests. The assertions still cover
+the same conventions: runnable target sources are `main.asm` or `*.main.asm`,
+legacy `.z80` files are not treated as targets, generated build output is
+ignored, and projects do not need a `src/` folder.
+
+This is intentionally test-only cleanup. It removes leaked temporary target
+discovery fixtures without changing target-entry naming policy or workspace
+scan behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/target-discovery.test.ts
+```
+
 ### 2026-06-11: Project Config Test Fixture Cleanup
 
 `tests/extension/project-config.test.ts` now owns the temporary project roots it

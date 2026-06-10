@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -10,6 +10,21 @@ import {
 } from '../../src/extension/target-discovery';
 
 describe('target discovery conventions', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tempDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tempDirs.length = 0;
+  });
+
+  function makeTempWorkspace(prefix: string): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tempDirs.push(root);
+    return root;
+  }
+
   it('defines the runnable target entry source conventions in one place', () => {
     expect(TARGET_ENTRY_SOURCE_FILENAMES).toEqual(['main.asm']);
     expect(TARGET_ENTRY_SOURCE_SUFFIXES).toEqual(['.main.asm']);
@@ -23,7 +38,7 @@ describe('target discovery conventions', () => {
   });
 
   it('lists target entry source files relative to the project root', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-target-discovery-'));
+    const root = makeTempWorkspace('debug80-target-discovery-');
     fs.mkdirSync(path.join(root, 'src', 'games'), { recursive: true });
     fs.mkdirSync(path.join(root, 'build'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'main.asm'), 'nop\n');
@@ -41,7 +56,7 @@ describe('target discovery conventions', () => {
   });
 
   it('does not require a src folder for target entry source discovery', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-target-discovery-root-'));
+    const root = makeTempWorkspace('debug80-target-discovery-root-');
     fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
     fs.writeFileSync(path.join(root, 'main.asm'), 'nop\n');
     fs.writeFileSync(path.join(root, 'app.main.asm'), 'nop\n');
