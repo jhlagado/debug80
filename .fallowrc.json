@@ -8,6 +8,9 @@
     "webview/*/index.html",
     "webview/**/*.css"
   ],
+  "ignorePatterns": [
+    "tests/integration-vscode/suite/index.js"
+  ],
   "ignoreDependencies": [
     "@jhlagado/zax"
   ],

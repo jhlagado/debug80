@@ -535,7 +535,7 @@ Verification:
 
 ```sh
 npm run typecheck
-npm run test -- tests/debug/path-resolver.test.ts tests/debug/mapping-service.test.ts
+npx vitest run tests/debug/path-resolver.test.ts tests/debug/mapping-service.test.ts
 npm exec --yes fallow -- --only dead-code --format compact
 ```
 
@@ -980,6 +980,31 @@ pressed classes, and clearing physical/click modifier maps. This keeps the
 fragile matrix keyboard behavior stable while making the transition policy
 directly testable in `tests/webview/tec1g-matrix-state.test.ts`.
 
+### Latest Goal Note: Phase 1 Dead-Surface Cleanup
+
+The Phase 1 dead-surface pass re-ran Fallow dead-code after the matrix cleanup
+work. The old 66-finding report is no longer current: Fallow now reports no
+actionable TypeScript/JavaScript dead-code findings after confirmed dynamic
+entrypoints are documented in `.fallowrc.json`.
+
+The only JavaScript candidate was `tests/integration-vscode/suite/index.js`.
+That file is not dead: `tests/integration-vscode/runTest.js` passes it to
+`@vscode/test-electron` as the VS Code extension-host smoke-test entrypoint.
+The pass made that entrypoint explicit and removed the retired
+`jhlagado.z80-debugger` fallback id from the smoke assertion.
+
+The remaining possible Fallow false positives are webview CSS runtime assets:
+`webview/common/styles.css`, `webview/simple/styles.css`,
+`webview/tec1/styles.css`, and `webview/tec1g/styles.css`. These are loaded
+through the webview HTML/build pipeline rather than TypeScript imports, and
+the existing `.fallowrc.json` `dynamicallyLoaded` patterns keep them marked as
+intentional runtime assets. The dead-code command is therefore useful again as a
+clean gate:
+
+```sh
+npm exec --yes fallow -- --only dead-code --format compact
+```
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -1037,8 +1062,9 @@ modifier/key-normalization helpers, and held-key transition helpers are covered.
 The next matrix step should be smaller again: extract click-release timer
 decision bookkeeping only if it can be isolated behind direct tests without
 moving DOM or postMessage behavior. If matrix behavior needs a cooling-off
-period, move instead to Phase 1 dead-export cleanup. Follow with Phase 5
-launch/project policy split as a separate PR.
+period, the Phase 1 dead-export cleanup has now been refreshed and the current
+dead-code gate is clean. Follow with Phase 5 launch/project policy split as a
+separate PR.
 
 ## Priority Summary (2026-06-10)
 

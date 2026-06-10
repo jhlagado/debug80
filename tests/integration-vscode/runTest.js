@@ -3,7 +3,7 @@ const { runTests } = require('@vscode/test-electron');
 
 async function main() {
   const extensionDevelopmentPath = path.resolve(__dirname, '../..');
-  const extensionTestsPath = path.resolve(__dirname, 'suite');
+  const extensionTestsPath = path.resolve(__dirname, 'suite/index.js');
   const fixtureWorkspace = path.resolve(__dirname, 'fixtures/vscode-smoke');
 
   await runTests({

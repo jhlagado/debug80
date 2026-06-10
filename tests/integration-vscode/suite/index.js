@@ -1,7 +1,7 @@
 const assert = require('assert');
 const vscode = require('vscode');
 
-const extensionIds = ['jhlagado.debug80', 'jhlagado.z80-debugger'];
+const extensionId = 'jhlagado.debug80';
 const expectedCommands = [
   'debug80.createProject',
   'debug80.openDebug80View',
@@ -10,14 +10,9 @@ const expectedCommands = [
 ];
 
 async function run() {
-  const extension = extensionIds
-    .map((id) => vscode.extensions.getExtension(id))
-    .find(Boolean);
+  const extension = vscode.extensions.getExtension(extensionId);
 
-  assert.ok(
-    extension,
-    `Expected one of these extension ids to be present: ${extensionIds.join(', ')}`,
-  );
+  assert.ok(extension, `Expected extension id to be present: ${extensionId}`);
 
   await extension.activate();
   assert.strictEqual(extension.isActive, true, `${extension.id} should activate`);
