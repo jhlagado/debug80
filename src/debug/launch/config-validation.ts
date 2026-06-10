@@ -38,6 +38,23 @@ const ADDRESS_MAX = 0xffff;
 const INSTRUCTION_LIMIT_MIN = 0;
 const INSTRUCTION_LIMIT_MAX = 1_000_000_000;
 
+const LAUNCH_PATH_FIELDS = [
+  'asm',
+  'sourceFile',
+  'hex',
+  'outputDir',
+  'artifactBase',
+  'projectConfig',
+  'target',
+] as const;
+
+const LAUNCH_BOOLEAN_FIELDS = ['stopOnEntry', 'assemble'] as const;
+
+const LAUNCH_INSTRUCTION_LIMIT_FIELDS = [
+  'stepOverMaxInstructions',
+  'stepOutMaxInstructions',
+] as const;
+
 // ============================================================================
 // Validation Result Types
 // ============================================================================
@@ -400,41 +417,7 @@ export function validateLaunchArgs(args: unknown): ValidationResult {
   }
 
   const la = args as LaunchRequestArguments;
-  const results: ValidationResult[] = [];
-
-  // Validate paths
-  results.push(validatePath(la.asm, 'asm'));
-  results.push(validatePath(la.sourceFile, 'sourceFile'));
-  results.push(validatePath(la.hex, 'hex'));
-  results.push(validatePath(la.outputDir, 'outputDir'));
-  results.push(validatePath(la.artifactBase, 'artifactBase'));
-  results.push(validatePath(la.projectConfig, 'projectConfig'));
-  results.push(validatePath(la.target, 'target'));
-
-  // Validate address
-  results.push(validateAddress(la.entry, 'entry'));
-
-  // Validate booleans
-  results.push(validateBoolean(la.stopOnEntry, 'stopOnEntry'));
-  results.push(validateBoolean(la.assemble, 'assemble'));
-
-  // Validate platform
-  results.push(validatePlatform(la.platform));
-
-  // Validate arrays
-  results.push(validateStringArray(la.sourceRoots, 'sourceRoots'));
-
-  // Validate instruction limits
-  results.push(validateInstructionLimit(la.stepOverMaxInstructions, 'stepOverMaxInstructions'));
-  results.push(validateInstructionLimit(la.stepOutMaxInstructions, 'stepOutMaxInstructions'));
-
-  // Validate nested configs
-  results.push(validateTerminalConfig(la.terminal));
-  results.push(validateSimpleConfig(la.simple));
-  results.push(validateTec1Config(la.tec1));
-  results.push(validateTec1gConfig(la.tec1g));
-
-  return mergeResults(results);
+  return mergeResults(collectLaunchValidationResults(la));
 }
 
 /**
@@ -501,4 +484,21 @@ function mergeResults(results: ValidationResult[]): ValidationResult {
   }
 
   return { valid, errors, warnings };
+}
+
+function collectLaunchValidationResults(args: LaunchRequestArguments): ValidationResult[] {
+  return [
+    ...LAUNCH_PATH_FIELDS.map((field) => validatePath(args[field], field)),
+    validateAddress(args.entry, 'entry'),
+    ...LAUNCH_BOOLEAN_FIELDS.map((field) => validateBoolean(args[field], field)),
+    validatePlatform(args.platform),
+    validateStringArray(args.sourceRoots, 'sourceRoots'),
+    ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) =>
+      validateInstructionLimit(args[field], field)
+    ),
+    validateTerminalConfig(args.terminal),
+    validateSimpleConfig(args.simple),
+    validateTec1Config(args.tec1),
+    validateTec1gConfig(args.tec1g),
+  ];
 }

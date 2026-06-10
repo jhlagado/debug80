@@ -1844,10 +1844,18 @@ nested launch-argument error collection. It locks down field names and ordering
 for terminal, Simple, TEC-1, and TEC-1G validation errors before the helper
 extraction.
 
-Changed-file Fallow is clean after this split. Full verification passed with
-`npm run typecheck`, `npm run lint`, `npm exec --yes fallow -- audit
---changed-since HEAD --format compact`, and `npm run package:check
---if-present`.
+The latest pass also reduced the remaining `validateLaunchArgs` push-list
+duplication. Launch path fields, boolean fields, and instruction-limit fields
+now live in typed field lists, and `collectLaunchValidationResults()` preserves
+the original validation order before `mergeResults()` combines errors and
+warnings. This keeps the public validator API and error text unchanged while
+making future launch-argument fields easier to add in one place.
+
+Earlier changed-file Fallow was clean after the optional integer/object helper
+split. Current tooling note: Fallow cannot be rerun in this checkout at the
+moment because the optional `@fallow-cli/darwin-arm64` binary package fails to
+resolve from npm. Use focused tests, lint, package checks, and TypeScript as
+the local verification evidence until the Fallow package issue is fixed.
 
 Next safe cleanup candidate: `src/debug/launch/azm-backend.ts` still has small
 duplication around artifact writing and assemble/assembleBin result handling.
