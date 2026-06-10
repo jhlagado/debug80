@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Gitignore Test Fixture Cleanup
+
+`tests/extension/project-scaffolding-gitignore.test.ts` now uses a small
+`withTempProject` helper for temporary project roots. The two tests keep the
+same assertions for merging the Debug80 `.gitignore` block, avoiding duplicate
+blocks on repeat runs, preserving user content, and including current build and
+ROM ignore entries.
+
+This is intentionally test-only cleanup. It removes repeated temp-directory
+setup and cleanup around project `.gitignore` scaffolding coverage without
+changing project initialization or ignore-file generation behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-scaffolding-gitignore.test.ts
+```
+
 ### 2026-06-11: Target Discovery Test Fixture Cleanup
 
 `tests/extension/target-discovery.test.ts` now tracks and removes the temporary
