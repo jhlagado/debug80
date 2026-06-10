@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -7,8 +7,17 @@ import { resolveProjectStatusSummary } from '../../src/extension/project-status'
 vi.mock('vscode', () => ({}));
 
 describe('project-status', () => {
+  const tempDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tempDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tempDirs.length = 0;
+  });
+
   it('resolves the selected project target and program file', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
+    const root = makeTempDir();
     const srcDir = path.join(root, 'src');
     fs.mkdirSync(srcDir, { recursive: true });
     fs.writeFileSync(path.join(srcDir, 'main.asm'), 'nop\n');
@@ -43,4 +52,10 @@ describe('project-status', () => {
       entrySource: 'src/serial.asm',
     });
   });
+
+  function makeTempDir(): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
+    tempDirs.push(root);
+    return root;
+  }
 });

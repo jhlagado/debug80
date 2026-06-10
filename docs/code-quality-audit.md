@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Status Test Fixture Cleanup
+
+`tests/extension/project-status.test.ts` now tracks and removes the temporary
+workspace project created by the selected-target status test. The test still
+asserts the same public extension behavior: a selected target stored in
+workspace state resolves to the expected project name, target name, and entry
+source.
+
+This is intentionally test-only cleanup. It removes a leaked temporary
+Debug80 project fixture without changing project status resolution, target
+selection, or UI behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-status.test.ts
+```
+
 ### 2026-06-11: Program Loader Test Fixture Cleanup
 
 `tests/debug/program-loader.test.ts` now tracks and removes the temporary
