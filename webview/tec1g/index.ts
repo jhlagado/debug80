@@ -177,6 +177,7 @@ const panelLayout = createAccordionLayoutController({
   },
 });
 panelLayout.wireButtons();
+panelLayout.notifyInitialOpenPanels();
 
 const projectStatusUi = createTec1gProjectStatusUi(
   vscode,

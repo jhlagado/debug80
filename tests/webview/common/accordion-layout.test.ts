@@ -138,6 +138,39 @@ describe('accordion layout controller', () => {
     expect(controller.getProviderTab()).toBe('memory');
   });
 
+  it('exposes restored matrix keyboard attachment without synchronously notifying during construction', () => {
+    const messages: PostedMessage[] = [];
+    const panelChanges: Array<{ panel: string; open: boolean }> = [];
+    const matrixKeyboardContent = document.createElement('div');
+    const vscode = createVscodeMock(messages, {
+      debug80Accordion: {
+        matrixKeyboard: true,
+      },
+    });
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: [button('machine'), button('matrixKeyboard'), button('memory')],
+      panels: {
+        machine: document.createElement('div'),
+        matrixKeyboard: matrixKeyboardContent,
+        memory: document.createElement('div'),
+      },
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+      onPanelOpenChange: (panel, open) => panelChanges.push({ panel, open }),
+    });
+
+    expect(controller.isMatrixKeyboardOpen()).toBe(true);
+    expect(matrixKeyboardContent.hidden).toBe(false);
+    expect(panelChanges).toEqual([]);
+
+    controller.notifyInitialOpenPanels();
+
+    expect(panelChanges).toContainEqual({ panel: 'matrixKeyboard', open: true });
+  });
+
   it('toggles serial and matrix keyboard panels without switching provider tabs', () => {
     const messages: PostedMessage[] = [];
     const panelChanges: Array<{ panel: string; open: boolean }> = [];

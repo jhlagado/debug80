@@ -32,6 +32,7 @@ export type AccordionLayoutController = {
   getMemoryRowSize: () => number;
   isMachineOpen: () => boolean;
   isMatrixKeyboardOpen: () => boolean;
+  notifyInitialOpenPanels: () => void;
   isCpuOpen: () => boolean;
   isMemoryOpen: () => boolean;
   refreshOpenRegisters: () => void;
@@ -371,6 +372,11 @@ export function createAccordionLayoutController(
     getProviderTab: () => providerTab,
     getMemoryRowSize: () => memoryRowSize,
     isMachineOpen: () => openState.machine,
+    notifyInitialOpenPanels(): void {
+      if (openState.matrixKeyboard) {
+        options.onPanelOpenChange?.('matrixKeyboard', true);
+      }
+    },
     isCpuOpen: () => openState.registers || openState.memory,
     isMemoryOpen: () => openState.memory,
     refreshOpenRegisters,

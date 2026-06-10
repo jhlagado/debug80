@@ -905,9 +905,9 @@ Matrix keyboard invariants to preserve before any future refactor:
 - Accordion open state is the hardware attachment authority. When the Matrix
   Keyboard panel is open, MON-3 matrix mode should be asserted; when it is
   closed, the hex keypad path owns normal keyboard input again.
-- Capture is not attachment. Capture only decides whether physical host
-  keyboard events are routed into the matrix keyboard. Mouse clicks on visible
-  matrix keys remain valid user input according to the current UI policy.
+- Capture is not attachment. Capture decides whether physical host keyboard
+  events and clicked matrix keys are routed into the matrix keyboard. Matrix
+  attachment can be active while capture is released.
 - Modifier keys are emulator state, not DOM decoration. Shift and right Shift
   are one-shot modifiers unless Caps Lock is active. Ctrl, Fn, and Alt are
   one-shot modifier chords. Caps Lock is a toggle and should not clear itself
@@ -925,6 +925,30 @@ The direct safety tests added in this pass intentionally avoid refactoring
 `matrix-ui.ts`. The next matrix cleanup should first add pure state tests for
 these invariants, then extract helpers in very small moves with no user-visible
 behavior changes.
+
+### Latest Goal Note: Matrix Keyboard Characterization Tests
+
+The current matrix keyboard pass adds characterization coverage before any
+state-helper extraction. `tests/webview/tec1g-matrix-ui.test.ts` now explicitly
+locks down that clicked Ctrl, Fn, and Alt modifiers are one-shot chords; Caps
+Lock is a persistent toggle that can be turned off without leaving Shift
+latched; clicked matrix keys are ignored until keyboard capture is active; and
+host `Meta`/Command is delivered as matrix Ctrl without lighting or latching the
+on-screen Control key.
+
+`tests/webview/common/accordion-layout.test.ts` now covers the restored-open
+Matrix Keyboard lifecycle. If the webview starts with the Matrix Keyboard panel
+already open from persisted VS Code state, the accordion controller exposes the
+open state without synchronously firing callbacks during construction; the
+TEC-1G composition root explicitly calls `notifyInitialOpenPanels()` after
+`panelLayout` exists. This keeps MON-3 matrix mode aligned with the visible
+accordion state without requiring the user to close and reopen the panel.
+
+The only production change in this pass is that initial attachment notification
+hook in `accordion-layout.ts` and the TEC-1G composition root call site.
+`webview/tec1g/matrix-ui.ts` remains unrefactored. Future matrix cleanup should
+preserve these characterization tests and use them as the safety net for
+extracting pure state helpers.
 
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
@@ -977,11 +1001,12 @@ Phases 1–4 are complete. Phase A direct safety coverage has started:
 > matrix keyboard invariants are documented without changing production matrix
 > code.
 
-The next highest-value step is a matrix-only characterization pass: add pure
-tests for modifier/capture/attachment decisions first, then extract helpers in
-very small moves. Follow with Phase 1 dead-export cleanup and Phase 5
-launch/project policy split as separate PRs. Each phase should produce clear
-verification and minimal product behavior change.
+The matrix-only characterization pass is now started: modifier/capture
+contracts and restored-open attachment are covered without refactoring
+`matrix-ui.ts`. The next highest-value step is to extract the smallest pure
+matrix state helper behind those tests, or defer that and move to Phase 1
+dead-export cleanup if matrix behavior needs a cooling-off period. Follow with
+Phase 5 launch/project policy split as a separate PR.
 
 ## Priority Summary (2026-06-10)
 
