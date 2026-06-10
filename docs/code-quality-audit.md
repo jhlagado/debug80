@@ -950,6 +950,22 @@ hook in `accordion-layout.ts` and the TEC-1G composition root call site.
 preserve these characterization tests and use them as the safety net for
 extracting pure state helpers.
 
+### Latest Goal Note: First Matrix State Helper Extraction
+
+The first behavior-preserving matrix extraction is now isolated in
+`webview/tec1g/matrix-state.ts`. It contains only pure decisions that were
+already covered by characterization tests: matrix modifier names, one-shot
+modifier clearing, Caps-driven click modifiers, matrix key id construction,
+physical host-key normalization through `event.code`, `Meta`/Command-as-Ctrl,
+and the modified-Escape host release chord.
+
+`webview/tec1g/matrix-ui.ts` still owns DOM rendering, key highlights, timers,
+held-key maps, message posting, and click/keyboard event wiring. This keeps the
+first extraction deliberately small while removing duplicated policy from the
+UI controller. Future extractions should continue this pattern: add direct
+helper coverage first, move one pure decision at a time, and leave visible
+keyboard behavior protected by `tests/webview/tec1g-matrix-ui.test.ts`.
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -1001,12 +1017,12 @@ Phases 1–4 are complete. Phase A direct safety coverage has started:
 > matrix keyboard invariants are documented without changing production matrix
 > code.
 
-The matrix-only characterization pass is now started: modifier/capture
-contracts and restored-open attachment are covered without refactoring
-`matrix-ui.ts`. The next highest-value step is to extract the smallest pure
-matrix state helper behind those tests, or defer that and move to Phase 1
-dead-export cleanup if matrix behavior needs a cooling-off period. Follow with
-Phase 5 launch/project policy split as a separate PR.
+The matrix-only characterization pass and first helper extraction are now
+started: modifier/capture contracts, restored-open attachment, and pure
+modifier/key-normalization helpers are covered. The next highest-value matrix
+step would be extracting held-key transition bookkeeping behind direct tests; if
+matrix behavior needs a cooling-off period, move instead to Phase 1 dead-export
+cleanup. Follow with Phase 5 launch/project policy split as a separate PR.
 
 ## Priority Summary (2026-06-10)
 

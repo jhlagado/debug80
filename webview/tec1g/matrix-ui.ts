@@ -1,3 +1,16 @@
+import {
+  clearOneShotMatrixMods as createClearedMatrixMods,
+  cloneMatrixMods,
+  createMatrixMods,
+  isHostReleaseChord,
+  isLetterKey,
+  matrixClickModsForKey,
+  matrixKeyId,
+  matrixModifierForKey,
+  resolvePhysicalMatrixKey,
+  type MatrixKeyMods,
+} from './matrix-state';
+
 export interface MatrixUiController {
   applyMatrixRows(rows: number[]): void;
   applyMatrixGreenRows(rows: number[]): void;
@@ -15,13 +28,6 @@ export interface MatrixUiController {
 interface VscodeApi {
   postMessage(message: unknown): void;
 }
-
-type MatrixKeyMods = {
-  shift: boolean;
-  ctrl: boolean;
-  fn: boolean;
-  alt: boolean;
-};
 
 type MatrixHeldKey = {
   key: string;
@@ -45,12 +51,7 @@ export function createMatrixUiController(
   const matrixClickReleaseTimers = new Map<string, number>();
   const matrixClickPressMods = new Map<string, MatrixKeyMods>();
   const matrixPhysicalPressMods = new Map<string, MatrixKeyMods>();
-  const matrixClickMods = {
-    shift: false,
-    ctrl: false,
-    fn: false,
-    alt: false,
-  };
+  const matrixClickMods = createMatrixMods();
   const matrixKeyElements = new Map<string, HTMLElement[]>();
   let matrixRedRows = new Array(8).fill(0);
   let matrixGreenRows = new Array(8).fill(0);
@@ -192,65 +193,6 @@ export function createMatrixUiController(
     event.stopImmediatePropagation();
   }
 
-  const PHYSICAL_CODE_TO_MATRIX_KEY: Record<string, string> = {
-    Backquote: '`',
-    Digit1: '1',
-    Digit2: '2',
-    Digit3: '3',
-    Digit4: '4',
-    Digit5: '5',
-    Digit6: '6',
-    Digit7: '7',
-    Digit8: '8',
-    Digit9: '9',
-    Digit0: '0',
-    Minus: '-',
-    Equal: '=',
-    BracketLeft: '[',
-    BracketRight: ']',
-    Backslash: '\\',
-    Semicolon: ';',
-    Quote: "'",
-    Comma: ',',
-    Period: '.',
-    Slash: '/',
-    Space: ' ',
-    Tab: 'Tab',
-    Enter: 'Enter',
-    Escape: 'Escape',
-    Backspace: 'Backspace',
-    ArrowUp: 'ArrowUp',
-    ArrowDown: 'ArrowDown',
-    ArrowLeft: 'ArrowLeft',
-    ArrowRight: 'ArrowRight',
-    CapsLock: 'CapsLock',
-  };
-  for (let code = 65; code <= 90; code += 1) {
-    const letter = String.fromCharCode(code);
-    PHYSICAL_CODE_TO_MATRIX_KEY[`Key${letter}`] = letter.toLowerCase();
-  }
-
-  function resolvePhysicalMatrixKey(event: KeyboardEvent): string {
-    const usesModifier =
-      event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.key === 'CapsLock';
-    if (usesModifier) {
-      const mapped = PHYSICAL_CODE_TO_MATRIX_KEY[event.code];
-      if (mapped !== undefined) {
-        return mapped;
-      }
-    }
-    return event.key;
-  }
-
-  function cloneMatrixMods(mods: MatrixKeyMods): MatrixKeyMods {
-    return {
-      shift: mods.shift,
-      ctrl: mods.ctrl,
-      fn: mods.fn,
-      alt: mods.alt,
-    };
-  }
-
   function matrixElementsForKey(key: string): HTMLElement[] {
     if (!key) {
       return [];
@@ -264,17 +206,6 @@ export function createMatrixUiController(
     for (const el of matrixElementsForKey(key)) {
       el.classList.toggle('pressed', pressed);
     }
-  }
-
-  function matrixKeyId(key: string, mods: MatrixKeyMods): string {
-    return (
-      key +
-      '|' +
-      (mods.shift ? '1' : '0') +
-      (mods.ctrl ? '1' : '0') +
-      (mods.fn ? '1' : '0') +
-      (mods.alt ? '1' : '0')
-    );
   }
 
   function clearMatrixClickReleaseTimer(keyId: string): void {
@@ -392,7 +323,7 @@ export function createMatrixUiController(
       return false;
     }
     consumeHandledKeyEvent(event);
-    if (pressed && key === 'Escape' && (event.metaKey || event.ctrlKey)) {
+    if (pressed && isHostReleaseChord(key, event)) {
       applyKeyboardCapture(false);
       return true;
     }
@@ -403,12 +334,12 @@ export function createMatrixUiController(
       applyCapsLock(!capsLockEnabled);
     }
     const payloadKey = key.length === 1 ? key.toLowerCase() : key;
-    const eventMods = {
-      shift: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
-      ctrl: event.ctrlKey || event.metaKey,
-      fn: false,
-      alt: event.altKey,
-    };
+    const eventMods = createMatrixMods({
+      shiftKey: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      altKey: event.altKey,
+    });
     const mods = pressed ? eventMods : (matrixPhysicalPressMods.get(payloadKey) ?? eventMods);
     setMatrixKeyPressed(key, pressed);
     if (key.length === 1 && key !== key.toLowerCase()) {
@@ -423,17 +354,8 @@ export function createMatrixUiController(
     return true;
   }
 
-  function isLetterKey(key: string): boolean {
-    return /^[a-z]$/i.test(key);
-  }
-
   function clickModsForKey(key: string) {
-    return {
-      shift: matrixClickMods.shift || (capsLockEnabled && isLetterKey(key)),
-      ctrl: matrixClickMods.ctrl,
-      fn: matrixClickMods.fn,
-      alt: matrixClickMods.alt,
-    };
+    return matrixClickModsForKey(key, matrixClickMods, capsLockEnabled);
   }
 
   function refreshMatrixModifierKeys() {
@@ -473,10 +395,11 @@ export function createMatrixUiController(
     ) {
       logMatrixModifierState('cleared');
     }
-    setMatrixMod('shift', false);
-    setMatrixMod('ctrl', false);
-    setMatrixMod('fn', false);
-    setMatrixMod('alt', false);
+    const cleared = createClearedMatrixMods(matrixClickMods);
+    setMatrixMod('shift', cleared.shift);
+    setMatrixMod('ctrl', cleared.ctrl);
+    setMatrixMod('fn', cleared.fn);
+    setMatrixMod('alt', cleared.alt);
   }
 
   function buildMatrixKeyboard() {
@@ -599,20 +522,9 @@ export function createMatrixUiController(
           if (!keyboardCaptureEnabled || !isUiTabActive()) {
             return;
           }
-          if (keyValue === 'Shift') {
-            armMatrixMod('shift');
-            return;
-          }
-          if (keyValue === 'Control') {
-            armMatrixMod('ctrl');
-            return;
-          }
-          if (keyValue === 'Fn') {
-            armMatrixMod('fn');
-            return;
-          }
-          if (keyValue === 'Alt') {
-            armMatrixMod('alt');
+          const mod = matrixModifierForKey(keyValue);
+          if (mod !== undefined) {
+            armMatrixMod(mod);
             return;
           }
           if (keyValue === 'CapsLock') {
@@ -629,10 +541,7 @@ export function createMatrixUiController(
         });
         const release = () => {
           if (
-            keyValue === 'Shift' ||
-            keyValue === 'Control' ||
-            keyValue === 'Alt' ||
-            keyValue === 'Fn'
+            matrixModifierForKey(keyValue) !== undefined
           ) {
             return;
           }
