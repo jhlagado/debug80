@@ -33,6 +33,26 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: D8 Source-Path Test Fixture Cleanup
+
+`tests/debug/d8-source-paths.test.ts` now uses small local helpers for temporary
+workspace roots and source-file creation. The path-specific assertions remain
+explicit in each test, but the repeated `mkdtemp` / directory creation /
+cleanup blocks are centralized with `try` / `finally` cleanup.
+
+`tests/debug/d8-symbols.test.ts` was inspected as part of the same cleanup goal
+and left unchanged because it is already a minimal single-case helper test with
+no repeated setup worth extracting.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/d8-source-paths.test.ts tests/debug/d8-symbols.test.ts
+npm exec --yes fallow -- audit --changed-since HEAD --format compact
+```
+
+Fallow exits cleanly for the changed source-path helper test.
+
 ### 2026-06-11: D8 Definition Provider Helper Cleanup
 
 `src/extension/d8-definition-provider.ts` now shares the D8 editor-symbol
