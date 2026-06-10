@@ -67,17 +67,9 @@ describe('source-manager', () => {
     );
 
     const logs: string[] = [];
-    const manager = new SourceManager({
+    const manager = createSourceManager(dir, logs, {
       platform: 'simple',
-      baseDir: dir,
-      resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
-      resolveMappedPath: (filePath) => {
-        const candidate = path.resolve(dir, filePath);
-        return fs.existsSync(candidate) ? candidate : undefined;
-      },
-      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: () => mapPath,
-      logger: createLogger(logs),
     });
 
     const state = manager.buildState({
@@ -103,18 +95,10 @@ describe('source-manager', () => {
     const buildMappingSpy = vi.spyOn(mappingService, 'buildMappingFromDebugMap');
 
     const logs: string[] = [];
-    const manager = new SourceManager({
+    const manager = createSourceManager(dir, logs, {
       platform: 'tec1g',
-      baseDir: dir,
-      resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
-      resolveMappedPath: (filePath) => {
-        const candidate = path.resolve(dir, filePath);
-        return fs.existsSync(candidate) ? candidate : undefined;
-      },
-      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
       resolveDebugMapPath: (_a, _b, _c, hex) =>
         path.join(path.dirname(hex), `${path.basename(hex, '.hex')}.d8.json`),
-      logger: createLogger(logs),
     });
 
     manager.buildState({
@@ -136,5 +120,27 @@ describe('source-manager', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
     tmpDirs.push(dir);
     return dir;
+  }
+
+  function createSourceManager(
+    dir: string,
+    logs: string[],
+    options: {
+      platform: string;
+      resolveDebugMapPath: ConstructorParameters<typeof SourceManager>[0]['resolveDebugMapPath'];
+    }
+  ): SourceManager {
+    return new SourceManager({
+      platform: options.platform,
+      baseDir: dir,
+      resolveRelative: (filePath, baseDir) => path.resolve(baseDir, filePath),
+      resolveMappedPath: (filePath) => {
+        const candidate = path.resolve(dir, filePath);
+        return fs.existsSync(candidate) ? candidate : undefined;
+      },
+      relativeIfPossible: (filePath, baseDir) => path.relative(baseDir, filePath) || filePath,
+      resolveDebugMapPath: options.resolveDebugMapPath,
+      logger: createLogger(logs),
+    });
   }
 });

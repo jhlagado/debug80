@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Source Manager Dependency Wiring Cleanup
+
+`tests/debug/source-manager.test.ts` now uses a local `createSourceManager`
+helper for the repeated `SourceManager` dependency wiring shared by its native
+D8 map and AZM entry-source tests. The helper keeps path resolution,
+mapped-path probing, relative path formatting, and logging setup in one place.
+
+This is intentionally test-only cleanup. It preserves the existing coverage for
+building mapping state from native Debug80 maps and for passing the resolved
+ASM path into mapping construction when `sourceFile` is omitted, without
+changing source-manager behavior or mapping-service integration.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/source-manager.test.ts
+```
+
 ### 2026-06-11: Launch Sequence Test Fixture Cleanup
 
 `tests/debug/launch-sequence.test.ts` now tracks the temporary launch fixture
