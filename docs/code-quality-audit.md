@@ -1531,6 +1531,55 @@ Next safe cleanup candidate: run a fresh changed-code survey and choose a
 non-hot-zone target with focused tests. Avoid matrix keyboard production code
 unless the goal is specifically matrix behavior with characterization coverage.
 
+### Latest Goal Note: Fresh Post-AZM Cleanup Survey
+
+Current-state survey after the AZM backend cleanups:
+
+- `fallow audit` is clean for the current worktree because there are no changed
+  files.
+- Repo-wide `fallow health` reports overall health `73.4:B`, with no dead
+  files, no dead exports, no circular dependencies, and no unused dependencies.
+- Repo-wide `fallow dupes` still reports broad duplication, but much of the top
+  noise is deliberate or high-risk: Z80 decoder tables, TEC-1G hardware paths,
+  renderer code, and matrix keyboard paths.
+- `fallow health --targets` now ranks
+  `src/debug/launch/launch-source-state.ts` as the best low-risk target:
+  priority `25.2`, high confidence, medium effort, focused on extracting
+  `readSourceMapSymbols` (cognitive complexity `38`) in a 279-line file.
+
+Rejected next targets for this pass:
+
+- `webview/tec1g/glcd-renderer.ts`, `webview/tec1g/lcd-renderer.ts`,
+  `webview/tec1g/index.ts`, and `webview/tec1g/matrix-ui.ts` remain UI/hot-zone
+  files. They need visual or matrix-specific goals, not general cleanup.
+- `src/platforms/tec1g/io-handlers.ts`, `src/platforms/tec1g/sd-spi.ts`,
+  `src/platforms/tec1g/glcd.ts`, and RTC-related files are hardware-behavior
+  hot zones. Prefer direct protocol/behavior goals before refactoring.
+- `src/z80/decode-*` duplication is table-shaped CPU decode logic. It should be
+  left alone unless the goal is specifically decoder-generation or opcode-table
+  consolidation.
+- `src/extension/project-config.ts` has high fan-in and meaningful complexity,
+  but changing it is broader than the next small cleanup step.
+
+Recommended next implementation goal:
+
+> Refactor `src/debug/launch/launch-source-state.ts` by extracting
+> `readSourceMapSymbols` into smaller pure helpers for map-path collection, map
+> parsing/logging, file-symbol conversion, and final sorting. Preserve
+> `buildLaunchSourceState` behavior and add/retain focused coverage in
+> `tests/debug/launch-source-state.test.ts` for build-artifact symbols,
+> auxiliary ROM map symbols, malformed map warnings, source-root path
+> resolution, and fallback symbol-index behavior.
+
+Why this is the best next step:
+
+- It is outside the matrix keyboard and TEC-1G hardware hot zones.
+- It builds directly on recent D8/source-map work.
+- The existing test file already covers project-relative D8 keys, bundled ROM
+  keys, build artifact symbols, and local ROM map symbols.
+- The extraction can be done with behavior-preserving helpers and a narrow
+  changed-file Fallow gate.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
