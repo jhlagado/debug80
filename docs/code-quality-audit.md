@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Path Resolver Test Fixture Cleanup
+
+`tests/debug/path-resolver.test.ts` now uses local `tempPath`,
+`setWorkspaceRoot`, and `launchArgs` helpers for repeated temporary-path,
+workspace, and launch-argument setup. The tests still cover workspace-root
+selection, project-config fallback behavior, artifact path inference, retired
+`.debug80/cache` avoidance, source-root mapping, fallback source paths, and
+Windows-style path handling.
+
+This is intentionally test-only cleanup. It keeps the path policy coverage in
+place while reducing repeated fixture wiring around workspace and temporary
+project paths.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/path-resolver.test.ts
+```
+
 ### 2026-06-11: Local Monitor ROM Test Fixture Cleanup
 
 `tests/debug/local-monitor-rom-build.test.ts` now uses a local
