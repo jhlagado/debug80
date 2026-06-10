@@ -1456,6 +1456,29 @@ Next safe cleanup candidate: inspect `src/debug/launch/config-validation.ts` and
 matrix keyboard path, but they affect build/launch behavior, so start with
 characterization tests for option/error formatting before extracting helpers.
 
+### Latest Goal Note: Launch Config Validation Helper Extraction
+
+`src/debug/launch/config-validation.ts` now shares the repeated optional
+integer and optional object validation scaffolding across port, address,
+instruction-limit, terminal, Simple, TEC-1, and TEC-1G validators. The exported
+validator API and error strings stay unchanged; the new helpers only remove the
+duplicated type/null/integer/object checks.
+
+`tests/debug/config-validation.test.ts` now includes a characterization test for
+nested launch-argument error collection. It locks down field names and ordering
+for terminal, Simple, TEC-1, and TEC-1G validation errors before the helper
+extraction.
+
+Changed-file Fallow is clean after this split. Full verification passed with
+`npm run typecheck`, `npm run lint`, `npm exec --yes fallow -- audit
+--changed-since HEAD --format compact`, and `npm run package:check
+--if-present`.
+
+Next safe cleanup candidate: `src/debug/launch/azm-backend.ts` still has small
+duplication around artifact writing and assemble/assembleBin result handling.
+Treat it as build-critical: add characterization tests around emitted artifacts
+and failure diagnostics before extracting anything.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

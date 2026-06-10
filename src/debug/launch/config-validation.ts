@@ -54,6 +54,49 @@ export interface ValidationResult {
   warnings: string[];
 }
 
+type OptionalObjectValidation<T extends object> =
+  | { value: T; result?: undefined }
+  | { value?: undefined; result: ValidationResult };
+
+function validResult(warnings: string[] = []): ValidationResult {
+  return { valid: true, errors: [], warnings };
+}
+
+function invalidResult(message: string): ValidationResult {
+  return { valid: false, errors: [message], warnings: [] };
+}
+
+function validateOptionalInteger(value: unknown, fieldName: string): ValidationResult {
+  if (value === undefined || value === null) {
+    return validResult();
+  }
+
+  if (typeof value !== 'number') {
+    return invalidResult(`${fieldName} must be a number, got ${typeof value}`);
+  }
+
+  if (!Number.isInteger(value)) {
+    return invalidResult(`${fieldName} must be an integer, got ${value}`);
+  }
+
+  return validResult();
+}
+
+function validateOptionalObject<T extends object>(
+  value: unknown,
+  fieldName: string
+): OptionalObjectValidation<T> {
+  if (value === undefined || value === null) {
+    return { result: validResult() };
+  }
+
+  if (typeof value !== 'object') {
+    return { result: invalidResult(`${fieldName} must be an object, got ${typeof value}`) };
+  }
+
+  return { value: value as T };
+}
+
 // ============================================================================
 // Individual Validators
 // ============================================================================
@@ -95,29 +138,19 @@ export function validatePlatform(platform: unknown): ValidationResult {
  * @returns Validation result
  */
 export function validatePort(value: unknown, fieldName: string): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+  const integerResult = validateOptionalInteger(value, fieldName);
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
+  }
+  const numberValue = value as number;
 
-  if (value === undefined || value === null) {
-    return { valid: true, errors, warnings };
+  if (numberValue < PORT_MIN || numberValue > PORT_MAX) {
+    return invalidResult(
+      `${fieldName} must be between ${PORT_MIN} and ${PORT_MAX}, got ${numberValue}`
+    );
   }
 
-  if (typeof value !== 'number') {
-    errors.push(`${fieldName} must be a number, got ${typeof value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (!Number.isInteger(value)) {
-    errors.push(`${fieldName} must be an integer, got ${value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (value < PORT_MIN || value > PORT_MAX) {
-    errors.push(`${fieldName} must be between ${PORT_MIN} and ${PORT_MAX}, got ${value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  return { valid: true, errors, warnings };
+  return validResult();
 }
 
 /**
@@ -127,31 +160,19 @@ export function validatePort(value: unknown, fieldName: string): ValidationResul
  * @returns Validation result
  */
 export function validateAddress(value: unknown, fieldName: string): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (value === undefined || value === null) {
-    return { valid: true, errors, warnings };
+  const integerResult = validateOptionalInteger(value, fieldName);
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
   }
+  const numberValue = value as number;
 
-  if (typeof value !== 'number') {
-    errors.push(`${fieldName} must be a number, got ${typeof value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (!Number.isInteger(value)) {
-    errors.push(`${fieldName} must be an integer, got ${value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (value < ADDRESS_MIN || value > ADDRESS_MAX) {
-    errors.push(
-      `${fieldName} must be between ${ADDRESS_MIN} and 0x${ADDRESS_MAX.toString(16)}, got ${value} (0x${value.toString(16)})`
+  if (numberValue < ADDRESS_MIN || numberValue > ADDRESS_MAX) {
+    return invalidResult(
+      `${fieldName} must be between ${ADDRESS_MIN} and 0x${ADDRESS_MAX.toString(16)}, got ${numberValue} (0x${numberValue.toString(16)})`
     );
-    return { valid: false, errors, warnings };
   }
 
-  return { valid: true, errors, warnings };
+  return validResult();
 }
 
 /**
@@ -161,33 +182,23 @@ export function validateAddress(value: unknown, fieldName: string): ValidationRe
  * @returns Validation result
  */
 export function validateInstructionLimit(value: unknown, fieldName: string): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+  const integerResult = validateOptionalInteger(value, fieldName);
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
+  }
+  const numberValue = value as number;
 
-  if (value === undefined || value === null) {
-    return { valid: true, errors, warnings };
+  if (numberValue < INSTRUCTION_LIMIT_MIN) {
+    return invalidResult(`${fieldName} must be non-negative, got ${numberValue}`);
   }
 
-  if (typeof value !== 'number') {
-    errors.push(`${fieldName} must be a number, got ${typeof value}`);
-    return { valid: false, errors, warnings };
+  if (numberValue > INSTRUCTION_LIMIT_MAX) {
+    return validResult([
+      `${fieldName} is very large (${numberValue}). This may cause performance issues.`,
+    ]);
   }
 
-  if (!Number.isInteger(value)) {
-    errors.push(`${fieldName} must be an integer, got ${value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (value < INSTRUCTION_LIMIT_MIN) {
-    errors.push(`${fieldName} must be non-negative, got ${value}`);
-    return { valid: false, errors, warnings };
-  }
-
-  if (value > INSTRUCTION_LIMIT_MAX) {
-    warnings.push(`${fieldName} is very large (${value}). This may cause performance issues.`);
-  }
-
-  return { valid: true, errors, warnings };
+  return validResult();
 }
 
 /**
@@ -288,26 +299,19 @@ export function validateBoolean(value: unknown, fieldName: string): ValidationRe
  * @returns Validation result
  */
 export function validateTerminalConfig(config: unknown): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (config === undefined || config === null) {
-    return { valid: true, errors, warnings };
+  const objectResult = validateOptionalObject<TerminalConfig>(config, 'terminal');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
   }
 
-  if (typeof config !== 'object') {
-    errors.push(`terminal must be an object, got ${typeof config}`);
-    return { valid: false, errors, warnings };
-  }
+  const tc = objectResult.value;
 
-  const tc = config as TerminalConfig;
-
-  const txResult = validatePort(tc.txPort, 'terminal.txPort');
-  const rxResult = validatePort(tc.rxPort, 'terminal.rxPort');
-  const statusResult = validatePort(tc.statusPort, 'terminal.statusPort');
-  const interruptResult = validateBoolean(tc.interrupt, 'terminal.interrupt');
-
-  return mergeResults([txResult, rxResult, statusResult, interruptResult]);
+  return mergeResults([
+    validatePort(tc.txPort, 'terminal.txPort'),
+    validatePort(tc.rxPort, 'terminal.rxPort'),
+    validatePort(tc.statusPort, 'terminal.statusPort'),
+    validateBoolean(tc.interrupt, 'terminal.interrupt'),
+  ]);
 }
 
 /**
@@ -316,26 +320,19 @@ export function validateTerminalConfig(config: unknown): ValidationResult {
  * @returns Validation result
  */
 export function validateSimpleConfig(config: unknown): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (config === undefined || config === null) {
-    return { valid: true, errors, warnings };
+  const objectResult = validateOptionalObject<SimplePlatformConfig>(config, 'simple');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
   }
 
-  if (typeof config !== 'object') {
-    errors.push(`simple must be an object, got ${typeof config}`);
-    return { valid: false, errors, warnings };
-  }
+  const sc = objectResult.value;
 
-  const sc = config as SimplePlatformConfig;
-
-  const appStartResult = validateAddress(sc.appStart, 'simple.appStart');
-  const entryResult = validateAddress(sc.entry, 'simple.entry');
-  const binFromResult = validateAddress(sc.binFrom, 'simple.binFrom');
-  const binToResult = validateAddress(sc.binTo, 'simple.binTo');
-
-  return mergeResults([appStartResult, entryResult, binFromResult, binToResult]);
+  return mergeResults([
+    validateAddress(sc.appStart, 'simple.appStart'),
+    validateAddress(sc.entry, 'simple.entry'),
+    validateAddress(sc.binFrom, 'simple.binFrom'),
+    validateAddress(sc.binTo, 'simple.binTo'),
+  ]);
 }
 
 /**
@@ -344,25 +341,18 @@ export function validateSimpleConfig(config: unknown): ValidationResult {
  * @returns Validation result
  */
 export function validateTec1Config(config: unknown): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (config === undefined || config === null) {
-    return { valid: true, errors, warnings };
+  const objectResult = validateOptionalObject<Tec1PlatformConfig>(config, 'tec1');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
   }
 
-  if (typeof config !== 'object') {
-    errors.push(`tec1 must be an object, got ${typeof config}`);
-    return { valid: false, errors, warnings };
-  }
+  const tc = objectResult.value;
 
-  const tc = config as Tec1PlatformConfig;
-
-  const romHexResult = validatePath(tc.romHex, 'tec1.romHex');
-  const appStartResult = validateAddress(tc.appStart, 'tec1.appStart');
-  const entryResult = validateAddress(tc.entry, 'tec1.entry');
-
-  return mergeResults([romHexResult, appStartResult, entryResult]);
+  return mergeResults([
+    validatePath(tc.romHex, 'tec1.romHex'),
+    validateAddress(tc.appStart, 'tec1.appStart'),
+    validateAddress(tc.entry, 'tec1.entry'),
+  ]);
 }
 
 /**
@@ -371,26 +361,19 @@ export function validateTec1Config(config: unknown): ValidationResult {
  * @returns Validation result
  */
 export function validateTec1gConfig(config: unknown): ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (config === undefined || config === null) {
-    return { valid: true, errors, warnings };
+  const objectResult = validateOptionalObject<Tec1gPlatformConfig>(config, 'tec1g');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
   }
 
-  if (typeof config !== 'object') {
-    errors.push(`tec1g must be an object, got ${typeof config}`);
-    return { valid: false, errors, warnings };
-  }
+  const tc = objectResult.value;
 
-  const tc = config as Tec1gPlatformConfig;
-
-  const romHexResult = validatePath(tc.romHex, 'tec1g.romHex');
-  const cartridgeHexResult = validatePath(tc.cartridgeHex, 'tec1g.cartridgeHex');
-  const appStartResult = validateAddress(tc.appStart, 'tec1g.appStart');
-  const entryResult = validateAddress(tc.entry, 'tec1g.entry');
-
-  return mergeResults([romHexResult, cartridgeHexResult, appStartResult, entryResult]);
+  return mergeResults([
+    validatePath(tc.romHex, 'tec1g.romHex'),
+    validatePath(tc.cartridgeHex, 'tec1g.cartridgeHex'),
+    validateAddress(tc.appStart, 'tec1g.appStart'),
+    validateAddress(tc.entry, 'tec1g.entry'),
+  ]);
 }
 
 // ============================================================================

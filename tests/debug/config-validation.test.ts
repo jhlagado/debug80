@@ -354,6 +354,26 @@ describe('config-validation', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(1);
     });
+
+    it('preserves nested platform and terminal field names in collected errors', () => {
+      const result = validateLaunchArgs({
+        terminal: { txPort: 300, interrupt: 'yes' },
+        simple: { binFrom: -1 },
+        tec1: 'bad',
+        tec1g: { cartridgeHex: 42 },
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'terminal.txPort must be between 0 and 255, got 300',
+          'terminal.interrupt must be a boolean, got string',
+          'simple.binFrom must be between 0 and 0xffff, got -1 (0x-1)',
+          'tec1 must be an object, got string',
+          'tec1g.cartridgeHex must be a string, got number',
+        ],
+      });
+    });
   });
 
   // ==========================================================================
