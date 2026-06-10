@@ -966,6 +966,20 @@ UI controller. Future extractions should continue this pattern: add direct
 helper coverage first, move one pure decision at a time, and leave visible
 keyboard behavior protected by `tests/webview/tec1g-matrix-ui.test.ts`.
 
+### Latest Goal Note: Matrix Held-Key Transition Extraction
+
+The second behavior-preserving matrix extraction moves held-key transition
+bookkeeping into `webview/tec1g/matrix-state.ts`. The helper now owns the pure
+rules for held key ids, first press vs. duplicate press, release of a currently
+held key, modifier snapshotting, and draining all held keys for blur/reset/capture
+release paths.
+
+`webview/tec1g/matrix-ui.ts` still owns the side effects around those
+transitions: cancelling click-release timers, posting messages, updating DOM
+pressed classes, and clearing physical/click modifier maps. This keeps the
+fragile matrix keyboard behavior stable while making the transition policy
+directly testable in `tests/webview/tec1g-matrix-state.test.ts`.
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -1017,12 +1031,14 @@ Phases 1–4 are complete. Phase A direct safety coverage has started:
 > matrix keyboard invariants are documented without changing production matrix
 > code.
 
-The matrix-only characterization pass and first helper extraction are now
-started: modifier/capture contracts, restored-open attachment, and pure
-modifier/key-normalization helpers are covered. The next highest-value matrix
-step would be extracting held-key transition bookkeeping behind direct tests; if
-matrix behavior needs a cooling-off period, move instead to Phase 1 dead-export
-cleanup. Follow with Phase 5 launch/project policy split as a separate PR.
+The matrix-only characterization pass and first two helper extractions are now
+started: modifier/capture contracts, restored-open attachment, pure
+modifier/key-normalization helpers, and held-key transition helpers are covered.
+The next matrix step should be smaller again: extract click-release timer
+decision bookkeeping only if it can be isolated behind direct tests without
+moving DOM or postMessage behavior. If matrix behavior needs a cooling-off
+period, move instead to Phase 1 dead-export cleanup. Follow with Phase 5
+launch/project policy split as a separate PR.
 
 ## Priority Summary (2026-06-10)
 

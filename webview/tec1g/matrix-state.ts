@@ -7,6 +7,16 @@ export type MatrixKeyMods = {
 
 export type MatrixModifier = keyof MatrixKeyMods;
 
+export type MatrixHeldKey = {
+  key: string;
+  mods: MatrixKeyMods;
+};
+
+export type MatrixHeldKeyTransition = {
+  keyId: string;
+  changed: boolean;
+};
+
 type HostModifierState = {
   shiftKey?: boolean;
   ctrlKey?: boolean;
@@ -117,6 +127,44 @@ export function matrixKeyId(key: string, mods: MatrixKeyMods): string {
     (mods.fn ? '1' : '0') +
     (mods.alt ? '1' : '0')
   );
+}
+
+export function holdMatrixKey(
+  heldKeys: Map<string, MatrixHeldKey>,
+  key: string,
+  mods: MatrixKeyMods
+): MatrixHeldKeyTransition {
+  const keyId = matrixKeyId(key, mods);
+  if (heldKeys.has(keyId)) {
+    return { keyId, changed: false };
+  }
+  heldKeys.set(keyId, {
+    key,
+    mods: cloneMatrixMods(mods),
+  });
+  return { keyId, changed: true };
+}
+
+export function releaseMatrixKey(
+  heldKeys: Map<string, MatrixHeldKey>,
+  key: string,
+  mods: MatrixKeyMods
+): MatrixHeldKeyTransition {
+  const keyId = matrixKeyId(key, mods);
+  if (!heldKeys.has(keyId)) {
+    return { keyId, changed: false };
+  }
+  heldKeys.delete(keyId);
+  return { keyId, changed: true };
+}
+
+export function drainMatrixHeldKeys(heldKeys: Map<string, MatrixHeldKey>): MatrixHeldKey[] {
+  const held = Array.from(heldKeys.values(), ({ key, mods }) => ({
+    key,
+    mods: cloneMatrixMods(mods),
+  }));
+  heldKeys.clear();
+  return held;
 }
 
 export function resolvePhysicalMatrixKey(event: KeyboardEvent): string {

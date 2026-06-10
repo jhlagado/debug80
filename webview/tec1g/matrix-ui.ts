@@ -2,12 +2,16 @@ import {
   clearOneShotMatrixMods as createClearedMatrixMods,
   cloneMatrixMods,
   createMatrixMods,
+  drainMatrixHeldKeys,
+  holdMatrixKey,
   isHostReleaseChord,
   isLetterKey,
   matrixClickModsForKey,
   matrixKeyId,
   matrixModifierForKey,
+  releaseMatrixKey,
   resolvePhysicalMatrixKey,
+  type MatrixHeldKey,
   type MatrixKeyMods,
 } from './matrix-state';
 
@@ -28,11 +32,6 @@ export interface MatrixUiController {
 interface VscodeApi {
   postMessage(message: unknown): void;
 }
-
-type MatrixHeldKey = {
-  key: string;
-  mods: MatrixKeyMods;
-};
 
 type MatrixEventSource = 'mouse' | 'physical' | 'system';
 
@@ -266,24 +265,14 @@ export function createMatrixUiController(
     const keyId = matrixKeyId(key, mods);
     if (pressed) {
       clearMatrixClickReleaseTimer(keyId);
-      if (matrixHeldKeys.has(keyId)) {
+      if (!holdMatrixKey(matrixHeldKeys, key, mods).changed) {
         return true;
       }
-      matrixHeldKeys.set(keyId, {
-        key,
-        mods: {
-          shift: !!mods.shift,
-          ctrl: !!mods.ctrl,
-          fn: !!mods.fn,
-          alt: !!mods.alt,
-        },
-      });
     } else {
       clearMatrixClickReleaseTimer(keyId);
-      if (!matrixHeldKeys.has(keyId)) {
+      if (!releaseMatrixKey(matrixHeldKeys, key, mods).changed) {
         return false;
       }
-      matrixHeldKeys.delete(keyId);
     }
     postMatrixKeyMessage(source, key, pressed, mods);
     return true;
@@ -308,10 +297,9 @@ export function createMatrixUiController(
     matrixClickReleaseTimers.clear();
     matrixClickPressMods.clear();
     matrixPhysicalPressMods.clear();
-    for (const held of matrixHeldKeys.values()) {
+    for (const held of drainMatrixHeldKeys(matrixHeldKeys)) {
       postMatrixKeyMessage('system', held.key, false, held.mods);
     }
-    matrixHeldKeys.clear();
   }
 
   function handleKeyEvent(event: KeyboardEvent, pressed: boolean): boolean {

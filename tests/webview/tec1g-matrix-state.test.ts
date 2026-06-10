@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   clearOneShotMatrixMods,
   createMatrixMods,
+  drainMatrixHeldKeys,
+  holdMatrixKey,
   isHostReleaseChord,
   matrixClickModsForKey,
   matrixKeyId,
   matrixModifierForKey,
+  releaseMatrixKey,
   resolvePhysicalMatrixKey,
+  type MatrixHeldKey,
   type MatrixKeyMods,
 } from '../../webview/tec1g/matrix-state';
 
@@ -102,5 +106,35 @@ describe('tec1g matrix keyboard pure state helpers', () => {
   it('uses the same key id format as matrix-ui held-key tracking', () => {
     expect(matrixKeyId('a', { shift: false, ctrl: false, fn: false, alt: false })).toBe('a|0000');
     expect(matrixKeyId('a', { shift: true, ctrl: false, fn: true, alt: true })).toBe('a|1011');
+  });
+
+  it('tracks held-key press and release transitions by key plus modifier state', () => {
+    const heldKeys = new Map<string, MatrixHeldKey>();
+    const mods: MatrixKeyMods = { shift: true, ctrl: false, fn: false, alt: true };
+
+    expect(holdMatrixKey(heldKeys, 's', mods)).toEqual({ keyId: 's|1001', changed: true });
+    expect(holdMatrixKey(heldKeys, 's', mods)).toEqual({ keyId: 's|1001', changed: false });
+    expect(holdMatrixKey(heldKeys, 's', createMatrixMods())).toEqual({
+      keyId: 's|0000',
+      changed: true,
+    });
+    expect(releaseMatrixKey(heldKeys, 's', mods)).toEqual({ keyId: 's|1001', changed: true });
+    expect(releaseMatrixKey(heldKeys, 's', mods)).toEqual({ keyId: 's|1001', changed: false });
+    expect(heldKeys.has('s|0000')).toBe(true);
+  });
+
+  it('stores an immutable modifier snapshot for held keys and drains them in insertion order', () => {
+    const heldKeys = new Map<string, MatrixHeldKey>();
+    const mods: MatrixKeyMods = { shift: false, ctrl: true, fn: false, alt: false };
+
+    holdMatrixKey(heldKeys, 'q', mods);
+    mods.ctrl = false;
+    holdMatrixKey(heldKeys, 'ArrowLeft', createMatrixMods());
+
+    expect(drainMatrixHeldKeys(heldKeys)).toEqual([
+      { key: 'q', mods: { shift: false, ctrl: true, fn: false, alt: false } },
+      { key: 'ArrowLeft', mods: createMatrixMods() },
+    ]);
+    expect(heldKeys.size).toBe(0);
   });
 });
