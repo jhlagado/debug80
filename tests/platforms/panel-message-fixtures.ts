@@ -35,17 +35,21 @@ export function createPanelTestContext(options?: {
   customRequest?: ReturnType<typeof vi.fn>;
   sessionType?: string;
   visible?: boolean;
+  activeTab?: 'ui' | 'memory';
 }): PanelTestContext {
   const memoryViews = createMemoryViewState();
   const { postSnapshot, refreshController } = createRefreshTestController();
   const customRequest = options?.customRequest ?? vi.fn().mockResolvedValue(undefined);
+  let activeTab: 'ui' | 'memory' = options?.activeTab ?? 'memory';
   return {
     ctx: {
       getSession: () => ({ type: options?.sessionType ?? 'z80', customRequest }),
       refreshController,
       autoRefreshMs: 150,
-      setActiveTab: vi.fn(),
-      getActiveTab: vi.fn(() => 'memory'),
+      setActiveTab: vi.fn((tab: 'ui' | 'memory') => {
+        activeTab = tab;
+      }),
+      getActiveTab: vi.fn(() => activeTab),
       isPanelVisible: vi.fn(() => options?.visible ?? true),
       memoryViews,
     },

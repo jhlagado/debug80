@@ -706,6 +706,23 @@ The test covers Simple's terminal-only output/clear contract and the full
 TEC-1/TEC-1G send/send-file/save/clear contract through the same helper.
 Changed-file Fallow now passes for this cleanup.
 
+Simple panel message cleanup status:
+
+`src/platforms/simple/ui-panel-messages.ts` now has an explicit typed allow-list
+for the only common panel messages the Simple platform accepts: tab selection,
+memory refresh, register edits, and memory edits. Hardware runtime messages
+such as keypad, reset, speed, and serial input remain ignored by the Simple
+panel before they reach the shared runtime-control parser.
+
+`tests/platforms/simple/ui-panel-messages.test.ts` now reuses the shared panel
+message fixture instead of recreating the same session, memory, and refresh
+controller setup locally. The focused tests cover ignored hardware messages,
+accepted tab/refresh routing, and register/memory edit dispatch. The shared
+fixture now tracks active-tab transitions while preserving its previous default
+memory-tab behavior for existing common-panel tests. This keeps the Simple
+message boundary documented without touching TEC-1G matrix keyboard production
+code.
+
 Required DOM element lookup cleanup status:
 
 `webview/common/dom-elements.ts` now provides small typed DOM lookup helpers for
@@ -863,7 +880,6 @@ Recommended approach:
 Fallow reported 66 dead-code/export findings. Some are likely false positives or
 public extension seams, but several look like genuine cleanup candidates:
 
-- `src/platforms/simple/ui-panel-state.ts`: all exports reported unused.
 - `src/platforms/tec1/runtime.ts`: `TEC1_SLOW_HZ`, `TEC1_FAST_HZ`.
 - `src/platforms/tec1g/constants.ts`: deprecated/unused aliases.
 - `src/platforms/tec1g/glcd.ts`: `resetGlcdState`.
@@ -879,6 +895,11 @@ Recommended approach:
 - For each finding, first `rg` the symbol and check whether it is used by tests,
   public API, dynamic imports, or intended extension contracts.
 - Remove only confirmed dead exports, then run typecheck and targeted tests.
+
+Current correction: `src/platforms/simple/ui-panel-state.ts` is not dead. It is
+loaded dynamically by `src/extension/platform-ui-entries.ts` as the Simple
+platform's UI-state contract, so it should remain unless the platform UI
+manifest contract itself changes.
 
 ### P2: Duplication Is Manageable But Useful To Reduce
 
