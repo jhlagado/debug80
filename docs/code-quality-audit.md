@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Config Test Fixture Cleanup
+
+`tests/extension/project-config.test.ts` now owns the temporary project roots it
+creates while testing `debug80.json` update, initialization, manifest upgrade,
+and assembler-id cleanup behavior. A small local helper tracks each temp
+project root and the `afterEach` hook removes it, replacing the previous
+placeholder cleanup hook.
+
+This is intentionally test-only cleanup. It removes leaked temporary
+configuration fixtures without changing project-config parsing, manifest
+upgrade, target source updates, or initialization detection behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-config.test.ts
+```
+
 ### 2026-06-11: Local Monitor ROM Test Fixture Cleanup
 
 `tests/debug/local-monitor-rom-build.test.ts` now uses a small local helper for

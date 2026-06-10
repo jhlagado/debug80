@@ -13,12 +13,23 @@ import {
 } from '../../src/extension/project-config';
 
 describe('project-config helpers', () => {
+  const tmpDirs: string[] = [];
+
   afterEach(() => {
-    // temp directories are left for the OS to clean up
+    for (const dir of tmpDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
   });
 
+  function makeTempProject(prefix: string): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(root);
+    return root;
+  }
+
   it('updates the selected target source in debug80.json', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-config-'));
+    const root = makeTempProject('debug80-project-config-');
     const configPath = path.join(root, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -106,7 +117,7 @@ describe('project-config helpers', () => {
   });
 
   it('recognizes initialized debug80 projects from config presence', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-init-'));
+    const root = makeTempProject('debug80-project-init-');
     const configPath = path.join(root, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -174,7 +185,7 @@ describe('project-config helpers', () => {
   });
 
   it('upgrades manifests that use profile metadata to version 2 on read', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-manifest-v2-'));
+    const root = makeTempProject('debug80-project-manifest-v2-');
     const configPath = path.join(root, 'debug80.json');
     fs.writeFileSync(
       configPath,
@@ -206,7 +217,7 @@ describe('project-config helpers', () => {
   });
 
   it('clears stale unsupported assembler ids when changing the program file', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-azm-entry-'));
+    const root = makeTempProject('debug80-azm-entry-');
     const configPath = path.join(root, 'debug80.json');
     fs.writeFileSync(
       configPath,
