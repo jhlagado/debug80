@@ -2,7 +2,7 @@
  * @file Direct characterization tests for launch-session orchestration.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -22,13 +22,21 @@ import type { Logger } from '../../src/util/logger';
 
 const { workspace } = vscodeMock;
 
+let tempRoots: string[] = [];
+
+function makeTempRoot(prefix: string): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  tempRoots.push(root);
+  return root;
+}
+
 function writeFile(filePath: string, content: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
 }
 
 function writeLaunchFixture(): { root: string; sourcePath: string; hexPath: string } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-sequence-'));
+  const root = makeTempRoot('debug80-launch-sequence-');
   const sourcePath = path.join(root, 'src', 'main.asm');
   const hexPath = path.join(root, 'build', 'main.hex');
   const mapPath = path.join(root, 'build', 'main.d8.json');
@@ -103,7 +111,14 @@ function createContext(logger: Logger = createLogger()) {
 
 describe('launch-sequence', () => {
   beforeEach(() => {
+    tempRoots = [];
     workspace.workspaceFolders = undefined;
+  });
+
+  afterEach(() => {
+    for (const root of tempRoots) {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('builds a simple launch session from HEX and D8 artifacts', async () => {
@@ -142,7 +157,7 @@ describe('launch-sequence', () => {
   });
 
   it('throws a missing-artifacts error before runtime creation when HEX is absent', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-launch-missing-'));
+    const root = makeTempRoot('debug80-launch-missing-');
     workspace.workspaceFolders = [{ uri: { fsPath: root } }];
     const context = createContext();
 

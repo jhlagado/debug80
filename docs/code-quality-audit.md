@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch Sequence Test Fixture Cleanup
+
+`tests/debug/launch-sequence.test.ts` now tracks the temporary launch fixture
+roots it creates and removes them after each test. The local `makeTempRoot`
+helper owns temp-directory registration for both the successful launch fixture
+and the missing-artifact fixture.
+
+This is intentionally test-only cleanup. It preserves the existing
+characterization coverage for building a simple launch session from HEX/D8
+artifacts and for failing before runtime creation when required artifacts are
+missing, without changing launch orchestration or platform setup behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-sequence.test.ts
+```
+
 ### 2026-06-11: AZM Contract Test Fixture Cleanup
 
 `tests/debug/azm-contract.test.ts` now uses a scoped `withTempDir` helper for
