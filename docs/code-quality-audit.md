@@ -1126,6 +1126,23 @@ controller. Remaining complexity in `project-target-selection.ts` is mostly
 discovery and QuickPick row construction; that should be split only after adding
 similarly direct tests for source-file discovery and entry-source binding.
 
+### Latest Goal Note: Target Source And QuickPick Policy Split
+
+`src/extension/project-target-source-policy.ts` now owns source-path
+normalization, covered-source detection, discovered target naming, and grouping
+configured targets by entry source path. `src/extension/project-target-quickpick-policy.ts`
+now owns the pure row shaping for target choices and AZM source rows. The VS
+Code-facing controller still reads files, calls QuickPick, updates project
+configuration, and persists the selected target, but the source-discovery and
+row-construction policy is now covered directly.
+
+This removed the changed-file complexity finding for
+`ProjectTargetSelectionController.resolveTarget`; Fallow now reports only the
+older `loadTargetChoices` mapping complexity in this module. A future cleanup
+pass can split target config parsing and display summary construction out of
+`loadTargetChoices`, but it should be tested separately because it affects
+target visibility and platform/source descriptions.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

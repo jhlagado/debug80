@@ -5,14 +5,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { readProjectConfig, updateProjectTargetSource } from './project-config';
 import {
-  readProjectConfig,
-  updateProjectTargetSource,
-} from './project-config';
+  buildEntrySourcePickRows,
+  buildTargetChoicePickRows,
+  type TargetPickRow,
+  type TargetQuickPickRow,
+} from './project-target-quickpick-policy';
+import { resolveTargetSelectionDecision, targetSelectionKeyFor } from './project-target-policy';
 import {
-  resolveTargetSelectionDecision,
-  targetSelectionKeyFor,
-} from './project-target-policy';
+  buildCoveredEntrySourceKeys,
+  buildTargetsPerEntrySourcePath,
+  normalizeProjectRelativePath,
+  withDiscoverableTargetChoices,
+} from './project-target-source-policy';
 import { isTargetEntrySourcePath, listTargetEntrySourceFiles } from './target-discovery';
 
 type SourceFileCache = { files: string[]; cachedAt: number };
@@ -59,11 +65,7 @@ export type DiscoverableTargetChoice = ProjectTargetChoice & {
 /** Alias kept for internal use. */
 type TargetChoice = DiscoverableTargetChoice;
 
-type TargetQuickPickItem = vscode.QuickPickItem & {
-  targetName: string;
-  /** When set, selecting this row applies this path as sourceFile/asm for `targetName`. */
-  applyEntrySource?: string;
-};
+type TargetQuickPickItem = vscode.QuickPickItem & TargetPickRow;
 
 function isTargetPickRow(item: vscode.QuickPickItem): item is TargetQuickPickItem {
   const row = item as TargetQuickPickItem;
@@ -124,25 +126,12 @@ export function resolveTargetNameForConfig(
 export function listProjectTargetChoices(projectConfigPath: string): DiscoverableTargetChoice[] {
   const { choices } = loadTargetChoices(projectConfigPath);
 
-  // Build the set of source files already referenced by a configured target
   const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
   const config = readProjectConfig(projectConfigPath);
-  const coveredSources = new Set<string>();
-  for (const target of Object.values(config?.targets ?? {})) {
-    if (target === null || typeof target !== 'object' || Array.isArray(target)) {
-      continue;
-    }
-    const t = target as Record<string, unknown>;
-    if (!targetProgramFileExists(projectRoot, t)) {
-      continue;
-    }
-    const src = t.sourceFile ?? t.asm ?? t.source;
-    if (typeof src === 'string') {
-      coveredSources.add(entrySourceKey(projectRoot, src));
-    }
-  }
+  const coveredSources = buildCoveredEntrySourceKeys(projectRoot, config?.targets ?? {}, (target) =>
+    targetProgramFileExists(projectRoot, target)
+  );
 
-  // Discover source files in the project folder that are not yet a target
   let allSourceFiles: string[] = [];
   try {
     allSourceFiles = getCachedSourceFiles(projectRoot);
@@ -150,79 +139,12 @@ export function listProjectTargetChoices(projectConfigPath: string): Discoverabl
     // filesystem errors — skip discovery silently
   }
 
-  const existingNames = new Set(choices.map((c) => c.name));
-  for (const sourceFile of allSourceFiles) {
-    if (coveredSources.has(entrySourceKey(projectRoot, sourceFile))) {
-      continue;
-    }
-    // Derive a unique target name from the file basename
-    const baseName = path.basename(sourceFile, path.extname(sourceFile));
-    let candidateName = baseName;
-    let counter = 2;
-    while (existingNames.has(candidateName)) {
-      candidateName = `${baseName}-${counter}`;
-      counter += 1;
-    }
-    existingNames.add(candidateName);
-
-    choices.push({
-      name: candidateName,
-      description: `${sourceFile} • new`,
-      detail: sourceFile,
-      discovered: true,
-      sourceFile,
-    });
-  }
-
-  return choices;
-}
-
-function appendEntrySourceSection(
-  items: Array<vscode.QuickPickItem | TargetQuickPickItem>,
-  paths: string[],
-  separatorLabel: string,
-  detail: 'AZM',
-  projectRoot: string,
-  targetsPerPath: Map<string, string[]>,
-  bindTarget: string | undefined
-): void {
-  if (paths.length === 0) {
-    return;
-  }
-  items.push({
-    kind: vscode.QuickPickItemKind.Separator,
-    label: separatorLabel,
+  return withDiscoverableTargetChoices({
+    choices,
+    projectRoot,
+    coveredSources,
+    sourceFiles: allSourceFiles,
   });
-  for (const filePath of paths) {
-    const key = entrySourceKey(projectRoot, filePath);
-    const boundTargets = targetsPerPath.get(key) ?? [];
-    if (boundTargets.length > 0) {
-      const primary = boundTargets[0];
-      if (primary === undefined) {
-        continue;
-      }
-      const row: TargetQuickPickItem = {
-        label: filePath,
-        description:
-          boundTargets.length > 1 ? `Targets: ${boundTargets.join(', ')}` : `Target: ${primary}`,
-        detail,
-        targetName: primary,
-      };
-      items.push(row);
-      continue;
-    }
-    if (bindTarget === undefined) {
-      continue;
-    }
-    const row: TargetQuickPickItem = {
-      label: filePath,
-      description: `Set as entry for target "${bindTarget}"`,
-      detail,
-      targetName: bindTarget,
-      applyEntrySource: filePath,
-    };
-    items.push(row);
-  }
 }
 
 export class ProjectTargetSelectionController {
@@ -258,61 +180,16 @@ export class ProjectTargetSelectionController {
       return undefined;
     }
 
-    const items: Array<vscode.QuickPickItem | TargetQuickPickItem> = choices.map((choice) => {
-      const status =
-        choice.name === stored ? 'current' : choice.name === defaultTarget ? 'default' : undefined;
-      const descriptionParts = [choice.description, status].filter(
-        (value): value is string => value !== undefined && value.length > 0
-      );
-      const row: TargetQuickPickItem = {
-        label: choice.name,
-        ...(descriptionParts.length > 0 ? { description: descriptionParts.join(' • ') } : {}),
-        ...(choice.detail !== undefined ? { detail: choice.detail } : {}),
-        targetName: choice.name,
-      };
-      return row;
-    });
+    const items = buildTargetQuickPickItems(projectConfigPath, choices, defaultTarget, stored);
 
-    const bindTarget = defaultTarget ?? stored ?? choices[0]?.name;
-    let azmPaths: string[] = [];
-    const targetsPerSourcePath = new Map<string, string[]>();
-    const config = readProjectConfig(projectConfigPath);
-    const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
-    for (const [name, t] of Object.entries(config?.targets ?? {})) {
-      const src = t.sourceFile ?? t.asm ?? t.source;
-      if (typeof src !== 'string') {
-        continue;
+    const picked = await vscode.window.showQuickPick(
+      items as Array<vscode.QuickPickItem | TargetQuickPickItem>,
+      {
+        placeHolder: options.placeHolder ?? 'Select the Debug80 target',
+        matchOnDescription: true,
+        matchOnDetail: true,
       }
-      const key = entrySourceKey(projectRoot, src);
-      if (isTargetEntrySourcePath(src)) {
-        const list = targetsPerSourcePath.get(key) ?? [];
-        list.push(name);
-        targetsPerSourcePath.set(key, list);
-      }
-    }
-
-    try {
-      const all = getCachedSourceFiles(projectRoot);
-      azmPaths = all.filter((p) => isTargetEntrySourcePath(p));
-    } catch {
-      azmPaths = [];
-    }
-
-    appendEntrySourceSection(
-      items,
-      azmPaths,
-      'AZM sources',
-      'AZM',
-      projectRoot,
-      targetsPerSourcePath,
-      bindTarget
     );
-
-    const picked = await vscode.window.showQuickPick(items, {
-      placeHolder: options.placeHolder ?? 'Select the Debug80 target',
-      matchOnDescription: true,
-      matchOnDetail: true,
-    });
     if (picked === undefined) {
       return null;
     }
@@ -320,6 +197,10 @@ export class ProjectTargetSelectionController {
       return null;
     }
 
+    return this.applyPickedTarget(projectConfigPath, picked);
+  }
+
+  private applyPickedTarget(projectConfigPath: string, picked: TargetQuickPickItem): string | null {
     if (picked.applyEntrySource !== undefined) {
       const ok = updateProjectTargetSource(
         projectConfigPath,
@@ -337,6 +218,50 @@ export class ProjectTargetSelectionController {
     this.rememberTarget(projectConfigPath, picked.targetName);
     return picked.targetName;
   }
+}
+
+function buildTargetQuickPickItems(
+  projectConfigPath: string,
+  choices: readonly TargetChoice[],
+  defaultTarget: string | undefined,
+  stored: string | undefined
+): TargetQuickPickRow[] {
+  const items: TargetQuickPickRow[] = buildTargetChoicePickRows({
+    choices,
+    storedTarget: stored,
+    defaultTarget,
+  });
+
+  const bindTarget = defaultTarget ?? stored ?? choices[0]?.name;
+  let azmPaths: string[] = [];
+  const config = readProjectConfig(projectConfigPath);
+  const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
+  const targetsPerSourcePath = buildTargetsPerEntrySourcePath(
+    projectRoot,
+    config?.targets ?? {},
+    isTargetEntrySourcePath
+  );
+
+  try {
+    const all = getCachedSourceFiles(projectRoot);
+    azmPaths = all.filter((p) => isTargetEntrySourcePath(p));
+  } catch {
+    azmPaths = [];
+  }
+
+  items.push(
+    ...buildEntrySourcePickRows({
+      paths: azmPaths,
+      separatorKind: vscode.QuickPickItemKind.Separator,
+      separatorLabel: 'AZM sources',
+      detail: 'AZM',
+      projectRoot,
+      targetsPerPath: targetsPerSourcePath,
+      bindTarget,
+    })
+  );
+
+  return items;
 }
 
 function targetProgramFileExists(projectRoot: string, target: Record<string, unknown>): boolean {
@@ -398,17 +323,4 @@ function projectRootFromProjectConfigPath(projectConfigPath: string): string {
     return path.dirname(path.dirname(projectConfigPath));
   }
   return path.dirname(projectConfigPath);
-}
-
-function normalizeProjectRelativePath(p: string): string {
-  return p.replace(/\\/g, '/').trim();
-}
-
-/** Keys match target entry source paths (relative to project root, forward slashes). */
-function entrySourceKey(projectRoot: string, src: string): string {
-  const norm = normalizeProjectRelativePath(src);
-  if (path.isAbsolute(src)) {
-    return normalizeProjectRelativePath(path.relative(projectRoot, src));
-  }
-  return norm;
 }
