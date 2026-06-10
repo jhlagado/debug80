@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import * as path from 'path';
 const { getExtension } = vi.hoisted(() => ({
   getExtension: vi.fn(),
 }));
@@ -113,7 +114,7 @@ describe('launch-config-merge', () => {
     );
 
     expect(merged.tec1g).toEqual({
-      romHex: '/project/roms/mon3.bin',
+      romHex: path.resolve('/project', 'roms/mon3.bin'),
       entry: 0,
       appStart: 0x5000,
       matrixMode: true,
