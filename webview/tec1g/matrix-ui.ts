@@ -13,6 +13,7 @@ import {
   resolvePhysicalMatrixKey,
   type MatrixHeldKey,
   type MatrixKeyMods,
+  type MatrixModifier,
 } from './matrix-state';
 
 export interface MatrixUiController {
@@ -170,7 +171,7 @@ export function createMatrixUiController(
     refreshMatrixModifierKeys();
   }
 
-  function applyKeyboardCapture(enabled) {
+  function applyKeyboardCapture(enabled: boolean): void {
     if (!enabled) {
       resetTransientState();
     }
@@ -178,16 +179,17 @@ export function createMatrixUiController(
     refreshMatrixModifierKeys();
   }
 
-  function applyCapsLock(enabled) {
+  function applyCapsLock(enabled: boolean): void {
     capsLockEnabled = !!enabled;
     refreshMatrixModifierKeys();
   }
 
-  function shouldIgnoreKeyEvent(event) {
+  function shouldIgnoreKeyEvent(event: KeyboardEvent): boolean {
     const target = event.target;
     return (
-      target &&
-      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
     );
   }
 
@@ -205,7 +207,7 @@ export function createMatrixUiController(
     return direct ?? fallback ?? [];
   }
 
-  function setMatrixKeyPressed(key, pressed) {
+  function setMatrixKeyPressed(key: string, pressed: boolean): void {
     for (const el of matrixElementsForKey(key)) {
       el.classList.toggle('pressed', pressed);
     }
@@ -265,7 +267,12 @@ export function createMatrixUiController(
     });
   }
 
-  function sendMatrixKey(key, pressed, mods, source: MatrixEventSource) {
+  function sendMatrixKey(
+    key: string,
+    pressed: boolean,
+    mods: MatrixKeyMods,
+    source: MatrixEventSource
+  ): boolean {
     const keyId = matrixKeyId(key, mods);
     if (pressed) {
       clearMatrixClickReleaseTimer(keyId);
@@ -368,12 +375,12 @@ export function createMatrixUiController(
     }
   }
 
-  function setMatrixMod(mod, active) {
+  function setMatrixMod(mod: MatrixModifier, active: boolean): void {
     matrixClickMods[mod] = active;
     refreshMatrixModifierKeys();
   }
 
-  function armMatrixMod(mod) {
+  function armMatrixMod(mod: MatrixModifier): void {
     setMatrixMod(mod, true);
     logMatrixModifierState('armed', mod);
   }
