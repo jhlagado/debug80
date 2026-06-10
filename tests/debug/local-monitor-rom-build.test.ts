@@ -19,8 +19,7 @@ describe('local monitor ROM build conventions', () => {
   });
 
   it('discovers a TEC-1G .rom.asm entry and applies conventional ROM artifacts', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-local-rom-'));
-    tmpDirs.push(root);
+    const root = makeTempDir('debug80-local-rom-');
     const sourcePath = path.join(root, 'roms', 'tec1g', 'mon3', 'mon3.rom.asm');
     const hexPath = path.join(root, 'build', 'roms', 'tec1g', 'mon3', 'mon3.hex');
     const d8Path = path.join(root, 'build', 'roms', 'tec1g', 'mon3', 'mon3.d8.json');
@@ -56,8 +55,7 @@ describe('local monitor ROM build conventions', () => {
   });
 
   it('does nothing when the platform has no local ROM source convention', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-no-local-rom-'));
-    tmpDirs.push(root);
+    const root = makeTempDir('debug80-no-local-rom-');
 
     const args: LaunchRequestArguments = { assemble: false };
     const result = await buildLocalMonitorRomIfPresent({
@@ -74,4 +72,10 @@ describe('local monitor ROM build conventions', () => {
     expect(args.tec1).toBeUndefined();
     expect(args.tec1g).toBeUndefined();
   });
+
+  function makeTempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
 });

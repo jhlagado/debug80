@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Local Monitor ROM Test Fixture Cleanup
+
+`tests/debug/local-monitor-rom-build.test.ts` now uses a small local helper for
+temporary project roots. The tests still cover the same local monitor ROM
+conventions: discovering a TEC-1G `.rom.asm` source, applying conventional ROM
+artifacts to launch arguments, preserving project debug maps, and ignoring
+platforms without local ROM source conventions.
+
+This is intentionally test-only cleanup. It removes repeated temp-directory
+allocation boilerplate without changing local monitor ROM discovery, build, or
+launch-argument behavior.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/local-monitor-rom-build.test.ts
+```
+
 ### 2026-06-11: Project Status Test Fixture Cleanup
 
 `tests/extension/project-status.test.ts` now tracks and removes the temporary
