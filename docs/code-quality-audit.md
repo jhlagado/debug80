@@ -900,6 +900,32 @@ that distinction: attachment is hardware state, capture is host-input focus
 state. Any new path that disables capture must release held keys and refresh the
 visible routing cue.
 
+Matrix keyboard invariants to preserve before any future refactor:
+
+- Accordion open state is the hardware attachment authority. When the Matrix
+  Keyboard panel is open, MON-3 matrix mode should be asserted; when it is
+  closed, the hex keypad path owns normal keyboard input again.
+- Capture is not attachment. Capture only decides whether physical host
+  keyboard events are routed into the matrix keyboard. Mouse clicks on visible
+  matrix keys remain valid user input according to the current UI policy.
+- Modifier keys are emulator state, not DOM decoration. Shift and right Shift
+  are one-shot modifiers unless Caps Lock is active. Ctrl, Fn, and Alt are
+  one-shot modifier chords. Caps Lock is a toggle and should not clear itself
+  after one key.
+- Held-key state must be released on blur, capture release, reset, and matrix
+  attachment changes. Any new release path must refresh the visible routing cue
+  and key highlights.
+- Mac `Meta`/Command is a host workaround for control-style matrix input, not a
+  TEC-1G hardware modifier. It must not leak into persisted matrix state as a
+  separate hardware key.
+- Plain `Escape` is a matrix key while capture is active. Host-only capture
+  release uses the explicit release chord/path, not by stealing MON-3 ESC.
+
+The direct safety tests added in this pass intentionally avoid refactoring
+`matrix-ui.ts`. The next matrix cleanup should first add pure state tests for
+these invariants, then extract helpers in very small moves with no user-visible
+behavior changes.
+
 ### Latest Goal Note: TEC-1G Reset Preserves MON-3 Monitor RAM
 
 The TEC-1G reset request reloads the launch image, resets platform devices, and
@@ -911,6 +937,21 @@ Future reset/rebuild work should keep this split explicit: Build/rebuild and
 panel Reset may reload program bytes, but the TEC-1G provider must preserve the
 MON-3 monitor RAM range so MON-3 can distinguish hard initialization from soft
 boot without carrying stale user RAM into the next run.
+
+### Latest Goal Note: Direct Launch And IO Safety Coverage
+
+`tests/debug/launch-sequence.test.ts` now exercises `buildLaunchSession`
+directly with a temporary native D8 map and HEX artifact. This covers workspace
+base resolution, platform selection, target source-map loading, symbol
+publication, runtime creation, and missing-HEX failure before runtime mutation.
+
+`tests/platforms/tec1g/io-handlers.test.ts` now exercises the TEC-1G port
+dispatcher directly. It covers keyboard/matrix/status reads,
+enabled-vs-disabled RTC and SD routing, LCD/GLCD command/data dispatch,
+SYS_CTRL decoding, and RGB matrix latch updates.
+
+These tests are safety rails only. They are deliberately contract-focused and
+should not be expanded into brittle assertions for every internal call order.
 
 Use these criteria when deciding whether cleanup is worthwhile:
 
@@ -930,16 +971,17 @@ Avoid cleanup that:
 
 ## Suggested First Goal
 
-Phases 1–4 are complete. Start with **Phase A** (stabilize hot zones):
+Phases 1–4 are complete. Phase A direct safety coverage has started:
 
-> Extract pure matrix keyboard state helpers, add direct unit tests for
-> `launch-sequence.ts` and `io-handlers.ts`, and lock reset/MON-3 RAM policy
-> with explicit constants and test naming — all without changing user-visible
-> behavior.
+> Direct unit tests now cover `launch-sequence.ts` and `io-handlers.ts`, and the
+> matrix keyboard invariants are documented without changing production matrix
+> code.
 
-Follow with Phase 1 dead-export cleanup and Phase 5 launch/project policy split
-as separate PRs. Each phase should produce clear verification and minimal
-product behavior change.
+The next highest-value step is a matrix-only characterization pass: add pure
+tests for modifier/capture/attachment decisions first, then extract helpers in
+very small moves. Follow with Phase 1 dead-export cleanup and Phase 5
+launch/project policy split as separate PRs. Each phase should produce clear
+verification and minimal product behavior change.
 
 ## Priority Summary (2026-06-10)
 
