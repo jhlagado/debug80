@@ -5,7 +5,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { SessionStateManager } from '../../src/extension/session-state-manager';
-import { registerDebugSessionHandlers } from '../../src/extension/debug-session-events';
+import {
+  buildLaunchAssemblyDiagnostic,
+  registerDebugSessionHandlers,
+} from '../../src/extension/debug-session-events';
 
 const onDidStartDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidTerminateDebugSession = vi.fn(() => ({ dispose: vi.fn() }));
@@ -35,6 +38,75 @@ const customHandlers: Array<
     body?: unknown;
   }) => void
 > = [];
+
+function registerTestHandlers(
+  overrides: {
+    platformViewProvider?: Record<string, unknown>;
+    assemblyDiagnostics?: Record<string, unknown>;
+  } = {}
+): {
+  platformViewProvider: Record<string, unknown>;
+  sessionState: SessionStateManager;
+  sourceColumns: Record<string, unknown>;
+  terminalPanel: Record<string, unknown>;
+  workspaceSelection: Record<string, unknown>;
+  assemblyDiagnostics: Record<string, unknown>;
+} {
+  const platformViewProvider = {
+    setSessionStatus: vi.fn(),
+    clear: vi.fn(),
+    reveal: vi.fn(),
+    handleSessionTerminated: vi.fn(),
+    setPlatform: vi.fn(),
+    updateTec1: vi.fn(),
+    updateTec1g: vi.fn(),
+    appendTec1Serial: vi.fn(),
+    appendTec1gSerial: vi.fn(),
+    ...overrides.platformViewProvider,
+  };
+  const sessionState = new SessionStateManager();
+  const sourceColumns = {
+    onSessionStarted: vi.fn(),
+    onSessionTerminated: vi.fn(),
+    getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
+  };
+  const terminalPanel = {
+    clear: vi.fn(),
+    open: vi.fn(),
+    hasPanel: vi.fn(() => false),
+    appendOutput: vi.fn(),
+  };
+  const workspaceSelection = {
+    rememberWorkspace: vi.fn(),
+  };
+  const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+  const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() };
+  const assemblyDiagnostics = {
+    clear: vi.fn(),
+    set: vi.fn(),
+    ...overrides.assemblyDiagnostics,
+  };
+
+  registerDebugSessionHandlers({
+    context: context as never,
+    rebuildDiagnostics: rebuildDiagnostics as never,
+    assemblyDiagnostics: assemblyDiagnostics as never,
+    platformViewProvider: platformViewProvider as never,
+    sessionState,
+    sourceColumns: sourceColumns as never,
+    terminalPanel: terminalPanel as never,
+    workspaceSelection: workspaceSelection as never,
+  });
+
+  return {
+    platformViewProvider,
+    sessionState,
+    sourceColumns,
+    terminalPanel,
+    workspaceSelection,
+    assemblyDiagnostics,
+  };
+}
 
 vi.mock('vscode', () => ({
   debug: {
@@ -97,47 +169,33 @@ describe('debug session status bridge', () => {
     openRomSourcesForSession.mockResolvedValue(true);
   });
 
-  it('forwards start, custom status, and termination events to the platform view', () => {
-    const platformViewProvider = {
-      setSessionStatus: vi.fn(),
-      clear: vi.fn(),
-      reveal: vi.fn(),
-      handleSessionTerminated: vi.fn(),
-      setPlatform: vi.fn(),
-      updateTec1: vi.fn(),
-      updateTec1g: vi.fn(),
-      appendTec1Serial: vi.fn(),
-      appendTec1gSerial: vi.fn(),
-    } as never;
-    const sessionState = new SessionStateManager();
-    const sourceColumns = {
-      onSessionStarted: vi.fn(),
-      onSessionTerminated: vi.fn(),
-      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
-    } as never;
-    const terminalPanel = {
-      clear: vi.fn(),
-      open: vi.fn(),
-      hasPanel: vi.fn(() => false),
-      appendOutput: vi.fn(),
-    } as never;
-    const workspaceSelection = {
-      rememberWorkspace: vi.fn(),
-    } as never;
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
-    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
-    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() } as never;
+  it('builds launch assembly diagnostics from workspace-relative source paths', () => {
+    const result = buildLaunchAssemblyDiagnostic(
+      {
+        diagnostic: {
+          path: 'src/main.asm',
+          line: 7,
+          column: 3,
+          message: 'Unexpected token',
+          sourceLine: '  .bad',
+        },
+      },
+      { uri: { fsPath: '/workspace/demo' } } as never
+    );
 
-    registerDebugSessionHandlers({
-      context,
-      rebuildDiagnostics,
-      assemblyDiagnostics,
-      platformViewProvider,
-      sessionState,
-      sourceColumns,
-      terminalPanel,
-      workspaceSelection,
+    expect(result).toEqual({
+      uri: { fsPath: '/workspace/demo/src/main.asm' },
+      diagnostics: [
+        expect.objectContaining({
+          message: 'Unexpected token',
+          severity: 0,
+        }),
+      ],
     });
+  });
+
+  it('forwards start, custom status, and termination events to the platform view', () => {
+    const { platformViewProvider } = registerTestHandlers();
 
     const session = {
       id: 'session-1',
@@ -169,48 +227,31 @@ describe('debug session status bridge', () => {
     expect(platformViewProvider.handleSessionTerminated).toHaveBeenCalledWith('session-1');
   });
 
-  it('opens ROM sources from session lifecycle events without using a start-time timer', async () => {
-    const platformViewProvider = {
-      setSessionStatus: vi.fn(),
-      clear: vi.fn(),
-      reveal: vi.fn(),
-      handleSessionTerminated: vi.fn(),
-      setPlatform: vi.fn(),
-      updateTec1: vi.fn(),
-      updateTec1g: vi.fn(),
-      appendTec1Serial: vi.fn(),
-      appendTec1gSerial: vi.fn(),
-    } as never;
-    const sessionState = new SessionStateManager();
-    const sourceColumns = {
-      onSessionStarted: vi.fn(),
-      onSessionTerminated: vi.fn(),
-      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
-    } as never;
-    const terminalPanel = {
-      clear: vi.fn(),
-      open: vi.fn(),
-      hasPanel: vi.fn(() => false),
-      appendOutput: vi.fn(),
-    } as never;
-    const workspaceSelection = {
-      rememberWorkspace: vi.fn(),
-    } as never;
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
-    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
-    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() } as never;
-    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+  it('ignores unknown custom events that collide with object prototype names', () => {
+    const { platformViewProvider } = registerTestHandlers();
+    const session = {
+      id: 'session-prototype-event',
+      type: 'z80',
+      configuration: {},
+      workspaceFolder: undefined,
+    };
 
-    registerDebugSessionHandlers({
-      context,
-      rebuildDiagnostics,
-      assemblyDiagnostics,
-      platformViewProvider,
-      sessionState,
-      sourceColumns,
-      terminalPanel,
-      workspaceSelection,
-    });
+    expect(() => {
+      customHandlers[0]?.({
+        session,
+        event: 'hasOwnProperty',
+        body: {},
+      });
+    }).not.toThrow();
+
+    expect(platformViewProvider.setPlatform).not.toHaveBeenCalled();
+    expect(platformViewProvider.updateTec1).not.toHaveBeenCalled();
+    expect(platformViewProvider.updateTec1g).not.toHaveBeenCalled();
+  });
+
+  it('opens ROM sources from session lifecycle events without using a start-time timer', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const { sessionState } = registerTestHandlers();
 
     const session = {
       id: 'session-2',
@@ -256,47 +297,8 @@ describe('debug session status bridge', () => {
   });
 
   it('does not refocus main source after ROM sources when stop on entry is active', async () => {
-    const platformViewProvider = {
-      setSessionStatus: vi.fn(),
-      clear: vi.fn(),
-      reveal: vi.fn(),
-      handleSessionTerminated: vi.fn(),
-      setPlatform: vi.fn(),
-      updateTec1: vi.fn(),
-      updateTec1g: vi.fn(),
-      appendTec1Serial: vi.fn(),
-      appendTec1gSerial: vi.fn(),
-    } as never;
-    const sessionState = new SessionStateManager();
-    const sourceColumns = {
-      onSessionStarted: vi.fn(),
-      onSessionTerminated: vi.fn(),
-      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
-    } as never;
-    const terminalPanel = {
-      clear: vi.fn(),
-      open: vi.fn(),
-      hasPanel: vi.fn(() => false),
-      appendOutput: vi.fn(),
-    } as never;
-    const workspaceSelection = {
-      rememberWorkspace: vi.fn(),
-    } as never;
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
-    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
-    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() } as never;
     const showTextDocument = vi.mocked(vscode.window.showTextDocument);
-
-    registerDebugSessionHandlers({
-      context,
-      rebuildDiagnostics,
-      assemblyDiagnostics,
-      platformViewProvider,
-      sessionState,
-      sourceColumns,
-      terminalPanel,
-      workspaceSelection,
-    });
+    registerTestHandlers();
 
     const session = {
       id: 'session-stop-entry',
@@ -325,46 +327,8 @@ describe('debug session status bridge', () => {
   });
 
   it('publishes launch assembly diagnostics against the workspace source file', () => {
-    const platformViewProvider = {
-      setSessionStatus: vi.fn(),
-      clear: vi.fn(),
-      reveal: vi.fn(),
-      handleSessionTerminated: vi.fn(),
-      setPlatform: vi.fn(),
-      updateTec1: vi.fn(),
-      updateTec1g: vi.fn(),
-      appendTec1Serial: vi.fn(),
-      appendTec1gSerial: vi.fn(),
-      setHardwareStatus: vi.fn(),
-    } as never;
-    const sessionState = new SessionStateManager();
-    const sourceColumns = {
-      onSessionStarted: vi.fn(),
-      onSessionTerminated: vi.fn(),
-      getSessionColumns: vi.fn(() => ({ source: 1, panel: 2 })),
-    } as never;
-    const terminalPanel = {
-      clear: vi.fn(),
-      open: vi.fn(),
-      hasPanel: vi.fn(() => false),
-      appendOutput: vi.fn(),
-    } as never;
-    const workspaceSelection = {
-      rememberWorkspace: vi.fn(),
-    } as never;
-    const context = { subscriptions: [] as Array<{ dispose: () => void }> } as never;
-    const rebuildDiagnostics = { clear: vi.fn(), delete: vi.fn() } as never;
-    const assemblyDiagnostics = { clear: vi.fn(), set: vi.fn() };
-
-    registerDebugSessionHandlers({
-      context,
-      rebuildDiagnostics,
-      assemblyDiagnostics: assemblyDiagnostics as never,
-      platformViewProvider,
-      sessionState,
-      sourceColumns,
-      terminalPanel,
-      workspaceSelection,
+    const { assemblyDiagnostics, platformViewProvider } = registerTestHandlers({
+      platformViewProvider: { setHardwareStatus: vi.fn() },
     });
 
     customHandlers[0]?.({

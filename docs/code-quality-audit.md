@@ -1429,6 +1429,33 @@ main/ROM source-opening decisions. Keep the public `registerDebugSessionHandlers
 entrypoint intact, add any missing characterization tests first, and avoid
 touching matrix keyboard production behavior.
 
+### Latest Goal Note: Debug Session Event Decomposition
+
+`src/extension/debug-session-events.ts` no longer routes every custom event
+through one large inline callback. The public registration function now wires
+VS Code events to named handlers for session start, termination, platform
+selection, session status, terminal output, assembly failure, main-source
+opening, and TEC-1/TEC-1G update/serial events. The custom-event dispatcher is
+table-driven, so adding a future event should be a single explicit entry instead
+of another branch inside the registration callback.
+
+The assembly diagnostic path/range construction is now exposed as
+`buildLaunchAssemblyDiagnostic`, with focused coverage for workspace-relative
+paths. The existing session event tests still cover the user-visible behavior
+that has regressed before: session status forwarding, ROM/main source opening
+order, stop-on-entry focus preservation, and build-failure diagnostics. The test
+file now uses a shared local registration fixture instead of repeating the full
+mock dependency block in every case.
+
+Changed-file Fallow is clean after this split. Full verification also passed:
+`npm run typecheck`, `npm run lint`, `npm test`, and `npm run package:check
+--if-present`.
+
+Next safe cleanup candidate: inspect `src/debug/launch/config-validation.ts` and
+`src/debug/launch/azm-backend.ts` duplication reports. Both are outside the
+matrix keyboard path, but they affect build/launch behavior, so start with
+characterization tests for option/error formatting before extracting helpers.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
