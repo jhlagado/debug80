@@ -9,43 +9,26 @@ import {
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
-import { applyInitializedProjectControls } from '../common/project-controls';
 import { MemoryPanel, type MemoryViewEntry } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
 import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import { acquireVscodeApi } from '../common/vscode';
+import {
+  applyProjectPanelStatusControls,
+  getProjectPanelElements,
+  wireProjectPanelPlatformControls,
+} from '../common/project-panel-elements';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import { createAudioController } from './audio';
 import { createLcdRenderer } from './lcd-renderer';
 
 const vscode = acquireVscodeApi();
+const projectElements = getProjectPanelElements(document);
 const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
-const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById(
-  'addWorkspaceFolder'
-) as HTMLButtonElement | null;
-const appRoot = document.getElementById('app') as HTMLElement | null;
-const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
-const setupCard = document.getElementById('setupCard') as HTMLElement | null;
-const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById(
-  'setupPrimaryAction'
-) as HTMLButtonElement | null;
-const platformInitButton = document.getElementById(
-  'platformInitButton'
-) as HTMLButtonElement | null;
-const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
-const testCoolTermButton = document.getElementById('testCoolTerm') as HTMLButtonElement | null;
-const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLButtonElement | null;
-const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
-const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
-const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
-const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
-const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const speakerEl = document.getElementById('speaker') as HTMLElement;
@@ -61,15 +44,10 @@ const accordionMemory = document.getElementById('accordion-memory') as HTMLEleme
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
-const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
-const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
-const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
-const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanel = document.getElementById('memoryPanel') as HTMLElement;
 const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
 const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
-const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
 const keypad = createTecKeypad(vscode, keypadEl);
 wireKeypadFocusPanels([accordionMachine], keypad);
@@ -95,33 +73,17 @@ let projectIsInitialized = false;
 
 const audio = createAudioController(muteEl, vscode);
 
-addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl?.value ?? 'tec1' });
-});
-
-platformSelectEl?.addEventListener('change', () => {
-  if (projectIsInitialized) {
-    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
-  }
-});
+wireProjectPanelPlatformControls(vscode, projectElements, 'tec1', () => projectIsInitialized);
 const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
-const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
-const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
+const sessionStatusController = createSessionStatusController(
+  vscode,
+  projectElements.restartButton
+);
+const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const projectStatusUi = createProjectStatusUi(
   vscode,
-  {
-    selectProjectButton,
-    setupCard,
-    setupCardText,
-    setupPrimaryAction,
-    platformInitButton,
-    testCoolTermButton,
-    sendHexToBoardButton,
-    hardwareStatusLine,
-    sourceMapStatusLine,
-    homeTargetSelect,
-  },
+  projectElements.projectStatus,
   'tec1'
 );
 const projectStatusRefresh = wireProjectStatusRefresh(vscode);
@@ -142,20 +104,7 @@ function applyProjectStatus(payload: {
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {
   projectStatusUi.applyProjectStatus(payload);
-  if (platformSelectEl && payload.platform !== undefined) {
-    platformSelectEl.value = payload.platform;
-  }
-  const initialized = applyInitializedProjectControls(payload, {
-    appRoot,
-    projectHeader,
-    targetControl,
-    targetSelect: homeTargetSelect,
-    platformControl,
-    platformSelect: platformSelectEl,
-    platformInfoControl,
-    platformValue: platformValueEl,
-    stopOnEntryLabel,
-    restartButton: restartDebugButton,
+  const initialized = applyProjectPanelStatusControls(payload, projectElements, {
     tabs: toolbarEl,
     accordion: accordionEl,
     panelUi,

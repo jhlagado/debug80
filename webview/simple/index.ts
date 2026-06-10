@@ -4,43 +4,24 @@
 
 import { appendSerialText } from '../common/serial';
 import { MemoryPanel, type MemoryViewEntry } from '../common/memory-panel';
-import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { createProjectStatusUi } from '../common/project-status-ui';
 import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import { acquireVscodeApi } from '../common/vscode';
+import {
+  applyProjectPanelStatusControls,
+  getProjectPanelElements,
+  wireProjectPanelPlatformControls,
+} from '../common/project-panel-elements';
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 
 const TERMINAL_MAX = 8000;
 
 const vscode = acquireVscodeApi();
+const projectElements = getProjectPanelElements(document);
 
-const appRoot = document.getElementById('app') as HTMLElement | null;
-const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
-const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById(
-  'addWorkspaceFolder'
-) as HTMLButtonElement | null;
-const setupCard = document.getElementById('setupCard') as HTMLElement | null;
-const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById(
-  'setupPrimaryAction'
-) as HTMLButtonElement | null;
-const platformInitButton = document.getElementById(
-  'platformInitButton'
-) as HTMLButtonElement | null;
-const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
-const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
-const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
-const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
-const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
-const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
-const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
-const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
-const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
 const tabsEl = document.querySelector('.tabs') as HTMLElement | null;
-const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
 const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
@@ -54,32 +35,19 @@ let projectIsInitialized = false;
 let memoryRowSize = 16;
 let resizeTimer: number | null = null;
 
-const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
-const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
+const sessionStatusController = createSessionStatusController(
+  vscode,
+  projectElements.restartButton
+);
+const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const projectStatusUi = createProjectStatusUi(
   vscode,
-  {
-    selectProjectButton,
-    setupCard,
-    setupCardText,
-    setupPrimaryAction,
-    platformInitButton,
-    sourceMapStatusLine,
-    homeTargetSelect,
-  },
+  projectElements.projectStatus,
   'simple'
 );
 const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
-addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl?.value ?? 'simple' });
-});
-
-platformSelectEl?.addEventListener('change', () => {
-  if (projectIsInitialized) {
-    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
-  }
-});
+wireProjectPanelPlatformControls(vscode, projectElements, 'simple', () => projectIsInitialized);
 
 terminalClearEl?.addEventListener('click', () => {
   if (terminalOutEl) {
@@ -101,20 +69,7 @@ function applyProjectStatus(payload: {
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {
   projectStatusUi.applyProjectStatus(payload);
-  if (platformSelectEl && payload.platform !== undefined) {
-    platformSelectEl.value = payload.platform;
-  }
-  const initialized = applyInitializedProjectControls(payload, {
-    appRoot,
-    projectHeader,
-    targetControl,
-    targetSelect: homeTargetSelect,
-    platformControl,
-    platformSelect: platformSelectEl,
-    platformInfoControl,
-    platformValue: platformValueEl,
-    stopOnEntryLabel,
-    restartButton: restartDebugButton,
+  const initialized = applyProjectPanelStatusControls(payload, projectElements, {
     tabs: tabsEl,
     panelUi,
     panelMemory,

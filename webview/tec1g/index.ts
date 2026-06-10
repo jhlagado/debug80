@@ -4,10 +4,14 @@
 
 import { createSevenSegDisplay } from '../common/seven-seg-display';
 import { MemoryPanel } from '../common/memory-panel';
-import { applyInitializedProjectControls } from '../common/project-controls';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { wireAzmOptionsControl } from '../common/azm-options-control';
+import {
+  applyProjectPanelStatusControls,
+  getProjectPanelElements,
+  wireProjectPanelPlatformControls,
+} from '../common/project-panel-elements';
 import {
   routeTecKeypadKeyup,
   routeTecKeypadShortcut,
@@ -31,37 +35,17 @@ import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
 import { applyMatrixRoutingCue } from './matrix-routing-cue';
 
 const vscode = acquireVscodeApi();
+const projectElements = getProjectPanelElements(document);
 
 const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
 
-const appRoot = document.getElementById('app') as HTMLElement | null;
-const projectHeader = document.getElementById('projectHeader') as HTMLElement | null;
-const selectProjectButton = document.getElementById('selectProject') as HTMLButtonElement | null;
-const addWorkspaceFolderButton = document.getElementById(
-  'addWorkspaceFolder'
-) as HTMLButtonElement | null;
-const setupCard = document.getElementById('setupCard') as HTMLElement | null;
-const setupCardText = document.getElementById('setupCardText') as HTMLElement | null;
-const setupPrimaryAction = document.getElementById(
-  'setupPrimaryAction'
-) as HTMLButtonElement | null;
-const platformInitButton = document.getElementById(
-  'platformInitButton'
-) as HTMLButtonElement | null;
-const restartDebugButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
-const testCoolTermButton = document.getElementById('testCoolTerm') as HTMLButtonElement | null;
-const sendHexToBoardButton = document.getElementById('sendHexToBoard') as HTMLButtonElement | null;
-const hardwareStatusLine = document.getElementById('hardwareStatusLine') as HTMLElement | null;
-const sourceMapStatusLine = document.getElementById('sourceMapStatusLine') as HTMLElement | null;
-const stopOnEntryInput = document.getElementById('stopOnEntry') as HTMLInputElement | null;
 const azmRegisterContractsModeSelect = document.getElementById(
   'azmRegisterContractsMode'
 ) as HTMLSelectElement | null;
 const azmContractUpdateModeSelect = document.getElementById(
   'azmContractUpdateMode'
 ) as HTMLSelectElement | null;
-const homeTargetSelect = document.getElementById('homeTargetSelect') as HTMLSelectElement | null;
 const displayEl = document.getElementById('display') as HTMLElement;
 const keypadEl = document.getElementById('keypad') as HTMLElement;
 const keypadRoutingCue = document.getElementById('keypadRoutingCue') as HTMLElement | null;
@@ -92,14 +76,8 @@ const accordionMemory = document.getElementById('accordion-memory') as HTMLEleme
 const panelUi = document.getElementById('panel-ui') as HTMLElement;
 const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
 const panelMemory = document.getElementById('panel-memory') as HTMLElement;
-const platformSelectEl = document.getElementById('platformSelect') as HTMLSelectElement | null;
-const targetControl = homeTargetSelect?.closest('.project-control') as HTMLElement | null;
-const platformControl = platformSelectEl?.closest('.project-control') as HTMLElement | null;
-const platformInfoControl = document.getElementById('platformInfoControl') as HTMLElement | null;
-const platformValueEl = document.getElementById('platformValue') as HTMLElement | null;
 const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
 const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
-const stopOnEntryLabel = stopOnEntryInput?.closest('.stop-on-entry-label') as HTMLElement | null;
 const registerStrip = document.getElementById('registerStrip') as HTMLElement;
 const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
 
@@ -107,8 +85,11 @@ const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
   digitClassName: (index) => (index < 2 ? 'digit--data' : 'digit--address'),
 });
 
-const sessionStatusController = createSessionStatusController(vscode, restartDebugButton);
-const stopOnEntryControl = wireStopOnEntryControl(vscode, stopOnEntryInput);
+const sessionStatusController = createSessionStatusController(
+  vscode,
+  projectElements.restartButton
+);
+const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const azmOptionsControl = wireAzmOptionsControl(
   vscode,
   azmRegisterContractsModeSelect,
@@ -121,7 +102,12 @@ const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard
 
 function updateMatrixKeyboardCue(): void {
   applyMatrixRoutingCue(
-    { appRoot, keypad: keypadEl, cue: keypadRoutingCue, header: matrixKeyboardHeader },
+    {
+      appRoot: projectElements.initializedControls.appRoot ?? null,
+      keypad: keypadEl,
+      cue: keypadRoutingCue,
+      header: matrixKeyboardHeader,
+    },
     panelLayout.isMatrixKeyboardOpen(),
     matrixUi.isKeyboardCaptured()
   );
@@ -182,17 +168,8 @@ panelLayout.notifyInitialOpenPanels();
 const projectStatusUi = createTec1gProjectStatusUi(
   vscode,
   {
-    selectProjectButton,
-    setupCard,
-    setupCardText,
-    setupPrimaryAction,
-    platformInitButton,
-    testCoolTermButton,
-    sendHexToBoardButton,
-    hardwareStatusLine,
-    sourceMapStatusLine,
-    homeTargetSelect,
-    getPlatform: () => platformSelectEl?.value ?? undefined,
+    ...projectElements.projectStatus,
+    getPlatform: () => projectElements.platformSelect?.value ?? undefined,
   },
   'tec1g'
 );
@@ -201,19 +178,10 @@ const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 let projectIsInitialized = false;
 
 projectStatusUi.applyProjectStatus({});
-projectIsInitialized = applyInitializedProjectControls(
+projectIsInitialized = applyProjectPanelStatusControls(
   {},
+  projectElements,
   {
-    appRoot,
-    projectHeader,
-    targetControl,
-    targetSelect: homeTargetSelect,
-    platformControl,
-    platformInfoControl,
-    platformValue: platformValueEl,
-    platformSelect: platformSelectEl,
-    stopOnEntryLabel,
-    restartButton: restartDebugButton,
     tabs: toolbarEl,
     accordion: accordionEl,
     panelUi,
@@ -260,15 +228,7 @@ wireKeypadFocusPanels([accordionDisplays, accordionMachine], keypad);
 const audio = createTec1gAudio({ muteEl, speakerEl, speakerLabel, vscode });
 audio.wireMuteClick();
 
-addWorkspaceFolderButton?.addEventListener('click', () => {
-  vscode.postMessage({ type: 'openWorkspaceFolder', platform: platformSelectEl?.value ?? 'tec1g' });
-});
-
-platformSelectEl?.addEventListener('change', () => {
-  if (projectIsInitialized) {
-    vscode.postMessage({ type: 'saveProjectConfig', platform: platformSelectEl.value });
-  }
-});
+wireProjectPanelPlatformControls(vscode, projectElements, 'tec1g', () => projectIsInitialized);
 
 speedEl.addEventListener('click', () => {
   const next = speedMode === 'fast' ? 'slow' : 'fast';
@@ -312,20 +272,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
   }
   if (message.type === 'projectStatus') {
     projectStatusUi.applyProjectStatus(message);
-    if (platformSelectEl && message.platform !== undefined) {
-      platformSelectEl.value = message.platform;
-    }
-    const initialized = applyInitializedProjectControls(message, {
-      appRoot,
-      projectHeader,
-      targetControl,
-      targetSelect: homeTargetSelect,
-      platformControl,
-      platformSelect: platformSelectEl,
-      platformInfoControl,
-      platformValue: platformValueEl,
-      stopOnEntryLabel,
-      restartButton: restartDebugButton,
+    const initialized = applyProjectPanelStatusControls(message, projectElements, {
       tabs: toolbarEl,
       accordion: accordionEl,
       panelUi,

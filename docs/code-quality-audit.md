@@ -357,6 +357,40 @@ message/DOM boundary cleanup: reduce `as HTMLElement` casts at composition
 roots, group panel DOM handles into typed bundles, and keep behavior covered by
 webview contract tests.
 
+Project-panel boundary cleanup status:
+
+`webview/common/project-panel-elements.ts` now collects the shared project
+header/setup/status DOM handles for the `simple`, `tec1`, and `tec1g`
+composition roots. It returns two typed bundles: one for
+`createProjectStatusUi`, and one for `applyInitializedProjectControls`, plus
+top-level handles for add-folder, platform selection, stop-on-entry, restart,
+and toolbar controls.
+
+This removes the most repetitive project-panel casts from the three webview
+entrypoints without changing behavior. The helper is covered by
+`tests/webview/common/project-panel-elements.test.ts`, and the existing project
+status/control tests remain the main behavior guard.
+
+Fallow now passes this changeset in new-only mode, but it still reports
+warnings for inherited entrypoint debt because the entrypoint files are touched:
+memory-view lookup duplication between `simple`, `tec1`, and
+`tec1g-memory-views`, repeated update/message switch branches, and old
+high-complexity message handlers. Treat those as separate goals; do not fold
+them into project-panel cleanup.
+
+The next DOM-boundary cleanup should be similarly scoped. Candidate areas:
+
+- shared memory-view element collection for the repeated `view-a` through
+  `view-d` lookup blocks;
+- a typed `getRequiredElement` helper for platform-only elements that are
+  currently asserted with non-null casts;
+- message payload parsing at the `window.addEventListener('message', ...)`
+  boundary.
+
+Do not use the next DOM-boundary pass to refactor matrix keyboard production
+state. Matrix work should continue only through isolated characterization tests
+or explicitly matrix-scoped goals.
+
 ### P1: Complex Dispatchers Need Smaller Units
 
 Several high-complexity functions are dispatchers with many unrelated branches:
