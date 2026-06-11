@@ -5,10 +5,10 @@ import * as os from 'os';
 import * as path from 'path';
 import { ensureDirExists, inferDefaultTarget } from '../../src/debug/launch/config-utils';
 
-const withTempDir = (fn: (dir: string) => void): void => {
+const withTempDir = <T>(fn: (dir: string) => T): T => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-config-'));
   try {
-    fn(dir);
+    return fn(dir);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -53,37 +53,38 @@ describe('config-utils', () => {
 
   describe('inferDefaultTarget', () => {
     it('infers src/main.asm when present', () => {
-      withTempDir((dir) => {
+      const inferred = withTempDir((dir) => {
         const mainPath = path.join(dir, 'src', 'main.asm');
         writeTextFile(mainPath, '; test');
 
-        const inferred = inferDefaultTarget(dir);
-        assert.equal(inferred.sourceFile, 'src/main.asm');
-        assert.equal(inferred.artifactBase, 'main');
-        assert.equal(inferred.outputDir, 'build');
-        assert.equal(inferred.found, true);
+        return inferDefaultTarget(dir);
       });
+
+      assert.equal(inferred.sourceFile, 'src/main.asm');
+      assert.equal(inferred.artifactBase, 'main');
+      assert.equal(inferred.outputDir, 'build');
+      assert.equal(inferred.found, true);
     });
 
     it('falls back to first asm in tree when main not present', () => {
-      withTempDir((dir) => {
+      const inferred = withTempDir((dir) => {
         const asmPath = path.join(dir, 'src', 'lib', 'util.asm');
         writeTextFile(asmPath, '; util');
 
-        const inferred = inferDefaultTarget(dir);
-        assert.equal(inferred.sourceFile, 'src/lib/util.asm');
-        assert.equal(inferred.artifactBase, 'util');
-        assert.equal(inferred.found, true);
+        return inferDefaultTarget(dir);
       });
+
+      assert.equal(inferred.sourceFile, 'src/lib/util.asm');
+      assert.equal(inferred.artifactBase, 'util');
+      assert.equal(inferred.found, true);
     });
 
     it('returns not found when nothing exists', () => {
-      withTempDir((dir) => {
-        const inferred = inferDefaultTarget(dir);
-        assert.equal(inferred.sourceFile, 'src/main.asm');
-        assert.equal(inferred.artifactBase, 'main');
-        assert.equal(inferred.found, false);
-      });
+      const inferred = withTempDir((dir) => inferDefaultTarget(dir));
+
+      assert.equal(inferred.sourceFile, 'src/main.asm');
+      assert.equal(inferred.artifactBase, 'main');
+      assert.equal(inferred.found, false);
     });
   });
 });

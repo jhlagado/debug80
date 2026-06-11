@@ -2476,6 +2476,22 @@ mapping service when the launch request omits `sourceFile`.
 This is another test-only cleanup outside the matrix keyboard and TEC-1G IO
 hot zones.
 
+### 2026-06-11: Config Utils Test Fixture Cleanup
+
+This pass stayed in `tests/debug/config-utils.test.ts` and converted the local
+temporary-directory helper from callback-only cleanup into a generic helper that
+can return the value produced inside the temp project.
+
+That keeps target inference assertions outside the fixture callback and makes
+the tests easier to scan without changing `ensureDirExists`,
+`inferDefaultTarget`, or any launch configuration behavior. The covered behavior
+is unchanged: recursive directory creation, no-op directory inputs, default
+`src/main.asm` inference, fallback to the first ASM file, and the not-found
+default target shape.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
