@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Status Test Fixture Cleanup
+
+`tests/extension/project-status.test.ts` now uses a local fixture for temporary
+project creation, generated project files, selected-target memento setup, and
+cleanup. The test still covers resolving the selected project target and entry
+source from `debug80.json` plus the remembered target.
+
+This is intentionally test-only cleanup. It keeps project status summary
+coverage intact while moving repeated temporary-project setup out of the
+behavior assertion.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-status.test.ts
+```
+
 ### 2026-06-11: Project Config Test Fixture Cleanup
 
 `tests/extension/project-config.test.ts` now uses a local fixture for temporary

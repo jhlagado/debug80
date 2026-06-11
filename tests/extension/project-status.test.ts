@@ -7,17 +7,14 @@ import { resolveProjectStatusSummary } from '../../src/extension/project-status'
 vi.mock('vscode', () => ({}));
 
 describe('project-status', () => {
-  const tempDirs: string[] = [];
+  const fixture = createProjectStatusFixture();
 
   afterEach(() => {
-    for (const dir of tempDirs) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-    tempDirs.length = 0;
+    fixture.cleanup();
   });
 
   it('resolves the selected project target and program file', () => {
-    const project = makeProjectFixture({
+    const project = fixture.createProject({
       files: ['src/main.asm', 'src/serial.asm'],
       selectedTarget: 'serial',
       config: {
@@ -29,7 +26,10 @@ describe('project-status', () => {
       },
     });
 
-    const summary = resolveProjectStatusSummary(project.selectedTargetMemento, project.workspaceFolder);
+    const summary = resolveProjectStatusSummary(
+      project.selectedTargetMemento,
+      project.workspaceFolder
+    );
 
     expect(summary).toEqual({
       projectName: 'demo',
@@ -37,22 +37,18 @@ describe('project-status', () => {
       entrySource: 'src/serial.asm',
     });
   });
+});
 
-  function makeProjectFixture(options: {
-    files: string[];
-    selectedTarget: string;
-    config: unknown;
-  }) {
-    const root = makeTempDir();
-    for (const file of options.files) {
-      writeProjectFile(root, file);
-    }
-    writeDebug80Config(root, options.config);
-    return {
-      selectedTargetMemento: selectedTargetMemento(root, options.selectedTarget),
-      workspaceFolder: workspaceFolder(root),
-    };
-  }
+type ProjectStatusFixture = {
+  cleanup(): void;
+  createProject(options: { files: string[]; selectedTarget: string; config: unknown }): {
+    selectedTargetMemento: never;
+    workspaceFolder: never;
+  };
+};
+
+function createProjectStatusFixture(): ProjectStatusFixture {
+  const tempDirs: string[] = [];
 
   function makeTempDir(): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));
@@ -60,28 +56,53 @@ describe('project-status', () => {
     return root;
   }
 
-  function writeProjectFile(root: string, relativePath: string, contents = 'nop\n'): void {
-    const filePath = path.join(root, relativePath);
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, contents);
-  }
+  return {
+    cleanup(): void {
+      for (const dir of tempDirs.splice(0)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
 
-  function writeDebug80Config(root: string, config: unknown): void {
-    writeProjectFile(root, 'debug80.json', JSON.stringify(config));
-  }
+    createProject(options: { files: string[]; selectedTarget: string; config: unknown }): {
+      selectedTargetMemento: never;
+      workspaceFolder: never;
+    } {
+      const root = makeTempDir();
+      for (const file of options.files) {
+        writeProjectFile(root, file);
+      }
+      writeDebug80Config(root, options.config);
+      return {
+        selectedTargetMemento: selectedTargetMemento(root, options.selectedTarget),
+        workspaceFolder: workspaceFolder(root),
+      };
+    },
+  };
+}
 
-  function selectedTargetMemento(root: string, targetName: string) {
-    const configPath = path.join(root, 'debug80.json');
-    return {
-      get: vi.fn((key: string) => (key === `debug80.selectedTarget:${configPath}` ? targetName : undefined)),
-      update: vi.fn(),
-    } as never;
-  }
+function writeProjectFile(root: string, relativePath: string, contents = 'nop\n'): void {
+  const filePath = path.join(root, relativePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
 
-  function workspaceFolder(root: string, name = 'demo') {
-    return {
-      name,
-      uri: { fsPath: root },
-    } as never;
-  }
-});
+function writeDebug80Config(root: string, config: unknown): void {
+  writeProjectFile(root, 'debug80.json', JSON.stringify(config));
+}
+
+function selectedTargetMemento(root: string, targetName: string): never {
+  const configPath = path.join(root, 'debug80.json');
+  return {
+    get: vi.fn((key: string) =>
+      key === `debug80.selectedTarget:${configPath}` ? targetName : undefined
+    ),
+    update: vi.fn(),
+  } as never;
+}
+
+function workspaceFolder(root: string, name = 'demo'): never {
+  return {
+    name,
+    uri: { fsPath: root },
+  } as never;
+}
