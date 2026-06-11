@@ -82,10 +82,7 @@ function createController() {
 
 function createSetVariableController() {
   const sessionState = createSessionState();
-  sessionState.runtime = createZ80Runtime({
-    memory: new Uint8Array(0x10000),
-    startAddress: 0,
-  });
+  sessionState.runtime = createTestRuntime();
   sessionState.runState.isRunning = false;
 
   const handles = new Handles<string>();
@@ -118,6 +115,27 @@ function createSetVariableController() {
     registersRef,
     sessionState,
   };
+}
+
+function createTestRuntime() {
+  return createZ80Runtime({
+    memory: new Uint8Array(0x10000),
+    startAddress: 0,
+  });
+}
+
+function enableBreakpoint(
+  fixture: ReturnType<typeof createController>,
+  address: number,
+  condition?: string
+) {
+  fixture.sessionState.runtime = createTestRuntime();
+  fixture.deps.breakpointManager.hasAddress.mockImplementation(
+    (candidate: number) => candidate === address
+  );
+  if (condition !== undefined) {
+    fixture.deps.breakpointManager.getCondition.mockReturnValue(condition);
+  }
 }
 
 describe('adapter-request-controller startup sequencing', () => {
@@ -169,15 +187,11 @@ describe('adapter-request-controller conditional breakpoints', () => {
   });
 
   it('evaluates breakpoint conditions with the watch expression language', () => {
-    const { controller, deps, sessionState } = createController();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
+    const fixture = createController();
+    const { controller, deps, sessionState } = fixture;
+    enableBreakpoint(fixture, 0x1234, 'zero and A eq $20');
     sessionState.runtime.cpu.a = 0x20;
     sessionState.runtime.cpu.flags.Z = 1;
-    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
-    deps.breakpointManager.getCondition.mockReturnValue('zero and A eq $20');
 
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(true);
 
@@ -187,13 +201,9 @@ describe('adapter-request-controller conditional breakpoints', () => {
   });
 
   it('skips and reports a helpful diagnostic when a breakpoint condition cannot be evaluated', () => {
-    const { controller, deps, sessionState } = createController();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
-    deps.breakpointManager.getCondition.mockReturnValue('UNKNOWN_SYMBOL eq 1');
+    const fixture = createController();
+    const { controller, deps } = fixture;
+    enableBreakpoint(fixture, 0x1234, 'UNKNOWN_SYMBOL eq 1');
 
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
     expect(deps.sendEvent).toHaveBeenCalledTimes(1);
@@ -205,13 +215,9 @@ describe('adapter-request-controller conditional breakpoints', () => {
   });
 
   it('reports each invalid breakpoint condition only once while treating it as no breakpoint', () => {
-    const { controller, deps, sessionState } = createController();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
-    deps.breakpointManager.getCondition.mockReturnValue('resetting');
+    const fixture = createController();
+    const { controller, deps } = fixture;
+    enableBreakpoint(fixture, 0x1234, 'resetting');
 
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
@@ -223,13 +229,9 @@ describe('adapter-request-controller conditional breakpoints', () => {
   });
 
   it('clears stale invalid-condition reports when breakpoints are reapplied', () => {
-    const { controller, deps, sessionState } = createController();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    deps.breakpointManager.hasAddress.mockImplementation((address: number) => address === 0x1234);
-    deps.breakpointManager.getCondition.mockReturnValue('resetting');
+    const fixture = createController();
+    const { controller, deps } = fixture;
+    enableBreakpoint(fixture, 0x1234, 'resetting');
 
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(false);

@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Adapter Request Controller Test Helper Cleanup
+
+`tests/debug/adapter-request-controller.test.ts` now uses local helpers for the
+runtime-backed conditional breakpoint scenarios and set-variable runtime setup.
+The tests still cover startup sequencing, conditional breakpoint evaluation and
+diagnostics, step response ordering, run-to-cursor, stack-frame return running,
+and writable register updates.
+
+This is intentionally test-only cleanup. It keeps adapter request controller
+coverage intact while moving repeated runtime and breakpoint setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/adapter-request-controller.test.ts
+```
+
 ### 2026-06-11: IO Requests Test Fixture Cleanup
 
 `tests/debug/io-requests.test.ts` now uses local fixture helpers for terminal
