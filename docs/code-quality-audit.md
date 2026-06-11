@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Policy Test Fixture Cleanup
+
+`tests/extension/project-target-policy.test.ts` now uses a local target
+selection helper for the common configured-target set. The tests still cover
+target selection key construction, remembered target precedence, fallback to
+configured defaults, forced prompt behavior, sole-target handling, remembered
+sole-target source reporting, and the no-target case.
+
+This is intentionally test-only cleanup. It keeps target selection policy
+coverage intact while moving repeated decision setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-policy.test.ts
+```
+
 ### 2026-06-11: Project Target Config Policy Test Fixture Cleanup
 
 `tests/extension/project-target-config-policy.test.ts` now uses a local target
