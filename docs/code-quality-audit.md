@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Source Cache Harness Cleanup
+
+`tests/extension/project-target-filesystem.test.ts` now uses a local source
+cache harness for fake time, discovery callbacks, and cache construction. The
+tests still cover project-root resolution from root and `.vscode` config paths,
+relative and absolute target program file probing, missing-file handling, and
+source discovery caching until the TTL expires.
+
+This is intentionally test-only cleanup. It keeps project target filesystem
+coverage intact while moving repeated fake-clock and cache construction details
+out of the cache behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-filesystem.test.ts
+```
+
 ### 2026-06-11: Project Target Selection Test Fixture Cleanup
 
 `tests/extension/project-target-selection.test.ts` now uses local helpers for

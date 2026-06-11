@@ -16,6 +16,29 @@ function checkedPaths(exists: ReturnType<typeof vi.fn>): string[] {
   return exists.mock.calls.map(([candidate]) => normalizePath(candidate));
 }
 
+function createSourceCacheHarness() {
+  let now = 1_000;
+  const discover = vi
+    .fn()
+    .mockReturnValueOnce(['src/main.asm'])
+    .mockReturnValueOnce(['src/main.asm', 'src/other.main.asm']);
+  const cache = new ProjectTargetSourceFileCache({
+    ttlMs: 2_000,
+    now: () => now,
+    discover,
+  });
+
+  return {
+    cache,
+    advanceBy: (ms: number): void => {
+      now += ms;
+    },
+    expectDiscoveries: (count: number): void => {
+      expect(discover).toHaveBeenCalledTimes(count);
+    },
+  };
+}
+
 describe('project target filesystem utilities', () => {
   it('resolves workspace roots for root and .vscode project configs', () => {
     expect(projectRootFromProjectConfigPath(`${workspaceRoot}/debug80.json`)).toBe(workspaceRoot);
@@ -53,22 +76,13 @@ describe('project target filesystem utilities', () => {
   });
 
   it('caches discovered source files per project root until the TTL expires', () => {
-    let now = 1_000;
-    const discover = vi
-      .fn()
-      .mockReturnValueOnce(['src/main.asm'])
-      .mockReturnValueOnce(['src/main.asm', 'src/other.main.asm']);
-    const cache = new ProjectTargetSourceFileCache({
-      ttlMs: 2_000,
-      now: () => now,
-      discover,
-    });
+    const { cache, advanceBy, expectDiscoveries } = createSourceCacheHarness();
 
     expect(cache.get(workspaceRoot)).toEqual(['src/main.asm']);
-    now += 1_999;
+    advanceBy(1_999);
     expect(cache.get(workspaceRoot)).toEqual(['src/main.asm']);
-    now += 1;
+    advanceBy(1);
     expect(cache.get(workspaceRoot)).toEqual(['src/main.asm', 'src/other.main.asm']);
-    expect(discover).toHaveBeenCalledTimes(2);
+    expectDiscoveries(2);
   });
 });
