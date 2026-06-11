@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Config Policy Test Fixture Cleanup
+
+`tests/extension/project-target-config-policy.test.ts` now uses a local target
+choice loader helper for the shared project root and default target-existence
+policy. The tests still cover source/platform descriptions, malformed and
+missing target filtering, absent default targets, and precedence when both
+`target` and `defaultTarget` are configured.
+
+This is intentionally test-only cleanup. It keeps target configuration policy
+coverage intact while moving repeated loader setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-config-policy.test.ts
+```
+
 ### 2026-06-11: Platform View Serial State Test Fixture Cleanup
 
 `tests/extension/platform-view-serial-state.test.ts` now uses a local serial

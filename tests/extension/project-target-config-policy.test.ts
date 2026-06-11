@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadVisibleTargetChoices } from '../../src/extension/project-target-config-policy';
+import {
+  loadVisibleTargetChoices,
+  type LoadVisibleTargetChoicesOptions,
+} from '../../src/extension/project-target-config-policy';
 
 function sourceTarget(sourceFile: string, platform?: string) {
   return {
@@ -31,8 +34,7 @@ function platformChoice(name: string, platform: string) {
 
 describe('project target config policy', () => {
   it('builds target choices with source and platform descriptions', () => {
-    const loaded = loadVisibleTargetChoices({
-      projectRoot: '/workspace/demo',
+    const loaded = loadChoices({
       config: {
         defaultTarget: 'game',
         targets: {
@@ -43,7 +45,6 @@ describe('project target config policy', () => {
           blankPlatform: sourceTarget('src/blank.main.asm', ''),
         },
       },
-      targetExists: () => true,
     });
 
     expect(loaded).toEqual({
@@ -59,8 +60,7 @@ describe('project target config policy', () => {
   });
 
   it('filters malformed targets and targets whose program file no longer exists', () => {
-    const loaded = loadVisibleTargetChoices({
-      projectRoot: '/workspace/demo',
+    const loaded = loadChoices({
       config: {
         target: 'kept',
         targets: {
@@ -82,14 +82,12 @@ describe('project target config policy', () => {
 
   it('uses defaultTarget when target is absent and omits defaultTarget when neither is set', () => {
     expect(
-      loadVisibleTargetChoices({
-        projectRoot: '/workspace/demo',
+      loadChoices({
         config: {
           targets: {
             only: sourceTarget('src/only.main.asm'),
           },
         },
-        targetExists: () => true,
       })
     ).toEqual({
       choices: [sourceChoice('only', 'src/only.main.asm')],
@@ -98,8 +96,7 @@ describe('project target config policy', () => {
 
   it('prefers target over defaultTarget when both are configured', () => {
     expect(
-      loadVisibleTargetChoices({
-        projectRoot: '/workspace/demo',
+      loadChoices({
         config: {
           target: 'explicit',
           defaultTarget: 'fallback',
@@ -108,8 +105,18 @@ describe('project target config policy', () => {
             fallback: sourceTarget('src/fallback.main.asm'),
           },
         },
-        targetExists: () => true,
       }).defaultTarget
     ).toBe('explicit');
   });
 });
+
+function loadChoices(options: {
+  config: LoadVisibleTargetChoicesOptions['config'];
+  targetExists?: LoadVisibleTargetChoicesOptions['targetExists'];
+}): ReturnType<typeof loadVisibleTargetChoices> {
+  return loadVisibleTargetChoices({
+    projectRoot: '/workspace/demo',
+    targetExists: () => true,
+    ...options,
+  });
+}
