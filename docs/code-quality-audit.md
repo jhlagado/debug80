@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: UI Performance Monitor Test Fixture Cleanup
+
+`tests/extension/ui-performance-monitor.test.ts` now uses a local monitor
+harness for the capturing logger, fake clock, and monitor construction. The
+tests still cover disabled monitoring, rate/payload reporting, and large
+payload warning throttling.
+
+This is intentionally test-only cleanup. It keeps UI performance monitor
+coverage intact while moving repeated logger, clock, and monitor setup out of
+the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/ui-performance-monitor.test.ts
+```
+
 ### 2026-06-11: D8 Definition Provider Test Fixture Cleanup
 
 `tests/extension/d8-definition-provider.test.ts` now uses local helpers for

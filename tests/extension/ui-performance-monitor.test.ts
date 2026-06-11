@@ -23,19 +23,35 @@ class CapturingLogger implements Logger {
   public error(): void {}
 }
 
+function createMonitorHarness(enabled = true): {
+  logger: CapturingLogger;
+  monitor: ReturnType<typeof createUiPerformanceMonitor>;
+  advanceTo: (timestamp: number) => void;
+} {
+  let now = 0;
+  const logger = new CapturingLogger();
+  const monitor = createUiPerformanceMonitor({
+    logger,
+    label: 'test-view',
+    enabled,
+    now: () => now,
+  });
+
+  return {
+    logger,
+    monitor,
+    advanceTo: (timestamp) => {
+      now = timestamp;
+    },
+  };
+}
+
 describe('ui performance monitor', () => {
   it('does nothing when disabled', () => {
-    let now = 0;
-    const logger = new CapturingLogger();
-    const monitor = createUiPerformanceMonitor({
-      logger,
-      label: 'test-view',
-      enabled: false,
-      now: () => now,
-    });
+    const { logger, monitor, advanceTo } = createMonitorHarness(false);
 
     monitor.recordMessage('update', { type: 'update', digits: [1, 2, 3] });
-    now = 6000;
+    advanceTo(6000);
     monitor.finish();
 
     expect(logger.infos).toEqual([]);
@@ -43,18 +59,11 @@ describe('ui performance monitor', () => {
   });
 
   it('reports message rates and payload sizes when enabled', () => {
-    let now = 0;
-    const logger = new CapturingLogger();
-    const monitor = createUiPerformanceMonitor({
-      logger,
-      label: 'test-view',
-      enabled: true,
-      now: () => now,
-    });
+    const { logger, monitor, advanceTo } = createMonitorHarness();
 
     monitor.recordMessage('update', { type: 'update', digits: [1, 2, 3] });
     monitor.recordMessage('snapshot', { type: 'snapshot', views: [] });
-    now = 5000;
+    advanceTo(5000);
     monitor.recordMessage('serial', { type: 'serial', text: 'hello' });
 
     expect(logger.infos).toHaveLength(1);
@@ -67,20 +76,13 @@ describe('ui performance monitor', () => {
   });
 
   it('warns for large payloads without spamming', () => {
-    let now = 0;
-    const logger = new CapturingLogger();
-    const monitor = createUiPerformanceMonitor({
-      logger,
-      label: 'test-view',
-      enabled: true,
-      now: () => now,
-    });
+    const { logger, monitor, advanceTo } = createMonitorHarness();
     const largePayload = { type: 'snapshot', text: 'x'.repeat(260 * 1024) };
 
     monitor.recordMessage('snapshot', largePayload);
-    now = 1000;
+    advanceTo(1000);
     monitor.recordMessage('snapshot', largePayload);
-    now = 6000;
+    advanceTo(6000);
     monitor.recordMessage('snapshot', largePayload);
 
     expect(logger.warnings).toHaveLength(2);
