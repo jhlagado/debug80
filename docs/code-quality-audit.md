@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Performance Monitor Test Fixture Cleanup
+
+`tests/debug/performance-monitor.test.ts` now uses a local monitor fixture helper
+for the repeated logger, label, platform, clock, and time-source setup. The
+tests still cover enabled periodic summaries, long runtime chunk warnings, and
+late host scheduling warnings.
+
+This is intentionally test-only cleanup. It keeps runtime performance monitor
+coverage intact while moving construction boilerplate out of each behavior
+assertion.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/performance-monitor.test.ts
+```
+
 ### 2026-06-11: Session State Test Fixture Cleanup
 
 `tests/debug/session-state.test.ts` now uses a typed local fixture helper for

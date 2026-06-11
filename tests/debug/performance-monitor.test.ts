@@ -6,6 +6,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRuntimePerformanceMonitor } from '../../src/debug/session/performance-monitor';
 import type { Logger } from '../../src/util/logger';
 
+type MonitorFixtureOptions = {
+  enabled?: boolean;
+  now?: () => number;
+};
+
 function createLogger(): Logger & {
   info: ReturnType<typeof vi.fn>;
   warn: ReturnType<typeof vi.fn>;
@@ -18,15 +23,23 @@ function createLogger(): Logger & {
   };
 }
 
+function createMonitorFixture(options: MonitorFixtureOptions = {}) {
+  const logger = createLogger();
+  const monitor = createRuntimePerformanceMonitor({
+    logger,
+    label: 'run',
+    platform: 'tec1g',
+    clockHz: 1_000_000,
+    enabled: options.enabled ?? false,
+    now: options.now ?? (() => 10_000),
+  });
+  return { logger, monitor };
+}
+
 describe('runtime performance monitor', () => {
   it('logs enabled periodic summaries with throughput counters', () => {
     let now = 0;
-    const logger = createLogger();
-    const monitor = createRuntimePerformanceMonitor({
-      logger,
-      label: 'run',
-      platform: 'tec1g',
-      clockHz: 1_000_000,
+    const { logger, monitor } = createMonitorFixture({
       enabled: true,
       now: () => now,
     });
@@ -41,15 +54,7 @@ describe('runtime performance monitor', () => {
   });
 
   it('warns when a runtime chunk runs too long before yielding', () => {
-    const logger = createLogger();
-    const monitor = createRuntimePerformanceMonitor({
-      logger,
-      label: 'run',
-      platform: 'tec1g',
-      clockHz: 1_000_000,
-      enabled: false,
-      now: () => 10_000,
-    });
+    const { logger, monitor } = createMonitorFixture();
 
     monitor.recordChunk(75, 10);
 
@@ -59,15 +64,7 @@ describe('runtime performance monitor', () => {
   });
 
   it('warns when host scheduling resumes much later than requested', () => {
-    const logger = createLogger();
-    const monitor = createRuntimePerformanceMonitor({
-      logger,
-      label: 'run',
-      platform: 'tec1g',
-      clockHz: 1_000_000,
-      enabled: false,
-      now: () => 10_000,
-    });
+    const { logger, monitor } = createMonitorFixture();
 
     monitor.recordYield(1, 250);
 
