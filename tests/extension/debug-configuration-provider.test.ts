@@ -1,8 +1,12 @@
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Debug80ConfigurationProvider as Debug80ConfigurationProviderType } from '../../src/extension/debug-configuration-provider';
+
 const cavernsProjectConfigPath = path.normalize('/workspace/caverns80/debug80.json');
 const debug80ProjectConfigPath = path.normalize('/workspace/debug80/debug80.json');
+const debug80WorkspaceFolder = { name: 'debug80', uri: { fsPath: '/workspace/debug80' } };
+const cavernsWorkspaceFolder = { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } };
 
 const executeCommand = vi.fn();
 const showInformationMessage = vi.fn();
@@ -30,6 +34,29 @@ vi.mock('vscode', () => ({
   },
 }));
 
+async function createProvider({
+  rememberWorkspace = vi.fn(),
+  resolveWorkspaceFolder = vi.fn(),
+  resolveTarget = vi.fn(),
+}: {
+  rememberWorkspace?: ReturnType<typeof vi.fn>;
+  resolveWorkspaceFolder?: ReturnType<typeof vi.fn>;
+  resolveTarget?: ReturnType<typeof vi.fn>;
+} = {}): Promise<Debug80ConfigurationProviderType> {
+  const providerModule: typeof import('../../src/extension/debug-configuration-provider') =
+    await import('../../src/extension/debug-configuration-provider');
+
+  return new providerModule.Debug80ConfigurationProvider(
+    {
+      rememberWorkspace,
+      resolveWorkspaceFolder,
+    } as never,
+    {
+      resolveTarget,
+    } as never
+  );
+}
+
 describe('Debug80ConfigurationProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,26 +64,15 @@ describe('Debug80ConfigurationProvider', () => {
   });
 
   it('injects projectConfig from the resolved project folder', async () => {
-    const { Debug80ConfigurationProvider } =
-      await import('../../src/extension/debug-configuration-provider');
-
     existsSync.mockImplementation(
       (candidate: string) => path.normalize(candidate) === cavernsProjectConfigPath
     );
 
     const rememberWorkspace = vi.fn();
-    const provider = new Debug80ConfigurationProvider(
-      {
-        rememberWorkspace,
-        resolveWorkspaceFolder: vi.fn().mockResolvedValue({
-          name: 'caverns80',
-          uri: { fsPath: '/workspace/caverns80' },
-        }),
-      } as never,
-      {
-        resolveTarget: vi.fn(),
-      } as never
-    );
+    const provider = await createProvider({
+      rememberWorkspace,
+      resolveWorkspaceFolder: vi.fn().mockResolvedValue(cavernsWorkspaceFolder),
+    });
 
     const resolved = await provider.resolveDebugConfiguration(undefined, {});
 
@@ -68,16 +84,11 @@ describe('Debug80ConfigurationProvider', () => {
         projectConfig: cavernsProjectConfigPath,
       })
     );
-    expect(rememberWorkspace).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/caverns80' } })
-    );
+    expect(rememberWorkspace).toHaveBeenCalledWith(expect.objectContaining(cavernsWorkspaceFolder));
   });
 
   it('offers project creation when no configured project exists', async () => {
-    const { Debug80ConfigurationProvider } =
-      await import('../../src/extension/debug-configuration-provider');
-
-    workspaceFolders = [{ name: 'debug80', uri: { fsPath: '/workspace/debug80' } }];
+    workspaceFolders = [debug80WorkspaceFolder];
     existsSync.mockImplementation(
       (candidate: string) => path.normalize(candidate) === debug80ProjectConfigPath
     );
@@ -88,19 +99,11 @@ describe('Debug80ConfigurationProvider', () => {
     const resolveWorkspaceFolder = vi
       .fn()
       .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce({
-        name: 'debug80',
-        uri: { fsPath: '/workspace/debug80' },
-      });
-    const provider = new Debug80ConfigurationProvider(
-      {
-        rememberWorkspace,
-        resolveWorkspaceFolder,
-      } as never,
-      {
-        resolveTarget: vi.fn(),
-      } as never
-    );
+      .mockResolvedValueOnce(debug80WorkspaceFolder);
+    const provider = await createProvider({
+      rememberWorkspace,
+      resolveWorkspaceFolder,
+    });
 
     const resolved = await provider.resolveDebugConfiguration(undefined, {});
 
@@ -117,24 +120,13 @@ describe('Debug80ConfigurationProvider', () => {
   });
 
   it('leaves explicit launch inputs alone', async () => {
-    const { Debug80ConfigurationProvider } =
-      await import('../../src/extension/debug-configuration-provider');
-
     const rememberWorkspace = vi.fn();
-    const provider = new Debug80ConfigurationProvider(
-      {
-        rememberWorkspace,
-        resolveWorkspaceFolder: vi.fn(),
-      } as never,
-      {
-        resolveTarget: vi.fn(),
-      } as never
-    );
+    const provider = await createProvider({ rememberWorkspace });
 
-    const resolved = await provider.resolveDebugConfiguration(
-      { name: 'debug80', uri: { fsPath: '/workspace/debug80' } } as never,
-      { asm: 'src/main.asm', stopOnEntry: false }
-    );
+    const resolved = await provider.resolveDebugConfiguration(debug80WorkspaceFolder as never, {
+      asm: 'src/main.asm',
+      stopOnEntry: false,
+    });
 
     expect(resolved).toEqual(
       expect.objectContaining({
@@ -142,29 +134,16 @@ describe('Debug80ConfigurationProvider', () => {
         stopOnEntry: false,
       })
     );
-    expect(rememberWorkspace).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/debug80' } })
-    );
+    expect(rememberWorkspace).toHaveBeenCalledWith(expect.objectContaining(debug80WorkspaceFolder));
   });
 
   it('injects the selected target after variable substitution', async () => {
-    const { Debug80ConfigurationProvider } =
-      await import('../../src/extension/debug-configuration-provider');
-
     const rememberWorkspace = vi.fn();
     const resolveTarget = vi.fn().mockResolvedValue('serial');
-    const provider = new Debug80ConfigurationProvider(
-      {
-        rememberWorkspace,
-        resolveWorkspaceFolder: vi.fn(),
-      } as never,
-      {
-        resolveTarget,
-      } as never
-    );
+    const provider = await createProvider({ rememberWorkspace, resolveTarget });
 
     const resolved = await provider.resolveDebugConfigurationWithSubstitutedVariables(
-      { name: 'debug80', uri: { fsPath: '/workspace/debug80' } } as never,
+      debug80WorkspaceFolder as never,
       { projectConfig: debug80ProjectConfigPath }
     );
 
@@ -181,18 +160,7 @@ describe('Debug80ConfigurationProvider', () => {
   });
 
   it('provides a generic current-project launch configuration', async () => {
-    const { Debug80ConfigurationProvider } =
-      await import('../../src/extension/debug-configuration-provider');
-
-    const provider = new Debug80ConfigurationProvider(
-      {
-        rememberWorkspace: vi.fn(),
-        resolveWorkspaceFolder: vi.fn(),
-      } as never,
-      {
-        resolveTarget: vi.fn(),
-      } as never
-    );
+    const provider = await createProvider();
 
     expect(provider.provideDebugConfigurations?.(undefined)).toEqual([
       expect.objectContaining({

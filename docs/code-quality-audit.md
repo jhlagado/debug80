@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Debug Configuration Provider Test Fixture Cleanup
+
+`tests/extension/debug-configuration-provider.test.ts` now uses local helpers
+for common workspace folders and provider construction. The tests still cover
+project config injection, create-project prompting, explicit launch input
+preservation, selected-target injection after variable substitution, and the
+generic current-project launch configuration.
+
+This is intentionally test-only cleanup. It keeps debug configuration provider
+coverage intact while moving repeated VS Code controller scaffolding and
+workspace path setup out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/debug-configuration-provider.test.ts
+```
+
 ### 2026-06-11: Target Discovery Test Fixture Cleanup
 
 `tests/extension/target-discovery.test.ts` now uses a local helper for writing
