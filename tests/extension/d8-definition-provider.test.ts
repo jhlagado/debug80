@@ -51,6 +51,8 @@ import {
   resolveD8MapPathForTarget,
 } from '../../src/extension/d8-definition-provider';
 
+type D8FileSymbol = NonNullable<D8DebugMap['files'][string]['symbols']>[number];
+
 function withTempDir<T>(prefix: string, run: (root: string) => T): T {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   try {
@@ -58,6 +60,35 @@ function withTempDir<T>(prefix: string, run: (root: string) => T): T {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+}
+
+function d8Symbol(overrides: D8FileSymbol): D8FileSymbol {
+  return overrides;
+}
+
+function labelSymbol(name: string, address: number, line?: number): D8FileSymbol {
+  return d8Symbol({ name, kind: 'label', address, ...(line === undefined ? {} : { line }) });
+}
+
+function writeTargetProject(root: string): string {
+  const configPath = path.join(root, 'debug80.json');
+  fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'src', 'pacmo.z80'), 'Start:\n');
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({
+      projectVersion: 2,
+      defaultTarget: 'pacmo',
+      targets: {
+        pacmo: {
+          sourceFile: 'src/pacmo.z80',
+          outputDir: 'build',
+          artifactBase: 'pacmo',
+        },
+      },
+    })
+  );
+  return configPath;
 }
 
 function makeMap(): D8DebugMap {
@@ -70,14 +101,14 @@ function makeMap(): D8DebugMap {
     files: {
       'src/main.z80': {
         symbols: [
-          { name: 'Start', kind: 'label', address: 0x4000, line: 4, scope: 'global' },
-          { name: 'ScreenWidth', kind: 'constant', value: 32, line: 8, scope: 'global' },
-          { name: 'PlayerX', kind: 'data', address: 0x4200, line: 10, size: 1 },
-          { name: '@DrawTile', kind: 'label', address: 0x4100, line: 12, scope: 'global' },
+          { ...labelSymbol('Start', 0x4000, 4), scope: 'global' },
+          d8Symbol({ name: 'ScreenWidth', kind: 'constant', value: 32, line: 8, scope: 'global' }),
+          d8Symbol({ name: 'PlayerX', kind: 'data', address: 0x4200, line: 10, size: 1 }),
+          { ...labelSymbol('@DrawTile', 0x4100, 12), scope: 'global' },
         ],
       },
       'src/lib.z80': {
-        symbols: [{ name: 'Start', kind: 'label', address: 0x5000, line: 3, scope: 'local' }],
+        symbols: [{ ...labelSymbol('Start', 0x5000, 3), scope: 'local' }],
       },
     },
   };
@@ -88,13 +119,10 @@ function makeMapWithNonNavigableSymbols(): D8DebugMap {
     ...makeMap(),
     files: {
       '': {
-        symbols: [{ name: 'BlankFile', kind: 'label', address: 0x4000, line: 1 }],
+        symbols: [labelSymbol('BlankFile', 0x4000, 1)],
       },
       'src/generated.z80': {
-        symbols: [
-          { name: 'NoLine', kind: 'label', address: 0x4001 },
-          { name: 'BadLine', kind: 'label', address: 0x4002, line: 0 },
-        ],
+        symbols: [labelSymbol('NoLine', 0x4001), labelSymbol('BadLine', 0x4002, 0)],
       },
     },
   };
@@ -104,9 +132,7 @@ describe('D8 definition provider helpers', () => {
   it('converts only navigable D8 symbols into editor symbols', () => {
     expect(
       d8SymbolToEditorSymbol('src/main.z80', {
-        name: 'Start',
-        kind: 'label',
-        address: 0x4000,
+        ...labelSymbol('Start', 0x4000),
         line: 4,
       })
     ).toMatchObject({
@@ -118,19 +144,11 @@ describe('D8 definition provider helpers', () => {
 
     expect(
       d8SymbolToEditorSymbol('', {
-        name: 'Start',
-        kind: 'label',
-        address: 0x4000,
+        ...labelSymbol('Start', 0x4000),
         line: 4,
       })
     ).toBeUndefined();
-    expect(
-      d8SymbolToEditorSymbol('src/main.z80', {
-        name: 'Start',
-        kind: 'label',
-        address: 0x4000,
-      })
-    ).toBeUndefined();
+    expect(d8SymbolToEditorSymbol('src/main.z80', labelSymbol('Start', 0x4000))).toBeUndefined();
   });
 
   it('indexes address and value-only symbols with source lines', () => {
@@ -179,23 +197,7 @@ describe('D8 definition provider helpers', () => {
 
   it('resolves the current target D8 sidecar path from debug80.json', () => {
     withTempDir('debug80-d8-defs-', (root) => {
-      const configPath = path.join(root, 'debug80.json');
-      fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-      fs.writeFileSync(path.join(root, 'src', 'pacmo.z80'), 'Start:\n');
-      fs.writeFileSync(
-        configPath,
-        JSON.stringify({
-          projectVersion: 2,
-          defaultTarget: 'pacmo',
-          targets: {
-            pacmo: {
-              sourceFile: 'src/pacmo.z80',
-              outputDir: 'build',
-              artifactBase: 'pacmo',
-            },
-          },
-        })
-      );
+      const configPath = writeTargetProject(root);
       const workspaceState = { get: vi.fn(() => 'pacmo') } as never;
 
       expect(resolveD8MapPathForTarget(root, configPath, workspaceState)).toBe(

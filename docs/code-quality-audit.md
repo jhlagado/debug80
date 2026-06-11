@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: D8 Definition Provider Test Fixture Cleanup
+
+`tests/extension/d8-definition-provider.test.ts` now uses local helpers for
+common D8 symbol fixtures and temporary target project setup. The tests still
+cover navigable symbol conversion, symbol indexing, routine-name normalization,
+same-file definition preference, D8 sidecar path resolution, compact hover
+formatting, AZMDoc contract parsing, and stale source-map detection.
+
+This is intentionally test-only cleanup. It keeps D8 editor integration helper
+coverage intact while moving repeated symbol object construction and
+`debug80.json` sidecar target setup out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/d8-definition-provider.test.ts
+```
+
 ### 2026-06-11: CoolTerm Send Test Fixture Cleanup
 
 `tests/extension/coolterm-send.test.ts` now uses local helpers for collecting
