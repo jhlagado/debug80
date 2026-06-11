@@ -28,6 +28,37 @@ function writeFixtureFile(filePath: string, contents: string): void {
   fs.writeFileSync(filePath, contents);
 }
 
+function createD8Fixture(
+  tmpDir: string,
+  options: {
+    sourceText: string;
+    d8Files: Record<string, unknown>;
+  }
+) {
+  const sourceFile = path.join(tmpDir, 'matrix.asm');
+  const artifactPath = path.join(tmpDir, 'build', 'matrix.hex');
+  writeFixtureFile(sourceFile, options.sourceText);
+  writeFixtureFile(artifactPath, ':00000001FF\n');
+
+  const d8Content = JSON.stringify({
+    format: 'd8-debug-map',
+    version: 1,
+    arch: 'z80',
+    addressWidth: 16,
+    endianness: 'little',
+    files: options.d8Files,
+  });
+
+  const { map } = parseD8DebugMap(d8Content);
+  expect(map).toBeDefined();
+  const mapping = buildMappingFromD8DebugMap(map!);
+  const sourceRoots = [tmpDir];
+  const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
+  const index = buildSourceMapIndex(mapping, resolve);
+
+  return { artifactPath, index, mapping, resolve, sourceFile };
+}
+
 describe('stack-service', () => {
   it('resolves source from mapping and builds stack frames', () => {
     const mapping: MappingParseResult = {
@@ -161,19 +192,9 @@ describe('stack-service AZM D8 integration', () => {
   });
 
   it('resolves stack frame from native AZM D8 with relative file key', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.asm');
-    const buildDir = path.join(tmpDir, 'build');
-    const artifactPath = path.join(buildDir, 'matrix.hex');
-    writeFixtureFile(sourceFile, '; matrix source\nNOP\nHALT\n');
-    writeFixtureFile(artifactPath, ':00000001FF\n');
-
-    const d8Content = JSON.stringify({
-      format: 'd8-debug-map',
-      version: 1,
-      arch: 'z80',
-      addressWidth: 16,
-      endianness: 'little',
-      files: {
+    const { index, mapping, resolve, sourceFile } = createD8Fixture(tmpDir, {
+      sourceText: '; matrix source\nNOP\nHALT\n',
+      d8Files: {
         'matrix.asm': {
           segments: [
             { start: 0xc000, end: 0xc001, line: 2, lstLine: 1, lstText: 'NOP' },
@@ -183,19 +204,8 @@ describe('stack-service AZM D8 integration', () => {
         },
       },
     });
-    const d8Path = path.join(buildDir, 'matrix.d8.json');
-    writeFixtureFile(d8Path, d8Content);
-
-    const { map } = parseD8DebugMap(d8Content);
-    expect(map).toBeDefined();
-    const mapping = buildMappingFromD8DebugMap(map!);
     expect(mapping.segments.length).toBe(2);
     expect(mapping.segments[0].loc.file).toBe('matrix.asm');
-
-    const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
-
-    const index = buildSourceMapIndex(mapping, resolve);
     expect(index.segmentsByAddress.length).toBe(2);
 
     const result = resolveSourceForAddress(0xc000, {
@@ -210,19 +220,9 @@ describe('stack-service AZM D8 integration', () => {
   });
 
   it('resolves stack frame after stepping to second instruction', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.asm');
-    const buildDir = path.join(tmpDir, 'build');
-    const artifactPath = path.join(buildDir, 'matrix.hex');
-    writeFixtureFile(sourceFile, '; src\nLD A, 0\nHALT\n');
-    writeFixtureFile(artifactPath, ':00000001FF\n');
-
-    const d8Content = JSON.stringify({
-      format: 'd8-debug-map',
-      version: 1,
-      arch: 'z80',
-      addressWidth: 16,
-      endianness: 'little',
-      files: {
+    const { index, resolve, sourceFile } = createD8Fixture(tmpDir, {
+      sourceText: '; src\nLD A, 0\nHALT\n',
+      d8Files: {
         'matrix.asm': {
           segments: [
             { start: 0xc000, end: 0xc002, line: 2, lstLine: 1, lstText: 'LD A, 0' },
@@ -231,12 +231,6 @@ describe('stack-service AZM D8 integration', () => {
         },
       },
     });
-
-    const { map } = parseD8DebugMap(d8Content);
-    const mapping = buildMappingFromD8DebugMap(map!);
-    const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
-    const index = buildSourceMapIndex(mapping, resolve);
 
     const step1 = resolveSourceForAddress(0xc000, {
       mappingIndex: index,
@@ -255,29 +249,14 @@ describe('stack-service AZM D8 integration', () => {
   });
 
   it('falls back to sourceFile at line 1 when D8 has no segment for PC', () => {
-    const sourceFile = path.join(tmpDir, 'matrix.asm');
-    const artifactPath = path.join(tmpDir, 'build', 'matrix.hex');
-    writeFixtureFile(sourceFile, 'NOP');
-    writeFixtureFile(artifactPath, ':00000001FF\n');
-
-    const d8Content = JSON.stringify({
-      format: 'd8-debug-map',
-      version: 1,
-      arch: 'z80',
-      addressWidth: 16,
-      endianness: 'little',
-      files: {
+    const { index, resolve, sourceFile } = createD8Fixture(tmpDir, {
+      sourceText: 'NOP',
+      d8Files: {
         'matrix.asm': {
           segments: [{ start: 0xc000, end: 0xc001, line: 5, lstLine: 1, lstText: 'NOP' }],
         },
       },
     });
-
-    const { map } = parseD8DebugMap(d8Content);
-    const mapping = buildMappingFromD8DebugMap(map!);
-    const sourceRoots = [tmpDir];
-    const resolve = (file: string) => resolveMappedPath(file, artifactPath, sourceRoots);
-    const index = buildSourceMapIndex(mapping, resolve);
 
     const result = resolveSourceForAddress(0xffff, {
       mappingIndex: index,

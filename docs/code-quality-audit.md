@@ -2537,6 +2537,21 @@ register and flag bits.
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Stack Service D8 Fixture Cleanup
+
+This pass stayed in `tests/debug/stack-service.test.ts` and extracted a local
+D8 fixture helper for repeated native map setup in the AZM D8 integration
+tests. The helper owns the temporary `matrix.asm` source, build artifact,
+minimal D8 envelope, map parsing, path resolver, and source-map index wiring.
+
+The covered behavior is unchanged: native D8 maps still resolve relative source
+paths, stepping to the second instruction still moves to the second mapped
+line, and missing PC segments still fall back to the active source file at
+line 1.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
