@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Serial State Test Fixture Cleanup
+
+`tests/extension/platform-view-serial-state.test.ts` now uses a local serial
+harness for buffered text, append emission, init-message construction, and
+clear operations. The tests still cover active-platform serial emission,
+hidden-platform buffering, empty text suppression, serial init payloads, and
+clearing buffered serial text.
+
+This is intentionally test-only cleanup. It keeps serial buffer behavior
+coverage intact while moving repeated buffer setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-serial-state.test.ts
+```
+
 ### 2026-06-11: Platform View Config Control Test Fixture Cleanup
 
 `tests/extension/platform-view-config-controls.test.ts` now uses a local
