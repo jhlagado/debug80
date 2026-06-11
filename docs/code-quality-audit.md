@@ -33,6 +33,22 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: IO Requests Test Fixture Cleanup
+
+`tests/debug/io-requests.test.ts` now uses local fixture helpers for terminal
+state and serial queue setup. The tests still cover terminal input plus break
+handling, serial input forwarding, and speed-mode validation.
+
+This is intentionally test-only cleanup. It keeps IO request helper coverage
+intact while moving terminal state and queue scaffolding out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/io-requests.test.ts
+```
+
 ### 2026-06-11: Memory Request Test Fixture Cleanup
 
 `tests/debug/memory-request.test.ts` now uses a local request fixture helper for

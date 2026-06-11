@@ -13,11 +13,7 @@ import type { TerminalState } from '../../src/debug/session/terminal-types';
 
 describe('io-requests', () => {
   it('applies terminal input and break', () => {
-    const state: TerminalState = {
-      config: { txPort: 0, rxPort: 1, statusPort: 2, interrupt: false },
-      input: [],
-      breakRequested: false,
-    };
+    const state = createTerminalState();
     applyTerminalInput({ text: 'A' }, state);
     applyTerminalBreak(state);
     expect(state.input).toEqual([65]);
@@ -25,9 +21,9 @@ describe('io-requests', () => {
   });
 
   it('applies serial input', () => {
-    const bytes: number[] = [];
-    applySerialInput({ text: 'B' }, { queueSerial: (data) => bytes.push(...data) });
-    expect(bytes).toEqual([66]);
+    const serial = createSerialQueue();
+    applySerialInput({ text: 'B' }, serial.target);
+    expect(serial.bytes).toEqual([66]);
   });
 
   it('validates speed mode', () => {
@@ -42,3 +38,24 @@ describe('io-requests', () => {
     expect(applySpeedChange({ mode: 'nope' }, target)).toContain('Missing speed mode');
   });
 });
+
+function createTerminalState(): TerminalState {
+  return {
+    config: { txPort: 0, rxPort: 1, statusPort: 2, interrupt: false },
+    input: [],
+    breakRequested: false,
+  };
+}
+
+function createSerialQueue(): {
+  bytes: number[];
+  target: { queueSerial: (data: number[]) => void };
+} {
+  const bytes: number[] = [];
+  return {
+    bytes,
+    target: {
+      queueSerial: (data) => bytes.push(...data),
+    },
+  };
+}
