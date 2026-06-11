@@ -25,7 +25,17 @@ describe('target discovery conventions', () => {
     return root;
   }
 
+  function makeWorkspaceFixture(prefix: string, files: Array<string | [string, string]>): string {
+    const root = makeTempWorkspace(prefix);
+    for (const file of files) {
+      const [relativePath, contents] = Array.isArray(file) ? file : [file, 'nop\n'];
+      writeWorkspaceFile(root, relativePath, contents);
+    }
+    return root;
+  }
+
   function writeWorkspaceFile(root: string, relativePath: string, contents = 'nop\n'): void {
+    fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     fs.writeFileSync(path.join(root, relativePath), contents);
   }
 
@@ -42,15 +52,14 @@ describe('target discovery conventions', () => {
   });
 
   it('lists target entry source files relative to the project root', () => {
-    const root = makeTempWorkspace('debug80-target-discovery-');
-    fs.mkdirSync(path.join(root, 'src', 'games'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'build'), { recursive: true });
-    writeWorkspaceFile(root, 'src/main.asm');
-    writeWorkspaceFile(root, 'src/pacmo.main.asm');
-    writeWorkspaceFile(root, 'src/include.asm');
-    writeWorkspaceFile(root, 'src/helper.z80');
-    writeWorkspaceFile(root, 'src/games/tetro.main.asm');
-    writeWorkspaceFile(root, 'build/generated.main.asm');
+    const root = makeWorkspaceFixture('debug80-target-discovery-', [
+      'src/main.asm',
+      'src/pacmo.main.asm',
+      'src/include.asm',
+      'src/helper.z80',
+      'src/games/tetro.main.asm',
+      'build/generated.main.asm',
+    ]);
 
     expect(listTargetEntrySourceFiles(root)).toEqual([
       'src/games/tetro.main.asm',
@@ -60,15 +69,15 @@ describe('target discovery conventions', () => {
   });
 
   it('does not require a src folder for target entry source discovery', () => {
-    const root = makeTempWorkspace('debug80-target-discovery-root-');
-    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
-    writeWorkspaceFile(root, 'main.asm');
-    writeWorkspaceFile(root, 'app.main.asm');
-    writeWorkspaceFile(root, 'alt.z80');
-    writeWorkspaceFile(root, 'loader.a80');
-    writeWorkspaceFile(root, 'startup.s');
-    writeWorkspaceFile(root, 'contracts.asmi', 'extern MON_PRINT_CHAR\n');
-    writeWorkspaceFile(root, 'lib/include.asm');
+    const root = makeWorkspaceFixture('debug80-target-discovery-root-', [
+      'main.asm',
+      'app.main.asm',
+      'alt.z80',
+      'loader.a80',
+      'startup.s',
+      ['contracts.asmi', 'extern MON_PRINT_CHAR\n'],
+      'lib/include.asm',
+    ]);
 
     expect(listTargetEntrySourceFiles(root)).toEqual(['app.main.asm', 'main.asm']);
   });

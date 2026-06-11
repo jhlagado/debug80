@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Target Discovery Test Fixture Cleanup
+
+`tests/extension/target-discovery.test.ts` now uses a local workspace fixture
+helper that creates temporary project files and nested directories from a single
+file list. The tests still cover target entry naming conventions, project-root
+relative discovery, ignored generated build files, ignored `.z80`/legacy source
+extensions, and discovery without requiring a `src` folder.
+
+This is intentionally test-only cleanup. It keeps target discovery policy
+coverage intact while moving repeated temporary workspace file setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/target-discovery.test.ts
+```
+
 ### 2026-06-11: Project Config Test Fixture Cleanup
 
 `tests/extension/project-config.test.ts` now uses a local project config fixture
