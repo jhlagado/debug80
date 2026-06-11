@@ -5,6 +5,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { revealPlatformView } from '../../src/extension/platform-view-reveal';
 
+type RevealTarget = { show: ReturnType<typeof vi.fn> };
+
 vi.mock('vscode', () => ({
   commands: {
     executeCommand: vi.fn(),
@@ -13,90 +15,83 @@ vi.mock('vscode', () => ({
 
 describe('platform-view-reveal', () => {
   it('focuses the platform view command and shows without preserving focus', () => {
-    const executeCommand = vi.fn(() => resolvedThenable());
-    const show = vi.fn();
+    const harness = createRevealHarness();
 
-    revealPlatformView({
-      focusCommand: 'debug80.platformView.focus',
-      fallbackCommand: 'workbench.view.debug',
-      focus: true,
-      target: () => ({ show }),
-      commands: { executeCommand },
-    });
+    harness.reveal({ focus: true });
 
-    expect(executeCommand).toHaveBeenCalledWith('debug80.platformView.focus');
-    expect(show).toHaveBeenCalledWith(false);
+    expect(harness.executeCommand).toHaveBeenCalledWith('debug80.platformView.focus');
+    expect(harness.show).toHaveBeenCalledWith(false);
   });
 
   it('uses the fallback command when focus is not requested', () => {
-    const executeCommand = vi.fn(() => resolvedThenable());
-    const show = vi.fn();
+    const harness = createRevealHarness();
 
-    revealPlatformView({
-      focusCommand: 'debug80.platformView.focus',
-      fallbackCommand: 'workbench.view.debug',
-      focus: false,
-      target: () => ({ show }),
-      commands: { executeCommand },
-    });
+    harness.reveal({ focus: false });
 
-    expect(executeCommand).toHaveBeenCalledWith('workbench.view.debug');
-    expect(show).toHaveBeenCalledWith(true);
+    expect(harness.executeCommand).toHaveBeenCalledWith('workbench.view.debug');
+    expect(harness.show).toHaveBeenCalledWith(true);
   });
 
   it('falls back to the debug view when direct focus fails', () => {
-    const executeCommand = vi
-      .fn()
-      .mockReturnValueOnce(rejectedThenable())
-      .mockReturnValueOnce(resolvedThenable());
-    const show = vi.fn();
-
-    revealPlatformView({
-      focusCommand: 'debug80.platformView.focus',
-      fallbackCommand: 'workbench.view.debug',
-      focus: true,
-      target: () => ({ show }),
-      commands: { executeCommand },
+    const harness = createRevealHarness({
+      executeCommand: vi
+        .fn()
+        .mockReturnValueOnce(rejectedThenable())
+        .mockReturnValueOnce(resolvedThenable()),
     });
 
-    expect(executeCommand).toHaveBeenNthCalledWith(1, 'debug80.platformView.focus');
-    expect(executeCommand).toHaveBeenNthCalledWith(2, 'workbench.view.debug');
-    expect(show).toHaveBeenCalledWith(false);
+    harness.reveal({ focus: true });
+
+    expect(harness.executeCommand).toHaveBeenNthCalledWith(1, 'debug80.platformView.focus');
+    expect(harness.executeCommand).toHaveBeenNthCalledWith(2, 'workbench.view.debug');
+    expect(harness.show).toHaveBeenCalledWith(false);
   });
 
   it('still shows the view when both commands fail', () => {
-    const executeCommand = vi.fn(() => rejectedThenable());
-    const show = vi.fn();
+    const harness = createRevealHarness({ executeCommand: vi.fn(() => rejectedThenable()) });
 
-    revealPlatformView({
-      focusCommand: 'debug80.platformView.focus',
-      fallbackCommand: 'workbench.view.debug',
-      focus: true,
-      target: () => ({ show }),
-      commands: { executeCommand },
-    });
-    expect(show).toHaveBeenCalledWith(false);
+    harness.reveal({ focus: true });
+
+    expect(harness.show).toHaveBeenCalledWith(false);
   });
 
   it('looks up the target after the command resolves', () => {
-    const show = vi.fn();
-    let target: { show: typeof show } | undefined;
-    const executeCommand = vi.fn(() => {
-      target = { show };
-      return resolvedThenable();
-    });
-
-    revealPlatformView({
-      focusCommand: 'debug80.platformView.focus',
-      fallbackCommand: 'workbench.view.debug',
-      focus: true,
+    let target: RevealTarget | undefined;
+    const harness = createRevealHarness({
       target: () => target,
-      commands: { executeCommand },
+      executeCommand: vi.fn(() => {
+        target = { show: harness.show };
+        return resolvedThenable();
+      }),
     });
 
-    expect(show).toHaveBeenCalledWith(false);
+    harness.reveal({ focus: true });
+
+    expect(harness.show).toHaveBeenCalledWith(false);
   });
 });
+
+function createRevealHarness(options: {
+  executeCommand?: ReturnType<typeof vi.fn>;
+  target?: () => RevealTarget | undefined;
+} = {}) {
+  const show = vi.fn();
+  const executeCommand = options.executeCommand ?? vi.fn(() => resolvedThenable());
+
+  return {
+    executeCommand,
+    show,
+    reveal({ focus }: { focus: boolean }) {
+      revealPlatformView({
+        focusCommand: 'debug80.platformView.focus',
+        fallbackCommand: 'workbench.view.debug',
+        focus,
+        target: options.target ?? (() => ({ show })),
+        commands: { executeCommand },
+      });
+    },
+  };
+}
 
 function resolvedThenable(): Thenable<unknown> {
   return {

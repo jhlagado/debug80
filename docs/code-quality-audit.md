@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Reveal Test Harness Cleanup
+
+`tests/extension/platform-view-reveal.test.ts` now uses a local reveal harness
+for command execution, target lookup, and `show` spy setup. The tests still
+cover focused reveal, fallback reveal, failed direct-focus fallback, showing
+the view after command failures, and deferred target lookup after command
+resolution.
+
+This is intentionally test-only cleanup. It keeps platform view reveal coverage
+intact while moving repeated command and target setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-reveal.test.ts
+```
+
 ### 2026-06-11: Target Discovery Test Fixture Cleanup
 
 `tests/extension/target-discovery.test.ts` now uses a local workspace fixture
