@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Target Discovery Test Fixture Cleanup
+
+`tests/extension/target-discovery.test.ts` now uses a local fixture for
+temporary workspace creation, generated source files, and cleanup. The tests
+still cover the canonical target entry source conventions, project-relative
+target discovery, and discovery outside a `src/` folder.
+
+This is intentionally test-only cleanup. It keeps target discovery convention
+coverage intact while moving repeated temporary-workspace setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/target-discovery.test.ts
+```
+
 ### 2026-06-11: Project Status Test Fixture Cleanup
 
 `tests/extension/project-status.test.ts` now uses a local fixture for temporary
