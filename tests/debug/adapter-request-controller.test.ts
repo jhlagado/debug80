@@ -80,6 +80,46 @@ function createController() {
   return { controller: new AdapterRequestController(deps as never), deps, sessionState };
 }
 
+function createSetVariableController() {
+  const sessionState = createSessionState();
+  sessionState.runtime = createZ80Runtime({
+    memory: new Uint8Array(0x10000),
+    startAddress: 0,
+  });
+  sessionState.runState.isRunning = false;
+
+  const handles = new Handles<string>();
+  const variableService = new VariableService(handles);
+  const registersRef = handles.create('registers');
+
+  const deps = {
+    threadId: 1,
+    breakpointManager: {
+      setPending: vi.fn(),
+      applyForSource: vi.fn(),
+      rebuild: vi.fn(),
+      hasAddress: vi.fn(() => false),
+    },
+    sourceState: {} as never,
+    sessionState,
+    platformState: { active: 'simple' },
+    variableService,
+    commandRouter: { handle: vi.fn(() => false) } as never,
+    platformRegistry: { clear: vi.fn(), getHandler: vi.fn() } as never,
+    sendResponse: vi.fn(),
+    sendErrorResponse: vi.fn(),
+    sendEvent: vi.fn(),
+    getRuntimeControlContext: vi.fn(),
+  };
+
+  return {
+    controller: new AdapterRequestController(deps as never),
+    deps,
+    registersRef,
+    sessionState,
+  };
+}
+
 describe('adapter-request-controller startup sequencing', () => {
   it('defers auto-run until launch is complete when configurationDone arrives early', () => {
     const runUntilStopSpy = vi
@@ -372,38 +412,7 @@ describe('AdapterRequestController Run to Cursor flow', () => {
 
 describe('AdapterRequestController setVariableRequest', () => {
   it('updates a writable register and returns the formatted value', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
-
-    const handles = new Handles<string>();
-    const variableService = new VariableService(handles);
-    const registersRef = handles.create('registers');
-
-    const deps = {
-      threadId: 1,
-      breakpointManager: {
-        setPending: vi.fn(),
-        applyForSource: vi.fn(),
-        rebuild: vi.fn(),
-        hasAddress: vi.fn(() => false),
-      },
-      sourceState: {} as never,
-      sessionState,
-      platformState: { active: 'simple' },
-      variableService,
-      commandRouter: { handle: vi.fn(() => false) } as never,
-      platformRegistry: { clear: vi.fn(), getHandler: vi.fn() } as never,
-      sendResponse: vi.fn(),
-      sendErrorResponse: vi.fn(),
-      sendEvent: vi.fn(),
-      getRuntimeControlContext: vi.fn(),
-    };
-
-    const controller = new AdapterRequestController(deps as never);
+    const { controller, deps, registersRef, sessionState } = createSetVariableController();
     controller.setVariableRequest({} as never, {
       variablesReference: registersRef,
       name: 'DE',
@@ -420,38 +429,7 @@ describe('AdapterRequestController setVariableRequest', () => {
   });
 
   it('writes AF through setVariable', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
-
-    const handles = new Handles<string>();
-    const variableService = new VariableService(handles);
-    const registersRef = handles.create('registers');
-
-    const deps = {
-      threadId: 1,
-      breakpointManager: {
-        setPending: vi.fn(),
-        applyForSource: vi.fn(),
-        rebuild: vi.fn(),
-        hasAddress: vi.fn(() => false),
-      },
-      sourceState: {} as never,
-      sessionState,
-      platformState: { active: 'simple' },
-      variableService,
-      commandRouter: { handle: vi.fn(() => false) } as never,
-      platformRegistry: { clear: vi.fn(), getHandler: vi.fn() } as never,
-      sendResponse: vi.fn(),
-      sendErrorResponse: vi.fn(),
-      sendEvent: vi.fn(),
-      getRuntimeControlContext: vi.fn(),
-    };
-
-    const controller = new AdapterRequestController(deps as never);
+    const { controller, deps, registersRef, sessionState } = createSetVariableController();
     controller.setVariableRequest({} as never, {
       variablesReference: registersRef,
       name: 'AF',

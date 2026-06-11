@@ -2522,6 +2522,21 @@ mapping, and hex parsing.
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Adapter Request Set-Variable Fixture Cleanup
+
+This pass stayed in `tests/debug/adapter-request-controller.test.ts` and
+extracted a local fixture for the repeated `setVariableRequest` controller
+setup. The shared fixture owns the register variable handle, `VariableService`,
+paused runtime, and mock dependency wiring; each test still declares the
+specific register write and its assertions.
+
+The covered behavior is unchanged: writable register variables still return the
+formatted value through the adapter response, and AF writes still update the A
+register and flag bits.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
