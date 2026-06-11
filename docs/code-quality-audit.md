@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Memory Snapshot Test Fixture Cleanup
+
+`tests/debug/memory-snapshot.test.ts` now uses local fixture helpers for its
+snapshot runtime, byte-pattern memory, and CPU register setup. The test still
+covers snapshot view construction, paused/running state forwarding, writable
+byte flags, and symbol-list forwarding.
+
+This is intentionally test-only cleanup. It keeps the memory snapshot response
+contract under the same coverage while moving emulator fixture wiring out of
+the assertion path.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/memory-snapshot.test.ts
+```
+
 ### 2026-06-11: Memory View Test Fixture Cleanup
 
 `tests/debug/memory-view.test.ts` now uses shared local fixtures for the
