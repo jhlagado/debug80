@@ -18,6 +18,9 @@ import {
 } from '../../src/debug/launch/launch-config-merge';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 
+const PROJECT_CONFIG = '/project/debug80.json';
+const PROJECT_ROOT = '/project';
+
 describe('launch-config-merge', () => {
   it('applies root config, target config, then explicit launch args in order', () => {
     const manifest: LaunchConfigManifest = {
@@ -44,22 +47,16 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeLaunchConfigStages(
-      {
-        path: '/project/debug80.json',
-        manifest,
-        targetName: 'game',
-        targetCfg: manifest.targets?.game,
-      },
-      {
-        projectConfig: '/project/debug80.json',
+    const merged = mergeForTarget(
+      manifest,
+      'game',
+      launchArgs({
         outputDir: 'explicit-build',
         stopOnEntry: false,
         azm: {
           registerContracts: 'error',
         },
-      } as LaunchRequestArguments,
-      '/project'
+      })
     );
 
     expect(merged).toMatchObject({
@@ -97,20 +94,14 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeLaunchConfigStages(
-      {
-        path: '/project/debug80.json',
-        manifest,
-        targetName: 'matrix',
-        targetCfg: manifest.targets?.matrix,
-      },
-      {
-        projectConfig: '/project/debug80.json',
+    const merged = mergeForTarget(
+      manifest,
+      'matrix',
+      launchArgs({
         tec1g: {
           matrixMode: true,
         },
-      } as LaunchRequestArguments,
-      '/project'
+      })
     );
 
     expect(merged.tec1g).toEqual({
@@ -141,16 +132,7 @@ describe('launch-config-merge', () => {
       defaultTarget: 'game',
     } as unknown as LaunchConfigManifest;
 
-    const merged = mergeLaunchConfigStages(
-      {
-        path: '/project/debug80.json',
-        manifest,
-        targetName: 'game',
-        targetCfg: manifest.targets?.game,
-      },
-      { projectConfig: '/project/debug80.json' } as LaunchRequestArguments,
-      '/project'
-    );
+    const merged = mergeForTarget(manifest, 'game');
 
     expect(merged).toMatchObject({
       asm: 'src/root.main.asm',
@@ -186,15 +168,10 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeLaunchConfigStages(
-      {
-        path: '/project/debug80.json',
-        manifest,
-        targetName: 'game',
-        targetCfg: manifest.targets?.game,
-      },
-      { projectConfig: '/project/debug80.json' } as LaunchRequestArguments,
-      '/project',
+    const merged = mergeForTarget(
+      manifest,
+      'game',
+      launchArgs(),
       {
         resolveBundledAssetPath: (reference) =>
           reference.path === 'mon3.d8.json'
@@ -210,3 +187,26 @@ describe('launch-config-merge', () => {
     ]);
   });
 });
+
+function mergeForTarget(
+  manifest: LaunchConfigManifest,
+  targetName: string,
+  explicitArgs = launchArgs(),
+  options?: Parameters<typeof mergeLaunchConfigStages>[3]
+): LaunchRequestArguments {
+  return mergeLaunchConfigStages(
+    {
+      path: PROJECT_CONFIG,
+      manifest,
+      targetName,
+      targetCfg: manifest.targets?.[targetName],
+    },
+    explicitArgs,
+    PROJECT_ROOT,
+    options
+  );
+}
+
+function launchArgs(args: Partial<LaunchRequestArguments> = {}): LaunchRequestArguments {
+  return { projectConfig: PROJECT_CONFIG, ...args } as LaunchRequestArguments;
+}

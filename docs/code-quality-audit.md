@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch Config Merge Test Helper Cleanup
+
+`tests/debug/launch-config-merge.test.ts` now uses local `mergeForTarget` and
+`launchArgs` helpers for the repeated project config path, project root,
+target context, and explicit launch-argument setup. The tests still cover
+root/target/explicit merge ordering, shallow TEC-1G block merging, null-field
+fallback behavior, and bundled debug-map inference.
+
+This is intentionally test-only cleanup. It keeps launch configuration merge
+policy coverage intact while making each test case read as the specific merge
+scenario under test rather than repeated staging boilerplate.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-config-merge.test.ts
+```
+
 ### 2026-06-11: Path Resolver Test Fixture Cleanup
 
 `tests/debug/path-resolver.test.ts` now uses local `tempPath`,
