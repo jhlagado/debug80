@@ -2939,6 +2939,19 @@ The covered behavior is unchanged, and no production configure-project code
 changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
 runtime-control hot zones.
 
+### 2026-06-11: Project Target Filesystem Test Fixture Cleanup
+
+This pass stayed in `tests/extension/project-target-filesystem.test.ts` and
+extracted a shared workspace-root constant plus local path-normalization and
+checked-path helpers. The tests now keep the filesystem utility behavior more
+visible: root discovery for root and `.vscode` project configs, relative and
+absolute source-file probing, missing-file handling after filesystem errors,
+and source-file cache expiry.
+
+The covered behavior is unchanged, and no production project-target filesystem
+code changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
+runtime-control hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
