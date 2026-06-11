@@ -2552,6 +2552,17 @@ line 1.
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Platform Request Reset Fixture Cleanup
+
+This pass stayed in `tests/debug/platform-requests.test.ts` and extracted local
+helpers for repeated reset-request program and runtime setup. The reset tests
+still keep their distinct expectations visible: normal reset dispatch, avoiding
+captured entry-state restoration, and preserving monitor RAM ranges while
+reloading app memory.
+
+The covered behavior is unchanged, and no production request handling changed.
+This stayed outside the matrix keyboard and TEC-1G IO production hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

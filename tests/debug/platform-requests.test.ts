@@ -11,6 +11,18 @@ import {
 } from '../../src/debug/requests/platform-requests';
 import { KEY_RESET } from '../../src/platforms/tec-common';
 
+function createProgram() {
+  return { memory: new Uint8Array(0x10000), startAddress: 0 };
+}
+
+function createResetRuntime(calls: unknown[]) {
+  return {
+    hardware: { memory: new Uint8Array(0x10000) },
+    reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
+    restoreCpuState: () => calls.push('restore'),
+  };
+}
+
 describe('platform-requests', () => {
   it('handles key requests and reset side effects', () => {
     const events: string[] = [];
@@ -32,12 +44,8 @@ describe('platform-requests', () => {
 
   it('handles reset requests', () => {
     const calls: unknown[] = [];
-    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
-    const runtime = {
-      hardware: { memory: new Uint8Array(0x10000) },
-      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
-      restoreCpuState: () => calls.push('restore'),
-    };
+    const program = createProgram();
+    const runtime = createResetRuntime(calls);
     const platform = { resetState: () => calls.push('platform-reset') };
     const error = handleResetRequest(runtime, program, 1234, platform);
     expect(error).toBeNull();
@@ -46,12 +54,8 @@ describe('platform-requests', () => {
 
   it('resets hardware to the entry address instead of restoring a captured entry snapshot', () => {
     const calls: unknown[] = [];
-    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
-    const runtime = {
-      hardware: { memory: new Uint8Array(0x10000) },
-      reset: (program?: unknown, entry?: number) => calls.push(['reset', program, entry]),
-      restoreCpuState: () => calls.push('restore'),
-    };
+    const program = createProgram();
+    const runtime = createResetRuntime(calls);
     const platform = { resetState: () => calls.push('platform-reset') };
 
     const error = handleResetRequest(runtime, program, 1234, platform);
@@ -61,7 +65,7 @@ describe('platform-requests', () => {
   });
 
   it('reloads app memory while preserving platform monitor RAM ranges', () => {
-    const program = { memory: new Uint8Array(0x10000), startAddress: 0 };
+    const program = createProgram();
     program.memory[0x0800] = 0x00;
     program.memory[0x0888] = 0x00;
     program.memory[0x4000] = 0x3e;
