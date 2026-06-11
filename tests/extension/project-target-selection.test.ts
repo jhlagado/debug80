@@ -4,6 +4,8 @@ const readFileSync = vi.fn();
 const existsSync = vi.fn();
 const readdirSync = vi.fn(() => []);
 const showQuickPick = vi.fn();
+const configPath = '/workspace/debug80/.vscode/debug80.json';
+const projectConfigPath = '/workspace/p/.vscode/debug80.json';
 
 vi.mock('fs', () => ({
   readFileSync,
@@ -21,6 +23,29 @@ vi.mock('vscode', () => ({
   },
 }));
 
+function readConfig(value: object): void {
+  readFileSync.mockReturnValue(JSON.stringify(value));
+}
+
+function sourceExistsExcept(missingSuffix: string): (p: unknown) => boolean {
+  return (p) => !String(p).replace(/\\/g, '/').endsWith(missingSuffix);
+}
+
+async function createController(storedTarget?: string) {
+  const { ProjectTargetSelectionController } =
+    await import('../../src/extension/project-target-selection');
+
+  const update = vi.fn();
+  const controller = new ProjectTargetSelectionController({
+    workspaceState: {
+      get: vi.fn(() => storedTarget),
+      update,
+    },
+  } as never);
+
+  return { controller, update };
+}
+
 describe('ProjectTargetSelectionController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,28 +53,16 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('uses the remembered target when it is still valid', async () => {
-    const { ProjectTargetSelectionController } =
-      await import('../../src/extension/project-target-selection');
-
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/main.asm' },
-          serial: { sourceFile: 'src/serial.asm' },
-        },
-      })
-    );
-
-    const update = vi.fn();
-    const controller = new ProjectTargetSelectionController({
-      workspaceState: {
-        get: vi.fn(() => 'serial'),
-        update,
+    readConfig({
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/main.asm' },
+        serial: { sourceFile: 'src/serial.asm' },
       },
-    } as never);
+    });
 
-    const target = await controller.resolveTarget('/workspace/debug80/.vscode/debug80.json');
+    const { controller, update } = await createController('serial');
+    const target = await controller.resolveTarget(configPath);
 
     expect(target).toBe('serial');
     expect(showQuickPick).not.toHaveBeenCalled();
@@ -60,45 +73,28 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('uses the default target when no remembered target exists', async () => {
-    const { ProjectTargetSelectionController } =
-      await import('../../src/extension/project-target-selection');
-
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/main.asm' },
-          serial: { sourceFile: 'src/serial.asm' },
-        },
-      })
-    );
-
-    const update = vi.fn();
-    const controller = new ProjectTargetSelectionController({
-      workspaceState: {
-        get: vi.fn(() => undefined),
-        update,
+    readConfig({
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/main.asm' },
+        serial: { sourceFile: 'src/serial.asm' },
       },
-    } as never);
+    });
 
-    const target = await controller.resolveTarget('/workspace/debug80/.vscode/debug80.json');
+    const { controller } = await createController();
+    const target = await controller.resolveTarget(configPath);
 
     expect(target).toBe('app');
     expect(showQuickPick).not.toHaveBeenCalled();
   });
 
   it('prompts when multiple targets exist without a remembered or default target', async () => {
-    const { ProjectTargetSelectionController } =
-      await import('../../src/extension/project-target-selection');
-
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        targets: {
-          app: { sourceFile: 'src/main.asm', platform: 'simple' },
-          serial: { sourceFile: 'src/serial.asm', assembler: 'azm' },
-        },
-      })
-    );
+    readConfig({
+      targets: {
+        app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        serial: { sourceFile: 'src/serial.asm', assembler: 'azm' },
+      },
+    });
     showQuickPick.mockResolvedValueOnce({
       label: 'serial',
       description: 'src/serial.asm',
@@ -106,15 +102,8 @@ describe('ProjectTargetSelectionController', () => {
       targetName: 'serial',
     });
 
-    const update = vi.fn();
-    const controller = new ProjectTargetSelectionController({
-      workspaceState: {
-        get: vi.fn(() => undefined),
-        update,
-      },
-    } as never);
-
-    const target = await controller.resolveTarget('/workspace/debug80/.vscode/debug80.json', {
+    const { controller } = await createController();
+    const target = await controller.resolveTarget(configPath, {
       prompt: true,
       placeHolder: 'Select the Debug80 target to debug',
     });
@@ -130,18 +119,13 @@ describe('ProjectTargetSelectionController', () => {
   });
 
   it('prompts even when a default target exists if forcePrompt is enabled', async () => {
-    const { ProjectTargetSelectionController } =
-      await import('../../src/extension/project-target-selection');
-
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/main.asm', platform: 'simple' },
-          serial: { sourceFile: 'src/serial.asm', platform: 'tec1g' },
-        },
-      })
-    );
+    readConfig({
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        serial: { sourceFile: 'src/serial.asm', platform: 'tec1g' },
+      },
+    });
     showQuickPick.mockResolvedValueOnce({
       label: 'serial',
       description: 'src/serial.asm • tec1g',
@@ -149,15 +133,8 @@ describe('ProjectTargetSelectionController', () => {
       targetName: 'serial',
     });
 
-    const update = vi.fn();
-    const controller = new ProjectTargetSelectionController({
-      workspaceState: {
-        get: vi.fn(() => undefined),
-        update,
-      },
-    } as never);
-
-    const target = await controller.resolveTarget('/workspace/debug80/.vscode/debug80.json', {
+    const { controller, update } = await createController();
+    const target = await controller.resolveTarget(configPath, {
       prompt: true,
       forcePrompt: true,
       placeHolder: 'Select the active Debug80 target',
@@ -175,15 +152,13 @@ describe('ProjectTargetSelectionController', () => {
     const { resolveTargetNameForConfig } =
       await import('../../src/extension/project-target-selection');
 
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/a.asm' },
-          other: { sourceFile: 'src/b.asm' },
-        },
-      })
-    );
+    readConfig({
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/a.asm' },
+        other: { sourceFile: 'src/b.asm' },
+      },
+    });
 
     expect(resolveTargetNameForConfig(undefined, '/workspace/p/.vscode/debug80.json')).toBe('app');
   });
@@ -192,13 +167,11 @@ describe('ProjectTargetSelectionController', () => {
     const { resolveTargetNameForConfig } =
       await import('../../src/extension/project-target-selection');
 
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        targets: {
-          only: { sourceFile: 'src/a.asm' },
-        },
-      })
-    );
+    readConfig({
+      targets: {
+        only: { sourceFile: 'src/a.asm' },
+      },
+    });
 
     expect(resolveTargetNameForConfig(undefined, '/workspace/p/debug80.json')).toBe('only');
   });
@@ -207,14 +180,12 @@ describe('ProjectTargetSelectionController', () => {
     const { resolveTargetNameForConfig } =
       await import('../../src/extension/project-target-selection');
 
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        targets: {
-          a: { sourceFile: 'src/a.asm' },
-          b: { sourceFile: 'src/b.asm' },
-        },
-      })
-    );
+    readConfig({
+      targets: {
+        a: { sourceFile: 'src/a.asm' },
+        b: { sourceFile: 'src/b.asm' },
+      },
+    });
 
     expect(resolveTargetNameForConfig(undefined, '/workspace/p/debug80.json')).toBeUndefined();
   });
@@ -223,24 +194,16 @@ describe('ProjectTargetSelectionController', () => {
     const { listProjectTargetChoices } =
       await import('../../src/extension/project-target-selection');
 
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'main',
-        targets: {
-          main: { sourceFile: 'src/main.asm' },
-          matrix: { sourceFile: 'src/matrixdemo.asm' },
-        },
-      })
-    );
-    existsSync.mockImplementation((p) => {
-      const s = String(p).replace(/\\/g, '/');
-      if (s.endsWith('/src/main.asm')) {
-        return false;
-      }
-      return true;
+    readConfig({
+      defaultTarget: 'main',
+      targets: {
+        main: { sourceFile: 'src/main.asm' },
+        matrix: { sourceFile: 'src/matrixdemo.asm' },
+      },
     });
+    existsSync.mockImplementation(sourceExistsExcept('/src/main.asm'));
 
-    const choices = listProjectTargetChoices('/workspace/p/.vscode/debug80.json');
+    const choices = listProjectTargetChoices(projectConfigPath);
     expect(choices.map((c: { name: string }) => c.name)).toEqual(['matrix']);
   });
 
@@ -248,28 +211,20 @@ describe('ProjectTargetSelectionController', () => {
     const { resolvePreferredTargetName } =
       await import('../../src/extension/project-target-selection');
 
-    readFileSync.mockReturnValue(
-      JSON.stringify({
-        defaultTarget: 'main',
-        targets: {
-          main: { sourceFile: 'src/main.asm' },
-          matrix: { sourceFile: 'src/matrixdemo.asm' },
-        },
-      })
-    );
-    existsSync.mockImplementation((p) => {
-      const s = String(p).replace(/\\/g, '/');
-      if (s.endsWith('/src/main.asm')) {
-        return false;
-      }
-      return true;
+    readConfig({
+      defaultTarget: 'main',
+      targets: {
+        main: { sourceFile: 'src/main.asm' },
+        matrix: { sourceFile: 'src/matrixdemo.asm' },
+      },
     });
+    existsSync.mockImplementation(sourceExistsExcept('/src/main.asm'));
 
     const memento = {
       get: vi.fn(() => 'main'),
       update: vi.fn(),
     } as never;
 
-    expect(resolvePreferredTargetName(memento, '/workspace/p/.vscode/debug80.json')).toBe('matrix');
+    expect(resolvePreferredTargetName(memento, projectConfigPath)).toBe('matrix');
   });
 });

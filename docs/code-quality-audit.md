@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Selection Test Fixture Cleanup
+
+`tests/extension/project-target-selection.test.ts` now uses local helpers for
+project config JSON setup, target-selection controller construction, and
+missing-source-file predicates. The tests still cover remembered target
+selection, default target selection, forced prompting, target name resolution,
+missing program file filtering, and invalid remembered target fallback.
+
+This is intentionally test-only cleanup. It keeps project target selection
+coverage intact while moving repeated VS Code memento and config scaffolding
+out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-selection.test.ts
+```
+
 ### 2026-06-11: Assembler Backend Test Assertion Cleanup
 
 `tests/debug/assembler-backend.test.ts` now uses a local `expectAzmBackend`
