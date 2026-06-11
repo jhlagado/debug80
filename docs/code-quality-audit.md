@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Bundle Materialize Test Fixture Cleanup
+
+`tests/extension/bundle-materialize.test.ts` now uses local helpers for
+temporary workspace roots, temporary bundle roots, bundle directory creation,
+and manifest writes. The tests still cover bundled ROM copying, ROM plus debug
+map materialization, explicit asset destinations, checksum rejection,
+workspace-escape rejection, absolute destination rejection, the MON3 bundle
+constant, and committed MON3 bundle materialization.
+
+This is intentionally test-only cleanup. It keeps bundled asset materialization
+coverage intact while moving repeated temporary directory and manifest setup out
+of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/bundle-materialize.test.ts
+```
+
 ### 2026-06-11: Debug Configuration Provider Test Fixture Cleanup
 
 `tests/extension/debug-configuration-provider.test.ts` now uses local helpers

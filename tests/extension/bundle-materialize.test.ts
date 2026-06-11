@@ -25,6 +25,31 @@ import {
 
 describe('bundle-materialize', () => {
   const tmpDirs: string[] = [];
+
+  function tempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  function tempWorkspace(prefix = 'debug80-workspace-'): string {
+    return tempDir(prefix);
+  }
+
+  function createBundleRoot(
+    prefix: string,
+    rel: string
+  ): { bundleRoot: string; bundleDir: string } {
+    const bundleRoot = tempDir(prefix);
+    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
+    fs.mkdirSync(bundleDir, { recursive: true });
+    return { bundleRoot, bundleDir };
+  }
+
+  function writeManifest(bundleDir: string, manifest: unknown): void {
+    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+  }
+
   afterEach(() => {
     for (const d of tmpDirs) {
       fs.rmSync(d, { recursive: true, force: true });
@@ -33,14 +58,9 @@ describe('bundle-materialize', () => {
   });
 
   it('copies bundled ROM files into workspace destination', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-'));
-    tmpDirs.push(bundleRoot);
+    const workspaceRoot = tempWorkspace('debug80-bund-');
     const rel = 'tec1g/mon3/v1';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-ext-', rel);
     const romPath = path.join(bundleDir, 'mon3.bin');
     fs.writeFileSync(romPath, Buffer.alloc(16, 0x42));
 
@@ -53,7 +73,7 @@ describe('bundle-materialize', () => {
       files: [{ role: 'rom' as const, path: 'mon3.bin' }],
       workspaceLayout: { destination: 'roms/tec1g/mon3' },
     };
-    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+    writeManifest(bundleDir, manifest);
 
     const extensionUri = vscode.Uri.file(bundleRoot);
     const result = materializeBundledRom(extensionUri, workspaceRoot, rel);
@@ -69,14 +89,9 @@ describe('bundle-materialize', () => {
   });
 
   it('materializes rom and debug map and returns both relative paths', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund2-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext2-'));
-    tmpDirs.push(bundleRoot);
+    const workspaceRoot = tempWorkspace('debug80-bund2-');
     const rel = 'demo/bundle';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-ext2-', rel);
     fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([1, 2, 3]));
     fs.writeFileSync(path.join(bundleDir, 'rom.d8.json'), '{}\n');
 
@@ -92,7 +107,7 @@ describe('bundle-materialize', () => {
       ],
       workspaceLayout: { destination: 'roms/out' },
     };
-    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+    writeManifest(bundleDir, manifest);
 
     const result = materializeBundledRom(vscode.Uri.file(bundleRoot), workspaceRoot, rel);
 
@@ -105,14 +120,9 @@ describe('bundle-materialize', () => {
   });
 
   it('materializes a single bundled asset reference to an explicit destination', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-'));
-    tmpDirs.push(bundleRoot);
+    const workspaceRoot = tempWorkspace('debug80-asset-');
     const rel = 'demo/asset/v1';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-asset-ext-', rel);
     fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0xde, 0xad, 0xbe, 0xef]));
 
     const manifest = {
@@ -124,7 +134,7 @@ describe('bundle-materialize', () => {
       files: [{ role: 'rom' as const, path: 'payload.bin' }],
       workspaceLayout: { destination: 'roms/demo-default' },
     };
-    fs.writeFileSync(path.join(bundleDir, 'bundle.json'), JSON.stringify(manifest));
+    writeManifest(bundleDir, manifest);
 
     const result = materializeBundledAsset(vscode.Uri.file(bundleRoot), workspaceRoot, {
       bundleId: rel,
@@ -142,27 +152,19 @@ describe('bundle-materialize', () => {
   });
 
   it('rejects a bundled ROM when the checksum does not match', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-badsha-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-ext-badsha-'));
-    tmpDirs.push(bundleRoot);
+    const workspaceRoot = tempWorkspace('debug80-bund-badsha-');
     const rel = 'demo/badsha/v1';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-bund-ext-badsha-', rel);
     fs.writeFileSync(path.join(bundleDir, 'rom.bin'), Buffer.from([0x11, 0x22, 0x33]));
-    fs.writeFileSync(
-      path.join(bundleDir, 'bundle.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        id: 'demo-badsha',
-        version: '1',
-        platform: 'tec1g',
-        label: 'Bad SHA',
-        files: [{ role: 'rom' as const, path: 'rom.bin', sha256: 'deadbeef' }],
-        workspaceLayout: { destination: 'roms/badsha' },
-      })
-    );
+    writeManifest(bundleDir, {
+      schemaVersion: 1,
+      id: 'demo-badsha',
+      version: '1',
+      platform: 'tec1g',
+      label: 'Bad SHA',
+      files: [{ role: 'rom' as const, path: 'rom.bin', sha256: 'deadbeef' }],
+      workspaceLayout: { destination: 'roms/badsha' },
+    });
 
     const result = materializeBundledRom(vscode.Uri.file(bundleRoot), workspaceRoot, rel);
 
@@ -176,29 +178,22 @@ describe('bundle-materialize', () => {
   });
 
   it('rejects a bundled asset destination that escapes the workspace root', () => {
-    const workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-root-'));
-    tmpDirs.push(workspaceBase);
+    const workspaceBase = tempDir('debug80-asset-root-');
     const workspaceRoot = path.join(workspaceBase, 'project');
     fs.mkdirSync(workspaceRoot, { recursive: true });
 
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-escape-'));
-    tmpDirs.push(bundleRoot);
     const rel = 'demo/escape/v1';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-asset-ext-escape-', rel);
     fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0x01]));
-    fs.writeFileSync(
-      path.join(bundleDir, 'bundle.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        id: 'demo-escape',
-        version: '1',
-        platform: 'tec1g',
-        label: 'Escape',
-        files: [{ role: 'rom' as const, path: 'payload.bin' }],
-        workspaceLayout: { destination: 'roms/escape' },
-      })
-    );
+    writeManifest(bundleDir, {
+      schemaVersion: 1,
+      id: 'demo-escape',
+      version: '1',
+      platform: 'tec1g',
+      label: 'Escape',
+      files: [{ role: 'rom' as const, path: 'payload.bin' }],
+      workspaceLayout: { destination: 'roms/escape' },
+    });
 
     const escapeTarget = path.resolve(workspaceRoot, '../../escape.bin');
     fs.rmSync(escapeTarget, { force: true });
@@ -218,27 +213,19 @@ describe('bundle-materialize', () => {
   });
 
   it('rejects an absolute bundled asset destination path', () => {
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-abs-'));
-    tmpDirs.push(workspaceRoot);
-
-    const bundleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-asset-ext-abs-'));
-    tmpDirs.push(bundleRoot);
+    const workspaceRoot = tempWorkspace('debug80-asset-abs-');
     const rel = 'demo/abs/v1';
-    const bundleDir = path.join(bundleRoot, 'resources', 'bundles', ...rel.split('/'));
-    fs.mkdirSync(bundleDir, { recursive: true });
+    const { bundleRoot, bundleDir } = createBundleRoot('debug80-asset-ext-abs-', rel);
     fs.writeFileSync(path.join(bundleDir, 'payload.bin'), Buffer.from([0x02]));
-    fs.writeFileSync(
-      path.join(bundleDir, 'bundle.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        id: 'demo-abs',
-        version: '1',
-        platform: 'tec1g',
-        label: 'Absolute',
-        files: [{ role: 'rom' as const, path: 'payload.bin' }],
-        workspaceLayout: { destination: 'roms/abs' },
-      })
-    );
+    writeManifest(bundleDir, {
+      schemaVersion: 1,
+      id: 'demo-abs',
+      version: '1',
+      platform: 'tec1g',
+      label: 'Absolute',
+      files: [{ role: 'rom' as const, path: 'payload.bin' }],
+      workspaceLayout: { destination: 'roms/abs' },
+    });
 
     const absoluteTarget = path.resolve(os.tmpdir(), 'debug80-absolute.bin');
     fs.rmSync(absoluteTarget, { force: true });
@@ -271,12 +258,14 @@ describe('bundle-materialize', () => {
 
     // Keep this test focused on materialization paths/content presence by using
     // a copied manifest with checksum fields removed while still sourcing committed assets.
-    const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-ext-real-'));
-    tmpDirs.push(extensionRoot);
+    const extensionRoot = tempDir('debug80-ext-real-');
     const copiedBundleDir = path.join(extensionRoot, 'resources', 'bundles', 'tec1g', 'mon3', 'v1');
     fs.mkdirSync(copiedBundleDir, { recursive: true });
     fs.copyFileSync(path.join(bundleDir, 'mon3.bin'), path.join(copiedBundleDir, 'mon3.bin'));
-    fs.copyFileSync(path.join(bundleDir, 'mon3.d8.json'), path.join(copiedBundleDir, 'mon3.d8.json'));
+    fs.copyFileSync(
+      path.join(bundleDir, 'mon3.d8.json'),
+      path.join(copiedBundleDir, 'mon3.d8.json')
+    );
     const manifest = JSON.parse(fs.readFileSync(bundleJson, 'utf-8')) as {
       files?: Array<Record<string, unknown>>;
     };
@@ -291,8 +280,7 @@ describe('bundle-materialize', () => {
     }
     fs.writeFileSync(path.join(copiedBundleDir, 'bundle.json'), JSON.stringify(manifest, null, 2));
 
-    const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-bund-real-'));
-    tmpDirs.push(workspaceRoot);
+    const workspaceRoot = tempWorkspace('debug80-bund-real-');
 
     const result = materializeBundledRom(
       vscode.Uri.file(extensionRoot),
