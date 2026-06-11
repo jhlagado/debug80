@@ -5,6 +5,8 @@ import {
   buildTargetChoicePickRows,
 } from '../../src/extension/project-target-quickpick-policy';
 
+type EntrySourceRowsOptions = Parameters<typeof buildEntrySourcePickRows>[0];
+
 function targetChoice(name: string, description?: string, detail?: string) {
   return {
     name,
@@ -14,8 +16,8 @@ function targetChoice(name: string, description?: string, detail?: string) {
 }
 
 function entrySourceRowsOptions(
-  overrides: Partial<Parameters<typeof buildEntrySourcePickRows>[0]>
-): Parameters<typeof buildEntrySourcePickRows>[0] {
+  overrides: Partial<EntrySourceRowsOptions>
+): EntrySourceRowsOptions {
   return {
     paths: [],
     separatorKind: -1,
@@ -26,6 +28,16 @@ function entrySourceRowsOptions(
     bindTarget: undefined,
     ...overrides,
   };
+}
+
+function targetBindings(entries: Array<[string, string[]]>): Map<string, string[]> {
+  return new Map(entries);
+}
+
+function buildAzmSourceRows(
+  overrides: Partial<EntrySourceRowsOptions>
+): ReturnType<typeof buildEntrySourcePickRows> {
+  return buildEntrySourcePickRows(entrySourceRowsOptions(overrides));
 }
 
 describe('project target QuickPick policy', () => {
@@ -60,18 +72,15 @@ describe('project target QuickPick policy', () => {
   });
 
   it('adds bound and unbound AZM source rows below a separator', () => {
-    const targetsPerPath = new Map<string, string[]>();
-    targetsPerPath.set('src/main.asm', ['main']);
-    targetsPerPath.set('src/shared.main.asm', ['shared', 'shared-alt']);
-
     expect(
-      buildEntrySourcePickRows(
-        entrySourceRowsOptions({
-          paths: ['src/main.asm', 'src/new.main.asm', 'src/shared.main.asm'],
-          targetsPerPath,
-          bindTarget: 'main',
-        })
-      )
+      buildAzmSourceRows({
+        paths: ['src/main.asm', 'src/new.main.asm', 'src/shared.main.asm'],
+        targetsPerPath: targetBindings([
+          ['src/main.asm', ['main']],
+          ['src/shared.main.asm', ['shared', 'shared-alt']],
+        ]),
+        bindTarget: 'main',
+      })
     ).toEqual([
       { kind: -1, label: 'AZM sources' },
       {
@@ -97,12 +106,8 @@ describe('project target QuickPick policy', () => {
   });
 
   it('omits unbound AZM source rows when there is no target to bind', () => {
-    expect(
-      buildEntrySourcePickRows(
-        entrySourceRowsOptions({
-          paths: ['src/new.main.asm'],
-        })
-      )
-    ).toEqual([{ kind: -1, label: 'AZM sources' }]);
+    expect(buildAzmSourceRows({ paths: ['src/new.main.asm'] })).toEqual([
+      { kind: -1, label: 'AZM sources' },
+    ]);
   });
 });
