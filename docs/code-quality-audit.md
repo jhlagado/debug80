@@ -2901,6 +2901,18 @@ The covered behavior is unchanged, and no production project-status code
 changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
 runtime-control hot zones.
 
+### 2026-06-11: CoolTerm HEX Artifact Test Fixture Cleanup
+
+This pass stayed in `tests/extension/coolterm-hex-artifact.test.ts` and
+extracted local helpers for Debug80 project config writing and found/missing
+HEX artifact result assertions. The test cases still keep the policy under
+test visible: explicit target HEX paths, inferred `outputDir` plus
+`artifactBase`, and the missing-artifact path returned for an unbuilt target.
+
+The covered behavior is unchanged, and no production CoolTerm or project
+configuration code changed. This stayed outside the matrix keyboard, TEC-1G
+IO, launch, and runtime-control hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |

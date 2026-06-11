@@ -7,18 +7,47 @@ import { resolveCoolTermHexArtifact } from '../../src/extension/coolterm/coolter
 
 const tempDirs: string[] = [];
 
-function makeProject(config: unknown): string {
+function makeProject(config: Debug80ProjectConfig): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-coolterm-'));
   tempDirs.push(root);
-  fs.writeFileSync(path.join(root, 'debug80.json'), `${JSON.stringify(config, null, 2)}\n`);
+  writeDebug80Config(root, config);
   return root;
 }
+
+type Debug80ProjectConfig = {
+  outputDir?: string;
+  targets: Record<string, Debug80TargetConfig>;
+};
+
+type Debug80TargetConfig = {
+  artifactBase?: string;
+  hex?: string;
+  outputDir?: string;
+};
 
 function writeHexArtifact(root: string, relativePath: string): string {
   const artifactPath = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
   fs.writeFileSync(artifactPath, ':00000001FF\n');
   return artifactPath;
+}
+
+function writeDebug80Config(root: string, config: Debug80ProjectConfig): void {
+  fs.writeFileSync(path.join(root, 'debug80.json'), `${JSON.stringify(config, null, 2)}\n`);
+}
+
+function expectResolvedHex(root: string, targetName: string, hexPath: string): void {
+  expect(resolveCoolTermHexArtifact(root, targetName)).toEqual({
+    kind: 'found',
+    path: hexPath,
+  });
+}
+
+function expectMissingHex(root: string, targetName: string, relativePath: string): void {
+  expect(resolveCoolTermHexArtifact(root, targetName)).toEqual({
+    kind: 'missing',
+    path: path.join(root, relativePath),
+  });
 }
 
 describe('resolveCoolTermHexArtifact', () => {
@@ -36,10 +65,7 @@ describe('resolveCoolTermHexArtifact', () => {
     });
     const hexPath = writeHexArtifact(root, 'build/app.hex');
 
-    expect(resolveCoolTermHexArtifact(root, 'app')).toEqual({
-      kind: 'found',
-      path: hexPath,
-    });
+    expectResolvedHex(root, 'app', hexPath);
   });
 
   it('infers outputDir/artifactBase when target hex is omitted', () => {
@@ -51,10 +77,7 @@ describe('resolveCoolTermHexArtifact', () => {
     });
     const hexPath = writeHexArtifact(root, 'build/monitor.hex');
 
-    expect(resolveCoolTermHexArtifact(root, 'app')).toEqual({
-      kind: 'found',
-      path: hexPath,
-    });
+    expectResolvedHex(root, 'app', hexPath);
   });
 
   it('reports the expected path when the inferred hex file has not been built', () => {
@@ -64,9 +87,6 @@ describe('resolveCoolTermHexArtifact', () => {
       },
     });
 
-    expect(resolveCoolTermHexArtifact(root, 'app')).toEqual({
-      kind: 'missing',
-      path: path.join(root, 'build', 'app.hex'),
-    });
+    expectMissingHex(root, 'app', path.join('build', 'app.hex'));
   });
 });
