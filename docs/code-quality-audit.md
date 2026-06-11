@@ -2913,6 +2913,19 @@ The covered behavior is unchanged, and no production CoolTerm or project
 configuration code changed. This stayed outside the matrix keyboard, TEC-1G
 IO, launch, and runtime-control hot zones.
 
+### 2026-06-11: Project Gitignore Test Fixture Cleanup
+
+This pass stayed in `tests/extension/project-scaffolding-gitignore.test.ts`
+and extracted local helpers for `.gitignore` path lookup, file reads/writes,
+existence checks, and Debug80 block counting. The test cases now keep the
+scaffolding policy visible: a Debug80 block is created without reintroducing
+the retired `.debug80/` cache entry, repeated runs do not duplicate the block,
+and existing user content remains at the top of the file.
+
+The covered behavior is unchanged, and no production project scaffolding code
+changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
+runtime-control hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
