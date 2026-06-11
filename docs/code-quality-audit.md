@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: CoolTerm Remote Client Test Fixture Cleanup
+
+`tests/extension/coolterm-remote-client.test.ts` now uses local constants for
+the CoolTerm packet magic, first packet id, send-text-file operation id, test
+host, and timeout, plus helpers for constructing the client and asserting
+packet headers. The tests still cover ping packet emission with `ACK_SUCCESS`
+handling and text-file send requests with the expected file path payload.
+
+This is intentionally test-only cleanup. It keeps CoolTerm remote protocol
+coverage intact while moving repeated client setup and packet header literals
+out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/coolterm-remote-client.test.ts
+```
+
 ### 2026-06-11: Bundle Materialize Test Fixture Cleanup
 
 `tests/extension/bundle-materialize.test.ts` now uses local helpers for
