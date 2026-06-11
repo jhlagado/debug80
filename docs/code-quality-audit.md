@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Config Control Test Fixture Cleanup
+
+`tests/extension/platform-view-config-controls.test.ts` now uses a local
+save-config action helper for selected workspace resolution and repeated
+platform action setup. The tests still cover platform id normalization, missing
+workspace handling, selecting a platform for uninitialized workspaces, rejecting
+invalid platform values, and leaving initialized projects unchanged.
+
+This is intentionally test-only cleanup. It keeps platform config-control
+coverage intact while moving repeated workspace/action construction out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-config-controls.test.ts
+```
+
 ### 2026-06-11: Platform View Session State Test Fixture Cleanup
 
 `tests/extension/platform-view-session-state.test.ts` now uses a local session

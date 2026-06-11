@@ -31,31 +31,19 @@ describe('platform-view-config-controls', () => {
   });
 
   it('reports no workspace when no selected workspace can be resolved', () => {
-    expect(
-      resolveSaveProjectConfigAction('tec1g', {
-        resolveWorkspace: () => undefined,
-      })
-    ).toEqual({ kind: 'noWorkspace' });
+    expect(resolveAction('tec1g', undefined)).toEqual({ kind: 'noWorkspace' });
   });
 
   it('selects a platform for uninitialized workspaces', () => {
     vi.mocked(existsSync).mockReturnValue(false);
 
-    expect(
-      resolveSaveProjectConfigAction('tec1g', {
-        resolveWorkspace: () => createFolder('/workspace/demo'),
-      })
-    ).toEqual({ kind: 'selectPlatform', platform: 'tec1g' });
+    expect(resolveAction('tec1g')).toEqual({ kind: 'selectPlatform', platform: 'tec1g' });
   });
 
   it('rejects invalid platform values for uninitialized workspaces', () => {
     vi.mocked(existsSync).mockReturnValue(false);
 
-    expect(
-      resolveSaveProjectConfigAction('bad', {
-        resolveWorkspace: () => createFolder('/workspace/demo'),
-      })
-    ).toEqual({ kind: 'invalidPlatform' });
+    expect(resolveAction('bad')).toEqual({ kind: 'invalidPlatform' });
   });
 
   it('keeps initialized projects unchanged', () => {
@@ -63,13 +51,21 @@ describe('platform-view-config-controls', () => {
       String(candidate).replace(/\\/g, '/').endsWith('/debug80.json')
     );
 
-    expect(
-      resolveSaveProjectConfigAction('simple', {
-        resolveWorkspace: () => createFolder('/workspace/demo'),
-      })
-    ).toEqual({ kind: 'projectAlreadyInitialized' });
+    expect(resolveAction('simple')).toEqual({ kind: 'projectAlreadyInitialized' });
   });
 });
+
+function resolveAction(
+  platform: string,
+  ...folderOverride: [vscode.WorkspaceFolder | undefined] | []
+): ReturnType<typeof resolveSaveProjectConfigAction> {
+  const selectedFolder =
+    folderOverride.length === 0 ? createFolder('/workspace/demo') : folderOverride[0];
+
+  return resolveSaveProjectConfigAction(platform, {
+    resolveWorkspace: () => selectedFolder,
+  });
+}
 
 function createFolder(fsPath: string): vscode.WorkspaceFolder {
   return { name: 'demo', uri: { fsPath } } as vscode.WorkspaceFolder;
