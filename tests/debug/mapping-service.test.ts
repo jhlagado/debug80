@@ -116,6 +116,26 @@ function nativeMapFor(filePath: string, line = 3): D8DebugMap {
   );
 }
 
+function makeBuildMapProject(): {
+  dir: string;
+  hexPath: string;
+  asmPath: string;
+  mapPath: string;
+  logs: string[];
+} {
+  const dir = makeTempMapDir();
+  const hexPath = path.join(dir, 'build', 'simple.hex');
+  const asmPath = path.join(dir, 'src', 'simple.asm');
+  const mapPath = path.join(dir, 'build', 'simple.d8.json');
+  const logs: string[] = [];
+
+  writeFile(hexPath, ':00000001FF\n');
+  writeFile(asmPath, 'START:\n  NOP\n');
+  writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
+
+  return { dir, hexPath, asmPath, mapPath, logs };
+}
+
 describe('mapping-service', () => {
   it('detects native D8 maps from missing generator metadata or tool-only producers', () => {
     const baseMap: Omit<D8DebugMap, 'generator'> = {
@@ -258,18 +278,11 @@ describe('mapping-service', () => {
   });
 
   it('loads native auxiliary source maps from explicit platform ROM paths', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'build', 'simple.hex');
-    const asmPath = path.join(dir, 'src', 'simple.asm');
-    const mapPath = path.join(dir, 'build', 'simple.d8.json');
+    const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
     const auxiliaryDir = path.join(dir, 'bundle', 'mon3');
     const auxiliarySource = path.join(auxiliaryDir, 'mon3.z80');
     const auxiliaryMapPath = path.join(auxiliaryDir, 'mon3.d8.json');
-    const logs: string[] = [];
 
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
-    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
     writeFile(auxiliarySource, 'BOOT:\n  NOP\n');
     writeFile(auxiliaryMapPath, JSON.stringify(nativeMapFor('mon3.z80', 2), null, 2));
 
@@ -293,16 +306,9 @@ describe('mapping-service', () => {
   });
 
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'build', 'simple.hex');
-    const asmPath = path.join(dir, 'src', 'simple.asm');
-    const mapPath = path.join(dir, 'build', 'simple.d8.json');
+    const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
     const auxiliaryMapPath = path.join(dir, 'bundle', 'mon3', 'mon3.d8.json');
-    const logs: string[] = [];
 
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
-    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
     writeFile(
       auxiliaryMapPath,
       JSON.stringify(

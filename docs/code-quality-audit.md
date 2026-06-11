@@ -2563,6 +2563,20 @@ reloading app memory.
 The covered behavior is unchanged, and no production request handling changed.
 This stayed outside the matrix keyboard and TEC-1G IO production hot zones.
 
+### 2026-06-11: Mapping Service Auxiliary Fixture Cleanup
+
+This pass stayed in `tests/debug/mapping-service.test.ts` and extracted a local
+build-map project fixture for the auxiliary platform-ROM source-map tests. The
+helper owns the repeated build-side HEX, ASM, native target D8 map, and log
+array setup; each test still creates its own auxiliary source map and asserts
+the native versus non-native platform-ROM behavior.
+
+The covered behavior is unchanged: native auxiliary maps are merged and logged
+as platform ROM maps, while non-native auxiliary maps are ignored.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
