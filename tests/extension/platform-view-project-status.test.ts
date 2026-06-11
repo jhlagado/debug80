@@ -53,33 +53,17 @@ import {
   resolvePlatformViewWorkspace,
 } from '../../src/extension/platform-view-project-status';
 
-const folder = (name: string, fsPath: string, index = 0): vscode.WorkspaceFolder =>
-  ({ name, index, uri: { fsPath } }) as vscode.WorkspaceFolder;
-
 describe('platform-view-project-status', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     workspaceFolders = undefined;
-    findProjectConfigPath.mockImplementation((target: { uri: { fsPath: string } }) =>
-      target.uri.fsPath.includes('project') ? `${target.uri.fsPath}/debug80.json` : undefined
-    );
-    readProjectConfig.mockReturnValue({ projectPlatform: 'tec1g', targets: {} });
-    resolveProjectPlatform.mockReturnValue('tec1g');
-    listProjectTargetChoices.mockReturnValue([
-      { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
-    ]);
-    resolveTargetNameForConfig.mockReturnValue('app');
-    resolveProjectStatusSummary.mockReturnValue({
-      projectName: 'project',
-      targetName: 'app',
-      entrySource: 'src/main.asm',
-    });
     resolveRememberedWorkspaceFolder.mockReturnValue(undefined);
+    mockInitializedProjectStatus();
   });
 
   it('uses the selected workspace when it is still open', () => {
-    const selected = folder('project', '/workspace/project');
-    const openFolders = [folder('other', '/workspace/other'), selected];
+    const selected = workspaceFolder('project', '/workspace/project');
+    const openFolders = [workspaceFolder('other', '/workspace/other'), selected];
 
     expect(
       resolvePlatformViewWorkspace(
@@ -91,9 +75,9 @@ describe('platform-view-project-status', () => {
   });
 
   it('falls back to remembered workspace before single-folder fallback', () => {
-    const remembered = folder('project', '/workspace/project');
-    const singleFolder = folder('fallback', '/workspace/fallback');
-    const workspaceState = { get: vi.fn(), update: vi.fn() };
+    const remembered = workspaceFolder('project', '/workspace/project');
+    const singleFolder = workspaceFolder('fallback', '/workspace/fallback');
+    const workspaceState = memento();
     resolveRememberedWorkspaceFolder.mockReturnValue(remembered);
 
     expect(
@@ -126,12 +110,12 @@ describe('platform-view-project-status', () => {
   });
 
   it('builds an initialized project status payload with target and entry source', () => {
-    const project = folder('project', '/workspace/project');
+    const project = workspaceFolder('project', '/workspace/project');
 
     expect(
       buildPlatformViewProjectStatus(
         {
-          workspaceState: { get: vi.fn(), update: vi.fn() } as never,
+          workspaceState: memento() as never,
           selectedWorkspace: project,
           currentPlatform: 'simple',
           stopOnEntry: true,
@@ -162,7 +146,7 @@ describe('platform-view-project-status', () => {
   });
 
   it('builds an uninitialized status for a selected folder without a project', () => {
-    const openFolder = folder('scratch', '/workspace/scratch');
+    const openFolder = workspaceFolder('scratch', '/workspace/scratch');
 
     expect(
       buildPlatformViewProjectStatus(
@@ -183,4 +167,29 @@ describe('platform-view-project-status', () => {
       targets: [],
     });
   });
+
+  function workspaceFolder(name: string, fsPath: string, index = 0): vscode.WorkspaceFolder {
+    return { name, index, uri: { fsPath } } as vscode.WorkspaceFolder;
+  }
+
+  function memento() {
+    return { get: vi.fn(), update: vi.fn() };
+  }
+
+  function mockInitializedProjectStatus() {
+    findProjectConfigPath.mockImplementation((target: { uri: { fsPath: string } }) =>
+      target.uri.fsPath.includes('project') ? `${target.uri.fsPath}/debug80.json` : undefined
+    );
+    readProjectConfig.mockReturnValue({ projectPlatform: 'tec1g', targets: {} });
+    resolveProjectPlatform.mockReturnValue('tec1g');
+    listProjectTargetChoices.mockReturnValue([
+      { name: 'app', description: 'src/main.asm', detail: 'src/main.asm' },
+    ]);
+    resolveTargetNameForConfig.mockReturnValue('app');
+    resolveProjectStatusSummary.mockReturnValue({
+      projectName: 'project',
+      targetName: 'app',
+      entrySource: 'src/main.asm',
+    });
+  }
 });

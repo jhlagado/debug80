@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Project Status Test Fixture Cleanup
+
+`tests/extension/platform-view-project-status.test.ts` now uses local helpers
+for workspace folder fixtures, memento state, and initialized-project status
+mock setup. The tests still cover selected and remembered workspace resolution,
+no-workspace status, initialized target/status payloads, and uninitialized
+folder status.
+
+This is intentionally test-only cleanup. It keeps platform project-status UI
+coverage intact while moving repeated mocked project setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-project-status.test.ts
+```
+
 ### 2026-06-11: Project Status Test Fixture Cleanup
 
 `tests/extension/project-status.test.ts` now uses a local project fixture helper
