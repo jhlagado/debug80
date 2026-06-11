@@ -15,13 +15,7 @@ describe('platform-view-registry', () => {
   });
 
   it('preloads registered modules and creates per-platform state', async () => {
-    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
-    const modules = createModules();
-    registerPlatformUi(createEntry('registry-test-a', modules));
-    const registry = new PlatformViewRegistry({
-      postSnapshot: vi.fn().mockResolvedValue(undefined),
-      onSnapshotFailed: vi.fn(),
-    });
+    const { registry, modules } = await createRegistryHarness('registry-test-a');
 
     await registry.preloadAll();
 
@@ -35,13 +29,11 @@ describe('platform-view-registry', () => {
   });
 
   it('does not reload modules that are already cached', async () => {
-    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
     const modules = createModules();
     const loadUiModules = vi.fn().mockResolvedValue(modules);
-    registerPlatformUi({ id: 'registry-test-b', loadUiModules });
-    const registry = new PlatformViewRegistry({
-      postSnapshot: vi.fn().mockResolvedValue(undefined),
-      onSnapshotFailed: vi.fn(),
+    const { registry } = await createRegistryHarness('registry-test-b', {
+      modules,
+      entry: { id: 'registry-test-b', loadUiModules },
     });
 
     await registry.preloadAll();
@@ -60,12 +52,11 @@ describe('platform-view-registry', () => {
   });
 
   it('wires snapshot handlers through the registry callbacks', async () => {
-    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
-    const modules = createModules();
     const postSnapshot = vi.fn().mockResolvedValue(undefined);
     const onSnapshotFailed = vi.fn();
-    registerPlatformUi(createEntry('registry-test-c', modules));
-    const registry = new PlatformViewRegistry({ postSnapshot, onSnapshotFailed });
+    const { registry } = await createRegistryHarness('registry-test-c', {
+      callbacks: { postSnapshot, onSnapshotFailed },
+    });
 
     await registry.preloadAll();
     const bundle = registry.getBundle('registry-test-c');
@@ -81,13 +72,7 @@ describe('platform-view-registry', () => {
   });
 
   it('iterates known platform states with their modules', async () => {
-    const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
-    const modules = createModules();
-    registerPlatformUi(createEntry('registry-test-d', modules));
-    const registry = new PlatformViewRegistry({
-      postSnapshot: vi.fn().mockResolvedValue(undefined),
-      onSnapshotFailed: vi.fn(),
-    });
+    const { registry, modules } = await createRegistryHarness('registry-test-d');
 
     await registry.preloadAll();
     const seen: string[] = [];
@@ -119,6 +104,39 @@ async function loadRegistryModules(): Promise<{
     import('../../src/extension/platform-view-manifest'),
   ]);
   return { PlatformViewRegistry, registerPlatformUi };
+}
+
+type RegistryHarnessOptions = {
+  callbacks?: {
+    postSnapshot: (command: string, payload: unknown) => Promise<void>;
+    onSnapshotFailed: (failed: boolean) => void;
+  };
+  entry?: PlatformUiEntry;
+  modules?: PlatformUiModules;
+};
+
+async function createRegistryHarness(
+  id: string,
+  options: RegistryHarnessOptions = {}
+): Promise<{
+  registry: InstanceType<
+    typeof import('../../src/extension/platform-view-registry').PlatformViewRegistry
+  >;
+  modules: PlatformUiModules;
+}> {
+  const { PlatformViewRegistry, registerPlatformUi } = await loadRegistryModules();
+  const modules = options.modules ?? createModules();
+  const callbacks = options.callbacks ?? {
+    postSnapshot: vi.fn().mockResolvedValue(undefined),
+    onSnapshotFailed: vi.fn(),
+  };
+
+  registerPlatformUi(options.entry ?? createEntry(id, modules));
+
+  return {
+    registry: new PlatformViewRegistry(callbacks),
+    modules,
+  };
 }
 
 function createModules(): PlatformUiModules {

@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Registry Test Fixture Cleanup
+
+`tests/extension/platform-view-registry.test.ts` now uses a local registry
+harness for module creation, UI entry registration, registry construction, and
+snapshot callback wiring. The tests still cover preloading registered modules,
+preserving cached platform state, snapshot callback routing, and iterating known
+platform states.
+
+This is intentionally test-only cleanup. It keeps platform-view registry
+coverage intact while moving repeated registry setup out of the behavior
+assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-registry.test.ts
+```
+
 ### 2026-06-11: Platform View Serial Action Test Fixture Cleanup
 
 `tests/extension/platform-view-serial-actions.test.ts` now uses a local serial
