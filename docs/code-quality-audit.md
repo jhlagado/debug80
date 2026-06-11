@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target QuickPick Test Fixture Cleanup
+
+`tests/extension/project-target-quickpick-policy.test.ts` now uses local
+helpers for target choice rows and shared AZM entry-source QuickPick options.
+The tests still cover remembered/default target labels, bound and unbound AZM
+source rows, and omission of unbound source rows when no target can be bound.
+
+This is intentionally test-only cleanup. It keeps project target QuickPick
+policy coverage intact while moving repeated row setup and shared entry-source
+option scaffolding out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-quickpick-policy.test.ts
+```
+
 ### 2026-06-11: Workspace Selection Test Fixture Cleanup
 
 `tests/extension/workspace-selection.test.ts` now uses local helpers for
