@@ -9,12 +9,7 @@ import { createZ80Runtime } from '../../src/z80/runtime';
 
 describe('memory-write', () => {
   it('writes a byte through the runtime memory hook when paused', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createMemoryWriteSession();
     const memWrite = vi.fn((address: number, value: number) => {
       sessionState.runtime!.hardware.memory[address & 0xffff] = value & 0xff;
     });
@@ -31,12 +26,7 @@ describe('memory-write', () => {
   });
 
   it('rejects paused writes that do not stick', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createMemoryWriteSession();
     sessionState.runtime.hardware.memWrite = vi.fn();
 
     const error = handleMemoryWriteRequest(sessionState, {
@@ -49,12 +39,7 @@ describe('memory-write', () => {
   });
 
   it('uses force writes when the read-only override is explicit', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createMemoryWriteSession();
     sessionState.runtime.hardware.memWrite = vi.fn();
     const forceMemWrite = vi.fn((address: number, value: number) => {
       sessionState.runtime!.hardware.memory[address & 0xffff] = value & 0xff;
@@ -73,12 +58,7 @@ describe('memory-write', () => {
   });
 
   it('rejects writes while the session is running', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = true;
+    const sessionState = createMemoryWriteSession({ running: true });
 
     const error = handleMemoryWriteRequest(sessionState, {
       address: 0x1234,
@@ -88,3 +68,15 @@ describe('memory-write', () => {
     expect(error).toBe('Debug80: Memory can only be edited while paused.');
   });
 });
+
+function createMemoryWriteSession(
+  options: { running?: boolean } = {}
+): ReturnType<typeof createSessionState> {
+  const sessionState = createSessionState();
+  sessionState.runtime = createZ80Runtime({
+    memory: new Uint8Array(0x10000),
+    startAddress: 0,
+  });
+  sessionState.runState.isRunning = options.running ?? false;
+  return sessionState;
+}

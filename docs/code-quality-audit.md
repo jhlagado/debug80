@@ -2492,6 +2492,21 @@ default target shape.
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Memory Write Test Fixture Cleanup
+
+This pass stayed in `tests/debug/memory-write.test.ts` and extracted a local
+session/runtime fixture for memory-write request tests. Each case still sets up
+its own write hook behavior, but the repeated `createSessionState`,
+`createZ80Runtime`, memory allocation, and paused/running flag setup now live in
+one helper.
+
+The covered behavior is unchanged: normal paused writes call `memWrite`, writes
+that do not stick are rejected, explicit read-only overrides use
+`forceMemWrite`, and running sessions reject memory edits.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
