@@ -27,8 +27,26 @@ function readConfig(value: object): void {
   readFileSync.mockReturnValue(JSON.stringify(value));
 }
 
+function selectedTargetKey(projectConfig = configPath): string {
+  return `debug80.selectedTarget:${projectConfig}`;
+}
+
 function sourceExistsExcept(missingSuffix: string): (p: unknown) => boolean {
   return (p) => !String(p).replace(/\\/g, '/').endsWith(missingSuffix);
+}
+
+function selectTarget(
+  targetName: string,
+  sourceFile: string,
+  options: { description?: string } = {}
+): void {
+  const description = options.description ?? sourceFile;
+  showQuickPick.mockResolvedValueOnce({
+    label: targetName,
+    description,
+    detail: sourceFile,
+    targetName,
+  });
 }
 
 async function createController(storedTarget?: string) {
@@ -66,10 +84,7 @@ describe('ProjectTargetSelectionController', () => {
 
     expect(target).toBe('serial');
     expect(showQuickPick).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith(
-      'debug80.selectedTarget:/workspace/debug80/.vscode/debug80.json',
-      'serial'
-    );
+    expect(update).toHaveBeenCalledWith(selectedTargetKey(), 'serial');
   });
 
   it('uses the default target when no remembered target exists', async () => {
@@ -95,12 +110,7 @@ describe('ProjectTargetSelectionController', () => {
         serial: { sourceFile: 'src/serial.asm', assembler: 'azm' },
       },
     });
-    showQuickPick.mockResolvedValueOnce({
-      label: 'serial',
-      description: 'src/serial.asm',
-      detail: 'src/serial.asm',
-      targetName: 'serial',
-    });
+    selectTarget('serial', 'src/serial.asm');
 
     const { controller } = await createController();
     const target = await controller.resolveTarget(configPath, {
@@ -126,12 +136,7 @@ describe('ProjectTargetSelectionController', () => {
         serial: { sourceFile: 'src/serial.asm', platform: 'tec1g' },
       },
     });
-    showQuickPick.mockResolvedValueOnce({
-      label: 'serial',
-      description: 'src/serial.asm • tec1g',
-      detail: 'src/serial.asm',
-      targetName: 'serial',
-    });
+    selectTarget('serial', 'src/serial.asm', { description: 'src/serial.asm • tec1g' });
 
     const { controller, update } = await createController();
     const target = await controller.resolveTarget(configPath, {
@@ -142,10 +147,7 @@ describe('ProjectTargetSelectionController', () => {
 
     expect(target).toBe('serial');
     expect(showQuickPick).toHaveBeenCalledOnce();
-    expect(update).toHaveBeenCalledWith(
-      'debug80.selectedTarget:/workspace/debug80/.vscode/debug80.json',
-      'serial'
-    );
+    expect(update).toHaveBeenCalledWith(selectedTargetKey(), 'serial');
   });
 
   it('resolveTargetNameForConfig uses defaultTarget when workspace memento is absent', async () => {

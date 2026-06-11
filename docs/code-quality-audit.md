@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Selection Test Fixture Cleanup
+
+`tests/extension/project-target-selection.test.ts` now uses local helpers for
+selected-target memento keys and QuickPick target selection rows. The tests
+still cover remembered target reuse, default target selection, prompted target
+selection, forced prompting, target-name resolution from config, missing program
+file filtering, and remembered-target invalidation when a source file is
+removed.
+
+This is intentionally test-only cleanup. It keeps project target selection
+coverage intact while moving repeated memento-key literals and QuickPick item
+construction out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-selection.test.ts
+```
+
 ### 2026-06-11: Workspace Selection Test Fixture Cleanup
 
 `tests/extension/workspace-selection.test.ts` now uses local helpers for
