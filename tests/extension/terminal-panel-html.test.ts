@@ -100,6 +100,30 @@ describe('terminal panel html', () => {
     };
   }
 
+  function requireHarness(): TerminalHarness {
+    if (harness === null) {
+      throw new Error('terminal harness not initialized');
+    }
+    return harness;
+  }
+
+  function dispatchOutput(text: string): void {
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'output', text } }));
+  }
+
+  function dispatchClear(): void {
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'clear' } }));
+  }
+
+  function clickSend(input: HTMLInputElement, send: HTMLButtonElement, value: string): void {
+    input.value = value;
+    send.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  }
+
+  function pressCtrlC(input: HTMLInputElement): void {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+  }
+
   beforeEach(() => {
     messages = [];
     harness = createHarness();
@@ -120,28 +144,22 @@ describe('terminal panel html', () => {
   });
 
   it('preserves output, clear, input, and break handling', () => {
-    if (harness === null) {
-      throw new Error('terminal harness not initialized');
-    }
-
-    const { out, input, send } = harness;
+    const { out, input, send } = requireHarness();
 
     expect(out.textContent).toBe('boot <ready>');
 
-    window.dispatchEvent(new MessageEvent('message', { data: { type: 'output', text: 'A' } }));
+    dispatchOutput('A');
     expect(out.textContent).toBe('boot <ready>A');
 
-    input.value = 'HELLO';
-    send.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    clickSend(input, send, 'HELLO');
     expect(out.textContent).toBe('boot <ready>AHELLO\\n');
     expect(input.value).toBe('');
     expect(messages).toContainEqual({ type: 'input', text: 'HELLO\\n' });
 
-    input.value = 'CTRL';
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+    pressCtrlC(input);
     expect(messages).toContainEqual({ type: 'break' });
 
-    window.dispatchEvent(new MessageEvent('message', { data: { type: 'clear' } }));
+    dispatchClear();
     expect(out.textContent).toBe('');
   });
 });

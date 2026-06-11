@@ -4,7 +4,7 @@ This document records the current code-health state of Debug80 and proposes a
 staged cleanup programme. It is intentionally engineering-facing; user-facing
 manual content belongs at [debug80.com](https://debug80.com/).
 
-Audit date: 2026-06-02 (last reviewed 2026-06-10)
+Audit date: 2026-06-02 (last reviewed 2026-06-11)
 
 ## Summary
 
@@ -32,6 +32,24 @@ typing — while continuing the Phase 5–7 programme:
 5. Reduce test harness duplication in oversized integration test files.
 
 ## Recent Updates
+
+### 2026-06-11: Terminal Panel HTML Test Fixture Cleanup
+
+`tests/extension/terminal-panel-html.test.ts` now uses local helpers for
+requiring the jsdom harness, dispatching output and clear messages, clicking
+the send button, and sending Ctrl-C. The tests still cover escaped initial
+output, nonce-protected script policy, terminal output appending, clear
+handling, submitted input echoing, and break message emission.
+
+This is intentionally test-only cleanup. It keeps terminal panel HTML coverage
+intact while moving repeated DOM event construction and nullable harness checks
+out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/terminal-panel-html.test.ts
+```
 
 ### 2026-06-11: CoolTerm Remote Client Test Fixture Cleanup
 
