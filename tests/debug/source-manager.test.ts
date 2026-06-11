@@ -11,6 +11,7 @@ import { buildD8DebugMap } from '../../src/mapping/d8-map';
 
 import * as mappingService from '../../src/debug/mapping/mapping-service';
 import { SourceManager } from '../../src/debug/mapping/source-manager';
+import type { SourceMapSegment } from '../../src/mapping/types';
 
 const writeFile = (filePath: string, content: string): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -45,26 +46,7 @@ describe('source-manager', () => {
     const mapPath = path.join(dir, 'simple.d8.json');
     writeFile(hexPath, ':00000001FF\n');
     writeFile(sourcePath, 'START:\n  NOP\n');
-    writeFile(
-      mapPath,
-      JSON.stringify(
-        buildD8DebugMap(
-          {
-            segments: [
-              {
-                start: 0x1000,
-                end: 0x1001,
-                loc: { file: sourcePath, line: 2 },
-                context: { line: 1, text: 'NOP' },
-                confidence: 'HIGH',
-              },
-            ],
-            anchors: [],
-          },
-          { arch: 'z80', addressWidth: 16, endianness: 'little', generator: { tool: 'azm' } }
-        )
-      )
-    );
+    writeNativeMap(mapPath, [segmentFor(sourcePath, 2)]);
 
     const logs: string[] = [];
     const manager = createSourceManager(dir, logs, {
@@ -120,6 +102,31 @@ describe('source-manager', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
     tmpDirs.push(dir);
     return dir;
+  }
+
+  function segmentFor(file: string, line: number): SourceMapSegment {
+    return {
+      start: 0x1000,
+      end: 0x1001,
+      loc: { file, line },
+      context: { line: 1, text: 'NOP' },
+      confidence: 'HIGH',
+    };
+  }
+
+  function writeNativeMap(mapPath: string, segments: SourceMapSegment[]): void {
+    writeFile(
+      mapPath,
+      JSON.stringify(
+        buildD8DebugMap(
+          {
+            segments,
+            anchors: [],
+          },
+          { arch: 'z80', addressWidth: 16, endianness: 'little', generator: { tool: 'azm' } }
+        )
+      )
+    );
   }
 
   function createSourceManager(

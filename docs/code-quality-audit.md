@@ -2462,6 +2462,20 @@ regenerating them.
 No production code changed in this pass. The cleanup deliberately avoided the
 matrix keyboard and TEC-1G IO hot zones.
 
+### 2026-06-11: Source Manager Test Fixture Cleanup
+
+This low-risk pass stayed in `tests/debug/source-manager.test.ts` and extracted
+small helpers for native D8 segment construction and map writing. The production
+`SourceManager` and mapping services were not changed.
+
+The cleanup reduces inline JSON/debug-map setup in the source-manager tests
+while keeping the assertions focused on the public behavior: building mapping
+state from a native AZM source map and passing a resolved ASM path to the
+mapping service when the launch request omits `sourceFile`.
+
+This is another test-only cleanup outside the matrix keyboard and TEC-1G IO
+hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
