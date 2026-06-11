@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Config Policy Test Fixture Cleanup
+
+`tests/extension/project-target-config-policy.test.ts` now uses local helpers
+for source-backed target fixtures, platform-only target fixtures, and expected
+target choice rows. The tests still cover source/platform descriptions,
+malformed and missing target filtering, default target omission, and preference
+for the explicit configured target over the default target.
+
+This is intentionally test-only cleanup. It keeps project target config policy
+coverage intact while separating target config input setup from expected
+QuickPick row assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-config-policy.test.ts
+```
+
 ### 2026-06-11: Project Target Source Policy Test Fixture Cleanup
 
 `tests/extension/project-target-source-policy.test.ts` now uses local helpers

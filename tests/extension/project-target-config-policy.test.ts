@@ -2,6 +2,33 @@ import { describe, expect, it } from 'vitest';
 
 import { loadVisibleTargetChoices } from '../../src/extension/project-target-config-policy';
 
+function sourceTarget(sourceFile: string, platform?: string) {
+  return {
+    sourceFile,
+    ...(platform !== undefined ? { platform } : {}),
+  };
+}
+
+function platformTarget(platform: string) {
+  return { platform };
+}
+
+function sourceChoice(name: string, sourceFile: string, platform?: string) {
+  const hasPlatform = platform !== undefined && platform.length > 0;
+  return {
+    name,
+    description: hasPlatform ? `${sourceFile} • ${platform}` : sourceFile,
+    detail: sourceFile,
+  };
+}
+
+function platformChoice(name: string, platform: string) {
+  return {
+    name,
+    description: platform,
+  };
+}
+
 describe('project target config policy', () => {
   it('builds target choices with source and platform descriptions', () => {
     const loaded = loadVisibleTargetChoices({
@@ -9,11 +36,11 @@ describe('project target config policy', () => {
       config: {
         defaultTarget: 'game',
         targets: {
-          game: { sourceFile: 'src/game.main.asm', platform: 'tec1g' },
+          game: sourceTarget('src/game.main.asm', 'tec1g'),
           serial: { asm: 'src/serial.main.asm', platform: 'simple' },
           generated: { source: 'src/generated.main.asm' },
-          platformOnly: { platform: 'tec1g' },
-          blankPlatform: { sourceFile: 'src/blank.main.asm', platform: '' },
+          platformOnly: platformTarget('tec1g'),
+          blankPlatform: sourceTarget('src/blank.main.asm', ''),
         },
       },
       targetExists: () => true,
@@ -22,30 +49,11 @@ describe('project target config policy', () => {
     expect(loaded).toEqual({
       defaultTarget: 'game',
       choices: [
-        {
-          name: 'game',
-          description: 'src/game.main.asm • tec1g',
-          detail: 'src/game.main.asm',
-        },
-        {
-          name: 'serial',
-          description: 'src/serial.main.asm • simple',
-          detail: 'src/serial.main.asm',
-        },
-        {
-          name: 'generated',
-          description: 'src/generated.main.asm',
-          detail: 'src/generated.main.asm',
-        },
-        {
-          name: 'platformOnly',
-          description: 'tec1g',
-        },
-        {
-          name: 'blankPlatform',
-          description: 'src/blank.main.asm',
-          detail: 'src/blank.main.asm',
-        },
+        sourceChoice('game', 'src/game.main.asm', 'tec1g'),
+        sourceChoice('serial', 'src/serial.main.asm', 'simple'),
+        sourceChoice('generated', 'src/generated.main.asm'),
+        platformChoice('platformOnly', 'tec1g'),
+        sourceChoice('blankPlatform', 'src/blank.main.asm'),
       ],
     });
   });
@@ -56,8 +64,8 @@ describe('project target config policy', () => {
       config: {
         target: 'kept',
         targets: {
-          kept: { sourceFile: 'src/kept.main.asm' },
-          missing: { sourceFile: 'src/missing.main.asm' },
+          kept: sourceTarget('src/kept.main.asm'),
+          missing: sourceTarget('src/missing.main.asm'),
           invalidString: 'src/not-a-target.asm',
           invalidArray: [{ sourceFile: 'src/array.asm' }],
           invalidNull: null,
@@ -68,13 +76,7 @@ describe('project target config policy', () => {
 
     expect(loaded).toEqual({
       defaultTarget: 'kept',
-      choices: [
-        {
-          name: 'kept',
-          description: 'src/kept.main.asm',
-          detail: 'src/kept.main.asm',
-        },
-      ],
+      choices: [sourceChoice('kept', 'src/kept.main.asm')],
     });
   });
 
@@ -84,19 +86,13 @@ describe('project target config policy', () => {
         projectRoot: '/workspace/demo',
         config: {
           targets: {
-            only: { sourceFile: 'src/only.main.asm' },
+            only: sourceTarget('src/only.main.asm'),
           },
         },
         targetExists: () => true,
       })
     ).toEqual({
-      choices: [
-        {
-          name: 'only',
-          description: 'src/only.main.asm',
-          detail: 'src/only.main.asm',
-        },
-      ],
+      choices: [sourceChoice('only', 'src/only.main.asm')],
     });
   });
 
@@ -108,8 +104,8 @@ describe('project target config policy', () => {
           target: 'explicit',
           defaultTarget: 'fallback',
           targets: {
-            explicit: { sourceFile: 'src/explicit.main.asm' },
-            fallback: { sourceFile: 'src/fallback.main.asm' },
+            explicit: sourceTarget('src/explicit.main.asm'),
+            fallback: sourceTarget('src/fallback.main.asm'),
           },
         },
         targetExists: () => true,
