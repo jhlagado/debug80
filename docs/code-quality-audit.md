@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Source Policy Test Fixture Cleanup
+
+`tests/extension/project-target-source-policy.test.ts` now uses local helpers
+for the shared project root, covered-source calculation, discoverable target
+construction, and entry-source grouping. The tests still cover source path
+normalization, filtering covered configured sources, generating uniquely named
+discoverable targets, and grouping configured targets by entry source.
+
+This is intentionally test-only cleanup. It keeps target source discovery
+policy coverage intact while moving repeated root and policy-call setup out of
+the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-source-policy.test.ts
+```
+
 ### 2026-06-11: Project Target Policy Test Fixture Cleanup
 
 `tests/extension/project-target-policy.test.ts` now uses a local target
