@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Config Utils Test Fixture Cleanup
+
+`tests/debug/config-utils.test.ts` now uses a local source-file fixture helper
+for the target inference scenarios. The tests still cover recursive directory
+creation, empty/current-directory no-ops, existing directories, `src/main.asm`
+target inference, fallback ASM target inference, and no-target defaults.
+
+This is intentionally test-only cleanup. It keeps launch config utility
+coverage intact while moving source-file fixture path construction out of the
+target inference assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/config-utils.test.ts
+```
+
 ### 2026-06-11: Performance Monitor Test Fixture Cleanup
 
 `tests/debug/performance-monitor.test.ts` now uses a local monitor fixture helper

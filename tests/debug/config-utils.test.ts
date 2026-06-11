@@ -19,6 +19,10 @@ const writeTextFile = (filePath: string, contents: string): void => {
   fs.writeFileSync(filePath, contents);
 };
 
+const writeSourceFile = (projectRoot: string, relativePath: string, contents = '; test'): void => {
+  writeTextFile(path.join(projectRoot, relativePath), contents);
+};
+
 describe('config-utils', () => {
   describe('ensureDirExists', () => {
     it('creates directory recursively', () => {
@@ -54,8 +58,7 @@ describe('config-utils', () => {
   describe('inferDefaultTarget', () => {
     it('infers src/main.asm when present', () => {
       const inferred = withTempDir((dir) => {
-        const mainPath = path.join(dir, 'src', 'main.asm');
-        writeTextFile(mainPath, '; test');
+        writeSourceFile(dir, path.join('src', 'main.asm'));
 
         return inferDefaultTarget(dir);
       });
@@ -68,8 +71,7 @@ describe('config-utils', () => {
 
     it('falls back to first asm in tree when main not present', () => {
       const inferred = withTempDir((dir) => {
-        const asmPath = path.join(dir, 'src', 'lib', 'util.asm');
-        writeTextFile(asmPath, '; util');
+        writeSourceFile(dir, path.join('src', 'lib', 'util.asm'), '; util');
 
         return inferDefaultTarget(dir);
       });
