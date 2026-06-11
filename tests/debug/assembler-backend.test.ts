@@ -11,22 +11,26 @@ vi.mock('vscode', () => ({
 import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
 import { AzmBackend } from '../../src/debug/launch/azm-backend';
 
+function expectAzmBackend(id?: string, sourcePath?: string): void {
+  expect(resolveAssemblerBackend(id, sourcePath)).toBeInstanceOf(AzmBackend);
+}
+
 describe('assembler-backend', () => {
   it('returns azm by default', () => {
-    expect(resolveAssemblerBackend(undefined, undefined)).toBeInstanceOf(AzmBackend);
+    expectAzmBackend();
   });
 
   it('returns azm when explicitly requested', () => {
-    expect(resolveAssemblerBackend('azm', undefined)).toBeInstanceOf(AzmBackend);
+    expectAzmBackend('azm');
   });
 
   it('returns azm for asm-family source paths', () => {
-    expect(resolveAssemblerBackend(undefined, '/tmp/program.asm')).toBeInstanceOf(AzmBackend);
-    expect(resolveAssemblerBackend(undefined, '/tmp/program.z80')).toBeInstanceOf(AzmBackend);
+    expectAzmBackend(undefined, '/tmp/program.asm');
+    expectAzmBackend(undefined, '/tmp/program.z80');
   });
 
   it('matches azm case-insensitively', () => {
-    expect(resolveAssemblerBackend('AZM', undefined)).toBeInstanceOf(AzmBackend);
+    expectAzmBackend('AZM');
   });
 
   it('throws for unknown backends', () => {
@@ -37,6 +41,6 @@ describe('assembler-backend', () => {
 
   it('does not expose the removed zax backend', () => {
     expect(() => resolveAssemblerBackend('zax', undefined)).toThrow('Unknown assembler backend');
-    expect(resolveAssemblerBackend(undefined, '/tmp/program.zax')).toBeInstanceOf(AzmBackend);
+    expectAzmBackend(undefined, '/tmp/program.zax');
   });
 });

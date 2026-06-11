@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Assembler Backend Test Assertion Cleanup
+
+`tests/debug/assembler-backend.test.ts` now uses a local `expectAzmBackend`
+assertion helper for the repeated AZM backend resolution checks. The tests
+still cover default backend selection, explicit AZM selection, ASM-family
+source path inference, case-insensitive backend ids, unknown backend rejection,
+and the removed ZAX backend path.
+
+This is intentionally test-only cleanup. It keeps assembler backend resolution
+coverage intact while making each case read as the selection policy under test.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/assembler-backend.test.ts
+```
+
 ### 2026-06-11: Config Utils Test Fixture Cleanup
 
 `tests/debug/config-utils.test.ts` now uses a local source-file fixture helper
