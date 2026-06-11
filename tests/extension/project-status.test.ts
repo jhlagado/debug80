@@ -17,18 +17,19 @@ describe('project-status', () => {
   });
 
   it('resolves the selected project target and program file', () => {
-    const root = makeTempDir();
-    writeProjectFile(root, 'src/main.asm');
-    writeProjectFile(root, 'src/serial.asm');
-    writeDebug80Config(root, {
-      defaultTarget: 'app',
-      targets: {
-        app: { sourceFile: 'src/main.asm' },
-        serial: { sourceFile: 'src/serial.asm' },
+    const project = makeProjectFixture({
+      files: ['src/main.asm', 'src/serial.asm'],
+      selectedTarget: 'serial',
+      config: {
+        defaultTarget: 'app',
+        targets: {
+          app: { sourceFile: 'src/main.asm' },
+          serial: { sourceFile: 'src/serial.asm' },
+        },
       },
     });
 
-    const summary = resolveProjectStatusSummary(selectedTargetMemento(root, 'serial'), workspaceFolder(root));
+    const summary = resolveProjectStatusSummary(project.selectedTargetMemento, project.workspaceFolder);
 
     expect(summary).toEqual({
       projectName: 'demo',
@@ -36,6 +37,22 @@ describe('project-status', () => {
       entrySource: 'src/serial.asm',
     });
   });
+
+  function makeProjectFixture(options: {
+    files: string[];
+    selectedTarget: string;
+    config: unknown;
+  }) {
+    const root = makeTempDir();
+    for (const file of options.files) {
+      writeProjectFile(root, file);
+    }
+    writeDebug80Config(root, options.config);
+    return {
+      selectedTargetMemento: selectedTargetMemento(root, options.selectedTarget),
+      workspaceFolder: workspaceFolder(root),
+    };
+  }
 
   function makeTempDir(): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-project-status-'));

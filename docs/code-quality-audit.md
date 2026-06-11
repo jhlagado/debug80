@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Status Test Fixture Cleanup
+
+`tests/extension/project-status.test.ts` now uses a local project fixture helper
+for temporary source files, `debug80.json` setup, selected-target memento state,
+and workspace folder construction. The test still covers resolving the selected
+target and entry source from a configured Debug80 project.
+
+This is intentionally test-only cleanup. It keeps project status coverage
+intact while moving repeated temporary project setup out of the behavior
+assertion.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-status.test.ts
+```
+
 ### 2026-06-11: Project Target Source Cache Harness Cleanup
 
 `tests/extension/project-target-filesystem.test.ts` now uses a local source
