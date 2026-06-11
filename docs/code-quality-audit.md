@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Session State Test Fixture Cleanup
+
+`tests/debug/session-state.test.ts` now uses a typed local fixture helper for
+the entry CPU snapshot used by the reset coverage. The tests still cover reset
+of mutable session fields, launch entry state clearing, and preservation of the
+`runState` object identity across reset.
+
+This is intentionally test-only cleanup. It keeps session reset behavior
+coverage intact while moving the bulky CPU snapshot fixture out of the reset
+assertion path.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/session-state.test.ts
+```
+
 ### 2026-06-11: Adapter Request Controller Test Helper Cleanup
 
 `tests/debug/adapter-request-controller.test.ts` now uses local helpers for the
