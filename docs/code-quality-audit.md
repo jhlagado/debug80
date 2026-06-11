@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Target Source Policy Test Fixture Cleanup
+
+`tests/extension/project-target-source-policy.test.ts` now uses local helpers
+for configured target source fixtures and target choice rows. The tests still
+cover entry-source path normalization, configured-source coverage, discoverable
+target naming, and grouping configured targets by entry source path for
+QuickPick rows.
+
+This is intentionally test-only cleanup. It keeps project target source
+discovery coverage intact while moving repeated source-target and target-choice
+row setup out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-target-source-policy.test.ts
+```
+
 ### 2026-06-11: Project Target QuickPick Test Fixture Cleanup
 
 `tests/extension/project-target-quickpick-policy.test.ts` now uses local

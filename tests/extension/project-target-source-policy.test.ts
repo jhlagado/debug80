@@ -7,6 +7,18 @@ import {
   withDiscoverableTargetChoices,
 } from '../../src/extension/project-target-source-policy';
 
+function targetSource(sourceFile: string) {
+  return { sourceFile };
+}
+
+function targetChoice(name: string, sourceFile: string) {
+  return {
+    name,
+    description: sourceFile,
+    detail: sourceFile,
+  };
+}
+
 describe('project target source discovery policy', () => {
   it('normalizes relative and absolute entry source paths against the project root', () => {
     expect(entrySourceKey('/workspace/demo', 'src\\main.asm')).toBe('src/main.asm');
@@ -17,8 +29,8 @@ describe('project target source discovery policy', () => {
     const covered = buildCoveredEntrySourceKeys(
       '/workspace/demo',
       {
-        main: { sourceFile: 'src/main.asm' },
-        removed: { sourceFile: 'src/removed.main.asm' },
+        main: targetSource('src/main.asm'),
+        removed: targetSource('src/removed.main.asm'),
         legacy: { asm: 'src/legacy.main.asm' },
         generated: { source: 'src/generated.main.asm' },
         malformed: 'not-a-target',
@@ -36,8 +48,8 @@ describe('project target source discovery policy', () => {
   it('adds uncovered source files as uniquely named discoverable targets', () => {
     const choices = withDiscoverableTargetChoices({
       choices: [
-        { name: 'main', description: 'src/main.asm', detail: 'src/main.asm' },
-        { name: 'matrix', description: 'src/matrix.main.asm', detail: 'src/matrix.main.asm' },
+        targetChoice('main', 'src/main.asm'),
+        targetChoice('matrix', 'src/matrix.main.asm'),
       ],
       projectRoot: '/workspace/demo',
       coveredSources: new Set(['src/main.asm']),
@@ -45,8 +57,8 @@ describe('project target source discovery policy', () => {
     });
 
     expect(choices).toEqual([
-      { name: 'main', description: 'src/main.asm', detail: 'src/main.asm' },
-      { name: 'matrix', description: 'src/matrix.main.asm', detail: 'src/matrix.main.asm' },
+      targetChoice('main', 'src/main.asm'),
+      targetChoice('matrix', 'src/matrix.main.asm'),
       {
         name: 'matrix.main',
         description: 'src/matrix.main.asm • new',
@@ -68,9 +80,9 @@ describe('project target source discovery policy', () => {
     const grouped = buildTargetsPerEntrySourcePath(
       '/workspace/demo',
       {
-        main: { sourceFile: 'src/main.asm' },
+        main: targetSource('src/main.asm'),
         alias: { asm: '/workspace/demo/src/main.asm' },
-        note: { sourceFile: 'src/readme.txt' },
+        note: targetSource('src/readme.txt'),
         empty: {},
         malformed: null,
       },
