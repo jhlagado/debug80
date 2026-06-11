@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Variable Service Test Fixture Cleanup
+
+`tests/debug/variable-service.test.ts` now uses a local
+`createVariableService` helper for the repeated `Handles<string>` and
+`VariableService` setup. The tests still cover source-map symbol scopes,
+constant-scope hiding, legacy register variable resolution, unknown scopes,
+the absence of a Registers scope in Variables, and memory-backed symbol
+expansion.
+
+This is intentionally test-only cleanup. It keeps Variables panel behavior
+coverage intact while reducing repeated debugger handle wiring in each
+variable-service scenario.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/variable-service.test.ts
+```
+
 ### 2026-06-11: Launch Pipeline Test Helper Cleanup
 
 `tests/debug/launch-pipeline.test.ts` now uses a local `assemble` helper for

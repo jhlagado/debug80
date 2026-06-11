@@ -39,10 +39,17 @@ const buildCpu = (): Cpu => ({
   cycle_counter: 0,
 });
 
+function createVariableService(): {
+  handles: Handles<string>;
+  service: VariableService;
+} {
+  const handles = new Handles<string>();
+  return { handles, service: new VariableService(handles) };
+}
+
 describe('VariableService', () => {
   it('creates source-map symbol scopes without exposing registers', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { service } = createVariableService();
     const scopes = service.createScopes([
       { name: 'START', kind: 'label', file: 'src/main.z80', address: 0x4000 },
       { name: 'WIDTH', kind: 'constant', file: 'src/main.z80', value: 32 },
@@ -52,8 +59,7 @@ describe('VariableService', () => {
   });
 
   it('hides the constants scope when the source map has no constants', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { service } = createVariableService();
     const scopes = service.createScopes([
       { name: 'START', kind: 'label', file: 'src/main.z80', address: 0x4000 },
     ]);
@@ -61,8 +67,7 @@ describe('VariableService', () => {
   });
 
   it('returns register variables for the registers scope', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { handles, service } = createVariableService();
     const scopeRef = handles.create('registers');
     const cpu = buildCpu();
     const runtime = {
@@ -81,23 +86,20 @@ describe('VariableService', () => {
   });
 
   it('returns no variables for unknown scopes', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { service } = createVariableService();
     const variables = service.resolveVariables(999, undefined);
     expect(variables).toEqual([]);
   });
 
   it('does not expose a Registers scope in Variables', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { service } = createVariableService();
     const scopes = service.createScopes();
     expect(scopes.some((scope) => scope.name === 'Registers')).toBe(false);
     expect(service.isRegistersVariablesReference(scopes[0]?.variablesReference ?? 0)).toBe(false);
   });
 
   it('shows source-map symbols and constants as debugger variables', () => {
-    const handles = new Handles<string>();
-    const service = new VariableService(handles);
+    const { service } = createVariableService();
     const memory = new Uint8Array(0x10000);
     memory[0x4200] = 0x41;
     memory[0x4201] = 0x42;
