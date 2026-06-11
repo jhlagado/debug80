@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Session State Test Fixture Cleanup
+
+`tests/extension/platform-view-session-state.test.ts` now uses a local session
+state harness for fresh platform-view session state and named debug sessions.
+The tests still cover tracking and clearing the current session, scoped custom
+event filtering, tracked-session preference over the active debug session, and
+status message construction.
+
+This is intentionally test-only cleanup. It keeps platform-view session state
+coverage intact while moving repeated state/session construction out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-session-state.test.ts
+```
+
 ### 2026-06-11: Platform View Memory Refresh Test Fixture Cleanup
 
 `tests/extension/platform-view-memory-refresh.test.ts` now uses a local memory

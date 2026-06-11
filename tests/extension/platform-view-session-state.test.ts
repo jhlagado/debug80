@@ -17,8 +17,7 @@ import {
 
 describe('platform-view-session-state', () => {
   it('tracks and clears the current debug session', () => {
-    const state = createPlatformViewSessionState();
-    const session = createSession('session-1');
+    const { state, session } = createSessionStateHarness('session-1');
 
     setPlatformViewSession(state, session);
 
@@ -34,12 +33,12 @@ describe('platform-view-session-state', () => {
   });
 
   it('accepts unscoped events and filters scoped events by tracked session id', () => {
-    const state = createPlatformViewSessionState();
+    const { state, session } = createSessionStateHarness('session-1');
 
     expect(shouldAcceptPlatformViewSession(state)).toBe(true);
     expect(shouldAcceptPlatformViewSession(state, 'session-1')).toBe(true);
 
-    setPlatformViewSession(state, createSession('session-1'));
+    setPlatformViewSession(state, session);
 
     expect(shouldAcceptPlatformViewSession(state)).toBe(true);
     expect(shouldAcceptPlatformViewSession(state, 'session-1')).toBe(true);
@@ -47,8 +46,7 @@ describe('platform-view-session-state', () => {
   });
 
   it('prefers the tracked session over the active debug session', () => {
-    const state = createPlatformViewSessionState();
-    const tracked = createSession('tracked');
+    const { state, session: tracked } = createSessionStateHarness('tracked');
     const active = createSession('active');
 
     expect(resolvePlatformViewDebugSession(state, active)).toBe(active);
@@ -59,7 +57,7 @@ describe('platform-view-session-state', () => {
   });
 
   it('builds session status messages from tracked status', () => {
-    const state = createPlatformViewSessionState();
+    const { state } = createSessionStateHarness();
 
     expect(buildPlatformViewSessionStatusMessage(state)).toEqual({
       type: 'sessionStatus',
@@ -74,6 +72,16 @@ describe('platform-view-session-state', () => {
     });
   });
 });
+
+function createSessionStateHarness(id = 'session'): {
+  session: vscode.DebugSession;
+  state: ReturnType<typeof createPlatformViewSessionState>;
+} {
+  return {
+    session: createSession(id),
+    state: createPlatformViewSessionState(),
+  };
+}
 
 function createSession(id: string): vscode.DebugSession {
   return { id, type: 'z80' } as vscode.DebugSession;
