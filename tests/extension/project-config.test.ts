@@ -13,33 +13,14 @@ import {
 } from '../../src/extension/project-config';
 
 describe('project-config helpers', () => {
-  const tmpDirs: string[] = [];
+  const fixture = createProjectConfigFixture();
 
   afterEach(() => {
-    for (const dir of tmpDirs) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-    tmpDirs.length = 0;
+    fixture.cleanup();
   });
 
-  function makeTempProject(prefix: string): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-    tmpDirs.push(root);
-    return root;
-  }
-
-  function writeProjectConfig(root: string, value: object): string {
-    const configPath = path.join(root, 'debug80.json');
-    fs.writeFileSync(configPath, JSON.stringify(value));
-    return configPath;
-  }
-
-  function makeProjectConfigFixture(prefix: string, config: object): { root: string; configPath: string } {
-    const root = makeTempProject(prefix);
-    return {
-      root,
-      configPath: writeProjectConfig(root, config),
-    };
+  function createProject(prefix: string, config: object): { root: string; configPath: string } {
+    return fixture.createProject(prefix, config);
   }
 
   function expectTargetSource(configPath: string, targetName: string, sourceFile: string): void {
@@ -49,7 +30,7 @@ describe('project-config helpers', () => {
   }
 
   it('updates the selected target source in debug80.json', () => {
-    const { configPath } = makeProjectConfigFixture('debug80-project-config-', {
+    const { configPath } = createProject('debug80-project-config-', {
       defaultTarget: 'app',
       targets: {
         app: { sourceFile: 'src/old.asm', platform: 'simple' },
@@ -131,7 +112,7 @@ describe('project-config helpers', () => {
   });
 
   it('recognizes initialized debug80 projects from config presence', () => {
-    const { root } = makeProjectConfigFixture('debug80-project-init-', {
+    const { root } = createProject('debug80-project-init-', {
       projectVersion: DEBUG80_PROJECT_VERSION,
       projectPlatform: 'simple',
       defaultTarget: 'app',
@@ -194,7 +175,7 @@ describe('project-config helpers', () => {
   });
 
   it('upgrades manifests that use profile metadata to version 2 on read', () => {
-    const { configPath } = makeProjectConfigFixture('debug80-project-manifest-v2-', {
+    const { configPath } = createProject('debug80-project-manifest-v2-', {
       defaultProfile: 'mon3',
       profiles: {
         mon3: {
@@ -221,7 +202,7 @@ describe('project-config helpers', () => {
   });
 
   it('clears stale unsupported assembler ids when changing the program file', () => {
-    const { configPath } = makeProjectConfigFixture('debug80-azm-entry-', {
+    const { configPath } = createProject('debug80-azm-entry-', {
       defaultTarget: 'app',
       targets: {
         app: {
@@ -241,3 +222,28 @@ describe('project-config helpers', () => {
     expect(config?.targets?.app?.assembler).toBeUndefined();
   });
 });
+
+type ProjectConfigFixture = {
+  cleanup(): void;
+  createProject(prefix: string, config: object): { root: string; configPath: string };
+};
+
+function createProjectConfigFixture(): ProjectConfigFixture {
+  const tmpDirs: string[] = [];
+
+  return {
+    cleanup(): void {
+      for (const dir of tmpDirs.splice(0)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+
+    createProject(prefix: string, config: object): { root: string; configPath: string } {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+      tmpDirs.push(root);
+      const configPath = path.join(root, 'debug80.json');
+      fs.writeFileSync(configPath, JSON.stringify(config));
+      return { root, configPath };
+    },
+  };
+}

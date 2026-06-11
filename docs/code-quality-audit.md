@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Config Test Fixture Cleanup
+
+`tests/extension/project-config.test.ts` now uses a local fixture for temporary
+project creation, generated `debug80.json` files, and cleanup. The tests still
+cover selected target source updates, project platform resolution, stop-on-entry
+resolution, initialized-project recognition, config validation, manifest
+upgrades, and clearing stale assembler ids when changing source files.
+
+This is intentionally test-only cleanup. It keeps project config helper
+coverage intact while moving repeated temporary-project setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-config.test.ts
+```
+
 ### 2026-06-11: CoolTerm Hex Artifact Test Fixture Cleanup
 
 `tests/extension/coolterm-hex-artifact.test.ts` now uses a local fixture for
