@@ -28,18 +28,20 @@ describe('project-config helpers', () => {
     return root;
   }
 
+  function writeProjectConfig(root: string, value: object): string {
+    const configPath = path.join(root, 'debug80.json');
+    fs.writeFileSync(configPath, JSON.stringify(value));
+    return configPath;
+  }
+
   it('updates the selected target source in debug80.json', () => {
     const root = makeTempProject('debug80-project-config-');
-    const configPath = path.join(root, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/old.asm', platform: 'simple' },
-        },
-      })
-    );
+    const configPath = writeProjectConfig(root, {
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/old.asm', platform: 'simple' },
+      },
+    });
 
     const updated = updateProjectTargetSource(configPath, 'app', 'src/new.asm');
 
@@ -118,18 +120,14 @@ describe('project-config helpers', () => {
 
   it('recognizes initialized debug80 projects from config presence', () => {
     const root = makeTempProject('debug80-project-init-');
-    const configPath = path.join(root, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        projectVersion: DEBUG80_PROJECT_VERSION,
-        projectPlatform: 'simple',
-        defaultTarget: 'app',
-        targets: {
-          app: { sourceFile: 'src/main.asm', platform: 'simple' },
-        },
-      })
-    );
+    writeProjectConfig(root, {
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'simple',
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/main.asm', platform: 'simple' },
+      },
+    });
 
     expect(
       isInitializedDebug80Project({
@@ -186,28 +184,24 @@ describe('project-config helpers', () => {
 
   it('upgrades manifests that use profile metadata to version 2 on read', () => {
     const root = makeTempProject('debug80-project-manifest-v2-');
-    const configPath = path.join(root, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        defaultProfile: 'mon3',
-        profiles: {
-          mon3: {
-            platform: 'tec1g',
-            bundledAssets: {
-              romHex: {
-                bundleId: 'tec1g/mon3/v1',
-                path: 'mon3.bin',
-                destination: 'roms/tec1g/mon3/mon3.bin',
-              },
+    const configPath = writeProjectConfig(root, {
+      defaultProfile: 'mon3',
+      profiles: {
+        mon3: {
+          platform: 'tec1g',
+          bundledAssets: {
+            romHex: {
+              bundleId: 'tec1g/mon3/v1',
+              path: 'mon3.bin',
+              destination: 'roms/tec1g/mon3/mon3.bin',
             },
           },
         },
-        targets: {
-          app: { sourceFile: 'src/main.asm', profile: 'mon3' },
-        },
-      })
-    );
+      },
+      targets: {
+        app: { sourceFile: 'src/main.asm', profile: 'mon3' },
+      },
+    });
 
     const config = readProjectConfig(configPath);
 
@@ -218,21 +212,17 @@ describe('project-config helpers', () => {
 
   it('clears stale unsupported assembler ids when changing the program file', () => {
     const root = makeTempProject('debug80-azm-entry-');
-    const configPath = path.join(root, 'debug80.json');
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify({
-        defaultTarget: 'app',
-        targets: {
-          app: {
-            asm: 'src/old.asm',
-            sourceFile: 'src/old.asm',
-            assembler: 'legacy',
-            platform: 'simple',
-          },
+    const configPath = writeProjectConfig(root, {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          asm: 'src/old.asm',
+          sourceFile: 'src/old.asm',
+          assembler: 'legacy',
+          platform: 'simple',
         },
-      })
-    );
+      },
+    });
 
     const updated = updateProjectTargetSource(configPath, 'app', 'src/main.z80');
 

@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Config Test Fixture Cleanup
+
+`tests/extension/project-config.test.ts` now uses a local `writeProjectConfig`
+helper for tests that need a temporary `debug80.json` manifest on disk. The
+tests still cover target source updates, project platform resolution, stop-on-entry
+resolution, initialized project detection, manifest validation, profile metadata
+upgrade, and stale assembler id clearing.
+
+This is intentionally test-only cleanup. It keeps project config helper
+coverage intact while moving repeated temp manifest path construction and JSON
+write scaffolding out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-config.test.ts
+```
+
 ### 2026-06-11: Project Target Selection Test Fixture Cleanup
 
 `tests/extension/project-target-selection.test.ts` now uses local helpers for
