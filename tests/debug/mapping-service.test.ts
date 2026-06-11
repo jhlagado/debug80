@@ -57,6 +57,35 @@ function makeService(dir: string, mapPath: string, logs: string[] = []) {
   };
 }
 
+function makeNativeMapProject(mapLine = 3): {
+  dir: string;
+  hexPath: string;
+  asmPath: string;
+  mapPath: string;
+  logs: string[];
+  writeNativeMap: (map?: D8DebugMap) => void;
+} {
+  const dir = makeTempMapDir();
+  const hexPath = path.join(dir, 'simple.hex');
+  const asmPath = path.join(dir, 'simple.asm');
+  const mapPath = path.join(dir, 'simple.d8.json');
+  const logs: string[] = [];
+
+  writeFile(hexPath, ':00000001FF\n');
+  writeFile(asmPath, 'START:\n  NOP\n');
+
+  return {
+    dir,
+    hexPath,
+    asmPath,
+    mapPath,
+    logs,
+    writeNativeMap: (map = nativeMapFor(asmPath, mapLine)) => {
+      writeFile(mapPath, JSON.stringify(map, null, 2));
+    },
+  };
+}
+
 function nativeMapFor(filePath: string, line = 3): D8DebugMap {
   return buildD8DebugMap(
     {
@@ -104,15 +133,8 @@ describe('mapping-service', () => {
   });
 
   it('loads a native D8 map when available', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'simple.hex');
-    const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8.json');
-    const logs: string[] = [];
-
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
-    writeFile(mapPath, JSON.stringify(nativeMapFor(asmPath), null, 2));
+    const { dir, hexPath, asmPath, mapPath, logs, writeNativeMap } = makeNativeMapProject();
+    writeNativeMap();
 
     const result = buildMappingFromDebugMap({
       hexPath,
@@ -133,14 +155,7 @@ describe('mapping-service', () => {
   });
 
   it('does not derive a source map when native D8 is missing', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'simple.hex');
-    const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8.json');
-    const logs: string[] = [];
-
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
+    const { dir, hexPath, asmPath, mapPath, logs } = makeNativeMapProject();
 
     const result = buildMappingFromDebugMap({
       hexPath,
@@ -182,11 +197,7 @@ describe('mapping-service', () => {
   });
 
   it('ignores non-native Debug80-generated D8 maps instead of fabricating fallback maps', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'simple.hex');
-    const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8.json');
-    const logs: string[] = [];
+    const { dir, hexPath, asmPath, mapPath, logs, writeNativeMap } = makeNativeMapProject();
     const legacyMap = buildD8DebugMap(
       {
         segments: [
@@ -208,9 +219,7 @@ describe('mapping-service', () => {
       }
     );
 
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
-    writeFile(mapPath, JSON.stringify(legacyMap, null, 2));
+    writeNativeMap(legacyMap);
 
     const result = buildMappingFromDebugMap({
       hexPath,
@@ -225,15 +234,8 @@ describe('mapping-service', () => {
   });
 
   it('prefers an existing native debug map without regenerating it', () => {
-    const dir = makeTempMapDir();
-    const hexPath = path.join(dir, 'simple.hex');
-    const asmPath = path.join(dir, 'simple.asm');
-    const mapPath = path.join(dir, 'simple.d8.json');
-    const logs: string[] = [];
+    const { dir, hexPath, asmPath, mapPath, logs } = makeNativeMapProject(42);
     const originalContent = JSON.stringify(nativeMapFor(asmPath, 42), null, 2);
-
-    writeFile(hexPath, ':00000001FF\n');
-    writeFile(asmPath, 'START:\n  NOP\n');
     writeFile(mapPath, originalContent);
 
     const past = new Date(Date.now() - 2000);

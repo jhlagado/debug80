@@ -2446,6 +2446,22 @@ lint, and the full `package:check` gate. Fallow remains blocked by the missing
 optional platform binary, so do not treat Fallow as current evidence until that
 tooling issue is fixed.
 
+### 2026-06-11: Mapping Service Test Fixture Cleanup
+
+The next low-risk cleanup pass stayed in source-map tests rather than changing
+runtime mapping behavior. `tests/debug/mapping-service.test.ts` now uses a small
+native-map project fixture for the repeated temp-directory, HEX, source, D8 map,
+and log setup.
+
+The helper keeps the behavior assertions visible in each test while reducing
+setup repetition around current D8 behavior: loading native AZM maps, refusing
+to derive source maps when the native map is missing, ignoring legacy
+Debug80-generated maps, and preserving existing map files instead of
+regenerating them.
+
+No production code changed in this pass. The cleanup deliberately avoided the
+matrix keyboard and TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
