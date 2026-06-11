@@ -10,9 +10,7 @@ import { createZ80Runtime } from '../../src/z80/runtime';
 describe('memory-write', () => {
   it('writes a byte through the runtime memory hook when paused', () => {
     const sessionState = createMemoryWriteSession();
-    const memWrite = vi.fn((address: number, value: number) => {
-      sessionState.runtime!.hardware.memory[address & 0xffff] = value & 0xff;
-    });
+    const memWrite = createMemoryWriteSpy(sessionState);
     sessionState.runtime.hardware.memWrite = memWrite;
 
     const error = handleMemoryWriteRequest(sessionState, {
@@ -41,9 +39,7 @@ describe('memory-write', () => {
   it('uses force writes when the read-only override is explicit', () => {
     const sessionState = createMemoryWriteSession();
     sessionState.runtime.hardware.memWrite = vi.fn();
-    const forceMemWrite = vi.fn((address: number, value: number) => {
-      sessionState.runtime!.hardware.memory[address & 0xffff] = value & 0xff;
-    });
+    const forceMemWrite = createMemoryWriteSpy(sessionState);
     sessionState.runtime.hardware.forceMemWrite = forceMemWrite;
 
     const error = handleMemoryWriteRequest(sessionState, {
@@ -79,4 +75,12 @@ function createMemoryWriteSession(
   });
   sessionState.runState.isRunning = options.running ?? false;
   return sessionState;
+}
+
+function createMemoryWriteSpy(
+  sessionState: ReturnType<typeof createSessionState>
+): ReturnType<typeof vi.fn<(address: number, value: number) => void>> {
+  return vi.fn((address: number, value: number) => {
+    sessionState.runtime!.hardware.memory[address & 0xffff] = value & 0xff;
+  });
 }

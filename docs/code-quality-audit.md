@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Memory Write Test Fixture Cleanup
+
+`tests/debug/memory-write.test.ts` now uses a local write-through spy helper
+for the repeated runtime memory mutation used by normal writes and explicit
+read-only override writes. The tests still cover paused writes, rejected
+write-protected writes, forced read-only writes, and running-session rejection.
+
+This is intentionally test-only cleanup. It keeps memory editing behavior
+coverage intact while making each scenario focus on the request policy rather
+than repeating the runtime memory mutation callback.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/memory-write.test.ts
+```
+
 ### 2026-06-11: Memory Snapshot Test Fixture Cleanup
 
 `tests/debug/memory-snapshot.test.ts` now uses local fixture helpers for its
