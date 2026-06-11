@@ -18,7 +18,7 @@ This chapter covers the webview's internal architecture: the common infrastructu
 
 ## Common infrastructure
 
-Most cross-platform UI lives under `webview/common/`. TEC-1 and TEC-1G share **serial** wiring (`common/serial-ui.ts`), **Web Audio** speaker plumbing (`common/audio-core.ts` + thin `tec1/audio.ts` / `tec1g/tec1g-audio.ts` wrappers), the **8×8 monochrome matrix** paint path (`common/matrix-renderer.ts`; TEC-1G keeps a separate `matrix-ui.ts` for RGB, brightness, and the matrix keyboard), **seven-segment digits** (`common/seven-seg-display.ts`), **accordion layout** (`common/accordion-layout.ts`), **AZM option controls** (`common/azm-options-control.ts`), and **hex keycap keypads** (`common/tec-keypad.ts` + `common/tec-keypad-layout.ts`, wrapped by `tec1g/tec1g-keypad.ts` for SysCtrl LEDs). Shared **project-panel DOM lookup** now lives in `common/project-panel-elements.ts`, shared **memory-view DOM lookup** lives in `common/memory-view-elements.ts`, and shared **keypad focus, shortcut routing and shift-latch** behaviour is centralised in `common/keypad-core.ts` and `common/keypad-focus-routing.ts`. Layout tokens for matrix dot size, gaps, and padding are defined once in `common/styles.css` (TEC-1G adds RGB- and platform-specific overrides).
+Most cross-platform UI lives under `webview/common/`. TEC-1 and TEC-1G share **serial** wiring (`common/serial-ui.ts`), **Web Audio** speaker plumbing (`common/audio-core.ts` + thin `tec1/audio.ts` / `tec1g/tec1g-audio.ts` wrappers), the **8×8 monochrome matrix** paint path (`common/matrix-renderer.ts`; TEC-1G keeps a separate `matrix-ui.ts` for RGB, brightness, and the matrix keyboard), **seven-segment digits** (`common/seven-seg-display.ts`), **accordion layout** (`common/accordion-layout.ts`), **AZM option controls** (`common/azm-options-control.ts`), and **hex keycap keypads** (`common/tec-keypad.ts` + `common/tec-keypad-layout.ts`, wrapped by `tec1g/tec1g-keypad.ts` for SysCtrl LEDs). Shared **project-panel DOM lookup** now lives in `common/project-panel-elements.ts`, shared **memory-view DOM lookup** lives in `common/memory-view-elements.ts`, shared **typed element lookup** lives in `common/dom-elements.ts`, and shared **keypad focus, shortcut routing and shift-latch** behaviour is centralised in `common/keypad-core.ts` and `common/keypad-focus-routing.ts`. Layout tokens for matrix dot size, gaps, and padding are defined once in `common/styles.css` (TEC-1G adds RGB- and platform-specific overrides).
 
 ### VS Code API bridge (`common/vscode.ts`)
 
@@ -89,6 +89,10 @@ The same helper also renders source-map and hardware-send status lines when the 
 
 `createMemoryViewEntries()` builds the four `{ id, view, address, addr, symbol, dump }` records that `MemoryPanel` consumes. TEC-1G still wraps this through `createTec1gMemoryViews()`, but the DOM lookup lives in one shared module now.
 
+### Typed DOM element helpers (`common/dom-elements.ts`)
+
+`getRequiredElementById()`, `getOptionalElementById()`, `getRequiredElementBySelector()`, and `getOptionalElementBySelector()` centralize DOM lookup and runtime type checks for webview entry points. The helpers fail with selector-specific errors when a required node is missing or has the wrong element type, which keeps `simple/index.ts` and `tec1/index.ts` concise while still treating the HTML contract as strict.
+
 ### AZM options control (`common/azm-options-control.ts`)
 
 `wireAzmOptionsControl()` wires the small AZM controls in the Project accordion. The visible UI intentionally exposes only coarse session preferences:
@@ -114,6 +118,7 @@ webview/
     audio-core.ts       Shared Web Audio oscillator/gain (used by tec1 + tec1g audio wrappers)
     create-project.ts   sendCreateProject()
     digits.ts           Internal helpers for seven-seg-display
+    dom-elements.ts     Typed required/optional DOM lookup helpers
     matrix-renderer.ts  Monochrome 8×8 matrix paint (TEC-1; TEC-1G RGB is separate)
     memory-panel.ts
     memory-view-elements.ts
@@ -137,7 +142,8 @@ webview/
   simple/
     index.html, index.ts, styles.css
   tec1/
-    index.html, index.ts, lcd-renderer.ts, audio.ts, styles.css
+    index.html, index.ts, lcd-renderer.ts, audio.ts, message-handler.ts
+    platform-update.ts, styles.css
   tec1g/
     index.html, index.ts, entry-types.ts, tec1g-platform-update.ts
     tec1g-audio.ts, tec1g-keypad.ts, tec1g-memory-views.ts, matrix-ui.ts
@@ -145,7 +151,7 @@ webview/
     st7920-font.bin, styles.css
 ```
 
-The **TEC-1** `index.ts` is still a single entry file but delegates project header wiring, memory-view lookup, display, keypad, and serial to the shared modules above. The **TEC-1G** `index.ts` remains a thin composition root.
+The **TEC-1** `index.ts` is still the composition root but now delegates message dispatch to `message-handler.ts`, hardware update application to `platform-update.ts`, DOM lookup to `common/dom-elements.ts`, and project header and memory-view setup to the shared modules above. The **TEC-1G** `index.ts` remains a thin composition root.
 
 The TEC-1 `index.ts` is a self-contained entry point that acquires the VS Code API, queries the DOM, wires up event listeners, creates rendering components, and installs the `window.message` handler. The TEC-1G `index.ts` is a thin composition root — it imports all the feature modules, queries the DOM once, and wires them together. All TEC-1G platform logic lives in the feature modules, not in `index.ts`.
 
@@ -322,6 +328,15 @@ Four independent memory view sections (a, b, c, d). Each has:
 The memory panel is managed by `MemoryPanel` in `webview/common/memory-panel.ts`. It handles snapshot messages, renders hex bytes with ASCII equivalents, highlights the current address, and supports in-place editing.
 
 When the user edits a byte in the memory dump, the panel sends `{ type: 'memoryEdit', address, value }`. When the user edits a register in the register strip, it sends `{ type: 'registerEdit', register, value }`.
+
+### Message and update helpers
+
+The TEC-1 panel now keeps two focused helpers next to `index.ts`:
+
+- `message-handler.ts` exposes `createTec1MessageHandler()`, which branches `projectStatus`, `sessionStatus`, `selectTab`, `update`, `snapshot`, and `snapshotError` messages and keeps the `uiRevision` stale-update guard local to the TEC-1 message path.
+- `platform-update.ts` exposes `applyTec1PlatformUpdate()`, which applies a single hardware update payload to the display, audio, speed indicator, LCD renderer, and matrix renderer.
+
+This matches the TEC-1G composition style more closely without changing the TEC-1 runtime protocol.
 
 ### Web Audio speaker
 
@@ -553,7 +568,7 @@ The edit field accepts hex input without a `0x` prefix. Input is validated befor
 
 - The **Simple platform** UI tab displays a TERMINAL output area driven by `debug80/terminalOutput` events. It has no hardware display. Its CPU tab is identical to TEC-1/TEC-1G.
 
-- The **TEC-1** panel renders six SVG seven-segment digits, an 8×8 LED matrix, a 16×2 HD44780 canvas LCD, a hex keypad (shared `tec-keypad` + `keypad-core`), a speaker indicator with Web Audio output, and a serial terminal (`common/serial-ui`). Entry logic lives in `tec1/index.ts` with shared helpers from `webview/common/`.
+- The **TEC-1** panel renders six SVG seven-segment digits, an 8×8 LED matrix, a 16×2 HD44780 canvas LCD, a hex keypad (shared `tec-keypad` + `keypad-core`), a speaker indicator with Web Audio output, and a serial terminal (`common/serial-ui`). `tec1/index.ts` is the composition root while `tec1/message-handler.ts` and `tec1/platform-update.ts` own message branching and hardware update application.
 
 - The **TEC-1G** `index.ts` is a thin composition root. Feature logic is split across dedicated modules. The RGB LED matrix with scanned-display brightness, 128×64 ST7920 GLCD, 20×4 HD44780 LCD with CGRAM, six seven-segment digits, keypad, serial UI and matrix keyboard mode are each handled by focused modules. The user-facing layout is accordion-based: Displays, Machine, Matrix Keyboard and Serial.
 

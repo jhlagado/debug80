@@ -38,7 +38,8 @@ launchRequest arrives
     ├─ 5. Program loading             (launch/program-loader.ts)
     │     Parse HEX, build memory image → HexProgram
     │
-    ├─ 6. Source mapping              (launch/launch-source-state.ts, launch/source-state-build-options.ts)
+    ├─ 6. Source mapping              (launch/launch-source-state.ts, launch/source-state-build-options.ts,
+    │                                  mapping/d8-source-paths.ts, mapping/d8-symbols.ts)
     │     Load native D8 map → MappingIndex + source roots + source-map symbol lists
     │
     └─ 7. Runtime creation            (launch/launch-sequence.ts)
@@ -294,7 +295,7 @@ The overlay order matters. The user's program is applied last, so it can overwri
 
 Source mapping connects memory addresses to source file locations. This is what makes "set a breakpoint on line 12" work — the breakpoint manager needs to know which memory address corresponds to line 12.
 
-The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts` owns the top-level orchestration and delegates the reusable source-root, map-argument, and `SourceManager` construction helpers to `src/debug/launch/source-state-build-options.ts`. `launch-sequence.ts` calls it with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
+The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts` owns the top-level orchestration and delegates reusable setup helpers to `src/debug/launch/source-state-build-options.ts`. Two focused mapping helpers now carry the shared D8-specific logic: `src/debug/mapping/d8-source-paths.ts` resolves file paths and primary-source selection for D8 maps, and `src/debug/mapping/d8-symbols.ts` converts D8 symbol records into the richer source-map symbol shape used by the debugger and editor providers. `launch-sequence.ts` calls the orchestration entry point with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
 
 ### `buildLaunchSourceState()` — `src/debug/launch/launch-source-state.ts`
 
@@ -305,8 +306,9 @@ The function:
 1. **Resolves source roots** — `buildLaunchSessionSourceRoots()` walks `args.sourceRoots`, the assembly source directory, and the base directory to build the initial root list.
 2. **Instantiates `SourceManager`** — `createSourceStateManager()` creates the manager with path-resolution callbacks for the current session and injects it into the `SourceStateManager`.
 3. **Calls `sourceState.build()`** — `buildSourceStateBuildArgs()` and `buildSourceMapArgs()` package the map inputs, then D8 source-map discovery and `buildSourceMapIndex()` run via the manager.
-4. **Builds the symbol index** — calls `buildSymbolIndex()` from `src/debug/mapping/symbol-service.ts` and applies the lookup anchors back to `sourceState`.
-5. **Returns** a `LaunchSourceBuildResult` containing `sourceRoots`, `mapping`, `mappingIndex`, `symbolAnchors`, `symbolList`, and D8-backed source-map symbols.
+4. **Collects D8-backed symbol metadata** — `readSourceMapSymbols()` reads the preferred and auxiliary D8 maps, uses `resolveDebugMapFilePath()` from `src/debug/mapping/d8-source-paths.ts` to normalize file locations, and converts each D8 symbol through `d8SymbolToSourceMapSymbol()` in `src/debug/mapping/d8-symbols.ts`.
+5. **Builds the symbol index** — calls `buildSymbolIndex()` from `src/debug/mapping/symbol-service.ts` and applies the lookup anchors back to `sourceState`.
+6. **Returns** a `LaunchSourceBuildResult` containing `sourceRoots`, `mapping`, `mappingIndex`, `symbolAnchors`, `symbolList`, and D8-backed source-map symbols.
 
 ### The SourceManager
 
@@ -344,7 +346,7 @@ The index provides the classic address-oriented symbol views:
 - **`lookupAnchors`** — symbols filtered to addresses within source-mapped ranges. This prevents symbols from unmapped regions (like ROM) from appearing in user-facing lookups.
 - **`list`** — a deduplicated name-to-address list for the symbol table.
 
-`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible.
+`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. It prefers the resolved primary D8 map path when that artifact exists and also reads any auxiliary maps listed in `debugMaps[]`. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible.
 
 ### Source file notification
 
@@ -501,7 +503,7 @@ All three paths send an error response to VS Code, which shows the error and cle
 
 - Program loading builds a platform-specific memory image: plain for simple, ROM + RAM overlay for TEC-1/TEC-1G. Source mapping and symbols come from the native D8 map emitted by AZM.
 
-- Source mapping is handled by `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts`. This function owns source-state orchestration, while `src/debug/launch/source-state-build-options.ts` holds the reusable source-root, map-argument, and `SourceManager` setup helpers. Together they give source-state setup a focused testable boundary.
+- Source mapping is handled by `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts`. This function owns source-state orchestration, `src/debug/launch/source-state-build-options.ts` holds the reusable source-root, map-argument, and `SourceManager` setup helpers, `src/debug/mapping/d8-source-paths.ts` centralizes D8 file-path resolution, and `src/debug/mapping/d8-symbols.ts` centralizes D8 symbol conversion. Together they give source-state setup a focused testable boundary.
 
 - The Z80 runtime is created last, with platform I/O handlers and ROM protection ranges. Platform providers can finalize the runtime with additional setup after creation.
 
