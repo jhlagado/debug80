@@ -33,6 +33,25 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: CoolTerm Send Test Fixture Cleanup
+
+`tests/extension/coolterm-send.test.ts` now uses local helpers for collecting
+status messages, constructing found/missing HEX artifact fixtures, and running
+the progress callback passthrough used by successful sends. The tests still
+cover sending a HEX file without waiting for serial PASS text, missing HEX
+artifact reporting by file name, successful CoolTerm connectivity checks, and
+failed connectivity reporting without sending a file.
+
+This is intentionally test-only cleanup. It keeps CoolTerm send/connect behavior
+coverage intact while moving repeated status collection and artifact fixture
+setup out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/coolterm-send.test.ts
+```
+
 ### 2026-06-11: Extension Commands Test Fixture Cleanup
 
 `tests/extension/commands.test.ts` now uses local helpers for common workspace

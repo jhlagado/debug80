@@ -61,31 +61,53 @@ import {
   testCoolTermConnection,
 } from '../../src/extension/coolterm/coolterm-send';
 
+function collectStatuses(): {
+  statuses: string[];
+  status: (message: string) => void;
+} {
+  const statuses: string[] = [];
+  return {
+    statuses,
+    status: (message) => statuses.push(message),
+  };
+}
+
+function foundHexArtifact(path: string): { kind: 'found'; path: string } {
+  return { kind: 'found', path };
+}
+
+function missingHexArtifact(path: string): { kind: 'missing'; path: string } {
+  return { kind: 'missing', path };
+}
+
+function passThroughProgress(): void {
+  mocks.withProgress.mockImplementationOnce(async (_options, callback) => {
+    const result = callback();
+    await Promise.resolve(result);
+    return result as boolean;
+  });
+}
+
 describe('sendHexViaCoolTerm', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('completes after CoolTerm sends the HEX file without waiting for serial PASS text', async () => {
-    const statuses: string[] = [];
-    mocks.resolveCoolTermHexArtifact.mockReturnValueOnce({
-      kind: 'found',
-      path: '/workspace/build/demo.hex',
-    });
+    const { statuses, status } = collectStatuses();
+    mocks.resolveCoolTermHexArtifact.mockReturnValueOnce(
+      foundHexArtifact('/workspace/build/demo.hex')
+    );
     mocks.ping.mockResolvedValueOnce(undefined);
     mocks.connectSerialPort.mockResolvedValueOnce(true);
     mocks.sendTextFile.mockResolvedValueOnce(true);
-    mocks.withProgress.mockImplementationOnce(async (_options, callback) => {
-      const result = callback();
-      await Promise.resolve(result);
-      return result as boolean;
-    });
+    passThroughProgress();
 
     await expect(
       sendHexViaCoolTerm({
         rootPath: '/workspace',
         targetName: 'demo',
-        status: (message) => statuses.push(message),
+        status,
       })
     ).resolves.toBe(true);
 
@@ -101,17 +123,16 @@ describe('sendHexViaCoolTerm', () => {
   });
 
   it('reports a missing HEX artifact by file name only', async () => {
-    const statuses: string[] = [];
-    mocks.resolveCoolTermHexArtifact.mockReturnValueOnce({
-      kind: 'missing',
-      path: '/workspace/build/demo.hex',
-    });
+    const { statuses, status } = collectStatuses();
+    mocks.resolveCoolTermHexArtifact.mockReturnValueOnce(
+      missingHexArtifact('/workspace/build/demo.hex')
+    );
 
     await expect(
       sendHexViaCoolTerm({
         rootPath: '/workspace',
         targetName: 'demo',
-        status: (message) => statuses.push(message),
+        status,
       })
     ).resolves.toBe(false);
 
@@ -123,12 +144,12 @@ describe('sendHexViaCoolTerm', () => {
   });
 
   it('tests CoolTerm connectivity with an explicit ping', async () => {
-    const statuses: string[] = [];
+    const { statuses, status } = collectStatuses();
     mocks.ping.mockResolvedValueOnce(undefined);
 
     await expect(
       testCoolTermConnection({
-        status: (message) => statuses.push(message),
+        status,
       })
     ).resolves.toBe(true);
 
@@ -143,12 +164,12 @@ describe('sendHexViaCoolTerm', () => {
   });
 
   it('reports failed CoolTerm connectivity without sending a file', async () => {
-    const statuses: string[] = [];
+    const { statuses, status } = collectStatuses();
     mocks.ping.mockRejectedValueOnce(new Error('connection refused'));
 
     await expect(
       testCoolTermConnection({
-        status: (message) => statuses.push(message),
+        status,
       })
     ).resolves.toBe(false);
 
