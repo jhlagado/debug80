@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Project Scaffolding Gitignore Test Fixture Cleanup
+
+`tests/extension/project-scaffolding-gitignore.test.ts` now uses a local fixture
+for temporary project creation and cleanup. The tests still cover adding the
+Debug80 `.gitignore` block, preserving user content, and avoiding duplicate
+Debug80 blocks on repeated runs.
+
+This is intentionally test-only cleanup. It keeps project scaffolding
+`.gitignore` coverage intact while replacing the callback-style temporary
+project helper with explicit fixture setup and teardown.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/project-scaffolding-gitignore.test.ts
+```
+
 ### 2026-06-11: Target Discovery Test Fixture Cleanup
 
 `tests/extension/target-discovery.test.ts` now uses a local fixture for
