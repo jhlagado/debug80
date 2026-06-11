@@ -11,14 +11,21 @@ import {
 } from '../../src/debug/requests/register-request';
 import { createZ80Runtime } from '../../src/z80/runtime';
 
+function createRegisterWriteSession(
+  options: { running?: boolean } = {}
+): ReturnType<typeof createSessionState> {
+  const sessionState = createSessionState();
+  sessionState.runtime = createZ80Runtime({
+    memory: new Uint8Array(0x10000),
+    startAddress: 0,
+  });
+  sessionState.runState.isRunning = options.running ?? false;
+  return sessionState;
+}
+
 describe('register-request', () => {
   it('writes core register pairs when the session is paused', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createRegisterWriteSession();
 
     const error = handleRegisterWriteRequest(sessionState, {
       register: 'bc',
@@ -32,12 +39,7 @@ describe('register-request', () => {
   });
 
   it('writes AF and alternate AF as editable register pairs', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createRegisterWriteSession();
 
     expect(
       handleRegisterWriteRequest(sessionState, {
@@ -78,12 +80,7 @@ describe('register-request', () => {
   });
 
   it('updates only mentioned flags from mixed-case flag strings', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createRegisterWriteSession();
     const cpu = sessionState.runtime.getRegisters();
     cpu.flags = { S: 0, Z: 1, Y: 0, H: 1, X: 0, P: 1, N: 0, C: 0 };
     cpu.flags_prime = { S: 1, Z: 0, Y: 1, H: 0, X: 1, P: 0, N: 1, C: 1 };
@@ -106,12 +103,7 @@ describe('register-request', () => {
   });
 
   it('rejects writes while the session is running', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = true;
+    const sessionState = createRegisterWriteSession({ running: true });
 
     const error = handleRegisterWriteRequest(sessionState, {
       register: 'bc',
@@ -122,12 +114,7 @@ describe('register-request', () => {
   });
 
   it('accepts 0x-prefixed hex values for custom register writes', () => {
-    const sessionState = createSessionState();
-    sessionState.runtime = createZ80Runtime({
-      memory: new Uint8Array(0x10000),
-      startAddress: 0,
-    });
-    sessionState.runState.isRunning = false;
+    const sessionState = createRegisterWriteSession();
 
     const error = handleRegisterWriteRequest(sessionState, {
       register: 'hl',

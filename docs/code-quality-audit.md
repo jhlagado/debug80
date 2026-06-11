@@ -2507,6 +2507,21 @@ that do not stick are rejected, explicit read-only overrides use
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Register Request Test Fixture Cleanup
+
+This pass stayed in `tests/debug/register-request.test.ts` and extracted a
+local register-write session fixture for repeated `DebugSessionState` and
+runtime setup. Each test still keeps its register-specific write and assertion
+logic visible, while the shared memory allocation, runtime creation, and
+paused/running state setup now live in one helper.
+
+The covered behavior is unchanged: editing register pairs, AF and alternate AF
+writes, mixed-case flag writes, rejecting writes while running, writable UI name
+mapping, and hex parsing.
+
+No production code changed, and this stayed outside the matrix keyboard and
+TEC-1G IO hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
