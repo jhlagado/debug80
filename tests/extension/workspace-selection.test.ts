@@ -42,6 +42,44 @@ vi.mock('../../src/extension/project-target-selection', () => ({
   resolvePreferredTargetName,
 }));
 
+function workspaceFolder(name: string): { name: string; uri: { fsPath: string } } {
+  return { name, uri: { fsPath: `/workspace/${name}` } };
+}
+
+function setWorkspaceFolderNames(...names: string[]): void {
+  workspaceFolders = names.map(workspaceFolder);
+}
+
+function projectConfigExistsFor(...names: string[]): void {
+  const projectConfigPaths = new Set(
+    names.map((name) => path.normalize(`/workspace/${name}/debug80.json`))
+  );
+  existsSync.mockImplementation((candidate: string) =>
+    projectConfigPaths.has(path.normalize(candidate))
+  );
+}
+
+async function createController(options: { withSubscriptions?: boolean } = {}) {
+  const { WorkspaceSelectionController } = await import('../../src/extension/workspace-selection');
+  const update = vi.fn();
+  const platformViewProvider = {
+    setSelectedWorkspace: vi.fn(),
+    setHasProject: vi.fn(),
+  };
+
+  const context = {
+    ...(options.withSubscriptions === true ? { subscriptions: [] } : {}),
+    workspaceState: { get: vi.fn(() => storedPath), update },
+  };
+
+  const controller = new WorkspaceSelectionController(
+    context as never,
+    platformViewProvider as never
+  );
+
+  return { controller, update, platformViewProvider };
+}
+
 describe('WorkspaceSelectionController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,27 +89,10 @@ describe('WorkspaceSelectionController', () => {
   });
 
   it('reuses the remembered workspace without prompting', async () => {
-    workspaceFolders = [
-      { name: 'debug80', uri: { fsPath: '/workspace/debug80' } },
-      { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
-    ];
-
-    const { WorkspaceSelectionController } =
-      await import('../../src/extension/workspace-selection');
-    const update = vi.fn();
-    const platformViewProvider = {
-      setSelectedWorkspace: vi.fn(),
-      setHasProject: vi.fn(),
-    };
-
+    setWorkspaceFolderNames('debug80', 'caverns80');
     storedPath = '/workspace/caverns80';
-    const controller = new WorkspaceSelectionController(
-      {
-        workspaceState: { get: vi.fn(() => storedPath), update },
-      } as never,
-      platformViewProvider as never
-    );
 
+    const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({ prompt: true });
 
     expect(folder?.uri.fsPath).toBe('/workspace/caverns80');
@@ -80,30 +101,10 @@ describe('WorkspaceSelectionController', () => {
   });
 
   it('prefers the only configured project folder when debugging', async () => {
-    workspaceFolders = [
-      { name: 'debug80', uri: { fsPath: '/workspace/debug80' } },
-      { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
-    ];
-    existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
-    );
+    setWorkspaceFolderNames('debug80', 'caverns80');
+    projectConfigExistsFor('caverns80');
 
-    const { WorkspaceSelectionController } =
-      await import('../../src/extension/workspace-selection');
-    const update = vi.fn();
-    const platformViewProvider = {
-      setSelectedWorkspace: vi.fn(),
-      setHasProject: vi.fn(),
-    };
-
-    const controller = new WorkspaceSelectionController(
-      {
-        workspaceState: { get: vi.fn(() => storedPath), update },
-      } as never,
-      platformViewProvider as never
-    );
-
+    const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({ requireProject: true });
 
     expect(folder?.uri.fsPath).toBe('/workspace/caverns80');
@@ -112,36 +113,15 @@ describe('WorkspaceSelectionController', () => {
   });
 
   it('prompts when multiple project folders are configured', async () => {
-    workspaceFolders = [
-      { name: 'debug80', uri: { fsPath: '/workspace/debug80' } },
-      { name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } },
-    ];
-    existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/debug80/debug80.json') ||
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
-    );
+    setWorkspaceFolderNames('debug80', 'caverns80');
+    projectConfigExistsFor('debug80', 'caverns80');
     showQuickPick.mockResolvedValueOnce({
       label: 'caverns80',
       description: '/workspace/caverns80',
       folder: workspaceFolders[1],
     });
 
-    const { WorkspaceSelectionController } =
-      await import('../../src/extension/workspace-selection');
-    const update = vi.fn();
-    const platformViewProvider = {
-      setSelectedWorkspace: vi.fn(),
-      setHasProject: vi.fn(),
-    };
-
-    const controller = new WorkspaceSelectionController(
-      {
-        workspaceState: { get: vi.fn(() => storedPath), update },
-      } as never,
-      platformViewProvider as never
-    );
-
+    const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({
       prompt: true,
       requireProject: true,
@@ -160,29 +140,12 @@ describe('WorkspaceSelectionController', () => {
   });
 
   it('auto-starts the remembered project on startup when a preferred target exists', async () => {
-    workspaceFolders = [{ name: 'caverns80', uri: { fsPath: '/workspace/caverns80' } }];
+    setWorkspaceFolderNames('caverns80');
     storedPath = '/workspace/caverns80';
-    existsSync.mockImplementation(
-      (candidate: string) =>
-        path.normalize(candidate) === path.normalize('/workspace/caverns80/debug80.json')
-    );
+    projectConfigExistsFor('caverns80');
     resolvePreferredTargetName.mockReturnValue('app');
 
-    const { WorkspaceSelectionController } =
-      await import('../../src/extension/workspace-selection');
-    const platformViewProvider = {
-      setSelectedWorkspace: vi.fn(),
-      setHasProject: vi.fn(),
-    };
-
-    const controller = new WorkspaceSelectionController(
-      {
-        subscriptions: [],
-        workspaceState: { get: vi.fn(() => storedPath), update: vi.fn() },
-      } as never,
-      platformViewProvider as never
-    );
-
+    const { controller } = await createController({ withSubscriptions: true });
     controller.registerInfrastructure();
 
     expect(startDebugging).toHaveBeenCalledWith(

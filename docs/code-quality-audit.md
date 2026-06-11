@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Workspace Selection Test Fixture Cleanup
+
+`tests/extension/workspace-selection.test.ts` now uses local helpers for
+workspace folder fixtures, configured-project filesystem probes, and controller
+construction. The tests still cover remembered workspace reuse, single project
+selection, multiple project prompting, and startup auto-launch when a preferred
+target exists.
+
+This is intentionally test-only cleanup. It keeps workspace selection policy
+coverage intact while moving repeated VS Code context and project folder setup
+out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/workspace-selection.test.ts
+```
+
 ### 2026-06-11: Project Config Test Fixture Cleanup
 
 `tests/extension/project-config.test.ts` now uses a local `writeProjectConfig`
