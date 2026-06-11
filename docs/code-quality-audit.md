@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Source Selection Test Fixture Cleanup
+
+`tests/extension/source-selection.test.ts` now uses a local helper for the
+common project-root and candidate-source setup. The tests still cover open
+resource selection, sibling folder rejection, two-dot in-project filenames,
+host path separator normalization, and current-source QuickPick labelling.
+
+This is intentionally test-only cleanup. It keeps source-selection coverage
+intact while moving repeated project path and source candidate setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/source-selection.test.ts
+```
+
 ### 2026-06-11: Project Target Config Policy Test Fixture Cleanup
 
 `tests/extension/project-target-config-policy.test.ts` now uses local helpers

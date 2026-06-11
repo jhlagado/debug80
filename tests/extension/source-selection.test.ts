@@ -9,29 +9,24 @@ import {
   resolveResourceSourceSelection,
 } from '../../src/extension/source-selection';
 
+const projectRoot = '/workspace/proj';
+const sourceCandidates = ['src/main.asm'];
+
+function resolveProjectSource(resourcePath: string, candidates = sourceCandidates) {
+  return resolveResourceSourceSelection(resourcePath, projectRoot, candidates);
+}
+
 describe('source-selection', () => {
   it('selects an open resource when it is a candidate inside the project folder', () => {
-    expect(
-      resolveResourceSourceSelection('/workspace/proj/src/main.asm', '/workspace/proj', [
-        'src/main.asm',
-      ])
-    ).toBe('src/main.asm');
+    expect(resolveProjectSource('/workspace/proj/src/main.asm')).toBe('src/main.asm');
   });
 
   it('does not treat sibling folder prefixes as project-relative paths', () => {
-    expect(
-      resolveResourceSourceSelection('/workspace/proj2/src/main.asm', '/workspace/proj', [
-        'src/main.asm',
-      ])
-    ).toBeUndefined();
+    expect(resolveProjectSource('/workspace/proj2/src/main.asm')).toBeUndefined();
   });
 
   it('allows in-project filenames that begin with two dots', () => {
-    expect(
-      resolveResourceSourceSelection('/workspace/proj/..main.asm', '/workspace/proj', [
-        '..main.asm',
-      ])
-    ).toBe('..main.asm');
+    expect(resolveProjectSource('/workspace/proj/..main.asm', ['..main.asm'])).toBe('..main.asm');
   });
 
   it('normalizes host path separators to Debug80 project paths', () => {
