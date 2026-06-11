@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Memory View Test Fixture Cleanup
+
+`tests/debug/memory-view.test.ts` now uses shared local fixtures for the
+snapshot register set and byte-pattern memory reader used across the memory
+window scenarios. The tests still cover window-size clamping, aligned memory
+reads, symbol resolution, default/absolute view fallback, and register-based
+memory views.
+
+This is intentionally test-only cleanup. It keeps memory snapshot behavior
+coverage intact while reducing repeated register and memory-reader setup in a
+small helper test that protects the Debug80 memory panel data model.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/memory-view.test.ts
+```
+
 ### 2026-06-11: Variable Service Test Fixture Cleanup
 
 `tests/debug/variable-service.test.ts` now uses a local

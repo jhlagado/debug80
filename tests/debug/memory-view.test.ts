@@ -6,8 +6,23 @@ import { describe, it, expect } from 'vitest';
 import {
   buildMemorySnapshotViews,
   clampMemoryWindow,
+  type MemoryRegisters,
   readMemoryWindow,
 } from '../../src/debug/session/memory-view';
+
+const TEST_REGISTERS: MemoryRegisters = {
+  pc: 0x1000,
+  sp: 0x2000,
+  bc: 0x3000,
+  de: 0x4000,
+  hl: 0x5000,
+  ix: 0x6000,
+  iy: 0x7000,
+};
+
+function bytePatternMemory(addr: number): number {
+  return addr & 0xff;
+}
 
 describe('memory-view', () => {
   it('clamps memory window sizes', () => {
@@ -18,29 +33,19 @@ describe('memory-view', () => {
   });
 
   it('reads aligned memory windows with focus offset', () => {
-    const memRead = (addr: number): number => addr & 0xff;
-    const window = readMemoryWindow(0x0010, 2, 3, 8, memRead);
+    const window = readMemoryWindow(0x0010, 2, 3, 8, bytePatternMemory);
     expect(window.start).toBe(0x0008);
     expect(window.bytes.length).toBe(8);
     expect(window.focus).toBe(0x0010 - 0x0008);
   });
 
   it('builds snapshot views and resolves symbols', () => {
-    const memRead = (addr: number): number => addr & 0xff;
     const views = buildMemorySnapshotViews({
       before: 1,
       rowSize: 8,
       views: [{ id: 'a', view: 'pc', after: 1, address: null }],
-      registers: {
-        pc: 0x1000,
-        sp: 0x2000,
-        bc: 0x3000,
-        de: 0x4000,
-        hl: 0x5000,
-        ix: 0x6000,
-        iy: 0x7000,
-      },
-      memRead,
+      registers: TEST_REGISTERS,
+      memRead: bytePatternMemory,
       findNearestSymbol: () => ({ name: 'START', address: 0x0ff0 }),
     });
 
@@ -50,7 +55,6 @@ describe('memory-view', () => {
   });
 
   it('handles absolute/default views without symbols', () => {
-    const memRead = (addr: number): number => addr & 0xff;
     const views = buildMemorySnapshotViews({
       before: 1,
       rowSize: 8,
@@ -58,16 +62,8 @@ describe('memory-view', () => {
         { view: 'absolute', after: 1, address: null },
         { view: 'unknown', after: 1, address: 0x1234 },
       ],
-      registers: {
-        pc: 0x1000,
-        sp: 0x2000,
-        bc: 0x3000,
-        de: 0x4000,
-        hl: 0x5000,
-        ix: 0x6000,
-        iy: 0x7000,
-      },
-      memRead,
+      registers: TEST_REGISTERS,
+      memRead: bytePatternMemory,
     });
 
     expect(views[0]?.address).toBe(0x5000);
@@ -76,7 +72,6 @@ describe('memory-view', () => {
   });
 
   it('uses register-based views', () => {
-    const memRead = (addr: number): number => addr & 0xff;
     const views = buildMemorySnapshotViews({
       before: 1,
       rowSize: 8,
@@ -85,16 +80,8 @@ describe('memory-view', () => {
         { view: 'ix', after: 1, address: null },
         { view: 'iy', after: 1, address: null },
       ],
-      registers: {
-        pc: 0x1000,
-        sp: 0x2000,
-        bc: 0x3000,
-        de: 0x4000,
-        hl: 0x5000,
-        ix: 0x6000,
-        iy: 0x7000,
-      },
-      memRead,
+      registers: TEST_REGISTERS,
+      memRead: bytePatternMemory,
     });
 
     expect(views[0]?.address).toBe(0x2000);
