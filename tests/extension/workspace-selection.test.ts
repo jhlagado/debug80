@@ -10,6 +10,8 @@ const resolvePreferredTargetName = vi.fn();
 let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
 let storedPath: string | undefined;
 
+const selectedWorkspaceKey = 'debug80.selectedWorkspace';
+
 vi.mock('fs', () => ({
   existsSync,
 }));
@@ -42,8 +44,16 @@ vi.mock('../../src/extension/project-target-selection', () => ({
   resolvePreferredTargetName,
 }));
 
+function workspacePath(name: string): string {
+  return `/workspace/${name}`;
+}
+
+function projectConfigPath(name: string): string {
+  return path.normalize(`${workspacePath(name)}/debug80.json`);
+}
+
 function workspaceFolder(name: string): { name: string; uri: { fsPath: string } } {
-  return { name, uri: { fsPath: `/workspace/${name}` } };
+  return { name, uri: { fsPath: workspacePath(name) } };
 }
 
 function setWorkspaceFolderNames(...names: string[]): void {
@@ -51,12 +61,22 @@ function setWorkspaceFolderNames(...names: string[]): void {
 }
 
 function projectConfigExistsFor(...names: string[]): void {
-  const projectConfigPaths = new Set(
-    names.map((name) => path.normalize(`/workspace/${name}/debug80.json`))
-  );
+  const projectConfigPaths = new Set(names.map(projectConfigPath));
   existsSync.mockImplementation((candidate: string) =>
     projectConfigPaths.has(path.normalize(candidate))
   );
+}
+
+function selectWorkspaceFolder(index: number): void {
+  const folder = workspaceFolders?.[index];
+  if (!folder) {
+    throw new Error(`No workspace folder at index ${index}`);
+  }
+  showQuickPick.mockResolvedValueOnce({
+    label: folder.name,
+    description: folder.uri.fsPath,
+    folder,
+  });
 }
 
 async function createController(options: { withSubscriptions?: boolean } = {}) {
@@ -95,9 +115,9 @@ describe('WorkspaceSelectionController', () => {
     const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({ prompt: true });
 
-    expect(folder?.uri.fsPath).toBe('/workspace/caverns80');
+    expect(folder?.uri.fsPath).toBe(workspacePath('caverns80'));
     expect(showQuickPick).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith('debug80.selectedWorkspace', '/workspace/caverns80');
+    expect(update).toHaveBeenCalledWith(selectedWorkspaceKey, workspacePath('caverns80'));
   });
 
   it('prefers the only configured project folder when debugging', async () => {
@@ -107,19 +127,15 @@ describe('WorkspaceSelectionController', () => {
     const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({ requireProject: true });
 
-    expect(folder?.uri.fsPath).toBe('/workspace/caverns80');
+    expect(folder?.uri.fsPath).toBe(workspacePath('caverns80'));
     expect(showQuickPick).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith('debug80.selectedWorkspace', '/workspace/caverns80');
+    expect(update).toHaveBeenCalledWith(selectedWorkspaceKey, workspacePath('caverns80'));
   });
 
   it('prompts when multiple project folders are configured', async () => {
     setWorkspaceFolderNames('debug80', 'caverns80');
     projectConfigExistsFor('debug80', 'caverns80');
-    showQuickPick.mockResolvedValueOnce({
-      label: 'caverns80',
-      description: '/workspace/caverns80',
-      folder: workspaceFolders[1],
-    });
+    selectWorkspaceFolder(1);
 
     const { controller, update } = await createController();
     const folder = await controller.resolveWorkspaceFolder({
@@ -128,7 +144,7 @@ describe('WorkspaceSelectionController', () => {
       placeHolder: 'Select the Debug80 project folder to debug',
     });
 
-    expect(folder?.uri.fsPath).toBe('/workspace/caverns80');
+    expect(folder?.uri.fsPath).toBe(workspacePath('caverns80'));
     expect(showQuickPick).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ label: 'debug80' }),
@@ -136,7 +152,7 @@ describe('WorkspaceSelectionController', () => {
       ]),
       expect.objectContaining({ placeHolder: 'Select the Debug80 project folder to debug' })
     );
-    expect(update).toHaveBeenCalledWith('debug80.selectedWorkspace', '/workspace/caverns80');
+    expect(update).toHaveBeenCalledWith(selectedWorkspaceKey, workspacePath('caverns80'));
   });
 
   it('auto-starts the remembered project on startup when a preferred target exists', async () => {
@@ -149,12 +165,12 @@ describe('WorkspaceSelectionController', () => {
     controller.registerInfrastructure();
 
     expect(startDebugging).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: { fsPath: '/workspace/caverns80' } }),
+      expect.objectContaining({ uri: { fsPath: workspacePath('caverns80') } }),
       expect.objectContaining({
         type: 'z80',
         request: 'launch',
         name: 'Debug80: Current Project',
-        projectConfig: path.normalize('/workspace/caverns80/debug80.json'),
+        projectConfig: projectConfigPath('caverns80'),
       })
     );
   });

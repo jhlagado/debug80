@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Workspace Selection Test Fixture Cleanup
+
+`tests/extension/workspace-selection.test.ts` now uses local helpers for
+workspace paths, project config paths, selected-workspace persistence, and
+QuickPick folder selection. The tests still cover remembered workspace reuse,
+single configured project selection, multiple-project prompting, and startup
+auto-launch for a remembered project with a preferred target.
+
+This is intentionally test-only cleanup. It keeps workspace selection coverage
+intact while moving repeated path literals and QuickPick item construction out
+of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/workspace-selection.test.ts
+```
+
 ### 2026-06-11: UI Performance Monitor Test Fixture Cleanup
 
 `tests/extension/ui-performance-monitor.test.ts` now uses a local monitor
