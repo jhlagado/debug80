@@ -6,13 +6,26 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectConfig } from '../../src/debug/session/types';
 import { applyConfigureProjectTargetEdit } from '../../src/extension/configure-project-edit';
 
+function singleTargetConfig(target = targetConfig()): ProjectConfig {
+  return {
+    targets: {
+      app: target,
+    },
+  };
+}
+
+function targetConfig(
+  overrides: NonNullable<ProjectConfig['targets']>[string] = {}
+): NonNullable<ProjectConfig['targets']>[string] {
+  return {
+    sourceFile: 'src/main.asm',
+    ...overrides,
+  };
+}
+
 describe('configure-project target edit', () => {
   it('applies platform override and updates project platform for a single target', () => {
-    const config: ProjectConfig = {
-      targets: {
-        app: { sourceFile: 'src/main.asm', platform: 'simple', simple: {} },
-      },
-    };
+    const config = singleTargetConfig(targetConfig({ platform: 'simple', simple: {} }));
 
     const result = applyConfigureProjectTargetEdit(config, 'app', {
       kind: 'targetPlatformOverride',
@@ -31,8 +44,8 @@ describe('configure-project target edit', () => {
     const config: ProjectConfig = {
       projectPlatform: 'tec1',
       targets: {
-        app: { sourceFile: 'src/main.asm', platform: 'simple' },
-        other: { sourceFile: 'src/other.asm', platform: 'tec1' },
+        app: targetConfig({ platform: 'simple' }),
+        other: targetConfig({ sourceFile: 'src/other.asm', platform: 'tec1' }),
       },
     };
 
@@ -46,11 +59,9 @@ describe('configure-project target edit', () => {
   });
 
   it('clears stale unsupported assembler ids when changing program files', () => {
-    const config: ProjectConfig = {
-      targets: {
-        app: { sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' },
-      },
-    };
+    const config = singleTargetConfig(
+      targetConfig({ sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' })
+    );
 
     applyConfigureProjectTargetEdit(config, 'app', {
       kind: 'program',
@@ -75,7 +86,7 @@ describe('configure-project target edit', () => {
       target: 'app',
       defaultTarget: 'app',
       targets: {
-        app: { sourceFile: 'src/main.asm' },
+        app: targetConfig(),
       },
     };
 
@@ -92,11 +103,7 @@ describe('configure-project target edit', () => {
   });
 
   it('reports missing and unchanged targets without mutating', () => {
-    const config: ProjectConfig = {
-      targets: {
-        app: { sourceFile: 'src/main.asm' },
-      },
-    };
+    const config = singleTargetConfig();
 
     expect(
       applyConfigureProjectTargetEdit(config, 'missing', {

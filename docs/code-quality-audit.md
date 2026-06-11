@@ -2926,6 +2926,19 @@ The covered behavior is unchanged, and no production project scaffolding code
 changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
 runtime-control hot zones.
 
+### 2026-06-11: Configure Project Edit Test Fixture Cleanup
+
+This pass stayed in `tests/extension/configure-project-edit.test.ts` and
+extracted small local helpers for single-target project config setup and target
+config construction. The test cases now keep the edit behavior more visible:
+platform override cleanup, multi-target project-platform stability, unsupported
+assembler cleanup when changing program files, target renaming, and missing or
+unchanged target outcomes.
+
+The covered behavior is unchanged, and no production configure-project code
+changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
+runtime-control hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
