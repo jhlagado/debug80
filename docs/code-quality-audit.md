@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: CoolTerm Hex Artifact Test Fixture Cleanup
+
+`tests/extension/coolterm-hex-artifact.test.ts` now uses a local fixture for
+temporary Debug80 project creation, generated `debug80.json` files, hex artifact
+writing, and cleanup. The tests still cover explicit target hex paths,
+`outputDir`/`artifactBase` inference, and missing inferred hex artifact
+reporting.
+
+This is intentionally test-only cleanup. It keeps CoolTerm hex artifact
+resolution coverage intact while moving repeated temporary-project setup out of
+the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/coolterm-hex-artifact.test.ts
+```
+
 ### 2026-06-11: Project Target QuickPick Policy Test Fixture Cleanup
 
 `tests/extension/project-target-quickpick-policy.test.ts` now uses local helpers
