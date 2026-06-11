@@ -34,9 +34,22 @@ describe('project-config helpers', () => {
     return configPath;
   }
 
+  function makeProjectConfigFixture(prefix: string, config: object): { root: string; configPath: string } {
+    const root = makeTempProject(prefix);
+    return {
+      root,
+      configPath: writeProjectConfig(root, config),
+    };
+  }
+
+  function expectTargetSource(configPath: string, targetName: string, sourceFile: string): void {
+    const config = readProjectConfig(configPath);
+    expect(config?.targets?.[targetName]?.sourceFile).toBe(sourceFile);
+    expect(config?.targets?.[targetName]?.asm).toBe(sourceFile);
+  }
+
   it('updates the selected target source in debug80.json', () => {
-    const root = makeTempProject('debug80-project-config-');
-    const configPath = writeProjectConfig(root, {
+    const { configPath } = makeProjectConfigFixture('debug80-project-config-', {
       defaultTarget: 'app',
       targets: {
         app: { sourceFile: 'src/old.asm', platform: 'simple' },
@@ -46,9 +59,8 @@ describe('project-config helpers', () => {
     const updated = updateProjectTargetSource(configPath, 'app', 'src/new.asm');
 
     expect(updated).toBe(true);
+    expectTargetSource(configPath, 'app', 'src/new.asm');
     const config = readProjectConfig(configPath);
-    expect(config?.targets?.app?.sourceFile).toBe('src/new.asm');
-    expect(config?.targets?.app?.asm).toBe('src/new.asm');
     expect(config?.targets?.app?.platform).toBe('simple');
   });
 
@@ -119,8 +131,7 @@ describe('project-config helpers', () => {
   });
 
   it('recognizes initialized debug80 projects from config presence', () => {
-    const root = makeTempProject('debug80-project-init-');
-    writeProjectConfig(root, {
+    const { root } = makeProjectConfigFixture('debug80-project-init-', {
       projectVersion: DEBUG80_PROJECT_VERSION,
       projectPlatform: 'simple',
       defaultTarget: 'app',
@@ -183,8 +194,7 @@ describe('project-config helpers', () => {
   });
 
   it('upgrades manifests that use profile metadata to version 2 on read', () => {
-    const root = makeTempProject('debug80-project-manifest-v2-');
-    const configPath = writeProjectConfig(root, {
+    const { configPath } = makeProjectConfigFixture('debug80-project-manifest-v2-', {
       defaultProfile: 'mon3',
       profiles: {
         mon3: {
@@ -211,8 +221,7 @@ describe('project-config helpers', () => {
   });
 
   it('clears stale unsupported assembler ids when changing the program file', () => {
-    const root = makeTempProject('debug80-azm-entry-');
-    const configPath = writeProjectConfig(root, {
+    const { configPath } = makeProjectConfigFixture('debug80-azm-entry-', {
       defaultTarget: 'app',
       targets: {
         app: {
@@ -227,9 +236,8 @@ describe('project-config helpers', () => {
     const updated = updateProjectTargetSource(configPath, 'app', 'src/main.z80');
 
     expect(updated).toBe(true);
+    expectTargetSource(configPath, 'app', 'src/main.z80');
     const config = readProjectConfig(configPath);
-    expect(config?.targets?.app?.sourceFile).toBe('src/main.z80');
-    expect(config?.targets?.app?.asm).toBe('src/main.z80');
     expect(config?.targets?.app?.assembler).toBeUndefined();
   });
 });
