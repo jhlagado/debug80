@@ -33,6 +33,23 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Memory Request Test Fixture Cleanup
+
+`tests/debug/memory-request.test.ts` now uses a local request fixture helper for
+the runtime, response object, spy, and `MemoryRequestDeps` wiring used by the
+memory snapshot request handler. The test still covers forwarding paused
+running state into the webview memory snapshot response.
+
+This is intentionally test-only cleanup. It keeps the memory request handler
+coverage intact while making the test body read as the request/response
+contract instead of repeated dependency scaffolding.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/memory-request.test.ts
+```
+
 ### 2026-06-11: Memory Write Test Fixture Cleanup
 
 `tests/debug/memory-write.test.ts` now uses a local write-through spy helper
