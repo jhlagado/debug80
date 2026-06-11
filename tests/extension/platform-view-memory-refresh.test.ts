@@ -10,6 +10,7 @@ import {
   syncMemoryRefresh,
 } from '../../src/extension/platform-view-memory-refresh';
 import { createRefreshTestController } from '../platforms/panel-message-fixtures';
+import type { PanelTab } from '../../src/platforms/panel-html';
 
 describe('platform-view-memory-refresh', () => {
   afterEach(() => {
@@ -35,64 +36,69 @@ describe('platform-view-memory-refresh', () => {
   });
 
   it('starts refresh and rehydrates when the visible active tab is memory', async () => {
-    vi.useFakeTimers();
-    const { postSnapshot, refreshController } = createRefreshTestController();
+    const { postSnapshot, refreshController, sync, advance } = createMemoryRefreshHarness();
 
-    syncMemoryRefresh({
-      visible: true,
-      activeTab: 'memory',
-      refreshController,
-      intervalMs: 50,
-      rehydrate: true,
-    });
+    sync({ rehydrate: true });
     await Promise.resolve();
     await Promise.resolve();
 
     expect(postSnapshot).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(50);
+    await advance();
 
     expect(postSnapshot).toHaveBeenCalledTimes(2);
     stopMemoryRefresh(refreshController);
   });
 
   it('stops refresh when the visible active tab is not memory', () => {
-    vi.useFakeTimers();
-    const { refreshController } = createRefreshTestController();
+    const { refreshController, sync } = createMemoryRefreshHarness();
 
-    syncMemoryRefresh({
-      visible: true,
-      activeTab: 'memory',
-      refreshController,
-      intervalMs: 50,
-      rehydrate: false,
-    });
+    sync();
     expect(refreshController.state.timer).not.toBeUndefined();
 
-    syncMemoryRefresh({
-      visible: true,
-      activeTab: 'ui',
-      refreshController,
-      intervalMs: 50,
-      rehydrate: false,
-    });
+    sync({ activeTab: 'ui' });
 
     expect(refreshController.state.timer).toBeUndefined();
   });
 
   it('does not start refresh while the view is hidden', () => {
-    vi.useFakeTimers();
-    const { postSnapshot, refreshController } = createRefreshTestController();
+    const { postSnapshot, refreshController, sync } = createMemoryRefreshHarness();
 
-    syncMemoryRefresh({
-      visible: false,
-      activeTab: 'memory',
-      refreshController,
-      intervalMs: 50,
-      rehydrate: true,
-    });
+    sync({ visible: false, rehydrate: true });
 
     expect(refreshController.state.timer).toBeUndefined();
     expect(postSnapshot).not.toHaveBeenCalled();
   });
 });
+
+type MemoryRefreshSyncOptions = {
+  activeTab?: PanelTab;
+  rehydrate?: boolean;
+  visible?: boolean;
+};
+
+function createMemoryRefreshHarness(intervalMs = 50): ReturnType<
+  typeof createRefreshTestController
+> & {
+  advance: () => Promise<void>;
+  sync: (options?: MemoryRefreshSyncOptions) => void;
+} {
+  vi.useFakeTimers();
+  const controller = createRefreshTestController();
+
+  return {
+    ...controller,
+    advance: async () => {
+      await vi.advanceTimersByTimeAsync(intervalMs);
+    },
+    sync: (options: MemoryRefreshSyncOptions = {}) => {
+      syncMemoryRefresh({
+        visible: options.visible ?? true,
+        activeTab: options.activeTab ?? 'memory',
+        refreshController: controller.refreshController,
+        intervalMs,
+        rehydrate: options.rehydrate ?? false,
+      });
+    },
+  };
+}

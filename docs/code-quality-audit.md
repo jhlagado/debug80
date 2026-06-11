@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Memory Refresh Test Fixture Cleanup
+
+`tests/extension/platform-view-memory-refresh.test.ts` now uses a local memory
+refresh harness for fake timer setup, refresh controller construction, common
+`syncMemoryRefresh` options, and interval advancement. The tests still cover
+snapshot payload construction, visible memory-tab refresh and rehydration,
+stopping refresh when another tab is active, and hidden-view suppression.
+
+This is intentionally test-only cleanup. It keeps memory refresh behavior
+coverage intact while moving repeated timer and controller setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-memory-refresh.test.ts
+```
+
 ### 2026-06-11: Platform View Registry Test Fixture Cleanup
 
 `tests/extension/platform-view-registry.test.ts` now uses a local registry
