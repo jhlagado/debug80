@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Platform View Serial Action Test Fixture Cleanup
+
+`tests/extension/platform-view-serial-actions.test.ts` now uses a local serial
+send fixture for open-dialog selection, file bytes, progress callback execution,
+and timer flushing. The tests still cover TEC-1 and TEC-1G serial send routing,
+serial buffer saving, empty-buffer warnings, missing session errors, and
+cancelled file selection.
+
+This is intentionally test-only cleanup. It keeps serial file workflow coverage
+intact while moving repeated mocked VS Code progress and timer setup out of the
+behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/platform-view-serial-actions.test.ts
+```
+
 ### 2026-06-11: Platform View Reveal Test Harness Cleanup
 
 `tests/extension/platform-view-reveal.test.ts` now uses a local reveal harness

@@ -60,33 +60,7 @@ describe('platform-view serial actions', () => {
   });
 
   it('streams selected file bytes to the TEC-1 serial input', async () => {
-    const fileUri = { path: '/tmp/send.txt' };
-    mocks.showOpenDialog.mockResolvedValueOnce([fileUri]);
-    mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode('AB'));
-    mocks.withProgress.mockImplementationOnce(
-      async (
-        _opts,
-        callback: (
-          progress: { report: (value: unknown) => void },
-          token: { isCancellationRequested: boolean }
-        ) => Promise<void> | void
-      ) => {
-        await callback(
-          {
-            report: vi.fn<(value: unknown) => void>(),
-          },
-          {
-            isCancellationRequested: false,
-          }
-        );
-      }
-    );
-    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: TimerHandler) => {
-      if (typeof callback === 'function') {
-        callback();
-      }
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout);
+    prepareSerialSend('AB', '/tmp/send.txt');
 
     await handlePlatformSerialSendFile({
       getSession: () => mocks.activeDebugSession,
@@ -124,18 +98,7 @@ describe('platform-view serial actions', () => {
   });
 
   it('uses TEC-1G serial input when platform is tec1g', async () => {
-    const fileUri = { path: '/tmp/x.txt' };
-    mocks.showOpenDialog.mockResolvedValueOnce([fileUri]);
-    mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode('Z'));
-    mocks.withProgress.mockImplementationOnce(async (_opts, callback) => {
-      await callback({ report: vi.fn() }, { isCancellationRequested: false });
-    });
-    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: TimerHandler) => {
-      if (typeof callback === 'function') {
-        callback();
-      }
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout);
+    prepareSerialSend('Z', '/tmp/x.txt');
 
     await handlePlatformSerialSendFile({
       getSession: () => mocks.activeDebugSession,
@@ -171,3 +134,32 @@ describe('platform-view serial actions', () => {
     expect(mocks.customRequest).not.toHaveBeenCalled();
   });
 });
+
+function prepareSerialSend(text: string, path: string): void {
+  mocks.showOpenDialog.mockResolvedValueOnce([{ path }]);
+  mocks.readFile.mockResolvedValueOnce(new TextEncoder().encode(text));
+  flushSerialSendProgress();
+  flushSerialSendDelays();
+}
+
+function flushSerialSendProgress(): void {
+  mocks.withProgress.mockImplementationOnce(async (_opts, callback) => {
+    await callback(
+      {
+        report: vi.fn<(value: unknown) => void>(),
+      },
+      {
+        isCancellationRequested: false,
+      }
+    );
+  });
+}
+
+function flushSerialSendDelays(): void {
+  vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: TimerHandler) => {
+    if (typeof callback === 'function') {
+      callback();
+    }
+    return 0 as unknown as ReturnType<typeof setTimeout>;
+  }) as typeof setTimeout);
+}
