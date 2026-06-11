@@ -2889,6 +2889,18 @@ as platform ROM maps, while non-native auxiliary maps are ignored.
 No production code changed, and this stayed outside the matrix keyboard and
 TEC-1G IO hot zones.
 
+### 2026-06-11: Project Status Test Fixture Cleanup
+
+This pass stayed in `tests/extension/project-status.test.ts` and extracted
+local helpers for the repeated temporary project setup, `debug80.json` writing,
+selected-target memento shape, and VS Code workspace-folder shape. The test
+still keeps its behavior assertion visible: project status resolves the
+remembered target and reports the matching entry source.
+
+The covered behavior is unchanged, and no production project-status code
+changed. This stayed outside the matrix keyboard, TEC-1G IO, launch, and
+runtime-control hot zones.
+
 ## Priority Summary (2026-06-10)
 
 | Priority | Issue | Primary files |
