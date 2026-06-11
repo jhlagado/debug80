@@ -6,6 +6,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
 import { assembleIfRequested, normalizeStepLimit } from '../../src/debug/launch/launch-pipeline';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
+import { normalizeSimpleConfig } from '../../src/platforms/simple/runtime';
+import type { SimplePlatformConfigNormalized } from '../../src/platforms/types';
+
+type AssembleOptions = Parameters<typeof assembleIfRequested>[0];
 
 describe('launch-pipeline', () => {
   let backend: AssemblerBackend & {
@@ -31,16 +35,7 @@ describe('launch-pipeline', () => {
 
   it('skips assembly when disabled', async () => {
     const args = { assemble: false } as LaunchRequestArguments;
-    await expect(
-      assembleIfRequested({
-        backend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
-        platform: 'simple',
-        sendEvent: () => undefined,
-      })
-    ).resolves.toBeUndefined();
+    await expect(assemble({ args })).resolves.toBeUndefined();
   });
 
   it('throws when assembler fails', async () => {
@@ -48,31 +43,14 @@ describe('launch-pipeline', () => {
       success: false,
       error: 'bad asm',
     });
-    const args = {} as LaunchRequestArguments;
-    await expect(
-      assembleIfRequested({
-        backend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
-        platform: 'simple',
-        sendEvent: () => undefined,
-      })
-    ).rejects.toThrow('bad asm');
+    await expect(assemble()).rejects.toThrow('bad asm');
   });
 
   it('invokes binary assembly for simple platform', async () => {
-    const args = {} as LaunchRequestArguments;
     await expect(
-      assembleIfRequested({
-        backend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
+      assemble({
         sourceRoot: '/project',
-        platform: 'simple',
-        simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
-        sendEvent: () => undefined,
+        simpleConfig: simpleBinaryConfig(),
       })
     ).resolves.toBeUndefined();
     expect(backend.assemble).toHaveBeenCalledWith(
@@ -89,16 +67,9 @@ describe('launch-pipeline', () => {
       success: false,
       error: 'bad bin',
     });
-    const args = {} as LaunchRequestArguments;
     await expect(
-      assembleIfRequested({
-        backend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
-        platform: 'simple',
-        simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
-        sendEvent: () => undefined,
+      assemble({
+        simpleConfig: simpleBinaryConfig(),
       })
     ).rejects.toThrow('bad bin');
   });
@@ -108,34 +79,36 @@ describe('launch-pipeline', () => {
       id: backend.id,
       assemble: backend.assemble,
     };
-    const args = {} as LaunchRequestArguments;
 
     await expect(
-      assembleIfRequested({
+      assemble({
         backend: noBinBackend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
-        platform: 'simple',
-        simpleConfig: { binFrom: 0x900, binTo: 0xffff, regions: [] },
-        sendEvent: () => undefined,
+        simpleConfig: simpleBinaryConfig(),
       })
     ).resolves.toBeUndefined();
   });
 
   it('uses the backend id in fallback error messages', async () => {
     backend.assemble.mockResolvedValue({ success: false });
-    const args = {} as LaunchRequestArguments;
 
-    await expect(
-      assembleIfRequested({
-        backend,
-        args,
-        asmPath: 'a.asm',
-        hexPath: 'a.hex',
-        platform: 'simple',
-        sendEvent: () => undefined,
-      })
-    ).rejects.toThrow('mock-asm failed to assemble');
+    await expect(assemble()).rejects.toThrow('mock-asm failed to assemble');
   });
+
+  function assemble(
+    options: Partial<AssembleOptions> = {}
+  ): ReturnType<typeof assembleIfRequested> {
+    return assembleIfRequested({
+      backend,
+      args: {} as LaunchRequestArguments,
+      asmPath: 'a.asm',
+      hexPath: 'a.hex',
+      platform: 'simple',
+      sendEvent: () => undefined,
+      ...options,
+    });
+  }
 });
+
+function simpleBinaryConfig(): SimplePlatformConfigNormalized {
+  return normalizeSimpleConfig({ binFrom: 0x900, binTo: 0xffff });
+}

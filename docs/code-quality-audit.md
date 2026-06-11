@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Launch Pipeline Test Helper Cleanup
+
+`tests/debug/launch-pipeline.test.ts` now uses a local `assemble` helper for
+the repeated `assembleIfRequested` invocation scaffold. The tests still cover
+step-limit normalization, disabled assembly, assembler failures, binary
+assembly for the simple platform, unsupported binary assembly backends, and
+backend-id fallback errors.
+
+This is intentionally test-only cleanup. It keeps launch pipeline behavior
+coverage intact while reducing repeated backend, artifact path, platform, and
+event callback setup in each assembly scenario.
+
+Verification:
+
+```sh
+npx vitest run tests/debug/launch-pipeline.test.ts
+```
+
 ### 2026-06-11: Launch Config Merge Test Helper Cleanup
 
 `tests/debug/launch-config-merge.test.ts` now uses local `mergeForTarget` and
