@@ -27,6 +27,22 @@ let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefin
 let panelMessageHandler: ((msg: unknown) => void) | undefined;
 let panelHtml = '';
 
+type TestWorkspaceFolder = { name: string; uri: { fsPath: string }; index: number };
+
+function workspaceFolder(name: string, fsPath: string, index = 0): TestWorkspaceFolder {
+  return { name, uri: { fsPath }, index };
+}
+
+function tec1gWorkspaceFolder(index = 0): TestWorkspaceFolder {
+  return workspaceFolder('tec1g-mon3', '/workspace/tec1g-mon3', index);
+}
+
+function registeredCommand(name: string): (...args: unknown[]) => unknown {
+  const command = registeredCommands.get(name);
+  expect(command).toBeTypeOf('function');
+  return command as (...args: unknown[]) => unknown;
+}
+
 class DebugStackFrame {
   public constructor(
     public readonly session: {
@@ -132,7 +148,7 @@ describe('registerExtensionCommands', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     registeredCommands.clear();
-    workspaceFolders = [{ name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 0 }];
+    workspaceFolders = [tec1gWorkspaceFolder()];
     existsSync.mockImplementation((candidate: string) => {
       const n = path.normalize(candidate);
       if (n === projectConfigPath) {
@@ -181,11 +197,7 @@ describe('registerExtensionCommands', () => {
   });
 
   it('starts debugging with the current project config instead of the selected launch config', async () => {
-    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
-      name: 'tec1g-mon3',
-      uri: { fsPath: '/workspace/tec1g-mon3' },
-      index: 0,
-    });
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(tec1gWorkspaceFolder());
     const rememberWorkspace = vi.fn();
     const platformViewProvider = { refreshIdleView: vi.fn() };
 
@@ -198,8 +210,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const startDebug = registeredCommands.get('debug80.startDebug');
-    expect(startDebug).toBeTypeOf('function');
+    const startDebug = registeredCommand('debug80.startDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     const result = await startDebug?.();
@@ -227,8 +238,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const startDebug = registeredCommands.get('debug80.startDebug');
-    expect(startDebug).toBeTypeOf('function');
+    const startDebug = registeredCommand('debug80.startDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     const result = await startDebug?.({ rootPath: '/workspace/tec1g-mon3' });
@@ -249,7 +259,7 @@ describe('registerExtensionCommands', () => {
   it('prompts for a configured project when a provided debug root is not a project', async () => {
     workspaceFolders = [
       { name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 },
-      { name: 'tec1g-mon3', uri: { fsPath: '/workspace/tec1g-mon3' }, index: 1 },
+      tec1gWorkspaceFolder(1),
     ];
     const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
     existsSync.mockImplementation((candidate: string) => {
@@ -265,8 +275,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const startDebug = registeredCommands.get('debug80.startDebug');
-    expect(startDebug).toBeTypeOf('function');
+    const startDebug = registeredCommand('debug80.startDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     const result = await startDebug?.({ rootPath: '/workspace/empty-root' });
@@ -305,8 +314,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const createProject = registeredCommands.get('debug80.createProject');
-    expect(createProject).toBeTypeOf('function');
+    const createProject = registeredCommand('debug80.createProject');
 
     scaffoldProject.mockResolvedValueOnce(true);
     const result = await createProject?.({ rootPath: folder.uri.fsPath, platform: 'tec1g' });
@@ -352,8 +360,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const addFolder = registeredCommands.get('debug80.addWorkspaceFolder');
-    expect(addFolder).toBeTypeOf('function');
+    const addFolder = registeredCommand('debug80.addWorkspaceFolder');
 
     await addFolder?.({ platform: 'tec1g' });
 
@@ -388,8 +395,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const openDebug80View = registeredCommands.get('debug80.openDebug80View');
-    expect(openDebug80View).toBeTypeOf('function');
+    const openDebug80View = registeredCommand('debug80.openDebug80View');
 
     const result = await openDebug80View?.();
 
@@ -417,8 +423,7 @@ describe('registerExtensionCommands', () => {
     };
 
     await registerCommands();
-    const showSourceMapStatus = registeredCommands.get('debug80.showSourceMapStatus');
-    expect(showSourceMapStatus).toBeTypeOf('function');
+    const showSourceMapStatus = registeredCommand('debug80.showSourceMapStatus');
 
     const result = await showSourceMapStatus?.();
 
@@ -435,8 +440,7 @@ describe('registerExtensionCommands', () => {
     activeStackItem = new DebugStackFrame({ customRequest }, 1, 0);
     const contextFrame = new DebugStackFrame({ customRequest }, 1, 3);
 
-    const runToStackReturn = registeredCommands.get('debug80.runToSelectedStackFrame');
-    expect(runToStackReturn).toBeTypeOf('function');
+    const runToStackReturn = registeredCommand('debug80.runToSelectedStackFrame');
 
     const result = await runToStackReturn?.(contextFrame);
 
@@ -449,11 +453,7 @@ describe('registerExtensionCommands', () => {
   it('copies monitor ROM bundles into the project and creates a ROM entry source', async () => {
     const vscode = await import('vscode');
 
-    const folder = {
-      name: 'tec1g-mon3',
-      uri: { fsPath: '/workspace/tec1g-mon3' },
-      index: 0,
-    };
+    const folder = tec1gWorkspaceFolder();
     existsSync.mockImplementation((candidate: string) => {
       const normalized = path.normalize(candidate);
       if (normalized === projectConfigPath) {
@@ -512,8 +512,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const materializeBundledRomCommand = registeredCommands.get('debug80.materializeBundledRom');
-    expect(materializeBundledRomCommand).toBeTypeOf('function');
+    const materializeBundledRomCommand = registeredCommand('debug80.materializeBundledRom');
 
     const result = await materializeBundledRomCommand?.();
 
@@ -538,11 +537,7 @@ describe('registerExtensionCommands', () => {
   it('forces a prompt when selecting the active target', async () => {
     const vscode = await import('vscode');
 
-    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
-      name: 'tec1g-mon3',
-      uri: { fsPath: '/workspace/tec1g-mon3' },
-      index: 0,
-    });
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(tec1gWorkspaceFolder());
     const resolveTarget = vi.fn().mockResolvedValue('serial');
 
     await registerCommands({
@@ -561,8 +556,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectTarget = registeredCommands.get('debug80.selectTarget');
-    expect(selectTarget).toBeTypeOf('function');
+    const selectTarget = registeredCommand('debug80.selectTarget');
 
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
     await selectTarget?.();
@@ -575,11 +569,7 @@ describe('registerExtensionCommands', () => {
   });
 
   it('selects a configured root without starting debugging', async () => {
-    const folder = {
-      name: 'tec1g-mon3',
-      uri: { fsPath: '/workspace/tec1g-mon3' },
-      index: 0,
-    };
+    const folder = tec1gWorkspaceFolder();
     const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
     const rememberWorkspace = vi.fn();
     const refreshIdleView = vi.fn();
@@ -594,8 +584,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     const result = await selectRoot?.();
 
@@ -607,11 +596,7 @@ describe('registerExtensionCommands', () => {
   });
 
   it('uses a direct root selection without prompting', async () => {
-    const folder = {
-      name: 'tec1g-mon3',
-      uri: { fsPath: '/workspace/tec1g-mon3' },
-      index: 0,
-    };
+    const folder = tec1gWorkspaceFolder();
 
     const refreshIdleView = vi.fn();
     const reveal = vi.fn();
@@ -625,8 +610,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
 
@@ -666,8 +650,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
 
@@ -716,8 +699,7 @@ describe('registerExtensionCommands', () => {
       platformViewProvider: { refreshIdleView, reveal: vi.fn() } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
 
@@ -774,8 +756,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     stopDebugging.mockResolvedValueOnce(undefined);
     startDebugging.mockResolvedValueOnce(true);
@@ -839,8 +820,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     stopDebugging.mockResolvedValueOnce(undefined);
     startDebugging.mockResolvedValueOnce(true);
@@ -895,8 +875,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     startDebugging.mockResolvedValueOnce(true);
     const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
@@ -931,8 +910,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectRoot = registeredCommands.get('debug80.selectWorkspaceFolder');
-    expect(selectRoot).toBeTypeOf('function');
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
 
     const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
 
@@ -967,8 +945,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectTarget = registeredCommands.get('debug80.selectTarget');
-    expect(selectTarget).toBeTypeOf('function');
+    const selectTarget = registeredCommand('debug80.selectTarget');
 
     (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
       type: 'z80',
@@ -1010,8 +987,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectTarget = registeredCommands.get('debug80.selectTarget');
-    expect(selectTarget).toBeTypeOf('function');
+    const selectTarget = registeredCommand('debug80.selectTarget');
 
     const result = await selectTarget?.();
 
@@ -1047,8 +1023,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectTarget = registeredCommands.get('debug80.selectTarget');
-    expect(selectTarget).toBeTypeOf('function');
+    const selectTarget = registeredCommand('debug80.selectTarget');
 
     const result = await selectTarget?.({
       rootPath: '/workspace/tec1g-mon3',
@@ -1073,8 +1048,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const selectTarget = registeredCommands.get('debug80.selectTarget');
-    expect(selectTarget).toBeTypeOf('function');
+    const selectTarget = registeredCommand('debug80.selectTarget');
 
     const result = await selectTarget?.({ rootPath: '/workspace/missing' });
 
@@ -1120,8 +1094,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const configureProject = registeredCommands.get('debug80.configureProject');
-    expect(configureProject).toBeTypeOf('function');
+    const configureProject = registeredCommand('debug80.configureProject');
 
     const result = await configureProject?.();
 
@@ -1170,8 +1143,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const configureProject = registeredCommands.get('debug80.configureProject');
-    expect(configureProject).toBeTypeOf('function');
+    const configureProject = registeredCommand('debug80.configureProject');
 
     await configureProject?.();
 
@@ -1217,8 +1189,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const configureProject = registeredCommands.get('debug80.configureProject');
-    expect(configureProject).toBeTypeOf('function');
+    const configureProject = registeredCommand('debug80.configureProject');
 
     const result = await configureProject?.();
 
@@ -1256,8 +1227,7 @@ describe('registerExtensionCommands', () => {
       targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
     });
 
-    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
-    expect(openPanel).toBeTypeOf('function');
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
 
     await openPanel?.();
 
@@ -1284,8 +1254,7 @@ describe('registerExtensionCommands', () => {
       targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
     });
 
-    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
-    expect(openPanel).toBeTypeOf('function');
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
     await openPanel?.();
 
     panelMessageHandler?.({
@@ -1316,8 +1285,7 @@ describe('registerExtensionCommands', () => {
       targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
     });
 
-    const openPanel = registeredCommands.get('debug80.openProjectConfigPanel');
-    expect(openPanel).toBeTypeOf('function');
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
     await openPanel?.();
 
     panelMessageHandler?.({
@@ -1351,8 +1319,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1405,8 +1372,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1462,8 +1428,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1511,8 +1476,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1577,8 +1541,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1626,8 +1589,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);
@@ -1673,8 +1635,7 @@ describe('registerExtensionCommands', () => {
       } as never,
     });
 
-    const restartDebug = registeredCommands.get('debug80.restartDebug');
-    expect(restartDebug).toBeTypeOf('function');
+    const restartDebug = registeredCommand('debug80.restartDebug');
 
     startDebugging.mockResolvedValueOnce(true);
     stopDebugging.mockResolvedValueOnce(undefined);

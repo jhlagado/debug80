@@ -33,6 +33,24 @@ typing — while continuing the Phase 5–7 programme:
 
 ## Recent Updates
 
+### 2026-06-11: Extension Commands Test Fixture Cleanup
+
+`tests/extension/commands.test.ts` now uses local helpers for common workspace
+folder fixtures and registered command lookup. The tests still cover Debug80
+start/restart/select target commands, project initialization from the UI,
+monitor ROM copying, project configuration editing, source-map status reporting,
+and call-stack run-to-frame commands.
+
+This is intentionally test-only cleanup. It keeps extension command behavior
+coverage intact while moving repeated command existence assertions and default
+TEC-1G workspace folder setup out of the behavior assertions.
+
+Verification:
+
+```sh
+npx vitest run tests/extension/commands.test.ts
+```
+
 ### 2026-06-11: Terminal Panel HTML Test Fixture Cleanup
 
 `tests/extension/terminal-panel-html.test.ts` now uses local helpers for
