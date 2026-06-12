@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.23
+
+- Updated AZM to `0.2.10`.
+- Refactored launch configuration, source-map, D8 symbol/path, target
+  selection, and debug-session event handling into smaller helper modules while
+  preserving existing launch behavior.
+- Split shared webview DOM, project panel, memory view, serial UI, TEC-1, and
+  TEC-1G matrix state handling and enabled stricter webview TypeScript checks.
+- Expanded TEC-1G matrix keyboard characterization and IO safety coverage.
+- Cleaned up backend, extension, platform, and webview test fixtures and
+  refreshed the engineering manual and code-quality audit notes.
+
 ## 0.1.22
 
 - Fixed physical Alt matrix input so raw Alt state remains held after releasing
