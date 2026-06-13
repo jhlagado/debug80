@@ -166,6 +166,26 @@ const MODIFIER_KEY_NAMES: Record<MatrixModifier, string> = {
   alt: 'Alt',
 };
 
+function matchesCapsLock(combo: MatrixKeyCombo, capsLock: boolean): boolean {
+  return combo.capsLock === undefined || combo.capsLock === capsLock;
+}
+
+function selectCtrlLetterCombo(
+  payload: MatrixKeyPayload,
+  capsLock: boolean
+): MatrixKeyCombo | undefined {
+  if (payload.ctrl !== true || !/^[a-z]$/i.test(payload.key)) {
+    return undefined;
+  }
+  const combos = getMatrixCombosForAscii(payload.key.toLowerCase().charCodeAt(0));
+  const unmodifiedLetterCombo = combos.find(
+    (combo) => combo.modifier === undefined && matchesCapsLock(combo, capsLock)
+  );
+  return unmodifiedLetterCombo === undefined
+    ? undefined
+    : { ...unmodifiedLetterCombo, modifier: 'ctrl' };
+}
+
 export function selectMatrixCombo(
   combos: MatrixKeyCombo[],
   payload: MatrixKeyPayload,
@@ -180,22 +200,22 @@ export function selectMatrixCombo(
           ? 'fn'
           : payload.alt === true
             ? 'alt'
-            : undefined;
-  const matchesCaps = (combo: MatrixKeyCombo): boolean =>
-    combo.capsLock === undefined || combo.capsLock === capsLock;
+          : undefined;
   if (preferred !== undefined) {
     const preferredMatch = combos.find(
-      (combo) => combo.modifier === preferred && matchesCaps(combo)
+      (combo) => combo.modifier === preferred && matchesCapsLock(combo, capsLock)
     );
     if (preferredMatch) {
       return preferredMatch;
     }
   }
-  const unmodified = combos.find((combo) => combo.modifier === undefined && matchesCaps(combo));
+  const unmodified = combos.find(
+    (combo) => combo.modifier === undefined && matchesCapsLock(combo, capsLock)
+  );
   if (unmodified) {
     return unmodified;
   }
-  const capsMatch = combos.find(matchesCaps);
+  const capsMatch = combos.find((combo) => matchesCapsLock(combo, capsLock));
   return capsMatch ?? combos[0];
 }
 
@@ -285,15 +305,20 @@ export function handleMatrixKeyRequest(
     heldKeys.delete(keyId);
     return null;
   }
-  const ascii = resolveMatrixPayloadAscii(payload);
-  if (ascii === undefined) {
-    return null;
-  }
-  const combos = getMatrixCombosForAscii(ascii);
-  if (combos.length === 0) {
-    return null;
-  }
-  const combo = selectMatrixCombo(combos, payload, runtime.state.capsLock);
+  const ctrlLetterCombo = selectCtrlLetterCombo(payload, runtime.state.capsLock);
+  const combo =
+    ctrlLetterCombo ??
+    ((): MatrixKeyCombo | undefined => {
+      const ascii = resolveMatrixPayloadAscii(payload);
+      if (ascii === undefined) {
+        return undefined;
+      }
+      const combos = getMatrixCombosForAscii(ascii);
+      if (combos.length === 0) {
+        return undefined;
+      }
+      return selectMatrixCombo(combos, payload, runtime.state.capsLock);
+    })();
   if (!combo) {
     return null;
   }

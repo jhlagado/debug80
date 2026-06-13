@@ -421,29 +421,23 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
-  it('logs clicked Ctrl-letter chords with the emitted matrix payload', () => {
+  it('emits clicked Ctrl-letter chords with the letter key payload', () => {
     controller.applyKeyboardCapture(true);
     const ctrlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
-    const matrixKey = document.querySelector('[data-key="s"]') as HTMLElement;
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const matrixKey = document.querySelector('[data-key="e"]') as HTMLElement;
 
     ctrlKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-    expect(logSpy).toHaveBeenCalledWith(
-      '[Debug80 matrix] send',
-      expect.objectContaining({
-        source: 'mouse',
-        key: 's',
-        pressed: true,
-        shift: false,
-        ctrl: true,
-        fn: false,
-        alt: false,
-      })
-    );
-
-    logSpy.mockRestore();
+    expect(messages).toContainEqual({
+      type: 'matrixKey',
+      key: 'e',
+      pressed: true,
+      shift: false,
+      ctrl: true,
+      fn: false,
+      alt: false,
+    });
   });
 
   it('clears one-shot click modifiers immediately after the modified key press', () => {

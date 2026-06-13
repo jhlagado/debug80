@@ -34,8 +34,6 @@ interface VscodeApi {
   postMessage(message: unknown): void;
 }
 
-type MatrixEventSource = 'mouse' | 'physical' | 'system';
-
 const MATRIX_CLICK_HOLD_MS = 80;
 
 export function createMatrixUiController(
@@ -221,41 +219,11 @@ export function createMatrixUiController(
     }
   }
 
-  function logMatrixModifierState(
-    action: 'armed' | 'cleared',
-    modifier?: keyof MatrixKeyMods
-  ): void {
-    // eslint-disable-next-line no-console -- matrix trace for webview input debugging
-    console.log('[Debug80 matrix] modifiers', {
-      action,
-      modifier,
-      shift: matrixClickMods.shift,
-      ctrl: matrixClickMods.ctrl,
-      fn: matrixClickMods.fn,
-      alt: matrixClickMods.alt,
-      capsLock: capsLockEnabled,
-      capture: keyboardCaptureEnabled,
-    });
-  }
-
   function postMatrixKeyMessage(
-    source: MatrixEventSource,
     key: string,
     pressed: boolean,
     mods: MatrixKeyMods
   ) {
-    // eslint-disable-next-line no-console -- matrix trace for webview input debugging
-    console.log('[Debug80 matrix] send', {
-      source,
-      key,
-      pressed: !!pressed,
-      shift: !!mods.shift,
-      ctrl: !!mods.ctrl,
-      fn: !!mods.fn,
-      alt: !!mods.alt,
-      capsLock: capsLockEnabled,
-      capture: keyboardCaptureEnabled,
-    });
     vscode.postMessage({
       type: 'matrixKey',
       key: key,
@@ -270,8 +238,7 @@ export function createMatrixUiController(
   function sendMatrixKey(
     key: string,
     pressed: boolean,
-    mods: MatrixKeyMods,
-    source: MatrixEventSource
+    mods: MatrixKeyMods
   ): boolean {
     const keyId = matrixKeyId(key, mods);
     if (pressed) {
@@ -285,7 +252,7 @@ export function createMatrixUiController(
         return false;
       }
     }
-    postMatrixKeyMessage(source, key, pressed, mods);
+    postMatrixKeyMessage(key, pressed, mods);
     return true;
   }
 
@@ -296,7 +263,7 @@ export function createMatrixUiController(
       matrixClickReleaseTimers.delete(keyId);
       matrixClickPressMods.delete(key);
       setMatrixKeyPressed(key, false);
-      sendMatrixKey(key, false, mods, 'mouse');
+      sendMatrixKey(key, false, mods);
     }, MATRIX_CLICK_HOLD_MS);
     matrixClickReleaseTimers.set(keyId, timer);
   }
@@ -309,7 +276,7 @@ export function createMatrixUiController(
     matrixClickPressMods.clear();
     matrixPhysicalPressMods.clear();
     for (const held of drainMatrixHeldKeys(matrixHeldKeys)) {
-      postMatrixKeyMessage('system', held.key, false, held.mods);
+      postMatrixKeyMessage(held.key, false, held.mods);
     }
   }
 
@@ -344,7 +311,7 @@ export function createMatrixUiController(
     if (key.length === 1 && key !== key.toLowerCase()) {
       setMatrixKeyPressed(key.toLowerCase(), pressed);
     }
-    sendMatrixKey(payloadKey, pressed, mods, 'physical');
+    sendMatrixKey(payloadKey, pressed, mods);
     if (pressed) {
       matrixPhysicalPressMods.set(payloadKey, cloneMatrixMods(mods));
     } else {
@@ -382,18 +349,9 @@ export function createMatrixUiController(
 
   function armMatrixMod(mod: MatrixModifier): void {
     setMatrixMod(mod, true);
-    logMatrixModifierState('armed', mod);
   }
 
   function clearOneShotMatrixMods() {
-    if (
-      matrixClickMods.shift ||
-      matrixClickMods.ctrl ||
-      matrixClickMods.fn ||
-      matrixClickMods.alt
-    ) {
-      logMatrixModifierState('cleared');
-    }
     const cleared = createClearedMatrixMods(matrixClickMods);
     setMatrixMod('shift', cleared.shift);
     setMatrixMod('ctrl', cleared.ctrl);
@@ -529,13 +487,13 @@ export function createMatrixUiController(
           if (keyValue === 'CapsLock') {
             applyCapsLock(!capsLockEnabled);
             setMatrixKeyPressed(keyValue, true);
-            sendMatrixKey(keyValue, true, matrixClickMods, 'mouse');
+            sendMatrixKey(keyValue, true, matrixClickMods);
             return;
           }
           const pressMods = clickModsForKey(keyValue);
           matrixClickPressMods.set(keyValue, pressMods);
           setMatrixKeyPressed(keyValue, true);
-          sendMatrixKey(keyValue, true, pressMods, 'mouse');
+          sendMatrixKey(keyValue, true, pressMods);
           clearOneShotMatrixMods();
         });
         const release = () => {

@@ -453,5 +453,45 @@ describe('matrix-request', () => {
         expect(controlTransitions.some((entry) => entry.pressed === false)).toBe(true);
       }
     });
+
+    it('routes every Ctrl-letter chord through the letter key, not matching low control key codes', () => {
+      for (let code = 'a'.charCodeAt(0); code <= 'z'.charCodeAt(0); code += 1) {
+        const key = String.fromCharCode(code);
+        const rawKey = code - 0x3d;
+        const row = rawKey >> 3;
+        const col = rawKey & 0x07;
+        const applied: Array<{ row: number; col: number; pressed: boolean }> = [];
+        const runtime: MatrixRuntime = {
+          state: { matrixModeEnabled: true, capsLock: false },
+          setMatrixMode: () => {},
+          applyMatrixKey: (row, col, pressed) => {
+            applied.push({ row, col, pressed });
+          },
+        };
+        const heldKeys = new Map<string, MatrixKeyCombo[]>();
+
+        expect(
+          handleMatrixKeyRequest(runtime, heldKeys, {
+            key,
+            pressed: true,
+            ctrl: true,
+          })
+        ).toBeNull();
+        expect(
+          handleMatrixKeyRequest(runtime, heldKeys, {
+            key,
+            pressed: false,
+            ctrl: true,
+          })
+        ).toBeNull();
+
+        expect(applied).toEqual([
+          { row: 0, col: 1, pressed: true },
+          { row, col, pressed: true },
+          { row, col, pressed: false },
+          { row: 0, col: 1, pressed: false },
+        ]);
+      }
+    });
   });
 });
