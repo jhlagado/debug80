@@ -20,6 +20,7 @@ import type { PlatformViewSessionState } from './platform-view-session-state';
 import { resolvePlatformViewDebugSession } from './platform-view-session-state';
 import { clearPlatformSerial } from './platform-view-serial-state';
 import type { PlatformViewBundle } from './platform-view-registry';
+import type { Logger } from '../util/logger';
 
 export interface PlatformViewWebviewHandlerContext {
   currentPlatform: () => PlatformId | undefined;
@@ -34,6 +35,7 @@ export interface PlatformViewWebviewHandlerContext {
   handleSetHardwareStatus: (message: string | undefined) => void;
   handleRequestProjectStatus: () => void;
   isPanelVisible: () => boolean;
+  logger: Logger;
 }
 
 export function createPlatformViewWebviewHandler(
@@ -126,6 +128,7 @@ export function createPlatformViewWebviewHandler(
           getActiveTab: () => bundle.state.activeTab,
           isPanelVisible: context.isPanelVisible,
           memoryViews: bundle.state.memoryViews,
+          logger: context.logger,
         });
       },
     });

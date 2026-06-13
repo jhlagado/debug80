@@ -64,20 +64,29 @@ export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext)
   }
   const target = ctx.getSession();
   if (target?.type !== 'z80') {
+    if (msg.type === 'matrixKey') {
+      ctx.logger?.warn('Debug80 matrix trace webview message dropped: no active z80 session', msg);
+    }
     return;
   }
   if (msg.type === 'matrixKey' && typeof msg.key === 'string' && typeof msg.pressed === 'boolean') {
+    const payload = {
+      key: msg.key,
+      pressed: msg.pressed,
+      shift: msg.shift,
+      ctrl: msg.ctrl,
+      fn: msg.fn,
+      alt: msg.alt,
+    };
+    ctx.logger?.info('Debug80 matrix trace webview message', payload);
     try {
-      await target.customRequest('debug80/tec1gMatrixKey', {
-        key: msg.key,
-        pressed: msg.pressed,
-        shift: msg.shift,
-        ctrl: msg.ctrl,
-        fn: msg.fn,
-        alt: msg.alt,
+      await target.customRequest('debug80/tec1gMatrixKey', payload);
+      ctx.logger?.info('Debug80 matrix trace custom request accepted', payload);
+    } catch (err) {
+      ctx.logger?.warn('Debug80 matrix trace custom request failed', {
+        payload,
+        error: String(err),
       });
-    } catch {
-      /* ignore */
     }
     return;
   }

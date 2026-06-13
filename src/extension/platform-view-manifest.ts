@@ -6,6 +6,7 @@ import type * as vscode from 'vscode';
 import type { PanelTab } from '../platforms/panel-html';
 import type { MemoryViewState } from '../platforms/panel-memory';
 import type { RefreshController } from '../platforms/panel-refresh';
+import type { Logger } from '../util/logger';
 import type { PlatformViewMessage } from './platform-view-messages';
 
 export interface PlatformUiMessageContext {
@@ -16,6 +17,7 @@ export interface PlatformUiMessageContext {
   getActiveTab: () => PanelTab;
   isPanelVisible: () => boolean;
   memoryViews: MemoryViewState;
+  logger?: Logger;
 }
 
 export interface PlatformUiModules<TUiState = unknown> {

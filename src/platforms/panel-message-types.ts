@@ -4,6 +4,7 @@
 
 import type { MemoryViewState } from './panel-memory';
 import type { RefreshController } from './panel-refresh';
+import type { Logger } from '../util/logger';
 
 export type PanelMessage = {
   type?: string;
@@ -33,6 +34,7 @@ export type PanelMessageContext<TTab extends string> = {
   getActiveTab: () => TTab;
   isPanelVisible: () => boolean;
   memoryViews: MemoryViewState;
+  logger?: Logger;
 };
 
 export type PanelCommands = {
@@ -56,4 +58,3 @@ export async function sendPanelCommand(
     return false;
   }
 }
-

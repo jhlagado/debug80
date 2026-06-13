@@ -71,6 +71,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
+  private readonly logger: Logger;
   private readonly performanceMonitor: UiPerformanceMonitor;
   private readonly registry: PlatformViewRegistry;
   private coolTermAvailable = false;
@@ -92,6 +93,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   ) {
     this.extensionUri = extensionUri;
     this.workspaceState = workspaceState;
+    this.logger = logger;
     this.performanceMonitor = createUiPerformanceMonitor({
       logger,
       label: 'platform-view',
@@ -270,6 +272,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         handleSetHardwareStatus: (message) => this.handleSetHardwareStatus(message),
         handleRequestProjectStatus: () => this.postProjectStatus(),
         isPanelVisible: () => this.view?.visible === true,
+        logger: this.logger,
       })
     );
 
