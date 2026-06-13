@@ -54,6 +54,9 @@ export interface Tec1gState {
   };
   input: {
     matrixKeyStates: Uint8Array;
+    matrixPendingKeyStates: Uint8Array;
+    matrixPendingDirty: boolean;
+    matrixLastReadRow: number | null;
     matrixModeEnabled: boolean;
     keyValue: number;
     keyReleaseEventId: number | null;
@@ -137,6 +140,9 @@ export function createTec1gInitialState(params: {
     },
     input: {
       matrixKeyStates: new Uint8Array(16).fill(TEC1G_MASK_BYTE),
+      matrixPendingKeyStates: new Uint8Array(16).fill(TEC1G_MASK_BYTE),
+      matrixPendingDirty: false,
+      matrixLastReadRow: null,
       matrixModeEnabled: matrixMode,
       keyValue: TEC1G_MASK_LOW7,
       keyReleaseEventId: null,

@@ -183,8 +183,9 @@ export function createTec1gRuntime(
     const rowIndex = Math.max(0, Math.min(15, Math.trunc(row)));
     const colIndex = Math.max(0, Math.min(7, Math.trunc(col)));
     const mask = 1 << colIndex;
-    const current = input.matrixKeyStates[rowIndex] ?? TEC1G_MASK_BYTE;
-    input.matrixKeyStates[rowIndex] = pressed ? current & ~mask : current | mask;
+    const current = input.matrixPendingKeyStates[rowIndex] ?? TEC1G_MASK_BYTE;
+    input.matrixPendingKeyStates[rowIndex] = pressed ? current & ~mask : current | mask;
+    input.matrixPendingDirty = true;
   };
 
   const setMatrixMode = (enabled: boolean): void => {

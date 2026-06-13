@@ -34,6 +34,18 @@ describe('TEC-1G matrix keyboard', () => {
     expect(value & (1 << 5)).toBe(0);
   });
 
+  it('defers matrix key changes until the next scan boundary', () => {
+    const rt = makeRuntime(true);
+
+    expect(rt.ioHandlers.read(0xfefe)).toBe(0xff);
+    rt.applyMatrixKey(0, 1, true);
+    rt.applyMatrixKey(6, 6, true);
+
+    expect(rt.ioHandlers.read(0xbffe) & (1 << 6)).not.toBe(0);
+    expect(rt.ioHandlers.read(0xfefe) & (1 << 1)).toBe(0);
+    expect(rt.ioHandlers.read(0xbffe) & (1 << 6)).toBe(0);
+  });
+
   it('decodes each active-low matrix keyboard row address', () => {
     const rt = makeRuntime(true);
     const rowPorts = [0xfefe, 0xfdfe, 0xfbfe, 0xf7fe, 0xeffe, 0xdffe, 0xbffe, 0x7ffe];

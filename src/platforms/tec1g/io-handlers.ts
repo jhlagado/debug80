@@ -179,6 +179,21 @@ function decodeMatrixKeyboardRow(highByte: number): number | undefined {
 }
 
 /**
+ *
+ */
+function readMatrixKeyboardRow(input: Tec1gState['input'], row: number): number {
+  if (
+    input.matrixPendingDirty &&
+    (input.matrixLastReadRow === null || row <= input.matrixLastReadRow)
+  ) {
+    input.matrixKeyStates.set(input.matrixPendingKeyStates);
+    input.matrixPendingDirty = false;
+  }
+  input.matrixLastReadRow = row;
+  return input.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
+}
+
+/**
  * Builds the TEC-1G runtime port handlers.
  */
 export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
@@ -304,7 +319,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         if (row === undefined) {
           return TEC1G_MASK_BYTE;
         }
-        return input.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
+        return readMatrixKeyboardRow(input, row);
       }
       if (p === TEC1G_PORT_LCD_CMD) {
         return lcd.readStatus();

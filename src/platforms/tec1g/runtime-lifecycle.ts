@@ -75,6 +75,9 @@ export function resetTec1gRuntimeState(
   display.ledMatrixGreenLatch = 0;
   display.ledMatrixBlueLatch = 0;
   input.matrixKeyStates.fill(TEC1G_MASK_BYTE);
+  input.matrixPendingKeyStates.fill(TEC1G_MASK_BYTE);
+  input.matrixPendingDirty = false;
+  input.matrixLastReadRow = null;
   input.matrixModeEnabled = defaults.matrixMode;
   controllers.glcd.reset();
   system.sysCtrl = defaults.sysCtrl;
