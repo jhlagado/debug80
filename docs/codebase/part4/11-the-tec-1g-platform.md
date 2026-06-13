@@ -103,6 +103,9 @@ display: {
 ```typescript
 input: {
   matrixKeyStates: Uint8Array; // 16 rows × 8 columns, active-low
+  matrixPendingKeyStates: Uint8Array; // Next scan image waiting for the next row-boundary commit
+  matrixPendingDirty: boolean; // True while pending rows differ from the committed scan image
+  matrixLastReadRow: number | null; // Last row read through port 0xFE in the current scan pass
   matrixModeEnabled: boolean;
   keyValue: number; // Hex keypad (0x7F = none)
   keyReleaseEventId: number | null;
@@ -249,9 +252,13 @@ The webview receives the full GDRAM array and renders it as a bitmap.
 
 The TEC-1G supports a full alphanumeric matrix keyboard in addition to the original hex keypad. The matrix has 16 rows and 8 columns. Port 0xFE returns the key state for the row specified in the high byte of the port address — the Z80's `IN r,(C)` instruction places BC on the port bus, and the high byte (B) selects the row.
 
-`matrixKeyStates` is a 16-byte `Uint8Array`, one byte per row. Each bit represents a column. The values are **active-low**: 0 means the key is pressed, 1 means released. This matches the real hardware where keys pull the line low.
+`matrixKeyStates` is the committed 16-byte scan image that port `0xFE` returns, one byte per row. Each bit represents a column. The values are **active-low**: 0 means the key is pressed, 1 means released. This matches the real hardware where keys pull the line low.
+
+`matrixPendingKeyStates` holds the next scan image while key transitions are arriving from the adapter. `applyMatrixKey()` updates this pending array and marks `matrixPendingDirty` instead of mutating the committed rows immediately.
 
 The row select is also active-low. `decodeMatrixKeyboardRow()` in `src/platforms/tec1g/io-handlers.ts` decodes the high byte on the Z80 port bus and uses the first selected low bit as the row that `IN r,(C)` should read.
+
+`readMatrixKeyboardRow()` commits the pending scan image only at a scan boundary: either the first matrix-row read after an idle period or when the requested row number wraps back to an earlier row than the previous read. This keeps one MON-3 scan pass internally consistent even if host input changes while the monitor is walking the matrix.
 
 ### ASCII translation
 
@@ -261,7 +268,7 @@ The row select is also active-low. `decodeMatrixKeyboardRow()` in `src/platforms
 2. For letter keys, applies CAPS LOCK and Shift to determine case.
 3. For digit and punctuation keys, applies Shift to select the shifted variant.
 
-This is used by the `debug80/tec1gMatrixKey` request to translate keyboard events from the webview back into the matrix row/column positions that would produce those codes through MON-3. Arrow and editing keys use the same low-code convention as MON-3: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`.
+This is used by the `debug80/tec1gMatrixKey` request to translate keyboard events from the webview back into the matrix row/column positions that would produce those codes through MON-3. Ctrl-letter chords are resolved through the unmodified letter cell plus the Ctrl modifier row rather than by collapsing the payload to ASCII control codes up front. Arrow and editing keys use the same low-code convention as MON-3: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`.
 
 ### Matrix keyboard attachment
 
@@ -269,7 +276,7 @@ Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CO
 
 The accordion open state is persisted by the webview, but MON-3 Matrix CONFIG is session runtime state. Debug80 therefore reasserts matrix mode when a debug session becomes active with the accordion already open, and again after a RESET clicked while the accordion is open. This keeps persisted UI state and runtime input routing aligned without requiring a close/reopen cycle.
 
-The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests, which update `matrixKeyStates` directly.
+The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests. The adapter expands those payloads into matrix row/column transitions, updates `matrixPendingKeyStates`, and lets the runtime publish the new scan image on the next matrix-row boundary.
 
 While the accordion is open, pointer focus controls keyboard capture. Clicking within the emulator display, machine, or matrix-keyboard surfaces captures the host keyboard. Clicking elsewhere in the document or blurring the window releases it. The routing cue and accordion header reflect both states separately: attached means MON-3 reads the matrix keyboard, captured means the host keyboard is currently being forwarded into that matrix scan path.
 
