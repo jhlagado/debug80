@@ -77,10 +77,6 @@ export function createLaunchLogger(
   };
 }
 
-function isMatrixTraceEnabled(): boolean {
-  return process.env.DEBUG80_TRACE_MATRIX === '1';
-}
-
 function summarizeActiveMatrixRows(
   rows: Uint8Array | undefined
 ): Array<{ row: number; value: string }> {
@@ -249,16 +245,14 @@ export async function buildLaunchSession(
             const rows = context.sessionState.tec1gRuntime?.state.input.matrixKeyStates;
             const before = summarizeMatrixScanRaw(rows);
             context.sessionState.tec1gRuntime?.applyMatrixKey(row, col, pressed);
-            if (isMatrixTraceEnabled()) {
-              context.logger.info('Debug80 matrix trace transition', {
-                row,
-                col,
-                pressed,
-                before,
-                after: summarizeMatrixScanRaw(rows),
-                activeRows: summarizeActiveMatrixRows(rows),
-              });
-            }
+            context.logger.info('Debug80 matrix trace transition', {
+              row,
+              col,
+              pressed,
+              before,
+              after: summarizeMatrixScanRaw(rows),
+              activeRows: summarizeActiveMatrixRows(rows),
+            });
           },
         };
   };
@@ -270,13 +264,11 @@ export async function buildLaunchSession(
     handleMatrixKeyRequest: (args) => {
       const runtime = getTec1gMatrixRuntime();
       const result = handleMatrixKeyRequest(runtime, context.matrixHeldKeys, args);
-      if (isMatrixTraceEnabled()) {
-        context.logger.info('Debug80 matrix trace request', args);
-        context.logger.info(
-          'Debug80 matrix trace state',
-          summarizeActiveMatrixRows(context.sessionState.tec1gRuntime?.state.input.matrixKeyStates)
-        );
-      }
+      context.logger.info('Debug80 matrix trace request', args);
+      context.logger.info(
+        'Debug80 matrix trace state',
+        summarizeActiveMatrixRows(context.sessionState.tec1gRuntime?.state.input.matrixKeyStates)
+      );
       return result;
     },
     clearMatrixHeldKeys: () => {
