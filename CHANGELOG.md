@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.24
+
+- Fixed TEC-1G matrix Ctrl-letter chord routing so modifier chords continue to
+  route through the letter matrix keys and avoid stale matrix input.
+- Stabilized TEC-1G matrix scan input and added matrix adapter diagnostics for
+  webview, adapter, and runtime key transitions.
+- Synced `package-lock.json` for Node 20 / npm 10 clean installs.
+- Updated the engineering manual for the AZM `0.2.10` release.
+
 ## 0.1.23
 
 - Updated AZM to `0.2.10`.
