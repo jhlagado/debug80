@@ -200,13 +200,17 @@ describe('matrix-request', () => {
       expect(resolveMatrixPayloadAscii({ key: '!', pressed: true, shift: true })).toBe(0x21);
     });
 
-    it('maps physical Ctrl-letter chords to ASCII control codes', () => {
+    it('does not collapse Ctrl-letter chords to ASCII control codes', () => {
       for (let code = 1; code <= 26; code += 1) {
         const lower = String.fromCharCode(code + 0x60);
         const upper = String.fromCharCode(code + 0x40);
 
-        expect(resolveMatrixPayloadAscii({ key: lower, pressed: true, ctrl: true })).toBe(code);
-        expect(resolveMatrixPayloadAscii({ key: upper, pressed: true, ctrl: true })).toBe(code);
+        expect(resolveMatrixPayloadAscii({ key: lower, pressed: true, ctrl: true })).toBe(
+          lower.charCodeAt(0)
+        );
+        expect(resolveMatrixPayloadAscii({ key: upper, pressed: true, ctrl: true })).toBe(
+          upper.charCodeAt(0)
+        );
       }
     });
   });
