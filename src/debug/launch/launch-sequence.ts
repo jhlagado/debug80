@@ -97,6 +97,28 @@ function summarizeActiveMatrixRows(
   return active;
 }
 
+function summarizeMatrixScanRaw(rows: Uint8Array | undefined): { d: string; e: string } {
+  if (!rows) {
+    return { d: 'ff', e: 'ff' };
+  }
+  let secondary = 0xff;
+  let primary = 0xff;
+  for (let row = 0; row < rows.length; row += 1) {
+    const value = rows[row] ?? 0xff;
+    for (let col = 0; col < 8; col += 1) {
+      if ((value & (1 << col)) !== 0) {
+        continue;
+      }
+      secondary = primary;
+      primary = row * 8 + col;
+    }
+  }
+  return {
+    d: secondary.toString(16).padStart(2, '0'),
+    e: primary.toString(16).padStart(2, '0'),
+  };
+}
+
 export function hasLaunchInputs(args: LaunchRequestArguments): boolean {
   return !(
     (args.asm === undefined || args.asm === '') &&
@@ -223,8 +245,21 @@ export async function buildLaunchSession(
           },
           setMatrixMode: (enabled: boolean) =>
             context.sessionState.tec1gRuntime?.setMatrixMode(enabled),
-          applyMatrixKey: (row: number, col: number, pressed: boolean) =>
-            context.sessionState.tec1gRuntime?.applyMatrixKey(row, col, pressed),
+          applyMatrixKey: (row: number, col: number, pressed: boolean): void => {
+            const rows = context.sessionState.tec1gRuntime?.state.input.matrixKeyStates;
+            const before = summarizeMatrixScanRaw(rows);
+            context.sessionState.tec1gRuntime?.applyMatrixKey(row, col, pressed);
+            if (isMatrixTraceEnabled()) {
+              context.logger.info('Debug80 matrix trace transition', {
+                row,
+                col,
+                pressed,
+                before,
+                after: summarizeMatrixScanRaw(rows),
+                activeRows: summarizeActiveMatrixRows(rows),
+              });
+            }
+          },
         };
   };
   platformProvider.registerCommands(context.platformRegistry, {
