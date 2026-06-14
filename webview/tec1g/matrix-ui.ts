@@ -288,6 +288,12 @@ export function createMatrixUiController(
     if (!key) {
       return false;
     }
+    const payloadKey = key.length === 1 ? key.toLowerCase() : key;
+    if (event.metaKey) {
+      if (pressed || !matrixPhysicalPressMods.has(payloadKey)) {
+        return false;
+      }
+    }
     consumeHandledKeyEvent(event);
     if (pressed && isHostReleaseChord(key, event)) {
       applyKeyboardCapture(false);
@@ -299,7 +305,6 @@ export function createMatrixUiController(
     if (key === 'CapsLock' && pressed) {
       applyCapsLock(!capsLockEnabled);
     }
-    const payloadKey = key.length === 1 ? key.toLowerCase() : key;
     const eventMods = createMatrixMods({
       shiftKey: event.shiftKey || (capsLockEnabled && isLetterKey(payloadKey)),
       ctrlKey: event.ctrlKey,

@@ -2727,8 +2727,10 @@ keyboard capture. Opening the Matrix Keyboard accordion still represents the
 hardware being attached and keeps MON-3 matrix mode active, but physical host
 keystrokes are only routed to the matrix keyboard after the user clicks an
 emulator surface. Plain `Escape` is delivered to MON-3 as the matrix ESC key;
-clicking outside those surfaces releases capture, `Cmd/Ctrl+Escape` is a
-host-only release chord, and webview blur releases held matrix keys.
+clicking outside those surfaces releases capture, `Ctrl+Escape` is a host-only
+release chord, and webview blur releases held matrix keys. Meta/Command chords
+are left to VS Code and the host OS rather than being translated into TEC-1G
+matrix input.
 
 This removes an implicit coupling where "accordion open" meant both hardware
 attached and physical keyboard captured. Future keyboard work should preserve
@@ -2751,9 +2753,8 @@ Matrix keyboard invariants to preserve before any future refactor:
 - Held-key state must be released on blur, capture release, reset, and matrix
   attachment changes. Any new release path must refresh the visible routing cue
   and key highlights.
-- Mac `Meta`/Command is a host workaround for control-style matrix input, not a
-  TEC-1G hardware modifier. It must not leak into persisted matrix state as a
-  separate hardware key.
+- Mac `Meta`/Command is host-owned input, not a TEC-1G hardware modifier. It
+  must not leak into persisted matrix state or be translated into matrix Ctrl.
 - Plain `Escape` is a matrix key while capture is active. Host-only capture
   release uses the explicit release chord/path, not by stealing MON-3 ESC.
 
@@ -2769,8 +2770,8 @@ state-helper extraction. `tests/webview/tec1g-matrix-ui.test.ts` now explicitly
 locks down that clicked Ctrl, Fn, and Alt modifiers are one-shot chords; Caps
 Lock is a persistent toggle that can be turned off without leaving Shift
 latched; clicked matrix keys are ignored until keyboard capture is active; and
-host `Meta`/Command is delivered as matrix Ctrl without lighting or latching the
-on-screen Control key.
+host `Meta`/Command input is ignored by matrix routing so host shortcuts stay
+outside the emulated keyboard.
 
 `tests/webview/common/accordion-layout.test.ts` now covers the restored-open
 Matrix Keyboard lifecycle. If the webview starts with the Matrix Keyboard panel
@@ -2792,8 +2793,8 @@ The first behavior-preserving matrix extraction is now isolated in
 `webview/tec1g/matrix-state.ts`. It contains only pure decisions that were
 already covered by characterization tests: matrix modifier names, one-shot
 modifier clearing, Caps-driven click modifiers, matrix key id construction,
-physical host-key normalization through `event.code`, `Meta`/Command-as-Ctrl,
-and the modified-Escape host release chord.
+physical host-key normalization through `event.code`, host-owned
+`Meta`/Command handling, and the Ctrl-Escape host release chord.
 
 `webview/tec1g/matrix-ui.ts` still owns DOM rendering, key highlights, timers,
 held-key maps, message posting, and click/keyboard event wiring. This keeps the

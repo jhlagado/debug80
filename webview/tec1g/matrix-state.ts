@@ -66,7 +66,7 @@ for (let code = 65; code <= 90; code += 1) {
 export function createMatrixMods(mods: HostModifierState = {}): MatrixKeyMods {
   return {
     shift: mods.shiftKey === true,
-    ctrl: mods.ctrlKey === true || mods.metaKey === true,
+    ctrl: mods.ctrlKey === true,
     fn: false,
     alt: mods.altKey === true,
   };
@@ -168,8 +168,7 @@ export function drainMatrixHeldKeys(heldKeys: Map<string, MatrixHeldKey>): Matri
 }
 
 export function resolvePhysicalMatrixKey(event: KeyboardEvent): string {
-  const usesModifier =
-    event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.key === 'CapsLock';
+  const usesModifier = event.shiftKey || event.ctrlKey || event.altKey || event.key === 'CapsLock';
   if (usesModifier) {
     const mapped = PHYSICAL_CODE_TO_MATRIX_KEY[event.code];
     if (mapped !== undefined) {
@@ -180,5 +179,5 @@ export function resolvePhysicalMatrixKey(event: KeyboardEvent): string {
 }
 
 export function isHostReleaseChord(key: string, mods: HostModifierState): boolean {
-  return key === 'Escape' && (mods.metaKey === true || mods.ctrlKey === true);
+  return key === 'Escape' && mods.ctrlKey === true;
 }

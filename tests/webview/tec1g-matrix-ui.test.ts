@@ -720,11 +720,11 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
-  it('uses modified Escape as a host-only keyboard capture release chord', () => {
+  it('uses Ctrl-Escape as a host-only keyboard capture release chord', () => {
     controller.applyKeyboardCapture(true);
 
     expect(
-      controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape', { metaKey: true }), true)
+      controller.handleKeyEvent(makeKeyEvent('keydown', 'Escape', { ctrlKey: true }), true)
     ).toBe(true);
 
     expect(controller.isKeyboardCaptured()).toBe(false);
@@ -871,37 +871,17 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
-  it('maps physical Meta key chords to the native matrix ctrl modifier', () => {
+  it('ignores physical Meta key chords instead of routing them into matrix input', () => {
     controller.applyKeyboardCapture(true);
     const keydown = makeKeyEvent('keydown', 'ArrowUp', { metaKey: true });
     const keyup = makeKeyEvent('keyup', 'ArrowUp', { metaKey: true });
 
-    expect(controller.handleKeyEvent(keydown, true)).toBe(true);
-    expect(controller.handleKeyEvent(keyup, false)).toBe(true);
-
-    expect(messages).toEqual([
-      {
-        type: 'matrixKey',
-        key: 'ArrowUp',
-        pressed: true,
-        shift: false,
-        ctrl: true,
-        fn: false,
-        alt: false,
-      },
-      {
-        type: 'matrixKey',
-        key: 'ArrowUp',
-        pressed: false,
-        shift: false,
-        ctrl: true,
-        fn: false,
-        alt: false,
-      },
-    ]);
+    expect(controller.handleKeyEvent(keydown, true)).toBe(false);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(false);
+    expect(messages).toEqual([]);
   });
 
-  it('consumes handled Meta key chords before host shortcuts can handle them', () => {
+  it('leaves Meta key chords unhandled so host shortcuts keep working', () => {
     controller.applyKeyboardCapture(true);
     const keydown = makeKeyEvent('keydown', 's', { metaKey: true });
     const keyup = makeKeyEvent('keyup', 's', { metaKey: true });
@@ -910,65 +890,54 @@ describe('tec1g matrix ui', () => {
     const upPreventDefault = vi.spyOn(keyup, 'preventDefault');
     const upStopImmediatePropagation = vi.spyOn(keyup, 'stopImmediatePropagation');
 
+    expect(controller.handleKeyEvent(keydown, true)).toBe(false);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(false);
+
+    expect(downPreventDefault).not.toHaveBeenCalled();
+    expect(downStopImmediatePropagation).not.toHaveBeenCalled();
+    expect(upPreventDefault).not.toHaveBeenCalled();
+    expect(upStopImmediatePropagation).not.toHaveBeenCalled();
+    expect(messages).toEqual([]);
+  });
+
+  it('releases an already-held matrix key even if Meta is held before keyup', () => {
+    controller.applyKeyboardCapture(true);
+    const keydown = makeKeyEvent('keydown', 'a');
+    const keyup = makeKeyEvent('keyup', 'a', { metaKey: true });
+
     expect(controller.handleKeyEvent(keydown, true)).toBe(true);
     expect(controller.handleKeyEvent(keyup, false)).toBe(true);
 
-    expect(downPreventDefault).toHaveBeenCalledOnce();
-    expect(downStopImmediatePropagation).toHaveBeenCalledOnce();
-    expect(upPreventDefault).toHaveBeenCalledOnce();
-    expect(upStopImmediatePropagation).toHaveBeenCalledOnce();
     expect(messages).toEqual([
       {
         type: 'matrixKey',
-        key: 's',
+        key: 'a',
         pressed: true,
         shift: false,
-        ctrl: true,
+        ctrl: false,
         fn: false,
         alt: false,
       },
       {
         type: 'matrixKey',
-        key: 's',
+        key: 'a',
         pressed: false,
         shift: false,
-        ctrl: true,
+        ctrl: false,
         fn: false,
         alt: false,
       },
     ]);
   });
 
-  it('does not latch host Meta as an on-screen matrix modifier', () => {
+  it('does not route Meta-modified letter keys into matrix input', () => {
     controller.applyKeyboardCapture(true);
-    const controlKey = document.querySelector('[data-key="Control"]') as HTMLElement;
     const keydown = makeKeyEvent('keydown', 's', { metaKey: true, code: 'KeyS' });
-    const keyup = makeKeyEvent('keyup', 's', { code: 'KeyS' });
+    const keyup = makeKeyEvent('keyup', 's', { metaKey: true, code: 'KeyS' });
 
-    expect(controller.handleKeyEvent(keydown, true)).toBe(true);
-    expect(controlKey.classList.contains('active')).toBe(false);
-    expect(controller.handleKeyEvent(keyup, false)).toBe(true);
-
-    expect(messages).toEqual([
-      {
-        type: 'matrixKey',
-        key: 's',
-        pressed: true,
-        shift: false,
-        ctrl: true,
-        fn: false,
-        alt: false,
-      },
-      {
-        type: 'matrixKey',
-        key: 's',
-        pressed: false,
-        shift: false,
-        ctrl: true,
-        fn: false,
-        alt: false,
-      },
-    ]);
+    expect(controller.handleKeyEvent(keydown, true)).toBe(false);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(false);
+    expect(messages).toEqual([]);
   });
 
   it('uses physical key code for Alt chords when macOS changes event.key', () => {

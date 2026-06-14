@@ -81,10 +81,10 @@ describe('tec1g matrix keyboard pure state helpers', () => {
     expect(resolvePhysicalMatrixKey(keyEvent('Escape', { code: 'Escape' }))).toBe('Escape');
   });
 
-  it('treats Meta as matrix Ctrl without making Meta a separate hardware modifier', () => {
+  it('does not map Meta into any matrix modifier state', () => {
     expect(createMatrixMods({ metaKey: true })).toEqual({
       shift: false,
-      ctrl: true,
+      ctrl: false,
       fn: false,
       alt: false,
     });
@@ -96,8 +96,8 @@ describe('tec1g matrix keyboard pure state helpers', () => {
     });
   });
 
-  it('recognizes only modified Escape as the host keyboard capture release chord', () => {
-    expect(isHostReleaseChord('Escape', { metaKey: true, ctrlKey: false })).toBe(true);
+  it('recognizes only Ctrl-Escape as the host keyboard capture release chord', () => {
+    expect(isHostReleaseChord('Escape', { metaKey: true, ctrlKey: false })).toBe(false);
     expect(isHostReleaseChord('Escape', { metaKey: false, ctrlKey: true })).toBe(true);
     expect(isHostReleaseChord('Escape', { metaKey: false, ctrlKey: false })).toBe(false);
     expect(isHostReleaseChord('s', { metaKey: true, ctrlKey: false })).toBe(false);
