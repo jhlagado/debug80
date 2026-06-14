@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.25
+
+- Stopped routing physical Meta-key chords into TEC-1G matrix input so Command
+  shortcuts no longer synthesize matrix key state.
+- Updated TEC-1G matrix scan routing documentation, code-quality notes, and
+  focused matrix webview coverage.
+
 ## 0.1.24
 
 - Fixed TEC-1G matrix Ctrl-letter chord routing so modifier chords continue to
