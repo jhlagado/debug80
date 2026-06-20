@@ -313,6 +313,7 @@ describe('package.json language contracts', () => {
       'debug80.searchWorkspaceSymbols',
       'debug80.openDebug80View',
       'debug80.materializeBundledRom',
+      'debug80.resetPanelLayout',
       'debug80.sendHexViaCoolTerm',
       'debug80.testCoolTermConnection',
     ]);

@@ -23,6 +23,13 @@ export function registerPanelViewCommands(options: {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.resetPanelLayout', () => {
+      platformViewProvider.resetPanelLayout();
+      return true;
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('debug80.openTerminal', () => {
       const session = vscode.debug.activeDebugSession;
       if (!session || session.type !== 'z80') {

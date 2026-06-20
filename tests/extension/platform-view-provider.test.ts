@@ -493,6 +493,28 @@ describe('PlatformViewProvider', () => {
     expect(executeCommand).not.toHaveBeenCalledWith('debug80.restartDebug');
   });
 
+  it('posts a panel-layout reset message to the active webview', () => {
+    const provider = new PlatformViewProvider(extensionRoot);
+    const webviewView = createWebviewView();
+
+    provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+
+    provider.resetPanelLayout();
+
+    expect(executeCommand).toHaveBeenCalledWith('debug80.platformView.focus');
+    expect(getPostMessageCalls(webviewView).map(([msg]) => msg.type)).toContain('resetPanelLayout');
+  });
+
   function getPostMessageCalls(webviewView: vscode.WebviewView): Array<[Record<string, unknown>]> {
     return (
       webviewView.webview as unknown as {

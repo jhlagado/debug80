@@ -364,6 +364,10 @@
         "title": "Debug80: Open Debug80 View"
       },
       {
+        "command": "debug80.resetPanelLayout",
+        "title": "Debug80: Reset Panel Layout"
+      },
+      {
         "command": "debug80.materializeBundledRom",
         "title": "Debug80: Copy Monitor ROM into Project"
       }

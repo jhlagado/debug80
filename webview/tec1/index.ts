@@ -88,11 +88,7 @@ const sessionStatusController = createSessionStatusController(
   projectElements.restartButton
 );
 const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
-const projectStatusUi = createProjectStatusUi(
-  vscode,
-  projectElements.projectStatus,
-  'tec1'
-);
+const projectStatusUi = createProjectStatusUi(vscode, projectElements.projectStatus, 'tec1');
 const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 
 function applyProjectStatus(payload: {
@@ -182,6 +178,7 @@ const handleTec1Message = createTec1MessageHandler({
   setSessionStatus: (status) => sessionStatusController.setStatus(status),
   setRegisterRefreshActive: (active) => panelLayout.setRegisterRefreshActive(active),
   setProviderTab: (tab, pushState) => panelLayout.setProviderTab(tab, pushState),
+  resetPanelLayout: () => panelLayout.resetPanelLayout(),
   applyUpdate,
   handleSnapshot: (payload) =>
     memoryPanelController?.handleSnapshot(payload as Parameters<MemoryPanel['handleSnapshot']>[0]),

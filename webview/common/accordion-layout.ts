@@ -40,6 +40,7 @@ export type AccordionLayoutController = {
   setRegisterRefreshActive: (active: boolean) => void;
   setProviderTab: (tab: string, notify: boolean) => void;
   setPanelOpen: (panel: AccordionPanel, open: boolean, notify: boolean) => void;
+  resetPanelLayout: () => void;
   scheduleMemoryResize: () => void;
   updateMemoryLayout: (forceRefresh: boolean) => void;
   wireButtons: () => void;
@@ -91,6 +92,36 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
   return result;
 }
 
+function samePanelOrder(left: AccordionPanel[], right: AccordionPanel[]): boolean {
+  return left.length === right.length && left.every((panel, index) => panel === right[index]);
+}
+
+function repairStaleAppendedPanelOrder(
+  storedOrder: AccordionPanel[],
+  defaultOrder: AccordionPanel[]
+): AccordionPanel[] {
+  let repairedOrder = [...storedOrder];
+  for (const panel of defaultOrder) {
+    const storedIndex = repairedOrder.indexOf(panel);
+    const defaultIndex = defaultOrder.indexOf(panel);
+    if (
+      storedIndex === -1 ||
+      storedIndex === defaultIndex ||
+      storedIndex !== repairedOrder.length - 1
+    ) {
+      continue;
+    }
+    const storedWithoutPanel = repairedOrder.filter((candidate) => candidate !== panel);
+    const defaultWithoutPanel = defaultOrder.filter((candidate) => candidate !== panel);
+    if (!samePanelOrder(storedWithoutPanel, defaultWithoutPanel)) {
+      continue;
+    }
+    repairedOrder = [...storedWithoutPanel];
+    repairedOrder.splice(defaultIndex, 0, panel);
+  }
+  return repairedOrder;
+}
+
 function readStoredPanelOrder(vscode: VscodeApi, defaultOrder: AccordionPanel[]): AccordionPanel[] {
   const state = vscode.getState();
   if (!isRecord(state) || !Array.isArray(state.debug80AccordionOrder)) {
@@ -105,7 +136,11 @@ function readStoredPanelOrder(vscode: VscodeApi, defaultOrder: AccordionPanel[])
     seen.add(panel as AccordionPanel);
     return true;
   });
-  const mergedOrder = [...storedOrder];
+  const mergedOrder = repairStaleAppendedPanelOrder(storedOrder, defaultOrder);
+  seen.clear();
+  for (const panel of mergedOrder) {
+    seen.add(panel);
+  }
   for (const panel of defaultOrder) {
     if (seen.has(panel)) {
       continue;
@@ -114,7 +149,8 @@ function readStoredPanelOrder(vscode: VscodeApi, defaultOrder: AccordionPanel[])
     let insertIndex = mergedOrder.length;
     for (let i = defaultIndex + 1; i < defaultOrder.length; i += 1) {
       const nextDefaultPanel = defaultOrder[i];
-      const existingIndex = nextDefaultPanel === undefined ? -1 : mergedOrder.indexOf(nextDefaultPanel);
+      const existingIndex =
+        nextDefaultPanel === undefined ? -1 : mergedOrder.indexOf(nextDefaultPanel);
       if (existingIndex !== -1) {
         insertIndex = existingIndex;
         break;
@@ -389,6 +425,25 @@ export function createAccordionLayoutController(
     syncRegisterRefresh();
   }
 
+  function resetPanelLayout(): void {
+    const previousOpenState: Record<AccordionPanel, boolean> = { ...openState };
+    panelOrder = [...defaultOrder];
+    for (const panel of Object.keys(openState) as AccordionPanel[]) {
+      openState[panel] = DEFAULT_OPEN_STATE[panel];
+    }
+    applyPanelOrder();
+    (Object.keys(openState) as AccordionPanel[]).forEach(applyPanelState);
+    writeStoredAccordionState(options.vscode, openState, panelOrder);
+    for (const panel of panelOrder) {
+      if (previousOpenState[panel] !== openState[panel]) {
+        options.onPanelOpenChange?.(panel, openState[panel]);
+      }
+    }
+    syncProviderTab(true);
+    updateMemoryLayout(true);
+    syncRegisterRefresh();
+  }
+
   prepareOrderControls();
   applyPanelOrder();
   (Object.keys(openState) as AccordionPanel[]).forEach(applyPanelState);
@@ -412,6 +467,7 @@ export function createAccordionLayoutController(
     refreshOpenRegisters,
     setRegisterRefreshActive,
     setPanelOpen: setOpen,
+    resetPanelLayout,
     setProviderTab,
     scheduleMemoryResize(): void {
       if (resizeTimer !== null) {

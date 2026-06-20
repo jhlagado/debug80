@@ -313,6 +313,10 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     panelLayout.setProviderTab(message.tab, false);
     return;
   }
+  if (message.type === 'resetPanelLayout') {
+    panelLayout.resetPanelLayout();
+    return;
+  }
   if (message.type === 'update') {
     if (typeof message.uiRevision === 'number') {
       if (message.uiRevision < uiRevision) {

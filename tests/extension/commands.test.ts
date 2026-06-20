@@ -403,6 +403,25 @@ describe('registerExtensionCommands', () => {
     expect(reveal).toHaveBeenCalledWith(true);
   });
 
+  it('resets the Debug80 panel layout through the dedicated command', async () => {
+    const resetPanelLayout = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView: vi.fn(), resetPanelLayout } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const resetLayout = registeredCommand('debug80.resetPanelLayout');
+
+    const result = await resetLayout?.();
+
+    expect(result).toBe(true);
+    expect(resetPanelLayout).toHaveBeenCalledWith();
+  });
+
   it('shows source-map diagnostics for the active z80 debug session', async () => {
     const customRequest = vi.fn().mockResolvedValue({
       targetMap: { path: '/workspace/tec1g-mon3/build/main.d8.json', exists: true },

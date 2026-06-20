@@ -382,6 +382,69 @@ describe('accordion layout controller', () => {
     });
   });
 
+  it('resets accordion order and open state to defaults', () => {
+    const messages: PostedMessage[] = [];
+    const panelChanges: Array<{ panel: string; open: boolean }> = [];
+    const fixture = accordionFixture(['project', 'machine', 'displays', 'video', 'memory']);
+    const videoContent = document.createElement('div');
+    const memoryContent = document.createElement('div');
+    const vscode = createVscodeMock(messages, {
+      debug80Accordion: {
+        project: false,
+        machine: false,
+        displays: false,
+        video: true,
+        memory: true,
+      },
+      debug80AccordionOrder: ['memory', 'video', 'project', 'displays', 'machine'],
+    });
+
+    const controller = createAccordionLayoutController({
+      vscode,
+      buttons: fixture.buttons,
+      panels: {
+        project: document.createElement('div'),
+        machine: document.createElement('div'),
+        displays: document.createElement('div'),
+        video: videoContent,
+        memory: memoryContent,
+      },
+      defaultPanelOrder: ['project', 'machine', 'displays', 'video', 'memory'],
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+      onPanelOpenChange: (panel, open) => panelChanges.push({ panel, open }),
+    });
+
+    controller.resetPanelLayout();
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual(['project', 'machine', 'displays', 'video', 'memory']);
+    expect(videoContent.hidden).toBe(true);
+    expect(memoryContent.hidden).toBe(true);
+    expect(controller.getProviderTab()).toBe('ui');
+    expect(panelChanges).toEqual([
+      { panel: 'project', open: true },
+      { panel: 'machine', open: true },
+      { panel: 'displays', open: true },
+      { panel: 'video', open: false },
+      { panel: 'memory', open: false },
+    ]);
+    expect(vscode.getState()).toMatchObject({
+      debug80Accordion: expect.objectContaining({
+        project: true,
+        machine: true,
+        displays: true,
+        video: false,
+        memory: false,
+      }),
+      debug80AccordionOrder: ['project', 'machine', 'displays', 'video', 'memory'],
+    });
+  });
+
   it('uses an explicit default panel order before source order', () => {
     const messages: PostedMessage[] = [];
     const fixture = accordionFixture(['project', 'displays', 'machine', 'serial']);
@@ -475,6 +538,87 @@ describe('accordion layout controller', () => {
       'memory',
       'serial',
     ]);
+  });
+
+  it('repairs stale persisted order that appended video after serial', () => {
+    const messages: PostedMessage[] = [];
+    const fixture = accordionFixture([
+      'project',
+      'machine',
+      'displays',
+      'video',
+      'matrixKeyboard',
+      'registers',
+      'memory',
+      'serial',
+    ]);
+    const vscode = createVscodeMock(messages, {
+      debug80AccordionOrder: [
+        'project',
+        'machine',
+        'displays',
+        'matrixKeyboard',
+        'registers',
+        'memory',
+        'serial',
+        'video',
+      ],
+    });
+
+    createAccordionLayoutController({
+      vscode,
+      buttons: fixture.buttons,
+      panels: {
+        project: document.createElement('div'),
+        machine: document.createElement('div'),
+        displays: document.createElement('div'),
+        video: document.createElement('div'),
+        matrixKeyboard: document.createElement('div'),
+        registers: document.createElement('div'),
+        memory: document.createElement('div'),
+        serial: document.createElement('div'),
+      },
+      defaultPanelOrder: [
+        'project',
+        'machine',
+        'displays',
+        'video',
+        'matrixKeyboard',
+        'registers',
+        'memory',
+        'serial',
+      ],
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+    });
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual([
+      'project',
+      'machine',
+      'displays',
+      'video',
+      'matrixKeyboard',
+      'registers',
+      'memory',
+      'serial',
+    ]);
+    expect(vscode.getState()).toMatchObject({
+      debug80AccordionOrder: [
+        'project',
+        'machine',
+        'displays',
+        'video',
+        'matrixKeyboard',
+        'registers',
+        'memory',
+        'serial',
+      ],
+    });
   });
 
   it('polls registers while registers are open and memory is closed', () => {

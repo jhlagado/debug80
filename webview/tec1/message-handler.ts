@@ -18,6 +18,7 @@ type Tec1Message =
   | ({ type: 'projectStatus' } & Partial<ProjectStatusPayload>)
   | { type: 'sessionStatus'; status: SessionStatus }
   | { type: 'selectTab'; tab: ProviderPanelTab }
+  | { type: 'resetPanelLayout' }
   | Tec1UpdatePayload
   | { type: 'snapshot'; [key: string]: unknown }
   | { type: 'snapshotError'; message?: unknown };
@@ -27,6 +28,7 @@ type Tec1MessageHandlerOptions = {
   setSessionStatus: (status: SessionStatus) => void;
   setRegisterRefreshActive: (active: boolean) => void;
   setProviderTab: (tab: ProviderPanelTab, pushState: boolean) => void;
+  resetPanelLayout: () => void;
   applyUpdate: (payload: Tec1UpdatePayload) => void;
   handleSnapshot: (payload: unknown) => void;
   handleSnapshotError: (message: unknown) => void;
@@ -38,7 +40,9 @@ function isMessage(data: unknown): data is Tec1Message {
   return typeof data === 'object' && data !== null && 'type' in data;
 }
 
-export function createTec1MessageHandler(options: Tec1MessageHandlerOptions): (data: unknown) => void {
+export function createTec1MessageHandler(
+  options: Tec1MessageHandlerOptions
+): (data: unknown) => void {
   let uiRevision = 0;
 
   const handleProjectStatus = (data: Tec1Message): boolean => {
@@ -61,6 +65,14 @@ export function createTec1MessageHandler(options: Tec1MessageHandlerOptions): (d
   const handleSelectedTab = (data: Tec1Message): boolean => {
     if (data.type === 'selectTab') {
       options.setProviderTab(data.tab, false);
+      return true;
+    }
+    return false;
+  };
+
+  const handleResetPanelLayout = (data: Tec1Message): boolean => {
+    if (data.type === 'resetPanelLayout') {
+      options.resetPanelLayout();
       return true;
     }
     return false;
@@ -100,6 +112,7 @@ export function createTec1MessageHandler(options: Tec1MessageHandlerOptions): (d
     handleProjectStatus,
     handleSessionStatus,
     handleSelectedTab,
+    handleResetPanelLayout,
     handleUpdate,
     handleSnapshot,
     handleSnapshotError,

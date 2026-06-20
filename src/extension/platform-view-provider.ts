@@ -78,6 +78,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private checkingCoolTerm = false;
   private hardwareStatusText: string | undefined;
   private coolTermPollTimer: ReturnType<typeof setInterval> | undefined;
+  private panelLayoutResetPending = false;
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
@@ -115,6 +116,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       focus,
       target: () => this.view,
     });
+  }
+
+  resetPanelLayout(): void {
+    this.panelLayoutResetPending = true;
+    this.reveal(true);
+    this.postPendingPanelLayoutReset();
   }
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
@@ -326,6 +333,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.postMessage(serialInitMessage);
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
+      this.postPendingPanelLayoutReset();
       syncMemoryRefresh({
         visible: this.view.visible,
         activeTab: bundle.state.activeTab,
@@ -340,6 +348,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.postProjectStatus();
       void this.refreshCoolTermAvailability();
       this.postSessionStatus();
+      this.postPendingPanelLayoutReset();
     }
   }
 
@@ -512,6 +521,14 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     }
     this.performanceMonitor.recordMessage(String(payload.type ?? 'unknown'), payload);
     void this.view.webview.postMessage(payload);
+  }
+
+  private postPendingPanelLayoutReset(): void {
+    if (!this.panelLayoutResetPending || !this.view) {
+      return;
+    }
+    this.panelLayoutResetPending = false;
+    this.postMessage({ type: 'resetPanelLayout' });
   }
 
   private nextUiRevision(): number {

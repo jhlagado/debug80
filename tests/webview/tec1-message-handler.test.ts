@@ -6,6 +6,7 @@ function createHandler() {
   const setSessionStatus = vi.fn();
   const setRegisterRefreshActive = vi.fn();
   const setProviderTab = vi.fn();
+  const resetPanelLayout = vi.fn();
   const applyUpdate = vi.fn();
   const handleSnapshot = vi.fn();
   const handleSnapshotError = vi.fn();
@@ -15,6 +16,7 @@ function createHandler() {
     setSessionStatus,
     setRegisterRefreshActive,
     setProviderTab,
+    resetPanelLayout,
     applyUpdate,
     handleSnapshot,
     handleSnapshotError,
@@ -25,6 +27,7 @@ function createHandler() {
     setSessionStatus,
     setRegisterRefreshActive,
     setProviderTab,
+    resetPanelLayout,
     applyUpdate,
     handleSnapshot,
     handleSnapshotError,
@@ -53,6 +56,7 @@ describe('TEC-1 webview message handler', () => {
     handler.handleMessage({ type: 'sessionStatus', status: 'running' });
     handler.handleMessage({ type: 'sessionStatus', status: 'not running' });
     handler.handleMessage({ type: 'selectTab', tab: 'memory' });
+    handler.handleMessage({ type: 'resetPanelLayout' });
     handler.handleMessage(snapshotMessage);
     handler.handleMessage({ type: 'snapshotError', message: 'bad snapshot' });
 
@@ -62,6 +66,7 @@ describe('TEC-1 webview message handler', () => {
     expect(handler.setRegisterRefreshActive).toHaveBeenNthCalledWith(1, true);
     expect(handler.setRegisterRefreshActive).toHaveBeenNthCalledWith(2, false);
     expect(handler.setProviderTab).toHaveBeenCalledWith('memory', false);
+    expect(handler.resetPanelLayout).toHaveBeenCalledWith();
     expect(handler.handleSnapshot).toHaveBeenCalledWith(snapshotMessage);
     expect(handler.handleSnapshotError).toHaveBeenCalledWith('bad snapshot');
   });

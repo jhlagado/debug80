@@ -36,6 +36,7 @@ export type MemorySnapshotPayload = {
 
 export type IncomingMessage =
   | { type: 'selectTab'; tab: string }
+  | { type: 'resetPanelLayout' }
   | { type: 'sessionStatus'; status: SessionStatus }
   | {
       type: 'projectStatus';
