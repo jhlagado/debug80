@@ -210,6 +210,29 @@ describe('platform providers', () => {
     expect(context.sessionState.tec1gRuntime?.resetState).toHaveBeenCalledTimes(1);
   });
 
+  it('remembers TMS9918 panel state before the TEC-1G runtime exists', async () => {
+    const provider = await resolvePlatformProvider({
+      platform: 'tec1g',
+      tec1g: { entry: 0x0000 },
+    });
+    const registry = new PlatformRegistry();
+    const context = createCommandContext();
+
+    provider.registerCommands(registry, context);
+
+    const activeHandler = registry.getHandler('debug80/tec1gTms9918Active');
+    const standardHandler = registry.getHandler('debug80/tec1gTms9918VideoStandard');
+    expect(activeHandler).toBeDefined();
+    expect(standardHandler).toBeDefined();
+    activeHandler?.({} as DebugProtocol.Response, { enabled: true });
+    standardHandler?.({} as DebugProtocol.Response, { standard: 'ntsc' });
+
+    expect(context.sendErrorResponse).not.toHaveBeenCalled();
+    expect(context.sendResponse).toHaveBeenCalledTimes(2);
+    expect(context.sessionState.ui.tec1gTms9918Active).toBe(true);
+    expect(context.sessionState.ui.tec1gTms9918VideoStandard).toBe('ntsc');
+  });
+
   it('finalizes TEC-1G runtime setup through the provider hook', async () => {
     const provider = await resolvePlatformProvider({
       platform: 'tec1g',
@@ -220,6 +243,10 @@ describe('platform providers', () => {
     });
     const context = createCommandContext();
     const setCartridgePresent = vi.fn();
+    const setTms9918Active = vi.fn();
+    const setTms9918VideoStandard = vi.fn();
+    context.sessionState.ui.tec1gTms9918Active = true;
+    context.sessionState.ui.tec1gTms9918VideoStandard = 'ntsc';
     context.sessionState.tec1gRuntime = {
       state: {
         display: {
@@ -292,6 +319,8 @@ describe('platform providers', () => {
         },
       },
       setCartridgePresent,
+      setTms9918Active,
+      setTms9918VideoStandard,
     } as Tec1gRuntime;
     const runtimeMemory = new Uint8Array(0x10000);
     const runtime = {
@@ -321,6 +350,8 @@ describe('platform providers', () => {
       provider.runtimeOptions?.romRanges ?? [],
       tec1gRuntime?.state.system
     );
+    expect(setTms9918Active).toHaveBeenCalledWith(true);
+    expect(setTms9918VideoStandard).toHaveBeenCalledWith('ntsc');
     expect(applyCartridgeMemory).toHaveBeenCalledWith(['bank'], assets.cartridgeImage.memory);
     expect(setCartridgePresent).toHaveBeenCalledWith(true);
   });

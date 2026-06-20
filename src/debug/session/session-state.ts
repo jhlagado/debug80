@@ -57,6 +57,8 @@ export interface SessionPlatformState {
 
 export interface SessionUiState {
   terminalState: TerminalState | undefined;
+  tec1gTms9918Active: boolean;
+  tec1gTms9918VideoStandard: 'pal' | 'ntsc';
 }
 
 /**
@@ -74,6 +76,8 @@ export interface SessionStateShape {
   sourceRoots: string[];
   baseDir: string;
   terminalState: TerminalState | undefined;
+  tec1gTms9918Active: boolean;
+  tec1gTms9918VideoStandard: 'pal' | 'ntsc';
   tec1Runtime: Tec1Runtime | undefined;
   tec1gRuntime: Tec1gRuntime | undefined;
   platformRuntime: ActivePlatformRuntime | undefined;
@@ -151,6 +155,8 @@ export function createSessionState(): SessionStateShape {
     sourceRoots: [] as string[],
     baseDir: process.cwd(),
     terminalState: undefined as TerminalState | undefined,
+    tec1gTms9918Active: false,
+    tec1gTms9918VideoStandard: 'pal' as 'pal' | 'ntsc',
     tec1Runtime: undefined as Tec1Runtime | undefined,
     tec1gRuntime: undefined as Tec1gRuntime | undefined,
     platformRuntime: undefined as ActivePlatformRuntime | undefined,
@@ -311,6 +317,18 @@ export function createSessionState(): SessionStateShape {
     },
     set terminalState(v) {
       flat.terminalState = v;
+    },
+    get tec1gTms9918Active() {
+      return flat.tec1gTms9918Active;
+    },
+    set tec1gTms9918Active(v) {
+      flat.tec1gTms9918Active = v;
+    },
+    get tec1gTms9918VideoStandard() {
+      return flat.tec1gTms9918VideoStandard;
+    },
+    set tec1gTms9918VideoStandard(v) {
+      flat.tec1gTms9918VideoStandard = v;
     },
   };
 

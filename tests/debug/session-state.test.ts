@@ -83,4 +83,15 @@ describe('session-state', () => {
     expect(state.runState).toBe(captured);
     expect(captured.haltNotified).toBe(false);
   });
+
+  it('preserves desired TEC-1G TMS9918 panel state across launch reset', () => {
+    const state = createSessionState();
+    state.ui.tec1gTms9918Active = true;
+    state.ui.tec1gTms9918VideoStandard = 'ntsc';
+
+    resetSessionState(state);
+
+    expect(state.ui.tec1gTms9918Active).toBe(true);
+    expect(state.ui.tec1gTms9918VideoStandard).toBe('ntsc');
+  });
 });

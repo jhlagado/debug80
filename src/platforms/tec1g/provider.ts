@@ -76,9 +76,10 @@ function handleTms9918ActiveRequest(context: PlatformCommandContext, args: unkno
   if (enabled === undefined) {
     return 'Debug80: Missing TMS9918 active flag.';
   }
+  context.sessionState.ui.tec1gTms9918Active = enabled;
   const runtime = context.sessionState.tec1gRuntime;
   if (!runtime) {
-    return 'Debug80: Platform not active.';
+    return null;
   }
   runtime.setTms9918Active(enabled);
   return null;
@@ -93,9 +94,10 @@ function handleTms9918VideoStandardRequest(
   if (standard === undefined) {
     return 'Debug80: Missing TMS9918 video standard.';
   }
+  context.sessionState.ui.tec1gTms9918VideoStandard = standard;
   const runtime = context.sessionState.tec1gRuntime;
   if (!runtime) {
-    return 'Debug80: Platform not active.';
+    return null;
   }
   runtime.setTms9918VideoStandard(standard);
   return null;
@@ -194,6 +196,8 @@ function finalizeTec1gRuntime(
   if (!tec1gRuntime) {
     return;
   }
+  tec1gRuntime.setTms9918Active(context.sessionState.ui.tec1gTms9918Active);
+  tec1gRuntime.setTms9918VideoStandard(context.sessionState.ui.tec1gTms9918VideoStandard);
 
   const assets = (context.assets ?? { cartridgeImage: null }) as Tec1gPlatformAssets;
   const baseMemory = context.runtime.hardware.memory;
