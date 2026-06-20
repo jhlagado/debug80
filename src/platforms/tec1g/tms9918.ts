@@ -27,7 +27,7 @@ export interface Tms9918Device {
   readStatus(): number;
   readData(): number;
   peekStatus(): number;
-  advanceCycles(cycles: number): void;
+  advanceCycles(cycles: number): boolean;
   consumeNmi(): boolean;
   reset(): void;
   snapshot(): Tms9918Snapshot;
@@ -213,6 +213,7 @@ export function createTms9918(
   let controlLatch: number | null = null;
   let frameCycleCounter = 0;
   let nmiPending = false;
+  let frameDirty = false;
   const registers = new Uint8Array(8);
   const vram = new Uint8Array(TMS9918_VRAM_SIZE);
 
@@ -226,6 +227,7 @@ export function createTms9918(
   return {
     setActive(nextActive: boolean): void {
       active = nextActive;
+      frameDirty = true;
       if (!active) {
         nmiPending = false;
       }
@@ -233,6 +235,7 @@ export function createTms9918(
     setVideoStandard(standard: Tms9918VideoStandard): void {
       videoStandard = standard;
       frameCycleCounter = 0;
+      frameDirty = true;
     },
     writeControl(value: number): void {
       if (!active) {
@@ -247,6 +250,7 @@ export function createTms9918(
       controlLatch = null;
       if ((byte & TMS9918_REGISTER_WRITE) !== 0) {
         registers[byte & 0x07] = first;
+        frameDirty = true;
         return;
       }
       address = maskVramAddress(((byte & 0x3f) << 8) | first);
@@ -257,6 +261,7 @@ export function createTms9918(
       }
       vram[address] = maskByte(value);
       address = maskVramAddress(address + 1);
+      frameDirty = true;
     },
     readStatus(): number {
       if (!active) {
@@ -279,16 +284,22 @@ export function createTms9918(
     peekStatus(): number {
       return active ? status & 0xff : 0xff;
     },
-    advanceCycles(cycles: number): void {
+    advanceCycles(cycles: number): boolean {
       if (!active || cycles <= 0) {
-        return;
+        return false;
       }
+      let presentedDirtyFrame = false;
       frameCycleCounter += cycles;
       const frameCycles = FRAME_CYCLES[videoStandard];
       while (frameCycleCounter >= frameCycles) {
         frameCycleCounter -= frameCycles;
         setFrameInterrupt();
+        if (frameDirty) {
+          presentedDirtyFrame = true;
+          frameDirty = false;
+        }
       }
+      return presentedDirtyFrame;
     },
     consumeNmi(): boolean {
       if (!active || !nmiPending) {
@@ -303,6 +314,7 @@ export function createTms9918(
       controlLatch = null;
       frameCycleCounter = 0;
       nmiPending = false;
+      frameDirty = true;
       registers.fill(0);
       vram.fill(0);
     },

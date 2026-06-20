@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createGlcdRenderer } from '../../webview/tec1g/glcd-renderer';
 import { createLcdRenderer, type LcdRenderer } from '../../webview/tec1g/lcd-renderer';
+import { createTms9918Renderer } from '../../webview/tec1g/tms9918-renderer';
 
 const HTML_PATH = path.resolve(__dirname, '../../webview/tec1g/index.html');
 
@@ -195,5 +196,33 @@ describe('tec1g display renderers', () => {
     const image = lastLcdImage(canvas);
     expectRgb(image, canvas.width, 1, 15, [11, 26, 16]);
     expectRgb(image, canvas.width, 229, 15, [180, 245, 180]);
+  });
+
+  it('reuses the TMS9918 offscreen canvas across frame updates', () => {
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    const renderer = createTms9918Renderer();
+    const framebuffer = new Array(256 * 192).fill(0x5455ed);
+
+    renderer.applyTms9918Update({
+      tms9918: {
+        active: true,
+        videoStandard: 'pal',
+        status: 0,
+        registers: [],
+        framebuffer,
+      },
+    });
+    renderer.applyTms9918Update({
+      tms9918: {
+        active: true,
+        videoStandard: 'pal',
+        status: 0,
+        registers: [],
+        framebuffer,
+      },
+    });
+
+    const canvasAllocations = createElementSpy.mock.calls.filter(([tag]) => tag === 'canvas');
+    expect(canvasAllocations).toHaveLength(1);
   });
 });

@@ -224,7 +224,9 @@ export function createTec1gRuntime(
       return;
     }
     timing.cycleClock.advance(cycles);
-    display.tms9918.advanceCycles(cycles);
+    if (display.tms9918.advanceCycles(cycles)) {
+      queueUpdate();
+    }
     if (
       maybeCommitSevenSegmentIntensitiesOnIdle(
         display.segmentDuty,

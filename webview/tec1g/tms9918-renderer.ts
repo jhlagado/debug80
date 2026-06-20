@@ -12,6 +12,12 @@ export function createTms9918Renderer() {
   const standardSelect = document.getElementById('tms9918Standard') as HTMLSelectElement | null;
   const ctx = canvas?.getContext('2d') ?? null;
   const image = ctx?.createImageData(WIDTH, HEIGHT) ?? null;
+  const bitmap = ctx ? document.createElement('canvas') : null;
+  if (bitmap) {
+    bitmap.width = WIDTH;
+    bitmap.height = HEIGHT;
+  }
+  const bitmapCtx = bitmap?.getContext('2d') ?? null;
 
   function drawBlank(): void {
     if (!ctx || !canvas) {
@@ -46,11 +52,7 @@ export function createTms9918Renderer() {
       image.data[offset + 2] = rgb & 0xff;
       image.data[offset + 3] = 0xff;
     }
-    const bitmap = document.createElement('canvas');
-    bitmap.width = WIDTH;
-    bitmap.height = HEIGHT;
-    const bitmapCtx = bitmap.getContext('2d');
-    if (!bitmapCtx) {
+    if (!bitmap || !bitmapCtx) {
       return;
     }
     bitmapCtx.putImageData(image, 0, 0);

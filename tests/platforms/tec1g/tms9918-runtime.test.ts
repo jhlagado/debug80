@@ -98,7 +98,38 @@ describe('TEC-1G TMS9918 runtime integration', () => {
 
     expect(rt.state.display.tms9918.snapshot().active).toBe(true);
     expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x5a);
-    expect(updates.length).toBeGreaterThan(1);
+    expect(updates).toHaveLength(1);
+    expect(rt.state.timing.pendingUpdate).toBe(false);
+  });
+
+  it('publishes dirty TMS9918 video state on the emulated frame cadence', () => {
+    const updates: unknown[] = [];
+    const config = normalizeTec1gConfig({
+      regions: [
+        { start: 0x0000, end: 0x7fff, kind: 'ram' as const },
+        { start: 0xc000, end: 0xffff, kind: 'rom' as const },
+      ],
+      appStart: 0x4000,
+      entry: 0x4000,
+      updateMs: 1_000_000,
+      yieldMs: 0,
+      uiVisibility: { tms9918: true },
+    });
+    const rt = createTec1gRuntime(config, (payload) => updates.push(payload));
+    updates.length = 0;
+
+    rt.ioHandlers.write?.(TMS9918_CONTROL_PORT, 0x00);
+    rt.ioHandlers.write?.(TMS9918_CONTROL_PORT, 0x40);
+    rt.ioHandlers.write?.(TMS9918_DATA_PORT, 0x44);
+    expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x44);
+    expect(updates).toHaveLength(0);
+
+    rt.recordCycles(79_999);
+    expect(updates).toHaveLength(0);
+
+    rt.recordCycles(1);
+    expect(updates).toHaveLength(0);
+    expect(rt.state.timing.pendingUpdate).toBe(true);
   });
 
   it('raises NMI from the PAL frame cadence when TMS interrupts are enabled', () => {

@@ -74,6 +74,7 @@ function createHarness(
     write: vi.fn(),
   };
   const queueUpdate = vi.fn();
+  const flushUpdateNow = vi.fn();
   const onMatrixPortsChanged = vi.fn();
   const onPortWrite = vi.fn();
   const io = createTec1gIoHandlers({
@@ -87,6 +88,7 @@ function createHarness(
     sdEnabled: options.sdEnabled === true,
     sdSpi,
     queueUpdate,
+    flushUpdateNow,
     onMatrixPortsChanged,
     onPortWrite,
   });
@@ -98,6 +100,7 @@ function createHarness(
     rtc,
     sdSpi,
     queueUpdate,
+    flushUpdateNow,
     onMatrixPortsChanged,
     onPortWrite,
     io,
@@ -212,5 +215,16 @@ describe('TEC-1G IO handlers', () => {
     expect(enabled.io.read?.(TMS9918_DATA_PORT)).toBe(0x5a);
     expect(enabled.io.read?.(0xb0)).toBe(0xff);
     expect(enabled.io.read?.(0xbd)).toBe(0xff);
+  });
+
+  it('does not publish TMS9918 UI updates directly from video port writes', () => {
+    const enabled = createHarness({ tms9918Active: true });
+
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x00);
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x40);
+    enabled.io.write?.(TMS9918_DATA_PORT, 0x5a);
+
+    expect(enabled.queueUpdate).not.toHaveBeenCalled();
+    expect(enabled.flushUpdateNow).not.toHaveBeenCalled();
   });
 });

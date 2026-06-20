@@ -454,12 +454,10 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       }
       if (p === TEC1G_PORT_TMS9918_DATA) {
         display.tms9918.writeData(value & TEC1G_MASK_BYTE);
-        context.flushUpdateNow?.();
         return;
       }
       if (p === TEC1G_PORT_TMS9918_CONTROL) {
         display.tms9918.writeControl(value & TEC1G_MASK_BYTE);
-        context.flushUpdateNow?.();
         return;
       }
       if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX_KEYBOARD) {
