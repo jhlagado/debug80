@@ -135,6 +135,24 @@ export function tec1gUpdatePayloadFromDebugEventBody(
   if (isNumberArray(glcdDdram)) {
     update.glcdDdram = glcdDdram;
   }
+  if (payload.tms9918 !== null && typeof payload.tms9918 === 'object') {
+    const tms9918 = payload.tms9918 as Record<string, unknown>;
+    if (
+      typeof tms9918.active === 'boolean' &&
+      (tms9918.videoStandard === 'pal' || tms9918.videoStandard === 'ntsc') &&
+      typeof tms9918.status === 'number' &&
+      isNumberArray(tms9918.registers) &&
+      isNumberArray(tms9918.framebuffer)
+    ) {
+      update.tms9918 = {
+        active: tms9918.active,
+        videoStandard: tms9918.videoStandard,
+        status: tms9918.status,
+        registers: tms9918.registers,
+        framebuffer: tms9918.framebuffer,
+      };
+    }
+  }
   if (payload.glcdState !== null && typeof payload.glcdState === 'object') {
     update.glcdState = payload.glcdState as NonNullable<Tec1gUpdatePayload['glcdState']>;
   }

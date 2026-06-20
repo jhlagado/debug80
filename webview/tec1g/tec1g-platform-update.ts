@@ -6,6 +6,7 @@ import type { SevenSegDisplay } from '../common/seven-seg-display';
 import type { createGlcdRenderer } from './glcd-renderer';
 import type { createLcdRenderer } from './lcd-renderer';
 import type { createMatrixUiController } from './matrix-ui';
+import type { createTms9918Renderer } from './tms9918-renderer';
 import type { Tec1gUpdatePayload } from './entry-types';
 import type { createTec1gAudio } from './tec1g-audio';
 import type { Tec1gKeypad } from './tec1g-keypad';
@@ -17,6 +18,7 @@ export type Tec1gPlatformUpdateDeps = {
   lcdRenderer: ReturnType<typeof createLcdRenderer>;
   matrixUi: ReturnType<typeof createMatrixUiController>;
   glcdRenderer: ReturnType<typeof createGlcdRenderer>;
+  tms9918Renderer: ReturnType<typeof createTms9918Renderer>;
   keypad: Tec1gKeypad;
 };
 
@@ -69,4 +71,5 @@ export function applyTec1gPlatformUpdate(
     deps.keypad.updateStatusLeds();
   }
   deps.glcdRenderer.applyGlcdUpdate(data);
+  deps.tms9918Renderer.applyTms9918Update(data);
 }

@@ -18,6 +18,7 @@ function makeDeps() {
       init: vi.fn(),
     },
     glcdRenderer: { applyGlcdUpdate: vi.fn() },
+    tms9918Renderer: { applyTms9918Update: vi.fn() },
     keypad: {
       setSysCtrlValue: vi.fn(),
       updateSysCtrl: vi.fn(),
@@ -84,5 +85,29 @@ describe('tec1g platform update application', () => {
     });
 
     expect(deps.matrixUi.applyCapsLock).not.toHaveBeenCalled();
+  });
+
+  it('applies TMS9918 video updates when present', () => {
+    const deps = makeDeps();
+
+    applyTec1gPlatformUpdate(deps, {
+      tms9918: {
+        active: true,
+        videoStandard: 'pal',
+        status: 0x80,
+        registers: [0, 0xc2],
+        framebuffer: [0xffffff],
+      },
+    });
+
+    expect(deps.tms9918Renderer.applyTms9918Update).toHaveBeenCalledWith({
+      tms9918: {
+        active: true,
+        videoStandard: 'pal',
+        status: 0x80,
+        registers: [0, 0xc2],
+        framebuffer: [0xffffff],
+      },
+    });
   });
 });

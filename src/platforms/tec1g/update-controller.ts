@@ -3,12 +3,7 @@
  * @fileoverview TEC-1G runtime update and speed coordination.
  */
 
-import {
-  TEC_FAST_HZ,
-  TEC_SLOW_HZ,
-  readSevenSegmentIntensities,
-  shouldUpdate,
-} from '../tec-common';
+import { TEC_FAST_HZ, TEC_SLOW_HZ, readSevenSegmentIntensities, shouldUpdate } from '../tec-common';
 import type { Tec1gState } from './runtime';
 import type { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
 
@@ -37,6 +32,7 @@ interface Tec1gUpdateControllerDeps {
  */
 export function serializeTec1gUpdateFromRuntimeState(state: Tec1gState): Tec1gUpdatePayload {
   const { display, input, audio, lcdCtrl, timing, system } = state;
+  const tms9918 = display.tms9918.snapshot();
   return {
     digits: [...display.digits],
     segmentIntensities: readSevenSegmentIntensities(display.segmentDuty),
@@ -54,6 +50,13 @@ export function serializeTec1gUpdateFromRuntimeState(state: Tec1gState): Tec1gUp
     ),
     matrixMode: input.matrixModeEnabled,
     glcd: Array.from(display.glcdCtrl.glcd),
+    tms9918: {
+      active: tms9918.active,
+      videoStandard: tms9918.videoStandard,
+      status: tms9918.status,
+      registers: tms9918.registers,
+      framebuffer: tms9918.framebuffer,
+    },
     glcdDdram: Array.from(display.glcdCtrl.glcdDdram),
     glcdState: {
       displayOn: display.glcdCtrl.glcdDisplayOn,

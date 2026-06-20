@@ -7,6 +7,7 @@ import { createTec1gIoHandlers } from '../../../src/platforms/tec1g/io-handlers'
 import { normalizeTec1gConfig } from '../../../src/platforms/tec1g/runtime';
 import { createTec1gInitialState } from '../../../src/platforms/tec1g/runtime-state';
 import { decodeSysCtrl } from '../../../src/platforms/tec1g/sysctrl';
+import { TMS9918_CONTROL_PORT, TMS9918_DATA_PORT } from '../../../src/platforms/tec1g/tms9918';
 import {
   TEC1G_PORT_8X8_GREEN,
   TEC1G_PORT_8X8_RED,
@@ -41,8 +42,11 @@ function createState() {
   });
 }
 
-function createHarness(options: { rtcEnabled?: boolean; sdEnabled?: boolean } = {}) {
+function createHarness(
+  options: { rtcEnabled?: boolean; sdEnabled?: boolean; tms9918Active?: boolean } = {}
+) {
   const state = createState();
+  state.display.tms9918.setActive(options.tms9918Active === true);
   const lcd = {
     readStatus: vi.fn(() => 0x81),
     readData: vi.fn(() => 0x41),
@@ -86,7 +90,18 @@ function createHarness(options: { rtcEnabled?: boolean; sdEnabled?: boolean } = 
     onMatrixPortsChanged,
     onPortWrite,
   });
-  return { state, lcd, glcd, serial, rtc, sdSpi, queueUpdate, onMatrixPortsChanged, onPortWrite, io };
+  return {
+    state,
+    lcd,
+    glcd,
+    serial,
+    rtc,
+    sdSpi,
+    queueUpdate,
+    onMatrixPortsChanged,
+    onPortWrite,
+    io,
+  };
 }
 
 describe('TEC-1G IO handlers', () => {
@@ -178,5 +193,24 @@ describe('TEC-1G IO handlers', () => {
 
     state.input.keyValue = 0x01;
     expect(io.read?.(TEC1G_PORT_STATUS)).toBe(0);
+  });
+
+  it('dispatches only fixed TEC-1G TMS9918 video ports when the video panel is active', () => {
+    const disabled = createHarness({ tms9918Active: false });
+    disabled.io.write?.(TMS9918_CONTROL_PORT, 0x00);
+    disabled.io.write?.(TMS9918_CONTROL_PORT, 0x40);
+    disabled.io.write?.(TMS9918_DATA_PORT, 0x5a);
+    expect(disabled.io.read?.(TMS9918_DATA_PORT)).toBe(0xff);
+    expect(disabled.state.display.tms9918.snapshot().vram[0]).toBe(0);
+
+    const enabled = createHarness({ tms9918Active: true });
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x00);
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x40);
+    enabled.io.write?.(TMS9918_DATA_PORT, 0x5a);
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x00);
+    enabled.io.write?.(TMS9918_CONTROL_PORT, 0x00);
+    expect(enabled.io.read?.(TMS9918_DATA_PORT)).toBe(0x5a);
+    expect(enabled.io.read?.(0xb0)).toBe(0xff);
+    expect(enabled.io.read?.(0xbd)).toBe(0xff);
   });
 });

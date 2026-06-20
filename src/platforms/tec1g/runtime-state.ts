@@ -19,6 +19,7 @@ import {
 } from './constants';
 import { createGlcdState, type GlcdState } from './glcd';
 import type { Tec1gLcdState } from './lcd';
+import { createTms9918, type Tms9918Device } from './tms9918';
 import type { Tec1gSpeedMode } from './types';
 
 /**
@@ -51,6 +52,7 @@ export interface Tec1gState {
     ledMatrixGreenLatch: number;
     ledMatrixBlueLatch: number;
     glcdCtrl: GlcdState;
+    tms9918: Tms9918Device;
   };
   input: {
     matrixKeyStates: Uint8Array;
@@ -137,6 +139,7 @@ export function createTec1gInitialState(params: {
       ledMatrixGreenLatch: 0,
       ledMatrixBlueLatch: 0,
       glcdCtrl: createGlcdState(),
+      tms9918: createTms9918({ videoStandard: 'pal' }),
     },
     input: {
       matrixKeyStates: new Uint8Array(16).fill(TEC1G_MASK_BYTE),
@@ -194,6 +197,7 @@ export function createTec1gInitialState(params: {
       gimpSignal: config.gimpSignal,
     },
   };
+  state.display.tms9918.setActive(false);
   writeLcdArrowHint(state.lcdCtrl);
   return state;
 }

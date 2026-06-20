@@ -22,6 +22,7 @@ import { createAccordionLayoutController, type ProviderPanelTab } from '../commo
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
 import { createMatrixUiController } from './matrix-ui';
+import { createTms9918Renderer } from './tms9918-renderer';
 import { wireSerialUi } from '../common/serial-ui';
 import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import type { IncomingMessage, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
@@ -69,6 +70,7 @@ const matrixKeyboardHeader =
 const accordionProject = document.getElementById('accordion-project') as HTMLElement;
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
+const accordionVideo = document.getElementById('accordion-video') as HTMLElement;
 const accordionSerial = document.getElementById('accordion-serial') as HTMLElement;
 const accordionMatrixKeyboard = document.getElementById('accordion-matrix-keyboard') as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
@@ -98,6 +100,7 @@ const azmOptionsControl = wireAzmOptionsControl(
 
 const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
+const tms9918Renderer = createTms9918Renderer();
 const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard.hidden);
 
 function updateMatrixKeyboardCue(): void {
@@ -140,6 +143,7 @@ const panelLayout = createAccordionLayoutController({
     project: accordionProject,
     machine: accordionMachine,
     displays: accordionDisplays,
+    video: accordionVideo,
     serial: accordionSerial,
     matrixKeyboard: accordionMatrixKeyboard,
     registers: accordionRegisters,
@@ -149,6 +153,7 @@ const panelLayout = createAccordionLayoutController({
     'project',
     'machine',
     'displays',
+    'video',
     'matrixKeyboard',
     'registers',
     'memory',
@@ -156,10 +161,13 @@ const panelLayout = createAccordionLayoutController({
   ],
   getMemoryPanelController: () => memoryPanelController,
   onPanelOpenChange: (panel, open) => {
-    if (panel !== 'matrixKeyboard') {
+    if (panel === 'matrixKeyboard') {
+      applyMatrixKeyboardOpenState(open);
       return;
     }
-    applyMatrixKeyboardOpenState(open);
+    if (panel === 'video') {
+      vscode.postMessage({ type: 'tms9918Active', enabled: open });
+    }
   },
 });
 panelLayout.wireButtons();
@@ -178,17 +186,13 @@ const projectStatusRefresh = wireProjectStatusRefresh(vscode);
 let projectIsInitialized = false;
 
 projectStatusUi.applyProjectStatus({});
-projectIsInitialized = applyProjectPanelStatusControls(
-  {},
-  projectElements,
-  {
-    tabs: toolbarEl,
-    accordion: accordionEl,
-    panelUi,
-    panelRegisters,
-    panelMemory,
-  }
-);
+projectIsInitialized = applyProjectPanelStatusControls({}, projectElements, {
+  tabs: toolbarEl,
+  accordion: accordionEl,
+  panelUi,
+  panelRegisters,
+  panelMemory,
+});
 stopOnEntryControl.applyProjectStatus({ hasProject: projectIsInitialized });
 azmOptionsControl.applyProjectStatus({ hasProject: projectIsInitialized });
 
@@ -245,6 +249,7 @@ const platformUpdateDeps = {
   lcdRenderer,
   matrixUi,
   glcdRenderer,
+  tms9918Renderer,
   keypad,
 };
 
@@ -335,6 +340,7 @@ matrixUi.init();
 applyMatrixKeyboardOpenState(panelLayout.isMatrixKeyboardOpen());
 lcdRenderer.draw();
 glcdRenderer.draw();
+tms9918Renderer.drawBlank();
 panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 requestProjectStatus(vscode);
@@ -346,6 +352,11 @@ window.addEventListener('resize', () => {
 });
 panelLayout.updateMemoryLayout(false);
 wireSerialUi(vscode);
+
+tms9918Renderer.standardSelect?.addEventListener('change', () => {
+  const standard = tms9918Renderer.standardSelect?.value === 'ntsc' ? 'ntsc' : 'pal';
+  vscode.postMessage({ type: 'tms9918VideoStandard', standard });
+});
 
 function isMatrixCaptureSurface(target: EventTarget | null): boolean {
   if (!(target instanceof Node)) {
@@ -369,15 +380,19 @@ document.addEventListener(
 window.addEventListener('blur', () => applyMatrixKeyboardCapture(false));
 
 // Matrix keyboard owns physical typing while its accordion panel is open.
-window.addEventListener('keydown', (event) => {
-  if (event.repeat) {
-    return;
-  }
-  if (matrixUi.handleKeyEvent(event, true)) {
-    updateMatrixKeyboardCue();
-    return;
-  }
-}, { capture: true });
+window.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.repeat) {
+      return;
+    }
+    if (matrixUi.handleKeyEvent(event, true)) {
+      updateMatrixKeyboardCue();
+      return;
+    }
+  },
+  { capture: true }
+);
 
 window.addEventListener('keydown', (event) => {
   if (panelLayout.isMatrixKeyboardOpen()) {
@@ -386,16 +401,20 @@ window.addEventListener('keydown', (event) => {
   const shortcut = resolveTecKeypadShortcut(event.key);
   routeTecKeypadShortcut(event, shortcut, keypad, () => vscode.postMessage({ type: 'reset' }));
 });
-window.addEventListener('keyup', (event) => {
-  if (matrixUi.handleKeyEvent(event, false)) {
-    updateMatrixKeyboardCue();
-    return;
-  }
-  if (panelLayout.isMatrixKeyboardOpen()) {
-    return;
-  }
-  routeTecKeypadKeyup(event, keypad);
-}, { capture: true });
+window.addEventListener(
+  'keyup',
+  (event) => {
+    if (matrixUi.handleKeyEvent(event, false)) {
+      updateMatrixKeyboardCue();
+      return;
+    }
+    if (panelLayout.isMatrixKeyboardOpen()) {
+      return;
+    }
+    routeTecKeypadKeyup(event, keypad);
+  },
+  { capture: true }
+);
 window.addEventListener('beforeunload', () => {
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();

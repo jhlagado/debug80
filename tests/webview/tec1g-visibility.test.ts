@@ -113,6 +113,7 @@ describe('tec1g UI visibility controls', () => {
     ).toEqual([
       'project',
       'displays',
+      'video',
       'machine',
       'registers',
       'memory',
@@ -125,6 +126,7 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('--tec1g-panel-width');
     expect(css).toContain('width: var(--tec1g-panel-width)');
     expect(css).toContain('.panel-displays');
+    expect(css).toContain('.panel-video');
     expect(css).toContain('.panel-serial');
     expect(css).toContain('.panel-matrix-keyboard');
     expect(css).toContain('.panel-serial .serial');
@@ -190,7 +192,9 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
     expect(source).toContain('function reassertMatrixKeyboardOpenState()');
     expect(source).toContain('function applyMatrixKeyboardCapture(captured: boolean)');
-    expect(source).toContain("window.addEventListener('blur', () => applyMatrixKeyboardCapture(false))");
+    expect(source).toContain(
+      "window.addEventListener('blur', () => applyMatrixKeyboardCapture(false))"
+    );
     expect(source).toContain("message.status === 'running' || message.status === 'paused'");
     expect(source).toContain('if (message.matrixMode === false)');
   });

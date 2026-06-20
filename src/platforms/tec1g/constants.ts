@@ -36,6 +36,10 @@ export const TEC1G_PORT_SD = 0xfd;
 export const TEC1G_PORT_MATRIX_KEYBOARD = 0xfe;
 /** System control port (shadow/protect/expand/bank/caps). */
 export const TEC1G_PORT_SYSCTRL = 0xff;
+/** TMS9918/TMS9929 data port on the TEC-Deck video card. */
+export const TEC1G_PORT_TMS9918_DATA = 0xbe;
+/** TMS9918/TMS9929 control/status port on the TEC-Deck video card. */
+export const TEC1G_PORT_TMS9918_CONTROL = 0xbf;
 
 // ===== Status Register Bits =====
 export const TEC1G_STATUS_MATRIX = 0x01;

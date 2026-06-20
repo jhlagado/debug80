@@ -9,6 +9,7 @@
 import { IoHandlers } from '../../z80/runtime';
 import { Tec1gPlatformConfigNormalized } from '../types';
 import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import type { Tms9918VideoStandard } from './tms9918';
 import { decodeSysCtrl } from './sysctrl';
 import { Ds1302 } from './ds1302';
 import { createTec1gLcdController } from './lcd';
@@ -47,6 +48,8 @@ export interface Tec1gRuntime {
   applyKey(code: number): void;
   applyMatrixKey(row: number, col: number, pressed: boolean): void;
   setMatrixMode(enabled: boolean): void;
+  setTms9918Active(enabled: boolean): void;
+  setTms9918VideoStandard(standard: Tms9918VideoStandard): void;
   setCartridgePresent(enabled: boolean): void;
   queueSerial(bytes: number[]): void;
   recordCycles(cycles: number): void;
@@ -152,6 +155,9 @@ export function createTec1gRuntime(
 
   const tick = (): { interrupt?: { nonMaskable?: boolean; data?: number } } | void => {
     flushUpdate();
+    if (display.tms9918.consumeNmi()) {
+      return { interrupt: { nonMaskable: true, data: TEC1G_NMI_VECTOR } };
+    }
     if (input.nmiPending) {
       input.nmiPending = false;
       return { interrupt: { nonMaskable: true, data: TEC1G_NMI_VECTOR } };
@@ -192,6 +198,16 @@ export function createTec1gRuntime(
     input.matrixModeEnabled = enabled;
   };
 
+  const setTms9918Active = (enabled: boolean): void => {
+    display.tms9918.setActive(enabled);
+    queueUpdate();
+  };
+
+  const setTms9918VideoStandard = (standard: Tms9918VideoStandard): void => {
+    display.tms9918.setVideoStandard(standard);
+    queueUpdate();
+  };
+
   const queueSerial = (bytes: number[]): void => {
     serial.queueSerial(bytes);
   };
@@ -201,6 +217,7 @@ export function createTec1gRuntime(
       return;
     }
     timing.cycleClock.advance(cycles);
+    display.tms9918.advanceCycles(cycles);
     if (
       maybeCommitSevenSegmentIntensitiesOnIdle(
         display.segmentDuty,
@@ -245,6 +262,8 @@ export function createTec1gRuntime(
     applyKey,
     applyMatrixKey,
     setMatrixMode,
+    setTms9918Active,
+    setTms9918VideoStandard,
     setCartridgePresent: (enabled: boolean): void => {
       cartridgePresentDefault = enabled;
       system.cartridgePresent = enabled;

@@ -22,6 +22,8 @@ import {
   TEC1G_PORT_SEGMENT,
   TEC1G_PORT_STATUS,
   TEC1G_PORT_SYSCTRL,
+  TEC1G_PORT_TMS9918_CONTROL,
+  TEC1G_PORT_TMS9918_DATA,
   TEC1G_STATUS_CARTRIDGE,
   TEC1G_STATUS_EXPAND,
   TEC1G_STATUS_GIMP,
@@ -339,6 +341,12 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       if (p === TEC1G_PORT_GLCD_DATA) {
         return glcd.readData();
       }
+      if (p === TEC1G_PORT_TMS9918_DATA) {
+        return display.tms9918.readData();
+      }
+      if (p === TEC1G_PORT_TMS9918_CONTROL) {
+        return display.tms9918.readStatus();
+      }
       if (p === TEC1G_PORT_SYSCTRL) {
         return system.sysCtrl & TEC1G_MASK_BYTE;
       }
@@ -441,6 +449,16 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       }
       if (p === TEC1G_PORT_GLCD_DATA) {
         glcd.writeData(value & TEC1G_MASK_BYTE);
+        return;
+      }
+      if (p === TEC1G_PORT_TMS9918_DATA) {
+        display.tms9918.writeData(value & TEC1G_MASK_BYTE);
+        queueUpdate();
+        return;
+      }
+      if (p === TEC1G_PORT_TMS9918_CONTROL) {
+        display.tms9918.writeControl(value & TEC1G_MASK_BYTE);
+        queueUpdate();
         return;
       }
       if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX_KEYBOARD) {

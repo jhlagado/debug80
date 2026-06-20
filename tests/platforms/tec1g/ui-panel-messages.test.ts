@@ -127,4 +127,20 @@ describe('tec1g ui-panel-messages', () => {
       alt: false,
     });
   });
+
+  it('forwards TMS9918 panel attachment and video standard requests', async () => {
+    const { ctx } = createContext();
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    ctx.getSession = () => ({ type: 'z80', customRequest });
+
+    await handleTec1gMessage({ type: 'tms9918Active', enabled: true }, ctx);
+    await handleTec1gMessage({ type: 'tms9918VideoStandard', standard: 'ntsc' }, ctx);
+
+    expect(customRequest).toHaveBeenCalledWith('debug80/tec1gTms9918Active', {
+      enabled: true,
+    });
+    expect(customRequest).toHaveBeenCalledWith('debug80/tec1gTms9918VideoStandard', {
+      standard: 'ntsc',
+    });
+  });
 });

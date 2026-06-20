@@ -16,6 +16,7 @@ export type Tec1gMessage = PanelMessage & {
   fn?: boolean;
   alt?: boolean;
   enabled?: boolean;
+  standard?: 'pal' | 'ntsc';
   matrixModeAfterReset?: boolean;
 };
 
@@ -88,6 +89,24 @@ export async function handleTec1gMessage(msg: Tec1gMessage, ctx: MessageContext)
   if (msg.type === 'matrixMode' && typeof msg.enabled === 'boolean') {
     try {
       await target.customRequest('debug80/tec1gMatrixMode', { enabled: msg.enabled });
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  if (msg.type === 'tms9918Active' && typeof msg.enabled === 'boolean') {
+    try {
+      await target.customRequest('debug80/tec1gTms9918Active', { enabled: msg.enabled });
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  if (msg.type === 'tms9918VideoStandard' && (msg.standard === 'pal' || msg.standard === 'ntsc')) {
+    try {
+      await target.customRequest('debug80/tec1gTms9918VideoStandard', {
+        standard: msg.standard,
+      });
     } catch {
       /* ignore */
     }

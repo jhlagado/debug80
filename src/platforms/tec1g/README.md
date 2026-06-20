@@ -11,6 +11,8 @@ external Debug80 manual at https://debug80.com/.
 - Serial bit-bang TX/RX at 4800-8-N-2 (MON-3 timing).
 - Shadow/Protect/Expand memory behavior and the 0x8000-0xBFFF expansion window.
 - 8x8 RGB LED matrix output (row select + red/green/blue column latches).
+- TMS9918/TMS9929 video card on fixed ports 0xBE/0xBF, attached while the
+  TMS9918 Video accordion is open.
 - RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
 
 ## Not yet emulated
@@ -59,6 +61,9 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
   - Bit 7 (0x80): RX — serial receive (idle high).
 - `IN 0x04`: LCD busy flag + address counter (HD44780 status read).
 - `IN 0x84`: LCD data read (supported).
+- `IN 0xBE`: TMS9918/TMS9929 VRAM data port when the Video panel is open.
+- `IN 0xBF`: TMS9918/TMS9929 status port when the Video panel is open. Status reads
+  clear the VDP frame interrupt flag and deassert VDP NMI.
 - `IN 0xFE`: matrix keyboard rows. The raw matrix port remains readable whether
   or not MON-3 Matrix CONFIG mode is enabled.
 
@@ -75,6 +80,9 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - `OUT 0xF8`: LED matrix green columns.
 - `OUT 0xF9`: LED matrix blue columns.
 - `OUT 0x07/0x87`: GLCD instruction/data (ST7920 — text, graphics, busy flag all emulated).
+- `OUT 0xBE`: TMS9918/TMS9929 VRAM data port when the Video panel is open.
+- `OUT 0xBF`: TMS9918/TMS9929 command/register port when the Video panel is open.
+  Debug80 intentionally does not decode 0xB0-0xBD aliases for the TEC-1G card.
 - `OUT 0xFF` (SYS_CTRL): system latch (U13 74HCT273).
   - Bit 0: ~SHADOW (active low — 0 = shadow on).
   - Bit 1: PROTECT (1 = write-protect 0x4000-0x7FFF).
@@ -92,6 +100,16 @@ The TEC-1G panel can switch speed modes; the serial timing assumes FAST mode.
 - TX uses bit 6 on `OUT 0x01`; RX uses bit 7 on `IN 0x00` (mirrored on `IN 0x03`).
 - 4800 baud, 8 data bits, no parity, 2 stop bits.
 - Debug80 decodes TX into the panel serial view and can inject RX bytes.
+
+## TMS9918/TMS9929 video
+
+- The TMS9918 Video accordion controls whether the card is attached to the bus.
+  Collapsing the panel disconnects ports 0xBE/0xBF and VDP NMI but preserves VRAM
+  and register state for convenience.
+- PAL 50 Hz is the default cadence. The panel can switch to NTSC 60 Hz; this
+  changes only the frame/vblank cadence used for the VDP status interrupt.
+- The first emulated display path targets Graphics I with sprites, including the
+  four-sprites-per-scanline display limit used by Damian's TEC-1G demo.
 
 ## DIAG ROM expectations
 

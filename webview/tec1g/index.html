@@ -218,6 +218,38 @@
           <button
             class="debug80-accordion-header"
             type="button"
+            data-accordion-toggle="video"
+            aria-expanded="false"
+          >
+            TMS9918 Video
+          </button>
+          <div class="debug80-accordion-content" id="accordion-video">
+            <div class="panel panel-video">
+              <div class="tms9918">
+                <div class="tms9918-header">
+                  <div class="tms9918-title">TMS9918 / TMS9929</div>
+                  <label class="tms9918-standard">
+                    <span>Standard</span>
+                    <select id="tms9918Standard">
+                      <option value="pal" selected>PAL 50</option>
+                      <option value="ntsc">NTSC 60</option>
+                    </select>
+                  </label>
+                </div>
+                <canvas
+                  class="tms9918-canvas"
+                  id="tms9918Canvas"
+                  width="512"
+                  height="384"
+                ></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="debug80-accordion-section">
+          <button
+            class="debug80-accordion-header"
+            type="button"
             data-accordion-toggle="machine"
             aria-expanded="true"
           >

@@ -5,6 +5,7 @@ export type AccordionPanel =
   | 'project'
   | 'machine'
   | 'displays'
+  | 'video'
   | 'serial'
   | 'matrixKeyboard'
   | 'registers'
@@ -50,6 +51,7 @@ const DEFAULT_OPEN_STATE: Record<AccordionPanel, boolean> = {
   project: true,
   machine: true,
   displays: true,
+  video: false,
   serial: false,
   matrixKeyboard: false,
   registers: true,
@@ -59,6 +61,7 @@ const PANEL_SET = new Set<AccordionPanel>([
   'project',
   'machine',
   'displays',
+  'video',
   'serial',
   'matrixKeyboard',
   'registers',
@@ -79,6 +82,7 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
   if (typeof stored.project === 'boolean') result.project = stored.project;
   if (typeof stored.machine === 'boolean') result.machine = stored.machine;
   if (typeof stored.displays === 'boolean') result.displays = stored.displays;
+  if (typeof stored.video === 'boolean') result.video = stored.video;
   if (typeof stored.serial === 'boolean') result.serial = stored.serial;
   if (typeof stored.matrixKeyboard === 'boolean') result.matrixKeyboard = stored.matrixKeyboard;
   if (typeof stored.registers === 'boolean') result.registers = stored.registers;
@@ -141,8 +145,11 @@ export function createAccordionLayoutController(
   >();
   const buttonOrder = options.buttons
     .map((button) => button.dataset.accordionToggle)
-    .filter((panel): panel is AccordionPanel => Boolean(panel && PANEL_SET.has(panel as AccordionPanel)));
-  const defaultPanelOrder = options.defaultPanelOrder?.filter((panel) => buttonOrder.includes(panel)) ?? [];
+    .filter((panel): panel is AccordionPanel =>
+      Boolean(panel && PANEL_SET.has(panel as AccordionPanel))
+    );
+  const defaultPanelOrder =
+    options.defaultPanelOrder?.filter((panel) => buttonOrder.includes(panel)) ?? [];
   const defaultOrder = [
     ...defaultPanelOrder,
     ...buttonOrder.filter((panel) => !defaultPanelOrder.includes(panel)),
@@ -170,6 +177,7 @@ export function createAccordionLayoutController(
     project: 'Project',
     machine: 'Machine',
     displays: 'Displays',
+    video: 'TMS9918 Video',
     serial: 'Serial',
     matrixKeyboard: 'Matrix Keyboard',
     registers: 'Registers',
@@ -375,6 +383,9 @@ export function createAccordionLayoutController(
     notifyInitialOpenPanels(): void {
       if (openState.matrixKeyboard) {
         options.onPanelOpenChange?.('matrixKeyboard', true);
+      }
+      if (openState.video) {
+        options.onPanelOpenChange?.('video', true);
       }
     },
     isCpuOpen: () => openState.registers || openState.memory,

@@ -52,6 +52,55 @@ function sendPlatformResponse(
   return true;
 }
 
+/** Reads a boolean property from a custom request payload. */
+function readBooleanProperty(args: unknown, key: string): boolean | undefined {
+  if (typeof args !== 'object' || args === null) {
+    return undefined;
+  }
+  const value = (args as Record<string, unknown>)[key];
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+/** Reads a TMS9918 video standard from a custom request payload. */
+function readTms9918Standard(args: unknown): 'pal' | 'ntsc' | undefined {
+  if (typeof args !== 'object' || args === null) {
+    return undefined;
+  }
+  const value = (args as Record<string, unknown>).standard;
+  return value === 'pal' || value === 'ntsc' ? value : undefined;
+}
+
+/** Handles attachment/detachment of the TEC-1G TMS9918 video card. */
+function handleTms9918ActiveRequest(context: PlatformCommandContext, args: unknown): string | null {
+  const enabled = readBooleanProperty(args, 'enabled');
+  if (enabled === undefined) {
+    return 'Debug80: Missing TMS9918 active flag.';
+  }
+  const runtime = context.sessionState.tec1gRuntime;
+  if (!runtime) {
+    return 'Debug80: Platform not active.';
+  }
+  runtime.setTms9918Active(enabled);
+  return null;
+}
+
+/** Handles PAL/NTSC cadence changes for the TEC-1G TMS9918 video card. */
+function handleTms9918VideoStandardRequest(
+  context: PlatformCommandContext,
+  args: unknown
+): string | null {
+  const standard = readTms9918Standard(args);
+  if (standard === undefined) {
+    return 'Debug80: Missing TMS9918 video standard.';
+  }
+  const runtime = context.sessionState.tec1gRuntime;
+  if (!runtime) {
+    return 'Debug80: Platform not active.';
+  }
+  runtime.setTms9918VideoStandard(standard);
+  return null;
+}
+
 /**
  * Builds the TEC-1G custom request contribution.
  */
@@ -69,6 +118,10 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
         sendPlatformResponse(response, context.handleMatrixKeyRequest(args), context),
       'debug80/tec1gMatrixMode': (response, args) =>
         sendPlatformResponse(response, context.handleMatrixModeRequest(args), context),
+      'debug80/tec1gTms9918Active': (response, args) =>
+        sendPlatformResponse(response, handleTms9918ActiveRequest(context, args), context),
+      'debug80/tec1gTms9918VideoStandard': (response, args) =>
+        sendPlatformResponse(response, handleTms9918VideoStandardRequest(context, args), context),
       'debug80/tec1gReset': (response) =>
         sendPlatformResponse(
           response,

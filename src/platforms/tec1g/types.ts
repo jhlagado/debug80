@@ -3,6 +3,7 @@
  */
 
 export type Tec1gSpeedMode = 'slow' | 'fast';
+export type Tec1gTms9918VideoStandard = 'pal' | 'ntsc';
 
 export interface Tec1gUpdatePayload {
   digits: number[];
@@ -18,6 +19,13 @@ export interface Tec1gUpdatePayload {
   matrixBrightnessB?: number[];
   matrixMode?: boolean;
   glcd: number[];
+  tms9918?: {
+    active: boolean;
+    videoStandard: Tec1gTms9918VideoStandard;
+    status: number;
+    registers: number[];
+    framebuffer: number[];
+  };
   speaker: number;
   speedMode: Tec1gSpeedMode;
   lcd: number[];
