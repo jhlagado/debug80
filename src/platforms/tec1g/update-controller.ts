@@ -14,6 +14,7 @@ type ClockedController = {
 export interface Tec1gUpdateController {
   queueUpdate(): void;
   flushUpdate(): void;
+  flushUpdateNow(): void;
   setSpeed(mode: Tec1gSpeedMode): void;
 }
 
@@ -125,6 +126,12 @@ export function createTec1gUpdateController(
     sendUpdate();
   };
 
+  const flushUpdateNow = (): void => {
+    timing.lastUpdateMs = Date.now();
+    timing.pendingUpdate = false;
+    sendUpdate();
+  };
+
   const setSpeed = (mode: Tec1gSpeedMode): void => {
     timing.speedMode = mode;
     timing.clockHz = mode === 'slow' ? TEC_SLOW_HZ : TEC_FAST_HZ;
@@ -137,6 +144,7 @@ export function createTec1gUpdateController(
   return {
     queueUpdate,
     flushUpdate,
+    flushUpdateNow,
     setSpeed,
   };
 }

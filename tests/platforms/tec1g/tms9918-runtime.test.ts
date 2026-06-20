@@ -56,6 +56,7 @@ describe('TEC-1G TMS9918 runtime integration', () => {
   });
 
   it('honors target TMS9918 attachment before CPU video writes execute', () => {
+    const updates: unknown[] = [];
     const config = normalizeTec1gConfig({
       regions: [
         { start: 0x0000, end: 0x7fff, kind: 'ram' as const },
@@ -67,7 +68,7 @@ describe('TEC-1G TMS9918 runtime integration', () => {
       yieldMs: 0,
       uiVisibility: { tms9918: true },
     });
-    const rt = createTec1gRuntime(config, () => {});
+    const rt = createTec1gRuntime(config, (payload) => updates.push(payload));
     const program = makeProgram([
       0x31,
       0xff,
@@ -97,6 +98,7 @@ describe('TEC-1G TMS9918 runtime integration', () => {
 
     expect(rt.state.display.tms9918.snapshot().active).toBe(true);
     expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x5a);
+    expect(updates.length).toBeGreaterThan(1);
   });
 
   it('raises NMI from the PAL frame cadence when TMS interrupts are enabled', () => {

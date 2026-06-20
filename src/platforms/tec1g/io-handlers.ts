@@ -129,6 +129,7 @@ type Tec1gPortContext = {
   sdEnabled: boolean;
   sdSpi: { read(): number; write(value: number): void } | null;
   queueUpdate: () => void;
+  flushUpdateNow?: () => void;
   /** Called after matrix latches change; do not queue UI here — runtime commits on 8 rows or idle. */
   onMatrixPortsChanged?: (kind: 'row' | 'rgb') => void;
   onPortWrite?: (payload: { port: number; value: number }) => void;
@@ -453,12 +454,12 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
       }
       if (p === TEC1G_PORT_TMS9918_DATA) {
         display.tms9918.writeData(value & TEC1G_MASK_BYTE);
-        queueUpdate();
+        context.flushUpdateNow?.();
         return;
       }
       if (p === TEC1G_PORT_TMS9918_CONTROL) {
         display.tms9918.writeControl(value & TEC1G_MASK_BYTE);
-        queueUpdate();
+        context.flushUpdateNow?.();
         return;
       }
       if (p >= TEC1G_PORT_RTC && p <= TEC1G_PORT_MATRIX_KEYBOARD) {

@@ -116,6 +116,12 @@ export function createTec1gRuntime(
   function flushUpdate(): void {
     updateControllerRef.current?.flushUpdate();
   }
+  /**
+   *
+   */
+  function flushUpdateNow(): void {
+    updateControllerRef.current?.flushUpdateNow();
+  }
 
   const glcd = createGlcdController(
     display.glcdCtrl,
@@ -147,6 +153,7 @@ export function createTec1gRuntime(
     sdEnabled,
     sdSpi,
     queueUpdate,
+    flushUpdateNow,
     onMatrixPortsChanged: (kind: 'row' | 'rgb'): void => {
       handleMatrixPortWrite(display, timing, kind, queueUpdate);
     },
