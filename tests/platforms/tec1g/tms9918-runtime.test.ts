@@ -62,4 +62,25 @@ describe('TEC-1G TMS9918 runtime integration', () => {
     });
     expect(rt.ioHandlers.tick?.()).toBeUndefined();
   });
+
+  it('resets the video device while preserving panel attachment', () => {
+    const rt = makeRuntime();
+    rt.setTms9918Active(true);
+    rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x00);
+    rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x40);
+    rt.ioHandlers.write(TMS9918_DATA_PORT, 0x44);
+    expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x44);
+
+    rt.resetState();
+
+    const resetSnapshot = rt.state.display.tms9918.snapshot();
+    expect(resetSnapshot.active).toBe(true);
+    expect(resetSnapshot.vram[0]).toBe(0x00);
+    expect(resetSnapshot.registers).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+
+    rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x00);
+    rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x40);
+    rt.ioHandlers.write(TMS9918_DATA_PORT, 0x55);
+    expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x55);
+  });
 });

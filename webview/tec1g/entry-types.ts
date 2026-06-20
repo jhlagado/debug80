@@ -51,6 +51,7 @@ export type IncomingMessage =
       coolTermAvailable?: boolean;
       coolTermHexPath?: string;
       hardwareStatusText?: string;
+      targetUiVisibility?: ProjectStatusPayload['targetUiVisibility'];
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];
     }

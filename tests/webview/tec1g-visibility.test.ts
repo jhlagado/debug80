@@ -199,6 +199,13 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain('if (message.matrixMode === false)');
   });
 
+  it('opens the TMS9918 panel when the selected target asks for it', () => {
+    const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+
+    expect(source).toContain('message.targetUiVisibility?.tms9918 === true');
+    expect(source).toContain("panelLayout.setPanelOpen('video', true, true)");
+  });
+
   it('labels all eight status lamps including the Memory Expansion bank bits', () => {
     expect(doc.querySelector('.status-bank-title')?.textContent).toBe('Memory Expansion');
     expect(doc.querySelector('.status-bank-panel')?.getAttribute('aria-label')).toBe(

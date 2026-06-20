@@ -28,6 +28,13 @@ export type ProjectStatusPayload = {
   /** Current source-map status for editor navigation and debugger symbol views. */
   sourceMapStatusText?: string;
   sourceMapStatusState?: 'current' | 'stale' | 'missing' | 'invalid' | 'unknown';
+  /** Selected target's preferred TEC-1G panel/card visibility, when configured. */
+  targetUiVisibility?: {
+    tms9918?: boolean;
+    glcd?: boolean;
+    serial?: boolean;
+    matrix?: boolean;
+  };
   roots: Array<{
     name: string;
     path: string;

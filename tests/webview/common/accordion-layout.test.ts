@@ -409,6 +409,74 @@ describe('accordion layout controller', () => {
     ).toEqual(['project', 'machine', 'displays', 'serial']);
   });
 
+  it('inserts newly added panels according to default order when stored order is older', () => {
+    const messages: PostedMessage[] = [];
+    const fixture = accordionFixture([
+      'project',
+      'machine',
+      'displays',
+      'video',
+      'matrixKeyboard',
+      'registers',
+      'memory',
+      'serial',
+    ]);
+    const vscode = createVscodeMock(messages, {
+      debug80AccordionOrder: [
+        'project',
+        'machine',
+        'displays',
+        'matrixKeyboard',
+        'registers',
+        'memory',
+        'serial',
+      ],
+    });
+
+    createAccordionLayoutController({
+      vscode,
+      buttons: fixture.buttons,
+      panels: {
+        project: document.createElement('div'),
+        machine: document.createElement('div'),
+        displays: document.createElement('div'),
+        video: document.createElement('div'),
+        matrixKeyboard: document.createElement('div'),
+        registers: document.createElement('div'),
+        memory: document.createElement('div'),
+        serial: document.createElement('div'),
+      },
+      defaultPanelOrder: [
+        'project',
+        'machine',
+        'displays',
+        'video',
+        'matrixKeyboard',
+        'registers',
+        'memory',
+        'serial',
+      ],
+      memoryPanel: document.createElement('div'),
+      defaultTab: 'ui',
+      getMemoryPanelController: () => null,
+    });
+
+    expect(
+      Array.from(fixture.root.querySelectorAll<HTMLElement>('.debug80-accordion-section')).map(
+        (section) => section.dataset.panel
+      )
+    ).toEqual([
+      'project',
+      'machine',
+      'displays',
+      'video',
+      'matrixKeyboard',
+      'registers',
+      'memory',
+      'serial',
+    ]);
+  });
+
   it('polls registers while registers are open and memory is closed', () => {
     vi.useFakeTimers();
     const messages: PostedMessage[] = [];

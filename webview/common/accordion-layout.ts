@@ -39,6 +39,7 @@ export type AccordionLayoutController = {
   refreshOpenRegisters: () => void;
   setRegisterRefreshActive: (active: boolean) => void;
   setProviderTab: (tab: string, notify: boolean) => void;
+  setPanelOpen: (panel: AccordionPanel, open: boolean, notify: boolean) => void;
   scheduleMemoryResize: () => void;
   updateMemoryLayout: (forceRefresh: boolean) => void;
   wireButtons: () => void;
@@ -104,7 +105,25 @@ function readStoredPanelOrder(vscode: VscodeApi, defaultOrder: AccordionPanel[])
     seen.add(panel as AccordionPanel);
     return true;
   });
-  return [...storedOrder, ...defaultOrder.filter((panel) => !seen.has(panel))];
+  const mergedOrder = [...storedOrder];
+  for (const panel of defaultOrder) {
+    if (seen.has(panel)) {
+      continue;
+    }
+    const defaultIndex = defaultOrder.indexOf(panel);
+    let insertIndex = mergedOrder.length;
+    for (let i = defaultIndex + 1; i < defaultOrder.length; i += 1) {
+      const nextDefaultPanel = defaultOrder[i];
+      const existingIndex = nextDefaultPanel === undefined ? -1 : mergedOrder.indexOf(nextDefaultPanel);
+      if (existingIndex !== -1) {
+        insertIndex = existingIndex;
+        break;
+      }
+    }
+    mergedOrder.splice(insertIndex, 0, panel);
+    seen.add(panel);
+  }
+  return mergedOrder;
 }
 
 function writeStoredAccordionState(
@@ -392,6 +411,7 @@ export function createAccordionLayoutController(
     isMemoryOpen: () => openState.memory,
     refreshOpenRegisters,
     setRegisterRefreshActive,
+    setPanelOpen: setOpen,
     setProviderTab,
     scheduleMemoryResize(): void {
       if (resizeTimer !== null) {

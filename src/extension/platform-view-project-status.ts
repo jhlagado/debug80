@@ -15,6 +15,8 @@ import { listProjectTargetChoices } from './project-target-selection';
 import { resolveProjectStatusSummary } from './project-status';
 import { resolveRememberedWorkspaceFolder } from './workspace-selection';
 
+type TargetUiVisibility = NonNullable<ProjectStatusPayload['targetUiVisibility']>;
+
 export interface PlatformViewProjectStatusContext {
   workspaceState: vscode.Memento | undefined;
   selectedWorkspace: vscode.WorkspaceFolder | undefined;
@@ -91,6 +93,7 @@ export function buildPlatformViewProjectStatus(
 
   const hexArtifact = resolveCoolTermHexArtifact(folder.uri.fsPath, projectStatus?.targetName);
   const sourceMapStatus = resolveSourceMapStatus(folder, projectConfigPath, ctx.workspaceState);
+  const targetUiVisibility = resolveTargetUiVisibility(config, projectStatus?.targetName);
   return {
     roots,
     targets: listProjectTargetChoices(projectConfigPath),
@@ -111,7 +114,48 @@ export function buildPlatformViewProjectStatus(
       : {}),
     ...(projectStatus?.targetName !== undefined ? { targetName: projectStatus.targetName } : {}),
     ...(projectStatus?.entrySource !== undefined ? { entrySource: projectStatus.entrySource } : {}),
+    ...(targetUiVisibility !== undefined ? { targetUiVisibility } : {}),
   };
+}
+
+function resolveTargetUiVisibility(
+  config: ReturnType<typeof readProjectConfig>,
+  targetName: string | undefined
+): TargetUiVisibility | undefined {
+  if (targetName === undefined) {
+    return undefined;
+  }
+  const target = config?.targets?.[targetName];
+  if (target === undefined || typeof target !== 'object') {
+    return undefined;
+  }
+  const tec1g = (target as { tec1g?: unknown }).tec1g;
+  if (tec1g === null || typeof tec1g !== 'object' || Array.isArray(tec1g)) {
+    return undefined;
+  }
+  const uiVisibility = (tec1g as { uiVisibility?: unknown }).uiVisibility;
+  if (
+    uiVisibility === null ||
+    typeof uiVisibility !== 'object' ||
+    Array.isArray(uiVisibility)
+  ) {
+    return undefined;
+  }
+  const source = uiVisibility as Record<string, unknown>;
+  const result: TargetUiVisibility = {};
+  if (typeof source.tms9918 === 'boolean') {
+    result.tms9918 = source.tms9918;
+  }
+  if (typeof source.glcd === 'boolean') {
+    result.glcd = source.glcd;
+  }
+  if (typeof source.serial === 'boolean') {
+    result.serial = source.serial;
+  }
+  if (typeof source.matrix === 'boolean') {
+    result.matrix = source.matrix;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function resolveSourceMapStatus(

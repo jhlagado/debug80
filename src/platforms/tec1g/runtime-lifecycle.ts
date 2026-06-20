@@ -74,6 +74,9 @@ export function resetTec1gRuntimeState(
   display.ledMatrixRedLatch = 0;
   display.ledMatrixGreenLatch = 0;
   display.ledMatrixBlueLatch = 0;
+  const tms9918Active = display.tms9918.snapshot().active;
+  display.tms9918.reset();
+  display.tms9918.setActive(tms9918Active);
   input.matrixKeyStates.fill(TEC1G_MASK_BYTE);
   input.matrixPendingKeyStates.fill(TEC1G_MASK_BYTE);
   input.matrixPendingDirty = false;

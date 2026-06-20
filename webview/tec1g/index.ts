@@ -294,6 +294,9 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
       azmRegisterContractsMode: message.azmRegisterContractsMode,
       azmContractUpdateMode: message.azmContractUpdateMode,
     });
+    if (message.targetUiVisibility?.tms9918 === true) {
+      panelLayout.setPanelOpen('video', true, true);
+    }
     return;
   }
   if (message.type === 'sessionStatus') {

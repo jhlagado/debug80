@@ -145,6 +145,46 @@ describe('platform-view-project-status', () => {
     });
   });
 
+  it('includes selected target TEC-1G UI visibility preferences', () => {
+    const project = workspaceFolder('project', '/workspace/project');
+    readProjectConfig.mockReturnValue({
+      projectPlatform: 'tec1g',
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          tec1g: {
+            uiVisibility: {
+              tms9918: true,
+              glcd: false,
+              serial: false,
+              matrix: false,
+            },
+          },
+        },
+      },
+    });
+
+    expect(
+      buildPlatformViewProjectStatus(
+        {
+          workspaceState: memento() as never,
+          selectedWorkspace: project,
+          currentPlatform: 'simple',
+          stopOnEntry: false,
+        },
+        [project]
+      )
+    ).toMatchObject({
+      targetName: 'app',
+      targetUiVisibility: {
+        tms9918: true,
+        glcd: false,
+        serial: false,
+        matrix: false,
+      },
+    });
+  });
+
   it('builds an uninitialized status for a selected folder without a project', () => {
     const openFolder = workspaceFolder('scratch', '/workspace/scratch');
 
