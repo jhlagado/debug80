@@ -197,7 +197,7 @@ export function createTec1gInitialState(params: {
       gimpSignal: config.gimpSignal,
     },
   };
-  state.display.tms9918.setActive(false);
+  state.display.tms9918.setActive(config.tms9918Active === true);
   writeLcdArrowHint(state.lcdCtrl);
   return state;
 }

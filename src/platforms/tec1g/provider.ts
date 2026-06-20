@@ -196,7 +196,9 @@ function finalizeTec1gRuntime(
   if (!tec1gRuntime) {
     return;
   }
-  tec1gRuntime.setTms9918Active(context.sessionState.ui.tec1gTms9918Active);
+  const tms9918Active = config.tms9918Active === true || context.sessionState.ui.tec1gTms9918Active;
+  context.sessionState.ui.tec1gTms9918Active = tms9918Active;
+  tec1gRuntime.setTms9918Active(tms9918Active);
   tec1gRuntime.setTms9918VideoStandard(context.sessionState.ui.tec1gTms9918VideoStandard);
 
   const assets = (context.assets ?? { cartridgeImage: null }) as Tec1gPlatformAssets;

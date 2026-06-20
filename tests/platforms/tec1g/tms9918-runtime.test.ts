@@ -3,9 +3,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createTec1gRuntime } from '../../../src/platforms/tec1g/runtime';
+import { createTec1gRuntime, normalizeTec1gConfig } from '../../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../../src/platforms/types';
 import { TMS9918_CONTROL_PORT, TMS9918_DATA_PORT } from '../../../src/platforms/tec1g/tms9918';
+import { createZ80Runtime } from '../../../src/z80/runtime';
+import type { HexProgram } from '../../../src/z80/loaders';
 
 function makeRuntime() {
   const config: Tec1gPlatformConfigNormalized = {
@@ -29,6 +31,12 @@ function makeRuntime() {
   return createTec1gRuntime(config, () => {});
 }
 
+function makeProgram(bytes: number[], startAddress = 0x4000): HexProgram {
+  const memory = new Uint8Array(0x10000);
+  memory.set(bytes, startAddress);
+  return { memory, startAddress };
+}
+
 describe('TEC-1G TMS9918 runtime integration', () => {
   it('keeps the video card detached until the panel activates it', () => {
     const rt = makeRuntime();
@@ -45,6 +53,50 @@ describe('TEC-1G TMS9918 runtime integration', () => {
     rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x00);
     rt.ioHandlers.write(TMS9918_CONTROL_PORT, 0x00);
     expect(rt.ioHandlers.read(TMS9918_DATA_PORT)).toBe(0x44);
+  });
+
+  it('honors target TMS9918 attachment before CPU video writes execute', () => {
+    const config = normalizeTec1gConfig({
+      regions: [
+        { start: 0x0000, end: 0x7fff, kind: 'ram' as const },
+        { start: 0xc000, end: 0xffff, kind: 'rom' as const },
+      ],
+      appStart: 0x4000,
+      entry: 0x4000,
+      updateMs: 100,
+      yieldMs: 0,
+      uiVisibility: { tms9918: true },
+    });
+    const rt = createTec1gRuntime(config, () => {});
+    const program = makeProgram([
+      0x31,
+      0xff,
+      0x7f, // LD SP,0x7fff
+      0x3e,
+      0x00, // LD A,0x00
+      0xd3,
+      TMS9918_CONTROL_PORT, // OUT ($BF),A
+      0x3e,
+      0x40, // LD A,0x40
+      0xd3,
+      TMS9918_CONTROL_PORT, // OUT ($BF),A: write address 0
+      0x3e,
+      0x5a, // LD A,0x5a
+      0xd3,
+      TMS9918_DATA_PORT, // OUT ($BE),A
+      0x76, // HALT
+    ]);
+    const cpu = createZ80Runtime(program, 0x4000, rt.ioHandlers, {
+      romRanges: config.romRanges,
+    });
+
+    for (let i = 0; i < 8; i += 1) {
+      const result = cpu.step();
+      rt.recordCycles(result.cycles ?? 0);
+    }
+
+    expect(rt.state.display.tms9918.snapshot().active).toBe(true);
+    expect(rt.state.display.tms9918.snapshot().vram[0]).toBe(0x5a);
   });
 
   it('raises NMI from the PAL frame cadence when TMS interrupts are enabled', () => {

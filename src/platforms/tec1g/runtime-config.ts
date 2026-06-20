@@ -62,6 +62,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     typeof config.sdImagePath === 'string' && config.sdImagePath !== ''
       ? config.sdImagePath
       : undefined;
+  const tms9918Active = config.uiVisibility?.tms9918 === true;
   return {
     regions,
     romRanges,
@@ -80,5 +81,6 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     sdHighCapacity,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
     ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
+    ...(tms9918Active ? { tms9918Active } : {}),
   };
 }
