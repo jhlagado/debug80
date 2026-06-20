@@ -25,6 +25,17 @@ export function serializeTec1gUpdateFromUiState(
     matrixBrightnessB: [...state.matrixBrightnessB],
     matrixMode: state.matrixMode,
     glcd: [...state.glcd],
+    ...(state.tms9918 !== undefined
+      ? {
+          tms9918: {
+            active: state.tms9918.active,
+            videoStandard: state.tms9918.videoStandard,
+            status: state.tms9918.status,
+            registers: [...state.tms9918.registers],
+            framebuffer: [...state.tms9918.framebuffer],
+          },
+        }
+      : {}),
     glcdDdram: [...state.glcdDdram],
     glcdState: { ...state.glcdState },
     sysCtrl: state.sysCtrlValue,

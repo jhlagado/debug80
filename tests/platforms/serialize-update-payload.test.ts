@@ -17,7 +17,7 @@ import {
   serializeTec1gUpdateFromUiState,
   tec1gUpdatePayloadFromDebugEventBody,
 } from '../../src/platforms/tec1g/serialize-ui-update-payload';
-import { createTec1gUiState } from '../../src/platforms/tec1g/ui-panel-state';
+import { applyTec1gUpdate, createTec1gUiState } from '../../src/platforms/tec1g/ui-panel-state';
 
 describe('TEC-1 update payload serialization', () => {
   it('matches runtime snapshot shape', () => {
@@ -79,6 +79,33 @@ describe('TEC-1G update payload serialization', () => {
     const cleared = serializeTec1gClearPanelUpdateFromUiState(ui);
     expect(cleared.speaker).toBe(0);
     expect(cleared.matrixGreen).toBeDefined();
+  });
+
+  it('preserves TEC-1G TMS9918 frames through extension UI state serialization', () => {
+    const ui = createTec1gUiState();
+    applyTec1gUpdate(ui, {
+      digits: [0, 0, 0, 0, 0, 0],
+      matrix: [],
+      glcd: [],
+      lcd: [],
+      speaker: 0,
+      speedMode: 'fast',
+      tms9918: {
+        active: true,
+        videoStandard: 'pal',
+        status: 0x80,
+        registers: [0, 0xc0, 2, 0x80, 0, 0x36, 7, 4],
+        framebuffer: [0x5455ed, 0xffffff],
+      },
+    });
+
+    expect(serializeTec1gUpdateFromUiState(ui).tms9918).toEqual({
+      active: true,
+      videoStandard: 'pal',
+      status: 0x80,
+      registers: [0, 0xc0, 2, 0x80, 0, 0x36, 7, 4],
+      framebuffer: [0x5455ed, 0xffffff],
+    });
   });
 
   it('parses debug80/tec1gUpdate bodies', () => {

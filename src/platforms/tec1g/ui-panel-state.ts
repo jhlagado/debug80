@@ -27,6 +27,7 @@ export type Tec1gUiState = {
   matrixBrightnessB: number[];
   matrixMode: boolean;
   glcd: number[];
+  tms9918: NonNullable<Tec1gUpdatePayload['tms9918']> | undefined;
   glcdDdram: number[];
   glcdState: GlcdState;
   speaker: boolean;
@@ -59,6 +60,7 @@ export function createTec1gUiState(): Tec1gUiState {
     matrixBrightnessB: Array.from({ length: 64 }, () => 0),
     matrixMode: false,
     glcd: Array.from({ length: 1024 }, () => 0),
+    tms9918: undefined,
     glcdDdram: Array.from({ length: 64 }, () => 0x20),
     glcdState: {
       displayOn: true,
@@ -103,6 +105,7 @@ export function resetTec1gUiState(state: Tec1gUiState): void {
   state.matrixBrightnessB = next.matrixBrightnessB;
   state.matrixMode = next.matrixMode;
   state.glcd = next.glcd;
+  state.tms9918 = next.tms9918;
   state.glcdDdram = next.glcdDdram;
   state.glcdState = next.glcdState;
   state.speaker = next.speaker;
@@ -155,6 +158,15 @@ export function applyTec1gUpdate(state: Tec1gUiState, payload: Tec1gUpdatePayloa
     state.matrixMode = payload.matrixMode;
   }
   state.glcd = payload.glcd.slice(0, 1024);
+  if (payload.tms9918 !== undefined) {
+    state.tms9918 = {
+      active: payload.tms9918.active,
+      videoStandard: payload.tms9918.videoStandard,
+      status: payload.tms9918.status,
+      registers: [...payload.tms9918.registers],
+      framebuffer: [...payload.tms9918.framebuffer],
+    };
+  }
   if (typeof payload.sysCtrl === 'number') {
     state.sysCtrlValue = payload.sysCtrl & 0xff;
   }
