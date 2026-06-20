@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.26
+
+- Added TEC-1G TMS9918 video card emulation, UI serialization, and webview
+  rendering support.
+- Stabilized TMS9918 panel attachment across launch, frame updates, and panel
+  state changes so video updates flush and render on frame cadence.
+- Added a reset command for the Debug80 panel layout.
+- Added focused runtime, provider, serializer, panel, and webview coverage for
+  TEC-1G TMS9918 behavior.
+
 ## 0.1.25
 
 - Stopped routing physical Meta-key chords into TEC-1G matrix input so Command
