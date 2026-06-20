@@ -18,7 +18,7 @@ This chapter covers the webview's internal architecture: the common infrastructu
 
 ## Common infrastructure
 
-Most cross-platform UI lives under `webview/common/`. TEC-1 and TEC-1G share **serial** wiring (`common/serial-ui.ts`), **Web Audio** speaker plumbing (`common/audio-core.ts` + thin `tec1/audio.ts` / `tec1g/tec1g-audio.ts` wrappers), the **8×8 monochrome matrix** paint path (`common/matrix-renderer.ts`; TEC-1G keeps a separate `matrix-ui.ts` for RGB, brightness, and the matrix keyboard), **seven-segment digits** (`common/seven-seg-display.ts`), **accordion layout** (`common/accordion-layout.ts`), **AZM option controls** (`common/azm-options-control.ts`), and **hex keycap keypads** (`common/tec-keypad.ts` + `common/tec-keypad-layout.ts`, wrapped by `tec1g/tec1g-keypad.ts` for SysCtrl LEDs). Shared **project-panel DOM lookup** now lives in `common/project-panel-elements.ts`, shared **memory-view DOM lookup** lives in `common/memory-view-elements.ts`, shared **typed element lookup** lives in `common/dom-elements.ts`, and shared **keypad focus, shortcut routing and shift-latch** behaviour is centralised in `common/keypad-core.ts` and `common/keypad-focus-routing.ts`. Layout tokens for matrix dot size, gaps, and padding are defined once in `common/styles.css` (TEC-1G adds RGB- and platform-specific overrides).
+Most cross-platform UI lives under `webview/common/`. TEC-1 and TEC-1G share **serial** wiring (`common/serial-ui.ts`), **Web Audio** speaker plumbing (`common/audio-core.ts` + thin `tec1/audio.ts` / `tec1g/tec1g-audio.ts` wrappers), the **8×8 monochrome matrix** paint path (`common/matrix-renderer.ts`; TEC-1G keeps separate `matrix-ui.ts` and `tms9918-renderer.ts` modules for RGB, matrix-keyboard capture, and TMS9918 video), **seven-segment digits** (`common/seven-seg-display.ts`), **accordion layout** (`common/accordion-layout.ts`), **AZM option controls** (`common/azm-options-control.ts`), and **hex keycap keypads** (`common/tec-keypad.ts` + `common/tec-keypad-layout.ts`, wrapped by `tec1g/tec1g-keypad.ts` for SysCtrl LEDs). Shared **project-panel DOM lookup** now lives in `common/project-panel-elements.ts`, shared **memory-view DOM lookup** lives in `common/memory-view-elements.ts`, shared **typed element lookup** lives in `common/dom-elements.ts`, and shared **keypad focus, shortcut routing and shift-latch** behaviour is centralised in `common/keypad-core.ts` and `common/keypad-focus-routing.ts`. Layout tokens for matrix dot size, gaps, and padding are defined once in `common/styles.css` (TEC-1G adds RGB- and platform-specific overrides).
 
 ### VS Code API bridge (`common/vscode.ts`)
 
@@ -61,7 +61,9 @@ The status values are:
 
 ### Accordion layout (`common/accordion-layout.ts`)
 
-`wireAccordionPanels()` gives the platform HTML a compact VS Code-like accordion shell. It sets ARIA state on each header button, toggles the associated panel body, and lets panels start open or collapsed from their HTML attributes. TEC-1G uses this to keep **Project**, **Displays**, **Machine**, **Matrix Keyboard**, and **Serial** stacked without the old show/hide checkbox row.
+`createAccordionLayoutController()` gives the platform HTML a compact VS Code-like accordion shell. It sets ARIA state on each header button, toggles the associated panel body, persists open state and panel order through `vscode.setState()`, and lets panels start open or collapsed from their HTML attributes. TEC-1G uses this to keep **Project**, **Machine**, **Displays**, **TMS9918 Video**, **Joystick**, **Matrix Keyboard**, **Registers**, **Memory**, and **Serial** in one ordered stack without the old show/hide checkbox row.
+
+The same controller now owns `resetPanelLayout()`. When the extension host posts `{ type: 'resetPanelLayout' }`, the webview restores the default panel order and default open-state map, rewrites the persisted accordion state, re-runs tab synchronization, and replays any `onPanelOpenChange` callbacks that need to detach matrix mode, clear joystick state, or reattach the TMS9918 card.
 
 ### Seven-segment display (`common/seven-seg-display.ts`)
 
@@ -147,7 +149,7 @@ webview/
   tec1g/
     index.html, index.ts, entry-types.ts, tec1g-platform-update.ts
     tec1g-audio.ts, tec1g-keypad.ts, tec1g-memory-views.ts, matrix-ui.ts
-    glcd-renderer.ts, lcd-renderer.ts, hd44780-a00.ts
+    joystick-ui.ts, tms9918-renderer.ts, glcd-renderer.ts, lcd-renderer.ts, hd44780-a00.ts
     st7920-font.bin, styles.css
 ```
 
@@ -259,7 +261,7 @@ The setup card state is recalculated on every `projectStatus` message by `resolv
 
 ## Tab switching
 
-Tab and accordion state are now handled by common panel helpers. The platform entry points apply the selected provider tab, update active CSS state, and notify the extension host when the provider tab changes. TEC-1G uses its panel layout controller to coordinate provider tabs, accordion bodies, register refresh, memory-panel sizing, and matrix-keyboard attachment state.
+Tab and accordion state are now handled by common panel helpers. The platform entry points apply the selected provider tab, update active CSS state, and notify the extension host when the provider tab changes. TEC-1G uses its panel layout controller to coordinate provider tabs, accordion bodies, register refresh, memory-panel sizing, matrix-keyboard attachment state, TMS9918 attachment state, and joystick cleanup on panel close.
 
 `setTab(tab, notify)`:
 
@@ -282,6 +284,7 @@ The TEC-1G panel distinguishes matrix attachment from physical keyboard capture.
 - Host-keyboard capture stays released until the user clicks within the emulator surfaces. A capture-state cue in `matrix-routing-cue.ts` switches between **Keyboard released** and **Keyboard captured** and applies matching `data-matrix-keyboard-captured` state to the page root.
 - Pointer events outside the emulator surfaces and `window.blur` release host-keyboard capture without closing the accordion or disabling matrix mode.
 - The reset button clears transient matrix UI state before posting `{ type: 'reset', matrixModeAfterReset }`. The extension-host adapter handles `debug80/tec1gReset` first, then reissues `debug80/tec1gMatrixMode` when `matrixModeAfterReset` is true so the persisted accordion-open state stays aligned with the MON-3 CONFIG bit after reset.
+- The same reset path clears the joystick UI state so held direction or fire bits cannot survive a board reset in the webview.
 
 ---
 
@@ -373,7 +376,7 @@ The TEC-1G panel uses a modular structure. `index.ts` is a thin composition root
 | `../common/serial-ui.ts`         | `wireSerialUi()` — used via `index.ts` (no separate `tec1g/serial-ui.ts` file)                               |
 | `st7920-font.bin`                | ST7920 GLCD font (static asset)                                                                              |
 
-**Layout (UI tab).** The TEC-1G panel is now organized as compact VS Code-style accordion sections. The **Project** section holds project and target selection. **Displays** sits above **Machine** and holds the ST7920 GLCD and RGB 8×8 matrix side by side. **Machine** holds the front-panel status strip, text LCD, six seven-segment digits and keypad. Matrix keyboard and serial tools live in their own accordion sections below the machine controls.
+**Layout (UI tab).** The TEC-1G panel is now organized as compact VS Code-style accordion sections. The **Project** section holds project and target selection. **Machine** holds the front-panel status strip, text LCD, six seven-segment digits and keypad. **Displays** holds the ST7920 GLCD and RGB 8×8 matrix. **TMS9918 Video** holds a separate 512×384 canvas plus the PAL/NTSC selector for the optional VDP card. **Joystick** holds the emulated joystick port controls. Matrix keyboard and serial tools live in their own accordion sections below the machine controls.
 
 ### Visibility controller
 
@@ -405,6 +408,15 @@ Matrix keyboard arrows and editing keys are not routed through the hex keypad sh
 When RESET is clicked while the Matrix Keyboard accordion is open, the webview includes that attachment state with the reset request. The extension host resets the board and then reasserts matrix mode, so MON-3 continues scanning the matrix keyboard instead of silently reverting to hex-keypad mode until the accordion is toggled.
 
 The panel also reasserts matrix attachment when a debug session becomes active and the Matrix Keyboard accordion was already open from persisted UI state. This covers the startup case where the webview may have sent its initial matrix-mode request before a Z80 debug session existed.
+
+**TMS9918 video panel.** Opening the **TMS9918 Video** accordion posts `{ type: 'tms9918Active', enabled: true }`; closing it posts the same message with `enabled: false`. The panel does not synthesize its own framebuffer. `tms9918-renderer.ts` renders the framebuffer supplied in each TEC-1G `update` payload, while the `<select id="tms9918Standard">` control posts `{ type: 'tms9918VideoStandard', standard: 'pal' | 'ntsc' }` back to the extension host. Incoming updates also drive the select value, so rehydration reflects the runtime's current cadence.
+
+**Joystick panel.** `joystick-ui.ts` owns the dedicated TEC-1G joystick accordion. Pointer and keyboard input both collapse into one active-high mask that the webview posts as `{ type: 'joystick', mask }`. The mapping is:
+
+- Directions: `ArrowUp`/`W` = `0x01`, `ArrowDown`/`S` = `0x02`, `ArrowLeft`/`A` = `0x04`, `ArrowRight`/`D` = `0x08`
+- Actions: `K` = `0x10` (Fire 2), `I` or `U` = `0x20` (Comm2 / pin 9), `J` or `Space` = `0x40` (Fire 1), `L` = `0x80` (Fire 3)
+
+The **Latch** checkbox switches pointer clicks from momentary press/release into xor-style latched bits. Closing the Joystick accordion, clicking RESET, or blurring the window clears held and latched joystick state before the next message is posted.
 
 Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup and translate Ctrl-letter chords into MON-3 control-letter input. Raw host `Shift`, `Control`, `Fn`, and `Alt` events are posted as their own matrix-key requests, which keeps the modifier row active across the full host key hold instead of only during derived ASCII chords. The adapter resolves Ctrl-letter chords through the letter's unmodified matrix cell plus the Ctrl modifier row, and suppresses a duplicate synthesized modifier cell when a raw host modifier is already held. Meta/Command chords are left to VS Code and the host OS instead of being routed into the emulated matrix keyboard. Plain Escape is forwarded into the emulated matrix keyboard.
 
@@ -570,7 +582,7 @@ The edit field accepts hex input without a `0x` prefix. Input is validated befor
 
 - The **TEC-1** panel renders six SVG seven-segment digits, an 8×8 LED matrix, a 16×2 HD44780 canvas LCD, a hex keypad (shared `tec-keypad` + `keypad-core`), a speaker indicator with Web Audio output, and a serial terminal (`common/serial-ui`). `tec1/index.ts` is the composition root while `tec1/message-handler.ts` and `tec1/platform-update.ts` own message branching and hardware update application.
 
-- The **TEC-1G** `index.ts` is a thin composition root. Feature logic is split across dedicated modules. The RGB LED matrix with scanned-display brightness, 128×64 ST7920 GLCD, 20×4 HD44780 LCD with CGRAM, six seven-segment digits, keypad, serial UI and matrix keyboard mode are each handled by focused modules. The user-facing layout is accordion-based: Displays, Machine, Matrix Keyboard and Serial.
+- The **TEC-1G** `index.ts` is a thin composition root. Feature logic is split across dedicated modules. The RGB LED matrix with scanned-display brightness, TMS9918 video, joystick port, 128×64 ST7920 GLCD, 20×4 HD44780 LCD with CGRAM, six seven-segment digits, keypad, serial UI and matrix keyboard mode are each handled by focused modules. The user-facing layout is accordion-based: Project, Machine, Displays, TMS9918 Video, Joystick, Matrix Keyboard, CPU panes, and Serial.
 
 - The `uiRevision` guard in the message handler rejects stale `update` messages from previous sessions.
 

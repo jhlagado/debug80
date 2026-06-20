@@ -10,7 +10,7 @@ nav_order: 3
 
 # Chapter 11 — The TEC-1G Platform
 
-The TEC-1G is an expanded successor to the TEC-1 with a much richer hardware set: an RGB LED matrix, a 128×64 graphics LCD (GLCD), a 4-row×20-column text LCD, a full matrix keyboard, memory banking with shadow RAM, a real-time clock, and an SD card interface. The TEC-1G platform in Debug80 emulates all of these with sufficient fidelity to run the MON-3 monitor and user programs unmodified.
+The TEC-1G is an expanded successor to the TEC-1 with a much richer hardware set: an RGB LED matrix, a 128×64 graphics LCD (GLCD), a 4-row×20-column text LCD, a full matrix keyboard, optional TMS9918/TMS9929 video hardware, memory banking with shadow RAM, a real-time clock, and an SD card interface. The TEC-1G platform in Debug80 emulates all of these with sufficient fidelity to run the MON-3 monitor and user programs unmodified.
 
 The platform lives in `src/platforms/tec1g/`.
 
@@ -18,7 +18,7 @@ The platform lives in `src/platforms/tec1g/`.
 
 ## Module layout
 
-The platform was decomposed into six focused modules. `runtime.ts` is now a thin facade: it re-exports `normalizeTec1gConfig` and `Tec1gState`, and exports `createTec1gRuntime()` and the `Tec1gRuntime` interface. All substantive logic lives in the files below.
+The platform is split across focused modules. `runtime.ts` is now a thin facade: it re-exports `normalizeTec1gConfig` and `Tec1gState`, and exports `createTec1gRuntime()` and the `Tec1gRuntime` interface. All substantive logic lives in the files below.
 
 | File                   | Responsibility                                                                                                               |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -28,6 +28,7 @@ The platform was decomposed into six focused modules. `runtime.ts` is now a thin
 | `runtime-matrix.ts`    | `handleMatrixPortWrite()` and `maybeCommitMatrixOnIdle()` — RGB LED matrix staging, commit, and idle-flush logic             |
 | `runtime-storage.ts`   | `createTec1gSdSpi()` — SD card image loading and file-backed persistence wiring                                              |
 | `runtime-lifecycle.ts` | `silenceTec1gSpeaker()` and `resetTec1gRuntimeState()` — speaker mute and full hardware reset                                |
+| `tms9918.ts`           | `createTms9918()` — TMS9918/TMS9929 VRAM, register, status-interrupt, and framebuffer model                                 |
 
 ---
 
@@ -107,6 +108,7 @@ input: {
   matrixPendingDirty: boolean; // True while pending rows differ from the committed scan image
   matrixLastReadRow: number | null; // Last row read through port 0xFE in the current scan pass
   matrixModeEnabled: boolean;
+  joystickState: number; // Active-low joystick bits merged into matrix row 3
   keyValue: number; // Hex keypad (0x7F = none)
   keyReleaseEventId: number | null;
   nmiPending: boolean;
@@ -165,6 +167,8 @@ The TEC-1G maps its hardware to a richer port space:
 | 0xF9 | OUT | RGB LED matrix blue latch                          |
 | 0xFC | I/O | RTC (DS1302 bit-bang)                              |
 | 0xFD | I/O | SD card (SPI bit-bang)                             |
+| 0xBE | I/O | TMS9918/TMS9929 VRAM data port when attached       |
+| 0xBF | I/O | TMS9918/TMS9929 control/status port when attached  |
 | 0xFE | IN  | Matrix keyboard (row in port high byte)            |
 | 0xFF | OUT | System control (shadow/protect/expand/bank/caps)   |
 
@@ -216,6 +220,25 @@ If a program updates fewer than eight rows or stops in the middle of a scan, the
 
 ---
 
+## TMS9918/TMS9929 video card
+
+Debug80 now models the TEC-Deck TMS9918/TMS9929 video card in `src/platforms/tec1g/tms9918.ts`. The runtime owns the full 16 KB VRAM image, the eight VDP registers, the status register, and a 256×192 framebuffer snapshot that is serialized into the webview update payload.
+
+The card is gated by panel state rather than by static project configuration alone. Opening the **TMS9918 Video** accordion sends `debug80/tec1gTms9918Active`, which sets `sessionState.ui.tec1gTms9918Active` and attaches the VDP to ports `0xBE` and `0xBF`. Collapsing the accordion detaches the ports and VDP NMI source, but the runtime preserves VRAM, registers, and the latest framebuffer so reopening the panel or rehydrating the webview restores the same card state.
+
+`debug80/tec1gTms9918VideoStandard` switches the emulated frame cadence between PAL 50 Hz and NTSC 60 Hz. This changes the VDP frame timing and status-interrupt cadence only; the port map and rendering path stay the same.
+
+Port handling follows the hardware split:
+
+- `OUT 0xBE` writes VRAM data
+- `OUT 0xBF` writes either the VRAM address latch or a VDP register command
+- `IN 0xBE` reads VRAM data
+- `IN 0xBF` reads VDP status, clears the frame-interrupt flag, and deasserts the VDP NMI
+
+The runtime advances the VDP on CPU cycle counts. Dirty video state is published on frame cadence rather than on every port write, while direct control changes that affect attachment or cadence queue an immediate UI refresh.
+
+---
+
 ## The text LCD (HD44780, 4×20)
 
 The TEC-1G's text LCD is larger than the TEC-1's — four rows of twenty characters rather than two rows of sixteen. Port 0x04 receives commands; port 0x84 receives character data.
@@ -257,6 +280,12 @@ The TEC-1G supports a full alphanumeric matrix keyboard in addition to the origi
 `matrixPendingKeyStates` holds the next scan image while key transitions are arriving from the adapter. `applyMatrixKey()` updates this pending array and marks `matrixPendingDirty` instead of mutating the committed rows immediately.
 
 The row select is also active-low. `decodeMatrixKeyboardRow()` in `src/platforms/tec1g/io-handlers.ts` decodes the high byte on the Z80 port bus and uses the first selected low bit as the row that `IN r,(C)` should read.
+
+### Joystick overlay
+
+The current codebase also overlays joystick input onto matrix row 3. `debug80/tec1gJoystick` carries a byte mask that `setJoystickState()` stores as `input.joystickState`. When `readMatrixKeyboardRow()` serves row 3, it returns `matrixValue & ~input.joystickState`, so asserted joystick bits pull the corresponding lines low in the same active-low form as the keyboard matrix.
+
+This keeps the joystick path inside the existing scan hardware model rather than adding a separate read port. `resetTec1gRuntimeState()` clears `joystickState` on reset.
 
 `readMatrixKeyboardRow()` commits the pending scan image only at a scan boundary: either the first matrix-row read after an idle period or when the requested row number wraps back to an earlier row than the previous read. This keeps one MON-3 scan pass internally consistent even if host input changes while the monitor is walking the matrix.
 

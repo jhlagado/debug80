@@ -160,6 +160,12 @@ When the sidebar becomes hidden, the memory refresh polling stops. When it becom
 
 This means every show/hide cycle regenerates the webview HTML. The buffered state (serial text, UI state) is reposted from the provider's in-memory copies, so the user sees a consistent panel despite the HTML being recreated.
 
+### Panel-layout reset command
+
+`registerPanelViewCommands()` in `src/extension/panel-view-commands.ts` now exposes a visible command, `debug80.resetPanelLayout`. The command calls `PlatformViewProvider.resetPanelLayout()`, which marks a pending reset, reveals the Debug80 view, and then posts a one-shot `{ type: 'resetPanelLayout' }` message once the webview is available.
+
+The provider does not rebuild platform state for this action. It only tells the webview to discard persisted accordion order and open-state preferences and return to the default layout for the active platform.
+
 ---
 
 ## `renderCurrentView()`
@@ -247,6 +253,7 @@ All messages are posted via `postMessage()`. The webview handles them in `window
 | `serialClear`   | —                                                                                                    | Clear the serial/terminal display                                     |
 | `projectStatus` | `roots[]`, `targets[]`, project fields, AZM option fields, CoolTerm fields, source-map status fields | Workspace, project, target, hardware-send or source-map state changes |
 | `sessionStatus` | `status: 'starting' \| 'running' \| 'paused' \| 'not running'`                                       | Debug session state changes                                           |
+| `resetPanelLayout` | —                                                                                                 | The user runs `debug80.resetPanelLayout` or equivalent host action    |
 | `selectTab`     | `tab: 'ui' \| 'memory'`                                                                              | Tab should be selected                                                |
 | `snapshot`      | Register and memory dump                                                                             | Memory inspector refresh completes                                    |
 | `snapshotError` | `message?: string`                                                                                   | Memory snapshot request failed                                        |
