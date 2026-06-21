@@ -278,13 +278,14 @@ Tab and accordion state are now handled by common panel helpers. The platform en
 
 ### TEC-1G matrix capture flow
 
-The TEC-1G panel distinguishes matrix attachment from physical keyboard capture.
+The TEC-1G panel distinguishes matrix attachment from physical keyboard capture, and now also tracks which emulator surface currently owns host keyboard events.
 
 - Opening the **Matrix Keyboard** accordion posts `{ type: 'matrixMode', enabled: true }`, which attaches the emulated matrix keyboard for MON-3 and disables scanned hex keypad input.
-- Host-keyboard capture stays released until the user clicks within the emulator surfaces. A capture-state cue in `matrix-routing-cue.ts` switches between **Keyboard released** and **Keyboard captured** and applies matching `data-matrix-keyboard-captured` state to the page root.
+- `keyboard-owner.ts` tracks three possible owners: the hex keypad, the matrix keyboard, and the joystick panel. Opening Matrix Keyboard promotes it to the active owner. Opening Joystick promotes joystick control only while Matrix Keyboard is closed. Clicking the Machine accordion returns ownership to the keypad.
+- Host-keyboard capture stays released until the matrix keyboard owns input and the user clicks within the emulator surfaces. A capture-state cue in `matrix-routing-cue.ts` switches between **Keyboard released**, **Keyboard captured**, and **Joystick controls active**, and applies matching `data-matrix-keyboard-captured` state to the page root.
 - Pointer events outside the emulator surfaces and `window.blur` release host-keyboard capture without closing the accordion or disabling matrix mode.
 - The reset button clears transient matrix UI state before posting `{ type: 'reset', matrixModeAfterReset }`. The extension-host adapter handles `debug80/tec1gReset` first, then reissues `debug80/tec1gMatrixMode` when `matrixModeAfterReset` is true so the persisted accordion-open state stays aligned with the MON-3 CONFIG bit after reset.
-- The same reset path clears the joystick UI state so held direction or fire bits cannot survive a board reset in the webview.
+- The same reset path clears the joystick UI state so held direction or fire bits cannot survive a board reset in the webview. Closing the Joystick accordion also clears any posted joystick mask.
 
 ---
 
@@ -369,6 +370,8 @@ The TEC-1G panel uses a modular structure. `index.ts` is a thin composition root
 | `tec1g-keypad.ts`                | `createTec1gKeypad()` — `common/tec-keypad` + `keypad-core` + status LEDs / SysCtrl                          |
 | `tec1g-memory-views.ts`          | `createTec1gMemoryViews()` — memory view section factory                                                     |
 | `matrix-ui.ts`                   | `createMatrixUiController()` — RGB LED matrix display and matrix keyboard input                              |
+| `joystick-ui.ts`                 | `createJoystickUiController()` — joystick mask composition from pointer and keyboard input                   |
+| `keyboard-owner.ts`              | `createKeyboardOwnerController()` — chooses whether keypad, matrix keyboard, or joystick owns host keys      |
 | `glcd-renderer.ts`               | `createGlcdRenderer()` — ST7920 128×64 GLCD canvas renderer                                                  |
 | `lcd-renderer.ts`                | `createLcdRenderer()` — HD44780 20×4 text LCD canvas renderer with CGRAM                                     |
 | `hd44780-a00.ts`                 | HD44780 A00 ROM character table                                                                              |
@@ -401,7 +404,7 @@ function applyMatrixBrightness(dots: HTMLElement[], r: number[], g: number[], b:
 
 The 64-entry brightness arrays (one per channel) come from the `matrixBrightnessR/G/B` fields of the TEC-1G update message. Each value is 0–255. `matrix-ui.ts` maps those duty-cycle values to stronger visible LED colours, currently with an extra 30% intensity boost over the previous display curve. This does not change the platform runtime's timing model; it only changes how the webview paints the already-calculated brightness so games such as Pacmo are easier to read while uneven scan timing remains visible.
 
-**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }` and disables the scanned hex keypad keys, matching MON-3's matrix-input takeover model. Host-keyboard capture stays released until the user clicks within the emulator surfaces, at which point the routing cue switches to **Keyboard captured**. Clicking outside those surfaces, blurring the window, or pressing Ctrl-Escape releases host-keyboard capture without disabling matrix mode. The RESET control remains active because it resets the board rather than participating in keypad scanning. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
+**Matrix keyboard input.** Opening the Matrix Keyboard accordion is treated as attaching the hardware keyboard. The webview sends `{ type: 'matrixMode', enabled: true }` and disables the scanned hex keypad keys, matching MON-3's matrix-input takeover model. `keyboard-owner.ts` promotes the matrix keyboard to the active owner when that accordion opens, so host-keyboard capture only becomes meaningful while matrix input owns the keyboard. Clicking within the matrix or machine surfaces can then capture typing for matrix routing, while clicking outside those surfaces, blurring the window, or pressing Ctrl-Escape releases host-keyboard capture without disabling matrix mode. The RESET control remains active because it resets the board rather than participating in keypad scanning. Closing the accordion sends `{ type: 'matrixMode', enabled: false }`, releases held matrix keys and returns physical keyboard routing to the hex keypad flow.
 
 Matrix keyboard arrows and editing keys are not routed through the hex keypad shortcut table. They are emitted as matrix key positions whose MON-3 `matrixScanASCII` translation produces low control codes: Up `0x03`, Down `0x04`, Left `0x05`, Right `0x06`, Backspace `0x08`, Tab `0x09`, Enter `0x0D`, and Escape `0x1B`. Programs that need physical key identity should read the raw `matrixScan` result; text-like input can use `matrixScanASCII` or `parseMatrixScan`.
 
@@ -411,12 +414,12 @@ The panel also reasserts matrix attachment when a debug session becomes active a
 
 **TMS9918 video panel.** Opening the **TMS9918 Video** accordion posts `{ type: 'tms9918Active', enabled: true }`; closing it posts the same message with `enabled: false`. The panel does not synthesize its own framebuffer. `tms9918-renderer.ts` renders the framebuffer supplied in each TEC-1G `update` payload, while the `<select id="tms9918Standard">` control posts `{ type: 'tms9918VideoStandard', standard: 'pal' | 'ntsc' }` back to the extension host. Incoming updates also drive the select value, so rehydration reflects the runtime's current cadence.
 
-**Joystick panel.** `joystick-ui.ts` owns the dedicated TEC-1G joystick accordion. Pointer and keyboard input both collapse into one active-high mask that the webview posts as `{ type: 'joystick', mask }`. The mapping is:
+**Joystick panel.** `joystick-ui.ts` owns the dedicated TEC-1G joystick accordion. Pointer and keyboard input both collapse into one active-high mask that the webview posts as `{ type: 'joystick', mask }`. `keyboard-owner.ts` treats the joystick as a third host-keyboard owner beside the keypad and matrix keyboard: clicking the Joystick accordion makes its bindings active, clicking the Machine accordion returns ownership to the keypad, and opening Matrix Keyboard takes precedence over joystick ownership until matrix mode is closed again. The mapping is:
 
 - Directions: `ArrowUp`/`W` = `0x01`, `ArrowDown`/`S` = `0x02`, `ArrowLeft`/`A` = `0x04`, `ArrowRight`/`D` = `0x08`
-- Actions: `K` = `0x10` (Fire 2), `I` or `U` = `0x20` (Comm2 / pin 9), `J` or `Space` = `0x40` (Fire 1), `L` = `0x80` (Fire 3)
+- Actions: `I` = `0x10` (Fire 2), `K` = `0x20` (Aux / pin 9), `J` or `Space` = `0x40` (Fire 1), `L` = `0x80` (Fire 3)
 
-The **Latch** checkbox switches pointer clicks from momentary press/release into xor-style latched bits. Closing the Joystick accordion, clicking RESET, or blurring the window clears held and latched joystick state before the next message is posted.
+The panel no longer uses a latch checkbox. Pointer presses are momentary and use pointer-capture release to clear the matching bit. A separate **Arrow Keys** mode switch changes the arrow cluster between movement bindings (`0x01/0x02/0x04/0x08`) and fire bindings (`0x10/0x20/0x40/0x80`). Changing the mode drops any held arrow-key codes before the next mask post so a stale movement bit cannot survive into fire mode or vice versa. Closing the Joystick accordion, clicking RESET, or blurring the window clears held joystick state before the next message is posted.
 
 Physical PC keyboard events use direct keydown/keyup timing, preserve the modifier set captured at keydown for the matching keyup and translate Ctrl-letter chords into MON-3 control-letter input. Raw host `Shift`, `Control`, `Fn`, and `Alt` events are posted as their own matrix-key requests, which keeps the modifier row active across the full host key hold instead of only during derived ASCII chords. The adapter resolves Ctrl-letter chords through the letter's unmodified matrix cell plus the Ctrl modifier row, and suppresses a duplicate synthesized modifier cell when a raw host modifier is already held. Meta/Command chords are left to VS Code and the host OS instead of being routed into the emulated matrix keyboard. Plain Escape is forwarded into the emulated matrix keyboard.
 

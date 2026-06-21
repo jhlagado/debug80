@@ -413,13 +413,16 @@ The memory hooks are set at this stage rather than at platform creation because 
 
 ## Custom DAP commands
 
-The TEC-1G provider registers six commands:
+The TEC-1G provider registers nine commands:
 
 | Command                    | Action                                 |
 | -------------------------- | -------------------------------------- |
 | `debug80/tec1gKey`         | Queue a hex keypad press               |
 | `debug80/tec1gMatrixKey`   | Press or release a matrix keyboard key |
 | `debug80/tec1gMatrixMode`  | Enable or disable matrix keyboard mode |
+| `debug80/tec1gJoystick`    | Set the active joystick overlay mask   |
+| `debug80/tec1gTms9918Active` | Attach or detach the TMS9918/TMS9929 video card |
+| `debug80/tec1gTms9918VideoStandard` | Switch the TMS9918/TMS9929 frame cadence |
 | `debug80/tec1gReset`       | Reset CPU and platform state while preserving MON-3 monitor RAM at `0x0800-0x0FFF` |
 | `debug80/tec1gSpeed`       | Switch clock speed                     |
 | `debug80/tec1gSerialInput` | Queue bytes for serial RX              |
