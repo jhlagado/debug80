@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.27
+
+- Added TEC-1G joystick input handling, request routing, and webview joystick
+  controls.
+- Added TEC-1G keyboard focus ownership so matrix keyboard, joystick, and
+  video panels coordinate keyboard capture and panel visibility.
+- Updated TEC-1G matrix, joystick, accordion, and visibility coverage.
+- Updated the Debug80 engineering manual for TEC-1G video panel behavior.
+
 ## 0.1.26
 
 - Added TEC-1G TMS9918 video card emulation, UI serialization, and webview
