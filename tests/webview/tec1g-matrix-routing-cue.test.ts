@@ -59,4 +59,20 @@ describe('tec1g matrix routing cue', () => {
     expect(cue.textContent).toContain('click outside to release');
     expect(header.classList.contains('matrix-keyboard-captured')).toBe(true);
   });
+
+  it('shows joystick ownership while the matrix keyboard remains attached', () => {
+    const appRoot = document.createElement('div');
+    const keypad = document.createElement('div');
+    const cue = document.createElement('div');
+    const header = document.createElement('button');
+    document.body.append(appRoot, keypad, cue, header);
+
+    applyMatrixRoutingCue({ appRoot, keypad, cue, header }, true, false, 'joystick');
+
+    expect(appRoot.dataset.matrixKeyboardActive).toBe('true');
+    expect(appRoot.dataset.matrixKeyboardCaptured).toBe('false');
+    expect(cue.textContent).toContain('Joystick controls active');
+    expect(cue.textContent).toContain('click Matrix Keyboard to type');
+    expect(header.classList.contains('matrix-keyboard-captured')).toBe(false);
+  });
 });

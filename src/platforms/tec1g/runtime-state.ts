@@ -60,6 +60,7 @@ export interface Tec1gState {
     matrixPendingDirty: boolean;
     matrixLastReadRow: number | null;
     matrixModeEnabled: boolean;
+    joystickState: number;
     keyValue: number;
     keyReleaseEventId: number | null;
     nmiPending: boolean;
@@ -147,6 +148,7 @@ export function createTec1gInitialState(params: {
       matrixPendingDirty: false,
       matrixLastReadRow: null,
       matrixModeEnabled: matrixMode,
+      joystickState: 0,
       keyValue: TEC1G_MASK_LOW7,
       keyReleaseEventId: null,
       nmiPending: false,

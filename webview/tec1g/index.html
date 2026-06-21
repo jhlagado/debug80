@@ -142,6 +142,43 @@
           <button
             class="debug80-accordion-header"
             type="button"
+            data-accordion-toggle="machine"
+            aria-expanded="true"
+          >
+            Machine
+          </button>
+          <div class="debug80-accordion-content" id="accordion-machine">
+            <div class="panel panel-ui" id="panel-ui">
+              <div class="tec1g-ui-frame">
+                <div class="layout tec1g-layout">
+                  <div class="hardware-grid">
+                    <div class="left-col hardware-display-col">
+                      <div class="lcd">
+                        <div class="lcd-title">LCD (HD44780 A00)</div>
+                        <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+                      </div>
+                      <div class="display-block">
+                        <div class="display" id="display"></div>
+                      </div>
+                    </div>
+                    <div class="right-col hardware-keypad-col">
+                      <div class="keypad-routing-cue" id="keypadRoutingCue" hidden>
+                        <span class="keypad-routing-dot" aria-hidden="true"></span>
+                        <span>PC keys: Matrix Keyboard</span>
+                        <span class="keypad-routing-note">Hex keypad disabled; RESET active</span>
+                      </div>
+                      <div class="keypad" id="keypad"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="debug80-accordion-section">
+          <button
+            class="debug80-accordion-header"
+            type="button"
             data-accordion-toggle="displays"
             aria-expanded="true"
           >
@@ -250,35 +287,135 @@
           <button
             class="debug80-accordion-header"
             type="button"
-            data-accordion-toggle="machine"
-            aria-expanded="true"
+            data-accordion-toggle="joystick"
+            aria-expanded="false"
           >
-            Machine
+            Joystick
           </button>
-          <div class="debug80-accordion-content" id="accordion-machine">
-            <div class="panel panel-ui" id="panel-ui">
-              <div class="tec1g-ui-frame">
-                <div class="layout tec1g-layout">
-                  <div class="hardware-grid">
-                    <div class="left-col hardware-display-col">
-                      <div class="lcd">
-                        <div class="lcd-title">LCD (HD44780 A00)</div>
-                        <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
-                      </div>
-                      <div class="display-block">
-                        <div class="display" id="display"></div>
-                      </div>
-                    </div>
-                    <div class="right-col hardware-keypad-col">
-                      <div class="keypad-routing-cue" id="keypadRoutingCue" hidden>
-                        <span class="keypad-routing-dot" aria-hidden="true"></span>
-                        <span>PC keys: Matrix Keyboard</span>
-                        <span class="keypad-routing-note">Hex keypad disabled; RESET active</span>
-                      </div>
-                      <div class="keypad" id="keypad"></div>
-                    </div>
+          <div class="debug80-accordion-content" id="accordion-joystick">
+            <div class="panel panel-joystick">
+              <div class="joystick">
+                <div class="joystick-header">
+                  <div class="joystick-title">JOYSTICK PORT</div>
+                  <div class="joystick-arrow-mode" role="group" aria-label="Arrow key assignment">
+                    <span class="joystick-arrow-mode-label">Arrow Keys</span>
+                    <button
+                      class="joystick-arrow-mode-button active"
+                      type="button"
+                      data-joystick-arrow-mode="move"
+                      aria-pressed="true"
+                    >
+                      Move
+                    </button>
+                    <button
+                      class="joystick-arrow-mode-button"
+                      type="button"
+                      data-joystick-arrow-mode="fire"
+                      aria-pressed="false"
+                    >
+                      Fire
+                    </button>
                   </div>
                 </div>
+                <div class="joystick-body">
+                  <div class="joystick-dpad" aria-label="Joystick direction controls">
+                    <button
+                      class="joystick-button joystick-up"
+                      type="button"
+                      data-joystick-bit="1"
+                      title="Up (Arrow Up / W)"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      class="joystick-button joystick-left"
+                      type="button"
+                      data-joystick-bit="4"
+                      title="Left (Arrow Left / A)"
+                    >
+                      ◀
+                    </button>
+                    <div class="joystick-center" aria-hidden="true"></div>
+                    <button
+                      class="joystick-button joystick-right"
+                      type="button"
+                      data-joystick-bit="8"
+                      title="Right (Arrow Right / D)"
+                    >
+                      ▶
+                    </button>
+                    <button
+                      class="joystick-button joystick-down"
+                      type="button"
+                      data-joystick-bit="2"
+                      title="Down (Arrow Down / S)"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <div class="joystick-actions" aria-label="Joystick action controls">
+                    <button
+                      class="joystick-action joystick-fire2"
+                      type="button"
+                      data-joystick-bit="16"
+                      title="Fire 2 (I)"
+                    >
+                      Fire 2
+                    </button>
+                    <button
+                      class="joystick-action joystick-fire1"
+                      type="button"
+                      data-joystick-bit="64"
+                      title="Fire 1 (J / Space)"
+                    >
+                      Fire 1
+                    </button>
+                    <button
+                      class="joystick-action joystick-fire3"
+                      type="button"
+                      data-joystick-bit="128"
+                      title="Fire 3 (L)"
+                    >
+                      Fire 3
+                    </button>
+                    <button
+                      class="joystick-action joystick-aux"
+                      type="button"
+                      data-joystick-bit="32"
+                      title="Aux / Pin 9 (K)"
+                    >
+                      Aux
+                    </button>
+                  </div>
+                </div>
+                <div class="joystick-help">
+                  <span>WASD Move</span>
+                  <span>Arrows Move/Fire</span>
+                  <span>J or Space Fire 1</span>
+                  <span>I Fire 2</span>
+                  <span>K Aux</span>
+                  <span>L Fire 3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="debug80-accordion-section">
+          <button
+            class="debug80-accordion-header"
+            type="button"
+            data-accordion-toggle="matrixKeyboard"
+            aria-expanded="false"
+          >
+            Matrix Keyboard
+          </button>
+          <div class="debug80-accordion-content" id="accordion-matrix-keyboard">
+            <div class="panel panel-matrix-keyboard">
+              <div class="matrix-keyboard">
+                <div class="matrix-keyboard-header">
+                  <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
+                </div>
+                <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
               </div>
             </div>
           </div>
@@ -441,26 +578,6 @@
                   <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
                   <div class="key" id="serialSend">SEND</div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section class="debug80-accordion-section">
-          <button
-            class="debug80-accordion-header"
-            type="button"
-            data-accordion-toggle="matrixKeyboard"
-            aria-expanded="false"
-          >
-            Matrix Keyboard
-          </button>
-          <div class="debug80-accordion-content" id="accordion-matrix-keyboard">
-            <div class="panel panel-matrix-keyboard">
-              <div class="matrix-keyboard">
-                <div class="matrix-keyboard-header">
-                  <div class="matrix-keyboard-title">MATRIX KEYBOARD</div>
-                </div>
-                <div class="matrix-keyboard-grid" id="matrixKeyboardGrid"></div>
               </div>
             </div>
           </div>

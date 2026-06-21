@@ -193,7 +193,11 @@ function readMatrixKeyboardRow(input: Tec1gState['input'], row: number): number 
     input.matrixPendingDirty = false;
   }
   input.matrixLastReadRow = row;
-  return input.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
+  const matrixValue = input.matrixKeyStates[row] ?? TEC1G_MASK_BYTE;
+  if (row === 3) {
+    return matrixValue & ~input.joystickState;
+  }
+  return matrixValue;
 }
 
 /**

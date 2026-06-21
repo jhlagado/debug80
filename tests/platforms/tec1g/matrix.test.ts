@@ -34,6 +34,27 @@ describe('TEC-1G matrix keyboard', () => {
     expect(value & (1 << 5)).toBe(0);
   });
 
+  it('combines active-low joystick inputs with the joystick scan row', () => {
+    const rt = makeRuntime(true);
+
+    expect(rt.ioHandlers.read(0xf7fe)).toBe(0xff);
+
+    rt.setJoystickState(0x41);
+
+    expect(rt.ioHandlers.read(0xf7fe)).toBe(0xbe);
+  });
+
+  it('clears joystick inputs on reset', () => {
+    const rt = makeRuntime(true);
+
+    rt.setJoystickState(0xff);
+    expect(rt.ioHandlers.read(0xf7fe)).toBe(0x00);
+
+    rt.resetState();
+
+    expect(rt.ioHandlers.read(0xf7fe)).toBe(0xff);
+  });
+
   it('defers matrix key changes until the next scan boundary', () => {
     const rt = makeRuntime(true);
 

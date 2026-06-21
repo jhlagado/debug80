@@ -21,6 +21,7 @@ import { acquireVscodeApi } from '../common/vscode';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import { createGlcdRenderer } from './glcd-renderer';
 import { createLcdRenderer } from './lcd-renderer';
+import { createJoystickUiController } from './joystick-ui';
 import { createMatrixUiController } from './matrix-ui';
 import { createTms9918Renderer } from './tms9918-renderer';
 import { wireSerialUi } from '../common/serial-ui';
@@ -34,6 +35,11 @@ import { createTec1gKeypad } from './tec1g-keypad';
 import { applyTec1gPlatformUpdate } from './tec1g-platform-update';
 import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
 import { applyMatrixRoutingCue } from './matrix-routing-cue';
+import {
+  createKeyboardOwnerController,
+  shouldBypassEmulatorKeyboardTarget,
+  type KeyboardOwner,
+} from './keyboard-owner';
 
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
@@ -71,6 +77,7 @@ const accordionProject = document.getElementById('accordion-project') as HTMLEle
 const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
 const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
 const accordionVideo = document.getElementById('accordion-video') as HTMLElement;
+const accordionJoystick = document.getElementById('accordion-joystick') as HTMLElement;
 const accordionSerial = document.getElementById('accordion-serial') as HTMLElement;
 const accordionMatrixKeyboard = document.getElementById('accordion-matrix-keyboard') as HTMLElement;
 const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
@@ -102,6 +109,10 @@ const glcdRenderer = createGlcdRenderer();
 const lcdRenderer = createLcdRenderer();
 const tms9918Renderer = createTms9918Renderer();
 const matrixUi = createMatrixUiController(vscode, () => !accordionMatrixKeyboard.hidden);
+const keyboardOwner = createKeyboardOwnerController({
+  onOwnerChange: (_owner, previousOwner) => applyKeyboardOwnerState(previousOwner),
+});
+const joystickUi = createJoystickUiController(vscode, () => keyboardOwner.getOwner() === 'joystick');
 
 function updateMatrixKeyboardCue(): void {
   applyMatrixRoutingCue(
@@ -112,25 +123,60 @@ function updateMatrixKeyboardCue(): void {
       header: matrixKeyboardHeader,
     },
     panelLayout.isMatrixKeyboardOpen(),
-    matrixUi.isKeyboardCaptured()
+    keyboardOwner.getOwner() === 'matrixKeyboard' && matrixUi.isKeyboardCaptured(),
+    keyboardOwner.getOwner()
   );
 }
 
 function applyMatrixKeyboardCapture(captured: boolean): void {
-  matrixUi.applyKeyboardCapture(captured && panelLayout.isMatrixKeyboardOpen());
+  matrixUi.applyKeyboardCapture(
+    captured && keyboardOwner.getOwner() === 'matrixKeyboard' && panelLayout.isMatrixKeyboardOpen()
+  );
   updateMatrixKeyboardCue();
 }
 
 function applyMatrixKeyboardOpenState(open: boolean): void {
-  matrixUi.applyKeyboardCapture(false);
   vscode.postMessage({ type: 'matrixMode', enabled: open });
-  updateMatrixKeyboardCue();
+  syncKeyboardOwnerVisibility();
 }
 
 function reassertMatrixKeyboardOpenState(): void {
   if (panelLayout.isMatrixKeyboardOpen()) {
     applyMatrixKeyboardOpenState(true);
   }
+}
+
+function keyboardOwnerVisibility(): {
+  keypad: boolean;
+  matrixKeyboard: boolean;
+  joystick: boolean;
+} {
+  return {
+    keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen(),
+    matrixKeyboard: panelLayout.isMatrixKeyboardOpen(),
+    joystick: !accordionJoystick.hidden,
+  };
+}
+
+function applyKeyboardOwnerState(previousOwner: KeyboardOwner = null): void {
+  const owner = keyboardOwner.getOwner();
+  if (previousOwner === 'joystick' && owner !== 'joystick') {
+    joystickUi.clear();
+  }
+  if (previousOwner === 'matrixKeyboard' && owner !== 'matrixKeyboard') {
+    matrixUi.releaseKeyboardCapture();
+  }
+  applyMatrixKeyboardCapture(owner === 'matrixKeyboard');
+}
+
+function syncKeyboardOwnerVisibility(): void {
+  keyboardOwner.syncVisibility(keyboardOwnerVisibility());
+  applyKeyboardOwnerState();
+}
+
+function selectKeyboardOwner(owner: Exclude<KeyboardOwner, null>): void {
+  keyboardOwner.selectOwner(owner);
+  applyKeyboardOwnerState();
 }
 
 let memoryPanelController: MemoryPanel | null = null;
@@ -144,6 +190,7 @@ const panelLayout = createAccordionLayoutController({
     machine: accordionMachine,
     displays: accordionDisplays,
     video: accordionVideo,
+    joystick: accordionJoystick,
     serial: accordionSerial,
     matrixKeyboard: accordionMatrixKeyboard,
     registers: accordionRegisters,
@@ -154,6 +201,7 @@ const panelLayout = createAccordionLayoutController({
     'machine',
     'displays',
     'video',
+    'joystick',
     'matrixKeyboard',
     'registers',
     'memory',
@@ -165,9 +213,13 @@ const panelLayout = createAccordionLayoutController({
       applyMatrixKeyboardOpenState(open);
       return;
     }
+    if (panel === 'joystick' && !open) {
+      joystickUi.clear();
+    }
     if (panel === 'video') {
       vscode.postMessage({ type: 'tms9918Active', enabled: open });
     }
+    syncKeyboardOwnerVisibility();
   },
 });
 panelLayout.wireButtons();
@@ -219,6 +271,7 @@ const keypad = createTec1gKeypad(
   },
   {
     onReset: () => {
+      joystickUi.clear();
       matrixUi.resetTransientState();
       vscode.postMessage({
         type: 'reset',
@@ -344,14 +397,18 @@ audio.applyMuteState();
 document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
 document.addEventListener('keydown', () => audio.unlockAudio(), { capture: true });
 matrixUi.init();
+joystickUi.init();
 applyMatrixKeyboardOpenState(panelLayout.isMatrixKeyboardOpen());
+syncKeyboardOwnerVisibility();
 lcdRenderer.draw();
 glcdRenderer.draw();
 tms9918Renderer.drawBlank();
 panelLayout.setProviderTab(DEFAULT_TAB, false);
 vscode.postMessage({ type: 'tab', tab: panelLayout.getProviderTab() });
 requestProjectStatus(vscode);
-keypad.focusKeypad();
+if (keyboardOwner.getOwner() === 'keypad') {
+  keypad.focusKeypad();
+}
 sessionStatusController.setStatus('not running');
 panelLayout.setRegisterRefreshActive(false);
 window.addEventListener('resize', () => {
@@ -365,60 +422,86 @@ tms9918Renderer.standardSelect?.addEventListener('change', () => {
   vscode.postMessage({ type: 'tms9918VideoStandard', standard });
 });
 
-function isMatrixCaptureSurface(target: EventTarget | null): boolean {
+function isHardwareKeyboardSurface(target: EventTarget | null): target is Node {
   if (!(target instanceof Node)) {
     return false;
   }
-  return [accordionDisplays, accordionMachine, accordionMatrixKeyboard].some((surface) =>
+  return [accordionMachine, accordionMatrixKeyboard, accordionJoystick].some((surface) =>
     surface.contains(target)
   );
+}
+
+function shouldBypassEmulatorKeyboard(event: KeyboardEvent): boolean {
+  return shouldBypassEmulatorKeyboardTarget(event.target);
 }
 
 document.addEventListener(
   'pointerdown',
   (event) => {
-    if (!panelLayout.isMatrixKeyboardOpen()) {
+    const target = event.target;
+    if (shouldBypassEmulatorKeyboardTarget(target)) {
       return;
     }
-    applyMatrixKeyboardCapture(isMatrixCaptureSurface(event.target));
+    if (!isHardwareKeyboardSurface(target)) {
+      return;
+    }
+    if (accordionJoystick.contains(target)) {
+      selectKeyboardOwner('joystick');
+      return;
+    }
+    if (accordionMatrixKeyboard.contains(target)) {
+      selectKeyboardOwner('matrixKeyboard');
+      return;
+    }
+    if (accordionMachine.contains(target)) {
+      selectKeyboardOwner('keypad');
+    }
   },
   { capture: true }
 );
 window.addEventListener('blur', () => applyMatrixKeyboardCapture(false));
+window.addEventListener('blur', () => joystickUi.clear());
 
-// Matrix keyboard owns physical typing while its accordion panel is open.
 window.addEventListener(
   'keydown',
   (event) => {
-    if (event.repeat) {
+    if (event.repeat || shouldBypassEmulatorKeyboard(event)) {
       return;
     }
-    if (matrixUi.handleKeyEvent(event, true)) {
+    if (keyboardOwner.getOwner() === 'matrixKeyboard' && matrixUi.handleKeyEvent(event, true)) {
       updateMatrixKeyboardCue();
+      return;
+    }
+    if (keyboardOwner.getOwner() === 'joystick' && joystickUi.handleKeyEvent(event, true)) {
+      return;
+    }
+    if (keyboardOwner.getOwner() === 'keypad') {
+      const shortcut = resolveTecKeypadShortcut(event.key);
+      routeTecKeypadShortcut(event, shortcut, keypad, () =>
+        vscode.postMessage({ type: 'reset' })
+      );
       return;
     }
   },
   { capture: true }
 );
 
-window.addEventListener('keydown', (event) => {
-  if (panelLayout.isMatrixKeyboardOpen()) {
-    return;
-  }
-  const shortcut = resolveTecKeypadShortcut(event.key);
-  routeTecKeypadShortcut(event, shortcut, keypad, () => vscode.postMessage({ type: 'reset' }));
-});
 window.addEventListener(
   'keyup',
   (event) => {
-    if (matrixUi.handleKeyEvent(event, false)) {
+    if (shouldBypassEmulatorKeyboard(event)) {
+      return;
+    }
+    if (keyboardOwner.getOwner() === 'matrixKeyboard' && matrixUi.handleKeyEvent(event, false)) {
       updateMatrixKeyboardCue();
       return;
     }
-    if (panelLayout.isMatrixKeyboardOpen()) {
+    if (keyboardOwner.getOwner() === 'joystick' && joystickUi.handleKeyEvent(event, false)) {
       return;
     }
-    routeTecKeypadKeyup(event, keypad);
+    if (keyboardOwner.getOwner() === 'keypad') {
+      routeTecKeypadKeyup(event, keypad);
+    }
   },
   { capture: true }
 );

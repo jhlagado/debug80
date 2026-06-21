@@ -56,6 +56,7 @@ function createCommandContext() {
     sendErrorResponse: vi.fn(),
     handleMatrixModeRequest: vi.fn(() => null),
     handleMatrixKeyRequest: vi.fn(() => null),
+    handleJoystickRequest: vi.fn(() => null),
     clearMatrixHeldKeys: vi.fn(),
   };
 }

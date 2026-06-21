@@ -112,13 +112,14 @@ describe('tec1g UI visibility controls', () => {
       )
     ).toEqual([
       'project',
+      'machine',
       'displays',
       'video',
-      'machine',
+      'joystick',
+      'matrixKeyboard',
       'registers',
       'memory',
       'serial',
-      'matrixKeyboard',
     ]);
 
     const css = fs.readFileSync(CSS_PATH, 'utf8');
@@ -127,8 +128,11 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('width: var(--tec1g-panel-width)');
     expect(css).toContain('.panel-displays');
     expect(css).toContain('.panel-video');
+    expect(css).toContain('.panel-joystick');
     expect(css).toContain('.panel-serial');
     expect(css).toContain('.panel-matrix-keyboard');
+    expect(css).toContain('justify-content: center');
+    expect(css).toContain('gap: 96px');
     expect(css).toContain('.panel-serial .serial');
     expect(css).toContain('.panel-matrix-keyboard .matrix-keyboard');
     expect(css).toContain('align-items: end');
@@ -197,6 +201,52 @@ describe('tec1g UI visibility controls', () => {
     );
     expect(source).toContain("message.status === 'running' || message.status === 'paused'");
     expect(source).toContain('if (message.matrixMode === false)');
+  });
+
+  it('routes physical keys through the explicit keyboard owner', () => {
+    const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+
+    expect(source).toContain('createKeyboardOwnerController');
+    expect(source).toContain('function syncKeyboardOwnerVisibility()');
+    expect(source).toContain('function selectKeyboardOwner');
+    expect(source).toContain("keyboardOwner.getOwner() === 'matrixKeyboard'");
+    expect(source).toContain("keyboardOwner.getOwner() === 'joystick'");
+    expect(source).toContain("keyboardOwner.getOwner() === 'keypad'");
+    expect(source).toContain('shouldBypassEmulatorKeyboardTarget(event.target)');
+    expect(source).toContain('shouldBypassEmulatorKeyboardTarget(target)');
+    expect(source).toContain('keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen()');
+  });
+
+  it('labels joystick auxiliary action as Aux instead of Comm2', () => {
+    const joystick = doc.querySelector('#accordion-joystick');
+
+    expect(joystick?.textContent).toContain('Aux');
+    expect(joystick?.textContent).not.toContain('Comm2');
+    expect(joystick?.querySelector('.joystick-aux')?.getAttribute('title')).toContain('Pin 9');
+  });
+
+  it('uses an arrow key mode switch instead of joystick latching', () => {
+    const joystick = doc.querySelector('#accordion-joystick');
+
+    expect(joystick?.textContent).toContain('Arrow Keys');
+    expect(joystick?.textContent).toContain('Move');
+    expect(joystick?.textContent).toContain('Fire');
+    expect(joystick?.textContent).not.toContain('Latch');
+    expect(joystick?.querySelector('#joystickLatch')).toBeNull();
+    expect(joystick?.querySelector('[data-joystick-arrow-mode="move"]')).not.toBeNull();
+    expect(joystick?.querySelector('[data-joystick-arrow-mode="fire"]')).not.toBeNull();
+  });
+
+  it('labels joystick action keys as a right-hand inverted T', () => {
+    const joystick = doc.querySelector('#accordion-joystick');
+
+    expect(joystick?.textContent).toContain('J or Space Fire 1');
+    expect(joystick?.textContent).toContain('I Fire 2');
+    expect(joystick?.textContent).toContain('K Aux');
+    expect(joystick?.textContent).toContain('L Fire 3');
+    expect(joystick?.textContent).not.toContain('M Aux');
+    expect(joystick?.querySelector('.joystick-fire3')?.getAttribute('title')).toContain('L');
+    expect(joystick?.querySelector('.joystick-aux')?.getAttribute('title')).toContain('K');
   });
 
   it('opens the TMS9918 panel when the selected target asks for it', () => {

@@ -14,6 +14,7 @@ import {
   handleMatrixModeRequest,
   type MatrixRuntime,
 } from '../requests/matrix-request';
+import { handleJoystickRequest } from '../requests/tec1g-joystick-request';
 import { resolveArtifacts, resolveRelative, resolveBaseDir } from '../mapping/path-resolver';
 import { assembleIfRequested, normalizeStepLimit } from './launch-pipeline';
 import {
@@ -215,6 +216,8 @@ export async function buildLaunchSession(
     handleMatrixModeRequest: (args) => handleMatrixModeRequest(getTec1gMatrixRuntime(), args),
     handleMatrixKeyRequest: (args) =>
       handleMatrixKeyRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
+    handleJoystickRequest: (args) =>
+      handleJoystickRequest(context.sessionState.tec1gRuntime, args),
     clearMatrixHeldKeys: () => {
       context.matrixHeldKeys.clear();
     },

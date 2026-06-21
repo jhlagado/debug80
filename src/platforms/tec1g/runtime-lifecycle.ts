@@ -82,6 +82,7 @@ export function resetTec1gRuntimeState(
   input.matrixPendingDirty = false;
   input.matrixLastReadRow = null;
   input.matrixModeEnabled = defaults.matrixMode;
+  input.joystickState = 0;
   controllers.glcd.reset();
   system.sysCtrl = defaults.sysCtrl;
   const decoded = decodeSysCtrl(system.sysCtrl);

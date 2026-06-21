@@ -9,10 +9,13 @@ const KEYPAD_DISABLED_CLASS = 'keypad--matrix-attached-disabled';
 const HEADER_ACTIVE_CLASS = 'matrix-keyboard-active';
 const HEADER_CAPTURED_CLASS = 'matrix-keyboard-captured';
 
+type KeyboardCueOwner = 'keypad' | 'matrixKeyboard' | 'joystick' | null;
+
 export function applyMatrixRoutingCue(
   elements: MatrixRoutingCueElements,
   active: boolean,
-  captured = active
+  captured = active,
+  owner: KeyboardCueOwner = captured ? 'matrixKeyboard' : null
 ): void {
   const activeValue = active ? 'true' : 'false';
   const capturedValue = active && captured ? 'true' : 'false';
@@ -31,11 +34,18 @@ export function applyMatrixRoutingCue(
 
   if (elements.cue) {
     elements.cue.hidden = !active;
-    elements.cue.innerHTML = active
-      ? captured
-        ? '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard captured</span><span class="keypad-routing-note">click outside to release</span>'
-        : '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard released</span><span class="keypad-routing-note">click emulator to capture</span>'
-      : '';
+    if (!active) {
+      elements.cue.innerHTML = '';
+    } else if (owner === 'joystick') {
+      elements.cue.innerHTML =
+        '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Joystick controls active</span><span class="keypad-routing-note">click Matrix Keyboard to type</span>';
+    } else if (captured) {
+      elements.cue.innerHTML =
+        '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard captured</span><span class="keypad-routing-note">click outside to release</span>';
+    } else {
+      elements.cue.innerHTML =
+        '<span class="keypad-routing-dot" aria-hidden="true"></span><span>Keyboard released</span><span class="keypad-routing-note">click emulator to capture</span>';
+    }
   }
 
   if (active && elements.cue?.id) {

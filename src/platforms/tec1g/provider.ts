@@ -120,6 +120,8 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
         sendPlatformResponse(response, context.handleMatrixKeyRequest(args), context),
       'debug80/tec1gMatrixMode': (response, args) =>
         sendPlatformResponse(response, context.handleMatrixModeRequest(args), context),
+      'debug80/tec1gJoystick': (response, args) =>
+        sendPlatformResponse(response, context.handleJoystickRequest(args), context),
       'debug80/tec1gTms9918Active': (response, args) =>
         sendPlatformResponse(response, handleTms9918ActiveRequest(context, args), context),
       'debug80/tec1gTms9918VideoStandard': (response, args) =>

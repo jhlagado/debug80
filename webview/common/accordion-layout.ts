@@ -6,6 +6,7 @@ export type AccordionPanel =
   | 'machine'
   | 'displays'
   | 'video'
+  | 'joystick'
   | 'serial'
   | 'matrixKeyboard'
   | 'registers'
@@ -54,6 +55,7 @@ const DEFAULT_OPEN_STATE: Record<AccordionPanel, boolean> = {
   machine: true,
   displays: true,
   video: false,
+  joystick: false,
   serial: false,
   matrixKeyboard: false,
   registers: true,
@@ -64,6 +66,7 @@ const PANEL_SET = new Set<AccordionPanel>([
   'machine',
   'displays',
   'video',
+  'joystick',
   'serial',
   'matrixKeyboard',
   'registers',
@@ -85,6 +88,7 @@ function readStoredOpenState(vscode: VscodeApi): Partial<Record<AccordionPanel, 
   if (typeof stored.machine === 'boolean') result.machine = stored.machine;
   if (typeof stored.displays === 'boolean') result.displays = stored.displays;
   if (typeof stored.video === 'boolean') result.video = stored.video;
+  if (typeof stored.joystick === 'boolean') result.joystick = stored.joystick;
   if (typeof stored.serial === 'boolean') result.serial = stored.serial;
   if (typeof stored.matrixKeyboard === 'boolean') result.matrixKeyboard = stored.matrixKeyboard;
   if (typeof stored.registers === 'boolean') result.registers = stored.registers;
@@ -233,6 +237,7 @@ export function createAccordionLayoutController(
     machine: 'Machine',
     displays: 'Displays',
     video: 'TMS9918 Video',
+    joystick: 'Joystick',
     serial: 'Serial',
     matrixKeyboard: 'Matrix Keyboard',
     registers: 'Registers',

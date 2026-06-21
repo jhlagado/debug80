@@ -22,6 +22,7 @@ export interface PlatformCommandContext {
   sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
   handleMatrixModeRequest: (args: unknown) => string | null;
   handleMatrixKeyRequest: (args: unknown) => string | null;
+  handleJoystickRequest: (args: unknown) => string | null;
   clearMatrixHeldKeys: () => void;
 }
 

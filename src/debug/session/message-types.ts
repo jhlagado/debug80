@@ -12,6 +12,7 @@ export type CustomRequestType =
   | 'debug80/tec1gKey'
   | 'debug80/tec1gMatrixKey'
   | 'debug80/tec1gMatrixMode'
+  | 'debug80/tec1gJoystick'
   | 'debug80/tec1gTms9918Active'
   | 'debug80/tec1gTms9918VideoStandard'
   | 'debug80/tec1Reset'

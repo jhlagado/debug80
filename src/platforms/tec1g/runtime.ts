@@ -47,6 +47,7 @@ export interface Tec1gRuntime {
   ioHandlers: IoHandlers;
   applyKey(code: number): void;
   applyMatrixKey(row: number, col: number, pressed: boolean): void;
+  setJoystickState(mask: number): void;
   setMatrixMode(enabled: boolean): void;
   setTms9918Active(enabled: boolean): void;
   setTms9918VideoStandard(standard: Tms9918VideoStandard): void;
@@ -205,6 +206,10 @@ export function createTec1gRuntime(
     input.matrixModeEnabled = enabled;
   };
 
+  const setJoystickState = (mask: number): void => {
+    input.joystickState = Number.isFinite(mask) ? mask & TEC1G_MASK_BYTE : 0;
+  };
+
   const setTms9918Active = (enabled: boolean): void => {
     display.tms9918.setActive(enabled);
     queueUpdate();
@@ -270,6 +275,7 @@ export function createTec1gRuntime(
     ioHandlers: { ...ioHandlers, tick },
     applyKey,
     applyMatrixKey,
+    setJoystickState,
     setMatrixMode,
     setTms9918Active,
     setTms9918VideoStandard,
