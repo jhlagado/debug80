@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import { resolveBundledTec1Rom } from './assembler';
 import { normalizePlatformName } from '../launch-args';
@@ -21,6 +22,11 @@ import {
   applyLocalMonitorRomToLaunchArgs,
   buildLocalMonitorRomIfPresent,
 } from './local-monitor-rom-build';
+import {
+  applyTec1gRomArtifactsToLaunchArgs,
+  hasActiveTec1gRomArtifacts,
+  buildTec1gRomArtifactsIfRequested,
+} from './tec1g-rom-artifact-build';
 import { loadProgramArtifacts, type PlatformKind } from './program-loader';
 import { resolveAssemblerBackend } from './assembler-backend';
 import { emitMainSource } from '../session/adapter-ui';
@@ -79,6 +85,13 @@ export function createLaunchLogger(
 }
 
 export function hasLaunchInputs(args: LaunchRequestArguments): boolean {
+  return (
+    hasAppLaunchInputs(args) ||
+    (normalizePlatformName(args) === 'tec1g' && hasActiveTec1gRomArtifacts(args))
+  );
+}
+
+function hasAppLaunchInputs(args: LaunchRequestArguments): boolean {
   return !(
     (args.asm === undefined || args.asm === '') &&
     (args.hex === undefined || args.hex === '')
@@ -178,6 +191,15 @@ export async function buildLaunchSession(
   const baseDir = resolveBaseDir(merged);
   context.sessionState.baseDir = baseDir;
   const launchPlatform = normalizePlatformName(merged);
+  if (launchPlatform === 'tec1g') {
+    const explicitRomArtifacts = await buildTec1gRomArtifactsIfRequested({
+      baseDir,
+      args: merged,
+      sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),
+    });
+    applyTec1gRomArtifactsToLaunchArgs(merged, explicitRomArtifacts);
+  }
+
   const localMonitorRom = await buildLocalMonitorRomIfPresent({
     platform: launchPlatform,
     baseDir,
@@ -224,7 +246,10 @@ export async function buildLaunchSession(
   });
   context.emitDapEvent('debug80/platform', platformProvider.payload);
 
-  const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
+  const hasAppInput = hasAppLaunchInputs(merged);
+  const { hexPath, asmPath } = hasAppInput
+    ? resolveArtifacts(merged, baseDir)
+    : createRomOnlyAppArtifact(baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
 
   await assembleIfRequested({
@@ -238,7 +263,7 @@ export async function buildLaunchSession(
     sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),
   });
 
-  if (!existsSync(hexPath)) {
+  if (hasAppInput && !existsSync(hexPath)) {
     throw new MissingLaunchArtifactsError(hexPath);
   }
 
@@ -340,4 +365,11 @@ export async function buildLaunchSession(
 
 function existsSync(filePath: string): boolean {
   return filePath.length > 0 && fs.existsSync(filePath);
+}
+
+function createRomOnlyAppArtifact(baseDir: string): { hexPath: string; asmPath?: string } {
+  const hexPath = resolveRelative('build/debug80-empty-app.hex', baseDir);
+  fs.mkdirSync(path.dirname(hexPath), { recursive: true });
+  fs.writeFileSync(hexPath, ':00000001FF\n');
+  return { hexPath };
 }

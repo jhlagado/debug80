@@ -75,6 +75,33 @@ describe('local monitor ROM build conventions', () => {
     expect(args.tec1g).toBeUndefined();
   });
 
+  it('does not run the TEC-1G local monitor convention when an explicit monitor artifact is active', async () => {
+    const fixture = createTec1gLocalRomFixture();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'explicit-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/custom/monitor.asm',
+            outputBin: 'build/roms/tec1g/custom/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      },
+    };
+
+    const result = await buildLocalMonitorRomIfPresent({
+      platform: 'tec1g',
+      baseDir: fixture.root,
+      args,
+      sendEvent: () => undefined,
+    });
+
+    expect(result).toBeUndefined();
+  });
+
   function makeTempDir(prefix: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
     tmpDirs.push(dir);

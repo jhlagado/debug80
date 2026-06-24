@@ -8,6 +8,7 @@ import type { LaunchRequestArguments } from '../session/types';
 import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
 import { AssembleFailureError } from './assembler';
 import { resolveAssemblerBackend } from './assembler-backend';
+import { hasActiveTec1gMonitorRomArtifact } from './tec1g-rom-artifact-build';
 
 export type LocalMonitorRomBuildResult = {
   rom: LocalMonitorRom;
@@ -20,6 +21,10 @@ export async function buildLocalMonitorRomIfPresent(options: {
   args: LaunchRequestArguments;
   sendEvent: EventSender;
 }): Promise<LocalMonitorRomBuildResult | undefined> {
+  if (options.platform === 'tec1g' && hasActiveTec1gMonitorRomArtifact(options.args)) {
+    return undefined;
+  }
+
   const rom = discoverLocalMonitorRom(options.platform, options.baseDir);
   if (rom === undefined) {
     return undefined;

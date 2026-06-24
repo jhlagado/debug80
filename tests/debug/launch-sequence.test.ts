@@ -12,6 +12,7 @@ vi.mock('vscode', () => vscodeMock);
 
 import {
   buildLaunchSession,
+  hasLaunchInputs,
   MissingLaunchArtifactsError,
 } from '../../src/debug/launch/launch-sequence';
 import { SourceStateManager } from '../../src/debug/mapping/source-state-manager';
@@ -121,6 +122,26 @@ describe('launch-sequence', () => {
     }
   });
 
+  it('does not treat stray TEC-1G ROM artifacts as launch input for non-TEC-1G platforms', () => {
+    expect(
+      hasLaunchInputs({
+        platform: 'simple',
+        tec1g: {
+          romArtifacts: [
+            {
+              id: 'stray-monitor',
+              role: 'monitor',
+              sourceFile: 'roms/monitor.asm',
+              outputBin: 'build/monitor.bin',
+              address: 0xc000,
+              size: 0x4000,
+            },
+          ],
+        },
+      })
+    ).toBe(false);
+  });
+
   it('builds a simple launch session from HEX and D8 artifacts', async () => {
     const fixture = writeLaunchFixture();
     workspace.workspaceFolders = [{ uri: { fsPath: fixture.root } }];
@@ -173,5 +194,70 @@ describe('launch-sequence', () => {
       )
     ).rejects.toBeInstanceOf(MissingLaunchArtifactsError);
     expect(context.sessionState.runtime).toBeUndefined();
+  });
+
+  it('builds a TEC-1G ROM-first launch session without a RAM app target', async () => {
+    const root = makeTempRoot('debug80-rom-first-launch-');
+    workspace.workspaceFolders = [{ uri: { fsPath: root } }];
+    writeFile(
+      path.join(root, 'roms', 'tec1g', 'tecm8', 'monitor', 'monitor.asm'),
+      [
+        '        .org    0xC000',
+        '@Tecm8MonitorEntry:',
+        '        JP      Tecm8MonitorHold',
+        'Tecm8MonitorHold:',
+        '        JP      Tecm8MonitorHold',
+        '',
+      ].join('\n')
+    );
+    writeFile(
+      path.join(root, 'roms', 'tec1g', 'tecm8', 'expansion', 'expansion.asm'),
+      ['        .org    0x8000', '@Tecm8ExpansionEntry:', '        RET', ''].join('\n')
+    );
+    const context = createContext();
+    const args: LaunchRequestArguments = {
+      platform: 'tec1g',
+      assemble: false,
+      tec1g: {
+        entry: 0,
+        romArtifacts: [
+          {
+            id: 'tecm8-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/tecm8/monitor/monitor.asm',
+            outputBin: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/monitor/monitor.d8.json',
+            address: 0xc000,
+            size: 0x4000,
+          },
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/tec1g/tecm8/expansion/expansion.asm',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/expansion/expansion.d8.json',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x4000,
+            bankSize: 0x4000,
+            bankCount: 1,
+          },
+        ],
+      },
+    };
+
+    const artifacts = await buildLaunchSession(args, context);
+
+    expect(artifacts.platform).toBe('tec1g');
+    expect(artifacts.runtime.getPC()).toBe(0x8000);
+    expect(args.tec1g?.romHex).toBe(
+      path.join(root, 'build', 'roms', 'tec1g', 'tecm8', 'monitor', 'monitor.bin')
+    );
+    expect(args.tec1g?.expansionRomHex).toBe(
+      path.join(root, 'build', 'roms', 'tec1g', 'tecm8', 'expansion', 'expansion.bin')
+    );
+    expect(fs.existsSync(args.tec1g?.romHex ?? '')).toBe(true);
+    expect(fs.existsSync(args.tec1g?.expansionRomHex ?? '')).toBe(true);
+    expect(context.sessionState.runtime).toBe(artifacts.runtime);
   });
 });
