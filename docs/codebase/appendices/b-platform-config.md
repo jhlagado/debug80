@@ -93,7 +93,8 @@ Config block key: `tec1g`
 | `appStart`        | `number`         | `0x4200`                            | Application start address                                                                                                                  |
 | `romHex`          | `string`         | —                                   | Path to TEC-1G ROM HEX file                                                                                                                |
 | `ramInitHex`      | `string`         | —                                   | Path to a HEX file loaded into RAM at startup                                                                                              |
-| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K/32K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                             |
+| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K/32K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                            |
+| `romArtifacts`    | `object[]`       | —                                   | Explicit TEC-1G ROM-first build declarations for monitor and expansion images                                                              |
 | `updateMs`        | `number`         | `16`                                | UI refresh interval in milliseconds                                                                                                        |
 | `yieldMs`         | `number`         | `0`                                 | Yield to the event loop every N ms                                                                                                         |
 | `expansionBankHi` | `boolean`        | `false`                             | Enable A14 expansion banking via SYSCTRL bit 6                                                                                             |
@@ -105,6 +106,29 @@ Config block key: `tec1g`
 | `sdHighCapacity`  | `boolean`        | `true`                              | SD card operates in SDHC mode                                                                                                              |
 | `gimpSignal`      | `boolean`        | `false`                             | Enable GIMP signal simulation for hardware diagnostics                                                                                     |
 | `uiVisibility`    | `object`         | all visible                         | Legacy per-panel visibility flags retained for old configs; the current TEC-1G UI keeps core hardware sections visible and uses accordions |
+
+### `tec1g.romArtifacts`
+
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation.
+
+| Field            | Type      | Required | Description                                                                  |
+| ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
+| `id`             | `string`  | yes      | Stable artifact identifier used in diagnostics                               |
+| `role`           | `string`  | yes      | `'monitor'` or `'expansion'`                                                 |
+| `active`         | `boolean` | no       | Defaults to active; `false` keeps a binary-only placeholder out of launch    |
+| `sourceFile`     | `string`  | active   | Source file assembled with AZM                                               |
+| `outputBin`      | `string`  | active   | Binary output path. Must use `.bin`                                          |
+| `outputDebugMap` | `string`  | no       | Optional explicit D8 path. Must match the `outputBin` artifact base          |
+| `binary`         | `string`  | inactive | Binary-only placeholder path for deferred artifact installs                  |
+| `debugMap`       | `string`  | no       | Optional D8 path paired with an inactive binary-only placeholder             |
+| `address`        | `number`  | monitor  | Must be `0xC000`                                                             |
+| `size`           | `number`  | monitor  | Must be `0x4000`                                                             |
+| `windowAddress`  | `number`  | expansion| Must be `0x8000`                                                             |
+| `windowSize`     | `number`  | expansion| Must be `0x4000`                                                             |
+| `imageSize`      | `number`  | expansion| Total binary image size. Must be a positive multiple of `bankSize`           |
+| `bankSize`       | `number`  | expansion| Current Phase 2 model requires it to equal `windowSize`                      |
+| `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`                                            |
+| `bankSelect`     | `object`  | no       | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
 
 ---
 

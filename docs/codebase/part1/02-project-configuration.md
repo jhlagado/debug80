@@ -337,6 +337,7 @@ The TEC-1G adds a substantial amount of hardware.
 interface Tec1gPlatformConfig extends Tec1PlatformConfig {
   // Expansion ROM and storage
   expansionRomHex?: string; // Optional banked expansion ROM at 0x8000-0xBFFF
+  romArtifacts?: Tec1gRomArtifactConfig[]; // Explicit ROM-first monitor/expansion build declarations
 
   // Memory banking
   expansionBankHi?: boolean; // A14 bank select mode
@@ -364,6 +365,14 @@ interface Tec1gPlatformConfig extends Tec1PlatformConfig {
   };
 }
 ```
+
+`romArtifacts` is the new ROM-first launch path for TEC-1G monitor and expansion images. Each entry declares a role (`'monitor'` or `'expansion'`), a source-backed build (`sourceFile`, `outputBin`, optional `outputDebugMap`) or an inactive binary placeholder, and fixed geometry that matches the current Phase 2 hardware model. Validation in `src/debug/launch/config-validation.ts` currently enforces:
+
+- at most one active monitor artifact and one active expansion artifact
+- monitor artifacts at `address: 0xC000` and `size: 0x4000`
+- expansion artifacts at `windowAddress: 0x8000`, `windowSize: 0x4000`, and `bankSize === windowSize`
+- `bankCount === imageSize / bankSize` for expansion images
+- active artifacts must be source-backed; binary-only entries are accepted only when `active: false`
 
 The `uiVisibility` field is legacy configuration. The current TEC-1G panel keeps the main hardware surfaces visible and organizes them into accordion sections rather than expecting users to toggle sections on and off. Older configs that contain this field remain readable, but new project configuration should not rely on it for the normal front-panel layout.
 

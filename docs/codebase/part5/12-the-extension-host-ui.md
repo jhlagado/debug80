@@ -495,7 +495,7 @@ The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, ar
 `createDefaultProjectConfig(plan)` assembles the `debug80.json` structure from the plan:
 
 - A `profiles` section with one entry (`plan.kit.profileName`) containing the platform, description, and — if the kit has a `bundledProfile` — a `bundledAssets` map with `romHex`, optional `debugMap`, and optional `source` entries (each a `BundledAssetReference`).
-- A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific memory map block (`simple`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`.
+- A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific memory map block (`simple`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`. The `tec1g/custom` kit remains project-owned rather than bundle-backed, so its target block writes explicit `romHex` and `expansionRomHex` paths under `roms/tec1g/custom/`.
 - Top-level `projectVersion`, `projectPlatform`, `defaultProfile`, and `defaultTarget` fields.
 
 When the scaffold creates or updates project files, it also calls `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` to create or append a standard **Debug80**-marked ignore block (see Chapter 2). The normal panel initialization path writes root `debug80.json` and does not create `.vscode/launch.json`; launch scaffolding is an explicit optional path.
@@ -507,7 +507,12 @@ Local monitor development is enabled by a convention rather than another user-fa
 - TEC-1G / MON-3: `roms/tec1g/mon3/mon3.rom.asm`
 - TEC-1 / MON-1B: `roms/tec1/mon1b/mon1b.rom.asm`
 
-On launch, `buildLocalMonitorRomIfPresent()` in `src/debug/launch/local-monitor-rom-build.ts` checks for the current platform's conventional `*.rom.asm` file. If it exists and assembly is enabled, Debug80 builds it with AZM into `build/roms/...`, then mutates the launch arguments so the platform `romHex` points at the generated ROM HEX and `debugMaps` includes the generated D8 map. If the `*.rom.asm` file is absent, no local-ROM override happens and the normal bundled-ROM fallback remains in effect.
+On launch, `buildLaunchSession()` in `src/debug/launch/launch-sequence.ts` now stages ROM-related overrides in two passes before platform resolution:
+
+1. `buildTec1gRomArtifactsIfRequested()` assembles active `tec1g.romArtifacts` for TEC-1G launches, requiring `.bin` output paths and AZM-derived `.d8.json` siblings. Monitor artifacts replace `tec1g.romHex`, expansion artifacts replace `tec1g.expansionRomHex`, generated D8 maps are prepended to `debugMaps`, and the artifact source directories are appended to `sourceRoots`.
+2. `buildLocalMonitorRomIfPresent()` still checks for the conventional platform `*.rom.asm` file. If it exists and assembly is enabled, Debug80 builds it into `build/roms/...`, then mutates the launch arguments so the platform `romHex` points at the generated ROM HEX and `debugMaps` includes the generated D8 map.
+
+If neither override path is active, the normal bundled-ROM fallback remains in effect.
 
 ### Starter templates
 

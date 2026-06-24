@@ -62,7 +62,7 @@ Port 0xFF bit 1 enables write protection for the 0x4000–0x7FFF region. Writes 
 
 Port 0xFF bit 2 enables the expansion window at 0x8000–0xBFFF. Two 16KB banks are available; port 0xFF bit 3 selects between them. The banks are independent `Uint8Array` instances. The memory hooks intercept reads and writes in this range and redirect them to the selected bank.
 
-Expansion ROM images (loaded from `tec1gConfig.expansionRomHex`) are placed into the expansion banks during `finalizeRuntime()`.
+Expansion ROM images are loaded by `loadTec1gExpansionRomImage()` in `src/platforms/tec1g/tec1g-expansion-rom.ts`. Raw `.bin` files are split into one or two fixed 16 KB banks. Legacy HEX-backed 64 KB images are still accepted, but they are projected into bank 0 from `0x8000-0xBFFF` and bank 1 from the following 16 KB span. `finalizeRuntime()` copies those banks into the live runtime hook state.
 
 ---
 
@@ -399,13 +399,20 @@ Speed changes propagate through the update controller: `setSpeed()` calls `setCl
 
 ## Asset loading and runtime finalisation
 
-The TEC-1G supports optional expansion ROM images: additional 16K or 32K ROM content loaded into the expansion banks. The provider's `loadAssets()` method reads `tec1gConfig.expansionRomHex`, parses it, and returns a `Tec1gExpansionRomImage` with the loaded memory and entry point.
+The TEC-1G supports optional expansion ROM images and a ROM-first launch path. `buildLaunchSession()` now calls `buildTec1gRomArtifactsIfRequested()` before local monitor overrides or platform resolution. Active source-backed artifacts assemble with AZM, emit `.hex`, `.bin`, and `.d8.json` outputs, and then `applyTec1gRomArtifactsToLaunchArgs()` mutates the launch args so:
+
+1. a monitor artifact becomes `tec1g.romHex`
+2. an expansion artifact becomes `tec1g.expansionRomHex`
+3. generated D8 maps are prepended to `debugMaps`
+4. each artifact source directory is appended to `sourceRoots`
+
+The provider's `loadAssets()` method then reads the resolved `tec1gConfig.expansionRomHex`, parses it, and returns a `Tec1gExpansionRomImage` with its bank list, projected memory image, and boot entry.
 
 `finalizeRuntime()` runs after the Z80 runtime is created:
 
 1. Installs the memory hooks (`createTec1gMemoryHooks()`) onto `runtime.hardware`, replacing the default `memRead` and `memWrite` with banking-aware versions.
 2. Copies the expansion ROM image into the expansion banks if one was loaded.
-3. Sets `system.cartridgePresent` to true, which will be reflected in the status port.
+3. Sets `system.cartridgePresent` to true only when an expansion image was loaded, which drives the `CART` status bit.
 
 The memory hooks are set at this stage rather than at platform creation because they need a reference to the runtime's hardware — which does not exist until `createZ80Runtime()` returns.
 
