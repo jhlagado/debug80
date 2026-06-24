@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.1.27
+## 0.1.28
 
 - Updated AZM to `0.2.11`.
+- Updated the Debug80 engineering manual for TEC-1G joystick focus handling.
+
+## 0.1.27
+
 - Added TEC-1G joystick input handling, request routing, and webview joystick
   controls.
 - Added TEC-1G keyboard focus ownership so matrix keyboard, joystick, and
