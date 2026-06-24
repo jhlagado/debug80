@@ -2178,9 +2178,9 @@ much smaller than the older report suggested:
   public CB-prefix seam is `buildCbHandler`.
 - `src/platforms/tec1g/glcd.ts` keeps `resetGlcdState` private and uses it from
   the GLCD controller reset path.
-- `src/platforms/tec1g/tec1g-cartridge.ts` keeps
-  `isTec1gCartridgeBootable` private and uses it from
-  `loadTec1gCartridgeImage`.
+- `src/platforms/tec1g/tec1g-expansion-rom.ts` keeps
+  `isTec1gExpansionRomBootable` private and uses it from
+  `loadTec1gExpansionRomImage`.
 - `src/platforms/tec1g/constants.ts` status/sysctrl constants checked in this
   pass are used by TEC-1G runtime or IO-handler tests. The bank/protect aliases
   are part of the current SYS_CTRL implementation, not confirmed dead code.

@@ -335,8 +335,8 @@ The TEC-1G adds a substantial amount of hardware.
 
 ```typescript
 interface Tec1gPlatformConfig extends Tec1PlatformConfig {
-  // Cartridge and storage
-  cartridgeHex?: string; // Expansion cartridge ROM
+  // Expansion ROM and storage
+  expansionRomHex?: string; // Optional banked expansion ROM at 0x8000-0xBFFF
 
   // Memory banking
   expansionBankHi?: boolean; // A14 bank select mode
@@ -385,7 +385,7 @@ When a user creates a new project, the scaffolding system generates the config f
    - the starter source file if it does not already exist
    - `debug80.json` at the workspace root
 
-5. **Merge `.gitignore`.** `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` appends a small, idempotent **Debug80**-marked block if one is not already present: the scaffold `outputDir` (e.g. `build/`), `out/` and `dist/`, materialized `roms/` bundle copies, `.vscode/launch.json` (local-only; the extension can still provide a default launch), and common OS files. The block does not ignore the entire `.vscode/` tree, but new Debug80 project configuration still belongs in root `debug80.json`.
+5. **Merge `.gitignore`.** `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` appends a small, idempotent **Debug80**-marked block if one is not already present: the scaffold `outputDir` (e.g. `build/`), `out/` and `dist/`, `.vscode/launch.json` (local-only; the extension can still provide a default launch), and common OS files. It does not ignore `roms/`: project-local monitor ROM sources are real project source once copied in for monitor development. The block does not ignore the entire `.vscode/` tree, but new Debug80 project configuration still belongs in root `debug80.json`.
 
 6. **Optionally write launch.json.** `.vscode/launch.json` is created only when the caller asked for launch scaffolding as well. The plain project-init path no longer creates an empty `.vscode` folder.
 

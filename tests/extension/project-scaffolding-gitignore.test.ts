@@ -39,7 +39,7 @@ describe('ensureDebug80Gitignore', () => {
     const g1 = readGitignore(root);
     expect(g1).not.toContain('.debug80/');
     expect(g1).toContain('build/');
-    expect(g1).toContain('roms/');
+    expect(g1.split(/\r?\n/)).not.toContain('roms/');
     ensureDebug80Gitignore(root, 'build');
     expect(countDebug80Blocks(readGitignore(root))).toBe(1);
   });

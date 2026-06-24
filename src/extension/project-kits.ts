@@ -9,7 +9,12 @@ import { BUNDLED_MON1B_V1_REL, BUNDLED_MON3_V1_REL } from './bundle-materialize'
 
 export type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
 export type StarterLanguage = 'asm';
-export type ProjectKitId = 'simple/default' | 'tec1/mon1b' | 'tec1/classic-2k' | 'tec1g/mon3';
+export type ProjectKitId =
+  | 'simple/default'
+  | 'tec1/mon1b'
+  | 'tec1/classic-2k'
+  | 'tec1g/mon3'
+  | 'tec1g/custom';
 
 export type ProjectKit = {
   id: ProjectKitId;
@@ -20,6 +25,8 @@ export type ProjectKit = {
   appStart: number;
   entry: number;
   starterTemplates: Record<StarterLanguage, string>;
+  sourceRoots?: string[];
+  platformConfig?: Record<string, unknown>;
   bundledProfile?: {
     bundleRelPath: string;
     romPath: string;
@@ -89,6 +96,23 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
       romPath: 'roms/tec1g/mon3/mon3.bin',
       debugMapPath: 'roms/tec1g/mon3/mon3.d8.json',
       sourceRoots: ['src', 'roms/tec1g/mon3'],
+    },
+  },
+  'tec1g/custom': {
+    id: 'tec1g/custom',
+    platform: 'tec1g',
+    profileName: 'custom',
+    label: 'TEC-1G / Custom',
+    description: 'TEC-1G custom monitor and optional expansion ROM profile.',
+    appStart: 0x4000,
+    entry: 0,
+    starterTemplates: {
+      asm: 'tec1g/mon3/starter.asm',
+    },
+    sourceRoots: ['src', 'roms/tec1g/custom'],
+    platformConfig: {
+      romHex: 'roms/tec1g/custom/monitor.bin',
+      expansionRomHex: 'roms/tec1g/custom/expansion.bin',
     },
   },
 };

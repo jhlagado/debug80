@@ -2,6 +2,11 @@
 
 ## 0.1.28
 
+- Stopped adding `roms/` to generated Debug80 project `.gitignore` blocks so
+  copied monitor ROM sources are tracked by default.
+- Added a `tec1g/custom` project kit with project-owned monitor and expansion
+  ROM paths, and renamed the TEC-1G expansion image config to `expansionRomHex`.
+- Updated AZM to `0.2.12`.
 - Updated AZM to `0.2.11`.
 - Updated the Debug80 engineering manual for TEC-1G joystick focus handling.
 

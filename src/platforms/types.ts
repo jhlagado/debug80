@@ -63,7 +63,7 @@ export interface Tec1gPlatformConfig {
   sdEnabled?: boolean;
   sdImagePath?: string;
   sdHighCapacity?: boolean;
-  cartridgeHex?: string;
+  expansionRomHex?: string;
   uiVisibility?: {
     tms9918?: boolean;
     glcd?: boolean;
@@ -89,6 +89,6 @@ export interface Tec1gPlatformConfigNormalized {
   sdEnabled: boolean;
   sdImagePath?: string;
   sdHighCapacity: boolean;
-  cartridgeHex?: string;
+  expansionRomHex?: string;
   tms9918Active?: boolean;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyCartridgeMemory,
+  applyExpansionRomMemory,
   createTec1gMemoryHooks,
 } from '../../src/platforms/tec1g/tec1g-memory';
 import { createTec1gRuntime } from '../../src/platforms/tec1g/runtime';
@@ -66,7 +66,7 @@ describe('TEC-1G expand bank switching', () => {
     expect(runtime.state.system.bankA14).toBe(true);
   });
 
-  it('loads cartridge data into expansion banks', () => {
+  it('loads expansion ROM data into expansion banks', () => {
     const baseMemory = new Uint8Array(0x10000);
     const state = {
       shadowEnabled: false,
@@ -75,10 +75,10 @@ describe('TEC-1G expand bank switching', () => {
       bankA14: false,
     };
     const hooks = createTec1gMemoryHooks(baseMemory, [], state);
-    const cartridge = new Uint8Array(0x10000);
-    cartridge[0x8000] = 0x11;
-    cartridge[0xc000] = 0x22;
-    applyCartridgeMemory(hooks.expandBanks, cartridge);
+    const expansionRom = new Uint8Array(0x10000);
+    expansionRom[0x8000] = 0x11;
+    expansionRom[0xc000] = 0x22;
+    applyExpansionRomMemory(hooks.expandBanks, expansionRom);
 
     expect(hooks.memRead(0x8000)).toBe(0x11);
     state.bankA14 = true;

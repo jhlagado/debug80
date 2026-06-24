@@ -1,5 +1,5 @@
 /**
- * @file TEC-1G cartridge loading helpers.
+ * @file TEC-1G expansion ROM loading helpers.
  */
 
 import fs from 'fs';
@@ -7,15 +7,15 @@ import { TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START } from '../tec-common';
 import { extractRomHex } from '../../debug/launch/program-loader';
 import { parseIntelHex } from '../../z80/loaders';
 
-export type Tec1gCartridgeImage = {
+export type Tec1gExpansionRomImage = {
   memory: Uint8Array;
   bootEntry: number | null;
 };
 
 /**
- * Returns whether the loaded image contains any non-zero data in the cartridge expansion region.
+ * Returns whether the loaded image contains any non-zero data in the expansion region.
  */
-function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
+function isTec1gExpansionRomBootable(memory: Uint8Array): boolean {
   for (let addr = TEC1G_EXPAND_START; addr < 0x10000; addr += 1) {
     if (memory[addr] !== 0) {
       return true;
@@ -25,13 +25,13 @@ function isTec1gCartridgeBootable(memory: Uint8Array): boolean {
 }
 
 /**
- * Loads a TEC-1G cartridge image from either raw binary or Intel HEX content.
+ * Loads a TEC-1G expansion ROM image from either raw binary or Intel HEX content.
  */
-export function loadTec1gCartridgeImage(cartridgePath: string): Tec1gCartridgeImage {
-  const lower = cartridgePath.toLowerCase();
+export function loadTec1gExpansionRomImage(expansionRomPath: string): Tec1gExpansionRomImage {
+  const lower = expansionRomPath.toLowerCase();
   let memory: Uint8Array;
   if (lower.endsWith('.bin')) {
-    const buffer = fs.readFileSync(cartridgePath);
+    const buffer = fs.readFileSync(expansionRomPath);
     const bytes = new Uint8Array(buffer);
     memory = new Uint8Array(0x10000);
     const first = Math.min(bytes.length, TEC1G_EXPAND_SIZE);
@@ -44,10 +44,10 @@ export function loadTec1gCartridgeImage(cartridgePath: string): Tec1gCartridgeIm
       );
     }
   } else {
-    const content = fs.readFileSync(cartridgePath, 'utf-8');
-    const hexContent = extractRomHex(content, cartridgePath);
+    const content = fs.readFileSync(expansionRomPath, 'utf-8');
+    const hexContent = extractRomHex(content, expansionRomPath);
     memory = parseIntelHex(hexContent).memory;
   }
-  const bootEntry = isTec1gCartridgeBootable(memory) ? TEC1G_EXPAND_START : null;
+  const bootEntry = isTec1gExpansionRomBootable(memory) ? TEC1G_EXPAND_START : null;
   return { memory, bootEntry };
 }

@@ -9,7 +9,7 @@ const { getExtension } = vi.hoisted(() => ({
   getExtension: vi.fn(),
 }));
 
-const { buildPlatformIoHandlers, createTec1gMemoryHooks, applyCartridgeMemory } = vi.hoisted(
+const { buildPlatformIoHandlers, createTec1gMemoryHooks, applyExpansionRomMemory } = vi.hoisted(
   () => ({
     buildPlatformIoHandlers: vi.fn(() => ({ ioHandlers: undefined })),
     createTec1gMemoryHooks: vi.fn(() => ({
@@ -17,7 +17,7 @@ const { buildPlatformIoHandlers, createTec1gMemoryHooks, applyCartridgeMemory } 
       memWrite: vi.fn(() => undefined),
       expandBanks: ['bank'],
     })),
-    applyCartridgeMemory: vi.fn(() => undefined),
+    applyExpansionRomMemory: vi.fn(() => undefined),
   })
 );
 
@@ -36,7 +36,7 @@ vi.mock('../../src/debug/session/platform-host', () => ({
 
 vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
   createTec1gMemoryHooks,
-  applyCartridgeMemory,
+  applyExpansionRomMemory,
 }));
 
 import {
@@ -239,7 +239,7 @@ describe('platform providers', () => {
       platform: 'tec1g',
       tec1g: {
         entry: 0x2000,
-        cartridgeHex: 'cart.hex',
+        expansionRomHex: 'expansion.bin',
       },
     });
     const context = createCommandContext();
@@ -330,13 +330,14 @@ describe('platform providers', () => {
       },
     } as never;
     const assets = {
-      cartridgeImage: {
+      expansionRomImage: {
         bootEntry: 0x3456,
         memory: new Uint8Array([1, 2, 3]),
       },
     };
 
     expect(provider.payload).toEqual({ id: 'tec1g' });
+    expect(provider.tec1gConfig?.expansionRomHex).toBe('expansion.bin');
     expect(provider.resolveEntry(assets)).toBe(0x3456);
 
     provider.finalizeRuntime?.({
@@ -353,7 +354,7 @@ describe('platform providers', () => {
     );
     expect(setTms9918Active).toHaveBeenCalledWith(true);
     expect(setTms9918VideoStandard).toHaveBeenCalledWith('ntsc');
-    expect(applyCartridgeMemory).toHaveBeenCalledWith(['bank'], assets.cartridgeImage.memory);
+    expect(applyExpansionRomMemory).toHaveBeenCalledWith(['bank'], assets.expansionRomImage.memory);
     expect(setCartridgePresent).toHaveBeenCalledWith(true);
   });
 });

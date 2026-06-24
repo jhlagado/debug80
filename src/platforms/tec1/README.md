@@ -178,7 +178,9 @@ shifted). The ROM uses this to distinguish extended key functions.
 ## ROMs
 
 Bundled ROMs are resolved from the extension by default for scaffolded projects.
-Local `roms/` files are optional overrides/materialized inspection copies.
+Local `roms/` files are optional overrides or monitor-development sources. New
+Debug80 projects do not ignore `roms/` by default; track these files when they
+represent project-owned ROM source.
 
 You can override with `romHex` in the platform config.
 

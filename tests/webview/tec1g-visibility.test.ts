@@ -217,6 +217,25 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain('keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen()');
   });
 
+  it('uses typed DOM boundary helpers in the TEC-1G composition root', () => {
+    const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+
+    expect(source).toContain('getRequiredElementById');
+    expect(source).toContain('getOptionalElementById');
+    expect(source).toContain('getOptionalElementBySelector');
+    expect(source).not.toContain("document.getElementById('display') as HTMLElement");
+    expect(source).not.toContain("document.getElementById('accordion-machine') as HTMLElement");
+    expect(source).not.toContain("document.querySelector('.debug80-toolbar') as HTMLElement | null");
+  });
+
+  it('keeps project-status message application behind a typed helper', () => {
+    const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+
+    expect(source).toContain('type Tec1gProjectStatusMessage');
+    expect(source).toContain('function applyProjectStatusMessage(message: Tec1gProjectStatusMessage)');
+    expect(source).toContain('applyProjectStatusMessage(message);');
+  });
+
   it('labels joystick auxiliary action as Aux instead of Comm2', () => {
     const joystick = doc.querySelector('#accordion-joystick');
 

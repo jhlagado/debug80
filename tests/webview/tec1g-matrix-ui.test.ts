@@ -970,6 +970,116 @@ describe('tec1g matrix ui', () => {
     ]);
   });
 
+  it('uses physical key code for shifted punctuation and preserves press-time shift on release', () => {
+    controller.applyKeyboardCapture(true);
+    const keydown = makeKeyEvent('keydown', '!', { shiftKey: true, code: 'Digit1' });
+    const keyup = makeKeyEvent('keyup', '1', { code: 'Digit1' });
+
+    expect(controller.handleKeyEvent(keydown, true)).toBe(true);
+    expect(controller.handleKeyEvent(keyup, false)).toBe(true);
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: '1',
+        pressed: true,
+        shift: true,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: '1',
+        pressed: false,
+        shift: true,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('replaces a pending click-release timer when the same matrix key is pressed again', () => {
+    controller.applyKeyboardCapture(true);
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    vi.advanceTimersByTime(40);
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    vi.advanceTimersByTime(50);
+
+    expect(matrixKey.classList.contains('pressed')).toBe(true);
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: false,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+  });
+
+  it('does not emit a duplicate click release when capture is disabled before mouseup', () => {
+    controller.applyKeyboardCapture(true);
+    const matrixKey = document.querySelector('[data-key="a"]') as HTMLElement;
+
+    matrixKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    controller.applyKeyboardCapture(false);
+    matrixKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    flushMatrixClickHold();
+
+    expect(messages).toEqual([
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: true,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+      {
+        type: 'matrixKey',
+        key: 'a',
+        pressed: false,
+        shift: false,
+        ctrl: false,
+        fn: false,
+        alt: false,
+      },
+    ]);
+    expect(matrixKey.classList.contains('pressed')).toBe(false);
+  });
+
   it('releases physical modifier chords using the press-time modifiers', () => {
     controller.applyKeyboardCapture(true);
     const keydown = makeKeyEvent('keydown', 's', { altKey: true, code: 'KeyS' });

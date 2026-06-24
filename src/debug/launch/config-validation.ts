@@ -386,8 +386,11 @@ export function validateTec1gConfig(config: unknown): ValidationResult {
   const tc = objectResult.value;
 
   return mergeResults([
+    Object.prototype.hasOwnProperty.call(tc, 'cartridgeHex')
+      ? invalidResult('tec1g.cartridgeHex is no longer supported; use tec1g.expansionRomHex')
+      : validResult(),
     validatePath(tc.romHex, 'tec1g.romHex'),
-    validatePath(tc.cartridgeHex, 'tec1g.cartridgeHex'),
+    validatePath(tc.expansionRomHex, 'tec1g.expansionRomHex'),
     validateAddress(tc.appStart, 'tec1g.appStart'),
     validateAddress(tc.entry, 'tec1g.entry'),
   ]);

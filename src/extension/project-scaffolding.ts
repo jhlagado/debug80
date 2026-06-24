@@ -89,6 +89,10 @@ function platformDisplayName(platform: ScaffoldPlatform): string {
   return 'Simple';
 }
 
+function getKitSourceRoots(kit: ProjectKit): string[] | undefined {
+  return kit.sourceRoots ?? kit.bundledProfile?.sourceRoots;
+}
+
 export function createStarterSourceContent(
   extensionUri: vscode.Uri,
   kit: ProjectKit,
@@ -145,8 +149,8 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     artifactBase: plan.artifactBase,
     platform: plan.kit.platform,
     profile: plan.kit.profileName,
-    ...(plan.kit.bundledProfile !== undefined
-      ? { sourceRoots: plan.kit.bundledProfile.sourceRoots }
+    ...(getKitSourceRoots(plan.kit) !== undefined
+      ? { sourceRoots: getKitSourceRoots(plan.kit) }
       : {}),
   };
 
@@ -166,8 +170,12 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
         ? {
             ...base,
             romHex: plan.kit.bundledProfile.romPath,
+            ...(plan.kit.platformConfig ?? {}),
           }
-        : base;
+        : {
+            ...base,
+            ...(plan.kit.platformConfig ?? {}),
+          };
   } else {
     targetConfig.simple = createSimpleDefaults();
   }

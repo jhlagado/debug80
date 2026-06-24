@@ -43,9 +43,9 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     typeof config.ramInitHex === 'string' && config.ramInitHex !== ''
       ? config.ramInitHex
       : undefined;
-  const cartridgeHex =
-    typeof config.cartridgeHex === 'string' && config.cartridgeHex !== ''
-      ? config.cartridgeHex
+  const expansionRomHex =
+    typeof config.expansionRomHex === 'string' && config.expansionRomHex !== ''
+      ? config.expansionRomHex
       : undefined;
   const updateMs =
     Number.isFinite(config.updateMs) && config.updateMs !== undefined ? config.updateMs : 16;
@@ -80,7 +80,7 @@ export function normalizeTec1gConfig(cfg?: Tec1gPlatformConfig): Tec1gPlatformCo
     sdEnabled,
     sdHighCapacity,
     ...(sdImagePath !== undefined ? { sdImagePath } : {}),
-    ...(cartridgeHex !== undefined ? { cartridgeHex } : {}),
+    ...(expansionRomHex !== undefined ? { expansionRomHex } : {}),
     ...(tms9918Active ? { tms9918Active } : {}),
   };
 }

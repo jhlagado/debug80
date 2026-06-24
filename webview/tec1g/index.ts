@@ -8,6 +8,11 @@ import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
 import { wireAzmOptionsControl } from '../common/azm-options-control';
 import {
+  getOptionalElementById,
+  getOptionalElementBySelector,
+  getRequiredElementById,
+} from '../common/dom-elements';
+import {
   applyProjectPanelStatusControls,
   getProjectPanelElements,
   wireProjectPanelPlatformControls,
@@ -41,54 +46,64 @@ import {
   type KeyboardOwner,
 } from './keyboard-owner';
 
+type Tec1gProjectStatusMessage = Extract<IncomingMessage, { type: 'projectStatus' }>;
+
 const vscode = acquireVscodeApi();
 const projectElements = getProjectPanelElements(document);
 
 const DEFAULT_TAB: ProviderPanelTab =
   document.body.dataset.activeTab === 'memory' ? 'memory' : 'ui';
 
-const azmRegisterContractsModeSelect = document.getElementById(
-  'azmRegisterContractsMode'
-) as HTMLSelectElement | null;
-const azmContractUpdateModeSelect = document.getElementById(
-  'azmContractUpdateMode'
-) as HTMLSelectElement | null;
-const displayEl = document.getElementById('display') as HTMLElement;
-const keypadEl = document.getElementById('keypad') as HTMLElement;
-const keypadRoutingCue = document.getElementById('keypadRoutingCue') as HTMLElement | null;
-const speakerEl = document.getElementById('speaker') as HTMLElement;
-const speakerLabel = document.getElementById('speakerLabel') as HTMLElement;
-const speedEl = document.getElementById('speed') as HTMLElement;
-const muteEl = document.getElementById('mute') as HTMLElement;
-const statusShadow = document.getElementById('statusShadow') as HTMLElement;
-const statusProtect = document.getElementById('statusProtect') as HTMLElement;
-const statusExpand = document.getElementById('statusExpand') as HTMLElement;
-const statusCaps = document.getElementById('statusCaps') as HTMLElement;
-const statusBank0 = document.getElementById('statusBank0') as HTMLElement;
-const statusBank1 = document.getElementById('statusBank1') as HTMLElement;
-const statusBank2 = document.getElementById('statusBank2') as HTMLElement;
-const statusBank3 = document.getElementById('statusBank3') as HTMLElement;
+const azmRegisterContractsModeSelect = getOptionalElementById(
+  document,
+  'azmRegisterContractsMode',
+  HTMLSelectElement
+);
+const azmContractUpdateModeSelect = getOptionalElementById(
+  document,
+  'azmContractUpdateMode',
+  HTMLSelectElement
+);
+const displayEl = getRequiredElementById(document, 'display', HTMLElement);
+const keypadEl = getRequiredElementById(document, 'keypad', HTMLElement);
+const keypadRoutingCue = getOptionalElementById(document, 'keypadRoutingCue', HTMLElement);
+const speakerEl = getRequiredElementById(document, 'speaker', HTMLElement);
+const speakerLabel = getRequiredElementById(document, 'speakerLabel', HTMLElement);
+const speedEl = getRequiredElementById(document, 'speed', HTMLElement);
+const muteEl = getRequiredElementById(document, 'mute', HTMLElement);
+const statusShadow = getRequiredElementById(document, 'statusShadow', HTMLElement);
+const statusProtect = getRequiredElementById(document, 'statusProtect', HTMLElement);
+const statusExpand = getRequiredElementById(document, 'statusExpand', HTMLElement);
+const statusCaps = getRequiredElementById(document, 'statusCaps', HTMLElement);
+const statusBank0 = getRequiredElementById(document, 'statusBank0', HTMLElement);
+const statusBank1 = getRequiredElementById(document, 'statusBank1', HTMLElement);
+const statusBank2 = getRequiredElementById(document, 'statusBank2', HTMLElement);
+const statusBank3 = getRequiredElementById(document, 'statusBank3', HTMLElement);
 const accordionButtons = Array.from(
   document.querySelectorAll<HTMLElement>('[data-accordion-toggle]')
 );
 const matrixKeyboardHeader =
   accordionButtons.find((button) => button.dataset.accordionToggle === 'matrixKeyboard') ?? null;
-const accordionProject = document.getElementById('accordion-project') as HTMLElement;
-const accordionMachine = document.getElementById('accordion-machine') as HTMLElement;
-const accordionDisplays = document.getElementById('accordion-displays') as HTMLElement;
-const accordionVideo = document.getElementById('accordion-video') as HTMLElement;
-const accordionJoystick = document.getElementById('accordion-joystick') as HTMLElement;
-const accordionSerial = document.getElementById('accordion-serial') as HTMLElement;
-const accordionMatrixKeyboard = document.getElementById('accordion-matrix-keyboard') as HTMLElement;
-const accordionRegisters = document.getElementById('accordion-registers') as HTMLElement;
-const accordionMemory = document.getElementById('accordion-memory') as HTMLElement;
-const panelUi = document.getElementById('panel-ui') as HTMLElement;
-const panelRegisters = document.getElementById('panel-registers') as HTMLElement;
-const panelMemory = document.getElementById('panel-memory') as HTMLElement;
-const toolbarEl = document.querySelector('.debug80-toolbar') as HTMLElement | null;
-const accordionEl = document.getElementById('debug80Accordion') as HTMLElement | null;
-const registerStrip = document.getElementById('registerStrip') as HTMLElement;
-const memoryPanelEl = document.getElementById('memoryPanel') as HTMLElement;
+const accordionProject = getRequiredElementById(document, 'accordion-project', HTMLElement);
+const accordionMachine = getRequiredElementById(document, 'accordion-machine', HTMLElement);
+const accordionDisplays = getRequiredElementById(document, 'accordion-displays', HTMLElement);
+const accordionVideo = getRequiredElementById(document, 'accordion-video', HTMLElement);
+const accordionJoystick = getRequiredElementById(document, 'accordion-joystick', HTMLElement);
+const accordionSerial = getRequiredElementById(document, 'accordion-serial', HTMLElement);
+const accordionMatrixKeyboard = getRequiredElementById(
+  document,
+  'accordion-matrix-keyboard',
+  HTMLElement
+);
+const accordionRegisters = getRequiredElementById(document, 'accordion-registers', HTMLElement);
+const accordionMemory = getRequiredElementById(document, 'accordion-memory', HTMLElement);
+const panelUi = getRequiredElementById(document, 'panel-ui', HTMLElement);
+const panelRegisters = getRequiredElementById(document, 'panel-registers', HTMLElement);
+const panelMemory = getRequiredElementById(document, 'panel-memory', HTMLElement);
+const toolbarEl = getOptionalElementBySelector(document, '.debug80-toolbar', HTMLElement);
+const accordionEl = getOptionalElementById(document, 'debug80Accordion', HTMLElement);
+const registerStrip = getRequiredElementById(document, 'registerStrip', HTMLElement);
+const memoryPanelEl = getRequiredElementById(document, 'memoryPanel', HTMLElement);
 
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
   digitClassName: (index) => (index < 2 ? 'digit--data' : 'digit--address'),
@@ -310,7 +325,31 @@ function applyUpdateFromPayload(payload: Tec1gUpdatePayload | null | undefined):
   applyTec1gPlatformUpdate(platformUpdateDeps, payload);
 }
 
-const statusEl = document.getElementById('status');
+function applyProjectStatusMessage(message: Tec1gProjectStatusMessage): void {
+  projectStatusUi.applyProjectStatus(message);
+  const initialized = applyProjectPanelStatusControls(message, projectElements, {
+    tabs: toolbarEl,
+    accordion: accordionEl,
+    panelUi,
+    panelRegisters,
+    panelMemory,
+  });
+  projectIsInitialized = initialized;
+  stopOnEntryControl.applyProjectStatus({
+    hasProject: initialized,
+    stopOnEntry: message.stopOnEntry,
+  });
+  azmOptionsControl.applyProjectStatus({
+    hasProject: initialized,
+    azmRegisterContractsMode: message.azmRegisterContractsMode,
+    azmContractUpdateMode: message.azmContractUpdateMode,
+  });
+  if (message.targetUiVisibility?.tms9918 === true) {
+    panelLayout.setPanelOpen('video', true, true);
+  }
+}
+
+const statusEl = getOptionalElementById(document, 'status', HTMLElement);
 const views = createTec1gMemoryViews();
 
 memoryPanelController = new MemoryPanel({
@@ -329,27 +368,7 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefi
     return;
   }
   if (message.type === 'projectStatus') {
-    projectStatusUi.applyProjectStatus(message);
-    const initialized = applyProjectPanelStatusControls(message, projectElements, {
-      tabs: toolbarEl,
-      accordion: accordionEl,
-      panelUi,
-      panelRegisters,
-      panelMemory,
-    });
-    projectIsInitialized = initialized;
-    stopOnEntryControl.applyProjectStatus({
-      hasProject: initialized,
-      stopOnEntry: message.stopOnEntry,
-    });
-    azmOptionsControl.applyProjectStatus({
-      hasProject: initialized,
-      azmRegisterContractsMode: message.azmRegisterContractsMode,
-      azmContractUpdateMode: message.azmContractUpdateMode,
-    });
-    if (message.targetUiVisibility?.tms9918 === true) {
-      panelLayout.setPanelOpen('video', true, true);
-    }
+    applyProjectStatusMessage(message);
     return;
   }
   if (message.type === 'sessionStatus') {

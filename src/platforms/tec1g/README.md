@@ -139,6 +139,8 @@ Debug80 ships a bundled MON-3 profile for scaffolded projects. New projects
 record bundled asset references in `debug80.json`; launch resolves the extension
 bundle directly when no workspace copy exists. You can still provide `romHex` in
 the platform config to override the bundled profile or debug a custom ROM.
+Use `expansionRomHex` when the project owns an optional 16K/32K expansion ROM
+for the banked 0x8000-0xBFFF window.
 
 **Shared MON-3 settings (recommended):** Scaffolded projects record MON-3 under
 a shared profile and point `tec1g.romHex` at a stable workspace-relative
@@ -159,6 +161,23 @@ example `appStart` or `protectOnReset`.
     "sdEnabled": false,
     "sdHighCapacity": true,
     "sdImagePath": ""
+  }
+}
+```
+
+The `tec1g/custom` project kit writes project-owned paths instead of bundled
+assets:
+
+```json
+{
+  "platform": "tec1g",
+  "profile": "custom",
+  "sourceRoots": ["src", "roms/tec1g/custom"],
+  "tec1g": {
+    "romHex": "roms/tec1g/custom/monitor.bin",
+    "expansionRomHex": "roms/tec1g/custom/expansion.bin",
+    "appStart": 16384,
+    "entry": 0
   }
 }
 ```

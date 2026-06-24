@@ -301,10 +301,22 @@ describe('config-validation', () => {
     it('should accept valid tec1g config', () => {
       const result = validateTec1gConfig({
         romHex: 'path/to/rom.hex',
+        expansionRomHex: 'path/to/expansion.bin',
         appStart: 0x4000,
         entry: 0x4000,
       });
       expect(result.valid).toBe(true);
+    });
+
+    it('should reject legacy cartridgeHex in tec1g config', () => {
+      const result = validateTec1gConfig({
+        cartridgeHex: 'path/to/cart.hex',
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.cartridgeHex is no longer supported; use tec1g.expansionRomHex'],
+      });
     });
 
     it('should accept undefined/null', () => {
@@ -360,7 +372,7 @@ describe('config-validation', () => {
         terminal: { txPort: 300, interrupt: 'yes' },
         simple: { binFrom: -1 },
         tec1: 'bad',
-        tec1g: { cartridgeHex: 42 },
+        tec1g: { expansionRomHex: 42 },
       });
 
       expect(result).toMatchObject({
@@ -370,7 +382,7 @@ describe('config-validation', () => {
           'terminal.interrupt must be a boolean, got string',
           'simple.binFrom must be between 0 and 0xffff, got -1 (0x-1)',
           'tec1 must be an object, got string',
-          'tec1g.cartridgeHex must be a string, got number',
+          'tec1g.expansionRomHex must be a string, got number',
         ],
       });
     });

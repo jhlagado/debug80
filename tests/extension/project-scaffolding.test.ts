@@ -170,6 +170,9 @@ describe('project-scaffolding helpers', () => {
     expect(tec1gStarter).toContain('API_SCAN_SEGMENTS');
     expect(tec1gStarter).toContain('ScanHello:');
     expect(tec1gStarter).not.toContain('LD      SP,');
+    const customStarter = createStarterSourceContent(extensionUri, kit('tec1g/custom'), 'asm');
+    expect(customStarter).toContain('.org    0x4000');
+    expect(customStarter).toContain('Debug80 TEC-1G');
   });
 
   it('creates a generic current-project launch config', () => {
@@ -328,6 +331,50 @@ describe('project-scaffolding helpers', () => {
             appStart: 0x4000,
             entry: 0,
             romHex: 'roms/tec1g/mon3/mon3.bin',
+          },
+        },
+      },
+    });
+  });
+
+  it('builds a tec1g custom profile kit config with project-owned ROM paths', () => {
+    const config = createDefaultProjectConfig({
+      kit: kit('tec1g/custom'),
+      targetName: 'app',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+    });
+
+    expect(config).toEqual({
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1g',
+      defaultProfile: 'custom',
+      defaultTarget: 'app',
+      profiles: {
+        custom: {
+          platform: 'tec1g',
+          description: 'TEC-1G custom monitor and optional expansion ROM profile.',
+        },
+      },
+      targets: {
+        app: {
+          sourceFile: 'src/main.asm',
+          outputDir: 'build',
+          artifactBase: 'main',
+          platform: 'tec1g',
+          profile: 'custom',
+          sourceRoots: ['src', 'roms/tec1g/custom'],
+          tec1g: {
+            regions: [
+              { start: 0, end: 2047, kind: 'rom' },
+              { start: 2048, end: 32767, kind: 'ram' },
+              { start: 49152, end: 65535, kind: 'rom' },
+            ],
+            appStart: 0x4000,
+            entry: 0,
+            romHex: 'roms/tec1g/custom/monitor.bin',
+            expansionRomHex: 'roms/tec1g/custom/expansion.bin',
           },
         },
       },

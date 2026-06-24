@@ -86,7 +86,7 @@ export function createTec1gRuntime(
   const rtcEnabled = config.rtcEnabled;
   const rtc = rtcEnabled ? new Ds1302() : null;
   const { sdEnabled, sdSpi } = createTec1gSdSpi(config);
-  let cartridgePresentDefault = config.cartridgeHex !== undefined;
+  let cartridgePresentDefault = config.expansionRomHex !== undefined;
   const state = createTec1gInitialState({
     config,
     matrixMode,

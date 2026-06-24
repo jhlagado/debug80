@@ -4,8 +4,11 @@
 
 import * as fs from 'fs';
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import { applyCartridgeMemory, createTec1gMemoryHooks } from './tec1g-memory';
-import { loadTec1gCartridgeImage, type Tec1gCartridgeImage } from './tec1g-cartridge';
+import { applyExpansionRomMemory, createTec1gMemoryHooks } from './tec1g-memory';
+import {
+  loadTec1gExpansionRomImage,
+  type Tec1gExpansionRomImage,
+} from './tec1g-expansion-rom';
 import {
   buildPlatformIoHandlers,
   type PlatformIoBuildResult,
@@ -28,7 +31,7 @@ import type {
 import { normalizeTec1gConfig } from './runtime';
 
 type Tec1gPlatformAssets = {
-  cartridgeImage: Tec1gCartridgeImage | null;
+  expansionRomImage: Tec1gExpansionRomImage | null;
 };
 
 const TEC1G_MON3_MONITOR_RAM_START = 0x0800;
@@ -166,24 +169,26 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
  * Loads optional TEC-1G launch assets.
  */
 function loadTec1gAssets(
-  cartridgeHex: string | undefined,
+  expansionRomHex: string | undefined,
   context: PlatformAssetLoadContext
 ): Tec1gPlatformAssets {
-  if (cartridgeHex === undefined || cartridgeHex === '') {
-    return { cartridgeImage: null };
+  if (expansionRomHex === undefined || expansionRomHex === '') {
+    return { expansionRomImage: null };
   }
 
-  const cartridgePath = context.resolveRelative(cartridgeHex, context.baseDir);
-  if (!fs.existsSync(cartridgePath)) {
-    context.logger.warn('Debug80: TEC-1G cartridge not found at ' + cartridgePath + '.');
-    return { cartridgeImage: null };
+  const expansionRomPath = context.resolveRelative(expansionRomHex, context.baseDir);
+  if (!fs.existsSync(expansionRomPath)) {
+    context.logger.warn('Debug80: TEC-1G expansion ROM not found at ' + expansionRomPath + '.');
+    return { expansionRomImage: null };
   }
 
   try {
-    return { cartridgeImage: loadTec1gCartridgeImage(cartridgePath) };
+    return { expansionRomImage: loadTec1gExpansionRomImage(expansionRomPath) };
   } catch (err) {
-    context.logger.error('Debug80: Failed to load cartridge ' + cartridgePath + ': ' + String(err));
-    return { cartridgeImage: null };
+    context.logger.error(
+      'Debug80: Failed to load expansion ROM ' + expansionRomPath + ': ' + String(err)
+    );
+    return { expansionRomImage: null };
   }
 }
 
@@ -203,15 +208,15 @@ function finalizeTec1gRuntime(
   tec1gRuntime.setTms9918Active(tms9918Active);
   tec1gRuntime.setTms9918VideoStandard(context.sessionState.ui.tec1gTms9918VideoStandard);
 
-  const assets = (context.assets ?? { cartridgeImage: null }) as Tec1gPlatformAssets;
+  const assets = (context.assets ?? { expansionRomImage: null }) as Tec1gPlatformAssets;
   const baseMemory = context.runtime.hardware.memory;
   const hooks = createTec1gMemoryHooks(baseMemory, config.romRanges, tec1gRuntime.state.system);
   context.runtime.hardware.memRead = hooks.memRead;
   context.runtime.hardware.memWrite = hooks.memWrite;
   context.runtime.hardware.forceMemWrite = hooks.forceMemWrite;
   context.runtime.hardware.isMemoryWritable = hooks.isMemoryWritable;
-  if (assets.cartridgeImage) {
-    applyCartridgeMemory(hooks.expandBanks, assets.cartridgeImage.memory);
+  if (assets.expansionRomImage) {
+    applyExpansionRomMemory(hooks.expandBanks, assets.expansionRomImage.memory);
     tec1gRuntime.setCartridgePresent(true);
     return;
   }
@@ -245,9 +250,10 @@ export function createTec1gPlatformProvider(
         onTerminalOutput: callbacks.onTerminalOutput,
       }),
     loadAssets: (context): Tec1gPlatformAssets =>
-      loadTec1gAssets(tec1gConfig.cartridgeHex, context),
+      loadTec1gAssets(tec1gConfig.expansionRomHex, context),
     resolveEntry: (assets): number | undefined =>
-      (assets as Tec1gPlatformAssets | undefined)?.cartridgeImage?.bootEntry ?? tec1gConfig.entry,
+      (assets as Tec1gPlatformAssets | undefined)?.expansionRomImage?.bootEntry ??
+      tec1gConfig.entry,
     finalizeRuntime: (context): void => finalizeTec1gRuntime(tec1gConfig, context),
   };
 }

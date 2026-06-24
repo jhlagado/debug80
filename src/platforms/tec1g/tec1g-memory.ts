@@ -26,9 +26,9 @@ export type Tec1gMemoryHooks = {
 };
 
 /**
- * Copies cartridge-backed expansion data into the active TEC-1G expand banks.
+ * Copies expansion ROM data into the active TEC-1G expand banks.
  */
-export function applyCartridgeMemory(expandBanks: Uint8Array[], memory: Uint8Array): void {
+export function applyExpansionRomMemory(expandBanks: Uint8Array[], memory: Uint8Array): void {
   const bank0 = expandBanks[0];
   const bank1 = expandBanks[1];
   if (!bank0 || !bank1) {
