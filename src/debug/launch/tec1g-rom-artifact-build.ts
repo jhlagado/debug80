@@ -91,6 +91,7 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
         error: `ROM artifact ${artifact.id} did not produce debug map ${outputDebugMap}`,
       });
     }
+    normalizeBuiltRomArtifactBinary(artifact, outputBin);
 
     built.push({
       id: artifact.id,
@@ -103,6 +104,31 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
   }
 
   return built;
+}
+
+/**
+ * Enforces configured ROM artifact binary geometry after assembly.
+ */
+function normalizeBuiltRomArtifactBinary(
+  artifact: Tec1gSourceRomArtifactConfig,
+  outputBin: string
+): void {
+  const targetSize =
+    artifact.role === 'monitor'
+      ? (artifact.size ?? 0x4000)
+      : (artifact.imageSize ?? artifact.windowSize ?? 0x4000);
+  const bytes = fs.readFileSync(outputBin);
+  if (bytes.length > targetSize) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact ${artifact.id} binary is ${bytes.length} bytes; limit is ${targetSize}`,
+    });
+  }
+  if (artifact.role === 'expansion' && bytes.length < targetSize) {
+    const padded = Buffer.alloc(targetSize);
+    bytes.copy(padded);
+    fs.writeFileSync(outputBin, padded);
+  }
 }
 
 export function applyTec1gRomArtifactsToLaunchArgs(
