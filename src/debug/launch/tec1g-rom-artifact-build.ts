@@ -115,9 +115,11 @@ export function applyTec1gRomArtifactsToLaunchArgs(
 
   args.tec1g = { ...(args.tec1g ?? {}) };
   const generatedDebugMaps: string[] = [];
+  let monitorArtifactGenerated = false;
   for (const artifact of artifacts) {
     if (artifact.role === 'monitor') {
       args.tec1g.romHex = artifact.outputBin;
+      monitorArtifactGenerated = true;
     } else {
       args.tec1g.expansionRomHex = artifact.outputBin;
     }
@@ -129,7 +131,10 @@ export function applyTec1gRomArtifactsToLaunchArgs(
     args.sourceRoots = appendUnique(args.sourceRoots ?? [], artifact.sourceRoot);
   }
 
-  args.debugMaps = prependUniqueGroup(args.debugMaps ?? [], generatedDebugMaps);
+  const existingDebugMaps = monitorArtifactGenerated
+    ? (args.debugMaps ?? []).filter(shouldKeepExistingDebugMapForGeneratedMonitor)
+    : (args.debugMaps ?? []);
+  args.debugMaps = prependUniqueGroup(existingDebugMaps, generatedDebugMaps);
 }
 
 export function hasActiveTec1gMonitorRomArtifact(args: LaunchRequestArguments): boolean {
@@ -204,9 +209,21 @@ function prependUniqueGroup(values: string[], group: string[]): string[] {
   if (group.length === 0) {
     return values;
   }
-  return [...group, ...values.filter((existing) => !group.includes(existing))];
+  const uniqueGroup = group.filter((entry, index) => group.indexOf(entry) === index);
+  return [...uniqueGroup, ...values.filter((existing) => !uniqueGroup.includes(existing))];
 }
 
 function appendUnique(values: string[], value: string): string[] {
   return values.includes(value) ? values : [...values, value];
+}
+
+function shouldKeepExistingDebugMapForGeneratedMonitor(mapPath: string): boolean {
+  const normalized = mapPath.split(/[\\/]+/).join('/');
+  if (normalized.includes('resources/bundles/tec1g/mon3/v1/') && normalized.endsWith('.d8.json')) {
+    return false;
+  }
+  if (normalized.includes('roms/tec1g/mon3/') && normalized.endsWith('.d8.json')) {
+    return false;
+  }
+  return true;
 }

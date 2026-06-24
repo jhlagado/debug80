@@ -110,6 +110,93 @@ describe('TEC-1G ROM artifact builds', () => {
     ]);
   });
 
+  it('suppresses bundled MON-3 maps when a generated monitor artifact owns the monitor role', () => {
+    const args: LaunchRequestArguments = {
+      debugMaps: [
+        '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
+        'C:\\debug80\\resources\\bundles\\tec1g\\mon3\\v1\\mon3.d8.json',
+        '/workspace/roms/tec1g/mon3/mon3.d8.json',
+        'C:\\workspace\\roms\\tec1g\\mon3\\mon3.d8.json',
+        '/workspace/build/app.d8.json',
+      ],
+      tec1g: {},
+    };
+
+    applyTec1gRomArtifactsToLaunchArgs(args, [
+      {
+        id: 'tecm8-monitor',
+        role: 'monitor',
+        sourceFile: '/workspace/roms/tec1g/tecm8/monitor/monitor.asm',
+        outputBin: '/workspace/build/roms/tec1g/tecm8/monitor/monitor.bin',
+        outputDebugMap: '/workspace/build/roms/tec1g/tecm8/monitor/monitor.d8.json',
+        sourceRoot: 'roms/tec1g/tecm8/monitor',
+      },
+    ]);
+
+    expect(args.debugMaps).toEqual([
+      '/workspace/build/roms/tec1g/tecm8/monitor/monitor.d8.json',
+      '/workspace/build/app.d8.json',
+    ]);
+  });
+
+  it('deduplicates generated ROM debug maps before existing maps', () => {
+    const args: LaunchRequestArguments = {
+      debugMaps: ['/workspace/build/app.d8.json'],
+      tec1g: {},
+    };
+
+    applyTec1gRomArtifactsToLaunchArgs(args, [
+      {
+        id: 'tecm8-monitor',
+        role: 'monitor',
+        sourceFile: '/workspace/roms/tec1g/tecm8/monitor/monitor.asm',
+        outputBin: '/workspace/build/roms/tec1g/tecm8/monitor/monitor.bin',
+        outputDebugMap: '/workspace/build/roms/tec1g/tecm8/shared.d8.json',
+        sourceRoot: 'roms/tec1g/tecm8/monitor',
+      },
+      {
+        id: 'tecm8-expansion',
+        role: 'expansion',
+        sourceFile: '/workspace/roms/tec1g/tecm8/expansion/expansion.asm',
+        outputBin: '/workspace/build/roms/tec1g/tecm8/expansion/expansion.bin',
+        outputDebugMap: '/workspace/build/roms/tec1g/tecm8/shared.d8.json',
+        sourceRoot: 'roms/tec1g/tecm8/expansion',
+      },
+    ]);
+
+    expect(args.debugMaps).toEqual([
+      '/workspace/build/roms/tec1g/tecm8/shared.d8.json',
+      '/workspace/build/app.d8.json',
+    ]);
+  });
+
+  it('keeps bundled MON-3 maps when only an expansion artifact is generated', () => {
+    const args: LaunchRequestArguments = {
+      debugMaps: [
+        '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
+        '/workspace/build/app.d8.json',
+      ],
+      tec1g: {},
+    };
+
+    applyTec1gRomArtifactsToLaunchArgs(args, [
+      {
+        id: 'tecm8-expansion',
+        role: 'expansion',
+        sourceFile: '/workspace/roms/tec1g/tecm8/expansion/expansion.asm',
+        outputBin: '/workspace/build/roms/tec1g/tecm8/expansion/expansion.bin',
+        outputDebugMap: '/workspace/build/roms/tec1g/tecm8/expansion/expansion.d8.json',
+        sourceRoot: 'roms/tec1g/tecm8/expansion',
+      },
+    ]);
+
+    expect(args.debugMaps).toEqual([
+      '/workspace/build/roms/tec1g/tecm8/expansion/expansion.d8.json',
+      '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
+      '/workspace/build/app.d8.json',
+    ]);
+  });
+
   it('ignores inactive artifacts during launch', async () => {
     const root = makeTempRoot();
     const backend = fakeBackend();
