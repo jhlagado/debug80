@@ -327,6 +327,205 @@ describe('config-validation', () => {
       const result = validateTec1gConfig({ appStart: -1 });
       expect(result.valid).toBe(false);
     });
+
+    it('should accept phase 2 source-backed monitor and expansion romArtifacts', () => {
+      const result = validateTec1gConfig({
+        romHex: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
+        expansionRomHex: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
+        romArtifacts: [
+          {
+            id: 'tecm8-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/tecm8/monitor/monitor.asm',
+            outputBin: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/monitor/monitor.d8.json',
+            address: 0xc000,
+            size: 0x4000,
+          },
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/tec1g/tecm8/expansion/expansion.asm',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/expansion/expansion.d8.json',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x8000,
+            bankSize: 0x4000,
+            bankCount: 2,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('should reject duplicate active romArtifacts for the same role', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'monitor-a',
+            role: 'monitor',
+            sourceFile: 'roms/a.asm',
+            outputBin: 'build/a.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+          {
+            id: 'monitor-b',
+            role: 'monitor',
+            sourceFile: 'roms/b.asm',
+            outputBin: 'build/b.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[1].role duplicates active monitor artifact monitor-a'],
+      });
+    });
+
+    it('should accept inactive romArtifacts with the same role as an active artifact', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'active-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/active.asm',
+            outputBin: 'build/active.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+          {
+            id: 'future-monitor',
+            role: 'monitor',
+            active: false,
+            sourceFile: 'roms/future.asm',
+            outputBin: 'build/future.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('should reject invalid monitor artifact geometry', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/monitor.asm',
+            outputBin: 'build/monitor.bin',
+            address: 0x8000,
+            size: 0x2000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].address must be 0xc000 for TEC-1G monitor artifacts',
+          'tec1g.romArtifacts[0].size must be 0x4000 for TEC-1G monitor artifacts',
+        ],
+      });
+    });
+
+    it('should reject invalid expansion artifact bank geometry', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/expansion.asm',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x9000,
+            windowSize: 0x2000,
+            imageSize: 0x6000,
+            bankSize: 0x4000,
+            bankCount: 3,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].windowAddress must be 0x8000 for TEC-1G expansion artifacts',
+          'tec1g.romArtifacts[0].windowSize must be 0x4000 for TEC-1G expansion artifacts',
+          'tec1g.romArtifacts[0].imageSize must be a positive multiple of bankSize',
+          'tec1g.romArtifacts[0].bankCount must equal imageSize / bankSize',
+          'tec1g.romArtifacts[0].bankSize must equal windowSize for Phase 2 TEC-1G expansion artifacts',
+        ],
+      });
+    });
+
+    it('should reject romArtifacts that mix source-backed and binary-only fields', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'mixed-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/monitor.asm',
+            binary: 'roms/monitor.bin',
+            outputBin: 'build/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0] source-backed artifacts must not specify binary'],
+      });
+    });
+
+    it('should reject source-backed romArtifacts that specify binary-only debugMap', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'mixed-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/monitor.asm',
+            outputBin: 'build/monitor.bin',
+            debugMap: 'roms/monitor.d8.json',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0] source-backed artifacts must not specify debugMap'],
+      });
+    });
+
+    it('should reject active binary-only romArtifacts during Phase 2', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'monitor-binary',
+            role: 'monitor',
+            binary: 'roms/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0] active binary-only artifacts are deferred for Phase 2'],
+      });
+    });
   });
 
   // ==========================================================================

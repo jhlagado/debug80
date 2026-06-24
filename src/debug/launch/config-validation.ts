@@ -15,6 +15,7 @@ import type { TerminalConfig } from '../session/terminal-types';
 import {
   Tec1PlatformConfig,
   Tec1gPlatformConfig,
+  Tec1gRomArtifactRole,
   SimplePlatformConfig,
 } from '../../platforms/types';
 
@@ -33,6 +34,10 @@ const PORT_MAX = 255;
 /** Valid address range for Z80 */
 const ADDRESS_MIN = 0;
 const ADDRESS_MAX = 0xffff;
+const TEC1G_MONITOR_ADDRESS = 0xc000;
+const TEC1G_MONITOR_SIZE = 0x4000;
+const TEC1G_EXPANSION_WINDOW_ADDRESS = 0x8000;
+const TEC1G_EXPANSION_WINDOW_SIZE = 0x4000;
 
 /** Valid instruction limit range */
 const INSTRUCTION_LIMIT_MIN = 0;
@@ -94,6 +99,18 @@ function validateOptionalInteger(value: unknown, fieldName: string): ValidationR
 
   if (!Number.isInteger(value)) {
     return invalidResult(`${fieldName} must be an integer, got ${value}`);
+  }
+
+  return validResult();
+}
+
+function validateRequiredString(value: unknown, fieldName: string): ValidationResult {
+  if (value === undefined || value === null || value === '') {
+    return invalidResult(`${fieldName} is required`);
+  }
+
+  if (typeof value !== 'string') {
+    return invalidResult(`${fieldName} must be a string, got ${typeof value}`);
   }
 
   return validResult();
@@ -372,6 +389,184 @@ export function validateTec1Config(config: unknown): ValidationResult {
   ]);
 }
 
+function validateTec1gRomArtifacts(value: unknown): ValidationResult {
+  if (value === undefined || value === null) {
+    return validResult();
+  }
+
+  if (!Array.isArray(value)) {
+    return invalidResult(`tec1g.romArtifacts must be an array, got ${typeof value}`);
+  }
+
+  const activeRoles = new Map<Tec1gRomArtifactRole, string>();
+  const results: ValidationResult[] = [];
+
+  value.forEach((artifact, index) => {
+    const fieldName = `tec1g.romArtifacts[${index}]`;
+    const objectResult = validateOptionalObject<Record<string, unknown>>(artifact, fieldName);
+    if (objectResult.result !== undefined) {
+      results.push(objectResult.result);
+      return;
+    }
+
+    const artifactConfig = objectResult.value;
+    const role = artifactConfig.role;
+    const active = artifactConfig.active !== false;
+    results.push(...validateTec1gRomArtifactShape(artifactConfig, fieldName));
+
+    if (role === 'monitor') {
+      results.push(...validateTec1gMonitorArtifactGeometry(artifactConfig, fieldName));
+    } else if (role === 'expansion') {
+      results.push(...validateTec1gExpansionArtifactGeometry(artifactConfig, fieldName));
+    }
+
+    if (active && (role === 'monitor' || role === 'expansion')) {
+      const previousId = activeRoles.get(role);
+      if (previousId !== undefined) {
+        results.push(invalidResult(`${fieldName}.role duplicates active ${role} artifact ${previousId}`));
+      } else {
+        activeRoles.set(role, getArtifactDiagnosticId(artifactConfig, index));
+      }
+    }
+  });
+
+  return mergeResults(results);
+}
+
+function validateTec1gRomArtifactShape(
+  artifact: Record<string, unknown>,
+  fieldName: string
+): ValidationResult[] {
+  const sourceBacked =
+    artifact.sourceFile !== undefined ||
+    artifact.outputBin !== undefined ||
+    artifact.outputDebugMap !== undefined;
+  const binaryOnly = artifact.binary !== undefined || artifact.debugMap !== undefined;
+  const results: ValidationResult[] = [
+    validateRequiredString(artifact.id, `${fieldName}.id`),
+    validateTec1gRomArtifactRole(artifact.role, `${fieldName}.role`),
+    validateBoolean(artifact.active, `${fieldName}.active`),
+    validateBoolean(artifact.build, `${fieldName}.build`),
+  ];
+
+  if (sourceBacked) {
+    results.push(validatePath(artifact.sourceFile, `${fieldName}.sourceFile`, true));
+    results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
+    results.push(validatePath(artifact.outputDebugMap, `${fieldName}.outputDebugMap`));
+    if (artifact.binary !== undefined) {
+      results.push(invalidResult(`${fieldName} source-backed artifacts must not specify binary`));
+    }
+    if (artifact.debugMap !== undefined) {
+      results.push(invalidResult(`${fieldName} source-backed artifacts must not specify debugMap`));
+    }
+  } else if (binaryOnly) {
+    results.push(validatePath(artifact.binary, `${fieldName}.binary`, true));
+    results.push(validatePath(artifact.debugMap, `${fieldName}.debugMap`));
+    if (artifact.active !== false) {
+      results.push(invalidResult(`${fieldName} active binary-only artifacts are deferred for Phase 2`));
+    }
+    if (artifact.sourceFile !== undefined || artifact.outputBin !== undefined) {
+      results.push(
+        invalidResult(`${fieldName} binary-only artifacts must not specify sourceFile or outputBin`)
+      );
+    }
+  } else {
+    results.push(invalidResult(`${fieldName} must specify sourceFile/outputBin or binary`));
+  }
+
+  return results;
+}
+
+function validateTec1gRomArtifactRole(value: unknown, fieldName: string): ValidationResult {
+  if (value === undefined || value === null || value === '') {
+    return invalidResult(`${fieldName} is required`);
+  }
+
+  if (value !== 'monitor' && value !== 'expansion') {
+    return invalidResult(`${fieldName} must be "monitor" or "expansion", got ${String(value)}`);
+  }
+
+  return validResult();
+}
+
+function validateTec1gMonitorArtifactGeometry(
+  artifact: Record<string, unknown>,
+  fieldName: string
+): ValidationResult[] {
+  const results: ValidationResult[] = [
+    validateOptionalInteger(artifact.address, `${fieldName}.address`),
+    validateOptionalInteger(artifact.size, `${fieldName}.size`),
+  ];
+
+  if (artifact.address !== TEC1G_MONITOR_ADDRESS) {
+    results.push(invalidResult(`${fieldName}.address must be 0xc000 for TEC-1G monitor artifacts`));
+  }
+
+  if (artifact.size !== TEC1G_MONITOR_SIZE) {
+    results.push(invalidResult(`${fieldName}.size must be 0x4000 for TEC-1G monitor artifacts`));
+  }
+
+  return results;
+}
+
+function validateTec1gExpansionArtifactGeometry(
+  artifact: Record<string, unknown>,
+  fieldName: string
+): ValidationResult[] {
+  const results: ValidationResult[] = [
+    validateOptionalInteger(artifact.windowAddress, `${fieldName}.windowAddress`),
+    validateOptionalInteger(artifact.windowSize, `${fieldName}.windowSize`),
+    validateOptionalInteger(artifact.imageSize, `${fieldName}.imageSize`),
+    validateOptionalInteger(artifact.bankSize, `${fieldName}.bankSize`),
+    validateOptionalInteger(artifact.bankCount, `${fieldName}.bankCount`),
+  ];
+
+  if (artifact.windowAddress !== TEC1G_EXPANSION_WINDOW_ADDRESS) {
+    results.push(
+      invalidResult(`${fieldName}.windowAddress must be 0x8000 for TEC-1G expansion artifacts`)
+    );
+  }
+
+  if (artifact.windowSize !== TEC1G_EXPANSION_WINDOW_SIZE) {
+    results.push(
+      invalidResult(`${fieldName}.windowSize must be 0x4000 for TEC-1G expansion artifacts`)
+    );
+  }
+
+  if (
+    typeof artifact.imageSize !== 'number' ||
+    typeof artifact.bankSize !== 'number' ||
+    artifact.imageSize <= 0 ||
+    artifact.bankSize <= 0 ||
+    artifact.imageSize % artifact.bankSize !== 0
+  ) {
+    results.push(invalidResult(`${fieldName}.imageSize must be a positive multiple of bankSize`));
+  }
+
+  if (
+    typeof artifact.imageSize === 'number' &&
+    typeof artifact.bankSize === 'number' &&
+    typeof artifact.bankCount === 'number' &&
+    artifact.bankCount !== artifact.imageSize / artifact.bankSize
+  ) {
+    results.push(invalidResult(`${fieldName}.bankCount must equal imageSize / bankSize`));
+  }
+
+  if (artifact.bankSize !== artifact.windowSize) {
+    results.push(
+      invalidResult(
+        `${fieldName}.bankSize must equal windowSize for Phase 2 TEC-1G expansion artifacts`
+      )
+    );
+  }
+
+  return results;
+}
+
+function getArtifactDiagnosticId(artifact: Record<string, unknown>, index: number): string {
+  return typeof artifact.id === 'string' && artifact.id !== '' ? artifact.id : `#${index}`;
+}
+
 /**
  * Validates TEC-1G platform configuration.
  * @param config - TEC-1G config to validate
@@ -391,6 +586,7 @@ export function validateTec1gConfig(config: unknown): ValidationResult {
       : validResult(),
     validatePath(tc.romHex, 'tec1g.romHex'),
     validatePath(tc.expansionRomHex, 'tec1g.expansionRomHex'),
+    validateTec1gRomArtifacts(tc.romArtifacts),
     validateAddress(tc.appStart, 'tec1g.appStart'),
     validateAddress(tc.entry, 'tec1g.entry'),
   ]);
