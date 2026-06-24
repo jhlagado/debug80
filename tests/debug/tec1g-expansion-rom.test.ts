@@ -23,6 +23,7 @@ describe('TEC-1G expansion ROM boot detection', () => {
 
       expect(image.bootEntry).toBe(0x8000);
       expect(image.memory[0x8000]).toBe(0xc3);
+      expect(image.banks[0]?.[0]).toBe(0xc3);
     });
   });
 
@@ -33,6 +34,75 @@ describe('TEC-1G expansion ROM boot detection', () => {
 
       const image = loadTec1gExpansionRomImage(expansionRomPath);
 
+      expect(image.bootEntry).toBeNull();
+    });
+  });
+
+  it('loads a 32K binary as two explicit 16K banks', () => {
+    withTempDir((dir) => {
+      const expansionRomPath = path.join(dir, 'expansion-32k.bin');
+      const bank0 = Buffer.alloc(0x4000, 0x11);
+      const bank1 = Buffer.alloc(0x4000, 0x22);
+      fs.writeFileSync(expansionRomPath, Buffer.concat([bank0, bank1]));
+
+      const image = loadTec1gExpansionRomImage(expansionRomPath);
+
+      expect(image.windowAddress).toBe(0x8000);
+      expect(image.windowSize).toBe(0x4000);
+      expect(image.bankSize).toBe(0x4000);
+      expect(image.bankCount).toBe(2);
+      expect(image.initialBank).toBe(0);
+      expect(image.banks).toHaveLength(2);
+      expect(image.banks[0]?.[0]).toBe(0x11);
+      expect(image.banks[1]?.[0]).toBe(0x22);
+      expect(image.memory[0x8000]).toBe(0x11);
+      expect(image.memory[0xc000]).toBe(0);
+    });
+  });
+
+  it('limits legacy binary expansion ROMs to the two supported banks', () => {
+    withTempDir((dir) => {
+      const expansionRomPath = path.join(dir, 'expansion-48k.bin');
+      const bank0 = Buffer.alloc(0x4000, 0x11);
+      const bank1 = Buffer.alloc(0x4000, 0x22);
+      const unsupportedBank = Buffer.alloc(0x4000, 0x33);
+      fs.writeFileSync(expansionRomPath, Buffer.concat([bank0, bank1, unsupportedBank]));
+
+      const image = loadTec1gExpansionRomImage(expansionRomPath);
+
+      expect(image.bankCount).toBe(2);
+      expect(image.banks).toHaveLength(2);
+      expect(image.banks[0]?.[0]).toBe(0x11);
+      expect(image.banks[1]?.[0]).toBe(0x22);
+    });
+  });
+
+  it('does not boot from payload that exists only in a non-initial bank', () => {
+    withTempDir((dir) => {
+      const expansionRomPath = path.join(dir, 'bank1-only.bin');
+      const bank0 = Buffer.alloc(0x4000, 0x00);
+      const bank1 = Buffer.alloc(0x4000, 0x22);
+      fs.writeFileSync(expansionRomPath, Buffer.concat([bank0, bank1]));
+
+      const image = loadTec1gExpansionRomImage(expansionRomPath);
+
+      expect(image.bootEntry).toBeNull();
+      expect(image.banks[1]?.[0]).toBe(0x22);
+    });
+  });
+
+  it('loads Intel HEX expansion banks without booting from a non-initial bank', () => {
+    withTempDir((dir) => {
+      const expansionRomPath = path.join(dir, 'bank1-only.hex');
+      fs.writeFileSync(expansionRomPath, ':01C00000221D\n:00000001FF\n');
+
+      const image = loadTec1gExpansionRomImage(expansionRomPath);
+
+      expect(image.bankCount).toBe(2);
+      expect(image.banks[0]?.[0]).toBe(0);
+      expect(image.banks[1]?.[0]).toBe(0x22);
+      expect(image.memory[0x8000]).toBe(0);
+      expect(image.memory[0xc000]).toBe(0);
       expect(image.bootEntry).toBeNull();
     });
   });

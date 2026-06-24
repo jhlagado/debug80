@@ -216,7 +216,7 @@ function finalizeTec1gRuntime(
   context.runtime.hardware.forceMemWrite = hooks.forceMemWrite;
   context.runtime.hardware.isMemoryWritable = hooks.isMemoryWritable;
   if (assets.expansionRomImage) {
-    applyExpansionRomMemory(hooks.expandBanks, assets.expansionRomImage.memory);
+    applyExpansionRomMemory(hooks.expandBanks, assets.expansionRomImage);
     tec1gRuntime.setCartridgePresent(true);
     return;
   }

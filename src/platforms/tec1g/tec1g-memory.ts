@@ -25,10 +25,18 @@ export type Tec1gMemoryHooks = {
   isMemoryWritable: (addr: number) => boolean;
 };
 
+export type Tec1gExpansionRomMemoryImage = {
+  banks: Uint8Array[];
+  memory: Uint8Array;
+};
+
 /**
  * Copies expansion ROM data into the active TEC-1G expand banks.
  */
-export function applyExpansionRomMemory(expandBanks: Uint8Array[], memory: Uint8Array): void {
+export function applyExpansionRomMemory(
+  expandBanks: Uint8Array[],
+  image: Uint8Array | Tec1gExpansionRomMemoryImage
+): void {
   const bank0 = expandBanks[0];
   const bank1 = expandBanks[1];
   if (!bank0 || !bank1) {
@@ -36,10 +44,25 @@ export function applyExpansionRomMemory(expandBanks: Uint8Array[], memory: Uint8
   }
   bank0.fill(0x00);
   bank1.fill(0x00);
-  bank0.set(memory.slice(TEC1G_EXPAND_START, TEC1G_EXPAND_END + 1));
-  bank1.set(
-    memory.slice(TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2)
-  );
+  if (image instanceof Uint8Array) {
+    bank0.set(image.slice(TEC1G_EXPAND_START, TEC1G_EXPAND_END + 1));
+    bank1.set(
+      image.slice(TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2)
+    );
+    return;
+  }
+  copyExpansionBank(bank0, image.banks[0]);
+  copyExpansionBank(bank1, image.banks[1]);
+}
+
+/**
+ * Copies a source bank into an emulator expansion bank.
+ */
+function copyExpansionBank(target: Uint8Array, source: Uint8Array | undefined): void {
+  if (source === undefined) {
+    return;
+  }
+  target.set(source.slice(0, TEC1G_EXPAND_SIZE));
 }
 
 /**

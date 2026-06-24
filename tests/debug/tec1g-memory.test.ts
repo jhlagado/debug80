@@ -84,4 +84,28 @@ describe('TEC-1G expand bank switching', () => {
     state.bankA14 = true;
     expect(hooks.memRead(0x8000)).toBe(0x22);
   });
+
+  it('loads explicit expansion ROM banks without requiring bank 1 in monitor memory', () => {
+    const baseMemory = new Uint8Array(0x10000);
+    const state = {
+      shadowEnabled: false,
+      protectEnabled: false,
+      expandEnabled: true,
+      bankA14: false,
+    };
+    const hooks = createTec1gMemoryHooks(baseMemory, [], state);
+    const memory = new Uint8Array(0x10000);
+    memory[0x8000] = 0x11;
+    const bank0 = new Uint8Array(0x4000);
+    const bank1 = new Uint8Array(0x4000);
+    bank0[0] = 0x11;
+    bank1[0] = 0x22;
+
+    applyExpansionRomMemory(hooks.expandBanks, { banks: [bank0, bank1], memory });
+
+    expect(hooks.memRead(0x8000)).toBe(0x11);
+    expect(memory[0xc000]).toBe(0);
+    state.bankA14 = true;
+    expect(hooks.memRead(0x8000)).toBe(0x22);
+  });
 });

@@ -332,6 +332,7 @@ describe('platform providers', () => {
     const assets = {
       expansionRomImage: {
         bootEntry: 0x3456,
+        banks: [new Uint8Array([1]), new Uint8Array([2])],
         memory: new Uint8Array([1, 2, 3]),
       },
     };
@@ -339,6 +340,15 @@ describe('platform providers', () => {
     expect(provider.payload).toEqual({ id: 'tec1g' });
     expect(provider.tec1gConfig?.expansionRomHex).toBe('expansion.bin');
     expect(provider.resolveEntry(assets)).toBe(0x3456);
+    expect(
+      provider.resolveEntry({
+        expansionRomImage: {
+          bootEntry: null,
+          banks: [new Uint8Array(0x4000), new Uint8Array([2])],
+          memory: new Uint8Array(0x10000),
+        },
+      })
+    ).toBe(0x2000);
 
     provider.finalizeRuntime?.({
       runtime,
@@ -354,7 +364,7 @@ describe('platform providers', () => {
     );
     expect(setTms9918Active).toHaveBeenCalledWith(true);
     expect(setTms9918VideoStandard).toHaveBeenCalledWith('ntsc');
-    expect(applyExpansionRomMemory).toHaveBeenCalledWith(['bank'], assets.expansionRomImage.memory);
+    expect(applyExpansionRomMemory).toHaveBeenCalledWith(['bank'], assets.expansionRomImage);
     expect(setCartridgePresent).toHaveBeenCalledWith(true);
   });
 });
