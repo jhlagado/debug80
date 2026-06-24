@@ -2,6 +2,7 @@
 
 ## 0.1.27
 
+- Updated AZM to `0.2.11`.
 - Added TEC-1G joystick input handling, request routing, and webview joystick
   controls.
 - Added TEC-1G keyboard focus ownership so matrix keyboard, joystick, and
