@@ -109,7 +109,7 @@ Config block key: `tec1g`
 
 ### `tec1g.romArtifacts`
 
-`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation.
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. That build path forces AZM `registerContracts` off, suppresses register-report output, pads the generated monitor or expansion binary to its configured image size, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
 | Field            | Type      | Required | Description                                                                  |
 | ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |

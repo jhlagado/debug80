@@ -406,7 +406,11 @@ The TEC-1G supports optional expansion ROM images and a ROM-first launch path. `
 3. generated D8 maps are prepended to `debugMaps`
 4. each artifact source directory is appended to `sourceRoots`
 
+That ROM-artifact assembly path does not inherit app-scoped AZM register-contract settings. `buildTec1gRomArtifactsIfRequested()` forces `registerContracts: 'off'` and `emitRegisterReport: false` for both the HEX and BIN passes, then pads the generated monitor or expansion binary to the configured image size before launch continues.
+
 The provider's `loadAssets()` method then reads the resolved `tec1gConfig.expansionRomHex`, parses it, and returns a `Tec1gExpansionRomImage` with its bank list, projected memory image, and boot entry.
+
+`createTec1gPlatformProvider()` also treats an active monitor artifact as the authoritative owner of launch entry. When `args.tec1g.romArtifacts` contains an active monitor entry, `resolveEntry()` returns configured `tec1g.entry` even if the loaded expansion image carries a boot entry. Expansion ROM boot entries are used only when no active monitor artifact owns the session.
 
 `finalizeRuntime()` runs after the Z80 runtime is created:
 

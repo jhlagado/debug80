@@ -205,7 +205,7 @@ interface AssemblerBackend {
 }
 ```
 
-`assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. `assembleBin()` is optional — the simple platform uses it to produce raw binary output for custom memory regions (configured via `binFrom`/`binTo`).
+`assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. `assembleBin()` is optional — the simple platform uses it to produce raw binary output for custom memory regions (configured via `binFrom`/`binTo`), and the TEC-1G ROM-artifact path uses it to materialize monitor or expansion `.bin` images with fixed address windows.
 
 ### The AZM invocation
 
@@ -228,6 +228,8 @@ compile(asmPath, {
 ```
 
 The successful path writes the HEX output, BIN output when present, a native D8 map, and any requested register-contract artifacts beside the HEX artifact. Register-contract reports are written as `.regcontracts.txt`; inferred interfaces are written as `.asmi`. Debug80 no longer writes placeholder listings or generated source-map cache files.
+
+TEC-1G ROM-artifact assembly is a narrower path inside the same AZM backend. `buildTec1gRomArtifactsIfRequested()` assembles each active source-backed monitor or expansion artifact before platform resolution, always overrides AZM options to `registerContracts: 'off'` and `emitRegisterReport: false`, and then pads the generated `.bin` to the configured monitor `size` or expansion `imageSize`. This keeps ROM artifacts deterministic and prevents the app launch's register-contract mode from changing monitor or cartridge builds.
 
 The backend validates AZM's returned artifacts before treating assembly as successful. A compile result without a HEX artifact, without a D8 source map, or with a HEX artifact that contains no Intel HEX data records is reported as assembly failure. This prevents an empty or unusable HEX output from being written and then loaded as if it were a valid target.
 
@@ -403,7 +405,7 @@ const platformAssets = platformProvider.loadAssets?.({ baseDir, logger, resolveR
 const entry = platformProvider.resolveEntry(platformAssets);
 ```
 
-`loadAssets()` loads platform-specific data files (font ROMs, GLCD data). `resolveEntry()` determines the program entry point — for TEC-1/TEC-1G, this might be the monitor ROM's entry rather than the user program's entry, depending on configuration.
+`loadAssets()` loads platform-specific data files (font ROMs, GLCD data). `resolveEntry()` determines the program entry point. On TEC-1G, expansion ROM assets can still contribute a boot entry when no monitor artifact owns the launch, but an active monitor artifact keeps execution on configured `tec1g.entry` so the project-owned monitor remains authoritative.
 
 After the runtime is created:
 

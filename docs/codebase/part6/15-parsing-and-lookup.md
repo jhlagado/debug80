@@ -35,6 +35,8 @@ It then parses and validates the file with `parseD8DebugMap()` and `validateD8Se
 
 `validateD8Segments()` performs quality checks and logs warnings as `D8 quality warning` messages. Warnings do not abort mapping.
 
+The same loader also accepts explicit auxiliary platform ROM maps through `auxiliaryDebugMaps`. For those auxiliary maps, `resolveAuxiliaryDebugMapFiles()` first asks the mapping service to resolve each project-relative file key through the workspace root, then falls back to the map file's own directory. This matters for generated TEC-1G monitor maps whose `.d8.json` lives under `build/` while the source file key still points at `roms/...` under the project root.
+
 ---
 
 ## D8 Conversion

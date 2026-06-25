@@ -374,6 +374,8 @@ interface Tec1gPlatformConfig extends Tec1PlatformConfig {
 - `bankCount === imageSize / bankSize` for expansion images
 - active artifacts must be source-backed; binary-only entries are accepted only when `active: false`
 
+At launch, `buildTec1gRomArtifactsIfRequested()` in `src/debug/launch/tec1g-rom-artifact-build.ts` assembles each active source-backed artifact with AZM before runtime creation. That path always forces `registerContracts: 'off'` and `emitRegisterReport: false` for ROM artifacts, even when the main app launch enables register-contract analysis, so monitor and expansion ROM builds do not inherit app-scoped contract enforcement or report generation. After assembly, Debug80 pads both monitor and expansion binaries to the configured image size before mutating launch args and source-map inputs.
+
 The `uiVisibility` field is legacy configuration. The current TEC-1G panel keeps the main hardware surfaces visible and organizes them into accordion sections rather than expecting users to toggle sections on and off. Older configs that contain this field remain readable, but new project configuration should not rely on it for the normal front-panel layout.
 
 ---
