@@ -64,6 +64,7 @@ describe('TEC-1G ROM artifact builds', () => {
       sendEvent: () => undefined,
     });
 
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/monitor/monitor.bin')).size).toBe(0x4000);
     expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.bin')).size).toBe(0x8000);
     expect(backend.assemble).toHaveBeenCalledTimes(2);
     expect(backend.assemble).toHaveBeenNthCalledWith(

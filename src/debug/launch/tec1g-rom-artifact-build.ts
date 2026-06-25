@@ -124,7 +124,7 @@ function normalizeBuiltRomArtifactBinary(
       error: `ROM artifact ${artifact.id} binary is ${bytes.length} bytes; limit is ${targetSize}`,
     });
   }
-  if (artifact.role === 'expansion' && bytes.length < targetSize) {
+  if (bytes.length < targetSize) {
     const padded = Buffer.alloc(targetSize);
     bytes.copy(padded);
     fs.writeFileSync(outputBin, padded);
