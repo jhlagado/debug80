@@ -43,7 +43,7 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
       asmPath: sourceFile,
       hexPath,
       sourceRoot: options.baseDir,
-      ...(options.args.azm !== undefined ? { azm: options.args.azm } : {}),
+      azm: romArtifactAzmOptions(options.args),
       onOutput: (message) => {
         emitConsoleOutput(options.sendEvent, message, { newline: false });
       },
@@ -67,7 +67,7 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
       hexPath,
       ...romArtifactBinaryRange(artifact),
       sourceRoot: options.baseDir,
-      ...(options.args.azm !== undefined ? { azm: options.args.azm } : {}),
+      azm: romArtifactAzmOptions(options.args),
       onOutput: (message) => {
         emitConsoleOutput(options.sendEvent, message, { newline: false });
       },
@@ -104,6 +104,14 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
   }
 
   return built;
+}
+
+function romArtifactAzmOptions(args: LaunchRequestArguments): NonNullable<LaunchRequestArguments['azm']> {
+  return {
+    ...(args.azm ?? {}),
+    registerContracts: 'off',
+    emitRegisterReport: false,
+  };
 }
 
 /**

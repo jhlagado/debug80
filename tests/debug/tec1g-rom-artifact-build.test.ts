@@ -112,6 +112,54 @@ describe('TEC-1G ROM artifact builds', () => {
     ]);
   });
 
+  it('does not apply app register-contract checks to source-backed ROM artifacts', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      azm: {
+        registerContracts: 'strict',
+        registerContractsProfile: 'mon3',
+      },
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'tecm8-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/tecm8/monitor/monitor.asm',
+            outputBin: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/monitor/monitor.d8.json',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      },
+    };
+
+    await buildTec1gRomArtifactsIfRequested({
+      baseDir: root,
+      args,
+      backendFactory: () => backend,
+      sendEvent: () => undefined,
+    });
+
+    expect(backend.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({
+        azm: expect.objectContaining({
+          registerContracts: 'off',
+          emitRegisterReport: false,
+        }),
+      })
+    );
+    expect(backend.assembleBin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        azm: expect.objectContaining({
+          registerContracts: 'off',
+          emitRegisterReport: false,
+        }),
+      })
+    );
+  });
+
   it('suppresses bundled MON-3 maps when a generated monitor artifact owns the monitor role', () => {
     const args: LaunchRequestArguments = {
       debugMaps: [
