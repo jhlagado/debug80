@@ -126,7 +126,9 @@ export function buildMappingFromDebugMap(options: {
       `Debug80: Source map loaded: ${formatMapDisplayPath(auxiliaryPath, service)} (${getDebugMapGeneratorLabel(auxiliaryMap)}, platform ROM).`
     );
     const auxiliaryMapping = buildMappingFromD8DebugMap(
-      absolutizeRelativeDebugMapFiles(auxiliaryMap, auxiliaryPath)
+      resolveAuxiliaryDebugMapFiles(auxiliaryMap, auxiliaryPath, (file) =>
+        service.resolveMappedPath(file)
+      )
     );
     mapping.segments.push(...auxiliaryMapping.segments);
     mapping.anchors.push(...auxiliaryMapping.anchors);
@@ -189,14 +191,18 @@ function countMappedFiles(segments: SourceMapSegment[]): number {
   return fileSet.size;
 }
 
-function absolutizeRelativeDebugMapFiles(map: D8DebugMap, mapPath: string): D8DebugMap {
+function resolveAuxiliaryDebugMapFiles(
+  map: D8DebugMap,
+  mapPath: string,
+  resolveMappedPath: (file: string) => string | undefined
+): D8DebugMap {
   const baseDir = path.dirname(mapPath);
   const files: D8DebugMap['files'] = {};
   for (const [fileKey, entry] of Object.entries(map.files)) {
     const absoluteKey =
       path.isAbsolute(fileKey) || fileKey.startsWith('file:')
         ? fileKey
-        : path.join(baseDir, fileKey);
+        : (resolveMappedPath(fileKey) ?? path.join(baseDir, fileKey));
     files[absoluteKey] = entry;
   }
   return { ...map, files };

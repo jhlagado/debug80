@@ -367,4 +367,34 @@ describe('platform providers', () => {
     expect(applyExpansionRomMemory).toHaveBeenCalledWith(['bank'], assets.expansionRomImage);
     expect(setCartridgePresent).toHaveBeenCalledWith(true);
   });
+
+  it('prefers the configured TEC-1G entry when an active monitor ROM artifact is present', async () => {
+    const provider = await resolvePlatformProvider({
+      platform: 'tec1g',
+      tec1g: {
+        entry: 0x0000,
+        expansionRomHex: 'expansion.bin',
+        romArtifacts: [
+          {
+            id: 'tecm8-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/tecm8/monitor/monitor.asm',
+            outputBin: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      },
+    });
+
+    expect(
+      provider.resolveEntry({
+        expansionRomImage: {
+          bootEntry: 0x8000,
+          banks: [new Uint8Array([1]), new Uint8Array([2])],
+          memory: new Uint8Array([1, 2, 3]),
+        },
+      })
+    ).toBe(0x0000);
+  });
 });

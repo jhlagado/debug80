@@ -305,6 +305,36 @@ describe('mapping-service', () => {
     ).toBe(true);
   });
 
+  it('resolves project-relative auxiliary ROM map files through the project root before the map directory', () => {
+    const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
+    const auxiliaryMapPath = path.join(
+      dir,
+      'build',
+      'roms',
+      'tec1g',
+      'tecm8',
+      'monitor',
+      'monitor.d8.json'
+    );
+    const monitorSourceRel = path.join('roms', 'tec1g', 'tecm8', 'monitor', 'monitor.asm');
+    const monitorSource = path.join(dir, monitorSourceRel);
+
+    writeFile(monitorSource, 'BOOT:\n  JP BOOT\n');
+    writeFile(auxiliaryMapPath, JSON.stringify(nativeMapFor(monitorSourceRel, 2), null, 2));
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      auxiliaryDebugMaps: [auxiliaryMapPath],
+      service: makeService(dir, mapPath, logs),
+    });
+
+    expect(result.mapping.segments.some((seg) => seg.loc.file === monitorSource)).toBe(true);
+    expect(resolveLocation(result.index, monitorSource, 2)).toEqual([0x2000]);
+  });
+
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
     const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
     const auxiliaryMapPath = path.join(dir, 'bundle', 'mon3', 'mon3.d8.json');

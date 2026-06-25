@@ -28,6 +28,7 @@ import type {
   PlatformRuntimeFinalizeContext,
   ResolvedPlatformProvider,
 } from '../provider';
+import type { Tec1gRomArtifactConfig } from '../types';
 import { normalizeTec1gConfig } from './runtime';
 
 type Tec1gPlatformAssets = {
@@ -223,6 +224,13 @@ function finalizeTec1gRuntime(
   tec1gRuntime.setCartridgePresent(false);
 }
 
+/** Returns whether launch configuration declares a project-owned active monitor ROM. */
+function hasActiveMonitorRomArtifact(artifacts: Tec1gRomArtifactConfig[] | undefined): boolean {
+  return (artifacts ?? []).some(
+    (artifact) => artifact.active !== false && artifact.role === 'monitor'
+  );
+}
+
 /**
  * Creates the debug adapter provider for TEC-1G launches.
  */
@@ -230,6 +238,7 @@ export function createTec1gPlatformProvider(
   args: LaunchRequestArguments
 ): ResolvedPlatformProvider {
   const tec1gConfig = normalizeTec1gConfig(args.tec1g);
+  const monitorRomArtifactActive = hasActiveMonitorRomArtifact(args.tec1g?.romArtifacts);
   return {
     id: 'tec1g',
     payload: { id: 'tec1g' },
@@ -252,8 +261,10 @@ export function createTec1gPlatformProvider(
     loadAssets: (context): Tec1gPlatformAssets =>
       loadTec1gAssets(tec1gConfig.expansionRomHex, context),
     resolveEntry: (assets): number | undefined =>
-      (assets as Tec1gPlatformAssets | undefined)?.expansionRomImage?.bootEntry ??
-      tec1gConfig.entry,
+      monitorRomArtifactActive
+        ? tec1gConfig.entry
+        : ((assets as Tec1gPlatformAssets | undefined)?.expansionRomImage?.bootEntry ??
+          tec1gConfig.entry),
     finalizeRuntime: (context): void => finalizeTec1gRuntime(tec1gConfig, context),
   };
 }

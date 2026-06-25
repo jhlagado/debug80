@@ -18,6 +18,7 @@ import {
 import { SourceStateManager } from '../../src/debug/mapping/source-state-manager';
 import { PlatformRegistry } from '../../src/debug/session/platform-registry';
 import { createSessionState } from '../../src/debug/session/session-state';
+import { findSegmentForAddress } from '../../src/mapping/source-map';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 import type { Logger } from '../../src/util/logger';
 
@@ -249,7 +250,12 @@ describe('launch-sequence', () => {
     const artifacts = await buildLaunchSession(args, context);
 
     expect(artifacts.platform).toBe('tec1g');
-    expect(artifacts.runtime.getPC()).toBe(0x8000);
+    expect(artifacts.runtime.getPC()).toBe(0x0000);
+    const entrySegment = findSegmentForAddress(artifacts.mappingIndex, 0x0000);
+    expect(entrySegment?.loc.file).toBe(
+      fs.realpathSync(path.join(root, 'roms', 'tec1g', 'tecm8', 'monitor', 'monitor.asm'))
+    );
+    expect(entrySegment?.loc.line).toBe(3);
     expect(args.tec1g?.romHex).toBe(
       path.join(root, 'build', 'roms', 'tec1g', 'tecm8', 'monitor', 'monitor.bin')
     );
