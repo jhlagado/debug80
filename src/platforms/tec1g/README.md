@@ -14,12 +14,14 @@ external Debug80 manual at https://debug80.com/.
 - TMS9918/TMS9929 video card on fixed ports 0xBE/0xBF, attached while the
   TMS9918 Video accordion is open.
 - RTC (DS1302) and SD SPI (0xFC/0xFD) when enabled in config.
+- SYS_CTRL bits 3-6 decoded as the Memory Expansion bank field. Bit 3 is also
+  the legacy low/high page select when the upper three bank bits are zero.
 
 ## Not yet emulated
 
+- Per-bank expansion roles for EPROM programmer, cartridge, RAM, and shadowed
+  RAM/ROM overlays.
 - Cartridge boot entry uses CART flag (MON-3 style) and maps payload into expansion banks.
-- SYS_CTRL bits 3-6: latched as the future Memory Expansion bank field; bit 3 is also the
-  currently active 16K expansion-bank select.
 - SYS_INPUT bits 4 (RKEY) and 5 (GIMP): state exposed but no hardware trigger wired.
 - LCD entry mode, display on/off, cursor shift, function set, CGRAM.
 
@@ -130,9 +132,10 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 - Shadow mirrors ROM into 0x0000-0x07FF for legacy monitors; writes go to RAM.
 - Protect makes 0x4000-0x7FFF read-only.
 - Expand exposes a banked 16K window at 0x8000-0xBFFF.
-- The banked window supports nine 16K slots: two legacy expand pages plus seven
-  additional expansion slots. SYS_CTRL bits 3-6 are decoded as the memory
-  expansion bank field; bit 3 remains the legacy A14 low/high page indicator.
+- The banked window supports two legacy 16K expand pages plus seven additional
+  16K expansion windows. SYS_CTRL bits 3-6 are decoded as a mode field:
+  upper-three value 0 preserves legacy two-page behavior; upper-three values
+  1-7 select the additional windows.
 
 ## ROMs and config
 

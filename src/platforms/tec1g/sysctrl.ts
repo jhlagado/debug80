@@ -16,13 +16,58 @@ export type Tec1gSysCtrlState = {
   expandEnabled: boolean;
   /** Expansion bank A14 (bit 3) - bank select for expansion window */
   bankA14: boolean;
-  /** Future memory expansion bank select bits (bits 3-6, bit 3 is also E_A14). */
+  /** Memory expansion bank select bits (bits 3-6, bit 3 is also E_A14). */
   memoryExpansionBankBits: [boolean, boolean, boolean, boolean];
-  /** Future memory expansion bank value from bits 3-6. */
+  /** Memory expansion bank value from bits 3-6. */
   memoryExpansionBankValue: number;
+  /** Memory expansion decode mode. */
+  memoryExpansionMode: Tec1gMemoryExpansionMode;
+  /** Legacy two-page expand bank selected by memory expansion bit 0. */
+  memoryExpansionLegacyBank: 0 | 1;
+  /** Extended expansion window selected by memory expansion bits 1-3. */
+  memoryExpansionExtendedWindow: number | null;
+  /** Physical expansion backing bank selected by the decoded expansion mode. */
+  memoryExpansionPhysicalBank: number;
   /** Caps lock (bit 7) */
   capsLock: boolean;
 };
+
+export type Tec1gMemoryExpansionMode = 'legacy' | 'extended';
+
+export type Tec1gMemoryExpansionDecode = {
+  mode: Tec1gMemoryExpansionMode;
+  legacyBank: 0 | 1;
+  extendedWindow: number | null;
+  physicalBank: number;
+};
+
+/**
+ * Decodes the four-bit TEC-1G memory expansion bank field.
+ *
+ * The low bit preserves legacy two-page expand behavior. The upper three bits
+ * select the extension group: zero means legacy mode; values 1-7 select seven
+ * additional 16K expansion windows.
+ */
+export function decodeMemoryExpansionBank(value: number): Tec1gMemoryExpansionDecode {
+  const bankValue = value & 0x0f;
+  const legacyBank = (bankValue & 0x01) as 0 | 1;
+  const upperSelector = bankValue >> 1;
+  if (upperSelector === 0) {
+    return {
+      mode: 'legacy',
+      legacyBank,
+      extendedWindow: null,
+      physicalBank: legacyBank,
+    };
+  }
+  const extendedWindow = upperSelector - 1;
+  return {
+    mode: 'extended',
+    legacyBank,
+    extendedWindow,
+    physicalBank: 2 + extendedWindow,
+  };
+}
 
 /**
  * Decodes the TEC-1G system control register value.
@@ -43,6 +88,7 @@ export type Tec1gSysCtrlState = {
 export const decodeSysCtrl = (value: number): Tec1gSysCtrlState => {
   const masked = value & 0xff;
   const memoryExpansionBankValue = (masked >> 3) & 0x0f;
+  const memoryExpansion = decodeMemoryExpansionBank(memoryExpansionBankValue);
   return {
     shadowEnabled: (masked & 0x01) === 0,
     protectEnabled: (masked & 0x02) !== 0,
@@ -55,6 +101,10 @@ export const decodeSysCtrl = (value: number): Tec1gSysCtrlState => {
       (masked & 0x40) !== 0,
     ],
     memoryExpansionBankValue,
+    memoryExpansionMode: memoryExpansion.mode,
+    memoryExpansionLegacyBank: memoryExpansion.legacyBank,
+    memoryExpansionExtendedWindow: memoryExpansion.extendedWindow,
+    memoryExpansionPhysicalBank: memoryExpansion.physicalBank,
     capsLock: (masked & 0x80) !== 0,
   };
 };

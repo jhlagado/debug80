@@ -91,6 +91,10 @@ export function resetTec1gRuntimeState(
   system.expandEnabled = decoded.expandEnabled;
   system.bankA14 = decoded.bankA14;
   system.memoryExpansionBankValue = decoded.memoryExpansionBankValue;
+  system.memoryExpansionMode = decoded.memoryExpansionMode;
+  system.memoryExpansionLegacyBank = decoded.memoryExpansionLegacyBank;
+  system.memoryExpansionExtendedWindow = decoded.memoryExpansionExtendedWindow;
+  system.memoryExpansionPhysicalBank = decoded.memoryExpansionPhysicalBank;
   system.capsLock = decoded.capsLock;
   input.shiftKeyActive = false;
   input.rawKeyActive = false;

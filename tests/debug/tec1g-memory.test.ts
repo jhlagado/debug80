@@ -113,43 +113,52 @@ describe('TEC-1G expand bank switching', () => {
     expect(hooks.memRead(0x8000)).toBe(0x22);
   });
 
-  it('selects additional expansion banks from the decoded memory expansion value', () => {
+  it('uses the upper bank selector for extended expansion windows', () => {
     const baseMemory = new Uint8Array(0x10000);
     const state = {
       shadowEnabled: false,
       protectEnabled: false,
       expandEnabled: true,
       bankA14: false,
-      memoryExpansionBankValue: 8,
+      memoryExpansionBankValue: 2,
+      memoryExpansionPhysicalBank: 2,
+    };
+    const hooks = createTec1gMemoryHooks(baseMemory, [], state);
+
+    hooks.memWrite(0x8000, 0x44);
+    state.memoryExpansionBankValue = 3;
+    state.memoryExpansionPhysicalBank = 2;
+    expect(hooks.memRead(0x8000)).toBe(0x44);
+
+    state.memoryExpansionBankValue = 0;
+    state.memoryExpansionPhysicalBank = 0;
+    hooks.memWrite(0x8000, 0x11);
+
+    expect(hooks.memRead(0x8000)).toBe(0x11);
+    state.memoryExpansionBankValue = 2;
+    state.memoryExpansionPhysicalBank = 2;
+    expect(hooks.memRead(0x8000)).toBe(0x44);
+  });
+
+  it('maps the highest decoded bank value to the final extended window', () => {
+    const baseMemory = new Uint8Array(0x10000);
+    const state = {
+      shadowEnabled: false,
+      protectEnabled: false,
+      expandEnabled: true,
+      bankA14: false,
+      memoryExpansionBankValue: 15,
+      memoryExpansionPhysicalBank: 8,
     };
     const hooks = createTec1gMemoryHooks(baseMemory, [], state);
 
     hooks.memWrite(0x8000, 0x88);
     state.memoryExpansionBankValue = 0;
-    hooks.memWrite(0x8000, 0x11);
-
-    expect(hooks.memRead(0x8000)).toBe(0x11);
-    state.memoryExpansionBankValue = 8;
-    expect(hooks.memRead(0x8000)).toBe(0x88);
-  });
-
-  it('does not alias unsupported expansion bank values onto slot 8', () => {
-    const baseMemory = new Uint8Array(0x10000);
-    const state = {
-      shadowEnabled: false,
-      protectEnabled: false,
-      expandEnabled: true,
-      bankA14: false,
-      memoryExpansionBankValue: 8,
-    };
-    const hooks = createTec1gMemoryHooks(baseMemory, [], state);
-
-    hooks.memWrite(0x8000, 0x88);
-    state.memoryExpansionBankValue = 15;
-    hooks.memWrite(0x8000, 0xff);
+    state.memoryExpansionPhysicalBank = 0;
 
     expect(hooks.memRead(0x8000)).toBe(0x00);
-    state.memoryExpansionBankValue = 8;
+    state.memoryExpansionBankValue = 15;
+    state.memoryExpansionPhysicalBank = 8;
     expect(hooks.memRead(0x8000)).toBe(0x88);
   });
 
@@ -166,7 +175,7 @@ describe('TEC-1G expand bank switching', () => {
         protectEnabled: false,
         expandEnabled: true,
         bankA14: false,
-        memoryExpansionBankValue: 8,
+        memoryExpansionBankValue: 15,
       };
       const hooks = createTec1gMemoryHooks(baseMemory, [], state);
 

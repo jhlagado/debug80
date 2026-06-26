@@ -3,6 +3,7 @@
  */
 
 import type { Tec1gState } from './runtime';
+import { decodeMemoryExpansionBank } from './sysctrl';
 import {
   ADDR_MASK,
   BYTE_MASK,
@@ -31,6 +32,7 @@ type Tec1gExpansionBankState = Pick<
   'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'
 > & {
   memoryExpansionBankValue?: number;
+  memoryExpansionPhysicalBank?: number;
 };
 
 export type Tec1gExpansionRomMemoryImage = {
@@ -76,9 +78,16 @@ function copyExpansionBank(target: Uint8Array | undefined, source: Uint8Array | 
  *
  */
 function selectedExpansionBankIndex(state: Tec1gExpansionBankState): number | undefined {
+  const physicalBank = state.memoryExpansionPhysicalBank;
+  if (typeof physicalBank === 'number' && Number.isInteger(physicalBank)) {
+    return physicalBank >= 0 && physicalBank < TEC1G_EXPAND_BANK_COUNT ? physicalBank : undefined;
+  }
   const bankValue = state.memoryExpansionBankValue;
   if (typeof bankValue === 'number' && Number.isInteger(bankValue)) {
-    return bankValue >= 0 && bankValue < TEC1G_EXPAND_BANK_COUNT ? bankValue : undefined;
+    const decoded = decodeMemoryExpansionBank(bankValue);
+    return decoded.physicalBank >= 0 && decoded.physicalBank < TEC1G_EXPAND_BANK_COUNT
+      ? decoded.physicalBank
+      : undefined;
   }
   return state.bankA14 ? 1 : 0;
 }

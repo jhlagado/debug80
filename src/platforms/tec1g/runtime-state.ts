@@ -90,6 +90,10 @@ export interface Tec1gState {
     expandEnabled: boolean;
     bankA14: boolean;
     memoryExpansionBankValue: number;
+    memoryExpansionMode: 'legacy' | 'extended';
+    memoryExpansionLegacyBank: 0 | 1;
+    memoryExpansionExtendedWindow: number | null;
+    memoryExpansionPhysicalBank: number;
     capsLock: boolean;
     cartridgePresent: boolean;
     gimpSignal: boolean;
@@ -109,6 +113,10 @@ export function createTec1gInitialState(params: {
     expandEnabled: boolean;
     bankA14: boolean;
     memoryExpansionBankValue: number;
+    memoryExpansionMode: 'legacy' | 'extended';
+    memoryExpansionLegacyBank: 0 | 1;
+    memoryExpansionExtendedWindow: number | null;
+    memoryExpansionPhysicalBank: number;
     capsLock: boolean;
   };
   cartridgePresentDefault: boolean;
@@ -197,6 +205,10 @@ export function createTec1gInitialState(params: {
       expandEnabled: initialSysCtrlDecoded.expandEnabled,
       bankA14: initialSysCtrlDecoded.bankA14,
       memoryExpansionBankValue: initialSysCtrlDecoded.memoryExpansionBankValue,
+      memoryExpansionMode: initialSysCtrlDecoded.memoryExpansionMode,
+      memoryExpansionLegacyBank: initialSysCtrlDecoded.memoryExpansionLegacyBank,
+      memoryExpansionExtendedWindow: initialSysCtrlDecoded.memoryExpansionExtendedWindow,
+      memoryExpansionPhysicalBank: initialSysCtrlDecoded.memoryExpansionPhysicalBank,
       capsLock: initialSysCtrlDecoded.capsLock,
       cartridgePresent: cartridgePresentDefault,
       gimpSignal: config.gimpSignal,

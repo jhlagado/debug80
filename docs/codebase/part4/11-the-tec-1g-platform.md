@@ -40,7 +40,7 @@ The TEC-1G has a richer address space than the TEC-1:
 0x0000–0x07FF    ROM0 (2KB) — MON-3 monitor, or shadowed from 0xC000
 0x0800–0x3FFF    RAM (14KB) — general purpose
 0x4000–0x7FFF    RAM (16KB) — write-protectable via SYSCTRL
-0x8000–0xBFFF    Expansion (16KB) — banked, nine slots selectable
+0x8000–0xBFFF    Expansion (16KB) — banked legacy/extended window
 0xC000–0xFFFF    ROM1 (16KB) — MON-3 extended ROM
 ```
 
@@ -60,7 +60,7 @@ Port 0xFF bit 1 enables write protection for the 0x4000–0x7FFF region. Writes 
 
 ### Expansion banking
 
-Port 0xFF bit 2 enables the expansion window at 0x8000–0xBFFF. Debug80 models nine 16KB slots: the two legacy expand pages plus seven additional TECM8 expansion slots. The decoded memory-expansion bank value selects the visible slot, while bit 3 remains the legacy A14 low/high indicator for UI/debug compatibility. The banks are independent `Uint8Array` instances. The memory hooks intercept reads and writes in this range and redirect them to the selected bank.
+Port 0xFF bit 2 enables the expansion window at 0x8000–0xBFFF. Debug80 models two legacy 16KB expand pages plus seven additional 16KB expansion windows. The four-bit memory expansion field is decoded rather than treated as a flat bank number: bit 3 is the legacy A14 low/high page indicator, and bits 4-6 are the upper selector. Upper selector value 0 preserves legacy two-page behavior. Upper selector values 1-7 select the additional expansion windows. The banks are independent `Uint8Array` instances. The memory hooks intercept reads and writes in this range and redirect them to the decoded physical bank.
 
 Expansion ROM images are loaded by `loadTec1gExpansionRomImage()` in `src/platforms/tec1g/tec1g-expansion-rom.ts`. Raw `.bin` files are split into up to nine fixed 16 KB banks. Legacy HEX-backed 64 KB images are still accepted, but they remain a compatibility path projected into bank 0 from `0x8000-0xBFFF` and bank 1 from the following 16 KB span. `finalizeRuntime()` copies those banks into the live runtime hook state.
 
@@ -332,7 +332,7 @@ Bit 6: memory expansion bit 3
 Bit 7: capsLock  (CAPS LOCK LED state)
 ```
 
-The decoded state is applied to `system.shadowEnabled`, `system.protectEnabled`, etc., and to the memory hook state. `memoryExpansionBankBits` and `memoryExpansionBankValue` expose the four-bit field from bits 3-6. Debug80 currently maps values 0-8 onto nine 16K expansion slots: the two legacy expand pages plus seven additional slots. Bit 3 remains the legacy A14 page indicator for UI/debug compatibility. Subsequent memory reads and writes obey the new configuration immediately.
+The decoded state is applied to `system.shadowEnabled`, `system.protectEnabled`, etc., and to the memory hook state. `memoryExpansionBankBits` and `memoryExpansionBankValue` expose the raw four-bit field from bits 3-6, while `memoryExpansionMode`, `memoryExpansionLegacyBank`, `memoryExpansionExtendedWindow`, and `memoryExpansionPhysicalBank` expose the resolved legacy/extended decode. Subsequent memory reads and writes obey the new configuration immediately.
 
 ---
 
