@@ -366,16 +366,17 @@ interface Tec1gPlatformConfig extends Tec1PlatformConfig {
 }
 ```
 
-`romArtifacts` is the new ROM-first launch path for TEC-1G monitor and expansion images. Each entry declares a role (`'monitor'` or `'expansion'`), a source-backed build (`sourceFile`, `outputBin`, optional `outputDebugMap`) or an inactive binary placeholder, and fixed geometry that matches the current Phase 2 hardware model. Validation in `src/debug/launch/config-validation.ts` currently enforces:
+`romArtifacts` is the new ROM-first launch path for TEC-1G monitor and expansion images. Each entry declares a role (`'monitor'` or `'expansion'`), either a single source-backed build (`sourceFile`, `outputBin`, optional `outputDebugMap`), a multibank expansion build (`outputBin` plus `banks`), or an inactive binary placeholder, and fixed geometry that matches the current Phase 2 hardware model. Validation in `src/debug/launch/config-validation.ts` currently enforces:
 
 - at most one active monitor artifact and one active expansion artifact
 - monitor artifacts at `address: 0xC000` and `size: 0x4000`
 - expansion artifacts at `windowAddress: 0x8000`, `windowSize: 0x4000`, and `bankSize === windowSize`
 - `bankCount === imageSize / bankSize` for expansion images
 - expansion `bankCount` in the supported 1-9 range
+- multibank expansion entries declare unique `banks[].physicalBank` values in the supported 0-8 range
 - active artifacts must be source-backed; binary-only entries are accepted only when `active: false`
 
-At launch, `buildTec1gRomArtifactsIfRequested()` in `src/debug/launch/tec1g-rom-artifact-build.ts` assembles each active source-backed artifact with AZM before runtime creation. That path always forces `registerContracts: 'off'` and `emitRegisterReport: false` for ROM artifacts, even when the main app launch enables register-contract analysis, so monitor and expansion ROM builds do not inherit app-scoped contract enforcement or report generation. After assembly, Debug80 pads both monitor and expansion binaries to the configured image size before mutating launch args and source-map inputs.
+At launch, `buildTec1gRomArtifactsIfRequested()` in `src/debug/launch/tec1g-rom-artifact-build.ts` assembles each active source-backed artifact with AZM before runtime creation. That path always forces `registerContracts: 'off'` and `emitRegisterReport: false` for ROM artifacts, even when the main app launch enables register-contract analysis, so monitor and expansion ROM builds do not inherit app-scoped contract enforcement or report generation. Single-source monitor and expansion artifacts are padded to their configured output size. Multibank expansion artifacts assemble each declared bank at the visible `0x8000-0xBFFF` window, pad each bank binary to 16K, pack the declared physical banks into the configured expansion image, and prepend each bank's D8 map to `debugMaps`.
 
 The `uiVisibility` field is legacy configuration. The current TEC-1G panel keeps the main hardware surfaces visible and organizes them into accordion sections rather than expecting users to toggle sections on and off. Older configs that contain this field remain readable, but new project configuration should not rely on it for the normal front-panel layout.
 

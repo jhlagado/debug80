@@ -106,9 +106,9 @@ describe('TEC-1G ROM artifact builds', () => {
       'build/app.d8.json',
     ]);
     expect(args.sourceRoots).toEqual([
-      'src',
       'roms/tec1g/tecm8/monitor',
       'roms/tec1g/tecm8/expansion',
+      'src',
     ]);
   });
 
@@ -158,6 +158,254 @@ describe('TEC-1G ROM artifact builds', () => {
         }),
       })
     );
+  });
+
+  it('builds per-bank expansion artifacts and packs them into the runtime image', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    backend.assembleBin.mockImplementation((options: AssembleBinOptions) => {
+      const bankName = path.basename(options.asmPath, '.asm');
+      const bankNumber = Number.parseInt(bankName.replace('bank', ''), 10);
+      writeBinary(replaceExtension(options.hexPath, '.bin'), Buffer.from([bankNumber + 1]));
+      return { success: true };
+    });
+    const args: LaunchRequestArguments = {
+      sourceRoots: ['src'],
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
+                outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank0.d8.json',
+              },
+              {
+                physicalBank: 1,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank1.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank1.bin',
+                outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank1.d8.json',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank8.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank8.bin',
+                outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank8.d8.json',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = await buildTec1gRomArtifactsIfRequested({
+      baseDir: root,
+      args,
+      backendFactory: () => backend,
+      sendEvent: () => undefined,
+    });
+
+    const packed = fs.readFileSync(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin')
+    );
+    expect(packed).toHaveLength(0x24000);
+    expect(packed[0x00000]).toBe(0x01);
+    expect(packed[0x04000]).toBe(0x02);
+    expect(packed[0x20000]).toBe(0x09);
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank0.bin')).size).toBe(0x4000);
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.bin')).size).toBe(0x4000);
+    expect(backend.assembleBin).toHaveBeenCalledTimes(3);
+    expect(backend.assembleBin).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        asmPath: path.join(root, 'roms/tec1g/tecm8/expansion/bank8.asm'),
+        hexPath: path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.hex'),
+        binFrom: 0x8000,
+        binTo: 0xbfff,
+      })
+    );
+
+    applyTec1gRomArtifactsToLaunchArgs(args, result);
+
+    expect(args.tec1g?.expansionRomHex).toBe(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin')
+    );
+    expect(args.debugMaps).toEqual([
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/bank0.d8.json'),
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/bank1.d8.json'),
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.d8.json'),
+    ]);
+    expect(args.sourceRoots).toEqual(['roms/tec1g/tecm8/expansion', 'src']);
+  });
+
+  it('rejects invalid physical banks before building multibank expansion artifacts', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x8000,
+            bankSize: 0x4000,
+            bankCount: 2,
+            banks: [
+              {
+                physicalBank: 2,
+                sourceFile: 'roms/bank2.asm',
+                outputBin: 'build/bank2.bin',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(
+      buildTec1gRomArtifactsIfRequested({
+        baseDir: root,
+        args,
+        backendFactory: () => backend,
+        sendEvent: () => undefined,
+      })
+    ).rejects.toThrow('ROM artifact bad-expansion bank 2 is outside bankCount 2');
+    expect(backend.assemble).not.toHaveBeenCalled();
+    expect(backend.assembleBin).not.toHaveBeenCalled();
+  });
+
+  it('rejects physical banks beyond the supported TEC-1G range before building', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x28000,
+            bankSize: 0x4000,
+            bankCount: 10,
+            banks: [
+              {
+                physicalBank: 9,
+                sourceFile: 'roms/bank9.asm',
+                outputBin: 'build/bank9.bin',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(
+      buildTec1gRomArtifactsIfRequested({
+        baseDir: root,
+        args,
+        backendFactory: () => backend,
+        sendEvent: () => undefined,
+      })
+    ).rejects.toThrow('ROM artifact bad-expansion bank 9 is outside supported bank range 0-8');
+    expect(backend.assemble).not.toHaveBeenCalled();
+    expect(backend.assembleBin).not.toHaveBeenCalled();
+  });
+
+  it('rejects multibank expansion geometry when imageSize and bankCount disagree', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x8000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/bank8.asm',
+                outputBin: 'build/bank8.bin',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(
+      buildTec1gRomArtifactsIfRequested({
+        baseDir: root,
+        args,
+        backendFactory: () => backend,
+        sendEvent: () => undefined,
+      })
+    ).rejects.toThrow('ROM artifact bad-expansion bankCount must equal imageSize / bankSize');
+    expect(backend.assemble).not.toHaveBeenCalled();
+    expect(backend.assembleBin).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate physical banks before packing multibank expansion artifacts', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0-copy.asm',
+                outputBin: 'build/bank0-copy.bin',
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(
+      buildTec1gRomArtifactsIfRequested({
+        baseDir: root,
+        args,
+        backendFactory: () => backend,
+        sendEvent: () => undefined,
+      })
+    ).rejects.toThrow('ROM artifact bad-expansion declares physical bank 0 more than once');
+    expect(backend.assemble).not.toHaveBeenCalled();
+    expect(backend.assembleBin).not.toHaveBeenCalled();
   });
 
   it('suppresses bundled MON-3 maps when a generated monitor artifact owns the monitor role', () => {

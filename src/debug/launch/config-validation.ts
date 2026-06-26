@@ -438,6 +438,7 @@ function validateTec1gRomArtifactShape(
   artifact: Record<string, unknown>,
   fieldName: string
 ): ValidationResult[] {
+  const multibankExpansion = artifact.banks !== undefined;
   const sourceBacked =
     artifact.sourceFile !== undefined ||
     artifact.outputBin !== undefined ||
@@ -450,7 +451,25 @@ function validateTec1gRomArtifactShape(
     validateBoolean(artifact.build, `${fieldName}.build`),
   ];
 
-  if (sourceBacked) {
+  if (multibankExpansion) {
+    results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
+    results.push(
+      ...validateTec1gExpansionArtifactBanks(artifact.banks, `${fieldName}.banks`, artifact.bankCount)
+    );
+    if (artifact.role !== 'expansion') {
+      results.push(invalidResult(`${fieldName}.banks is only supported for expansion artifacts`));
+    }
+    if (artifact.sourceFile !== undefined || artifact.outputDebugMap !== undefined) {
+      results.push(
+        invalidResult(`${fieldName} multibank artifacts must not specify sourceFile or outputDebugMap`)
+      );
+    }
+    if (artifact.binary !== undefined || artifact.debugMap !== undefined) {
+      results.push(
+        invalidResult(`${fieldName} multibank artifacts must not specify binary or debugMap`)
+      );
+    }
+  } else if (sourceBacked) {
     results.push(validatePath(artifact.sourceFile, `${fieldName}.sourceFile`, true));
     results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
     results.push(validatePath(artifact.outputDebugMap, `${fieldName}.outputDebugMap`));
@@ -474,6 +493,69 @@ function validateTec1gRomArtifactShape(
   } else {
     results.push(invalidResult(`${fieldName} must specify sourceFile/outputBin or binary`));
   }
+
+  return results;
+}
+
+function validateTec1gExpansionArtifactBanks(
+  value: unknown,
+  fieldName: string,
+  bankCount: unknown
+): ValidationResult[] {
+  if (!Array.isArray(value)) {
+    return [invalidResult(`${fieldName} must be an array`)];
+  }
+
+  const results: ValidationResult[] = [];
+  if (value.length === 0) {
+    results.push(invalidResult(`${fieldName} must contain at least one bank`));
+  }
+  const seen = new Set<number>();
+  value.forEach((bank, index) => {
+    const bankField = `${fieldName}[${index}]`;
+    const objectResult = validateOptionalObject<Record<string, unknown>>(bank, bankField);
+    if (objectResult.result !== undefined) {
+      results.push(objectResult.result);
+      return;
+    }
+
+    const config = objectResult.value;
+    if (config.physicalBank === undefined || config.physicalBank === null) {
+      results.push(invalidResult(`${bankField}.physicalBank is required`));
+    } else {
+      results.push(validateOptionalInteger(config.physicalBank, `${bankField}.physicalBank`));
+    }
+    if (
+      typeof config.physicalBank === 'number' &&
+      Number.isInteger(config.physicalBank) &&
+      (config.physicalBank < 0 || config.physicalBank >= TEC1G_EXPAND_BANK_COUNT)
+    ) {
+      results.push(
+        invalidResult(`${bankField}.physicalBank must be between 0 and ${TEC1G_EXPAND_BANK_COUNT - 1}`)
+      );
+    }
+    if (typeof config.physicalBank === 'number' && Number.isInteger(config.physicalBank)) {
+      if (
+        typeof bankCount === 'number' &&
+        Number.isInteger(bankCount) &&
+        config.physicalBank >= 0 &&
+        config.physicalBank < TEC1G_EXPAND_BANK_COUNT &&
+        config.physicalBank >= bankCount
+      ) {
+        results.push(
+          invalidResult(`${bankField}.physicalBank must be less than bankCount ${bankCount}`)
+        );
+      }
+      if (seen.has(config.physicalBank)) {
+        results.push(invalidResult(`${bankField}.physicalBank duplicates bank ${config.physicalBank}`));
+      }
+      seen.add(config.physicalBank);
+    }
+
+    results.push(validatePath(config.sourceFile, `${bankField}.sourceFile`, true));
+    results.push(validatePath(config.outputBin, `${bankField}.outputBin`, true));
+    results.push(validatePath(config.outputDebugMap, `${bankField}.outputDebugMap`));
+  });
 
   return results;
 }

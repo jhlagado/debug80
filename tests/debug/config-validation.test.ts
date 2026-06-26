@@ -382,6 +382,134 @@ describe('config-validation', () => {
       expect(result).toMatchObject({ valid: true, errors: [] });
     });
 
+    it('should accept TEC-1G multibank expansion artifacts with per-bank sources', () => {
+      const result = validateTec1gConfig({
+        expansionRomHex: 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin',
+        romArtifacts: [
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
+                outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank0.d8.json',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank8.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank8.bin',
+                outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank8.d8.json',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('should reject invalid TEC-1G multibank expansion bank declarations', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 9,
+                sourceFile: 'roms/bank9.asm',
+                outputBin: 'build/bank9.bin',
+              },
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0-copy.asm',
+                outputBin: 'build/bank0-copy.bin',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].banks[0].physicalBank must be between 0 and 8',
+          'tec1g.romArtifacts[0].banks[2].physicalBank duplicates bank 0',
+        ],
+      });
+    });
+
+    it('should reject multibank expansion banks outside the configured image', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x8000,
+            bankSize: 0x4000,
+            bankCount: 2,
+            banks: [
+              {
+                physicalBank: 2,
+                sourceFile: 'roms/bank2.asm',
+                outputBin: 'build/bank2.bin',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0].banks[0].physicalBank must be less than bankCount 2'],
+      });
+    });
+
+    it('should reject empty TEC-1G multibank expansion bank declarations', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0].banks must contain at least one bank'],
+      });
+    });
+
     it('should reject duplicate active romArtifacts for the same role', () => {
       const result = validateTec1gConfig({
         romArtifacts: [

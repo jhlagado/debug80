@@ -109,7 +109,7 @@ Config block key: `tec1g`
 
 ### `tec1g.romArtifacts`
 
-`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. That build path forces AZM `registerContracts` off, suppresses register-report output, pads the generated monitor or expansion binary to its configured image size, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. That build path forces AZM `registerContracts` off, suppresses register-report output, pads generated bank binaries to their configured size, packs multibank expansion images when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
 | Field            | Type      | Required | Description                                                                  |
 | ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
@@ -129,6 +129,18 @@ Config block key: `tec1g`
 | `bankSize`       | `number`  | expansion| Current Phase 2 model requires it to equal `windowSize`                      |
 | `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`; valid range is 1-9                         |
 | `bankSelect`     | `object`  | no       | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
+| `banks`          | `object[]`| expansion| Multibank source declarations keyed by physical expansion bank                |
+
+Multibank expansion entries omit top-level `sourceFile` and `outputDebugMap`.
+The top-level `outputBin` is the packed runtime image. Each `banks[]` entry
+declares:
+
+| Field            | Type      | Required | Description                                                                  |
+| ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
+| `physicalBank`   | `number`  | yes      | Physical expansion bank, valid range 0-8                                     |
+| `sourceFile`     | `string`  | yes      | Bank source assembled at the visible `0x8000-0xBFFF` window                  |
+| `outputBin`      | `string`  | yes      | Per-bank 16K binary output path. Must use `.bin`                             |
+| `outputDebugMap` | `string`  | no       | Optional D8 path. Must match the bank `outputBin` artifact base              |
 
 ---
 

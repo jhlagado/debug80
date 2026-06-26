@@ -101,6 +101,13 @@ export interface Tec1gRomArtifactBankSelectConfig {
   initialBank?: number;
 }
 
+export interface Tec1gExpansionRomArtifactBankConfig {
+  physicalBank: number;
+  sourceFile: string;
+  outputBin: string;
+  outputDebugMap?: string;
+}
+
 interface Tec1gRomArtifactBaseConfig {
   id: string;
   role: Tec1gRomArtifactRole;
@@ -120,6 +127,17 @@ export interface Tec1gSourceRomArtifactConfig extends Tec1gRomArtifactBaseConfig
   sourceFile: string;
   outputBin: string;
   outputDebugMap?: string;
+  banks?: never;
+  binary?: never;
+  debugMap?: never;
+}
+
+export interface Tec1gMultibankExpansionRomArtifactConfig extends Tec1gRomArtifactBaseConfig {
+  role: 'expansion';
+  outputBin: string;
+  banks: Tec1gExpansionRomArtifactBankConfig[];
+  sourceFile?: never;
+  outputDebugMap?: never;
   binary?: never;
   debugMap?: never;
 }
@@ -131,8 +149,10 @@ export interface Tec1gInactiveBinaryRomArtifactConfig extends Tec1gRomArtifactBa
   sourceFile?: never;
   outputBin?: never;
   outputDebugMap?: never;
+  banks?: never;
 }
 
 export type Tec1gRomArtifactConfig =
   | Tec1gSourceRomArtifactConfig
+  | Tec1gMultibankExpansionRomArtifactConfig
   | Tec1gInactiveBinaryRomArtifactConfig;
