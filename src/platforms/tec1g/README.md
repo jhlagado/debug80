@@ -130,8 +130,9 @@ The TEC-1G DIAG ROM exercises several device behaviors directly:
 - Shadow mirrors ROM into 0x0000-0x07FF for legacy monitors; writes go to RAM.
 - Protect makes 0x4000-0x7FFF read-only.
 - Expand exposes a banked 16K window at 0x8000-0xBFFF.
-- The current banked window uses bit 3 as A14, selecting one of two 16K banks. Bits 3-6 are
-  reserved in Debug80 as the future four-bit Memory Expansion bank field.
+- The banked window supports nine 16K slots: two legacy expand pages plus seven
+  additional expansion slots. SYS_CTRL bits 3-6 are decoded as the memory
+  expansion bank field; bit 3 remains the legacy A14 low/high page indicator.
 
 ## ROMs and config
 
@@ -139,7 +140,7 @@ Debug80 ships a bundled MON-3 profile for scaffolded projects. New projects
 record bundled asset references in `debug80.json`; launch resolves the extension
 bundle directly when no workspace copy exists. You can still provide `romHex` in
 the platform config to override the bundled profile or debug a custom ROM.
-Use `expansionRomHex` when the project owns an optional 16K/32K expansion ROM
+Use `expansionRomHex` when the project owns an optional 16K to 144K expansion ROM
 for the banked 0x8000-0xBFFF window.
 
 **Shared MON-3 settings (recommended):** Scaffolded projects record MON-3 under

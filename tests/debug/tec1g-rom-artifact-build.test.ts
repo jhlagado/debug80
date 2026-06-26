@@ -49,9 +49,9 @@ describe('TEC-1G ROM artifact builds', () => {
             outputDebugMap: 'build/roms/tec1g/tecm8/expansion/expansion.d8.json',
             windowAddress: 0x8000,
             windowSize: 0x4000,
-            imageSize: 0x8000,
+            imageSize: 0x24000,
             bankSize: 0x4000,
-            bankCount: 2,
+            bankCount: 9,
           },
         ],
       },
@@ -65,7 +65,7 @@ describe('TEC-1G ROM artifact builds', () => {
     });
 
     expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/monitor/monitor.bin')).size).toBe(0x4000);
-    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.bin')).size).toBe(0x8000);
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.bin')).size).toBe(0x24000);
     expect(backend.assemble).toHaveBeenCalledTimes(2);
     expect(backend.assemble).toHaveBeenNthCalledWith(
       1,
@@ -90,7 +90,7 @@ describe('TEC-1G ROM artifact builds', () => {
         asmPath: path.join(root, 'roms/tec1g/tecm8/expansion/expansion.asm'),
         hexPath: path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.hex'),
         binFrom: 0x8000,
-        binTo: 0xffff,
+        binTo: 0xbfff,
       })
     );
 
@@ -307,7 +307,7 @@ describe('TEC-1G ROM artifact builds', () => {
     ).rejects.toThrow('bad rom');
   });
 
-  it('throws when an expansion artifact binary exceeds its configured image size', async () => {
+  it('throws when an expansion artifact binary exceeds its visible bank window', async () => {
     const root = makeTempRoot();
     const backend = fakeBackend();
     backend.assembleBin.mockImplementation((options: AssembleBinOptions) => {
@@ -325,9 +325,9 @@ describe('TEC-1G ROM artifact builds', () => {
             outputDebugMap: 'build/expansion.d8.json',
             windowAddress: 0x8000,
             windowSize: 0x4000,
-            imageSize: 0x8000,
+            imageSize: 0x24000,
             bankSize: 0x4000,
-            bankCount: 2,
+            bankCount: 9,
           },
         ],
       },
@@ -340,7 +340,7 @@ describe('TEC-1G ROM artifact builds', () => {
         backendFactory: () => backend,
         sendEvent: () => undefined,
       })
-    ).rejects.toThrow('ROM artifact tecm8-expansion binary is 32769 bytes; limit is 32768');
+    ).rejects.toThrow('ROM artifact tecm8-expansion binary is 32769 bytes; limit is 16384');
   });
 
   it('throws when the assembler backend cannot emit ROM binaries', async () => {

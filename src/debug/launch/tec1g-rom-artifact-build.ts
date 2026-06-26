@@ -125,11 +125,12 @@ function normalizeBuiltRomArtifactBinary(
     artifact.role === 'monitor'
       ? (artifact.size ?? 0x4000)
       : (artifact.imageSize ?? artifact.windowSize ?? 0x4000);
+  const sourceLimit = artifact.role === 'monitor' ? targetSize : (artifact.windowSize ?? 0x4000);
   const bytes = fs.readFileSync(outputBin);
-  if (bytes.length > targetSize) {
+  if (bytes.length > sourceLimit) {
     throw new AssembleFailureError({
       success: false,
-      error: `ROM artifact ${artifact.id} binary is ${bytes.length} bytes; limit is ${targetSize}`,
+      error: `ROM artifact ${artifact.id} binary is ${bytes.length} bytes; limit is ${sourceLimit}`,
     });
   }
   if (bytes.length < targetSize) {
@@ -200,7 +201,7 @@ function romArtifactBinaryRange(artifact: Tec1gSourceRomArtifactConfig): {
 
   return {
     binFrom: artifact.windowAddress ?? 0x8000,
-    binTo: (artifact.windowAddress ?? 0x8000) + (artifact.imageSize ?? 0x4000) - 1,
+    binTo: (artifact.windowAddress ?? 0x8000) + (artifact.windowSize ?? 0x4000) - 1,
   };
 }
 

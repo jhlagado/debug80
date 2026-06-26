@@ -172,6 +172,7 @@ describe('TEC-1G IO handlers', () => {
     expect(state.system.protectEnabled).toBe(true);
     expect(state.system.expandEnabled).toBe(true);
     expect(state.system.bankA14).toBe(true);
+    expect(state.system.memoryExpansionBankValue).toBe(0x01);
     expect(state.system.capsLock).toBe(true);
 
     io.write?.(TEC1G_PORT_8X8_RED, 0xaa);

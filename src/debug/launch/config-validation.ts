@@ -18,6 +18,7 @@ import {
   Tec1gRomArtifactRole,
   SimplePlatformConfig,
 } from '../../platforms/types';
+import { TEC1G_EXPAND_BANK_COUNT } from '../../platforms/tec-common';
 
 // ============================================================================
 // Constants
@@ -550,6 +551,15 @@ function validateTec1gExpansionArtifactGeometry(
     artifact.bankCount !== artifact.imageSize / artifact.bankSize
   ) {
     results.push(invalidResult(`${fieldName}.bankCount must equal imageSize / bankSize`));
+  }
+
+  if (
+    typeof artifact.bankCount === 'number' &&
+    (artifact.bankCount < 1 || artifact.bankCount > TEC1G_EXPAND_BANK_COUNT)
+  ) {
+    results.push(
+      invalidResult(`${fieldName}.bankCount must be between 1 and ${TEC1G_EXPAND_BANK_COUNT}`)
+    );
   }
 
   if (artifact.bankSize !== artifact.windowSize) {

@@ -360,6 +360,28 @@ describe('config-validation', () => {
       expect(result).toMatchObject({ valid: true, errors: [] });
     });
 
+    it('should accept TEC-1G expansion artifacts with two legacy banks plus seven additional banks', () => {
+      const result = validateTec1gConfig({
+        expansionRomHex: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
+        romArtifacts: [
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/tec1g/tecm8/expansion/expansion.asm',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
+            outputDebugMap: 'build/roms/tec1g/tecm8/expansion/expansion.d8.json',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
     it('should reject duplicate active romArtifacts for the same role', () => {
       const result = validateTec1gConfig({
         romArtifacts: [
@@ -463,6 +485,29 @@ describe('config-validation', () => {
           'tec1g.romArtifacts[0].bankCount must equal imageSize / bankSize',
           'tec1g.romArtifacts[0].bankSize must equal windowSize for Phase 2 TEC-1G expansion artifacts',
         ],
+      });
+    });
+
+    it('should reject TEC-1G expansion artifacts beyond the supported nine banks', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'oversized-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/expansion.asm',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x28000,
+            bankSize: 0x4000,
+            bankCount: 10,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: ['tec1g.romArtifacts[0].bankCount must be between 1 and 9'],
       });
     });
 

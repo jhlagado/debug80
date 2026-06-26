@@ -155,6 +155,9 @@ export const TEC1G_EXPAND_END = 0xbfff;
 /** TEC-1G expansion memory size (16KB) */
 export const TEC1G_EXPAND_SIZE = 0x4000;
 
+/** TEC-1G supported expansion slots: two legacy banks plus seven additional banks. */
+export const TEC1G_EXPAND_BANK_COUNT = 9;
+
 /** TEC-1G RAM protection start */
 export const TEC1G_PROTECT_START = 0x4000;
 

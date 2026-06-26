@@ -60,20 +60,32 @@ describe('TEC-1G expansion ROM boot detection', () => {
     });
   });
 
-  it('limits legacy binary expansion ROMs to the two supported banks', () => {
+  it('loads a 144K binary as nine 16K banks', () => {
     withTempDir((dir) => {
-      const expansionRomPath = path.join(dir, 'expansion-48k.bin');
-      const bank0 = Buffer.alloc(0x4000, 0x11);
-      const bank1 = Buffer.alloc(0x4000, 0x22);
-      const unsupportedBank = Buffer.alloc(0x4000, 0x33);
-      fs.writeFileSync(expansionRomPath, Buffer.concat([bank0, bank1, unsupportedBank]));
+      const expansionRomPath = path.join(dir, 'expansion-144k.bin');
+      const banks = Array.from({ length: 9 }, (_, index) => Buffer.alloc(0x4000, index + 1));
+      fs.writeFileSync(expansionRomPath, Buffer.concat(banks));
 
       const image = loadTec1gExpansionRomImage(expansionRomPath);
 
-      expect(image.bankCount).toBe(2);
-      expect(image.banks).toHaveLength(2);
-      expect(image.banks[0]?.[0]).toBe(0x11);
-      expect(image.banks[1]?.[0]).toBe(0x22);
+      expect(image.bankCount).toBe(9);
+      expect(image.banks).toHaveLength(9);
+      expect(image.banks[0]?.[0]).toBe(0x01);
+      expect(image.banks[8]?.[0]).toBe(0x09);
+    });
+  });
+
+  it('limits binary expansion ROMs to the supported nine banks', () => {
+    withTempDir((dir) => {
+      const expansionRomPath = path.join(dir, 'expansion-160k.bin');
+      const banks = Array.from({ length: 10 }, (_, index) => Buffer.alloc(0x4000, index + 1));
+      fs.writeFileSync(expansionRomPath, Buffer.concat(banks));
+
+      const image = loadTec1gExpansionRomImage(expansionRomPath);
+
+      expect(image.bankCount).toBe(9);
+      expect(image.banks).toHaveLength(9);
+      expect(image.banks[8]?.[0]).toBe(0x09);
     });
   });
 

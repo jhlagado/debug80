@@ -3,11 +3,14 @@
  */
 
 import fs from 'fs';
-import { TEC1G_EXPAND_END, TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START } from '../tec-common';
+import {
+  TEC1G_EXPAND_BANK_COUNT,
+  TEC1G_EXPAND_END,
+  TEC1G_EXPAND_SIZE,
+  TEC1G_EXPAND_START,
+} from '../tec-common';
 import { extractRomHex } from '../../debug/launch/program-loader';
 import { parseIntelHex } from '../../z80/loaders';
-
-const TEC1G_EXPANSION_BANK_COUNT = 2;
 
 export type Tec1gExpansionRomImage = {
   banks: Uint8Array[];
@@ -70,7 +73,7 @@ export function loadTec1gExpansionRomImage(expansionRomPath: string): Tec1gExpan
  */
 function banksFromBinary(bytes: Uint8Array): Uint8Array[] {
   const bankCount = Math.min(
-    TEC1G_EXPANSION_BANK_COUNT,
+    TEC1G_EXPAND_BANK_COUNT,
     Math.max(1, Math.ceil(bytes.length / TEC1G_EXPAND_SIZE))
   );
   const banks: Uint8Array[] = [];

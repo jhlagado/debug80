@@ -89,6 +89,7 @@ export interface Tec1gState {
     protectEnabled: boolean;
     expandEnabled: boolean;
     bankA14: boolean;
+    memoryExpansionBankValue: number;
     capsLock: boolean;
     cartridgePresent: boolean;
     gimpSignal: boolean;
@@ -107,6 +108,7 @@ export function createTec1gInitialState(params: {
     protectEnabled: boolean;
     expandEnabled: boolean;
     bankA14: boolean;
+    memoryExpansionBankValue: number;
     capsLock: boolean;
   };
   cartridgePresentDefault: boolean;
@@ -194,6 +196,7 @@ export function createTec1gInitialState(params: {
       protectEnabled: initialSysCtrlDecoded.protectEnabled,
       expandEnabled: initialSysCtrlDecoded.expandEnabled,
       bankA14: initialSysCtrlDecoded.bankA14,
+      memoryExpansionBankValue: initialSysCtrlDecoded.memoryExpansionBankValue,
       capsLock: initialSysCtrlDecoded.capsLock,
       cartridgePresent: cartridgePresentDefault,
       gimpSignal: config.gimpSignal,

@@ -476,6 +476,7 @@ export function createTec1gIoHandlers(context: Tec1gPortContext): IoHandlers {
         system.protectEnabled = decoded.protectEnabled;
         system.expandEnabled = decoded.expandEnabled;
         system.bankA14 = decoded.bankA14;
+        system.memoryExpansionBankValue = decoded.memoryExpansionBankValue;
         system.capsLock = decoded.capsLock;
       }
     },

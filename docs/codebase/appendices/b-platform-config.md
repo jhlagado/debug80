@@ -93,11 +93,11 @@ Config block key: `tec1g`
 | `appStart`        | `number`         | `0x4200`                            | Application start address                                                                                                                  |
 | `romHex`          | `string`         | —                                   | Path to TEC-1G ROM HEX file                                                                                                                |
 | `ramInitHex`      | `string`         | —                                   | Path to a HEX file loaded into RAM at startup                                                                                              |
-| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K/32K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                            |
+| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K to 144K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                        |
 | `romArtifacts`    | `object[]`       | —                                   | Explicit TEC-1G ROM-first build declarations for monitor and expansion images                                                              |
 | `updateMs`        | `number`         | `16`                                | UI refresh interval in milliseconds                                                                                                        |
 | `yieldMs`         | `number`         | `0`                                 | Yield to the event loop every N ms                                                                                                         |
-| `expansionBankHi` | `boolean`        | `false`                             | Enable A14 expansion banking via SYSCTRL bit 6                                                                                             |
+| `expansionBankHi` | `boolean`        | `false`                             | Enable A14 expansion banking via SYSCTRL bit 3                                                                                             |
 | `matrixMode`      | `boolean`        | `false`                             | Initial MON-3 Matrix CONFIG state; the TEC-1G webview normally drives and reasserts this from Matrix Keyboard accordion visibility         |
 | `protectOnReset`  | `boolean`        | `false`                             | Write-protect ROM ranges on cold reset                                                                                                     |
 | `rtcEnabled`      | `boolean`        | `false`                             | Emulate the DS1302 real-time clock                                                                                                         |
@@ -127,7 +127,7 @@ Config block key: `tec1g`
 | `windowSize`     | `number`  | expansion| Must be `0x4000`                                                             |
 | `imageSize`      | `number`  | expansion| Total binary image size. Must be a positive multiple of `bankSize`           |
 | `bankSize`       | `number`  | expansion| Current Phase 2 model requires it to equal `windowSize`                      |
-| `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`                                            |
+| `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`; valid range is 1-9                         |
 | `bankSelect`     | `object`  | no       | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
 
 ---

@@ -3,8 +3,12 @@ import {
   applyExpansionRomMemory,
   createTec1gMemoryHooks,
 } from '../../src/platforms/tec1g/tec1g-memory';
+import { loadTec1gExpansionRomImage } from '../../src/platforms/tec1g/tec1g-expansion-rom';
 import { createTec1gRuntime } from '../../src/platforms/tec1g/runtime';
 import type { Tec1gPlatformConfigNormalized } from '../../src/platforms/types';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 describe('TEC-1G expand bank switching', () => {
   it('reads and writes the selected expansion bank', () => {
@@ -107,5 +111,72 @@ describe('TEC-1G expand bank switching', () => {
     expect(memory[0xc000]).toBe(0);
     state.bankA14 = true;
     expect(hooks.memRead(0x8000)).toBe(0x22);
+  });
+
+  it('selects additional expansion banks from the decoded memory expansion value', () => {
+    const baseMemory = new Uint8Array(0x10000);
+    const state = {
+      shadowEnabled: false,
+      protectEnabled: false,
+      expandEnabled: true,
+      bankA14: false,
+      memoryExpansionBankValue: 8,
+    };
+    const hooks = createTec1gMemoryHooks(baseMemory, [], state);
+
+    hooks.memWrite(0x8000, 0x88);
+    state.memoryExpansionBankValue = 0;
+    hooks.memWrite(0x8000, 0x11);
+
+    expect(hooks.memRead(0x8000)).toBe(0x11);
+    state.memoryExpansionBankValue = 8;
+    expect(hooks.memRead(0x8000)).toBe(0x88);
+  });
+
+  it('does not alias unsupported expansion bank values onto slot 8', () => {
+    const baseMemory = new Uint8Array(0x10000);
+    const state = {
+      shadowEnabled: false,
+      protectEnabled: false,
+      expandEnabled: true,
+      bankA14: false,
+      memoryExpansionBankValue: 8,
+    };
+    const hooks = createTec1gMemoryHooks(baseMemory, [], state);
+
+    hooks.memWrite(0x8000, 0x88);
+    state.memoryExpansionBankValue = 15;
+    hooks.memWrite(0x8000, 0xff);
+
+    expect(hooks.memRead(0x8000)).toBe(0x00);
+    state.memoryExpansionBankValue = 8;
+    expect(hooks.memRead(0x8000)).toBe(0x88);
+  });
+
+  it('loads and applies a 144K expansion ROM image into slot 8', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-expansion-memory-'));
+    try {
+      const expansionPath = path.join(tempDir, 'expansion.bin');
+      const banks = Array.from({ length: 9 }, (_, index) => Buffer.alloc(0x4000, index + 1));
+      fs.writeFileSync(expansionPath, Buffer.concat(banks));
+      const image = loadTec1gExpansionRomImage(expansionPath);
+      const baseMemory = new Uint8Array(0x10000);
+      const state = {
+        shadowEnabled: false,
+        protectEnabled: false,
+        expandEnabled: true,
+        bankA14: false,
+        memoryExpansionBankValue: 8,
+      };
+      const hooks = createTec1gMemoryHooks(baseMemory, [], state);
+
+      applyExpansionRomMemory(hooks.expandBanks, image);
+
+      expect(hooks.memRead(0x8000)).toBe(0x09);
+      state.memoryExpansionBankValue = 1;
+      expect(hooks.memRead(0x8000)).toBe(0x02);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

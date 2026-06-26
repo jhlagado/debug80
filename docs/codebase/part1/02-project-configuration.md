@@ -372,6 +372,7 @@ interface Tec1gPlatformConfig extends Tec1PlatformConfig {
 - monitor artifacts at `address: 0xC000` and `size: 0x4000`
 - expansion artifacts at `windowAddress: 0x8000`, `windowSize: 0x4000`, and `bankSize === windowSize`
 - `bankCount === imageSize / bankSize` for expansion images
+- expansion `bankCount` in the supported 1-9 range
 - active artifacts must be source-backed; binary-only entries are accepted only when `active: false`
 
 At launch, `buildTec1gRomArtifactsIfRequested()` in `src/debug/launch/tec1g-rom-artifact-build.ts` assembles each active source-backed artifact with AZM before runtime creation. That path always forces `registerContracts: 'off'` and `emitRegisterReport: false` for ROM artifacts, even when the main app launch enables register-contract analysis, so monitor and expansion ROM builds do not inherit app-scoped contract enforcement or report generation. After assembly, Debug80 pads both monitor and expansion binaries to the configured image size before mutating launch args and source-map inputs.

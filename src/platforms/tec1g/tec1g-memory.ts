@@ -6,6 +6,7 @@ import type { Tec1gState } from './runtime';
 import {
   ADDR_MASK,
   BYTE_MASK,
+  TEC1G_EXPAND_BANK_COUNT,
   TEC1G_EXPAND_END,
   TEC1G_EXPAND_SIZE,
   TEC1G_EXPAND_START,
@@ -25,6 +26,13 @@ export type Tec1gMemoryHooks = {
   isMemoryWritable: (addr: number) => boolean;
 };
 
+type Tec1gExpansionBankState = Pick<
+  Tec1gState['system'],
+  'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'
+> & {
+  memoryExpansionBankValue?: number;
+};
+
 export type Tec1gExpansionRomMemoryImage = {
   banks: Uint8Array[];
   memory: Uint8Array;
@@ -37,32 +45,42 @@ export function applyExpansionRomMemory(
   expandBanks: Uint8Array[],
   image: Uint8Array | Tec1gExpansionRomMemoryImage
 ): void {
-  const bank0 = expandBanks[0];
-  const bank1 = expandBanks[1];
-  if (!bank0 || !bank1) {
-    return;
-  }
-  bank0.fill(0x00);
-  bank1.fill(0x00);
+  expandBanks.forEach((bank) => bank.fill(0x00));
   if (image instanceof Uint8Array) {
-    bank0.set(image.slice(TEC1G_EXPAND_START, TEC1G_EXPAND_END + 1));
-    bank1.set(
-      image.slice(TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE, TEC1G_EXPAND_START + TEC1G_EXPAND_SIZE * 2)
-    );
+    for (let bankIndex = 0; bankIndex < expandBanks.length; bankIndex += 1) {
+      const target = expandBanks[bankIndex];
+      if (target === undefined) {
+        continue;
+      }
+      const start = TEC1G_EXPAND_START + bankIndex * TEC1G_EXPAND_SIZE;
+      target.set(image.slice(start, start + TEC1G_EXPAND_SIZE));
+    }
     return;
   }
-  copyExpansionBank(bank0, image.banks[0]);
-  copyExpansionBank(bank1, image.banks[1]);
+  for (let bankIndex = 0; bankIndex < expandBanks.length; bankIndex += 1) {
+    copyExpansionBank(expandBanks[bankIndex], image.banks[bankIndex]);
+  }
 }
 
 /**
  * Copies a source bank into an emulator expansion bank.
  */
-function copyExpansionBank(target: Uint8Array, source: Uint8Array | undefined): void {
-  if (source === undefined) {
+function copyExpansionBank(target: Uint8Array | undefined, source: Uint8Array | undefined): void {
+  if (target === undefined || source === undefined) {
     return;
   }
   target.set(source.slice(0, TEC1G_EXPAND_SIZE));
+}
+
+/**
+ *
+ */
+function selectedExpansionBankIndex(state: Tec1gExpansionBankState): number | undefined {
+  const bankValue = state.memoryExpansionBankValue;
+  if (typeof bankValue === 'number' && Number.isInteger(bankValue)) {
+    return bankValue >= 0 && bankValue < TEC1G_EXPAND_BANK_COUNT ? bankValue : undefined;
+  }
+  return state.bankA14 ? 1 : 0;
 }
 
 /**
@@ -71,20 +89,20 @@ function copyExpansionBank(target: Uint8Array, source: Uint8Array | undefined): 
 export function createTec1gMemoryHooks(
   baseMemory: Uint8Array,
   romRanges: Array<{ start: number; end: number }>,
-  state: Pick<
-    Tec1gState['system'],
-    'shadowEnabled' | 'protectEnabled' | 'expandEnabled' | 'bankA14'
-  >
+  state: Tec1gExpansionBankState
 ): Tec1gMemoryHooks {
-  const expandBanks: [Uint8Array, Uint8Array] = [
-    new Uint8Array(TEC1G_EXPAND_SIZE),
-    new Uint8Array(TEC1G_EXPAND_SIZE),
-  ];
+  const expandBanks = Array.from(
+    { length: TEC1G_EXPAND_BANK_COUNT },
+    () => new Uint8Array(TEC1G_EXPAND_SIZE)
+  );
   const shadowInfo = ensureTec1gShadowRom(baseMemory, romRanges);
   const isRomAddress = (addr: number): boolean =>
     romRanges.some((range) => addr >= range.start && addr <= range.end) ||
     (shadowInfo.shadowCopied && addr >= TEC1G_SHADOW_START && addr <= TEC1G_SHADOW_END);
-  const getExpandBank = (): Uint8Array => expandBanks[state.bankA14 ? 1 : 0];
+  const getExpandBank = (): Uint8Array | undefined => {
+    const index = selectedExpansionBankIndex(state);
+    return index === undefined ? undefined : expandBanks[index];
+  };
 
   const memRead = (addr: number): number => {
     const masked = addr & ADDR_MASK;
@@ -94,7 +112,7 @@ export function createTec1gMemoryHooks(
     }
     if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
       if (state.expandEnabled) {
-        return getExpandBank()[masked - TEC1G_EXPAND_START] ?? 0;
+        return getExpandBank()?.[masked - TEC1G_EXPAND_START] ?? 0;
       }
     }
     return baseMemory[masked] ?? 0;
@@ -114,7 +132,10 @@ export function createTec1gMemoryHooks(
   const writeVisibleMemory = (masked: number, value: number): void => {
     if (masked >= TEC1G_EXPAND_START && masked <= TEC1G_EXPAND_END) {
       if (state.expandEnabled) {
-        getExpandBank()[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
+        const bank = getExpandBank();
+        if (bank !== undefined) {
+          bank[masked - TEC1G_EXPAND_START] = value & BYTE_MASK;
+        }
         return;
       }
     }
