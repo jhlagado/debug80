@@ -62,7 +62,7 @@ The chapters begin with the repository shape and project model, then follow the 
 
 ## Current Codebase Notes
 
-This manual is updated against the codebase state through **2026-06-26**. These notes give maintainers a quick view of changes that affect several chapters:
+This manual is updated against the codebase state through **2026-06-27**. These notes give maintainers a quick view of changes that affect several chapters:
 
 - **AZM-only assembler integration:** Debug80 now treats AZM and its native `.d8.json` output as the build path. The old listing-derived mapping path has been removed from active project behaviour. Active targets should be expected to build a HEX plus a native D8 source map.
 - **Editor grammar:** Debug80 owns TextMate syntax highlighting for Z80/AZM assembly sources. `package.json` contributes the `z80-asm` grammar, default file associations for `.asm`, `.z80` and `.asmi`, and token colour customisations for comments, AZMDoc contract comments, labels, directives, instructions, registers, conditions, strings, symbols, constants, numbers and AZM layout syntax.
