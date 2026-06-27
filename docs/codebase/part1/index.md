@@ -13,3 +13,4 @@ Part I introduces the Debug80 codebase at the level you need to navigate it conf
 
 - [Chapter 1 — Debug80 Architecture](01-what-debug80-is.md)
 - [Chapter 2 — The Project Configuration System](02-project-configuration.md)
+- [Chapter 3 — ROM Development Project Config](03-rom-development-project-config.md)

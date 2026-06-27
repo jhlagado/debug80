@@ -16,6 +16,7 @@ The chapters begin with the repository shape and project model, then follow the 
 
 - [Chapter 1 — Debug80 Architecture](part1/01-what-debug80-is.md)
 - [Chapter 2 — Project Configuration](part1/02-project-configuration.md)
+- [Chapter 3 — ROM Development Project Config](part1/03-rom-development-project-config.md)
 
 ## Part II — The Debug Adapter
 
