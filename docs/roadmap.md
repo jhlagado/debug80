@@ -894,3 +894,486 @@ This should be delivered in small, reviewable PRs:
 
 Avoid combining behavior-preserving parser cleanup with new AZM language
 features.
+
+## Roadmap Item 4: Mixed-Mode Register Contracts for Legacy and New Code
+
+### Goal
+
+Support large projects that combine new AZM-authored Z80 code with retained
+legacy monitor or ROM code. New code should be able to use strict register
+contracts, while legacy code can be audited, warned about or temporarily
+excluded without disabling register contracts for the whole build.
+
+The motivating TECM8/MON3 audit currently reports 281 register-contract
+diagnostics in copied legacy monitor source:
+
+- `monitor.asm`: 186
+- `disassembler.asm`: 52
+- `rtc.asm`: 39
+- `sound.asm`: 4
+
+That result is useful evidence, not a reason to weaken strictness globally. The
+design target is:
+
+- strict contracts for new TECM8 code.
+- audited or warning contracts for copied MON3 legacy internals.
+- optional off/audit treatment for known temporary removal-bound legacy areas.
+- explicit boundary contracts where strict code calls audited legacy code.
+
+### Current Baseline
+
+AZM already has global register-contract modes:
+
+```ts
+off | audit | warn | error | strict
+```
+
+The current global `audit` behavior is intentionally non-blocking for
+register-contract findings: it runs analysis and can produce report/interface
+artifacts, but it does not emit compiler diagnostics for conflicts. Normal
+assembler errors such as syntax errors, missing includes, duplicate symbols and
+invalid instructions still fail through the normal assembler pipeline.
+
+The missing capability is scoped policy. A project cannot currently say “strict
+for this source tree, audit for this copied ROM tree, off for this temporary
+legacy path” while preserving strict call boundaries.
+
+### Design Principles
+
+- Keep strictness meaningful. Mixed mode must not become a hole where strict
+  code can depend on unproven legacy internals.
+- Treat `@` routine boundaries as the unit of contract checking.
+- Prefer file/source-unit scoped policy first; source-region directives can
+  come later if still needed.
+- Keep compatibility defaults stable. Existing global `--rc audit`, `--rc warn`
+  and `--rc strict` behavior should not regress.
+- Keep reports machine-readable before making markdown pretty.
+- Make suppressions explicit, local and auditable.
+
+### Proposed Mode Semantics
+
+- `off`: do not run register-contract analysis for the scoped code.
+- `audit`: run analysis and include findings in reports, but do not fail compile
+  because of scoped register-contract diagnostics.
+- `warn`: emit compiler warnings for scoped register-contract diagnostics; still
+  emit artifacts.
+- `strict`: emit compiler errors for scoped register-contract diagnostics and do
+  not emit normal artifacts when errors are present.
+
+The mode only affects register-contract diagnostics. Non-contract assembler
+errors remain errors in every mode.
+
+`error` currently exists as a global mode alias/variant in the codebase. Future
+work should decide whether it remains public syntax, aliases to `strict`, or is
+kept only for compatibility.
+
+### Policy Shape
+
+The first implementation should use a project/API policy object rather than
+inventing source syntax immediately.
+
+Candidate config shape:
+
+```yaml
+registerContracts:
+  default: strict
+  audit:
+    - roms/tec1g/tecm8/monitor/**
+  off:
+    - roms/tec1g/tecm8/monitor/legacy_removed_later/**
+  strict:
+    - src/**
+    - roms/tec1g/tecm8/expansion/**
+```
+
+Equivalent API shape should be plain structured data, not YAML-specific:
+
+```ts
+{
+  registerContracts: 'strict',
+  registerContractsPolicy: [
+    { mode: 'audit', include: ['roms/tec1g/tecm8/monitor/**'] },
+    { mode: 'off', include: ['roms/tec1g/tecm8/monitor/legacy_removed_later/**'] },
+    { mode: 'strict', include: ['src/**', 'roms/tec1g/tecm8/expansion/**'] },
+  ],
+}
+```
+
+CLI syntax can be added after the API model is proven. Avoid over-designing CLI
+flags until the policy evaluator has tests.
+
+Source-level directives are a possible later convenience:
+
+```asm
+;! contracts strict
+.include "new-tecm8-service.asm"
+
+;! contracts audit
+.include "legacy-mon3-monitor.asm"
+
+;! contracts strict
+```
+
+Do not implement source-level mode switches until file/source-unit policy has
+landed. They introduce ordering and nesting semantics that are easy to get
+wrong.
+
+### Boundary Rule
+
+This is the central quality rule:
+
+- legacy internals can be audited or temporarily messy.
+- public boundaries from strict code into legacy must have explicit contracts.
+- strict code must see only the declared boundary contract, not the untrusted
+  legacy implementation details.
+
+If strict code calls a routine whose implementation is in an `audit` or `off`
+scope, AZM should require one of:
+
+- an explicit source contract on the public `@` routine.
+- an external `.asmi` contract.
+- a profile/interface contract such as a MON3 service declaration.
+
+Without that boundary contract, the strict caller should receive an error such
+as `external_interface_unknown` or `missing_callee_contract`.
+
+### Diagnostic Classification
+
+Add a structured register-contract diagnostic kind. Suggested initial kinds:
+
+- `missing_callee_contract`: the callee has no explicit contract and inference
+  is insufficient for the call boundary.
+- `inferred_broad_clobber`: AZM inferred a broad clobber set that may be
+  tightened by annotation.
+- `definite_contract_violation`: an explicit callee contract says a value is
+  clobbered/preserved differently from how the caller uses it.
+- `unknown_control_flow`: AZM cannot prove control flow or stack/register state
+  through a path.
+- `external_interface_unknown`: the call crosses an imported/external/profile
+  boundary with no usable declared contract.
+- `flag_lifetime_risk`: caller relies on a flag after a call that may alter it.
+
+The existing human diagnostic text should remain concise, but reports and
+tooling API results should expose the category directly.
+
+### Machine-Readable Reports
+
+Add native JSON report output before adding markdown rendering.
+
+Useful CLI shape:
+
+```sh
+azm --rc audit --reg-profile mon3 --report register-contracts.json monitor.asm
+azm --rc audit --reg-profile mon3 --report register-contracts.md monitor.asm
+azm --rc strict --reg-profile mon3 monitor.asm
+```
+
+Useful JSON fields:
+
+- file, line, column.
+- containing routine or label.
+- called routine or interface target.
+- register or flag at risk.
+- diagnostic kind.
+- source mode at the diagnostic site.
+- whether the callee has an explicit contract.
+- whether the callee was inferred.
+- whether the caller uses the value after the call.
+- suggested remediation category.
+- whether the diagnostic was suppressed.
+- suppression reason, if any.
+
+Markdown can be generated from the JSON model, not from ad hoc text parsing.
+
+### External Interface Contracts
+
+Extend profile/interface declarations so indirect or ROM-style calls can be
+checked without requiring the whole implementation to be strict-clean.
+
+Examples that matter for TECM8/MON3:
+
+- `RST 10h` with `C = service number`.
+- `RST 18h` / breakpoint API.
+- banked calls with `B = bank`, `HL = target`.
+- monitor BIOS service wrappers.
+
+Conceptual declaration:
+
+```text
+interface MON3_RST10 {
+  selector: C
+
+  service 50h:
+    name: TECM8_BIOS_SYS_GET
+    out: A
+    clobbers: flags
+
+  service 53h:
+    name: TECM8_BIOS_BANK_CALL
+    in: B,HL
+    out: A,flags
+    clobbers: A,flags
+}
+```
+
+The exact syntax is not locked. The capability is: callers are checked against
+a declared service contract even if the implementation is legacy, indirect or
+not included in the strict source unit.
+
+### Local Suppressions
+
+Add narrow suppressions only after diagnostics are categorized.
+
+Candidate syntax:
+
+```asm
+;! rc-ignore-next missing_callee_contract: legacy MON3 helper retained until GLCD code is moved
+call oldGlcdHelper
+```
+
+Requirements:
+
+- suppression must name a diagnostic kind or exact diagnostic identity.
+- suppression must have reason text.
+- suppression applies to the next relevant instruction or the current routine,
+  never the whole file by accident.
+- suppressed diagnostics remain visible in audit reports.
+- reports count suppressions separately.
+- strict mode should fail on malformed suppressions, such as missing reasons.
+
+### Inference Export
+
+Add an inference export workflow:
+
+```sh
+azm --rc infer --reg-profile mon3 monitor.asm --report inferred-contracts.json
+```
+
+The report should propose draft contracts per routine:
+
+- routine name.
+- inferred inputs.
+- inferred outputs.
+- inferred clobbers.
+- preserved registers/flags.
+- confidence level.
+- callers affected.
+- evidence summary.
+
+Generated contracts are draft evidence, not source-of-truth. Legacy accidental
+behavior should not automatically become a stable public API.
+
+### Ratchet Mode
+
+Add a baseline workflow for large legacy projects:
+
+```sh
+azm --rc audit --baseline monitor-contracts-baseline.json --ratchet monitor.asm
+```
+
+Behavior:
+
+- existing baseline diagnostics are accepted.
+- new diagnostics in strict/new-code paths fail.
+- new diagnostics in audited legacy paths fail or warn based on policy.
+- removed diagnostics are reported as improvements.
+- changed diagnostic location/message/category is reported as a baseline change.
+- baseline updates should be explicit, not automatic.
+
+This lets TECM8 avoid making the copied MON3 situation worse while gradually
+reducing the legacy debt.
+
+### Better Flag Diagnostics
+
+Improve flag diagnostics because Z80 monitor code often relies on carry/zero
+more subtly than on general registers.
+
+Diagnostics and reports should identify:
+
+- which flag is live.
+- where the flag value was set, if known.
+- which call may clobber it.
+- where it is later consumed.
+- whether the callee explicitly preserves or outputs that flag.
+
+This should be a focused liveness/reporting improvement, not a broad rewrite of
+the register-contract analyzer.
+
+### Phased Delivery Plan
+
+#### Phase 0: Evidence and Existing Behavior Audit
+
+Priority: P1.
+
+Tasks:
+
+- Capture the TECM8/MON3 diagnostic distribution as external evidence.
+- Audit current global mode behavior for `off`, `audit`, `warn`, `error` and
+  `strict`.
+- Document exactly which artifacts are emitted in global `audit` today.
+- Identify where diagnostics lose category/source-mode metadata.
+- Confirm how `.asmi` interface contracts and MON3 profile summaries interact
+  with strict callers.
+
+Exit criteria:
+
+- no behavior changes.
+- short design note or roadmap update with existing mode semantics.
+- focused tests identify current global `audit` non-blocking behavior if not
+  already covered.
+
+#### Phase 1: Structured Diagnostic Model
+
+Priority: P1.
+
+Tasks:
+
+- Add a `kind` field to register-contract conflict/report records.
+- Preserve current human-readable diagnostic messages.
+- Populate kinds for existing conflict families where evidence is clear.
+- Add a conservative `unknown_control_flow` or `unclassified` fallback only if
+  needed during migration.
+- Expose the kind through tooling API results and reports.
+
+Exit criteria:
+
+- existing diagnostics remain readable.
+- tests prove at least missing contract, definite clobber and flag lifetime
+  risks are distinguishable.
+- no change to compile pass/fail behavior yet.
+
+#### Phase 2: Machine-Readable JSON Report
+
+Priority: P1.
+
+Tasks:
+
+- Add JSON report model and writer for register-contract audits.
+- Include source location, routine, target, carriers, category, mode and
+  remediation fields.
+- Keep existing text report behavior stable.
+- Add CLI/API option for report format without forcing markdown first.
+
+Exit criteria:
+
+- TECM8 can consume a JSON report without scraping text.
+- `audit` mode can produce reports while normal assembler errors still fail.
+- package smoke and register-contract integration tests cover report creation.
+
+#### Phase 3: Scoped File/Source-Unit Policy
+
+Priority: P1.
+
+Tasks:
+
+- Add API-level policy object for source globs and modes.
+- Evaluate policy by physical source file and source unit.
+- Decide precedence: most specific match wins, or last matching policy wins.
+  Document and test it.
+- Apply scoped mode to register-contract diagnostics only.
+- Keep non-register assembler diagnostics unaffected.
+- Add tests for strict new files plus audited legacy files in one compile.
+
+Exit criteria:
+
+- mixed strict/audit/off source trees are supported through API.
+- strict diagnostics in new code still block.
+- audited legacy diagnostics appear in reports but do not block.
+- normal assembler errors in audited legacy still block.
+
+#### Phase 4: Strict Boundary Enforcement
+
+Priority: P1.
+
+Tasks:
+
+- Detect calls from strict code into audit/off source units.
+- Require an explicit boundary contract for those calls.
+- Accept source contracts, `.asmi` contracts and profile/interface contracts as
+  valid boundaries.
+- Add diagnostics for unknown external/audited boundaries.
+
+Exit criteria:
+
+- strict code cannot silently depend on audited legacy internals.
+- audited legacy internals can remain noisy without blocking the build.
+- tests cover strict-to-audit calls with and without explicit contracts.
+
+#### Phase 5: Interface Contract Extensions
+
+Priority: P2.
+
+Tasks:
+
+- Design declarative profile/interface syntax for selector-based services.
+- Cover MON3 `RST 10h` service selection first.
+- Represent service selectors, service names, inputs, outputs and clobbers.
+- Integrate with existing MON3 profile logic without duplicating contracts.
+
+Exit criteria:
+
+- TECM8 can declare monitor service contracts without making monitor internals
+  strict-clean.
+- strict callers are checked against those declared interfaces.
+
+#### Phase 6: Local Suppressions
+
+Priority: P2.
+
+Tasks:
+
+- Add `rc-ignore-next` or equivalent local suppression syntax.
+- Require diagnostic kind and reason text.
+- Keep suppressions visible in JSON reports.
+- Count suppressions separately from active diagnostics.
+
+Exit criteria:
+
+- suppressions are narrow, auditable and test-covered.
+- malformed suppressions fail in strict mode.
+
+#### Phase 7: Ratchet Baselines
+
+Priority: P2.
+
+Tasks:
+
+- Define stable diagnostic identity for baseline matching.
+- Add baseline read/compare flow.
+- Report new, removed and changed diagnostics.
+- Make baseline updates explicit.
+
+Exit criteria:
+
+- projects can prevent legacy register-contract debt from increasing.
+- removed diagnostics are visible as progress.
+
+#### Phase 8: Inference Export
+
+Priority: P3.
+
+Tasks:
+
+- Export inferred routine contracts as JSON.
+- Add optional markdown rendering from the same model.
+- Include confidence and caller-impact evidence.
+- Keep generated source edits out of this phase.
+
+Exit criteria:
+
+- humans can review draft legacy contracts before accepting them.
+- accidental legacy behavior is not automatically promoted into source.
+
+### Milestone Exit Criteria
+
+This mixed-mode register-contract milestone is complete when:
+
+- projects can configure strict/audit/off register-contract policy by source
+  area.
+- `audit` is non-blocking only for register-contract diagnostics.
+- strict callers into audited/off legacy require explicit boundary contracts.
+- JSON reports expose diagnostic categories and enough evidence for tools.
+- local suppressions are narrow and auditable.
+- optional ratchet baselines can prevent diagnostic counts from increasing.
+- MON3/TECM8-style service interfaces can be declared without requiring the
+  copied monitor implementation to be strict-clean.
