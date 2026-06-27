@@ -477,6 +477,7 @@ describe('package.json language contracts', () => {
     expect(findTokenColor('variable.other.field.z80-asm')).toBe('#FF4D6D');
     expect(findTokenColor('constant.language.enum.member.z80-asm')).toBe('#FF4D6D');
     expect(findTokenColor('support.function.builtin.z80-asm')).toBe('#FDE047');
+    expect(findTokenColor('support.function.azm-op.z80-asm')).toBe('#FDE047');
     expect(findTokenColor('punctuation.definition.typecast.begin.z80-asm')).toBe('#A0AEC0');
     expect(findTokenColor('punctuation.section.brackets.z80-asm')).toBe('#A0AEC0');
   });
@@ -524,6 +525,10 @@ describe('package.json language contracts', () => {
     expect(includes.indexOf('#azm-enums')).toBeLessThan(includes.indexOf('#symbols'));
     expect(includes.indexOf('#azm-type-fields')).toBeLessThan(includes.indexOf('#symbols'));
     expect(includes.indexOf('#azm-ops')).toBeLessThan(includes.indexOf('#symbols'));
+    expect(includes.indexOf('#azm-op-invocations')).toBeGreaterThan(
+      includes.indexOf('#instructions')
+    );
+    expect(includes.indexOf('#azm-op-invocations')).toBeLessThan(includes.indexOf('#symbols'));
     expect(includes.indexOf('#azm-interface-contracts')).toBeLessThan(includes.indexOf('#symbols'));
   });
 
@@ -670,6 +675,31 @@ describe('package.json language contracts', () => {
     expect(getFirstGrammarCaptureScope('azm-ops', 'op load8(dst reg8, value imm8)', 'load8')).toBe(
       'entity.name.function.z80-asm'
     );
+  });
+
+  it('Z80 assembly grammar captures AZM op invocations separately from symbols', () => {
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-op-invocations',
+        '        farCall 0x01,TECM8_DEMO_BANK1_ENTRY',
+        'farCall'
+      )
+    ).toBe('support.function.azm-op.z80-asm');
+    expect(
+      getFirstGrammarCaptureScope(
+        'azm-op-invocations',
+        '        farJump 0x02,TECM8_DEMO_BANK2_TARGET',
+        'farJump'
+      )
+    ).toBe('support.function.azm-op.z80-asm');
+
+    const invocationPattern = getGrammarPattern(
+      'azm-op-invocations',
+      'meta.op.invocation.z80-asm'
+    );
+    const invocationRegex = toJavaScriptRegex(invocationPattern.match);
+    expect(invocationRegex.test('farCall:')).toBe(false);
+    expect(invocationRegex.test('farCall :')).toBe(false);
   });
 
   it('Z80 assembly grammar captures AZM interface contracts outside comments', () => {

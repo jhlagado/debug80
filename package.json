@@ -189,6 +189,7 @@
           {
             "scope": [
               "entity.name.function.z80-asm",
+              "support.function.azm-op.z80-asm",
               "support.function.builtin.z80-asm"
             ],
             "settings": {

@@ -43,6 +43,9 @@
       "include": "#instructions"
     },
     {
+      "include": "#azm-op-invocations"
+    },
+    {
       "include": "#registers"
     },
     {
@@ -469,6 +472,19 @@
             },
             "2": {
               "name": "entity.name.function.z80-asm"
+            }
+          }
+        }
+      ]
+    },
+    "azm-op-invocations": {
+      "patterns": [
+        {
+          "name": "meta.op.invocation.z80-asm",
+          "match": "^\\s*([a-z][A-Za-z0-9_.$?@]*)(?![A-Za-z0-9_.$?@])(?!\\s*:)(?=\\s*(?:$|;|[^;]))",
+          "captures": {
+            "1": {
+              "name": "support.function.azm-op.z80-asm"
             }
           }
         }
