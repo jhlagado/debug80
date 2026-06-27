@@ -58,9 +58,9 @@ In extended mode, bit 3 is still latched and exposed in Debug80 state, but it
 does not select a different physical extended window. The upper selector owns
 the extended-window selection.
 
-## Current Debug80 Backing Image
+## Current Debug80 Bank Addressing
 
-Debug80 currently supports nine 16K physical expansion banks:
+Debug80 currently decodes nine 16K physical expansion windows:
 
 ```text
 bank 0  legacy expand page 0
@@ -74,7 +74,13 @@ bank 7  extended window 5
 bank 8  extended window 6
 ```
 
-The maximum image size accepted by the current ROM-artifact validation is:
+Those windows should not all be treated as a permanent ROM product shape. The
+hardware plan is still fluid: a board might use the existing 32K expansion ROM
+shape, add one extra 32K ROM area, and leave the remaining decoded windows for
+RAM, EPROM-programmer behaviour, cartridge overlays, or other hardware-specific
+uses.
+
+The maximum ROM artifact image size accepted by the current validation is:
 
 ```text
 9 * 0x4000 = 0x24000 = 147456 bytes
@@ -100,6 +106,14 @@ per-bank binaries. The per-bank D8 maps remain the source-debug identity.
 This prevents a source file from pretending that banked code is a single linear
 address range. TECM8 multibank source work should declare banks explicitly, with
 each bank assembled for the visible origin `0x8000`.
+
+Projects should declare only the ROM-backed banks they actually build. For
+example, a project may build banks `0` and `1` as the existing 32K expansion ROM,
+then banks `2` and `3` as one additional 32K ROM for a new board. Banks `4-8`
+can remain undeclared in the ROM artifact if the hardware uses them for RAM or
+other functions. Use `bankCount` and `imageSize` to cover the highest ROM-backed
+physical bank needed by the runtime image; use `outputs` to describe the actual
+deliverable shapes.
 
 Example shape:
 
@@ -176,8 +190,11 @@ two legacy 16K expand pages
 plus seven additional decoded 16K expansion windows
 ```
 
-The next TECM8 design step is to decide ownership and behavior for the extended
-windows:
+That is an addressing model, not a final ROM allocation. Mark's current board
+direction appears to allow the existing 32K expansion ROM plus one additional
+32K ROM area, with the remaining decoded windows available for RAM or other
+board-specific behaviours. The next TECM8 design step is to decide ownership and
+behavior for the extended windows:
 
 ```text
 EPROM programmer

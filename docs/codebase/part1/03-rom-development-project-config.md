@@ -272,9 +272,11 @@ with a simple replacement binary in the `0x8000-0xBFFF` window.
 
 ## Option 5: Develop a Multibank Expansion ROM
 
-Use a multibank expansion artifact when the source has separate bank files. This
-is the model for the TEC-1G expansion scheme with two legacy 16K pages plus
-seven extended 16K windows.
+Use a multibank expansion artifact when the source has separate bank files. The
+TEC-1G decode model has two legacy 16K pages plus seven extended 16K windows,
+but that does not mean every window is a ROM file. Treat those windows as
+addressable capacity. A board may use the existing 32K expansion ROM, add one
+extra 32K ROM area, and reserve the remaining windows for RAM or other hardware.
 
 ```json
 {
@@ -317,10 +319,10 @@ seven extended 16K windows.
 }
 ```
 
-Each bank source is assembled independently for `0x8000-0xBFFF` and padded to
-16K. The top-level `outputBin` is the Debug80 runtime image. If you do not
-declare `outputs`, Debug80 writes that runtime image using physical bank
-offsets.
+Each declared ROM bank source is assembled independently for `0x8000-0xBFFF`
+and padded to 16K. The top-level `outputBin` is the Debug80 runtime image. If
+you do not declare `outputs`, Debug80 writes that runtime image using physical
+bank offsets.
 
 Physical bank numbers are:
 
@@ -336,12 +338,54 @@ bank 7  extended window 5
 bank 8  extended window 6
 ```
 
+Only declare banks that the project is actually building as ROM source. If the
+hardware uses banks `4-8` as RAM, do not create ROM source entries for those
+banks. If the highest ROM-backed bank is `3`, a four-bank runtime image is
+enough:
+
+```json
+{
+  "imageSize": 65536,
+  "bankSize": 16384,
+  "bankCount": 4,
+  "banks": [
+    { "physicalBank": 0, "sourceFile": "roms/expansion/bank0.asm", "outputBin": "build/roms/expansion/bank0.bin" },
+    { "physicalBank": 1, "sourceFile": "roms/expansion/bank1.asm", "outputBin": "build/roms/expansion/bank1.bin" },
+    { "physicalBank": 2, "sourceFile": "roms/expansion/bank2.asm", "outputBin": "build/roms/expansion/bank2.bin" },
+    { "physicalBank": 3, "sourceFile": "roms/expansion/bank3.asm", "outputBin": "build/roms/expansion/bank3.bin" }
+  ]
+}
+```
+
 ## Output Recipes
 
 `outputs` lets the source bank declarations stay canonical while artifact
 production is configurable. This matters because the emulator needs a runtime
 image, while hardware programming or release packaging might need a different
 shape.
+
+For example, if the project has the existing 32K expansion ROM in banks `0-1`
+and one extra 32K ROM in banks `2-3`, output recipes can produce both hardware
+deliverables from the same source bank declarations:
+
+```json
+[
+  {
+    "id": "existing-expansion-32k",
+    "kind": "packed",
+    "layout": "contiguous",
+    "outputBin": "build/roms/expansion/existing-expansion-32k.bin",
+    "banks": [0, 1]
+  },
+  {
+    "id": "extra-board-rom-32k",
+    "kind": "packed",
+    "layout": "contiguous",
+    "outputBin": "build/roms/expansion/extra-board-rom-32k.bin",
+    "banks": [2, 3]
+  }
+]
+```
 
 The runtime image should be physical-layout:
 
