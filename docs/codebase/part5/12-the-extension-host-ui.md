@@ -26,9 +26,9 @@ Debug80 also owns the editor-facing language contribution for Z80 assembly. In `
 - breakpoint support for common Z80 assembly language ids
 - TextMate grammar at `syntaxes/z80-asm.tmLanguage.json`
 
-The Z80 assembly grammar is deliberately lexical. It recognizes semicolon comments, AZMDoc comments, strings, labels, local labels, directives, condition-bearing control instructions, Z80 mnemonics, registers, condition codes, number formats, symbols, operators, layout types, enum/member syntax, layout casts, field declarations, `sizeof`/`offset`, and register contract annotations such as `in`, `out`, `clobbers`, and `preserves`.
+The Z80 assembly grammar is deliberately lexical. It recognizes semicolon comments, AZMDoc comments, strings, labels, local labels, directives, condition-bearing control instructions, Z80 mnemonics, registers, condition codes, number formats, symbols, operators, layout types, enum/member syntax, layout casts, field declarations, AZM `op` declarations, lowercase AZM op invocations, `sizeof`/`offset`, and register contract annotations such as `in`, `out`, `clobbers`, and `preserves`.
 
-Colour is driven by default `editor.tokenColorCustomizations` in `package.json`. The current palette distinguishes comments, labels, symbols, directives, annotations, instructions, registers, conditions and flags, strings, function names, operators, and numeric literals. This is TextMate colouring, not semantic-token analysis.
+Colour is driven by default `editor.tokenColorCustomizations` in `package.json`. The current palette distinguishes comments, labels, symbols, directives, annotations, instructions, registers, conditions and flags, strings, function names including AZM op declarations and invocations, operators, and numeric literals. This is TextMate colouring, not semantic-token analysis.
 
 `registerLanguageAssociations()` in `src/extension/language-association.ts` is a safety net for opened documents. Once VS Code knows the contributed languages, it assigns `.asm`, `.z80`, and `.asmi` documents to `z80-asm` for `file` and `untitled` documents. That keeps decorations and breakpoints aligned with the contributed language ids even when a file was opened before associations settled.
 

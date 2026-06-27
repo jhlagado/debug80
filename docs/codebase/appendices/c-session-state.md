@@ -95,7 +95,9 @@ The tables below list all flat fields on `SessionStateShape`, grouped by the dom
 | `pauseRequested`          | `boolean`                                                             | `true` when the user has clicked Pause and the run loop has not yet yielded                 |
 | `lastStopReason`          | `'breakpoint' \| 'step' \| 'halt' \| 'entry' \| 'pause' \| undefined` | Reason sent with the most recent StoppedEvent                                               |
 | `lastBreakpointAddress`   | `number \| null`                                                      | Address of the breakpoint that caused the last stop; `null` otherwise                       |
+| `lastBreakpointAddressSpace` | `SourceAddressSpace \| undefined`                                  | Optional bank identity for the breakpoint that caused the last stop                         |
 | `skipBreakpointOnce`      | `number \| null`                                                      | If set, the run loop skips the breakpoint at this address once (re-entry guard on Continue) |
+| `skipBreakpointAddressSpace` | `SourceAddressSpace \| undefined`                                  | Optional bank identity that must still match for `skipBreakpointOnce` to apply              |
 | `callDepth`               | `number`                                                              | CALL/RET tracking counter used by step-over and step-out                                    |
 | `stepOverMaxInstructions` | `number`                                                              | Instruction limit for step-over; `0` = unlimited                                            |
 | `stepOutMaxInstructions`  | `number`                                                              | Instruction limit for step-out; `0` = unlimited                                             |

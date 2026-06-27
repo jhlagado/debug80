@@ -37,6 +37,8 @@ It then parses and validates the file with `parseD8DebugMap()` and `validateD8Se
 
 The same loader also accepts explicit auxiliary platform ROM maps through `auxiliaryDebugMaps`. For those auxiliary maps, `resolveAuxiliaryDebugMapFiles()` first asks the mapping service to resolve each project-relative file key through the workspace root, then falls back to the map file's own directory. This matters for generated TEC-1G monitor maps whose `.d8.json` lives under `build/` while the source file key still points at `roms/...` under the project root.
 
+When launch args also carry `debugMapAddressSpaces`, `buildMappingFromDebugMap()` tags every imported segment and anchor from the matching auxiliary map with that address-space identity. The current user of this path is TEC-1G multibank expansion ROM support, where several D8 maps all describe code visible at the same `0x8000-0xBFFF` window.
+
 ---
 
 ## D8 Conversion
@@ -88,10 +90,11 @@ segment.start <= address < segment.end
 
 When several segments overlap, the lookup prefers:
 
-1. a segment with a valid source line over one without a valid line
-2. the narrowest address span
+1. a segment whose `addressSpace` matches the requested runtime bank, when one is supplied
+2. a segment with a valid source line over one without a valid line
+3. the narrowest address span
 
-This prevents broad context segments from shadowing instruction-level mappings. If the best segment has no valid source line, the warning handler can log a diagnostic.
+If a bank-aware lookup finds no exact match, it may still fall back to an address-only segment. This prevents broad context segments from shadowing instruction-level mappings while keeping older untagged maps usable. If the best segment has no valid source line, the warning handler can log a diagnostic.
 
 ---
 
@@ -105,15 +108,15 @@ const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
 
 The lookup tries the exact line first, then nearby lines. This handles blank lines, labels and comments around an executable source line.
 
-`resolveLocation()` may fall back to the nearest anchor at or before the requested line. `resolveExecutableLocation()` returns only segments with `end > start` and never falls back to anchors. Breakpoint binding uses the executable path so labels, constants and directive-only lines do not become active breakpoints.
+`resolveLocation()` may fall back to the nearest anchor at or before the requested line. `resolveExecutableLocation()` returns only segments with `end > start` and never falls back to anchors. Both executable and non-executable lookup paths now preserve any matched `addressSpace`, so breakpoint binding and temporary run targets can keep the active TEC-1G expansion bank attached to the resolved address. Breakpoint binding still uses the executable path so labels, constants and directive-only lines do not become active breakpoints.
 
 ---
 
 ## Stack Frames and Breakpoints
 
-Breakpoint handling calls source-to-address lookup during `setBreakpoints`. Addresses returned by `resolveExecutableLocation()` are registered with the breakpoint manager. If the VS Code breakpoint has a condition, the condition string is stored against the resolved address and evaluated later by the runtime loop. If no executable address is found, VS Code receives an unverified breakpoint.
+Breakpoint handling calls source-to-address lookup during `setBreakpoints`. Addresses returned by `resolveExecutableLocation()` are registered with the breakpoint manager together with any bank address space attached to the segment. If the VS Code breakpoint has a condition, the condition string is stored against that resolved breakpoint identity and evaluated later by the runtime loop. If no executable address is found, VS Code receives an unverified breakpoint.
 
-Stack-frame resolution calls `findSegmentForAddress()` for the program counter. If a mapped file and line are available, VS Code can open and highlight that location. Debug80 also reads up to eight words from the current `SP` and treats mapped words as best-effort return-address frames. If mapping is missing, the stack display falls back to the raw address or marks stack words as likely data.
+Stack-frame resolution calls `findSegmentForAddress()` for the program counter. On TEC-1G, the current runtime bank is supplied so the top frame and nearest-symbol label come from the active expansion ROM bank instead of an unrelated bank that happens to share the same address. Debug80 also reads up to eight words from the current `SP` and treats mapped words as best-effort return-address frames. If mapping is missing, the stack display falls back to the raw address or marks stack words as likely data.
 
 Editor features also consume the same source map. F12 / Go to Definition, hover details, workspace symbol search, the Variables panel, Watch expressions and conditional breakpoint expressions all use symbols from the active D8 map. User-facing messages should say "source map" or "build the target" rather than exposing internal D8 details.
 

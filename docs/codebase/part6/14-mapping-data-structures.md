@@ -43,11 +43,12 @@ interface SourceMapSegment {
     file: string | null; // Source file, if known
     line: number | null; // 1-based source line, if known
   };
-  lst: {
+  context: {
     line: number; // Assembler source-context line
     text: string; // Assembler source-context text
   };
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  addressSpace?: { kind: 'tec1g-expansion'; physicalBank: number };
 }
 ```
 
@@ -56,6 +57,8 @@ interface SourceMapSegment {
 Some D8 segments are zero-width where `start === end`. Those segments can still provide useful source context for stack display or symbol lookup, but `resolveExecutableLocation()` filters them out when binding breakpoints.
 
 `loc.file` and `loc.line` may be `null`. That happens when a source path cannot be resolved or a D8 segment intentionally carries no source line.
+
+`addressSpace` is optional and currently used for TEC-1G multibank expansion ROM maps. When several ROM banks reuse the visible `0x8000-0xBFFF` address window, the same numeric address can map to different source files in different physical banks. Bank-aware lookup prefers an exact `addressSpace` match and falls back to address-only segments only when no bank-tagged mapping exists.
 
 ### Confidence
 
@@ -79,12 +82,14 @@ interface SourceMapAnchor {
   symbol: string;
   file: string;
   line: number;
+  addressSpace?: { kind: 'tec1g-expansion'; physicalBank: number };
 }
 ```
 
 Anchors give Debug80 a known file and source line for a specific address. They power nearest-symbol lookup, stack-frame names, Go to Definition, workspace symbols, hovers, Variables, Watch expressions and conditional breakpoint symbol resolution.
 
 Duplicate anchor addresses are allowed because labels, constants and data symbols can share an address.
+Banked TEC-1G ROM symbols can also share an address while remaining distinct by `addressSpace`.
 
 ---
 
@@ -192,7 +197,7 @@ If no usable map exists, Debug80 returns an empty mapping and logs a build-requi
 
 ## Summary
 
-- `SourceMapSegment` now uses `start`, exclusive `end`, `loc`, `lst`, and `confidence`.
+- `SourceMapSegment` now uses `start`, exclusive `end`, `loc`, `context`, and `confidence`.
 - `SourceMapAnchor` is an address/symbol/file/line record parsed from symbol definitions.
 - `SourceMapIndex` has three lookup structures: by address, by file/line, and by file anchors.
 - D8 v1 requires `format`, `version`, `arch`, `addressWidth`, `endianness`, and grouped `files`.

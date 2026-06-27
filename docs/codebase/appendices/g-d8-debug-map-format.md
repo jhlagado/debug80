@@ -215,6 +215,8 @@ interface D8MemoryLayout {
 
 Memory segment `start` is inclusive and `end` is exclusive. Consumers may use this for display, validation, or bank-aware lookup. Debuggers that do not need memory layout can ignore it.
 
+Debug80's runtime mapping model can also attach a narrower address-space identity to imported segments and anchors when the launch path already knows which physical bank an auxiliary map belongs to. The current example is TEC-1G multibank expansion ROM support: each generated bank map still uses visible `0x8000-0xBFFF` addresses, while launch metadata records the physical bank so breakpoint and stack lookups can choose the active bank first.
+
 ---
 
 ## Generator and Diagnostics

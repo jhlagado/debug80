@@ -167,8 +167,8 @@ The Call Stack context menu also exposes **Run to Here** for mapped stack-return
 `BreakpointManager` in `src/debug/mapping/breakpoint-manager.ts` maintains three data structures:
 
 - **`pendingBySource`** — a `Map<string, SourceBreakpoint[]>` keyed by source file path. This holds what the user has set, before verification against the source map.
-- **`active`** — a `Set<number>` of verified Z80 addresses. This is what the execution loop checks.
-- **`conditions`** — a `Map<number, string>` of non-empty conditional breakpoint expressions keyed by verified Z80 address.
+- **`active`** — a `Set<string>` of verified breakpoint keys. Plain RAM breakpoints use masked Z80 addresses, while banked TEC-1G ROM breakpoints include a physical-bank address-space prefix.
+- **`conditions`** — a `Map<string, string>` of non-empty conditional breakpoint expressions keyed by the same resolved breakpoint identity.
 
 The two-tier structure lets breakpoints persist across multiple sessions. When the user sets a breakpoint before launching, it goes into `pendingBySource`. After launch, the source maps are available and `applyAll()` can verify it.
 
@@ -191,7 +191,7 @@ private resolveAlternateSourcePath(sourcePath: string): string | undefined {
 }
 ```
 
-After verification, `rebuild()` populates the `active` address set from all verified breakpoints and records any non-empty condition strings. The execution loop asks the runtime-control context whether the current PC should stop; the adapter checks the active set, applies any TEC-1G shadow alias, then evaluates the condition if one is present.
+After verification, `rebuild()` populates the `active` breakpoint-key set from all verified breakpoints and records any non-empty condition strings. The execution loop asks the runtime-control context whether the current PC should stop; the adapter first checks the active TEC-1G expansion-bank address space when the PC is inside the banked `0x8000-0xBFFF` window, then falls back to address-only matching, applies any TEC-1G shadow alias, and evaluates the matching condition if one is present.
 
 ### Conditional breakpoints
 
@@ -230,20 +230,26 @@ if (
   isBreakpointAddress(lastBreakpointAddress)
 ) {
   runState.skipBreakpointOnce = lastBreakpointAddress;
+  runState.skipBreakpointAddressSpace = lastBreakpointAddressSpace;
 }
 ```
 
 The execution loop checks this before the normal breakpoint test:
 
 ```typescript
-if (context.getSkipBreakpointOnce() !== null && pc === context.getSkipBreakpointOnce()) {
+if (
+  context.getSkipBreakpointOnce() !== null &&
+  pc === context.getSkipBreakpointOnce() &&
+  addressSpacesEqual(context.getAddressSpace(pc), context.getSkipBreakpointAddressSpace())
+) {
   context.setSkipBreakpointOnce(null);
+  context.setSkipBreakpointAddressSpace(undefined);
   // step past the instruction normally
   continue;
 }
 ```
 
-The address is skipped exactly once — after that step, `skipBreakpointOnce` is cleared, and the breakpoint is active again.
+The address is skipped exactly once — after that step, `skipBreakpointOnce` and its optional bank address space are cleared, and the breakpoint is active again.
 
 ### Shadow RAM aliasing
 
@@ -254,6 +260,8 @@ The TEC-1G has shadow RAM: a copy of the low 32KB (0x0000–0x7FFF) also visible
 ```typescript
 function isBreakpointAddress(address, options) {
   if (address === null) return false;
+  const expansionAddressSpace = getTec1gExpansionAddressSpace(address, options);
+  if (expansionAddressSpace && options.hasBreakpoint(address, expansionAddressSpace)) return true;
   if (options.hasBreakpoint(address)) return true;
   const shadow = getShadowAlias(address, options);
   if (shadow !== null && options.hasBreakpoint(shadow)) return true;
@@ -261,9 +269,9 @@ function isBreakpointAddress(address, options) {
 }
 ```
 
-`getShadowAlias()` maps 0x0000–0x7FFF to 0x8000–0xFFFF (when shadow is enabled), and maps 0x8000–0xFFFF back to 0x0000–0x7FFF. This is computed by `(TEC1G_SHADOW_START + address) & ADDR_MASK`.
+`getShadowAlias()` maps 0x0000–0x7FFF to 0x8000–0xFFFF when shadow is enabled. `getTec1gExpansionAddressSpace()` separately tags PCs inside the expansion-ROM window with the active physical bank. That lets Debug80 distinguish multiple source maps that all cover the same visible `0x8000–0xBFFF` range.
 
-Conditional breakpoint matching uses the same alias logic, but it must also identify which resolved address matched so it can load the correct condition string from the breakpoint manager.
+Conditional breakpoint matching uses the same bank-aware identity. `findMatchedBreakpointAddress()` returns both the masked address and the resolved address space so the adapter can load the correct condition string, preserve the last-hit bank for continue-skip logic, and bind temporary run targets such as Run to Here or Step Over to the active bank.
 
 ---
 
@@ -277,7 +285,7 @@ The Z80 runtime's `step()` method returns a `StepInfo` trace object with `kind` 
 
 ```typescript
 if (trace.kind && trace.taken && trace.returnAddress !== undefined) {
-  runUntilStop(new Set([trace.returnAddress]), stepOverMaxInstructions, 'step over');
+  runUntilStop([{ address: trace.returnAddress & ADDR_MASK }], stepOverMaxInstructions, 'step over');
   return;
 }
 ```
@@ -308,7 +316,7 @@ If the target has a source map entry (the function is in user code), the functio
 
 ```typescript
 if (unmappedReturn !== null && trace.kind && trace.taken) {
-  runUntilStop(new Set([returnAddress]), stepOverMaxInstructions, 'step over');
+  runUntilStop([{ address: returnAddress & ADDR_MASK }], stepOverMaxInstructions, 'step over');
   return;
 }
 ```
@@ -449,9 +457,9 @@ The snapshot is taken exactly once — the first time the PC reaches the applica
 
 - `RuntimeControlContext` is a set of accessor functions over `SessionStateShape`. The execution functions receive it instead of the full session, keeping their dependencies minimal.
 
-- `BreakpointManager` maintains pending breakpoints by source file, active breakpoints by address, and conditional expressions by resolved address. Verification resolves source lines to Z80 addresses through the D8 source map. Shadow aliasing on TEC-1G ensures breakpoints fire at both the primary and aliased addresses.
+- `BreakpointManager` maintains pending breakpoints by source file, active breakpoint keys, and conditional expressions by resolved breakpoint identity. Verification resolves source lines to Z80 addresses through the D8 source map, preserving TEC-1G expansion-bank address spaces on banked ROM segments. Shadow aliasing still ensures low-RAM breakpoints fire at both the primary and aliased addresses.
 
-- The breakpoint-skip mechanism prevents a stopped-at-breakpoint Continue from immediately re-hitting the same address. The skip is consumed after exactly one step.
+- The breakpoint-skip mechanism prevents a stopped-at-breakpoint Continue from immediately re-hitting the same address. The skip is consumed after exactly one step, and on banked TEC-1G ROM it only applies when the active physical bank still matches the one that triggered the stop.
 
 - Step Over uses the runtime's trace output to detect taken calls, then runs to the return address as an extra breakpoint. Step Into uses opcode decoding to distinguish calls to mapped user code (step into) from calls to unmapped ROM (step over).
 
@@ -460,7 +468,7 @@ The snapshot is taken exactly once — the first time the PC reaches the applica
 
 - The Variables pane is populated from active D8 source-map symbols and constants. Registers are handled by Debug80's dedicated Registers panel rather than duplicating them in Variables.
 
-- Stack trace resolution tries source map segment lookup, shadow alias lookup, and symbolic stack-return candidates read from `SP`. Diagnostics mode logs each resolution step to the Debug Console.
+- Stack trace resolution tries source map segment lookup, TEC-1G expansion-bank-aware lookup, shadow alias lookup, and symbolic stack-return candidates read from `SP`. Diagnostics mode logs each resolution step to the Debug Console.
 
 - Memory and register write requests are validated for runtime existence and session-paused state before modifying CPU or memory. Memory writes use the hardware `memWrite` hook, which enforces ROM protection on platforms that define it.
 
